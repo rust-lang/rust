@@ -78,7 +78,7 @@ use std::ffi::CString;
 use std::str;
 use std::sync::Arc;
 use std::time::{Instant, Duration};
-use std::i32;
+use std::{i32, usize};
 use std::iter;
 use std::sync::mpsc;
 use syntax_pos::Span;
@@ -823,12 +823,10 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ongoing_translation.submit_pre_translated_module_to_llvm(tcx, metadata_module);
 
     // We sort the codegen units by size. This way we can schedule work for LLVM
-    // a bit more efficiently. Note that "size" is defined rather crudely at the
-    // moment as it is just the number of TransItems in the CGU, not taking into
-    // account the size of each TransItem.
+    // a bit more efficiently.
     let codegen_units = {
         let mut codegen_units = codegen_units;
-        codegen_units.sort_by_key(|cgu| -(cgu.items().len() as isize));
+        codegen_units.sort_by_key(|cgu| usize::MAX - cgu.size_estimate());
         codegen_units
     };
 

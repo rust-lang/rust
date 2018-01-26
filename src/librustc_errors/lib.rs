@@ -19,6 +19,7 @@
 #![cfg_attr(unix, feature(libc))]
 #![feature(conservative_impl_trait)]
 #![feature(i128_type)]
+#![feature(optin_builtin_traits)]
 
 extern crate term;
 #[cfg(unix)]
@@ -44,6 +45,7 @@ use std::rc::Rc;
 use std::{error, fmt};
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::SeqCst;
+use std::panic;
 
 mod diagnostic;
 mod diagnostic_builder;
@@ -201,6 +203,18 @@ impl CodeSuggestion {
 #[must_use]
 pub struct FatalError;
 
+pub struct FatalErrorMarker;
+
+// Don't implement Send on FatalError. This makes it impossible to panic!(FatalError).
+// We don't want to invoke the panic handler and print a backtrace for fatal errors.
+impl !Send for FatalError {}
+
+impl FatalError {
+    pub fn raise(self) -> ! {
+        panic::resume_unwind(Box::new(FatalErrorMarker))
+    }
+}
+
 impl fmt::Display for FatalError {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "parser fatal error")
@@ -244,6 +258,11 @@ pub struct Handler {
     continue_after_error: Cell<bool>,
     delayed_span_bug: RefCell<Option<Diagnostic>>,
     tracked_diagnostics: RefCell<Option<Vec<Diagnostic>>>,
+
+    // This set contains the `DiagnosticId` of all emitted diagnostics to avoid
+    // emitting the same diagnostic with extended help (`--teach`) twice, which
+    // would be uneccessary repetition.
+    tracked_diagnostic_codes: RefCell<FxHashSet<DiagnosticId>>,
 
     // This set contains a hash of every diagnostic that has been emitted by
     // this handler. These hashes is used to avoid emitting the same error
@@ -303,6 +322,7 @@ impl Handler {
             continue_after_error: Cell::new(true),
             delayed_span_bug: RefCell::new(None),
             tracked_diagnostics: RefCell::new(None),
+            tracked_diagnostic_codes: RefCell::new(FxHashSet()),
             emitted_diagnostics: RefCell::new(FxHashSet()),
         }
     }
@@ -539,7 +559,7 @@ impl Handler {
             }
         }
 
-        panic!(self.fatal(&s));
+        self.fatal(&s).raise();
     }
     pub fn emit(&self, msp: &MultiSpan, msg: &str, lvl: Level) {
         if lvl == Warning && !self.flags.can_emit_warnings {
@@ -575,11 +595,23 @@ impl Handler {
         (ret, diagnostics)
     }
 
+    /// `true` if a diagnostic with this code has already been emitted in this handler.
+    ///
+    /// Used to suppress emitting the same error multiple times with extended explanation when
+    /// calling `-Zteach`.
+    pub fn code_emitted(&self, code: &DiagnosticId) -> bool {
+        self.tracked_diagnostic_codes.borrow().contains(code)
+    }
+
     fn emit_db(&self, db: &DiagnosticBuilder) {
         let diagnostic = &**db;
 
         if let Some(ref mut list) = *self.tracked_diagnostics.borrow_mut() {
             list.push(diagnostic.clone());
+        }
+
+        if let Some(ref code) = diagnostic.code {
+            self.tracked_diagnostic_codes.borrow_mut().insert(code.clone());
         }
 
         let diagnostic_hash = {

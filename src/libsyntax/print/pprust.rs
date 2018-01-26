@@ -2104,9 +2104,9 @@ impl<'a> State<'a> {
             ast::ExprKind::IfLet(ref pat, ref expr, ref blk, ref elseopt) => {
                 self.print_if_let(pat, expr, blk, elseopt.as_ref().map(|e| &**e))?;
             }
-            ast::ExprKind::While(ref test, ref blk, opt_ident) => {
-                if let Some(ident) = opt_ident {
-                    self.print_ident(ident.node)?;
+            ast::ExprKind::While(ref test, ref blk, opt_label) => {
+                if let Some(label) = opt_label {
+                    self.print_ident(label.ident)?;
                     self.word_space(":")?;
                 }
                 self.head("while")?;
@@ -2114,9 +2114,9 @@ impl<'a> State<'a> {
                 self.s.space()?;
                 self.print_block_with_attrs(blk, attrs)?;
             }
-            ast::ExprKind::WhileLet(ref pat, ref expr, ref blk, opt_ident) => {
-                if let Some(ident) = opt_ident {
-                    self.print_ident(ident.node)?;
+            ast::ExprKind::WhileLet(ref pat, ref expr, ref blk, opt_label) => {
+                if let Some(label) = opt_label {
+                    self.print_ident(label.ident)?;
                     self.word_space(":")?;
                 }
                 self.head("while let")?;
@@ -2127,9 +2127,9 @@ impl<'a> State<'a> {
                 self.s.space()?;
                 self.print_block_with_attrs(blk, attrs)?;
             }
-            ast::ExprKind::ForLoop(ref pat, ref iter, ref blk, opt_ident) => {
-                if let Some(ident) = opt_ident {
-                    self.print_ident(ident.node)?;
+            ast::ExprKind::ForLoop(ref pat, ref iter, ref blk, opt_label) => {
+                if let Some(label) = opt_label {
+                    self.print_ident(label.ident)?;
                     self.word_space(":")?;
                 }
                 self.head("for")?;
@@ -2140,9 +2140,9 @@ impl<'a> State<'a> {
                 self.s.space()?;
                 self.print_block_with_attrs(blk, attrs)?;
             }
-            ast::ExprKind::Loop(ref blk, opt_ident) => {
-                if let Some(ident) = opt_ident {
-                    self.print_ident(ident.node)?;
+            ast::ExprKind::Loop(ref blk, opt_label) => {
+                if let Some(label) = opt_label {
+                    self.print_ident(label.ident)?;
                     self.word_space(":")?;
                 }
                 self.head("loop")?;
@@ -2238,11 +2238,11 @@ impl<'a> State<'a> {
             ast::ExprKind::Path(Some(ref qself), ref path) => {
                 self.print_qpath(path, qself, true)?
             }
-            ast::ExprKind::Break(opt_ident, ref opt_expr) => {
+            ast::ExprKind::Break(opt_label, ref opt_expr) => {
                 self.s.word("break")?;
                 self.s.space()?;
-                if let Some(ident) = opt_ident {
-                    self.print_ident(ident.node)?;
+                if let Some(label) = opt_label {
+                    self.print_ident(label.ident)?;
                     self.s.space()?;
                 }
                 if let Some(ref expr) = *opt_expr {
@@ -2250,11 +2250,11 @@ impl<'a> State<'a> {
                     self.s.space()?;
                 }
             }
-            ast::ExprKind::Continue(opt_ident) => {
+            ast::ExprKind::Continue(opt_label) => {
                 self.s.word("continue")?;
                 self.s.space()?;
-                if let Some(ident) = opt_ident {
-                    self.print_ident(ident.node)?;
+                if let Some(label) = opt_label {
+                    self.print_ident(label.ident)?;
                     self.s.space()?
                 }
             }

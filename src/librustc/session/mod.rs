@@ -250,7 +250,7 @@ impl Session {
     }
 
     pub fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
-        panic!(self.diagnostic().span_fatal(sp, msg))
+        self.diagnostic().span_fatal(sp, msg).raise()
     }
     pub fn span_fatal_with_code<S: Into<MultiSpan>>(
         &self,
@@ -258,10 +258,10 @@ impl Session {
         msg: &str,
         code: DiagnosticId,
     ) -> ! {
-        panic!(self.diagnostic().span_fatal_with_code(sp, msg, code))
+        self.diagnostic().span_fatal_with_code(sp, msg, code).raise()
     }
     pub fn fatal(&self, msg: &str) -> ! {
-        panic!(self.diagnostic().fatal(msg))
+        self.diagnostic().fatal(msg).raise()
     }
     pub fn span_err_or_warn<S: Into<MultiSpan>>(&self, is_warning: bool, sp: S, msg: &str) {
         if is_warning {
@@ -498,9 +498,65 @@ impl Session {
             self.use_mir()
     }
 
-    pub fn lto(&self) -> bool {
-        self.opts.cg.lto || self.target.target.options.requires_lto
+    /// Calculates the flavor of LTO to use for this compilation.
+    pub fn lto(&self) -> config::Lto {
+        // If our target has codegen requirements ignore the command line
+        if self.target.target.options.requires_lto {
+            return config::Lto::Fat
+        }
+
+        // If the user specified something, return that. If they only said `-C
+        // lto` and we've for whatever reason forced off ThinLTO via the CLI,
+        // then ensure we can't use a ThinLTO.
+        match self.opts.cg.lto {
+            config::Lto::No => {}
+            config::Lto::Yes if self.opts.cli_forced_thinlto_off => {
+                return config::Lto::Fat
+            }
+            other => return other,
+        }
+
+        // Ok at this point the target doesn't require anything and the user
+        // hasn't asked for anything. Our next decision is whether or not
+        // we enable "auto" ThinLTO where we use multiple codegen units and
+        // then do ThinLTO over those codegen units. The logic below will
+        // either return `No` or `ThinLocal`.
+
+        // If processing command line options determined that we're incompatible
+        // with ThinLTO (e.g. `-C lto --emit llvm-ir`) then return that option.
+        if self.opts.cli_forced_thinlto_off {
+            return config::Lto::No
+        }
+
+        // If `-Z thinlto` specified process that, but note that this is mostly
+        // a deprecated option now that `-C lto=thin` exists.
+        if let Some(enabled) = self.opts.debugging_opts.thinlto {
+            if enabled {
+                return config::Lto::ThinLocal
+            } else {
+                return config::Lto::No
+            }
+        }
+
+        // If there's only one codegen unit and LTO isn't enabled then there's
+        // no need for ThinLTO so just return false.
+        if self.codegen_units() == 1 {
+            return config::Lto::No
+        }
+
+        // Right now ThinLTO isn't compatible with incremental compilation.
+        if self.opts.incremental.is_some() {
+            return config::Lto::No
+        }
+
+        // Now we're in "defaults" territory. By default we enable ThinLTO for
+        // optimized compiles (anything greater than O0).
+        match self.opts.optimize {
+            config::OptLevel::No => config::Lto::No,
+            _ => config::Lto::ThinLocal,
+        }
     }
+
     /// Returns the panic strategy for this compile session. If the user explicitly selected one
     /// using '-C panic', use that, otherwise use the panic strategy defined by the target.
     pub fn panic_strategy(&self) -> PanicStrategy {
@@ -805,36 +861,8 @@ impl Session {
         16
     }
 
-    /// Returns whether ThinLTO is enabled for this compilation
-    pub fn thinlto(&self) -> bool {
-        // If processing command line options determined that we're incompatible
-        // with ThinLTO (e.g. `-C lto --emit llvm-ir`) then return that option.
-        if let Some(enabled) = self.opts.cli_forced_thinlto {
-            return enabled
-        }
-
-        // If explicitly specified, use that with the next highest priority
-        if let Some(enabled) = self.opts.debugging_opts.thinlto {
-            return enabled
-        }
-
-        // If there's only one codegen unit and LTO isn't enabled then there's
-        // no need for ThinLTO so just return false.
-        if self.codegen_units() == 1 && !self.lto() {
-            return false
-        }
-
-        // Right now ThinLTO isn't compatible with incremental compilation.
-        if self.opts.incremental.is_some() {
-            return false
-        }
-
-        // Now we're in "defaults" territory. By default we enable ThinLTO for
-        // optimized compiles (anything greater than O0).
-        match self.opts.optimize {
-            config::OptLevel::No => false,
-            _ => true,
-        }
+    pub fn teach(&self, code: &DiagnosticId) -> bool {
+        self.opts.debugging_opts.teach && !self.parse_sess.span_diagnostic.code_emitted(code)
     }
 }
 
@@ -919,7 +947,7 @@ pub fn build_session_(sopts: config::Options,
     let host = match Target::search(config::host_triple()) {
         Ok(t) => t,
         Err(e) => {
-            panic!(span_diagnostic.fatal(&format!("Error loading host specification: {}", e)));
+            span_diagnostic.fatal(&format!("Error loading host specification: {}", e)).raise();
         }
     };
     let target_cfg = config::build_target_config(&sopts, &span_diagnostic);
@@ -945,7 +973,7 @@ pub fn build_session_(sopts: config::Options,
     let working_dir = match env::current_dir() {
         Ok(dir) => dir,
         Err(e) => {
-            panic!(p_s.span_diagnostic.fatal(&format!("Current directory is invalid: {}", e)))
+            p_s.span_diagnostic.fatal(&format!("Current directory is invalid: {}", e)).raise()
         }
     };
     let working_dir = file_path_mapping.map_prefix(working_dir);
@@ -1076,7 +1104,7 @@ pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
     };
     let handler = errors::Handler::with_emitter(true, false, emitter);
     handler.emit(&MultiSpan::new(), msg, errors::Level::Fatal);
-    panic!(errors::FatalError);
+    errors::FatalError.raise();
 }
 
 pub fn early_warn(output: config::ErrorOutputType, msg: &str) {

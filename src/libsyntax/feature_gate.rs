@@ -1954,7 +1954,7 @@ impl FeatureChecker {
                 .span_note(ca_span, "`#![feature(custom_attribute)]` declared here")
                 .emit();
 
-            panic!(FatalError);
+            FatalError.raise();
         }
 
         if let (Some(span), None) = (self.copy_closures, self.clone_closures) {
@@ -1963,7 +1963,7 @@ impl FeatureChecker {
                   .span_note(span, "`#![feature(copy_closures)]` declared here")
                   .emit();
 
-            panic!(FatalError);
+            FatalError.raise();
         }
     }
 }

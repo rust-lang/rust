@@ -26,6 +26,7 @@ use util::{exe, libdir, add_lib_path};
 use {Build, Mode};
 use cache::{INTERNER, Interned, Cache};
 use check;
+use test;
 use flags::Subcommand;
 use doc;
 use tool;
@@ -230,6 +231,7 @@ impl<'a> ShouldRun<'a> {
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Kind {
     Build,
+    Check,
     Test,
     Bench,
     Dist,
@@ -251,13 +253,13 @@ impl<'a> Builder<'a> {
                 tool::Compiletest, tool::RemoteTestServer, tool::RemoteTestClient,
                 tool::RustInstaller, tool::Cargo, tool::Rls, tool::Rustdoc, tool::Clippy,
                 native::Llvm, tool::Rustfmt, tool::Miri),
-            Kind::Test => describe!(check::Tidy, check::Bootstrap, check::DefaultCompiletest,
-                check::HostCompiletest, check::Crate, check::CrateLibrustc, check::Rustdoc,
-                check::Linkcheck, check::Cargotest, check::Cargo, check::Rls, check::Docs,
-                check::ErrorIndex, check::Distcheck, check::Rustfmt, check::Miri, check::Clippy,
-                check::RustdocJS),
-
-            Kind::Bench => describe!(check::Crate, check::CrateLibrustc),
+            Kind::Check => describe!(check::Std, check::Test, check::Rustc),
+            Kind::Test => describe!(test::Tidy, test::Bootstrap, test::DefaultCompiletest,
+                test::HostCompiletest, test::Crate, test::CrateLibrustc, test::Rustdoc,
+                test::Linkcheck, test::Cargotest, test::Cargo, test::Rls, test::Docs,
+                test::ErrorIndex, test::Distcheck, test::Rustfmt, test::Miri, test::Clippy,
+                test::RustdocJS),
+            Kind::Bench => describe!(test::Crate, test::CrateLibrustc),
             Kind::Doc => describe!(doc::UnstableBook, doc::UnstableBookGen, doc::TheBook,
                 doc::Standalone, doc::Std, doc::Test, doc::Rustc, doc::ErrorIndex, doc::Nomicon,
                 doc::Reference, doc::Rustdoc, doc::RustByExample, doc::CargoBook),
@@ -304,6 +306,7 @@ impl<'a> Builder<'a> {
     pub fn run(build: &Build) {
         let (kind, paths) = match build.config.cmd {
             Subcommand::Build { ref paths } => (Kind::Build, &paths[..]),
+            Subcommand::Check { ref paths } => (Kind::Check, &paths[..]),
             Subcommand::Doc { ref paths } => (Kind::Doc, &paths[..]),
             Subcommand::Test { ref paths, .. } => (Kind::Test, &paths[..]),
             Subcommand::Bench { ref paths, .. } => (Kind::Bench, &paths[..]),
@@ -493,13 +496,14 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_CODEGEN_UNITS", n.to_string());
         }
 
+
         if let Some(host_linker) = self.build.linker(compiler.host) {
             cargo.env("RUSTC_HOST_LINKER", host_linker);
         }
         if let Some(target_linker) = self.build.linker(target) {
             cargo.env("RUSTC_TARGET_LINKER", target_linker);
         }
-        if cmd != "build" {
+        if cmd != "build" && cmd != "check" {
             cargo.env("RUSTDOC_LIBDIR", self.rustc_libdir(self.compiler(2, self.build.build)));
         }
 
@@ -566,8 +570,7 @@ impl<'a> Builder<'a> {
         // not guaranteeing correctness across builds if the compiler
         // is changing under your feet.`
         if self.config.incremental && compiler.stage == 0 {
-            let incr_dir = self.incremental_dir(compiler);
-            cargo.env("RUSTC_INCREMENTAL", incr_dir);
+            cargo.env("CARGO_INCREMENTAL", "1");
         }
 
         if let Some(ref on_fail) = self.config.on_fail {

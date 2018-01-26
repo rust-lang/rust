@@ -573,7 +573,7 @@ fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
             Some(i) => token::NtItem(i),
             None => {
                 p.fatal("expected an item keyword").emit();
-                panic!(FatalError);
+                FatalError.raise();
             }
         },
         "block" => token::NtBlock(panictry!(p.parse_block())),
@@ -581,7 +581,7 @@ fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
             Some(s) => token::NtStmt(s),
             None => {
                 p.fatal("expected a statement").emit();
-                panic!(FatalError);
+                FatalError.raise();
             }
         },
         "pat" => token::NtPat(panictry!(p.parse_pat())),
@@ -597,7 +597,7 @@ fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
                 let token_str = pprust::token_to_string(&p.token);
                 p.fatal(&format!("expected ident, found {}",
                                  &token_str[..])).emit();
-                panic!(FatalError)
+                FatalError.raise()
             }
         },
         "path" => token::NtPath(panictry!(p.parse_path_common(PathStyle::Type, false))),

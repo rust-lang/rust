@@ -23,7 +23,7 @@ use ast::{Field, FnDecl};
 use ast::{ForeignItem, ForeignItemKind, FunctionRetTy};
 use ast::GenericParam;
 use ast::{Ident, ImplItem, IsAuto, Item, ItemKind};
-use ast::{Lifetime, LifetimeDef, Lit, LitKind, UintTy};
+use ast::{Label, Lifetime, LifetimeDef, Lit, LitKind, UintTy};
 use ast::Local;
 use ast::MacStmtStyle;
 use ast::Mac_;
@@ -1325,15 +1325,17 @@ impl<'a> Parser<'a> {
             self.check_keyword(keywords::Extern)
     }
 
-    fn get_label(&mut self) -> ast::Ident {
-        match self.token {
+    fn eat_label(&mut self) -> Option<Label> {
+        let ident = match self.token {
             token::Lifetime(ref ident) => *ident,
             token::Interpolated(ref nt) => match nt.0 {
                 token::NtLifetime(lifetime) => lifetime.ident,
-                _ => self.bug("not a lifetime"),
+                _ => return None,
             },
-            _ => self.bug("not a lifetime"),
-        }
+            _ => return None,
+        };
+        self.bump();
+        Some(Label { ident, span: self.prev_span })
     }
 
     /// parse a TyKind::BareFn type:
@@ -2317,11 +2319,8 @@ impl<'a> Parser<'a> {
                     let lo = self.prev_span;
                     return self.parse_while_expr(None, lo, attrs);
                 }
-                if self.token.is_lifetime() {
-                    let label = Spanned { node: self.get_label(),
-                                          span: self.span };
-                    let lo = self.span;
-                    self.bump();
+                if let Some(label) = self.eat_label() {
+                    let lo = label.span;
                     self.expect(&token::Colon)?;
                     if self.eat_keyword(keywords::While) {
                         return self.parse_while_expr(Some(label), lo, attrs)
@@ -2339,16 +2338,8 @@ impl<'a> Parser<'a> {
                     return self.parse_loop_expr(None, lo, attrs);
                 }
                 if self.eat_keyword(keywords::Continue) {
-                    let ex = if self.token.is_lifetime() {
-                        let ex = ExprKind::Continue(Some(Spanned{
-                            node: self.get_label(),
-                            span: self.span
-                        }));
-                        self.bump();
-                        ex
-                    } else {
-                        ExprKind::Continue(None)
-                    };
+                    let label = self.eat_label();
+                    let ex = ExprKind::Continue(label);
                     let hi = self.prev_span;
                     return Ok(self.mk_expr(lo.to(hi), ex, attrs));
                 }
@@ -2376,16 +2367,7 @@ impl<'a> Parser<'a> {
                         ex = ExprKind::Ret(None);
                     }
                 } else if self.eat_keyword(keywords::Break) {
-                    let lt = if self.token.is_lifetime() {
-                        let spanned_lt = Spanned {
-                            node: self.get_label(),
-                            span: self.span
-                        };
-                        self.bump();
-                        Some(spanned_lt)
-                    } else {
-                        None
-                    };
+                    let label = self.eat_label();
                     let e = if self.token.can_begin_expr()
                                && !(self.token == token::OpenDelim(token::Brace)
                                     && self.restrictions.contains(
@@ -2394,7 +2376,7 @@ impl<'a> Parser<'a> {
                     } else {
                         None
                     };
-                    ex = ExprKind::Break(lt, e);
+                    ex = ExprKind::Break(label, e);
                     hi = self.prev_span;
                 } else if self.eat_keyword(keywords::Yield) {
                     if self.token.can_begin_expr() {
@@ -3291,7 +3273,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a 'for' .. 'in' expression ('for' token already eaten)
-    pub fn parse_for_expr(&mut self, opt_ident: Option<ast::SpannedIdent>,
+    pub fn parse_for_expr(&mut self, opt_label: Option<Label>,
                           span_lo: Span,
                           mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
         // Parse: `for <src_pat> in <src_expr> <src_loop_block>`
@@ -3309,25 +3291,25 @@ impl<'a> Parser<'a> {
         attrs.extend(iattrs);
 
         let hi = self.prev_span;
-        Ok(self.mk_expr(span_lo.to(hi), ExprKind::ForLoop(pat, expr, loop_block, opt_ident), attrs))
+        Ok(self.mk_expr(span_lo.to(hi), ExprKind::ForLoop(pat, expr, loop_block, opt_label), attrs))
     }
 
     /// Parse a 'while' or 'while let' expression ('while' token already eaten)
-    pub fn parse_while_expr(&mut self, opt_ident: Option<ast::SpannedIdent>,
+    pub fn parse_while_expr(&mut self, opt_label: Option<Label>,
                             span_lo: Span,
                             mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
         if self.token.is_keyword(keywords::Let) {
-            return self.parse_while_let_expr(opt_ident, span_lo, attrs);
+            return self.parse_while_let_expr(opt_label, span_lo, attrs);
         }
         let cond = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
         let (iattrs, body) = self.parse_inner_attrs_and_block()?;
         attrs.extend(iattrs);
         let span = span_lo.to(body.span);
-        return Ok(self.mk_expr(span, ExprKind::While(cond, body, opt_ident), attrs));
+        return Ok(self.mk_expr(span, ExprKind::While(cond, body, opt_label), attrs));
     }
 
     /// Parse a 'while let' expression ('while' token already eaten)
-    pub fn parse_while_let_expr(&mut self, opt_ident: Option<ast::SpannedIdent>,
+    pub fn parse_while_let_expr(&mut self, opt_label: Option<Label>,
                                 span_lo: Span,
                                 mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
         self.expect_keyword(keywords::Let)?;
@@ -3337,17 +3319,17 @@ impl<'a> Parser<'a> {
         let (iattrs, body) = self.parse_inner_attrs_and_block()?;
         attrs.extend(iattrs);
         let span = span_lo.to(body.span);
-        return Ok(self.mk_expr(span, ExprKind::WhileLet(pat, expr, body, opt_ident), attrs));
+        return Ok(self.mk_expr(span, ExprKind::WhileLet(pat, expr, body, opt_label), attrs));
     }
 
     // parse `loop {...}`, `loop` token already eaten
-    pub fn parse_loop_expr(&mut self, opt_ident: Option<ast::SpannedIdent>,
+    pub fn parse_loop_expr(&mut self, opt_label: Option<Label>,
                            span_lo: Span,
                            mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
         let (iattrs, body) = self.parse_inner_attrs_and_block()?;
         attrs.extend(iattrs);
         let span = span_lo.to(body.span);
-        Ok(self.mk_expr(span, ExprKind::Loop(body, opt_ident), attrs))
+        Ok(self.mk_expr(span, ExprKind::Loop(body, opt_label), attrs))
     }
 
     /// Parse a `do catch {...}` expression (`do catch` token already eaten)

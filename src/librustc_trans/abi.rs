@@ -871,6 +871,31 @@ impl<'a, 'tcx> FnType<'tcx> {
 
                 match arg.layout.abi {
                     layout::Abi::Aggregate { .. } => {}
+
+                    // This is a fun case! The gist of what this is doing is
+                    // that we want callers and callees to always agree on the
+                    // ABI of how they pass SIMD arguments. If we were to *not*
+                    // make these arguments indirect then they'd be immediates
+                    // in LLVM, which means that they'd used whatever the
+                    // appropriate ABI is for the callee and the caller. That
+                    // means, for example, if the caller doesn't have AVX
+                    // enabled but the callee does, then passing an AVX argument
+                    // across this boundary would cause corrupt data to show up.
+                    //
+                    // This problem is fixed by unconditionally passing SIMD
+                    // arguments through memory between callers and callees
+                    // which should get them all to agree on ABI regardless of
+                    // target feature sets. Some more information about this
+                    // issue can be found in #44367.
+                    //
+                    // Note that the platform intrinsic ABI is exempt here as
+                    // that's how we connect up to LLVM and it's unstable
+                    // anyway, we control all calls to it in libstd.
+                    layout::Abi::Vector { .. } if abi != Abi::PlatformIntrinsic => {
+                        arg.make_indirect();
+                        return
+                    }
+
                     _ => return
                 }
 

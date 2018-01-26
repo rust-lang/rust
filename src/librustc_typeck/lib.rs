@@ -123,16 +123,17 @@ use std::iter;
 // registered before they are used.
 mod diagnostics;
 
+mod astconv;
 mod check;
 mod check_unused;
-mod astconv;
+mod coherence;
 mod collect;
 mod constrained_type_params;
+mod structured_errors;
 mod impl_wf_check;
-mod coherence;
+mod namespace;
 mod outlives;
 mod variance;
-mod namespace;
 
 pub struct TypeAndSubsts<'tcx> {
     substs: &'tcx Substs<'tcx>,

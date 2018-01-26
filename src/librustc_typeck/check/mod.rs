@@ -103,6 +103,7 @@ use rustc::ty::maps::Providers;
 use rustc::ty::util::{Representability, IntTypeExt};
 use rustc::ty::layout::LayoutOf;
 use errors::{DiagnosticBuilder, DiagnosticId};
+
 use require_c_abi_if_variadic;
 use session::{CompileIncomplete, config, Session};
 use TypeAndSubsts;
@@ -1636,7 +1637,7 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
         let item_id = tcx.hir.ty_param_owner(node_id);
         let item_def_id = tcx.hir.local_def_id(item_id);
         let generics = tcx.generics_of(item_def_id);
-        let index = generics.type_param_to_index[&def_id.index];
+        let index = generics.type_param_to_index[&def_id];
         ty::GenericPredicates {
             parent: None,
             predicates: self.param_env.caller_bounds.iter().filter(|predicate| {
@@ -2599,9 +2600,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // arguments which we skipped above.
         if variadic {
             fn variadic_error<'tcx>(s: &Session, span: Span, t: Ty<'tcx>, cast_ty: &str) {
-                type_error_struct!(s, span, t, E0617,
-                                   "can't pass `{}` to variadic function, cast to `{}`",
-                                   t, cast_ty).emit();
+                use structured_errors::{VariadicError, StructuredDiagnostic};
+                VariadicError::new(s, span, t, cast_ty).diagnostic().emit();
             }
 
             for arg in args.iter().skip(expected_arg_count) {

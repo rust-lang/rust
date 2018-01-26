@@ -43,7 +43,6 @@
 
 use syntax::abi::Abi;
 use syntax::ast::{NodeId, CRATE_NODE_ID, Name, Attribute};
-use syntax::codemap::Spanned;
 use syntax_pos::Span;
 use hir::*;
 use hir::def::Def;
@@ -336,6 +335,9 @@ pub trait Visitor<'v> : Sized {
     fn visit_variant(&mut self, v: &'v Variant, g: &'v Generics, item_id: NodeId) {
         walk_variant(self, v, g, item_id)
     }
+    fn visit_label(&mut self, label: &'v Label) {
+        walk_label(self, label)
+    }
     fn visit_lifetime(&mut self, lifetime: &'v Lifetime) {
         walk_lifetime(self, lifetime)
     }
@@ -367,18 +369,6 @@ pub trait Visitor<'v> : Sized {
     }
     fn visit_defaultness(&mut self, defaultness: &'v Defaultness) {
         walk_defaultness(self, defaultness);
-    }
-}
-
-pub fn walk_opt_name<'v, V: Visitor<'v>>(visitor: &mut V, span: Span, opt_name: Option<Name>) {
-    if let Some(name) = opt_name {
-        visitor.visit_name(span, name);
-    }
-}
-
-pub fn walk_opt_sp_name<'v, V: Visitor<'v>>(visitor: &mut V, opt_sp_name: &Option<Spanned<Name>>) {
-    if let Some(ref sp_name) = *opt_sp_name {
-        visitor.visit_name(sp_name.span, sp_name.node);
     }
 }
 
@@ -420,6 +410,10 @@ pub fn walk_local<'v, V: Visitor<'v>>(visitor: &mut V, local: &'v Local) {
     walk_list!(visitor, visit_ty, &local.ty);
 }
 
+pub fn walk_label<'v, V: Visitor<'v>>(visitor: &mut V, label: &'v Label) {
+    visitor.visit_name(label.span, label.name);
+}
+
 pub fn walk_lifetime<'v, V: Visitor<'v>>(visitor: &mut V, lifetime: &'v Lifetime) {
     visitor.visit_id(lifetime.id);
     match lifetime.name {
@@ -452,7 +446,9 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
     match item.node {
         ItemExternCrate(opt_name) => {
             visitor.visit_id(item.id);
-            walk_opt_name(visitor, item.span, opt_name)
+            if let Some(name) = opt_name {
+                visitor.visit_name(item.span, name);
+            }
         }
         ItemUse(ref path, _) => {
             visitor.visit_id(item.id);
@@ -993,14 +989,14 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_expr(if_block);
             walk_list!(visitor, visit_expr, optional_else);
         }
-        ExprWhile(ref subexpression, ref block, ref opt_sp_name) => {
+        ExprWhile(ref subexpression, ref block, ref opt_label) => {
+            walk_list!(visitor, visit_label, opt_label);
             visitor.visit_expr(subexpression);
             visitor.visit_block(block);
-            walk_opt_sp_name(visitor, opt_sp_name);
         }
-        ExprLoop(ref block, ref opt_sp_name, _) => {
+        ExprLoop(ref block, ref opt_label, _) => {
+            walk_list!(visitor, visit_label, opt_label);
             visitor.visit_block(block);
-            walk_opt_sp_name(visitor, opt_sp_name);
         }
         ExprMatch(ref subexpression, ref arms, _) => {
             visitor.visit_expr(subexpression);
@@ -1036,28 +1032,28 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
         ExprPath(ref qpath) => {
             visitor.visit_qpath(qpath, expression.id, expression.span);
         }
-        ExprBreak(label, ref opt_expr) => {
-            label.ident.map(|ident| {
-                match label.target_id {
+        ExprBreak(ref destination, ref opt_expr) => {
+            if let Some(ref label) = destination.label {
+                visitor.visit_label(label);
+                match destination.target_id {
                     ScopeTarget::Block(node_id) |
                     ScopeTarget::Loop(LoopIdResult::Ok(node_id)) =>
                         visitor.visit_def_mention(Def::Label(node_id)),
                     ScopeTarget::Loop(LoopIdResult::Err(_)) => {},
                 };
-                visitor.visit_name(ident.span, ident.node.name);
-            });
+            }
             walk_list!(visitor, visit_expr, opt_expr);
         }
-        ExprAgain(label) => {
-            label.ident.map(|ident| {
-                match label.target_id {
+        ExprAgain(ref destination) => {
+            if let Some(ref label) = destination.label {
+                visitor.visit_label(label);
+                match destination.target_id {
                     ScopeTarget::Block(_) => bug!("can't `continue` to a non-loop block"),
                     ScopeTarget::Loop(LoopIdResult::Ok(node_id)) =>
                         visitor.visit_def_mention(Def::Label(node_id)),
                     ScopeTarget::Loop(LoopIdResult::Err(_)) => {},
                 };
-                visitor.visit_name(ident.span, ident.node.name);
-            });
+            }
         }
         ExprRet(ref optional_expression) => {
             walk_list!(visitor, visit_expr, optional_expression);

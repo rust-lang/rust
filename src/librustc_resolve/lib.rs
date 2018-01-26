@@ -55,7 +55,7 @@ use syntax::attr;
 use syntax::ast::{Arm, BindingMode, Block, Crate, Expr, ExprKind};
 use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, GenericParam, Generics};
 use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
-use syntax::ast::{Local, Mutability, Pat, PatKind, Path};
+use syntax::ast::{Label, Local, Mutability, Pat, PatKind, Path};
 use syntax::ast::{QSelf, TraitItemKind, TraitRef, Ty, TyKind};
 use syntax::feature_gate::{feature_err, emit_feature_err, GateIssue};
 use syntax::parse::token;
@@ -2045,7 +2045,7 @@ impl<'a> Resolver<'a> {
                     segments: vec![],
                     span: use_tree.span,
                 };
-                self.resolve_use_tree(item, use_tree, &path);
+                self.resolve_use_tree(item.id, use_tree, &path);
             }
 
             ItemKind::ExternCrate(_) | ItemKind::MacroDef(..) | ItemKind::GlobalAsm(_) => {
@@ -2056,7 +2056,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn resolve_use_tree(&mut self, item: &Item, use_tree: &ast::UseTree, prefix: &Path) {
+    fn resolve_use_tree(&mut self, id: NodeId, use_tree: &ast::UseTree, prefix: &Path) {
         match use_tree.kind {
             ast::UseTreeKind::Nested(ref items) => {
                 let path = Path {
@@ -2070,10 +2070,10 @@ impl<'a> Resolver<'a> {
 
                 if items.len() == 0 {
                     // Resolve prefix of an import with empty braces (issue #28388).
-                    self.smart_resolve_path(item.id, None, &path, PathSource::ImportPrefix);
+                    self.smart_resolve_path(id, None, &path, PathSource::ImportPrefix);
                 } else {
-                    for &(ref tree, _) in items {
-                        self.resolve_use_tree(item, tree, &path);
+                    for &(ref tree, nested_id) in items {
+                        self.resolve_use_tree(nested_id, tree, &path);
                     }
                 }
             }
@@ -3415,13 +3415,13 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn with_resolved_label<F>(&mut self, label: Option<SpannedIdent>, id: NodeId, f: F)
+    fn with_resolved_label<F>(&mut self, label: Option<Label>, id: NodeId, f: F)
         where F: FnOnce(&mut Resolver)
     {
         if let Some(label) = label {
             let def = Def::Label(id);
             self.with_label_rib(|this| {
-                this.label_ribs.last_mut().unwrap().bindings.insert(label.node, def);
+                this.label_ribs.last_mut().unwrap().bindings.insert(label.ident, def);
                 f(this);
             });
         } else {
@@ -3429,7 +3429,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn resolve_labeled_block(&mut self, label: Option<SpannedIdent>, id: NodeId, block: &Block) {
+    fn resolve_labeled_block(&mut self, label: Option<Label>, id: NodeId, block: &Block) {
         self.with_resolved_label(label, id, |this| this.visit_block(block));
     }
 
@@ -3452,19 +3452,19 @@ impl<'a> Resolver<'a> {
             }
 
             ExprKind::Break(Some(label), _) | ExprKind::Continue(Some(label)) => {
-                match self.search_label(label.node, |rib, id| rib.bindings.get(&id).cloned()) {
+                match self.search_label(label.ident, |rib, id| rib.bindings.get(&id).cloned()) {
                     None => {
                         // Search again for close matches...
                         // Picks the first label that is "close enough", which is not necessarily
                         // the closest match
-                        let close_match = self.search_label(label.node, |rib, ident| {
+                        let close_match = self.search_label(label.ident, |rib, ident| {
                             let names = rib.bindings.iter().map(|(id, _)| &id.name);
                             find_best_match_for_name(names, &*ident.name.as_str(), None)
                         });
                         self.record_def(expr.id, err_path_resolution());
                         resolve_error(self,
                                       label.span,
-                                      ResolutionError::UndeclaredLabel(&label.node.name.as_str(),
+                                      ResolutionError::UndeclaredLabel(&label.ident.name.as_str(),
                                                                        close_match));
                     }
                     Some(def @ Def::Label(_)) => {

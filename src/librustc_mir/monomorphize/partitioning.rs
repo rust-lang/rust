@@ -115,6 +115,7 @@ use syntax::ast::NodeId;
 use syntax::symbol::{Symbol, InternedString};
 use rustc::mir::mono::MonoItem;
 use monomorphize::item::{MonoItemExt, InstantiationMode};
+use core::usize;
 
 pub use rustc::mir::mono::CodegenUnit;
 
@@ -224,6 +225,8 @@ pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut initial_partitioning = place_root_translation_items(tcx,
                                                                 trans_items);
 
+    initial_partitioning.codegen_units.iter_mut().for_each(|cgu| cgu.estimate_size(&tcx));
+
     debug_dump(tcx, "INITIAL PARTITIONING:", initial_partitioning.codegen_units.iter());
 
     // If the partitioning should produce a fixed count of codegen units, merge
@@ -240,6 +243,8 @@ pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // local functions the definition of which is marked with #[inline].
     let mut post_inlining = place_inlined_translation_items(initial_partitioning,
                                                             inlining_map);
+
+    post_inlining.codegen_units.iter_mut().for_each(|cgu| cgu.estimate_size(&tcx));
 
     debug_dump(tcx, "POST INLINING:", post_inlining.codegen_units.iter());
 
@@ -422,14 +427,13 @@ fn merge_codegen_units<'tcx>(initial_partitioning: &mut PreInliningPartitioning<
     codegen_units.sort_by_key(|cgu| cgu.name().clone());
 
     // Merge the two smallest codegen units until the target size is reached.
-    // Note that "size" is estimated here rather inaccurately as the number of
-    // translation items in a given unit. This could be improved on.
     while codegen_units.len() > target_cgu_count {
         // Sort small cgus to the back
-        codegen_units.sort_by_key(|cgu| -(cgu.items().len() as i64));
+        codegen_units.sort_by_key(|cgu| usize::MAX - cgu.size_estimate());
         let mut smallest = codegen_units.pop().unwrap();
         let second_smallest = codegen_units.last_mut().unwrap();
 
+        second_smallest.modify_size_estimate(smallest.size_estimate());
         for (k, v) in smallest.items_mut().drain() {
             second_smallest.items_mut().insert(k, v);
         }

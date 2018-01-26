@@ -17,7 +17,7 @@ pub use self::fold::TypeFoldable;
 
 use hir::{map as hir_map, FreevarMap, TraitMap};
 use hir::def::{Def, CtorKind, ExportMap};
-use hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use hir::map::DefPathData;
 use hir::svh::Svh;
 use ich::Fingerprint;
@@ -39,8 +39,8 @@ use util::nodemap::{NodeSet, DefIdMap, FxHashMap, FxHashSet};
 
 use serialize::{self, Encodable, Encoder};
 use std::cell::RefCell;
-use std::collections::BTreeMap;
 use std::cmp;
+use std::cmp::Ordering;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::iter::FromIterator;
@@ -499,6 +499,20 @@ impl<'tcx> Hash for TyS<'tcx> {
     }
 }
 
+impl<'tcx> Ord for TyS<'tcx> {
+    #[inline]
+    fn cmp(&self, other: &TyS<'tcx>) -> Ordering {
+        // (self as *const _).cmp(other as *const _)
+        (self as *const TyS<'tcx>).cmp(&(other as *const TyS<'tcx>))
+    }
+}
+impl<'tcx> PartialOrd for TyS<'tcx> {
+    #[inline]
+    fn partial_cmp(&self, other: &TyS<'tcx>) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 impl<'tcx> TyS<'tcx> {
     pub fn is_primitive_ty(&self) -> bool {
         match self.sty {
@@ -567,6 +581,19 @@ impl<T> PartialEq for Slice<T> {
     }
 }
 impl<T> Eq for Slice<T> {}
+
+impl<T> Ord for Slice<T> {
+    #[inline]
+    fn cmp(&self, other: &Slice<T>) -> Ordering {
+        (&self.0 as *const [T]).cmp(&(&other.0 as *const [T]))
+    }
+}
+impl<T> PartialOrd for Slice<T> {
+    #[inline]
+    fn partial_cmp(&self, other: &Slice<T>) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
 
 impl<T> Hash for Slice<T> {
     fn hash<H: Hasher>(&self, s: &mut H) {
@@ -758,9 +785,8 @@ pub struct Generics {
     pub regions: Vec<RegionParameterDef>,
     pub types: Vec<TypeParameterDef>,
 
-    /// Reverse map to each `TypeParameterDef`'s `index` field, from
-    /// `def_id.index` (`def_id.krate` is the same as the item's).
-    pub type_param_to_index: BTreeMap<DefIndex, u32>,
+    /// Reverse map to each `TypeParameterDef`'s `index` field
+    pub type_param_to_index: FxHashMap<DefId, u32>,
 
     pub has_self: bool,
     pub has_late_bound_regions: Option<Span>,
@@ -1103,7 +1129,7 @@ pub type PolySubtypePredicate<'tcx> = ty::Binder<SubtypePredicate<'tcx>>;
 /// equality between arbitrary types. Processing an instance of
 /// Form #2 eventually yields one of these `ProjectionPredicate`
 /// instances to normalize the LHS.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct ProjectionPredicate<'tcx> {
     pub projection_ty: ProjectionTy<'tcx>,
     pub ty: Ty<'tcx>,
@@ -2695,6 +2721,20 @@ fn crate_hash<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tcx.hir.crate_hash
 }
 
+fn instance_def_size_estimate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                        instance_def: InstanceDef<'tcx>)
+                                        -> usize {
+    match instance_def {
+        InstanceDef::Item(..) |
+        InstanceDef::DropGlue(..) => {
+            let mir = tcx.instance_mir(instance_def);
+            mir.basic_blocks().iter().map(|bb| bb.statements.len()).sum()
+        },
+        // Estimate the size of other compiler-generated shims to be 1.
+        _ => 1
+    }
+}
+
 pub fn provide(providers: &mut ty::maps::Providers) {
     context::provide(providers);
     erase_regions::provide(providers);
@@ -2712,6 +2752,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         original_crate_name,
         crate_hash,
         trait_impls_of: trait_def::trait_impls_of_provider,
+        instance_def_size_estimate,
         ..*providers
     };
 }

@@ -48,6 +48,9 @@ pub enum Subcommand {
     Build {
         paths: Vec<PathBuf>,
     },
+    Check {
+        paths: Vec<PathBuf>,
+    },
     Doc {
         paths: Vec<PathBuf>,
     },
@@ -88,6 +91,7 @@ Usage: x.py <subcommand> [options] [<paths>...]
 
 Subcommands:
     build       Compile either the compiler or libraries
+    check       Compile either the compiler or libraries, using cargo check
     test        Build and run some test suites
     bench       Build and run some benchmarks
     doc         Build documentation
@@ -128,6 +132,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
         // there on out.
         let subcommand = args.iter().find(|&s|
             (s == "build")
+            || (s == "check")
             || (s == "test")
             || (s == "bench")
             || (s == "doc")
@@ -218,6 +223,21 @@ Arguments:
     src/libtest and its dependencies.
     Once this is done, build/$ARCH/stage1 contains a usable compiler.");
             }
+            "check" => {
+                subcommand_help.push_str("\n
+Arguments:
+    This subcommand accepts a number of paths to directories to the crates
+    and/or artifacts to compile. For example:
+
+        ./x.py check src/libcore
+        ./x.py check src/libcore src/libproc_macro
+
+    If no arguments are passed then the complete artifacts are compiled: std, test, and rustc. Note
+    also that since we use `cargo check`, by default this will automatically enable incremental
+    compilation, so there's no need to pass it separately, though it won't hurt. We also completely
+    ignore the stage passed, as there's no way to compile in non-stage 0 without actually building
+    the compiler.");
+            }
             "test" => {
                 subcommand_help.push_str("\n
 Arguments:
@@ -285,6 +305,9 @@ Arguments:
         let cmd = match subcommand.as_str() {
             "build" => {
                 Subcommand::Build { paths: paths }
+            }
+            "check" => {
+                Subcommand::Check { paths: paths }
             }
             "test" => {
                 Subcommand::Test {

@@ -150,6 +150,7 @@ use util::{exe, libdir, OutputFolder, CiEnv};
 mod cc_detect;
 mod channel;
 mod check;
+mod test;
 mod clean;
 mod compile;
 mod metadata;
@@ -447,12 +448,6 @@ impl Build {
         let out = self.out.join(&*compiler.host).join(format!("stage{}-tools-bin", compiler.stage));
         t!(fs::create_dir_all(&out));
         out
-    }
-
-    /// Get the directory for incremental by-products when using the
-    /// given compiler.
-    fn incremental_dir(&self, compiler: Compiler) -> PathBuf {
-        self.out.join(&*compiler.host).join(format!("stage{}-incremental", compiler.stage))
     }
 
     /// Returns the root directory for all output generated in a particular
@@ -776,7 +771,11 @@ impl Build {
     fn release(&self, num: &str) -> String {
         match &self.config.channel[..] {
             "stable" => num.to_string(),
-            "beta" => format!("{}-beta.{}", num, self.beta_prerelease_version()),
+            "beta" => if self.rust_info.is_git() {
+                format!("{}-beta.{}", num, self.beta_prerelease_version())
+            } else {
+                format!("{}-beta", num)
+            },
             "nightly" => format!("{}-nightly", num),
             _ => format!("{}-dev", num),
         }

@@ -638,6 +638,7 @@ define_dep_nodes!( <'tcx>
     [input] TargetFeaturesWhitelist,
     [] TargetFeaturesEnabled(DefId),
 
+    [] InstanceDefSizeEstimate { instance_def: InstanceDef<'tcx> },
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {

@@ -617,8 +617,8 @@ impl<'tcx> QueryDescription<'tcx> for queries::optimized_mir<'tcx> {
     }
 
     fn try_load_from_disk<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          id: SerializedDepNodeIndex)
-                          -> Option<Self::Value> {
+                              id: SerializedDepNodeIndex)
+                              -> Option<Self::Value> {
         let mir: Option<::mir::Mir<'tcx>> = tcx.on_disk_query_result_cache
                                                .try_load_query_result(tcx, id);
         mir.map(|x| tcx.alloc_mir(x))
@@ -634,6 +634,27 @@ impl<'tcx> QueryDescription<'tcx> for queries::substitute_normalize_and_test_pre
 impl<'tcx> QueryDescription<'tcx> for queries::target_features_whitelist<'tcx> {
     fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
         format!("looking up the whitelist of target features")
+    }
+}
+
+impl<'tcx> QueryDescription<'tcx> for queries::instance_def_size_estimate<'tcx> {
+    fn describe(tcx: TyCtxt, def: ty::InstanceDef<'tcx>) -> String {
+        format!("estimating size for `{}`", tcx.item_path_str(def.def_id()))
+    }
+}
+
+impl<'tcx> QueryDescription<'tcx> for queries::generics_of<'tcx> {
+    #[inline]
+    fn cache_on_disk(def_id: Self::Key) -> bool {
+        def_id.is_local()
+    }
+
+    fn try_load_from_disk<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                              id: SerializedDepNodeIndex)
+                              -> Option<Self::Value> {
+        let generics: Option<ty::Generics> = tcx.on_disk_query_result_cache
+                                                .try_load_query_result(tcx, id);
+        generics.map(|x| tcx.alloc_generics(x))
     }
 }
 
@@ -662,3 +683,6 @@ impl_disk_cacheable_query!(mir_const_qualif, |def_id| def_id.is_local());
 impl_disk_cacheable_query!(check_match, |def_id| def_id.is_local());
 impl_disk_cacheable_query!(contains_extern_indicator, |_| true);
 impl_disk_cacheable_query!(def_symbol_name, |_| true);
+impl_disk_cacheable_query!(type_of, |def_id| def_id.is_local());
+impl_disk_cacheable_query!(predicates_of, |def_id| def_id.is_local());
+impl_disk_cacheable_query!(used_trait_imports, |def_id| def_id.is_local());

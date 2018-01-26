@@ -365,6 +365,9 @@ define_maps! { <'tcx>
         target_features_whitelist_node(CrateNum) -> Rc<FxHashSet<String>>,
     [] fn target_features_enabled: TargetFeaturesEnabled(DefId) -> Rc<Vec<String>>,
 
+    // Get an estimate of the size of an InstanceDef based on its MIR for CGU partitioning.
+    [] fn instance_def_size_estimate: instance_def_size_estimate_dep_node(ty::InstanceDef<'tcx>)
+        -> usize,
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -513,4 +516,11 @@ fn substitute_normalize_and_test_predicates_node<'tcx>(key: (DefId, &'tcx Substs
 
 fn target_features_whitelist_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::TargetFeaturesWhitelist
+}
+
+fn instance_def_size_estimate_dep_node<'tcx>(instance_def: ty::InstanceDef<'tcx>)
+                                              -> DepConstructor<'tcx> {
+    DepConstructor::InstanceDefSizeEstimate {
+        instance_def
+    }
 }

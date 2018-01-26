@@ -92,7 +92,7 @@ impl MultiItemModifier for ProcMacroDerive {
                 }
 
                 err.emit();
-                panic!(FatalError);
+                FatalError.raise();
             }
         };
 
@@ -103,13 +103,13 @@ impl MultiItemModifier for ProcMacroDerive {
                 // fail if there have been errors emitted
                 Ok(_) if ecx.parse_sess.span_diagnostic.err_count() > error_count_before => {
                     ecx.struct_span_fatal(span, msg).emit();
-                    panic!(FatalError);
+                    FatalError.raise();
                 }
                 Ok(new_items) => new_items.into_iter().map(Annotatable::Item).collect(),
                 Err(_) => {
                     // FIXME: handle this better
                     ecx.struct_span_fatal(span, msg).emit();
-                    panic!(FatalError);
+                    FatalError.raise();
                 }
             }
         })
