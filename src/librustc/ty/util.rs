@@ -22,6 +22,7 @@ use ty::fold::TypeVisitor;
 use ty::subst::{Subst, UnpackedKind};
 use ty::maps::TyCtxtAt;
 use ty::TypeVariants::*;
+use ty::layout::Integer;
 use util::common::ErrorReported;
 use middle::lang_items;
 use mir::interpret::{Value, PrimVal};
@@ -32,7 +33,7 @@ use rustc_data_structures::fx::FxHashMap;
 use std::{cmp, fmt};
 use std::hash::Hash;
 use std::intrinsics;
-use syntax::ast::{self, Name, UintTy, IntTy};
+use syntax::ast::{self, Name};
 use syntax::attr::{self, SignedInt, UnsignedInt};
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -58,31 +59,21 @@ impl<'tcx> Discr<'tcx> {
         self.checked_add(tcx, 1).0
     }
     pub fn checked_add<'a, 'gcx>(self, tcx: TyCtxt<'a, 'gcx, 'tcx>, n: u128) -> (Self, bool) {
-        let ty = match self.ty.sty {
-            TyInt(IntTy::Isize) => tcx.mk_mach_int(tcx.sess.target.isize_ty),
-            TyUint(UintTy::Usize) => tcx.mk_mach_uint(tcx.sess.target.usize_ty),
-            _ => self.ty,
+        let (int, signed) = match self.ty.sty {
+            TyInt(ity) => (Integer::from_attr(tcx, SignedInt(ity)), true),
+            TyUint(uty) => (Integer::from_attr(tcx, UnsignedInt(uty)), false),
+            _ => bug!("non integer discriminant"),
         };
-        let (min, max) = match ty.sty {
-            TyInt(IntTy::I8)  => (i8::min_value() as i128 as u128, i8::max_value() as u128),
-            TyInt(IntTy::I16) => (i16::min_value() as i128 as u128, i16::max_value() as u128),
-            TyInt(IntTy::I32) => (i32::min_value() as i128 as u128, i32::max_value() as u128),
-            TyInt(IntTy::I64) => (i64::min_value() as i128 as u128, i64::max_value() as u128),
-            TyInt(IntTy::I128) => (i128::min_value() as i128 as u128, i128::max_value() as u128),
-            TyInt(IntTy::Isize) => unreachable!(),
-            TyUint(UintTy::U8)  => (u8::min_value() as u128, u8::max_value() as u128),
-            TyUint(UintTy::U16) => (u16::min_value() as u128, u16::max_value() as u128),
-            TyUint(UintTy::U32) => (u32::min_value() as u128, u32::max_value() as u128),
-            TyUint(UintTy::U64) => (u64::min_value() as u128, u64::max_value() as u128),
-            TyUint(UintTy::U128) => (u128::min_value() as u128, u128::max_value()),
-            TyUint(UintTy::Usize) => unreachable!(),
-            _ => bug!("not a valid discriminant type: {}", ty)
-        };
-        if ty.is_signed() {
+        if signed {
+            let (min, max) = match int {
+                Integer::I8 => (i8::min_value() as i128, i8::max_value() as i128),
+                Integer::I16 => (i16::min_value() as i128, i16::max_value() as i128),
+                Integer::I32 => (i32::min_value() as i128, i32::max_value() as i128),
+                Integer::I64 => (i64::min_value() as i128, i64::max_value() as i128),
+                Integer::I128 => (i128::min_value(), i128::max_value()),
+            };
             let val = self.val as i128;
             let n = n as i128;
-            let max = max as i128;
-            let min = min as i128;
             let oflo = val > max - n;
             let val = if oflo {
                 min + (n - (max - val))
@@ -94,14 +85,22 @@ impl<'tcx> Discr<'tcx> {
                 ty: self.ty,
             }, oflo)
         } else {
-            let oflo = self.val > max - n;
+            let (min, max) = match int {
+                Integer::I8 => (u8::min_value() as u128, u8::max_value() as u128),
+                Integer::I16 => (u16::min_value() as u128, u16::max_value() as u128),
+                Integer::I32 => (u32::min_value() as u128, u32::max_value() as u128),
+                Integer::I64 => (u64::min_value() as u128, u64::max_value() as u128),
+                Integer::I128 => (u128::min_value(), u128::max_value()),
+            };
+            let val = self.val;
+            let oflo = val > max - n;
             let val = if oflo {
-                min + (n - (max - self.val))
+                min + (n - (max - val))
             } else {
-                self.val + n
+                val + n
             };
             (Self {
-                val,
+                val: val,
                 ty: self.ty,
             }, oflo)
         }
