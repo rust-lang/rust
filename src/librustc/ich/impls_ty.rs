@@ -353,10 +353,6 @@ for ::middle::const_val::ConstVal<'gcx> {
     }
 }
 
-impl_stable_hash_for!(struct ::middle::const_val::ByteArray<'tcx> {
-    data
-});
-
 impl_stable_hash_for!(enum mir::interpret::Value {
     ByVal(v),
     ByValPair(a, b),
@@ -454,16 +450,7 @@ for ::middle::const_val::ErrKind<'gcx> {
         mem::discriminant(self).hash_stable(hcx, hasher);
 
         match *self {
-            CannotCast |
-            MissingStructField |
             NonConstPath |
-            ExpectedConstTuple |
-            ExpectedConstStruct |
-            IndexedNonVec |
-            IndexNotUsize |
-            MiscBinaryOp |
-            MiscCatchAll |
-            IndexOpFeatureGated |
             TypeckError |
             CheckMatchError => {
                 // nothing to do
@@ -480,9 +467,6 @@ for ::middle::const_val::ErrKind<'gcx> {
             }
             LayoutError(ref layout_error) => {
                 layout_error.hash_stable(hcx, hasher);
-            }
-            ErroneousReferencedConstant(ref const_val) => {
-                const_val.hash_stable(hcx, hasher);
             }
             Miri(ref err) => err.hash_stable(hcx, hasher),
         }

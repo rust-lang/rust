@@ -17,7 +17,6 @@
 // persisting to incr. comp. caches.
 
 use hir::def_id::{DefId, CrateNum};
-use middle::const_val::ByteArray;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_serialize::{Decodable, Decoder, Encoder, Encodable, opaque};
 use std::hash::Hash;
@@ -241,17 +240,6 @@ pub fn decode_existential_predicate_slice<'a, 'tcx, D>(decoder: &mut D)
 }
 
 #[inline]
-pub fn decode_byte_array<'a, 'tcx, D>(decoder: &mut D)
-                                      -> Result<ByteArray<'tcx>, D::Error>
-    where D: TyDecoder<'a, 'tcx>,
-          'tcx: 'a,
-{
-    Ok(ByteArray {
-        data: decoder.tcx().alloc_byte_array(&Vec::decode(decoder)?)
-    })
-}
-
-#[inline]
 pub fn decode_const<'a, 'tcx, D>(decoder: &mut D)
                                  -> Result<&'tcx ty::Const<'tcx>, D::Error>
     where D: TyDecoder<'a, 'tcx>,
@@ -278,7 +266,6 @@ macro_rules! implement_ty_decoder {
             use $crate::ty::codec::*;
             use $crate::ty::subst::Substs;
             use $crate::hir::def_id::{CrateNum};
-            use $crate::middle::const_val::ByteArray;
             use rustc_serialize::{Decoder, SpecializedDecoder};
             use std::borrow::Cow;
 
@@ -374,13 +361,6 @@ macro_rules! implement_ty_decoder {
                 fn specialized_decode(&mut self)
                     -> Result<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>, Self::Error> {
                     decode_existential_predicate_slice(self)
-                }
-            }
-
-            impl<$($typaram),*> SpecializedDecoder<ByteArray<'tcx>>
-            for $DecoderName<$($typaram),*> {
-                fn specialized_decode(&mut self) -> Result<ByteArray<'tcx>, Self::Error> {
-                    decode_byte_array(self)
                 }
             }
 

@@ -16,7 +16,6 @@ use mir::interpret::{Value, PrimVal};
 use errors::DiagnosticBuilder;
 
 use graphviz::IntoCow;
-use serialize;
 use syntax_pos::Span;
 
 use std::borrow::Cow;
@@ -28,13 +27,6 @@ pub enum ConstVal<'tcx> {
     Unevaluated(DefId, &'tcx Substs<'tcx>),
     Value(Value),
 }
-
-#[derive(Copy, Clone, Debug, Hash, RustcEncodable, Eq, PartialEq)]
-pub struct ByteArray<'tcx> {
-    pub data: &'tcx [u8],
-}
-
-impl<'tcx> serialize::UseSpecializedDecodable for ByteArray<'tcx> {}
 
 impl<'tcx> ConstVal<'tcx> {
     pub fn to_raw_bits(&self) -> Option<u128> {
@@ -64,25 +56,13 @@ pub struct ConstEvalErr<'tcx> {
 
 #[derive(Clone, Debug)]
 pub enum ErrKind<'tcx> {
-    CannotCast,
-    MissingStructField,
 
     NonConstPath,
     UnimplementedConstVal(&'static str),
-    ExpectedConstTuple,
-    ExpectedConstStruct,
-    IndexedNonVec,
-    IndexNotUsize,
     IndexOutOfBounds { len: u64, index: u64 },
 
-    MiscBinaryOp,
-    MiscCatchAll,
-
-    IndexOpFeatureGated,
     Math(ConstMathErr),
     LayoutError(layout::LayoutError<'tcx>),
-
-    ErroneousReferencedConstant(Box<ConstEvalErr<'tcx>>),
 
     TypeckError,
     CheckMatchError,
@@ -131,27 +111,16 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         }
 
         match self.kind {
-            CannotCast => simple!("can't cast this type"),
-            MissingStructField  => simple!("nonexistent struct field"),
             NonConstPath        => simple!("non-constant path in constant expression"),
             UnimplementedConstVal(what) =>
                 simple!("unimplemented constant expression: {}", what),
-            ExpectedConstTuple => simple!("expected constant tuple"),
-            ExpectedConstStruct => simple!("expected constant struct"),
-            IndexedNonVec => simple!("indexing is only supported for arrays"),
-            IndexNotUsize => simple!("indices must be of type `usize`"),
             IndexOutOfBounds { len, index } => {
                 simple!("index out of bounds: the len is {} but the index is {}",
                         len, index)
             }
 
-            MiscBinaryOp => simple!("bad operands for binary"),
-            MiscCatchAll => simple!("unsupported constant expr"),
-            IndexOpFeatureGated => simple!("the index operation on const values is unstable"),
             Math(ref err) => Simple(err.description().into_cow()),
             LayoutError(ref err) => Simple(err.to_string().into_cow()),
-
-            ErroneousReferencedConstant(_) => simple!("could not evaluate referenced constant"),
 
             TypeckError => simple!("type-checking failed"),
             CheckMatchError => simple!("match-checking failed"),
@@ -166,15 +135,8 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         primary_kind: &str)
         -> DiagnosticBuilder<'gcx>
     {
-        let mut err = self;
-        while let &ConstEvalErr {
-            kind: ErrKind::ErroneousReferencedConstant(box ref i_err), ..
-        } = err {
-            err = i_err;
-        }
-
-        let mut diag = struct_error(tcx, err.span, "constant evaluation error");
-        err.note(tcx, primary_span, primary_kind, &mut diag);
+        let mut diag = struct_error(tcx, self.span, "constant evaluation error");
+        self.note(tcx, primary_span, primary_kind, &mut diag);
         diag
     }
 

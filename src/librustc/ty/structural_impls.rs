@@ -703,25 +703,13 @@ impl<'a, 'tcx> Lift<'tcx> for const_val::ErrKind<'a> {
         use middle::const_val::ErrKind::*;
 
         Some(match *self {
-            CannotCast => CannotCast,
-            MissingStructField => MissingStructField,
             NonConstPath => NonConstPath,
             UnimplementedConstVal(s) => UnimplementedConstVal(s),
-            ExpectedConstTuple => ExpectedConstTuple,
-            ExpectedConstStruct => ExpectedConstStruct,
-            IndexedNonVec => IndexedNonVec,
-            IndexNotUsize => IndexNotUsize,
             IndexOutOfBounds { len, index } => IndexOutOfBounds { len, index },
-            MiscBinaryOp => MiscBinaryOp,
-            MiscCatchAll => MiscCatchAll,
-            IndexOpFeatureGated => IndexOpFeatureGated,
             Math(ref e) => Math(e.clone()),
 
             LayoutError(ref e) => {
                 return tcx.lift(e).map(LayoutError)
-            }
-            ErroneousReferencedConstant(ref e) => {
-                return tcx.lift(e).map(ErroneousReferencedConstant)
             }
 
             TypeckError => TypeckError,
