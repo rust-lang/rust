@@ -17,8 +17,8 @@ use rustc::middle::const_val::ConstVal;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 
-use const_eval::pattern::{FieldPattern, Pattern, PatternKind};
-use const_eval::pattern::{PatternFoldable, PatternFolder, compare_const_vals};
+use super::pattern::{FieldPattern, Pattern, PatternKind};
+use super::pattern::{PatternFoldable, PatternFolder, compare_const_vals};
 
 use rustc::hir::def_id::DefId;
 use rustc::hir::RangeEnd;

@@ -37,7 +37,6 @@ use rustc_privacy;
 use rustc_plugin::registry::Registry;
 use rustc_plugin as plugin;
 use rustc_passes::{self, ast_validation, loops, consts, hir_stats};
-use rustc_mir::const_eval::check_match;
 use super::Compilation;
 
 use serialize::json;
@@ -1049,7 +1048,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(trans: &TransCrate,
 
         time(time_passes,
              "match checking",
-             || check_match::check_crate(tcx));
+             || mir::pattern::check_crate(tcx));
 
         // this must run before MIR dump, because
         // "not all control paths return a value" is reported here.
@@ -1092,7 +1091,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(trans: &TransCrate,
         time(time_passes,
              "MIR linting",
              || for def_id in tcx.body_owners() {
-                 mir::const_eval::check::check(tcx, def_id)
+                 mir::check_const_err::check(tcx, def_id)
              });
 
         time(time_passes, "lint checking", || lint::check_crate(tcx));

@@ -11,6 +11,7 @@
 //! constant evaluation on the HIR and code to validate patterns/matches
 
 mod _match;
-pub mod check_match;
-pub mod pattern;
-pub mod check;
+pub(crate) mod check_match;
+pub(crate) mod pattern;
+
+pub use self::check_match::check_crate;

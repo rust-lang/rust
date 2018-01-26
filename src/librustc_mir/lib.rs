@@ -71,7 +71,8 @@ pub mod transform;
 pub mod util;
 pub mod interpret;
 pub mod monomorphize;
-pub mod const_eval;
+pub mod pattern;
+pub mod check_const_err;
 
 use rustc::ty::maps::Providers;
 
@@ -80,7 +81,7 @@ pub fn provide(providers: &mut Providers) {
     shim::provide(providers);
     transform::provide(providers);
     providers.const_eval = interpret::const_eval_provider;
-    providers.check_match = const_eval::check_match::check_match;
+    providers.check_match = pattern::check_match::check_match;
 }
 
 __build_diagnostic_array! { librustc_mir, DIAGNOSTICS }
