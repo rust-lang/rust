@@ -5,6 +5,8 @@
 - [Using the compiler testing framework](./running-tests.md)
 - [Walkthrough: a typical contribution](./walkthrough.md)
 - [High-level overview of the compiler source](./high-level-overview.md)
+- [Queries: demand-driven compilation](./query.md)
+  - [Incremental compilation](./incremental-compilation.md)
 - [The parser](./the-parser.md)
 - [Macro expansion](./macro-expansion.md)
 - [Name resolution](./name-resolution.md)
