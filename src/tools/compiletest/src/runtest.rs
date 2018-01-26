@@ -1606,6 +1606,19 @@ impl<'test> TestCx<'test> {
             rustc.args(&["-Z", "human_readable_cgu_names"]);
         }
 
+        let explicit_cgus = self.props
+                                .compile_flags
+                                .iter()
+                                .any(|arg| arg.contains("codegen-units"));
+
+        // For performance reasons we want to compile tests with just one CGU if
+        // possible.
+        let adapt_cgu_count = |cmd: &mut Command| {
+            if !explicit_cgus {
+                cmd.arg("-Ccodegen-units=1");
+            }
+        };
+
         match self.config.mode {
             CompileFail | ParseFail | Incremental => {
                 // If we are extracting and matching errors in the new
@@ -1629,6 +1642,8 @@ impl<'test> TestCx<'test> {
                     "-Zdump-mir-exclude-pass-number",
                 ]);
 
+                adapt_cgu_count(&mut rustc);
+
                 let mir_dump_dir = self.get_mir_dump_dir();
                 let _ = fs::remove_dir_all(&mir_dump_dir);
                 create_dir_all(mir_dump_dir.as_path()).unwrap();
@@ -1638,14 +1653,16 @@ impl<'test> TestCx<'test> {
 
                 rustc.arg(dir_opt);
             }
-            RunPass |
-            RunFail |
-            RunPassValgrind |
-            Pretty |
             DebugInfoGdb |
             DebugInfoLldb |
             Codegen |
             Rustdoc |
+            RunPassValgrind |
+            RunFail |
+            RunPass => {
+                adapt_cgu_count(&mut rustc);
+            }
+            Pretty |
             RunMake |
             CodegenUnits => {
                 // do not use JSON output
