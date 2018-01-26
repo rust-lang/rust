@@ -71,9 +71,9 @@ pub mod transform;
 pub mod util;
 pub mod interpret;
 pub mod monomorphize;
-pub mod pattern;
 pub mod check_const_err;
 
+pub use hair::pattern::check_crate as matchck_crate;
 use rustc::ty::maps::Providers;
 
 pub fn provide(providers: &mut Providers) {
@@ -81,7 +81,7 @@ pub fn provide(providers: &mut Providers) {
     shim::provide(providers);
     transform::provide(providers);
     providers.const_eval = interpret::const_eval_provider;
-    providers.check_match = pattern::check_match;
+    providers.check_match = hair::pattern::check_match;
 }
 
 __build_diagnostic_array! { librustc_mir, DIAGNOSTICS }

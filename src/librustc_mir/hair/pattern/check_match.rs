@@ -12,7 +12,7 @@ use super::_match::{MatchCheckCtxt, Matrix, expand_pattern, is_useful};
 use super::_match::Usefulness::*;
 use super::_match::WitnessPreference::*;
 
-use super::pattern::{Pattern, PatternContext, PatternError, PatternKind};
+use super::{Pattern, PatternContext, PatternError, PatternKind};
 
 use rustc::middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor};
 use rustc::middle::expr_use_visitor::{LoanCause, MutateMode};

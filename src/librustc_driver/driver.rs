@@ -1048,7 +1048,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(trans: &TransCrate,
 
         time(time_passes,
              "match checking",
-             || mir::pattern::check_crate(tcx));
+             || mir::matchck_crate(tcx));
 
         // this must run before MIR dump, because
         // "not all control paths return a value" is reported here.
