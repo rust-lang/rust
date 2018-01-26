@@ -81,7 +81,7 @@ pub fn provide(providers: &mut Providers) {
     shim::provide(providers);
     transform::provide(providers);
     providers.const_eval = interpret::const_eval_provider;
-    providers.check_match = pattern::check_match::check_match;
+    providers.check_match = pattern::check_match;
 }
 
 __build_diagnostic_array! { librustc_mir, DIAGNOSTICS }
