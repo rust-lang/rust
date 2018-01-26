@@ -10,10 +10,7 @@
 
 //! constant evaluation on the HIR and code to validate patterns/matches
 
-mod eval;
 mod _match;
 pub mod check_match;
 pub mod pattern;
 pub mod check;
-
-pub use self::eval::*;
