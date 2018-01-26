@@ -63,13 +63,22 @@ where
            impl2_def_id,
            intercrate_mode);
 
+    let overlaps = tcx.infer_ctxt().enter(|infcx| {
+        let selcx = &mut SelectionContext::intercrate(&infcx, intercrate_mode);
+        overlap(selcx, impl1_def_id, impl2_def_id).is_some()
+    });
+
+    if !overlaps {
+        return no_overlap();
+    }
+
+    // In the case where we detect an error, run the check again, but
+    // this time tracking intercrate ambuiguity causes for better
+    // diagnostics. (These take time and can lead to false errors.)
     tcx.infer_ctxt().enter(|infcx| {
         let selcx = &mut SelectionContext::intercrate(&infcx, intercrate_mode);
-        if let Some(r) = overlap(selcx, impl1_def_id, impl2_def_id) {
-            on_overlap(r)
-        } else {
-            no_overlap()
-        }
+        selcx.enable_tracking_intercrate_ambiguity_causes();
+        on_overlap(overlap(selcx, impl1_def_id, impl2_def_id).unwrap())
     })
 }
 
@@ -148,10 +157,10 @@ fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
         return None
     }
 
-    Some(OverlapResult {
-        impl_header: selcx.infcx().resolve_type_vars_if_possible(&a_impl_header),
-        intercrate_ambiguity_causes: selcx.intercrate_ambiguity_causes().to_vec(),
-    })
+    let impl_header =  selcx.infcx().resolve_type_vars_if_possible(&a_impl_header);
+    let intercrate_ambiguity_causes = selcx.take_intercrate_ambiguity_causes();
+    debug!("overlap: intercrate_ambiguity_causes={:#?}", intercrate_ambiguity_causes);
+    Some(OverlapResult { impl_header, intercrate_ambiguity_causes })
 }
 
 pub fn trait_ref_is_knowable<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
