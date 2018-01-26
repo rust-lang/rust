@@ -43,6 +43,11 @@ fn is_sigill(status: ExitStatus) -> bool {
     status.signal() == Some(4)
 }
 
+#[cfg(windows)]
+fn is_sigill(status: ExitStatus) -> bool {
+    status.code() == Some(0xc000001d)
+}
+
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[allow(bad_style)]
 mod test {
