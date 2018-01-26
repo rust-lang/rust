@@ -776,7 +776,11 @@ impl Build {
     fn release(&self, num: &str) -> String {
         match &self.config.channel[..] {
             "stable" => num.to_string(),
-            "beta" => format!("{}-beta.{}", num, self.beta_prerelease_version()),
+            "beta" => if self.rust_info.is_git() {
+                format!("{}-beta.{}", num, self.beta_prerelease_version())
+            } else {
+                format!("{}-beta", num)
+            },
             "nightly" => format!("{}-nightly", num),
             _ => format!("{}-dev", num),
         }
