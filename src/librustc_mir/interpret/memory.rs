@@ -105,7 +105,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             relocations: BTreeMap::new(),
             undef_mask: UndefMask::new(size),
             align,
-            mutable: false,
+            runtime_mutability: Mutability::Immutable,
         };
         let id = self.tcx.interpret_interner.reserve();
         M::add_lock(self, id);
@@ -544,7 +544,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         let uninit = self.uninitialized_statics.remove(&alloc_id);
         if let Some(mut alloc) = alloc.or(uninit) {
             // ensure llvm knows not to put this into immutable memroy
-            alloc.mutable = mutability == Mutability::Mutable;
+            alloc.runtime_mutability = mutability;
             let alloc = self.tcx.intern_const_alloc(alloc);
             self.tcx.interpret_interner.intern_at_reserved(alloc_id, alloc);
             // recurse into inner allocations

@@ -417,9 +417,14 @@ impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::Allocation {
         }
         self.undef_mask.hash_stable(hcx, hasher);
         self.align.hash_stable(hcx, hasher);
-        self.mutable.hash_stable(hcx, hasher);
+        self.runtime_mutability.hash_stable(hcx, hasher);
     }
 }
+
+impl_stable_hash_for!(enum ::syntax::ast::Mutability {
+    Immutable,
+    Mutable
+});
 
 impl_stable_hash_for!(struct mir::interpret::Pointer{primval});
 

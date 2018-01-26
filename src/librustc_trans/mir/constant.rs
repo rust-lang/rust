@@ -24,6 +24,7 @@ use common::{C_bytes, C_struct, C_uint_big, C_undef, C_usize};
 use consts;
 use type_of::LayoutLlvmExt;
 use type_::Type;
+use syntax::ast::Mutability;
 
 use super::super::callee;
 use super::FunctionCx;
@@ -57,7 +58,7 @@ pub fn primval_to_llvm(cx: &CodegenCx,
                 } else if let Some(alloc) = cx.tcx.interpret_interner
                                               .get_alloc(ptr.alloc_id) {
                     let init = global_initializer(cx, alloc);
-                    if alloc.mutable {
+                    if alloc.runtime_mutability == Mutability::Mutable {
                         consts::addr_of_mut(cx, init, alloc.align, "byte_str")
                     } else {
                         consts::addr_of(cx, init, alloc.align, "byte_str")
