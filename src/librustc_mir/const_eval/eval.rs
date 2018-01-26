@@ -18,19 +18,6 @@ use syntax::ast;
 
 use rustc_const_math::*;
 
-/// * `DefId` is the id of the constant.
-/// * `Substs` is the monomorphized substitutions for the expression.
-pub fn lookup_const_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                    key: ty::ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)>)
-                                    -> Option<(DefId, &'tcx Substs<'tcx>)> {
-    ty::Instance::resolve(
-        tcx,
-        key.param_env,
-        key.value.0,
-        key.value.1,
-    ).map(|instance| (instance.def_id(), instance.substs))
-}
-
 pub fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           ty: Ty<'tcx>,
