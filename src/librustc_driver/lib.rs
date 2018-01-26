@@ -87,11 +87,11 @@ use std::env;
 use std::ffi::OsString;
 use std::io::{self, Read, Write};
 use std::iter::repeat;
+use std::panic;
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
 use std::rc::Rc;
 use std::str;
-use std::sync::{Arc, Mutex};
 use std::thread;
 
 use syntax::ast;
@@ -168,7 +168,7 @@ pub fn run<F>(run_compiler: F) -> isize
                     handler.emit(&MultiSpan::new(),
                                  "aborting due to previous error(s)",
                                  errors::Level::Fatal);
-                    exit_on_err();
+                    panic::resume_unwind(Box::new(errors::FatalErrorMarker));
                 }
             }
         }
@@ -1228,27 +1228,16 @@ pub fn in_rustc_thread<F, R>(f: F) -> Result<R, Box<Any + Send>>
 /// The diagnostic emitter yielded to the procedure should be used for reporting
 /// errors of the compiler.
 pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
-    struct Sink(Arc<Mutex<Vec<u8>>>);
-    impl Write for Sink {
-        fn write(&mut self, data: &[u8]) -> io::Result<usize> {
-            Write::write(&mut *self.0.lock().unwrap(), data)
-        }
-        fn flush(&mut self) -> io::Result<()> {
-            Ok(())
-        }
-    }
-
-    let data = Arc::new(Mutex::new(Vec::new()));
-    let err = Sink(data.clone());
-
     let result = in_rustc_thread(move || {
-        io::set_panic(Some(box err));
         f()
     });
 
     if let Err(value) = result {
         // Thread panicked without emitting a fatal diagnostic
-        if !value.is::<errors::FatalError>() {
+        if !value.is::<errors::FatalErrorMarker>() {
+            // Emit a newline
+            eprintln!("");
+
             let emitter =
                 Box::new(errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto,
                                                                 None,
@@ -1273,20 +1262,10 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
                              &note,
                              errors::Level::Note);
             }
-
-            eprintln!("{}", str::from_utf8(&data.lock().unwrap()).unwrap());
         }
 
-        exit_on_err();
+        panic::resume_unwind(Box::new(errors::FatalErrorMarker));
     }
-}
-
-fn exit_on_err() -> ! {
-    // Panic so the process returns a failure code, but don't pollute the
-    // output with some unnecessary panic messages, we've already
-    // printed everything that we needed to.
-    io::set_panic(Some(box io::sink()));
-    panic!();
 }
 
 #[cfg(stage0)]

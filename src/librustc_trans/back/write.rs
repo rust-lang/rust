@@ -155,7 +155,7 @@ fn get_llvm_opt_size(optimize: config::OptLevel) -> llvm::CodeGenOptSize {
 
 pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
     target_machine_factory(sess)().unwrap_or_else(|err| {
-        panic!(llvm_err(sess.diagnostic(), err))
+        llvm_err(sess.diagnostic(), err).raise()
     })
 }
 
@@ -589,7 +589,7 @@ fn generate_lto_work(cgcx: &CodegenContext,
                  "generate lto")
     }).unwrap_or(Timeline::noop());
     let lto_modules = lto::run(cgcx, modules, &mut timeline)
-        .unwrap_or_else(|e| panic!(e));
+        .unwrap_or_else(|e| e.raise());
 
     lto_modules.into_iter().map(|module| {
         let cost = module.cost();

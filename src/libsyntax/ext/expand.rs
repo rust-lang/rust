@@ -455,7 +455,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 suggested_limit));
             err.emit();
             self.cx.trace_macros_diag();
-            panic!(FatalError);
+            FatalError.raise();
         }
 
         Some(result)

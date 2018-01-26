@@ -212,8 +212,8 @@ fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
         Err(e) => {
             let msg = format!("couldn't read {:?}: {}", path.display(), e);
             match spanopt {
-                Some(sp) => panic!(sess.span_diagnostic.span_fatal(sp, &msg)),
-                None => panic!(sess.span_diagnostic.fatal(&msg))
+                Some(sp) => sess.span_diagnostic.span_fatal(sp, &msg).raise(),
+                None => sess.span_diagnostic.fatal(&msg).raise()
             }
         }
     }
