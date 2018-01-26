@@ -156,7 +156,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
             TypeckError => simple!("type-checking failed"),
             CheckMatchError => simple!("match-checking failed"),
             // FIXME: report a full backtrace
-            Miri(ref err) => simple!("miri failed: {}", err),
+            Miri(ref err) => simple!("{}", err),
         }
     }
 
