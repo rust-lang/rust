@@ -890,15 +890,15 @@ mod tests {
     use io::ErrorKind;
     use io::prelude::*;
     use net::*;
-    use net::test::{next_test_ip4, next_test_ip6};
+    use net::test::{test_ipv4_p, test_ipv6_p, next_test_ip4, next_test_ip6};
     use sync::mpsc::channel;
     use sys_common::AsInner;
     use time::{Instant, Duration};
     use thread;
 
     fn each_ip(f: &mut FnMut(SocketAddr)) {
-        f(next_test_ip4());
-        f(next_test_ip6());
+        if test_ipv4_p() { f(next_test_ip4()); }
+        if test_ipv6_p() { f(next_test_ip6()); }
     }
 
     macro_rules! t {
@@ -933,6 +933,8 @@ mod tests {
 
     #[test]
     fn listen_localhost() {
+        if !test_ipv4_p() { return; }
+
         let socket_addr = next_test_ip4();
         let listener = t!(TcpListener::bind(&socket_addr));
 
@@ -1457,6 +1459,8 @@ mod tests {
 
     #[test]
     fn debug() {
+        if !test_ipv4_p() { return; }
+
         let name = if cfg!(windows) {"socket"} else {"fd"};
         let socket_addr = next_test_ip4();
 
@@ -1483,6 +1487,8 @@ mod tests {
     #[cfg_attr(any(target_os = "bitrig", target_os = "netbsd", target_os = "openbsd"), ignore)]
     #[test]
     fn timeouts() {
+        if !test_ipv4_p() { return; }
+
         let addr = next_test_ip4();
         let listener = t!(TcpListener::bind(&addr));
 
@@ -1509,6 +1515,8 @@ mod tests {
 
     #[test]
     fn test_read_timeout() {
+        if !test_ipv4_p() { return; }
+
         let addr = next_test_ip4();
         let listener = t!(TcpListener::bind(&addr));
 
@@ -1525,6 +1533,8 @@ mod tests {
 
     #[test]
     fn test_read_with_timeout() {
+        if !test_ipv4_p() { return; }
+
         let addr = next_test_ip4();
         let listener = t!(TcpListener::bind(&addr));
 
@@ -1547,6 +1557,8 @@ mod tests {
 
     #[test]
     fn nodelay() {
+        if !test_ipv4_p() { return; }
+
         let addr = next_test_ip4();
         let _listener = t!(TcpListener::bind(&addr));
 
@@ -1561,6 +1573,8 @@ mod tests {
 
     #[test]
     fn ttl() {
+        if !test_ipv4_p() { return; }
+
         let ttl = 100;
 
         let addr = next_test_ip4();
@@ -1577,6 +1591,8 @@ mod tests {
 
     #[test]
     fn set_nonblocking() {
+        if !test_ipv4_p() { return; }
+
         let addr = next_test_ip4();
         let listener = t!(TcpListener::bind(&addr));
 
