@@ -156,11 +156,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 //
                 // If `opt_cond_expr` is `None`, then the graph is somewhat simplified:
                 //
-                // [block] --> [loop_block / body_block ] ~~> [body_block_end]    [exit_block]
-                //                         ^                          |
-                //                         |                          |
-                //                         +--------------------------+
+                // [block] --> [loop_block] ~~> [loop_block_end]
+                //               |  ^                   |
+                //      false link  |                   |
+                //               |  +-------------------+
+                //               v
+                //        [cleanup_block]
                 //
+                // The false link is required in case something results in
+                // unwinding through the body.
 
                 let loop_block = this.cfg.start_new_block();
                 let exit_block = this.cfg.start_new_block();
@@ -174,6 +178,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     move |this| {
                         // conduct the test, if necessary
                         let body_block;
+                        let out_terminator;
                         if let Some(cond_expr) = opt_cond_expr {
                             let loop_block_end;
                             let cond = unpack!(
@@ -187,8 +192,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             // we have to do it; this overwrites any `break`-assigned value but it's
                             // always `()` anyway
                             this.cfg.push_assign_unit(exit_block, source_info, destination);
+
+                            out_terminator = TerminatorKind::Goto { target: loop_block };
                         } else {
                             body_block = loop_block;
+                            let diverge_cleanup = this.diverge_cleanup();
+                            out_terminator = TerminatorKind::FalseUnwind {
+                                real_target: loop_block,
+                                unwind: Some(diverge_cleanup)
+                            }
                         }
 
                         // The “return” value of the loop body must always be an unit. We therefore
@@ -197,7 +209,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         // Execute the body, branching back to the test.
                         let body_block_end = unpack!(this.into(&tmp, body_block, body));
                         this.cfg.terminate(body_block_end, source_info,
-                                           TerminatorKind::Goto { target: loop_block });
+                                           out_terminator);
                     }
                 );
                 exit_block.unit()
