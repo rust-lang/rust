@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const QUERY = 'from_u';
+#[derive(Clone)]
+pub struct MaskedStruct;
 
-const EXPECTED = {
-    'others': [
-        { 'path': 'std::char', 'name': 'from_u32' },
-        { 'path': 'std::str', 'name': 'from_utf8' },
-        { 'path': 'std::string::String', 'name': 'from_utf8' },
-    ],
-};
+pub trait MaskedTrait {
+    fn masked_method();
+}
+
+impl MaskedTrait for String {
+    fn masked_method() {}
+}

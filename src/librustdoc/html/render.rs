@@ -1243,6 +1243,16 @@ impl DocFolder for Cache {
             _ => self.stripped_mod,
         };
 
+        // If the impl is from a masked crate or references something from a
+        // masked crate then remove it completely.
+        if let clean::ImplItem(ref i) = item.inner {
+            if self.masked_crates.contains(&item.def_id.krate) ||
+               i.trait_.def_id().map_or(false, |d| self.masked_crates.contains(&d.krate)) ||
+               i.for_.def_id().map_or(false, |d| self.masked_crates.contains(&d.krate)) {
+                return None;
+            }
+        }
+
         // Register any generics to their corresponding string. This is used
         // when pretty-printing types.
         if let Some(generics) = item.inner.generics() {
@@ -1257,14 +1267,10 @@ impl DocFolder for Cache {
 
         // Collect all the implementors of traits.
         if let clean::ImplItem(ref i) = item.inner {
-            if !self.masked_crates.contains(&item.def_id.krate) {
-                if let Some(did) = i.trait_.def_id() {
-                    if i.for_.def_id().map_or(true, |d| !self.masked_crates.contains(&d.krate)) {
-                        self.implementors.entry(did).or_insert(vec![]).push(Impl {
-                            impl_item: item.clone(),
-                        });
-                    }
-                }
+            if let Some(did) = i.trait_.def_id() {
+                self.implementors.entry(did).or_insert(vec![]).push(Impl {
+                    impl_item: item.clone(),
+                });
             }
         }
 
@@ -1427,24 +1433,20 @@ impl DocFolder for Cache {
                 // Note: matching twice to restrict the lifetime of the `i` borrow.
                 let mut dids = FxHashSet();
                 if let clean::Item { inner: clean::ImplItem(ref i), .. } = item {
-                    let masked_trait = i.trait_.def_id().map_or(false,
-                        |d| self.masked_crates.contains(&d.krate));
-                    if !masked_trait {
-                        match i.for_ {
-                            clean::ResolvedPath { did, .. } |
-                            clean::BorrowedRef {
-                                type_: box clean::ResolvedPath { did, .. }, ..
-                            } => {
-                                dids.insert(did);
-                            }
-                            ref t => {
-                                let did = t.primitive_type().and_then(|t| {
-                                    self.primitive_locations.get(&t).cloned()
-                                });
+                    match i.for_ {
+                        clean::ResolvedPath { did, .. } |
+                        clean::BorrowedRef {
+                            type_: box clean::ResolvedPath { did, .. }, ..
+                        } => {
+                            dids.insert(did);
+                        }
+                        ref t => {
+                            let did = t.primitive_type().and_then(|t| {
+                                self.primitive_locations.get(&t).cloned()
+                            });
 
-                                if let Some(did) = did {
-                                    dids.insert(did);
-                                }
+                            if let Some(did) = did {
+                                dids.insert(did);
                             }
                         }
                     }
