@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-emscripten
+
 #![feature(repr_simd, target_feature, cfg_target_feature)]
 
 use std::process::{Command, ExitStatus};
