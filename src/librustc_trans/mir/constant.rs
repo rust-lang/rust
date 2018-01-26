@@ -184,12 +184,12 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         }.and_then(|c| self.const_to_miri_value(bx, c))
     }
 
-    // Old version of trans_constant now used just for SIMD shuffle
-    pub fn remove_me_shuffle_indices(&mut self,
-                                      bx: &Builder<'a, 'tcx>,
-                                      constant: &mir::Constant<'tcx>)
-                                      -> (ValueRef, Ty<'tcx>)
-    {
+    /// process constant containing SIMD shuffle indices
+    pub fn simd_shuffle_indices(
+        &mut self,
+        bx: &Builder<'a, 'tcx>,
+        constant: &mir::Constant<'tcx>,
+    ) -> (ValueRef, Ty<'tcx>) {
         let layout = bx.cx.layout_of(constant.ty);
         self.mir_constant_to_miri_value(bx, constant)
             .and_then(|c| {
