@@ -1167,6 +1167,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "treat all errors that occur as bugs"),
     external_macro_backtrace: bool = (false, parse_bool, [UNTRACKED],
           "show macro backtraces even for non-local macros"),
+    teach: bool = (false, parse_bool, [TRACKED],
+          "show extended diagnostic help"),
     continue_parse_after_error: bool = (false, parse_bool, [TRACKED],
           "attempt to recover from parse errors (experimental)"),
     incremental: Option<String> = (None, parse_opt_string, [UNTRACKED],
@@ -1664,8 +1666,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
     let mut debugging_opts = build_debugging_options(matches, error_format);
 
     if !debugging_opts.unstable_options && error_format == ErrorOutputType::Json(true) {
-        early_error(ErrorOutputType::Json(false),
-                    "--error-format=pretty-json is unstable");
+        early_error(ErrorOutputType::Json(false), "--error-format=pretty-json is unstable");
     }
 
     let mut output_types = BTreeMap::new();
