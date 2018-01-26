@@ -17,16 +17,12 @@ error[E0015]: calls in constant functions are limited to constant functions, str
    |
 17 |     for i in 0..x { //~ ERROR calls in constant functions
    |              ^^^^
-   |              |
-   |              in this macro invocation
 
 error[E0019]: constant function contains unimplemented expression type
   --> $DIR/const-fn-error.rs:17:14
    |
 17 |     for i in 0..x { //~ ERROR calls in constant functions
    |              ^^^^
-   |              |
-   |              in this macro invocation
 
 error[E0080]: constant evaluation error
   --> $DIR/const-fn-error.rs:21:5
