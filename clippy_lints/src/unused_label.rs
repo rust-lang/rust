@@ -69,11 +69,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedLabel {
 impl<'a, 'tcx: 'a> Visitor<'tcx> for UnusedLabelVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
-            hir::ExprBreak(destination, _) | hir::ExprAgain(destination) => if let Some(label) = destination.ident {
-                self.labels.remove(&label.node.name.as_str());
+            hir::ExprBreak(destination, _) | hir::ExprAgain(destination) => if let Some(label) = destination.label {
+                self.labels.remove(&label.name.as_str());
             },
             hir::ExprLoop(_, Some(label), _) | hir::ExprWhile(_, _, Some(label)) => {
-                self.labels.insert(label.node.as_str(), expr.span);
+                self.labels.insert(label.name.as_str(), expr.span);
             },
             _ => (),
         }

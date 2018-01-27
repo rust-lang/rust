@@ -1808,7 +1808,7 @@ fn extract_first_expr(block: &Block) -> Option<&Expr> {
 /// passed expression. The expression may be within a block.
 fn is_simple_break_expr(expr: &Expr) -> bool {
     match expr.node {
-        ExprBreak(dest, ref passed_expr) if dest.ident.is_none() && passed_expr.is_none() => true,
+        ExprBreak(dest, ref passed_expr) if dest.label.is_none() && passed_expr.is_none() => true,
         ExprBlock(ref b) => match extract_first_expr(b) {
             Some(subexpr) => is_simple_break_expr(subexpr),
             None => false,
