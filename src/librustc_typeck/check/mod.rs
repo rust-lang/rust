@@ -4940,18 +4940,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if !ty.is_ty_var() {
             ty
         } else {
-            self.must_be_known_in_context(sp, ty)
+            if !self.is_tainted_by_errors() {
+                type_error_struct!(self.tcx.sess, sp, ty, E0619,
+                                    "the type of this value must be known in this context")
+                .emit();
+            }
+            self.demand_suptype(sp, self.tcx.types.err, ty);
+            self.tcx.types.err
         }
-    }
-
-    fn must_be_known_in_context(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if !self.is_tainted_by_errors() {
-            type_error_struct!(self.tcx.sess, sp, ty, E0619,
-                                "the type of this value must be known in this context")
-            .emit();
-        }
-        self.demand_suptype(sp, self.tcx.types.err, ty);
-        self.tcx.types.err
     }
 
     fn with_breakable_ctxt<F: FnOnce() -> R, R>(&self, id: ast::NodeId,
