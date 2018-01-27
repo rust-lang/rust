@@ -176,6 +176,7 @@ pointers for understanding them better.
 - `'gcx` -- the lifetime of the global arena (see `librustc/ty`).
 - generics -- the set of generic type parameters defined on a type or item
 - ICE -- internal compiler error. When the compiler crashes.
+- ICH -- incremental compilation hash.
 - infcx -- the inference context (see `librustc/infer`)
 - MIR -- the **Mid-level IR** that is created after type-checking for use by borrowck and trans.
   Defined in the `src/librustc/mir/` module, but much of the code that manipulates it is
