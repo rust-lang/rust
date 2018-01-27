@@ -140,7 +140,10 @@ impl<'a, 'tcx> Const<'tcx> {
                 }
             }
             _ => {
-                const_get_elt(self.llval, layout.llvm_field_index(i))
+                match layout.fields {
+                    layout::FieldPlacement::Union(_) => self.llval,
+                    _ => const_get_elt(self.llval, layout.llvm_field_index(i)),
+                }
             }
         }
     }
