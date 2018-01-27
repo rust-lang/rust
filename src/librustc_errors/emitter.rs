@@ -1016,7 +1016,9 @@ impl EmitterWriter {
                 let loc = if let Some(first_line) = annotated_file.lines.first() {
                     let col = if let Some(first_annotation) = first_line.annotations.first() {
                         format!(":{}", first_annotation.start_col + 1)
-                    } else { "".to_string() };
+                    } else {
+                        "".to_string()
+                    };
                     format!("{}:{}{}",
                             annotated_file.file.name,
                             cm.doctest_offset_line(first_line.line_index),
