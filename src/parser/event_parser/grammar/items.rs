@@ -45,7 +45,6 @@ fn item(p: &mut Parser) {
         }
         err_token => {
             item.abandon(p);
-            let err = p.start();
             let message = if err_token == SEMI {
                 //TODO: if the item is incomplete, this message is misleading
                 "expected item, found `;`\n\
@@ -53,11 +52,7 @@ fn item(p: &mut Parser) {
             } else {
                 "expected item"
             };
-            p.error()
-                .message(message)
-                .emit();
-            p.bump();
-            err.complete(p, ERROR);
+            p.err_and_bump(message);
             return;
         }
     };
@@ -127,7 +122,7 @@ fn pos_fields(p: &mut Parser) {
     if !p.expect(L_PAREN) {
         return;
     }
-    while !(p.at(R_PAREN) || p.at(EOF)) {
+    while !p.at(R_PAREN) && !p.at(EOF) {
         let pos_field = p.start();
         visibility(p);
         types::type_ref(p);
@@ -173,7 +168,7 @@ fn use_item(p: &mut Parser) {
     use_tree(p);
     p.expect(SEMI);
 
-    fn use_tree(p: &mut Parser) -> bool {
+    fn use_tree(p: &mut Parser){
         let la = p.raw_lookahead(1);
         let m = p.start();
         match (p.current(), la) {
@@ -216,16 +211,23 @@ fn use_item(p: &mut Parser) {
             }
             _ => {
                 m.abandon(p);
-                return false
+                p.err_and_bump("expected one of `*`, `::`, `{`, `self`, `super`, `indent`");
+                return;
             },
         }
         m.complete(p, USE_TREE);
-        return true;
     }
 
     fn nested_trees(p: &mut Parser) {
         assert!(p.at(L_CURLY));
-        p.curly_block(|p| comma_list(p, EOF, use_tree));
+        p.bump();
+        while !p.at(EOF) && !p.at(R_CURLY) {
+            use_tree(p);
+            if !p.at(R_CURLY) {
+                p.expect(COMMA);
+            }
+        }
+        p.expect(R_CURLY);
     }
 }
 

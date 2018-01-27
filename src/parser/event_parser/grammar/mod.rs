@@ -84,6 +84,15 @@ impl<'p> Parser<'p> {
         l.is_ahead(self)
     }
 
+    fn err_and_bump(&mut self, message: &str) {
+        let err = self.start();
+        self.error()
+            .message(message)
+            .emit();
+        self.bump();
+        err.complete(self, ERROR);
+    }
+
     pub(crate) fn expect(&mut self, kind: SyntaxKind) -> bool {
         if self.at(kind) {
             self.bump();
