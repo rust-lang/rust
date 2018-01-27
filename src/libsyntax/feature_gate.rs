@@ -694,9 +694,7 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
     ("thread_local", Whitelisted, Gated(Stability::Unstable,
                                         "thread_local",
                                         "`#[thread_local]` is an experimental feature, and does \
-                                         not currently handle destructors. There is no \
-                                         corresponding `#[task_local]` mapping to the task \
-                                         model",
+                                         not currently handle destructors.",
                                         cfg_fn!(thread_local))),
 
     ("rustc_on_unimplemented", Normal, Gated(Stability::Unstable,
