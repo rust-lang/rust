@@ -64,7 +64,6 @@ impl ops::SubAssign<TextUnit> for TextUnit {
     }
 }
 
-
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct TextRange {
     start: TextUnit,
@@ -83,7 +82,6 @@ impl fmt::Display for TextRange {
     }
 }
 
-
 impl TextRange {
     pub fn empty() -> TextRange {
         TextRange::from_to(TextUnit::new(0), TextUnit::new(0))
@@ -91,7 +89,10 @@ impl TextRange {
 
     pub fn from_to(from: TextUnit, to: TextUnit) -> TextRange {
         assert!(from <= to, "Invalid text range [{}; {})", from, to);
-        TextRange { start: from, end: to }
+        TextRange {
+            start: from,
+            end: to,
+        }
     }
 
     pub fn from_len(from: TextUnit, len: TextUnit) -> TextRange {

@@ -1,7 +1,7 @@
 use lexer::ptr::Ptr;
 use lexer::classes::*;
 
-use {SyntaxKind};
+use SyntaxKind;
 use syntax_kinds::*;
 
 pub(crate) fn scan_number(c: char, ptr: &mut Ptr) -> SyntaxKind {
@@ -49,10 +49,10 @@ fn scan_digits(ptr: &mut Ptr, allow_hex: bool) {
             '_' | '0'...'9' => {
                 ptr.bump();
             }
-            'a'...'f' | 'A' ... 'F' if allow_hex => {
+            'a'...'f' | 'A'...'F' if allow_hex => {
                 ptr.bump();
             }
-            _ => return
+            _ => return,
         }
     }
 }

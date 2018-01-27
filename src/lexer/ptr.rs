@@ -1,4 +1,4 @@
-use {TextUnit};
+use TextUnit;
 
 use std::str::Chars;
 
@@ -9,7 +9,10 @@ pub(crate) struct Ptr<'s> {
 
 impl<'s> Ptr<'s> {
     pub fn new(text: &'s str) -> Ptr<'s> {
-        Ptr { text, len: TextUnit::new(0) }
+        Ptr {
+            text,
+            len: TextUnit::new(0),
+        }
     }
 
     pub fn into_len(self) -> TextUnit {
@@ -53,7 +56,7 @@ impl<'s> Ptr<'s> {
             match self.next() {
                 Some(c) if pred(c) => {
                     self.bump();
-                },
+                }
                 _ => return,
             }
         }
@@ -66,6 +69,6 @@ impl<'s> Ptr<'s> {
 
     fn chars(&self) -> Chars {
         let len: u32 = self.len.into();
-        self.text[len as usize ..].chars()
+        self.text[len as usize..].chars()
     }
 }

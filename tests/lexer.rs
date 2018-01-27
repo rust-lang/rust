@@ -4,18 +4,15 @@ extern crate testutils;
 
 use std::fmt::Write;
 
-use libsyntax2::{Token, tokenize};
+use libsyntax2::{tokenize, Token};
 use testutils::dir_tests;
 
 #[test]
 fn lexer_tests() {
-    dir_tests(
-        &["lexer"],
-        |text| {
-            let tokens = tokenize(text);
-            dump_tokens(&tokens, text)
-        }
-    )
+    dir_tests(&["lexer"], |text| {
+        let tokens = tokenize(text);
+        dump_tokens(&tokens, text)
+    })
 }
 
 fn dump_tokens(tokens: &[Token], text: &str) -> String {

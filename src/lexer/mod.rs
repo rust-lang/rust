@@ -1,4 +1,4 @@
-use {Token, SyntaxKind};
+use {SyntaxKind, Token};
 use syntax_kinds::*;
 
 mod ptr;
@@ -11,10 +11,11 @@ mod numbers;
 use self::numbers::scan_number;
 
 mod strings;
-use self::strings::{is_string_literal_start, scan_char, scan_byte_char_or_string, scan_string, scan_raw_string};
+use self::strings::{is_string_literal_start, scan_byte_char_or_string, scan_char, scan_raw_string,
+                    scan_string};
 
 mod comments;
-use self::comments::{scan_shebang, scan_comment};
+use self::comments::{scan_comment, scan_shebang};
 
 pub fn tokenize(text: &str) -> Vec<Token> {
     let mut text = text;
@@ -45,10 +46,10 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
     match c {
         '#' => if scan_shebang(ptr) {
             return SHEBANG;
-        }
+        },
         '/' => if let Some(kind) = scan_comment(ptr) {
             return kind;
-        }
+        },
         _ => (),
     }
 
@@ -89,79 +90,91 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
         '%' => return PERCENT,
 
         // Multi-byte tokens.
-        '.' => return match (ptr.next(), ptr.nnext()) {
-            (Some('.'), Some('.')) => {
-                ptr.bump();
-                ptr.bump();
-                DOTDOTDOT
-            },
-            (Some('.'), Some('=')) => {
-                ptr.bump();
-                ptr.bump();
-                DOTDOTEQ
-            },
-            (Some('.'), _) => {
-                ptr.bump();
-                DOTDOT
-            },
-            _ => DOT
-        },
-        ':' => return match ptr.next() {
-            Some(':') => {
-                ptr.bump();
-                COLONCOLON
+        '.' => {
+            return match (ptr.next(), ptr.nnext()) {
+                (Some('.'), Some('.')) => {
+                    ptr.bump();
+                    ptr.bump();
+                    DOTDOTDOT
+                }
+                (Some('.'), Some('=')) => {
+                    ptr.bump();
+                    ptr.bump();
+                    DOTDOTEQ
+                }
+                (Some('.'), _) => {
+                    ptr.bump();
+                    DOTDOT
+                }
+                _ => DOT,
             }
-            _ => COLON
-        },
-        '=' => return match ptr.next() {
-            Some('=') => {
-                ptr.bump();
-                EQEQ
+        }
+        ':' => {
+            return match ptr.next() {
+                Some(':') => {
+                    ptr.bump();
+                    COLONCOLON
+                }
+                _ => COLON,
             }
-            Some('>') => {
-                ptr.bump();
-                FAT_ARROW
+        }
+        '=' => {
+            return match ptr.next() {
+                Some('=') => {
+                    ptr.bump();
+                    EQEQ
+                }
+                Some('>') => {
+                    ptr.bump();
+                    FAT_ARROW
+                }
+                _ => EQ,
             }
-            _ => EQ,
-        },
-        '!' => return match ptr.next() {
-            Some('=') => {
-                ptr.bump();
-                NEQ
+        }
+        '!' => {
+            return match ptr.next() {
+                Some('=') => {
+                    ptr.bump();
+                    NEQ
+                }
+                _ => EXCL,
             }
-            _ => EXCL,
-        },
-        '-' => return if ptr.next_is('>') {
-            ptr.bump();
-            THIN_ARROW
-        } else {
-            MINUS
-        },
+        }
+        '-' => {
+            return if ptr.next_is('>') {
+                ptr.bump();
+                THIN_ARROW
+            } else {
+                MINUS
+            }
+        }
 
         // If the character is an ident start not followed by another single
         // quote, then this is a lifetime name:
-        '\'' => return if ptr.next_is_p(is_ident_start) && !ptr.nnext_is('\'') {
-            ptr.bump();
-            while ptr.next_is_p(is_ident_continue) {
+        '\'' => {
+            return if ptr.next_is_p(is_ident_start) && !ptr.nnext_is('\'') {
                 ptr.bump();
+                while ptr.next_is_p(is_ident_continue) {
+                    ptr.bump();
+                }
+                // lifetimes shouldn't end with a single quote
+                // if we find one, then this is an invalid character literal
+                if ptr.next_is('\'') {
+                    ptr.bump();
+                    return CHAR; // TODO: error reporting
+                }
+                LIFETIME
+            } else {
+                scan_char(ptr);
+                scan_literal_suffix(ptr);
+                CHAR
             }
-            // lifetimes shouldn't end with a single quote
-            // if we find one, then this is an invalid character literal
-            if ptr.next_is('\'') {
-                ptr.bump();
-                return CHAR; // TODO: error reporting
-            }
-            LIFETIME
-        } else {
-            scan_char(ptr);
-            scan_literal_suffix(ptr);
-            CHAR
-        },
+        }
         'b' => {
             let kind = scan_byte_char_or_string(ptr);
             scan_literal_suffix(ptr);
-            return kind
-        },
+            return kind;
+        }
         '"' => {
             scan_string(ptr);
             scan_literal_suffix(ptr);

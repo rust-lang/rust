@@ -1,5 +1,5 @@
 use super::parser::{Parser, TokenSet};
-use {SyntaxKind};
+use SyntaxKind;
 use tree::EOF;
 use syntax_kinds::*;
 
@@ -29,7 +29,7 @@ fn visibility(p: &mut Parser) {
                     }
                     p.expect(R_PAREN);
                 }
-                _ => ()
+                _ => (),
             }
         }
         vis.complete(p, VISIBILITY);
@@ -53,9 +53,7 @@ impl<'p> Parser<'p> {
 
     fn err_and_bump(&mut self, message: &str) {
         let err = self.start();
-        self.error()
-            .message(message)
-            .emit();
+        self.error().message(message).emit();
         self.bump();
         err.complete(self, ERROR);
     }
@@ -65,15 +63,16 @@ impl<'p> Parser<'p> {
             self.bump();
             true
         } else {
-            self.error()
-                .message(format!("expected {:?}", kind))
-                .emit();
+            self.error().message(format!("expected {:?}", kind)).emit();
             false
         }
     }
 
     fn eat(&mut self, kind: SyntaxKind) -> bool {
-        self.current() == kind && { self.bump(); true }
+        self.current() == kind && {
+            self.bump();
+            true
+        }
     }
 }
 
@@ -94,8 +93,7 @@ impl Lookahead for SyntaxKind {
 
 impl Lookahead for [SyntaxKind; 2] {
     fn is_ahead(self, p: &Parser) -> bool {
-        p.current() == self[0]
-        && p.raw_lookahead(1) == self[1]
+        p.current() == self[0] && p.raw_lookahead(1) == self[1]
     }
 
     fn consume(p: &mut Parser) {
@@ -106,9 +104,7 @@ impl Lookahead for [SyntaxKind; 2] {
 
 impl Lookahead for [SyntaxKind; 3] {
     fn is_ahead(self, p: &Parser) -> bool {
-        p.current() == self[0]
-        && p.raw_lookahead(1) == self[1]
-        && p.raw_lookahead(2) == self[2]
+        p.current() == self[0] && p.raw_lookahead(1) == self[1] && p.raw_lookahead(2) == self[2]
     }
 
     fn consume(p: &mut Parser) {
@@ -130,5 +126,4 @@ impl<'a> Lookahead for AnyOf<'a> {
     fn consume(p: &mut Parser) {
         p.bump();
     }
-
 }
