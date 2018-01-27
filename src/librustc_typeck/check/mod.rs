@@ -858,9 +858,19 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             fcx
         };
 
-        fcx.select_obligations_where_possible();
-        fcx.closure_analyze(body);
         fcx.check_casts();
+
+        // All type checking constraints were added, try to fallback unsolved variables.
+        fcx.select_obligations_where_possible();
+        for ty in &fcx.unsolved_variables() {
+            fcx.fallback_if_possible(ty, Fallback::Full);
+        }
+        fcx.select_obligations_where_possible();
+
+        // Closure and generater analysis may run after fallback
+        // because they doen't constrain other type variables.
+        fcx.closure_analyze(body);
+        assert!(fcx.deferred_call_resolutions.borrow().is_empty());
         fcx.resolve_generator_interiors(def_id);
         fcx.select_all_obligations_or_error();
 
@@ -2137,9 +2147,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // Non-numerics get replaced with ! or () (depending on whether
     // feature(never_type) is enabled), unconstrained ints with i32,
     // unconstrained floats with f64.
-    // Defaulting inference variables becomes very dubious if we have
-    // encountered type-checking errors. In that case, fallback to TyError.
-    fn apply_fallback_if_possible(&self, ty: Ty<'tcx>, fallback: Fallback) {
+    // Fallback becomes very dubious if we have encountered type-checking errors.
+    // In that case, fallback to TyError.
+    fn fallback_if_possible(&self, ty: Ty<'tcx>, fallback: Fallback) {
         use rustc::ty::error::UnconstrainedNumeric::Neither;
         use rustc::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
 
@@ -2162,22 +2172,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn select_all_obligations_or_error(&self) {
         debug!("select_all_obligations_or_error");
-
-        // upvar inference should have ensured that all deferred call
-        // resolutions are handled by now.
-        assert!(self.deferred_call_resolutions.borrow().is_empty());
-
-        self.select_obligations_where_possible();
-
-        for ty in &self.unsolved_variables() {
-            self.apply_fallback_if_possible(ty, Fallback::Full);
-        }
-
-        let mut fulfillment_cx = self.fulfillment_cx.borrow_mut();
-
-        match fulfillment_cx.select_all_or_error(self) {
-            Ok(()) => { }
-            Err(errors) => { self.report_fulfillment_errors(&errors, self.inh.body_id); }
+        if let Err(errors) = self.fulfillment_cx.borrow_mut().select_all_or_error(&self) {
+            self.report_fulfillment_errors(&errors, self.inh.body_id);
         }
     }
 
