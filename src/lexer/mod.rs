@@ -168,7 +168,7 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
                 scan_char(ptr);
                 scan_literal_suffix(ptr);
                 CHAR
-            }
+            };
         }
         'b' => {
             let kind = scan_byte_char_or_string(ptr);
