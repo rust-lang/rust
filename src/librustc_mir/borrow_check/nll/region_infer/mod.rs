@@ -507,9 +507,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.inferred_values = Some(inferred_values);
     }
 
-    /// Builds up a map from each region variable X to a vector with the indices of constraints that
-    /// need to be re-evaluated when X changes. These are constraints like Y: X @ P -- so if X
-    /// changed, we may need to grow Y.
+    /// Builds up a map from each region variable X to a vector with the
+    /// indices of constraints that need to be re-evaluated when X changes.
+    /// These are constraints like Y: X @ P -- so if X changed, we may
+    /// need to grow Y.
     fn build_dependency_map(&self) -> HashMap<RegionVid, Vec<usize>> {
         let mut map = HashMap::new();
 
