@@ -33,7 +33,7 @@ are some areas where contributions would be **especially** welcome:
 
 
 Do take a look at the issue tracker, and try to read other docs in
-the [./docs] folder!
+the [./docs](https://github.com/matklad/libsyntax2/tree/master/docs) folder!
 
 If you don't know where to start, or have *any* questions or suggestions,
 don't hesitate to chat at [Gitter](https://gitter.im/libsyntax2/Lobby)!
