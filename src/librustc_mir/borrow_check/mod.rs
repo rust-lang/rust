@@ -1112,10 +1112,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             debug!("check_for_invalidation_at_exit({:?}): INVALID", place);
             // FIXME: should be talking about the region lifetime instead
             // of just a span here.
+            let span = self.tcx.sess.codemap().end_point(span);
             self.report_borrowed_value_does_not_live_long_enough(
                 context,
                 borrow,
-                span.end_point(),
+                span,
                 flow_state.borrows.operator(),
             )
         }

@@ -704,13 +704,15 @@ impl<'a> Parser<'a> {
                     expect.clone()
                 };
                 (format!("expected one of {}, found `{}`", expect, actual),
-                 (self.prev_span.next_point(), format!("expected one of {} here", short_expect)))
+                 (self.sess.codemap().next_point(self.prev_span),
+                  format!("expected one of {} here", short_expect)))
             } else if expected.is_empty() {
                 (format!("unexpected token: `{}`", actual),
                  (self.prev_span, "unexpected token after this".to_string()))
             } else {
                 (format!("expected {}, found `{}`", expect, actual),
-                 (self.prev_span.next_point(), format!("expected {} here", expect)))
+                 (self.sess.codemap().next_point(self.prev_span),
+                  format!("expected {} here", expect)))
             };
             let mut err = self.fatal(&msg_exp);
             let sp = if self.token == token::Token::Eof {
@@ -3190,7 +3192,7 @@ impl<'a> Parser<'a> {
         // return. This won't catch blocks with an explicit `return`, but that would be caught by
         // the dead code lint.
         if self.eat_keyword(keywords::Else) || !cond.returns() {
-            let sp = lo.next_point();
+            let sp = self.sess.codemap().next_point(lo);
             let mut err = self.diagnostic()
                 .struct_span_err(sp, "missing condition for `if` statemement");
             err.span_label(sp, "expected if condition here");

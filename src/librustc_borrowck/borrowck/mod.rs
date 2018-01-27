@@ -1276,7 +1276,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     fn region_end_span(&self, region: ty::Region<'tcx>) -> Option<Span> {
         match *region {
             ty::ReScope(scope) => {
-                Some(scope.span(self.tcx, &self.region_scope_tree).end_point())
+                Some(self.tcx.sess.codemap().end_point(
+                        scope.span(self.tcx, &self.region_scope_tree)))
             }
             _ => None
         }

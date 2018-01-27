@@ -2457,7 +2457,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 err.span_label(def_s, "defined here");
             }
             if sugg_unit {
-                let sugg_span = expr_sp.end_point();
+                let sugg_span = sess.codemap().end_point(expr_sp);
                 // remove closing `)` from the span
                 let sugg_span = sugg_span.with_hi(sugg_span.lo());
                 err.span_suggestion(
@@ -4446,10 +4446,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// statement and the return type has been left as default or has been specified as `()`. If so,
     /// it suggests adding a semicolon.
     fn suggest_missing_semicolon(&self,
-                                     err: &mut DiagnosticBuilder<'tcx>,
-                                     expression: &'gcx hir::Expr,
-                                     expected: Ty<'tcx>,
-                                     cause_span: Span) {
+                                 err: &mut DiagnosticBuilder<'tcx>,
+                                 expression: &'gcx hir::Expr,
+                                 expected: Ty<'tcx>,
+                                 cause_span: Span) {
         if expected.is_nil() {
             // `BlockTailExpression` only relevant if the tail expr would be
             // useful on its own.
@@ -4461,7 +4461,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 hir::ExprLoop(..) |
                 hir::ExprMatch(..) |
                 hir::ExprBlock(..) => {
-                    let sp = cause_span.next_point();
+                    let sp = self.tcx.sess.codemap().next_point(cause_span);
                     err.span_suggestion(sp,
                                         "try adding a semicolon",
                                         ";".to_string());

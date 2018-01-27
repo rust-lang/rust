@@ -2871,8 +2871,8 @@ impl<'a> Resolver<'a> {
         if let Some(sp) = self.current_type_ascription.last() {
             let mut sp = *sp;
             loop {  // try to find the `:`, bail on first non-':'/non-whitespace
-                sp = sp.next_point();
-                if let Ok(snippet) = cm.span_to_snippet(sp.to(sp.next_point())) {
+                sp = cm.next_point(sp);
+                if let Ok(snippet) = cm.span_to_snippet(sp.to(cm.next_point(sp))) {
                     debug!("snippet {:?}", snippet);
                     let line_sp = cm.lookup_char_pos(sp.hi()).line;
                     let line_base_sp = cm.lookup_char_pos(base_span.lo()).line;
