@@ -93,8 +93,7 @@ extern "C" {
 }
 
 cfg_if! {
-if #[cfg(not(any(all(target_os = "android", target_arch = "arm"),
-                 all(target_os = "linux", target_arch = "arm"))))] {
+if #[cfg(all(any(target_os = "ios", not(target_arch = "arm"))))] {
     // Not ARM EHABI
     #[repr(C)]
     #[derive(Copy, Clone, PartialEq)]
