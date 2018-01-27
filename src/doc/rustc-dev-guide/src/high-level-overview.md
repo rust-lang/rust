@@ -43,7 +43,7 @@ The `rustc_driver` crate, at the top of this lattice, is effectively
 the "main" function for the rust compiler. It doesn't have much "real
 code", but instead ties together all of the code defined in the other
 crates and defines the overall flow of execution. (As we transition
-more and more to the [query model](ty/maps/README.md), however, the
+more and more to the [query model], however, the
 "flow" of compilation is becoming less centrally defined.)
 
 At the other extreme, the `rustc` crate defines the common and
@@ -134,3 +134,5 @@ take:
       (one for each "codegen unit").
 6. **Linking**
     - Finally, those `.o` files are linked together.
+
+[query model]: https://github.com/rust-lang/rust/blob/master/src/librustc/ty/maps/README.md

@@ -78,7 +78,7 @@ is in fact a simple type alias for a reference with `'tcx` lifetime:
 pub type Ty<'tcx> = &'tcx TyS<'tcx>;
 ```
 
-[the HIR]: ../hir/README.md
+[the HIR]: https://github.com/rust-lang/rust/blob/master/src/librustc/hir/README.md
 
 You can basically ignore the `TyS` struct -- you will basically never
 access it explicitly. We always pass it by reference using the
