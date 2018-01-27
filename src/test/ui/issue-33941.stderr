@@ -8,10 +8,10 @@ error[E0271]: type mismatch resolving `<std::collections::hash_map::Iter<'_, _, 
               found type `&_`
 
 error[E0271]: type mismatch resolving `<std::collections::hash_map::Iter<'_, _, _> as std::iter::Iterator>::Item == &_`
-  --> $DIR/issue-33941.rs:14:5
+  --> $DIR/issue-33941.rs:14:14
    |
 14 |     for _ in HashMap::new().iter().cloned() {} //~ ERROR type mismatch
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected tuple, found reference
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected tuple, found reference
    |
    = note: expected type `(&_, &_)`
               found type `&_`

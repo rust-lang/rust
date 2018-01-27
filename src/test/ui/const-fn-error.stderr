@@ -13,22 +13,16 @@ error[E0016]: blocks in constant functions are limited to items and tail express
    |                   ^
 
 error[E0015]: calls in constant functions are limited to constant functions, struct and enum constructors
-  --> $DIR/const-fn-error.rs:17:5
+  --> $DIR/const-fn-error.rs:17:14
    |
-17 | /     for i in 0..x { //~ ERROR calls in constant functions
-18 | |     //~| ERROR constant function contains unimplemented
-19 | |         sum += i;
-20 | |     }
-   | |_____^
+17 |     for i in 0..x { //~ ERROR calls in constant functions
+   |              ^^^^
 
 error[E0019]: constant function contains unimplemented expression type
-  --> $DIR/const-fn-error.rs:17:5
+  --> $DIR/const-fn-error.rs:17:14
    |
-17 | /     for i in 0..x { //~ ERROR calls in constant functions
-18 | |     //~| ERROR constant function contains unimplemented
-19 | |         sum += i;
-20 | |     }
-   | |_____^
+17 |     for i in 0..x { //~ ERROR calls in constant functions
+   |              ^^^^
 
 error[E0080]: constant evaluation error
   --> $DIR/const-fn-error.rs:21:5

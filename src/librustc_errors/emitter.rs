@@ -767,6 +767,7 @@ impl EmitterWriter {
                         }
                         // Check to make sure we're not in any <*macros>
                         if !cm.span_to_filename(def_site).is_macros() &&
+                           !trace.macro_decl_name.starts_with("desugaring of ") &&
                            !trace.macro_decl_name.starts_with("#[") ||
                            always_backtrace {
                             new_labels.push((trace.call_site,
