@@ -467,12 +467,16 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mut inferred_values = self.liveness_constraints.clone();
 
         let dependency_map = self.build_dependency_map();
+      
+        // Constraints that may need to be repropagated (initially all):
         let mut dirty_list: Vec<_> = (0..self.constraints.len()).collect();
-        let mut dirty_bit_vec = BitVector::new(dirty_list.len());
+      
+        // Set to 0 for each constraint that is on the dirty list:
+        let mut clean_bit_vec = BitVector::new(dirty_list.len());
 
         debug!("propagate_constraints: --------------------");
         while let Some(constraint_idx) = dirty_list.pop() {
-            dirty_bit_vec.remove(constraint_idx);
+            clean_bit_vec.insert(constraint_idx);
 
             let constraint = &self.constraints[constraint_idx];
             debug!("propagate_constraints: constraint={:?}", constraint);
@@ -495,7 +499,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 debug!("propagate_constraints:   sup={:?}", constraint.sup);
 
                 for &dep_idx in dependency_map.get(&constraint.sup).unwrap_or(&vec![]) {
-                    if dirty_bit_vec.insert(dep_idx) {
+                    if clean_bit_vec.remove(dep_idx) {
                         dirty_list.push(dep_idx);
                     }
                 }
