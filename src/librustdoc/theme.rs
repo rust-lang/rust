@@ -348,7 +348,7 @@ c // sdf
 d {}
 "#;
         let paths = load_css_paths(text.as_bytes());
-        assert!(paths.children.get(&CssPath::new("a b c d".to_owned())).is_some());
+        assert!(paths.children.contains(&CssPath::new("a b c d".to_owned())));
     }
 
     #[test]

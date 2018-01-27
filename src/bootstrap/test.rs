@@ -451,7 +451,9 @@ impl Step for RustdocTheme {
     fn run(self, builder: &Builder) {
         let rustdoc = builder.rustdoc(self.compiler.host);
         let mut cmd = Command::new(builder.config.python.clone().expect("python not defined"));
-        cmd.args(&["src/tools/rustdoc-themes/test-themes.py", rustdoc.to_str().unwrap()]);
+        cmd.args(&[builder.src.join("src/tools/rustdoc-themes/test-themes.py").to_str().unwrap(),
+                   rustdoc.to_str().unwrap(),
+                   builder.src.join("src/librustdoc/html/static/themes").to_str().unwrap()]);
         cmd.env("RUSTC_STAGE", self.compiler.stage.to_string())
            .env("RUSTC_SYSROOT", builder.sysroot(self.compiler))
            .env("RUSTDOC_LIBDIR", builder.sysroot_libdir(self.compiler, self.compiler.host))

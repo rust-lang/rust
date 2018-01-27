@@ -332,10 +332,10 @@ pub fn main_args(args: &[String]) -> isize {
             print!(" - Checking \"{}\"...", theme_file);
             let (success, differences) = theme::test_theme_against(theme_file, &paths);
             if !differences.is_empty() || !success {
-                eprintln!(" FAILED");
+                println!(" FAILED");
                 errors += 1;
                 if !differences.is_empty() {
-                    eprintln!("{}", differences.join("\n"));
+                    println!("{}", differences.join("\n"));
                 }
             } else {
                 println!(" OK");
@@ -407,13 +407,13 @@ pub fn main_args(args: &[String]) -> isize {
                                             .iter()
                                             .map(|s| (PathBuf::from(&s), s.to_owned())) {
             if !theme_file.is_file() {
-                eprintln!("rustdoc: option --themes arguments must all be files");
+                println!("rustdoc: option --themes arguments must all be files");
                 return 1;
             }
             let (success, ret) = theme::test_theme_against(&theme_file, &paths);
             if !success || !ret.is_empty() {
-                eprintln!("rustdoc: invalid theme: \"{}\"", theme_s);
-                eprintln!("         Check what's wrong with the \"theme-checker\" option");
+                println!("rustdoc: invalid theme: \"{}\"", theme_s);
+                println!("         Check what's wrong with the \"theme-checker\" option");
                 return 1;
             }
             themes.push(theme_file);
