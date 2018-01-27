@@ -131,7 +131,7 @@ fn query() -> bool { true }
 //         _1 = ();
 //         EndRegion('35_0rs);
 //         StorageDead(_2);
-//         goto -> bb1;
+//         falseUnwind -> [real: bb1, cleanup: bb2];
 //     }
 // }
 // END rustc.main.SimplifyCfg-qualify-consts.after.mir
