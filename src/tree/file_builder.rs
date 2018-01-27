@@ -1,5 +1,5 @@
-use {SyntaxKind, TextUnit, TextRange};
-use super::{NodeData, SyntaxErrorData, NodeIdx, File};
+use {SyntaxKind, TextRange, TextUnit};
+use super::{File, NodeData, NodeIdx, SyntaxErrorData};
 
 pub trait Sink {
     fn leaf(&mut self, kind: SyntaxKind, len: TextUnit);
@@ -7,7 +7,6 @@ pub trait Sink {
     fn finish_internal(&mut self);
     fn error(&mut self) -> ErrorBuilder;
 }
-
 
 pub struct FileBuilder {
     text: String,
@@ -48,9 +47,9 @@ impl Sink for FileBuilder {
     }
 
     fn finish_internal(&mut self) {
-        let (id, _) = self.in_progress.pop().expect(
-            "trying to complete a node, but there are no in-progress nodes"
-        );
+        let (id, _) = self.in_progress
+            .pop()
+            .expect("trying to complete a node, but there are no in-progress nodes");
         if !self.in_progress.is_empty() {
             self.add_len(id);
         }
@@ -76,11 +75,14 @@ impl FileBuilder {
         assert!(
             self.in_progress.is_empty(),
             "some nodes in FileBuilder are unfinished: {:?}",
-            self.in_progress.iter().map(|&(idx, _)| self.nodes[idx].kind)
+            self.in_progress
+                .iter()
+                .map(|&(idx, _)| self.nodes[idx].kind)
                 .collect::<Vec<_>>()
         );
         assert_eq!(
-            self.pos, (self.text.len() as u32).into(),
+            self.pos,
+            (self.text.len() as u32).into(),
             "nodes in FileBuilder do not cover the whole file"
         );
         File {
@@ -100,7 +102,6 @@ impl FileBuilder {
         child.parent = Some(self.current_id());
         let id = self.new_node(child);
         {
-
             let (parent, sibling) = *self.in_progress.last().unwrap();
             let slot = if let Some(idx) = sibling {
                 &mut self.nodes[idx].next_sibling
@@ -140,12 +141,15 @@ fn grow(left: &mut TextRange, right: TextRange) {
 
 pub struct ErrorBuilder<'f> {
     message: Option<String>,
-    builder: &'f mut FileBuilder
+    builder: &'f mut FileBuilder,
 }
 
 impl<'f> ErrorBuilder<'f> {
     fn new(builder: &'f mut FileBuilder) -> Self {
-        ErrorBuilder { message: None, builder }
+        ErrorBuilder {
+            message: None,
+            builder,
+        }
     }
 
     pub fn message<M: Into<String>>(mut self, m: M) -> Self {
@@ -156,6 +160,10 @@ impl<'f> ErrorBuilder<'f> {
     pub fn emit(self) {
         let message = self.message.expect("Error message not set");
         let &(node, after_child) = self.builder.in_progress.last().unwrap();
-        self.builder.errors.push(SyntaxErrorData { node, message, after_child })
+        self.builder.errors.push(SyntaxErrorData {
+            node,
+            message,
+            after_child,
+        })
     }
 }

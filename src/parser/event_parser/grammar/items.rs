@@ -7,15 +7,8 @@ pub(super) fn mod_contents(p: &mut Parser) {
     }
 }
 
-pub(super) const ITEM_FIRST: TokenSet = token_set![
-    EXTERN_KW,
-    MOD_KW,
-    USE_KW,
-    STRUCT_KW,
-    FN_KW,
-    PUB_KW,
-    POUND,
-];
+pub(super) const ITEM_FIRST: TokenSet =
+    token_set![EXTERN_KW, MOD_KW, USE_KW, STRUCT_KW, FN_KW, PUB_KW, POUND,];
 
 fn item(p: &mut Parser) {
     let item = p.start();
@@ -48,7 +41,7 @@ fn item(p: &mut Parser) {
             let message = if err_token == SEMI {
                 //TODO: if the item is incomplete, this message is misleading
                 "expected item, found `;`\n\
-                consider removing this semicolon"
+                 consider removing this semicolon"
             } else {
                 "expected item"
             };
@@ -76,10 +69,9 @@ fn struct_item(p: &mut Parser) {
                     return;
                 }
                 L_CURLY => named_fields(p),
-                _ => { //TODO: special case `(` error message
-                    p.error()
-                        .message("expected `;` or `{`")
-                        .emit();
+                _ => {
+                    //TODO: special case `(` error message
+                    p.error().message("expected `;` or `{`").emit();
                     return;
                 }
             }
@@ -94,9 +86,7 @@ fn struct_item(p: &mut Parser) {
             p.expect(SEMI);
         }
         _ => {
-            p.error()
-                .message("expected `;`, `{`, or `(`")
-                .emit();
+            p.error().message("expected `;`, `{`, or `(`").emit();
             return;
         }
     }
@@ -177,7 +167,7 @@ fn use_item(p: &mut Parser) {
     use_tree(p);
     p.expect(SEMI);
 
-    fn use_tree(p: &mut Parser){
+    fn use_tree(p: &mut Parser) {
         let la = p.raw_lookahead(1);
         let m = p.start();
         match (p.current(), la) {
@@ -209,9 +199,7 @@ fn use_item(p: &mut Parser) {
                             L_CURLY => nested_trees(p),
                             _ => {
                                 // is this unreachable?
-                                p.error()
-                                    .message("expected `{` or `*`")
-                                    .emit();
+                                p.error().message("expected `{` or `*`").emit();
                             }
                         }
                     }
@@ -222,7 +210,7 @@ fn use_item(p: &mut Parser) {
                 m.abandon(p);
                 p.err_and_bump("expected one of `*`, `::`, `{`, `self`, `super`, `indent`");
                 return;
-            },
+            }
         }
         m.complete(p, USE_TREE);
     }
@@ -240,13 +228,9 @@ fn use_item(p: &mut Parser) {
     }
 }
 
-
 fn fn_item(p: &mut Parser) {
     assert!(p.at(FN_KW));
     p.bump();
 
-    p.expect(IDENT) && p.expect(L_PAREN) && p.expect(R_PAREN)
-        && p.curly_block(|_| ());
+    p.expect(IDENT) && p.expect(L_PAREN) && p.expect(R_PAREN) && p.curly_block(|_| ());
 }
-
-

@@ -1,17 +1,19 @@
-use {Token, SyntaxKind, TextUnit};
+use {SyntaxKind, TextUnit, Token};
 use super::Event;
 use super::super::is_insignificant;
-use syntax_kinds::{L_CURLY, R_CURLY, ERROR};
+use syntax_kinds::{ERROR, L_CURLY, R_CURLY};
 use tree::{EOF, TOMBSTONE};
 
 pub(crate) struct Marker {
-    pos: u32
+    pos: u32,
 }
 
 impl Marker {
     pub fn complete(self, p: &mut Parser, kind: SyntaxKind) -> CompleteMarker {
         match self.event(p) {
-            &mut Event::Start { kind: ref mut slot, ..} => {
+            &mut Event::Start {
+                kind: ref mut slot, ..
+            } => {
                 *slot = kind;
             }
             _ => unreachable!(),
@@ -26,8 +28,11 @@ impl Marker {
         let idx = self.pos as usize;
         if idx == p.events.len() - 1 {
             match p.events.pop() {
-                Some(Event::Start { kind: TOMBSTONE, forward_parent: None }) => (),
-                _ => unreachable!()
+                Some(Event::Start {
+                    kind: TOMBSTONE,
+                    forward_parent: None,
+                }) => (),
+                _ => unreachable!(),
             }
         }
         ::std::mem::forget(self);
@@ -51,14 +56,17 @@ impl Drop for Marker {
 }
 
 pub(crate) struct CompleteMarker {
-    pos: u32
+    pos: u32,
 }
 
 impl CompleteMarker {
     pub(crate) fn precede(self, p: &mut Parser) -> Marker {
         let m = p.start();
         match p.events[self.pos as usize] {
-            Event::Start { ref mut forward_parent, ..} => {
+            Event::Start {
+                ref mut forward_parent,
+                ..
+            } => {
                 *forward_parent = Some(m.pos - self.pos);
             }
             _ => unreachable!(),
@@ -68,7 +76,7 @@ impl CompleteMarker {
 }
 
 pub(crate) struct TokenSet {
-    pub tokens: &'static [SyntaxKind]
+    pub tokens: &'static [SyntaxKind],
 }
 
 impl TokenSet {
@@ -89,7 +97,6 @@ macro_rules! token_set {
         token_set!($($t),*)
     };
 }
-
 
 pub(crate) struct Parser<'t> {
     #[allow(unused)]
@@ -150,8 +157,13 @@ impl<'t> Parser<'t> {
     }
 
     pub(crate) fn start(&mut self) -> Marker {
-        let m = Marker { pos: self.events.len() as u32 };
-        self.event(Event::Start { kind: TOMBSTONE, forward_parent: None });
+        let m = Marker {
+            pos: self.events.len() as u32,
+        };
+        self.event(Event::Start {
+            kind: TOMBSTONE,
+            forward_parent: None,
+        });
         m
     }
 
@@ -168,7 +180,10 @@ impl<'t> Parser<'t> {
             _ => (),
         }
         self.pos += 1;
-        self.event(Event::Token { kind, n_raw_tokens: 1 });
+        self.event(Event::Token {
+            kind,
+            n_raw_tokens: 1,
+        });
         kind
     }
 
@@ -210,7 +225,10 @@ pub(crate) struct ErrorBuilder<'p, 't: 'p> {
 
 impl<'t, 'p> ErrorBuilder<'p, 't> {
     fn new(parser: &'p mut Parser<'t>) -> Self {
-        ErrorBuilder { message: None, parser }
+        ErrorBuilder {
+            message: None,
+            parser,
+        }
     }
 
     pub fn message<M: Into<String>>(mut self, m: M) -> Self {

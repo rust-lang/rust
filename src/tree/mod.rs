@@ -1,4 +1,4 @@
-use text::{TextUnit, TextRange};
+use text::{TextRange, TextUnit};
 use syntax_kinds::syntax_info;
 
 use std::fmt;
@@ -11,15 +11,10 @@ pub use self::file_builder::{FileBuilder, Sink};
 pub struct SyntaxKind(pub(crate) u32);
 
 pub(crate) const EOF: SyntaxKind = SyntaxKind(!0);
-pub(crate) const EOF_INFO: SyntaxInfo = SyntaxInfo {
-    name: "EOF"
-};
+pub(crate) const EOF_INFO: SyntaxInfo = SyntaxInfo { name: "EOF" };
 
 pub(crate) const TOMBSTONE: SyntaxKind = SyntaxKind(!0 - 1);
-pub(crate) const TOMBSTONE_INFO: SyntaxInfo = SyntaxInfo {
-    name: "TOMBSTONE"
-};
-
+pub(crate) const TOMBSTONE_INFO: SyntaxInfo = SyntaxInfo { name: "TOMBSTONE" };
 
 impl SyntaxKind {
     fn info(self) -> &'static SyntaxInfo {
@@ -37,7 +32,6 @@ impl fmt::Debug for SyntaxKind {
         f.write_str(name)
     }
 }
-
 
 pub(crate) struct SyntaxInfo {
     pub name: &'static str,
@@ -58,7 +52,10 @@ pub struct File {
 impl File {
     pub fn root<'f>(&'f self) -> Node<'f> {
         assert!(!self.nodes.is_empty());
-        Node { file: self, idx: NodeIdx(0) }
+        Node {
+            file: self,
+            idx: NodeIdx(0),
+        }
     }
 }
 
@@ -86,14 +83,17 @@ impl<'f> Node<'f> {
     }
 
     pub fn children(&self) -> Children<'f> {
-        Children { next: self.as_node(self.data().first_child) }
+        Children {
+            next: self.as_node(self.data().first_child),
+        }
     }
 
     pub fn errors(&self) -> SyntaxErrors<'f> {
         let pos = self.file.errors.iter().position(|e| e.node == self.idx);
-        let next = pos
-            .map(|i| ErrorIdx(i as u32))
-            .map(|idx| SyntaxError { file: self.file, idx });
+        let next = pos.map(|i| ErrorIdx(i as u32)).map(|idx| SyntaxError {
+            file: self.file,
+            idx,
+        });
         SyntaxErrors { next }
     }
 
@@ -102,7 +102,10 @@ impl<'f> Node<'f> {
     }
 
     fn as_node(&self, idx: Option<NodeIdx>) -> Option<Node<'f>> {
-        idx.map(|idx| Node { file: self.file, idx })
+        idx.map(|idx| Node {
+            file: self.file,
+            idx,
+        })
     }
 }
 
@@ -118,8 +121,7 @@ impl<'f> cmp::PartialEq<Node<'f>> for Node<'f> {
     }
 }
 
-impl<'f> cmp::Eq for Node<'f> {
-}
+impl<'f> cmp::Eq for Node<'f> {}
 
 #[derive(Clone, Copy)]
 pub struct SyntaxError<'f> {
@@ -134,7 +136,10 @@ impl<'f> SyntaxError<'f> {
 
     pub fn after_child(&self) -> Option<Node<'f>> {
         let idx = self.data().after_child?;
-        Some(Node { file: self.file, idx })
+        Some(Node {
+            file: self.file,
+            idx,
+        })
     }
 
     fn data(&self) -> &'f SyntaxErrorData {
@@ -148,7 +153,7 @@ impl<'f> SyntaxError<'f> {
         }
         let result = SyntaxError {
             file: self.file,
-            idx: ErrorIdx(next_idx)
+            idx: ErrorIdx(next_idx),
         };
         if result.data().node != self.data().node {
             return None;
@@ -184,7 +189,6 @@ impl<'f> Iterator for SyntaxErrors<'f> {
         next
     }
 }
-
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 struct NodeIdx(u32);

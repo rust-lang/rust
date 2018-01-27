@@ -1,6 +1,6 @@
 use lexer::ptr::Ptr;
 
-use {SyntaxKind};
+use SyntaxKind;
 use syntax_kinds::*;
 
 pub(crate) fn scan_shebang(ptr: &mut Ptr) -> bool {
@@ -22,7 +22,6 @@ pub(crate) fn scan_comment(ptr: &mut Ptr) -> Option<SyntaxKind> {
         None
     }
 }
-
 
 fn bump_until_eol(ptr: &mut Ptr) {
     loop {

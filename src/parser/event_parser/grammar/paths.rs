@@ -34,9 +34,7 @@ fn path_segment(p: &mut Parser, first: bool) {
             p.bump();
         }
         _ => {
-            p.error()
-                .message("expected identifier")
-                .emit();
+            p.error().message("expected identifier").emit();
         }
     };
     segment.complete(p, PATH_SEGMENT);

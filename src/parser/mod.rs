@@ -1,4 +1,4 @@
-use {Token, File, FileBuilder, Sink, SyntaxKind};
+use {File, FileBuilder, Sink, SyntaxKind, Token};
 
 use syntax_kinds::*;
 use tree::TOMBSTONE;
@@ -6,17 +6,12 @@ use tree::TOMBSTONE;
 mod event_parser;
 use self::event_parser::Event;
 
-
 pub fn parse(text: String, tokens: &[Token]) -> File {
     let events = event_parser::parse(&text, tokens);
     from_events_to_file(text, tokens, events)
 }
 
-fn from_events_to_file(
-    text: String,
-    tokens: &[Token],
-    events: Vec<Event>,
-) -> File {
+fn from_events_to_file(text: String, tokens: &[Token], events: Vec<Event>) -> File {
     let mut builder = FileBuilder::new(text);
     let mut idx = 0;
 
@@ -26,18 +21,23 @@ fn from_events_to_file(
     for (i, event) in events.iter().enumerate() {
         if holes.last() == Some(&i) {
             holes.pop();
-            continue
+            continue;
         }
 
         match event {
-            &Event::Start { kind: TOMBSTONE, .. } => (),
+            &Event::Start {
+                kind: TOMBSTONE, ..
+            } => (),
 
             &Event::Start { .. } => {
                 forward_parents.clear();
                 let mut idx = i;
                 loop {
                     let (kind, fwd) = match events[idx] {
-                        Event::Start { kind, forward_parent } => (kind, forward_parent),
+                        Event::Start {
+                            kind,
+                            forward_parent,
+                        } => (kind, forward_parent),
                         _ => unreachable!(),
                     };
                     forward_parents.push((idx, kind));
@@ -64,8 +64,11 @@ fn from_events_to_file(
                     }
                 }
                 builder.finish_internal()
-            },
-            &Event::Token { kind: _, mut n_raw_tokens } => loop {
+            }
+            &Event::Token {
+                kind: _,
+                mut n_raw_tokens,
+            } => loop {
                 let token = tokens[idx];
                 if !is_insignificant(token.kind) {
                     n_raw_tokens -= 1;
@@ -76,8 +79,7 @@ fn from_events_to_file(
                     break;
                 }
             },
-            &Event::Error { ref message } =>
-                builder.error().message(message.clone()).emit(),
+            &Event::Error { ref message } => builder.error().message(message.clone()).emit(),
         }
     }
     builder.finish()

@@ -2,8 +2,8 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
-extern crate ron;
 extern crate file;
+extern crate ron;
 
 use std::path::PathBuf;
 use std::fmt::Write;
@@ -33,11 +33,12 @@ impl Grammar {
         acc.push_str("use tree::{SyntaxKind, SyntaxInfo};\n");
         acc.push_str("\n");
 
-        let syntax_kinds: Vec<String> =
-            self.keywords.iter().map(|kw| kw_token(kw))
-                .chain(self.tokens.iter().cloned())
-                .chain(self.nodes.iter().cloned())
-                .collect();
+        let syntax_kinds: Vec<String> = self.keywords
+            .iter()
+            .map(|kw| kw_token(kw))
+            .chain(self.tokens.iter().cloned())
+            .chain(self.nodes.iter().cloned())
+            .collect();
 
         for (idx, kind) in syntax_kinds.iter().enumerate() {
             let sname = scream(kind);
@@ -48,7 +49,11 @@ impl Grammar {
             ).unwrap();
         }
         acc.push_str("\n");
-        write!(acc, "static INFOS: [SyntaxInfo; {}] = [\n", syntax_kinds.len()).unwrap();
+        write!(
+            acc,
+            "static INFOS: [SyntaxInfo; {}] = [\n",
+            syntax_kinds.len()
+        ).unwrap();
         for kind in syntax_kinds.iter() {
             let sname = scream(kind);
             write!(

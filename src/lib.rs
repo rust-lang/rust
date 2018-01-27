@@ -5,9 +5,10 @@ mod tree;
 mod lexer;
 mod parser;
 
+#[cfg_attr(rustfmt, rustfmt_skip)]
 pub mod syntax_kinds;
-pub use text::{TextUnit, TextRange};
-pub use tree::{SyntaxKind, Token, FileBuilder, Sink, File, Node};
+pub use text::{TextRange, TextUnit};
+pub use tree::{File, FileBuilder, Node, Sink, SyntaxKind, Token};
 pub use lexer::{next_token, tokenize};
 pub use parser::parse;
 
@@ -25,7 +26,8 @@ pub mod utils {
             buff.push_str(&String::from("  ").repeat(level));
             write!(buff, "{:?}\n", node).unwrap();
             let my_errors = node.errors().filter(|e| e.after_child().is_none());
-            let parent_errors = node.parent().into_iter()
+            let parent_errors = node.parent()
+                .into_iter()
                 .flat_map(|n| n.errors())
                 .filter(|e| e.after_child() == Some(node));
 

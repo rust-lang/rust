@@ -1,4 +1,4 @@
-use {Token, SyntaxKind};
+use {SyntaxKind, Token};
 
 #[macro_use]
 mod parser;

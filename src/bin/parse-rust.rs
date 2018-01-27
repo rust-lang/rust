@@ -2,7 +2,7 @@ extern crate libsyntax2;
 
 use std::io::Read;
 
-use libsyntax2::{tokenize, parse};
+use libsyntax2::{parse, tokenize};
 use libsyntax2::utils::dump_tree;
 
 fn main() {

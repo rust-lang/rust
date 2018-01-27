@@ -1,17 +1,17 @@
-use {SyntaxKind};
+use SyntaxKind;
 use syntax_kinds::*;
 
 use lexer::ptr::Ptr;
 
 pub(crate) fn is_string_literal_start(c: char, c1: Option<char>, c2: Option<char>) -> bool {
     match (c, c1, c2) {
-        ('r', Some('"'), _) |
-        ('r', Some('#'), _) |
-        ('b', Some('"'), _) |
-        ('b', Some('\''), _) |
-        ('b', Some('r'), Some('"')) |
-        ('b', Some('r'), Some('#')) => true,
-        _ => false
+        ('r', Some('"'), _)
+        | ('r', Some('#'), _)
+        | ('b', Some('"'), _)
+        | ('b', Some('\''), _)
+        | ('b', Some('r'), Some('"'))
+        | ('b', Some('r'), Some('#')) => true,
+        _ => false,
     }
 }
 
@@ -50,20 +50,20 @@ pub(crate) fn scan_byte_char_or_string(ptr: &mut Ptr) -> SyntaxKind {
 pub(crate) fn scan_string(ptr: &mut Ptr) {
     while let Some(c) = ptr.bump() {
         if c == '"' {
-            return
+            return;
         }
     }
 }
 
 pub(crate) fn scan_raw_string(ptr: &mut Ptr) {
     if !ptr.next_is('"') {
-        return
+        return;
     }
     ptr.bump();
 
     while let Some(c) = ptr.bump() {
         if c == '"' {
-            return
+            return;
         }
     }
 }
@@ -71,32 +71,32 @@ pub(crate) fn scan_raw_string(ptr: &mut Ptr) {
 fn scan_byte(ptr: &mut Ptr) {
     if ptr.next_is('\'') {
         ptr.bump();
-        return
+        return;
     }
     ptr.bump();
     if ptr.next_is('\'') {
         ptr.bump();
-        return
+        return;
     }
 }
 
 fn scan_byte_string(ptr: &mut Ptr) {
     while let Some(c) = ptr.bump() {
         if c == '"' {
-            return
+            return;
         }
     }
 }
 
 fn scan_raw_byte_string(ptr: &mut Ptr) {
     if !ptr.next_is('"') {
-        return
+        return;
     }
     ptr.bump();
 
     while let Some(c) = ptr.bump() {
         if c == '"' {
-            return
+            return;
         }
     }
 }
@@ -105,4 +105,3 @@ fn scan_char_or_byte(ptr: &mut Ptr) {
     //FIXME: deal with escape sequencies
     ptr.bump();
 }
-
