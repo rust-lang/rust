@@ -467,10 +467,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mut inferred_values = self.liveness_constraints.clone();
 
         let dependency_map = self.build_dependency_map();
-      
+
         // Constraints that may need to be repropagated (initially all):
         let mut dirty_list: Vec<_> = (0..self.constraints.len()).collect();
-      
+
         // Set to 0 for each constraint that is on the dirty list:
         let mut clean_bit_vec = BitVector::new(dirty_list.len());
 
