@@ -3365,7 +3365,7 @@ impl<'a> LoweringContext<'a> {
         match *v {
             Visibility::Public => hir::Public,
             Visibility::Crate(..) => hir::Visibility::Crate,
-            Visibility::Restricted { ref path, id } => {
+            Visibility::Restricted { ref path, id, .. } => {
                 hir::Visibility::Restricted {
                     path: P(self.lower_path(id, path, ParamMode::Explicit, true)),
                     id: if let Some(owner) = explicit_owner {

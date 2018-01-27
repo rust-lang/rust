@@ -5710,8 +5710,12 @@ impl<'a> Parser<'a> {
                 self.bump(); // `(`
                 self.bump(); // `in`
                 let path = self.parse_path(PathStyle::Mod)?.default_to_global(); // `path`
-                let vis = Visibility::Restricted { path: P(path), id: ast::DUMMY_NODE_ID };
                 self.expect(&token::CloseDelim(token::Paren))?; // `)`
+                let vis = Visibility::Restricted {
+                    path: P(path),
+                    id: ast::DUMMY_NODE_ID,
+                    span: self.prev_span,
+                };
                 return Ok(vis)
             } else if self.look_ahead(2, |t| t == &token::CloseDelim(token::Paren)) &&
                       self.look_ahead(1, |t| t.is_keyword(keywords::Super) ||
@@ -5720,8 +5724,12 @@ impl<'a> Parser<'a> {
                 // `pub(self)` or `pub(super)`
                 self.bump(); // `(`
                 let path = self.parse_path(PathStyle::Mod)?.default_to_global(); // `super`/`self`
-                let vis = Visibility::Restricted { path: P(path), id: ast::DUMMY_NODE_ID };
                 self.expect(&token::CloseDelim(token::Paren))?; // `)`
+                let vis = Visibility::Restricted {
+                    path: P(path),
+                    id: ast::DUMMY_NODE_ID,
+                    span: self.prev_span,
+                };
                 return Ok(vis)
             } else if !can_take_tuple {  // Provide this diagnostic if this is not a tuple struct
                 // `pub(something) fn ...` or `struct X { pub(something) y: Z }`
