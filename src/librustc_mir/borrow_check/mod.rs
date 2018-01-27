@@ -735,7 +735,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
 
         if self.access_place_error_reported.contains(&(place_span.0.clone(), place_span.1)) {
-            debug!("suppressing access_place error for {:?}", place_span);
+            debug!("access_place: suppressing error place_span=`{:?}` kind=`{:?}`",
+                   place_span, kind);
             return AccessErrorsReported {
                 mutability_error: false,
                 conflict_error: true,
@@ -748,6 +749,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             self.check_access_for_conflict(context, place_span, sd, rw, flow_state);
 
         if conflict_error || mutability_error {
+            debug!("access_place: logging error place_span=`{:?}` kind=`{:?}`",
+                   place_span, kind);
             self.access_place_error_reported.insert((place_span.0.clone(), place_span.1));
         }
 
