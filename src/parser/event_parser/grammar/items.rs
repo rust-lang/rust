@@ -103,18 +103,27 @@ fn struct_item(p: &mut Parser) {
 }
 
 fn named_fields(p: &mut Parser) {
-    p.curly_block(|p| comma_list(p, EOF, |p| {
+    assert!(p.at(L_CURLY));
+    p.bump();
+    while !p.at(R_CURLY) && !p.at(EOF) {
         named_field(p);
-        true
-    }));
+        if !p.at(R_CURLY) {
+            p.expect(COMMA);
+        }
+    }
+    p.expect(R_CURLY);
 
     fn named_field(p: &mut Parser) {
         let field = p.start();
         visibility(p);
-        if p.expect(IDENT) && p.expect(COLON) {
+        if p.expect(IDENT) {
+            p.expect(COLON);
             types::type_ref(p);
-        };
-        field.complete(p, NAMED_FIELD);
+            field.complete(p, NAMED_FIELD);
+        } else {
+            field.abandon(p);
+            p.err_and_bump("expected field declaration");
+        }
     }
 }
 
