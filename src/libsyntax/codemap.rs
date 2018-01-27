@@ -638,25 +638,33 @@ impl CodeMap {
     fn find_width_of_character_at_span(&self, sp: Span, forwards: bool) -> u32 {
         // Disregard malformed spans and assume a one-byte wide character.
         if sp.lo() >= sp.hi() {
+            debug!("find_width_of_character_at_span: early return malformed span");
             return 1;
         }
 
         let local_begin = self.lookup_byte_offset(sp.lo());
         let local_end = self.lookup_byte_offset(sp.hi());
+        debug!("find_width_of_character_at_span: local_begin=`{:?}`, local_end=`{:?}`",
+               local_begin, local_end);
 
         let start_index = local_begin.pos.to_usize();
         let end_index = local_end.pos.to_usize();
+        debug!("find_width_of_character_at_span: start_index=`{:?}`, end_index=`{:?}`",
+               start_index, end_index);
 
         // Disregard indexes that are at the start or end of their spans, they can't fit bigger
         // characters.
         if (!forwards && end_index == usize::min_value()) ||
             (forwards && start_index == usize::max_value()) {
+            debug!("find_width_of_character_at_span: start or end of span, cannot be multibyte");
             return 1;
         }
 
         let source_len = (local_begin.fm.end_pos - local_begin.fm.start_pos).to_usize();
+        debug!("find_width_of_character_at_span: source_len=`{:?}`", source_len);
         // Ensure indexes are also not malformed.
         if start_index > end_index || end_index > source_len {
+            debug!("find_width_of_character_at_span: source indexes are malformed");
             return 1;
         }
 
@@ -671,16 +679,22 @@ impl CodeMap {
         } else {
             return 1;
         };
-        debug!("DTW start {:?} end {:?}", start_index, end_index);
-        debug!("DTW snippet {:?}", snippet);
+        debug!("find_width_of_character_at_span: snippet=`{:?}`", snippet);
+
+        let file_start_pos = local_begin.fm.start_pos.to_usize();
+        let file_end_pos = local_begin.fm.end_pos.to_usize();
+        debug!("find_width_of_character_at_span: file_start_pos=`{:?}` file_end_pos=`{:?}`",
+               file_start_pos, file_end_pos);
 
         let mut target = if forwards { end_index + 1 } else { end_index - 1 };
-        debug!("DTW initial target {:?}", target);
-        while !snippet.is_char_boundary(target - start_index) {
+        debug!("find_width_of_character_at_span: initial target=`{:?}`", target);
+
+        while !snippet.is_char_boundary(target - start_index)
+                && target >= file_start_pos && target <= file_end_pos {
             target = if forwards { target + 1 } else { target - 1 };
-            debug!("DTW update target {:?}", target);
+            debug!("find_width_of_character_at_span: target=`{:?}`", target);
         }
-        debug!("DTW final target {:?}", target);
+        debug!("find_width_of_character_at_span: final target=`{:?}`", target);
 
         if forwards {
             (target - end_index) as u32
