@@ -856,6 +856,7 @@ span.since {
 		display: block;
 		border-bottom: 1px solid;
 		border-right: 1px solid;
+		height: 45px;
 	}
 
 	.sidebar-elems {
@@ -875,7 +876,8 @@ span.since {
 	}
 
 	nav.sub {
-		margin: 0 auto;
+		width: calc(100% - 32px);
+		float: right;
 	}
 
 	.content {
@@ -1184,8 +1186,8 @@ kbd {
 
 @media (max-width: 700px) {
 	.theme-picker {
-		left: 109px;
-		top: 7px;
+		left: 10px;
+		top: 54px;
 		z-index: 1;
 	}
 }
