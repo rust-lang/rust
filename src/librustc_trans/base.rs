@@ -972,6 +972,8 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
             collector::collect_crate_mono_items(tcx, collection_mode)
     });
 
+    tcx.sess.abort_if_errors();
+
     ::rustc_mir::monomorphize::assert_symbols_are_distinct(tcx, items.iter());
 
     let strategy = if tcx.sess.opts.incremental.is_some() {

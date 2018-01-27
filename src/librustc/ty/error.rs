@@ -9,10 +9,7 @@
 // except according to those terms.
 
 use hir::def_id::DefId;
-use middle::const_val::ConstVal;
 use ty::{self, BoundRegion, Region, Ty, TyCtxt};
-use mir::interpret::{Value, PrimVal};
-
 use std::fmt;
 use syntax::abi;
 use syntax::ast;
@@ -185,9 +182,8 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             ty::TyAdt(def, _) => format!("{} `{}`", def.descr(), tcx.item_path_str(def.did)),
             ty::TyForeign(def_id) => format!("extern type `{}`", tcx.item_path_str(def_id)),
             ty::TyArray(_, n) => {
-                match n.val {
-                    ConstVal::Value(Value::ByVal(PrimVal::Bytes(n))) =>
-                        format!("array of {} elements", n),
+                match n.val.to_raw_bits() {
+                    Some(n) => format!("array of {} elements", n),
                     _ => "array".to_string(),
                 }
             }
