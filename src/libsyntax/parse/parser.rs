@@ -1528,6 +1528,7 @@ impl<'a> Parser<'a> {
         maybe_whole!(self, NtTy, |x| x);
 
         let lo = self.span;
+        let mut impl_dyn_multi = false;
         let node = if self.eat(&token::OpenDelim(token::Paren)) {
             // `(TYPE)` is a parenthesized type.
             // `(TYPE,)` is a tuple with a single field of type TYPE.
@@ -1614,12 +1615,17 @@ impl<'a> Parser<'a> {
                 self.parse_remaining_bounds(lifetime_defs, path, lo, parse_plus)?
             }
         } else if self.eat_keyword(keywords::Impl) {
-            TyKind::ImplTrait(self.parse_ty_param_bounds_common(allow_plus)?)
+            // Always parse bounds greedily for better error recovery.
+            let bounds = self.parse_ty_param_bounds()?;
+            impl_dyn_multi = bounds.len() > 1 || self.prev_token_kind == PrevTokenKind::Plus;
+            TyKind::ImplTrait(bounds)
         } else if self.check_keyword(keywords::Dyn) &&
                   self.look_ahead(1, |t| t.can_begin_bound() && !can_continue_type_after_ident(t)) {
             self.bump(); // `dyn`
-            TyKind::TraitObject(self.parse_ty_param_bounds_common(allow_plus)?,
-                                TraitObjectSyntax::Dyn)
+            // Always parse bounds greedily for better error recovery.
+            let bounds = self.parse_ty_param_bounds()?;
+            impl_dyn_multi = bounds.len() > 1 || self.prev_token_kind == PrevTokenKind::Plus;
+            TyKind::TraitObject(bounds, TraitObjectSyntax::Dyn)
         } else if self.check(&token::Question) ||
                   self.check_lifetime() && self.look_ahead(1, |t| t == &token::BinOp(token::Plus)) {
             // Bound list (trait object type)
@@ -1655,6 +1661,7 @@ impl<'a> Parser<'a> {
         let ty = Ty { node, span, id: ast::DUMMY_NODE_ID };
 
         // Try to recover from use of `+` with incorrect priority.
+        self.maybe_report_ambiguous_plus(allow_plus, impl_dyn_multi, &ty);
         self.maybe_recover_from_bad_type_plus(allow_plus, &ty)?;
         let ty = self.maybe_recover_from_bad_qpath(ty, allow_qpath_recovery)?;
 
@@ -1670,6 +1677,15 @@ impl<'a> Parser<'a> {
             bounds.append(&mut self.parse_ty_param_bounds()?);
         }
         Ok(TyKind::TraitObject(bounds, TraitObjectSyntax::None))
+    }
+
+    fn maybe_report_ambiguous_plus(&mut self, allow_plus: bool, impl_dyn_multi: bool, ty: &Ty) {
+        if !allow_plus && impl_dyn_multi {
+            let sum_with_parens = format!("({})", pprust::ty_to_string(&ty));
+            self.struct_span_err(ty.span, "ambiguous `+` in a type")
+                .span_suggestion(ty.span, "use parentheses to disambiguate", sum_with_parens)
+                .emit();
+        }
     }
 
     fn maybe_recover_from_bad_type_plus(&mut self, allow_plus: bool, ty: &Ty) -> PResult<'a, ()> {
