@@ -5,7 +5,7 @@ install:
 - source ~/.cargo/env || true
 - bash ci/install.sh
 script:
-- RUST_LOG=debug mdbook build
+- mdbook build
 notifications:
   email:
     on_success: never
