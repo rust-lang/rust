@@ -14,7 +14,7 @@
 #![feature(alloc_system)]
 #![feature(attr_literals)]
 #![feature(box_syntax)]
-#![feature(inclusive_range_syntax)]
+#![cfg_attr(stage0, feature(inclusive_range_syntax))]
 #![feature(collection_placement)]
 #![feature(const_fn)]
 #![feature(drain_filter)]

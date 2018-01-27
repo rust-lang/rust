@@ -10,8 +10,6 @@
 
 // Make sure that invalid ranges generate an error during HIR lowering, not an ICE
 
-#![feature(inclusive_range_syntax)]
-
 pub fn main() {
     ..;
     0..;

@@ -128,7 +128,7 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// The range is empty if either side is incomparable:
     ///
     /// ```
-    /// #![feature(range_is_empty,inclusive_range_syntax)]
+    /// #![feature(range_is_empty)]
     ///
     /// use std::f32::NAN;
     /// assert!(!(3.0..5.0).is_empty());
@@ -283,8 +283,6 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// # Examples
 ///
 /// ```
-/// #![feature(inclusive_range_syntax)]
-///
 /// assert_eq!((3..=5), std::ops::RangeInclusive { start: 3, end: 5 });
 /// assert_eq!(3 + 4 + 5, (3..=5).sum());
 ///
@@ -316,7 +314,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(range_contains,inclusive_range_syntax)]
+    /// #![feature(range_contains)]
     ///
     /// assert!(!(3..=5).contains(2));
     /// assert!( (3..=5).contains(3));
@@ -337,7 +335,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(range_is_empty,inclusive_range_syntax)]
+    /// #![feature(range_is_empty)]
     ///
     /// assert!(!(3..=5).is_empty());
     /// assert!(!(3..=3).is_empty());
@@ -347,7 +345,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// The range is empty if either side is incomparable:
     ///
     /// ```
-    /// #![feature(range_is_empty,inclusive_range_syntax)]
+    /// #![feature(range_is_empty)]
     ///
     /// use std::f32::NAN;
     /// assert!(!(3.0..=5.0).is_empty());
@@ -358,7 +356,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// This method returns `true` after iteration has finished:
     ///
     /// ```
-    /// #![feature(range_is_empty,inclusive_range_syntax)]
+    /// #![feature(range_is_empty)]
     ///
     /// let mut r = 3..=5;
     /// for _ in r.by_ref() {}
@@ -381,7 +379,6 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 /// The `..=end` syntax is a `RangeToInclusive`:
 ///
 /// ```
-/// #![feature(inclusive_range_syntax)]
 /// assert_eq!((..=5), std::ops::RangeToInclusive{ end: 5 });
 /// ```
 ///
@@ -389,8 +386,6 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 /// `for` loop directly. This won't compile:
 ///
 /// ```compile_fail,E0277
-/// #![feature(inclusive_range_syntax)]
-///
 /// // error[E0277]: the trait bound `std::ops::RangeToInclusive<{integer}>:
 /// // std::iter::Iterator` is not satisfied
 /// for i in ..=5 {
@@ -402,8 +397,6 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 /// array elements up to and including the index indicated by `end`.
 ///
 /// ```
-/// #![feature(inclusive_range_syntax)]
-///
 /// let arr = [0, 1, 2, 3];
 /// assert_eq!(arr[ ..=2], [0,1,2  ]);  // RangeToInclusive
 /// assert_eq!(arr[1..=2], [  1,2  ]);
@@ -434,7 +427,7 @@ impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(range_contains,inclusive_range_syntax)]
+    /// #![feature(range_contains)]
     ///
     /// assert!( (..=5).contains(-1_000_000_000));
     /// assert!( (..=5).contains(5));

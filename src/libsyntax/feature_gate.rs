@@ -268,9 +268,6 @@ declare_features! (
     // rustc internal
     (active, abi_vectorcall, "1.7.0", None, None),
 
-    // a..=b and ..=b
-    (active, inclusive_range_syntax, "1.7.0", Some(28237), None),
-
     // X..Y patterns
     (active, exclusive_range_pattern, "1.11.0", Some(37854), None),
 
@@ -554,6 +551,8 @@ declare_features! (
     (accepted, match_beginning_vert, "1.25.0", Some(44101), None),
     // Nested groups in `use` (RFC 2128)
     (accepted, use_nested_groups, "1.25.0", Some(44494), None),
+    // a..=b and ..=b
+    (accepted, inclusive_range_syntax, "1.26.0", Some(28237), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -1591,11 +1590,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ExprKind::Type(..) => {
                 gate_feature_post!(&self, type_ascription, e.span,
                                   "type ascription is experimental");
-            }
-            ast::ExprKind::Range(_, _, ast::RangeLimits::Closed) => {
-                gate_feature_post!(&self, inclusive_range_syntax,
-                                  e.span,
-                                  "inclusive range syntax is experimental");
             }
             ast::ExprKind::InPlace(..) => {
                 gate_feature_post!(&self, placement_in_syntax, e.span, EXPLAIN_PLACEMENT_IN);
