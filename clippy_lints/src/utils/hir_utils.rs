@@ -73,7 +73,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         match (&left.node, &right.node) {
             (&ExprAddrOf(l_mut, ref le), &ExprAddrOf(r_mut, ref re)) => l_mut == r_mut && self.eq_expr(le, re),
             (&ExprAgain(li), &ExprAgain(ri)) => {
-                both(&li.ident, &ri.ident, |l, r| l.node.name.as_str() == r.node.name.as_str())
+                both(&li.label, &ri.label, |l, r| l.name.as_str() == r.name.as_str())
             },
             (&ExprAssign(ref ll, ref lr), &ExprAssign(ref rl, ref rr)) => self.eq_expr(ll, rl) && self.eq_expr(lr, rr),
             (&ExprAssignOp(ref lo, ref ll, ref lr), &ExprAssignOp(ref ro, ref rl, ref rr)) => {
@@ -87,7 +87,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
                     })
             },
             (&ExprBreak(li, ref le), &ExprBreak(ri, ref re)) => {
-                both(&li.ident, &ri.ident, |l, r| l.node.name.as_str() == r.node.name.as_str())
+                both(&li.label, &ri.label, |l, r| l.name.as_str() == r.name.as_str())
                     && both(le, re, |l, r| self.eq_expr(l, r))
             },
             (&ExprBox(ref l), &ExprBox(ref r)) => self.eq_expr(l, r),
@@ -105,7 +105,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             },
             (&ExprLit(ref l), &ExprLit(ref r)) => l.node == r.node,
             (&ExprLoop(ref lb, ref ll, ref lls), &ExprLoop(ref rb, ref rl, ref rls)) => {
-                lls == rls && self.eq_block(lb, rb) && both(ll, rl, |l, r| l.node.as_str() == r.node.as_str())
+                lls == rls && self.eq_block(lb, rb) && both(ll, rl, |l, r| l.name.as_str() == r.name.as_str())
             },
             (&ExprMatch(ref le, ref la, ref ls), &ExprMatch(ref re, ref ra, ref rs)) => {
                 ls == rs && self.eq_expr(le, re) && over(la, ra, |l, r| {
@@ -131,7 +131,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             (&ExprUnary(l_op, ref le), &ExprUnary(r_op, ref re)) => l_op == r_op && self.eq_expr(le, re),
             (&ExprArray(ref l), &ExprArray(ref r)) => self.eq_exprs(l, r),
             (&ExprWhile(ref lc, ref lb, ref ll), &ExprWhile(ref rc, ref rb, ref rl)) => {
-                self.eq_expr(lc, rc) && self.eq_block(lb, rb) && both(ll, rl, |l, r| l.node.as_str() == r.node.as_str())
+                self.eq_expr(lc, rc) && self.eq_block(lb, rb) && both(ll, rl, |l, r| l.name.as_str() == r.name.as_str())
             },
             _ => false,
         }
@@ -327,8 +327,8 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
             ExprAgain(i) => {
                 let c: fn(_) -> _ = ExprAgain;
                 c.hash(&mut self.s);
-                if let Some(i) = i.ident {
-                    self.hash_name(&i.node.name);
+                if let Some(i) = i.label {
+                    self.hash_name(&i.name);
                 }
             },
             ExprYield(ref e) => {
@@ -364,8 +364,8 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
             ExprBreak(i, ref j) => {
                 let c: fn(_, _) -> _ = ExprBreak;
                 c.hash(&mut self.s);
-                if let Some(i) = i.ident {
-                    self.hash_name(&i.node.name);
+                if let Some(i) = i.label {
+                    self.hash_name(&i.name);
                 }
                 if let Some(ref j) = *j {
                     self.hash_expr(&*j);
@@ -429,7 +429,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 c.hash(&mut self.s);
                 self.hash_block(b);
                 if let Some(i) = *i {
-                    self.hash_name(&i.node);
+                    self.hash_name(&i.name);
                 }
             },
             ExprMatch(ref e, ref arms, ref s) => {
@@ -524,7 +524,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(cond);
                 self.hash_block(b);
                 if let Some(l) = l {
-                    self.hash_name(&l.node);
+                    self.hash_name(&l.name);
                 }
             },
         }
