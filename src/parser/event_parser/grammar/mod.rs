@@ -46,39 +46,6 @@ fn alias(p: &mut Parser) -> bool {
     true //FIXME: return false if three are errors
 }
 
-fn repeat<F: FnMut(&mut Parser) -> bool>(p: &mut Parser, mut f: F) {
-    loop {
-        let pos = p.pos();
-        if !f(p) {
-            return
-        }
-        if pos == p.pos() {
-            panic!("Infinite loop in parser")
-        }
-    }
-}
-
-fn comma_list<F: Fn(&mut Parser) -> bool>(p: &mut Parser, end: SyntaxKind, f: F) {
-    repeat(p, |p| {
-        if p.current() == end {
-            return false
-        }
-        let pos = p.pos();
-        f(p);
-        if p.pos() == pos {
-            return false
-        }
-
-        if p.current() == end {
-            p.eat(COMMA);
-        } else {
-            p.expect(COMMA);
-        }
-         true
-    })
-}
-
-
 impl<'p> Parser<'p> {
     fn at<L: Lookahead>(&self, l: L) -> bool {
         l.is_ahead(self)
