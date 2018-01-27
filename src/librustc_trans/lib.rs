@@ -26,7 +26,6 @@
 #![allow(unused_attributes)]
 #![feature(i128_type)]
 #![feature(i128)]
-#![feature(inclusive_range)]
 #![feature(inclusive_range_syntax)]
 #![feature(libc)]
 #![feature(quote)]

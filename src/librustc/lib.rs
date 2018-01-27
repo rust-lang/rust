@@ -54,7 +54,6 @@
 #![feature(fs_read_write)]
 #![feature(i128)]
 #![feature(i128_type)]
-#![feature(inclusive_range)]
 #![feature(inclusive_range_syntax)]
 #![cfg_attr(windows, feature(libc))]
 #![feature(match_default_bindings)]

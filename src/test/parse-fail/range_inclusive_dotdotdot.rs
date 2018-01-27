@@ -12,7 +12,7 @@
 
 // Make sure that inclusive ranges with `...` syntax don't parse.
 
-#![feature(inclusive_range_syntax, inclusive_range)]
+#![feature(inclusive_range_syntax)]
 
 use std::ops::RangeToInclusive;
 

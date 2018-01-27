@@ -23,7 +23,6 @@
 #![feature(fmt_internals)]
 #![feature(iterator_step_by)]
 #![feature(i128_type)]
-#![feature(inclusive_range)]
 #![feature(inclusive_range_syntax)]
 #![feature(iterator_try_fold)]
 #![feature(iterator_flatten)]

@@ -283,7 +283,7 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// # Examples
 ///
 /// ```
-/// #![feature(inclusive_range,inclusive_range_syntax)]
+/// #![feature(inclusive_range_syntax)]
 ///
 /// assert_eq!((3..=5), std::ops::RangeInclusive { start: 3, end: 5 });
 /// assert_eq!(3 + 4 + 5, (3..=5).sum());
@@ -293,21 +293,17 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// assert_eq!(arr[1..=2], [  1,2  ]);  // RangeInclusive
 /// ```
 #[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+#[stable(feature = "inclusive_range", since = "1.26.0")]
 pub struct RangeInclusive<Idx> {
     /// The lower bound of the range (inclusive).
-    #[unstable(feature = "inclusive_range",
-               reason = "recently added, follows RFC",
-               issue = "28237")]
+    #[stable(feature = "inclusive_range", since = "1.26.0")]
     pub start: Idx,
     /// The upper bound of the range (inclusive).
-    #[unstable(feature = "inclusive_range",
-               reason = "recently added, follows RFC",
-               issue = "28237")]
+    #[stable(feature = "inclusive_range", since = "1.26.0")]
     pub end: Idx,
 }
 
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+#[stable(feature = "inclusive_range", since = "1.26.0")]
 impl<Idx: fmt::Debug> fmt::Debug for RangeInclusive<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "{:?}..={:?}", self.start, self.end)
@@ -385,7 +381,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 /// The `..=end` syntax is a `RangeToInclusive`:
 ///
 /// ```
-/// #![feature(inclusive_range,inclusive_range_syntax)]
+/// #![feature(inclusive_range_syntax)]
 /// assert_eq!((..=5), std::ops::RangeToInclusive{ end: 5 });
 /// ```
 ///
@@ -417,16 +413,14 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 /// [`Iterator`]: ../iter/trait.IntoIterator.html
 /// [slicing index]: ../slice/trait.SliceIndex.html
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+#[stable(feature = "inclusive_range", since = "1.26.0")]
 pub struct RangeToInclusive<Idx> {
     /// The upper bound of the range (inclusive)
-    #[unstable(feature = "inclusive_range",
-               reason = "recently added, follows RFC",
-               issue = "28237")]
+    #[stable(feature = "inclusive_range", since = "1.26.0")]
     pub end: Idx,
 }
 
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+#[stable(feature = "inclusive_range", since = "1.26.0")]
 impl<Idx: fmt::Debug> fmt::Debug for RangeToInclusive<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "..={:?}", self.end)
