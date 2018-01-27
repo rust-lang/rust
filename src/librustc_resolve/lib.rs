@@ -3802,7 +3802,7 @@ impl<'a> Resolver<'a> {
             ast::Visibility::Inherited => {
                 ty::Visibility::Restricted(self.current_module.normal_ancestor_id)
             }
-            ast::Visibility::Restricted { ref path, id } => {
+            ast::Visibility::Restricted { ref path, id, .. } => {
                 let def = self.smart_resolve_path(id, None, path,
                                                   PathSource::Visibility).base_def();
                 if def == Def::Err {

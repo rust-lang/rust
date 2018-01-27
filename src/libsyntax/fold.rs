@@ -1368,9 +1368,10 @@ pub fn noop_fold_stmt_kind<T: Folder>(node: StmtKind, folder: &mut T) -> SmallVe
 
 pub fn noop_fold_vis<T: Folder>(vis: Visibility, folder: &mut T) -> Visibility {
     match vis {
-        Visibility::Restricted { path, id } => Visibility::Restricted {
+        Visibility::Restricted { path, id, span } => Visibility::Restricted {
             path: path.map(|path| folder.fold_path(path)),
-            id: folder.new_id(id)
+            id: folder.new_id(id),
+            span: folder.new_span(span),
         },
         _ => vis,
     }

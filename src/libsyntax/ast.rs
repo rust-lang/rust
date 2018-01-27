@@ -1941,7 +1941,7 @@ pub enum CrateSugar {
 pub enum Visibility {
     Public,
     Crate(Span, CrateSugar),
-    Restricted { path: P<Path>, id: NodeId },
+    Restricted { path: P<Path>, id: NodeId, span: Span },
     Inherited,
 }
 
