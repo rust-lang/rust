@@ -8,7 +8,7 @@ all:
 	$(RUSTC) --test f.rs
 	$(call RUN,f) -Z unstable-options --test-threads=1 --format=json > $(OUTPUT_FILE) || true
 
-	cat $(OUTPUT_FILE) | $(PYTHON) validate_json.py
+	cat $(OUTPUT_FILE) | "$(PYTHON)" validate_json.py
 
 	# Compare to output file
 	diff output.json $(OUTPUT_FILE)
