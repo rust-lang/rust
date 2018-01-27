@@ -13,13 +13,9 @@ note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on th
 20 | |         x
 21 | |     }
    | |_____^
-note: ...so that method type is compatible with trait (expected fn(&i32, &'a u32, &u32) -> &'a u32, found fn(&i32, &u32, &u32) -> &u32)
-  --> $DIR/mismatched_trait_impl.rs:19:5
-   |
-19 | /     fn foo(&self, x: &u32, y: &'a u32) -> &'a u32 { //~ ERROR cannot infer
-20 | |         x
-21 | |     }
-   | |_____^
+   = note: ...so that the method type is compatible with trait:
+           expected fn(&i32, &'a u32, &u32) -> &'a u32
+              found fn(&i32, &u32, &u32) -> &u32
 note: but, the lifetime must be valid for the lifetime 'a as defined on the method body at 19:5...
   --> $DIR/mismatched_trait_impl.rs:19:5
    |
@@ -27,13 +23,9 @@ note: but, the lifetime must be valid for the lifetime 'a as defined on the meth
 20 | |         x
 21 | |     }
    | |_____^
-note: ...so that method type is compatible with trait (expected fn(&i32, &'a u32, &u32) -> &'a u32, found fn(&i32, &u32, &u32) -> &u32)
-  --> $DIR/mismatched_trait_impl.rs:19:5
-   |
-19 | /     fn foo(&self, x: &u32, y: &'a u32) -> &'a u32 { //~ ERROR cannot infer
-20 | |         x
-21 | |     }
-   | |_____^
+   = note: ...so that the method type is compatible with trait:
+           expected fn(&i32, &'a u32, &u32) -> &'a u32
+              found fn(&i32, &u32, &u32) -> &u32
 
 error: aborting due to previous error
 
