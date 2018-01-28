@@ -235,5 +235,21 @@ fn fn_item(p: &mut Parser) {
     assert!(p.at(FN_KW));
     p.bump();
 
-    p.expect(IDENT) && p.expect(L_PAREN) && p.expect(R_PAREN) && p.curly_block(|_| ());
+    p.expect(IDENT);
+    if p.at(L_PAREN) {
+        fn_value_parameters(p);
+    } else {
+        p.error().message("expected function arguments").emit();
+    }
+
+    if p.at(L_CURLY) {
+        p.expect(L_CURLY);
+        p.expect(R_CURLY);
+    }
+
+    fn fn_value_parameters(p: &mut Parser) {
+        assert!(p.at(L_PAREN));
+        p.bump();
+        p.expect(R_PAREN);
+    }
 }
