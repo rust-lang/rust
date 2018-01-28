@@ -36,6 +36,11 @@ fn item(p: &mut Parser) {
             fn_item(p);
             FN_ITEM
         }
+        L_CURLY => {
+            item.abandon(p);
+            error_block(p, "expected item");
+            return;
+        }
         err_token => {
             item.abandon(p);
             let message = if err_token == SEMI {
