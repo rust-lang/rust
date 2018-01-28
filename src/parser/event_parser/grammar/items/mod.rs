@@ -1,5 +1,7 @@
 use super::*;
 
+mod structs;
+
 pub(super) fn mod_contents(p: &mut Parser, stop_on_r_curly: bool) {
     attributes::inner_attributes(p);
     while !p.at(EOF) && !(stop_on_r_curly && p.at(R_CURLY)) {
@@ -29,7 +31,7 @@ fn item(p: &mut Parser) {
             USE_ITEM
         }
         STRUCT_KW => {
-            struct_item(p);
+            structs::struct_item(p);
             STRUCT_ITEM
         }
         FN_KW => {
@@ -57,89 +59,49 @@ fn item(p: &mut Parser) {
     item.complete(p, item_kind);
 }
 
-fn struct_item(p: &mut Parser) {
-    assert!(p.at(STRUCT_KW));
-    p.bump();
-
-    if !p.expect(IDENT) {
+fn type_param_list(p: &mut Parser) {
+    if !p.at(L_ANGLE) {
         return;
     }
-    generic_parameters(p);
-    match p.current() {
-        WHERE_KW => {
-            where_clause(p);
-            match p.current() {
-                SEMI => {
-                    p.bump();
-                    return;
-                }
-                L_CURLY => named_fields(p),
-                _ => {
-                    //TODO: special case `(` error message
-                    p.error().message("expected `;` or `{`").emit();
-                    return;
+    let m = p.start();
+    p.bump();
+
+    while !p.at(EOF) && !p.at(R_ANGLE) {
+        match p.current() {
+            LIFETIME => lifetime_param(p),
+            IDENT => type_param(p),
+            _ => p.err_and_bump("expected type parameter"),
+        }
+        if !p.at(R_ANGLE) && !p.expect(COMMA) {
+            break;
+        }
+    }
+    p.expect(R_ANGLE);
+    m.complete(p, TYPE_PARAM_LIST);
+
+    fn lifetime_param(p: &mut Parser) {
+        assert!(p.at(LIFETIME));
+        let m = p.start();
+        p.bump();
+        if p.eat(COLON) {
+            while p.at(LIFETIME) {
+                p.bump();
+                if !p.eat(PLUS) {
+                    break;
                 }
             }
         }
-        SEMI => {
-            p.bump();
-            return;
-        }
-        L_CURLY => named_fields(p),
-        L_PAREN => {
-            pos_fields(p);
-            p.expect(SEMI);
-        }
-        _ => {
-            p.error().message("expected `;`, `{`, or `(`").emit();
-            return;
-        }
+        m.complete(p, LIFETIME_PARAM);
+    }
+
+    fn type_param(p: &mut Parser) {
+        assert!(p.at(IDENT));
+        let m = p.start();
+        p.bump();
+        m.complete(p, TYPE_PARAM);
+        //TODO: bounds
     }
 }
-
-fn named_fields(p: &mut Parser) {
-    assert!(p.at(L_CURLY));
-    p.bump();
-    while !p.at(R_CURLY) && !p.at(EOF) {
-        named_field(p);
-        if !p.at(R_CURLY) {
-            p.expect(COMMA);
-        }
-    }
-    p.expect(R_CURLY);
-
-    fn named_field(p: &mut Parser) {
-        let field = p.start();
-        visibility(p);
-        if p.expect(IDENT) {
-            p.expect(COLON);
-            types::type_ref(p);
-            field.complete(p, NAMED_FIELD);
-        } else {
-            field.abandon(p);
-            p.err_and_bump("expected field declaration");
-        }
-    }
-}
-
-fn pos_fields(p: &mut Parser) {
-    if !p.expect(L_PAREN) {
-        return;
-    }
-    while !p.at(R_PAREN) && !p.at(EOF) {
-        let pos_field = p.start();
-        visibility(p);
-        types::type_ref(p);
-        pos_field.complete(p, POS_FIELD);
-
-        if !p.at(R_PAREN) {
-            p.expect(COMMA);
-        }
-    }
-    p.expect(R_PAREN);
-}
-
-fn generic_parameters(_: &mut Parser) {}
 
 fn where_clause(_: &mut Parser) {}
 

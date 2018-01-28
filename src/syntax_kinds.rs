@@ -90,6 +90,9 @@ pub enum SyntaxKind {
     LITERAL,
     ALIAS,
     VISIBILITY,
+    TYPE_PARAM_LIST,
+    LIFETIME_PARAM,
+    TYPE_PARAM,
 
     // Technical SyntaxKinds: they appear temporally during parsing,
     // but never end up in the final tree
@@ -187,6 +190,9 @@ impl SyntaxKind {
             LITERAL => &SyntaxInfo { name: "LITERAL" },
             ALIAS => &SyntaxInfo { name: "ALIAS" },
             VISIBILITY => &SyntaxInfo { name: "VISIBILITY" },
+            TYPE_PARAM_LIST => &SyntaxInfo { name: "TYPE_PARAM_LIST" },
+            LIFETIME_PARAM => &SyntaxInfo { name: "LIFETIME_PARAM" },
+            TYPE_PARAM => &SyntaxInfo { name: "TYPE_PARAM" },
 
             TOMBSTONE => &SyntaxInfo { name: "TOMBSTONE" },
             EOF => &SyntaxInfo { name: "EOF" },
