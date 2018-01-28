@@ -51,8 +51,12 @@ impl Grammar {
             write!(acc, "    {},\n", scream(kind)).unwrap();
         }
         acc.push_str("\n");
-        acc.push_str("    TOMBSTONE = !0 - 1,\n");
-        acc.push_str("    EOF = !0,\n");
+        acc.push_str("    // Technical SyntaxKinds: they appear temporally during parsing,\n");
+        acc.push_str("    // but never end up in the final tree\n");
+        acc.push_str("    #[doc(hidden)]\n");
+        acc.push_str("    TOMBSTONE,\n");
+        acc.push_str("    #[doc(hidden)]\n");
+        acc.push_str("    EOF,\n");
         acc.push_str("}\n");
         acc.push_str("pub(crate) use self::SyntaxKind::*;\n");
         acc.push_str("\n");
