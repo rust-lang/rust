@@ -424,7 +424,7 @@ impl UnsafetyState {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum LvalueOp {
+pub enum PlaceOp {
     Deref,
     Index
 }
@@ -2293,8 +2293,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // type from the method signature.
             // If some lookup succeeded, install method in table
             let input_ty = self.next_ty_var(TypeVariableOrigin::AutoDeref(base_expr.span));
-            let method = self.try_overloaded_lvalue_op(
-                expr.span, self_ty, &[input_ty], needs, LvalueOp::Index);
+            let method = self.try_overloaded_place_op(
+                expr.span, self_ty, &[input_ty], needs, PlaceOp::Index);
 
             let result = method.map(|ok| {
                 debug!("try_index_step: success, using overloaded indexing");
@@ -2329,36 +2329,36 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         None
     }
 
-    fn resolve_lvalue_op(&self, op: LvalueOp, is_mut: bool) -> (Option<DefId>, Symbol) {
+    fn resolve_place_op(&self, op: PlaceOp, is_mut: bool) -> (Option<DefId>, Symbol) {
         let (tr, name) = match (op, is_mut) {
-            (LvalueOp::Deref, false) =>
+            (PlaceOp::Deref, false) =>
                 (self.tcx.lang_items().deref_trait(), "deref"),
-            (LvalueOp::Deref, true) =>
+            (PlaceOp::Deref, true) =>
                 (self.tcx.lang_items().deref_mut_trait(), "deref_mut"),
-            (LvalueOp::Index, false) =>
+            (PlaceOp::Index, false) =>
                 (self.tcx.lang_items().index_trait(), "index"),
-            (LvalueOp::Index, true) =>
+            (PlaceOp::Index, true) =>
                 (self.tcx.lang_items().index_mut_trait(), "index_mut"),
         };
         (tr, Symbol::intern(name))
     }
 
-    fn try_overloaded_lvalue_op(&self,
+    fn try_overloaded_place_op(&self,
                                 span: Span,
                                 base_ty: Ty<'tcx>,
                                 arg_tys: &[Ty<'tcx>],
                                 needs: Needs,
-                                op: LvalueOp)
+                                op: PlaceOp)
                                 -> Option<InferOk<'tcx, MethodCallee<'tcx>>>
     {
-        debug!("try_overloaded_lvalue_op({:?},{:?},{:?},{:?})",
+        debug!("try_overloaded_place_op({:?},{:?},{:?},{:?})",
                span,
                base_ty,
                needs,
                op);
 
         // Try Mut first, if needed.
-        let (mut_tr, mut_op) = self.resolve_lvalue_op(op, true);
+        let (mut_tr, mut_op) = self.resolve_place_op(op, true);
         let method = match (needs, mut_tr) {
             (Needs::MutPlace, Some(trait_did)) => {
                 self.lookup_method_in_trait(span, mut_op, trait_did, base_ty, Some(arg_tys))
@@ -2367,7 +2367,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         // Otherwise, fall back to the immutable version.
-        let (imm_tr, imm_op) = self.resolve_lvalue_op(op, false);
+        let (imm_tr, imm_op) = self.resolve_place_op(op, false);
         let method = match (method, imm_tr) {
             (None, Some(trait_did)) => {
                 self.lookup_method_in_trait(span, imm_op, trait_did, base_ty, Some(arg_tys))

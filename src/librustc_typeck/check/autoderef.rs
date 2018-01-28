@@ -10,7 +10,7 @@
 
 use astconv::AstConv;
 
-use super::{FnCtxt, LvalueOp, Needs};
+use super::{FnCtxt, PlaceOp, Needs};
 use super::method::MethodCallee;
 
 use rustc::infer::InferOk;
@@ -239,6 +239,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 base_ty: Ty<'tcx>,
                                 needs: Needs)
                                 -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
-        self.try_overloaded_lvalue_op(span, base_ty, &[], needs, LvalueOp::Deref)
+        self.try_overloaded_place_op(span, base_ty, &[], needs, PlaceOp::Deref)
     }
 }
