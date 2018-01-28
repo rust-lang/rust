@@ -1,8 +1,8 @@
 use super::*;
 
-pub(super) fn mod_contents(p: &mut Parser) {
+pub(super) fn mod_contents(p: &mut Parser, stop_on_r_curly: bool) {
     attributes::inner_attributes(p);
-    while !p.at(EOF) {
+    while !p.at(EOF) && !(stop_on_r_curly && p.at(R_CURLY)) {
         item(p);
     }
 }
@@ -152,7 +152,10 @@ fn mod_item(p: &mut Parser) {
     p.bump();
 
     if p.expect(IDENT) && !p.eat(SEMI) {
-        p.curly_block(mod_contents);
+        if p.expect(L_CURLY) {
+            mod_contents(p, true);
+            p.expect(R_CURLY);
+        }
     }
 }
 
