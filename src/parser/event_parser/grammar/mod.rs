@@ -11,7 +11,7 @@ mod paths;
 pub(crate) fn file(p: &mut Parser) {
     let file = p.start();
     p.eat(SHEBANG);
-    items::mod_contents(p);
+    items::mod_contents(p, false);
     file.complete(p, FILE);
 }
 
