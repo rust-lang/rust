@@ -89,6 +89,7 @@ pub mod doc;
 pub mod double_comparison;
 pub mod double_parens;
 pub mod drop_forget_ref;
+pub mod question_mark;
 pub mod else_if_without_else;
 pub mod empty_enum;
 pub mod entry;
@@ -371,6 +372,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box replace_consts::ReplaceConsts);
     reg.register_late_lint_pass(box types::UnitArg);
     reg.register_late_lint_pass(box double_comparison::DoubleComparisonPass);
+    reg.register_late_lint_pass(box question_mark::QuestionMarkPass);
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
