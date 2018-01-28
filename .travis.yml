@@ -12,3 +12,9 @@ matrix:
     - rust: stable
       script:
         - cargo test
+
+branches:
+  only:
+    - staging
+    - master
+    - trying

@@ -11,3 +11,9 @@ build: false
 
 test_script:
   - cargo test
+
+branches:
+  only:
+    - staging
+    - master
+    - trying
