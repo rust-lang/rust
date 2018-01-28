@@ -11,7 +11,7 @@
 use super::{probe, MethodCallee};
 
 use astconv::AstConv;
-use check::{FnCtxt, LvalueOp, callee, LvaluePreference, PreferMutLvalue};
+use check::{FnCtxt, LvalueOp, callee, Needs};
 use hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::traits;
@@ -155,7 +155,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         let (_, n) = autoderef.nth(pick.autoderefs).unwrap();
         assert_eq!(n, pick.autoderefs);
 
-        let mut adjustments = autoderef.adjust_steps(LvaluePreference::NoPreference);
+        let mut adjustments = autoderef.adjust_steps(Needs::None);
 
         let mut target = autoderef.unambiguous_final_ty();
 
@@ -449,10 +449,10 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                                            .adjustments_mut()
                                            .remove(expr.hir_id);
             if let Some(mut adjustments) = previous_adjustments {
-                let pref = LvaluePreference::PreferMutLvalue;
+                let needs = Needs::MutPlace;
                 for adjustment in &mut adjustments {
                     if let Adjust::Deref(Some(ref mut deref)) = adjustment.kind {
-                        if let Some(ok) = self.try_overloaded_deref(expr.span, source, pref) {
+                        if let Some(ok) = self.try_overloaded_deref(expr.span, source, needs) {
                             let method = self.register_infer_ok_obligations(ok);
                             if let ty::TyRef(region, mt) = method.sig.output().sty {
                                 *deref = OverloadedDeref {
@@ -505,7 +505,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             .ty;
 
         let method = self.try_overloaded_lvalue_op(
-            expr.span, base_ty, arg_tys, PreferMutLvalue, op);
+            expr.span, base_ty, arg_tys, Needs::MutPlace, op);
         let method = match method {
             Some(ok) => self.register_infer_ok_obligations(ok),
             None => return self.tcx.sess.delay_span_bug(expr.span, "re-trying op failed")
