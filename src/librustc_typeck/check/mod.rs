@@ -2221,6 +2221,60 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    fn is_place_expr(&self, expr: &hir::Expr) -> bool {
+         match expr.node {
+            hir::ExprPath(hir::QPath::Resolved(_, ref path)) => {
+                match path.def {
+                    Def::Local(..) | Def::Upvar(..) | Def::Static(..) | Def::Err => true,
+                    _ => false,
+                }
+            }
+
+            hir::ExprType(ref e, _) => {
+                self.is_place_expr(e)
+            }
+
+            hir::ExprUnary(hir::UnDeref, _) |
+            hir::ExprField(..) |
+            hir::ExprTupField(..) |
+            hir::ExprIndex(..) => {
+                true
+            }
+
+            // Partially qualified paths in expressions can only legally
+            // refer to associated items which are always rvalues.
+            hir::ExprPath(hir::QPath::TypeRelative(..)) |
+
+            hir::ExprCall(..) |
+            hir::ExprMethodCall(..) |
+            hir::ExprStruct(..) |
+            hir::ExprTup(..) |
+            hir::ExprIf(..) |
+            hir::ExprMatch(..) |
+            hir::ExprClosure(..) |
+            hir::ExprBlock(..) |
+            hir::ExprRepeat(..) |
+            hir::ExprArray(..) |
+            hir::ExprBreak(..) |
+            hir::ExprAgain(..) |
+            hir::ExprRet(..) |
+            hir::ExprWhile(..) |
+            hir::ExprLoop(..) |
+            hir::ExprAssign(..) |
+            hir::ExprInlineAsm(..) |
+            hir::ExprAssignOp(..) |
+            hir::ExprLit(_) |
+            hir::ExprUnary(..) |
+            hir::ExprBox(..) |
+            hir::ExprAddrOf(..) |
+            hir::ExprBinary(..) |
+            hir::ExprYield(..) |
+            hir::ExprCast(..) => {
+                false
+            }
+        }
+    }
+
     /// For the overloaded lvalue expressions (`*x`, `x[3]`), the trait
     /// returns a type of `&T`, but the actual type we assign to the
     /// *expression* is `T`. So this function just peels off the return
@@ -3627,7 +3681,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let hint = expected.only_has_type(self).map_or(NoExpectation, |ty| {
                 match ty.sty {
                     ty::TyRef(_, ref mt) | ty::TyRawPtr(ref mt) => {
-                        if self.tcx.expr_is_lval(&oprnd) {
+                        if self.is_place_expr(&oprnd) {
                             // Lvalues may legitimately have unsized types.
                             // For example, dereferences of a fat pointer and
                             // the last field of a struct can be unsized.
@@ -3796,7 +3850,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 _ => {
                     // Only check this if not in an `if` condition, as the
                     // mistyped comparison help is more appropriate.
-                    if !self.tcx.expr_is_lval(&lhs) {
+                    if !self.is_place_expr(&lhs) {
                         struct_span_err!(self.tcx.sess, expr.span, E0070,
                                          "invalid left-hand side expression")
                             .span_label(expr.span, "left-hand of expression not valid")
