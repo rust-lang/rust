@@ -1,7 +1,7 @@
 os: Visual Studio 2015
 
 install:
-  - appveyor DownloadFile https://win.rustup.rs/ -FileName rustup-init.exe
+  - curl https://win.rustup.rs/ --output rustup-init.exe
   - rustup-init -yv --default-toolchain stable --default-host x86_64-pc-windows-msvc
   - set PATH=%PATH%;%USERPROFILE%\.cargo\bin
   - rustc -vV
