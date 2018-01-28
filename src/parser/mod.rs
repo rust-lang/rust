@@ -6,6 +6,7 @@ use tree::TOMBSTONE;
 mod event_parser;
 use self::event_parser::Event;
 
+/// Parse a sequence of tokens into the representative node tree
 pub fn parse(text: String, tokens: &[Token]) -> File {
     let events = event_parser::parse(&text, tokens);
     from_events_to_file(text, tokens, events)
