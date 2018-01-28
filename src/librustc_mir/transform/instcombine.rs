@@ -12,8 +12,8 @@
 
 use rustc::mir::{Constant, Literal, Location, Place, Mir, Operand, ProjectionElem, Rvalue, Local};
 use rustc::mir::{NullOp, StatementKind, Statement, BasicBlock, LocalKind};
-use rustc::mir::{SourceInfo, ARGUMENT_VISIBILITY_SCOPE, TerminatorKind};
-use rustc::mir::visit::{MutVisitor, Visitor, TyContext};
+use rustc::mir::TerminatorKind;
+use rustc::mir::visit::{MutVisitor, Visitor};
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{TyCtxt, TypeVariants, self, Instance};
 use rustc::mir::interpret::{Value, PrimVal, GlobalId};
@@ -21,10 +21,8 @@ use interpret::{eval_body_with_mir, eval_body, mk_borrowck_eval_cx, unary_op, Va
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::Idx;
 use std::mem;
-use std::collections::VecDeque;
 use transform::{MirPass, MirSource};
 use syntax::codemap::Span;
-use rustc_data_structures::control_flow_graph::ControlFlowGraph;
 use rustc::ty::subst::Substs;
 
 pub struct InstCombine;
@@ -73,7 +71,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for InstCombineVisitor<'a, 'tcx> {
         }
 
         if let Some(constant) = self.optimizations.arrays_lengths.remove(&location) {
-            debug!("Replacing `Len([_; N])`: {:?}", rvalue);
+            debug!("Replacing `Len([_; N])`: {:?} with {:?}", rvalue, constant);
             *rvalue = Rvalue::Use(Operand::Constant(box constant));
         }
 
@@ -101,6 +99,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for InstCombineVisitor<'a, 'tcx> {
     ) {
         self.super_constant(constant, location);
         if let Some(&(val, ty, _)) = self.optimizations.constants.get(constant) {
+            debug!("Replacing `{:?}` with {:?}:{:?}", constant.literal, val, ty);
             constant.literal = Literal::Value {
                 value: self.tcx.mk_const(ty::Const {
                     val: ConstVal::Value(val),
@@ -464,57 +463,6 @@ impl<'tcx> Visitor<'tcx> for ConstPropVisitor {
 }
 
 impl<'b, 'a, 'tcx> Visitor<'tcx> for OptimizationFinder<'b, 'a, 'tcx> {
-    // override to visit basic blocks in execution order
-    fn super_mir(&mut self, mir: &Mir<'tcx>) {
-        let mut seen = FxHashSet::default();
-        seen.insert(mir.start_node());
-        let mut sorted = Vec::new();
-        let mut next = VecDeque::new();
-        sorted.push(mir.start_node());
-        next.push_back(mir.start_node());
-        while let Some(current) = next.pop_front() {
-            for successor in mir.successors(current) {
-                trace!("checking successor of {:?}: {:?}", current, successor);
-                trace!("{:?}, {:?}", sorted, next);
-                if seen.contains(&successor) {
-                    for &pending in &next {
-                        // not a back-edge, just a branch merging back into a single execution
-                        if pending == successor {
-                            // move to the back of the queue
-                            let i = sorted.iter().position(|&b| b == successor).unwrap();
-                            sorted.remove(i);
-                            sorted.push(successor);
-                            break;
-                        }
-                    }
-                } else {
-                    seen.insert(successor);
-                    sorted.push(successor);
-                    next.push_back(successor);
-                }
-            }
-        }
-        trace!("checking basic blocks: {:?}", sorted);
-        for bb in sorted {
-            self.visit_basic_block_data(bb, &mir[bb]);
-        }
-
-        for scope in &mir.visibility_scopes {
-            self.visit_visibility_scope_data(scope);
-        }
-
-        self.visit_ty(&mir.return_ty(), TyContext::ReturnTy(SourceInfo {
-            span: mir.span,
-            scope: ARGUMENT_VISIBILITY_SCOPE,
-        }));
-
-        for local in mir.local_decls.indices() {
-            self.visit_local_decl(local, &mir.local_decls[local]);
-        }
-
-        self.visit_span(&mir.span);
-    }
-
     fn visit_constant(
         &mut self,
         constant: &Constant<'tcx>,
