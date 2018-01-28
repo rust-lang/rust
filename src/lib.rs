@@ -1,3 +1,20 @@
+//! An experimental implementation of [Rust RFC#2256 libsyntax2.0][rfc#2256].
+//!
+//! The intent is to be an IDE-ready parser, i.e. one that offers
+//!
+//! - easy and fast incremental re-parsing,
+//! - graceful handling of errors, and
+//! - maintains all information in the source file.
+//!
+//! For more information, see [the RFC][rfc#2265], or [the working draft][RFC.md].
+//!
+//!   [rfc#2256]: <https://github.com/rust-lang/rfcs/pull/2256>
+//!   [RFC.md]: <https://github.com/matklad/libsyntax2/blob/master/docs/RFC.md>
+
+#![forbid(missing_debug_implementations, unconditional_recursion, future_incompatible)]
+#![deny(bad_style, unsafe_code, missing_docs)]
+//#![warn(unreachable_pub)] // rust-lang/rust#47816
+
 extern crate unicode_xid;
 
 mod text;
@@ -6,17 +23,20 @@ mod lexer;
 mod parser;
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
+#[allow(missing_docs)]
 pub mod syntax_kinds;
 pub use text::{TextRange, TextUnit};
 pub use tree::{File, FileBuilder, Node, Sink, SyntaxKind, Token};
 pub use lexer::{next_token, tokenize};
 pub use parser::parse;
 
+/// Utilities for simple uses of the parser.
 pub mod utils {
     use std::fmt::Write;
 
     use {File, Node};
 
+    /// Parse a file and create a string representation of the resulting parse tree.
     pub fn dump_tree(file: &File) -> String {
         let mut result = String::new();
         go(file.root(), &mut result, 0);

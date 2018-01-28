@@ -1,3 +1,6 @@
+// FIXME(CAD97): I don't understand this mod well enough to stub out docs for the public symbols yet
+#![allow(missing_docs)]
+
 use {SyntaxKind, TextRange, TextUnit};
 use super::{File, NodeData, NodeIdx, SyntaxErrorData};
 
@@ -8,6 +11,7 @@ pub trait Sink {
     fn error(&mut self) -> ErrorBuilder;
 }
 
+#[derive(Debug)]
 pub struct FileBuilder {
     text: String,
     nodes: Vec<NodeData>,
@@ -139,6 +143,7 @@ fn grow(left: &mut TextRange, right: TextRange) {
     *left = TextRange::from_to(left.start(), right.end())
 }
 
+#[derive(Debug)]
 pub struct ErrorBuilder<'f> {
     message: Option<String>,
     builder: &'f mut FileBuilder,

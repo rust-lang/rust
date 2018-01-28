@@ -7,6 +7,7 @@ use std::cmp;
 mod file_builder;
 pub use self::file_builder::{FileBuilder, Sink};
 
+/// The kind of syntax node, e.g. `IDENT`, `USE_KW`, or `STRUCT_DEF`.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SyntaxKind(pub(crate) u32);
 
@@ -37,12 +38,17 @@ pub(crate) struct SyntaxInfo {
     pub name: &'static str,
 }
 
+/// A token of Rust source.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Token {
+    /// The kind of token.
     pub kind: SyntaxKind,
+    /// The length of the token.
     pub len: TextUnit,
 }
 
+/// The contents of a Rust source file.
+#[derive(Debug)]
 pub struct File {
     text: String,
     nodes: Vec<NodeData>,
@@ -50,6 +56,7 @@ pub struct File {
 }
 
 impl File {
+    /// The root node of this source file.
     pub fn root<'f>(&'f self) -> Node<'f> {
         assert!(!self.nodes.is_empty());
         Node {
@@ -59,6 +66,7 @@ impl File {
     }
 }
 
+/// A reference to a token in a Rust source file.
 #[derive(Clone, Copy)]
 pub struct Node<'f> {
     file: &'f File,
@@ -66,28 +74,34 @@ pub struct Node<'f> {
 }
 
 impl<'f> Node<'f> {
+    /// The kind of the token at this node.
     pub fn kind(&self) -> SyntaxKind {
         self.data().kind
     }
 
+    /// The text range covered by the token at this node.
     pub fn range(&self) -> TextRange {
         self.data().range
     }
 
+    /// The text at this node.
     pub fn text(&self) -> &'f str {
         &self.file.text.as_str()[self.range()]
     }
 
+    /// The parent node to this node.
     pub fn parent(&self) -> Option<Node<'f>> {
         self.as_node(self.data().parent)
     }
 
+    /// The children nodes of this node.
     pub fn children(&self) -> Children<'f> {
         Children {
             next: self.as_node(self.data().first_child),
         }
     }
 
+    /// Any errors contained in this node.
     pub fn errors(&self) -> SyntaxErrors<'f> {
         let pos = self.file.errors.iter().position(|e| e.node == self.idx);
         let next = pos.map(|i| ErrorIdx(i as u32)).map(|idx| SyntaxError {
@@ -123,7 +137,7 @@ impl<'f> cmp::PartialEq<Node<'f>> for Node<'f> {
 
 impl<'f> cmp::Eq for Node<'f> {}
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct SyntaxError<'f> {
     file: &'f File,
     idx: ErrorIdx,
@@ -162,6 +176,7 @@ impl<'f> SyntaxError<'f> {
     }
 }
 
+#[derive(Debug)]
 pub struct Children<'f> {
     next: Option<Node<'f>>,
 }
@@ -176,6 +191,7 @@ impl<'f> Iterator for Children<'f> {
     }
 }
 
+#[derive(Debug)]
 pub struct SyntaxErrors<'f> {
     next: Option<SyntaxError<'f>>,
 }
@@ -190,9 +206,10 @@ impl<'f> Iterator for SyntaxErrors<'f> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct NodeIdx(u32);
 
+#[derive(Debug)]
 struct NodeData {
     kind: SyntaxKind,
     range: TextRange,
@@ -215,9 +232,10 @@ impl ::std::ops::IndexMut<NodeIdx> for Vec<NodeData> {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 struct ErrorIdx(u32);
 
+#[derive(Debug)]
 struct SyntaxErrorData {
     node: NodeIdx,
     message: String,

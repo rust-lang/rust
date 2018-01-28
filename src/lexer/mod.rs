@@ -17,6 +17,7 @@ use self::strings::{is_string_literal_start, scan_byte_char_or_string, scan_char
 mod comments;
 use self::comments::{scan_comment, scan_shebang};
 
+/// Break a string up into its component tokens
 pub fn tokenize(text: &str) -> Vec<Token> {
     let mut text = text;
     let mut acc = Vec::new();
@@ -28,6 +29,7 @@ pub fn tokenize(text: &str) -> Vec<Token> {
     }
     acc
 }
+/// Get the next token from a string
 pub fn next_token(text: &str) -> Token {
     assert!(!text.is_empty());
     let mut ptr = Ptr::new(text);
