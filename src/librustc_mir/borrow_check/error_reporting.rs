@@ -746,12 +746,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     self.describe_field_from_ty(&tnm.ty, field)
                 }
                 ty::TyArray(ty, _) | ty::TySlice(ty) => self.describe_field_from_ty(&ty, field),
-                ty::TyClosure(closure_def_id, _) => {
+                ty::TyClosure(def_id, _) | ty::TyGenerator(def_id, _, _) => {
                     // Convert the def-id into a node-id. node-ids are only valid for
                     // the local code in the current crate, so this returns an `Option` in case
                     // the closure comes from another crate. But in that case we wouldn't
                     // be borrowck'ing it, so we can just unwrap:
-                    let node_id = self.tcx.hir.as_local_node_id(closure_def_id).unwrap();
+                    let node_id = self.tcx.hir.as_local_node_id(def_id).unwrap();
                     let freevar = self.tcx.with_freevars(node_id, |fv| fv[field.index()]);
 
                     self.tcx.hir.name(freevar.var_id()).to_string()
