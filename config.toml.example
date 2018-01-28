@@ -235,6 +235,11 @@
 # compiler.
 #codegen-units = 1
 
+# Whether to enable ThinLTO (and increase the codegen units to either a default
+# or the configured value). On by default. If we want the fastest possible
+# compiler, we should disable this.
+#thinlto = true
+
 # Whether or not debug assertions are enabled for the compiler and standard
 # library. Also enables compilation of debug! and trace! logging macros.
 #debug-assertions = false
