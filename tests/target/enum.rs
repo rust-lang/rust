@@ -24,7 +24,8 @@ enum EmtpyWithComment {
 // C-style enum
 enum Bar {
     A = 1,
-    #[someAttr(test)] B = 2, // comment
+    #[someAttr(test)]
+    B = 2, // comment
     C,
 }
 
@@ -225,11 +226,30 @@ enum AnError {
 
 // #2193
 enum WidthOf101 {
-    #[fail(display = ".....................................................")] Io(::std::io::Error),
+    #[fail(display = ".....................................................")]
+    Io(::std::io::Error),
     #[fail(display = ".....................................................")]
     Ioo(::std::io::Error),
     Xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx(::std::io::Error),
     Xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx(
         ::std::io::Error,
     ),
+}
+
+// #2389
+pub enum QlError {
+    #[fail(display = "Parsing error: {}", 0)]
+    LexError(parser::lexer::LexError),
+    #[fail(display = "Parsing error: {:?}", 0)]
+    ParseError(parser::ParseError),
+    #[fail(display = "Validation error: {:?}", 0)]
+    ValidationError(Vec<validation::Error>),
+    #[fail(display = "Execution error: {}", 0)]
+    ExecutionError(String),
+    // (from, to)
+    #[fail(display = "Translation error: from {} to {}", 0, 1)]
+    TranslationError(String, String),
+    // (kind, input, expected)
+    #[fail(display = "Could not find {}: Found: {}, expected: {:?}", 0, 1, 2)]
+    ResolveError(&'static str, String, Option<String>),
 }
