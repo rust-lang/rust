@@ -5,7 +5,6 @@ use tree::SyntaxInfo;
 
 /// The kind of syntax node, e.g. `IDENT`, `USE_KW`, or `STRUCT_DEF`.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[repr(u32)]
 pub enum SyntaxKind {
     USE_KW,
     FN_KW,
