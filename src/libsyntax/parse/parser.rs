@@ -6115,6 +6115,7 @@ impl<'a> Parser<'a> {
         self.expect(&token::Semi)?;
 
         let prev_span = self.prev_span;
+
         Ok(self.mk_item(lo.to(prev_span),
                         ident,
                         ItemKind::ExternCrate(maybe_path),
