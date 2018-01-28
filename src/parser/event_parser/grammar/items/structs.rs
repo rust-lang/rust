@@ -40,6 +40,40 @@ pub(super) fn struct_item(p: &mut Parser) {
     }
 }
 
+pub(super) fn enum_item(p: &mut Parser) {
+    assert!(p.at(ENUM_KW));
+    p.bump();
+    p.expect(IDENT);
+    type_param_list(p);
+    where_clause(p);
+    if p.expect(L_CURLY) {
+        while !p.at(EOF) && !p.at(R_CURLY) {
+            let var = p.start();
+            attributes::outer_attributes(p);
+            if p.at(IDENT) {
+                p.bump();
+                match p.current() {
+                    L_CURLY => named_fields(p),
+                    L_PAREN => pos_fields(p),
+                    EQ => {
+                        p.bump();
+                        expressions::expr(p);
+                    }
+                    _ => ()
+                }
+                var.complete(p, ENUM_VARIANT);
+            } else {
+                var.abandon(p);
+                p.err_and_bump("expected enum variant");
+            }
+            if !p.at(R_CURLY) {
+                p.expect(COMMA);
+            }
+        }
+        p.expect(R_CURLY);
+    }
+}
+
 fn named_fields(p: &mut Parser) {
     assert!(p.at(L_CURLY));
     p.bump();

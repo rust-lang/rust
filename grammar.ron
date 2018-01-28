@@ -74,6 +74,8 @@ Grammar(
     nodes: [
         "FILE",
         "STRUCT_ITEM",
+        "ENUM_ITEM",
+        "ENUM_VARIANT",
         "NAMED_FIELD",
         "POS_FIELD",
         "FN_ITEM",
