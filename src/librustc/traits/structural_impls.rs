@@ -209,6 +209,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             super::VariableType(id) => Some(super::VariableType(id)),
             super::ReturnType(id) => Some(super::ReturnType(id)),
             super::SizedReturnType => Some(super::SizedReturnType),
+            super::SizedYieldType => Some(super::SizedYieldType),
             super::RepeatVec => Some(super::RepeatVec),
             super::FieldSized(item) => Some(super::FieldSized(item)),
             super::ConstSized => Some(super::ConstSized),
@@ -526,6 +527,7 @@ impl<'tcx> TypeFoldable<'tcx> for traits::ObligationCauseCode<'tcx> {
             super::VariableType(_) |
             super::ReturnType(_) |
             super::SizedReturnType |
+            super::SizedYieldType |
             super::ReturnNoExpression |
             super::RepeatVec |
             super::FieldSized(_) |
@@ -574,6 +576,7 @@ impl<'tcx> TypeFoldable<'tcx> for traits::ObligationCauseCode<'tcx> {
             super::VariableType(_) |
             super::ReturnType(_) |
             super::SizedReturnType |
+            super::SizedYieldType |
             super::ReturnNoExpression |
             super::RepeatVec |
             super::FieldSized(_) |
