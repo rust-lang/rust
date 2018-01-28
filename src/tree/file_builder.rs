@@ -1,10 +1,16 @@
-// FIXME(CAD97): I don't understand this mod well enough to stub out docs for the public symbols yet
-#![allow(missing_docs)]
-
+//! This module provides a way to construct a `File`.
+//! It is intended to be completely decoupled from the
+//! parser, so as to allow to evolve the tree representation
+//! and the parser algorithm independently.
+//!
+//! The `Sink` trait is the bridge between the parser and the
+//! tree builder: the parser produces a stream of events like
+//! `start node`, `finish node`, and `FileBuilder` converts
+//! this stream to a real tree.
 use {SyntaxKind, TextRange, TextUnit};
 use super::{File, NodeData, NodeIdx, SyntaxErrorData};
 
-pub trait Sink {
+pub(crate) trait Sink {
     fn leaf(&mut self, kind: SyntaxKind, len: TextUnit);
     fn start_internal(&mut self, kind: SyntaxKind);
     fn finish_internal(&mut self);
@@ -12,7 +18,7 @@ pub trait Sink {
 }
 
 #[derive(Debug)]
-pub struct FileBuilder {
+pub(crate) struct FileBuilder {
     text: String,
     nodes: Vec<NodeData>,
     errors: Vec<SyntaxErrorData>,
