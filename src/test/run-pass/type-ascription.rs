@@ -40,6 +40,6 @@ fn main() {
     assert_eq!(b, 1: u16);
 
     let mut v = Vec::new();
-    v: Vec<u8> = vec![1, 2, 3]; // Lvalue type ascription
+    v: Vec<u8> = vec![1, 2, 3]; // Place expression type ascription
     assert_eq!(v, [1u8, 2, 3]);
 }
