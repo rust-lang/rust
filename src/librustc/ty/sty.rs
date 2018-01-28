@@ -1514,18 +1514,12 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     ///
     /// The parameter `explicit` indicates if this is an *explicit* dereference.
     /// Some types---notably unsafe ptrs---can only be dereferenced explicitly.
-    pub fn builtin_deref(&self, explicit: bool, pref: ty::LvaluePreference)
-        -> Option<TypeAndMut<'tcx>>
-    {
+    pub fn builtin_deref(&self, explicit: bool) -> Option<TypeAndMut<'tcx>> {
         match self.sty {
             TyAdt(def, _) if def.is_box() => {
                 Some(TypeAndMut {
                     ty: self.boxed_ty(),
-                    mutbl: if pref == ty::PreferMutLvalue {
-                        hir::MutMutable
-                    } else {
-                        hir::MutImmutable
-                    },
+                    mutbl: hir::MutImmutable,
                 })
             },
             TyRef(_, mt) => Some(mt),

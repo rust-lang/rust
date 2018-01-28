@@ -10,9 +10,9 @@
 
 //! Code related to processing overloaded binary and unary operators.
 
-use super::FnCtxt;
+use super::{FnCtxt, NoPreference, PreferMutLvalue};
 use super::method::MethodCallee;
-use rustc::ty::{self, Ty, TypeFoldable, NoPreference, PreferMutLvalue, TypeVariants};
+use rustc::ty::{self, Ty, TypeFoldable, TypeVariants};
 use rustc::ty::TypeVariants::{TyStr, TyRef};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
 use rustc::infer::type_variable::TypeVariableOrigin;

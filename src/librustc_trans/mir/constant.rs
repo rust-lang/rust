@@ -740,7 +740,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         operand.llval
                     }
                     mir::CastKind::Unsize => {
-                        let pointee_ty = operand.ty.builtin_deref(true, ty::NoPreference)
+                        let pointee_ty = operand.ty.builtin_deref(true)
                             .expect("consts: unsizing got non-pointer type").ty;
                         let (base, old_info) = if !self.cx.type_is_sized(pointee_ty) {
                             // Normally, the source is a thin pointer and we are
@@ -755,7 +755,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                             (operand.llval, None)
                         };
 
-                        let unsized_ty = cast_ty.builtin_deref(true, ty::NoPreference)
+                        let unsized_ty = cast_ty.builtin_deref(true)
                             .expect("consts: unsizing got non-pointer target type").ty;
                         let ptr_ty = self.cx.layout_of(unsized_ty).llvm_type(self.cx).ptr_to();
                         let base = consts::ptrcast(base, ptr_ty);

@@ -77,6 +77,7 @@ type parameter).
 */
 
 pub use self::Expectation::*;
+use self::LvaluePreference::*;
 use self::autoderef::Autoderef;
 use self::callee::DeferredCallResolution;
 use self::coercion::{CoerceMany, DynamicCoerceMany};
@@ -95,7 +96,6 @@ use rustc::infer::type_variable::{TypeVariableOrigin};
 use rustc::middle::region;
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::{self, FulfillmentContext, ObligationCause, ObligationCauseCode};
-use rustc::ty::{ParamTy, LvaluePreference, NoPreference, PreferMutLvalue};
 use rustc::ty::{self, Ty, TyCtxt, Visibility, ToPredicate};
 use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc::ty::fold::TypeFoldable;
@@ -365,6 +365,21 @@ impl<'a, 'gcx, 'tcx> Expectation<'tcx> {
     fn coercion_target_type(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>, span: Span) -> Ty<'tcx> {
         self.only_has_type(fcx)
             .unwrap_or_else(|| fcx.next_ty_var(TypeVariableOrigin::MiscVariable(span)))
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum LvaluePreference {
+    PreferMutLvalue,
+    NoPreference
+}
+
+impl LvaluePreference {
+    fn from_mutbl(m: hir::Mutability) -> Self {
+        match m {
+            hir::MutMutable => PreferMutLvalue,
+            hir::MutImmutable => NoPreference,
+        }
     }
 }
 
@@ -2219,7 +2234,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let ret_ty = method.sig.output();
 
         // method returns &T, but the type as visible to user is T, so deref
-        ret_ty.builtin_deref(true, NoPreference).unwrap()
+        ret_ty.builtin_deref(true).unwrap()
     }
 
     fn lookup_indexing(&self,
@@ -3572,7 +3587,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 oprnd_t = self.structurally_resolved_type(expr.span, oprnd_t);
                 match unop {
                     hir::UnDeref => {
-                        if let Some(mt) = oprnd_t.builtin_deref(true, NoPreference) {
+                        if let Some(mt) = oprnd_t.builtin_deref(true) {
                             oprnd_t = mt.ty;
                         } else if let Some(ok) = self.try_overloaded_deref(
                                 expr.span, oprnd_t, lvalue_pref) {
@@ -5023,7 +5038,7 @@ pub fn check_bounds_are_used<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let lifetime_count = generics.lifetimes().count();
 
     for leaf_ty in ty.walk() {
-        if let ty::TyParam(ParamTy {idx, ..}) = leaf_ty.sty {
+        if let ty::TyParam(ty::ParamTy {idx, ..}) = leaf_ty.sty {
             debug!("Found use of ty param num {}", idx);
             tps_used[idx as usize - lifetime_count] = true;
         } else if let ty::TyError = leaf_ty.sty {

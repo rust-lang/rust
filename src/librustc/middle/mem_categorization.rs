@@ -517,7 +517,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                     // a bind-by-ref means that the base_ty will be the type of the ident itself,
                     // but what we want here is the type of the underlying value being borrowed.
                     // So peel off one-level, turning the &T into T.
-                    match base_ty.builtin_deref(false, ty::NoPreference) {
+                    match base_ty.builtin_deref(false) {
                         Some(t) => t.ty,
                         None => {
                             debug!("By-ref binding of non-derefable type {:?}", base_ty);
@@ -1019,7 +1019,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         debug!("cat_deref: base_cmt={:?}", base_cmt);
 
         let base_cmt_ty = base_cmt.ty;
-        let deref_ty = match base_cmt_ty.builtin_deref(true, ty::NoPreference) {
+        let deref_ty = match base_cmt_ty.builtin_deref(true) {
             Some(mt) => mt.ty,
             None => {
                 debug!("Explicit deref of non-derefable type: {:?}",

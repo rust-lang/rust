@@ -11,11 +11,11 @@
 use super::{probe, MethodCallee};
 
 use astconv::AstConv;
-use check::{FnCtxt, LvalueOp, callee};
+use check::{FnCtxt, LvalueOp, callee, LvaluePreference, PreferMutLvalue};
 use hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::traits;
-use rustc::ty::{self, LvaluePreference, NoPreference, PreferMutLvalue, Ty};
+use rustc::ty::{self, Ty};
 use rustc::ty::subst::Subst;
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, OverloadedDeref};
 use rustc::ty::fold::TypeFoldable;
@@ -500,7 +500,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         let base_ty = self.resolve_type_vars_if_possible(&base_ty);
 
         // Need to deref because overloaded lvalue ops take self by-reference.
-        let base_ty = base_ty.builtin_deref(false, NoPreference)
+        let base_ty = base_ty.builtin_deref(false)
             .expect("lvalue op takes something that is not a ref")
             .ty;
 

@@ -397,7 +397,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         let base_ty = base.to_ty(tcx);
         match *pi {
             ProjectionElem::Deref => {
-                let deref_ty = base_ty.builtin_deref(true, ty::LvaluePreference::NoPreference);
+                let deref_ty = base_ty.builtin_deref(true);
                 PlaceTy::Ty {
                     ty: deref_ty.map(|t| t.ty).unwrap_or_else(|| {
                         span_mirbug_and_err!(self, place, "deref of non-pointer {:?}", base_ty)

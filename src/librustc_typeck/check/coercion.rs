@@ -60,7 +60,7 @@
 //! sort of a minor point so I've opted to leave it for later---after all
 //! we may want to adjust precisely when coercions occur.
 
-use check::{Diverges, FnCtxt};
+use check::{Diverges, FnCtxt, LvaluePreference};
 
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -69,8 +69,7 @@ use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::lint;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
-use rustc::ty::{self, LvaluePreference, TypeAndMut,
-                Ty, ClosureSubsts};
+use rustc::ty::{self, TypeAndMut, Ty, ClosureSubsts};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::error::TypeError;
 use rustc::ty::relate::RelateResult;

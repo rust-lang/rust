@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use llvm::ValueRef;
-use rustc::ty;
 use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
 use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
@@ -100,7 +99,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
     }
 
     pub fn deref(self, cx: &CodegenCx<'a, 'tcx>) -> PlaceRef<'tcx> {
-        let projected_ty = self.layout.ty.builtin_deref(true, ty::NoPreference)
+        let projected_ty = self.layout.ty.builtin_deref(true)
             .unwrap_or_else(|| bug!("deref of non-pointer {:?}", self)).ty;
         let (llptr, llextra) = match self.val {
             OperandValue::Immediate(llptr) => (llptr, ptr::null_mut()),

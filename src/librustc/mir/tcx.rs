@@ -52,7 +52,7 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
         match *elem {
             ProjectionElem::Deref => {
                 let ty = self.to_ty(tcx)
-                             .builtin_deref(true, ty::LvaluePreference::NoPreference)
+                             .builtin_deref(true)
                              .unwrap_or_else(|| {
                                  bug!("deref projection of non-dereferencable ty {:?}", self)
                              })

@@ -674,7 +674,7 @@ impl<'a, 'tcx> FnType<'tcx> {
                 _ => bug!("FnType::new_vtable: non-pair self {:?}", self_arg)
             }
 
-            let pointee = self_arg.layout.ty.builtin_deref(true, ty::NoPreference)
+            let pointee = self_arg.layout.ty.builtin_deref(true)
                 .unwrap_or_else(|| {
                     bug!("FnType::new_vtable: non-pointer self {:?}", self_arg)
                 }).ty;

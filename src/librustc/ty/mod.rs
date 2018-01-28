@@ -12,7 +12,6 @@ pub use self::Variance::*;
 pub use self::AssociatedItemContainer::*;
 pub use self::BorrowKind::*;
 pub use self::IntVarValue::*;
-pub use self::LvaluePreference::*;
 pub use self::fold::TypeFoldable;
 
 use hir::{map as hir_map, FreevarMap, TraitMap};
@@ -2095,21 +2094,6 @@ impl<'tcx> TyS<'tcx> {
             if !f(ty) {
                 walker.skip_current_subtree();
             }
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum LvaluePreference {
-    PreferMutLvalue,
-    NoPreference
-}
-
-impl LvaluePreference {
-    pub fn from_mutbl(m: hir::Mutability) -> Self {
-        match m {
-            hir::MutMutable => PreferMutLvalue,
-            hir::MutImmutable => NoPreference,
         }
     }
 }

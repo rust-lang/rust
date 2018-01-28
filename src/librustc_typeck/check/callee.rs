@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::{Expectation, FnCtxt, TupleArgumentsFlag};
+use super::{Expectation, FnCtxt, LvaluePreference, TupleArgumentsFlag};
 use super::autoderef::Autoderef;
 use super::method::MethodCallee;
 
 use hir::def::Def;
 use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::{infer, traits};
-use rustc::ty::{self, TyCtxt, TypeFoldable, LvaluePreference, Ty};
+use rustc::ty::{self, TyCtxt, TypeFoldable, Ty};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
 use syntax::abi;
 use syntax::symbol::Symbol;

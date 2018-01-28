@@ -10,7 +10,7 @@
 
 use astconv::AstConv;
 
-use super::{FnCtxt, LvalueOp};
+use super::{FnCtxt, LvalueOp, LvaluePreference};
 use super::method::MethodCallee;
 
 use rustc::infer::InferOk;
@@ -18,7 +18,6 @@ use rustc::session::DiagnosticMessageId;
 use rustc::traits;
 use rustc::ty::{self, Ty, TraitRef};
 use rustc::ty::{ToPredicate, TypeFoldable};
-use rustc::ty::{LvaluePreference, NoPreference};
 use rustc::ty::adjustment::{Adjustment, Adjust, OverloadedDeref};
 
 use syntax_pos::Span;
@@ -85,7 +84,7 @@ impl<'a, 'gcx, 'tcx> Iterator for Autoderef<'a, 'gcx, 'tcx> {
 
         // Otherwise, deref if type is derefable:
         let (kind, new_ty) =
-            if let Some(mt) = self.cur_ty.builtin_deref(self.include_raw_pointers, NoPreference) {
+            if let Some(mt) = self.cur_ty.builtin_deref(self.include_raw_pointers) {
                 (AutoderefKind::Builtin, mt.ty)
             } else {
                 let ty = self.overloaded_deref_ty(self.cur_ty)?;
@@ -238,8 +237,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn try_overloaded_deref(&self,
                                 span: Span,
                                 base_ty: Ty<'tcx>,
-                                pref: LvaluePreference)
+                                needs: Needs)
                                 -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
-        self.try_overloaded_lvalue_op(span, base_ty, &[], pref, LvalueOp::Deref)
+        self.try_overloaded_lvalue_op(span, base_ty, &[], needs, LvalueOp::Deref)
     }
 }
