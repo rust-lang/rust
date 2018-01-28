@@ -57,7 +57,7 @@ impl<'p> Parser<'p> {
         err.complete(self, ERROR);
     }
 
-    pub(crate) fn expect(&mut self, kind: SyntaxKind) -> bool {
+    fn expect(&mut self, kind: SyntaxKind) -> bool {
         if self.at(kind) {
             self.bump();
             true
@@ -77,16 +77,11 @@ impl<'p> Parser<'p> {
 
 trait Lookahead: Copy {
     fn is_ahead(self, p: &Parser) -> bool;
-    fn consume(p: &mut Parser);
 }
 
 impl Lookahead for SyntaxKind {
     fn is_ahead(self, p: &Parser) -> bool {
         p.current() == self
-    }
-
-    fn consume(p: &mut Parser) {
-        p.bump();
     }
 }
 
@@ -94,22 +89,11 @@ impl Lookahead for [SyntaxKind; 2] {
     fn is_ahead(self, p: &Parser) -> bool {
         p.current() == self[0] && p.raw_lookahead(1) == self[1]
     }
-
-    fn consume(p: &mut Parser) {
-        p.bump();
-        p.bump();
-    }
 }
 
 impl Lookahead for [SyntaxKind; 3] {
     fn is_ahead(self, p: &Parser) -> bool {
         p.current() == self[0] && p.raw_lookahead(1) == self[1] && p.raw_lookahead(2) == self[2]
-    }
-
-    fn consume(p: &mut Parser) {
-        p.bump();
-        p.bump();
-        p.bump();
     }
 }
 
@@ -120,9 +104,5 @@ impl<'a> Lookahead for AnyOf<'a> {
     fn is_ahead(self, p: &Parser) -> bool {
         let curr = p.current();
         self.0.iter().any(|&k| k == curr)
-    }
-
-    fn consume(p: &mut Parser) {
-        p.bump();
     }
 }

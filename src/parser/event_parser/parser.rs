@@ -136,13 +136,6 @@ impl<'t> Parser<'t> {
         self.events
     }
 
-    pub(crate) fn current(&self) -> SyntaxKind {
-        if self.pos == self.tokens.len() {
-            return EOF;
-        }
-        self.tokens[self.pos].kind
-    }
-
     pub(crate) fn start(&mut self) -> Marker {
         let m = Marker {
             pos: self.events.len() as u32,
@@ -173,6 +166,10 @@ impl<'t> Parser<'t> {
 
     pub(crate) fn raw_lookahead(&self, n: usize) -> SyntaxKind {
         self.tokens.get(self.pos + n).map(|t| t.kind).unwrap_or(EOF)
+    }
+
+    pub(crate) fn current(&self) -> SyntaxKind {
+        self.raw_lookahead(0)
     }
 
     fn event(&mut self, event: Event) {
