@@ -143,7 +143,17 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         if let Some(expr) = expr {
             unpack!(block = this.into(destination, block, expr));
         } else {
-            this.cfg.push_assign_unit(block, source_info, destination);
+            // If a block has no trailing expression, then it is given an implicit return type.
+            // This return type is usually `()`, unless the block is diverging, in which case the
+            // return type is `!`. For the unit type, we need to actually return the unit, but in
+            // the case of `!`, no return value is required, as the block will never return.
+            let tcx = this.hir.tcx();
+            let ty = destination.ty(&this.local_decls, tcx).to_ty(tcx);
+            if ty.is_nil() {
+                // We only want to assign an implicit `()` as the return value of the block if the
+                // block does not diverge. (Otherwise, we may try to assign a unit to a `!`-type.)
+                this.cfg.push_assign_unit(block, source_info, destination);
+            }
         }
         // Finally, we pop all the let scopes before exiting out from the scope of block
         // itself.

@@ -272,7 +272,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Continue { .. } |
             ExprKind::Break { .. } |
             ExprKind::InlineAsm { .. } |
-            ExprKind::Return {.. } => {
+            ExprKind::Return { .. } => {
                 unpack!(block = this.stmt_expr(block, expr));
                 this.cfg.push_assign_unit(block, source_info, destination);
                 block.unit()
