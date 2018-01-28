@@ -14,7 +14,7 @@ pub(crate) fn scan_shebang(ptr: &mut Ptr) -> bool {
     }
 }
 
-pub(crate) fn scan_block_comment(ptr: &mut Ptr) -> Option<SyntaxKind> {
+fn scan_block_comment(ptr: &mut Ptr) -> Option<SyntaxKind> {
     if ptr.next_is('*') {
         ptr.bump();
         let mut depth: u32 = 1;
