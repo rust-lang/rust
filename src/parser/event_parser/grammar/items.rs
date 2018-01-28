@@ -14,7 +14,7 @@ fn item(p: &mut Parser) {
     let item = p.start();
     attributes::outer_attributes(p);
     visibility(p);
-    let la = p.raw_lookahead(1);
+    let la = p.nth(1);
     let item_kind = match p.current() {
         EXTERN_KW if la == CRATE_KW => {
             extern_crate_item(p);
@@ -171,7 +171,7 @@ fn use_item(p: &mut Parser) {
     p.expect(SEMI);
 
     fn use_tree(p: &mut Parser) {
-        let la = p.raw_lookahead(1);
+        let la = p.nth(1);
         let m = p.start();
         match (p.current(), la) {
             (STAR, _) => {
@@ -235,5 +235,21 @@ fn fn_item(p: &mut Parser) {
     assert!(p.at(FN_KW));
     p.bump();
 
-    p.expect(IDENT) && p.expect(L_PAREN) && p.expect(R_PAREN) && p.curly_block(|_| ());
+    p.expect(IDENT);
+    if p.at(L_PAREN) {
+        fn_value_parameters(p);
+    } else {
+        p.error().message("expected function arguments").emit();
+    }
+
+    if p.at(L_CURLY) {
+        p.expect(L_CURLY);
+        p.expect(R_CURLY);
+    }
+
+    fn fn_value_parameters(p: &mut Parser) {
+        assert!(p.at(L_PAREN));
+        p.bump();
+        p.expect(R_PAREN);
+    }
 }

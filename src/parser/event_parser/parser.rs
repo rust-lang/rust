@@ -1,7 +1,7 @@
 use {SyntaxKind, TextUnit, Token};
 use super::Event;
 use super::super::is_insignificant;
-use SyntaxKind::{EOF, ERROR, L_CURLY, R_CURLY, TOMBSTONE};
+use SyntaxKind::{EOF, TOMBSTONE};
 
 pub(crate) struct Marker {
     pos: u32,
@@ -106,9 +106,6 @@ pub(crate) struct Parser<'t> {
 
     pos: usize,
     events: Vec<Event>,
-
-    curly_level: i32,
-    curly_limit: Option<i32>,
 }
 
 impl<'t> Parser<'t> {
@@ -131,28 +128,12 @@ impl<'t> Parser<'t> {
 
             pos: 0,
             events: Vec::new(),
-            curly_level: 0,
-            curly_limit: None,
         }
     }
 
     pub(crate) fn into_events(self) -> Vec<Event> {
-        assert!(self.curly_limit.is_none());
         assert_eq!(self.current(), EOF);
         self.events
-    }
-
-    pub(crate) fn current(&self) -> SyntaxKind {
-        if self.pos == self.tokens.len() {
-            return EOF;
-        }
-        let token = self.tokens[self.pos];
-        if let Some(limit) = self.curly_limit {
-            if limit == self.curly_level && token.kind == R_CURLY {
-                return EOF;
-            }
-        }
-        token.kind
     }
 
     pub(crate) fn start(&mut self) -> Marker {
@@ -172,11 +153,8 @@ impl<'t> Parser<'t> {
 
     pub(crate) fn bump(&mut self) -> SyntaxKind {
         let kind = self.current();
-        match kind {
-            L_CURLY => self.curly_level += 1,
-            R_CURLY => self.curly_level -= 1,
-            EOF => return EOF,
-            _ => (),
+        if kind == EOF {
+            return EOF;
         }
         self.pos += 1;
         self.event(Event::Token {
@@ -186,30 +164,12 @@ impl<'t> Parser<'t> {
         kind
     }
 
-    pub(crate) fn raw_lookahead(&self, n: usize) -> SyntaxKind {
+    pub(crate) fn nth(&self, n: usize) -> SyntaxKind {
         self.tokens.get(self.pos + n).map(|t| t.kind).unwrap_or(EOF)
     }
 
-    pub(crate) fn curly_block<F: FnOnce(&mut Parser)>(&mut self, f: F) -> bool {
-        let old_level = self.curly_level;
-        let old_limit = self.curly_limit;
-        if !self.expect(L_CURLY) {
-            return false;
-        }
-        self.curly_limit = Some(self.curly_level);
-        f(self);
-        assert!(self.curly_level > old_level);
-        self.curly_limit = old_limit;
-        if !self.expect(R_CURLY) {
-            let err = self.start();
-            while self.curly_level > old_level {
-                if self.bump() == EOF {
-                    break;
-                }
-            }
-            err.complete(self, ERROR);
-        }
-        true
+    pub(crate) fn current(&self) -> SyntaxKind {
+        self.nth(0)
     }
 
     fn event(&mut self, event: Event) {
