@@ -49,6 +49,23 @@ fn alias(p: &mut Parser) -> bool {
     true //FIXME: return false if three are errors
 }
 
+fn error_block(p: &mut Parser, message: &str) {
+    assert!(p.at(L_CURLY));
+    let err = p.start();
+    p.error().message(message).emit();
+    p.bump();
+    let mut level: u32 = 1;
+    while level > 0 && !p.at(EOF) {
+        match p.current() {
+            L_CURLY => level += 1,
+            R_CURLY => level -= 1,
+            _ => (),
+        }
+        p.bump();
+    }
+    err.complete(p, ERROR);
+}
+
 impl<'p> Parser<'p> {
     fn at<L: Lookahead>(&self, l: L) -> bool {
         l.is_ahead(self)
