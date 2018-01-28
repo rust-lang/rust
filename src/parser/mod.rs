@@ -1,7 +1,6 @@
 use {File, FileBuilder, Sink, SyntaxKind, Token};
 
 use syntax_kinds::*;
-use tree::TOMBSTONE;
 
 mod event_parser;
 use self::event_parser::Event;

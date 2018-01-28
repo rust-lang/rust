@@ -22,8 +22,6 @@ mod tree;
 mod lexer;
 mod parser;
 
-#[cfg_attr(rustfmt, rustfmt_skip)]
-#[allow(missing_docs)]
 pub mod syntax_kinds;
 pub use text::{TextRange, TextUnit};
 pub use tree::{File, FileBuilder, Node, Sink, SyntaxKind, Token};
