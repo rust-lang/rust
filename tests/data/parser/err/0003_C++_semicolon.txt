@@ -2,22 +2,22 @@ FILE@[0; 40)
   STRUCT_ITEM@[0; 39)
     STRUCT_KW@[0; 6)
     WHITESPACE@[6; 7)
-    IDENT@[7; 8)
+    IDENT@[7; 8) "S"
     WHITESPACE@[8; 9)
     L_CURLY@[9; 10)
     NAMED_FIELD@[10; 21)
       WHITESPACE@[10; 15)
-      IDENT@[15; 16)
+      IDENT@[15; 16) "a"
       COLON@[16; 17)
       WHITESPACE@[17; 18)
-      IDENT@[18; 21)
+      IDENT@[18; 21) "i32"
     COMMA@[21; 22)
     NAMED_FIELD@[22; 36)
       WHITESPACE@[22; 27)
-      IDENT@[27; 28)
+      IDENT@[27; 28) "b"
       COLON@[28; 29)
       WHITESPACE@[29; 30)
-      IDENT@[30; 36)
+      IDENT@[30; 36) "String"
     COMMA@[36; 37)
     WHITESPACE@[37; 38)
     R_CURLY@[38; 39)

@@ -4,10 +4,10 @@ FILE@[0; 54)
       POUND@[0; 1)
       L_BRACK@[1; 2)
       META_ITEM@[2; 17)
-        IDENT@[2; 5)
+        IDENT@[2; 5) "foo"
         L_PAREN@[5; 6)
         META_ITEM@[6; 9)
-          IDENT@[6; 9)
+          IDENT@[6; 9) "foo"
         COMMA@[9; 10)
         ERROR@[10; 12)
         err: `expected attribute`
@@ -24,7 +24,7 @@ FILE@[0; 54)
       WHITESPACE@[18; 19)
     FN_KW@[19; 21)
     WHITESPACE@[21; 22)
-    IDENT@[22; 25)
+    IDENT@[22; 25) "foo"
     L_PAREN@[25; 26)
     R_PAREN@[26; 27)
     WHITESPACE@[27; 28)
@@ -37,14 +37,14 @@ FILE@[0; 54)
       POUND@[34; 35)
       L_BRACK@[35; 36)
       META_ITEM@[36; 41)
-        IDENT@[36; 39)
+        IDENT@[36; 39) "foo"
         L_PAREN@[39; 40)
         err: `expected attribute`
         WHITESPACE@[40; 41)
       err: `expected R_BRACK`
     FN_KW@[41; 43)
     WHITESPACE@[43; 44)
-    IDENT@[44; 47)
+    IDENT@[44; 47) "foo"
     L_PAREN@[47; 48)
     R_PAREN@[48; 49)
     WHITESPACE@[49; 50)
