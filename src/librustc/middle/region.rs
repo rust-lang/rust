@@ -471,6 +471,9 @@ impl<'tcx> Visitor<'tcx> for ExprLocatorVisitor {
 
         self.expr_and_pat_count += 1;
 
+        if pat.id == self.id {
+            self.result = Some(self.expr_and_pat_count);
+        }
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr) {

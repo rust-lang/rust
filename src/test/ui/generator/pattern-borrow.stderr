@@ -1,0 +1,10 @@
+error[E0626]: borrow may still be in use when generator yields
+  --> $DIR/pattern-borrow.rs:19:24
+   |
+19 |         if let Test::A(ref _a) = test { //~ ERROR borrow may still be in use when generator yields
+   |                        ^^^^^^
+20 |             yield ();
+   |             -------- possible yield occurs here
+
+error: aborting due to previous error
+
