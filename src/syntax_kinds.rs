@@ -92,8 +92,12 @@ pub enum SyntaxKind {
     ALIAS,
     VISIBILITY,
 
-    TOMBSTONE = !0 - 1,
-    EOF = !0,
+    // Technical SyntaxKinds: they appear temporally during parsing,
+    // but never end up in the final tree
+    #[doc(hidden)]
+    TOMBSTONE,
+    #[doc(hidden)]
+    EOF,
 }
 pub(crate) use self::SyntaxKind::*;
 
