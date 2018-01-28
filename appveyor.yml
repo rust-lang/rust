@@ -9,5 +9,5 @@ install:
 
 build: false
 
-test_scipt:
+test_script:
   - cargo test
