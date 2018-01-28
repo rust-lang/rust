@@ -4,7 +4,6 @@ use {SyntaxKind, Token};
 mod parser;
 mod grammar;
 
-
 /// `Parser` produces a flat list of `Event`s.
 /// They are converted to a tree-structure in
 /// a separate pass, via `TreeBuilder`.
