@@ -1245,7 +1245,8 @@ macro_rules! iterator {
                 P: FnMut(Self::Item) -> bool,
             {
                 // The addition might panic on overflow
-                let n = self.len();
+                // Use the len of the slice to hint optimizer to remove result index bounds check.
+                let n = make_slice!(self.ptr, self.end).len();
                 self.try_fold(0, move |i, x| {
                     if predicate(x) { Err(i) }
                     else { Ok(i + 1) }
@@ -1263,7 +1264,8 @@ macro_rules! iterator {
             {
                 // No need for an overflow check here, because `ExactSizeIterator`
                 // implies that the number of elements fits into a `usize`.
-                let n = self.len();
+                // Use the len of the slice to hint optimizer to remove result index bounds check.
+                let n = make_slice!(self.ptr, self.end).len();
                 self.try_rfold(n, move |i, x| {
                     let i = i - 1;
                     if predicate(x) { Err(i) }
