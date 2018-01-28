@@ -150,15 +150,15 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'gcx, 'tcx> {
     }
 
     fn visit_pat(&mut self, pat: &'tcx Pat) {
+        intravisit::walk_pat(self, pat);
+
+        self.expr_count += 1;
+
         if let PatKind::Binding(..) = pat.node {
             let scope = self.region_scope_tree.var_scope(pat.hir_id.local_id);
             let ty = self.fcx.tables.borrow().pat_ty(pat);
             self.record(ty, Some(scope), None, pat.span);
         }
-
-        self.expr_count += 1;
-
-        intravisit::walk_pat(self, pat);
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr) {
