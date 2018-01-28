@@ -502,9 +502,8 @@ impl<'a, 'b, 'c, T: LintContext<'c>> DiagnosticBuilderExt<'c, T> for rustc_error
 
     fn suggest_remove_item(&mut self, cx: &T, item: Span, msg: &str) {
         let mut remove_span = item;
-        let fmpos = cx.sess()
-            .codemap()
-            .lookup_byte_offset(remove_span.next_point().hi());
+        let hi = cx.sess().codemap().next_point(remove_span).hi();
+        let fmpos = cx.sess().codemap().lookup_byte_offset(hi);
 
         if let Some(ref src) = fmpos.fm.src {
             let non_whitespace_offset = src[fmpos.pos.to_usize()..].find(|c| c != ' ' && c != '\t' && c != '\n');
