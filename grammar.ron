@@ -88,5 +88,8 @@ Grammar(
         "LITERAL",
         "ALIAS",
         "VISIBILITY",
+        "TYPE_PARAM_LIST",
+        "LIFETIME_PARAM",
+        "TYPE_PARAM",
     ]
 )

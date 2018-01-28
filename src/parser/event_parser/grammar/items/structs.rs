@@ -7,7 +7,7 @@ pub(super) fn struct_item(p: &mut Parser) {
     if !p.expect(IDENT) {
         return;
     }
-    generic_parameters(p);
+    type_param_list(p);
     match p.current() {
         WHERE_KW => {
             where_clause(p);
