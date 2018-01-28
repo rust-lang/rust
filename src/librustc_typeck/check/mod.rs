@@ -557,7 +557,7 @@ pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     ///   foo();}` or `{return; 22}`, where we would warn on the
     ///   `foo()` or `22`.
     ///
-    /// - To permit assignment into a local variable or other lvalue
+    /// - To permit assignment into a local variable or other place
     ///   (including the "return slot") of type `!`.  This is allowed
     ///   if **either** the type of value being assigned is `!`, which
     ///   means the current code is dead, **or** the expression's
@@ -2275,11 +2275,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// For the overloaded lvalue expressions (`*x`, `x[3]`), the trait
+    /// For the overloaded place expressions (`*x`, `x[3]`), the trait
     /// returns a type of `&T`, but the actual type we assign to the
     /// *expression* is `T`. So this function just peels off the return
     /// type by one layer to yield `T`.
-    fn make_overloaded_lvalue_return_type(&self,
+    fn make_overloaded_place_return_type(&self,
                                           method: MethodCallee<'tcx>)
                                           -> ty::TypeAndMut<'tcx>
     {
@@ -2373,7 +2373,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.apply_adjustments(base_expr, adjustments);
 
                 self.write_method_call(expr.hir_id, method);
-                (input_ty, self.make_overloaded_lvalue_return_type(method).ty)
+                (input_ty, self.make_overloaded_place_return_type(method).ty)
             });
             if result.is_some() {
                 return result;
@@ -3650,7 +3650,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     target: method.sig.inputs()[0]
                                 }]);
                             }
-                            oprnd_t = self.make_overloaded_lvalue_return_type(method).ty;
+                            oprnd_t = self.make_overloaded_place_return_type(method).ty;
                             self.write_method_call(expr.hir_id, method);
                         } else {
                             type_error_struct!(tcx.sess, expr.span, oprnd_t, E0614,
@@ -3682,7 +3682,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 match ty.sty {
                     ty::TyRef(_, ref mt) | ty::TyRawPtr(ref mt) => {
                         if self.is_place_expr(&oprnd) {
-                            // Lvalues may legitimately have unsized types.
+                            // Places may legitimately have unsized types.
                             // For example, dereferences of a fat pointer and
                             // the last field of a struct can be unsized.
                             ExpectHasType(mt.ty)
@@ -4245,7 +4245,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // ref mut, for soundness (issue #23116). In particular, in
             // the latter case, we need to be clear that the type of the
             // referent for the reference that results is *equal to* the
-            // type of the lvalue it is referencing, and not some
+            // type of the place it is referencing, and not some
             // supertype thereof.
             let init_ty = self.check_expr_with_needs(init, Needs::maybe_mut_place(m));
             self.demand_eqtype(init.span, local_ty, init_ty);

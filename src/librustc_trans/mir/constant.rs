@@ -209,7 +209,7 @@ enum Base {
     Static(ValueRef)
 }
 
-/// An place as seen from a constant.
+/// A place as seen from a constant.
 #[derive(Copy, Clone)]
 struct ConstPlace<'tcx> {
     base: Base,

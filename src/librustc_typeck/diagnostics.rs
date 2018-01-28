@@ -732,8 +732,8 @@ and [RFC 809] for more details.
 "##,
 
 E0067: r##"
-The left-hand side of a compound assignment expression must be an lvalue
-expression. An lvalue expression represents a memory location and includes
+The left-hand side of a compound assignment expression must be a place
+expression. A place expression represents a memory location and includes
 item paths (ie, namespaced variables), dereferences, indexing expressions,
 and field references.
 
@@ -742,7 +742,7 @@ Let's start with some erroneous code examples:
 ```compile_fail,E0067
 use std::collections::LinkedList;
 
-// Bad: assignment to non-lvalue expression
+// Bad: assignment to non-place expression
 LinkedList::new() += 1;
 
 // ...
@@ -783,14 +783,14 @@ function's return type and the value being returned.
 "##,
 
 E0070: r##"
-The left-hand side of an assignment operator must be an lvalue expression. An
-lvalue expression represents a memory location and can be a variable (with
+The left-hand side of an assignment operator must be a place expression. An
+place expression represents a memory location and can be a variable (with
 optional namespacing), a dereference, an indexing expression or a field
 reference.
 
 More details can be found in the [Expressions] section of the Reference.
 
-[Expressions]: https://doc.rust-lang.org/reference/expressions.html#lvalues-rvalues-and-temporaries
+[Expressions]: https://doc.rust-lang.org/reference/expressions.html#places-rvalues-and-temporaries
 
 Now, we can go further. Here are some erroneous code examples:
 
@@ -806,7 +806,7 @@ fn some_other_func() {}
 
 fn some_function() {
     SOME_CONST = 14; // error : a constant value cannot be changed!
-    1 = 3; // error : 1 isn't a valid lvalue!
+    1 = 3; // error : 1 isn't a valid place!
     some_other_func() = 4; // error : we can't assign value to a function!
     SomeStruct.x = 12; // error : SomeStruct a structure name but it is used
                        // like a variable!

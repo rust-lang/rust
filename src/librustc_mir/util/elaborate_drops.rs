@@ -560,7 +560,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     ///        ptr = cur
     ///        cur = cur.offset(1)
     ///    } else {
-    ///        ptr = &mut LV[cur]
+    ///        ptr = &mut P[cur]
     ///        cur = cur + 1
     ///    }
     ///    drop(ptr)
@@ -731,7 +731,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         if ptr_based {
             let tmp_ty = tcx.mk_mut_ptr(self.place_ty(self.place));
             let tmp = Place::Local(self.new_temp(tmp_ty));
-            // tmp = &LV;
+            // tmp = &P;
             // cur = tmp as *mut T;
             // end = Offset(cur, len);
             drop_block_stmts.push(self.assign(&tmp, Rvalue::Ref(

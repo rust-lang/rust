@@ -545,7 +545,7 @@ impl<'a, 'tcx> ArgType<'tcx> {
         self.mode == PassMode::Ignore
     }
 
-    /// Get the LLVM type for an place of the original Rust type of
+    /// Get the LLVM type for a place of the original Rust type of
     /// this argument/return, i.e. the result of `type_of::type_of`.
     pub fn memory_ty(&self, cx: &CodegenCx<'a, 'tcx>) -> Type {
         self.layout.llvm_type(cx)

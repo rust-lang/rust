@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex, LookupResult};
-use dataflow::{MaybeInitializedLvals, MaybeUninitializedLvals};
+use dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use dataflow::{DataflowResults};
 use dataflow::{on_all_children_bits, on_all_drop_children_bits};
 use dataflow::{drop_flag_effects_for_location, on_lookup_result_bits};
@@ -60,11 +60,11 @@ impl MirPass for ElaborateDrops {
             let dead_unwinds = find_dead_unwinds(tcx, mir, id, &env);
             let flow_inits =
                 do_dataflow(tcx, mir, id, &[], &dead_unwinds,
-                            MaybeInitializedLvals::new(tcx, mir, &env),
+                            MaybeInitializedPlaces::new(tcx, mir, &env),
                             |bd, p| DebugFormatted::new(&bd.move_data().move_paths[p]));
             let flow_uninits =
                 do_dataflow(tcx, mir, id, &[], &dead_unwinds,
-                            MaybeUninitializedLvals::new(tcx, mir, &env),
+                            MaybeUninitializedPlaces::new(tcx, mir, &env),
                             |bd, p| DebugFormatted::new(&bd.move_data().move_paths[p]));
 
             ElaborateDropsCtxt {
@@ -97,7 +97,7 @@ fn find_dead_unwinds<'a, 'tcx>(
     let mut dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
     let flow_inits =
         do_dataflow(tcx, mir, id, &[], &dead_unwinds,
-                    MaybeInitializedLvals::new(tcx, mir, &env),
+                    MaybeInitializedPlaces::new(tcx, mir, &env),
                     |bd, p| DebugFormatted::new(&bd.move_data().move_paths[p]));
     for (bb, bb_data) in mir.basic_blocks().iter_enumerated() {
         let location = match bb_data.terminator().kind {
@@ -300,8 +300,8 @@ struct ElaborateDropsCtxt<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &'a Mir<'tcx>,
     env: &'a MoveDataParamEnv<'tcx, 'tcx>,
-    flow_inits: DataflowResults<MaybeInitializedLvals<'a, 'tcx, 'tcx>>,
-    flow_uninits:  DataflowResults<MaybeUninitializedLvals<'a, 'tcx, 'tcx>>,
+    flow_inits: DataflowResults<MaybeInitializedPlaces<'a, 'tcx, 'tcx>>,
+    flow_uninits:  DataflowResults<MaybeUninitializedPlaces<'a, 'tcx, 'tcx>>,
     drop_flags: FxHashMap<MovePathIndex, Local>,
     patch: MirPatch<'tcx>,
 }

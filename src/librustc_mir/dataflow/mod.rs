@@ -26,9 +26,9 @@ use std::path::PathBuf;
 use std::usize;
 
 pub use self::impls::{MaybeStorageLive};
-pub use self::impls::{MaybeInitializedLvals, MaybeUninitializedLvals};
-pub use self::impls::{DefinitelyInitializedLvals, MovingOutStatements};
-pub use self::impls::EverInitializedLvals;
+pub use self::impls::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
+pub use self::impls::{DefinitelyInitializedPlaces, MovingOutStatements};
+pub use self::impls::EverInitializedPlaces;
 pub use self::impls::borrows::{Borrows, BorrowData};
 pub(crate) use self::impls::borrows::{ActiveBorrows, Reservations, ReserveOrActivateIndex};
 pub use self::at_location::{FlowAtLocation, FlowsAtLocation};

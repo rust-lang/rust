@@ -77,7 +77,7 @@ pub enum Adjust<'tcx> {
     /// Go from a mut raw pointer to a const raw pointer.
     MutToConstPointer,
 
-    /// Dereference once, producing an lvalue.
+    /// Dereference once, producing a place.
     Deref(Option<OverloadedDeref<'tcx>>),
 
     /// Take the address and produce either a `&` or `*` pointer.

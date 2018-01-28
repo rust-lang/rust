@@ -15,7 +15,7 @@ use borrow_check::nll::region_infer::Cause;
 use borrow_check::nll::region_infer::ClosureRegionRequirementsExt;
 use borrow_check::nll::universal_regions::UniversalRegions;
 use dataflow::FlowAtLocation;
-use dataflow::MaybeInitializedLvals;
+use dataflow::MaybeInitializedPlaces;
 use dataflow::move_paths::MoveData;
 use rustc::hir::def_id::DefId;
 use rustc::infer::{InferCtxt, InferOk, InferResult, LateBoundRegionConversionTime, UnitResult};
@@ -100,7 +100,7 @@ pub(crate) fn type_check<'gcx, 'tcx>(
     mir_def_id: DefId,
     universal_regions: &UniversalRegions<'tcx>,
     liveness: &LivenessResults,
-    flow_inits: &mut FlowAtLocation<MaybeInitializedLvals<'_, 'gcx, 'tcx>>,
+    flow_inits: &mut FlowAtLocation<MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
 ) -> MirTypeckRegionConstraints<'tcx> {
     let body_id = infcx.tcx.hir.as_local_node_id(mir_def_id).unwrap();

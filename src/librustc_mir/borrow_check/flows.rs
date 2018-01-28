@@ -15,8 +15,8 @@
 
 use rustc::mir::{BasicBlock, Location};
 
-use dataflow::{MaybeInitializedLvals, MaybeUninitializedLvals};
-use dataflow::{EverInitializedLvals, MovingOutStatements};
+use dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
+use dataflow::{EverInitializedPlaces, MovingOutStatements};
 use dataflow::{ActiveBorrows, FlowAtLocation, FlowsAtLocation};
 use dataflow::move_paths::HasMoveData;
 use std::fmt;
@@ -24,19 +24,19 @@ use std::fmt;
 // (forced to be `pub` due to its use as an associated type below.)
 pub(crate) struct Flows<'b, 'gcx: 'tcx, 'tcx: 'b> {
     pub borrows: FlowAtLocation<ActiveBorrows<'b, 'gcx, 'tcx>>,
-    pub inits: FlowAtLocation<MaybeInitializedLvals<'b, 'gcx, 'tcx>>,
-    pub uninits: FlowAtLocation<MaybeUninitializedLvals<'b, 'gcx, 'tcx>>,
+    pub inits: FlowAtLocation<MaybeInitializedPlaces<'b, 'gcx, 'tcx>>,
+    pub uninits: FlowAtLocation<MaybeUninitializedPlaces<'b, 'gcx, 'tcx>>,
     pub move_outs: FlowAtLocation<MovingOutStatements<'b, 'gcx, 'tcx>>,
-    pub ever_inits: FlowAtLocation<EverInitializedLvals<'b, 'gcx, 'tcx>>,
+    pub ever_inits: FlowAtLocation<EverInitializedPlaces<'b, 'gcx, 'tcx>>,
 }
 
 impl<'b, 'gcx, 'tcx> Flows<'b, 'gcx, 'tcx> {
     pub fn new(
         borrows: FlowAtLocation<ActiveBorrows<'b, 'gcx, 'tcx>>,
-        inits: FlowAtLocation<MaybeInitializedLvals<'b, 'gcx, 'tcx>>,
-        uninits: FlowAtLocation<MaybeUninitializedLvals<'b, 'gcx, 'tcx>>,
+        inits: FlowAtLocation<MaybeInitializedPlaces<'b, 'gcx, 'tcx>>,
+        uninits: FlowAtLocation<MaybeUninitializedPlaces<'b, 'gcx, 'tcx>>,
         move_outs: FlowAtLocation<MovingOutStatements<'b, 'gcx, 'tcx>>,
-        ever_inits: FlowAtLocation<EverInitializedLvals<'b, 'gcx, 'tcx>>,
+        ever_inits: FlowAtLocation<EverInitializedPlaces<'b, 'gcx, 'tcx>>,
     ) -> Self {
         Flows {
             borrows,

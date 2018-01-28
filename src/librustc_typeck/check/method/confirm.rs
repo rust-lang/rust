@@ -136,7 +136,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         };
 
         if let Some(hir::MutMutable) = pick.autoref {
-            self.convert_lvalue_derefs_to_mutable();
+            self.convert_place_derefs_to_mutable();
         }
 
         ConfirmResult { callee, illegal_sized_bound }
@@ -416,7 +416,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
     /// When we select a method with a mutable autoref, we have to go convert any
     /// auto-derefs, indices, etc from `Deref` and `Index` into `DerefMut` and `IndexMut`
     /// respectively.
-    fn convert_lvalue_derefs_to_mutable(&self) {
+    fn convert_place_derefs_to_mutable(&self) {
         // Gather up expressions we want to munge.
         let mut exprs = Vec::new();
         exprs.push(self.self_expr);
@@ -431,11 +431,11 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             }
         }
 
-        debug!("convert_lvalue_derefs_to_mutable: exprs={:?}", exprs);
+        debug!("convert_place_derefs_to_mutable: exprs={:?}", exprs);
 
         // Fix up autoderefs and derefs.
         for (i, &expr) in exprs.iter().rev().enumerate() {
-            debug!("convert_lvalue_derefs_to_mutable: i={} expr={:?}", i, expr);
+            debug!("convert_place_derefs_to_mutable: i={} expr={:?}", i, expr);
 
             // Fix up the autoderefs. Autorefs can only occur immediately preceding
             // overloaded place ops, and will be fixed by them in order to get

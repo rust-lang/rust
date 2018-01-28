@@ -733,13 +733,13 @@ pub enum TerminatorKind<'tcx> {
     },
 
     /// Drop the Place and assign the new value over it. This ensures
-    /// that the assignment to LV occurs *even if* the destructor for
+    /// that the assignment to `P` occurs *even if* the destructor for
     /// place unwinds. Its semantics are best explained by by the
     /// elaboration:
     ///
     /// ```
     /// BB0 {
-    ///   DropAndReplace(LV <- RV, goto BB1, unwind BB2)
+    ///   DropAndReplace(P <- V, goto BB1, unwind BB2)
     /// }
     /// ```
     ///
@@ -747,15 +747,15 @@ pub enum TerminatorKind<'tcx> {
     ///
     /// ```
     /// BB0 {
-    ///   Drop(LV, goto BB1, unwind BB2)
+    ///   Drop(P, goto BB1, unwind BB2)
     /// }
     /// BB1 {
-    ///   // LV is now unitialized
-    ///   LV <- RV
+    ///   // P is now unitialized
+    ///   P <- V
     /// }
     /// BB2 {
-    ///   // LV is now unitialized -- its dtor panicked
-    ///   LV <- RV
+    ///   // P is now unitialized -- its dtor panicked
+    ///   P <- V
     /// }
     /// ```
     DropAndReplace {
