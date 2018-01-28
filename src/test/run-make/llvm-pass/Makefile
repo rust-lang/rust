@@ -1,5 +1,9 @@
 -include ../tools.mk
 
+ifeq ($(UNAME),Darwin)
+PLUGIN_FLAGS := -C link-args=-Wl,-undefined,dynamic_lookup
+endif
+
 ifeq ($(findstring stage1,$(RUST_BUILD_STAGE)),stage1)
 # ignore stage1
 all:
@@ -11,7 +15,7 @@ ifdef IS_WINDOWS
 all:
 else
 all: $(call NATIVE_STATICLIB,llvm-function-pass) $(call NATIVE_STATICLIB,llvm-module-pass)
-	$(RUSTC) plugin.rs -C prefer-dynamic
+	$(RUSTC) plugin.rs -C prefer-dynamic $(PLUGIN_FLAGS)
 	$(RUSTC) main.rs
 
 $(TMPDIR)/libllvm-function-pass.o:

@@ -432,9 +432,6 @@ impl Build {
         if self.config.use_jemalloc {
             features.push_str(" jemalloc");
         }
-        if self.config.llvm_enabled {
-            features.push_str(" llvm");
-        }
         features
     }
 

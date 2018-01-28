@@ -38,7 +38,17 @@ impl DynamicLibrary {
         // run.
         match maybe_library {
             Err(err) => Err(err),
-            Ok(handle) => Ok(DynamicLibrary { handle: handle })
+            Ok(handle) => Ok(DynamicLibrary { handle })
+        }
+    }
+
+    /// Load a dynamic library into the global namespace (RTLD_GLOBAL on Unix)
+    /// and do it now (don't use RTLD_LAZY on Unix).
+    pub fn open_global_now(filename: &Path) -> Result<DynamicLibrary, String> {
+        let maybe_library = dl::open_global_now(filename.as_os_str());
+        match maybe_library {
+            Err(err) => Err(err),
+            Ok(handle) => Ok(DynamicLibrary { handle })
         }
     }
 
@@ -145,15 +155,20 @@ mod dl {
         })
     }
 
-    const LAZY: libc::c_int = 1;
+    pub fn open_global_now(filename: &OsStr) -> Result<*mut u8, String> {
+        check_for_errors_in(|| unsafe {
+            let s = CString::new(filename.as_bytes()).unwrap();
+            libc::dlopen(s.as_ptr(), libc::RTLD_GLOBAL | libc::RTLD_NOW) as *mut u8
+        })
+    }
 
     unsafe fn open_external(filename: &OsStr) -> *mut u8 {
         let s = CString::new(filename.as_bytes()).unwrap();
-        libc::dlopen(s.as_ptr(), LAZY) as *mut u8
+        libc::dlopen(s.as_ptr(), libc::RTLD_LAZY) as *mut u8
     }
 
     unsafe fn open_internal() -> *mut u8 {
-        libc::dlopen(ptr::null(), LAZY) as *mut u8
+        libc::dlopen(ptr::null(), libc::RTLD_LAZY) as *mut u8
     }
 
     pub fn check_for_errors_in<T, F>(f: F) -> Result<T, String> where
@@ -222,6 +237,10 @@ mod dl {
         fn GetProcAddress(handle: HMODULE,
                           name: LPCSTR) -> *mut c_void;
         fn FreeLibrary(handle: HMODULE) -> BOOL;
+    }
+
+    pub fn open_global_now(filename: &OsStr) -> Result<*mut u8, String> {
+        open(Some(filename))
     }
 
     pub fn open(filename: Option<&OsStr>) -> Result<*mut u8, String> {

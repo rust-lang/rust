@@ -77,6 +77,6 @@ impl TransCrate for TheBackend {
 
 /// This is the entrypoint for a hot plugged rustc_trans
 #[no_mangle]
-pub fn __rustc_codegen_backend(sess: &Session) -> Box<TransCrate> {
-    Box::new(TheBackend(MetadataOnlyTransCrate::new(sess)))
+pub fn __rustc_codegen_backend() -> Box<TransCrate> {
+    Box::new(TheBackend(MetadataOnlyTransCrate::new()))
 }

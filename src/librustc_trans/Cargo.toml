@@ -13,6 +13,7 @@ test = false
 bitflags = "1.0"
 flate2 = "1.0"
 jobserver = "0.1.5"
+libc = "0.2"
 log = "0.4"
 num_cpus = "1.0"
 rustc = { path = "../librustc" }
@@ -36,3 +37,6 @@ tempdir = "0.3"
 
 [target."cfg(windows)".dependencies]
 cc = "1.0.1"
+
+[features]
+jemalloc = ["rustc_back/jemalloc"]

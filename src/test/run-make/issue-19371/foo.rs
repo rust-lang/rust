@@ -15,7 +15,6 @@ extern crate rustc_driver;
 extern crate rustc_lint;
 extern crate rustc_metadata;
 extern crate rustc_errors;
-extern crate rustc_trans;
 extern crate rustc_trans_utils;
 extern crate syntax;
 
@@ -63,7 +62,7 @@ fn basic_sess(sysroot: PathBuf) -> (Session, Rc<CStore>, Box<TransCrate>) {
 
     let descriptions = Registry::new(&rustc::DIAGNOSTICS);
     let sess = build_session(opts, None, descriptions);
-    let trans = rustc_trans::LlvmTransCrate::new(&sess);
+    let trans = rustc_driver::get_trans(&sess);
     let cstore = Rc::new(CStore::new(trans.metadata_loader()));
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     (sess, cstore, trans)

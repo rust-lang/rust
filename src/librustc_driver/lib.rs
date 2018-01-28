@@ -47,8 +47,6 @@ extern crate rustc_metadata;
 extern crate rustc_mir;
 extern crate rustc_resolve;
 extern crate rustc_save_analysis;
-#[cfg(feature="llvm")]
-pub extern crate rustc_trans;
 extern crate rustc_trans_utils;
 extern crate rustc_typeck;
 extern crate serialize;
@@ -68,30 +66,36 @@ use rustc::session::{self, config, Session, build_session, CompileResult};
 use rustc::session::CompileIncomplete;
 use rustc::session::config::{Input, PrintRequest, ErrorOutputType};
 use rustc::session::config::nightly_options;
+use rustc::session::filesearch;
 use rustc::session::{early_error, early_warn};
 use rustc::lint::Lint;
 use rustc::lint;
 use rustc::middle::cstore::CrateStore;
 use rustc_metadata::locator;
 use rustc_metadata::cstore::CStore;
+use rustc_metadata::dynamic_lib::DynamicLibrary;
 use rustc::util::common::{time, ErrorReported};
 use rustc_trans_utils::trans_crate::TransCrate;
 
 use serialize::json::ToJson;
 
 use std::any::Any;
-use std::cmp::max;
 use std::cmp::Ordering::Equal;
+use std::cmp::max;
 use std::default::Default;
+use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
 use std::env;
 use std::ffi::OsString;
 use std::io::{self, Read, Write};
 use std::iter::repeat;
+use std::mem;
 use std::panic;
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 use std::process::{self, Command, Stdio};
 use std::rc::Rc;
 use std::str;
+use std::sync::atomic::{AtomicBool, ATOMIC_BOOL_INIT, Ordering};
+use std::sync::{Once, ONCE_INIT};
 use std::thread;
 
 use syntax::ast;
@@ -176,57 +180,247 @@ pub fn run<F>(run_compiler: F) -> isize
     0
 }
 
-#[cfg(not(feature="llvm"))]
-pub use rustc_trans_utils::trans_crate::MetadataOnlyTransCrate as DefaultTransCrate;
-#[cfg(feature="llvm")]
-pub use rustc_trans::LlvmTransCrate as DefaultTransCrate;
-
-#[cfg(not(feature="llvm"))]
-pub mod rustc_trans {
-    pub use rustc_trans_utils::trans_crate::MetadataOnlyTransCrate as LlvmTransCrate;
-
-    pub fn print_version() {}
-    pub fn print_passes() {}
-}
-
-fn load_backend_from_dylib(sess: &Session, backend_name: &str) -> Box<TransCrate> {
-    use std::path::Path;
-    use rustc_metadata::dynamic_lib::DynamicLibrary;
-
-    match DynamicLibrary::open(Some(Path::new(backend_name))) {
-        Ok(lib) => {
-            unsafe {
-                let trans = {
-                    let __rustc_codegen_backend: unsafe fn(&Session) -> Box<TransCrate>;
-                    __rustc_codegen_backend = match lib.symbol("__rustc_codegen_backend") {
-                        Ok(f) => ::std::mem::transmute::<*mut u8, _>(f),
-                        Err(e) => sess.fatal(&format!("Couldnt load codegen backend as it\
-                        doesn't export the __rustc_backend_new symbol: {:?}", e)),
-                    };
-                    __rustc_codegen_backend(sess)
-                };
-                ::std::mem::forget(lib);
-                trans
-            }
-        }
+fn load_backend_from_dylib(path: &Path) -> fn() -> Box<TransCrate> {
+    // Note that we're specifically using `open_global_now` here rather than
+    // `open`, namely we want the behavior on Unix of RTLD_GLOBAL and RTLD_NOW,
+    // where NOW means "bind everything right now" because we don't want
+    // surprises later on and RTLD_GLOBAL allows the symbols to be made
+    // available for future dynamic libraries opened. This is currently used by
+    // loading LLVM and then making its symbols available for other dynamic
+    // libraries.
+    let lib = match DynamicLibrary::open_global_now(path) {
+        Ok(lib) => lib,
         Err(err) => {
-            sess.fatal(&format!("Couldnt load codegen backend {:?}: {:?}", backend_name, err));
+            let err = format!("couldn't load codegen backend {:?}: {:?}",
+                              path,
+                              err);
+            early_error(ErrorOutputType::default(), &err);
+        }
+    };
+    unsafe {
+        match lib.symbol("__rustc_codegen_backend") {
+            Ok(f) => {
+                mem::forget(lib);
+                mem::transmute::<*mut u8, _>(f)
+            }
+            Err(e) => {
+                let err = format!("couldn't load codegen backend as it \
+                                   doesn't export the `__rustc_codegen_backend` \
+                                   symbol: {:?}", e);
+                early_error(ErrorOutputType::default(), &err);
+            }
         }
     }
 }
 
 pub fn get_trans(sess: &Session) -> Box<TransCrate> {
-    let trans_name = sess.opts.debugging_opts.codegen_backend.clone();
-    match trans_name.as_ref().map(|s|&**s) {
-        None => DefaultTransCrate::new(&sess),
-        Some("llvm") => rustc_trans::LlvmTransCrate::new(&sess),
-        Some("metadata_only") => {
-            rustc_trans_utils::trans_crate::MetadataOnlyTransCrate::new(&sess)
+    static INIT: Once = ONCE_INIT;
+    static mut LOAD: fn() -> Box<TransCrate> = || unreachable!();
+
+    INIT.call_once(|| {
+        let trans_name = sess.opts.debugging_opts.codegen_backend.as_ref();
+        let backend = match trans_name.map(|s| &**s) {
+            None |
+            Some("llvm") => get_trans_default(),
+            Some("metadata_only") => {
+                rustc_trans_utils::trans_crate::MetadataOnlyTransCrate::new
+            }
+            Some(filename) if filename.contains(".") => {
+                load_backend_from_dylib(filename.as_ref())
+            }
+            Some(trans_name) => {
+                sess.fatal(&format!("unknown codegen backend {}", trans_name));
+            }
+        };
+
+        unsafe {
+            LOAD = backend;
         }
-        Some(filename) if filename.contains(".") => {
-            load_backend_from_dylib(&sess, &filename)
+    });
+    let backend = unsafe { LOAD() };
+    backend.init(sess);
+    backend
+}
+
+fn get_trans_default() -> fn() -> Box<TransCrate> {
+    // For now we only allow this function to be called once as it'll dlopen a
+    // few things, which seems to work best if we only do that once. In
+    // general this assertion never trips due to the once guard in `get_trans`,
+    // but there's a few manual calls to this function in this file we protect
+    // against.
+    static LOADED: AtomicBool = ATOMIC_BOOL_INIT;
+    assert!(!LOADED.fetch_or(true, Ordering::SeqCst),
+            "cannot load the default trans backend twice");
+
+    // When we're compiling this library with `--test` it'll run as a binary but
+    // not actually exercise much functionality. As a result most of the logic
+    // here is defunkt (it assumes we're a dynamic library in a sysroot) so
+    // let's just return a dummy creation function which won't be used in
+    // general anyway.
+    if cfg!(test) {
+        return rustc_trans_utils::trans_crate::MetadataOnlyTransCrate::new
+    }
+
+    let target = session::config::host_triple();
+    let mut sysroot_candidates = vec![filesearch::get_or_default_sysroot()];
+    let path = current_dll_path()
+        .and_then(|s| s.canonicalize().ok());
+    if let Some(dll) = path {
+        // use `parent` twice to chop off the file name and then also the
+        // directory containing the dll which should be either `lib` or `bin`.
+        if let Some(path) = dll.parent().and_then(|p| p.parent()) {
+            // The original `path` pointed at the `rustc_driver` crate's dll.
+            // Now that dll should only be in one of two locations. The first is
+            // in the compiler's libdir, for example `$sysroot/lib/*.dll`. The
+            // other is the target's libdir, for example
+            // `$sysroot/lib/rustlib/$target/lib/*.dll`.
+            //
+            // We don't know which, so let's assume that if our `path` above
+            // ends in `$target` we *could* be in the target libdir, and always
+            // assume that we may be in the main libdir.
+            sysroot_candidates.push(path.to_owned());
+
+            if path.ends_with(target) {
+                sysroot_candidates.extend(path.parent() // chop off `$target`
+                    .and_then(|p| p.parent())           // chop off `rustlib`
+                    .and_then(|p| p.parent())           // chop off `lib`
+                    .map(|s| s.to_owned()));
+            }
         }
-        Some(trans_name) => sess.fatal(&format!("Unknown codegen backend {}", trans_name)),
+    }
+
+    let sysroot = sysroot_candidates.iter()
+        .map(|sysroot| {
+            let libdir = filesearch::relative_target_lib_path(&sysroot, &target);
+            sysroot.join(&libdir).join("codegen-backends")
+        })
+        .filter(|f| {
+            info!("codegen backend candidate: {}", f.display());
+            f.exists()
+        })
+        .next();
+    let sysroot = match sysroot {
+        Some(path) => path,
+        None => {
+            let candidates = sysroot_candidates.iter()
+                .map(|p| p.display().to_string())
+                .collect::<Vec<_>>()
+                .join("\n* ");
+            let err = format!("failed to find a `codegen-backends` folder \
+                               in the sysroot candidates:\n* {}", candidates);
+            early_error(ErrorOutputType::default(), &err);
+        }
+    };
+    info!("probing {} for a codegen backend", sysroot.display());
+
+    let d = match sysroot.read_dir() {
+        Ok(d) => d,
+        Err(e) => {
+            let err = format!("failed to load default codegen backend, couldn't \
+                               read `{}`: {}", sysroot.display(), e);
+            early_error(ErrorOutputType::default(), &err);
+        }
+    };
+
+    let mut file: Option<PathBuf> = None;
+
+    for entry in d.filter_map(|e| e.ok()) {
+        let path = entry.path();
+        let filename = match path.file_name().and_then(|s| s.to_str()) {
+            Some(s) => s,
+            None => continue,
+        };
+        if !(filename.starts_with(DLL_PREFIX) && filename.ends_with(DLL_SUFFIX)) {
+            continue
+        }
+        let name = &filename[DLL_PREFIX.len() .. filename.len() - DLL_SUFFIX.len()];
+        if !name.starts_with("rustc_trans") {
+            continue
+        }
+        if let Some(ref prev) = file {
+            let err = format!("duplicate codegen backends found\n\
+                first:  {}\n\
+                second: {}\n\
+            ", prev.display(), path.display());
+            early_error(ErrorOutputType::default(), &err);
+        }
+        file = Some(path.clone());
+    }
+
+    match file {
+        Some(ref s) => return load_backend_from_dylib(s),
+        None => {
+            let err = format!("failed to load default codegen backend, no appropriate \
+                               codegen dylib found in `{}`", sysroot.display());
+            early_error(ErrorOutputType::default(), &err);
+        }
+    }
+
+    #[cfg(unix)]
+    fn current_dll_path() -> Option<PathBuf> {
+        use std::ffi::{OsStr, CStr};
+        use std::os::unix::prelude::*;
+
+        unsafe {
+            let addr = current_dll_path as usize as *mut _;
+            let mut info = mem::zeroed();
+            if libc::dladdr(addr, &mut info) == 0 {
+                info!("dladdr failed");
+                return None
+            }
+            if info.dli_fname.is_null() {
+                info!("dladdr returned null pointer");
+                return None
+            }
+            let bytes = CStr::from_ptr(info.dli_fname).to_bytes();
+            let os = OsStr::from_bytes(bytes);
+            Some(PathBuf::from(os))
+        }
+    }
+
+    #[cfg(windows)]
+    fn current_dll_path() -> Option<PathBuf> {
+        use std::ffi::OsString;
+        use std::os::windows::prelude::*;
+
+        extern "system" {
+            fn GetModuleHandleExW(dwFlags: u32,
+                                  lpModuleName: usize,
+                                  phModule: *mut usize) -> i32;
+            fn GetModuleFileNameW(hModule: usize,
+                                  lpFilename: *mut u16,
+                                  nSize: u32) -> u32;
+        }
+
+        const GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS: u32 = 0x00000004;
+
+        unsafe {
+            let mut module = 0;
+            let r = GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+                                       current_dll_path as usize,
+                                       &mut module);
+            if r == 0 {
+                info!("GetModuleHandleExW failed: {}", io::Error::last_os_error());
+                return None
+            }
+            let mut space = Vec::with_capacity(1024);
+            let r = GetModuleFileNameW(module,
+                                       space.as_mut_ptr(),
+                                       space.capacity() as u32);
+            if r == 0 {
+                info!("GetModuleFileNameW failed: {}", io::Error::last_os_error());
+                return None
+            }
+            let r = r as usize;
+            if r >= space.capacity() {
+                info!("our buffer was too small? {}",
+                      io::Error::last_os_error());
+                return None
+            }
+            space.set_len(r);
+            let os = OsString::from_wide(&space);
+            Some(PathBuf::from(os))
+        }
     }
 }
 
@@ -878,7 +1072,7 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
         println!("commit-date: {}", unw(commit_date_str()));
         println!("host: {}", config::host_triple());
         println!("release: {}", unw(release_str()));
-        rustc_trans::print_version();
+        get_trans_default()().print_version();
     }
 }
 
@@ -1175,7 +1369,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     }
 
     if cg_flags.contains(&"passes=list".to_string()) {
-        rustc_trans::print_passes();
+        get_trans_default()().print_passes();
         return None;
     }
 
@@ -1284,8 +1478,8 @@ pub fn diagnostics_registry() -> errors::registry::Registry {
     all_errors.extend_from_slice(&rustc_typeck::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_resolve::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_privacy::DIAGNOSTICS);
-    #[cfg(feature="llvm")]
-    all_errors.extend_from_slice(&rustc_trans::DIAGNOSTICS);
+    // FIXME: need to figure out a way to get these back in here
+    // all_errors.extend_from_slice(get_trans(sess).diagnostics());
     all_errors.extend_from_slice(&rustc_trans_utils::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_const_eval::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_metadata::DIAGNOSTICS);

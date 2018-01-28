@@ -63,8 +63,6 @@ use std::path::{Path, PathBuf};
 use std::process;
 use std::sync::mpsc::channel;
 
-use rustc_driver::rustc_trans;
-
 use externalfiles::ExternalHtml;
 use rustc::session::search_paths::SearchPaths;
 use rustc::session::config::{ErrorOutputType, RustcOptGroup, nightly_options,

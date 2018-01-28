@@ -69,7 +69,7 @@ extern crate tempdir;
 
 use back::bytecode::RLIB_BYTECODE_EXTENSION;
 
-pub use llvm_util::{target_features, print_version, print_passes};
+pub use llvm_util::target_features;
 
 use std::any::Any;
 use std::path::PathBuf;
@@ -149,13 +149,16 @@ impl !Send for LlvmTransCrate {} // Llvm is on a per-thread basis
 impl !Sync for LlvmTransCrate {}
 
 impl LlvmTransCrate {
-    pub fn new(sess: &Session) -> Box<TransCrate> {
-        llvm_util::init(sess); // Make sure llvm is inited
+    pub fn new() -> Box<TransCrate> {
         box LlvmTransCrate(())
     }
 }
 
 impl TransCrate for LlvmTransCrate {
+    fn init(&self, sess: &Session) {
+        llvm_util::init(sess); // Make sure llvm is inited
+    }
+
     fn print(&self, req: PrintRequest, sess: &Session) {
         match req {
             PrintRequest::RelocationModels => {
@@ -181,6 +184,19 @@ impl TransCrate for LlvmTransCrate {
             }
             req => llvm_util::print(req, sess),
         }
+    }
+
+    fn print_passes(&self) {
+        llvm_util::print_passes();
+    }
+
+    fn print_version(&self) {
+        llvm_util::print_version();
+    }
+
+    #[cfg(not(stage0))]
+    fn diagnostics(&self) -> &[(&'static str, &'static str)] {
+        &DIAGNOSTICS
     }
 
     fn target_features(&self, sess: &Session) -> Vec<Symbol> {
@@ -252,8 +268,8 @@ impl TransCrate for LlvmTransCrate {
 
 /// This is the entrypoint for a hot plugged rustc_trans
 #[no_mangle]
-pub fn __rustc_codegen_backend(sess: &Session) -> Box<TransCrate> {
-    LlvmTransCrate::new(sess)
+pub fn __rustc_codegen_backend() -> Box<TransCrate> {
+    LlvmTransCrate::new()
 }
 
 struct ModuleTranslation {
