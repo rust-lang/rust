@@ -1,5 +1,4 @@
 use text::{TextRange, TextUnit};
-use syntax_kinds::syntax_info;
 
 use std::fmt;
 use std::cmp;
@@ -7,25 +6,7 @@ use std::cmp;
 mod file_builder;
 pub use self::file_builder::{FileBuilder, Sink};
 
-/// The kind of syntax node, e.g. `IDENT`, `USE_KW`, or `STRUCT_DEF`.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct SyntaxKind(pub(crate) u32);
-
-pub(crate) const EOF: SyntaxKind = SyntaxKind(!0);
-pub(crate) const EOF_INFO: SyntaxInfo = SyntaxInfo { name: "EOF" };
-
-pub(crate) const TOMBSTONE: SyntaxKind = SyntaxKind(!0 - 1);
-pub(crate) const TOMBSTONE_INFO: SyntaxInfo = SyntaxInfo { name: "TOMBSTONE" };
-
-impl SyntaxKind {
-    fn info(self) -> &'static SyntaxInfo {
-        match self {
-            EOF => &EOF_INFO,
-            TOMBSTONE => &TOMBSTONE_INFO,
-            _ => syntax_info(self),
-        }
-    }
-}
+pub use syntax_kinds::SyntaxKind;
 
 impl fmt::Debug for SyntaxKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

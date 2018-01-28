@@ -1,6 +1,5 @@
 use super::parser::{Parser, TokenSet};
 use SyntaxKind;
-use tree::EOF;
 use syntax_kinds::*;
 
 mod items;

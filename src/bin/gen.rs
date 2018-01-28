@@ -29,8 +29,10 @@ impl Grammar {
 
     fn to_syntax_kinds(&self) -> String {
         let mut acc = String::new();
-        acc.push_str("// Generated from grammar.ron\n");
-        acc.push_str("use tree::{SyntaxKind, SyntaxInfo};\n");
+        acc.push_str("#![allow(bad_style, missing_docs, unreachable_pub)]\n");
+        acc.push_str("#![cfg_attr(rustfmt, rustfmt_skip)]\n");
+        acc.push_str("//! Generated from grammar.ron\n");
+        acc.push_str("use tree::SyntaxInfo;\n");
         acc.push_str("\n");
 
         let syntax_kinds: Vec<String> = self.keywords
@@ -40,41 +42,49 @@ impl Grammar {
             .chain(self.nodes.iter().cloned())
             .collect();
 
-        for (idx, kind) in syntax_kinds.iter().enumerate() {
-            let sname = scream(kind);
-            write!(
-                acc,
-                "pub const {}: SyntaxKind = SyntaxKind({});\n",
-                sname, idx
-            ).unwrap();
+        // enum SyntaxKind
+        acc.push_str("/// The kind of syntax node, e.g. `IDENT`, `USE_KW`, or `STRUCT_DEF`.\n");
+        acc.push_str("#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]\n");
+        acc.push_str("#[repr(u32)]\n");
+        acc.push_str("pub enum SyntaxKind {\n");
+        for kind in syntax_kinds.iter() {
+            write!(acc, "    {},\n", scream(kind)).unwrap();
         }
         acc.push_str("\n");
-        write!(
-            acc,
-            "static INFOS: [SyntaxInfo; {}] = [\n",
-            syntax_kinds.len()
-        ).unwrap();
+        acc.push_str("    TOMBSTONE = !0 - 1,\n");
+        acc.push_str("    EOF = !0,\n");
+        acc.push_str("}\n");
+        acc.push_str("pub(crate) use self::SyntaxKind::*;\n");
+        acc.push_str("\n");
+
+        // fn info
+        acc.push_str("impl SyntaxKind {\n");
+        acc.push_str("    pub(crate) fn info(self) -> &'static SyntaxInfo {\n");
+        acc.push_str("        match self {\n");
         for kind in syntax_kinds.iter() {
             let sname = scream(kind);
             write!(
                 acc,
-                "    SyntaxInfo {{ name: \"{sname}\" }},\n",
+                "            {sname} => &SyntaxInfo {{ name: \"{sname}\" }},\n",
                 sname = sname
             ).unwrap();
         }
-        acc.push_str("];\n");
+        acc.push_str("\n");
+        acc.push_str("            TOMBSTONE => &SyntaxInfo { name: \"TOMBSTONE\" },\n");
+        acc.push_str("            EOF => &SyntaxInfo { name: \"EOF\" },\n");
+        acc.push_str("        }\n");
+        acc.push_str("    }\n");
+        acc.push_str("}\n");
         acc.push_str("\n");
 
-        acc.push_str("pub(crate) fn syntax_info(kind: SyntaxKind) -> &'static SyntaxInfo {\n");
-        acc.push_str("    &INFOS[kind.0 as usize]\n");
-        acc.push_str("}\n\n");
+        // fn ident_to_keyword
         acc.push_str("pub(crate) fn ident_to_keyword(ident: &str) -> Option<SyntaxKind> {\n");
-        acc.push_str("   match ident {\n");
+        acc.push_str("    match ident {\n");
         for kw in self.keywords.iter() {
-            write!(acc, "       {:?} => Some({}),\n", kw, kw_token(kw)).unwrap();
+            write!(acc, "        {:?} => Some({}),\n", kw, kw_token(kw)).unwrap();
         }
-        acc.push_str("       _ => None,\n");
-        acc.push_str("   }\n");
+        acc.push_str("        _ => None,\n");
+        acc.push_str("    }\n");
         acc.push_str("}\n");
         acc
     }

@@ -1,8 +1,7 @@
 use {SyntaxKind, TextUnit, Token};
 use super::Event;
 use super::super::is_insignificant;
-use syntax_kinds::{ERROR, L_CURLY, R_CURLY};
-use tree::{EOF, TOMBSTONE};
+use SyntaxKind::{EOF, ERROR, L_CURLY, R_CURLY, TOMBSTONE};
 
 pub(crate) struct Marker {
     pos: u32,
