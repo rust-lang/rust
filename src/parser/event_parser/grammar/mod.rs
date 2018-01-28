@@ -21,11 +21,15 @@ fn visibility(p: &mut Parser) {
         p.bump();
         if p.at(L_PAREN) {
             match p.nth(1) {
-                CRATE_KW | SELF_KW | SUPER_KW | IN_KW => {
+                CRATE_KW | SELF_KW | SUPER_KW => {
                     p.bump();
-                    if p.bump() == IN_KW {
-                        paths::use_path(p);
-                    }
+                    p.bump();
+                    p.expect(R_PAREN);
+                }
+                IN_KW => {
+                    p.bump();
+                    p.bump();
+                    paths::use_path(p);
                     p.expect(R_PAREN);
                 }
                 _ => (),

@@ -30,12 +30,8 @@ fn path_segment(p: &mut Parser, first: bool) {
         p.eat(COLONCOLON);
     }
     match p.current() {
-        IDENT | SELF_KW | SUPER_KW => {
-            p.bump();
-        }
-        _ => {
-            p.error().message("expected identifier").emit();
-        }
+        IDENT | SELF_KW | SUPER_KW => p.bump(),
+        _ => p.error().message("expected identifier").emit(),
     };
     segment.complete(p, PATH_SEGMENT);
 }

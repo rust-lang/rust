@@ -151,17 +151,16 @@ impl<'t> Parser<'t> {
         ErrorBuilder::new(self)
     }
 
-    pub(crate) fn bump(&mut self) -> SyntaxKind {
+    pub(crate) fn bump(&mut self) {
         let kind = self.current();
         if kind == EOF {
-            return EOF;
+            return;
         }
         self.pos += 1;
         self.event(Event::Token {
             kind,
             n_raw_tokens: 1,
         });
-        kind
     }
 
     pub(crate) fn nth(&self, n: usize) -> SyntaxKind {
