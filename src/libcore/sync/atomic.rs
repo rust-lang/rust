@@ -285,7 +285,7 @@ impl AtomicBool {
     #[inline]
     #[stable(feature = "atomic_access", since = "1.15.0")]
     pub fn into_inner(self) -> bool {
-        unsafe { self.v.into_inner() != 0 }
+        self.v.into_inner() != 0
     }
 
     /// Loads a value from the bool.
@@ -695,7 +695,7 @@ impl<T> AtomicPtr<T> {
     #[inline]
     #[stable(feature = "atomic_access", since = "1.15.0")]
     pub fn into_inner(self) -> *mut T {
-        unsafe { self.p.into_inner() }
+        self.p.into_inner()
     }
 
     /// Loads a value from the pointer.
@@ -1051,7 +1051,7 @@ macro_rules! atomic_int {
             #[inline]
             #[$stable_access]
             pub fn into_inner(self) -> $int_type {
-                unsafe { self.v.into_inner() }
+                self.v.into_inner()
             }
 
             /// Loads a value from the atomic integer.
