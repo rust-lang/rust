@@ -174,9 +174,7 @@ fn use_item(p: &mut Parser) {
         let la = p.nth(1);
         let m = p.start();
         match (p.current(), la) {
-            (STAR, _) => {
-                p.bump();
-            }
+            (STAR, _) => p.bump(),
             (COLONCOLON, STAR) => {
                 p.bump();
                 p.bump();
