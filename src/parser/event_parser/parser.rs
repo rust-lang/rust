@@ -164,12 +164,12 @@ impl<'t> Parser<'t> {
         kind
     }
 
-    pub(crate) fn raw_lookahead(&self, n: usize) -> SyntaxKind {
+    pub(crate) fn nth(&self, n: usize) -> SyntaxKind {
         self.tokens.get(self.pos + n).map(|t| t.kind).unwrap_or(EOF)
     }
 
     pub(crate) fn current(&self) -> SyntaxKind {
-        self.raw_lookahead(0)
+        self.nth(0)
     }
 
     fn event(&mut self, event: Event) {

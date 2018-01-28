@@ -20,7 +20,7 @@ fn visibility(p: &mut Parser) {
         let vis = p.start();
         p.bump();
         if p.at(L_PAREN) {
-            match p.raw_lookahead(1) {
+            match p.nth(1) {
                 CRATE_KW | SELF_KW | SUPER_KW | IN_KW => {
                     p.bump();
                     if p.bump() == IN_KW {
@@ -87,13 +87,13 @@ impl Lookahead for SyntaxKind {
 
 impl Lookahead for [SyntaxKind; 2] {
     fn is_ahead(self, p: &Parser) -> bool {
-        p.current() == self[0] && p.raw_lookahead(1) == self[1]
+        p.current() == self[0] && p.nth(1) == self[1]
     }
 }
 
 impl Lookahead for [SyntaxKind; 3] {
     fn is_ahead(self, p: &Parser) -> bool {
-        p.current() == self[0] && p.raw_lookahead(1) == self[1] && p.raw_lookahead(2) == self[2]
+        p.current() == self[0] && p.nth(1) == self[1] && p.nth(2) == self[2]
     }
 }
 

@@ -14,7 +14,7 @@ fn item(p: &mut Parser) {
     let item = p.start();
     attributes::outer_attributes(p);
     visibility(p);
-    let la = p.raw_lookahead(1);
+    let la = p.nth(1);
     let item_kind = match p.current() {
         EXTERN_KW if la == CRATE_KW => {
             extern_crate_item(p);
@@ -171,7 +171,7 @@ fn use_item(p: &mut Parser) {
     p.expect(SEMI);
 
     fn use_tree(p: &mut Parser) {
-        let la = p.raw_lookahead(1);
+        let la = p.nth(1);
         let m = p.start();
         match (p.current(), la) {
             (STAR, _) => {
