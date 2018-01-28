@@ -2,7 +2,7 @@ error[E0053]: method `fmt` has an incompatible type for trait
   --> $DIR/trait_type.rs:17:4
    |
 17 |    fn fmt(&self, x: &str) -> () { }
-   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ in mutability
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ in mutability
    |
    = note: expected type `fn(&MyType, &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error>`
               found type `fn(&MyType, &str)`
@@ -19,7 +19,7 @@ error[E0186]: method `fmt` has a `&self` declaration in the trait, but not in th
   --> $DIR/trait_type.rs:27:4
    |
 27 |    fn fmt() -> () { }
-   |    ^^^^^^^^^^^^^^^^^^ expected `&self` in impl
+   |    ^^^^^^^^^^^^^^ expected `&self` in impl
    |
    = note: `fmt` from trait: `fn(&Self, &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error>`
 

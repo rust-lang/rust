@@ -807,7 +807,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
         };
 
-        let span = cause.span;
+        let span = cause.span(&self.tcx);
 
         diag.span_label(span, terr.to_string());
         if let Some((sp, msg)) = secondary_span {
@@ -842,7 +842,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                     "did you mean `{}(/* fields */)`?",
                                     self.tcx.item_path_str(def_id)
                                 );
-                                diag.span_label(cause.span, message);
+                                diag.span_label(span, message);
                             }
                         }
                     }
@@ -870,7 +870,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                trace,
                terr);
 
-        let span = trace.cause.span;
+        let span = trace.cause.span(&self.tcx);
         let failure_code = trace.cause.as_failure_code(terr);
         let mut diag = match failure_code {
             FailureCode::Error0317(failure_str) => {

@@ -1,30 +1,26 @@
 error[E0195]: lifetime parameters or bounds on method `no_bound` do not match the trait declaration
   --> $DIR/regions-bound-missing-bound-in-impl.rs:28:5
    |
-28 | /     fn no_bound<'b:'a>(self, b: Inv<'b>) {
-29 | |         //~^ ERROR lifetime parameters or bounds on method `no_bound` do not match
-30 | |     }
-   | |_____^ lifetimes do not match trait
+20 |     fn no_bound<'b>(self, b: Inv<'b>);
+   |     ---------------------------------- lifetimes in impl do not match this method in trait
+...
+28 |     fn no_bound<'b:'a>(self, b: Inv<'b>) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetimes do not match method in trait
 
 error[E0195]: lifetime parameters or bounds on method `has_bound` do not match the trait declaration
   --> $DIR/regions-bound-missing-bound-in-impl.rs:32:5
    |
-32 | /     fn has_bound<'b>(self, b: Inv<'b>) {
-33 | |         //~^ ERROR lifetime parameters or bounds on method `has_bound` do not match
-34 | |     }
-   | |_____^ lifetimes do not match trait
+21 |     fn has_bound<'b:'a>(self, b: Inv<'b>);
+   |     -------------------------------------- lifetimes in impl do not match this method in trait
+...
+32 |     fn has_bound<'b>(self, b: Inv<'b>) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetimes do not match method in trait
 
 error[E0308]: method not compatible with trait
   --> $DIR/regions-bound-missing-bound-in-impl.rs:36:5
    |
-36 | /     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>) {
-37 | |         //~^ ERROR method not compatible with trait
-38 | |         //
-39 | |         // Note: This is a terrible error message. It is caused
-...  |
-47 | |         // cases.
-48 | |     }
-   | |_____^ lifetime mismatch
+36 |     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
    = note: expected type `fn(&'a isize, Inv<'c>, Inv<'c>, Inv<'d>)`
               found type `fn(&'a isize, Inv<'_>, Inv<'c>, Inv<'d>)`

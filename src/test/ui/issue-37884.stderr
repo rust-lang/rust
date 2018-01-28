@@ -24,14 +24,8 @@ note: the anonymous lifetime #1 defined on the method body at 16:5...
 note: ...does not necessarily outlive the lifetime 'a as defined on the impl at 13:1
   --> $DIR/issue-37884.rs:13:1
    |
-13 | / impl<'a, T: 'a> Iterator for RepeatMut<'a, T> {
-14 | |
-15 | |     type Item = &'a mut T;
-16 | |     fn next(&'a mut self) -> Option<Self::Item>
-...  |
-21 | |     }
-22 | | }
-   | |_^
+13 | impl<'a, T: 'a> Iterator for RepeatMut<'a, T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
