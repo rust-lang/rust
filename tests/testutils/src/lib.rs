@@ -6,6 +6,21 @@ use std::fs::read_dir;
 
 use difference::Changeset;
 
+/// Read file and normalize newlines.
+///
+/// `rustc` seems to always normalize `\r\n` newlines to `\n`:
+///
+/// ```
+/// let s = "
+/// ";
+/// assert_eq!(s.as_bytes(), &[10]);
+/// ```
+///
+/// so this should always be correct.
+fn read_text(path: &Path) -> String {
+    file::get_text(path).unwrap().replace("\r\n", "\n")
+}
+
 pub fn dir_tests<F>(
     paths: &[&str],
     f: F
@@ -15,7 +30,7 @@ where
 {
     for path in collect_tests(paths) {
         let actual = {
-            let text = file::get_text(&path).unwrap();
+            let text = read_text(&path);
             f(&text)
         };
         let path = path.with_extension("txt");
@@ -25,7 +40,7 @@ where
             file::put_text(&path, actual).unwrap();
             panic!("No expected result")
         }
-        let expected = file::get_text(&path).unwrap();
+        let expected = read_text(&path);
         let expected = expected.as_str();
         let actual = actual.as_str();
         assert_equal_text(expected, actual, &path);
