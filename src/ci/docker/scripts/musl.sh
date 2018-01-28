@@ -30,6 +30,8 @@ exit 1
 TAG=$1
 shift
 
+export CFLAGS="-fPIC $CFLAGS"
+
 MUSL=musl-1.1.18
 
 # may have been downloaded in a previous run
@@ -49,42 +51,12 @@ hide_output make clean
 
 cd ..
 
-LLVM=39
+LLVM=60
+
 # may have been downloaded in a previous run
 if [ ! -d libunwind-release_$LLVM ]; then
   curl -L https://github.com/llvm-mirror/llvm/archive/release_$LLVM.tar.gz | tar xzf -
   curl -L https://github.com/llvm-mirror/libunwind/archive/release_$LLVM.tar.gz | tar xzf -
-  # Whoa what's this mysterious patch we're applying to libunwind! Why are we
-  # swapping the values of ESP/EBP in libunwind?!
-  #
-  # Discovered in #35599 it turns out that the vanilla build of libunwind is not
-  # suitable for unwinding i686 musl. After some investigation it ended up
-  # looking like the register values for ESP/EBP were indeed incorrect (swapped)
-  # in the source. Similar commits in libunwind (r280099 and r282589) have noticed
-  # this for other platforms, and we just need to realize it for musl linux as
-  # well.
-  #
-  # More technical info can be found at #35599
-  cd libunwind-release_$LLVM
-  patch -Np1 << EOF
-diff --git a/include/libunwind.h b/include/libunwind.h
-index c5b9633..1360eb2 100644
---- a/include/libunwind.h
-+++ b/include/libunwind.h
-@@ -151,8 +151,8 @@ enum {
-   UNW_X86_ECX = 1,
-   UNW_X86_EDX = 2,
-   UNW_X86_EBX = 3,
--  UNW_X86_EBP = 4,
--  UNW_X86_ESP = 5,
-+  UNW_X86_ESP = 4,
-+  UNW_X86_EBP = 5,
-   UNW_X86_ESI = 6,
-   UNW_X86_EDI = 7
- };
-fi
-EOF
-  cd ..
 fi
 
 mkdir libunwind-build

@@ -30,6 +30,15 @@ RUN ./build-rumprun.sh
 COPY dist-various-1/install-x86_64-redox.sh /build
 RUN ./install-x86_64-redox.sh
 
+COPY dist-various-1/install-mips-musl.sh /build
+RUN ./install-mips-musl.sh
+
+COPY dist-various-1/install-mipsel-musl.sh /build
+RUN ./install-mipsel-musl.sh
+
+# Suppress some warnings in the openwrt toolchains we downloaded
+ENV STAGING_DIR=/tmp
+
 COPY scripts/musl.sh /build
 RUN env \
     CC=arm-linux-gnueabi-gcc CFLAGS="-march=armv6 -marm" \
@@ -47,13 +56,15 @@ RUN env \
     CC=aarch64-linux-gnu-gcc \
     CXX=aarch64-linux-gnu-g++ \
     bash musl.sh aarch64 && \
+    env \
+    CC=mips-openwrt-linux-gcc \
+    CXX=mips-openwrt-linux-g++ \
+    bash musl.sh mips && \
+    env \
+    CC=mipsel-openwrt-linux-gcc \
+    CXX=mipsel-openwrt-linux-g++ \
+    bash musl.sh mipsel && \
     rm -rf /build/*
-
-COPY dist-various-1/install-mips-musl.sh /build
-RUN ./install-mips-musl.sh
-
-COPY dist-various-1/install-mipsel-musl.sh /build
-RUN ./install-mipsel-musl.sh
 
 ENV TARGETS=asmjs-unknown-emscripten
 ENV TARGETS=$TARGETS,wasm32-unknown-emscripten
@@ -77,16 +88,15 @@ ENV CC_mipsel_unknown_linux_musl=mipsel-openwrt-linux-gcc \
     CC_armv5te_unknown_linux_gnueabi=arm-linux-gnueabi-gcc \
     CFLAGS_armv5te_unknown_linux_gnueabi="-march=armv5te -marm -mfloat-abi=soft"
 
-# Suppress some warnings in the openwrt toolchains we downloaded
-ENV STAGING_DIR=/tmp
-
 ENV RUST_CONFIGURE_ARGS \
-      --enable-extended \
       --target=$TARGETS \
       --musl-root-arm=/musl-arm \
       --musl-root-armhf=/musl-armhf \
       --musl-root-armv7=/musl-armv7 \
-      --musl-root-aarch64=/musl-aarch64
+      --musl-root-aarch64=/musl-aarch64 \
+      --musl-root-mips=/musl-mips \
+      --musl-root-mipsel=/musl-mipsel
+
 ENV SCRIPT python2.7 ../x.py dist --target $TARGETS
 
 # sccache

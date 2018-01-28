@@ -21,7 +21,7 @@ WORKDIR /build/
 COPY scripts/musl.sh /build/
 # We need to mitigate rust-lang/rust#34978 when compiling musl itself as well
 RUN CC=gcc \
-    CFLAGS="-fPIC -Wa,-mrelax-relocations=no" \
+    CFLAGS="-Wa,-mrelax-relocations=no" \
     CXX=g++ \
     CXXFLAGS="-Wa,-mrelax-relocations=no" \
     bash musl.sh x86_64 && rm -rf /build
