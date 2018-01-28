@@ -5,7 +5,7 @@ use std::fmt;
 use std::cmp;
 
 mod file_builder;
-pub use self::file_builder::{FileBuilder, Sink};
+pub(crate) use self::file_builder::{FileBuilder, Sink};
 
 /// The kind of syntax node, e.g. `IDENT`, `USE_KW`, or `STRUCT_DEF`.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

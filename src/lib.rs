@@ -26,7 +26,8 @@ mod parser;
 #[allow(missing_docs)]
 pub mod syntax_kinds;
 pub use text::{TextRange, TextUnit};
-pub use tree::{File, FileBuilder, Node, Sink, SyntaxKind, Token};
+pub use tree::{File, Node, SyntaxKind, Token};
+pub(crate) use tree::{FileBuilder, Sink};
 pub use lexer::{next_token, tokenize};
 pub use parser::parse;
 
