@@ -45,7 +45,6 @@ impl Grammar {
         // enum SyntaxKind
         acc.push_str("/// The kind of syntax node, e.g. `IDENT`, `USE_KW`, or `STRUCT_DEF`.\n");
         acc.push_str("#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]\n");
-        acc.push_str("#[repr(u32)]\n");
         acc.push_str("pub enum SyntaxKind {\n");
         for kind in syntax_kinds.iter() {
             write!(acc, "    {},\n", scream(kind)).unwrap();
