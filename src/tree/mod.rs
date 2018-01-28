@@ -118,7 +118,7 @@ fn has_short_text(kind: SyntaxKind) -> bool {
     use syntax_kinds::*;
     match kind {
         IDENT | LIFETIME => true,
-        _ => false
+        _ => false,
     }
 }
 

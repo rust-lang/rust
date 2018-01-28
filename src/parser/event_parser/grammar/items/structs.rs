@@ -59,7 +59,7 @@ pub(super) fn enum_item(p: &mut Parser) {
                         p.bump();
                         expressions::expr(p);
                     }
-                    _ => ()
+                    _ => (),
                 }
                 var.complete(p, ENUM_VARIANT);
             } else {
