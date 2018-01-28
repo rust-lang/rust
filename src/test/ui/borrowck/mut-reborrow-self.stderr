@@ -1,0 +1,10 @@
+error[E0595]: closure cannot assign to immutable argument `self`
+  --> $DIR/mut-reborrow-self.rs:16:9
+   |
+15 |     fn foo(&mut self) {
+   |            --------- given this existing mutable borrow...
+16 |         || {
+   |         ^^ cannot reborrow immutable argument `self` mutably in this closure
+
+error: aborting due to previous error
+

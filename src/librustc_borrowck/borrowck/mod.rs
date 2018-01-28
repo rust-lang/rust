@@ -397,19 +397,16 @@ pub enum LoanPathElem<'tcx> {
     LpInterior(Option<DefId>, InteriorKind),
 }
 
-fn closure_to_block(closure_id: LocalDefId,
-                    tcx: TyCtxt) -> ast::NodeId {
+fn closure_to_block(closure_id: LocalDefId, tcx: TyCtxt) -> ast::NodeId {
     let closure_id = tcx.hir.local_def_id_to_node_id(closure_id);
     match tcx.hir.get(closure_id) {
         hir_map::NodeExpr(expr) => match expr.node {
             hir::ExprClosure(.., body_id, _, _) => {
                 body_id.node_id
             }
-            _ => {
-                bug!("encountered non-closure id: {}", closure_id)
-            }
+            _ => bug!("encountered non-closure id: {}", closure_id),
         },
-        _ => bug!("encountered non-expr id: {}", closure_id)
+        _ => bug!("encountered non-closure id: {}", closure_id),
     }
 }
 
@@ -894,7 +891,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     }
                 };
 
-                self.note_and_explain_mutbl_error(&mut db, &err, &error_span);
+                self.note_and_explain_mutbl_error(&mut db, &err, &descr);
                 self.note_immutability_blame(&mut db, err.cmt.immutability_blame());
                 db.emit();
             }
@@ -1282,8 +1279,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         }
     }
 
-    fn note_and_explain_mutbl_error(&self, db: &mut DiagnosticBuilder, err: &BckError<'tcx>,
-                                    error_span: &Span) {
+    fn note_and_explain_mutbl_error(&self,
+                                    db: &mut DiagnosticBuilder,
+                                    err: &BckError<'tcx>,
+                                    descr: &str) {
         match err.cmt.note {
             mc::NoteClosureEnv(upvar_id) | mc::NoteUpvarRef(upvar_id) => {
                 // If this is an `Fn` closure, it simply can't mutate upvars.
@@ -1301,24 +1300,39 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                   self by mutable reference");
                 }
             }
-            _ => {
+            mc::NoteNone => {
                 if let Categorization::Deref(..) = err.cmt.cat {
-                    db.span_label(*error_span, "cannot borrow as mutable");
+                    db.span_label(err.span, "cannot borrow as mutable");
                 } else if let Categorization::Local(local_id) = err.cmt.cat {
-                    let span = self.tcx.hir.span(local_id);
+                    let mut generic_label = true;
+                    let span = self.tcx.hir.span(local_id);  // same as err.cmt.span
                     if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
                         if snippet.starts_with("ref mut ") || snippet.starts_with("&mut ") {
-                            db.span_label(*error_span, "cannot reborrow mutably");
-                            db.span_label(*error_span, "try removing `&mut` here");
-                        } else {
-                            db.span_label(*error_span, "cannot borrow mutably");
+                            db.span_label(span, "given this existing mutable borrow...");
+                            if let Ok(s) = self.tcx.sess.codemap().span_to_snippet(err.span) {
+                                // FIXME: this is a hack, error span should be pointing at the
+                                // binding inside this closure, but instead it's pointing at the
+                                // closure.
+                                if !s.starts_with('|') {
+                                    db.span_label(err.span, "cannot reborrow mutably");
+                                    db.span_label(err.span, "try removing `&mut` here");
+                                } else {
+                                    db.span_label(
+                                        err.span,
+                                        format!("cannot reborrow {} mutably in this closure",
+                                                descr),
+                                    );
+                                }
+                                generic_label = false;
+                            }
                         }
-                    } else {
-                        db.span_label(*error_span, "cannot borrow mutably");
+                    }
+                    if generic_label {
+                        db.span_label(err.span, "cannot borrow mutably");
                     }
                 } else if let Categorization::Interior(ref cmt, _) = err.cmt.cat {
                     if let mc::MutabilityCategory::McImmutable = cmt.mutbl {
-                        db.span_label(*error_span,
+                        db.span_label(err.span,
                                       "cannot mutably borrow field of immutable binding");
                     }
                 }
