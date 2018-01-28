@@ -324,7 +324,7 @@ pub fn rewrite_macro_def(
             return snippet;
         }
 
-        let args = format!("({})", format_macro_args(branch.args)?);
+        let args = format_macro_args(branch.args)?;
 
         if multi_branch_style {
             result += "\n";
@@ -758,10 +758,12 @@ impl MacroParser {
 
     // `(` ... `)` `=>` `{` ... `}`
     fn parse_branch(&mut self) -> Option<MacroBranch> {
-        let (args_paren_kind, args) = match self.toks.next()? {
+        let tok = self.toks.next()?;
+        let args_paren_kind = match tok {
             TokenTree::Token(..) => return None,
-            TokenTree::Delimited(_, ref d) => (d.delim, d.tts.clone()),
+            TokenTree::Delimited(_, ref d) => d.delim,
         };
+        let args = tok.joint().into();
         match self.toks.next()? {
             TokenTree::Token(_, Token::FatArrow) => {}
             _ => return None,
