@@ -2,21 +2,21 @@ FILE@[0; 34)
   STRUCT_ITEM@[0; 34)
     STRUCT_KW@[0; 6)
     WHITESPACE@[6; 7)
-    IDENT@[7; 8)
+    IDENT@[7; 8) "S"
     WHITESPACE@[8; 9)
     L_CURLY@[9; 10)
     NAMED_FIELD@[10; 26)
       WHITESPACE@[10; 15)
-      IDENT@[15; 16)
+      IDENT@[15; 16) "a"
       COLON@[16; 17)
       WHITESPACE@[17; 18)
-      IDENT@[18; 21)
+      IDENT@[18; 21) "u32"
       WHITESPACE@[21; 26)
     err: `expected COMMA`
     NAMED_FIELD@[26; 33)
-      IDENT@[26; 27)
+      IDENT@[26; 27) "b"
       COLON@[27; 28)
       WHITESPACE@[28; 29)
-      IDENT@[29; 32)
+      IDENT@[29; 32) "u32"
       WHITESPACE@[32; 33)
     R_CURLY@[33; 34)

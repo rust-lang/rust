@@ -106,7 +106,19 @@ impl<'f> Node<'f> {
 
 impl<'f> fmt::Debug for Node<'f> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{:?}@{:?}", self.kind(), self.range())
+        write!(fmt, "{:?}@{:?}", self.kind(), self.range())?;
+        if has_short_text(self.kind()) {
+            write!(fmt, " \"{}\"", self.text())?;
+        }
+        Ok(())
+    }
+}
+
+fn has_short_text(kind: SyntaxKind) -> bool {
+    use syntax_kinds::*;
+    match kind {
+        IDENT | LIFETIME => true,
+        _ => false,
     }
 }
 

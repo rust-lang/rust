@@ -12,3 +12,9 @@ pub(super) fn literal(p: &mut Parser) -> bool {
         _ => false,
     }
 }
+
+pub(super) fn expr(p: &mut Parser) {
+    if !literal(p) {
+        p.error().message("expected expression").emit();
+    }
+}
