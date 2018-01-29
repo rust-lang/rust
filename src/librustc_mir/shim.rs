@@ -635,14 +635,20 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         // should be u128 maybe?
         let discr_ty = self.tcx.types.usize;
         let discr = self.make_place(Mutability::Not, discr_ty);
+
         let assign_discr = self.make_statement(
             StatementKind::Assign(
                 discr.clone(),
                 Rvalue::Discriminant(receiver.clone())
             )
         );
+        // insert dummy first block
+        let entry_block = self.block(vec![], TerminatorKind::Abort, false);
         let switch = self.make_enum_match(adt, substs, discr, receiver);
-        self.block(vec![assign_discr], switch, false);
+
+        let source_info = self.source_info();
+        self.blocks[entry_block].statements = vec![assign_discr];
+        self.blocks[entry_block].terminator = Some(Terminator { source_info, kind: switch });
     }
 
     fn make_enum_match(&mut self, adt: &'tcx ty::AdtDef,
@@ -652,7 +658,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
 
         let mut values = vec![];
         let mut targets = vec![];
-        let mut blocks = 0;
+        let mut blocks = 1;
         for (idx, variant) in adt.variants.iter().enumerate() {
             values.push(adt.discriminant_for_variant(self.tcx, idx));
 
