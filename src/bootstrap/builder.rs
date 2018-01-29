@@ -469,6 +469,18 @@ impl<'a> Builder<'a> {
             stage = compiler.stage;
         }
 
+        let mut extra_args = env::var(&format!("RUSTFLAGS_STAGE_{}", stage)).unwrap_or_default();
+        if stage != 0 {
+            let s = env::var("RUSTFLAGS_STAGE_NOT_0").unwrap_or_default();
+            extra_args.push_str(" ");
+            extra_args.push_str(&s);
+        }
+
+        if !extra_args.is_empty() {
+            cargo.env("RUSTFLAGS",
+                format!("{} {}", env::var("RUSTFLAGS").unwrap_or_default(), extra_args));
+        }
+
         // Customize the compiler we're running. Specify the compiler to cargo
         // as our shim and then pass it some various options used to configure
         // how the actual compiler itself is called.
