@@ -16,7 +16,7 @@
 use rustc::mir::{Constant, Literal, Location, Place, Mir, Operand, Rvalue, Local};
 use rustc::mir::{NullOp, StatementKind, Statement, BasicBlock, LocalKind};
 use rustc::mir::TerminatorKind;
-use rustc::mir::visit::{MutVisitor, Visitor};
+use rustc::mir::visit::Visitor;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{TyCtxt, self, Instance};
 use rustc::mir::interpret::{Value, PrimVal, GlobalId};
@@ -38,123 +38,14 @@ impl MirPass for ConstProp {
         // First, find optimization opportunities. This is done in a pre-pass to keep the MIR
         // read-only so that we can do global analyses on the MIR in the process (e.g.
         // `Place::ty()`).
-        let optimizations = {
-            let mut optimization_finder = OptimizationFinder::new(mir, tcx, source);
-            optimization_finder.visit_mir(mir);
-            optimization_finder.optimizations
-        };
+        let mut optimization_finder = OptimizationFinder::new(mir, tcx, source);
+        optimization_finder.visit_mir(mir);
 
-        // We only actually run when optimizing MIR (at any level).
-        if tcx.sess.opts.debugging_opts.mir_opt_level != 0 {
-            // Then carry out those optimizations.
-            MutVisitor::visit_mir(&mut ConstPropVisitor { optimizations, tcx }, mir);
-        }
         trace!("ConstProp done for {:?}", source.def_id);
     }
 }
 
 type Const<'tcx> = (Value, ty::Ty<'tcx>, Span);
-
-pub struct ConstPropVisitor<'a, 'tcx: 'a> {
-    optimizations: OptimizationList<'tcx>,
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-}
-
-impl<'a, 'tcx> MutVisitor<'tcx> for ConstPropVisitor<'a, 'tcx> {
-    fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, location: Location) {
-        if let Some((value, ty, span)) = self.optimizations.const_prop.remove(&location) {
-            let value = self.tcx.mk_const(ty::Const {
-                val: ConstVal::Value(value),
-                ty,
-            });
-            debug!("Replacing `{:?}` with {:?}", rvalue, value);
-            let constant = Constant {
-                ty,
-                literal: Literal::Value { value },
-                span,
-            };
-            *rvalue = Rvalue::Use(Operand::Constant(box constant));
-        }
-
-        self.super_rvalue(rvalue, location)
-    }
-
-    fn visit_constant(
-        &mut self,
-        constant: &mut Constant<'tcx>,
-        location: Location,
-    ) {
-        self.super_constant(constant, location);
-        if let Some(&(val, ty, _)) = self.optimizations.constants.get(constant) {
-            debug!("Replacing `{:?}` with {:?}:{:?}", constant.literal, val, ty);
-            constant.literal = Literal::Value {
-                value: self.tcx.mk_const(ty::Const {
-                    val: ConstVal::Value(val),
-                    ty,
-                }),
-            };
-        }
-    }
-
-    fn visit_operand(
-        &mut self,
-        operand: &mut Operand<'tcx>,
-        location: Location,
-    ) {
-        self.super_operand(operand, location);
-        let new = match operand {
-            Operand::Move(Place::Local(local)) |
-            Operand::Copy(Place::Local(local)) => {
-                trace!("trying to read {:?}", local);
-                self.optimizations.places.get(&local).cloned()
-            },
-            _ => return,
-        };
-        if let Some((value, ty, span)) = new {
-            let value = self.tcx.mk_const(ty::Const {
-                val: ConstVal::Value(value),
-                ty,
-            });
-            debug!("Replacing `{:?}` with {:?}", operand, value);
-            let constant = Constant {
-                ty,
-                literal: Literal::Value { value },
-                span,
-            };
-            *operand = Operand::Constant(box constant);
-        }
-    }
-
-    fn visit_terminator_kind(
-        &mut self,
-        block: BasicBlock,
-        kind: &mut TerminatorKind<'tcx>,
-        location: Location,
-    ) {
-        match kind {
-            TerminatorKind::SwitchInt { discr: value, .. } |
-            TerminatorKind::Yield { value, .. } |
-            TerminatorKind::Assert { cond: value, .. } => {
-                if let Some((new, ty, span)) = self.optimizations.terminators.remove(&block) {
-                    let new = self.tcx.mk_const(ty::Const {
-                        val: ConstVal::Value(new),
-                        ty,
-                    });
-                    debug!("Replacing `{:?}` with {:?}", value, new);
-                    let constant = Constant {
-                        ty,
-                        literal: Literal::Value { value: new },
-                        span,
-                    };
-                    *value = Operand::Constant(box constant);
-                }
-            }
-            // FIXME: do this optimization for function calls
-            _ => {},
-        }
-        self.super_terminator_kind(block, kind, location)
-    }
-}
 
 /// Finds optimization opportunities on the MIR.
 struct OptimizationFinder<'b, 'a, 'tcx:'a+'b> {
@@ -179,9 +70,6 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
     }
 
     fn eval_constant(&mut self, c: &Constant<'tcx>) -> Option<Const<'tcx>> {
-        if let Some(&val) = self.optimizations.constants.get(c) {
-            return Some(val);
-        }
         match c.literal {
             Literal::Value { value } => match value.val {
                 ConstVal::Value(v) => Some((v, value.ty, c.span)),
@@ -200,7 +88,6 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
                     let (value, _, ty) = eval_body(self.tcx, cid, param_env)?;
                     let val = (value, ty, c.span);
                     trace!("evaluated {:?} to {:?}", c, val);
-                    self.optimizations.constants.insert(c.clone(), val);
                     Some(val)
                 },
             },
@@ -221,7 +108,6 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
                 let (value, _, ty) = eval_body_with_mir(self.tcx, cid, self.mir, param_env)?;
                 let val = (value, ty, c.span);
                 trace!("evaluated {:?} to {:?}", c, val);
-                self.optimizations.constants.insert(c.clone(), val);
                 Some(val)
             }
         }
@@ -463,7 +349,6 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for OptimizationFinder<'b, 'a, 'tcx> {
                 .to_ty(self.tcx);
             let span = statement.source_info.span;
             if let Some(value) = self.const_prop(rval, place_ty, span) {
-                self.optimizations.const_prop.insert(location, value);
                 if let Place::Local(local) = *place {
                     if self.mir.local_kind(local) == LocalKind::Temp
                         && CanConstProp::check(local, self.mir) {
@@ -499,7 +384,6 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for OptimizationFinder<'b, 'a, 'tcx> {
                     _ => {},
                 }
                 if let Some(value) = self.eval_operand(value) {
-                    self.optimizations.terminators.insert(block, value);
                     if let TerminatorKind::Assert { expected, msg, .. } = kind {
                         if Value::ByVal(PrimVal::from_bool(*expected)) != value.0 {
                             let span = self.mir[block]
@@ -562,9 +446,5 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for OptimizationFinder<'b, 'a, 'tcx> {
 
 #[derive(Default)]
 struct OptimizationList<'tcx> {
-    const_prop: FxHashMap<Location, Const<'tcx>>,
-    /// Terminators that get their Operand(s) turned into constants.
-    terminators: FxHashMap<BasicBlock, Const<'tcx>>,
     places: FxHashMap<Local, Const<'tcx>>,
-    constants: FxHashMap<Constant<'tcx>, Const<'tcx>>,
 }
