@@ -1161,37 +1161,40 @@ Force multiline closure and match arm bodies to be wrapped in a block
 #### `false` (default):
 
 ```rust
-result.and_then(|maybe_value| match maybe_value {
-    None => ...,
-    Some(value) => ...,
-})
+fn main() {
+    result.and_then(|maybe_value| match maybe_value {
+        None => foo(),
+        Some(value) => bar(),
+    });
 
-match lorem {
-    None => if ipsum {
-        println!("Hello World");
-    },
-    Some(dolor) => ...,
+    match lorem {
+        None => if ipsum {
+            println!("Hello World");
+        },
+        Some(dolor) => foo(),
+    }
 }
 ```
 
 #### `true`:
 
 ```rust
-
-result.and_then(|maybe_value| {
-    match maybe_value {
-        None => ...,
-        Some(value) => ...,
-    }
-})
-
-match lorem {
-    None => {
-        if ipsum {
-            println!("Hello World");
+fn main() {
+    result.and_then(|maybe_value| {
+        match maybe_value {
+            None => foo(),
+            Some(value) => bar(),
         }
+    });
+
+    match lorem {
+        None => {
+            if ipsum {
+                println!("Hello World");
+            }
+        }
+        Some(dolor) => foo(),
     }
-    Some(dolor) => ...,
 }
 ```
 
@@ -1589,24 +1592,28 @@ fn lorem<T: Eq>(t: T) {
 }
 
 // non-empty square brackets
-let lorem: [usize; 2] = [ipsum, dolor];
+fn lorem<T: Eq>(t: T) {
+    let lorem: [usize; 2] = [ipsum, dolor];
+}
 ```
 
 #### `true`:
 
 ```rust
 // generic arguments
-fn lorem< T: Eq >(t: T) {
+fn lorem< T: Eq >( t: T ) {
     // body
 }
 
 // non-empty parentheses
-fn lorem<T: Eq>( t: T ) {
+fn lorem< T: Eq >( t: T ) {
     let lorem = ( ipsum, dolor );
 }
 
 // non-empty square brackets
-let lorem: [ usize; 2 ] = [ ipsum, dolor ];
+fn lorem< T: Eq >( t: T ) {
+    let lorem: [ usize; 2 ] = [ ipsum, dolor ];
+}
 ```
 
 ## `struct_lit_single_line`
@@ -1626,10 +1633,12 @@ let lorem = Lorem { ipsum: dolor, sit: amet };
 #### `false`:
 
 ```rust
-let lorem = Lorem {
-    ipsum: dolor,
-    sit: amet,
-};
+fn main() {
+    let lorem = Lorem {
+        ipsum: dolor,
+        sit: amet,
+    };
+}
 ```
 
 See also: [`indent_style`](#indent_style).
@@ -1649,7 +1658,7 @@ Number of spaces per tab
 fn lorem() {
     let ipsum = dolor();
     let sit = vec![
-        "amet consectetur adipiscing elit."
+        "amet consectetur adipiscing elit amet consectetur adipiscing elit amet consectetur.",
     ];
 }
 ```
@@ -1660,7 +1669,7 @@ fn lorem() {
 fn lorem() {
   let ipsum = dolor();
   let sit = vec![
-    "amet consectetur adipiscing elit."
+    "amet consectetur adipiscing elit amet consectetur adipiscing elit amet consectetur.",
   ];
 }
 ```
@@ -1679,43 +1688,49 @@ How to handle trailing commas for lists
 #### `"Vertical"` (default):
 
 ```rust
-let Lorem { ipsum, dolor, sit } = amet;
-let Lorem {
-    ipsum,
-    dolor,
-    sit,
-    amet,
-    consectetur,
-    adipiscing,
-} = elit;
+fn main() {
+    let Lorem { ipsum, dolor, sit } = amet;
+    let Lorem {
+        ipsum,
+        dolor,
+        sit,
+        amet,
+        consectetur,
+        adipiscing,
+    } = elit;
+}
 ```
 
 #### `"Always"`:
 
 ```rust
-let Lorem { ipsum, dolor, sit, } = amet;
-let Lorem {
-    ipsum,
-    dolor,
-    sit,
-    amet,
-    consectetur,
-    adipiscing,
-} = elit;
+fn main() {
+    let Lorem { ipsum, dolor, sit, } = amet;
+    let Lorem {
+        ipsum,
+        dolor,
+        sit,
+        amet,
+        consectetur,
+        adipiscing,
+    } = elit;
+}
 ```
 
 #### `"Never"`:
 
 ```rust
-let Lorem { ipsum, dolor, sit } = amet;
-let Lorem {
-    ipsum,
-    dolor,
-    sit,
-    amet,
-    consectetur,
-    adipiscing
-} = elit;
+fn main() {
+    let Lorem { ipsum, dolor, sit } = amet;
+    let Lorem {
+        ipsum,
+        dolor,
+        sit,
+        amet,
+        consectetur,
+        adipiscing
+    } = elit;
+}
 ```
 
 See also: [`match_block_trailing_comma`](#match_block_trailing_comma).
@@ -1754,7 +1769,7 @@ Determines if `+` or `=` are wrapped in spaces in the punctuation of types
 
 ```rust
 fn lorem<Ipsum: Dolor + Sit = Amet>() {
-	// body
+    // body
 }
 ```
 
@@ -1762,7 +1777,7 @@ fn lorem<Ipsum: Dolor + Sit = Amet>() {
 
 ```rust
 fn lorem<Ipsum: Dolor+Sit=Amet>() {
-	// body
+    // body
 }
 ```
 
@@ -1777,13 +1792,17 @@ Replace uses of the try! macro by the ? shorthand
 #### `false` (default):
 
 ```rust
-let lorem = try!(ipsum.map(|dolor|dolor.sit()));
+fn main() {
+    let lorem = try!(ipsum.map(|dolor| dolor.sit()));
+}
 ```
 
 #### `true`:
 
 ```rust
-let lorem = ipsum.map(|dolor| dolor.sit())?;
+fn main() {
+    let lorem = ipsum.map(|dolor| dolor.sit())?;
+}
 ```
 
 
@@ -1822,21 +1841,25 @@ Wrap the body of arms in blocks when it does not fit on the same line with the p
 #### `true` (default):
 
 ```rust
-match lorem {
-    true => {
-        foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo(x)
+fn main() {
+    match lorem {
+        true => {
+            foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo(x)
+        }
+        false => println!("{}", sit),
     }
-    false => println!("{}", sit),
 }
 ```
 
 #### `false`:
 
 ```rust
-match lorem {
-    true =>
-        foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo(x),
-    false => println!("{}", sit),
+fn main() {
+    match lorem {
+        true =>
+            foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo(x),
+        false => println!("{}", sit),
+    }
 }
 ```
 
