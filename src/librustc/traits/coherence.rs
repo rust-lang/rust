@@ -19,7 +19,7 @@ use ty::{self, Ty, TyCtxt};
 use ty::fold::TypeFoldable;
 use ty::subst::Subst;
 
-use infer::{InferCtxt, InferOk};
+use infer::{InferOk};
 
 /// Whether we do the orphan check relative to this crate or
 /// to some remote crate.
@@ -43,8 +43,8 @@ pub struct OverlapResult<'tcx> {
 /// If there are types that satisfy both impls, invokes `on_overlap`
 /// with a suitably-freshened `ImplHeader` with those types
 /// substituted. Otherwise, invokes `no_overlap`.
-pub fn overlapping_impls<F1, F2, R>(
-    infcx: &InferCtxt<'_, '_, '_>,
+pub fn overlapping_impls<'gcx, F1, F2, R>(
+    tcx: TyCtxt<'_, 'gcx, 'gcx>,
     impl1_def_id: DefId,
     impl2_def_id: DefId,
     intercrate_mode: IntercrateMode,
@@ -63,12 +63,14 @@ where
            impl2_def_id,
            intercrate_mode);
 
-    let selcx = &mut SelectionContext::intercrate(infcx, intercrate_mode);
-    if let Some(r) = overlap(selcx, impl1_def_id, impl2_def_id) {
-        on_overlap(r)
-    } else {
-        no_overlap()
-    }
+    tcx.infer_ctxt().enter(|infcx| {
+        let selcx = &mut SelectionContext::intercrate(&infcx, intercrate_mode);
+        if let Some(r) = overlap(selcx, impl1_def_id, impl2_def_id) {
+            on_overlap(r)
+        } else {
+            no_overlap()
+        }
+    })
 }
 
 fn with_fresh_ty_vars<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,

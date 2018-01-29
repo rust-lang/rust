@@ -82,41 +82,37 @@ impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
 
         for (i, &impl1_def_id) in impls.iter().enumerate() {
             for &impl2_def_id in &impls[(i + 1)..] {
-                let used_to_be_allowed = self.tcx.infer_ctxt().enter(|infcx| {
-                    traits::overlapping_impls(
-                        &infcx,
-                        impl1_def_id,
-                        impl2_def_id,
-                        IntercrateMode::Issue43355,
-                        |overlap| {
-                            self.check_for_common_items_in_impls(
-                                impl1_def_id,
-                                impl2_def_id,
-                                overlap,
-                                false,
-                            );
-                            false
-                        },
-                        || true,
-                    )
-                });
-
-                if used_to_be_allowed {
-                    self.tcx.infer_ctxt().enter(|infcx| {
-                        traits::overlapping_impls(
-                            &infcx,
+                let used_to_be_allowed = traits::overlapping_impls(
+                    self.tcx,
+                    impl1_def_id,
+                    impl2_def_id,
+                    IntercrateMode::Issue43355,
+                    |overlap| {
+                        self.check_for_common_items_in_impls(
                             impl1_def_id,
                             impl2_def_id,
-                            IntercrateMode::Fixed,
-                            |overlap| self.check_for_common_items_in_impls(
-                                impl1_def_id,
-                                impl2_def_id,
-                                overlap,
-                                true,
-                            ),
-                            || (),
+                            overlap,
+                            false,
                         );
-                    });
+                        false
+                    },
+                    || true,
+                );
+
+                if used_to_be_allowed {
+                    traits::overlapping_impls(
+                        self.tcx,
+                        impl1_def_id,
+                        impl2_def_id,
+                        IntercrateMode::Fixed,
+                        |overlap| self.check_for_common_items_in_impls(
+                            impl1_def_id,
+                            impl2_def_id,
+                            overlap,
+                            true,
+                        ),
+                        || (),
+                    );
                 }
             }
         }
