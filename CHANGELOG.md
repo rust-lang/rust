@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.183
+* Rustup to *rustc 1.25.0-nightly (21882aad7 2018-01-28)*
+* New lint: [`misaligned_transmute`]
+
 ## 0.0.182
 * Rustup to *rustc 1.25.0-nightly (a0dcecff9 2018-01-24)*
 * New lint: [`decimal_literal_representation`]
@@ -630,6 +634,7 @@ All notable changes to this project will be documented in this file.
 [`maybe_infinite_iter`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#maybe_infinite_iter
 [`mem_forget`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#mem_forget
 [`min_max`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#min_max
+[`misaligned_transmute`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#misaligned_transmute
 [`misrefactored_assign_op`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#misrefactored_assign_op
 [`missing_docs_in_private_items`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#missing_docs_in_private_items
 [`mixed_case_hex_literals`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#mixed_case_hex_literals
