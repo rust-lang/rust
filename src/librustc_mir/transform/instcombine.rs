@@ -23,9 +23,12 @@ pub struct InstCombine;
 impl MirPass for InstCombine {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          source: MirSource,
+                          _: MirSource,
                           mir: &mut Mir<'tcx>) {
-        trace!("InstCombine starting for {:?}", source.def_id);
+        // We only run when optimizing MIR (at any level).
+        if tcx.sess.opts.debugging_opts.mir_opt_level == 0 {
+            return
+        }
 
         // First, find optimization opportunities. This is done in a pre-pass to keep the MIR
         // read-only so that we can do global analyses on the MIR in the process (e.g.
@@ -38,7 +41,6 @@ impl MirPass for InstCombine {
 
         // Then carry out those optimizations.
         MutVisitor::visit_mir(&mut InstCombineVisitor { optimizations }, mir);
-        trace!("InstCombine done for {:?}", source.def_id);
     }
 }
 
@@ -61,7 +63,7 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
         }
 
         if let Some(constant) = self.optimizations.arrays_lengths.remove(&location) {
-            debug!("Replacing `Len([_; N])`: {:?} with {:?}", rvalue, constant);
+            debug!("Replacing `Len([_; N])`: {:?}", rvalue);
             *rvalue = Rvalue::Use(Operand::Constant(box constant));
         }
 
@@ -77,10 +79,7 @@ struct OptimizationFinder<'b, 'a, 'tcx:'a+'b> {
 }
 
 impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
-    fn new(
-        mir: &'b Mir<'tcx>,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    ) -> OptimizationFinder<'b, 'a, 'tcx> {
+    fn new(mir: &'b Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> OptimizationFinder<'b, 'a, 'tcx> {
         OptimizationFinder {
             mir,
             tcx,

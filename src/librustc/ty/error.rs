@@ -184,7 +184,7 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             ty::TyArray(_, n) => {
                 match n.val.to_raw_bits() {
                     Some(n) => format!("array of {} elements", n),
-                    _ => "array".to_string(),
+                    None => "array".to_string(),
                 }
             }
             ty::TySlice(_) => "slice".to_string(),
