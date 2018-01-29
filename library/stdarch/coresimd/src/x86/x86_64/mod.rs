@@ -34,3 +34,6 @@ pub use self::bmi2::*;
 
 mod avx2;
 pub use self::avx2::*;
+
+mod bswap;
+pub use self::bswap::*;

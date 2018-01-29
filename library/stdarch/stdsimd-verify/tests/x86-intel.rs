@@ -16,7 +16,7 @@ struct Function {
     name: &'static str,
     arguments: &'static [&'static Type],
     ret: Option<&'static Type>,
-    target_feature: &'static str,
+    target_feature: Option<&'static str>,
     instrs: &'static [&'static str],
     file: &'static str,
 }
@@ -41,6 +41,9 @@ static M256: Type = Type::M256;
 static M256I: Type = Type::M256I;
 static M256D: Type = Type::M256D;
 
+static TUPLE: Type = Type::Tuple;
+static CPUID: Type = Type::CpuidResult;
+
 #[derive(Debug)]
 enum Type {
     PrimFloat(u8),
@@ -55,6 +58,8 @@ enum Type {
     M256D,
     M256I,
     Bool,
+    Tuple,
+    CpuidResult,
 }
 
 x86_functions!(static FUNCTIONS);
@@ -84,6 +89,23 @@ struct Instruction {
     name: String,
 }
 
+fn skip_intrinsic(name: &str) -> bool {
+    match name {
+        // This intrinsic has multiple definitions in the XML, so just
+        // ignore it.
+        "_mm_prefetch" => true,
+
+        // FIXME(#307)
+        "__readeflags" |
+        "__writeeflags" => true,
+        "__cpuid_count" => true,
+        "__cpuid" => true,
+        "__get_cpuid_max" => true,
+
+        _ => false,
+    }
+}
+
 #[test]
 fn verify_all_signatures() {
     // This XML document was downloaded from Intel's site. To update this you
@@ -101,10 +123,8 @@ fn verify_all_signatures() {
         serde_xml_rs::deserialize(xml).expect("failed to deserialize xml");
     let mut map = HashMap::new();
     for intrinsic in &data.intrinsics {
-        // This intrinsic has multiple definitions in the XML, so just ignore
-        // it.
-        if intrinsic.name == "_mm_prefetch" {
-            continue;
+        if skip_intrinsic(&intrinsic.name) {
+            continue
         }
 
         // These'll need to get added eventually, but right now they have some
@@ -117,16 +137,15 @@ fn verify_all_signatures() {
     }
 
     for rust in FUNCTIONS {
-        // This was ignored above, we ignore it here as well.
-        if rust.name == "_mm_prefetch" {
+        if skip_intrinsic(&rust.name) {
             continue;
         }
 
         // these are all AMD-specific intrinsics
-        if rust.target_feature.contains("sse4a")
-            || rust.target_feature.contains("tbm")
-        {
-            continue;
+        if let Some(feature) = rust.target_feature {
+            if feature.contains("sse4a") || feature.contains("tbm") {
+                continue;
+            }
         }
 
         let intel = match map.get(rust.name) {
@@ -137,11 +156,22 @@ fn verify_all_signatures() {
         // Verify that all `#[target_feature]` annotations are correct,
         // ensuring that we've actually enabled the right instruction
         // set for this intrinsic.
-        assert!(!intel.cpuid.is_empty(), "missing cpuid for {}", rust.name);
+        match rust.name {
+            "_bswap" => {}
+            "_bswap64" => {}
+            _ => {
+                assert!(!intel.cpuid.is_empty(), "missing cpuid for {}", rust.name);
+            }
+        }
         for cpuid in &intel.cpuid {
             // this is needed by _xsave and probably some related intrinsics,
             // but let's just skip it for now.
             if *cpuid == "XSS" {
+                continue;
+            }
+
+            // FIXME(#308)
+            if *cpuid == "TSC" || *cpuid == "RDTSCP" {
                 continue;
             }
 
@@ -158,11 +188,13 @@ fn verify_all_signatures() {
                 cpuid
             };
 
+            let rust_feature = rust.target_feature
+                .expect(&format!("no target feature listed for {}", rust.name));
             assert!(
-                rust.target_feature.contains(&cpuid),
+                rust_feature.contains(&cpuid),
                 "intel cpuid `{}` not in `{}` for {}",
                 cpuid,
-                rust.target_feature,
+                rust_feature,
                 rust.name
             );
         }
@@ -228,8 +260,6 @@ fn verify_all_signatures() {
                 match *arg {
                     Type::PrimSigned(64) |
                     Type::PrimUnsigned(64) => true,
-                    // Type::Ptr(&Type::PrimSigned(64)) |
-                    // Type::Ptr(&Type::PrimUnsigned(64)) => true,
                     _ => false,
                 }
             });
@@ -253,6 +283,10 @@ fn verify_all_signatures() {
             "_mm256_set_epi64x" |
             "_mm256_setr_epi64x" |
             "_mm256_set1_epi64x" => true,
+
+            // FIXME(#308)
+            "_rdtsc" |
+            "__rdtscp" => true,
 
             _ => false,
         };

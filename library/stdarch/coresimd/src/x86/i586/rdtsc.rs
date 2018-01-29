@@ -17,7 +17,7 @@ use stdsimd_test::assert_instr;
 /// high-order 32 bits of each of RAX and RDX are cleared.
 #[inline]
 #[cfg_attr(test, assert_instr(rdtsc))]
-pub unsafe fn _rdtsc() -> u64 {
+pub unsafe fn _rdtsc() -> i64 {
     rdtsc()
 }
 
@@ -37,14 +37,14 @@ pub unsafe fn _rdtsc() -> u64 {
 /// high-order 32 bits of each of RAX, RDX, and RCX are cleared.
 #[inline]
 #[cfg_attr(test, assert_instr(rdtscp))]
-pub unsafe fn _rdtscp(aux: *mut u32) -> u64 {
+pub unsafe fn __rdtscp(aux: *mut u32) -> u64 {
     rdtscp(aux as *mut _)
 }
 
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.x86.rdtsc"]
-    fn rdtsc() -> u64;
+    fn rdtsc() -> i64;
     #[link_name = "llvm.x86.rdtscp"]
     fn rdtscp(aux: *mut u8) -> u64;
 }
@@ -63,7 +63,7 @@ mod tests {
     #[simd_test = "sse2"]
     unsafe fn _rdtscp() {
         let mut aux = 0;
-        let r = rdtsc::_rdtscp(&mut aux);
+        let r = rdtsc::__rdtscp(&mut aux);
         assert_ne!(r, 0); // The chances of this being 0 are infinitesimal
     }
 }

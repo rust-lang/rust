@@ -46,13 +46,7 @@ pub fn x86_functions(input: TokenStream) -> TokenStream {
         if f.unsafety.is_none() {
             return false;
         }
-        f.attrs
-            .iter()
-            .filter_map(|a| a.interpret_meta())
-            .any(|a| match a {
-                syn::Meta::List(i) => i.ident == "target_feature",
-                _ => false,
-            })
+        true
     });
     assert!(functions.len() > 0);
 
@@ -79,7 +73,10 @@ pub fn x86_functions(input: TokenStream) -> TokenStream {
                 }
             };
             let instrs = find_instrs(&f.attrs);
-            let target_feature = find_target_feature(f.ident, &f.attrs);
+            let target_feature = match find_target_feature(&f.attrs) {
+                Some(i) => my_quote! { Some(#i) },
+                None => my_quote! { None },
+            };
             my_quote! {
                 Function {
                     name: stringify!(#name),
@@ -119,6 +116,7 @@ fn to_type(t: &syn::Type) -> Tokens {
             "u32" => my_quote! { &U32 },
             "u64" => my_quote! { &U64 },
             "u8" => my_quote! { &U8 },
+            "CpuidResult" => my_quote! { &CPUID },
             s => panic!("unspported type: {}", s),
         },
         syn::Type::Ptr(syn::TypePtr { ref elem, .. })
@@ -128,7 +126,7 @@ fn to_type(t: &syn::Type) -> Tokens {
         }
         syn::Type::Slice(_) => panic!("unsupported slice"),
         syn::Type::Array(_) => panic!("unsupported array"),
-        syn::Type::Tuple(_) => panic!("unsupported tup"),
+        syn::Type::Tuple(_) => my_quote! { &TUPLE },
         _ => panic!("unsupported type"),
     }
 }
@@ -207,9 +205,7 @@ fn find_instrs(attrs: &[syn::Attribute]) -> Vec<syn::Ident> {
         .collect()
 }
 
-fn find_target_feature(
-    name: syn::Ident, attrs: &[syn::Attribute]
-) -> syn::Lit {
+fn find_target_feature(attrs: &[syn::Attribute]) -> Option<syn::Lit> {
     attrs
         .iter()
         .filter_map(|a| a.interpret_meta())
@@ -243,5 +239,4 @@ fn find_target_feature(
             }
         })
         .next()
-        .expect(&format!("failed to find target_feature for {}", name))
 }
