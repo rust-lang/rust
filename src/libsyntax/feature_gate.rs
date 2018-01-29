@@ -217,9 +217,6 @@ declare_features! (
     // Allows the definition of `const fn` functions.
     (active, const_fn, "1.2.0", Some(24111)),
 
-    // Allows indexing into constant arrays.
-    (active, const_indexing, "1.4.0", Some(29947)),
-
     // Allows using #[prelude_import] on glob `use` items.
     //
     // rustc internal
@@ -490,6 +487,8 @@ declare_features! (
     (accepted, augmented_assignments, "1.8.0", Some(28235)),
     // allow empty structs and enum variants with braces
     (accepted, braced_empty_structs, "1.8.0", Some(29720)),
+    // Allows indexing into constant arrays.
+    (accepted, const_indexing, "1.24.0", Some(29947)),
     (accepted, default_type_params, "1.0.0", None),
     (accepted, globs, "1.0.0", None),
     (accepted, if_let, "1.0.0", None),
