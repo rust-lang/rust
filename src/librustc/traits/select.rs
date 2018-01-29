@@ -2129,10 +2129,17 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::TyAdt(adt, substs) => {
                 let attrs = self.tcx().get_attrs(adt.did);
                 if adt.is_enum() && attrs.iter().any(|a| a.check_name("rustc_nocopy_clone_marker")) {
-                    // for Clone
-                    let mut iter = substs.types()
-                        .chain(adt.all_fields().map(|f| f.ty(self.tcx(), substs)));
-                    Where(ty::Binder(iter.collect()))
+                    let trait_id = obligation.predicate.def_id();
+                    if Some(trait_id) == self.tcx().lang_items().clone_trait() {
+                        // for Clone
+                        // this doesn't work for recursive types (FIXME(Manishearth))
+                        // let mut iter = substs.types()
+                        //     .chain(adt.all_fields().map(|f| f.ty(self.tcx(), substs)));
+                        let mut iter = substs.types();
+                        Where(ty::Binder(iter.collect()))
+                    } else {
+                        None
+                    }
                 } else {
                     // Fallback to whatever user-defined impls exist in this case.
                     None                
