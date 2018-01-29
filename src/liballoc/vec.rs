@@ -1532,7 +1532,7 @@ impl<T, I> Index<I> for Vec<T> where [T]: Index<I> {
 
     #[inline]
     fn index(&self, index: I) -> &Self::Output {
-        // NB built-in indexing via `&[T]`
+        // NB indexing via implementation on slice
         &(**self)[index]
     }
 }
@@ -1542,7 +1542,7 @@ impl<T, I> Index<I> for Vec<T> where [T]: Index<I> {
 impl<T, I> IndexMut<I> for Vec<T> where [T]: IndexMut<I> {
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
-        // NB built-in indexing via `&mut [T]`
+        // NB indexing via implementation on slice
         &mut (**self)[index]
     }
 }
