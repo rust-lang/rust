@@ -297,7 +297,7 @@ impl Handler {
                                       cm: Option<Rc<CodeMapper>>,
                                       flags: HandlerFlags)
                                       -> Handler {
-        let emitter = Box::new(EmitterWriter::stderr(color_config, cm, false));
+        let emitter = Box::new(EmitterWriter::stderr(color_config, cm, false, false));
         Handler::with_emitter_and_flags(emitter, flags)
     }
 
