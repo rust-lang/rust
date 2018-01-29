@@ -630,6 +630,7 @@ create_config! {
     reorder_imports_in_group: bool, false, false, "Reorder import statements in group";
     reorder_imported_names: bool, true, false,
         "Reorder lists of names in import statements alphabetically";
+    reorder_modules: bool, false, false, "Reorder module statemtents alphabetically in group";
 
     // Spaces around punctuation
     binop_separator: SeparatorPlace, SeparatorPlace::Front, false,
