@@ -8,9 +8,13 @@ extern crate serde_derive;
 extern crate serde_xml_rs;
 extern crate stdsimd_verify;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeMap};
 
 use stdsimd_verify::x86_functions;
+
+const PRINT_INSTRUCTION_VIOLATIONS: bool = false;
+const PRINT_MISSING_LISTS: bool = false;
+const PRINT_MISSING_LISTS_MARKDOWN: bool = false;
 
 struct Function {
     name: &'static str,
@@ -73,7 +77,6 @@ struct Data {
 struct Intrinsic {
     rettype: String,
     name: String,
-    tech: String,
     #[serde(rename = "CPUID", default)] cpuid: Vec<String>,
     #[serde(rename = "parameter", default)] parameters: Vec<Parameter>,
     #[serde(default)] instruction: Vec<Instruction>,
@@ -89,21 +92,8 @@ struct Instruction {
     name: String,
 }
 
-fn skip_intrinsic(name: &str) -> bool {
-    match name {
-        // This intrinsic has multiple definitions in the XML, so just
-        // ignore it.
-        "_mm_prefetch" => true,
-
-        // FIXME(#307)
-        "__readeflags" |
-        "__writeeflags" => true,
-        "__cpuid_count" => true,
-        "__cpuid" => true,
-        "__get_cpuid_max" => true,
-
-        _ => false,
-    }
+macro_rules! bail {
+    ($($t:tt)*) => (return Err(format!($($t)*)))
 }
 
 #[test]
@@ -123,22 +113,21 @@ fn verify_all_signatures() {
         serde_xml_rs::deserialize(xml).expect("failed to deserialize xml");
     let mut map = HashMap::new();
     for intrinsic in &data.intrinsics {
-        if skip_intrinsic(&intrinsic.name) {
-            continue
-        }
-
-        // These'll need to get added eventually, but right now they have some
-        // duplicate names in the XML which we're not dealing with yet
-        if intrinsic.tech == "AVX-512" {
-            continue;
-        }
-
-        assert!(map.insert(&intrinsic.name[..], intrinsic).is_none());
+        map.entry(&intrinsic.name[..]).or_insert(Vec::new()).push(intrinsic);
     }
 
+    let mut all_valid = true;
+    'outer:
     for rust in FUNCTIONS {
-        if skip_intrinsic(&rust.name) {
-            continue;
+        match rust.name {
+            // FIXME(#307)
+            "__readeflags" |
+            "__writeeflags" |
+            "__cpuid_count" |
+            "__cpuid" |
+            "__get_cpuid_max" => continue,
+
+            _ => {}
         }
 
         // these are all AMD-specific intrinsics
@@ -148,57 +137,125 @@ fn verify_all_signatures() {
             }
         }
 
-        let intel = match map.get(rust.name) {
+        let intel = match map.remove(rust.name) {
             Some(i) => i,
             None => panic!("missing intel definition for {}", rust.name),
         };
 
-        // Verify that all `#[target_feature]` annotations are correct,
-        // ensuring that we've actually enabled the right instruction
-        // set for this intrinsic.
-        match rust.name {
-            "_bswap" => {}
-            "_bswap64" => {}
-            _ => {
-                assert!(!intel.cpuid.is_empty(), "missing cpuid for {}", rust.name);
+        let mut errors = Vec::new();
+        for intel in intel {
+            match matches(rust, &intel) {
+                Ok(()) => continue 'outer,
+                Err(e) => errors.push(e),
             }
         }
-        for cpuid in &intel.cpuid {
-            // this is needed by _xsave and probably some related intrinsics,
-            // but let's just skip it for now.
-            if *cpuid == "XSS" {
-                continue;
-            }
+        println!("failed to verify `{}`", rust.name);
+        for error in errors {
+            println!("  * {}", error);
+        }
+        all_valid = false;
+    }
+    assert!(all_valid);
 
-            // FIXME(#308)
-            if *cpuid == "TSC" || *cpuid == "RDTSCP" {
-                continue;
-            }
+    let mut missing = BTreeMap::new();
+    for (name, intel) in map.iter() {
+        // currently focused mainly on missing SIMD intrinsics, but there's
+        // definitely some other assorted ones that we're missing.
+        if !name.starts_with("_mm") {
+            continue
+        }
 
-            let cpuid = cpuid
-                .chars()
-                .flat_map(|c| c.to_lowercase())
-                .collect::<String>();
+        // we'll get to avx-512 later
+        // let avx512 = intel.iter().any(|i| {
+        //     i.name.starts_with("_mm512") || i.cpuid.iter().any(|c| {
+        //         c.contains("512")
+        //     })
+        // });
+        // if avx512 {
+        //     continue
+        // }
 
-            // Normalize `bmi1` to `bmi` as apparently that's what we're
-            // calling it.
-            let cpuid = if cpuid == "bmi1" {
-                String::from("bmi")
+        for intel in intel {
+            missing.entry(&intel.cpuid)
+                .or_insert(Vec::new())
+                .push(intel);
+        }
+    }
+
+    // generate a bulleted list of missing intrinsics
+    if PRINT_MISSING_LISTS || PRINT_MISSING_LISTS_MARKDOWN {
+        for (k, v) in missing {
+            if PRINT_MISSING_LISTS_MARKDOWN {
+                println!("\n<details><summary>{:?}</summary><p>\n", k);
+                for intel in v {
+                    let url = format!("https://software.intel.com/sites/landingpage\
+                                      /IntrinsicsGuide/#text={}&expand=5236", intel.name);
+                    println!("  * [ ] [`{}`]({})", intel.name, url);
+                }
+                println!("</p></details>\n");
             } else {
-                cpuid
-            };
+                println!("\n{:?}\n", k);
+                for intel in v {
+                    println!("\t{}", intel.name);
+                }
+            }
+        }
+    }
+}
 
-            let rust_feature = rust.target_feature
-                .expect(&format!("no target feature listed for {}", rust.name));
-            assert!(
-                rust_feature.contains(&cpuid),
-                "intel cpuid `{}` not in `{}` for {}",
-                cpuid,
-                rust_feature,
-                rust.name
-            );
+fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
+    // Verify that all `#[target_feature]` annotations are correct,
+    // ensuring that we've actually enabled the right instruction
+    // set for this intrinsic.
+    match rust.name {
+        "_bswap" => {}
+        "_bswap64" => {}
+        _ => {
+            if intel.cpuid.is_empty() {
+                bail!("missing cpuid for {}", rust.name);
+            }
+        }
+    }
+
+    for cpuid in &intel.cpuid {
+        // this is needed by _xsave and probably some related intrinsics,
+        // but let's just skip it for now.
+        if *cpuid == "XSS" {
+            continue;
         }
 
+        // FIXME(#308)
+        if *cpuid == "TSC" || *cpuid == "RDTSCP" {
+            continue;
+        }
+
+        let cpuid = cpuid
+            .chars()
+            .flat_map(|c| c.to_lowercase())
+            .collect::<String>();
+
+        // Normalize `bmi1` to `bmi` as apparently that's what we're
+        // calling it.
+        let cpuid = if cpuid == "bmi1" {
+            String::from("bmi")
+        } else {
+            cpuid
+        };
+
+        let rust_feature = rust.target_feature
+            .expect(&format!("no target feature listed for {}", rust.name));
+        if rust_feature.contains(&cpuid) {
+            continue
+        }
+        bail!(
+            "intel cpuid `{}` not in `{}` for {}",
+            cpuid,
+            rust_feature,
+            rust.name
+        )
+    }
+
+    if PRINT_INSTRUCTION_VIOLATIONS {
         if rust.instrs.is_empty() {
             if intel.instruction.len() > 0 {
                 println!("instruction not listed for `{}`, but intel lists {:?}",
@@ -223,83 +280,83 @@ fn verify_all_signatures() {
                 }
             }
         }
+    }
 
-        // Make sure we've got the right return type.
-        if let Some(t) = rust.ret {
-            equate(t, &intel.rettype, rust.name);
-        } else {
-            assert!(
-                intel.rettype == "" || intel.rettype == "void",
-                "{} returns `{}` with intel, void in rust",
-                rust.name,
-                intel.rettype
-            );
+    // Make sure we've got the right return type.
+    if let Some(t) = rust.ret {
+        equate(t, &intel.rettype, rust.name)?;
+    } else if intel.rettype != "" && intel.rettype != "void" {
+        bail!(
+            "{} returns `{}` with intel, void in rust",
+            rust.name,
+            intel.rettype
+        )
+    }
+
+    // If there's no arguments on Rust's side intel may list one "void"
+    // argument, so handle that here.
+    if rust.arguments.is_empty() && intel.parameters.len() == 1 {
+        if intel.parameters[0].type_ != "void" {
+            bail!("rust has 0 arguments, intel has one for")
         }
-
-        // If there's no arguments on Rust's side intel may list one "void"
-        // argument, so handle that here.
-        if rust.arguments.is_empty() && intel.parameters.len() == 1 {
-            assert_eq!(intel.parameters[0].type_, "void");
-        } else {
-            // Otherwise we want all parameters to be exactly the same
-            assert_eq!(
-                rust.arguments.len(),
-                intel.parameters.len(),
-                "wrong number of arguments on {}",
-                rust.name
-            );
-            for (a, b) in intel.parameters.iter().zip(rust.arguments) {
-                equate(b, &a.type_, &intel.name);
-            }
+    } else {
+        // Otherwise we want all parameters to be exactly the same
+        if rust.arguments.len() != intel.parameters.len() {
+            bail!("wrong number of arguments on {}", rust.name)
         }
-
-        let any_i64 = rust.arguments.iter()
-            .cloned()
-            .chain(rust.ret)
-            .any(|arg| {
-                match *arg {
-                    Type::PrimSigned(64) |
-                    Type::PrimUnsigned(64) => true,
-                    _ => false,
-                }
-            });
-        let any_i64_exempt = match rust.name {
-            // These intrinsics have all been manually verified against Clang's
-            // headers to be available on x86, and the u64 arguments seem
-            // spurious I guess?
-            "_xsave" |
-            "_xrstor" |
-            "_xsetbv" |
-            "_xgetbv" |
-            "_xsaveopt" |
-            "_xsavec" |
-            "_xsaves" |
-            "_xrstors" => true,
-
-            // Apparently all of clang/msvc/gcc accept these intrinsics on
-            // 32-bit, so let's do the same
-            "_mm_set_epi64x" |
-            "_mm_set1_epi64x" |
-            "_mm256_set_epi64x" |
-            "_mm256_setr_epi64x" |
-            "_mm256_set1_epi64x" => true,
-
-            // FIXME(#308)
-            "_rdtsc" |
-            "__rdtscp" => true,
-
-            _ => false,
-        };
-        if any_i64 && !any_i64_exempt {
-            assert!(rust.file.contains("x86_64"),
-                    "intrinsic `{}` uses a 64-bit bare type but may be \
-                     available on 32-bit platforms",
-                    rust.name);
+        for (a, b) in intel.parameters.iter().zip(rust.arguments) {
+            equate(b, &a.type_, &intel.name)?;
         }
     }
+
+    let any_i64 = rust.arguments.iter()
+        .cloned()
+        .chain(rust.ret)
+        .any(|arg| {
+            match *arg {
+                Type::PrimSigned(64) |
+                Type::PrimUnsigned(64) => true,
+                _ => false,
+            }
+        });
+    let any_i64_exempt = match rust.name {
+        // These intrinsics have all been manually verified against Clang's
+        // headers to be available on x86, and the u64 arguments seem
+        // spurious I guess?
+        "_xsave" |
+        "_xrstor" |
+        "_xsetbv" |
+        "_xgetbv" |
+        "_xsaveopt" |
+        "_xsavec" |
+        "_xsaves" |
+        "_xrstors" => true,
+
+        // Apparently all of clang/msvc/gcc accept these intrinsics on
+        // 32-bit, so let's do the same
+        "_mm_set_epi64x" |
+        "_mm_set1_epi64x" |
+        "_mm256_set_epi64x" |
+        "_mm256_setr_epi64x" |
+        "_mm256_set1_epi64x" => true,
+
+        // FIXME(#308)
+        "_rdtsc" |
+        "__rdtscp" => true,
+
+        _ => false,
+    };
+    if any_i64 && !any_i64_exempt {
+        if !rust.file.contains("x86_64") {
+            bail!("intrinsic `{}` uses a 64-bit bare type but may be \
+                   available on 32-bit platforms",
+                  rust.name)
+        }
+    }
+    Ok(())
 }
 
-fn equate(t: &Type, intel: &str, intrinsic: &str) {
+fn equate(t: &Type, intel: &str, intrinsic: &str) -> Result<(), String> {
     let intel = intel.replace(" *", "*");
     let intel = intel.replace(" const*", "*");
     match (t, &intel[..]) {
@@ -370,9 +427,12 @@ fn equate(t: &Type, intel: &str, intrinsic: &str) {
             if intrinsic.starts_with("_mm_ucomi")
                 && intrinsic.ends_with("_sd") => {}
 
-        _ => panic!(
-            "failed to equate: `{}` and {:?} for {}",
-            intel, t, intrinsic
-        ),
+        _ => {
+            bail!(
+                "failed to equate: `{}` and {:?} for {}",
+                intel, t, intrinsic
+            )
+        }
     }
+    Ok(())
 }

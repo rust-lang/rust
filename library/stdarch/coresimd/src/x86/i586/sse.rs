@@ -1501,16 +1501,16 @@ pub unsafe fn _MM_SET_ROUNDING_MODE(x: u32) {
 }
 
 /// See [`_mm_prefetch`](fn._mm_prefetch.html).
-pub const _MM_HINT_T0: i8 = 3;
+pub const _MM_HINT_T0: i32 = 3;
 
 /// See [`_mm_prefetch`](fn._mm_prefetch.html).
-pub const _MM_HINT_T1: i8 = 2;
+pub const _MM_HINT_T1: i32 = 2;
 
 /// See [`_mm_prefetch`](fn._mm_prefetch.html).
-pub const _MM_HINT_T2: i8 = 1;
+pub const _MM_HINT_T2: i32 = 1;
 
 /// See [`_mm_prefetch`](fn._mm_prefetch.html).
-pub const _MM_HINT_NTA: i8 = 0;
+pub const _MM_HINT_NTA: i32 = 0;
 
 /// Fetch the cache line that contains address `p` using the given `strategy`.
 ///
@@ -1554,7 +1554,7 @@ pub const _MM_HINT_NTA: i8 = 0;
 #[cfg_attr(test, assert_instr(prefetcht1, strategy = _MM_HINT_T1))]
 #[cfg_attr(test, assert_instr(prefetcht2, strategy = _MM_HINT_T2))]
 #[cfg_attr(test, assert_instr(prefetchnta, strategy = _MM_HINT_NTA))]
-pub unsafe fn _mm_prefetch(p: *const u8, strategy: i8) {
+pub unsafe fn _mm_prefetch(p: *const i8, strategy: i32) {
     // The `strategy` must be a compile-time constant, so we use a short form
     // of `constify_imm8!` for now.
     // We use the `llvm.prefetch` instrinsic with `rw` = 0 (read), and
@@ -1673,7 +1673,7 @@ extern "C" {
     #[link_name = "llvm.x86.sse.ldmxcsr"]
     fn ldmxcsr(p: *const i8);
     #[link_name = "llvm.prefetch"]
-    fn prefetch(p: *const u8, rw: i32, loc: i32, ty: i32);
+    fn prefetch(p: *const i8, rw: i32, loc: i32, ty: i32);
     #[link_name = "llvm.x86.sse.cmp.ss"]
     fn cmpss(a: __m128, b: __m128, imm8: i8) -> __m128;
     #[link_name = "llvm.x86.mmx.movnt.dq"]
