@@ -33,7 +33,7 @@ extern "C" {
 ///
 /// The format of the XSAVE area is detailed in Section 13.4, “XSAVE Area,” of
 /// Intel® 64 and IA-32 Architectures Software Developer’s Manual, Volume 1.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "xsave")]
 #[cfg_attr(test, assert_instr(xsave))]
 pub unsafe fn _xsave(mem_addr: *mut u8, save_mask: u64) {
@@ -46,7 +46,7 @@ pub unsafe fn _xsave(mem_addr: *mut u8, save_mask: u64) {
 /// State is restored based on bits [62:0] in `rs_mask`, `XCR0`, and
 /// `mem_addr.HEADER.XSTATE_BV`. `mem_addr` must be aligned on a 64-byte
 /// boundary.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "xsave")]
 #[cfg_attr(test, assert_instr(xrstor))]
 pub unsafe fn _xrstor(mem_addr: *const u8, rs_mask: u64) {
@@ -62,7 +62,7 @@ const _XCR_XFEATURE_ENABLED_MASK: u32 = 0;
 /// by `a`.
 ///
 /// Currently only `XFEATURE_ENABLED_MASK` `XCR` is supported.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "xsave")]
 #[cfg_attr(test, assert_instr(xsetbv))]
 pub unsafe fn _xsetbv(a: u32, val: u64) {
@@ -71,7 +71,7 @@ pub unsafe fn _xsetbv(a: u32, val: u64) {
 
 /// Reads the contents of the extended control register `XCR`
 /// specified in `xcr_no`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "xsave")]
 #[cfg_attr(test, assert_instr(xgetbv))]
 pub unsafe fn _xgetbv(xcr_no: u32) -> u64 {
@@ -85,7 +85,7 @@ pub unsafe fn _xgetbv(xcr_no: u32) -> u64 {
 /// `mem_addr` must be aligned on a 64-byte boundary. The hardware may optimize
 /// the manner in which data is saved. The performance of this instruction will
 /// be equal to or better than using the `XSAVE` instruction.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "xsave,xsaveopt")]
 #[cfg_attr(test, assert_instr(xsaveopt))]
 pub unsafe fn _xsaveopt(mem_addr: *mut u8, save_mask: u64) {
@@ -98,7 +98,7 @@ pub unsafe fn _xsaveopt(mem_addr: *mut u8, save_mask: u64) {
 /// `xsavec` differs from `xsave` in that it uses compaction and that it may
 /// use init optimization. State is saved based on bits [62:0] in `save_mask`
 /// and `XCR0`. `mem_addr` must be aligned on a 64-byte boundary.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "xsave,xsavec")]
 #[cfg_attr(test, assert_instr(xsavec))]
 pub unsafe fn _xsavec(mem_addr: *mut u8, save_mask: u64) {
@@ -112,7 +112,7 @@ pub unsafe fn _xsavec(mem_addr: *mut u8, save_mask: u64) {
 /// corresponding to bits set in `IA32_XSS` `MSR` and that it may use the
 /// modified optimization. State is saved based on bits [62:0] in `save_mask`
 /// and `XCR0`. `mem_addr` must be aligned on a 64-byte boundary.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "xsave,xsaves")]
 #[cfg_attr(test, assert_instr(xsaves))]
 pub unsafe fn _xsaves(mem_addr: *mut u8, save_mask: u64) {
@@ -128,7 +128,7 @@ pub unsafe fn _xsaves(mem_addr: *mut u8, save_mask: u64) {
 /// State is restored based on bits [62:0] in `rs_mask`, `XCR0`, and
 /// `mem_addr.HEADER.XSTATE_BV`. `mem_addr` must be aligned on a 64-byte
 /// boundary.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "xsave,xsaves")]
 #[cfg_attr(test, assert_instr(xrstors))]
 pub unsafe fn _xrstors(mem_addr: *const u8, rs_mask: u64) {

@@ -33,7 +33,7 @@ extern "C" {
 ///
 /// If `length == 0 && index > 0` or `lenght + index > 64` the result is
 /// undefined.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sse4a")]
 #[cfg_attr(test, assert_instr(extrq))]
 pub unsafe fn _mm_extract_si64(x: __m128i, y: __m128i) -> __m128i {
@@ -49,7 +49,7 @@ pub unsafe fn _mm_extract_si64(x: __m128i, y: __m128i) -> __m128i {
 ///
 /// If the `length` is zero it is interpreted as `64`. If `index + length > 64`
 /// or `index > 0 && length == 0` the result is undefined.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sse4a")]
 #[cfg_attr(test, assert_instr(insertq))]
 pub unsafe fn _mm_insert_si64(x: __m128i, y: __m128i) -> __m128i {
@@ -57,7 +57,7 @@ pub unsafe fn _mm_insert_si64(x: __m128i, y: __m128i) -> __m128i {
 }
 
 /// Non-temporal store of `a.0` into `p`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sse4a")]
 #[cfg_attr(test, assert_instr(movntsd))]
 pub unsafe fn _mm_stream_sd(p: *mut f64, a: __m128d) {
@@ -65,7 +65,7 @@ pub unsafe fn _mm_stream_sd(p: *mut f64, a: __m128d) {
 }
 
 /// Non-temporal store of `a.0` into `p`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sse4a")]
 #[cfg_attr(test, assert_instr(movntss))]
 pub unsafe fn _mm_stream_ss(p: *mut f32, a: __m128) {

@@ -3,7 +3,7 @@ use stdsimd_test::assert_instr;
 
 /// Extracts bits in range [`start`, `start` + `length`) from `a` into
 /// the least significant bits of the result.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "bmi")]
 #[cfg_attr(test, assert_instr(bextr))]
 #[cfg(not(target_arch = "x86"))]
@@ -16,7 +16,7 @@ pub unsafe fn _bextr_u64(a: u64, start: u32, len: u32) -> u64 {
 ///
 /// Bits [7,0] of `control` specify the index to the first bit in the range to
 /// be extracted, and bits [15,8] specify the length of the range.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "bmi")]
 #[cfg_attr(test, assert_instr(bextr))]
 #[cfg(not(target_arch = "x86"))]
@@ -25,7 +25,7 @@ pub unsafe fn _bextr2_u64(a: u64, control: u64) -> u64 {
 }
 
 /// Bitwise logical `AND` of inverted `a` with `b`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "bmi")]
 #[cfg_attr(test, assert_instr(andn))]
 pub unsafe fn _andn_u64(a: u64, b: u64) -> u64 {
@@ -33,7 +33,7 @@ pub unsafe fn _andn_u64(a: u64, b: u64) -> u64 {
 }
 
 /// Extract lowest set isolated bit.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "bmi")]
 #[cfg_attr(test, assert_instr(blsi))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
@@ -42,7 +42,7 @@ pub unsafe fn _blsi_u64(x: u64) -> u64 {
 }
 
 /// Get mask up to lowest set bit.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "bmi")]
 #[cfg_attr(test, assert_instr(blsmsk))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
@@ -53,7 +53,7 @@ pub unsafe fn _blsmsk_u64(x: u64) -> u64 {
 /// Resets the lowest set bit of `x`.
 ///
 /// If `x` is sets CF.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "bmi")]
 #[cfg_attr(test, assert_instr(blsr))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
@@ -64,7 +64,7 @@ pub unsafe fn _blsr_u64(x: u64) -> u64 {
 /// Counts the number of trailing least significant zero bits.
 ///
 /// When the source operand is 0, it returns its size in bits.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "bmi")]
 #[cfg_attr(test, assert_instr(tzcnt))]
 pub unsafe fn _tzcnt_u64(x: u64) -> u64 {
@@ -74,7 +74,7 @@ pub unsafe fn _tzcnt_u64(x: u64) -> u64 {
 /// Counts the number of trailing least significant zero bits.
 ///
 /// When the source operand is 0, it returns its size in bits.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "bmi")]
 #[cfg_attr(test, assert_instr(tzcnt))]
 pub unsafe fn _mm_tzcnt_64(x: u64) -> i64 {

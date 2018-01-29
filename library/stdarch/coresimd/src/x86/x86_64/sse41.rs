@@ -9,7 +9,7 @@ use simd_llvm::*;
 use stdsimd_test::assert_instr;
 
 /// Extract an 64-bit integer from `a` selected with `imm8`
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sse4.1")]
 // TODO: Add test for Windows
 #[cfg_attr(all(test, not(windows)), assert_instr(pextrq, imm8 = 1))]
@@ -20,7 +20,7 @@ pub unsafe fn _mm_extract_epi64(a: __m128i, imm8: i32) -> i64 {
 
 /// Return a copy of `a` with the 64-bit integer from `i` inserted at a
 /// location specified by `imm8`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(pinsrq, imm8 = 0))]
 pub unsafe fn _mm_insert_epi64(a: __m128i, i: i64, imm8: i32) -> __m128i {

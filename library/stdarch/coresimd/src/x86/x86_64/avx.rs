@@ -5,7 +5,7 @@ use x86::*;
 
 /// Copy `a` to result, and insert the 64-bit integer `i` into result
 /// at the location specified by `index`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_insert_epi64(a: __m256i, i: i64, index: i32) -> __m256i {

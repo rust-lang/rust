@@ -13,28 +13,28 @@ pub use super::v6::*;
 use stdsimd_test::assert_instr;
 
 /// Count Leading Zeros.
-#[inline(always)]
+#[inline]
 #[cfg_attr(test, assert_instr(clz))]
 pub unsafe fn _clz_u8(x: u8) -> u8 {
     x.leading_zeros() as u8
 }
 
 /// Count Leading Zeros.
-#[inline(always)]
+#[inline]
 #[cfg_attr(test, assert_instr(clz))]
 pub unsafe fn _clz_u16(x: u16) -> u16 {
     x.leading_zeros() as u16
 }
 
 /// Count Leading Zeros.
-#[inline(always)]
+#[inline]
 #[cfg_attr(test, assert_instr(clz))]
 pub unsafe fn _clz_u32(x: u32) -> u32 {
     x.leading_zeros() as u32
 }
 
 /// Reverse the bit order.
-#[inline(always)]
+#[inline]
 #[cfg_attr(test, assert_instr(rbit))]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg(dont_compile_me)] // FIXME need to add `v7` upstream in rustc

@@ -17,7 +17,7 @@ macro_rules! types {
         pub struct $name($($fields)*);
 
         impl Clone for $name {
-            #[inline(always)] // currently needed for correctness
+            #[inline] // currently needed for correctness
             fn clone(&self) -> $name {
                 *self
             }
@@ -307,49 +307,49 @@ pub use self::test::*;
 trait m128iExt: Sized {
     fn as_m128i(self) -> __m128i;
 
-    #[inline(always)]
+    #[inline]
     fn as_u8x16(self) -> ::v128::u8x16 {
         unsafe { mem::transmute(self.as_m128i()) }
     }
 
-    #[inline(always)]
+    #[inline]
     fn as_u16x8(self) -> ::v128::u16x8 {
         unsafe { mem::transmute(self.as_m128i()) }
     }
 
-    #[inline(always)]
+    #[inline]
     fn as_u32x4(self) -> ::v128::u32x4 {
         unsafe { mem::transmute(self.as_m128i()) }
     }
 
-    #[inline(always)]
+    #[inline]
     fn as_u64x2(self) -> ::v128::u64x2 {
         unsafe { mem::transmute(self.as_m128i()) }
     }
 
-    #[inline(always)]
+    #[inline]
     fn as_i8x16(self) -> ::v128::i8x16 {
         unsafe { mem::transmute(self.as_m128i()) }
     }
 
-    #[inline(always)]
+    #[inline]
     fn as_i16x8(self) -> ::v128::i16x8 {
         unsafe { mem::transmute(self.as_m128i()) }
     }
 
-    #[inline(always)]
+    #[inline]
     fn as_i32x4(self) -> ::v128::i32x4 {
         unsafe { mem::transmute(self.as_m128i()) }
     }
 
-    #[inline(always)]
+    #[inline]
     fn as_i64x2(self) -> ::v128::i64x2 {
         unsafe { mem::transmute(self.as_m128i()) }
     }
 }
 
 impl m128iExt for __m128i {
-    #[inline(always)]
+    #[inline]
     fn as_m128i(self) -> __m128i { self }
 }
 
@@ -358,49 +358,49 @@ impl m128iExt for __m128i {
 trait m256iExt: Sized {
     fn as_m256i(self) -> __m256i;
 
-    #[inline(always)]
+    #[inline]
     fn as_u8x32(self) -> ::v256::u8x32 {
         unsafe { mem::transmute(self.as_m256i()) }
     }
 
-    #[inline(always)]
+    #[inline]
     fn as_u16x16(self) -> ::v256::u16x16 {
         unsafe { mem::transmute(self.as_m256i()) }
     }
 
-    #[inline(always)]
+    #[inline]
     fn as_u32x8(self) -> ::v256::u32x8 {
         unsafe { mem::transmute(self.as_m256i()) }
     }
 
-    #[inline(always)]
+    #[inline]
     fn as_u64x4(self) -> ::v256::u64x4 {
         unsafe { mem::transmute(self.as_m256i()) }
     }
 
-    #[inline(always)]
+    #[inline]
     fn as_i8x32(self) -> ::v256::i8x32 {
         unsafe { mem::transmute(self.as_m256i()) }
     }
 
-    #[inline(always)]
+    #[inline]
     fn as_i16x16(self) -> ::v256::i16x16 {
         unsafe { mem::transmute(self.as_m256i()) }
     }
 
-    #[inline(always)]
+    #[inline]
     fn as_i32x8(self) -> ::v256::i32x8 {
         unsafe { mem::transmute(self.as_m256i()) }
     }
 
-    #[inline(always)]
+    #[inline]
     fn as_i64x4(self) -> ::v256::i64x4 {
         unsafe { mem::transmute(self.as_m256i()) }
     }
 }
 
 impl m256iExt for __m256i {
-    #[inline(always)]
+    #[inline]
     fn as_m256i(self) -> __m256i { self }
 }
 

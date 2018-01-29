@@ -42,79 +42,79 @@ extern "C" {
 }
 
 /// Synchronizes all threads in the block.
-#[inline(always)]
+#[inline]
 pub unsafe fn _syncthreads() -> () {
     syncthreads()
 }
 
 /// x-th thread-block dimension.
-#[inline(always)]
+#[inline]
 pub unsafe fn _block_dim_x() -> i32 {
     block_dim_x()
 }
 
 /// y-th thread-block dimension.
-#[inline(always)]
+#[inline]
 pub unsafe fn _block_dim_y() -> i32 {
     block_dim_y()
 }
 
 /// z-th thread-block dimension.
-#[inline(always)]
+#[inline]
 pub unsafe fn _block_dim_z() -> i32 {
     block_dim_z()
 }
 
 /// x-th thread-block index.
-#[inline(always)]
+#[inline]
 pub unsafe fn _block_idx_x() -> i32 {
     block_idx_x()
 }
 
 /// y-th thread-block index.
-#[inline(always)]
+#[inline]
 pub unsafe fn _block_idx_y() -> i32 {
     block_idx_y()
 }
 
 /// z-th thread-block index.
-#[inline(always)]
+#[inline]
 pub unsafe fn _block_idx_z() -> i32 {
     block_idx_z()
 }
 
 /// x-th block-grid dimension.
-#[inline(always)]
+#[inline]
 pub unsafe fn _grid_dim_x() -> i32 {
     grid_dim_x()
 }
 
 /// y-th block-grid dimension.
-#[inline(always)]
+#[inline]
 pub unsafe fn _grid_dim_y() -> i32 {
     grid_dim_y()
 }
 
 /// z-th block-grid dimension.
-#[inline(always)]
+#[inline]
 pub unsafe fn _grid_dim_z() -> i32 {
     grid_dim_z()
 }
 
 /// x-th thread index.
-#[inline(always)]
+#[inline]
 pub unsafe fn _thread_idx_x() -> i32 {
     thread_idx_x()
 }
 
 /// y-th thread index.
-#[inline(always)]
+#[inline]
 pub unsafe fn _thread_idx_y() -> i32 {
     thread_idx_y()
 }
 
 /// z-th thread index.
-#[inline(always)]
+#[inline]
 pub unsafe fn _thread_idx_z() -> i32 {
     thread_idx_z()
 }

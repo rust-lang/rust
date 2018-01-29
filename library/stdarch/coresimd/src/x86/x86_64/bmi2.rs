@@ -5,7 +5,7 @@ use stdsimd_test::assert_instr;
 ///
 /// Unsigned multiplication of `a` with `b` returning a pair `(lo, hi)` with
 /// the low half and the high half of the result.
-#[inline(always)]
+#[inline]
 #[cfg_attr(test, assert_instr(mulx))]
 #[target_feature(enable = "bmi2")]
 #[cfg(not(target_arch = "x86"))] // calls an intrinsic
@@ -16,7 +16,7 @@ pub unsafe fn _mulx_u64(a: u64, b: u64, hi: &mut u64) -> u64 {
 }
 
 /// Zero higher bits of `a` >= `index`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "bmi2")]
 #[cfg_attr(test, assert_instr(bzhi))]
 #[cfg(not(target_arch = "x86"))]
@@ -26,7 +26,7 @@ pub unsafe fn _bzhi_u64(a: u64, index: u32) -> u64 {
 
 /// Scatter contiguous low order bits of `a` to the result at the positions
 /// specified by the `mask`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "bmi2")]
 #[cfg_attr(test, assert_instr(pdep))]
 #[cfg(not(target_arch = "x86"))]
@@ -36,7 +36,7 @@ pub unsafe fn _pdep_u64(a: u64, mask: u64) -> u64 {
 
 /// Gathers the bits of `x` specified by the `mask` into the contiguous low
 /// order bit positions of the result.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "bmi2")]
 #[cfg_attr(test, assert_instr(pext))]
 #[cfg(not(target_arch = "x86"))]

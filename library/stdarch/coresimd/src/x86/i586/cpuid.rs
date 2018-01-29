@@ -42,7 +42,7 @@ pub struct CpuidResult {
 /// [wiki_cpuid]: https://en.wikipedia.org/wiki/CPUID
 /// [intel64_ref]: http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
 /// [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
-#[inline(always)]
+#[inline]
 #[cfg_attr(test, assert_instr(cpuid))]
 pub unsafe fn __cpuid_count(leaf: u32, sub_leaf: u32) -> CpuidResult {
     let mut r = ::core::mem::uninitialized::<CpuidResult>();
@@ -62,14 +62,14 @@ pub unsafe fn __cpuid_count(leaf: u32, sub_leaf: u32) -> CpuidResult {
 }
 
 /// See [`__cpuid_count`](fn.__cpuid_count.html).
-#[inline(always)]
+#[inline]
 #[cfg_attr(test, assert_instr(cpuid))]
 pub unsafe fn __cpuid(leaf: u32) -> CpuidResult {
     __cpuid_count(leaf, 0)
 }
 
 /// Does the host support the `cpuid` instruction?
-#[inline(always)]
+#[inline]
 pub fn has_cpuid() -> bool {
     #[cfg(target_arch = "x86_64")]
     {
@@ -111,7 +111,7 @@ pub fn has_cpuid() -> bool {
 ///
 /// See also [`__cpuid`](fn.__cpuid.html) and
 /// [`__cpuid_count`](fn.__cpuid_count.html).
-#[inline(always)]
+#[inline]
 pub unsafe fn __get_cpuid_max(leaf: u32) -> (u32, u32) {
     let CpuidResult { eax, ebx, .. } = __cpuid(leaf);
     (eax, ebx)

@@ -24,7 +24,7 @@ extern "C" {
 /// [`_mm_setcsr`](fn._mm_setcsr.html)).
 ///
 /// This corresponds to the `CVTSS2SI` instruction (with 64 bit output).
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cvtss2si))]
 pub unsafe fn _mm_cvtss_si64(a: __m128) -> i64 {
@@ -40,7 +40,7 @@ pub unsafe fn _mm_cvtss_si64(a: __m128) -> i64 {
 /// point exception if unmasked (see [`_mm_setcsr`](fn._mm_setcsr.html)).
 ///
 /// This corresponds to the `CVTTSS2SI` instruction (with 64 bit output).
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cvttss2si))]
 pub unsafe fn _mm_cvttss_si64(a: __m128) -> i64 {
@@ -52,7 +52,7 @@ pub unsafe fn _mm_cvttss_si64(a: __m128) -> i64 {
 ///
 /// This intrinsic corresponds to the `CVTSI2SS` instruction (with 64 bit
 /// input).
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cvtsi2ss))]
 pub unsafe fn _mm_cvtsi64_ss(a: __m128, b: i64) -> __m128 {

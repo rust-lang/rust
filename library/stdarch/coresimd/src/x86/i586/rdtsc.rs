@@ -15,7 +15,7 @@ use stdsimd_test::assert_instr;
 ///
 /// On processors that support the Intel 64 architecture, the
 /// high-order 32 bits of each of RAX and RDX are cleared.
-#[inline(always)]
+#[inline]
 #[cfg_attr(test, assert_instr(rdtsc))]
 pub unsafe fn _rdtsc() -> u64 {
     rdtsc()
@@ -35,7 +35,7 @@ pub unsafe fn _rdtsc() -> u64 {
 ///
 /// On processors that support the Intel 64 architecture, the
 /// high-order 32 bits of each of RAX, RDX, and RCX are cleared.
-#[inline(always)]
+#[inline]
 #[cfg_attr(test, assert_instr(rdtscp))]
 pub unsafe fn _rdtscp(aux: *mut u32) -> u64 {
     rdtscp(aux as *mut _)

@@ -2,7 +2,7 @@ use simd_llvm::*;
 use x86::*;
 
 /// Extract a 64-bit integer from `a`, selected with `imm8`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx2")]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_extract_epi64(a: __m256i, imm8: i32) -> i64 {

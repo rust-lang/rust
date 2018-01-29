@@ -26,7 +26,7 @@ use x86::*;
 
 /// Add packed double-precision (64-bit) floating-point elements
 /// in `a` and `b`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vaddpd))]
 pub unsafe fn _mm256_add_pd(a: __m256d, b: __m256d) -> __m256d {
@@ -35,7 +35,7 @@ pub unsafe fn _mm256_add_pd(a: __m256d, b: __m256d) -> __m256d {
 
 /// Add packed single-precision (32-bit) floating-point elements in `a` and
 /// `b`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vaddps))]
 pub unsafe fn _mm256_add_ps(a: __m256, b: __m256) -> __m256 {
@@ -45,7 +45,7 @@ pub unsafe fn _mm256_add_ps(a: __m256, b: __m256) -> __m256 {
 /// Compute the bitwise AND of a packed double-precision (64-bit)
 /// floating-point elements
 /// in `a` and `b`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // FIXME: Should be 'vandpd' instuction.
 // See https://github.com/rust-lang-nursery/stdsimd/issues/71
@@ -58,7 +58,7 @@ pub unsafe fn _mm256_and_pd(a: __m256d, b: __m256d) -> __m256d {
 
 /// Compute the bitwise AND of packed single-precision (32-bit) floating-point
 /// elements in `a` and `b`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vandps))]
 pub unsafe fn _mm256_and_ps(a: __m256, b: __m256) -> __m256 {
@@ -69,7 +69,7 @@ pub unsafe fn _mm256_and_ps(a: __m256, b: __m256) -> __m256 {
 
 /// Compute the bitwise OR packed double-precision (64-bit) floating-point
 /// elements in `a` and `b`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // FIXME: Should be 'vorpd' instuction.
 // See https://github.com/rust-lang-nursery/stdsimd/issues/71
@@ -82,7 +82,7 @@ pub unsafe fn _mm256_or_pd(a: __m256d, b: __m256d) -> __m256d {
 
 /// Compute the bitwise OR packed single-precision (32-bit) floating-point
 /// elements in `a` and `b`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vorps))]
 pub unsafe fn _mm256_or_ps(a: __m256, b: __m256) -> __m256 {
@@ -93,7 +93,7 @@ pub unsafe fn _mm256_or_ps(a: __m256, b: __m256) -> __m256 {
 
 /// Shuffle double-precision (64-bit) floating-point elements within 128-bit
 /// lanes using the control in `imm8`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vshufpd, imm8 = 0x1))]
 pub unsafe fn _mm256_shuffle_pd(a: __m256d, b: __m256d, imm8: i32) -> __m256d {
@@ -135,7 +135,7 @@ pub unsafe fn _mm256_shuffle_pd(a: __m256d, b: __m256d, imm8: i32) -> __m256d {
 
 /// Shuffle single-precision (32-bit) floating-point elements in `a` within
 /// 128-bit lanes using the control in `imm8`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vshufps, imm8 = 0x0))]
 pub unsafe fn _mm256_shuffle_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
@@ -186,7 +186,7 @@ pub unsafe fn _mm256_shuffle_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
 /// Compute the bitwise NOT of packed double-precision (64-bit) floating-point
 /// elements in `a`
 /// and then AND with `b`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // FIXME: Should be 'vandnpd' instruction.
 #[cfg_attr(test, assert_instr(vandnps))]
@@ -199,7 +199,7 @@ pub unsafe fn _mm256_andnot_pd(a: __m256d, b: __m256d) -> __m256d {
 /// Compute the bitwise NOT of packed single-precision (32-bit) floating-point
 /// elements in `a`
 /// and then AND with `b`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vandnps))]
 pub unsafe fn _mm256_andnot_ps(a: __m256, b: __m256) -> __m256 {
@@ -210,7 +210,7 @@ pub unsafe fn _mm256_andnot_ps(a: __m256, b: __m256) -> __m256 {
 
 /// Compare packed double-precision (64-bit) floating-point elements
 /// in `a` and `b`, and return packed maximum values
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmaxpd))]
 pub unsafe fn _mm256_max_pd(a: __m256d, b: __m256d) -> __m256d {
@@ -219,7 +219,7 @@ pub unsafe fn _mm256_max_pd(a: __m256d, b: __m256d) -> __m256d {
 
 /// Compare packed single-precision (32-bit) floating-point elements in `a`
 /// and `b`, and return packed maximum values
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmaxps))]
 pub unsafe fn _mm256_max_ps(a: __m256, b: __m256) -> __m256 {
@@ -228,7 +228,7 @@ pub unsafe fn _mm256_max_ps(a: __m256, b: __m256) -> __m256 {
 
 /// Compare packed double-precision (64-bit) floating-point elements
 /// in `a` and `b`, and return packed minimum values
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vminpd))]
 pub unsafe fn _mm256_min_pd(a: __m256d, b: __m256d) -> __m256d {
@@ -237,7 +237,7 @@ pub unsafe fn _mm256_min_pd(a: __m256d, b: __m256d) -> __m256d {
 
 /// Compare packed single-precision (32-bit) floating-point elements in `a`
 /// and `b`, and return packed minimum values
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vminps))]
 pub unsafe fn _mm256_min_ps(a: __m256, b: __m256) -> __m256 {
@@ -246,7 +246,7 @@ pub unsafe fn _mm256_min_ps(a: __m256, b: __m256) -> __m256 {
 
 /// Add packed double-precision (64-bit) floating-point elements
 /// in `a` and `b`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmulpd))]
 pub unsafe fn _mm256_mul_pd(a: __m256d, b: __m256d) -> __m256d {
@@ -255,7 +255,7 @@ pub unsafe fn _mm256_mul_pd(a: __m256d, b: __m256d) -> __m256d {
 
 /// Add packed single-precision (32-bit) floating-point elements in `a` and
 /// `b`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmulps))]
 pub unsafe fn _mm256_mul_ps(a: __m256, b: __m256) -> __m256 {
@@ -264,7 +264,7 @@ pub unsafe fn _mm256_mul_ps(a: __m256, b: __m256) -> __m256 {
 
 /// Alternatively add and subtract packed double-precision (64-bit)
 /// floating-point elements in `a` to/from packed elements in `b`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vaddsubpd))]
 pub unsafe fn _mm256_addsub_pd(a: __m256d, b: __m256d) -> __m256d {
@@ -273,7 +273,7 @@ pub unsafe fn _mm256_addsub_pd(a: __m256d, b: __m256d) -> __m256d {
 
 /// Alternatively add and subtract packed single-precision (32-bit)
 /// floating-point elements in `a` to/from packed elements in `b`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vaddsubps))]
 pub unsafe fn _mm256_addsub_ps(a: __m256, b: __m256) -> __m256 {
@@ -282,7 +282,7 @@ pub unsafe fn _mm256_addsub_ps(a: __m256, b: __m256) -> __m256 {
 
 /// Subtract packed double-precision (64-bit) floating-point elements in `b`
 /// from packed elements in `a`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vsubpd))]
 pub unsafe fn _mm256_sub_pd(a: __m256d, b: __m256d) -> __m256d {
@@ -291,7 +291,7 @@ pub unsafe fn _mm256_sub_pd(a: __m256d, b: __m256d) -> __m256d {
 
 /// Subtract packed single-precision (32-bit) floating-point elements in `b`
 /// from packed elements in `a`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vsubps))]
 pub unsafe fn _mm256_sub_ps(a: __m256, b: __m256) -> __m256 {
@@ -300,7 +300,7 @@ pub unsafe fn _mm256_sub_ps(a: __m256, b: __m256) -> __m256 {
 
 /// Compute the division of each of the 8 packed 32-bit floating-point elements
 /// in `a` by the corresponding packed elements in `b`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vdivps))]
 pub unsafe fn _mm256_div_ps(a: __m256, b: __m256) -> __m256 {
@@ -309,7 +309,7 @@ pub unsafe fn _mm256_div_ps(a: __m256, b: __m256) -> __m256 {
 
 /// Compute the division of each of the 4 packed 64-bit floating-point elements
 /// in `a` by the corresponding packed elements in `b`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vdivpd))]
 pub unsafe fn _mm256_div_pd(a: __m256d, b: __m256d) -> __m256d {
@@ -327,7 +327,7 @@ pub unsafe fn _mm256_div_pd(a: __m256d, b: __m256d) -> __m256d {
 /// For a complete list of options, check [the LLVM docs][llvm_docs].
 ///
 /// [llvm_docs]: https://github.com/llvm-mirror/clang/blob/dcd8d797b20291f1a6b3e0ddda085aa2bbb382a8/lib/Headers/avxintrin.h#L382
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vroundpd, b = 0x3))]
 pub unsafe fn _mm256_round_pd(a: __m256d, b: i32) -> __m256d {
@@ -339,7 +339,7 @@ pub unsafe fn _mm256_round_pd(a: __m256d, b: i32) -> __m256d {
 
 /// Round packed double-precision (64-bit) floating point elements in `a`
 /// toward positive infinity.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vroundpd))]
 pub unsafe fn _mm256_ceil_pd(a: __m256d) -> __m256d {
@@ -348,7 +348,7 @@ pub unsafe fn _mm256_ceil_pd(a: __m256d) -> __m256d {
 
 /// Round packed double-precision (64-bit) floating point elements in `a`
 /// toward negative infinity.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vroundpd))]
 pub unsafe fn _mm256_floor_pd(a: __m256d) -> __m256d {
@@ -366,7 +366,7 @@ pub unsafe fn _mm256_floor_pd(a: __m256d) -> __m256d {
 /// For a complete list of options, check [the LLVM docs][llvm_docs].
 ///
 /// [llvm_docs]: https://github.com/llvm-mirror/clang/blob/dcd8d797b20291f1a6b3e0ddda085aa2bbb382a8/lib/Headers/avxintrin.h#L382
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vroundps, b = 0x00))]
 pub unsafe fn _mm256_round_ps(a: __m256, b: i32) -> __m256 {
@@ -380,7 +380,7 @@ pub unsafe fn _mm256_round_ps(a: __m256, b: i32) -> __m256 {
 
 /// Round packed single-precision (32-bit) floating point elements in `a`
 /// toward positive infinity.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vroundps))]
 pub unsafe fn _mm256_ceil_ps(a: __m256) -> __m256 {
@@ -389,7 +389,7 @@ pub unsafe fn _mm256_ceil_ps(a: __m256) -> __m256 {
 
 /// Round packed single-precision (32-bit) floating point elements in `a`
 /// toward negative infinity.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vroundps))]
 pub unsafe fn _mm256_floor_ps(a: __m256) -> __m256 {
@@ -398,7 +398,7 @@ pub unsafe fn _mm256_floor_ps(a: __m256) -> __m256 {
 
 /// Return the square root of packed single-precision (32-bit) floating point
 /// elements in `a`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vsqrtps))]
 pub unsafe fn _mm256_sqrt_ps(a: __m256) -> __m256 {
@@ -407,7 +407,7 @@ pub unsafe fn _mm256_sqrt_ps(a: __m256) -> __m256 {
 
 /// Return the square root of packed double-precision (64-bit) floating point
 /// elements in `a`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vsqrtpd))]
 pub unsafe fn _mm256_sqrt_pd(a: __m256d) -> __m256d {
@@ -416,7 +416,7 @@ pub unsafe fn _mm256_sqrt_pd(a: __m256d) -> __m256d {
 
 /// Blend packed double-precision (64-bit) floating-point elements from
 /// `a` and `b` using control mask `imm8`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vblendpd, imm8 = 9))]
 pub unsafe fn _mm256_blend_pd(a: __m256d, b: __m256d, imm8: i32) -> __m256d {
@@ -458,7 +458,7 @@ pub unsafe fn _mm256_blend_pd(a: __m256d, b: __m256d, imm8: i32) -> __m256d {
 
 /// Blend packed single-precision (32-bit) floating-point elements from
 /// `a` and `b` using control mask `imm8`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vblendps, imm8 = 9))]
 pub unsafe fn _mm256_blend_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
@@ -508,7 +508,7 @@ pub unsafe fn _mm256_blend_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
 
 /// Blend packed double-precision (64-bit) floating-point elements from
 /// `a` and `b` using `c` as a mask.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vblendvpd))]
 pub unsafe fn _mm256_blendv_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
@@ -517,7 +517,7 @@ pub unsafe fn _mm256_blendv_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
 
 /// Blend packed single-precision (32-bit) floating-point elements from
 /// `a` and `b` using `c` as a mask.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vblendvps))]
 pub unsafe fn _mm256_blendv_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
@@ -528,7 +528,7 @@ pub unsafe fn _mm256_blendv_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
 /// elements in `a` and `b` using the high 4 bits in `imm8`,
 /// sum the four products, and conditionally return the sum
 ///  using the low 4 bits of `imm8`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vdpps, imm8 = 0x0))]
 pub unsafe fn _mm256_dp_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
@@ -542,7 +542,7 @@ pub unsafe fn _mm256_dp_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
 /// of 4 64-bit floating points `a` and `b`.
 /// In the result, sums of elements from `a` are returned in even locations,
 /// while sums of elements from `b` are returned in odd locations.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vhaddpd))]
 pub unsafe fn _mm256_hadd_pd(a: __m256d, b: __m256d) -> __m256d {
@@ -554,7 +554,7 @@ pub unsafe fn _mm256_hadd_pd(a: __m256d, b: __m256d) -> __m256d {
 /// In the result, sums of elements from `a` are returned in locations of
 /// indices 0, 1, 4, 5; while sums of elements from `b` are locations
 /// 2, 3, 6, 7.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vhaddps))]
 pub unsafe fn _mm256_hadd_ps(a: __m256, b: __m256) -> __m256 {
@@ -565,7 +565,7 @@ pub unsafe fn _mm256_hadd_ps(a: __m256, b: __m256) -> __m256 {
 /// of 4 64-bit floating points `a` and `b`.
 /// In the result, sums of elements from `a` are returned in even locations,
 /// while sums of elements from `b` are returned in odd locations.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vhsubpd))]
 pub unsafe fn _mm256_hsub_pd(a: __m256d, b: __m256d) -> __m256d {
@@ -577,7 +577,7 @@ pub unsafe fn _mm256_hsub_pd(a: __m256d, b: __m256d) -> __m256d {
 /// In the result, sums of elements from `a` are returned in locations of
 /// indices 0, 1, 4, 5; while sums of elements from `b` are locations
 /// 2, 3, 6, 7.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vhsubps))]
 pub unsafe fn _mm256_hsub_ps(a: __m256, b: __m256) -> __m256 {
@@ -586,7 +586,7 @@ pub unsafe fn _mm256_hsub_ps(a: __m256, b: __m256) -> __m256 {
 
 /// Compute the bitwise XOR of packed double-precision (64-bit) floating-point
 /// elements in `a` and `b`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // FIXME Should be 'vxorpd' instruction.
 #[cfg_attr(test, assert_instr(vxorps))]
@@ -598,7 +598,7 @@ pub unsafe fn _mm256_xor_pd(a: __m256d, b: __m256d) -> __m256d {
 
 /// Compute the bitwise XOR of packed single-precision (32-bit) floating-point
 /// elements in `a` and `b`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vxorps))]
 pub unsafe fn _mm256_xor_ps(a: __m256, b: __m256) -> __m256 {
@@ -675,7 +675,7 @@ pub const _CMP_TRUE_US: i32 = 0x1f;
 /// Compare packed double-precision (64-bit) floating-point
 /// elements in `a` and `b` based on the comparison operand
 /// specified by `imm8`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx,sse2")]
 #[cfg_attr(test, assert_instr(vcmpeqpd, imm8 = 0))] // TODO Validate vcmppd
 pub unsafe fn _mm_cmp_pd(a: __m128d, b: __m128d, imm8: i32) -> __m128d {
@@ -688,7 +688,7 @@ pub unsafe fn _mm_cmp_pd(a: __m128d, b: __m128d, imm8: i32) -> __m128d {
 /// Compare packed double-precision (64-bit) floating-point
 /// elements in `a` and `b` based on the comparison operand
 /// specified by `imm8`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vcmpeqpd, imm8 = 0))] // TODO Validate vcmppd
 pub unsafe fn _mm256_cmp_pd(a: __m256d, b: __m256d, imm8: i32) -> __m256d {
@@ -701,7 +701,7 @@ pub unsafe fn _mm256_cmp_pd(a: __m256d, b: __m256d, imm8: i32) -> __m256d {
 /// Compare packed single-precision (32-bit) floating-point
 /// elements in `a` and `b` based on the comparison operand
 /// specified by `imm8`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx,sse")]
 #[cfg_attr(test, assert_instr(vcmpeqps, imm8 = 0))] // TODO Validate vcmpps
 pub unsafe fn _mm_cmp_ps(a: __m128, b: __m128, imm8: i32) -> __m128 {
@@ -714,7 +714,7 @@ pub unsafe fn _mm_cmp_ps(a: __m128, b: __m128, imm8: i32) -> __m128 {
 /// Compare packed single-precision (32-bit) floating-point
 /// elements in `a` and `b` based on the comparison operand
 /// specified by `imm8`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vcmpeqps, imm8 = 0))] // TODO Validate vcmpps
 pub unsafe fn _mm256_cmp_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
@@ -729,7 +729,7 @@ pub unsafe fn _mm256_cmp_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
 /// store the result in the lower element of returned vector,
 /// and copy the upper element from `a` to the upper element of returned
 /// vector.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx,sse2")]
 #[cfg_attr(test, assert_instr(vcmpeqsd, imm8 = 0))] // TODO Validate vcmpsd
 pub unsafe fn _mm_cmp_sd(a: __m128d, b: __m128d, imm8: i32) -> __m128d {
@@ -744,7 +744,7 @@ pub unsafe fn _mm_cmp_sd(a: __m128d, b: __m128d, imm8: i32) -> __m128d {
 /// store the result in the lower element of returned vector,
 /// and copy the upper 3 packed elements from `a` to the upper elements of
 /// returned vector.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx,sse")]
 #[cfg_attr(test, assert_instr(vcmpeqss, imm8 = 0))] // TODO Validate vcmpss
 pub unsafe fn _mm_cmp_ss(a: __m128, b: __m128, imm8: i32) -> __m128 {
@@ -756,7 +756,7 @@ pub unsafe fn _mm_cmp_ss(a: __m128, b: __m128, imm8: i32) -> __m128 {
 
 /// Convert packed 32-bit integers in `a` to packed double-precision (64-bit)
 /// floating-point elements.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vcvtdq2pd))]
 pub unsafe fn _mm256_cvtepi32_pd(a: __m128i) -> __m256d {
@@ -765,7 +765,7 @@ pub unsafe fn _mm256_cvtepi32_pd(a: __m128i) -> __m256d {
 
 /// Convert packed 32-bit integers in `a` to packed single-precision (32-bit)
 /// floating-point elements.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vcvtdq2ps))]
 pub unsafe fn _mm256_cvtepi32_ps(a: __m256i) -> __m256 {
@@ -774,7 +774,7 @@ pub unsafe fn _mm256_cvtepi32_ps(a: __m256i) -> __m256 {
 
 /// Convert packed double-precision (64-bit) floating-point elements in `a`
 /// to packed single-precision (32-bit) floating-point elements.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vcvtpd2ps))]
 pub unsafe fn _mm256_cvtpd_ps(a: __m256d) -> __m128 {
@@ -783,7 +783,7 @@ pub unsafe fn _mm256_cvtpd_ps(a: __m256d) -> __m128 {
 
 /// Convert packed single-precision (32-bit) floating-point elements in `a`
 /// to packed 32-bit integers.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vcvtps2dq))]
 pub unsafe fn _mm256_cvtps_epi32(a: __m256) -> __m256i {
@@ -792,7 +792,7 @@ pub unsafe fn _mm256_cvtps_epi32(a: __m256) -> __m256i {
 
 /// Convert packed single-precision (32-bit) floating-point elements in `a`
 /// to packed double-precision (64-bit) floating-point elements.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vcvtps2pd))]
 pub unsafe fn _mm256_cvtps_pd(a: __m128) -> __m256d {
@@ -801,7 +801,7 @@ pub unsafe fn _mm256_cvtps_pd(a: __m128) -> __m256d {
 
 /// Convert packed double-precision (64-bit) floating-point elements in `a`
 /// to packed 32-bit integers with truncation.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vcvttpd2dq))]
 pub unsafe fn _mm256_cvttpd_epi32(a: __m256d) -> __m128i {
@@ -810,7 +810,7 @@ pub unsafe fn _mm256_cvttpd_epi32(a: __m256d) -> __m128i {
 
 /// Convert packed double-precision (64-bit) floating-point elements in `a`
 /// to packed 32-bit integers.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vcvtpd2dq))]
 pub unsafe fn _mm256_cvtpd_epi32(a: __m256d) -> __m128i {
@@ -819,7 +819,7 @@ pub unsafe fn _mm256_cvtpd_epi32(a: __m256d) -> __m128i {
 
 /// Convert packed single-precision (32-bit) floating-point elements in `a`
 /// to packed 32-bit integers with truncation.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vcvttps2dq))]
 pub unsafe fn _mm256_cvttps_epi32(a: __m256) -> __m256i {
@@ -828,7 +828,7 @@ pub unsafe fn _mm256_cvttps_epi32(a: __m256) -> __m256i {
 
 /// Extract 128 bits (composed of 4 packed single-precision (32-bit)
 /// floating-point elements) from `a`, selected with `imm8`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vextractf128))]
 pub unsafe fn _mm256_extractf128_ps(a: __m256, imm8: i32) -> __m128 {
@@ -840,7 +840,7 @@ pub unsafe fn _mm256_extractf128_ps(a: __m256, imm8: i32) -> __m128 {
 
 /// Extract 128 bits (composed of 2 packed double-precision (64-bit)
 /// floating-point elements) from `a`, selected with `imm8`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vextractf128))]
 pub unsafe fn _mm256_extractf128_pd(a: __m256d, imm8: i32) -> __m128d {
@@ -851,7 +851,7 @@ pub unsafe fn _mm256_extractf128_pd(a: __m256d, imm8: i32) -> __m128d {
 }
 
 /// Extract 128 bits (composed of integer data) from `a`, selected with `imm8`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vextractf128))]
 pub unsafe fn _mm256_extractf128_si256(a: __m256i, imm8: i32) -> __m128i {
@@ -864,7 +864,7 @@ pub unsafe fn _mm256_extractf128_si256(a: __m256i, imm8: i32) -> __m128i {
 }
 
 /// Zero the contents of all XMM or YMM registers.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vzeroall))]
 pub unsafe fn _mm256_zeroall() {
@@ -873,7 +873,7 @@ pub unsafe fn _mm256_zeroall() {
 
 /// Zero the upper 128 bits of all YMM registers;
 /// the lower 128-bits of the registers are unmodified.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vzeroupper))]
 pub unsafe fn _mm256_zeroupper() {
@@ -882,7 +882,7 @@ pub unsafe fn _mm256_zeroupper() {
 
 /// Shuffle single-precision (32-bit) floating-point elements in `a`
 /// within 128-bit lanes using the control in `b`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vpermilps))]
 pub unsafe fn _mm256_permutevar_ps(a: __m256, b: __m256i) -> __m256 {
@@ -891,7 +891,7 @@ pub unsafe fn _mm256_permutevar_ps(a: __m256, b: __m256i) -> __m256 {
 
 /// Shuffle single-precision (32-bit) floating-point elements in `a`
 /// using the control in `b`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vpermilps))]
 pub unsafe fn _mm_permutevar_ps(a: __m128, b: __m128i) -> __m128 {
@@ -900,7 +900,7 @@ pub unsafe fn _mm_permutevar_ps(a: __m128, b: __m128i) -> __m128 {
 
 /// Shuffle single-precision (32-bit) floating-point elements in `a`
 /// within 128-bit lanes using the control in `imm8`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vpermilps, imm8 = 9))]
 pub unsafe fn _mm256_permute_ps(a: __m256, imm8: i32) -> __m256 {
@@ -952,7 +952,7 @@ pub unsafe fn _mm256_permute_ps(a: __m256, imm8: i32) -> __m256 {
 
 /// Shuffle single-precision (32-bit) floating-point elements in `a`
 /// using the control in `imm8`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx,sse")]
 #[cfg_attr(test, assert_instr(vpermilps, imm8 = 9))]
 pub unsafe fn _mm_permute_ps(a: __m128, imm8: i32) -> __m128 {
@@ -1005,7 +1005,7 @@ pub unsafe fn _mm_permute_ps(a: __m128, imm8: i32) -> __m128 {
 
 /// Shuffle double-precision (64-bit) floating-point elements in `a`
 /// within 256-bit lanes using the control in `b`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vpermilpd))]
 pub unsafe fn _mm256_permutevar_pd(a: __m256d, b: __m256i) -> __m256d {
@@ -1014,7 +1014,7 @@ pub unsafe fn _mm256_permutevar_pd(a: __m256d, b: __m256i) -> __m256d {
 
 /// Shuffle double-precision (64-bit) floating-point elements in `a`
 /// using the control in `b`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vpermilpd))]
 pub unsafe fn _mm_permutevar_pd(a: __m128d, b: __m128i) -> __m128d {
@@ -1023,7 +1023,7 @@ pub unsafe fn _mm_permutevar_pd(a: __m128d, b: __m128i) -> __m128d {
 
 /// Shuffle double-precision (64-bit) floating-point elements in `a`
 /// within 128-bit lanes using the control in `imm8`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vpermilpd, imm8 = 0x1))]
 pub unsafe fn _mm256_permute_pd(a: __m256d, imm8: i32) -> __m256d {
@@ -1065,7 +1065,7 @@ pub unsafe fn _mm256_permute_pd(a: __m256d, imm8: i32) -> __m256d {
 
 /// Shuffle double-precision (64-bit) floating-point elements in `a`
 /// using the control in `imm8`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx,sse2")]
 #[cfg_attr(test, assert_instr(vpermilpd, imm8 = 0x1))]
 pub unsafe fn _mm_permute_pd(a: __m128d, imm8: i32) -> __m128d {
@@ -1091,7 +1091,7 @@ pub unsafe fn _mm_permute_pd(a: __m128d, imm8: i32) -> __m128d {
 
 /// Shuffle 256-bits (composed of 8 packed single-precision (32-bit)
 /// floating-point elements) selected by `imm8` from `a` and `b`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vperm2f128, imm8 = 0x5))]
 pub unsafe fn _mm256_permute2f128_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
@@ -1103,7 +1103,7 @@ pub unsafe fn _mm256_permute2f128_ps(a: __m256, b: __m256, imm8: i32) -> __m256 
 
 /// Shuffle 256-bits (composed of 4 packed double-precision (64-bit)
 /// floating-point elements) selected by `imm8` from `a` and `b`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vperm2f128, imm8 = 0x31))]
 pub unsafe fn _mm256_permute2f128_pd(a: __m256d, b: __m256d, imm8: i32) -> __m256d {
@@ -1115,7 +1115,7 @@ pub unsafe fn _mm256_permute2f128_pd(a: __m256d, b: __m256d, imm8: i32) -> __m25
 
 /// Shuffle 258-bits (composed of integer data) selected by `imm8`
 /// from `a` and `b`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vperm2f128, imm8 = 0x31))]
 pub unsafe fn _mm256_permute2f128_si256(
@@ -1132,7 +1132,7 @@ pub unsafe fn _mm256_permute2f128_si256(
 
 /// Broadcast a single-precision (32-bit) floating-point element from memory
 /// to all elements of the returned vector.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vbroadcastss))]
 pub unsafe fn _mm256_broadcast_ss(f: &f32) -> __m256 {
@@ -1141,7 +1141,7 @@ pub unsafe fn _mm256_broadcast_ss(f: &f32) -> __m256 {
 
 /// Broadcast a single-precision (32-bit) floating-point element from memory
 /// to all elements of the returned vector.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vbroadcastss))]
 pub unsafe fn _mm_broadcast_ss(f: &f32) -> __m128 {
@@ -1150,7 +1150,7 @@ pub unsafe fn _mm_broadcast_ss(f: &f32) -> __m128 {
 
 /// Broadcast a double-precision (64-bit) floating-point element from memory
 /// to all elements of the returned vector.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vbroadcastsd))]
 pub unsafe fn _mm256_broadcast_sd(f: &f64) -> __m256d {
@@ -1159,7 +1159,7 @@ pub unsafe fn _mm256_broadcast_sd(f: &f64) -> __m256d {
 
 /// Broadcast 128 bits from memory (composed of 4 packed single-precision
 /// (32-bit) floating-point elements) to all elements of the returned vector.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vbroadcastf128))]
 pub unsafe fn _mm256_broadcast_ps(a: &__m128) -> __m256 {
@@ -1168,7 +1168,7 @@ pub unsafe fn _mm256_broadcast_ps(a: &__m128) -> __m256 {
 
 /// Broadcast 128 bits from memory (composed of 2 packed double-precision
 /// (64-bit) floating-point elements) to all elements of the returned vector.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vbroadcastf128))]
 pub unsafe fn _mm256_broadcast_pd(a: &__m128d) -> __m256d {
@@ -1178,7 +1178,7 @@ pub unsafe fn _mm256_broadcast_pd(a: &__m128d) -> __m256d {
 /// Copy `a` to result, then insert 128 bits (composed of 4 packed
 /// single-precision (32-bit) floating-point elements) from `b` into result
 /// at the location specified by `imm8`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vinsertf128, imm8 = 1))]
 pub unsafe fn _mm256_insertf128_ps(a: __m256, b: __m128, imm8: i32) -> __m256 {
@@ -1192,7 +1192,7 @@ pub unsafe fn _mm256_insertf128_ps(a: __m256, b: __m128, imm8: i32) -> __m256 {
 /// Copy `a` to result, then insert 128 bits (composed of 2 packed
 /// double-precision (64-bit) floating-point elements) from `b` into result
 /// at the location specified by `imm8`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vinsertf128, imm8 = 1))]
 pub unsafe fn _mm256_insertf128_pd(a: __m256d, b: __m128d, imm8: i32) -> __m256d {
@@ -1204,7 +1204,7 @@ pub unsafe fn _mm256_insertf128_pd(a: __m256d, b: __m128d, imm8: i32) -> __m256d
 
 /// Copy `a` to result, then insert 128 bits from `b` into result
 /// at the location specified by `imm8`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vinsertf128, imm8 = 1))]
 pub unsafe fn _mm256_insertf128_si256(
@@ -1220,7 +1220,7 @@ pub unsafe fn _mm256_insertf128_si256(
 
 /// Copy `a` to result, and insert the 8-bit integer `i` into result
 /// at the location specified by `index`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_insert_epi8(a: __m256i, i: i8, index: i32) -> __m256i {
@@ -1229,7 +1229,7 @@ pub unsafe fn _mm256_insert_epi8(a: __m256i, i: i8, index: i32) -> __m256i {
 
 /// Copy `a` to result, and insert the 16-bit integer `i` into result
 /// at the location specified by `index`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_insert_epi16(a: __m256i, i: i16, index: i32) -> __m256i {
@@ -1238,7 +1238,7 @@ pub unsafe fn _mm256_insert_epi16(a: __m256i, i: i16, index: i32) -> __m256i {
 
 /// Copy `a` to result, and insert the 32-bit integer `i` into result
 /// at the location specified by `index`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_insert_epi32(a: __m256i, i: i32, index: i32) -> __m256i {
@@ -1249,7 +1249,7 @@ pub unsafe fn _mm256_insert_epi32(a: __m256i, i: i32, index: i32) -> __m256i {
 /// floating-point elements) from memory into result.
 /// `mem_addr` must be aligned on a 32-byte boundary or a
 /// general-protection exception may be generated.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovaps))] // FIXME vmovapd expected
 pub unsafe fn _mm256_load_pd(mem_addr: *const f64) -> __m256d {
@@ -1260,7 +1260,7 @@ pub unsafe fn _mm256_load_pd(mem_addr: *const f64) -> __m256d {
 /// floating-point elements) from `a` into memory.
 /// `mem_addr` must be aligned on a 32-byte boundary or a
 /// general-protection exception may be generated.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovaps))] // FIXME vmovapd expected
 pub unsafe fn _mm256_store_pd(mem_addr: *const f64, a: __m256d) {
@@ -1271,7 +1271,7 @@ pub unsafe fn _mm256_store_pd(mem_addr: *const f64, a: __m256d) {
 /// floating-point elements) from memory into result.
 /// `mem_addr` must be aligned on a 32-byte boundary or a
 /// general-protection exception may be generated.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovaps))]
 pub unsafe fn _mm256_load_ps(mem_addr: *const f32) -> __m256 {
@@ -1282,7 +1282,7 @@ pub unsafe fn _mm256_load_ps(mem_addr: *const f32) -> __m256 {
 /// floating-point elements) from `a` into memory.
 /// `mem_addr` must be aligned on a 32-byte boundary or a
 /// general-protection exception may be generated.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovaps))]
 pub unsafe fn _mm256_store_ps(mem_addr: *const f32, a: __m256) {
@@ -1292,7 +1292,7 @@ pub unsafe fn _mm256_store_ps(mem_addr: *const f32, a: __m256) {
 /// Load 256-bits (composed of 4 packed double-precision (64-bit)
 /// floating-point elements) from memory into result.
 /// `mem_addr` does not need to be aligned on any particular boundary.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovups))] // FIXME vmovupd expected
 pub unsafe fn _mm256_loadu_pd(mem_addr: *const f64) -> __m256d {
@@ -1308,7 +1308,7 @@ pub unsafe fn _mm256_loadu_pd(mem_addr: *const f64) -> __m256d {
 /// Store 256-bits (composed of 4 packed double-precision (64-bit)
 /// floating-point elements) from `a` into memory.
 /// `mem_addr` does not need to be aligned on any particular boundary.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovups))] // FIXME vmovupd expected
 pub unsafe fn _mm256_storeu_pd(mem_addr: *mut f64, a: __m256d) {
@@ -1318,7 +1318,7 @@ pub unsafe fn _mm256_storeu_pd(mem_addr: *mut f64, a: __m256d) {
 /// Load 256-bits (composed of 8 packed single-precision (32-bit)
 /// floating-point elements) from memory into result.
 /// `mem_addr` does not need to be aligned on any particular boundary.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovups))]
 pub unsafe fn _mm256_loadu_ps(mem_addr: *const f32) -> __m256 {
@@ -1334,7 +1334,7 @@ pub unsafe fn _mm256_loadu_ps(mem_addr: *const f32) -> __m256 {
 /// Store 256-bits (composed of 8 packed single-precision (32-bit)
 /// floating-point elements) from `a` into memory.
 /// `mem_addr` does not need to be aligned on any particular boundary.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovups))]
 pub unsafe fn _mm256_storeu_ps(mem_addr: *mut f32, a: __m256) {
@@ -1344,7 +1344,7 @@ pub unsafe fn _mm256_storeu_ps(mem_addr: *mut f32, a: __m256) {
 /// Load 256-bits of integer data from memory into result.
 /// `mem_addr` must be aligned on a 32-byte boundary or a
 /// general-protection exception may be generated.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovaps))] // FIXME vmovdqa expected
 pub unsafe fn _mm256_load_si256(mem_addr: *const __m256i) -> __m256i {
@@ -1354,7 +1354,7 @@ pub unsafe fn _mm256_load_si256(mem_addr: *const __m256i) -> __m256i {
 /// Store 256-bits of integer data from `a` into memory.
 /// `mem_addr` must be aligned on a 32-byte boundary or a
 /// general-protection exception may be generated.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovaps))] // FIXME vmovdqa expected
 pub unsafe fn _mm256_store_si256(mem_addr: *mut __m256i, a: __m256i) {
@@ -1363,7 +1363,7 @@ pub unsafe fn _mm256_store_si256(mem_addr: *mut __m256i, a: __m256i) {
 
 /// Load 256-bits of integer data from memory into result.
 /// `mem_addr` does not need to be aligned on any particular boundary.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovups))] // FIXME vmovdqu expected
 pub unsafe fn _mm256_loadu_si256(mem_addr: *const __m256i) -> __m256i {
@@ -1378,7 +1378,7 @@ pub unsafe fn _mm256_loadu_si256(mem_addr: *const __m256i) -> __m256i {
 
 /// Store 256-bits of integer data from `a` into memory.
 /// 	`mem_addr` does not need to be aligned on any particular boundary.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovups))] // FIXME vmovdqu expected
 pub unsafe fn _mm256_storeu_si256(mem_addr: *mut __m256i, a: __m256i) {
@@ -1388,7 +1388,7 @@ pub unsafe fn _mm256_storeu_si256(mem_addr: *mut __m256i, a: __m256i) {
 /// Load packed double-precision (64-bit) floating-point elements from memory
 /// into result using `mask` (elements are zeroed out when the high bit of the
 /// corresponding element is not set).
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmaskmovpd))]
 pub unsafe fn _mm256_maskload_pd(mem_addr: *const f64, mask: __m256i) -> __m256d {
@@ -1397,7 +1397,7 @@ pub unsafe fn _mm256_maskload_pd(mem_addr: *const f64, mask: __m256i) -> __m256d
 
 /// Store packed double-precision (64-bit) floating-point elements from `a`
 /// into memory using `mask`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmaskmovpd))]
 pub unsafe fn _mm256_maskstore_pd(mem_addr: *mut f64, mask: __m256i, a: __m256d) {
@@ -1407,7 +1407,7 @@ pub unsafe fn _mm256_maskstore_pd(mem_addr: *mut f64, mask: __m256i, a: __m256d)
 /// Load packed double-precision (64-bit) floating-point elements from memory
 /// into result using `mask` (elements are zeroed out when the high bit of the
 /// corresponding element is not set).
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmaskmovpd))]
 pub unsafe fn _mm_maskload_pd(mem_addr: *const f64, mask: __m128i) -> __m128d {
@@ -1416,7 +1416,7 @@ pub unsafe fn _mm_maskload_pd(mem_addr: *const f64, mask: __m128i) -> __m128d {
 
 /// Store packed double-precision (64-bit) floating-point elements from `a`
 /// into memory using `mask`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmaskmovpd))]
 pub unsafe fn _mm_maskstore_pd(mem_addr: *mut f64, mask: __m128i, a: __m128d) {
@@ -1426,7 +1426,7 @@ pub unsafe fn _mm_maskstore_pd(mem_addr: *mut f64, mask: __m128i, a: __m128d) {
 /// Load packed single-precision (32-bit) floating-point elements from memory
 /// into result using `mask` (elements are zeroed out when the high bit of the
 /// corresponding element is not set).
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmaskmovps))]
 pub unsafe fn _mm256_maskload_ps(mem_addr: *const f32, mask: __m256i) -> __m256 {
@@ -1435,7 +1435,7 @@ pub unsafe fn _mm256_maskload_ps(mem_addr: *const f32, mask: __m256i) -> __m256 
 
 /// Store packed single-precision (32-bit) floating-point elements from `a`
 /// into memory using `mask`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmaskmovps))]
 pub unsafe fn _mm256_maskstore_ps(mem_addr: *mut f32, mask: __m256i, a: __m256) {
@@ -1445,7 +1445,7 @@ pub unsafe fn _mm256_maskstore_ps(mem_addr: *mut f32, mask: __m256i, a: __m256) 
 /// Load packed single-precision (32-bit) floating-point elements from memory
 /// into result using `mask` (elements are zeroed out when the high bit of the
 /// corresponding element is not set).
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmaskmovps))]
 pub unsafe fn _mm_maskload_ps(mem_addr: *const f32, mask: __m128i) -> __m128 {
@@ -1454,7 +1454,7 @@ pub unsafe fn _mm_maskload_ps(mem_addr: *const f32, mask: __m128i) -> __m128 {
 
 /// Store packed single-precision (32-bit) floating-point elements from `a`
 /// into memory using `mask`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmaskmovps))]
 pub unsafe fn _mm_maskstore_ps(mem_addr: *mut f32, mask: __m128i, a: __m128) {
@@ -1463,7 +1463,7 @@ pub unsafe fn _mm_maskstore_ps(mem_addr: *mut f32, mask: __m128i, a: __m128) {
 
 /// Duplicate odd-indexed single-precision (32-bit) floating-point elements
 /// from `a`, and return the results.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovshdup))]
 pub unsafe fn _mm256_movehdup_ps(a: __m256) -> __m256 {
@@ -1472,7 +1472,7 @@ pub unsafe fn _mm256_movehdup_ps(a: __m256) -> __m256 {
 
 /// Duplicate even-indexed single-precision (32-bit) floating-point elements
 /// from `a`, and return the results.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovsldup))]
 pub unsafe fn _mm256_moveldup_ps(a: __m256) -> __m256 {
@@ -1481,7 +1481,7 @@ pub unsafe fn _mm256_moveldup_ps(a: __m256) -> __m256 {
 
 /// Duplicate even-indexed double-precision (64-bit) floating-point elements
 /// from "a", and return the results.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovddup))]
 pub unsafe fn _mm256_movedup_pd(a: __m256d) -> __m256d {
@@ -1491,7 +1491,7 @@ pub unsafe fn _mm256_movedup_pd(a: __m256d) -> __m256d {
 /// Load 256-bits of integer data from unaligned memory into result.
 /// This intrinsic may perform better than `_mm256_loadu_si256` when the
 /// data crosses a cache line boundary.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vlddqu))]
 pub unsafe fn _mm256_lddqu_si256(mem_addr: *const __m256i) -> __m256i {
@@ -1501,7 +1501,7 @@ pub unsafe fn _mm256_lddqu_si256(mem_addr: *const __m256i) -> __m256i {
 /// Moves integer data from a 256-bit integer vector to a 32-byte
 /// aligned memory location. To minimize caching, the data is flagged as
 /// non-temporal (unlikely to be used again soon)
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovntps))] // FIXME vmovntdq
 pub unsafe fn _mm256_stream_si256(mem_addr: *const __m256i, a: __m256i) {
@@ -1511,7 +1511,7 @@ pub unsafe fn _mm256_stream_si256(mem_addr: *const __m256i, a: __m256i) {
 /// Moves double-precision values from a 256-bit vector of [4 x double]
 /// to a 32-byte aligned memory location. To minimize caching, the data is
 /// flagged as non-temporal (unlikely to be used again soon).
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovntps))] // FIXME vmovntpd
 pub unsafe fn _mm256_stream_pd(mem_addr: *const f64, a: __m256d) {
@@ -1522,7 +1522,7 @@ pub unsafe fn _mm256_stream_pd(mem_addr: *const f64, a: __m256d) {
 /// of [8 x float] to a 32-byte aligned memory location. To minimize
 /// caching, the data is flagged as non-temporal (unlikely to be used again
 /// soon).
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovntps))]
 pub unsafe fn _mm256_stream_ps(mem_addr: *const f32, a: __m256) {
@@ -1532,7 +1532,7 @@ pub unsafe fn _mm256_stream_ps(mem_addr: *const f32, a: __m256) {
 /// Compute the approximate reciprocal of packed single-precision (32-bit)
 /// floating-point elements in `a`, and return the results. The maximum
 /// relative error for this approximation is less than 1.5*2^-12.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vrcpps))]
 pub unsafe fn _mm256_rcp_ps(a: __m256) -> __m256 {
@@ -1542,7 +1542,7 @@ pub unsafe fn _mm256_rcp_ps(a: __m256) -> __m256 {
 /// Compute the approximate reciprocal square root of packed single-precision
 /// (32-bit) floating-point elements in `a`, and return the results.
 /// The maximum relative error for this approximation is less than 1.5*2^-12.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vrsqrtps))]
 pub unsafe fn _mm256_rsqrt_ps(a: __m256) -> __m256 {
@@ -1551,7 +1551,7 @@ pub unsafe fn _mm256_rsqrt_ps(a: __m256) -> __m256 {
 
 /// Unpack and interleave double-precision (64-bit) floating-point elements
 /// from the high half of each 128-bit lane in `a` and `b`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vunpckhpd))]
 pub unsafe fn _mm256_unpackhi_pd(a: __m256d, b: __m256d) -> __m256d {
@@ -1560,7 +1560,7 @@ pub unsafe fn _mm256_unpackhi_pd(a: __m256d, b: __m256d) -> __m256d {
 
 /// Unpack and interleave single-precision (32-bit) floating-point elements
 /// from the high half of each 128-bit lane in `a` and `b`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vunpckhps))]
 pub unsafe fn _mm256_unpackhi_ps(a: __m256, b: __m256) -> __m256 {
@@ -1569,7 +1569,7 @@ pub unsafe fn _mm256_unpackhi_ps(a: __m256, b: __m256) -> __m256 {
 
 /// Unpack and interleave double-precision (64-bit) floating-point elements
 /// from the low half of each 128-bit lane in `a` and `b`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vunpcklpd))]
 pub unsafe fn _mm256_unpacklo_pd(a: __m256d, b: __m256d) -> __m256d {
@@ -1578,7 +1578,7 @@ pub unsafe fn _mm256_unpacklo_pd(a: __m256d, b: __m256d) -> __m256d {
 
 /// Unpack and interleave single-precision (32-bit) floating-point elements
 /// from the low half of each 128-bit lane in `a` and `b`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vunpcklps))]
 pub unsafe fn _mm256_unpacklo_ps(a: __m256, b: __m256) -> __m256 {
@@ -1589,7 +1589,7 @@ pub unsafe fn _mm256_unpacklo_ps(a: __m256, b: __m256) -> __m256 {
 /// `b`, and set `ZF` to 1 if the result is zero, otherwise set `ZF` to 0.
 /// Compute the bitwise NOT of `a` and then AND with `b`, and set `CF` to 1 if
 /// the result is zero, otherwise set `CF` to 0. Return the `ZF` value.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vptest))]
 pub unsafe fn _mm256_testz_si256(a: __m256i, b: __m256i) -> i32 {
@@ -1600,7 +1600,7 @@ pub unsafe fn _mm256_testz_si256(a: __m256i, b: __m256i) -> i32 {
 /// `b`, and set `ZF` to 1 if the result is zero, otherwise set `ZF` to 0.
 /// Compute the bitwise NOT of `a` and then AND with `b`, and set `CF` to 1 if
 /// the result is zero, otherwise set `CF` to 0. Return the `CF` value.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vptest))]
 pub unsafe fn _mm256_testc_si256(a: __m256i, b: __m256i) -> i32 {
@@ -1612,7 +1612,7 @@ pub unsafe fn _mm256_testc_si256(a: __m256i, b: __m256i) -> i32 {
 /// Compute the bitwise NOT of `a` and then AND with `b`, and set `CF` to 1 if
 /// the result is zero, otherwise set `CF` to 0. Return 1 if both the `ZF` and
 /// `CF` values are zero, otherwise return 0.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vptest))]
 pub unsafe fn _mm256_testnzc_si256(a: __m256i, b: __m256i) -> i32 {
@@ -1626,7 +1626,7 @@ pub unsafe fn _mm256_testnzc_si256(a: __m256i, b: __m256i) -> i32 {
 /// NOT of `a` and then AND with `b`, producing an intermediate value, and set
 /// `CF` to 1 if the sign bit of each 64-bit element in the intermediate value
 /// is zero, otherwise set `CF` to 0. Return the `ZF` value.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vtestpd))]
 pub unsafe fn _mm256_testz_pd(a: __m256d, b: __m256d) -> i32 {
@@ -1640,7 +1640,7 @@ pub unsafe fn _mm256_testz_pd(a: __m256d, b: __m256d) -> i32 {
 /// NOT of `a` and then AND with `b`, producing an intermediate value, and set
 /// `CF` to 1 if the sign bit of each 64-bit element in the intermediate value
 /// is zero, otherwise set `CF` to 0. Return the `CF` value.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vtestpd))]
 pub unsafe fn _mm256_testc_pd(a: __m256d, b: __m256d) -> i32 {
@@ -1655,7 +1655,7 @@ pub unsafe fn _mm256_testc_pd(a: __m256d, b: __m256d) -> i32 {
 /// `CF` to 1 if the sign bit of each 64-bit element in the intermediate value
 /// is zero, otherwise set `CF` to 0. Return 1 if both the `ZF` and `CF` values
 /// are zero, otherwise return 0.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vtestpd))]
 pub unsafe fn _mm256_testnzc_pd(a: __m256d, b: __m256d) -> i32 {
@@ -1669,7 +1669,7 @@ pub unsafe fn _mm256_testnzc_pd(a: __m256d, b: __m256d) -> i32 {
 /// NOT of `a` and then AND with `b`, producing an intermediate value, and set
 /// `CF` to 1 if the sign bit of each 64-bit element in the intermediate value
 /// is zero, otherwise set `CF` to 0. Return the `ZF` value.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vtestpd))]
 pub unsafe fn _mm_testz_pd(a: __m128d, b: __m128d) -> i32 {
@@ -1683,7 +1683,7 @@ pub unsafe fn _mm_testz_pd(a: __m128d, b: __m128d) -> i32 {
 /// NOT of `a` and then AND with `b`, producing an intermediate value, and set
 /// `CF` to 1 if the sign bit of each 64-bit element in the intermediate value
 /// is zero, otherwise set `CF` to 0. Return the `CF` value.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vtestpd))]
 pub unsafe fn _mm_testc_pd(a: __m128d, b: __m128d) -> i32 {
@@ -1698,7 +1698,7 @@ pub unsafe fn _mm_testc_pd(a: __m128d, b: __m128d) -> i32 {
 /// `CF` to 1 if the sign bit of each 64-bit element in the intermediate value
 /// is zero, otherwise set `CF` to 0. Return 1 if both the `ZF` and `CF` values
 /// are zero, otherwise return 0.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vtestpd))]
 pub unsafe fn _mm_testnzc_pd(a: __m128d, b: __m128d) -> i32 {
@@ -1712,7 +1712,7 @@ pub unsafe fn _mm_testnzc_pd(a: __m128d, b: __m128d) -> i32 {
 /// NOT of `a` and then AND with `b`, producing an intermediate value, and set
 /// `CF` to 1 if the sign bit of each 32-bit element in the intermediate value
 /// is zero, otherwise set `CF` to 0. Return the `ZF` value.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vtestps))]
 pub unsafe fn _mm256_testz_ps(a: __m256, b: __m256) -> i32 {
@@ -1726,7 +1726,7 @@ pub unsafe fn _mm256_testz_ps(a: __m256, b: __m256) -> i32 {
 /// NOT of `a` and then AND with `b`, producing an intermediate value, and set
 /// `CF` to 1 if the sign bit of each 32-bit element in the intermediate value
 /// is zero, otherwise set `CF` to 0. Return the `CF` value.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vtestps))]
 pub unsafe fn _mm256_testc_ps(a: __m256, b: __m256) -> i32 {
@@ -1741,7 +1741,7 @@ pub unsafe fn _mm256_testc_ps(a: __m256, b: __m256) -> i32 {
 /// `CF` to 1 if the sign bit of each 32-bit element in the intermediate value
 /// is zero, otherwise set `CF` to 0. Return 1 if both the `ZF` and `CF` values
 /// are zero, otherwise return 0.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vtestps))]
 pub unsafe fn _mm256_testnzc_ps(a: __m256, b: __m256) -> i32 {
@@ -1755,7 +1755,7 @@ pub unsafe fn _mm256_testnzc_ps(a: __m256, b: __m256) -> i32 {
 /// NOT of `a` and then AND with `b`, producing an intermediate value, and set
 /// `CF` to 1 if the sign bit of each 32-bit element in the intermediate value
 /// is zero, otherwise set `CF` to 0. Return the `ZF` value.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vtestps))]
 pub unsafe fn _mm_testz_ps(a: __m128, b: __m128) -> i32 {
@@ -1769,7 +1769,7 @@ pub unsafe fn _mm_testz_ps(a: __m128, b: __m128) -> i32 {
 /// NOT of `a` and then AND with `b`, producing an intermediate value, and set
 /// `CF` to 1 if the sign bit of each 32-bit element in the intermediate value
 /// is zero, otherwise set `CF` to 0. Return the `CF` value.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vtestps))]
 pub unsafe fn _mm_testc_ps(a: __m128, b: __m128) -> i32 {
@@ -1784,7 +1784,7 @@ pub unsafe fn _mm_testc_ps(a: __m128, b: __m128) -> i32 {
 /// `CF` to 1 if the sign bit of each 32-bit element in the intermediate value
 /// is zero, otherwise set `CF` to 0. Return 1 if both the `ZF` and `CF` values
 /// are zero, otherwise return 0.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vtestps))]
 pub unsafe fn _mm_testnzc_ps(a: __m128, b: __m128) -> i32 {
@@ -1794,7 +1794,7 @@ pub unsafe fn _mm_testnzc_ps(a: __m128, b: __m128) -> i32 {
 /// Set each bit of the returned mask based on the most significant bit of the
 /// corresponding packed double-precision (64-bit) floating-point element in
 /// `a`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovmskpd))]
 pub unsafe fn _mm256_movemask_pd(a: __m256d) -> i32 {
@@ -1804,7 +1804,7 @@ pub unsafe fn _mm256_movemask_pd(a: __m256d) -> i32 {
 /// Set each bit of the returned mask based on the most significant bit of the
 /// corresponding packed single-precision (32-bit) floating-point element in
 /// `a`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovmskps))]
 pub unsafe fn _mm256_movemask_ps(a: __m256) -> i32 {
@@ -1812,7 +1812,7 @@ pub unsafe fn _mm256_movemask_ps(a: __m256) -> i32 {
 }
 
 /// Return vector of type __m256d with all elements set to zero.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vxorps))] // FIXME vxorpd expected
 pub unsafe fn _mm256_setzero_pd() -> __m256d {
@@ -1820,7 +1820,7 @@ pub unsafe fn _mm256_setzero_pd() -> __m256d {
 }
 
 /// Return vector of type __m256 with all elements set to zero.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vxorps))]
 pub unsafe fn _mm256_setzero_ps() -> __m256 {
@@ -1828,7 +1828,7 @@ pub unsafe fn _mm256_setzero_ps() -> __m256 {
 }
 
 /// Return vector of type __m256i with all elements set to zero.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vxor))]
 pub unsafe fn _mm256_setzero_si256() -> __m256i {
@@ -1837,7 +1837,7 @@ pub unsafe fn _mm256_setzero_si256() -> __m256i {
 
 /// Set packed double-precision (64-bit) floating-point elements in returned
 /// vector with the supplied values.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[cfg_attr(test, assert_instr(vinsertf128))]
@@ -1847,7 +1847,7 @@ pub unsafe fn _mm256_set_pd(a: f64, b: f64, c: f64, d: f64) -> __m256d {
 
 /// Set packed single-precision (32-bit) floating-point elements in returned
 /// vector with the supplied values.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_set_ps(
@@ -1858,7 +1858,7 @@ pub unsafe fn _mm256_set_ps(
 
 /// Set packed 8-bit integers in returned vector with the supplied values in
 /// reverse order.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_set_epi8(
@@ -1877,7 +1877,7 @@ pub unsafe fn _mm256_set_epi8(
 }
 
 /// Set packed 16-bit integers in returned vector with the supplied values.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_set_epi16(
@@ -1895,7 +1895,7 @@ pub unsafe fn _mm256_set_epi16(
 }
 
 /// Set packed 32-bit integers in returned vector with the supplied values.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_set_epi32(
@@ -1905,7 +1905,7 @@ pub unsafe fn _mm256_set_epi32(
 }
 
 /// Set packed 64-bit integers in returned vector with the supplied values.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[cfg_attr(test, assert_instr(vinsertf128))]
@@ -1915,7 +1915,7 @@ pub unsafe fn _mm256_set_epi64x(a: i64, b: i64, c: i64, d: i64) -> __m256i {
 
 /// Set packed double-precision (64-bit) floating-point elements in returned
 /// vector with the supplied values in reverse order.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_setr_pd(a: f64, b: f64, c: f64, d: f64) -> __m256d {
@@ -1924,7 +1924,7 @@ pub unsafe fn _mm256_setr_pd(a: f64, b: f64, c: f64, d: f64) -> __m256d {
 
 /// Set packed single-precision (32-bit) floating-point elements in returned
 /// vector with the supplied values in reverse order.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_setr_ps(
@@ -1935,7 +1935,7 @@ pub unsafe fn _mm256_setr_ps(
 
 /// Set packed 8-bit integers in returned vector with the supplied values in
 /// reverse order.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_setr_epi8(
@@ -1955,7 +1955,7 @@ pub unsafe fn _mm256_setr_epi8(
 
 /// Set packed 16-bit integers in returned vector with the supplied values in
 /// reverse order.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_setr_epi16(
@@ -1974,7 +1974,7 @@ pub unsafe fn _mm256_setr_epi16(
 
 /// Set packed 32-bit integers in returned vector with the supplied values in
 /// reverse order.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_setr_epi32(
@@ -1985,7 +1985,7 @@ pub unsafe fn _mm256_setr_epi32(
 
 /// Set packed 64-bit integers in returned vector with the supplied values in
 /// reverse order.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[cfg_attr(test, assert_instr(vinsertf128))]
@@ -1995,7 +1995,7 @@ pub unsafe fn _mm256_setr_epi64x(a: i64, b: i64, c: i64, d: i64) -> __m256i {
 
 /// Broadcast double-precision (64-bit) floating-point value `a` to all
 /// elements of returned vector.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_set1_pd(a: f64) -> __m256d {
@@ -2004,7 +2004,7 @@ pub unsafe fn _mm256_set1_pd(a: f64) -> __m256d {
 
 /// Broadcast single-precision (32-bit) floating-point value `a` to all
 /// elements of returned vector.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_set1_ps(a: f32) -> __m256 {
@@ -2013,7 +2013,7 @@ pub unsafe fn _mm256_set1_ps(a: f32) -> __m256 {
 
 /// Broadcast 8-bit integer `a` to all elements of returned vector.
 /// This intrinsic may generate the `vpbroadcastb`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vpshufb))]
 #[cfg_attr(test, assert_instr(vinsertf128))]
@@ -2030,7 +2030,7 @@ pub unsafe fn _mm256_set1_epi8(a: i8) -> __m256i {
 
 /// Broadcast 16-bit integer `a` to all all elements of returned vector.
 /// This intrinsic may generate the `vpbroadcastw`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 //#[cfg_attr(test, assert_instr(vpshufb))]
 #[cfg_attr(test, assert_instr(vinsertf128))]
@@ -2041,7 +2041,7 @@ pub unsafe fn _mm256_set1_epi16(a: i16) -> __m256i {
 
 /// Broadcast 32-bit integer `a` to all elements of returned vector.
 /// This intrinsic may generate the `vpbroadcastd`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_set1_epi32(a: i32) -> __m256i {
@@ -2050,7 +2050,7 @@ pub unsafe fn _mm256_set1_epi32(a: i32) -> __m256i {
 
 /// Broadcast 64-bit integer `a` to all elements of returned vector.
 /// This intrinsic may generate the `vpbroadcastq`.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 //#[cfg_attr(test, assert_instr(vmovddup))]
 #[cfg_attr(test, assert_instr(vinsertf128))]
@@ -2060,7 +2060,7 @@ pub unsafe fn _mm256_set1_epi64x(a: i64) -> __m256i {
 }
 
 /// Cast vector of type __m256d to type __m256.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
@@ -2069,7 +2069,7 @@ pub unsafe fn _mm256_castpd_ps(a: __m256d) -> __m256 {
 }
 
 /// Cast vector of type __m256 to type __m256d.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
@@ -2078,7 +2078,7 @@ pub unsafe fn _mm256_castps_pd(a: __m256) -> __m256d {
 }
 
 /// Casts vector of type __m256 to type __m256i.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
@@ -2087,7 +2087,7 @@ pub unsafe fn _mm256_castps_si256(a: __m256) -> __m256i {
 }
 
 /// Casts vector of type __m256i to type __m256.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
@@ -2096,7 +2096,7 @@ pub unsafe fn _mm256_castsi256_ps(a: __m256i) -> __m256 {
 }
 
 /// Casts vector of type __m256d to type __m256i.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
@@ -2105,7 +2105,7 @@ pub unsafe fn _mm256_castpd_si256(a: __m256d) -> __m256i {
 }
 
 /// Casts vector of type __m256i to type __m256d.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
@@ -2114,7 +2114,7 @@ pub unsafe fn _mm256_castsi256_pd(a: __m256i) -> __m256d {
 }
 
 /// Casts vector of type __m256 to type __m128.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
@@ -2123,7 +2123,7 @@ pub unsafe fn _mm256_castps256_ps128(a: __m256) -> __m128 {
 }
 
 /// Casts vector of type __m256d to type __m128d.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
@@ -2132,7 +2132,7 @@ pub unsafe fn _mm256_castpd256_pd128(a: __m256d) -> __m128d {
 }
 
 /// Casts vector of type __m256i to type __m128i.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
@@ -2144,7 +2144,7 @@ pub unsafe fn _mm256_castsi256_si128(a: __m256i) -> __m128i {
 
 /// Casts vector of type __m128 to type __m256;
 /// the upper 128 bits of the result are undefined.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
@@ -2155,7 +2155,7 @@ pub unsafe fn _mm256_castps128_ps256(a: __m128) -> __m256 {
 
 /// Casts vector of type __m128d to type __m256d;
 /// the upper 128 bits of the result are undefined.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
@@ -2166,7 +2166,7 @@ pub unsafe fn _mm256_castpd128_pd256(a: __m128d) -> __m256d {
 
 /// Casts vector of type __m128i to type __m256i;
 /// the upper 128 bits of the result are undefined.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
@@ -2180,7 +2180,7 @@ pub unsafe fn _mm256_castsi128_si256(a: __m128i) -> __m256i {
 /// Constructs a 256-bit floating-point vector of [8 x float] from a
 /// 128-bit floating-point vector of [4 x float]. The lower 128 bits contain
 /// the value of the source vector. The upper 128 bits are set to zero.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx,sse")]
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
@@ -2191,7 +2191,7 @@ pub unsafe fn _mm256_zextps128_ps256(a: __m128) -> __m256 {
 /// Constructs a 256-bit integer vector from a 128-bit integer vector.
 /// The lower 128 bits contain the value of the source vector. The upper
 /// 128 bits are set to zero.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx,sse2")]
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
@@ -2205,7 +2205,7 @@ pub unsafe fn _mm256_zextsi128_si256(a: __m128i) -> __m256i {
 /// 128-bit floating-point vector of [2 x double]. The lower 128 bits
 /// contain the value of the source vector. The upper 128 bits are set
 /// to zero.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx,sse2")]
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
@@ -2214,7 +2214,7 @@ pub unsafe fn _mm256_zextpd128_pd256(a: __m128d) -> __m256d {
 }
 
 /// Return vector of type `__m256` with undefined elements.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_undefined_ps() -> __m256 {
@@ -2222,7 +2222,7 @@ pub unsafe fn _mm256_undefined_ps() -> __m256 {
 }
 
 /// Return vector of type `__m256d` with undefined elements.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_undefined_pd() -> __m256d {
@@ -2230,7 +2230,7 @@ pub unsafe fn _mm256_undefined_pd() -> __m256d {
 }
 
 /// Return vector of type __m256i with undefined elements.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_undefined_si256() -> __m256i {
@@ -2238,7 +2238,7 @@ pub unsafe fn _mm256_undefined_si256() -> __m256i {
 }
 
 /// Set packed __m256 returned vector with the supplied values.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vinsertf128))]
 pub unsafe fn _mm256_set_m128(hi: __m128, lo: __m128) -> __m256 {
@@ -2246,7 +2246,7 @@ pub unsafe fn _mm256_set_m128(hi: __m128, lo: __m128) -> __m256 {
 }
 
 /// Set packed __m256d returned vector with the supplied values.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vinsertf128))]
 pub unsafe fn _mm256_set_m128d(hi: __m128d, lo: __m128d) -> __m256d {
@@ -2256,7 +2256,7 @@ pub unsafe fn _mm256_set_m128d(hi: __m128d, lo: __m128d) -> __m256d {
 }
 
 /// Set packed __m256i returned vector with the supplied values.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vinsertf128))]
 pub unsafe fn _mm256_set_m128i(hi: __m128i, lo: __m128i) -> __m256i {
@@ -2266,7 +2266,7 @@ pub unsafe fn _mm256_set_m128i(hi: __m128i, lo: __m128i) -> __m256i {
 }
 
 /// Set packed __m256 returned vector with the supplied values.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vinsertf128))]
 pub unsafe fn _mm256_setr_m128(lo: __m128, hi: __m128) -> __m256 {
@@ -2274,7 +2274,7 @@ pub unsafe fn _mm256_setr_m128(lo: __m128, hi: __m128) -> __m256 {
 }
 
 /// Set packed __m256d returned vector with the supplied values.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vinsertf128))]
 pub unsafe fn _mm256_setr_m128d(lo: __m128d, hi: __m128d) -> __m256d {
@@ -2282,7 +2282,7 @@ pub unsafe fn _mm256_setr_m128d(lo: __m128d, hi: __m128d) -> __m256d {
 }
 
 /// Set packed __m256i returned vector with the supplied values.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vinsertf128))]
 pub unsafe fn _mm256_setr_m128i(lo: __m128i, hi: __m128i) -> __m256i {
@@ -2293,7 +2293,7 @@ pub unsafe fn _mm256_setr_m128i(lo: __m128i, hi: __m128i) -> __m256i {
 /// floating-point elements) from memory, and combine them into a 256-bit
 /// value.
 /// `hiaddr` and `loaddr` do not need to be aligned on any particular boundary.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx,sse")]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_loadu2_m128(
@@ -2307,7 +2307,7 @@ pub unsafe fn _mm256_loadu2_m128(
 /// floating-point elements) from memory, and combine them into a 256-bit
 /// value.
 /// `hiaddr` and `loaddr` do not need to be aligned on any particular boundary.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx,sse2")]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_loadu2_m128d(
@@ -2320,7 +2320,7 @@ pub unsafe fn _mm256_loadu2_m128d(
 /// Load two 128-bit values (composed of integer data) from memory, and combine
 /// them into a 256-bit value.
 /// `hiaddr` and `loaddr` do not need to be aligned on any particular boundary.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx,sse2")]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_loadu2_m128i(
@@ -2335,7 +2335,7 @@ pub unsafe fn _mm256_loadu2_m128i(
 /// single-precision (32-bit) floating-point elements) from `a` into memory two
 /// different 128-bit locations.
 /// `hiaddr` and `loaddr` do not need to be aligned on any particular boundary.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx,sse")]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_storeu2_m128(
@@ -2351,7 +2351,7 @@ pub unsafe fn _mm256_storeu2_m128(
 /// double-precision (64-bit) floating-point elements) from `a` into memory two
 /// different 128-bit locations.
 /// `hiaddr` and `loaddr` do not need to be aligned on any particular boundary.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx,sse2")]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_storeu2_m128d(
@@ -2366,7 +2366,7 @@ pub unsafe fn _mm256_storeu2_m128d(
 /// Store the high and low 128-bit halves (each composed of integer data) from
 /// `a` into memory two different 128-bit locations.
 /// `hiaddr` and `loaddr` do not need to be aligned on any particular boundary.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx,sse2")]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_storeu2_m128i(
@@ -2380,7 +2380,7 @@ pub unsafe fn _mm256_storeu2_m128i(
 }
 
 /// Returns the first element of the input vector of [8 x float].
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "avx")]
 //#[cfg_attr(test, assert_instr(movss))] FIXME
 pub unsafe fn _mm256_cvtss_f32(a: __m256) -> f32 {

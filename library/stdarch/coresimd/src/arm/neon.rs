@@ -9,7 +9,7 @@ use v64::{f32x2, i16x4, i32x2, i8x8, u16x4, u32x2, u8x8};
 use v128::{f32x4, i16x8, i32x4, i64x2, i8x16, u16x8, u32x4, u64x2, u8x16};
 
 /// Vector add.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(add))]
 pub unsafe fn vadd_s8(a: i8x8, b: i8x8) -> i8x8 {
@@ -17,7 +17,7 @@ pub unsafe fn vadd_s8(a: i8x8, b: i8x8) -> i8x8 {
 }
 
 /// Vector add.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(add))]
 pub unsafe fn vaddq_s8(a: i8x16, b: i8x16) -> i8x16 {
@@ -25,7 +25,7 @@ pub unsafe fn vaddq_s8(a: i8x16, b: i8x16) -> i8x16 {
 }
 
 /// Vector add.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(add))]
 pub unsafe fn vadd_s16(a: i16x4, b: i16x4) -> i16x4 {
@@ -33,7 +33,7 @@ pub unsafe fn vadd_s16(a: i16x4, b: i16x4) -> i16x4 {
 }
 
 /// Vector add.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(add))]
 pub unsafe fn vaddq_s16(a: i16x8, b: i16x8) -> i16x8 {
@@ -41,7 +41,7 @@ pub unsafe fn vaddq_s16(a: i16x8, b: i16x8) -> i16x8 {
 }
 
 /// Vector add.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(add))]
 pub unsafe fn vadd_s32(a: i32x2, b: i32x2) -> i32x2 {
@@ -49,7 +49,7 @@ pub unsafe fn vadd_s32(a: i32x2, b: i32x2) -> i32x2 {
 }
 
 /// Vector add.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(add))]
 pub unsafe fn vaddq_s32(a: i32x4, b: i32x4) -> i32x4 {
@@ -57,7 +57,7 @@ pub unsafe fn vaddq_s32(a: i32x4, b: i32x4) -> i32x4 {
 }
 
 /// Vector add.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(add))]
 pub unsafe fn vaddq_s64(a: i64x2, b: i64x2) -> i64x2 {
@@ -65,7 +65,7 @@ pub unsafe fn vaddq_s64(a: i64x2, b: i64x2) -> i64x2 {
 }
 
 /// Vector add.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(add))]
 pub unsafe fn vadd_u8(a: u8x8, b: u8x8) -> u8x8 {
@@ -73,7 +73,7 @@ pub unsafe fn vadd_u8(a: u8x8, b: u8x8) -> u8x8 {
 }
 
 /// Vector add.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(add))]
 pub unsafe fn vaddq_u8(a: u8x16, b: u8x16) -> u8x16 {
@@ -81,7 +81,7 @@ pub unsafe fn vaddq_u8(a: u8x16, b: u8x16) -> u8x16 {
 }
 
 /// Vector add.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(add))]
 pub unsafe fn vadd_u16(a: u16x4, b: u16x4) -> u16x4 {
@@ -89,7 +89,7 @@ pub unsafe fn vadd_u16(a: u16x4, b: u16x4) -> u16x4 {
 }
 
 /// Vector add.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(add))]
 pub unsafe fn vaddq_u16(a: u16x8, b: u16x8) -> u16x8 {
@@ -97,7 +97,7 @@ pub unsafe fn vaddq_u16(a: u16x8, b: u16x8) -> u16x8 {
 }
 
 /// Vector add.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(add))]
 pub unsafe fn vadd_u32(a: u32x2, b: u32x2) -> u32x2 {
@@ -105,7 +105,7 @@ pub unsafe fn vadd_u32(a: u32x2, b: u32x2) -> u32x2 {
 }
 
 /// Vector add.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(add))]
 pub unsafe fn vaddq_u32(a: u32x4, b: u32x4) -> u32x4 {
@@ -113,7 +113,7 @@ pub unsafe fn vaddq_u32(a: u32x4, b: u32x4) -> u32x4 {
 }
 
 /// Vector add.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(add))]
 pub unsafe fn vaddq_u64(a: u64x2, b: u64x2) -> u64x2 {
@@ -121,7 +121,7 @@ pub unsafe fn vaddq_u64(a: u64x2, b: u64x2) -> u64x2 {
 }
 
 /// Vector add.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(fadd))]
 pub unsafe fn vadd_f32(a: f32x2, b: f32x2) -> f32x2 {
@@ -129,7 +129,7 @@ pub unsafe fn vadd_f32(a: f32x2, b: f32x2) -> f32x2 {
 }
 
 /// Vector add.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(fadd))]
 pub unsafe fn vaddq_f32(a: f32x4, b: f32x4) -> f32x4 {
@@ -137,7 +137,7 @@ pub unsafe fn vaddq_f32(a: f32x4, b: f32x4) -> f32x4 {
 }
 
 /// Vector long add.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(saddl))]
 pub unsafe fn vaddl_s8(a: i8x8, b: i8x8) -> i16x8 {
@@ -147,7 +147,7 @@ pub unsafe fn vaddl_s8(a: i8x8, b: i8x8) -> i16x8 {
 }
 
 /// Vector long add.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(saddl))]
 pub unsafe fn vaddl_s16(a: i16x4, b: i16x4) -> i32x4 {
@@ -157,7 +157,7 @@ pub unsafe fn vaddl_s16(a: i16x4, b: i16x4) -> i32x4 {
 }
 
 /// Vector long add.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(saddl))]
 pub unsafe fn vaddl_s32(a: i32x2, b: i32x2) -> i64x2 {
@@ -167,7 +167,7 @@ pub unsafe fn vaddl_s32(a: i32x2, b: i32x2) -> i64x2 {
 }
 
 /// Vector long add.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uaddl))]
 pub unsafe fn vaddl_u8(a: u8x8, b: u8x8) -> u16x8 {
@@ -177,7 +177,7 @@ pub unsafe fn vaddl_u8(a: u8x8, b: u8x8) -> u16x8 {
 }
 
 /// Vector long add.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uaddl))]
 pub unsafe fn vaddl_u16(a: u16x4, b: u16x4) -> u32x4 {
@@ -187,7 +187,7 @@ pub unsafe fn vaddl_u16(a: u16x4, b: u16x4) -> u32x4 {
 }
 
 /// Vector long add.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uaddl))]
 pub unsafe fn vaddl_u32(a: u32x2, b: u32x2) -> u64x2 {
@@ -205,7 +205,7 @@ extern "C" {
 }
 
 /// Reciprocal square-root estimate.
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(frsqrte))]
 pub unsafe fn vrsqrte_f32(a: f32x2) -> f32x2 {
