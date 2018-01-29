@@ -113,7 +113,8 @@ enum TokenTreeOrTokenTreeVec {
 }
 
 impl TokenTreeOrTokenTreeVec {
-    /// Returns the number of constituent token trees of `self`.
+    /// Returns the number of constituent top-level token trees of `self` (top-level in that it
+    /// will not recursively descend into subtrees).
     fn len(&self) -> usize {
         match *self {
             TtSeq(ref v) => v.len(),
