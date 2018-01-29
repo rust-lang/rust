@@ -12,7 +12,6 @@
 #![deny(const_err)]
 
 pub const A: i8 = -std::i8::MIN; //~ ERROR E0080
-//~^ ERROR attempt to negate with overflow
 //~| ERROR const_err
 //~| ERROR const_err
 pub const B: u8 = 200u8 + 200u8; //~ ERROR E0080
