@@ -103,6 +103,7 @@ use syntax::codemap::{CodeMap, FileLoader, RealFileLoader};
 use syntax::feature_gate::{GatedCfg, UnstableFeatures};
 use syntax::parse::{self, PResult};
 use syntax_pos::{DUMMY_SP, MultiSpan, FileName};
+use errors::{EnvDefaults, FromEnv};
 
 #[cfg(test)]
 mod test;
@@ -444,7 +445,8 @@ pub fn run_compiler<'a>(args: &[String],
         None => return (Ok(()), None),
     };
 
-    let (sopts, cfg) = config::build_session_options_and_crate_config(&matches);
+    let defaults = EnvDefaults::from_env();
+    let (sopts, cfg) = config::build_session_options_and_crate_config(&matches, defaults);
 
     let descriptions = diagnostics_registry();
 
