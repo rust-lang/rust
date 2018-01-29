@@ -39,7 +39,7 @@ use rustc::ty::maps::Providers;
 mod diagnostics;
 
 pub mod ast_validation;
-pub mod consts;
+pub mod rvalue_promotion;
 pub mod hir_stats;
 pub mod loops;
 mod mir_stats;
@@ -47,5 +47,5 @@ mod mir_stats;
 __build_diagnostic_array! { librustc_passes, DIAGNOSTICS }
 
 pub fn provide(providers: &mut Providers) {
-    consts::provide(providers);
+    rvalue_promotion::provide(providers);
 }
