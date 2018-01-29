@@ -10,30 +10,7 @@
 
 // Code for annotating snippets.
 
-use syntax_pos::{Span, FileMap};
-use CodeMapper;
-use std::rc::Rc;
 use Level;
-
-#[derive(Clone)]
-pub struct SnippetData {
-    codemap: Rc<CodeMapper>,
-    files: Vec<FileInfo>,
-}
-
-#[derive(Clone)]
-pub struct FileInfo {
-    file: Rc<FileMap>,
-
-    /// The "primary file", if any, gets a `-->` marker instead of
-    /// `>>>`, and has a line-number/column printed and not just a
-    /// filename.  It appears first in the listing. It is known to
-    /// contain at least one primary span, though primary spans (which
-    /// are designated with `^^^`) may also occur in other files.
-    primary_span: Option<Span>,
-
-    lines: Vec<Line>,
-}
 
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Line {

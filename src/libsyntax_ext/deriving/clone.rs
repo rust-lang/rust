@@ -55,6 +55,16 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
                         substructure = combine_substructure(Box::new(|c, s, sub| {
                             cs_clone_shallow("Clone", c, s, sub, false)
                         }));
+                    } else if attr::contains_name(&annitem.attrs, "rustc_nocopy_clone_marker") {
+                        if let ItemKind::Enum(..) = annitem.node {
+                            // Do nothing, this will be handled in a shim
+                            return
+                        }
+                        bounds = vec![];
+                        is_shallow = false;
+                        substructure = combine_substructure(Box::new(|c, s, sub| {
+                            cs_clone("Clone", c, s, sub)
+                        }));
                     } else {
                         bounds = vec![];
                         is_shallow = false;

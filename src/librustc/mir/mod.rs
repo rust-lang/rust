@@ -1520,6 +1520,9 @@ pub enum AggregateKind<'tcx> {
     /// active field number and is present only for union expressions
     /// -- e.g. for a union expression `SomeUnion { c: .. }`, the
     /// active field index would identity the field `c`
+    ///
+    /// For enums, the second field is the index of the variant
+    /// within AdtDef::fields
     Adt(&'tcx AdtDef, usize, &'tcx Substs<'tcx>, Option<usize>),
 
     Closure(DefId, ClosureSubsts<'tcx>),
