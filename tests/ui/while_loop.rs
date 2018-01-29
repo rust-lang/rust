@@ -193,4 +193,12 @@ fn refutable() {
             break None;
         }
     };
+
+    use std::collections::HashSet;
+    let mut values = HashSet::new();
+    values.insert(1);
+
+    while let Some(&value) = values.iter().next() {
+        values.remove(&value);
+    }
 }
