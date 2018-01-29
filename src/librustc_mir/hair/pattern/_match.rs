@@ -185,7 +185,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
                     match b {
                         Value::ByVal(PrimVal::Ptr(ptr)) => {
                             let is_array_ptr = ty
-                                .builtin_deref(true, ty::NoPreference)
+                                .builtin_deref(true)
                                 .and_then(|t| t.ty.builtin_index())
                                 .map_or(false, |t| t == tcx.types.u8);
                             assert!(is_array_ptr);
@@ -560,7 +560,7 @@ fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
                 }
             } => {
                 let is_array_ptr = ty
-                    .builtin_deref(true, ty::NoPreference)
+                    .builtin_deref(true)
                     .and_then(|t| t.ty.builtin_index())
                     .map_or(false, |t| t == cx.tcx.types.u8);
                 if is_array_ptr {
@@ -949,7 +949,7 @@ fn slice_pat_covered_by_constructor(tcx: TyCtxt, _span: Span,
             Value::ByVal(PrimVal::Ptr(ptr))
         ), ty }) => {
             let is_array_ptr = ty
-                .builtin_deref(true, ty::NoPreference)
+                .builtin_deref(true)
                 .and_then(|t| t.ty.builtin_index())
                 .map_or(false, |t| t == tcx.types.u8);
             assert!(is_array_ptr);
@@ -1089,7 +1089,7 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                 Slice(..) => match value.val {
                     ConstVal::Value(Value::ByVal(PrimVal::Ptr(ptr))) => {
                         let is_array_ptr = value.ty
-                            .builtin_deref(true, ty::NoPreference)
+                            .builtin_deref(true)
                             .and_then(|t| t.ty.builtin_index())
                             .map_or(false, |t| t == cx.tcx.types.u8);
                         assert!(is_array_ptr);

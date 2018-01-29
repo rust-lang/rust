@@ -10,6 +10,7 @@
 
 enum Enum {
     X = (1 << 500), //~ ERROR E0080
+    //~| ERROR bitshift exceeds
     //~| shift left with overflow
     Y = (1 / 0) //~ ERROR E0080
     //~| const_err

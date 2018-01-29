@@ -8,18 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(const_indexing)]
 #![deny(const_err)]
 
 pub const A: i8 = -std::i8::MIN; //~ ERROR E0080
 //~| ERROR const_err
 //~| ERROR const_err
+//~| ERROR E0080
 pub const B: u8 = 200u8 + 200u8; //~ ERROR E0080
+//~| ERROR E0080
 pub const C: u8 = 200u8 * 4; //~ ERROR E0080
+//~| ERROR E0080
 pub const D: u8 = 42u8 - (42u8 + 1); //~ ERROR E0080
+//~| ERROR E0080
 pub const E: u8 = [5u8][1];
 //~^ ERROR E0080
+//~| ERROR E0080
 
 fn main() {
+    let _a = A;
+    let _b = B;
+    let _c = C;
+    let _d = D;
+    let _e = E;
     let _e = [6u8][1];
 }

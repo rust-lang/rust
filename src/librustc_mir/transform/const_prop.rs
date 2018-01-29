@@ -198,7 +198,6 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
             Rvalue::CheckedBinaryOp(op, ref left, ref right) |
             Rvalue::BinaryOp(op, ref left, ref right) => {
                 trace!("rvalue binop {:?} for {:?} and {:?}", op, left, right);
-                let left = self.eval_operand(left)?;
                 let right = self.eval_operand(right)?;
                 let def_id = if self.tcx.is_closure(self.source.def_id) {
                     self.tcx.closure_base_def_id(self.source.def_id)
@@ -218,8 +217,8 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
                 let r = ecx.value_to_primval(ValTy { value: right.0, ty: right.1 }).ok()?;
                 if op == BinOp::Shr || op == BinOp::Shl {
                     let param_env = self.tcx.param_env(self.source.def_id);
-                    let bits = (self.tcx, param_env).layout_of(left.1).unwrap().size.bits();
-                    if r.to_bytes().ok()? >= bits as u128 {
+                    let bits = (self.tcx, param_env).layout_of(place_ty).unwrap().size.bits();
+                    if r.to_bytes().ok().map_or(false, |b| b >= bits as u128) {
                         let scope_info = match self.mir.visibility_scope_info {
                             ClearCrossCrate::Set(ref data) => data,
                             ClearCrossCrate::Clear => return None,
@@ -230,8 +229,10 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
                             node_id,
                             span,
                             "bitshift exceeds the type's number of bits");
+                        return None;
                     }
                 }
+                let left = self.eval_operand(left)?;
                 let l = ecx.value_to_primval(ValTy { value: left.0, ty: left.1 }).ok()?;
                 trace!("const evaluating {:?} for {:?} and {:?}", op, left, right);
                 match ecx.binary_op(op, l, left.1, r, right.1) {

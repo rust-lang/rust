@@ -24,6 +24,7 @@ fn black_box<T>(_: T) {
 const FOO: u8 = [5u8][1];
 //~^ ERROR constant evaluation error
 //~| index out of bounds: the len is 1 but the index is 1
+//~| ERROR E0080
 
 fn main() {
     black_box((FOO, FOO));

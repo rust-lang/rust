@@ -11,7 +11,6 @@
 #![deny(exceeding_bitshifts)]
 #![allow(unused_variables)]
 #![allow(dead_code, const_err)]
-#![feature(const_indexing)]
 
 fn main() {
       let n = 1u8 << 7;
