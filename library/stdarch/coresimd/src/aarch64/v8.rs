@@ -42,7 +42,7 @@ pub unsafe fn _rbit_u64(x: u64) -> u64 {
 #[inline(always)]
 #[cfg_attr(test, assert_instr(cls))]
 pub unsafe fn _cls_u32(x: u32) -> u32 {
-    u32::leading_zeros(((((((x as i32) >> 31) as u32) ^ x) << 1) | 1)) as u32
+    u32::leading_zeros((((((x as i32) >> 31) as u32) ^ x) << 1) | 1) as u32
 }
 
 /// Counts the leading most significant bits set.
@@ -52,7 +52,7 @@ pub unsafe fn _cls_u32(x: u32) -> u32 {
 #[inline(always)]
 #[cfg_attr(test, assert_instr(cls))]
 pub unsafe fn _cls_u64(x: u64) -> u64 {
-    u64::leading_zeros(((((((x as i64) >> 63) as u64) ^ x) << 1) | 1)) as u64
+    u64::leading_zeros((((((x as i64) >> 63) as u64) ^ x) << 1) | 1) as u64
 }
 
 #[cfg(test)]
