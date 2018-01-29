@@ -278,10 +278,15 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
     assert_eq!(functions.len(), 1);
     let function = &functions[0];
 
+    let mut instrs = &function.instrs[..];
+    while instrs.last().map(|s| s.parts == ["nop"]).unwrap_or(false) {
+        instrs = &instrs[..instrs.len() - 1];
+    }
+
     // Look for `expected` as the first part of any instruction in this
     // function, returning if we do indeed find it.
     let mut found = false;
-    for instr in &function.instrs {
+    for instr in instrs {
         // Gets the first instruction, e.g. tzcntl in tzcntl %rax,%rax
         if let Some(part) = instr.parts.get(0) {
             // Truncates the instruction with the length of the expected
@@ -298,7 +303,7 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
     // calling one intrinsic from another should not generate `call`
     // instructions.
     let mut inlining_failed = false;
-    for (i, instr) in function.instrs.iter().enumerate() {
+    for (i, instr) in instrs.iter().enumerate() {
         let part = match instr.parts.get(0) {
             Some(part) => part,
             None => continue,
@@ -342,7 +347,7 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
         _ => 20,
     };
     let probably_only_one_instruction =
-        function.instrs.len() < instruction_limit;
+        instrs.len() < instruction_limit;
 
     if found && probably_only_one_instruction && !inlining_failed {
         return;
@@ -354,7 +359,7 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
         "disassembly for {}: ",
         sym.as_ref().expect("symbol not found")
     );
-    for (i, instr) in function.instrs.iter().enumerate() {
+    for (i, instr) in instrs.iter().enumerate() {
         print!("\t{:2}: ", i);
         for part in &instr.parts {
             print!("{} ", part);
@@ -371,7 +376,7 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
         panic!(
             "instruction found, but the disassembly contains too many \
              instructions: #instructions = {} >= {} (limit)",
-            function.instrs.len(),
+            instrs.len(),
             instruction_limit
         );
     } else if inlining_failed {
