@@ -2998,6 +2998,37 @@ impl From<Infallible> for TryFromIntError {
     }
 }
 
+/// The error type returned when a checked float type conversion fails.
+#[unstable(feature = "try_from", issue = "33417")]
+#[derive(Debug, Copy, Clone)]
+pub struct TryFromFloatError(());
+
+impl TryFromFloatError {
+    #[unstable(feature = "float_error_internals",
+               reason = "available through Error trait and this method should \
+                         not be exposed publicly",
+               issue = "0")]
+    #[doc(hidden)]
+    pub fn __description(&self) -> &str {
+        "out of range float type conversion attempted"
+    }
+}
+
+#[unstable(feature = "try_from", issue = "33417")]
+impl fmt::Display for TryFromFloatError {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        self.__description().fmt(fmt)
+    }
+}
+
+#[unstable(feature = "try_from", issue = "33417")]
+impl From<Infallible> for TryFromFloatError {
+    fn from(infallible: Infallible) -> TryFromFloatError {
+        match infallible {
+        }
+    }
+}
+
 // no possible bounds violation
 macro_rules! try_from_unbounded {
     ($source:ty, $($target:ty),*) => {$(
@@ -3072,6 +3103,28 @@ macro_rules! try_from_both_bounded {
     )*}
 }
 
+// float to integer
+macro_rules! try_from_float {
+    ($source:ty, $($target:ty),*) => {$(
+        #[unstable(feature = "try_from", issue = "33417")]
+        impl TryFrom<$source> for $target {
+            type Error = TryFromFloatError;
+
+            #[inline]
+            fn try_from(u: $source) -> Result<$target, TryFromFloatError> {
+                let c = u as $target;
+
+                // is a conversion back identical to the original value?
+                if c as $source != u {
+                    return Err(TryFromFloatError(()));
+                }
+
+                Ok(c)
+            }
+        }
+    )*}
+}
+
 macro_rules! rev {
     ($mac:ident, $source:ty, $($target:ty),*) => {$(
         $mac!($target, $source);
@@ -3110,6 +3163,11 @@ try_from_both_bounded!(i128, u64, u32, u16, u8);
 // usize/isize
 try_from_upper_bounded!(usize, isize);
 try_from_lower_bounded!(isize, usize);
+
+try_from_float!(f64, u8, u16, u32, u64, u128);
+try_from_float!(f64, i8, i16, i32, i64, i128);
+try_from_float!(f32, u8, u16, u32, u64, u128);
+try_from_float!(f32, i8, i16, i32, i64, i128);
 
 #[cfg(target_pointer_width = "16")]
 mod ptr_try_from_impls {
