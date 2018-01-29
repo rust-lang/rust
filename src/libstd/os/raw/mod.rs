@@ -83,6 +83,10 @@ use fmt;
 /// and `*mut c_void` is equivalent to C's `void*`. That said, this is
 /// *not* the same as C's `void` return type, which is Rust's `()` type.
 ///
+/// Ideally, this type would be equivalent to [`!`], but currently it may
+/// be more ideal to use `c_void` for FFI purposes.
+///
+/// [`!`]: ../../primitive.never.html
 /// [pointer]: ../../primitive.pointer.html
 // NB: For LLVM to recognize the void pointer type and by extension
 //     functions like malloc(), we need to have it represented as i8* in
