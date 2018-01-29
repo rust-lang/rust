@@ -71,7 +71,6 @@ pub mod transform;
 pub mod util;
 pub mod interpret;
 pub mod monomorphize;
-pub mod check_const_err;
 
 pub use hair::pattern::check_crate as matchck_crate;
 use rustc::ty::maps::Providers;

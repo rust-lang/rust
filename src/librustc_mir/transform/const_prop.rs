@@ -212,8 +212,30 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
                 let instance = Instance::new(self.source.def_id, substs);
                 let ecx = mk_borrowck_eval_cx(self.tcx, instance, self.mir, span).unwrap();
 
-                let l = ecx.value_to_primval(ValTy { value: left.0, ty: left.1 }).ok()?;
                 let r = ecx.value_to_primval(ValTy { value: right.0, ty: right.1 }).ok()?;
+                let param_env = ParamEnv::empty(traits::Reveal::All);
+                let bits = (self.tcx, param_env).layout_of(left.ty).unwrap().size.bits();
+                if r >= bits as u128 {
+                    let data = &self.mir[location.block];
+                    let stmt_idx = location.statement_index;
+                    let source_info = if stmt_idx < data.statements.len() {
+                        data.statements[stmt_idx].source_info
+                    } else {
+                        data.terminator().source_info
+                    };
+                    let span = source_info.span;
+                    let scope_info = match self.mir.visibility_scope_info {
+                        ClearCrossCrate::Set(ref data) => data,
+                        ClearCrossCrate::Clear => return,
+                    };
+                    let node_id = scope_info[source_info.scope].lint_root;
+                    self.tcx.lint_node(
+                        ::rustc::lint::builtin::EXCEEDING_BITSHIFTS,
+                        node_id,
+                        span,
+                        "bitshift exceeds the type's number of bits");
+                }
+                let l = ecx.value_to_primval(ValTy { value: left.0, ty: left.1 }).ok()?;
                 trace!("const evaluating {:?} for {:?} and {:?}", op, left, right);
                 match ecx.binary_op(op, l, left.1, r, right.1) {
                     Ok((val, overflow)) => {
