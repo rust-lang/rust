@@ -134,26 +134,27 @@ impl<'a, 'gcx, 'tcx> Children {
 
             let tcx = tcx.global_tcx();
             let (le, ge) = tcx.infer_ctxt().enter(|infcx| {
-                let overlap = traits::overlapping_impls(&infcx,
-                                                        possible_sibling,
-                                                        impl_def_id,
-                                                        traits::IntercrateMode::Issue43355);
-                if let Some(overlap) = overlap {
-                    if tcx.impls_are_allowed_to_overlap(impl_def_id, possible_sibling) {
-                        return Ok((false, false));
-                    }
+                traits::overlapping_impls(
+                    &infcx,
+                    possible_sibling,
+                    impl_def_id,
+                    traits::IntercrateMode::Issue43355,
+                    |overlap| {
+                        if tcx.impls_are_allowed_to_overlap(impl_def_id, possible_sibling) {
+                            return Ok((false, false));
+                        }
 
-                    let le = tcx.specializes((impl_def_id, possible_sibling));
-                    let ge = tcx.specializes((possible_sibling, impl_def_id));
+                        let le = tcx.specializes((impl_def_id, possible_sibling));
+                        let ge = tcx.specializes((possible_sibling, impl_def_id));
 
-                    if le == ge {
-                        Err(overlap_error(overlap))
-                    } else {
-                        Ok((le, ge))
-                    }
-                } else {
-                    Ok((false, false))
-                }
+                        if le == ge {
+                            Err(overlap_error(overlap))
+                        } else {
+                            Ok((le, ge))
+                        }
+                    },
+                    || Ok((false, false)),
+                )
             })?;
 
             if le && !ge {
@@ -172,14 +173,14 @@ impl<'a, 'gcx, 'tcx> Children {
             } else {
                 if !tcx.impls_are_allowed_to_overlap(impl_def_id, possible_sibling) {
                     tcx.infer_ctxt().enter(|infcx| {
-                        if let Some(overlap) = traits::overlapping_impls(
+                        traits::overlapping_impls(
                             &infcx,
                             possible_sibling,
                             impl_def_id,
-                            traits::IntercrateMode::Fixed)
-                        {
-                            last_lint = Some(overlap_error(overlap));
-                        }
+                            traits::IntercrateMode::Fixed,
+                            |overlap| last_lint = Some(overlap_error(overlap)),
+                            || (),
+                        )
                     });
                 }
 

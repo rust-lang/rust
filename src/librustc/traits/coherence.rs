@@ -40,13 +40,20 @@ pub struct OverlapResult<'tcx> {
     pub intercrate_ambiguity_causes: Vec<IntercrateAmbiguityCause>,
 }
 
-/// If there are types that satisfy both impls, returns a suitably-freshened
-/// `ImplHeader` with those types substituted
-pub fn overlapping_impls<'cx, 'gcx, 'tcx>(infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
-                                          impl1_def_id: DefId,
-                                          impl2_def_id: DefId,
-                                          intercrate_mode: IntercrateMode)
-                                          -> Option<OverlapResult<'tcx>>
+/// If there are types that satisfy both impls, invokes `on_overlap`
+/// with a suitably-freshened `ImplHeader` with those types
+/// substituted. Otherwise, invokes `no_overlap`.
+pub fn overlapping_impls<F1, F2, R>(
+    infcx: &InferCtxt<'_, '_, '_>,
+    impl1_def_id: DefId,
+    impl2_def_id: DefId,
+    intercrate_mode: IntercrateMode,
+    on_overlap: F1,
+    no_overlap: F2,
+) -> R
+where
+    F1: FnOnce(OverlapResult<'_>) -> R,
+    F2: FnOnce() -> R,
 {
     debug!("impl_can_satisfy(\
            impl1_def_id={:?}, \
@@ -57,7 +64,11 @@ pub fn overlapping_impls<'cx, 'gcx, 'tcx>(infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
            intercrate_mode);
 
     let selcx = &mut SelectionContext::intercrate(infcx, intercrate_mode);
-    overlap(selcx, impl1_def_id, impl2_def_id)
+    if let Some(r) = overlap(selcx, impl1_def_id, impl2_def_id) {
+        on_overlap(r)
+    } else {
+        no_overlap()
+    }
 }
 
 fn with_fresh_ty_vars<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
