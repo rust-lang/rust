@@ -188,4 +188,12 @@ intrinsics! {
     pub extern "C" fn __muldf3(a: f64, b: f64) -> f64 {
         mul(a, b)
     }
+
+    pub extern "C" fn __mulsf3vfp(a: f32, b: f32) -> f32 {
+        a * b
+    }
+
+    pub extern "C" fn __muldf3vfp(a: f64, b: f64) -> f64 {
+        a * b
+    }
 }

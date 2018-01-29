@@ -96,9 +96,9 @@ features = ["c"]
 - [x] arm/aeabi_memset.S
 - [x] arm/aeabi_uidivmod.S
 - [x] arm/aeabi_uldivmod.S
-- [ ] arm/divdf3vfp.S
+- [x] arm/divdf3vfp.S
 - [ ] arm/divmodsi4.S (generic version is done)
-- [ ] arm/divsf3vfp.S
+- [x] arm/divsf3vfp.S
 - [ ] arm/divsi3.S (generic version is done)
 - [ ] arm/eqdf2vfp.S
 - [ ] arm/eqsf2vfp.S
@@ -120,8 +120,8 @@ features = ["c"]
 - [ ] arm/ltdf2vfp.S
 - [ ] arm/ltsf2vfp.S
 - [ ] arm/modsi3.S (generic version is done)
-- [ ] arm/muldf3vfp.S
-- [ ] arm/mulsf3vfp.S
+- [x] arm/muldf3vfp.S
+- [x] arm/mulsf3vfp.S
 - [ ] arm/nedf2vfp.S
 - [ ] arm/negdf2vfp.S
 - [ ] arm/negsf2vfp.S

@@ -5511,8 +5511,6 @@ mod c {
                     &[
                         "arm/adddf3vfp.S",
                         "arm/addsf3vfp.S",
-                        "arm/divdf3vfp.S",
-                        "arm/divsf3vfp.S",
                         "arm/eqdf2vfp.S",
                         "arm/eqsf2vfp.S",
                         "arm/extendsfdf2vfp.S",
@@ -5532,8 +5530,6 @@ mod c {
                         "arm/lesf2vfp.S",
                         "arm/ltdf2vfp.S",
                         "arm/ltsf2vfp.S",
-                        "arm/muldf3vfp.S",
-                        "arm/mulsf3vfp.S",
                         "arm/nedf2vfp.S",
                         "arm/nesf2vfp.S",
                         "arm/restore_vfp_d8_d15_regs.S",
