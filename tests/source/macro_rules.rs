@@ -1,4 +1,5 @@
 macro_rules! m {
+	// a
 	($expr :expr,  $( $func : ident    ) *   ) => {
 		{
 		let    x =    $expr;
@@ -8,8 +9,11 @@ macro_rules! m {
 	}
 	};
 
-   	()           => {  };
+				/* b */
 
+   	()           => {/* c */};
+
+// d
 ( $item:ident  ) =>      {
 	mod macro_item    {  struct $item ; }
 };
