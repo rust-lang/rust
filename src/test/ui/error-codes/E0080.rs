@@ -13,6 +13,8 @@ enum Enum {
     //~| shift left with overflow
     Y = (1 / 0) //~ ERROR E0080
     //~| const_err
+    //~| const_err
+    //~| const_err
     //~| divide by zero
 }
 
