@@ -161,6 +161,11 @@ impl<T: Idx> IdxSet<T> {
         }
     }
 
+    /// True if there are no elements
+    pub fn is_empty(&self) -> bool {
+        self.bits.iter().all(|&b| b == 0)
+    }
+
     /// Removes all elements
     pub fn clear(&mut self) {
         for b in &mut self.bits {

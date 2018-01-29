@@ -52,6 +52,7 @@ extern crate stable_deref_trait;
 pub use rustc_serialize::hex::ToHex;
 
 pub mod array_vec;
+pub mod access_tracker;
 pub mod accumulate_vec;
 pub mod small_vec;
 pub mod base_n;

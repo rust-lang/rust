@@ -10,16 +10,18 @@
 
 use syntax::ast::{self, MetaItem};
 
+use rustc_data_structures::access_tracker::AccessTracker;
 use rustc_data_structures::indexed_set::{IdxSet, IdxSetBuf};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::bitslice::{bitwise, BitwiseOperator};
 
 use rustc::ty::{self, TyCtxt};
-use rustc::mir::{self, Mir, BasicBlock, BasicBlockData, Location, Statement, Terminator};
+use rustc::mir::{self, BasicBlock, BasicBlockData, Location, Mir, Place, Statement, Terminator};
 use rustc::session::Session;
 
 use std::borrow::{Borrow, Cow};
 use std::fmt;
+use std::iter;
 use std::io;
 use std::mem;
 use std::path::PathBuf;
@@ -237,6 +239,10 @@ impl<'b, 'a: 'b, 'tcx: 'a, BD> PropagationContext<'b, 'a, 'tcx, BD> where BD: Bi
 {
     fn walk_cfg(&mut self, in_out: &mut IdxSet<BD::Idx>) {
         let mir = self.builder.mir;
+        let bits_per_block = self.builder.flow_state.sets.bits_per_block;
+        let mut temp_gens = IdxSetBuf::new_empty(bits_per_block);
+        let mut temp_kills = IdxSetBuf::new_empty(bits_per_block);
+        let mut scratch_buf = IdxSetBuf::new_empty(bits_per_block);
         for (bb_idx, bb_data) in mir.basic_blocks().iter().enumerate() {
             let builder = &mut self.builder;
             {
@@ -246,8 +252,19 @@ impl<'b, 'a: 'b, 'tcx: 'a, BD> PropagationContext<'b, 'a, 'tcx, BD> where BD: Bi
                 in_out.union(sets.gen_set);
                 in_out.subtract(sets.kill_set);
             }
+
+            let sets = &mut BlockSets {
+                on_entry: in_out,
+                gen_set: &mut temp_gens,
+                kill_set: &mut temp_kills,
+            };
+
             builder.propagate_bits_into_graph_successors_of(
-                in_out, &mut self.changed, (mir::BasicBlock::new(bb_idx), bb_data));
+                sets,
+                &mut scratch_buf,
+                &mut self.changed,
+                (mir::BasicBlock::new(bb_idx), bb_data),
+            );
         }
     }
 }
@@ -555,11 +572,20 @@ impl<'a, E:Idx> BlockSets<'a, E> {
         self.on_entry.union(&self.gen_set);
         self.on_entry.subtract(&self.kill_set);
     }
+
+    fn clear_local_effect(&mut self) {
+        self.gen_set.clear();
+        self.kill_set.clear();
+    }
+
+    fn has_empty_local_effect(&mut self) -> bool {
+        self.gen_set.is_empty() && self.kill_set.is_empty()
+    }
 }
 
 impl<E:Idx> AllSets<E> {
     pub fn bits_per_block(&self) -> usize { self.bits_per_block }
-    pub fn for_block(&mut self, block_idx: usize) -> BlockSets<E> {
+    pub fn for_block(&mut self, block_idx: usize) -> BlockSets<'_, E> {
         let offset = self.words_per_block * block_idx;
         let range = E::new(offset)..E::new(offset + self.words_per_block);
         BlockSets {
@@ -612,11 +638,10 @@ pub trait BitDenotation: BitwiseOperator {
     /// `sets.on_entry` to that local clone into `statement_effect` and
     /// `terminator_effect`).
     ///
-    /// When its false, no local clone is constucted; instead a
-    /// reference directly into `on_entry` is passed along via
-    /// `sets.on_entry` instead, which represents the flow state at
-    /// the block's start, not necessarily the state immediately prior
-    /// to the statement/terminator under analysis.
+    /// When its false, no local clone is constucted; instead it is
+    /// undefined what `on_entry` points to (in practice, it will
+    /// frequently be a reference the flow state at the block's start,
+    /// but you should not rely on that).
     ///
     /// In either case, the passed reference is mutable; but this is a
     /// wart from using the `BlockSets` type in the API; the intention
@@ -674,7 +699,7 @@ pub trait BitDenotation: BitwiseOperator {
     /// `bb_data` is the sequence of statements identified by `bb` in
     /// the MIR.
     fn statement_effect(&self,
-                        sets: &mut BlockSets<Self::Idx>,
+                        sets: &mut BlockSets<'_, Self::Idx>,
                         location: Location);
 
     /// Similar to `terminator_effect`, except it applies
@@ -701,35 +726,59 @@ pub trait BitDenotation: BitwiseOperator {
     /// block, represented via GEN and KILL sets.
     ///
     /// The effects applied here cannot depend on which branch the
-    /// terminator took.
+    /// terminator took. Hence they are best understood as the effects
+    /// up to -- but not including -- the branches.
     fn terminator_effect(&self,
-                         sets: &mut BlockSets<Self::Idx>,
+                         sets: &mut BlockSets<'_, Self::Idx>,
                          location: Location);
 
     /// Mutates the block-sets according to the (flow-dependent)
-    /// effect of a successful return from a Call terminator.
+    /// effect of a particular outgoing edge from a terminator. For
+    /// many terminators/operators, this is a no-op, since the effect
+    /// of the terminator is not dependent on which branch is taken
+    /// and hence can be accumulated via `terminator_effect`.
     ///
-    /// If basic-block BB_x ends with a call-instruction that, upon
-    /// successful return, flows to BB_y, then this method will be
-    /// called on the exit flow-state of BB_x in order to set up the
-    /// entry flow-state of BB_y.
+    /// One example where this callback is needed involves Call
+    /// terminators. In the case of a call terminator:
     ///
-    /// This is used, in particular, as a special case during the
-    /// "propagate" loop where all of the basic blocks are repeatedly
-    /// visited. Since the effects of a Call terminator are
-    /// flow-dependent, the current MIR cannot encode them via just
-    /// GEN and KILL sets attached to the block, and so instead we add
-    /// this extra machinery to represent the flow-dependent effect.
+    ///     tmp0 = call foo(...)
     ///
-    /// FIXME: Right now this is a bit of a wart in the API. It might
-    /// be better to represent this as an additional gen- and
-    /// kill-sets associated with each edge coming out of the basic
-    /// block.
-    fn propagate_call_return(&self,
-                             in_out: &mut IdxSet<Self::Idx>,
-                             call_bb: mir::BasicBlock,
-                             dest_bb: mir::BasicBlock,
-                             dest_place: &mir::Place);
+    /// the assignment to `tmp0` only occurs if the call returns
+    /// normally (without unwinding). Therefore, we wish to apply the
+    /// effect of considering `tmp0` to be initialized only on the one
+    /// edge.
+    ///
+    /// The `edge_kind` parameter can be used to determine what sort
+    /// of terminator this is (you may need to add variants, though,
+    /// as the current set is somewhat minimal).
+    ///
+    /// Note that, during propagation, edge-specific effects are not
+    /// accumulated into the overall gen-kill sets for a block, and
+    /// hence this function will be called repeatedly as we iterate to
+    /// a fixed point. But so long as you define this callback (and
+    /// the rest) as a "pure function", this need not concern you.
+    fn edge_effect(
+        &self,
+        sets: &mut AccessTracker<&mut BlockSets<Self::Idx>>,
+        source_block: mir::BasicBlock,
+        edge_kind: EdgeKind<'_>,
+        target_terminator: mir::BasicBlock,
+    );
+}
+
+#[derive(Copy, Clone)]
+pub enum EdgeKind<'mir> {
+    /// A standard edge -- one where the terminator does not
+    /// perform any action along the edge. The edge may be a normal
+    /// or an unwinding edge.
+    Noop,
+
+    /// An edge that doesn't really execute at runtime.
+    FalseEdge,
+
+    /// A "call return" edge, where the return value of a call (a call
+    /// that did not unwind) is stored into its destination.
+    CallReturn(&'mir Place<'mir>),
 }
 
 impl<'a, 'tcx, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
@@ -805,9 +854,10 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
     /// unwind target).
     fn propagate_bits_into_graph_successors_of(
         &mut self,
-        in_out: &mut IdxSet<D::Idx>,
+        sets: &mut BlockSets<'_, D::Idx>,
+        scratch_buf: &mut IdxSet<D::Idx>,
         changed: &mut bool,
-        (bb, bb_data): (mir::BasicBlock, &mir::BasicBlockData))
+        (bb, bb_data): (mir::BasicBlock, &mir::BasicBlockData<'tcx>))
     {
         match bb_data.terminator().kind {
             mir::TerminatorKind::Return |
@@ -815,61 +865,156 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
             mir::TerminatorKind::Abort |
             mir::TerminatorKind::GeneratorDrop |
             mir::TerminatorKind::Unreachable => {}
-            mir::TerminatorKind::Goto { ref target } |
-            mir::TerminatorKind::Assert { ref target, cleanup: None, .. } |
-            mir::TerminatorKind::Yield { resume: ref target, drop: None, .. } |
-            mir::TerminatorKind::Drop { ref target, location: _, unwind: None } |
+            mir::TerminatorKind::Goto { target } |
+            mir::TerminatorKind::Assert { target, cleanup: None, .. } |
+            mir::TerminatorKind::Yield { resume: target, drop: None, .. } |
+            mir::TerminatorKind::Drop { target, location: _, unwind: None } |
             mir::TerminatorKind::DropAndReplace {
-                ref target, value: _, location: _, unwind: None
+                target, value: _, location: _, unwind: None
             } => {
-                self.propagate_bits_into_entry_set_for(in_out, changed, target);
+                self.propagate_bits_across_edges(
+                    sets,
+                    scratch_buf,
+                    changed,
+                    bb,
+                    iter::once((target, EdgeKind::Noop)),
+                )
             }
-            mir::TerminatorKind::Yield { resume: ref target, drop: Some(ref drop), .. } => {
-                self.propagate_bits_into_entry_set_for(in_out, changed, target);
-                self.propagate_bits_into_entry_set_for(in_out, changed, drop);
+            mir::TerminatorKind::Yield { resume: target, drop: Some(drop), .. } => {
+                self.propagate_bits_across_edges(
+                    sets,
+                    scratch_buf,
+                    changed,
+                    bb,
+                    iter::once((target, EdgeKind::Noop))
+                        .chain(iter::once((drop, EdgeKind::Noop))),
+                )
             }
-            mir::TerminatorKind::Assert { ref target, cleanup: Some(ref unwind), .. } |
-            mir::TerminatorKind::Drop { ref target, location: _, unwind: Some(ref unwind) } |
+            mir::TerminatorKind::Assert { target, cleanup: Some(unwind), .. } |
+            mir::TerminatorKind::Drop { target, location: _, unwind: Some(unwind) } |
             mir::TerminatorKind::DropAndReplace {
-                ref target, value: _, location: _, unwind: Some(ref unwind)
+                target, value: _, location: _, unwind: Some(unwind)
             } => {
-                self.propagate_bits_into_entry_set_for(in_out, changed, target);
-                if !self.dead_unwinds.contains(&bb) {
-                    self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
-                }
+                let all_targets = [(target, EdgeKind::Noop), (unwind, EdgeKind::Noop)];
+                let unwind_is_dead = self.dead_unwinds.contains(&bb);
+                let targets = if unwind_is_dead { &all_targets[..1] } else { &all_targets[..] };
+                self.propagate_bits_across_edges(
+                    sets,
+                    scratch_buf,
+                    changed,
+                    bb,
+                    targets.iter().cloned(),
+                )
             }
             mir::TerminatorKind::SwitchInt { ref targets, .. } => {
-                for target in targets {
-                    self.propagate_bits_into_entry_set_for(in_out, changed, target);
-                }
+                self.propagate_bits_across_edges(
+                    sets,
+                    scratch_buf,
+                    changed,
+                    bb,
+                    targets.into_iter().map(|&target| (target, EdgeKind::Noop)),
+                )
             }
-            mir::TerminatorKind::Call { ref cleanup, ref destination, func: _, args: _ } => {
-                if let Some(ref unwind) = *cleanup {
+            mir::TerminatorKind::Call { cleanup, ref destination, func: _, args: _ } => {
+                let mut unwind_edge = None;
+                let mut normal_edge = None;
+
+                if let Some(unwind) = cleanup {
                     if !self.dead_unwinds.contains(&bb) {
-                        self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
+                        unwind_edge = Some((unwind, EdgeKind::Noop));
                     }
                 }
-                if let Some((ref dest_place, ref dest_bb)) = *destination {
-                    // N.B.: This must be done *last*, after all other
-                    // propagation, as documented in comment above.
-                    self.flow_state.operator.propagate_call_return(
-                        in_out, bb, *dest_bb, dest_place);
-                    self.propagate_bits_into_entry_set_for(in_out, changed, dest_bb);
+
+                if let Some((dest_place, dest_bb)) = destination {
+                    normal_edge = Some((*dest_bb, EdgeKind::CallReturn(dest_place)));
                 }
+
+                self.propagate_bits_across_edges(
+                    sets,
+                    scratch_buf,
+                    changed,
+                    bb,
+                    unwind_edge.into_iter().chain(normal_edge),
+                )
             }
-            mir::TerminatorKind::FalseEdges { ref real_target, ref imaginary_targets } => {
-                self.propagate_bits_into_entry_set_for(in_out, changed, real_target);
-                for target in imaginary_targets {
-                    self.propagate_bits_into_entry_set_for(in_out, changed, target);
+            mir::TerminatorKind::FalseEdges { real_target, ref imaginary_targets } => {
+                self.propagate_bits_across_edges(
+                    sets,
+                    scratch_buf,
+                    changed,
+                    bb,
+                    iter::once((real_target, EdgeKind::Noop))
+                        .chain(
+                            imaginary_targets.into_iter()
+                                             .map(|&target| (target, EdgeKind::FalseEdge)),
+                        ),
+                )
+            }
+        }
+    }
+
+    #[allow(non_camel_case_types)] // FIXME
+    fn propagate_bits_across_edges<'ek>(
+        &mut self,
+        sets: &mut BlockSets<'_, D::Idx>,
+        scratch_buf: &mut IdxSet<D::Idx>,
+        changed: &mut bool,
+        source: mir::BasicBlock,
+        targets: impl IntoIterator<Item = (BasicBlock, EdgeKind<'ek>)>,
+    ) {
+        // When true, the initial value of `sets.on_entry` has been copied
+        // into `scratch_buf`.
+        let mut is_saved = false;
+
+        // When true, the value of `sets.on_entry` has been changed
+        // from its initial value (and not yet restored).
+        let mut is_dirty = false;
+
+        // Just in case some previous caller left them dirty, clear
+        // the gen/kill sets to start.
+        sets.clear_local_effect();
+
+        for (target, edge_kind) in targets {
+            if is_dirty {
+                // Some previous edge generated (and applied) gen/kill
+                // effects. Undo them.
+                assert!(is_saved);
+                sets.clear_local_effect();
+                sets.on_entry.clone_from(scratch_buf);
+                is_dirty = false;
+            }
+
+            // Compute the gen/kill sets for this edge.
+            let sets_mutated = {
+                let mut tracked_sets = AccessTracker::new(&mut *sets);
+                self.flow_state.operator.edge_effect(&mut tracked_sets, source, edge_kind, target);
+                AccessTracker::maybe_mutated(&tracked_sets)
+            };
+
+            // If those gen/kill sets are non-empty, apply them.
+            if sets_mutated {
+                if !is_saved {
+                    // But first, save the "pristine" on-entry set so
+                    // that we can restore it for other edges.
+                    scratch_buf.clone_from(&sets.on_entry);
+                    is_saved = true;
                 }
+
+                sets.apply_local_effect();
+                is_dirty = true;
+            } else {
+                debug_assert!(sets.has_empty_local_effect());
             }
+
+            // Update the on-entry set for `target`.
+            self.propagate_bits_into_entry_set_for(&sets.on_entry, changed, target);
         }
     }
 
     fn propagate_bits_into_entry_set_for(&mut self,
                                          in_out: &IdxSet<D::Idx>,
                                          changed: &mut bool,
-                                         bb: &mir::BasicBlock) {
+                                         bb: mir::BasicBlock) {
         let entry_set = self.flow_state.sets.for_block(bb.index()).on_entry;
         let set_changed = bitwise(entry_set.words_mut(),
                                   in_out.words(),

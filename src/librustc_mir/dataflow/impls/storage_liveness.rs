@@ -10,8 +10,9 @@
 
 pub use super::*;
 
-use rustc::mir::*;
 use dataflow::BitDenotation;
+use rustc::mir::*;
+use rustc_data_structures::access_tracker::AccessTracker;
 
 #[derive(Copy, Clone)]
 pub struct MaybeStorageLive<'a, 'tcx: 'a> {
@@ -58,12 +59,14 @@ impl<'a, 'tcx> BitDenotation for MaybeStorageLive<'a, 'tcx> {
         // Terminators have no effect
     }
 
-    fn propagate_call_return(&self,
-                             _in_out: &mut IdxSet<Local>,
-                             _call_bb: mir::BasicBlock,
-                             _dest_bb: mir::BasicBlock,
-                             _dest_place: &mir::Place) {
-        // Nothing to do when a call returns successfully
+    fn edge_effect(
+        &self,
+        _sets: &mut AccessTracker<&mut BlockSets<Self::Idx>>,
+        _source_block: mir::BasicBlock,
+        _edge_kind: EdgeKind<'_>,
+        _target_terminator: mir::BasicBlock,
+    ) {
+        // No special effects on edges
     }
 }
 
