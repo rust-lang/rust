@@ -112,6 +112,7 @@ fn ident_can_begin_expr(ident: ast::Ident) -> bool {
         keywords::Unsafe.name(),
         keywords::While.name(),
         keywords::Yield.name(),
+        keywords::Static.name(),
     ].contains(&ident.name)
 }
 
