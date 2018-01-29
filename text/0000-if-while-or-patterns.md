@@ -9,8 +9,8 @@
 [`if let`]: https://github.com/rust-lang/rfcs/pull/160
 [`while let`]: https://github.com/rust-lang/rfcs/pull/214
 
-Enables "or" patterns for [`if let`] and [`while let`] expressions. In other
-words, examples like the following are now possible:
+Enables "or" patterns for [`if let`] and [`while let`] expressions as well as
+`let` statements. In other words, examples like the following are now possible:
 
 ```rust
 enum E<T> {
@@ -26,6 +26,11 @@ let r = if let C | D = x { 1 } else { 2 };
 while let A(x) | B(x) = source() {
     react_to(x);
 }
+
+enum ParameterKind<T, L = T> { Ty(T), Lifetime(L), }
+
+// Only possible when `L = T` such that `kind : ParameterKind<T, T>`.
+let Ty(x) | Lifetime(x) = kind;
 ```
 
 # Motivation
@@ -107,7 +112,6 @@ which could have been written as:
 
 This version is both shorter and clearer.
 
-
 With `while let`, the ergonomics and in particular the readability can be
 significantly improved.
 
@@ -132,6 +136,10 @@ loop {
 
 Another major motivation of the RFC is consistency with `match`.
 
+To keep `let` statements consistent with `if let`, and to enable the scenario
+exemplified by `ParameterKind` in the [motivation], these or-patterns are
+allowed at the top level of `let` statements.
+
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
@@ -145,8 +153,8 @@ words: cover all cases, be exhaustive, this is not the case (currently) with
 `if/while let`, which may have a refutable pattern.
 This RFC does not change this.
 
-The RFC only extends the use of or-patterns from `match`es to `if let` and
-`while let` expressions.
+The RFC only extends the use of or-patterns at the top level from `match`es
+to `if let` and `while let` expressions as well as `let` statements.
 
 For examples, see [motivation].
 
@@ -188,11 +196,28 @@ to:
 while_let_expr : [ lifetime ':' ] ? "while" "let" pat [ '|' pat ] * '=' expr '{' block '}' ;
 ```
 
+### `let` statements
+
+The statement `stmt` grammar is replaced with a language equivalent to:
+
+```
+stmt ::= old_stmt_grammar
+       | let_stmt_many
+       ;
+
+let_stmt_many ::= "let" pat_two_plus "=" expr ";"
+
+pat_two_plus ::= pat [ '|' pat ] + ;
+```
+
 ## Syntax lowering
 
-The changes proposed in this RFC can be implemented by transforming the
-`if/while let` constructs with a syntax-lowering pass into `match` and
-`loop` + `match` expressions.
+The changes proposed in this RFC with respect to `if let` and `while let`
+can be implemented by transforming the `if/while let` constructs with a
+syntax-lowering pass into `match` and `loop` + `match` expressions.
+
+Meanwhile, `let` statements can be transformed into a continuation with
+`match` as described below.
 
 ### Examples, `if let`
 
@@ -289,10 +314,41 @@ Result:
 }
 ```
 
+## Desugaring `let` statements with `|` in the top-level pattern
+
+This is a possible desugaring that a Rust compiler may do.
+While such a compiler may elect to implement this differently,
+these semantics should be kept.
+
+Source:
+```rust
+{
+    // prefix of statements:
+    stmt*
+    // The let statement which is the cause for desugaring:
+    let_stmt_many
+    // the continuation / suffix of statements:
+    stmt*
+    tail_expr? // Meta-variable for optional tail expression without ; at end
+}
+```
+Result
+```rust
+{
+    stmt*
+    match expr {
+        pat_two_plus => {
+            stmt*
+            tail_expr?
+        }
+    }
+}
+```
+
 # Drawbacks
 [drawbacks]: #drawbacks
 
-It's one more addition to the grammar.
+This adds more additions to the grammar and makes the compiler more complex.
 
 # Rationale and alternatives
 [alternatives]: #alternatives
@@ -302,6 +358,9 @@ Consistency with `match` is however on its own reason enough to do this.
 
 It could be claimed that the `if/while let` RFCs already mandate this RFC,
 this RFC does answer that question and instead simply mandates it now.
+
+Another alternative is to only deal with `if/while let` expressions but not
+`let` statements.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
