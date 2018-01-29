@@ -23,7 +23,7 @@ Sometimes the bits that make up an integer are more meaningful than its purely n
 For example, an RGBA color encoded in `u32` with 8 bits per channel is easier to understand
 when shown as `00CC44FF` than `13387007`.
 
-The `std::fmt::UpperHex` and `std::fmt::LowerHex` provide hexadecimal formatting
+The `std::fmt::UpperHex` and `std::fmt::LowerHex` traits provide hexadecimal formatting
 through `{:X}` and `{:x}` in formatting strings,
 but they’re only implemented for plain integer types
 and not other types like slices that might contain integers.
