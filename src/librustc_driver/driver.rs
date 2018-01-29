@@ -1378,6 +1378,9 @@ pub fn build_output_filenames(input: &Input,
             if *odir != None {
                 sess.warn("ignoring --out-dir flag due to -o flag.");
             }
+            if !sess.opts.cg.extra_filename.is_empty() {
+                sess.warn("ignoring -C extra-filename flag due to -o flag.");
+            }
 
             let cur_dir = Path::new("");
 
