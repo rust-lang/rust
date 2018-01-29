@@ -15,16 +15,17 @@
 
 use rustc::mir::{Constant, Literal, Location, Place, Mir, Operand, Rvalue, Local};
 use rustc::mir::{NullOp, StatementKind, Statement, BasicBlock, LocalKind};
-use rustc::mir::TerminatorKind;
+use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo};
 use rustc::mir::visit::Visitor;
+use rustc::ty::layout::LayoutOf;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{TyCtxt, self, Instance};
 use rustc::mir::interpret::{Value, PrimVal, GlobalId};
 use interpret::{eval_body_with_mir, eval_body, mk_borrowck_eval_cx, unary_op, ValTy};
-use rustc::util::nodemap::FxHashMap;
 use transform::{MirPass, MirSource};
 use syntax::codemap::Span;
 use rustc::ty::subst::Substs;
+use rustc_data_structures::indexed_vec::IndexVec;
 
 pub struct ConstProp;
 
@@ -35,9 +36,10 @@ impl MirPass for ConstProp {
                           mir: &mut Mir<'tcx>) {
         trace!("ConstProp starting for {:?}", source.def_id);
 
-        // First, find optimization opportunities. This is done in a pre-pass to keep the MIR
-        // read-only so that we can do global analyses on the MIR in the process (e.g.
-        // `Place::ty()`).
+        // FIXME(oli-obk, eddyb) Optimize locals (or even local paths) to hold
+        // constants, instead of just checking for const-folding succeeding.
+        // That would require an uniform one-def no-mutation analysis
+        // and RPO (or recursing when needing the value of a local).
         let mut optimization_finder = OptimizationFinder::new(mir, tcx, source);
         optimization_finder.visit_mir(mir);
 
@@ -52,7 +54,7 @@ struct OptimizationFinder<'b, 'a, 'tcx:'a+'b> {
     mir: &'b Mir<'tcx>,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     source: MirSource,
-    places: FxHashMap<Local, Const<'tcx>>,
+    places: IndexVec<Local, Option<Const<'tcx>>>,
 }
 
 impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
@@ -65,7 +67,7 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
             mir,
             tcx,
             source,
-            places: FxHashMap::default(),
+            places: IndexVec::from_elem(None, &mir.local_decls),
         }
     }
 
@@ -117,7 +119,7 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
         match *op {
             Operand::Constant(ref c) => self.eval_constant(c),
             Operand::Move(ref place) | Operand::Copy(ref place) => match *place {
-                Place::Local(loc) => self.places.get(&loc).cloned(),
+                Place::Local(loc) => self.places[loc].clone(),
                 // FIXME(oli-obk): field and index projections
                 Place::Projection(_) => None,
                 _ => None,
@@ -129,8 +131,9 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
         &mut self,
         rvalue: &Rvalue<'tcx>,
         place_ty: ty::Ty<'tcx>,
-        span: Span,
+        source_info: SourceInfo,
     ) -> Option<Const<'tcx>> {
+        let span = source_info.span;
         match *rvalue {
             // No need to overwrite an already evaluated constant
             Rvalue::Use(Operand::Constant(box Constant {
@@ -213,20 +216,12 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
                 let ecx = mk_borrowck_eval_cx(self.tcx, instance, self.mir, span).unwrap();
 
                 let r = ecx.value_to_primval(ValTy { value: right.0, ty: right.1 }).ok()?;
-                let param_env = ParamEnv::empty(traits::Reveal::All);
-                let bits = (self.tcx, param_env).layout_of(left.ty).unwrap().size.bits();
-                if r >= bits as u128 {
-                    let data = &self.mir[location.block];
-                    let stmt_idx = location.statement_index;
-                    let source_info = if stmt_idx < data.statements.len() {
-                        data.statements[stmt_idx].source_info
-                    } else {
-                        data.terminator().source_info
-                    };
-                    let span = source_info.span;
+                let param_env = self.tcx.param_env(self.source.def_id);
+                let bits = (self.tcx, param_env).layout_of(left.1).unwrap().size.bits();
+                if r.to_bytes().ok()? >= bits as u128 {
                     let scope_info = match self.mir.visibility_scope_info {
                         ClearCrossCrate::Set(ref data) => data,
-                        ClearCrossCrate::Clear => return,
+                        ClearCrossCrate::Clear => return None,
                     };
                     let node_id = scope_info[source_info.scope].lint_root;
                     self.tcx.lint_node(
@@ -369,13 +364,13 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for OptimizationFinder<'b, 'a, 'tcx> {
             let place_ty = place
                 .ty(&self.mir.local_decls, self.tcx)
                 .to_ty(self.tcx);
-            let span = statement.source_info.span;
-            if let Some(value) = self.const_prop(rval, place_ty, span) {
+            if let Some(value) = self.const_prop(rval, place_ty, statement.source_info) {
                 if let Place::Local(local) = *place {
                     if self.mir.local_kind(local) == LocalKind::Temp
                         && CanConstProp::check(local, self.mir) {
                         trace!("storing {:?} to {:?}", value, local);
-                        assert!(self.places.insert(local, value).is_none());
+                        assert!(self.places[local].is_none());
+                        self.places[local] = Some(value);
                     }
                 }
             }
