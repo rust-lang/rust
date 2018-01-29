@@ -7,6 +7,8 @@
 //! * [`x86_64`](https://rust-lang-nursery.github.io/stdsimd/x86_64/stdsimd/)
 //! * [arm](https://rust-lang-nursery.github.io/stdsimd/arm/stdsimd/)
 //! * [aarch64](https://rust-lang-nursery.github.io/stdsimd/aarch64/stdsimd/)
+//! * [powerpc](https://rust-lang-nursery.github.io/stdsimd/powerpc/stdsimd/)
+//! * [powerpc64](https://rust-lang-nursery.github.io/stdsimd/powerpc64/stdsimd/)
 //!
 //! # Overview
 //!
@@ -137,6 +139,7 @@ pub use coresimd::__unstable_detect_feature;
 
 /// Platform dependent vendor intrinsics.
 pub mod vendor {
+    #[doc(inline)]
     pub use coresimd::vendor::*;
 }
 
@@ -152,6 +155,7 @@ pub mod __vendor_runtime {
 
 /// Platform independent SIMD vector types and operations.
 pub mod simd {
+    #[doc(inline)]
     pub use coresimd::simd::*;
 }
 

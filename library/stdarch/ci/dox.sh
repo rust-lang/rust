@@ -25,6 +25,10 @@ dox() {
   cargo build --target $target
 
   rustdoc --target $target \
+          -o target/doc/$arch coresimd/src/lib.rs \
+          --crate-name coresimd \
+          --library-path target/$target/debug/deps
+  rustdoc --target $target \
           -o target/doc/$arch src/lib.rs \
           --crate-name stdsimd \
           --library-path target/$target/debug/deps

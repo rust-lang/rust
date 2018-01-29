@@ -12,6 +12,8 @@ This is a **work in progress**.
 * [Documentation - x86\_64][x86_64]
 * [Documentation - arm][arm]
 * [Documentation - aarch64][aarch64]
+* [Documentation - powerpc][powerpc]
+* [Documentation - powerpc64][powerpc64]
 * [How to get started][contrib]
 * [How to help implement intrinsics][help-implement]
 
@@ -21,6 +23,8 @@ This is a **work in progress**.
 [x86_64]: https://rust-lang-nursery.github.io/stdsimd/x86_64/stdsimd/
 [arm]: https://rust-lang-nursery.github.io/stdsimd/arm/stdsimd/
 [aarch64]: https://rust-lang-nursery.github.io/stdsimd/aarch64/stdsimd/
+[powerpc]: https://rust-lang-nursery.github.io/stdsimd/powerpc/stdsimd/
+[powerpc64]: https://rust-lang-nursery.github.io/stdsimd/powerpc64/stdsimd/
 
 ### Approach
 
