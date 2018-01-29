@@ -191,70 +191,39 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         bx: &Builder<'a, 'tcx>,
         constant: &mir::Constant<'tcx>,
     ) -> (ValueRef, Ty<'tcx>) {
-        let layout = bx.cx.layout_of(constant.ty);
         self.mir_constant_to_miri_value(bx, constant)
             .and_then(|c| {
-                let llval = match c {
-                    MiriValue::ByVal(val) => {
-                        let scalar = match layout.abi {
-                            layout::Abi::Scalar(ref x) => x,
-                            _ => bug!("from_const: invalid ByVal layout: {:#?}", layout)
-                        };
-                        primval_to_llvm(bx.cx, val, scalar, layout.immediate_llvm_type(bx.cx))
-                    },
-                    MiriValue::ByValPair(a_val, b_val) => {
-                        let (a_scalar, b_scalar) = match layout.abi {
-                            layout::Abi::ScalarPair(ref a, ref b) => (a, b),
-                            _ => bug!("from_const: invalid ByValPair layout: {:#?}", layout)
-                        };
-                        let a_llval = primval_to_llvm(
-                            bx.cx,
-                            a_val,
-                            a_scalar,
-                            layout.scalar_pair_element_llvm_type(bx.cx, 0),
-                        );
-                        let b_llval = primval_to_llvm(
-                            bx.cx,
-                            b_val,
-                            b_scalar,
-                            layout.scalar_pair_element_llvm_type(bx.cx, 1),
-                        );
-                        C_struct(bx.cx, &[a_llval, b_llval], false)
-                    },
-                    MiriValue::ByRef(..) => {
-                        let field_ty = constant.ty.builtin_index().unwrap();
-                        let fields = match constant.ty.sty {
-                            ty::TyArray(_, n) => n.val.unwrap_u64(),
-                            ref other => bug!("invalid simd shuffle type: {}", other),
-                        };
-                        let values: Result<Vec<ValueRef>, _> = (0..fields).map(|field| {
-                            let field = const_val_field(
-                                bx.tcx(),
-                                ty::ParamEnv::empty(traits::Reveal::All),
-                                self.instance,
-                                None,
-                                mir::Field::new(field as usize),
-                                c,
-                                constant.ty,
-                            )?;
-                            match field.val {
-                                ConstVal::Value(MiriValue::ByVal(prim)) => {
-                                    let layout = bx.cx.layout_of(field_ty);
-                                    let scalar = match layout.abi {
-                                        layout::Abi::Scalar(ref x) => x,
-                                        _ => bug!("from_const: invalid ByVal layout: {:#?}", layout)
-                                    };
-                                    Ok(primval_to_llvm(
-                                        bx.cx, prim, scalar,
-                                        layout.immediate_llvm_type(bx.cx),
-                                    ))
-                                },
-                                other => bug!("simd shuffle field {:?}, {}", other, constant.ty),
-                            }
-                        }).collect();
-                        C_struct(bx.cx, &values?, false)
-                    },
+                let field_ty = constant.ty.builtin_index().unwrap();
+                let fields = match constant.ty.sty {
+                    ty::TyArray(_, n) => n.val.unwrap_u64(),
+                    ref other => bug!("invalid simd shuffle type: {}", other),
                 };
+                let values: Result<Vec<ValueRef>, _> = (0..fields).map(|field| {
+                    let field = const_val_field(
+                        bx.tcx(),
+                        ty::ParamEnv::empty(traits::Reveal::All),
+                        self.instance,
+                        None,
+                        mir::Field::new(field as usize),
+                        c,
+                        constant.ty,
+                    )?;
+                    match field.val {
+                        ConstVal::Value(MiriValue::ByVal(prim)) => {
+                            let layout = bx.cx.layout_of(field_ty);
+                            let scalar = match layout.abi {
+                                layout::Abi::Scalar(ref x) => x,
+                                _ => bug!("from_const: invalid ByVal layout: {:#?}", layout)
+                            };
+                            Ok(primval_to_llvm(
+                                bx.cx, prim, scalar,
+                                layout.immediate_llvm_type(bx.cx),
+                            ))
+                        },
+                        other => bug!("simd shuffle field {:?}, {}", other, constant.ty),
+                    }
+                }).collect();
+                let llval = C_struct(bx.cx, &values?, false);
                 Ok((llval, constant.ty))
             })
             .unwrap_or_else(|e| {
