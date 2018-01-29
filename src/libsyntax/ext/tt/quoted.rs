@@ -37,7 +37,7 @@ impl Delimited {
         token::CloseDelim(self.delim)
     }
 
-    /// Return a `self::TokenTree` witha a `Span` corresponding to the opening delimiter.
+    /// Return a `self::TokenTree` with a `Span` corresponding to the opening delimiter.
     pub fn open_tt(&self, span: Span) -> TokenTree {
         let open_span = if span == DUMMY_SP {
             DUMMY_SP
@@ -47,7 +47,7 @@ impl Delimited {
         TokenTree::Token(open_span, self.open_token())
     }
 
-    /// Return a `self::TokenTree` witha a `Span` corresponding to the closing delimiter.
+    /// Return a `self::TokenTree` with a `Span` corresponding to the closing delimiter.
     pub fn close_tt(&self, span: Span) -> TokenTree {
         let close_span = if span == DUMMY_SP {
             DUMMY_SP
@@ -232,7 +232,7 @@ pub fn parse(
 ///
 /// # Parameters
 ///
-/// - `tree`: the tree wish to convert.
+/// - `tree`: the tree we wish to convert.
 /// - `trees`: an iterator over trees. We may need to read more tokens from it in order to finish
 ///   converting `tree`
 /// - `expect_matchers`: same as for `parse` (see above).
@@ -327,7 +327,7 @@ where
 /// separator, and `*` is the Kleene operator. This function is specifically concerned with parsing
 /// the last two tokens of such a pattern: namely, the optional separator and the Kleene operator
 /// itself. Note that here we are parsing the _macro_ itself, rather than trying to match some
-/// stream of tokens in an invokation of a macro.
+/// stream of tokens in an invocation of a macro.
 ///
 /// This function will take some input iterator `input` corresponding to `span` and a parsing
 /// session `sess`. If the next one (or possibly two) tokens in `input` correspond to a Kleene
