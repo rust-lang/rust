@@ -545,7 +545,7 @@ impl<'a, 'tcx> ArgType<'tcx> {
         self.mode == PassMode::Ignore
     }
 
-    /// Get the LLVM type for an place of the original Rust type of
+    /// Get the LLVM type for a place of the original Rust type of
     /// this argument/return, i.e. the result of `type_of::type_of`.
     pub fn memory_ty(&self, cx: &CodegenCx<'a, 'tcx>) -> Type {
         self.layout.llvm_type(cx)
@@ -674,7 +674,7 @@ impl<'a, 'tcx> FnType<'tcx> {
                 _ => bug!("FnType::new_vtable: non-pair self {:?}", self_arg)
             }
 
-            let pointee = self_arg.layout.ty.builtin_deref(true, ty::NoPreference)
+            let pointee = self_arg.layout.ty.builtin_deref(true)
                 .unwrap_or_else(|| {
                     bug!("FnType::new_vtable: non-pointer self {:?}", self_arg)
                 }).ty;

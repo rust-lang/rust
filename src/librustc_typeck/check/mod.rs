@@ -95,7 +95,6 @@ use rustc::infer::type_variable::{TypeVariableOrigin};
 use rustc::middle::region;
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::{self, FulfillmentContext, ObligationCause, ObligationCauseCode};
-use rustc::ty::{ParamTy, LvaluePreference, NoPreference, PreferMutLvalue};
 use rustc::ty::{self, Ty, TyCtxt, Visibility, ToPredicate};
 use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc::ty::fold::TypeFoldable;
@@ -368,6 +367,21 @@ impl<'a, 'gcx, 'tcx> Expectation<'tcx> {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Needs {
+    MutPlace,
+    None
+}
+
+impl Needs {
+    fn maybe_mut_place(m: hir::Mutability) -> Self {
+        match m {
+            hir::MutMutable => Needs::MutPlace,
+            hir::MutImmutable => Needs::None,
+        }
+    }
+}
+
 #[derive(Copy, Clone)]
 pub struct UnsafetyState {
     pub def: ast::NodeId,
@@ -410,7 +424,7 @@ impl UnsafetyState {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum LvalueOp {
+pub enum PlaceOp {
     Deref,
     Index
 }
@@ -543,7 +557,7 @@ pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     ///   foo();}` or `{return; 22}`, where we would warn on the
     ///   `foo()` or `22`.
     ///
-    /// - To permit assignment into a local variable or other lvalue
+    /// - To permit assignment into a local variable or other place
     ///   (including the "return slot") of type `!`.  This is allowed
     ///   if **either** the type of value being assigned is `!`, which
     ///   means the current code is dead, **or** the expression's
@@ -2207,11 +2221,65 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// For the overloaded lvalue expressions (`*x`, `x[3]`), the trait
+    fn is_place_expr(&self, expr: &hir::Expr) -> bool {
+         match expr.node {
+            hir::ExprPath(hir::QPath::Resolved(_, ref path)) => {
+                match path.def {
+                    Def::Local(..) | Def::Upvar(..) | Def::Static(..) | Def::Err => true,
+                    _ => false,
+                }
+            }
+
+            hir::ExprType(ref e, _) => {
+                self.is_place_expr(e)
+            }
+
+            hir::ExprUnary(hir::UnDeref, _) |
+            hir::ExprField(..) |
+            hir::ExprTupField(..) |
+            hir::ExprIndex(..) => {
+                true
+            }
+
+            // Partially qualified paths in expressions can only legally
+            // refer to associated items which are always rvalues.
+            hir::ExprPath(hir::QPath::TypeRelative(..)) |
+
+            hir::ExprCall(..) |
+            hir::ExprMethodCall(..) |
+            hir::ExprStruct(..) |
+            hir::ExprTup(..) |
+            hir::ExprIf(..) |
+            hir::ExprMatch(..) |
+            hir::ExprClosure(..) |
+            hir::ExprBlock(..) |
+            hir::ExprRepeat(..) |
+            hir::ExprArray(..) |
+            hir::ExprBreak(..) |
+            hir::ExprAgain(..) |
+            hir::ExprRet(..) |
+            hir::ExprWhile(..) |
+            hir::ExprLoop(..) |
+            hir::ExprAssign(..) |
+            hir::ExprInlineAsm(..) |
+            hir::ExprAssignOp(..) |
+            hir::ExprLit(_) |
+            hir::ExprUnary(..) |
+            hir::ExprBox(..) |
+            hir::ExprAddrOf(..) |
+            hir::ExprBinary(..) |
+            hir::ExprYield(..) |
+            hir::ExprCast(..) => {
+                false
+            }
+        }
+    }
+
+    /// For the overloaded place expressions (`*x`, `x[3]`), the trait
     /// returns a type of `&T`, but the actual type we assign to the
     /// *expression* is `T`. So this function just peels off the return
     /// type by one layer to yield `T`.
-    fn make_overloaded_lvalue_return_type(&self,
+    fn make_overloaded_place_return_type(&self,
                                           method: MethodCallee<'tcx>)
                                           -> ty::TypeAndMut<'tcx>
     {
@@ -2219,7 +2287,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let ret_ty = method.sig.output();
 
         // method returns &T, but the type as visible to user is T, so deref
-        ret_ty.builtin_deref(true, NoPreference).unwrap()
+        ret_ty.builtin_deref(true).unwrap()
     }
 
     fn lookup_indexing(&self,
@@ -2227,7 +2295,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                        base_expr: &'gcx hir::Expr,
                        base_ty: Ty<'tcx>,
                        idx_ty: Ty<'tcx>,
-                       lvalue_pref: LvaluePreference)
+                       needs: Needs)
                        -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)>
     {
         // FIXME(#18741) -- this is almost but not quite the same as the
@@ -2237,7 +2305,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let mut autoderef = self.autoderef(base_expr.span, base_ty);
         let mut result = None;
         while result.is_none() && autoderef.next().is_some() {
-            result = self.try_index_step(expr, base_expr, &autoderef, lvalue_pref, idx_ty);
+            result = self.try_index_step(expr, base_expr, &autoderef, needs, idx_ty);
         }
         autoderef.finalize();
         result
@@ -2252,7 +2320,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                       expr: &hir::Expr,
                       base_expr: &hir::Expr,
                       autoderef: &Autoderef<'a, 'gcx, 'tcx>,
-                      lvalue_pref: LvaluePreference,
+                      needs: Needs,
                       index_ty: Ty<'tcx>)
                       -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)>
     {
@@ -2279,14 +2347,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // type from the method signature.
             // If some lookup succeeded, install method in table
             let input_ty = self.next_ty_var(TypeVariableOrigin::AutoDeref(base_expr.span));
-            let method = self.try_overloaded_lvalue_op(
-                expr.span, self_ty, &[input_ty], lvalue_pref, LvalueOp::Index);
+            let method = self.try_overloaded_place_op(
+                expr.span, self_ty, &[input_ty], needs, PlaceOp::Index);
 
             let result = method.map(|ok| {
                 debug!("try_index_step: success, using overloaded indexing");
                 let method = self.register_infer_ok_obligations(ok);
 
-                let mut adjustments = autoderef.adjust_steps(lvalue_pref);
+                let mut adjustments = autoderef.adjust_steps(needs);
                 if let ty::TyRef(region, mt) = method.sig.inputs()[0].sty {
                     adjustments.push(Adjustment {
                         kind: Adjust::Borrow(AutoBorrow::Ref(region, mt.mutbl)),
@@ -2305,7 +2373,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.apply_adjustments(base_expr, adjustments);
 
                 self.write_method_call(expr.hir_id, method);
-                (input_ty, self.make_overloaded_lvalue_return_type(method).ty)
+                (input_ty, self.make_overloaded_place_return_type(method).ty)
             });
             if result.is_some() {
                 return result;
@@ -2315,45 +2383,45 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         None
     }
 
-    fn resolve_lvalue_op(&self, op: LvalueOp, is_mut: bool) -> (Option<DefId>, Symbol) {
+    fn resolve_place_op(&self, op: PlaceOp, is_mut: bool) -> (Option<DefId>, Symbol) {
         let (tr, name) = match (op, is_mut) {
-            (LvalueOp::Deref, false) =>
+            (PlaceOp::Deref, false) =>
                 (self.tcx.lang_items().deref_trait(), "deref"),
-            (LvalueOp::Deref, true) =>
+            (PlaceOp::Deref, true) =>
                 (self.tcx.lang_items().deref_mut_trait(), "deref_mut"),
-            (LvalueOp::Index, false) =>
+            (PlaceOp::Index, false) =>
                 (self.tcx.lang_items().index_trait(), "index"),
-            (LvalueOp::Index, true) =>
+            (PlaceOp::Index, true) =>
                 (self.tcx.lang_items().index_mut_trait(), "index_mut"),
         };
         (tr, Symbol::intern(name))
     }
 
-    fn try_overloaded_lvalue_op(&self,
+    fn try_overloaded_place_op(&self,
                                 span: Span,
                                 base_ty: Ty<'tcx>,
                                 arg_tys: &[Ty<'tcx>],
-                                lvalue_pref: LvaluePreference,
-                                op: LvalueOp)
+                                needs: Needs,
+                                op: PlaceOp)
                                 -> Option<InferOk<'tcx, MethodCallee<'tcx>>>
     {
-        debug!("try_overloaded_lvalue_op({:?},{:?},{:?},{:?})",
+        debug!("try_overloaded_place_op({:?},{:?},{:?},{:?})",
                span,
                base_ty,
-               lvalue_pref,
+               needs,
                op);
 
-        // Try Mut first, if preferred.
-        let (mut_tr, mut_op) = self.resolve_lvalue_op(op, true);
-        let method = match (lvalue_pref, mut_tr) {
-            (PreferMutLvalue, Some(trait_did)) => {
+        // Try Mut first, if needed.
+        let (mut_tr, mut_op) = self.resolve_place_op(op, true);
+        let method = match (needs, mut_tr) {
+            (Needs::MutPlace, Some(trait_did)) => {
                 self.lookup_method_in_trait(span, mut_op, trait_did, base_ty, Some(arg_tys))
             }
             _ => None,
         };
 
         // Otherwise, fall back to the immutable version.
-        let (imm_tr, imm_op) = self.resolve_lvalue_op(op, false);
+        let (imm_tr, imm_op) = self.resolve_place_op(op, false);
         let method = match (method, imm_tr) {
             (None, Some(trait_did)) => {
                 self.lookup_method_in_trait(span, imm_op, trait_did, base_ty, Some(arg_tys))
@@ -2738,18 +2806,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn check_expr_coercable_to_type(&self,
                                     expr: &'gcx hir::Expr,
                                     expected: Ty<'tcx>) -> Ty<'tcx> {
-        self.check_expr_coercable_to_type_with_lvalue_pref(expr, expected, NoPreference)
+        self.check_expr_coercable_to_type_with_needs(expr, expected, Needs::None)
     }
 
-    fn check_expr_coercable_to_type_with_lvalue_pref(&self,
-                                                     expr: &'gcx hir::Expr,
-                                                     expected: Ty<'tcx>,
-                                                     lvalue_pref: LvaluePreference)
-                                                     -> Ty<'tcx> {
-        let ty = self.check_expr_with_expectation_and_lvalue_pref(
+    fn check_expr_coercable_to_type_with_needs(&self,
+                                               expr: &'gcx hir::Expr,
+                                               expected: Ty<'tcx>,
+                                               needs: Needs)
+                                               -> Ty<'tcx> {
+        let ty = self.check_expr_with_expectation_and_needs(
             expr,
             ExpectHasType(expected),
-            lvalue_pref);
+            needs);
         self.demand_coerce(expr, ty, expected)
     }
 
@@ -2761,16 +2829,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn check_expr_with_expectation(&self,
                                    expr: &'gcx hir::Expr,
                                    expected: Expectation<'tcx>) -> Ty<'tcx> {
-        self.check_expr_with_expectation_and_lvalue_pref(expr, expected, NoPreference)
+        self.check_expr_with_expectation_and_needs(expr, expected, Needs::None)
     }
 
     fn check_expr(&self, expr: &'gcx hir::Expr) -> Ty<'tcx> {
         self.check_expr_with_expectation(expr, NoExpectation)
     }
 
-    fn check_expr_with_lvalue_pref(&self, expr: &'gcx hir::Expr,
-                                   lvalue_pref: LvaluePreference) -> Ty<'tcx> {
-        self.check_expr_with_expectation_and_lvalue_pref(expr, NoExpectation, lvalue_pref)
+    fn check_expr_with_needs(&self, expr: &'gcx hir::Expr, needs: Needs) -> Ty<'tcx> {
+        self.check_expr_with_expectation_and_needs(expr, NoExpectation, needs)
     }
 
     // determine the `self` type, using fresh variables for all variables
@@ -2853,9 +2920,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                          span: Span,
                          args: &'gcx [hir::Expr],
                          expected: Expectation<'tcx>,
-                         lvalue_pref: LvaluePreference) -> Ty<'tcx> {
+                         needs: Needs) -> Ty<'tcx> {
         let rcvr = &args[0];
-        let rcvr_t = self.check_expr_with_lvalue_pref(&rcvr, lvalue_pref);
+        let rcvr_t = self.check_expr_with_needs(&rcvr, needs);
         // no need to check for bot/err -- callee does that
         let rcvr_t = self.structurally_resolved_type(expr.span, rcvr_t);
 
@@ -2965,10 +3032,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // Check field access expressions
     fn check_field(&self,
                    expr: &'gcx hir::Expr,
-                   lvalue_pref: LvaluePreference,
+                   needs: Needs,
                    base: &'gcx hir::Expr,
                    field: &Spanned<ast::Name>) -> Ty<'tcx> {
-        let expr_t = self.check_expr_with_lvalue_pref(base, lvalue_pref);
+        let expr_t = self.check_expr_with_needs(base, needs);
         let expr_t = self.structurally_resolved_type(expr.span,
                                                      expr_t);
         let mut private_candidate = None;
@@ -2983,7 +3050,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if let Some(field) = fields.iter().find(|f| f.name.to_ident() == ident) {
                         let field_ty = self.field_ty(expr.span, field, substs);
                         if field.vis.is_accessible_from(def_scope, self.tcx) {
-                            let adjustments = autoderef.adjust_steps(lvalue_pref);
+                            let adjustments = autoderef.adjust_steps(needs);
                             self.apply_adjustments(base, adjustments);
                             autoderef.finalize();
 
@@ -3102,10 +3169,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // Check tuple index expressions
     fn check_tup_field(&self,
                        expr: &'gcx hir::Expr,
-                       lvalue_pref: LvaluePreference,
+                       needs: Needs,
                        base: &'gcx hir::Expr,
                        idx: codemap::Spanned<usize>) -> Ty<'tcx> {
-        let expr_t = self.check_expr_with_lvalue_pref(base, lvalue_pref);
+        let expr_t = self.check_expr_with_needs(base, needs);
         let expr_t = self.structurally_resolved_type(expr.span,
                                                      expr_t);
         let mut private_candidate = None;
@@ -3146,7 +3213,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             };
 
             if let Some(field_ty) = field {
-                let adjustments = autoderef.adjust_steps(lvalue_pref);
+                let adjustments = autoderef.adjust_steps(needs);
                 self.apply_adjustments(base, adjustments);
                 autoderef.finalize();
                 return field_ty;
@@ -3476,10 +3543,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// Note that inspecting a type's structure *directly* may expose the fact
     /// that there are actually multiple representations for `TyError`, so avoid
     /// that when err needs to be handled differently.
-    fn check_expr_with_expectation_and_lvalue_pref(&self,
+    fn check_expr_with_expectation_and_needs(&self,
                                                    expr: &'gcx hir::Expr,
                                                    expected: Expectation<'tcx>,
-                                                   lvalue_pref: LvaluePreference) -> Ty<'tcx> {
+                                                   needs: Needs) -> Ty<'tcx> {
         debug!(">> typechecking: expr={:?} expected={:?}",
                expr, expected);
 
@@ -3492,7 +3559,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.diverges.set(Diverges::Maybe);
         self.has_errors.set(false);
 
-        let ty = self.check_expr_kind(expr, expected, lvalue_pref);
+        let ty = self.check_expr_kind(expr, expected, needs);
 
         // Warn for non-block expressions with diverging children.
         match expr.node {
@@ -3526,7 +3593,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn check_expr_kind(&self,
                        expr: &'gcx hir::Expr,
                        expected: Expectation<'tcx>,
-                       lvalue_pref: LvaluePreference) -> Ty<'tcx> {
+                       needs: Needs) -> Ty<'tcx> {
         let tcx = self.tcx;
         let id = expr.id;
         match expr.node {
@@ -3560,22 +3627,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     NoExpectation
                 }
             };
-            let lvalue_pref = match unop {
-                hir::UnDeref => lvalue_pref,
-                _ => NoPreference
+            let needs = match unop {
+                hir::UnDeref => needs,
+                _ => Needs::None
             };
-            let mut oprnd_t = self.check_expr_with_expectation_and_lvalue_pref(&oprnd,
+            let mut oprnd_t = self.check_expr_with_expectation_and_needs(&oprnd,
                                                                                expected_inner,
-                                                                               lvalue_pref);
+                                                                               needs);
 
             if !oprnd_t.references_error() {
                 oprnd_t = self.structurally_resolved_type(expr.span, oprnd_t);
                 match unop {
                     hir::UnDeref => {
-                        if let Some(mt) = oprnd_t.builtin_deref(true, NoPreference) {
+                        if let Some(mt) = oprnd_t.builtin_deref(true) {
                             oprnd_t = mt.ty;
                         } else if let Some(ok) = self.try_overloaded_deref(
-                                expr.span, oprnd_t, lvalue_pref) {
+                                expr.span, oprnd_t, needs) {
                             let method = self.register_infer_ok_obligations(ok);
                             if let ty::TyRef(region, mt) = method.sig.inputs()[0].sty {
                                 self.apply_adjustments(oprnd, vec![Adjustment {
@@ -3583,7 +3650,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     target: method.sig.inputs()[0]
                                 }]);
                             }
-                            oprnd_t = self.make_overloaded_lvalue_return_type(method).ty;
+                            oprnd_t = self.make_overloaded_place_return_type(method).ty;
                             self.write_method_call(expr.hir_id, method);
                         } else {
                             type_error_struct!(tcx.sess, expr.span, oprnd_t, E0614,
@@ -3614,8 +3681,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let hint = expected.only_has_type(self).map_or(NoExpectation, |ty| {
                 match ty.sty {
                     ty::TyRef(_, ref mt) | ty::TyRawPtr(ref mt) => {
-                        if self.tcx.expr_is_lval(&oprnd) {
-                            // Lvalues may legitimately have unsized types.
+                        if self.is_place_expr(&oprnd) {
+                            // Places may legitimately have unsized types.
                             // For example, dereferences of a fat pointer and
                             // the last field of a struct can be unsized.
                             ExpectHasType(mt.ty)
@@ -3626,8 +3693,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     _ => NoExpectation
                 }
             });
-            let lvalue_pref = LvaluePreference::from_mutbl(mutbl);
-            let ty = self.check_expr_with_expectation_and_lvalue_pref(&oprnd, hint, lvalue_pref);
+            let needs = Needs::maybe_mut_place(mutbl);
+            let ty = self.check_expr_with_expectation_and_needs(&oprnd, hint, needs);
 
             let tm = ty::TypeAndMut { ty: ty, mutbl: mutbl };
             if tm.ty.references_error() {
@@ -3771,7 +3838,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             tcx.types.never
           }
           hir::ExprAssign(ref lhs, ref rhs) => {
-            let lhs_ty = self.check_expr_with_lvalue_pref(&lhs, PreferMutLvalue);
+            let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
 
             let rhs_ty = self.check_expr_coercable_to_type(&rhs, lhs_ty);
 
@@ -3783,7 +3850,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 _ => {
                     // Only check this if not in an `if` condition, as the
                     // mistyped comparison help is more appropriate.
-                    if !self.tcx.expr_is_lval(&lhs) {
+                    if !self.is_place_expr(&lhs) {
                         struct_span_err!(self.tcx.sess, expr.span, E0070,
                                          "invalid left-hand side expression")
                             .span_label(expr.span, "left-hand of expression not valid")
@@ -3872,7 +3939,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               self.check_call(expr, &callee, args, expected)
           }
           hir::ExprMethodCall(ref segment, span, ref args) => {
-              self.check_method_call(expr, segment, span, args, expected, lvalue_pref)
+              self.check_method_call(expr, segment, span, args, expected, needs)
           }
           hir::ExprCast(ref e, ref t) => {
             // Find the type of `e`. Supply hints based on the type we are casting to,
@@ -4015,13 +4082,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.check_expr_struct(expr, expected, qpath, fields, base_expr)
           }
           hir::ExprField(ref base, ref field) => {
-            self.check_field(expr, lvalue_pref, &base, field)
+            self.check_field(expr, needs, &base, field)
           }
           hir::ExprTupField(ref base, idx) => {
-            self.check_tup_field(expr, lvalue_pref, &base, idx)
+            self.check_tup_field(expr, needs, &base, idx)
           }
           hir::ExprIndex(ref base, ref idx) => {
-              let base_t = self.check_expr_with_lvalue_pref(&base, lvalue_pref);
+              let base_t = self.check_expr_with_needs(&base, needs);
               let idx_t = self.check_expr(&idx);
 
               if base_t.references_error() {
@@ -4030,7 +4097,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                   idx_t
               } else {
                   let base_t = self.structurally_resolved_type(expr.span, base_t);
-                  match self.lookup_indexing(expr, base, base_t, idx_t, lvalue_pref) {
+                  match self.lookup_indexing(expr, base, base_t, idx_t, needs) {
                       Some((index_ty, element_ty)) => {
                           self.demand_coerce(idx, idx_t, index_ty);
                           element_ty
@@ -4178,9 +4245,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // ref mut, for soundness (issue #23116). In particular, in
             // the latter case, we need to be clear that the type of the
             // referent for the reference that results is *equal to* the
-            // type of the lvalue it is referencing, and not some
+            // type of the place it is referencing, and not some
             // supertype thereof.
-            let init_ty = self.check_expr_with_lvalue_pref(init, LvaluePreference::from_mutbl(m));
+            let init_ty = self.check_expr_with_needs(init, Needs::maybe_mut_place(m));
             self.demand_eqtype(init.span, local_ty, init_ty);
             init_ty
         } else {
@@ -5023,7 +5090,7 @@ pub fn check_bounds_are_used<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let lifetime_count = generics.lifetimes().count();
 
     for leaf_ty in ty.walk() {
-        if let ty::TyParam(ParamTy {idx, ..}) = leaf_ty.sty {
+        if let ty::TyParam(ty::ParamTy {idx, ..}) = leaf_ty.sty {
             debug!("Found use of ty param num {}", idx);
             tps_used[idx as usize - lifetime_count] = true;
         } else if let ty::TyError = leaf_ty.sty {

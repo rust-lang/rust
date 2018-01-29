@@ -12,7 +12,6 @@ pub use self::Variance::*;
 pub use self::AssociatedItemContainer::*;
 pub use self::BorrowKind::*;
 pub use self::IntVarValue::*;
-pub use self::LvaluePreference::*;
 pub use self::fold::TypeFoldable;
 
 use hir::{map as hir_map, FreevarMap, TraitMap};
@@ -2099,21 +2098,6 @@ impl<'tcx> TyS<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum LvaluePreference {
-    PreferMutLvalue,
-    NoPreference
-}
-
-impl LvaluePreference {
-    pub fn from_mutbl(m: hir::Mutability) -> Self {
-        match m {
-            hir::MutMutable => PreferMutLvalue,
-            hir::MutImmutable => NoPreference,
-        }
-    }
-}
-
 impl BorrowKind {
     pub fn from_mutbl(m: hir::Mutability) -> BorrowKind {
         match m {
@@ -2189,60 +2173,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }
             None => {
                 bug!("Node id {} is not present in the node map", id);
-            }
-        }
-    }
-
-    pub fn expr_is_lval(self, expr: &hir::Expr) -> bool {
-         match expr.node {
-            hir::ExprPath(hir::QPath::Resolved(_, ref path)) => {
-                match path.def {
-                    Def::Local(..) | Def::Upvar(..) | Def::Static(..) | Def::Err => true,
-                    _ => false,
-                }
-            }
-
-            hir::ExprType(ref e, _) => {
-                self.expr_is_lval(e)
-            }
-
-            hir::ExprUnary(hir::UnDeref, _) |
-            hir::ExprField(..) |
-            hir::ExprTupField(..) |
-            hir::ExprIndex(..) => {
-                true
-            }
-
-            // Partially qualified paths in expressions can only legally
-            // refer to associated items which are always rvalues.
-            hir::ExprPath(hir::QPath::TypeRelative(..)) |
-
-            hir::ExprCall(..) |
-            hir::ExprMethodCall(..) |
-            hir::ExprStruct(..) |
-            hir::ExprTup(..) |
-            hir::ExprIf(..) |
-            hir::ExprMatch(..) |
-            hir::ExprClosure(..) |
-            hir::ExprBlock(..) |
-            hir::ExprRepeat(..) |
-            hir::ExprArray(..) |
-            hir::ExprBreak(..) |
-            hir::ExprAgain(..) |
-            hir::ExprRet(..) |
-            hir::ExprWhile(..) |
-            hir::ExprLoop(..) |
-            hir::ExprAssign(..) |
-            hir::ExprInlineAsm(..) |
-            hir::ExprAssignOp(..) |
-            hir::ExprLit(_) |
-            hir::ExprUnary(..) |
-            hir::ExprBox(..) |
-            hir::ExprAddrOf(..) |
-            hir::ExprBinary(..) |
-            hir::ExprYield(..) |
-            hir::ExprCast(..) => {
-                false
             }
         }
     }

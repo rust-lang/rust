@@ -170,7 +170,7 @@ fn build_borrowck_dataflow_data<'a, 'c, 'tcx, F>(this: &mut BorrowckCtxt<'a, 'tc
     if !force_analysis && move_data.is_empty() && all_loans.is_empty() {
         // large arrays of data inserted as constants can take a lot of
         // time and memory to borrow-check - see issue #36799. However,
-        // they don't have lvalues, so no borrow-check is actually needed.
+        // they don't have places, so no borrow-check is actually needed.
         // Recognize that case and skip borrow-checking.
         debug!("skipping loan propagation for {:?} because of no loans", body_id);
         return None;
@@ -384,9 +384,9 @@ impl ToInteriorKind for mc::InteriorKind {
 }
 
 // This can be:
-// - a pointer dereference (`*LV` in README.md)
+// - a pointer dereference (`*P` in README.md)
 // - a field reference, with an optional definition of the containing
-//   enum variant (`LV.f` in README.md)
+//   enum variant (`P.f` in README.md)
 // `DefId` is present when the field is part of struct that is in
 // a variant of an enum. For instance in:
 // `enum E { X { foo: u32 }, Y { foo: u32 }}`

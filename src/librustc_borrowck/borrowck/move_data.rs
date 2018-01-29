@@ -153,7 +153,7 @@ pub struct Assignment {
     /// span of node where assignment occurs
     pub span: Span,
 
-    /// id for l-value expression on lhs of assignment
+    /// id for place expression on lhs of assignment
     pub assignee_id: hir::ItemLocalId,
 }
 

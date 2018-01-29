@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-macro_rules! not_an_lvalue {
+macro_rules! not_a_place {
     ($thing:expr) => {
         $thing = 42;
         //~^ ERROR invalid left-hand side expression
@@ -16,5 +16,5 @@ macro_rules! not_an_lvalue {
 }
 
 fn main() {
-    not_an_lvalue!(99);
+    not_a_place!(99);
 }

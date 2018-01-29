@@ -86,7 +86,7 @@ impl MoveOutIndex {
 /// It follows a tree structure.
 ///
 /// Given `struct X { m: M, n: N }` and `x: X`, moves like `drop x.m;`
-/// move *out* of the l-value `x.m`.
+/// move *out* of the place `x.m`.
 ///
 /// The MovePaths representing `x.m` and `x.n` are siblings (that is,
 /// one of them will link to the other via the `next_sibling` field,
@@ -222,7 +222,7 @@ impl fmt::Debug for Init {
     }
 }
 
-/// Tables mapping from an l-value to its MovePathIndex.
+/// Tables mapping from a place to its MovePathIndex.
 #[derive(Debug)]
 pub struct MovePathLookup<'tcx> {
     locals: IndexVec<Local, MovePathIndex>,
@@ -247,7 +247,7 @@ pub enum LookupResult {
 impl<'tcx> MovePathLookup<'tcx> {
     // Unlike the builder `fn move_path_for` below, this lookup
     // alternative will *not* create a MovePath on the fly for an
-    // unknown l-value, but will rather return the nearest available
+    // unknown place, but will rather return the nearest available
     // parent.
     pub fn find(&self, place: &Place<'tcx>) -> LookupResult {
         match *place {

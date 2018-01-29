@@ -104,7 +104,7 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
 
     fn scope(&self, cmt: &mc::cmt<'tcx>) -> ty::Region<'tcx> {
         //! Returns the maximal region scope for the which the
-        //! lvalue `cmt` is guaranteed to be valid without any
+        //! place `cmt` is guaranteed to be valid without any
         //! rooting etc, and presuming `cmt` is not mutated.
 
         match cmt.cat {

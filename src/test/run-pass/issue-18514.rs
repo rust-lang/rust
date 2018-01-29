@@ -10,7 +10,7 @@
 
 // Test that we don't ICE when translating a generic impl method from
 // an extern crate that contains a match expression on a local
-// variable lvalue where one of the match case bodies contains an
+// variable place where one of the match case bodies contains an
 // expression that autoderefs through an overloaded generic deref
 // impl.
 

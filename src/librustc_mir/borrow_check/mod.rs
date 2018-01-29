@@ -35,8 +35,8 @@ use dataflow::{do_dataflow, DebugFormatted};
 use dataflow::FlowAtLocation;
 use dataflow::MoveDataParamEnv;
 use dataflow::{DataflowAnalysis, DataflowResultsConsumer};
-use dataflow::{MaybeInitializedLvals, MaybeUninitializedLvals};
-use dataflow::{EverInitializedLvals, MovingOutStatements};
+use dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
+use dataflow::{EverInitializedPlaces, MovingOutStatements};
 use dataflow::{BorrowData, Borrows, ReserveOrActivateIndex};
 use dataflow::{ActiveBorrows, Reservations};
 use dataflow::indexes::BorrowIndex;
@@ -160,7 +160,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         id,
         &attributes,
         &dead_unwinds,
-        MaybeInitializedLvals::new(tcx, mir, &mdpe),
+        MaybeInitializedPlaces::new(tcx, mir, &mdpe),
         |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]),
     ));
     let flow_uninits = FlowAtLocation::new(do_dataflow(
@@ -169,7 +169,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         id,
         &attributes,
         &dead_unwinds,
-        MaybeUninitializedLvals::new(tcx, mir, &mdpe),
+        MaybeUninitializedPlaces::new(tcx, mir, &mdpe),
         |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]),
     ));
     let flow_move_outs = FlowAtLocation::new(do_dataflow(
@@ -187,7 +187,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         id,
         &attributes,
         &dead_unwinds,
-        EverInitializedLvals::new(tcx, mir, &mdpe),
+        EverInitializedPlaces::new(tcx, mir, &mdpe),
         |bd, i| DebugFormatted::new(&bd.move_data().inits[i]),
     ));
 
@@ -607,7 +607,7 @@ enum ArtificialField {
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum ShallowOrDeep {
     /// From the RFC: "A *shallow* access means that the immediate
-    /// fields reached at LV are accessed, but references or pointers
+    /// fields reached at P are accessed, but references or pointers
     /// found within are not dereferenced. Right now, the only access
     /// that is shallow is an assignment like `x = ...;`, which would
     /// be a *shallow write* of `x`."

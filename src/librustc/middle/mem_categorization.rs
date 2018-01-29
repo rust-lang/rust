@@ -26,8 +26,8 @@
 //!       | E.comp    // access to an interior component
 //!
 //! Imagine a routine ToAddr(Expr) that evaluates an expression and returns an
-//! address where the result is to be found.  If Expr is an lvalue, then this
-//! is the address of the lvalue.  If Expr is an rvalue, this is the address of
+//! address where the result is to be found.  If Expr is a place, then this
+//! is the address of the place.  If Expr is an rvalue, this is the address of
 //! some temporary spot in memory where the result is stored.
 //!
 //! Now, cat_expr() classifies the expression Expr and the address A=ToAddr(Expr)
@@ -182,7 +182,7 @@ pub struct cmt_<'tcx> {
     pub id: ast::NodeId,           // id of expr/pat producing this value
     pub span: Span,                // span of same expr/pat
     pub cat: Categorization<'tcx>, // categorization of expr
-    pub mutbl: MutabilityCategory, // mutability of expr as lvalue
+    pub mutbl: MutabilityCategory, // mutability of expr as place
     pub ty: Ty<'tcx>,              // type of the expr (*see WARNING above*)
     pub note: Note,                // Note about the provenance of this cmt
 }
@@ -517,7 +517,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                     // a bind-by-ref means that the base_ty will be the type of the ident itself,
                     // but what we want here is the type of the underlying value being borrowed.
                     // So peel off one-level, turning the &T into T.
-                    match base_ty.builtin_deref(false, ty::NoPreference) {
+                    match base_ty.builtin_deref(false) {
                         Some(t) => t.ty,
                         None => {
                             debug!("By-ref binding of non-derefable type {:?}", base_ty);
@@ -603,7 +603,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         match expr.node {
           hir::ExprUnary(hir::UnDeref, ref e_base) => {
             if self.tables.is_method_call(expr) {
-                self.cat_overloaded_lvalue(expr, e_base, false)
+                self.cat_overloaded_place(expr, e_base, false)
             } else {
                 let base_cmt = self.cat_expr(&e_base)?;
                 self.cat_deref(expr, base_cmt, false)
@@ -631,7 +631,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 // The call to index() returns a `&T` value, which
                 // is an rvalue. That is what we will be
                 // dereferencing.
-                self.cat_overloaded_lvalue(expr, base, true)
+                self.cat_overloaded_place(expr, base, true)
             } else {
                 let base_cmt = self.cat_expr(&base)?;
                 self.cat_index(expr, base_cmt, expr_ty, InteriorOffsetKind::Index)
@@ -983,27 +983,27 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         ret
     }
 
-    fn cat_overloaded_lvalue(&self,
+    fn cat_overloaded_place(&self,
                              expr: &hir::Expr,
                              base: &hir::Expr,
                              implicit: bool)
                              -> McResult<cmt<'tcx>> {
-        debug!("cat_overloaded_lvalue: implicit={}", implicit);
+        debug!("cat_overloaded_place: implicit={}", implicit);
 
         // Reconstruct the output assuming it's a reference with the
         // same region and mutability as the receiver. This holds for
         // `Deref(Mut)::Deref(_mut)` and `Index(Mut)::index(_mut)`.
-        let lvalue_ty = self.expr_ty(expr)?;
+        let place_ty = self.expr_ty(expr)?;
         let base_ty = self.expr_ty_adjusted(base)?;
 
         let (region, mutbl) = match base_ty.sty {
             ty::TyRef(region, mt) => (region, mt.mutbl),
             _ => {
-                span_bug!(expr.span, "cat_overloaded_lvalue: base is not a reference")
+                span_bug!(expr.span, "cat_overloaded_place: base is not a reference")
             }
         };
         let ref_ty = self.tcx.mk_ref(region, ty::TypeAndMut {
-            ty: lvalue_ty,
+            ty: place_ty,
             mutbl,
         });
 
@@ -1019,7 +1019,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         debug!("cat_deref: base_cmt={:?}", base_cmt);
 
         let base_cmt_ty = base_cmt.ty;
-        let deref_ty = match base_cmt_ty.builtin_deref(true, ty::NoPreference) {
+        let deref_ty = match base_cmt_ty.builtin_deref(true) {
             Some(mt) => mt.ty,
             None => {
                 debug!("Explicit deref of non-derefable type: {:?}",
@@ -1386,7 +1386,7 @@ impl<'tcx> cmt_<'tcx> {
         }
     }
 
-    /// Returns `FreelyAliasable(_)` if this lvalue represents a freely aliasable pointer type.
+    /// Returns `FreelyAliasable(_)` if this place represents a freely aliasable pointer type.
     pub fn freely_aliasable(&self) -> Aliasability {
         // Maybe non-obvious: copied upvars can only be considered
         // non-aliasable in once closures, since any other kind can be
@@ -1453,7 +1453,7 @@ impl<'tcx> cmt_<'tcx> {
                 "static item".to_string()
             }
             Categorization::Rvalue(..) => {
-                "non-lvalue".to_string()
+                "non-place".to_string()
             }
             Categorization::Local(vid) => {
                 if tcx.hir.is_argument(vid) {

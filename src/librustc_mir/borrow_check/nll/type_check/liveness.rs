@@ -10,7 +10,7 @@
 
 use dataflow::{FlowAtLocation, FlowsAtLocation};
 use borrow_check::nll::region_infer::Cause;
-use dataflow::MaybeInitializedLvals;
+use dataflow::MaybeInitializedPlaces;
 use dataflow::move_paths::{HasMoveData, MoveData};
 use rustc::mir::{BasicBlock, Location, Mir};
 use rustc::mir::Local;
@@ -34,7 +34,7 @@ pub(super) fn generate<'gcx, 'tcx>(
     cx: &mut TypeChecker<'_, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
     liveness: &LivenessResults,
-    flow_inits: &mut FlowAtLocation<MaybeInitializedLvals<'_, 'gcx, 'tcx>>,
+    flow_inits: &mut FlowAtLocation<MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
 ) {
     let tcx = cx.tcx();
@@ -63,7 +63,7 @@ where
     tcx: TyCtxt<'typeck, 'gcx, 'tcx>,
     mir: &'gen Mir<'tcx>,
     liveness: &'gen LivenessResults,
-    flow_inits: &'gen mut FlowAtLocation<MaybeInitializedLvals<'flow, 'gcx, 'tcx>>,
+    flow_inits: &'gen mut FlowAtLocation<MaybeInitializedPlaces<'flow, 'gcx, 'tcx>>,
     move_data: &'gen MoveData<'tcx>,
 }
 

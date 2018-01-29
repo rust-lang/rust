@@ -60,7 +60,7 @@
 //! sort of a minor point so I've opted to leave it for later---after all
 //! we may want to adjust precisely when coercions occur.
 
-use check::{Diverges, FnCtxt};
+use check::{Diverges, FnCtxt, Needs};
 
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -69,8 +69,7 @@ use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::lint;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
-use rustc::ty::{self, LvaluePreference, TypeAndMut,
-                Ty, ClosureSubsts};
+use rustc::ty::{self, TypeAndMut, Ty, ClosureSubsts};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::error::TypeError;
 use rustc::ty::relate::RelateResult;
@@ -410,9 +409,9 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
             return success(vec![], ty, obligations);
         }
 
-        let pref = LvaluePreference::from_mutbl(mt_b.mutbl);
+        let needs = Needs::maybe_mut_place(mt_b.mutbl);
         let InferOk { value: mut adjustments, obligations: o }
-            = autoderef.adjust_steps_as_infer_ok(pref);
+            = autoderef.adjust_steps_as_infer_ok(needs);
         obligations.extend(o);
         obligations.extend(autoderef.into_obligations());
 

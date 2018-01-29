@@ -36,7 +36,7 @@ pub use self::storage_liveness::*;
 #[allow(dead_code)]
 pub(super) mod borrows;
 
-/// `MaybeInitializedLvals` tracks all l-values that might be
+/// `MaybeInitializedPlaces` tracks all places that might be
 /// initialized upon reaching a particular point in the control flow
 /// for a function.
 ///
@@ -63,35 +63,35 @@ pub(super) mod borrows;
 /// }
 /// ```
 ///
-/// To determine whether an l-value *must* be initialized at a
+/// To determine whether a place *must* be initialized at a
 /// particular control-flow point, one can take the set-difference
-/// between this data and the data from `MaybeUninitializedLvals` at the
+/// between this data and the data from `MaybeUninitializedPlaces` at the
 /// corresponding control-flow point.
 ///
 /// Similarly, at a given `drop` statement, the set-intersection
-/// between this data and `MaybeUninitializedLvals` yields the set of
-/// l-values that would require a dynamic drop-flag at that statement.
-pub struct MaybeInitializedLvals<'a, 'gcx: 'tcx, 'tcx: 'a> {
+/// between this data and `MaybeUninitializedPlaces` yields the set of
+/// places that would require a dynamic drop-flag at that statement.
+pub struct MaybeInitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &'a Mir<'tcx>,
     mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
 }
 
-impl<'a, 'gcx: 'tcx, 'tcx> MaybeInitializedLvals<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx: 'tcx, 'tcx> MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                mir: &'a Mir<'tcx>,
                mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
                -> Self
     {
-        MaybeInitializedLvals { tcx: tcx, mir: mir, mdpe: mdpe }
+        MaybeInitializedPlaces { tcx: tcx, mir: mir, mdpe: mdpe }
     }
 }
 
-impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for MaybeInitializedLvals<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
     fn move_data(&self) -> &MoveData<'tcx> { &self.mdpe.move_data }
 }
 
-/// `MaybeUninitializedLvals` tracks all l-values that might be
+/// `MaybeUninitializedPlaces` tracks all places that might be
 /// uninitialized upon reaching a particular point in the control flow
 /// for a function.
 ///
@@ -118,42 +118,42 @@ impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for MaybeInitializedLvals<'a, 'gcx, 'tcx>
 /// }
 /// ```
 ///
-/// To determine whether an l-value *must* be uninitialized at a
+/// To determine whether a place *must* be uninitialized at a
 /// particular control-flow point, one can take the set-difference
-/// between this data and the data from `MaybeInitializedLvals` at the
+/// between this data and the data from `MaybeInitializedPlaces` at the
 /// corresponding control-flow point.
 ///
 /// Similarly, at a given `drop` statement, the set-intersection
-/// between this data and `MaybeInitializedLvals` yields the set of
-/// l-values that would require a dynamic drop-flag at that statement.
-pub struct MaybeUninitializedLvals<'a, 'gcx: 'tcx, 'tcx: 'a> {
+/// between this data and `MaybeInitializedPlaces` yields the set of
+/// places that would require a dynamic drop-flag at that statement.
+pub struct MaybeUninitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &'a Mir<'tcx>,
     mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> MaybeUninitializedLvals<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                mir: &'a Mir<'tcx>,
                mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
                -> Self
     {
-        MaybeUninitializedLvals { tcx: tcx, mir: mir, mdpe: mdpe }
+        MaybeUninitializedPlaces { tcx: tcx, mir: mir, mdpe: mdpe }
     }
 }
 
-impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for MaybeUninitializedLvals<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
     fn move_data(&self) -> &MoveData<'tcx> { &self.mdpe.move_data }
 }
 
-/// `DefinitelyInitializedLvals` tracks all l-values that are definitely
+/// `DefinitelyInitializedPlaces` tracks all places that are definitely
 /// initialized upon reaching a particular point in the control flow
 /// for a function.
 ///
 /// FIXME: Note that once flow-analysis is complete, this should be
-/// the set-complement of MaybeUninitializedLvals; thus we can get rid
+/// the set-complement of MaybeUninitializedPlaces; thus we can get rid
 /// of one or the other of these two. I'm inclined to get rid of
-/// MaybeUninitializedLvals, simply because the sets will tend to be
+/// MaybeUninitializedPlaces, simply because the sets will tend to be
 /// smaller in this analysis and thus easier for humans to process
 /// when debugging.
 ///
@@ -180,43 +180,43 @@ impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for MaybeUninitializedLvals<'a, 'gcx, 'tc
 /// }
 /// ```
 ///
-/// To determine whether an l-value *may* be uninitialized at a
+/// To determine whether a place *may* be uninitialized at a
 /// particular control-flow point, one can take the set-complement
 /// of this data.
 ///
 /// Similarly, at a given `drop` statement, the set-difference between
-/// this data and `MaybeInitializedLvals` yields the set of l-values
+/// this data and `MaybeInitializedPlaces` yields the set of places
 /// that would require a dynamic drop-flag at that statement.
-pub struct DefinitelyInitializedLvals<'a, 'gcx: 'tcx, 'tcx: 'a> {
+pub struct DefinitelyInitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &'a Mir<'tcx>,
     mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx: 'a> DefinitelyInitializedLvals<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx: 'a> DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                mir: &'a Mir<'tcx>,
                mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
                -> Self
     {
-        DefinitelyInitializedLvals { tcx: tcx, mir: mir, mdpe: mdpe }
+        DefinitelyInitializedPlaces { tcx: tcx, mir: mir, mdpe: mdpe }
     }
 }
 
-impl<'a, 'gcx, 'tcx: 'a> HasMoveData<'tcx> for DefinitelyInitializedLvals<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx: 'a> HasMoveData<'tcx> for DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
     fn move_data(&self) -> &MoveData<'tcx> { &self.mdpe.move_data }
 }
 
 /// `MovingOutStatements` tracks the statements that perform moves out
-/// of particular l-values. More precisely, it tracks whether the
+/// of particular places. More precisely, it tracks whether the
 /// *effect* of such moves (namely, the uninitialization of the
-/// l-value in question) can reach some point in the control-flow of
+/// place in question) can reach some point in the control-flow of
 /// the function, or if that effect is "killed" by some intervening
-/// operation reinitializing that l-value.
+/// operation reinitializing that place.
 ///
 /// The resulting dataflow is a more enriched version of
-/// `MaybeUninitializedLvals`. Both structures on their own only tell
-/// you if an l-value *might* be uninitialized at a given point in the
+/// `MaybeUninitializedPlaces`. Both structures on their own only tell
+/// you if a place *might* be uninitialized at a given point in the
 /// control flow. But `MovingOutStatements` also includes the added
 /// data of *which* particular statement causing the deinitialization
 /// that the borrow checker's error message may need to report.
@@ -241,7 +241,7 @@ impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for MovingOutStatements<'a, 'gcx, 'tcx> {
     fn move_data(&self) -> &MoveData<'tcx> { &self.mdpe.move_data }
 }
 
-/// `EverInitializedLvals` tracks all l-values that might have ever been
+/// `EverInitializedPlaces` tracks all places that might have ever been
 /// initialized upon reaching a particular point in the control flow
 /// for a function, without an intervening `Storage Dead`.
 ///
@@ -270,28 +270,28 @@ impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for MovingOutStatements<'a, 'gcx, 'tcx> {
 ///     c = S;                                 // {a, b, c, d }
 /// }
 /// ```
-pub struct EverInitializedLvals<'a, 'gcx: 'tcx, 'tcx: 'a> {
+pub struct EverInitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &'a Mir<'tcx>,
     mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
 }
 
-impl<'a, 'gcx: 'tcx, 'tcx: 'a> EverInitializedLvals<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx: 'tcx, 'tcx: 'a> EverInitializedPlaces<'a, 'gcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                mir: &'a Mir<'tcx>,
                mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
                -> Self
     {
-        EverInitializedLvals { tcx: tcx, mir: mir, mdpe: mdpe }
+        EverInitializedPlaces { tcx: tcx, mir: mir, mdpe: mdpe }
     }
 }
 
-impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for EverInitializedLvals<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for EverInitializedPlaces<'a, 'gcx, 'tcx> {
     fn move_data(&self) -> &MoveData<'tcx> { &self.mdpe.move_data }
 }
 
 
-impl<'a, 'gcx, 'tcx> MaybeInitializedLvals<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
     fn update_bits(sets: &mut BlockSets<MovePathIndex>, path: MovePathIndex,
                    state: DropFlagState)
     {
@@ -302,7 +302,7 @@ impl<'a, 'gcx, 'tcx> MaybeInitializedLvals<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> MaybeUninitializedLvals<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
     fn update_bits(sets: &mut BlockSets<MovePathIndex>, path: MovePathIndex,
                    state: DropFlagState)
     {
@@ -313,7 +313,7 @@ impl<'a, 'gcx, 'tcx> MaybeUninitializedLvals<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> DefinitelyInitializedLvals<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
     fn update_bits(sets: &mut BlockSets<MovePathIndex>, path: MovePathIndex,
                    state: DropFlagState)
     {
@@ -324,7 +324,7 @@ impl<'a, 'gcx, 'tcx> DefinitelyInitializedLvals<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitDenotation for MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
     type Idx = MovePathIndex;
     fn name() -> &'static str { "maybe_init" }
     fn bits_per_block(&self) -> usize {
@@ -375,7 +375,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitDenotation for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
     type Idx = MovePathIndex;
     fn name() -> &'static str { "maybe_uninit" }
     fn bits_per_block(&self) -> usize {
@@ -430,7 +430,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitDenotation for DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
     type Idx = MovePathIndex;
     fn name() -> &'static str { "definite_init" }
     fn bits_per_block(&self) -> usize {
@@ -561,7 +561,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MovingOutStatements<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitDenotation for EverInitializedLvals<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitDenotation for EverInitializedPlaces<'a, 'gcx, 'tcx> {
     type Idx = InitIndex;
     fn name() -> &'static str { "ever_init" }
     fn bits_per_block(&self) -> usize {
@@ -657,21 +657,21 @@ impl<'a, 'gcx, 'tcx> BitDenotation for EverInitializedLvals<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitwiseOperator for MaybeInitializedLvals<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitwiseOperator for MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
     fn join(&self, pred1: usize, pred2: usize) -> usize {
         pred1 | pred2 // "maybe" means we union effects of both preds
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitwiseOperator for MaybeUninitializedLvals<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitwiseOperator for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
     fn join(&self, pred1: usize, pred2: usize) -> usize {
         pred1 | pred2 // "maybe" means we union effects of both preds
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitwiseOperator for DefinitelyInitializedLvals<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitwiseOperator for DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
     fn join(&self, pred1: usize, pred2: usize) -> usize {
         pred1 & pred2 // "definitely" means we intersect effects of both preds
@@ -685,7 +685,7 @@ impl<'a, 'gcx, 'tcx> BitwiseOperator for MovingOutStatements<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitwiseOperator for EverInitializedLvals<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitwiseOperator for EverInitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
     fn join(&self, pred1: usize, pred2: usize) -> usize {
         pred1 | pred2 // inits from both preds are in scope
@@ -702,21 +702,21 @@ impl<'a, 'gcx, 'tcx> BitwiseOperator for EverInitializedLvals<'a, 'gcx, 'tcx> {
 // propagating, or you start at all-ones and then use Intersect as
 // your merge when propagating.
 
-impl<'a, 'gcx, 'tcx> InitialFlow for MaybeInitializedLvals<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> InitialFlow for MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         false // bottom = uninitialized
     }
 }
 
-impl<'a, 'gcx, 'tcx> InitialFlow for MaybeUninitializedLvals<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> InitialFlow for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         false // bottom = initialized (start_block_effect counters this at outset)
     }
 }
 
-impl<'a, 'gcx, 'tcx> InitialFlow for DefinitelyInitializedLvals<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> InitialFlow for DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         true // bottom = initialized (start_block_effect counters this at outset)
@@ -730,7 +730,7 @@ impl<'a, 'gcx, 'tcx> InitialFlow for MovingOutStatements<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> InitialFlow for EverInitializedLvals<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> InitialFlow for EverInitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         false // bottom = no initialized variables by default

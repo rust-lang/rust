@@ -15,7 +15,7 @@ use borrow_check::nll::region_infer::Cause;
 use borrow_check::nll::region_infer::ClosureRegionRequirementsExt;
 use borrow_check::nll::universal_regions::UniversalRegions;
 use dataflow::FlowAtLocation;
-use dataflow::MaybeInitializedLvals;
+use dataflow::MaybeInitializedPlaces;
 use dataflow::move_paths::MoveData;
 use rustc::hir::def_id::DefId;
 use rustc::infer::{InferCtxt, InferOk, InferResult, LateBoundRegionConversionTime, UnitResult};
@@ -100,7 +100,7 @@ pub(crate) fn type_check<'gcx, 'tcx>(
     mir_def_id: DefId,
     universal_regions: &UniversalRegions<'tcx>,
     liveness: &LivenessResults,
-    flow_inits: &mut FlowAtLocation<MaybeInitializedLvals<'_, 'gcx, 'tcx>>,
+    flow_inits: &mut FlowAtLocation<MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
 ) -> MirTypeckRegionConstraints<'tcx> {
     let body_id = infcx.tcx.hir.as_local_node_id(mir_def_id).unwrap();
@@ -397,7 +397,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         let base_ty = base.to_ty(tcx);
         match *pi {
             ProjectionElem::Deref => {
-                let deref_ty = base_ty.builtin_deref(true, ty::LvaluePreference::NoPreference);
+                let deref_ty = base_ty.builtin_deref(true);
                 PlaceTy::Ty {
                     ty: deref_ty.map(|t| t.ty).unwrap_or_else(|| {
                         span_mirbug_and_err!(self, place, "deref of non-pointer {:?}", base_ty)

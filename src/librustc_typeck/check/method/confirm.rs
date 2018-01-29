@@ -11,11 +11,11 @@
 use super::{probe, MethodCallee};
 
 use astconv::AstConv;
-use check::{FnCtxt, LvalueOp, callee};
+use check::{FnCtxt, PlaceOp, callee, Needs};
 use hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::traits;
-use rustc::ty::{self, LvaluePreference, NoPreference, PreferMutLvalue, Ty};
+use rustc::ty::{self, Ty};
 use rustc::ty::subst::Subst;
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, OverloadedDeref};
 use rustc::ty::fold::TypeFoldable;
@@ -136,7 +136,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         };
 
         if let Some(hir::MutMutable) = pick.autoref {
-            self.convert_lvalue_derefs_to_mutable();
+            self.convert_place_derefs_to_mutable();
         }
 
         ConfirmResult { callee, illegal_sized_bound }
@@ -155,7 +155,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         let (_, n) = autoderef.nth(pick.autoderefs).unwrap();
         assert_eq!(n, pick.autoderefs);
 
-        let mut adjustments = autoderef.adjust_steps(LvaluePreference::NoPreference);
+        let mut adjustments = autoderef.adjust_steps(Needs::None);
 
         let mut target = autoderef.unambiguous_final_ty();
 
@@ -416,7 +416,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
     /// When we select a method with a mutable autoref, we have to go convert any
     /// auto-derefs, indices, etc from `Deref` and `Index` into `DerefMut` and `IndexMut`
     /// respectively.
-    fn convert_lvalue_derefs_to_mutable(&self) {
+    fn convert_place_derefs_to_mutable(&self) {
         // Gather up expressions we want to munge.
         let mut exprs = Vec::new();
         exprs.push(self.self_expr);
@@ -431,14 +431,14 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             }
         }
 
-        debug!("convert_lvalue_derefs_to_mutable: exprs={:?}", exprs);
+        debug!("convert_place_derefs_to_mutable: exprs={:?}", exprs);
 
         // Fix up autoderefs and derefs.
         for (i, &expr) in exprs.iter().rev().enumerate() {
-            debug!("convert_lvalue_derefs_to_mutable: i={} expr={:?}", i, expr);
+            debug!("convert_place_derefs_to_mutable: i={} expr={:?}", i, expr);
 
             // Fix up the autoderefs. Autorefs can only occur immediately preceding
-            // overloaded lvalue ops, and will be fixed by them in order to get
+            // overloaded place ops, and will be fixed by them in order to get
             // the correct region.
             let mut source = self.node_ty(expr.hir_id);
             // Do not mutate adjustments in place, but rather take them,
@@ -449,10 +449,10 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                                            .adjustments_mut()
                                            .remove(expr.hir_id);
             if let Some(mut adjustments) = previous_adjustments {
-                let pref = LvaluePreference::PreferMutLvalue;
+                let needs = Needs::MutPlace;
                 for adjustment in &mut adjustments {
                     if let Adjust::Deref(Some(ref mut deref)) = adjustment.kind {
-                        if let Some(ok) = self.try_overloaded_deref(expr.span, source, pref) {
+                        if let Some(ok) = self.try_overloaded_deref(expr.span, source, needs) {
                             let method = self.register_infer_ok_obligations(ok);
                             if let ty::TyRef(region, mt) = method.sig.output().sty {
                                 *deref = OverloadedDeref {
@@ -470,28 +470,28 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             match expr.node {
                 hir::ExprIndex(ref base_expr, ref index_expr) => {
                     let index_expr_ty = self.node_ty(index_expr.hir_id);
-                    self.convert_lvalue_op_to_mutable(
-                        LvalueOp::Index, expr, base_expr, &[index_expr_ty]);
+                    self.convert_place_op_to_mutable(
+                        PlaceOp::Index, expr, base_expr, &[index_expr_ty]);
                 }
                 hir::ExprUnary(hir::UnDeref, ref base_expr) => {
-                    self.convert_lvalue_op_to_mutable(
-                        LvalueOp::Deref, expr, base_expr, &[]);
+                    self.convert_place_op_to_mutable(
+                        PlaceOp::Deref, expr, base_expr, &[]);
                 }
                 _ => {}
             }
         }
     }
 
-    fn convert_lvalue_op_to_mutable(&self,
-                                    op: LvalueOp,
+    fn convert_place_op_to_mutable(&self,
+                                    op: PlaceOp,
                                     expr: &hir::Expr,
                                     base_expr: &hir::Expr,
                                     arg_tys: &[Ty<'tcx>])
     {
-        debug!("convert_lvalue_op_to_mutable({:?}, {:?}, {:?}, {:?})",
+        debug!("convert_place_op_to_mutable({:?}, {:?}, {:?}, {:?})",
                op, expr, base_expr, arg_tys);
         if !self.tables.borrow().is_method_call(expr) {
-            debug!("convert_lvalue_op_to_mutable - builtin, nothing to do");
+            debug!("convert_place_op_to_mutable - builtin, nothing to do");
             return
         }
 
@@ -499,24 +499,24 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             .map_or_else(|| self.node_ty(expr.hir_id), |adj| adj.target);
         let base_ty = self.resolve_type_vars_if_possible(&base_ty);
 
-        // Need to deref because overloaded lvalue ops take self by-reference.
-        let base_ty = base_ty.builtin_deref(false, NoPreference)
-            .expect("lvalue op takes something that is not a ref")
+        // Need to deref because overloaded place ops take self by-reference.
+        let base_ty = base_ty.builtin_deref(false)
+            .expect("place op takes something that is not a ref")
             .ty;
 
-        let method = self.try_overloaded_lvalue_op(
-            expr.span, base_ty, arg_tys, PreferMutLvalue, op);
+        let method = self.try_overloaded_place_op(
+            expr.span, base_ty, arg_tys, Needs::MutPlace, op);
         let method = match method {
             Some(ok) => self.register_infer_ok_obligations(ok),
             None => return self.tcx.sess.delay_span_bug(expr.span, "re-trying op failed")
         };
-        debug!("convert_lvalue_op_to_mutable: method={:?}", method);
+        debug!("convert_place_op_to_mutable: method={:?}", method);
         self.write_method_call(expr.hir_id, method);
 
         let (region, mutbl) = if let ty::TyRef(r, mt) = method.sig.inputs()[0].sty {
             (r, mt.mutbl)
         } else {
-            span_bug!(expr.span, "input to lvalue op is not a ref?");
+            span_bug!(expr.span, "input to place op is not a ref?");
         };
 
         // Convert the autoref in the base expr to mutable with the correct
@@ -529,7 +529,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             let mut source = base_expr_ty;
             for adjustment in &mut adjustments[..] {
                 if let Adjust::Borrow(AutoBorrow::Ref(..)) = adjustment.kind {
-                    debug!("convert_lvalue_op_to_mutable: converting autoref {:?}", adjustment);
+                    debug!("convert_place_op_to_mutable: converting autoref {:?}", adjustment);
                     adjustment.kind = Adjust::Borrow(AutoBorrow::Ref(region, mutbl));
                     adjustment.target = self.tcx.mk_ref(region, ty::TypeAndMut {
                         ty: source,

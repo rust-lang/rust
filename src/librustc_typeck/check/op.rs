@@ -10,9 +10,9 @@
 
 //! Code related to processing overloaded binary and unary operators.
 
-use super::FnCtxt;
+use super::{FnCtxt, Needs};
 use super::method::MethodCallee;
-use rustc::ty::{self, Ty, TypeFoldable, NoPreference, PreferMutLvalue, TypeVariants};
+use rustc::ty::{self, Ty, TypeFoldable, TypeVariants};
 use rustc::ty::TypeVariants::{TyStr, TyRef};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
 use rustc::infer::type_variable::TypeVariableOrigin;
@@ -40,10 +40,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             return_ty
         };
 
-        let tcx = self.tcx;
-        if !tcx.expr_is_lval(lhs_expr) {
+        if !self.is_place_expr(lhs_expr) {
             struct_span_err!(
-                tcx.sess, lhs_expr.span,
+                self.tcx.sess, lhs_expr.span,
                 E0067, "invalid left-hand side expression")
             .span_label(
                 lhs_expr.span,
@@ -166,18 +165,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                op,
                is_assign);
 
-        let lhs_pref = match is_assign {
-            IsAssign::Yes => PreferMutLvalue,
-            IsAssign::No => NoPreference
+        let lhs_needs = match is_assign {
+            IsAssign::Yes => Needs::MutPlace,
+            IsAssign::No => Needs::None
         };
         // Find a suitable supertype of the LHS expression's type, by coercing to
         // a type variable, to pass as the `Self` to the trait, avoiding invariant
         // trait matching creating lifetime constraints that are too strict.
         // E.g. adding `&'a T` and `&'b T`, given `&'x T: Add<&'x T>`, will result
         // in `&'a T <: &'x T` and `&'b T <: &'x T`, instead of `'a = 'b = 'x`.
-        let lhs_ty = self.check_expr_coercable_to_type_with_lvalue_pref(lhs_expr,
+        let lhs_ty = self.check_expr_coercable_to_type_with_needs(lhs_expr,
             self.next_ty_var(TypeVariableOrigin::MiscVariable(lhs_expr.span)),
-            lhs_pref);
+            lhs_needs);
         let lhs_ty = self.resolve_type_vars_with_obligations(lhs_ty);
 
         // NB: As we have not yet type-checked the RHS, we don't have the
