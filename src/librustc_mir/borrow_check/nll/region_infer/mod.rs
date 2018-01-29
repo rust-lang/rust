@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::collections::HashMap;
+
 use super::universal_regions::UniversalRegions;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
@@ -22,6 +24,7 @@ use rustc::mir::{ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegi
 use rustc::traits::ObligationCause;
 use rustc::ty::{self, RegionVid, Ty, TypeFoldable};
 use rustc::util::common::ErrorReported;
+use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_errors::DiagnosticBuilder;
 use std::fmt;
@@ -452,8 +455,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// satisfied. Note that some values may grow **too** large to be
     /// feasible, but we check this later.
     fn propagate_constraints(&mut self, mir: &Mir<'tcx>) {
-        let mut changed = true;
-
         debug!("propagate_constraints()");
         debug!("propagate_constraints: constraints={:#?}", {
             let mut constraints: Vec<_> = self.constraints.iter().collect();
@@ -465,35 +466,63 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // constraints we have accumulated.
         let mut inferred_values = self.liveness_constraints.clone();
 
-        while changed {
-            changed = false;
-            debug!("propagate_constraints: --------------------");
-            for constraint in &self.constraints {
-                debug!("propagate_constraints: constraint={:?}", constraint);
+        let dependency_map = self.build_dependency_map();
 
-                // Grow the value as needed to accommodate the
-                // outlives constraint.
-                let Ok(made_changes) = self.dfs(
-                    mir,
-                    CopyFromSourceToTarget {
-                        source_region: constraint.sub,
-                        target_region: constraint.sup,
-                        inferred_values: &mut inferred_values,
-                        constraint_point: constraint.point,
-                        constraint_span: constraint.span,
-                    },
-                );
+        // Constraints that may need to be repropagated (initially all):
+        let mut dirty_list: Vec<_> = (0..self.constraints.len()).collect();
 
-                if made_changes {
-                    debug!("propagate_constraints:   sub={:?}", constraint.sub);
-                    debug!("propagate_constraints:   sup={:?}", constraint.sup);
-                    changed = true;
+        // Set to 0 for each constraint that is on the dirty list:
+        let mut clean_bit_vec = BitVector::new(dirty_list.len());
+
+        debug!("propagate_constraints: --------------------");
+        while let Some(constraint_idx) = dirty_list.pop() {
+            clean_bit_vec.insert(constraint_idx);
+
+            let constraint = &self.constraints[constraint_idx];
+            debug!("propagate_constraints: constraint={:?}", constraint);
+
+            // Grow the value as needed to accommodate the
+            // outlives constraint.
+            let Ok(made_changes) = self.dfs(
+                mir,
+                CopyFromSourceToTarget {
+                    source_region: constraint.sub,
+                    target_region: constraint.sup,
+                    inferred_values: &mut inferred_values,
+                    constraint_point: constraint.point,
+                    constraint_span: constraint.span,
+                },
+            );
+
+            if made_changes {
+                debug!("propagate_constraints:   sub={:?}", constraint.sub);
+                debug!("propagate_constraints:   sup={:?}", constraint.sup);
+
+                for &dep_idx in dependency_map.get(&constraint.sup).unwrap_or(&vec![]) {
+                    if clean_bit_vec.remove(dep_idx) {
+                        dirty_list.push(dep_idx);
+                    }
                 }
             }
+
             debug!("\n");
         }
 
         self.inferred_values = Some(inferred_values);
+    }
+
+    /// Builds up a map from each region variable X to a vector with the
+    /// indices of constraints that need to be re-evaluated when X changes.
+    /// These are constraints like Y: X @ P -- so if X changed, we may
+    /// need to grow Y.
+    fn build_dependency_map(&self) -> HashMap<RegionVid, Vec<usize>> {
+        let mut map = HashMap::new();
+
+        for (idx, constraint) in self.constraints.iter().enumerate() {
+            map.entry(constraint.sub).or_insert(Vec::new()).push(idx);
+        }
+
+        map
     }
 
     /// Once regions have been propagated, this method is used to see

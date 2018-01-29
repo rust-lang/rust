@@ -51,6 +51,17 @@ impl BitVector {
         new_value != value
     }
 
+    /// Returns true if the bit has changed.
+    #[inline]
+    pub fn remove(&mut self, bit: usize) -> bool {
+        let (word, mask) = word_mask(bit);
+        let data = &mut self.data[word];
+        let value = *data;
+        let new_value = value & !mask;
+        *data = new_value;
+        new_value != value
+    }
+
     #[inline]
     pub fn insert_all(&mut self, all: &BitVector) -> bool {
         assert!(self.data.len() == all.data.len());
