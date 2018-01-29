@@ -480,7 +480,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for OptimizationFinder<'b, 'a, 'tcx> {
         &mut self,
         block: BasicBlock,
         kind: &TerminatorKind<'tcx>,
-        location: Location,
+        _location: Location,
     ) {
         match kind {
             TerminatorKind::SwitchInt { discr: value, .. } |
@@ -503,7 +503,9 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for OptimizationFinder<'b, 'a, 'tcx> {
                     if let TerminatorKind::Assert { expected, msg, .. } = kind {
                         if Value::ByVal(PrimVal::from_bool(*expected)) != value.0 {
                             let span = self.mir[block]
-                                .statements[location.statement_index]
+                                .terminator
+                                .as_ref()
+                                .unwrap()
                                 .source_info
                                 .span;
                             let node_id = self
