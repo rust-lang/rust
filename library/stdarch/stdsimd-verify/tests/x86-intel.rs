@@ -120,7 +120,10 @@ fn verify_all_signatures() {
     'outer:
     for rust in FUNCTIONS {
         match rust.name {
-            // FIXME(#307)
+            // These aren't defined by Intel but they're defined by what appears
+            // to be all other compilers. For more information see
+            // rust-lang-nursery/stdsimd#307, and otherwise these signatures
+            // have all been manually verified.
             "__readeflags" |
             "__writeeflags" |
             "__cpuid_count" |
