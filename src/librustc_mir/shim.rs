@@ -310,6 +310,7 @@ fn build_clone_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             )
         }
         ty::TyTuple(tys, _) => builder.tuple_like_shim(&**tys, AggregateKind::Tuple),
+        ty::TyAdt(adt, substs) => builder.enum_shim(adt, substs),
         _ => {
             bug!("clone shim for `{:?}` which is not `Copy` and is not an aggregate", self_ty)
         }
@@ -624,6 +625,87 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
 
         // BB #9 (resume)
         self.block(vec![], TerminatorKind::Resume, true);
+    }
+
+    fn enum_shim(&mut self, adt: &'tcx ty::AdtDef, substs: &'tcx Substs<'tcx>) {
+        if !adt.is_enum() {
+            bug!("We only make Clone shims for enum ADTs");
+        }
+        let receiver = Place::Local(Local::new(1+0)).deref();
+        // should be u128 maybe?
+        let discr_ty = self.tcx.types.usize;
+        let discr = self.make_place(Mutability::Not, discr_ty);
+        let assign_discr = self.make_statement(
+            StatementKind::Assign(
+                discr.clone(),
+                Rvalue::Discriminant(receiver.clone())
+            )
+        );
+        let switch = self.make_enum_match(adt, substs, discr, receiver);
+        self.block(vec![assign_discr], switch, false);
+    }
+
+    fn make_enum_match(&mut self, adt: &'tcx ty::AdtDef,
+                       substs: &'tcx Substs<'tcx>,
+                       discr: Place<'tcx>,
+                       receiver: Place<'tcx>) -> TerminatorKind<'tcx> {
+
+        let mut values = vec![];
+        let mut targets = vec![];
+        let mut blocks = 0;
+        for (idx, variant) in adt.variants.iter().enumerate() {
+            values.push(adt.discriminant_for_variant(self.tcx, idx));
+
+            let variant_place = receiver.clone().downcast(adt, idx);
+            let mut returns = vec![];
+            // FIXME(Manishearth) this code has a lot in common
+            // with tuple_like_shim
+            for (i, field) in variant.fields.iter().enumerate() {
+                let field_ty = field.ty(self.tcx, substs);
+                let receiver_field = variant_place.clone().field(Field::new(i), field_ty);
+
+                // BB (blocks + 2i)
+                returns.push(
+                    self.make_clone_call(
+                        &field_ty,
+                        receiver_field,
+                        BasicBlock::new(blocks + 2 * i + 2),
+                        BasicBlock::new(blocks + 2 * i + 1),
+                    )
+                );
+                // BB #(2i + 1) (cleanup)
+                if i == 0 {
+                    // Nothing to drop, just resume.
+                    self.block(vec![], TerminatorKind::Resume, true);
+                } else {
+                    // Drop previous field and goto previous cleanup block.
+                    self.block(vec![], TerminatorKind::Drop {
+                        location: returns[i - 1].clone(),
+                        target: BasicBlock::new(blocks + 2 * i - 1),
+                        unwind: None,
+                    }, true);
+                }
+            }
+            let ret_statement = self.make_statement(
+                StatementKind::Assign(
+                    Place::Local(RETURN_PLACE),
+                    Rvalue::Aggregate(
+                        box AggregateKind::Adt(adt, idx, substs, None),
+                        returns.into_iter().map(Operand::Move).collect()
+                    )
+                )
+            );
+            targets.push(self.block(vec![ret_statement], TerminatorKind::Return, false));
+            blocks += variant.fields.len() * 2 + 1;
+        }
+        // the nonexistant extra case
+        targets.push(self.block(vec![], TerminatorKind::Abort, true));
+        TerminatorKind::SwitchInt {
+            discr: Operand::Move(discr),
+            switch_ty: self.tcx.types.usize,
+            values: From::from(values),
+            targets,
+        }
     }
 
     fn tuple_like_shim(&mut self, tys: &[ty::Ty<'tcx>], kind: AggregateKind<'tcx>) {
