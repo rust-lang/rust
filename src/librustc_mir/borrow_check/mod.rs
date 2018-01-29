@@ -607,7 +607,7 @@ enum ArtificialField {
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum ShallowOrDeep {
     /// From the RFC: "A *shallow* access means that the immediate
-    /// fields reached at LV are accessed, but references or pointers
+    /// fields reached at P are accessed, but references or pointers
     /// found within are not dereferenced. Right now, the only access
     /// that is shallow is an assignment like `x = ...;`, which would
     /// be a *shallow write* of `x`."

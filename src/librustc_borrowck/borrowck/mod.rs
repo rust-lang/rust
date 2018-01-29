@@ -384,9 +384,9 @@ impl ToInteriorKind for mc::InteriorKind {
 }
 
 // This can be:
-// - a pointer dereference (`*LV` in README.md)
+// - a pointer dereference (`*P` in README.md)
 // - a field reference, with an optional definition of the containing
-//   enum variant (`LV.f` in README.md)
+//   enum variant (`P.f` in README.md)
 // `DefId` is present when the field is part of struct that is in
 // a variant of an enum. For instance in:
 // `enum E { X { foo: u32 }, Y { foo: u32 }}`
