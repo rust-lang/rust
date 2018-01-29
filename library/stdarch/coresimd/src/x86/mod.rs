@@ -415,11 +415,7 @@ pub use self::i586::*;
 //
 // This module is not available for `i586` targets,
 // but available for all `i686` targets by default
-#[cfg(any(all(target_arch = "x86", target_feature = "sse2"),
-          target_arch = "x86_64"))]
 mod i686;
-#[cfg(any(all(target_arch = "x86", target_feature = "sse2"),
-          target_arch = "x86_64"))]
 pub use self::i686::*;
 
 #[cfg(target_arch = "x86_64")]
