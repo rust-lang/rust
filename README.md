@@ -1,6 +1,7 @@
 # rust-semverver
 
-[![Build Status](https://travis-ci.org/ibabushkin/rust-semverver.svg?branch=master)](https://travis-ci.org/ibabushkin/rust-semverver)
+[![Build
+Status](https://travis-ci.org/rust-lang-nursery/rust-semverver.svg?branch=master)](https://travis-ci.org/rust-lang-nursery/rust-semverver)
 
 This repository is hosting a proof-of-concept implementation of an automatic tool checking
 rust library crates for semantic versioning adherence, developed during the Google Summer
@@ -9,7 +10,7 @@ analyzes the current crate's source code for changes compared to the most recent
 on `crates.io`.
 
 Details on the work done during GSoC 2017 can be found
-[here](https://github.com/ibabushkin/rust-semverver/blob/master/doc/gsoc.md).
+[here](https://github.com/rust-lang-nursery/rust-semverver/blob/master/doc/gsoc.md).
 
 ## Background
 
@@ -19,7 +20,7 @@ said dummy and all necessary analysis is performed in that context, where type i
 and other resources are available.
 
 More information on the inner workings of the tool can be found
-[here](https://github.com/ibabushkin/rust-semverver/blob/master/doc/impl_notes.md).
+[here](https://github.com/rust-lang-nursery/rust-semverver/blob/master/doc/impl_notes.md).
 
 ## Installation
 
@@ -30,7 +31,7 @@ If you are already using Rust nightly and have successfully installed tools like
 `cargo add` and `cargo clippy`, just do:
 
 ```sh
-$ cargo +nightly install --git https://github.com/ibabushkin/rust-semverver
+$ cargo +nightly install --git https://github.com/rust-lang-nursery/rust-semverver
 ```
 
 <details>
@@ -44,7 +45,7 @@ $ cargo +nightly install --git https://github.com/ibabushkin/rust-semverver
 $ rustup update nightly
 $ rustup default nightly
 
-$ git clone https://github.com/ibabushkin/rust-semverver
+$ git clone https://github.com/rust-lang-nursery/rust-semverver
 $ cd rust-semverver
 $ cargo install
 ```
