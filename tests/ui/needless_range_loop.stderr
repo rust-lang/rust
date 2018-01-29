@@ -1,37 +1,30 @@
 error: the loop variable `i` is only used to index `ns`.
-  --> $DIR/needless_range_loop.rs:8:5
-   |
-8  | /     for i in 3..10 {
-9  | |         println!("{}", ns[i]);
-10 | |     }
-   | |_____^
-   |
-   = note: `-D needless-range-loop` implied by `-D warnings`
+ --> $DIR/needless_range_loop.rs:8:14
+  |
+8 |     for i in 3..10 {
+  |              ^^^^^
+  |
+  = note: `-D needless-range-loop` implied by `-D warnings`
 help: consider using an iterator
-   |
-8  |     for <item> in ns.iter().take(10).skip(3) {
-   |
+  |
+8 |     for <item> in ns.iter().take(10).skip(3) {
+  |
 
 error: the loop variable `i` is only used to index `ms`.
-  --> $DIR/needless_range_loop.rs:29:5
+  --> $DIR/needless_range_loop.rs:29:14
    |
-29 | /     for i in 0..ms.len() {
-30 | |         ms[i] *= 2;
-31 | |     }
-   | |_____^
+29 |     for i in 0..ms.len() {
+   |              ^^^^^^^^^^^
 help: consider using an iterator
    |
 29 |     for <item> in &mut ms {
    |
 
 error: the loop variable `i` is only used to index `ms`.
-  --> $DIR/needless_range_loop.rs:35:5
+  --> $DIR/needless_range_loop.rs:35:14
    |
-35 | /     for i in 0..ms.len() {
-36 | |         let x = &mut ms[i];
-37 | |         *x *= 2;
-38 | |     }
-   | |_____^
+35 |     for i in 0..ms.len() {
+   |              ^^^^^^^^^^^
 help: consider using an iterator
    |
 35 |     for <item> in &mut ms {
