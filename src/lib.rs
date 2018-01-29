@@ -56,32 +56,32 @@ pub use self::summary::Summary;
 
 #[macro_use]
 mod utils;
-mod shape;
-mod spanned;
-pub mod config;
-pub mod codemap;
-pub mod filemap;
-pub mod file_lines;
-pub mod visitor;
+mod chains;
 mod checkstyle;
 mod closures;
-mod items;
-mod missed_spans;
-mod lists;
-mod types;
+pub mod codemap;
+mod comment;
+pub mod config;
 mod expr;
+pub mod file_lines;
+pub mod filemap;
 mod imports;
 mod issues;
-mod rewrite;
-mod string;
-mod comment;
-pub mod modules;
-pub mod rustfmt_diff;
-mod chains;
+mod items;
+mod lists;
 mod macros;
+mod missed_spans;
+pub mod modules;
 mod patterns;
+mod rewrite;
+pub mod rustfmt_diff;
+mod shape;
+mod spanned;
+mod string;
 mod summary;
+mod types;
 mod vertical;
+pub mod visitor;
 
 #[derive(Clone, Copy)]
 pub enum ErrorKind {
