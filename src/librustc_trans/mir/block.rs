@@ -351,17 +351,10 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                     .max(tcx.data_layout.pointer_align);
 
                 // Put together the arguments to the panic entry point.
-                let (lang_item, args, const_err) = match *msg {
+                let (lang_item, args) = match *msg {
                     mir::AssertMessage::BoundsCheck { ref len, ref index } => {
                         let len = self.trans_operand(&mut bx, len).immediate();
                         let index = self.trans_operand(&mut bx, index).immediate();
-
-                        let const_err = common::const_to_opt_u128(len, false)
-                            .and_then(|len| common::const_to_opt_u128(index, false)
-                                .map(|index| format!(
-                                    "index out of bounds: the len is {} but the index is {}",
-                                    len, index,
-                                )));
 
                         let file_line_col = C_struct(bx.cx, &[filename, line, col], false);
                         let file_line_col = consts::addr_of(bx.cx,
@@ -369,8 +362,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                                                             align,
                                                             "panic_bounds_check_loc");
                         (lang_items::PanicBoundsCheckFnLangItem,
-                         vec![file_line_col, index, len],
-                         const_err)
+                         vec![file_line_col, index, len])
                     }
                     mir::AssertMessage::Math(ref err) => {
                         let msg_str = Symbol::intern(err.description()).as_str();
@@ -383,8 +375,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                                                                 align,
                                                                 "panic_loc");
                         (lang_items::PanicFnLangItem,
-                         vec![msg_file_line_col],
-                         Some(err.description().to_owned()))
+                         vec![msg_file_line_col])
                     }
                     mir::AssertMessage::GeneratorResumedAfterReturn |
                     mir::AssertMessage::GeneratorResumedAfterPanic => {
@@ -403,23 +394,9 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                                                                 align,
                                                                 "panic_loc");
                         (lang_items::PanicFnLangItem,
-                         vec![msg_file_line_col],
-                         None)
+                         vec![msg_file_line_col])
                     }
                 };
-
-                // If we know we always panic, and the error message
-                // is also constant, then we can produce a warning.
-                if const_cond == Some(!expected) {
-                    if let Some(err) = const_err {
-                        let mut diag = bx.tcx().sess.struct_span_warn(
-                            span, &format!(
-                                "this expression will panic at run-time with {:?}",
-                                err,
-                            ));
-                        diag.emit();
-                    }
-                }
 
                 // Obtain the panic entry point.
                 let def_id = common::langcall(bx.tcx(), Some(span), "", lang_item);
