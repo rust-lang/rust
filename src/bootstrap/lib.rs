@@ -480,6 +480,10 @@ impl Build {
         self.out.join(&*target).join("llvm")
     }
 
+    fn emscripten_llvm_out(&self, target: Interned<String>) -> PathBuf {
+        self.out.join(&*target).join("llvm-emscripten")
+    }
+
     /// Output directory for all documentation for a target
     fn doc_out(&self, target: Interned<String>) -> PathBuf {
         self.out.join(&*target).join("doc")

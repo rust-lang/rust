@@ -305,6 +305,13 @@
 # result (broken, compiling, testing) into this JSON file.
 #save-toolstates = "/path/to/toolstates.json"
 
+# This is an array of the codegen backends that will be compiled for the rustc
+# that's being compiled. The default is to only build the LLVM codegen backend,
+# but you can also optionally enable the "emscripten" backend for asm.js or
+# make this an empty array (but that probably won't get too far in the
+# bootstrap)
+#codegen-backends = ["llvm"]
+
 # =============================================================================
 # Options for specific targets
 #

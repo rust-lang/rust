@@ -65,6 +65,7 @@ o("sanitizers", "build.sanitizers", "build the sanitizer runtimes (asan, lsan, m
 o("dist-src", "rust.dist-src", "when building tarballs enables building a source tarball")
 o("cargo-openssl-static", "build.openssl-static", "static openssl in cargo")
 o("profiler", "build.profiler", "build the profiler runtime")
+o("emscripten", None, "compile the emscripten backend as well as LLVM")
 
 # Optimization and debugging options. These may be overridden by the release
 # channel, etc.
@@ -321,6 +322,8 @@ for key in known_args:
         set('build.host', value.split(','))
     elif option.name == 'target':
         set('build.target', value.split(','))
+    elif option.name == 'emscripten':
+        set('rust.codegen-backends', ['llvm', 'emscripten'])
     elif option.name == 'option-checking':
         # this was handled above
         pass

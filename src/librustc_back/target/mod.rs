@@ -465,6 +465,9 @@ pub struct TargetOptions {
     /// Whether to lower 128-bit operations to compiler_builtins calls.  Use if
     /// your backend only supports 64-bit and smaller math.
     pub i128_lowering: bool,
+
+    /// The codegen backend to use for this target, typically "llvm"
+    pub codegen_backend: String,
 }
 
 impl Default for TargetOptions {
@@ -534,6 +537,7 @@ impl Default for TargetOptions {
             singlethread: false,
             no_builtins: false,
             i128_lowering: false,
+            codegen_backend: "llvm".to_string(),
         }
     }
 }
@@ -780,6 +784,7 @@ impl Target {
         key!(requires_lto, bool);
         key!(singlethread, bool);
         key!(no_builtins, bool);
+        key!(codegen_backend);
 
         if let Some(array) = obj.find("abi-blacklist").and_then(Json::as_array) {
             for name in array.iter().filter_map(|abi| abi.as_string()) {
@@ -976,6 +981,7 @@ impl ToJson for Target {
         target_option_val!(requires_lto);
         target_option_val!(singlethread);
         target_option_val!(no_builtins);
+        target_option_val!(codegen_backend);
 
         if default.abi_blacklist != self.options.abi_blacklist {
             d.insert("abi-blacklist".to_string(), self.options.abi_blacklist.iter()

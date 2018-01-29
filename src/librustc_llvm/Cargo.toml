@@ -10,6 +10,7 @@ path = "lib.rs"
 
 [features]
 static-libstdcpp = []
+emscripten = []
 
 [dependencies]
 bitflags = "1.0"

@@ -91,6 +91,7 @@ pub struct Config {
     pub rust_optimize_tests: bool,
     pub rust_debuginfo_tests: bool,
     pub rust_dist_src: bool,
+    pub rust_codegen_backends: Vec<Interned<String>>,
 
     pub build: Interned<String>,
     pub hosts: Vec<Interned<String>>,
@@ -280,6 +281,7 @@ struct Rust {
     quiet_tests: Option<bool>,
     test_miri: Option<bool>,
     save_toolstates: Option<String>,
+    codegen_backends: Option<Vec<String>>,
 }
 
 /// TOML representation of how each build target is configured.
@@ -318,6 +320,7 @@ impl Config {
         config.ignore_git = false;
         config.rust_dist_src = true;
         config.test_miri = false;
+        config.rust_codegen_backends = vec![INTERNER.intern_str("llvm")];
 
         config.on_fail = flags.on_fail;
         config.stage = flags.stage;
@@ -464,6 +467,12 @@ impl Config {
             config.rustc_default_linker = rust.default_linker.clone();
             config.musl_root = rust.musl_root.clone().map(PathBuf::from);
             config.save_toolstates = rust.save_toolstates.clone().map(PathBuf::from);
+
+            if let Some(ref backends) = rust.codegen_backends {
+                config.rust_codegen_backends = backends.iter()
+                    .map(|s| INTERNER.intern_str(s))
+                    .collect();
+            }
 
             match rust.codegen_units {
                 Some(0) => config.rust_codegen_units = Some(num_cpus::get() as u32),

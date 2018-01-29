@@ -51,3 +51,6 @@
 [submodule "src/doc/rust-by-example"]
 	path = src/doc/rust-by-example
 	url = https://github.com/rust-lang/rust-by-example
+[submodule "src/llvm-emscripten"]
+	path = src/llvm-emscripten
+	url = https://github.com/rust-lang/llvm

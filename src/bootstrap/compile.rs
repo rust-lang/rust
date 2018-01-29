@@ -581,24 +581,30 @@ impl Step for RustcLink {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct RustcTrans {
+pub struct CodegenBackend {
     pub compiler: Compiler,
     pub target: Interned<String>,
+    pub backend: Interned<String>,
 }
 
-impl Step for RustcTrans {
+impl Step for CodegenBackend {
     type Output = ();
     const ONLY_HOSTS: bool = true;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/librustc_trans").krate("rustc_trans")
+        run.path("src/librustc_trans")
     }
 
     fn make_run(run: RunConfig) {
-        run.builder.ensure(RustcTrans {
+        let backend = run.builder.config.rust_codegen_backends.get(0);
+        let backend = backend.cloned().unwrap_or_else(|| {
+            INTERNER.intern_str("llvm")
+        });
+        run.builder.ensure(CodegenBackend {
             compiler: run.builder.compiler(run.builder.top_stage, run.host),
             target: run.target,
+            backend
         });
     }
 
@@ -609,58 +615,92 @@ impl Step for RustcTrans {
 
         builder.ensure(Rustc { compiler, target });
 
-        // Build LLVM for our target. This will implicitly build the host LLVM
-        // if necessary.
-        builder.ensure(native::Llvm { target });
-
         if build.force_use_stage1(compiler, target) {
-            builder.ensure(RustcTrans {
+            builder.ensure(CodegenBackend {
                 compiler: builder.compiler(1, build.build),
                 target,
+                backend: self.backend,
             });
             return;
         }
 
-        let _folder = build.fold_output(|| format!("stage{}-rustc_trans", compiler.stage));
-        println!("Building stage{} trans artifacts ({} -> {})",
-                 compiler.stage, &compiler.host, target);
-
         let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "build");
+        let mut features = build.rustc_features().to_string();
         cargo.arg("--manifest-path")
-            .arg(build.src.join("src/librustc_trans/Cargo.toml"))
-            .arg("--features").arg(build.rustc_features());
+            .arg(build.src.join("src/librustc_trans/Cargo.toml"));
         rustc_cargo_env(build, &mut cargo);
 
-        // Pass down configuration from the LLVM build into the build of
-        // librustc_llvm and librustc_trans.
-        if build.is_rust_llvm(target) {
-            cargo.env("LLVM_RUSTLLVM", "1");
-        }
-        cargo.env("LLVM_CONFIG", build.llvm_config(target));
-        let target_config = build.config.target_config.get(&target);
-        if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
-            cargo.env("CFG_LLVM_ROOT", s);
-        }
-        // Building with a static libstdc++ is only supported on linux right now,
-        // not for MSVC or macOS
-        if build.config.llvm_static_stdcpp &&
-           !target.contains("freebsd") &&
-           !target.contains("windows") &&
-           !target.contains("apple") {
-            let file = compiler_file(build,
-                                     build.cxx(target).unwrap(),
-                                     target,
-                                     "libstdc++.a");
-            cargo.env("LLVM_STATIC_STDCPP", file);
-        }
-        if build.config.llvm_link_shared {
-            cargo.env("LLVM_LINK_SHARED", "1");
+        match &*self.backend {
+            "llvm" | "emscripten" => {
+                // Build LLVM for our target. This will implicitly build the
+                // host LLVM if necessary.
+                let llvm_config = builder.ensure(native::Llvm {
+                    target,
+                    emscripten: self.backend == "emscripten",
+                });
+
+                if self.backend == "emscripten" {
+                    features.push_str(" emscripten");
+                }
+
+                let _folder = build.fold_output(|| format!("stage{}-rustc_trans", compiler.stage));
+                println!("Building stage{} codegen artifacts ({} -> {}, {})",
+                         compiler.stage, &compiler.host, target, self.backend);
+
+                // Pass down configuration from the LLVM build into the build of
+                // librustc_llvm and librustc_trans.
+                if build.is_rust_llvm(target) {
+                    cargo.env("LLVM_RUSTLLVM", "1");
+                }
+                cargo.env("LLVM_CONFIG", &llvm_config);
+                if self.backend != "emscripten" {
+                    let target_config = build.config.target_config.get(&target);
+                    if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
+                        cargo.env("CFG_LLVM_ROOT", s);
+                    }
+                }
+                // Building with a static libstdc++ is only supported on linux right now,
+                // not for MSVC or macOS
+                if build.config.llvm_static_stdcpp &&
+                   !target.contains("freebsd") &&
+                   !target.contains("windows") &&
+                   !target.contains("apple") {
+                    let file = compiler_file(build,
+                                             build.cxx(target).unwrap(),
+                                             target,
+                                             "libstdc++.a");
+                    cargo.env("LLVM_STATIC_STDCPP", file);
+                }
+                if build.config.llvm_link_shared {
+                    cargo.env("LLVM_LINK_SHARED", "1");
+                }
+            }
+            _ => panic!("unknown backend: {}", self.backend),
         }
 
-        run_cargo(build,
-                  &mut cargo,
-                  &librustc_trans_stamp(build, compiler, target),
-                  false);
+        let tmp_stamp = build.cargo_out(compiler, Mode::Librustc, target)
+            .join(".tmp.stamp");
+        let files = run_cargo(build,
+                              cargo.arg("--features").arg(features),
+                              &tmp_stamp,
+                              false);
+        let mut files = files.into_iter()
+            .filter(|f| {
+                let filename = f.file_name().unwrap().to_str().unwrap();
+                is_dylib(filename) && filename.contains("rustc_trans-")
+            });
+        let codegen_backend = match files.next() {
+            Some(f) => f,
+            None => panic!("no dylibs built for codegen backend?"),
+        };
+        if let Some(f) = files.next() {
+            panic!("codegen backend built two dylibs:\n{}\n{}",
+                   codegen_backend.display(),
+                   f.display());
+        }
+        let stamp = codegen_backend_stamp(build, compiler, target, self.backend);
+        let codegen_backend = codegen_backend.to_str().unwrap();
+        t!(t!(File::create(&stamp)).write_all(codegen_backend.as_bytes()));
     }
 }
 
@@ -682,33 +722,29 @@ fn copy_codegen_backends_to_sysroot(builder: &Builder,
     // not linked into the main compiler by default but is rather dynamically
     // selected at runtime for inclusion.
     //
-    // Here we're looking for the output dylib of the `RustcTrans` step and
+    // Here we're looking for the output dylib of the `CodegenBackend` step and
     // we're copying that into the `codegen-backends` folder.
     let libdir = builder.sysroot_libdir(target_compiler, target);
     let dst = libdir.join("codegen-backends");
     t!(fs::create_dir_all(&dst));
-    let stamp = librustc_trans_stamp(build, compiler, target);
 
-    let mut copied = None;
-    for file in read_stamp_file(&stamp) {
-        let filename = match file.file_name().and_then(|s| s.to_str()) {
-            Some(s) => s,
-            None => continue,
+    for backend in builder.config.rust_codegen_backends.iter() {
+        let stamp = codegen_backend_stamp(build, compiler, target, *backend);
+        let mut dylib = String::new();
+        t!(t!(File::open(&stamp)).read_to_string(&mut dylib));
+        let file = Path::new(&dylib);
+        let filename = file.file_name().unwrap().to_str().unwrap();
+        // change `librustc_trans-xxxxxx.so` to `librustc_trans-llvm.so`
+        let target_filename = {
+            let dash = filename.find("-").unwrap();
+            let dot = filename.find(".").unwrap();
+            format!("{}-{}{}",
+                    &filename[..dash],
+                    backend,
+                    &filename[dot..])
         };
-        if !is_dylib(filename) || !filename.contains("rustc_trans-") {
-            continue
-        }
-        match copied {
-            None => copied = Some(file.clone()),
-            Some(ref s) => {
-                panic!("copied two codegen backends:\n{}\n{}",
-                       s.display(),
-                       file.display());
-            }
-        }
-        copy(&file, &dst.join(filename));
+        copy(&file, &dst.join(target_filename));
     }
-    assert!(copied.is_some(), "failed to find a codegen backend to copy");
 }
 
 /// Cargo's output path for the standard library in a given stage, compiled
@@ -729,10 +765,12 @@ pub fn librustc_stamp(build: &Build, compiler: Compiler, target: Interned<String
     build.cargo_out(compiler, Mode::Librustc, target).join(".librustc.stamp")
 }
 
-pub fn librustc_trans_stamp(build: &Build,
-                            compiler: Compiler,
-                            target: Interned<String>) -> PathBuf {
-    build.cargo_out(compiler, Mode::Librustc, target).join(".librustc_trans.stamp")
+fn codegen_backend_stamp(build: &Build,
+                         compiler: Compiler,
+                         target: Interned<String>,
+                         backend: Interned<String>) -> PathBuf {
+    build.cargo_out(compiler, Mode::Librustc, target)
+        .join(format!(".librustc_trans-{}.stamp", backend))
 }
 
 fn compiler_file(build: &Build,
@@ -849,10 +887,13 @@ impl Step for Assemble {
                 compiler: build_compiler,
                 target: target_compiler.host,
             });
-            builder.ensure(RustcTrans {
-                compiler: build_compiler,
-                target: target_compiler.host,
-            });
+            for &backend in build.config.rust_codegen_backends.iter() {
+                builder.ensure(CodegenBackend {
+                    compiler: build_compiler,
+                    target: target_compiler.host,
+                    backend,
+                });
+            }
         }
 
         let stage = target_compiler.stage;
@@ -922,7 +963,9 @@ fn stderr_isatty() -> bool {
     }
 }
 
-pub fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path, is_check: bool) {
+pub fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path, is_check: bool)
+    -> Vec<PathBuf>
+{
     // Instruct Cargo to give us json messages on stdout, critically leaving
     // stderr as piped so we can get those pretty colors.
     cargo.arg("--message-format").arg("json")
@@ -1066,8 +1109,8 @@ pub fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path, is_check: boo
     let mut new_contents = Vec::new();
     let mut max = None;
     let mut max_path = None;
-    for dep in deps {
-        let mtime = mtime(&dep);
+    for dep in deps.iter() {
+        let mtime = mtime(dep);
         if Some(mtime) > max {
             max = Some(mtime);
             max_path = Some(dep.clone());
@@ -1080,7 +1123,7 @@ pub fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path, is_check: boo
     if stamp_contents == new_contents && max <= stamp_mtime {
         build.verbose(&format!("not updating {:?}; contents equal and {} <= {}",
                 stamp, max, stamp_mtime));
-        return
+        return deps
     }
     if max > stamp_mtime {
         build.verbose(&format!("updating {:?} as {:?} changed", stamp, max_path));
@@ -1088,4 +1131,5 @@ pub fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path, is_check: boo
         build.verbose(&format!("updating {:?} as deps changed", stamp));
     }
     t!(t!(File::create(stamp)).write_all(&new_contents));
+    deps
 }

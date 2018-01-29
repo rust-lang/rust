@@ -218,19 +218,16 @@ pub fn get_trans(sess: &Session) -> Box<TransCrate> {
     static mut LOAD: fn() -> Box<TransCrate> = || unreachable!();
 
     INIT.call_once(|| {
-        let trans_name = sess.opts.debugging_opts.codegen_backend.as_ref();
-        let backend = match trans_name.map(|s| &**s) {
-            None |
-            Some("llvm") => get_trans_default(),
-            Some("metadata_only") => {
+        let trans_name = sess.opts.debugging_opts.codegen_backend.as_ref()
+            .unwrap_or(&sess.target.target.options.codegen_backend);
+        let backend = match &trans_name[..] {
+            "metadata_only" => {
                 rustc_trans_utils::trans_crate::MetadataOnlyTransCrate::new
             }
-            Some(filename) if filename.contains(".") => {
+            filename if filename.contains(".") => {
                 load_backend_from_dylib(filename.as_ref())
             }
-            Some(trans_name) => {
-                sess.fatal(&format!("unknown codegen backend {}", trans_name));
-            }
+            trans_name => get_trans_sysroot(trans_name),
         };
 
         unsafe {
@@ -242,7 +239,7 @@ pub fn get_trans(sess: &Session) -> Box<TransCrate> {
     backend
 }
 
-fn get_trans_default() -> fn() -> Box<TransCrate> {
+fn get_trans_sysroot(backend_name: &str) -> fn() -> Box<TransCrate> {
     // For now we only allow this function to be called once as it'll dlopen a
     // few things, which seems to work best if we only do that once. In
     // general this assertion never trips due to the once guard in `get_trans`,
@@ -324,6 +321,7 @@ fn get_trans_default() -> fn() -> Box<TransCrate> {
 
     let mut file: Option<PathBuf> = None;
 
+    let expected_name = format!("rustc_trans-{}", backend_name);
     for entry in d.filter_map(|e| e.ok()) {
         let path = entry.path();
         let filename = match path.file_name().and_then(|s| s.to_str()) {
@@ -334,7 +332,7 @@ fn get_trans_default() -> fn() -> Box<TransCrate> {
             continue
         }
         let name = &filename[DLL_PREFIX.len() .. filename.len() - DLL_SUFFIX.len()];
-        if !name.starts_with("rustc_trans") {
+        if name != expected_name {
             continue
         }
         if let Some(ref prev) = file {
@@ -350,8 +348,9 @@ fn get_trans_default() -> fn() -> Box<TransCrate> {
     match file {
         Some(ref s) => return load_backend_from_dylib(s),
         None => {
-            let err = format!("failed to load default codegen backend, no appropriate \
-                               codegen dylib found in `{}`", sysroot.display());
+            let err = format!("failed to load default codegen backend for `{}`, \
+                               no appropriate codegen dylib found in `{}`",
+                               backend_name, sysroot.display());
             early_error(ErrorOutputType::default(), &err);
         }
     }
@@ -1072,7 +1071,7 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
         println!("commit-date: {}", unw(commit_date_str()));
         println!("host: {}", config::host_triple());
         println!("release: {}", unw(release_str()));
-        get_trans_default()().print_version();
+        get_trans_sysroot("llvm")().print_version();
     }
 }
 
@@ -1369,7 +1368,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     }
 
     if cg_flags.contains(&"passes=list".to_string()) {
-        get_trans_default()().print_passes();
+        get_trans_sysroot("llvm")().print_passes();
         return None;
     }
 

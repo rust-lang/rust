@@ -39,4 +39,11 @@ tempdir = "0.3"
 cc = "1.0.1"
 
 [features]
+# Used to communicate the feature to `rustc_back` in the same manner that the
+# `rustc` driver script communicate this.
 jemalloc = ["rustc_back/jemalloc"]
+
+# This is used to convince Cargo to separately cache builds of `rustc_trans`
+# when this option is enabled or not. That way we can build two, cache two
+# artifacts, and have nice speedy rebuilds.
+emscripten = ["rustc_llvm/emscripten"]
