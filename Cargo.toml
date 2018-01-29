@@ -43,7 +43,7 @@ cargo_metadata = "0.2"
 regex = "0.2"
 
 [dev-dependencies]
-compiletest_rs = "0.3.5"
+compiletest_rs = "0.3.6"
 duct = "0.8.2"
 lazy_static = "1.0"
 serde_derive = "1.0"
