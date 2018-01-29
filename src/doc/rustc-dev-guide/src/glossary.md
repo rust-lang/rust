@@ -15,7 +15,7 @@ HirId                   |  identifies a particular node in the HIR by combining 
 generics                |  the set of generic type parameters defined on a type or item
 ICE                     |  internal compiler error. When the compiler crashes.
 infcx                   |  the inference context (see `librustc/infer`)
-MIR                     |  the Mid-level IR that is created after type-checking for use by borrowck and trans. Defined in the `src/librustc/mir/` module, but much of the code that manipulates it is found in `src/librustc_mir`.
+MIR                     |  the Mid-level IR that is created after type-checking for use by borrowck and trans ([see more](./mir.html))
 obligation              |  something that must be proven by the trait system ([see more](trait-resolution.html))
 local crate             |  the crate currently being compiled.
 node-id or NodeId       |  an index identifying a particular node in the AST or HIR; gradually being phased out and replaced with `HirId`.
