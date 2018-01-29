@@ -26,15 +26,21 @@ macro_rules! printer {
 }
 ```
 
-`$mvar` is called a _metavariable_. Unlike normal variables, rather than binding
-to a value in a computation, a metavariable binds _at compile time_ to a tree of
-_tokens_. A _token_ zero or more symbols that together have some meaning. For
-example, in our example definition, `print`, `$mvar`, `=>`, `{` are all tokens
-(though that's not an exhaustive list). There are also other special tokens,
-such as `EOF`, which indicates that there are no more tokens. The process of
-producing a stream of tokens from the raw bytes of the source file is called
-_lexing_. For more information about _lexing_, see the [Parsing
-chapter][parsing] of this book.
+`$mvar` is called a _metavariable_. Unlike normal variables, rather than
+binding to a value in a computation, a metavariable binds _at compile time_ to
+a tree of _tokens_.  A _token_ is a single "unit" of the grammar, such as an
+identifier (e.g., `foo`) or punctuation (e.g., `=>`). There are also other
+special tokens, such as `EOF`, which indicates that there are no more tokens.
+Token trees resulting from paired parentheses-like characters (`(`...`)`,
+`[`...`]`, and `{`...`}`) -- they include the open and close and all the tokens
+in between (we do require that parentheses-like characters be balanced). Having
+macro expansion operate on token streams rather than the raw bytes of a source
+file abstracts away a lot of complexity. The macro expander (and much of the
+rest of the compiler) doesn't really care that much about the exact line and
+column of some syntactic construct in the code; it cares about what constructs
+are used in the code. Using tokens allows us to care about _what_ without
+worrying about _where_. For more information about tokens, see the
+[Parsing][parsing] chapter of this book.
 
 Whenever we refer to the "example _invocation_", we mean the following snippet:
 
@@ -44,7 +50,7 @@ printer!(print foo); // Assume `foo` is a variable defined somewhere else...
 
 The process of expanding the macro invocation into the syntax tree
 `println!("{}", foo)` and then expanding that into a call to `Display::fmt` is
-called _macro expansion_, it is the topic of this chapter.
+called _macro expansion_, and it is the topic of this chapter.
 
 ### The macro parser
 
