@@ -12,7 +12,7 @@ $ cargo +nightly test
 To run codegen tests, run in release mode:
 
 ```
-$ cargo +nightly test --release
+$ cargo +nightly test --release -p coresimd
 ```
 
 Remember that this repository requires the nightly channel of Rust! If any of
@@ -55,13 +55,13 @@ to ensure your example works as expected.
 /// #         // Create a `worker` function that will only be run if the target feature
 /// #         // is supported and ensure that `target_feature` is enabled for your worker
 /// #         // function
-/// #         #[target_feature = "+<target feature>"]
-/// #         fn worker() {
+/// #         #[target_feature(enable = "<target feature>")]
+/// #         unsafe fn worker() {
 ///
 /// // Write your example here. Feature specific intrinsics will work here! Go wild!
 ///
 /// #         }
-/// #         worker();
+/// #         unsafe { worker(); }
 /// #     }
 /// # }
 ```
