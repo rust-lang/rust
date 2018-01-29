@@ -85,10 +85,23 @@ pub unsafe fn get_m256(a: __m256, idx: usize) -> f32 {
 // These intrinsics doesn't exist on x86 b/c it requires a 64-bit registe,r which
 // doesn't exist on x86!
 #[cfg(target_arch = "x86")]
-#[target_feature(enable = "avx")]
-pub unsafe fn _mm_insert_epi64(a: __m128i, val: i64, idx: i32) -> __m128i {
-    union A { a: __m128i, b: [i64; 2] };
-    let mut a = A { a };
-    a.b[idx as usize] = val;
-    a.a
+mod x86_polyfill {
+    use x86::*;
+
+    pub unsafe fn _mm_insert_epi64(a: __m128i, val: i64, idx: i32) -> __m128i {
+        union A { a: __m128i, b: [i64; 2] };
+        let mut a = A { a };
+        a.b[idx as usize] = val;
+        a.a
+    }
+
+    #[target_feature(enable = "avx2")]
+    pub unsafe fn _mm256_insert_epi64(a: __m256i, val: i64, idx: i32) -> __m256i {
+        union A { a: __m256i, b: [i64; 4] };
+        let mut a = A { a };
+        a.b[idx as usize] = val;
+        a.a
+    }
 }
+#[cfg(target_arch = "x86")]
+pub use self::x86_polyfill::*;

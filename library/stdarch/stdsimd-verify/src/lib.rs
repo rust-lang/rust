@@ -28,17 +28,17 @@ pub fn x86_functions(input: TokenStream) -> TokenStream {
     assert!(files.len() > 0);
 
     let mut functions = Vec::new();
-    for file in files {
-        for item in file.items {
+    for &mut (ref mut file, ref path) in files.iter_mut() {
+        for item in file.items.drain(..) {
             match item {
-                syn::Item::Fn(f) => functions.push(f),
+                syn::Item::Fn(f) => functions.push((f, path)),
                 _ => {}
             }
         }
     }
     assert!(functions.len() > 0);
 
-    functions.retain(|f| {
+    functions.retain(|&(ref f, _)| {
         match f.vis {
             syn::Visibility::Public(_) => {}
             _ => return false,
@@ -60,7 +60,7 @@ pub fn x86_functions(input: TokenStream) -> TokenStream {
 
     let functions = functions
         .iter()
-        .map(|f| {
+        .map(|&(ref f, path)| {
             let name = f.ident;
             // println!("{}", name);
             let mut arguments = Vec::new();
@@ -87,6 +87,7 @@ pub fn x86_functions(input: TokenStream) -> TokenStream {
                     ret: #ret,
                     target_feature: #target_feature,
                     instrs: &[#(stringify!(#instrs)),*],
+                    file: stringify!(#path),
                 }
             }
         })
@@ -146,7 +147,7 @@ fn extract_path_ident(path: &syn::Path) -> syn::Ident {
     path.segments.first().unwrap().value().ident
 }
 
-fn walk(root: &Path, files: &mut Vec<syn::File>) {
+fn walk(root: &Path, files: &mut Vec<(syn::File, String)>) {
     for file in root.read_dir().unwrap() {
         let file = file.unwrap();
         if file.file_type().unwrap().is_dir() {
@@ -168,9 +169,10 @@ fn walk(root: &Path, files: &mut Vec<syn::File>) {
             .read_to_string(&mut contents)
             .unwrap();
 
-        files.push(
+        files.push((
             syn::parse_str::<syn::File>(&contents).expect("failed to parse"),
-        );
+            path.display().to_string(),
+        ));
     }
 }
 

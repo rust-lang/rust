@@ -30,29 +30,11 @@ pub unsafe fn _lzcnt_u32(x: u32) -> u32 {
     x.leading_zeros()
 }
 
-/// Counts the leading most significant zero bits.
-///
-/// When the operand is zero, it returns its size in bits.
-#[inline(always)]
-#[target_feature(enable = "lzcnt")]
-#[cfg_attr(test, assert_instr(lzcnt))]
-pub unsafe fn _lzcnt_u64(x: u64) -> u64 {
-    x.leading_zeros() as u64
-}
-
 /// Counts the bits that are set.
 #[inline(always)]
 #[target_feature(enable = "popcnt")]
 #[cfg_attr(test, assert_instr(popcnt))]
 pub unsafe fn _popcnt32(x: i32) -> i32 {
-    x.count_ones() as i32
-}
-
-/// Counts the bits that are set.
-#[inline(always)]
-#[target_feature(enable = "popcnt")]
-#[cfg_attr(test, assert_instr(popcnt))]
-pub unsafe fn _popcnt64(x: i64) -> i32 {
     x.count_ones() as i32
 }
 
@@ -67,18 +49,8 @@ mod tests {
         assert_eq!(abm::_lzcnt_u32(0b0101_1010), 25);
     }
 
-    #[simd_test = "lzcnt"]
-    unsafe fn _lzcnt_u64() {
-        assert_eq!(abm::_lzcnt_u64(0b0101_1010), 57);
-    }
-
     #[simd_test = "popcnt"]
     unsafe fn _popcnt32() {
         assert_eq!(abm::_popcnt32(0b0101_1010), 4);
-    }
-
-    #[simd_test = "popcnt"]
-    unsafe fn _popcnt64() {
-        assert_eq!(abm::_popcnt64(0b0101_1010), 4);
     }
 }

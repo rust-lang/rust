@@ -19,3 +19,18 @@ pub use self::sse42::*;
 
 mod xsave;
 pub use self::xsave::*;
+
+mod abm;
+pub use self::abm::*;
+
+mod avx;
+pub use self::avx::*;
+
+mod bmi;
+pub use self::bmi::*;
+
+mod bmi2;
+pub use self::bmi2::*;
+
+mod avx2;
+pub use self::avx2::*;

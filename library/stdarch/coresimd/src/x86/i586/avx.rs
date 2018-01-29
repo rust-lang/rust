@@ -1245,15 +1245,6 @@ pub unsafe fn _mm256_insert_epi32(a: __m256i, i: i32, index: i32) -> __m256i {
     mem::transmute(simd_insert(a.as_i32x8(), (index as u32) & 7, i))
 }
 
-/// Copy `a` to result, and insert the 64-bit integer `i` into result
-/// at the location specified by `index`.
-#[inline(always)]
-#[target_feature(enable = "avx")]
-// This intrinsic has no corresponding instruction.
-pub unsafe fn _mm256_insert_epi64(a: __m256i, i: i64, index: i32) -> __m256i {
-    mem::transmute(simd_insert(a.as_i64x4(), (index as u32) & 3, i))
-}
-
 /// Load 256-bits (composed of 4 packed double-precision (64-bit)
 /// floating-point elements) from memory into result.
 /// `mem_addr` must be aligned on a 32-byte boundary or a
@@ -3304,14 +3295,6 @@ mod tests {
         let a = _mm256_setr_epi32(1, 2, 3, 4, 5, 6, 7, 8);
         let r = _mm256_insert_epi32(a, 0, 7);
         let e = _mm256_setr_epi32(1, 2, 3, 4, 5, 6, 7, 0);
-        assert_eq_m256i(r, e);
-    }
-
-    #[simd_test = "avx"]
-    unsafe fn test_mm256_insert_epi64() {
-        let a = _mm256_setr_epi64x(1, 2, 3, 4);
-        let r = _mm256_insert_epi64(a, 0, 3);
-        let e = _mm256_setr_epi64x(1, 2, 3, 0);
         assert_eq_m256i(r, e);
     }
 

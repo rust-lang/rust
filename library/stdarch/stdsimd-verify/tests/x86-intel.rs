@@ -18,6 +18,7 @@ struct Function {
     ret: Option<&'static Type>,
     target_feature: &'static str,
     instrs: &'static [&'static str],
+    file: &'static str,
 }
 
 static BOOL: Type = Type::Bool;
@@ -207,18 +208,59 @@ fn verify_all_signatures() {
         // argument, so handle that here.
         if rust.arguments.is_empty() && intel.parameters.len() == 1 {
             assert_eq!(intel.parameters[0].type_, "void");
-            continue;
+        } else {
+            // Otherwise we want all parameters to be exactly the same
+            assert_eq!(
+                rust.arguments.len(),
+                intel.parameters.len(),
+                "wrong number of arguments on {}",
+                rust.name
+            );
+            for (a, b) in intel.parameters.iter().zip(rust.arguments) {
+                equate(b, &a.type_, &intel.name);
+            }
         }
 
-        // Otherwise we want all parameters to be exactly the same
-        assert_eq!(
-            rust.arguments.len(),
-            intel.parameters.len(),
-            "wrong number of arguments on {}",
-            rust.name
-        );
-        for (a, b) in intel.parameters.iter().zip(rust.arguments) {
-            equate(b, &a.type_, &intel.name);
+        let any_i64 = rust.arguments.iter()
+            .cloned()
+            .chain(rust.ret)
+            .any(|arg| {
+                match *arg {
+                    Type::PrimSigned(64) |
+                    Type::PrimUnsigned(64) => true,
+                    // Type::Ptr(&Type::PrimSigned(64)) |
+                    // Type::Ptr(&Type::PrimUnsigned(64)) => true,
+                    _ => false,
+                }
+            });
+        let any_i64_exempt = match rust.name {
+            // These intrinsics have all been manually verified against Clang's
+            // headers to be available on x86, and the u64 arguments seem
+            // spurious I guess?
+            "_xsave" |
+            "_xrstor" |
+            "_xsetbv" |
+            "_xgetbv" |
+            "_xsaveopt" |
+            "_xsavec" |
+            "_xsaves" |
+            "_xrstors" => true,
+
+            // Apparently all of clang/msvc/gcc accept these intrinsics on
+            // 32-bit, so let's do the same
+            "_mm_set_epi64x" |
+            "_mm_set1_epi64x" |
+            "_mm256_set_epi64x" |
+            "_mm256_setr_epi64x" |
+            "_mm256_set1_epi64x" => true,
+
+            _ => false,
+        };
+        if any_i64 && !any_i64_exempt {
+            assert!(rust.file.contains("x86_64"),
+                    "intrinsic `{}` uses a 64-bit bare type but may be \
+                     available on 32-bit platforms",
+                    rust.name);
         }
     }
 }
