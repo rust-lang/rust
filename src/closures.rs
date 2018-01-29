@@ -278,7 +278,7 @@ pub fn rewrite_last_closure(
     expr: &ast::Expr,
     shape: Shape,
 ) -> Option<String> {
-    if let ast::ExprKind::Closure(capture, ref fn_decl, ref body, _) = expr.node {
+    if let ast::ExprKind::Closure(capture, _, ref fn_decl, ref body, _) = expr.node {
         let body = match body.node {
             ast::ExprKind::Block(ref block)
                 if !is_unsafe_block(block) && is_simple_block(block, context.codemap) =>
