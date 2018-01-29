@@ -79,9 +79,9 @@ unsafe fn configure_llvm(sess: &Session) {
 // detection code will walk past the end of the feature array,
 // leading to crashes.
 
-const ARM_WHITELIST: &'static [&'static str] = &["neon\0", "vfp2\0", "vfp3\0", "vfp4\0"];
+const ARM_WHITELIST: &'static [&'static str] = &["neon\0", "v7\0", "vfp2\0", "vfp3\0", "vfp4\0"];
 
-const AARCH64_WHITELIST: &'static [&'static str] = &["neon\0"];
+const AARCH64_WHITELIST: &'static [&'static str] = &["neon\0", "v7\0"];
 
 const X86_WHITELIST: &'static [&'static str] = &["avx\0", "avx2\0", "bmi\0", "bmi2\0", "sse\0",
                                                  "sse2\0", "sse3\0", "sse4.1\0", "sse4.2\0",
