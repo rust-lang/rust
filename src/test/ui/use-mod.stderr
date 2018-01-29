@@ -25,7 +25,7 @@ error[E0252]: the name `bar` is defined multiple times
    = note: `bar` must be defined only once in the type namespace of this module
 help: You can use `as` to change the binding name of the import
    |
-15 |     self as Otherbar
+15 |     self as other_bar
    |
 
 error: aborting due to 3 previous errors

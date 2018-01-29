@@ -9,8 +9,8 @@ error[E0252]: the name `foo` is defined multiple times
    = note: `foo` must be defined only once in the value namespace of this module
 help: You can use `as` to change the binding name of the import
    |
-25 |     use a::foo as Otherfoo; //~ ERROR the name `foo` is defined multiple times
-   |         ^^^^^^^^^^^^^^^^^^
+25 |     use a::foo as other_foo; //~ ERROR the name `foo` is defined multiple times
+   |         ^^^^^^^^^^^^^^^^^^^
 
 error[E0659]: `foo` is ambiguous
   --> $DIR/duplicate.rs:56:9
