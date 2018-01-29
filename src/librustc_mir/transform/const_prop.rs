@@ -15,7 +15,7 @@
 
 use rustc::mir::{Constant, Literal, Location, Place, Mir, Operand, Rvalue, Local};
 use rustc::mir::{NullOp, StatementKind, Statement, BasicBlock, LocalKind};
-use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo};
+use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp};
 use rustc::mir::visit::Visitor;
 use rustc::ty::layout::LayoutOf;
 use rustc::middle::const_val::ConstVal;
@@ -216,19 +216,21 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
                 let ecx = mk_borrowck_eval_cx(self.tcx, instance, self.mir, span).unwrap();
 
                 let r = ecx.value_to_primval(ValTy { value: right.0, ty: right.1 }).ok()?;
-                let param_env = self.tcx.param_env(self.source.def_id);
-                let bits = (self.tcx, param_env).layout_of(left.1).unwrap().size.bits();
-                if r.to_bytes().ok()? >= bits as u128 {
-                    let scope_info = match self.mir.visibility_scope_info {
-                        ClearCrossCrate::Set(ref data) => data,
-                        ClearCrossCrate::Clear => return None,
-                    };
-                    let node_id = scope_info[source_info.scope].lint_root;
-                    self.tcx.lint_node(
-                        ::rustc::lint::builtin::EXCEEDING_BITSHIFTS,
-                        node_id,
-                        span,
-                        "bitshift exceeds the type's number of bits");
+                if op == BinOp::Shr || op == BinOp::Shl {
+                    let param_env = self.tcx.param_env(self.source.def_id);
+                    let bits = (self.tcx, param_env).layout_of(left.1).unwrap().size.bits();
+                    if r.to_bytes().ok()? >= bits as u128 {
+                        let scope_info = match self.mir.visibility_scope_info {
+                            ClearCrossCrate::Set(ref data) => data,
+                            ClearCrossCrate::Clear => return None,
+                        };
+                        let node_id = scope_info[source_info.scope].lint_root;
+                        self.tcx.lint_node(
+                            ::rustc::lint::builtin::EXCEEDING_BITSHIFTS,
+                            node_id,
+                            span,
+                            "bitshift exceeds the type's number of bits");
+                    }
                 }
                 let l = ecx.value_to_primval(ValTy { value: left.0, ty: left.1 }).ok()?;
                 trace!("const evaluating {:?} for {:?} and {:?}", op, left, right);
