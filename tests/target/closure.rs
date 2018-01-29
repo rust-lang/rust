@@ -147,7 +147,7 @@ fn issue470() {
                             hair::PatternRef::Hair(pattern),
                             &lvalue,
                         );
-                        ArgDecl { ty }
+                        ArgDecl { ty: ty }
                     },
                 );
             }

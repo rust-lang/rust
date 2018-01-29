@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Add `use_field_init_shorthand` config option.
+
 ## [0.3.6] 2018-01-18
 
 ### Fixed

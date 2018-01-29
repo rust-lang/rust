@@ -2582,7 +2582,9 @@ pub fn rewrite_field(
         let expr = field.expr.rewrite(context, expr_shape);
 
         match expr {
-            Some(ref e) if e.as_str() == name => Some(attrs_str + &name),
+            Some(ref e) if e.as_str() == name && context.config.use_field_init_shorthand() => {
+                Some(attrs_str + &name)
+            }
             Some(e) => Some(format!("{}{}{}{}", attrs_str, name, separator, e)),
             None => {
                 let expr_offset = shape.indent.block_indent(context.config);
