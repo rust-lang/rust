@@ -78,7 +78,8 @@ use std::mem;
 use transform::{MirPass, MirSource};
 use transform::simplify;
 use transform::no_landing_pads::no_landing_pads;
-use dataflow::{do_dataflow, DebugFormatted, MaybeStorageLive, state_for_location};
+use dataflow::{do_dataflow, DebugFormatted, state_for_location};
+use dataflow::{MaybeStorageLive, HaveBeenBorrowedLocals};
 
 pub struct StateTransform;
 
@@ -369,17 +370,33 @@ fn locals_live_across_suspend_points<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 HashMap<BasicBlock, liveness::LocalSet>) {
     let dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
     let node_id = tcx.hir.as_local_node_id(source.def_id).unwrap();
-    let analysis = MaybeStorageLive::new(mir);
+
+    // Calculate when MIR locals have live storage. This gives us an upper bound of their
+    // lifetimes.
+    let storage_live_analysis = MaybeStorageLive::new(mir);
     let storage_live =
-        do_dataflow(tcx, mir, node_id, &[], &dead_unwinds, analysis,
+        do_dataflow(tcx, mir, node_id, &[], &dead_unwinds, storage_live_analysis,
                     |bd, p| DebugFormatted::new(&bd.mir().local_decls[p]));
 
+    // Find the MIR locals which do not use StorageLive/StorageDead statements.
+    // The storage of these locals are always live.
     let mut ignored = StorageIgnored(IdxSetBuf::new_filled(mir.local_decls.len()));
     ignored.visit_mir(mir);
 
-    let mut borrowed_locals = BorrowedLocals(IdxSetBuf::new_empty(mir.local_decls.len()));
-    borrowed_locals.visit_mir(mir);
+    // Calculate the MIR locals which have been previously
+    // borrowed (even if they are still active).
+    // This is only used for immovable generators.
+    let borrowed_locals = if !movable {
+        let analysis = HaveBeenBorrowedLocals::new(mir);
+        let result =
+            do_dataflow(tcx, mir, node_id, &[], &dead_unwinds, analysis,
+                        |bd, p| DebugFormatted::new(&bd.mir().local_decls[p]));
+        Some((analysis, result))
+    } else {
+        None
+    };
 
+    // Calculate the liveness of MIR locals ignoring borrows.
     let mut set = liveness::LocalSet::new_empty(mir.local_decls.len());
     let mut liveness = liveness::liveness_of_locals(mir, LivenessMode {
         include_regular_use: true,
@@ -396,24 +413,41 @@ fn locals_live_across_suspend_points<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 statement_index: data.statements.len(),
             };
 
-            let storage_liveness = state_for_location(loc, &analysis, &storage_live, mir);
-
-            storage_liveness_map.insert(block, storage_liveness.clone());
-
-            let mut live_locals = storage_liveness;
-
-            // Mark locals without storage statements as always having live storage
-            live_locals.union(&ignored.0);
-
-            if !movable {
-                // For immovable generators we consider borrowed locals to always be live.
-                // This effectively makes those locals use just the storage liveness.
-                liveness.outs[block].union(&borrowed_locals.0);
+            if let Some((ref analysis, ref result)) = borrowed_locals {
+                let borrowed_locals = state_for_location(loc,
+                                                         analysis,
+                                                         result,
+                                                         mir);
+                // The `liveness` variable contains the liveness of MIR locals ignoring borrows.
+                // This is correct for movable generators since borrows cannot live across
+                // suspension points. However for immovable generators we need to account for
+                // borrows, so we conseratively assume that all borrowed locals live forever.
+                // To do this we just union our `liveness` result with `borrowed_locals`, which
+                // contains all the locals which has been borrowed before this suspension point.
+                // If a borrow is converted to a raw reference, we must also assume that it lives
+                // forever. Note that the final liveness is still bounded by the storage liveness
+                // of the local, which happens using the `intersect` operation below.
+                liveness.outs[block].union(&borrowed_locals);
             }
 
-            // Locals live are live at this point only if they are used across suspension points
-            // and their storage is live
-            live_locals.intersect(&liveness.outs[block]);
+            let mut storage_liveness = state_for_location(loc,
+                                                          &storage_live_analysis,
+                                                          &storage_live,
+                                                          mir);
+
+            // Store the storage liveness for later use so we can restore the state
+            // after a suspension point
+            storage_liveness_map.insert(block, storage_liveness.clone());
+
+            // Mark locals without storage statements as always having live storage
+            storage_liveness.union(&ignored.0);
+
+            // Locals live are live at this point only if they are used across
+            // suspension points (the `liveness` variable)
+            // and their storage is live (the `storage_liveness` variable)
+            storage_liveness.intersect(&liveness.outs[block]);
+
+            let live_locals = storage_liveness;
 
             // Add the locals life at this suspension point to the set of locals which live across
             // any suspension points
