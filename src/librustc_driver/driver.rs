@@ -142,7 +142,7 @@ pub fn compile_input(trans: Box<TransCrate>,
             )?
         };
 
-        let output_paths = generated_output_paths(sess, &outputs, &crate_name);
+        let output_paths = generated_output_paths(sess, &outputs, output.is_some(), &crate_name);
 
         // Ensure the source file isn't accidentally overwritten during compilation.
         if let Some(ref input_path) = *input_path {
@@ -1111,16 +1111,19 @@ fn escape_dep_filename(filename: &FileName) -> String {
 // Returns all the paths that correspond to generated files.
 fn generated_output_paths(sess: &Session,
                           outputs: &OutputFilenames,
+                          exact_name: bool,
                           crate_name: &str) -> Vec<PathBuf> {
     let mut out_filenames = Vec::new();
     for output_type in sess.opts.output_types.keys() {
         let file = outputs.path(*output_type);
         match *output_type {
-            OutputType::Exe => {
-                for output in sess.crate_types.borrow().iter() {
+            // If the filename has been overridden using `-o`, it will not be modified
+            // by appending `.rlib`, `.exe`, etc., so we can skip this transformation.
+            OutputType::Exe if !exact_name => {
+                for crate_type in sess.crate_types.borrow().iter() {
                     let p = ::rustc_trans_utils::link::filename_for_input(
                         sess,
-                        *output,
+                        *crate_type,
                         crate_name,
                         outputs
                     );
@@ -1376,10 +1379,10 @@ pub fn build_output_filenames(input: &Input,
                 Some(out_file.clone())
             };
             if *odir != None {
-                sess.warn("ignoring --out-dir flag due to -o flag.");
+                sess.warn("ignoring --out-dir flag due to -o flag");
             }
             if !sess.opts.cg.extra_filename.is_empty() {
-                sess.warn("ignoring -C extra-filename flag due to -o flag.");
+                sess.warn("ignoring -C extra-filename flag due to -o flag");
             }
 
             let cur_dir = Path::new("");
