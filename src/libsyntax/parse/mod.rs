@@ -932,7 +932,7 @@ mod tests {
                                         span: sp(15,21),
                                         recovered: false,
                                     })),
-                            vis: ast::Visibility::Inherited,
+                            vis: codemap::dummy_spanned(ast::VisibilityKind::Inherited),
                             span: sp(0,21)})));
     }
 
