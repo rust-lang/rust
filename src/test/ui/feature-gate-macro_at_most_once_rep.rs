@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that the MSP430 interrupt ABI cannot be used when msp430_interrupt
-// feature gate is not used.
+// Test that `?` macro Kleene operator can not be used when the `macro_at_most_once_rep` feature
+// gate is not used.
 
 macro_rules! m { ($(a)?) => {} }
 //~^ ERROR Using the `?` macro Kleene operator for "at most one" repetition is unstable

@@ -11,7 +11,7 @@
 #![allow(unused_macros)]
 
 macro_rules! assign {
-    (($($a:tt)*) = ($($b:tt))*) => { //~ ERROR 14:22: 14:29: expected one of: `*`, `+`, or `?`
+    (($($a:tt)*) = ($($b:tt))*) => { //~ ERROR expected one of: `*`, `+`, or `?`
         $($a)* = $($b)*
     }
 }

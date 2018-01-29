@@ -396,6 +396,8 @@ where
         // be a `?` separator followed by any Kleene operator. We need to look ahead 1 token to
         // find out which.
         Ok(Ok(op)) => {
+            assert_eq!(op, KleeneOp::ZeroOrOne);
+
             // Lookahead at #2. If it is a KleenOp, then #1 is a separator.
             let is_1_sep = if let Some(&tokenstream::TokenTree::Token(_, ref tok2)) = input.peek() {
                 kleene_op(tok2).is_some()
