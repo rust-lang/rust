@@ -1637,9 +1637,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             };
             err.span_label(span, e.to_string());
             let mut last_span = None;
-            for &Frame { instance, span, .. } in self.stack().iter().rev() {
+            // skip 1 because the last frame is just the environment of the constant
+            for &Frame { instance, span, .. } in self.stack().iter().skip(1).rev() {
                 // make sure we don't emit frames that are duplicates of the previous
                 if explicit_span == Some(span) {
+                    last_span = Some(span);
                     continue;
                 }
                 if let Some(last) = last_span {

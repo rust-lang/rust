@@ -38,6 +38,7 @@ use syntax_pos::Span;
 
 #[derive(Clone, Debug)]
 pub enum PatternError {
+    AssociatedConstInPattern(Span),
     StaticInPattern(Span),
     FloatBug,
     NonConstPath(Span),
@@ -150,7 +151,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                     BindingMode::ByValue => mutability == Mutability::Mut,
                     BindingMode::ByRef(_, bk) => {
                         write!(f, "ref ")?;
-                        bk == BorrowKind::Mut
+                        match bk { BorrowKind::Mut { .. } => true, _ => false }
                     }
                 };
                 if is_mut {
@@ -462,7 +463,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         (Mutability::Not, BindingMode::ByValue),
                     ty::BindByReference(hir::MutMutable) =>
                         (Mutability::Not, BindingMode::ByRef(
-                            region.unwrap(), BorrowKind::Mut)),
+                            region.unwrap(), BorrowKind::Mut { allow_two_phase_borrow: false })),
                     ty::BindByReference(hir::MutImmutable) =>
                         (Mutability::Not, BindingMode::ByRef(
                             region.unwrap(), BorrowKind::Shared)),
@@ -672,6 +673,10 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                   -> Pattern<'tcx> {
         let ty = self.tables.node_id_to_type(id);
         let def = self.tables.qpath_def(qpath, id);
+        let is_associated_const = match def {
+            Def::AssociatedConst(_) => true,
+            _ => false,
+        };
         let kind = match def {
             Def::Const(def_id) | Def::AssociatedConst(def_id) => {
                 let substs = self.tables.node_substs(id);
@@ -697,7 +702,11 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         }
                     },
                     None => {
-                        self.errors.push(PatternError::StaticInPattern(span));
+                        self.errors.push(if is_associated_const {
+                            PatternError::AssociatedConstInPattern(span)
+                        } else {
+                            PatternError::StaticInPattern(span)
+                        });
                         PatternKind::Wild
                     },
                 }
@@ -814,7 +823,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                 let field = Field::new(i);
                                 let val = match cv.val {
                                     ConstVal::Value(miri) => const_val_field(
-                                        self.tcx, self.param_env, instance,
+                                        self.tcx, self.param_env, instance, span,
                                         Some(variant_index), field, miri, cv.ty,
                                     ).unwrap(),
                                     _ => bug!("{:#?} is not a valid tuple", cv),
@@ -842,7 +851,8 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         let field = Field::new(i);
                         let val = match cv.val {
                             ConstVal::Value(miri) => const_val_field(
-                                self.tcx, self.param_env, instance, None, field, miri, cv.ty,
+                                self.tcx, self.param_env, instance, span,
+                                None, field, miri, cv.ty,
                             ).unwrap(),
                             _ => bug!("{:#?} is not a valid tuple", cv),
                         };
@@ -859,7 +869,8 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         let field = Field::new(i);
                         let val = match cv.val {
                             ConstVal::Value(miri) => const_val_field(
-                                self.tcx, self.param_env, instance, None, field, miri, cv.ty,
+                                self.tcx, self.param_env, instance, span,
+                                None, field, miri, cv.ty,
                             ).unwrap(),
                             _ => bug!("{:#?} is not a valid tuple", cv),
                         };
@@ -877,7 +888,8 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         let field = Field::new(i);
                         let val = match cv.val {
                             ConstVal::Value(miri) => const_val_field(
-                                self.tcx, self.param_env, instance, None, field, miri, cv.ty,
+                                self.tcx, self.param_env, instance, span,
+                                None, field, miri, cv.ty,
                             ).unwrap(),
                             _ => bug!("{:#?} is not a valid tuple", cv),
                         };

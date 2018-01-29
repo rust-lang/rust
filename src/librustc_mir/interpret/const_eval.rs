@@ -374,6 +374,7 @@ pub fn const_val_field<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     instance: ty::Instance<'tcx>,
+    span: Span,
     variant: Option<usize>,
     field: mir::Field,
     val: Value,
@@ -385,7 +386,7 @@ pub fn const_val_field<'a, 'tcx>(
             ty,
         })),
         Err(err) => Err(ConstEvalErr {
-            span: tcx.def_span(instance.def_id()),
+            span,
             kind: err.into(),
         }),
     }
@@ -455,7 +456,6 @@ pub fn const_eval_provider<'a, 'tcx>(
     trace!("const eval: {:?}", key);
     let cid = key.value;
     let def_id = cid.instance.def.def_id();
-    let span = tcx.def_span(def_id);
 
     if tcx.is_foreign_item(def_id) {
         let id = tcx.interpret_interner.get_cached(def_id);
@@ -479,6 +479,7 @@ pub fn const_eval_provider<'a, 'tcx>(
 
     if let Some(id) = tcx.hir.as_local_node_id(def_id) {
         let tables = tcx.typeck_tables_of(def_id);
+        let span = tcx.def_span(def_id);
 
         // Do match-check before building MIR
         if tcx.check_match(def_id).is_err() {
@@ -511,6 +512,7 @@ pub fn const_eval_provider<'a, 'tcx>(
         if tcx.is_static(def_id).is_some() {
             ecx.report(&mut err, true, None);
         }
+        let span = ecx.frame().span;
         ConstEvalErr {
             kind: err.into(),
             span,
