@@ -43,7 +43,7 @@ use syntax::print::pprust::{
     ty_to_string
 };
 use syntax::ptr::P;
-use syntax::codemap::{Spanned, DUMMY_SP};
+use syntax::codemap::{Spanned, DUMMY_SP, dummy_spanned};
 use syntax_pos::*;
 
 use {escape, generated_code, lower_attributes, PathCollector, SaveContext};
@@ -65,12 +65,19 @@ macro_rules! down_cast_data {
 }
 
 macro_rules! access_from {
+    ($save_ctxt:expr, $vis:expr, $id:expr) => {
+        Access {
+            public: $vis.node == ast::VisibilityKind::Public,
+            reachable: $save_ctxt.analysis.access_levels.is_reachable($id),
+        }
+    };
+
     ($save_ctxt:expr, $item:expr) => {
         Access {
-            public: $item.vis == ast::Visibility::Public,
+            public: $item.vis.node == ast::VisibilityKind::Public,
             reachable: $save_ctxt.analysis.access_levels.is_reachable($item.id),
         }
-    }
+    };
 }
 
 pub struct DumpVisitor<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> {
@@ -405,12 +412,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
 
             method_data.value = sig_str;
             method_data.sig = sig::method_signature(id, name, generics, sig, &self.save_ctxt);
-            self.dumper.dump_def(
-                &Access {
-                    public: vis == ast::Visibility::Public,
-                    reachable: self.save_ctxt.analysis.access_levels.is_reachable(id),
-                },
-                method_data);
+            self.dumper.dump_def(&access_from!(self.save_ctxt, vis, id), method_data);
         }
 
         // walk arg and return types
@@ -543,10 +545,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             let span = self.span_from_span(sub_span.expect("No span found for variable"));
 
             self.dumper.dump_def(
-                &Access {
-                    public: vis == ast::Visibility::Public,
-                    reachable: self.save_ctxt.analysis.access_levels.is_reachable(id),
-                },
+                &access_from!(self.save_ctxt, vis, id),
                 Def {
                     kind: DefKind::Const,
                     id: ::id_from_node_id(id, &self.save_ctxt),
@@ -597,7 +596,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                     .iter()
                     .enumerate()
                     .filter_map(|(i, f)| {
-                        if include_priv_fields || f.vis == ast::Visibility::Public {
+                        if include_priv_fields || f.vis.node == ast::VisibilityKind::Public {
                             f.ident
                                 .map(|i| i.to_string())
                                 .or_else(|| Some(i.to_string()))
@@ -1144,7 +1143,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                     &ty,
                     expr.as_ref().map(|e| &**e),
                     trait_id,
-                    ast::Visibility::Public,
+                    dummy_spanned(ast::VisibilityKind::Public),
                     &trait_item.attrs,
                 );
             }
@@ -1155,7 +1154,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                     trait_item.id,
                     trait_item.ident,
                     &trait_item.generics,
-                    ast::Visibility::Public,
+                    dummy_spanned(ast::VisibilityKind::Public),
                     trait_item.span,
                 );
             }
@@ -1259,10 +1258,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
 
         // The access is calculated using the current tree ID, but with the root tree's visibility
         // (since nested trees don't have their own visibility).
-        let access = Access {
-            public: root_item.vis == ast::Visibility::Public,
-            reachable: self.save_ctxt.analysis.access_levels.is_reachable(id),
-        };
+        let access = access_from!(self.save_ctxt, root_item.vis, id);
 
         // The parent def id of a given use tree is always the enclosing item.
         let parent = self.save_ctxt.tcx.hir.opt_local_def_id(id)

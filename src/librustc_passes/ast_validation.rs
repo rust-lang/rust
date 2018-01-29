@@ -58,14 +58,14 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn invalid_visibility(&self, vis: &Visibility, span: Span, note: Option<&str>) {
-        if vis != &Visibility::Inherited {
+    fn invalid_visibility(&self, vis: &Visibility, note: Option<&str>) {
+        if vis.node != VisibilityKind::Inherited {
             let mut err = struct_span_err!(self.session,
-                                           span,
+                                           vis.span,
                                            E0449,
                                            "unnecessary visibility qualifier");
-            if vis == &Visibility::Public {
-                err.span_label(span, "`pub` not needed here");
+            if vis.node == VisibilityKind::Public {
+                err.span_label(vis.span, "`pub` not needed here");
             }
             if let Some(note) = note {
                 err.note(note);
@@ -216,7 +216,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_item(&mut self, item: &'a Item) {
         match item.node {
             ItemKind::Impl(unsafety, polarity, _, _, Some(..), ref ty, ref impl_items) => {
-                self.invalid_visibility(&item.vis, item.span, None);
+                self.invalid_visibility(&item.vis, None);
                 if ty.node == TyKind::Err {
                     self.err_handler()
                         .struct_span_err(item.span, "`impl Trait for .. {}` is an obsolete syntax")
@@ -226,7 +226,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     span_err!(self.session, item.span, E0198, "negative impls cannot be unsafe");
                 }
                 for impl_item in impl_items {
-                    self.invalid_visibility(&impl_item.vis, impl_item.span, None);
+                    self.invalid_visibility(&impl_item.vis, None);
                     if let ImplItemKind::Method(ref sig, _) = impl_item.node {
                         self.check_trait_fn_not_const(sig.constness);
                     }
@@ -234,7 +234,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             ItemKind::Impl(unsafety, polarity, defaultness, _, None, _, _) => {
                 self.invalid_visibility(&item.vis,
-                                        item.span,
                                         Some("place qualifiers on individual impl items instead"));
                 if unsafety == Unsafety::Unsafe {
                     span_err!(self.session, item.span, E0197, "inherent impls cannot be unsafe");
@@ -247,16 +246,16 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
             }
             ItemKind::ForeignMod(..) => {
-                self.invalid_visibility(&item.vis,
-                                        item.span,
-                                        Some("place qualifiers on individual foreign items \
-                                              instead"));
+                self.invalid_visibility(
+                    &item.vis,
+                    Some("place qualifiers on individual foreign items instead"),
+                );
             }
             ItemKind::Enum(ref def, _) => {
                 for variant in &def.variants {
                     self.invalid_non_exhaustive_attribute(variant);
                     for field in variant.node.data.fields() {
-                        self.invalid_visibility(&field.vis, field.span, None);
+                        self.invalid_visibility(&field.vis, None);
                     }
                 }
             }
@@ -359,8 +358,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_vis(&mut self, vis: &'a Visibility) {
-        match *vis {
-            Visibility::Restricted { ref path, .. } => {
+        match vis.node {
+            VisibilityKind::Restricted { ref path, .. } => {
                 path.segments.iter().find(|segment| segment.parameters.is_some()).map(|segment| {
                     self.err_handler().span_err(segment.parameters.as_ref().unwrap().span(),
                                                 "generic arguments in visibility path");
