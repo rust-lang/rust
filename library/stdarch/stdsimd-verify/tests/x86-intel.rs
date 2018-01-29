@@ -227,7 +227,10 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
             continue;
         }
 
-        // FIXME(#308)
+        // these flags on the rdtsc/rtdscp intrinsics we don't test for right
+        // now, but we may wish to add these one day!
+        //
+        // For more info see #308
         if *cpuid == "TSC" || *cpuid == "RDTSCP" {
             continue;
         }
@@ -343,7 +346,9 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
         "_mm256_setr_epi64x" |
         "_mm256_set1_epi64x" => true,
 
-        // FIXME(#308)
+        // These return a 64-bit argument but they're assembled from other
+        // 32-bit registers, so these work on 32-bit just fine. See #308 for
+        // more info.
         "_rdtsc" |
         "__rdtscp" => true,
 
