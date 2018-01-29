@@ -2202,6 +2202,7 @@ macro_rules! fnptr_impls_safety_abi {
 
         #[stable(feature = "fnptr_impls", since = "1.4.0")]
         impl<Ret, $($Arg),*> fmt::Debug for $FnTy {
+            #[inline]
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 fmt::Pointer::fmt(&(*self as *const ()), f)
             }

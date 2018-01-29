@@ -1558,10 +1558,12 @@ macro_rules! fmt_refs {
         $(
         #[stable(feature = "rust1", since = "1.0.0")]
         impl<'a, T: ?Sized + $tr> $tr for &'a T {
+            #[inline]
             fn fmt(&self, f: &mut Formatter) -> Result { $tr::fmt(&**self, f) }
         }
         #[stable(feature = "rust1", since = "1.0.0")]
         impl<'a, T: ?Sized + $tr> $tr for &'a mut T {
+            #[inline]
             fn fmt(&self, f: &mut Formatter) -> Result { $tr::fmt(&**self, f) }
         }
         )*
@@ -1586,6 +1588,7 @@ impl Display for ! {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for bool {
+    #[inline]
     fn fmt(&self, f: &mut Formatter) -> Result {
         Display::fmt(self, f)
     }
@@ -1600,6 +1603,7 @@ impl Display for bool {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for str {
+    #[inline]
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.write_char('"')?;
         let mut from = 0;
@@ -1628,6 +1632,7 @@ impl Display for str {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for char {
+    #[inline]
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.write_char('\'')?;
         for c in self.escape_debug() {
@@ -1701,10 +1706,12 @@ impl<'a, T: ?Sized> Pointer for &'a mut T {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Debug for *const T {
+    #[inline]
     fn fmt(&self, f: &mut Formatter) -> Result { Pointer::fmt(self, f) }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Debug for *mut T {
+    #[inline]
     fn fmt(&self, f: &mut Formatter) -> Result { Pointer::fmt(self, f) }
 }
 
@@ -1718,6 +1725,7 @@ macro_rules! tuple {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl<$($name:Debug),*> Debug for ($($name,)*) where last_type!($($name,)+): ?Sized {
             #[allow(non_snake_case, unused_assignments, deprecated)]
+            #[inline]
             fn fmt(&self, f: &mut Formatter) -> Result {
                 let mut builder = f.debug_tuple("");
                 let ($(ref $name,)*) = *self;
@@ -1741,6 +1749,7 @@ tuple! { T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Debug> Debug for [T] {
+    #[inline]
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.debug_list().entries(self.iter()).finish()
     }
@@ -1748,6 +1757,7 @@ impl<T: Debug> Debug for [T] {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for () {
+    #[inline]
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.pad("()")
     }
