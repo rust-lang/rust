@@ -52,7 +52,7 @@ struct OptimizationFinder<'b, 'a, 'tcx:'a+'b> {
     mir: &'b Mir<'tcx>,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     source: MirSource,
-    optimizations: OptimizationList<'tcx>,
+    places: FxHashMap<Local, Const<'tcx>>,
 }
 
 impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
@@ -65,7 +65,7 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
             mir,
             tcx,
             source,
-            optimizations: OptimizationList::default(),
+            places: FxHashMap::default(),
         }
     }
 
@@ -117,7 +117,7 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
         match *op {
             Operand::Constant(ref c) => self.eval_constant(c),
             Operand::Move(ref place) | Operand::Copy(ref place) => match *place {
-                Place::Local(loc) => self.optimizations.places.get(&loc).cloned(),
+                Place::Local(loc) => self.places.get(&loc).cloned(),
                 // FIXME(oli-obk): field and index projections
                 Place::Projection(_) => None,
                 _ => None,
@@ -353,7 +353,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for OptimizationFinder<'b, 'a, 'tcx> {
                     if self.mir.local_kind(local) == LocalKind::Temp
                         && CanConstProp::check(local, self.mir) {
                         trace!("storing {:?} to {:?}", value, local);
-                        assert!(self.optimizations.places.insert(local, value).is_none());
+                        assert!(self.places.insert(local, value).is_none());
                     }
                 }
             }
@@ -442,9 +442,4 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for OptimizationFinder<'b, 'a, 'tcx> {
             _ => {},
         }
     }
-}
-
-#[derive(Default)]
-struct OptimizationList<'tcx> {
-    places: FxHashMap<Local, Const<'tcx>>,
 }
