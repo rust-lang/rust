@@ -867,7 +867,10 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                                    "rustc_attrs",
                                                    "internal implementation detail",
                                                    cfg_fn!(rustc_attrs))),
-
+    ("rustc_nocopy_clone_marker", Whitelisted, Gated(Stability::Unstable,
+                                                   "rustc_attrs",
+                                                   "internal implementation detail",
+                                                   cfg_fn!(rustc_attrs))),
     // FIXME: #14408 whitelist docs since rustdoc looks at them
     ("doc", Whitelisted, Ungated),
 
