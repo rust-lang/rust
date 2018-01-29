@@ -411,6 +411,49 @@ struct S {
 
 The error will identify the duplicate `a` fields as the sources of the error.
 
+## Generics and type parameters
+
+You can use this feature with a struct or union that has a generic type:
+
+```rust
+#[repr(C)]
+struct S<T> {
+    a: u32,
+    _: union {
+        b: T,
+        c: u64,
+    }
+}
+```
+
+You may also use a generic struct or union parameterized by a type as the named
+type of an unnamed field, since the compiler can know all the resulting field
+names at declaration time without knowing the generic type:
+
+```rust
+#[repr(C)]
+struct S<T> {
+    a: u32,
+    _: U<T>,
+    _: U2<u64>,
+}
+```
+
+However, you cannot use a type parameter itself as the named type of an unnamed
+field:
+
+```rust
+#[repr(C)]
+struct S<T> {
+    a: u32,
+    _: T, // error
+}
+```
+
+This avoids situations in which the compiler must delay producing an error on a
+field name conflict between `T` and `S` (or on the use of a non-struct,
+non-union type for `T`) until it knows a specific type for `T`.
+
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
@@ -502,6 +545,15 @@ and `_: struct { fields }`, we could omit the field name entirely, and write
 `union { fields }` and `struct { fields }` directly. This would more closely
 match the C syntax. However, this does not provide as natural an extension to
 support references to named structures.
+
+## Allowing type parameters
+
+We could allow the type parameters of generic types as the named type of an
+unamed field. This could allow creative flexibility in API design, such as
+having a generic type that adds a field alongside the fields of the type it
+contains. However, this could also lead to much more complex errors that do not
+arise until the point that code references the generic type. Prohibiting the
+use of type parameters in this way will not impact common uses of this feature.
 
 ## Field aliases
 
