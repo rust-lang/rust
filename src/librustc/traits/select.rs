@@ -2126,7 +2126,20 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 }
             }
 
-            ty::TyAdt(..) | ty::TyProjection(..) | ty::TyParam(..) | ty::TyAnon(..) => {
+            ty::TyAdt(adt, substs) => {
+                let attrs = self.tcx().get_attrs(adt.did);
+                if adt.is_enum() && attrs.iter().any(|a| a.check_name("rustc_nocopy_clone_marker")) {
+                    // for Clone
+                    let mut iter = substs.types()
+                        .chain(adt.all_fields().map(|f| f.ty(self.tcx(), substs)));
+                    Where(ty::Binder(iter.collect()))
+                } else {
+                    // Fallback to whatever user-defined impls exist in this case.
+                    None                
+                }
+            }
+
+            ty::TyProjection(..) | ty::TyParam(..) | ty::TyAnon(..) => {
                 // Fallback to whatever user-defined impls exist in this case.
                 None
             }
