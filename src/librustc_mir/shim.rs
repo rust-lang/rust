@@ -294,7 +294,7 @@ fn build_clone_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     debug!("build_clone_shim(def_id={:?})", def_id);
 
-    let mut builder = CloneShimBuilder::new(tcx, def_id);
+    let mut builder = CloneShimBuilder::new(tcx, def_id, self_ty);
     let is_copy = !self_ty.moves_by_default(tcx, tcx.param_env(def_id), builder.span);
 
     match self_ty.sty {
@@ -327,8 +327,14 @@ struct CloneShimBuilder<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
-    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Self {
-        let sig = tcx.fn_sig(def_id);
+    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+           def_id: DefId,
+           self_ty: Ty<'tcx>) -> Self {
+        // we must subst the self_ty because it's
+        // otherwise going to be TySelf and we can't index
+        // or access fields of a Place of type TySelf.
+        let substs = tcx.mk_substs_trait(self_ty, &[]);
+        let sig = tcx.fn_sig(def_id).subst(tcx, substs);
         let sig = tcx.erase_late_bound_regions(&sig);
         let span = tcx.def_span(def_id);
 
