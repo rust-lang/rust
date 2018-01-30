@@ -45,7 +45,7 @@ pub struct Command {
     // other keys.
     program: CString,
     args: Vec<CString>,
-    argv: Vec<*const c_char>,
+    argv: Argv,
     env: CommandEnv<DefaultEnvKey>,
 
     cwd: Option<CString>,
@@ -57,6 +57,12 @@ pub struct Command {
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
 }
+
+// Create a new type for argv, so that we can make it `Send`
+struct Argv(Vec<*const c_char>);
+
+// It is safe to make Argv Send, because it contains pointers to memory owned by `Command.args`
+unsafe impl Send for Argv {}
 
 // passed back to std::process with the pipes connected to the child, if any
 // were requested
@@ -92,7 +98,7 @@ impl Command {
         let mut saw_nul = false;
         let program = os2c(program, &mut saw_nul);
         Command {
-            argv: vec![program.as_ptr(), ptr::null()],
+            argv: Argv(vec![program.as_ptr(), ptr::null()]),
             program,
             args: Vec::new(),
             env: Default::default(),
@@ -111,8 +117,8 @@ impl Command {
         // Overwrite the trailing NULL pointer in `argv` and then add a new null
         // pointer.
         let arg = os2c(arg, &mut self.saw_nul);
-        self.argv[self.args.len() + 1] = arg.as_ptr();
-        self.argv.push(ptr::null());
+        self.argv.0[self.args.len() + 1] = arg.as_ptr();
+        self.argv.0.push(ptr::null());
 
         // Also make sure we keep track of the owned value to schedule a
         // destructor for this memory.
@@ -133,7 +139,7 @@ impl Command {
         self.saw_nul
     }
     pub fn get_argv(&self) -> &Vec<*const c_char> {
-        &self.argv
+        &self.argv.0
     }
 
     #[allow(dead_code)]

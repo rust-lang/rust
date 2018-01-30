@@ -27,7 +27,8 @@ pub struct FileInfo {
 
     /// The "primary file", if any, gets a `-->` marker instead of
     /// `>>>`, and has a line-number/column printed and not just a
-    /// filename.  It appears first in the listing. It is known to
+    /// filename (other files are not guaranteed to have line numbers
+    /// or columns). It appears first in the listing. It is known to
     /// contain at least one primary span, though primary spans (which
     /// are designated with `^^^`) may also occur in other files.
     primary_span: Option<Span>,

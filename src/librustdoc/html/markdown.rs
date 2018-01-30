@@ -872,7 +872,7 @@ pub fn render(w: &mut fmt::Formatter,
         let link_out = format!("<a href=\"{link}\"{title}>{content}</a>",
                                link = link_buf,
                                title = title.map_or(String::new(),
-                                                    |t| format!(" title=\"{}\"", t)),
+                                                    |t| format!(" title=\"{}\"", Escape(&t))),
                                content = content.unwrap_or(String::new()));
 
         unsafe { hoedown_buffer_put(ob, link_out.as_ptr(), link_out.len()); }
