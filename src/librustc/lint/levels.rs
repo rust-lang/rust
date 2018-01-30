@@ -198,7 +198,7 @@ impl<'a> LintLevelsBuilder<'a> {
                       "malformed lint attribute");
         };
         for attr in attrs {
-            let level = match attr.name().and_then(|name| Level::from_str(&name.as_str())) {
+            let level = match Level::from_str(&attr.name().as_str()) {
                 None => continue,
                 Some(lvl) => lvl,
             };

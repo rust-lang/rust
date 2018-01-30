@@ -199,8 +199,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
         let filtered: AccumulateVec<[&ast::Attribute; 8]> = self
             .iter()
             .filter(|attr| {
-                !attr.is_sugared_doc &&
-                attr.name().map(|name| !hcx.is_ignored_attr(name)).unwrap_or(true)
+                !attr.is_sugared_doc && !hcx.is_ignored_attr(attr.name())
             })
             .collect();
 
@@ -227,7 +226,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ast::Attribute {
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         // Make sure that these have been filtered out.
-        debug_assert!(self.name().map(|name| !hcx.is_ignored_attr(name)).unwrap_or(true));
+        debug_assert!(!hcx.is_ignored_attr(self.name()));
         debug_assert!(!self.is_sugared_doc);
 
         let ast::Attribute {

@@ -3661,7 +3661,7 @@ impl Clean<Vec<Item>> for doctree::Import {
         // #[doc(no_inline)] attribute is present.
         // Don't inline doc(hidden) imports so they can be stripped at a later stage.
         let denied = self.vis != hir::Public || self.attrs.iter().any(|a| {
-            a.name().unwrap() == "doc" && match a.meta_item_list() {
+            a.name() == "doc" && match a.meta_item_list() {
                 Some(l) => attr::list_contains_name(&l, "no_inline") ||
                            attr::list_contains_name(&l, "hidden"),
                 None => false,

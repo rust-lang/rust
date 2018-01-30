@@ -153,10 +153,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         // ```
         let hints: Vec<_> = item.attrs
             .iter()
-            .filter(|attr| match attr.name() {
-                Some(name) => name == "repr",
-                None => false,
-            })
+            .filter(|attr| attr.name() == "repr")
             .filter_map(|attr| attr.meta_item_list())
             .flat_map(|hints| hints)
             .collect();

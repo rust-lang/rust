@@ -217,11 +217,10 @@ impl Attribute {
         matches
     }
 
-    pub fn name(&self) -> Option<Name> {
-        match self.path.segments.len() {
-            1 => Some(self.path.segments[0].identifier.name),
-            _ => None,
-        }
+    /// Returns the first segment of the name of this attribute.
+    /// E.g. `foo` for `#[foo]`, `rustfmt` for `#[rustfmt::skip]`.
+    pub fn name(&self) -> Name {
+        name_from_path(&self.path)
     }
 
     pub fn value_str(&self) -> Option<Symbol> {
