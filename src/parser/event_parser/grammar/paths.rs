@@ -32,7 +32,6 @@ fn path(p: &mut Parser) {
     }
 }
 
-
 fn path_segment(p: &mut Parser, first: bool) {
     let segment = p.start();
     if first {
