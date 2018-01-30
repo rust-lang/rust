@@ -173,6 +173,8 @@ impl TokenTree {
 ///   `ident` are "matchers". They are not present in the body of a macro rule -- just in the
 ///   pattern, so we pass a parameter to indicate whether to expect them or not.
 /// - `sess`: the parsing session. Any errors will be emitted to this session.
+/// - `features`, `attrs`: language feature flags and attributes so that we know whether to use
+///   unstable features or not.
 ///
 /// # Returns
 ///
@@ -242,6 +244,8 @@ pub fn parse(
 ///   converting `tree`
 /// - `expect_matchers`: same as for `parse` (see above).
 /// - `sess`: the parsing session. Any errors will be emitted to this session.
+/// - `features`, `attrs`: language feature flags and attributes so that we know whether to use
+///   unstable features or not.
 fn parse_tree<I>(
     tree: tokenstream::TokenTree,
     trees: &mut Peekable<I>,
