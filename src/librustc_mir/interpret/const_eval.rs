@@ -243,6 +243,12 @@ impl<'tcx> super::Machine<'tcx> for CompileTimeEvaluator {
                 ecx.write_primval(dest, PrimVal::from_u128(size), dest_layout.ty)?;
             }
 
+            "type_id" => {
+                let ty = substs.type_at(0);
+                let type_id = ecx.tcx.type_id_hash(ty) as u128;
+                ecx.write_primval(dest, PrimVal::from_u128(type_id), dest_layout.ty)?;
+            }
+
             name => return Err(ConstEvalError::NeedsRfc(format!("calling intrinsic `{}`", name)).into()),
         }
 

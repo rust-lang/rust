@@ -737,7 +737,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     Abi::PlatformIntrinsic => {
                         assert!(!self.tcx.is_const_fn(def_id));
                         match &self.tcx.item_name(def_id)[..] {
-                            "size_of" | "min_align_of" => is_const_fn = Some(def_id),
+                            "size_of" | "min_align_of" | "type_id" => is_const_fn = Some(def_id),
 
                             name if name.starts_with("simd_shuffle") => {
                                 is_shuffle = true;

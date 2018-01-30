@@ -411,6 +411,11 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                         self.cx.align_of(substs.type_at(0)).abi());
                                     Ok(Const::new(llval, tcx.types.usize))
                                 }
+                                "type_id" => {
+                                    let llval = C_u64(self.cx,
+                                        self.cx.tcx.type_id_hash(substs.type_at(0)));
+                                    Ok(Const::new(llval, tcx.types.u64))
+                                }
                                 _ => span_bug!(span, "{:?} in constant", terminator.kind)
                             }
                         } else if let Some((op, is_checked)) = self.is_binop_lang_item(def_id) {
