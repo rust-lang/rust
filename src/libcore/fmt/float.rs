@@ -125,7 +125,6 @@ macro_rules! floating {
     ($ty:ident) => (
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Debug for $ty {
-            #[inline]
             fn fmt(&self, fmt: &mut Formatter) -> Result {
                 float_to_decimal_common(fmt, self, true, 1)
             }
