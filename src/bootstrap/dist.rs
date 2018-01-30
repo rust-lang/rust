@@ -435,11 +435,9 @@ impl Step for Rustc {
             }
 
             // Copy over the codegen backends
-            let backends_src = builder.sysroot_libdir(compiler, host)
-                .join("codegen-backends");
-            let backends_dst = image.join("lib/rustlib")
-                .join(&*host)
-                .join("lib/codegen-backends");
+            let backends_src = builder.sysroot_codegen_backends(compiler);
+            let backends_rel = backends_src.strip_prefix(&src).unwrap();
+            let backends_dst = image.join(&backends_rel);
             t!(fs::create_dir_all(&backends_dst));
             cp_r(&backends_src, &backends_dst);
 
