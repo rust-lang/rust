@@ -3398,11 +3398,7 @@ impl<'a> Parser<'a> {
 
         let attrs = self.parse_outer_attributes()?;
         // Allow a '|' before the pats (RFC 1925)
-        let beginning_vert = if self.eat(&token::BinOp(token::Or)) {
-            Some(self.prev_span)
-        } else {
-            None
-        };
+        self.eat(&token::BinOp(token::Or));
         let pats = self.parse_pats()?;
         let guard = if self.eat_keyword(keywords::If) {
             Some(self.parse_expr()?)
@@ -3426,7 +3422,6 @@ impl<'a> Parser<'a> {
             pats,
             guard,
             body: expr,
-            beginning_vert,
         })
     }
 

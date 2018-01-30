@@ -883,7 +883,6 @@ pub struct Arm {
     pub pats: Vec<P<Pat>>,
     pub guard: Option<P<Expr>>,
     pub body: P<Expr>,
-    pub beginning_vert: Option<Span>, // For RFC 1925 feature gate
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
