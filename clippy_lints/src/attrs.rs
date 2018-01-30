@@ -5,7 +5,7 @@ use rustc::lint::*;
 use rustc::hir::*;
 use rustc::ty::{self, TyCtxt};
 use semver::Version;
-use syntax::ast::{Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
+use syntax::ast::{Attribute, AttrStyle, Lit, LitKind, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
 use syntax::codemap::Span;
 use utils::{in_macro, match_def_path, opt_def_id, paths, snippet_opt, span_lint, span_lint_and_then};
 
@@ -78,12 +78,44 @@ declare_lint! {
     "use of `#[deprecated(since = \"x\")]` where x is not semver"
 }
 
+/// **What it does:** Checks for empty lines after outer attributes
+///
+/// **Why is this bad?**
+/// Most likely the attribute was meant to be an inner attribute using a '!'.
+/// If it was meant to be an outer attribute, then the following item
+/// should not be separated by empty lines.
+///
+/// **Known problems:** None
+///
+/// **Example:**
+/// ```rust
+/// // Bad
+/// #[inline(always)]
+///
+/// fn not_quite_good_code(..) { ... }
+///
+/// // Good (as inner attribute)
+/// #![inline(always)]
+///
+/// fn this_is_fine_too(..) { ... }
+///
+/// // Good (as outer attribute)
+/// #[inline(always)]
+/// fn this_is_fine(..) { ... }
+///
+/// ```
+declare_lint! {
+    pub EMPTY_LINE_AFTER_OUTER_ATTR,
+    Warn,
+    "empty line after outer attribute"
+}
+
 #[derive(Copy, Clone)]
 pub struct AttrPass;
 
 impl LintPass for AttrPass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(INLINE_ALWAYS, DEPRECATED_SEMVER, USELESS_ATTRIBUTE)
+        lint_array!(INLINE_ALWAYS, DEPRECATED_SEMVER, USELESS_ATTRIBUTE, EMPTY_LINE_AFTER_OUTER_ATTR)
     }
 }
 
@@ -171,7 +203,7 @@ fn is_relevant_item(tcx: TyCtxt, item: &Item) -> bool {
     if let ItemFn(_, _, _, _, _, eid) = item.node {
         is_relevant_expr(tcx, tcx.body_tables(eid), &tcx.hir.body(eid).value)
     } else {
-        false
+        true
     }
 }
 
@@ -230,6 +262,27 @@ fn check_attrs(cx: &LateContext, span: Span, name: &Name, attrs: &[Attribute]) {
     }
 
     for attr in attrs {
+        if attr.style == AttrStyle::Outer {
+            if !is_present_in_source(cx, attr.span) {
+                return;
+            }
+
+            let attr_to_item_span = Span::new(attr.span.lo(), span.lo(), span.ctxt());
+
+            if let Some(snippet) = snippet_opt(cx, attr_to_item_span) {
+                let lines = snippet.split('\n').collect::<Vec<_>>();
+                if lines.iter().filter(|l| l.trim().is_empty()).count() > 1 {
+                    span_lint(
+                        cx,
+                        EMPTY_LINE_AFTER_OUTER_ATTR,
+                        attr_to_item_span,
+                        &format!("Found an empty line after an outer attribute. Perhaps you forgot to add a '!' to make it an inner attribute?")
+                        );
+
+                }
+            }
+        }
+
         if let Some(ref values) = attr.meta_item_list() {
             if values.len() != 1 || attr.name().map_or(true, |n| n != "inline") {
                 continue;
@@ -269,4 +322,18 @@ fn is_word(nmi: &NestedMetaItem, expected: &str) -> bool {
     } else {
         false
     }
+}
+
+// If the snippet is empty, it's an attribute that was inserted during macro
+// expansion and we want to ignore those, because they could come from external
+// sources that the user has no control over.
+// For some reason these attributes don't have any expansion info on them, so
+// we have to check it this way until there is a better way.
+fn is_present_in_source(cx: &LateContext, span: Span) -> bool {
+    if let Some(snippet) = snippet_opt(cx, span) {
+        if snippet.is_empty() {
+            return false;
+        }
+    }
+    true
 }

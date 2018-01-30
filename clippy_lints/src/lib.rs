@@ -440,6 +440,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         attrs::DEPRECATED_SEMVER,
         attrs::INLINE_ALWAYS,
         attrs::USELESS_ATTRIBUTE,
+        attrs::EMPTY_LINE_AFTER_OUTER_ATTR,
         bit_mask::BAD_BIT_MASK,
         bit_mask::INEFFECTIVE_BIT_MASK,
         bit_mask::VERBOSE_BIT_MASK,

@@ -1,0 +1,54 @@
+error: Found an empty line after an outer attribute. Perhaps you forgot to add a '!' to make it an inner attribute?
+ --> $DIR/empty_line_after_outer_attribute.rs:5:1
+  |
+5 | / #[crate_type = "lib"]
+6 | |
+7 | | /// some comment
+8 | | fn with_one_newline_and_comment() { assert!(true) }
+  | |_
+  |
+  = note: `-D empty-line-after-outer-attr` implied by `-D warnings`
+
+error: Found an empty line after an outer attribute. Perhaps you forgot to add a '!' to make it an inner attribute?
+  --> $DIR/empty_line_after_outer_attribute.rs:17:1
+   |
+17 | / #[crate_type = "lib"]
+18 | |
+19 | | fn with_one_newline() { assert!(true) }
+   | |_
+
+error: Found an empty line after an outer attribute. Perhaps you forgot to add a '!' to make it an inner attribute?
+  --> $DIR/empty_line_after_outer_attribute.rs:22:1
+   |
+22 | / #[crate_type = "lib"]
+23 | |
+24 | |
+25 | | fn with_two_newlines() { assert!(true) }
+   | |_
+
+error: Found an empty line after an outer attribute. Perhaps you forgot to add a '!' to make it an inner attribute?
+  --> $DIR/empty_line_after_outer_attribute.rs:29:1
+   |
+29 | / #[crate_type = "lib"]
+30 | |
+31 | | enum Baz {
+   | |_
+
+error: Found an empty line after an outer attribute. Perhaps you forgot to add a '!' to make it an inner attribute?
+  --> $DIR/empty_line_after_outer_attribute.rs:37:1
+   |
+37 | / #[crate_type = "lib"]
+38 | |
+39 | | struct Foo {
+   | |_
+
+error: Found an empty line after an outer attribute. Perhaps you forgot to add a '!' to make it an inner attribute?
+  --> $DIR/empty_line_after_outer_attribute.rs:45:1
+   |
+45 | / #[crate_type = "lib"]
+46 | |
+47 | | mod foo {
+   | |_
+
+error: aborting due to 6 previous errors
+
