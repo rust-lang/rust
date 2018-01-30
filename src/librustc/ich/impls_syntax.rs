@@ -190,6 +190,17 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for [ast::Attribute] {
     }
 }
 
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for ast::Path {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        self.segments.len().hash_stable(hcx, hasher);
+        for segment in &self.segments {
+            segment.identifier.name.hash_stable(hcx, hasher);
+        }
+    }
+}
+
 impl<'gcx> HashStable<StableHashingContext<'gcx>> for ast::Attribute {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'gcx>,
@@ -208,10 +219,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for ast::Attribute {
         } = *self;
 
         style.hash_stable(hcx, hasher);
-        path.segments.len().hash_stable(hcx, hasher);
-        for segment in &path.segments {
-            segment.identifier.name.hash_stable(hcx, hasher);
-        }
+        path.hash_stable(hcx, hasher);
         for tt in tokens.trees() {
             tt.hash_stable(hcx, hasher);
         }

@@ -26,8 +26,7 @@ pub fn collect_derives(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) -> Vec
             return true;
         }
 
-        match attr.parse_list(cx.parse_sess,
-                              |parser| parser.parse_path_allowing_meta(PathStyle::Mod)) {
+        match attr.parse_list(cx.parse_sess, |parser| parser.parse_path(PathStyle::Mod)) {
             Ok(ref traits) if traits.is_empty() => {
                 cx.span_warn(attr.span, "empty trait list in `derive`");
                 false
