@@ -505,11 +505,11 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
     fn array_shim(&mut self, ty: Ty<'tcx>, len: u64) {
         let tcx = self.tcx;
         let span = self.span;
-        let rcvr = Place::Local(Local::new(1+0)).deref();
+        let src = Place::Local(Local::new(1+0)).deref();
+        let dest = Place::Local(RETURN_PLACE);
 
         let beg = self.local_decls.push(temp_decl(Mutability::Mut, tcx.types.usize, span));
         let end = self.make_place(Mutability::Not, tcx.types.usize);
-        let ret = self.make_place(Mutability::Mut, tcx.mk_array(ty, len));
 
         // BB #0
         // `let mut beg = 0;`
@@ -539,25 +539,17 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         self.loop_header(Place::Local(beg), end, BasicBlock::new(2), BasicBlock::new(4), false);
 
         // BB #2
-        // `let cloned = Clone::clone(rcvr[beg])`;
+        // `dest[i] = Clone::clone(src[beg])`;
         // Goto #3 if ok, #5 if unwinding happens.
-        let rcvr_field = rcvr.clone().index(beg);
-        let cloned = self.make_place(Mutability::Not, ty);
-        self.make_clone_call(cloned.clone(), rcvr_field, ty, BasicBlock::new(3),
+        let dest_field = dest.clone().index(beg);
+        let src_field = src.clone().index(beg);
+        self.make_clone_call(dest_field, src_field, ty, BasicBlock::new(3),
                              BasicBlock::new(5));
 
         // BB #3
-        // `ret[beg] = cloned;`
         // `beg = beg + 1;`
         // `goto #1`;
-        let ret_field = ret.clone().index(beg);
         let statements = vec![
-            self.make_statement(
-                StatementKind::Assign(
-                    ret_field,
-                    Rvalue::Use(Operand::Move(cloned))
-                )
-            ),
             self.make_statement(
                 StatementKind::Assign(
                     Place::Local(beg),
@@ -572,14 +564,8 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         self.block(statements, TerminatorKind::Goto { target: BasicBlock::new(1) }, false);
 
         // BB #4
-        // `return ret;`
-        let ret_statement = self.make_statement(
-            StatementKind::Assign(
-                Place::Local(RETURN_PLACE),
-                Rvalue::Use(Operand::Move(ret.clone())),
-            )
-        );
-        self.block(vec![ret_statement], TerminatorKind::Return, false);
+        // `return dest;`
+        self.block(vec![], TerminatorKind::Return, false);
 
         // BB #5 (cleanup)
         // `let end = beg;`
@@ -604,9 +590,9 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
                          BasicBlock::new(7), BasicBlock::new(9), true);
 
         // BB #7 (cleanup)
-        // `drop(ret[beg])`;
+        // `drop(dest[beg])`;
         self.block(vec![], TerminatorKind::Drop {
-            location: ret.index(beg),
+            location: dest.index(beg),
             target: BasicBlock::new(8),
             unwind: None,
         }, true);
