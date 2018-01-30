@@ -50,15 +50,23 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     Cause::DropVar(local, location) => {
                         match find_drop_use(&mir, regioncx, borrow, location, local) {
                             Some(p) => {
-                                let local_name = &mir.local_decls[local].name.unwrap();
-
-                                err.span_label(
-                                    mir.source_info(p).span,
-                                    format!(
-                                        "borrow later used here, when `{}` is dropped",
-                                        local_name
-                                    ),
-                                );
+                                match &mir.local_decls[local].name {
+                                    Some(local_name) => {
+                                        err.span_label(
+                                            mir.source_info(p).span,
+                                            format!(
+                                                "borrow later used here, when `{}` is dropped",
+                                                local_name
+                                            ),
+                                        );
+                                    }
+                                    None => {
+                                        err.span_label(
+                                            mir.source_info(p).span,
+                                            "borrow later used here, when binding is dropped"
+                                        );
+                                    }
+                                }
                             }
 
                             None => {
