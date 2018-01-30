@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.184
+* Rustup to *rustc 1.25.0-nightly (90eb44a58 2018-01-29)*
+* New lints: [`double_comparisons`], [`empty_line_after_outer_attr`]
+
 ## 0.0.183
 * Rustup to *rustc 1.25.0-nightly (21882aad7 2018-01-28)*
 * New lint: [`misaligned_transmute`]
@@ -554,6 +558,7 @@ All notable changes to this project will be documented in this file.
 [`derive_hash_xor_eq`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#derive_hash_xor_eq
 [`diverging_sub_expression`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#diverging_sub_expression
 [`doc_markdown`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#doc_markdown
+[`double_comparisons`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#double_comparisons
 [`double_neg`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#double_neg
 [`double_parens`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#double_parens
 [`drop_copy`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#drop_copy
@@ -561,6 +566,7 @@ All notable changes to this project will be documented in this file.
 [`duplicate_underscore_argument`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#duplicate_underscore_argument
 [`else_if_without_else`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#else_if_without_else
 [`empty_enum`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#empty_enum
+[`empty_line_after_outer_attr`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#empty_line_after_outer_attr
 [`empty_loop`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#empty_loop
 [`enum_clike_unportable_variant`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#enum_clike_unportable_variant
 [`enum_glob_use`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#enum_glob_use
