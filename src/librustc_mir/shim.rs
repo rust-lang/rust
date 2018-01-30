@@ -297,18 +297,22 @@ fn build_clone_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut builder = CloneShimBuilder::new(tcx, def_id, self_ty);
     let is_copy = !self_ty.moves_by_default(tcx, tcx.param_env(def_id), builder.span);
 
+    let dest = Place::Local(RETURN_PLACE);
+    let src = Place::Local(Local::new(1+0)).deref();
+
     match self_ty.sty {
         _ if is_copy => builder.copy_shim(),
         ty::TyArray(ty, len) => {
             let len = len.val.to_const_int().unwrap().to_u64().unwrap();
-            builder.array_shim(ty, len)
+            builder.array_shim(dest, src, ty, len)
         }
         ty::TyClosure(def_id, substs) => {
             builder.tuple_like_shim(
-                &substs.upvar_tys(def_id, tcx).collect::<Vec<_>>()
+                dest, src,
+                substs.upvar_tys(def_id, tcx)
             )
         }
-        ty::TyTuple(tys, _) => builder.tuple_like_shim(&**tys),
+        ty::TyTuple(tys, _) => builder.tuple_like_shim(dest, src, tys.iter().cloned()),
         _ => {
             bug!("clone shim for `{:?}` which is not `Copy` and is not an aggregate", self_ty)
         }
@@ -380,6 +384,14 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             terminator: Some(Terminator { source_info, kind }),
             is_cleanup,
         })
+    }
+
+    /// Gives the index of an upcoming BasicBlock, with an offset.
+    /// offset=0 will give you the index of the next BasicBlock,
+    /// offset=1 will give the index of the next-to-next block,
+    /// offset=-1 will give you the index of the last-created block
+    fn block_index_offset(&mut self, offset: usize) -> BasicBlock {
+        BasicBlock::new(self.blocks.len() + offset)
     }
 
     fn make_statement(&self, kind: StatementKind<'tcx>) -> Statement<'tcx> {
@@ -502,11 +514,9 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         }
     }
 
-    fn array_shim(&mut self, ty: Ty<'tcx>, len: u64) {
+    fn array_shim(&mut self, dest: Place<'tcx>, src: Place<'tcx>, ty: Ty<'tcx>, len: u64) {
         let tcx = self.tcx;
         let span = self.span;
-        let src = Place::Local(Local::new(1+0)).deref();
-        let dest = Place::Local(RETURN_PLACE);
 
         let beg = self.local_decls.push(temp_decl(Mutability::Mut, tcx.types.usize, span));
         let end = self.make_place(Mutability::Not, tcx.types.usize);
@@ -616,34 +626,39 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         self.block(vec![], TerminatorKind::Resume, true);
     }
 
-    fn tuple_like_shim(&mut self, tys: &[ty::Ty<'tcx>]) {
-        let rcvr = Place::Local(Local::new(1+0)).deref();
-
-        let mut previous_place = None;
-        let return_place = Place::Local(RETURN_PLACE);
-        for (i, ity) in tys.iter().enumerate() {
+    fn tuple_like_shim<I>(&mut self, dest: Place<'tcx>,
+                          src: Place<'tcx>, tys: I)
+            where I: Iterator<Item = ty::Ty<'tcx>> {
+        let mut previous_field = None;
+        for (i, ity) in tys.enumerate() {
             let field = Field::new(i);
-            let rcvr_field = rcvr.clone().field(field, *ity);
+            let src_field = src.clone().field(field, ity);
 
-            let place = return_place.clone().field(field, *ity);
+            let dest_field = dest.clone().field(field, ity);
+
+            // #(2i + 1) is the cleanup block for the previous clone operation
+            let cleanup_block = self.block_index_offset(1);
+            // #(2i + 2) is the next cloning block
+            // (or the Return terminator if this is the last block)
+            let next_block = self.block_index_offset(2);
 
             // BB #(2i)
-            // `returns[i] = Clone::clone(&rcvr.i);`
+            // `dest.i = Clone::clone(&src.i);`
             // Goto #(2i + 2) if ok, #(2i + 1) if unwinding happens.
             self.make_clone_call(
-                place.clone(),
-                rcvr_field,
-                *ity,
-                BasicBlock::new(2 * i + 2),
-                BasicBlock::new(2 * i + 1),
+                dest_field.clone(),
+                src_field,
+                ity,
+                next_block,
+                cleanup_block,
             );
 
             // BB #(2i + 1) (cleanup)
-            if let Some(previous_place) = previous_place.take() {
+            if let Some((previous_field, previous_cleanup)) = previous_field.take() {
                 // Drop previous field and goto previous cleanup block.
                 self.block(vec![], TerminatorKind::Drop {
-                    location: previous_place,
-                    target: BasicBlock::new(2 * i - 1),
+                    location: previous_field,
+                    target: previous_cleanup,
                     unwind: None,
                 }, true);
             } else {
@@ -651,7 +666,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
                 self.block(vec![], TerminatorKind::Resume, true);
             }
 
-            previous_place = Some(place);
+            previous_field = Some((dest_field, cleanup_block));
         }
 
         self.block(vec![], TerminatorKind::Return, false);
