@@ -27,10 +27,12 @@
 #![feature(libc)]
 #![feature(panic_runtime)]
 #![feature(staged_api)]
+#![feature(rustc_attrs)]
 
 // Rust's "try" function, but if we're aborting on panics we just call the
 // function as there's nothing else we need to do here.
 #[no_mangle]
+#[rustc_std_internal_symbol]
 pub unsafe extern fn __rust_maybe_catch_panic(f: fn(*mut u8),
                                               data: *mut u8,
                                               _data_ptr: *mut usize,
@@ -50,6 +52,7 @@ pub unsafe extern fn __rust_maybe_catch_panic(f: fn(*mut u8),
 // will kill us with an illegal instruction, which will do a good enough job for
 // now hopefully.
 #[no_mangle]
+#[rustc_std_internal_symbol]
 pub unsafe extern fn __rust_start_panic(_data: usize, _vtable: usize) -> u32 {
     abort();
 
