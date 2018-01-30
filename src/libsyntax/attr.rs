@@ -107,6 +107,12 @@ pub fn is_known(attr: &Attribute) -> bool {
     })
 }
 
+const RUST_KNOWN_TOOL: &[&str] = &["clippy", "rustfmt"];
+
+pub fn is_known_tool(attr: &Attribute) -> bool {
+    RUST_KNOWN_TOOL.contains(&attr.name().as_str().as_ref())
+}
+
 impl NestedMetaItem {
     /// Returns the MetaItem if self is a NestedMetaItemKind::MetaItem.
     pub fn meta_item(&self) -> Option<&MetaItem> {
@@ -249,6 +255,10 @@ impl Attribute {
     /// Indicates if the attribute is a Value String.
     pub fn is_value_str(&self) -> bool {
         self.value_str().is_some()
+    }
+
+    pub fn is_scoped(&self) -> bool {
+        self.path.segments.len() > 1
     }
 }
 

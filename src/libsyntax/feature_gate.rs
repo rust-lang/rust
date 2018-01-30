@@ -460,6 +460,9 @@ declare_features! (
 
     // Access to crate names passed via `--extern` through prelude
     (active, extern_prelude, "1.27.0", Some(44660), Some(Edition::Edition2018)),
+    
+    // Scoped attributes
+    (active, tool_attributes, "1.25.0", Some(44690)),
 );
 
 declare_features! (
@@ -1079,7 +1082,7 @@ pub struct GatedCfg {
 
 impl GatedCfg {
     pub fn gate(cfg: &ast::MetaItem) -> Option<GatedCfg> {
-        let name = cfg.ident.name.as_str();
+        let name = cfg.name().as_str();
         GATED_CFGS.iter()
                   .position(|info| info.0 == name)
                   .map(|idx| {
