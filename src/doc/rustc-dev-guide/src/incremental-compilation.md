@@ -64,7 +64,7 @@ Try-mark-green works as follows:
 - If there is a saved result, then we load the `reads(Q)` vector from the
   query DAG. The "reads" is the set of queries that Q executed during
   its execution.
-  - For each query R that in `reads(Q)`, we recursively demand the color
+  - For each query R in `reads(Q)`, we recursively demand the color
     of R using try-mark-green.
     - Note: it is important that we visit each node in `reads(Q)` in same order
       as they occurred in the original compilation. See [the section on the query DAG below](#dag).
@@ -84,7 +84,7 @@ The query DAG code is stored in
 by instrumenting the query execution. 
 
 One key point is that the query DAG also tracks ordering; that is, for
-each query Q, we noy only track the queries that Q reads, we track the
+each query Q, we not only track the queries that Q reads, we track the
 **order** in which they were read.  This allows try-mark-green to walk
 those queries back in the same order. This is important because once a subquery comes back as red,
 we can no longer be sure that Q will continue along the same path as before.
