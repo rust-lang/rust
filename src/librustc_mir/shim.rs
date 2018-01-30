@@ -712,9 +712,19 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             let src_variant = receiver.clone().downcast(adt, idx);
             let dest_variant = dest.clone().downcast(adt, idx);
 
-            // next block created will be the target
-            targets.push(self.block_index_offset(0));
-            // the borrow
+
+            // the next to next block created will be the one
+            // from tuple_like_shim and will handle the cloning
+            let clone_block = self.block_index_offset(1);
+            let set_discr = self.make_statement(StatementKind::SetDiscriminant {
+                place: dest.clone(),
+                variant_index: idx
+            });
+
+            targets.push(self.block(vec![set_discr], TerminatorKind::Goto {
+                target: clone_block
+            }, false));
+
             let tcx = self.tcx;
             let iter = variant.fields.iter().map(|field| field.ty(tcx, substs));
             self.tuple_like_shim(src_variant, dest_variant, iter);
