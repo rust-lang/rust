@@ -313,6 +313,7 @@ fn build_clone_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             )
         }
         ty::TyTuple(tys, _) => builder.tuple_like_shim(dest, src, tys.iter().cloned()),
+        ty::TyAdt(adt, substs) => builder.enum_shim(adt, substs, dest, src),
         _ => {
             bug!("clone shim for `{:?}` which is not `Copy` and is not an aggregate", self_ty)
         }
@@ -670,6 +671,62 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         }
 
         self.block(vec![], TerminatorKind::Return, false);
+    }
+
+    fn enum_shim(&mut self, adt: &'tcx ty::AdtDef, substs: &'tcx Substs<'tcx>,
+                 dest: Place<'tcx>, src: Place<'tcx>) {
+        use rustc::ty::util::IntTypeExt;
+        if !adt.is_enum() {
+            bug!("We only make Clone shims for enum ADTs");
+        }
+        // should be u128 maybe?
+        let discr_ty = adt.repr.discr_type().to_ty(self.tcx);
+        let discr = self.make_place(Mutability::Not, discr_ty);
+
+        let assign_discr = self.make_statement(
+            StatementKind::Assign(
+                discr.clone(),
+                Rvalue::Discriminant(src.clone())
+            )
+        );
+        // insert dummy first block
+        let entry_block = self.block(vec![], TerminatorKind::Abort, false);
+        let switch = self.make_enum_match(adt, substs, discr, dest, src);
+
+        let source_info = self.source_info();
+        self.blocks[entry_block].statements = vec![assign_discr];
+        self.blocks[entry_block].terminator = Some(Terminator { source_info, kind: switch });
+    }
+
+    fn make_enum_match(&mut self, adt: &'tcx ty::AdtDef,
+                       substs: &'tcx Substs<'tcx>,
+                       discr: Place<'tcx>,
+                       dest: Place<'tcx>,
+                       receiver: Place<'tcx>) -> TerminatorKind<'tcx> {
+
+        let mut values = vec![];
+        let mut targets = vec![];
+        for (idx, variant) in adt.variants.iter().enumerate() {
+            values.push(adt.discriminant_for_variant(self.tcx, idx));
+
+            let src_variant = receiver.clone().downcast(adt, idx);
+            let dest_variant = dest.clone().downcast(adt, idx);
+
+            // next block created will be the target
+            targets.push(self.block_index_offset(0));
+            // the borrow
+            let tcx = self.tcx;
+            let iter = variant.fields.iter().map(|field| field.ty(tcx, substs));
+            self.tuple_like_shim(src_variant, dest_variant, iter);
+        }
+        // the nonexistant extra case
+        targets.push(self.block(vec![], TerminatorKind::Abort, true));
+        TerminatorKind::SwitchInt {
+            discr: Operand::Move(discr),
+            switch_ty: self.tcx.types.usize,
+            values: From::from(values),
+            targets,
+        }
     }
 }
 
