@@ -310,13 +310,13 @@ pub fn rewrite_macro_def(
 
     let multi_branch_style = def.legacy || parsed_def.branches.len() != 1;
 
-    let mac_indent = if multi_branch_style {
-        indent.block_indent(context.config)
+    let arm_shape = if multi_branch_style {
+        shape
+        .block_indent(context.config.tab_spaces())
+        .with_max_width(context.config)
     } else {
-        indent
+        shape
     };
-
-    let mac_indent_str = mac_indent.to_string(context.config);
 
     let branch_items = itemize_list(
         context.codemap,
@@ -325,102 +325,11 @@ pub fn rewrite_macro_def(
         ";",
         |branch| branch.span.lo(),
         |branch| branch.span.hi(),
-        |branch| {
-            // Only attempt to format function-like macros.
-            if branch.args_paren_kind != DelimToken::Paren {
-                // FIXME(#1539): implement for non-sugared macros.
-                return None;
-            }
-
-            let mut result = format_macro_args(branch.args.clone())?;
-
-            if multi_branch_style {
-                result += " =>";
-            }
-
-            // The macro body is the most interesting part. It might end up as various
-            // AST nodes, but also has special variables (e.g, `$foo`) which can't be
-            // parsed as regular Rust code (and note that these can be escaped using
-            // `$$`). We'll try and format like an AST node, but we'll substitute
-            // variables for new names with the same length first.
-
-            let old_body = context.snippet(branch.body).trim();
-            let (body_str, substs) = match replace_names(old_body) {
-                Some(result) => result,
-                None => return snippet,
-            };
-
-            let mut config = context.config.clone();
-            config.set().hide_parse_errors(true);
-
-            result += " {";
-
-            let has_block_body = old_body.starts_with('{');
-
-            let body_indent = if has_block_body {
-                mac_indent
-            } else {
-                // We'll hack the indent below, take this into account when formatting,
-                let body_indent = mac_indent.block_indent(&config);
-                let new_width = config.max_width() - body_indent.width();
-                config.set().max_width(new_width);
-                body_indent
-            };
-
-            // First try to format as items, then as statements.
-            let new_body = match ::format_snippet(&body_str, &config) {
-                Some(new_body) => new_body,
-                None => match ::format_code_block(&body_str, &config) {
-                    Some(new_body) => new_body,
-                    None => return None,
-                },
-            };
-
-            // Indent the body since it is in a block.
-            let indent_str = body_indent.to_string(&config);
-            let mut new_body = new_body
-                .trim_right()
-                .lines()
-                .fold(String::new(), |mut s, l| {
-                    if !l.is_empty() {
-                        s += &indent_str;
-                    }
-                    s + l + "\n"
-                });
-
-            // Undo our replacement of macro variables.
-            // FIXME: this could be *much* more efficient.
-            for (old, new) in &substs {
-                if old_body.find(new).is_some() {
-                    debug!(
-                        "rewrite_macro_def: bailing matching variable: `{}` in `{}`",
-                        new, ident
-                    );
-                    return None;
-                }
-                new_body = new_body.replace(new, old);
-            }
-
-            if has_block_body {
-                result += new_body.trim();
-            } else if !new_body.is_empty() {
-                result += "\n";
-                result += &new_body;
-                result += &mac_indent_str;
-            }
-
-            result += "}";
-
-            Some(result)
-        },
+        |branch| branch.rewrite(context, arm_shape, multi_branch_style),
         context.codemap.span_after(span, "{"),
         span.hi(),
         false,
     ).collect::<Vec<_>>();
-
-    let arm_shape = shape
-        .block_indent(context.config.tab_spaces())
-        .with_max_width(context.config);
 
     let fmt = ListFormatting {
         tactic: DefinitiveListTactic::Vertical,
@@ -435,7 +344,7 @@ pub fn rewrite_macro_def(
 
     if multi_branch_style {
         result += " {\n";
-        result += &mac_indent_str;
+        result += &arm_shape.indent.to_string(context.config);
     }
 
     result += write_list(&branch_items, &fmt)?.as_str();
@@ -831,6 +740,94 @@ struct MacroBranch {
     args_paren_kind: DelimToken,
     args: ThinTokenStream,
     body: Span,
+}
+
+impl MacroBranch {
+    fn rewrite(&self, context: &RewriteContext, shape: Shape, multi_branch_style: bool) -> Option<String> {
+        // Only attempt to format function-like macros.
+        if self.args_paren_kind != DelimToken::Paren {
+            // FIXME(#1539): implement for non-sugared macros.
+            return None;
+        }
+
+        let mut result = format_macro_args(self.args.clone())?;
+
+        if multi_branch_style {
+            result += " =>";
+        }
+
+        // The macro body is the most interesting part. It might end up as various
+        // AST nodes, but also has special variables (e.g, `$foo`) which can't be
+        // parsed as regular Rust code (and note that these can be escaped using
+        // `$$`). We'll try and format like an AST node, but we'll substitute
+        // variables for new names with the same length first.
+
+        let old_body = context.snippet(self.body).trim();
+        let (body_str, substs) = replace_names(old_body)?;
+
+        let mut config = context.config.clone();
+        config.set().hide_parse_errors(true);
+
+        result += " {";
+
+        let has_block_body = old_body.starts_with('{');
+
+        let body_indent = if has_block_body {
+            shape.indent
+        } else {
+            // We'll hack the indent below, take this into account when formatting,
+            let body_indent = shape.indent.block_indent(&config);
+            let new_width = config.max_width() - body_indent.width();
+            config.set().max_width(new_width);
+            body_indent
+        };
+
+        // First try to format as items, then as statements.
+        let new_body = match ::format_snippet(&body_str, &config) {
+            Some(new_body) => new_body,
+            None => match ::format_code_block(&body_str, &config) {
+                Some(new_body) => new_body,
+                None => return None,
+            },
+        };
+
+        // Indent the body since it is in a block.
+        let indent_str = body_indent.to_string(&config);
+        let mut new_body = new_body
+            .trim_right()
+            .lines()
+            .fold(String::new(), |mut s, l| {
+                if !l.is_empty() {
+                    s += &indent_str;
+                }
+                s + l + "\n"
+            });
+
+        // Undo our replacement of macro variables.
+        // FIXME: this could be *much* more efficient.
+        for (old, new) in &substs {
+            if old_body.find(new).is_some() {
+                debug!(
+                    "rewrite_macro_def: bailing matching variable: `{}`",
+                    new
+                );
+                return None;
+            }
+            new_body = new_body.replace(new, old);
+        }
+
+        if has_block_body {
+            result += new_body.trim();
+        } else if !new_body.is_empty() {
+            result += "\n";
+            result += &new_body;
+            result += &shape.indent.to_string(&config);
+        }
+
+        result += "}";
+
+        Some(result)
+    }
 }
 
 #[cfg(test)]
