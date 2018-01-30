@@ -15,7 +15,7 @@
 
 use rustc::mir::{Constant, Literal, Location, Place, Mir, Operand, Rvalue, Local};
 use rustc::mir::{NullOp, StatementKind, Statement, BasicBlock, LocalKind};
-use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp, BorrowKind};
+use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp};
 use rustc::mir::visit::{Visitor, PlaceContext};
 use rustc::ty::layout::LayoutOf;
 use rustc::middle::const_val::ConstVal;
@@ -40,7 +40,7 @@ impl MirPass for ConstProp {
         // constants, instead of just checking for const-folding succeeding.
         // That would require an uniform one-def no-mutation analysis
         // and RPO (or recursing when needing the value of a local).
-        let mut optimization_finder = OptimizationFinder::new(mir, tcx, source);
+        let mut optimization_finder = ConstPropagator::new(mir, tcx, source);
         optimization_finder.visit_mir(mir);
 
         trace!("ConstProp done for {:?}", source.def_id);
@@ -50,7 +50,7 @@ impl MirPass for ConstProp {
 type Const<'tcx> = (Value, ty::Ty<'tcx>, Span);
 
 /// Finds optimization opportunities on the MIR.
-struct OptimizationFinder<'b, 'a, 'tcx:'a+'b> {
+struct ConstPropagator<'b, 'a, 'tcx:'a+'b> {
     mir: &'b Mir<'tcx>,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     source: MirSource,
@@ -58,22 +58,17 @@ struct OptimizationFinder<'b, 'a, 'tcx:'a+'b> {
     can_const_prop: IndexVec<Local, bool>,
 }
 
-impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
+impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
     fn new(
         mir: &'b Mir<'tcx>,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         source: MirSource,
-    ) -> OptimizationFinder<'b, 'a, 'tcx> {
-        let can_const_prop = CanConstProp::check(
-            mir,
-            tcx,
-            tcx.param_env(source.def_id),
-        );
-        OptimizationFinder {
+    ) -> ConstPropagator<'b, 'a, 'tcx> {
+        ConstPropagator {
             mir,
             tcx,
             source,
-            can_const_prop,
+            can_const_prop: CanConstProp::check(mir),
             places: IndexVec::from_elem(None, &mir.local_decls),
         }
     }
@@ -277,28 +272,18 @@ fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     (tcx, param_env).layout_of(ty).ok().map(|layout| layout.size.bytes())
 }
 
-struct CanConstProp<'b, 'a, 'tcx:'a+'b> {
+struct CanConstProp {
     can_const_prop: IndexVec<Local, bool>,
     // false at the beginning, once set, there are not allowed to be any more assignments
     found_assignment: IndexVec<Local, bool>,
-    mir: &'b Mir<'tcx>,
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
 }
 
-impl<'b, 'a, 'tcx:'b> CanConstProp<'b, 'a, 'tcx> {
+impl CanConstProp {
     /// returns true if `local` can be propagated
-    fn check(
-        mir: &'b Mir<'tcx>,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> IndexVec<Local, bool> {
+    fn check(mir: &Mir) -> IndexVec<Local, bool> {
         let mut cpv = CanConstProp {
             can_const_prop: IndexVec::from_elem(true, &mir.local_decls),
             found_assignment: IndexVec::from_elem(false, &mir.local_decls),
-            mir,
-            tcx,
-            param_env,
         };
         for (local, val) in cpv.can_const_prop.iter_enumerated_mut() {
             *val = mir.local_kind(local) != LocalKind::Arg;
@@ -308,7 +293,7 @@ impl<'b, 'a, 'tcx:'b> CanConstProp<'b, 'a, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx> Visitor<'tcx> for CanConstProp<'a, 'b, 'tcx> {
+impl<'tcx> Visitor<'tcx> for CanConstProp {
     fn visit_local(
         &mut self,
         &local: &Local,
@@ -330,23 +315,12 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for CanConstProp<'a, 'b, 'tcx> {
             StorageDead | StorageLive |
             Validate |
             Inspect => {},
-            Borrow { kind: BorrowKind::Shared, .. } => {
-                // cannot const prop immutable borrows of types with interior mutability
-                let has_interior_mutability = self
-                    .mir
-                    .local_decls[local]
-                    .ty
-                    .is_freeze(self.tcx, self.param_env, self.mir.span);
-                if has_interior_mutability {
-                    self.can_const_prop[local] = false;
-                }
-            }
             _ => self.can_const_prop[local] = false,
         }
     }
 }
 
-impl<'b, 'a, 'tcx> Visitor<'tcx> for OptimizationFinder<'b, 'a, 'tcx> {
+impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
     fn visit_constant(
         &mut self,
         constant: &Constant<'tcx>,
