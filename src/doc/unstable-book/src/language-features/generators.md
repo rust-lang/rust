@@ -139,11 +139,11 @@ closure-like semantics. Namely:
   types and such.
 
 * Traits like `Send` and `Sync` are automatically implemented for a `Generator`
-  depending on the captured variables of the environment. Unlike closures though
+  depending on the captured variables of the environment. Unlike closures,
   generators also depend on variables live across suspension points. This means
   that although the ambient environment may be `Send` or `Sync`, the generator
   itself may not be due to internal variables live across `yield` points being
-  not-`Send` or not-`Sync`. Note, though, that generators, like closures, do
+  not-`Send` or not-`Sync`. Note that generators, like closures, do
   not implement traits like `Copy` or `Clone` automatically.
 
 * Whenever a generator is dropped it will drop all captured environment
@@ -155,7 +155,7 @@ lifted at a future date, the design is ongoing!
 
 ### Generators as state machines
 
-In the compiler generators are currently compiled as state machines. Each
+In the compiler, generators are currently compiled as state machines. Each
 `yield` expression will correspond to a different state that stores all live
 variables over that suspension point. Resumption of a generator will dispatch on
 the current state and then execute internally until a `yield` is reached, at
