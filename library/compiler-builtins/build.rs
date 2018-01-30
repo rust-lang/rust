@@ -4260,6 +4260,11 @@ fn muldf3() {
           target_os = "linux",
           test))]
 use core::mem;
+#[cfg(not(all(target_arch = "arm",
+              not(any(target_env = "gnu", target_env = "musl")),
+              target_os = "linux",
+              test)))]
+use std::mem;
 use compiler_builtins::float::mul::__mulsf3vfp;
 
 fn mk_f32(x: u32) -> f32 {
@@ -4342,6 +4347,11 @@ fn mulsf3vfp() {
           target_os = "linux",
           test))]
 use core::mem;
+#[cfg(not(all(target_arch = "arm",
+              not(any(target_env = "gnu", target_env = "musl")),
+              target_os = "linux",
+              test)))]
+use std::mem;
 use compiler_builtins::float::mul::__muldf3vfp;
 
 fn mk_f64(x: u64) -> f64 {
@@ -4609,6 +4619,11 @@ fn divdf3() {
           target_os = "linux",
           test))]
 use core::mem;
+#[cfg(not(all(target_arch = "arm",
+              not(any(target_env = "gnu", target_env = "musl")),
+              target_os = "linux",
+              test)))]
+use std::mem;
 use compiler_builtins::float::div::__divsf3vfp;
 
 fn mk_f32(x: u32) -> f32 {
@@ -4695,6 +4710,11 @@ fn divsf3vfp() {
           target_os = "linux",
           test))]
 use core::mem;
+#[cfg(not(all(target_arch = "arm",
+              not(any(target_env = "gnu", target_env = "musl")),
+              target_os = "linux",
+              test)))]
+use std::mem;
 use compiler_builtins::float::div::__divdf3vfp;
 
 fn mk_f64(x: u64) -> f64 {
