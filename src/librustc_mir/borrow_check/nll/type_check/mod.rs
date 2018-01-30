@@ -374,13 +374,20 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             }
         };
         if let PlaceContext::Copy = context {
-            let ty = place_ty.to_ty(self.tcx());
-            if self.cx
-                .infcx
-                .type_moves_by_default(self.cx.param_env, ty, DUMMY_SP)
-            {
-                span_mirbug!(self, place, "attempted copy of non-Copy type ({:?})", ty);
-            }
+            let tcx = self.tcx();
+            let trait_ref = ty::TraitRef {
+                def_id: tcx.lang_items().copy_trait().unwrap(),
+                substs: tcx.mk_substs_trait(place_ty.to_ty(tcx), &[]),
+            };
+
+            // In order to have a Copy operand, the type T of the value must be Copy. Note that we
+            // prove that T: Copy, rather than using the type_moves_by_default test. This is
+            // important because type_moves_by_default ignores the resulting region obligations and
+            // assumes they pass. This can result in bounds from Copy impls being unsoundly ignored
+            // (e.g., #29149). Note that we decide to use Copy before knowing whether the bounds
+            // fully apply: in effect, the rule is that if a value of some type could implement
+            // Copy, then it must.
+            self.cx.prove_trait_ref(trait_ref, location);
         }
         place_ty
     }
