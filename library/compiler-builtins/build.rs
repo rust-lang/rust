@@ -130,10 +130,14 @@ mod tests {
             // float/mul.rs
             Mulsf3,
             Muldf3,
+            Mulsf3vfp,
+            Muldf3vfp,
 
             // float/div.rs
             Divsf3,
             Divdf3,
+            Divsf3vfp,
+            Divdf3vfp,
 
             // int/addsub.rs
             AddU128,
@@ -4204,6 +4208,171 @@ fn muldf3() {
     }
 
     #[derive(Eq, Hash, PartialEq)]
+    pub struct Mulsf3vfp {
+        a: u32,  // f32
+        b: u32,  // f32
+        c: u32,  // f32
+    }
+
+    impl TestCase for Mulsf3vfp {
+        fn name() -> &'static str {
+            "mulsf3vfp"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_large_f32(rng);
+            let b = gen_large_f32(rng);
+            let c = a * b;
+            // TODO accept NaNs. We don't do that right now because we can't check
+            // for NaN-ness on the thumb targets (due to missing intrinsics)
+            if a.is_nan() || b.is_nan() || c.is_nan() {
+                return None;
+            }
+
+            Some(
+                Mulsf3vfp {
+                    a: to_u32(a),
+                    b: to_u32(b),
+                    c: to_u32(c),
+                },
+            )
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            r#"
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+use core::mem;
+use compiler_builtins::float::mul::__mulsf3vfp;
+
+fn mk_f32(x: u32) -> f32 {
+    unsafe { mem::transmute(x) }
+}
+
+fn to_u32(x: f32) -> u32 {
+    unsafe { mem::transmute(x) }
+}
+
+static TEST_CASES: &[((u32, u32), u32)] = &[
+"#
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn mulsf3vfp() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __mulsf3vfp(mk_f32(a), mk_f32(b));
+        assert_eq!(((a, b), c), ((a, b), to_u32(c_)));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Muldf3vfp {
+        a: u64,  // f64
+        b: u64,  // f64
+        c: u64,  // f64
+    }
+
+    impl TestCase for Muldf3vfp {
+        fn name() -> &'static str {
+            "muldf3vfp"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_large_f64(rng);
+            let b = gen_large_f64(rng);
+            let c = a * b;
+            // TODO accept NaNs. We don't do that right now because we can't check
+            // for NaN-ness on the thumb targets (due to missing intrinsics)
+            if a.is_nan() || b.is_nan() || c.is_nan() {
+                return None;
+            }
+
+            Some(
+                Muldf3vfp {
+                    a: to_u64(a),
+                    b: to_u64(b),
+                    c: to_u64(c),
+                },
+            )
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            r#"
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+use core::mem;
+use compiler_builtins::float::mul::__muldf3vfp;
+
+fn mk_f64(x: u64) -> f64 {
+    unsafe { mem::transmute(x) }
+}
+
+fn to_u64(x: f64) -> u64 {
+    unsafe { mem::transmute(x) }
+}
+
+static TEST_CASES: &[((u64, u64), u64)] = &[
+"#
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn muldf3vfp() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __muldf3vfp(mk_f64(a), mk_f64(b));
+        assert_eq!(((a, b), c), ((a, b), to_u64(c_)));
+    }
+}
+"
+        }
+    }
+
+
+    #[derive(Eq, Hash, PartialEq)]
     pub struct Divsf3 {
         a: u32,  // f32
         b: u32,  // f32
@@ -4384,6 +4553,176 @@ fn divdf3() {
         }
     }
 
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Divsf3vfp {
+        a: u32,  // f32
+        b: u32,  // f32
+        c: u32,  // f32
+    }
+
+    impl TestCase for Divsf3vfp {
+        fn name() -> &'static str {
+            "divsf3vfp"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_large_f32(rng);
+            let b = gen_large_f32(rng);
+            if b == 0.0 {
+                return None;
+            }
+            let c = a / b;
+            // TODO accept NaNs. We don't do that right now because we can't check
+            // for NaN-ness on the thumb targets (due to missing intrinsics)
+            if a.is_nan() || b.is_nan() || c.is_nan()|| c.abs() <= unsafe { mem::transmute(16777215u32) } {
+                return None;
+            }
+
+            Some(
+                Divsf3vfp {
+                    a: to_u32(a),
+                    b: to_u32(b),
+                    c: to_u32(c),
+                },
+            )
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            r#"
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+use core::mem;
+use compiler_builtins::float::div::__divsf3vfp;
+
+fn mk_f32(x: u32) -> f32 {
+    unsafe { mem::transmute(x) }
+}
+
+fn to_u32(x: f32) -> u32 {
+    unsafe { mem::transmute(x) }
+}
+
+static TEST_CASES: &[((u32, u32), u32)] = &[
+"#
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn divsf3vfp() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __divsf3vfp(mk_f32(a), mk_f32(b));
+        assert_eq!(((a, b), c), ((a, b), to_u32(c_)));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Divdf3vfp {
+        a: u64,  // f64
+        b: u64,  // f64
+        c: u64,  // f64
+    }
+
+    impl TestCase for Divdf3vfp {
+        fn name() -> &'static str {
+            "divdf3vfp"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_large_f64(rng);
+            let b = gen_large_f64(rng);
+            if b == 0.0 {
+                return None;
+            }
+            let c = a / b;
+            // TODO accept NaNs. We don't do that right now because we can't check
+            // for NaN-ness on the thumb targets (due to missing intrinsics)
+            if a.is_nan() || b.is_nan() || c.is_nan()
+                || c.abs() <= unsafe { mem::transmute(4503599627370495u64) } {
+                return None;
+            }
+
+            Some(
+                Divdf3vfp {
+                    a: to_u64(a),
+                    b: to_u64(b),
+                    c: to_u64(c),
+                },
+            )
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            r#"
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+use core::mem;
+use compiler_builtins::float::div::__divdf3vfp;
+
+fn mk_f64(x: u64) -> f64 {
+    unsafe { mem::transmute(x) }
+}
+
+fn to_u64(x: f64) -> u64 {
+    unsafe { mem::transmute(x) }
+}
+
+static TEST_CASES: &[((u64, u64), u64)] = &[
+"#
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn divdf3vfp() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __divdf3vfp(mk_f64(a), mk_f64(b));
+        assert_eq!(((a, b), c), ((a, b), to_u64(c_)));
+    }
+}
+"
+        }
+    }
 
     #[derive(Eq, Hash, PartialEq)]
     pub struct Udivdi3 {
