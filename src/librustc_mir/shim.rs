@@ -301,7 +301,7 @@ fn build_clone_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let src = Place::Local(Local::new(1+0)).deref();
 
     match self_ty.sty {
-        _ if is_copy => builder.copy_shim(),
+        _ if is_copy => { builder.copy_shim(dest, src); }
         ty::TyArray(ty, len) => {
             let len = len.val.to_const_int().unwrap().to_u64().unwrap();
             builder.array_shim(dest, src, ty, len)
@@ -402,15 +402,15 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         }
     }
 
-    fn copy_shim(&mut self) {
-        let rcvr = Place::Local(Local::new(1+0)).deref();
+    fn copy_shim(&mut self, dest: Place<'tcx>, src: Place<'tcx>) -> BasicBlock {
+        let rcvr = src;
         let ret_statement = self.make_statement(
             StatementKind::Assign(
-                Place::Local(RETURN_PLACE),
+                dest,
                 Rvalue::Use(Operand::Copy(rcvr))
             )
         );
-        self.block(vec![ret_statement], TerminatorKind::Return, false);
+        self.block(vec![ret_statement], TerminatorKind::Return, false)
     }
 
     fn make_place(&mut self, mutability: Mutability, ty: Ty<'tcx>) -> Place<'tcx> {
@@ -679,6 +679,18 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         if !adt.is_enum() {
             bug!("We only make Clone shims for enum ADTs");
         }
+
+        let param_env = self.tcx.param_env(adt.did);
+        let all_copy = adt.all_fields().all(|field| {
+            !field.ty(self.tcx, substs)
+                  .moves_by_default(self.tcx, param_env, self.span)
+        });
+
+        if all_copy {
+            self.copy_shim(dest, src);
+            return;
+        }
+
         // should be u128 maybe?
         let discr_ty = adt.repr.discr_type().to_ty(self.tcx);
         let discr = self.make_place(Mutability::Not, discr_ty);
@@ -691,7 +703,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         );
         // insert dummy first block
         let entry_block = self.block(vec![], TerminatorKind::Abort, false);
-        let switch = self.make_enum_match(adt, substs, discr, dest, src);
+        let switch = self.make_enum_match(adt, substs, discr, dest, src, param_env);
 
         let source_info = self.source_info();
         self.blocks[entry_block].statements = vec![assign_discr];
@@ -702,11 +714,24 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
                        substs: &'tcx Substs<'tcx>,
                        discr: Place<'tcx>,
                        dest: Place<'tcx>,
-                       receiver: Place<'tcx>) -> TerminatorKind<'tcx> {
+                       receiver: Place<'tcx>,
+                       param_env: ty::ParamEnv<'tcx>) -> TerminatorKind<'tcx> {
 
         let mut values = vec![];
         let mut targets = vec![];
         for (idx, variant) in adt.variants.iter().enumerate() {
+
+            // in case a variant is Copy, don't generate the manual Clone
+            // match arm, instead let the copy_shim default deal with it
+            let all_copy = variant.fields.iter().all(|field| {
+                !field.ty(self.tcx, substs)
+                      .moves_by_default(self.tcx, param_env, self.span)
+            });
+
+            if all_copy {
+                continue;
+            }
+
             values.push(adt.discriminant_for_variant(self.tcx, idx));
 
             let src_variant = receiver.clone().downcast(adt, idx);
@@ -729,8 +754,8 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             let iter = variant.fields.iter().map(|field| field.ty(tcx, substs));
             self.tuple_like_shim(src_variant, dest_variant, iter);
         }
-        // the nonexistant extra case
-        targets.push(self.block(vec![], TerminatorKind::Abort, true));
+        // In the default arm, fall back to a copy
+        targets.push(self.copy_shim(dest, receiver));
         TerminatorKind::SwitchInt {
             discr: Operand::Move(discr),
             switch_ty: self.tcx.types.usize,
