@@ -403,11 +403,11 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
 
     fn make_clone_call(
         &mut self,
+        dest: Place<'tcx>,
+        src: Place<'tcx>,
         ty: Ty<'tcx>,
-        rcvr_field: Place<'tcx>,
         next: BasicBlock,
-        cleanup: BasicBlock,
-        dest: Place<'tcx>
+        cleanup: BasicBlock
     ) {
         let tcx = self.tcx;
 
@@ -439,11 +439,11 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             })
         );
 
-        // `let ref_loc: &ty = &rcvr_field;`
+        // `let ref_loc: &ty = &src;`
         let statement = self.make_statement(
             StatementKind::Assign(
                 ref_loc.clone(),
-                Rvalue::Ref(tcx.types.re_erased, BorrowKind::Shared, rcvr_field)
+                Rvalue::Ref(tcx.types.re_erased, BorrowKind::Shared, src)
             )
         );
 
@@ -537,8 +537,8 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         // Goto #3 if ok, #5 if unwinding happens.
         let rcvr_field = rcvr.clone().index(beg);
         let cloned = self.make_place(Mutability::Not, ty);
-        self.make_clone_call(ty, rcvr_field, BasicBlock::new(3),
-                             BasicBlock::new(5), cloned.clone());
+        self.make_clone_call(cloned.clone(), rcvr_field, ty, BasicBlock::new(3),
+                             BasicBlock::new(5));
 
         // BB #3
         // `ret[beg] = cloned;`
@@ -639,11 +639,11 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             // `returns[i] = Clone::clone(&rcvr.i);`
             // Goto #(2i + 2) if ok, #(2i + 1) if unwinding happens.
             self.make_clone_call(
-                *ity,
+                place.clone(),
                 rcvr_field,
+                *ity,
                 BasicBlock::new(2 * i + 2),
                 BasicBlock::new(2 * i + 1),
-                place.clone()
             );
 
             // BB #(2i + 1) (cleanup)
