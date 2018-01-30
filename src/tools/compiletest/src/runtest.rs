@@ -1402,7 +1402,7 @@ impl<'test> TestCx<'test> {
     }
 
     /// For each `aux-build: foo/bar` annotation, we check to find the
-    /// file in a `aux` directory relative to the test itself.
+    /// file in a `auxiliary` directory relative to the test itself.
     fn compute_aux_test_paths(&self, rel_ab: &str) -> TestPaths {
         let test_ab = self.testpaths
             .file

@@ -1014,8 +1014,21 @@ impl EmitterWriter {
 
                 // Then, the secondary file indicator
                 buffer.prepend(buffer_msg_line_offset + 1, "::: ", Style::LineNumber);
+                let loc = if let Some(first_line) = annotated_file.lines.first() {
+                    let col = if let Some(first_annotation) = first_line.annotations.first() {
+                        format!(":{}", first_annotation.start_col + 1)
+                    } else {
+                        "".to_string()
+                    };
+                    format!("{}:{}{}",
+                            annotated_file.file.name,
+                            cm.doctest_offset_line(first_line.line_index),
+                            col)
+                } else {
+                    annotated_file.file.name.to_string()
+                };
                 buffer.append(buffer_msg_line_offset + 1,
-                              &annotated_file.file.name.to_string(),
+                              &loc,
                               Style::LineAndColumn);
                 for _ in 0..max_line_num_len {
                     buffer.prepend(buffer_msg_line_offset + 1, " ", Style::NoStyle);
