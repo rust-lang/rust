@@ -80,6 +80,44 @@ impl Duration {
         Duration { secs: secs, nanos: nanos }
     }
 
+    /// Creates a new `Duration` from the specified number of whole hours.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_from)]
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::from_hours(2);
+    ///
+    /// assert_eq!(7200, duration.as_secs());
+    /// assert_eq!(0, duration.subsec_nanos());
+    /// ```
+    #[unstable(feature = "duration_from", issue = "47097")]
+    #[inline]
+    pub fn from_hours(hours: u64) -> Duration {
+        Duration { secs: 3600*hours, nanos: 0 }
+    }
+
+    /// Creates a new `Duration` from the specified number of whole minutes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_from)]
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::from_minutes(5);
+    ///
+    /// assert_eq!(300, duration.as_secs());
+    /// assert_eq!(0, duration.subsec_nanos());
+    /// ```
+    #[unstable(feature = "duration_from", issue = "47097")]
+    #[inline]
+    pub fn from_minutes(minutes: u64) -> Duration {
+        Duration { secs: 60*minutes, nanos: 0 }
+    }
+
     /// Creates a new `Duration` from the specified number of whole seconds.
     ///
     /// # Examples
