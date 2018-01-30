@@ -752,7 +752,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
 
             let tcx = self.tcx;
             let iter = variant.fields.iter().map(|field| field.ty(tcx, substs));
-            self.tuple_like_shim(src_variant, dest_variant, iter);
+            self.tuple_like_shim(dest_variant, src_variant, iter);
         }
         // In the default arm, fall back to a copy
         targets.push(self.copy_shim(dest, receiver));
