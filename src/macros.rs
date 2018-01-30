@@ -311,7 +311,6 @@ pub fn rewrite_macro_def(
     let multi_branch_style = def.legacy || parsed_def.branches.len() != 1;
 
     let mac_indent = if multi_branch_style {
-        result += " {";
         indent.block_indent(context.config)
     } else {
         indent
@@ -322,28 +321,25 @@ pub fn rewrite_macro_def(
     let branch_items = itemize_list(
         context.codemap,
         parsed_def.branches.iter(),
-        "",
-        "",
-        |branch| branch.args_span.lo(),
-        |branch| branch.body.hi(),
+        "}",
+        ";",
         |branch| {
-            let mut result = String::new();
-
+            branch.span.lo()
+        },
+        |branch| {
+            branch.span.hi()
+        },
+        |branch| {
             // Only attempt to format function-like macros.
             if branch.args_paren_kind != DelimToken::Paren {
                 // FIXME(#1539): implement for non-sugared macros.
                 return None;
             }
 
-            let args = format_macro_args(branch.args.clone())?;
+            let mut result = format_macro_args(branch.args.clone())?;
 
             if multi_branch_style {
-                result += "\n";
-                result += &mac_indent_str;
-                result += &args;
                 result += " =>";
-            } else {
-                result += &args;
             }
 
             // The macro body is the most interesting part. It might end up as various
@@ -418,13 +414,14 @@ pub fn rewrite_macro_def(
             }
 
             result += "}";
+
             if def.legacy {
                 result += ";";
             }
-            result += "\n";
+
             Some(result)
         },
-        span.lo(),
+        context.codemap.span_after(span, "{"),
         span.hi(),
         false
     ).collect::<Vec<_>>();
@@ -439,14 +436,20 @@ pub fn rewrite_macro_def(
         trailing_separator: SeparatorTactic::Never,
         separator_place: SeparatorPlace::Back,
         shape: arm_shape,
-        ends_with_newline: false,
+        ends_with_newline: true,
         preserve_newline: true,
         config: context.config,
     };
 
+    if multi_branch_style {
+        result += " {\n";
+        result += &mac_indent_str;
+    }
+
     result += write_list(&branch_items, &fmt)?.as_str();
 
     if multi_branch_style {
+        result += "\n";
         result += &indent.to_string(context.config);
         result += "}";
     }
@@ -792,28 +795,29 @@ impl MacroParser {
     // `(` ... `)` `=>` `{` ... `}`
     fn parse_branch(&mut self) -> Option<MacroBranch> {
         let tok = self.toks.next()?;
-        let (args_span, args_paren_kind) = match tok {
+        let (lo, args_paren_kind) = match tok {
             TokenTree::Token(..) => return None,
-            TokenTree::Delimited(sp, ref d) => (sp, d.delim),
+            TokenTree::Delimited(sp, ref d) => (sp.lo(), d.delim),
         };
         let args = tok.joint().into();
         match self.toks.next()? {
             TokenTree::Token(_, Token::FatArrow) => {}
             _ => return None,
         }
-        let body = match self.toks.next()? {
+        let (mut hi, body) = match self.toks.next()? {
             TokenTree::Token(..) => return None,
             TokenTree::Delimited(sp, _) => {
                 let data = sp.data();
-                Span::new(data.lo + BytePos(1), data.hi - BytePos(1), data.ctxt)
+                (data.hi, Span::new(data.lo + BytePos(1), data.hi - BytePos(1), data.ctxt))
             }
         };
-        if let Some(TokenTree::Token(_, Token::Semi)) = self.toks.look_ahead(0) {
+        if let Some(TokenTree::Token(sp, Token::Semi)) = self.toks.look_ahead(0) {
             self.toks.next();
+            hi = sp.hi();
         }
         Some(MacroBranch {
+            span: mk_sp(lo, hi),
             args_paren_kind,
-            args_span,
             args,
             body,
         })
@@ -828,8 +832,8 @@ struct Macro {
 // FIXME: it would be more efficient to use references to the token streams
 // rather than clone them, if we can make the borrowing work out.
 struct MacroBranch {
+    span: Span,
     args_paren_kind: DelimToken,
-    args_span: Span,
     args: ThinTokenStream,
     body: Span,
 }
