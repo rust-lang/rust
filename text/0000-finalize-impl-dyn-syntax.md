@@ -27,6 +27,13 @@ contexts where they are used inside of unary operators `&(impl Trait1 + Trait2)`
 / `&(dyn Trait1 + Trait2)`, similarly to trait object types without
 prefix, e.g. `&(Trait1 + Trait2)`.
 
+Additionally, parentheses are required in all cases where `+` in `impl` or `dyn`
+is ambiguous.  
+For example, `Fn() -> impl A + B` can be interpreted as both
+`(Fn() -> impl A) + B` (low priority plus) or `Fn() -> (impl A + B)` (high
+priority plus), so we are refusing to disambiguate and require explicit
+parentheses.
+
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
@@ -170,6 +177,18 @@ Alternative 2 can be backward-compatibly extended to "relaxed 3" in which
 parentheses like `dyn (A + B)` are permitted, but technically unnecessary.
 Such parens may keep people expecting `dyn (A + B)` to work happy, but
 complicate parsing by introducing more ambiguities to the grammar.
+
+While unary operators like `&` "obviously" have higher priority than `+`,
+cases like `Fn() -> impl A + B` are not so obvious.  
+The Alternative 2 considers "low priority plus" to have lower priority than `Fn`
+, so `Fn() -> impl A + B` can be treated as `(Fn() -> impl A) + B`, however
+it may be more intuitive and consistent with `fn` items to make `+` have higher
+priority than `Fn` (but still lower priority than `&`).  
+As an immediate solution we refuse to disambiguate this case and treat
+`Fn() -> impl A + B` as an error, so we can change the rules in the future and
+interpret `Fn() -> impl A + B` (and maybe even `Fn() -> A + B` after long
+deprecation period) as `Fn() -> (impl A + B)` (and `Fn() -> (A + B)`,
+respectively).
 
 ## Experimental check
 
