@@ -359,81 +359,62 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
         &mut self,
         block: BasicBlock,
         kind: &TerminatorKind<'tcx>,
-        _location: Location,
+        location: Location,
     ) {
-        match kind {
-            TerminatorKind::SwitchInt { discr: value, .. } |
-            TerminatorKind::Yield { value, .. } |
-            TerminatorKind::Assert { cond: value, .. } => {
-                match value {
-                    Operand::Constant(box Constant {
-                        literal: Literal::Value {
-                            value: &ty::Const {
-                                val: ConstVal::Value(_),
-                                ..
-                            },
-                        },
-                        ..
-                    }) => return,
-                    _ => {},
-                }
-                if let Some(value) = self.eval_operand(value) {
-                    if let TerminatorKind::Assert { expected, msg, .. } = kind {
-                        if Value::ByVal(PrimVal::from_bool(*expected)) != value.0 {
-                            let span = self.mir[block]
-                                .terminator
-                                .as_ref()
-                                .unwrap()
-                                .source_info
-                                .span;
-                            let node_id = self
-                                .tcx
-                                .hir
-                                .as_local_node_id(self.source.def_id)
-                                .expect("some part of a failing const eval must be local");
-                            let mut lint = self.tcx.struct_span_lint_node(
-                                ::rustc::lint::builtin::CONST_ERR,
-                                node_id,
+        self.super_terminator_kind(block, kind, location);
+        if let TerminatorKind::Assert { expected, msg, cond, .. } = kind {
+            if let Some(value) = self.eval_operand(cond) {
+                if Value::ByVal(PrimVal::from_bool(*expected)) != value.0 {
+                    let span = self.mir[block]
+                        .terminator
+                        .as_ref()
+                        .unwrap()
+                        .source_info
+                        .span;
+                    let node_id = self
+                        .tcx
+                        .hir
+                        .as_local_node_id(self.source.def_id)
+                        .expect("some part of a failing const eval must be local");
+                    let mut lint = self.tcx.struct_span_lint_node(
+                        ::rustc::lint::builtin::CONST_ERR,
+                        node_id,
+                        span,
+                        "constant evaluation error",
+                    );
+                    use rustc::mir::AssertMessage::*;
+                    match msg {
+                        GeneratorResumedAfterReturn =>
+                            lint.span_label(span, "generator resumed after completion"),
+                        GeneratorResumedAfterPanic =>
+                            lint.span_label(span, "generator resumed after panicking"),
+                        Math(ref err) => lint.span_label(span, err.description()),
+                        BoundsCheck { ref len, ref index } => {
+                            let len = self.eval_operand(len).expect("len must be const");
+                            let len = match len.0 {
+                                Value::ByVal(PrimVal::Bytes(n)) => n,
+                                _ => bug!("const len not primitive: {:?}", len),
+                            };
+                            let index = self
+                                .eval_operand(index)
+                                .expect("index must be const");
+                            let index = match index.0 {
+                                Value::ByVal(PrimVal::Bytes(n)) => n,
+                                _ => bug!("const index not primitive: {:?}", index),
+                            };
+                            lint.span_label(
                                 span,
-                                "constant evaluation error",
-                            );
-                            use rustc::mir::AssertMessage::*;
-                            match msg {
-                                GeneratorResumedAfterReturn =>
-                                    lint.span_label(span, "generator resumed after completion"),
-                                GeneratorResumedAfterPanic =>
-                                    lint.span_label(span, "generator resumed after panicking"),
-                                Math(ref err) => lint.span_label(span, err.description()),
-                                BoundsCheck { ref len, ref index } => {
-                                    let len = self.eval_operand(len).expect("len must be const");
-                                    let len = match len.0 {
-                                        Value::ByVal(PrimVal::Bytes(n)) => n,
-                                        _ => bug!("const len not primitive: {:?}", len),
-                                    };
-                                    let index = self
-                                        .eval_operand(index)
-                                        .expect("index must be const");
-                                    let index = match index.0 {
-                                        Value::ByVal(PrimVal::Bytes(n)) => n,
-                                        _ => bug!("const index not primitive: {:?}", index),
-                                    };
-                                    lint.span_label(
-                                        span,
-                                        format!(
-                                            "index out of bounds: \
-                                            the len is {} but the index is {}",
-                                            len,
-                                            index,
-                                        ),
-                                    )
-                                },
-                            }.emit();
-                        }
-                    }
+                                format!(
+                                    "index out of bounds: \
+                                    the len is {} but the index is {}",
+                                    len,
+                                    index,
+                                ),
+                            )
+                        },
+                    }.emit();
                 }
             }
-            // FIXME: do this optimization for function calls
-            _ => {},
         }
     }
 }
