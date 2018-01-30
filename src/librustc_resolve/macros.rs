@@ -235,7 +235,7 @@ impl<'a> base::Resolver for Resolver<'a> {
 
             if name == "derive" {
                 let result = attrs[i].parse_list(&self.session.parse_sess, |parser| {
-                    parser.parse_path_allowing_meta(PathStyle::Mod)
+                    parser.parse_path(PathStyle::Mod)
                 });
 
                 let mut traits = match result {
