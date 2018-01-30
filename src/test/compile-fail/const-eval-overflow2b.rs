@@ -26,6 +26,7 @@ const VALS_I8: (i8,) =
      //~| attempt to add with overflow
     (
      i8::MAX + 1,
+     //~^ ERROR constant evaluation error
      );
 
 const VALS_I16: (i16,) =
@@ -33,6 +34,7 @@ const VALS_I16: (i16,) =
      //~| attempt to add with overflow
     (
      i16::MAX + 1,
+     //~^ ERROR constant evaluation error
      );
 
 const VALS_I32: (i32,) =
@@ -40,6 +42,7 @@ const VALS_I32: (i32,) =
      //~| attempt to add with overflow
     (
      i32::MAX + 1,
+     //~^ ERROR constant evaluation error
      );
 
 const VALS_I64: (i64,) =
@@ -47,6 +50,7 @@ const VALS_I64: (i64,) =
      //~| attempt to add with overflow
     (
      i64::MAX + 1,
+     //~^ ERROR constant evaluation error
      );
 
 const VALS_U8: (u8,) =
@@ -54,18 +58,21 @@ const VALS_U8: (u8,) =
      //~| attempt to add with overflow
     (
      u8::MAX + 1,
+     //~^ ERROR constant evaluation error
      );
 
 const VALS_U16: (u16,) = (
      //~^ ERROR constant evaluation error
      //~| attempt to add with overflow
      u16::MAX + 1,
+     //~^ ERROR constant evaluation error
      );
 
 const VALS_U32: (u32,) = (
      //~^ ERROR constant evaluation error
      //~| attempt to add with overflow
      u32::MAX + 1,
+     //~^ ERROR constant evaluation error
      );
 
 const VALS_U64: (u64,) =
@@ -73,6 +80,7 @@ const VALS_U64: (u64,) =
      //~| attempt to add with overflow
     (
      u64::MAX + 1,
+     //~^ ERROR constant evaluation error
      );
 
 fn main() {
