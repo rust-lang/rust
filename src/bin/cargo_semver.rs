@@ -62,7 +62,7 @@ impl<'a> SourceInfo<'a> {
     /// Construct a new source info for `crates.io`.
     fn new(config: &'a Config) -> CargoResult<SourceInfo<'a>> {
         let source_id = SourceId::crates_io(config)?;
-        let source = source_id.load(config);
+        let source = source_id.load(config)?;
 
         debug!("source id loaded: {:?}", source_id);
 
@@ -257,7 +257,7 @@ fn main() {
         exit_with_error(CliError::new(e, 1), &mut config.shell());
     }
 
-    if env_logger::init().is_err() {
+    if env_logger::try_init().is_err() {
         eprintln!("ERROR: could not initialize logger");
     }
 
