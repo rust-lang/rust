@@ -86,6 +86,7 @@ pub mod copies;
 pub mod cyclomatic_complexity;
 pub mod derive;
 pub mod doc;
+pub mod double_comparison;
 pub mod double_parens;
 pub mod drop_forget_ref;
 pub mod else_if_without_else;
@@ -369,6 +370,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box fallible_impl_from::FallibleImplFrom);
     reg.register_late_lint_pass(box replace_consts::ReplaceConsts);
     reg.register_late_lint_pass(box types::UnitArg);
+    reg.register_late_lint_pass(box double_comparison::DoubleComparisonPass);
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
