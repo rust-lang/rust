@@ -14,6 +14,7 @@
 
 #include <stdint.h>
 #include <string>
+#include <sstream>
 #include <stdlib.h>
 
 #include "s2wasm.h"
@@ -24,6 +25,7 @@ using namespace wasm;
 
 struct BinaryenRustModule {
   BufferWithRandomAccess buffer;
+  std::string sourceMapJSON;
 };
 
 struct BinaryenRustModuleOptions {
@@ -36,6 +38,7 @@ struct BinaryenRustModuleOptions {
   bool ignoreUnknownSymbols;
   bool debugInfo;
   std::string startFunction;
+  std::string sourceMapUrl;
 
   BinaryenRustModuleOptions() :
     globalBase(0),
@@ -46,7 +49,8 @@ struct BinaryenRustModuleOptions {
     importMemory(false),
     ignoreUnknownSymbols(false),
     debugInfo(false),
-    startFunction("")
+    startFunction(""),
+    sourceMapUrl("")
   {}
 
 };
@@ -71,6 +75,12 @@ extern "C" void
 BinaryenRustModuleOptionsSetStart(BinaryenRustModuleOptions *options,
                                   char *start) {
   options->startFunction = start;
+}
+
+extern "C" void
+BinaryenRustModuleOptionsSetSourceMapUrl(BinaryenRustModuleOptions *options,
+                                         char *sourceMapUrl) {
+  options->sourceMapUrl = sourceMapUrl;
 }
 
 extern "C" void
@@ -106,12 +116,20 @@ BinaryenRustModuleCreate(const BinaryenRustModuleOptions *options,
   {
     WasmBinaryWriter writer(&linker.getOutput().wasm, ret->buffer, options->debug);
     writer.setNamesSection(options->debugInfo);
-    // FIXME: support source maps?
-    // writer.setSourceMap(sourceMapStream.get(), sourceMapUrl);
+
+    std::unique_ptr<std::ostringstream> sourceMapStream = nullptr;
+    {
+      sourceMapStream = make_unique<std::ostringstream>();
+      writer.setSourceMap(sourceMapStream.get(), options->sourceMapUrl);
+    }
 
     // FIXME: support symbol maps?
     // writer.setSymbolMap(symbolMap);
     writer.write();
+
+    if (sourceMapStream) {
+      ret->sourceMapJSON = sourceMapStream->str();
+    }
   }
   return ret.release();
 }
@@ -124,6 +142,16 @@ BinaryenRustModulePtr(const BinaryenRustModule *M) {
 extern "C" size_t
 BinaryenRustModuleLen(const BinaryenRustModule *M) {
   return M->buffer.size();
+}
+
+extern "C" const char*
+BinaryenRustModuleSourceMapPtr(const BinaryenRustModule *M) {
+  return M->sourceMapJSON.data();
+}
+
+extern "C" size_t
+BinaryenRustModuleSourceMapLen(const BinaryenRustModule *M) {
+  return M->sourceMapJSON.length();
 }
 
 extern "C" void
