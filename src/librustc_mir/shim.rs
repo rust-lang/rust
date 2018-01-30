@@ -408,7 +408,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         rcvr_field: Place<'tcx>,
         next: BasicBlock,
         cleanup: BasicBlock,
-        place: Place<'tcx>
+        dest: Place<'tcx>
     ) {
         let tcx = self.tcx;
 
@@ -452,7 +452,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         self.block(vec![statement], TerminatorKind::Call {
             func,
             args: vec![Operand::Move(ref_loc)],
-            destination: Some((place, next)),
+            destination: Some((dest, next)),
             cleanup: Some(cleanup),
         }, false);
     }
@@ -633,12 +633,13 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
 
         let rcvr = Place::Local(Local::new(1+0)).deref();
 
-        let mut returns = Vec::new();
+        let mut previous_place = None;
+        let return_place = Place::Local(RETURN_PLACE);
         for (i, ity) in tys.iter().enumerate() {
-            let rcvr_field = rcvr.clone().field(Field::new(i), *ity);
+            let field = Field::new(i);
+            let rcvr_field = rcvr.clone().field(field, *ity);
 
-            let place = self.make_place(Mutability::Not, ity);
-            returns.push(place.clone());
+            let place = return_place.clone().field(field, *ity);
 
             // BB #(2i)
             // `returns[i] = Clone::clone(&rcvr.i);`
@@ -648,34 +649,26 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
                 rcvr_field,
                 BasicBlock::new(2 * i + 2),
                 BasicBlock::new(2 * i + 1),
-                place
+                place.clone()
             );
 
             // BB #(2i + 1) (cleanup)
-            if i == 0 {
-                // Nothing to drop, just resume.
-                self.block(vec![], TerminatorKind::Resume, true);
-            } else {
+            if let Some(previous_place) = previous_place.take() {
                 // Drop previous field and goto previous cleanup block.
                 self.block(vec![], TerminatorKind::Drop {
-                    location: returns[i - 1].clone(),
+                    location: previous_place,
                     target: BasicBlock::new(2 * i - 1),
                     unwind: None,
                 }, true);
+            } else {
+                // Nothing to drop, just resume.
+                self.block(vec![], TerminatorKind::Resume, true);
             }
+
+            previous_place = Some(place);
         }
 
-        // `return kind(returns[0], returns[1], ..., returns[tys.len() - 1]);`
-        let ret_statement = self.make_statement(
-            StatementKind::Assign(
-                Place::Local(RETURN_PLACE),
-                Rvalue::Aggregate(
-                    box kind,
-                    returns.into_iter().map(Operand::Move).collect()
-                )
-            )
-        );
-        self.block(vec![ret_statement], TerminatorKind::Return, false);
+        self.block(vec![], TerminatorKind::Return, false);
     }
 }
 
