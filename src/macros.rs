@@ -415,10 +415,6 @@ pub fn rewrite_macro_def(
 
             result += "}";
 
-            if def.legacy {
-                result += ";";
-            }
-
             Some(result)
         },
         context.codemap.span_after(span, "{"),
@@ -432,8 +428,8 @@ pub fn rewrite_macro_def(
 
     let fmt = ListFormatting {
         tactic: DefinitiveListTactic::Vertical,
-        separator: "",
-        trailing_separator: SeparatorTactic::Never,
+        separator: if def.legacy { ";" } else { "" },
+        trailing_separator: SeparatorTactic::Always,
         separator_place: SeparatorPlace::Back,
         shape: arm_shape,
         ends_with_newline: true,
