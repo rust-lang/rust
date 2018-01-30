@@ -1,0 +1,14 @@
+error: this loop could be written as a `for` loop
+  --> $DIR/issue_2356.rs:15:29
+   |
+15 |         while let Some(e) = it.next() {
+   |                             ^^^^^^^^^ help: try: `for e in it { .. }`
+   |
+note: lint level defined here
+  --> $DIR/issue_2356.rs:1:9
+   |
+1  | #![deny(while_let_on_iterator)]
+   |         ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
