@@ -153,7 +153,7 @@ impl<'a> CompilerCalls<'a> for SemVerVerCompilerCalls {
 /// Find the sysroot before passing our args to the compiler driver, after registering our custom
 /// compiler driver.
 fn main() {
-    if env_logger::init().is_err() {
+    if env_logger::try_init().is_err() {
         eprintln!("ERROR: could not initialize logger");
     }
 
