@@ -50,10 +50,8 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         self.tcx.target_features_enabled(self.tcx.hir.local_def_id(item.id));
 
         for attr in &item.attrs {
-            if let Some(name) = attr.name() {
-                if name == "inline" {
-                    self.check_inline(attr, item, target)
-                }
+            if attr.name() == "inline" {
+                self.check_inline(attr, item, target)
             }
         }
 
@@ -81,10 +79,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         // ```
         let hints: Vec<_> = item.attrs
             .iter()
-            .filter(|attr| match attr.name() {
-                Some(name) => name == "repr",
-                None => false,
-            })
+            .filter(|attr| attr.name() == "repr")
             .filter_map(|attr| attr.meta_item_list())
             .flat_map(|hints| hints)
             .collect();

@@ -33,7 +33,6 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
 
-#[macro_use]
 extern crate syntax;
 #[macro_use]
 extern crate rustc;

@@ -770,6 +770,7 @@ pub trait PrintState<'a> {
             ast::MetaItemKind::Word => self.print_attribute_path(&item.name)?,
             ast::MetaItemKind::NameValue(ref value) => {
                 self.print_attribute_path(&item.name)?;
+                self.writer().space()?;
                 self.word_space("=")?;
                 self.print_literal(value)?;
             }
