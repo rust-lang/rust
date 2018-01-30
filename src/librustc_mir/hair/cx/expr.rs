@@ -145,7 +145,39 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     arg: expr.to_ref(),
                 },
             };
-            ExprKind::Cast { source: expr.to_ref() }
+            let cast_expr = Expr {
+                temp_lifetime,
+                ty: adjustment.target,
+                span,
+                kind: ExprKind::Cast { source: expr.to_ref() }
+            };
+
+            // To ensure that both implicit and explicit coercions are
+            // handled the same way, we insert an extra layer of indirection here.
+            // For explicit casts (e.g. 'foo as *const T'), the source of the 'Use'
+            // will be an ExprKind::Hair with the appropriate cast expression. Here,
+            // we make our Use source the generated Cast from the original coercion.
+            //
+            // In both cases, this outer 'Use' ensures that the inner 'Cast' is handled by
+            // as_operand, not by as_rvalue - causing the cast result to be stored in a temporary.
+            // Ordinary, this is identical to using the cast directly as an rvalue. However, if the
+            // source of the cast was previously borrowed as mutable, storing the cast in a
+            // temporary gives the source a chance to expire before the cast is used. For
+            // structs with a self-referential *mut ptr, this allows assignment to work as
+            // expected.
+            //
+            // For example, consider the type 'struct Foo { field: *mut Foo }',
+            // The method 'fn bar(&mut self) { self.field = self }'
+            // triggers a coercion from '&mut self' to '*mut self'. In order
+            // for the assignment to be valid, the implicit borrow
+            // of 'self' involved in the coercion needs to end before the local
+            // containing the '*mut T' is assigned to 'self.field' - otherwise,
+            // we end up trying to assign to 'self.field' while we have another mutable borrow
+            // active.
+            //
+            // We only need to worry about this kind of thing for coercions from refs to ptrs,
+            // since they get rid of a borrow implicitly.
+            ExprKind::Use { source: cast_expr.to_ref() }
         }
         Adjust::Unsize => {
             ExprKind::Unsize { source: expr.to_ref() }
