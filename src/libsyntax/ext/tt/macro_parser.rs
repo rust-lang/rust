@@ -467,7 +467,7 @@ fn inner_parse_loop(
                         item.idx += 1;
                         next_items.push(item);
                     }
-                } 
+                }
                 // We don't need a separator. Move the "dot" back to the beginning of the matcher
                 // and try to match again UNLESS we are only allowed to have _one_ repetition.
                 else if item.seq_op != Some(quoted::KleeneOp::ZeroOrOne) {
