@@ -102,7 +102,7 @@ twelve sets of items like below, one for each of:
 * `i128`
 * `isize`
 
-These types are alse re-exported in `std::num`.
+These types are also re-exported in `std::num`.
 
 ```rust
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
