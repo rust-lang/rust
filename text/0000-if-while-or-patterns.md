@@ -140,6 +140,17 @@ To keep `let` statements consistent with `if let`, and to enable the scenario
 exemplified by `ParameterKind` in the [motivation], these or-patterns are
 allowed at the top level of `let` statements.
 
+In addition to the `ParameterKind` example, we can also consider
+`slice.binary_search(&x)`. If we are only interested in the `index` at where
+`x` is or would be, without any regard for if it was there or not, we can
+now simply write:
+
+```rust
+let Ok(index) | Err(index) = slice.binary_search(&x);
+```
+
+and we will get back the `index` in any case and continue on from there.
+
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
