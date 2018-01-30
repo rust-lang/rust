@@ -1364,7 +1364,7 @@ impl<'a> Parser<'a> {
 
         self.expect_keyword(keywords::Fn)?;
         let (inputs, variadic) = self.parse_fn_args(false, true)?;
-        let ret_ty = self.parse_ret_ty()?;
+        let ret_ty = self.parse_ret_ty(false)?;
         let decl = P(FnDecl {
             inputs,
             output: ret_ty,
@@ -1503,9 +1503,9 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse optional return type [ -> TY ] in function decl
-    pub fn parse_ret_ty(&mut self) -> PResult<'a, FunctionRetTy> {
+    fn parse_ret_ty(&mut self, allow_plus: bool) -> PResult<'a, FunctionRetTy> {
         if self.eat(&token::RArrow) {
-            Ok(FunctionRetTy::Ty(self.parse_ty_no_plus()?))
+            Ok(FunctionRetTy::Ty(self.parse_ty_common(allow_plus, true)?))
         } else {
             Ok(FunctionRetTy::Default(self.span.with_hi(self.span.lo())))
         }
@@ -1530,6 +1530,7 @@ impl<'a> Parser<'a> {
         maybe_whole!(self, NtTy, |x| x);
 
         let lo = self.span;
+        let mut impl_dyn_multi = false;
         let node = if self.eat(&token::OpenDelim(token::Paren)) {
             // `(TYPE)` is a parenthesized type.
             // `(TYPE,)` is a tuple with a single field of type TYPE.
@@ -1616,13 +1617,17 @@ impl<'a> Parser<'a> {
                 self.parse_remaining_bounds(lifetime_defs, path, lo, parse_plus)?
             }
         } else if self.eat_keyword(keywords::Impl) {
-            // FIXME: figure out priority of `+` in `impl Trait1 + Trait2` (#34511).
-            TyKind::ImplTrait(self.parse_ty_param_bounds()?)
+            // Always parse bounds greedily for better error recovery.
+            let bounds = self.parse_ty_param_bounds()?;
+            impl_dyn_multi = bounds.len() > 1 || self.prev_token_kind == PrevTokenKind::Plus;
+            TyKind::ImplTrait(bounds)
         } else if self.check_keyword(keywords::Dyn) &&
                   self.look_ahead(1, |t| t.can_begin_bound() && !can_continue_type_after_ident(t)) {
-            // FIXME: figure out priority of `+` in `dyn Trait1 + Trait2` (#34511).
             self.bump(); // `dyn`
-            TyKind::TraitObject(self.parse_ty_param_bounds()?, TraitObjectSyntax::Dyn)
+            // Always parse bounds greedily for better error recovery.
+            let bounds = self.parse_ty_param_bounds()?;
+            impl_dyn_multi = bounds.len() > 1 || self.prev_token_kind == PrevTokenKind::Plus;
+            TyKind::TraitObject(bounds, TraitObjectSyntax::Dyn)
         } else if self.check(&token::Question) ||
                   self.check_lifetime() && self.look_ahead(1, |t| t == &token::BinOp(token::Plus)) {
             // Bound list (trait object type)
@@ -1658,6 +1663,7 @@ impl<'a> Parser<'a> {
         let ty = Ty { node, span, id: ast::DUMMY_NODE_ID };
 
         // Try to recover from use of `+` with incorrect priority.
+        self.maybe_report_ambiguous_plus(allow_plus, impl_dyn_multi, &ty);
         self.maybe_recover_from_bad_type_plus(allow_plus, &ty)?;
         let ty = self.maybe_recover_from_bad_qpath(ty, allow_qpath_recovery)?;
 
@@ -1673,6 +1679,15 @@ impl<'a> Parser<'a> {
             bounds.append(&mut self.parse_ty_param_bounds()?);
         }
         Ok(TyKind::TraitObject(bounds, TraitObjectSyntax::None))
+    }
+
+    fn maybe_report_ambiguous_plus(&mut self, allow_plus: bool, impl_dyn_multi: bool, ty: &Ty) {
+        if !allow_plus && impl_dyn_multi {
+            let sum_with_parens = format!("({})", pprust::ty_to_string(&ty));
+            self.struct_span_err(ty.span, "ambiguous `+` in a type")
+                .span_suggestion(ty.span, "use parentheses to disambiguate", sum_with_parens)
+                .emit();
+        }
     }
 
     fn maybe_recover_from_bad_type_plus(&mut self, allow_plus: bool, ty: &Ty) -> PResult<'a, ()> {
@@ -4896,7 +4911,7 @@ impl<'a> Parser<'a> {
     pub fn parse_fn_decl(&mut self, allow_variadic: bool) -> PResult<'a, P<FnDecl>> {
 
         let (args, variadic) = self.parse_fn_args(true, allow_variadic)?;
-        let ret_ty = self.parse_ret_ty()?;
+        let ret_ty = self.parse_ret_ty(true)?;
 
         Ok(P(FnDecl {
             inputs: args,
@@ -5037,7 +5052,7 @@ impl<'a> Parser<'a> {
         self.expect(&token::CloseDelim(token::Paren))?;
         Ok(P(FnDecl {
             inputs: fn_inputs,
-            output: self.parse_ret_ty()?,
+            output: self.parse_ret_ty(true)?,
             variadic: false
         }))
     }
@@ -5059,7 +5074,7 @@ impl<'a> Parser<'a> {
                 args
             }
         };
-        let output = self.parse_ret_ty()?;
+        let output = self.parse_ret_ty(true)?;
 
         Ok(P(FnDecl {
             inputs: inputs_captures,
