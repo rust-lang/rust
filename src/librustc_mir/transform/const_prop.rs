@@ -286,7 +286,12 @@ impl CanConstProp {
             found_assignment: IndexVec::from_elem(false, &mir.local_decls),
         };
         for (local, val) in cpv.can_const_prop.iter_enumerated_mut() {
-            *val = mir.local_kind(local) != LocalKind::Arg;
+            // cannot use args at all
+            // cannot use locals because if x < y { y - x } else { x - y } would
+            //        lint for x != y
+            // FIXME(oli-obk): lint variables until they are used in a condition
+            // FIXME(oli-obk): lint if return value is constant
+            *val = mir.local_kind(local) == LocalKind::Temp;
         }
         cpv.visit_mir(mir);
         cpv.can_const_prop
