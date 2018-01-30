@@ -55,6 +55,7 @@ struct OptimizationFinder<'b, 'a, 'tcx:'a+'b> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     source: MirSource,
     places: IndexVec<Local, Option<Const<'tcx>>>,
+    can_const_prop: IndexVec<Local, bool>,
 }
 
 impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
@@ -67,6 +68,7 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
             mir,
             tcx,
             source,
+            can_const_prop: CanConstProp::check(mir),
             places: IndexVec::from_elem(None, &mir.local_decls),
         }
     }
@@ -271,33 +273,34 @@ fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 struct CanConstProp {
-    local: Local,
-    can_const_prop: bool,
+    can_const_prop: IndexVec<Local, bool>,
     // false at the beginning, once set, there are not allowed to be any more assignments
-    found_assignment: bool,
+    found_assignment: IndexVec<Local, bool>,
 }
 
 impl CanConstProp {
     /// returns true if `local` can be propagated
-    fn check<'tcx>(local: Local, mir: &Mir<'tcx>) -> bool {
+    fn check<'tcx>(mir: &Mir<'tcx>) -> IndexVec<Local, bool> {
         let mut cpv = CanConstProp {
-            local,
-            can_const_prop: true,
-            found_assignment: false,
+            can_const_prop: IndexVec::from_elem(true, &mir.local_decls),
+            found_assignment: IndexVec::from_elem(false, &mir.local_decls),
         };
+        for (local, val) in cpv.can_const_prop.iter_enumerated_mut() {
+            *val = mir.local_kind(local) == LocalKind::Temp;
+        }
         cpv.visit_mir(mir);
         cpv.can_const_prop
     }
+}
 
-    fn is_our_local(&mut self, mut place: &Place) -> bool {
-        while let Place::Projection(ref proj) = place {
-            place = &proj.base;
-        }
-        if let Place::Local(local) = *place {
-            local == self.local
-        } else {
-            false
-        }
+fn place_to_local(mut place: &Place) -> Option<Local> {
+    while let Place::Projection(ref proj) = place {
+        place = &proj.base;
+    }
+    if let Place::Local(local) = *place {
+        Some(local)
+    } else {
+        None
     }
 }
 
@@ -312,21 +315,21 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
         match statement.kind {
             StatementKind::SetDiscriminant { ref place, .. } |
             StatementKind::Assign(ref place, _) => {
-                if self.is_our_local(place) {
-                    if self.found_assignment {
-                        self.can_const_prop = false;
+                if let Some(local) = place_to_local(place) {
+                    if self.found_assignment[local] {
+                        self.can_const_prop[local] = false;
                     } else {
-                        self.found_assignment = true
+                        self.found_assignment[local] = true
                     }
                 }
             },
             StatementKind::InlineAsm { ref outputs, .. } => {
                 for place in outputs {
-                    if self.is_our_local(place) {
-                        if self.found_assignment {
-                            self.can_const_prop = false;
+                    if let Some(local) = place_to_local(place) {
+                        if self.found_assignment[local] {
+                            self.can_const_prop[local] = false;
                         } else {
-                            self.found_assignment = true
+                            self.found_assignment[local] = true
                         }
                         return;
                     }
@@ -338,8 +341,8 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         self.super_rvalue(rvalue, location);
         if let Rvalue::Ref(_, _, ref place) = *rvalue {
-            if self.is_our_local(place) {
-                self.can_const_prop = false;
+            if let Some(local) = place_to_local(place) {
+                self.can_const_prop[local] = false;
             }
         }
     }
@@ -369,8 +372,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for OptimizationFinder<'b, 'a, 'tcx> {
                 .to_ty(self.tcx);
             if let Some(value) = self.const_prop(rval, place_ty, statement.source_info) {
                 if let Place::Local(local) = *place {
-                    if self.mir.local_kind(local) == LocalKind::Temp
-                        && CanConstProp::check(local, self.mir) {
+                    if self.can_const_prop[local] {
                         trace!("storing {:?} to {:?}", value, local);
                         assert!(self.places[local].is_none());
                         self.places[local] = Some(value);
