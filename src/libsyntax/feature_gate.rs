@@ -449,6 +449,9 @@ declare_features! (
 
     // Use `?` as the Kleene "at most one" operator
     (active, macro_at_most_once_rep, "1.25.0", Some(48075)),
+
+    // Scoped attributes
+    (active, tool_attributes, "1.25.0", Some(44690)),
 );
 
 declare_features! (
@@ -1114,12 +1117,28 @@ impl<'a> Context<'a> {
             // before the plugin attributes are registered
             // so we skip this then
             if !is_macro {
-                gate_feature!(self, custom_attribute, attr.span,
-                              &format!("The attribute `{}` is currently \
-                                        unknown to the compiler and \
-                                        may have meaning \
-                                        added to it in the future",
-                                       attr.path));
+                if attr.is_scoped() {
+                    gate_feature!(self, tool_attributes, attr.span,
+                                  &format!("scoped attribute `{}` is experimental", attr.path));
+                    if attr::is_known_tool(attr) {
+                        attr::mark_used(attr);
+                    } else {
+                        span_err!(
+                            self.parse_sess.span_diagnostic,
+                            attr.span,
+                            E0693,
+                            "An unkown tool name found in scoped attributes: `{}`.",
+                            attr.path
+                        );
+                    }
+                } else {
+                    gate_feature!(self, custom_attribute, attr.span,
+                                  &format!("The attribute `{}` is currently \
+                                            unknown to the compiler and \
+                                            may have meaning \
+                                            added to it in the future",
+                                           attr.path));
+                }
             }
         }
     }
