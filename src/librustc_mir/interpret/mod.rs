@@ -11,7 +11,7 @@ mod step;
 mod terminator;
 mod traits;
 
-pub use self::eval_context::{EvalContext, Frame, ResourceLimits, StackPopCleanup,
+pub use self::eval_context::{EvalContext, Frame, StackPopCleanup,
                              TyAndPacked, ValTy};
 
 pub use self::place::{Place, PlaceExtra};

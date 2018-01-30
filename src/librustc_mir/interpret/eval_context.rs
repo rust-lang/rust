@@ -43,7 +43,7 @@ pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     /// The maximum number of operations that may be executed.
     /// This prevents infinite loops and huge computations from freezing up const eval.
     /// Remove once halting problem is solved.
-    pub(crate) steps_remaining: u64,
+    pub(crate) steps_remaining: usize,
 }
 
 /// A stack frame.
@@ -100,23 +100,6 @@ pub enum StackPopCleanup {
     Goto(mir::BasicBlock),
     /// The main function and diverging functions have nowhere to return to
     None,
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct ResourceLimits {
-    pub memory_size: u64,
-    pub step_limit: u64,
-    pub stack_limit: usize,
-}
-
-impl Default for ResourceLimits {
-    fn default() -> Self {
-        ResourceLimits {
-            memory_size: 100 * 1024 * 1024, // 100 MB
-            step_limit: 1_000_000,
-            stack_limit: 100,
-        }
-    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -200,7 +183,6 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     pub fn new(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        limits: ResourceLimits,
         machine: M,
         memory_data: M::MemoryData,
     ) -> Self {
@@ -208,10 +190,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             machine,
             tcx,
             param_env,
-            memory: Memory::new(tcx, limits.memory_size, memory_data),
+            memory: Memory::new(tcx, memory_data),
             stack: Vec::new(),
-            stack_limit: limits.stack_limit,
-            steps_remaining: limits.step_limit,
+            stack_limit: tcx.sess.const_eval_stack_frame_limit.get(),
+            steps_remaining: tcx.sess.const_eval_step_limit.get(),
         }
     }
 
@@ -559,7 +541,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             }
 
             Aggregate(ref kind, ref operands) => {
-                self.inc_step_counter_and_check_limit(operands.len() as u64)?;
+                self.inc_step_counter_and_check_limit(operands.len())?;
 
                 let (dest, active_field_index) = match **kind {
                     mir::AggregateKind::Adt(adt_def, variant_index, _, active_field_index) => {

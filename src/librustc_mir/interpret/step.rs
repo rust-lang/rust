@@ -8,7 +8,7 @@ use rustc::mir::interpret::EvalResult;
 use super::{EvalContext, Machine};
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
-    pub fn inc_step_counter_and_check_limit(&mut self, n: u64) -> EvalResult<'tcx> {
+    pub fn inc_step_counter_and_check_limit(&mut self, n: usize) -> EvalResult<'tcx> {
         self.steps_remaining = self.steps_remaining.saturating_sub(n);
         if self.steps_remaining > 0 {
             Ok(())

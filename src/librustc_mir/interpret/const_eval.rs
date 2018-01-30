@@ -24,8 +24,7 @@ pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
 ) -> EvalResult<'tcx, EvalContext<'a, 'mir, 'tcx, CompileTimeEvaluator>> {
     debug!("mk_borrowck_eval_cx: {:?}", instance);
     let param_env = tcx.param_env(instance.def_id());
-    let limits = super::ResourceLimits::default();
-    let mut ecx = EvalContext::new(tcx, param_env, limits, CompileTimeEvaluator, ());
+    let mut ecx = EvalContext::new(tcx, param_env, CompileTimeEvaluator, ());
     // insert a stack frame so any queries have the correct substs
     ecx.push_stack_frame(
         instance,
@@ -43,8 +42,7 @@ pub fn mk_eval_cx<'a, 'tcx>(
     param_env: ty::ParamEnv<'tcx>,
 ) -> EvalResult<'tcx, EvalContext<'a, 'tcx, 'tcx, CompileTimeEvaluator>> {
     debug!("mk_eval_cx: {:?}, {:?}", instance, param_env);
-    let limits = super::ResourceLimits::default();
-    let mut ecx = EvalContext::new(tcx, param_env, limits, CompileTimeEvaluator, ());
+    let mut ecx = EvalContext::new(tcx, param_env, CompileTimeEvaluator, ());
     let mir = ecx.load_mir(instance.def)?;
     // insert a stack frame so any queries have the correct substs
     ecx.push_stack_frame(
@@ -95,8 +93,7 @@ fn eval_body_and_ecx<'a, 'mir, 'tcx>(
     param_env: ty::ParamEnv<'tcx>,
 ) -> (EvalResult<'tcx, (Value, Pointer, Ty<'tcx>)>, EvalContext<'a, 'mir, 'tcx, CompileTimeEvaluator>) {
     debug!("eval_body: {:?}, {:?}", cid, param_env);
-    let limits = super::ResourceLimits::default();
-    let mut ecx = EvalContext::new(tcx, param_env, limits, CompileTimeEvaluator, ());
+    let mut ecx = EvalContext::new(tcx, param_env, CompileTimeEvaluator, ());
     let res = (|| {
         let mut mir = match mir {
             Some(mir) => mir,

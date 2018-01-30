@@ -55,14 +55,14 @@ pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
 }
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, max_memory: u64, data: M::MemoryData) -> Self {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, data: M::MemoryData) -> Self {
         Memory {
             data,
             alloc_kind: HashMap::new(),
             alloc_map: HashMap::new(),
             uninitialized_statics: HashMap::new(),
             tcx,
-            memory_size: max_memory,
+            memory_size: tcx.sess.const_eval_memory_limit.get(),
             memory_usage: 0,
             cur_frame: usize::max_value(),
         }
