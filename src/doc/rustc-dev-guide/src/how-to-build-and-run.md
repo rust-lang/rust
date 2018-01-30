@@ -1,7 +1,7 @@
 # How to build the compiler and run what you built
 
 The compiler is built using a tool called `x.py`. You will need to
-have Python installed to run it. But before we get to that, if you're going to 
+have Python installed to run it. But before we get to that, if you're going to
 be hacking on rustc, you'll want to tweak the configuration of the compiler. The default
 configuration is oriented towards running the compiler as a user, not a developer.
 
@@ -47,6 +47,19 @@ use-jemalloc = false
 ```
 
 ### Running x.py and building a stage1 compiler
+
+One thing to keep in mind is that `rustc` is a _bootstrapping_ compiler. That
+is, since `rustc` is written in Rust, we need to use an older version of the
+compiler to compile the newer version. In particular, the newer version of the
+compiler, `libstd`, and other tooling may use some unstable features
+internally. The result is the compiling `rustc` is done in stages.
+
+- Stage 0: the current _beta_ compiler is compiled using the current _stable_ compiler.
+- Stage 1: the code in your clone is then compiled with the stage 0 compiler.
+- Stage 2: the code in your clone is then compiled with the stage 1 compiler (i.e. it builds itself).
+
+For hacking, often building the stage 1 compiler is enough, but for testing and
+release, the stage 2 compiler is used.
 
 Once you've created a config.toml, you are now ready to run
 `x.py`. There are a lot of options here, but let's start with what is
@@ -117,4 +130,4 @@ Here are a few other useful x.py commands. We'll cover some of them in detail in
   - `./x.py build` -- builds the stage2 compiler
 - Running tests (see the section [running tests](./running-tests.html) for more details):
   - `./x.py test --stage 1 src/libstd` -- runs the `#[test]` tests from libstd
-  - `./x.py test --stage 1 src/test/run-pass` -- runs the `run-pass` test suite 
+  - `./x.py test --stage 1 src/test/run-pass` -- runs the `run-pass` test suite
