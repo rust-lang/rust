@@ -15,8 +15,8 @@
 
 use rustc::mir::{Constant, Literal, Location, Place, Mir, Operand, Rvalue, Local};
 use rustc::mir::{NullOp, StatementKind, Statement, BasicBlock, LocalKind};
-use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp};
-use rustc::mir::visit::Visitor;
+use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp, BorrowKind};
+use rustc::mir::visit::{Visitor, PlaceContext};
 use rustc::ty::layout::LayoutOf;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{TyCtxt, self, Instance};
@@ -64,11 +64,16 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         source: MirSource,
     ) -> OptimizationFinder<'b, 'a, 'tcx> {
+        let can_const_prop = CanConstProp::check(
+            mir,
+            tcx,
+            tcx.param_env(source.def_id),
+        );
         OptimizationFinder {
             mir,
             tcx,
             source,
-            can_const_prop: CanConstProp::check(mir),
+            can_const_prop,
             places: IndexVec::from_elem(None, &mir.local_decls),
         }
     }
@@ -272,78 +277,71 @@ fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     (tcx, param_env).layout_of(ty).ok().map(|layout| layout.size.bytes())
 }
 
-struct CanConstProp {
+struct CanConstProp<'b, 'a, 'tcx:'a+'b> {
     can_const_prop: IndexVec<Local, bool>,
     // false at the beginning, once set, there are not allowed to be any more assignments
     found_assignment: IndexVec<Local, bool>,
+    mir: &'b Mir<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
 }
 
-impl CanConstProp {
+impl<'b, 'a, 'tcx:'b> CanConstProp<'b, 'a, 'tcx> {
     /// returns true if `local` can be propagated
-    fn check<'tcx>(mir: &Mir<'tcx>) -> IndexVec<Local, bool> {
+    fn check(
+        mir: &'b Mir<'tcx>,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> IndexVec<Local, bool> {
         let mut cpv = CanConstProp {
             can_const_prop: IndexVec::from_elem(true, &mir.local_decls),
             found_assignment: IndexVec::from_elem(false, &mir.local_decls),
+            mir,
+            tcx,
+            param_env,
         };
         for (local, val) in cpv.can_const_prop.iter_enumerated_mut() {
-            *val = mir.local_kind(local) == LocalKind::Temp;
+            *val = mir.local_kind(local) != LocalKind::Arg;
         }
         cpv.visit_mir(mir);
         cpv.can_const_prop
     }
 }
 
-fn place_to_local(mut place: &Place) -> Option<Local> {
-    while let Place::Projection(ref proj) = place {
-        place = &proj.base;
-    }
-    if let Place::Local(local) = *place {
-        Some(local)
-    } else {
-        None
-    }
-}
-
-impl<'tcx> Visitor<'tcx> for CanConstProp {
-    fn visit_statement(
+impl<'a, 'b, 'tcx> Visitor<'tcx> for CanConstProp<'a, 'b, 'tcx> {
+    fn visit_local(
         &mut self,
-        block: BasicBlock,
-        statement: &Statement<'tcx>,
-        location: Location,
+        &local: &Local,
+        context: PlaceContext<'tcx>,
+        _: Location,
     ) {
-        self.super_statement(block, statement, location);
-        match statement.kind {
-            StatementKind::SetDiscriminant { ref place, .. } |
-            StatementKind::Assign(ref place, _) => {
-                if let Some(local) = place_to_local(place) {
-                    if self.found_assignment[local] {
-                        self.can_const_prop[local] = false;
-                    } else {
-                        self.found_assignment[local] = true
-                    }
-                }
-            },
-            StatementKind::InlineAsm { ref outputs, .. } => {
-                for place in outputs {
-                    if let Some(local) = place_to_local(place) {
-                        if self.found_assignment[local] {
-                            self.can_const_prop[local] = false;
-                        } else {
-                            self.found_assignment[local] = true
-                        }
-                        return;
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
-        self.super_rvalue(rvalue, location);
-        if let Rvalue::Ref(_, _, ref place) = *rvalue {
-            if let Some(local) = place_to_local(place) {
+        use rustc::mir::visit::PlaceContext::*;
+        match context {
+            // Constants must have at most one write
+            // FIXME(oli-obk): we could be more powerful here, if the multiple writes
+            // only occur in independent execution paths
+            Store => if self.found_assignment[local] {
                 self.can_const_prop[local] = false;
+            } else {
+                self.found_assignment[local] = true
+            },
+            // Reading constants is allowed an arbitrary number of times
+            Copy | Move |
+            StorageDead | StorageLive |
+            Validate |
+            Inspect => {},
+            Borrow { kind: BorrowKind::Shared, .. } => {
+                // cannot const prop immutable borrows of types with interior mutability
+                let has_interior_mutability = self
+                    .mir
+                    .local_decls[local]
+                    .ty
+                    .is_freeze(self.tcx, self.param_env, self.mir.span);
+                if has_interior_mutability {
+                    self.can_const_prop[local] = false;
+                }
             }
+            _ => self.can_const_prop[local] = false,
         }
     }
 }
