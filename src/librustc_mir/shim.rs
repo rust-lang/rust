@@ -407,8 +407,9 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         ty: Ty<'tcx>,
         rcvr_field: Place<'tcx>,
         next: BasicBlock,
-        cleanup: BasicBlock
-    ) -> Place<'tcx> {
+        cleanup: BasicBlock,
+        place: Place<'tcx>
+    ) {
         let tcx = self.tcx;
 
         let substs = Substs::for_item(
@@ -439,8 +440,6 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             })
         );
 
-        let loc = self.make_place(Mutability::Not, ty);
-
         // `let ref_loc: &ty = &rcvr_field;`
         let statement = self.make_statement(
             StatementKind::Assign(
@@ -453,11 +452,9 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         self.block(vec![statement], TerminatorKind::Call {
             func,
             args: vec![Operand::Move(ref_loc)],
-            destination: Some((loc.clone(), next)),
+            destination: Some((place, next)),
             cleanup: Some(cleanup),
         }, false);
-
-        loc
     }
 
     fn loop_header(
@@ -540,7 +537,9 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         // `let cloned = Clone::clone(rcvr[beg])`;
         // Goto #3 if ok, #5 if unwinding happens.
         let rcvr_field = rcvr.clone().index(beg);
-        let cloned = self.make_clone_call(ty, rcvr_field, BasicBlock::new(3), BasicBlock::new(5));
+        let cloned = self.make_place(Mutability::Not, ty);
+        self.make_clone_call(ty, rcvr_field, BasicBlock::new(3),
+                             BasicBlock::new(5), cloned.clone());
 
         // BB #3
         // `ret[beg] = cloned;`
@@ -638,16 +637,18 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         for (i, ity) in tys.iter().enumerate() {
             let rcvr_field = rcvr.clone().field(Field::new(i), *ity);
 
+            let place = self.make_place(Mutability::Not, ity);
+            returns.push(place.clone());
+
             // BB #(2i)
             // `returns[i] = Clone::clone(&rcvr.i);`
             // Goto #(2i + 2) if ok, #(2i + 1) if unwinding happens.
-            returns.push(
-                self.make_clone_call(
-                    *ity,
-                    rcvr_field,
-                    BasicBlock::new(2 * i + 2),
-                    BasicBlock::new(2 * i + 1),
-                )
+            self.make_clone_call(
+                *ity,
+                rcvr_field,
+                BasicBlock::new(2 * i + 2),
+                BasicBlock::new(2 * i + 1),
+                place
             );
 
             // BB #(2i + 1) (cleanup)
