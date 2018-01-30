@@ -2,7 +2,7 @@
 
 
 #[allow(unused_assignments)]
-#[warn(misrefactored_assign_op)]
+#[warn(misrefactored_assign_op, assign_op_pattern)]
 fn main() {
     let mut a = 5;
     a += a + 1;
@@ -14,6 +14,9 @@ fn main() {
     a %= a % 5;
     a &= a & 1;
     a *= a * a;
+    a = a * a * a;
+    a = a * 42 * a;
+    a = a * 2 + a;
     a -= 1 - a;
     a /= 5 / a;
     a %= 42 % a;

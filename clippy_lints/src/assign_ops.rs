@@ -1,4 +1,5 @@
 use rustc::hir;
+use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::lint::*;
 use syntax::ast;
 use utils::{get_trait_def_id, implements_trait, snippet_opt, span_lint_and_then, SpanlessEq};
@@ -98,12 +99,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                 {
                                     let a = &sugg::Sugg::hir(cx, assignee, "..");
                                     let r = &sugg::Sugg::hir(cx, rhs, "..");
+                                    let long = format!("{} = {}", snip_a, sugg::make_binop(higher::binop(op.node), a, r));
                                     db.span_suggestion(
                                         expr.span,
-                                        &format!("Did you mean {} = {} {} {} or {} = {}? Consider replacing it with",
+                                        &format!("Did you mean {} = {} {} {} or {}? Consider replacing it with",
                                                  snip_a, snip_a, op.node.as_str(), snip_r,
-                                                 snip_a, sugg::make_binop(higher::binop(op.node), a, r)),
+                                                 long),
                                         format!("{} {}= {}", snip_a, op.node.as_str(), snip_r)
+                                    );
+                                    db.span_suggestion(
+                                        expr.span,
+                                        "or",
+                                        long
                                     );
                                 },
                             );
@@ -193,23 +200,34 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                             );
                         }
                     };
-                    // a = a op b
-                    if SpanlessEq::new(cx).ignore_fn().eq_expr(assignee, l) {
-                        lint(assignee, r);
-                    }
-                    // a = b commutative_op a
-                    if SpanlessEq::new(cx).ignore_fn().eq_expr(assignee, r) {
-                        match op.node {
-                            hir::BiAdd |
-                            hir::BiMul |
-                            hir::BiAnd |
-                            hir::BiOr |
-                            hir::BiBitXor |
-                            hir::BiBitAnd |
-                            hir::BiBitOr => {
-                                lint(assignee, l);
-                            },
-                            _ => {},
+
+                    let mut visitor = ExprVisitor {
+                        assignee: assignee,
+                        counter: 0,
+                        cx: cx
+                    };
+
+                    walk_expr(&mut visitor, e);
+
+                    if visitor.counter == 1 {
+                        // a = a op b
+                        if SpanlessEq::new(cx).ignore_fn().eq_expr(assignee, l) {
+                            lint(assignee, r);
+                        }
+                        // a = b commutative_op a
+                        if SpanlessEq::new(cx).ignore_fn().eq_expr(assignee, r) {
+                            match op.node {
+                                hir::BiAdd |
+                                hir::BiMul |
+                                hir::BiAnd |
+                                hir::BiOr |
+                                hir::BiBitXor |
+                                hir::BiBitAnd |
+                                hir::BiBitOr => {
+                                    lint(assignee, l);
+                                },
+                                _ => {},
+                            }
                         }
                     }
                 }
@@ -224,5 +242,24 @@ fn is_commutative(op: hir::BinOp_) -> bool {
     match op {
         BiAdd | BiMul | BiAnd | BiOr | BiBitXor | BiBitAnd | BiBitOr | BiEq | BiNe => true,
         BiSub | BiDiv | BiRem | BiShl | BiShr | BiLt | BiLe | BiGe | BiGt => false,
+    }
+}
+
+struct ExprVisitor<'a, 'tcx: 'a> {
+    assignee: &'a hir::Expr,
+    counter: u8,
+    cx: &'a LateContext<'a, 'tcx>,
+}
+
+impl<'a, 'tcx: 'a> Visitor<'tcx> for ExprVisitor<'a, 'tcx> {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
+        if SpanlessEq::new(self.cx).ignore_fn().eq_expr(self.assignee, &expr) {
+            self.counter += 1;
+        }
+
+        walk_expr(self, expr);
+    }
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
     }
 }
