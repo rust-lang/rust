@@ -323,12 +323,8 @@ pub fn rewrite_macro_def(
         parsed_def.branches.iter(),
         "}",
         ";",
-        |branch| {
-            branch.span.lo()
-        },
-        |branch| {
-            branch.span.hi()
-        },
+        |branch| branch.span.lo(),
+        |branch| branch.span.hi(),
         |branch| {
             // Only attempt to format function-like macros.
             if branch.args_paren_kind != DelimToken::Paren {
@@ -419,7 +415,7 @@ pub fn rewrite_macro_def(
         },
         context.codemap.span_after(span, "{"),
         span.hi(),
-        false
+        false,
     ).collect::<Vec<_>>();
 
     let arm_shape = shape
@@ -804,7 +800,10 @@ impl MacroParser {
             TokenTree::Token(..) => return None,
             TokenTree::Delimited(sp, _) => {
                 let data = sp.data();
-                (data.hi, Span::new(data.lo + BytePos(1), data.hi - BytePos(1), data.ctxt))
+                (
+                    data.hi,
+                    Span::new(data.lo + BytePos(1), data.hi - BytePos(1), data.ctxt),
+                )
             }
         };
         if let Some(TokenTree::Token(sp, Token::Semi)) = self.toks.look_ahead(0) {
