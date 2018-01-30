@@ -2,51 +2,129 @@ error: variable appears on both sides of an assignment operation
  --> $DIR/assign_ops2.rs:8:5
   |
 8 |     a += a + 1;
-  |     ^^^^^^^^^^ help: replace it with: `a += 1`
+  |     ^^^^^^^^^^
   |
   = note: `-D misrefactored-assign-op` implied by `-D warnings`
+help: Did you mean a = a + 1 or a = a + a + 1? Consider replacing it with
+  |
+8 |     a += 1;
+  |     ^^^^^^
+help: or
+  |
+8 |     a = a + a + 1;
+  |     ^^^^^^^^^^^^^
 
 error: variable appears on both sides of an assignment operation
  --> $DIR/assign_ops2.rs:9:5
   |
 9 |     a += 1 + a;
-  |     ^^^^^^^^^^ help: replace it with: `a += 1`
+  |     ^^^^^^^^^^
+help: Did you mean a = a + 1 or a = a + 1 + a? Consider replacing it with
+  |
+9 |     a += 1;
+  |     ^^^^^^
+help: or
+  |
+9 |     a = a + 1 + a;
+  |     ^^^^^^^^^^^^^
 
 error: variable appears on both sides of an assignment operation
   --> $DIR/assign_ops2.rs:10:5
    |
 10 |     a -= a - 1;
-   |     ^^^^^^^^^^ help: replace it with: `a -= 1`
+   |     ^^^^^^^^^^
+help: Did you mean a = a - 1 or a = a - (a - 1)? Consider replacing it with
+   |
+10 |     a -= 1;
+   |     ^^^^^^
+help: or
+   |
+10 |     a = a - (a - 1);
+   |     ^^^^^^^^^^^^^^^
 
 error: variable appears on both sides of an assignment operation
   --> $DIR/assign_ops2.rs:11:5
    |
 11 |     a *= a * 99;
-   |     ^^^^^^^^^^^ help: replace it with: `a *= 99`
+   |     ^^^^^^^^^^^
+help: Did you mean a = a * 99 or a = a * a * 99? Consider replacing it with
+   |
+11 |     a *= 99;
+   |     ^^^^^^^
+help: or
+   |
+11 |     a = a * a * 99;
+   |     ^^^^^^^^^^^^^^
 
 error: variable appears on both sides of an assignment operation
   --> $DIR/assign_ops2.rs:12:5
    |
 12 |     a *= 42 * a;
-   |     ^^^^^^^^^^^ help: replace it with: `a *= 42`
+   |     ^^^^^^^^^^^
+help: Did you mean a = a * 42 or a = a * 42 * a? Consider replacing it with
+   |
+12 |     a *= 42;
+   |     ^^^^^^^
+help: or
+   |
+12 |     a = a * 42 * a;
+   |     ^^^^^^^^^^^^^^
 
 error: variable appears on both sides of an assignment operation
   --> $DIR/assign_ops2.rs:13:5
    |
 13 |     a /= a / 2;
-   |     ^^^^^^^^^^ help: replace it with: `a /= 2`
+   |     ^^^^^^^^^^
+help: Did you mean a = a / 2 or a = a / (a / 2)? Consider replacing it with
+   |
+13 |     a /= 2;
+   |     ^^^^^^
+help: or
+   |
+13 |     a = a / (a / 2);
+   |     ^^^^^^^^^^^^^^^
 
 error: variable appears on both sides of an assignment operation
   --> $DIR/assign_ops2.rs:14:5
    |
 14 |     a %= a % 5;
-   |     ^^^^^^^^^^ help: replace it with: `a %= 5`
+   |     ^^^^^^^^^^
+help: Did you mean a = a % 5 or a = a % (a % 5)? Consider replacing it with
+   |
+14 |     a %= 5;
+   |     ^^^^^^
+help: or
+   |
+14 |     a = a % (a % 5);
+   |     ^^^^^^^^^^^^^^^
 
 error: variable appears on both sides of an assignment operation
   --> $DIR/assign_ops2.rs:15:5
    |
 15 |     a &= a & 1;
-   |     ^^^^^^^^^^ help: replace it with: `a &= 1`
+   |     ^^^^^^^^^^
+help: Did you mean a = a & 1 or a = a & a & 1? Consider replacing it with
+   |
+15 |     a &= 1;
+   |     ^^^^^^
+help: or
+   |
+15 |     a = a & a & 1;
+   |     ^^^^^^^^^^^^^
 
-error: aborting due to 8 previous errors
+error: variable appears on both sides of an assignment operation
+  --> $DIR/assign_ops2.rs:16:5
+   |
+16 |     a *= a * a;
+   |     ^^^^^^^^^^
+help: Did you mean a = a * a or a = a * a * a? Consider replacing it with
+   |
+16 |     a *= a;
+   |     ^^^^^^
+help: or
+   |
+16 |     a = a * a * a;
+   |     ^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
 
