@@ -176,10 +176,10 @@ impl Float for f64 {
     /// predicate instead.
     fn classify(self) -> Fp {
         const EXP_MASK: u64 = 0x7ff0000000000000;
-        const MAN_MASK: u64 = 0x000fffffffffffff;
+        const NAN_MASK: u64 = 0x000fffffffffffff;
 
         let bits = self.to_bits();
-        match (bits & MAN_MASK, bits & EXP_MASK) {
+        match (bits & NAN_MASK, bits & EXP_MASK) {
             (0, 0) => Fp::Zero,
             (_, 0) => Fp::Subnormal,
             (0, EXP_MASK) => Fp::Infinite,
