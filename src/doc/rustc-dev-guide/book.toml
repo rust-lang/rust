@@ -3,3 +3,6 @@ title = "Guide to Rustc Development"
 author = "Rustc developers"
 description = "A guide to developing rustc "
 
+[output.html]
+
+[output.linkcheck]

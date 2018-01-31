@@ -25,3 +25,11 @@ for you to talk with someone who **does** know the code, or who wants
 to pair with you and figure it out.  Then you can work on writing up
 what you learned.
 
+To help prevent accidentally introducing broken links, we use the
+`mdbook-linkcheck`. If installed on your machine `mdbook` will automatically
+invoke this link checker, otherwise it will emit a warning saying it couldn't
+be found.
+
+```
+$ cargo install mdbook-linkcheck
+```
