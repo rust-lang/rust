@@ -78,6 +78,11 @@ pub use self::on_disk_cache::OnDiskCache;
 // a way that memoizes and does dep-graph tracking,
 // wrapping around the actual chain of providers that
 // the driver creates (using several `rustc_*` crates).
+//
+// The result of query must implement Clone. They must also implement ty::maps::values::Value
+// which produces an appropiate error value if the query resulted in a query cycle.
+// Queries marked with `fatal_cycle` do not need that implementation
+// as they will raise an fatal error on query cycles instead.
 define_maps! { <'tcx>
     /// Records the type of every item.
     [] fn type_of: TypeOfItem(DefId) -> Ty<'tcx>,
@@ -267,13 +272,13 @@ define_maps! { <'tcx>
     [] fn dylib_dependency_formats: DylibDepFormats(CrateNum)
                                     -> Rc<Vec<(CrateNum, LinkagePreference)>>,
 
-    [] fn is_panic_runtime: IsPanicRuntime(CrateNum) -> bool,
-    [] fn is_compiler_builtins: IsCompilerBuiltins(CrateNum) -> bool,
-    [] fn has_global_allocator: HasGlobalAllocator(CrateNum) -> bool,
-    [] fn is_sanitizer_runtime: IsSanitizerRuntime(CrateNum) -> bool,
-    [] fn is_profiler_runtime: IsProfilerRuntime(CrateNum) -> bool,
-    [] fn panic_strategy: GetPanicStrategy(CrateNum) -> PanicStrategy,
-    [] fn is_no_builtins: IsNoBuiltins(CrateNum) -> bool,
+    [fatal_cycle] fn is_panic_runtime: IsPanicRuntime(CrateNum) -> bool,
+    [fatal_cycle] fn is_compiler_builtins: IsCompilerBuiltins(CrateNum) -> bool,
+    [fatal_cycle] fn has_global_allocator: HasGlobalAllocator(CrateNum) -> bool,
+    [fatal_cycle] fn is_sanitizer_runtime: IsSanitizerRuntime(CrateNum) -> bool,
+    [fatal_cycle] fn is_profiler_runtime: IsProfilerRuntime(CrateNum) -> bool,
+    [fatal_cycle] fn panic_strategy: GetPanicStrategy(CrateNum) -> PanicStrategy,
+    [fatal_cycle] fn is_no_builtins: IsNoBuiltins(CrateNum) -> bool,
 
     [] fn extern_crate: ExternCrate(DefId) -> Rc<Option<ExternCrate>>,
 

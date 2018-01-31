@@ -183,6 +183,19 @@ macro_rules! profq_key {
     }
 }
 
+macro_rules! handle_cycle_error {
+    ([][$this: expr]) => {{
+        Value::from_cycle_error($this.global_tcx())
+    }};
+    ([fatal_cycle$(, $modifiers:ident)*][$this:expr]) => {{
+        $this.tcx.sess.abort_if_errors();
+        unreachable!();
+    }};
+    ([$other:ident$(, $modifiers:ident)*][$($args:tt)*]) => {
+        handle_cycle_error!([$($modifiers),*][$($args)*])
+    };
+}
+
 macro_rules! define_maps {
     (<$tcx:tt>
      $($(#[$attr:meta])*
@@ -564,7 +577,7 @@ macro_rules! define_maps {
             pub fn $name(self, key: $K) -> $V {
                 queries::$name::try_get(self.tcx, self.span, key).unwrap_or_else(|mut e| {
                     e.emit();
-                    Value::from_cycle_error(self.global_tcx())
+                    handle_cycle_error!([$($modifiers)*][self])
                 })
             })*
         }
@@ -583,7 +596,7 @@ macro_rules! define_maps {
 
 macro_rules! define_map_struct {
     (tcx: $tcx:tt,
-     input: ($(([$(modifiers:tt)*] [$($attr:tt)*] [$name:ident]))*)) => {
+     input: ($(([$($modifiers:tt)*] [$($attr:tt)*] [$name:ident]))*)) => {
         pub struct Maps<$tcx> {
             providers: IndexVec<CrateNum, Providers<$tcx>>,
             query_stack: RefCell<Vec<(Span, Query<$tcx>)>>,
