@@ -9,8 +9,8 @@ The bulk of the parser lives in the [libsyntax] crate.
 
 Like most parsers, the parsing process is composed of two main steps,
 
-- lexical analysis - turn a stream of characters into a stream of token trees
-- parsing - turn the token trees into an AST
+- lexical analysis – turn a stream of characters into a stream of token trees
+- parsing – turn the token trees into an AST
 
 The `syntax` crate contains several main players,
 
