@@ -2,6 +2,7 @@
 
 [![Build
 Status](https://travis-ci.org/rust-lang-nursery/rust-semverver.svg?branch=master)](https://travis-ci.org/rust-lang-nursery/rust-semverver)
+[![Current Version](https://meritbadge.herokuapp.com/semverver)](https://crates.io/crates/semverver)
 
 This repository is hosting a proof-of-concept implementation of an automatic tool checking
 rust library crates for semantic versioning adherence, developed during the Google Summer
@@ -55,13 +56,19 @@ directory your project resides in. If you prefer not to install to `~/.cargo/bin
 invoke it like so after building with a regular `cargo build`:
 
 ```sh
-PATH=/path/to/repo/target/debug:$PATH cargo semver <args>
+$ PATH=/path/to/repo/target/debug:$PATH cargo semver <args>
 ```
 
 If you have built using `cargo build --release` instead, change the path to point to the
 `release` subdirectory of the `target` directory.
 
 </details>
+
+You can also install the (possibly more stable) version of the tool from crates.io:
+
+```sh
+$ cargo install +nightly semverver
+```
 
 ## Usage
 
