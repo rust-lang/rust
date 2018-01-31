@@ -86,6 +86,10 @@ pub(crate) unsafe fn trans(tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind) 
                                                      name.as_ptr(),
                                                      ty);
 
+        if tcx.sess.target.target.options.default_hidden_visibility {
+            llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
+        }
+
         let callee = CString::new(kind.fn_name(method.name)).unwrap();
         let callee = llvm::LLVMRustGetOrInsertFunction(llmod,
                                                        callee.as_ptr(),

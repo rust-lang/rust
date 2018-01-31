@@ -133,6 +133,8 @@ pub fn provide(providers: &mut Providers) {
 
         Arc::new(local_crate)
     };
+
+    providers.symbol_export_level = export_level;
 }
 
 pub fn provide_extern(providers: &mut Providers) {
@@ -203,6 +205,7 @@ pub fn provide_extern(providers: &mut Providers) {
 
         Arc::new(crate_exports)
     };
+    providers.symbol_export_level = export_level;
 }
 
 fn export_level(tcx: TyCtxt, sym_def_id: DefId) -> SymbolExportLevel {
