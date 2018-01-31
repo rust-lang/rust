@@ -103,14 +103,12 @@ pub fn set_probestack(cx: &CodegenCx, llfn: ValueRef) {
 /// Composite function which sets LLVM attributes for function depending on its AST (#[attribute])
 /// attributes.
 pub fn from_fn_attrs(cx: &CodegenCx, llfn: ValueRef, id: DefId) {
-    use syntax::attr::*;
-    let attrs = cx.tcx.get_attrs(id);
-    inline(llfn, find_inline_attr(Some(cx.sess().diagnostic()), &attrs));
+    let trans_fn_attrs = cx.tcx.trans_fn_attrs(id);
+
+    inline(llfn, trans_fn_attrs.inline);
 
     set_frame_pointer_elimination(cx, llfn);
     set_probestack(cx, llfn);
-
-    let trans_fn_attrs = cx.tcx.trans_fn_attrs(id);
 
     if trans_fn_attrs.flags.contains(TransFnAttrFlags::COLD) {
         Attribute::Cold.apply_llfn(Function, llfn);

@@ -3705,6 +3705,75 @@ match r {
 ```
 "##,
 
+E0534: r##"
+The `inline` attribute was malformed.
+
+Erroneous code example:
+
+```ignore (compile_fail not working here; see Issue #43707)
+#[inline()] // error: expected one argument
+pub fn something() {}
+
+fn main() {}
+```
+
+The parenthesized `inline` attribute requires the parameter to be specified:
+
+```
+#[inline(always)]
+fn something() {}
+```
+
+or:
+
+```
+#[inline(never)]
+fn something() {}
+```
+
+Alternatively, a paren-less version of the attribute may be used to hint the
+compiler about inlining opportunity:
+
+```
+#[inline]
+fn something() {}
+```
+
+For more information about the inline attribute, read:
+https://doc.rust-lang.org/reference.html#inline-attributes
+"##,
+
+E0535: r##"
+An unknown argument was given to the `inline` attribute.
+
+Erroneous code example:
+
+```ignore (compile_fail not working here; see Issue #43707)
+#[inline(unknown)] // error: invalid argument
+pub fn something() {}
+
+fn main() {}
+```
+
+The `inline` attribute only supports two arguments:
+
+ * always
+ * never
+
+All other arguments given to the `inline` attribute will return this error.
+Example:
+
+```
+#[inline(never)] // ok!
+pub fn something() {}
+
+fn main() {}
+```
+
+For more information about the inline attribute, https:
+read://doc.rust-lang.org/reference.html#inline-attributes
+"##,
+
 E0559: r##"
 An unknown field was specified into an enum's structure variant.
 

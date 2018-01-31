@@ -19,6 +19,7 @@ use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
                                            StableHasher, StableHasherResult};
 use std::mem;
 use syntax::ast;
+use syntax::attr;
 
 impl<'gcx> HashStable<StableHashingContext<'gcx>> for DefId {
     #[inline]
@@ -1145,9 +1146,11 @@ impl<'hir> HashStable<StableHashingContext<'hir>> for hir::TransFnAttrs
                                           hasher: &mut StableHasher<W>) {
         let hir::TransFnAttrs {
             flags,
+            inline,
         } = *self;
 
         flags.hash_stable(hcx, hasher);
+        inline.hash_stable(hcx, hasher);
     }
 }
 
@@ -1157,6 +1160,14 @@ impl<'hir> HashStable<StableHashingContext<'hir>> for hir::TransFnAttrFlags
                                           hcx: &mut StableHashingContext<'hir>,
                                           hasher: &mut StableHasher<W>) {
         self.bits().hash_stable(hcx, hasher);
+    }
+}
+
+impl<'hir> HashStable<StableHashingContext<'hir>> for attr::InlineAttr {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'hir>,
+                                          hasher: &mut StableHasher<W>) {
+        mem::discriminant(self).hash_stable(hcx, hasher);
     }
 }
 

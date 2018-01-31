@@ -207,7 +207,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         }
 
         let attrs = tcx.get_attrs(callsite.callee);
-        let hint = attr::find_inline_attr(None, &attrs[..]);
+        let hint = tcx.trans_fn_attrs(callsite.callee).inline;
 
         let hinted = match hint {
             // Just treat inline(always) as a hint for now,

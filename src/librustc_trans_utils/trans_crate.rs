@@ -236,9 +236,7 @@ impl TransCrate for MetadataOnlyTransCrate {
                         let _ = tcx.export_name(def_id);
                         let _ = tcx.contains_extern_indicator(def_id);
                         let _ = inst.def.is_inline(tcx);
-                        let attrs = inst.def.attrs(tcx);
-                        let _ =
-                            ::syntax::attr::find_inline_attr(Some(tcx.sess.diagnostic()), &attrs);
+                        let _ = tcx.trans_fn_attrs(def_id);
                     }
                 }
                 _ => {}

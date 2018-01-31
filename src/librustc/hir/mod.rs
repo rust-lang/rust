@@ -36,6 +36,7 @@ use syntax::codemap::{self, Spanned};
 use syntax::abi::Abi;
 use syntax::ast::{self, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
+use syntax::attr::InlineAttr;
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
@@ -2214,6 +2215,7 @@ pub fn provide(providers: &mut Providers) {
 #[derive(Clone, RustcEncodable, RustcDecodable, Hash)]
 pub struct TransFnAttrs {
     pub flags: TransFnAttrFlags,
+    pub inline: InlineAttr,
 }
 
 bitflags! {
@@ -2231,6 +2233,15 @@ impl TransFnAttrs {
     pub fn new() -> TransFnAttrs {
         TransFnAttrs {
             flags: TransFnAttrFlags::empty(),
+            inline: InlineAttr::None,
+        }
+    }
+
+    /// True if `#[inline]` or `#[inline(always)]` is present.
+    pub fn requests_inline(&self) -> bool {
+        match self.inline {
+            InlineAttr::Hint | InlineAttr::Always => true,
+            InlineAttr::None | InlineAttr::Never => false,
         }
     }
 }

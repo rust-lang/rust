@@ -141,8 +141,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
                 // creating one copy of this `#[inline]` function which may
                 // conflict with upstream crates as it could be an exported
                 // symbol.
-                let attrs = instance.def.attrs(tcx);
-                match attr::find_inline_attr(Some(tcx.sess.diagnostic()), &attrs) {
+                match tcx.trans_fn_attrs(instance.def_id()).inline {
                     InlineAttr::Always => InstantiationMode::LocalCopy,
                     _ => {
                         InstantiationMode::GloballyShared  { may_conflict: true }
