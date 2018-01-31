@@ -341,7 +341,13 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         let substs = tcx.mk_substs_trait(self_ty, &[]);
         let sig = tcx.fn_sig(def_id).subst(tcx, substs);
         let sig = tcx.erase_late_bound_regions(&sig);
-        let span = tcx.def_span(def_id);
+        let span_def_id = if let Some(did) = self_ty.ty_to_def_id() {
+            did
+        } else {
+            def_id
+        };
+
+        let span = tcx.def_span(span_def_id);
 
         CloneShimBuilder {
             tcx,
