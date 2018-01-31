@@ -135,4 +135,5 @@ take:
 6. **Linking**
     - Finally, those `.o` files are linked together.
 
-[query model]: https://github.com/rust-lang/rust/blob/master/src/librustc/ty/maps/README.md
+
+[query model]: query.html
