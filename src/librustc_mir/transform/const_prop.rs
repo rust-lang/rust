@@ -80,8 +80,10 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
     fn const_eval(&self, cid: GlobalId<'tcx>, span: Span) -> Option<Const<'tcx>> {
         let value = match self.tcx.const_eval(self.param_env.and(cid)) {
             Ok(val) => val,
-            // FIXME: report some errors
-            Err(_) => return None,
+            Err(err) => {
+                err.report(self.tcx, span, "const prop");
+                return None;
+            },
         };
         let val = match value.val {
             ConstVal::Value(v) => v,
