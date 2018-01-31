@@ -724,8 +724,7 @@ fn copy_codegen_backends_to_sysroot(builder: &Builder,
     //
     // Here we're looking for the output dylib of the `CodegenBackend` step and
     // we're copying that into the `codegen-backends` folder.
-    let libdir = builder.sysroot_libdir(target_compiler, target);
-    let dst = libdir.join("codegen-backends");
+    let dst = builder.sysroot_codegen_backends(target_compiler);
     t!(fs::create_dir_all(&dst));
 
     for backend in builder.config.rust_codegen_backends.iter() {

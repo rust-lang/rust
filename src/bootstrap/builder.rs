@@ -377,6 +377,11 @@ impl<'a> Builder<'a> {
         self.ensure(Libdir { compiler, target })
     }
 
+    pub fn sysroot_codegen_backends(&self, compiler: Compiler) -> PathBuf {
+        self.sysroot_libdir(compiler, compiler.host)
+            .with_file_name("codegen-backends")
+    }
+
     /// Returns the compiler's libdir where it stores the dynamic libraries that
     /// it itself links against.
     ///
