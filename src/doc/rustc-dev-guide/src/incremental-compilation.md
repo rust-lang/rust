@@ -49,7 +49,7 @@ query Q (which must not have yet been executed). In cases where Q has
 red inputs, determining Q's color may involve re-executing Q so that
 we can compare its output, but if all of Q's inputs are green, then we
 can conclude that Q must be green without re-executing it or inspecting
-its value, regardless. In the compiler, this allows us to avoid
+its value at all. In the compiler, this allows us to avoid
 deserializing the result from disk when we don't need it, and in fact
 enables us to sometimes skip *serializing* the result as well
 (see the refinements section below).
