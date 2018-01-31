@@ -127,19 +127,26 @@ impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
     }
 }
 
+
 impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     fn report_inlining_errors(&self, pat_span: Span) {
         for error in &self.errors {
             match *error {
                 PatternError::StaticInPattern(span) => {
-                    span_err!(self.tcx.sess, span, E0158,
-                              "statics cannot be referenced in patterns");
+                    self.span_e0158(span, "statics cannot be referenced in patterns")
+                }
+                PatternError::AssociatedConstInPattern(span) => {
+                    self.span_e0158(span, "associated consts cannot be referenced in patterns")
                 }
                 PatternError::ConstEval(ref err) => {
                     err.report(self.tcx, pat_span, "pattern");
                 }
             }
         }
+    }
+
+    fn span_e0158(&self, span: Span, text: &str) {
+        span_err!(self.tcx.sess, span, E0158, "{}", text)
     }
 }
 
