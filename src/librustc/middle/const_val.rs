@@ -19,6 +19,7 @@ use graphviz::IntoCow;
 use syntax_pos::Span;
 
 use std::borrow::Cow;
+use std::rc::Rc;
 
 pub type EvalResult<'tcx> = Result<&'tcx ty::Const<'tcx>, ConstEvalErr<'tcx>>;
 
@@ -51,7 +52,7 @@ impl<'tcx> ConstVal<'tcx> {
 #[derive(Clone, Debug)]
 pub struct ConstEvalErr<'tcx> {
     pub span: Span,
-    pub kind: ErrKind<'tcx>,
+    pub kind: Rc<ErrKind<'tcx>>,
 }
 
 #[derive(Clone, Debug)]
@@ -66,13 +67,13 @@ pub enum ErrKind<'tcx> {
 
     TypeckError,
     CheckMatchError,
-    Miri(::mir::interpret::EvalError<'tcx>),
+    Miri(::mir::interpret::EvalError<'tcx>, Vec<FrameInfo>),
 }
 
-impl<'tcx> From<::mir::interpret::EvalError<'tcx>> for ErrKind<'tcx> {
-    fn from(err: ::mir::interpret::EvalError<'tcx>) -> ErrKind<'tcx> {
-        ErrKind::Miri(err)
-    }
+#[derive(Clone, Debug)]
+pub struct FrameInfo {
+    pub span: Span,
+    pub location: String,
 }
 
 impl<'tcx> From<ConstMathErr> for ErrKind<'tcx> {
@@ -85,21 +86,23 @@ impl<'tcx> From<ConstMathErr> for ErrKind<'tcx> {
 }
 
 #[derive(Clone, Debug)]
-pub enum ConstEvalErrDescription<'a> {
+pub enum ConstEvalErrDescription<'a, 'tcx: 'a> {
     Simple(Cow<'a, str>),
+    Backtrace(&'a ::mir::interpret::EvalError<'tcx>, &'a [FrameInfo]),
 }
 
-impl<'a> ConstEvalErrDescription<'a> {
+impl<'a, 'tcx> ConstEvalErrDescription<'a, 'tcx> {
     /// Return a one-line description of the error, for lints and such
     pub fn into_oneline(self) -> Cow<'a, str> {
         match self {
             ConstEvalErrDescription::Simple(simple) => simple,
+            ConstEvalErrDescription::Backtrace(miri, _) => format!("{}", miri).into_cow(),
         }
     }
 }
 
 impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
-    pub fn description(&self) -> ConstEvalErrDescription {
+    pub fn description(&'a self) -> ConstEvalErrDescription<'a, 'tcx> {
         use self::ErrKind::*;
         use self::ConstEvalErrDescription::*;
 
@@ -110,7 +113,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
             })
         }
 
-        match self.kind {
+        match *self.kind {
             NonConstPath        => simple!("non-constant path in constant expression"),
             UnimplementedConstVal(what) =>
                 simple!("unimplemented constant expression: {}", what),
@@ -124,8 +127,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
 
             TypeckError => simple!("type-checking failed"),
             CheckMatchError => simple!("match-checking failed"),
-            // FIXME: report a full backtrace
-            Miri(ref err) => simple!("{}", err),
+            Miri(ref err, ref trace) => Backtrace(err, trace),
         }
     }
 
@@ -150,6 +152,12 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
             ConstEvalErrDescription::Simple(message) => {
                 diag.span_label(self.span, message);
             }
+            ConstEvalErrDescription::Backtrace(miri, frames) => {
+                diag.span_label(self.span, format!("{}", miri));
+                for frame in frames {
+                    diag.span_label(frame.span, format!("inside call to {}", frame.location));
+                }
+            }
         }
 
         if !primary_span.contains(self.span) {
@@ -163,7 +171,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         primary_span: Span,
         primary_kind: &str)
     {
-        match self.kind {
+        match *self.kind {
             ErrKind::TypeckError | ErrKind::CheckMatchError => return,
             _ => {}
         }

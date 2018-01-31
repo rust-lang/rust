@@ -578,10 +578,10 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
 impl<'a, 'tcx> Lift<'tcx> for ConstEvalErr<'a> {
     type Lifted = ConstEvalErr<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(&self.kind).map(|kind| {
+        tcx.lift(&*self.kind).map(|kind| {
             ConstEvalErr {
                 span: self.span,
-                kind,
+                kind: Rc::new(kind),
             }
         })
     }
@@ -591,7 +591,7 @@ impl<'a, 'tcx> Lift<'tcx> for interpret::EvalError<'a> {
     type Lifted = interpret::EvalError<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         use ::mir::interpret::EvalErrorKind::*;
-        let kind = match *self.kind {
+        let kind = match self.kind {
             MachineError(ref err) => MachineError(err.clone()),
             FunctionPointerTyMismatch(a, b) => FunctionPointerTyMismatch(
                 tcx.lift(&a)?,
@@ -691,7 +691,7 @@ impl<'a, 'tcx> Lift<'tcx> for interpret::EvalError<'a> {
             TypeckError => TypeckError,
         };
         Some(interpret::EvalError {
-            kind: Rc::new(kind),
+            kind: kind,
             backtrace: self.backtrace.clone(),
         })
     }
@@ -714,7 +714,7 @@ impl<'a, 'tcx> Lift<'tcx> for const_val::ErrKind<'a> {
 
             TypeckError => TypeckError,
             CheckMatchError => CheckMatchError,
-            Miri(ref e) => return tcx.lift(e).map(Miri),
+            Miri(ref e, ref frames) => return tcx.lift(e).map(|e| Miri(e, frames.clone())),
         })
     }
 }

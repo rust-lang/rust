@@ -775,7 +775,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
 
             ConstEvalFailure(ref err) => {
-                if let ::middle::const_val::ErrKind::TypeckError = err.kind {
+                if let ::middle::const_val::ErrKind::TypeckError = *err.kind {
                     return;
                 }
                 err.struct_error(self.tcx, span, "constant expression")

@@ -536,7 +536,7 @@ fn process_predicate<'a, 'gcx, 'tcx>(
                             } else {
                                 Err(CodeSelectionError(ConstEvalFailure(ConstEvalErr {
                                     span: obligation.cause.span,
-                                    kind: ErrKind::UnimplementedConstVal("could not resolve"),
+                                    kind: ErrKind::UnimplementedConstVal("could not resolve").into(),
                                 })))
                             }
                         },
