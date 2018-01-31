@@ -10,6 +10,7 @@ use rustc::ty::layout::{self, Size, Align, HasDataLayout, LayoutOf, TyLayout};
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::indexed_vec::Idx;
+use rustc::middle::const_val::FrameInfo;
 use syntax::codemap::{self, DUMMY_SP, Span};
 use syntax::ast::Mutability;
 use rustc::mir::interpret::{
@@ -934,15 +935,26 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 return Ok(Value::ByRef(ptr.into(), layout.align))
             }
         }
-        let cv = match self.tcx.const_eval(self.param_env.and(gid)) {
-            Ok(val) => val,
-            Err(err) => match err.kind {
-                ErrKind::Miri(miri) => return Err(miri),
-                ErrKind::TypeckError => return err!(TypeckError),
-                other => bug!("const eval returned {:?}", other),
-            },
-        };
+        let cv = self.const_eval(gid)?;
         self.const_to_value(&cv.val, ty)
+    }
+
+    pub fn const_eval(&self, gid: GlobalId<'tcx>) -> EvalResult<'tcx, &'tcx ty::Const<'tcx>> {
+        let param_env = if self.tcx.is_static(gid.instance.def_id()).is_some() {
+            use rustc::traits;
+            ty::ParamEnv::empty(traits::Reveal::All)
+        } else {
+            self.param_env
+        };
+        self.tcx.const_eval(param_env.and(gid)).map_err(|err| match *err.kind {
+            ErrKind::Miri(ref err, _) => match err.kind {
+                EvalErrorKind::TypeckError |
+                EvalErrorKind::Layout(_) => EvalErrorKind::TypeckError.into(),
+                _ => EvalErrorKind::ReferencedConstant.into(),
+            },
+            ErrKind::TypeckError => EvalErrorKind::TypeckError.into(),
+            ref other => bug!("const eval returned {:?}", other),
+        })
     }
 
     pub fn force_allocation(&mut self, place: Place) -> EvalResult<'tcx, Place> {
@@ -1496,7 +1508,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
                 match self.stack[frame].get_local(local) {
                     Err(err) => {
-                        if let EvalErrorKind::DeadLocal = *err.kind {
+                        if let EvalErrorKind::DeadLocal = err.kind {
                             write!(msg, " is dead").unwrap();
                         } else {
                             panic!("Failed to access local: {:?}", err);
@@ -1558,9 +1570,38 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         Ok(())
     }
 
+    pub fn generate_stacktrace(&self, explicit_span: Option<Span>) -> Vec<FrameInfo> {
+        let mut last_span = None;
+        let mut frames = Vec::new();
+        // skip 1 because the last frame is just the environment of the constant
+        for &Frame { instance, span, .. } in self.stack().iter().skip(1).rev() {
+            // make sure we don't emit frames that are duplicates of the previous
+            if explicit_span == Some(span) {
+                last_span = Some(span);
+                continue;
+            }
+            if let Some(last) = last_span {
+                if last == span {
+                    continue;
+                }
+            } else {
+                last_span = Some(span);
+            }
+            let location = if self.tcx.def_key(instance.def_id()).disambiguated_data.data == DefPathData::ClosureExpr {
+                "closure".to_owned()
+            } else {
+                instance.to_string()
+            };
+            frames.push(FrameInfo { span, location });
+        }
+        frames
+    }
+
     pub fn report(&self, e: &mut EvalError, as_err: bool, explicit_span: Option<Span>) {
-        if let EvalErrorKind::TypeckError = *e.kind {
-            return;
+        match e.kind {
+            EvalErrorKind::Layout(_) |
+            EvalErrorKind::TypeckError => return,
+            _ => {},
         }
         if let Some(ref mut backtrace) = e.backtrace {
             let mut trace_text = "\n\nAn error occurred in miri:\n".to_string();
@@ -1618,28 +1659,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 )
             };
             err.span_label(span, e.to_string());
-            let mut last_span = None;
-            // skip 1 because the last frame is just the environment of the constant
-            for &Frame { instance, span, .. } in self.stack().iter().skip(1).rev() {
-                // make sure we don't emit frames that are duplicates of the previous
-                if explicit_span == Some(span) {
-                    last_span = Some(span);
-                    continue;
-                }
-                if let Some(last) = last_span {
-                    if last == span {
-                        continue;
-                    }
-                } else {
-                    last_span = Some(span);
-                }
-                if self.tcx.def_key(instance.def_id()).disambiguated_data.data ==
-                    DefPathData::ClosureExpr
-                {
-                    err.span_note(span, "inside call to closure");
-                    continue;
-                }
-                err.span_note(span, &format!("inside call to {}", instance));
+            for FrameInfo { span, location } in self.generate_stacktrace(explicit_span) {
+                err.span_note(span, &format!("inside call to {}", location));
             }
             err.emit();
         } else {

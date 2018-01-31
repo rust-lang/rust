@@ -1,7 +1,6 @@
 use rustc::hir;
 use rustc::middle::const_val::{ConstEvalErr, ConstVal, ErrKind};
 use rustc::middle::const_val::ErrKind::{TypeckError, CheckMatchError};
-use rustc::traits;
 use rustc::mir;
 use rustc::ty::{self, TyCtxt, Ty, Instance};
 use rustc::ty::layout::{self, LayoutOf};
@@ -15,6 +14,7 @@ use super::{Place, EvalContext, StackPopCleanup, ValTy, PlaceExtra, Memory};
 
 use std::fmt;
 use std::error::Error;
+use std::rc::Rc;
 
 pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -236,7 +236,7 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
         let mir = match ecx.load_mir(instance.def) {
             Ok(mir) => mir,
             Err(err) => {
-                if let EvalErrorKind::NoMirFor(ref path) = *err.kind {
+                if let EvalErrorKind::NoMirFor(ref path) = err.kind {
                     return Err(
                         ConstEvalError::NeedsRfc(format!("calling extern function `{}`", path))
                             .into(),
@@ -333,15 +333,8 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         cid: GlobalId<'tcx>,
     ) -> EvalResult<'tcx, AllocId> {
-        let param_env = ty::ParamEnv::empty(traits::Reveal::All);
         // ensure the static is computed
-        if let Err(err) = ecx.tcx.const_eval(param_env.and(cid)) {
-            match err.kind {
-                ErrKind::Miri(miri) => return Err(miri),
-                ErrKind::TypeckError => return err!(TypeckError),
-                other => bug!("const eval returned {:?}", other),
-            }
-        };
+        ecx.const_eval(cid)?;
         Ok(ecx
             .tcx
             .interpret_interner
@@ -377,52 +370,47 @@ pub fn const_val_field<'a, 'tcx>(
     span: Span,
     variant: Option<usize>,
     field: mir::Field,
-    val: Value,
+    value: Value,
     ty: Ty<'tcx>,
 ) -> ::rustc::middle::const_val::EvalResult<'tcx> {
-    match const_val_field_inner(tcx, param_env, instance, variant, field, val, ty) {
+    trace!("const_val_field: {:?}, {:?}, {:?}, {:?}", instance, field, value, ty);
+    let mut ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
+    let result = (|| {
+        let (mut field, ty) = match value {
+            Value::ByValPair(..) | Value::ByVal(_) => ecx.read_field(value, variant, field, ty)?.expect("const_val_field on non-field"),
+            Value::ByRef(ptr, align) => {
+                let place = Place::Ptr {
+                    ptr,
+                    align,
+                    extra: variant.map_or(PlaceExtra::None, PlaceExtra::DowncastVariant),
+                };
+                let layout = ecx.layout_of(ty)?;
+                let (place, layout) = ecx.place_field(place, field, layout)?;
+                let (ptr, align) = place.to_ptr_align();
+                (Value::ByRef(ptr, align), layout.ty)
+            }
+        };
+        if let Value::ByRef(ptr, align) = field {
+            if let Some(val) = ecx.try_read_value(ptr, align, ty)? {
+                field = val;
+            }
+        }
+        Ok((field, ty))
+    })();
+    match result {
         Ok((field, ty)) => Ok(tcx.mk_const(ty::Const {
             val: ConstVal::Value(field),
             ty,
         })),
-        Err(err) => Err(ConstEvalErr {
-            span,
-            kind: err.into(),
-        }),
+        Err(err) => {
+            let trace = ecx.generate_stacktrace(None);
+            let err = ErrKind::Miri(err, trace);
+            Err(ConstEvalErr {
+                kind: err.into(),
+                span,
+            })
+        },
     }
-}
-
-fn const_val_field_inner<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    instance: ty::Instance<'tcx>,
-    variant: Option<usize>,
-    field: mir::Field,
-    value: Value,
-    ty: Ty<'tcx>,
-) -> EvalResult<'tcx, (Value, Ty<'tcx>)> {
-    trace!("const_val_field: {:?}, {:?}, {:?}, {:?}", instance, field, value, ty);
-    let mut ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
-    let (mut field, ty) = match value {
-        Value::ByValPair(..) | Value::ByVal(_) => ecx.read_field(value, variant, field, ty)?.expect("const_val_field on non-field"),
-        Value::ByRef(ptr, align) => {
-            let place = Place::Ptr {
-                ptr,
-                align,
-                extra: variant.map_or(PlaceExtra::None, PlaceExtra::DowncastVariant),
-            };
-            let layout = ecx.layout_of(ty)?;
-            let (place, layout) = ecx.place_field(place, field, layout)?;
-            let (ptr, align) = place.to_ptr_align();
-            (Value::ByRef(ptr, align), layout.ty)
-        }
-    };
-    if let Value::ByRef(ptr, align) = field {
-        if let Some(val) = ecx.try_read_value(ptr, align, ty)? {
-            field = val;
-        }
-    }
-    Ok((field, ty))
 }
 
 pub fn const_discr<'a, 'tcx>(
@@ -484,7 +472,7 @@ pub fn const_eval_provider<'a, 'tcx>(
         // Do match-check before building MIR
         if tcx.check_match(def_id).is_err() {
             return Err(ConstEvalErr {
-                kind: CheckMatchError,
+                kind: Rc::new(CheckMatchError),
                 span,
             });
         }
@@ -496,7 +484,7 @@ pub fn const_eval_provider<'a, 'tcx>(
         // Do not continue into miri if typeck errors occurred; it will fail horribly
         if tables.tainted_by_errors {
             return Err(ConstEvalErr {
-                kind: TypeckError,
+                kind: Rc::new(TypeckError),
                 span,
             });
         }
@@ -512,6 +500,8 @@ pub fn const_eval_provider<'a, 'tcx>(
         if tcx.is_static(def_id).is_some() {
             ecx.report(&mut err, true, None);
         }
+        let trace = ecx.generate_stacktrace(None);
+        let err = ErrKind::Miri(err, trace);
         ConstEvalErr {
             kind: err.into(),
             span,

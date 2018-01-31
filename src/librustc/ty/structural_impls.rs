@@ -689,6 +689,7 @@ impl<'a, 'tcx> Lift<'tcx> for interpret::EvalError<'a> {
             PathNotFound(ref v) => PathNotFound(v.clone()),
             UnimplementedTraitSelection => UnimplementedTraitSelection,
             TypeckError => TypeckError,
+            ReferencedConstant => ReferencedConstant,
         };
         Some(interpret::EvalError {
             kind: kind,

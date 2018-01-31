@@ -173,6 +173,13 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
     {
         match *self.kind {
             ErrKind::TypeckError | ErrKind::CheckMatchError => return,
+            ErrKind::Miri(ref miri, _) => {
+                match miri.kind {
+                    ::mir::interpret::EvalErrorKind::TypeckError |
+                    ::mir::interpret::EvalErrorKind::Layout(_) => return,
+                    _ => {},
+                }
+            }
             _ => {}
         }
         self.struct_error(tcx, primary_span, primary_kind).emit();

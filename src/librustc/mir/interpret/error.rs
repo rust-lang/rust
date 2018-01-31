@@ -124,6 +124,9 @@ pub enum EvalErrorKind<'tcx> {
     UnimplementedTraitSelection,
     /// Abort in case type errors are reached
     TypeckError,
+    /// Cannot compute this constant because it depends on another one
+    /// which already produced an error
+    ReferencedConstant,
 }
 
 pub type EvalResult<'tcx, T = ()> = Result<T, EvalError<'tcx>>;
@@ -245,6 +248,8 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "there were unresolved type arguments during trait selection",
             TypeckError =>
                 "encountered constants with type errors, stopping evaluation",
+            ReferencedConstant =>
+                "referenced constant has errors",
         }
     }
 }
