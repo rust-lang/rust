@@ -54,12 +54,16 @@ compiler to compile the newer version. In particular, the newer version of the
 compiler, `libstd`, and other tooling may use some unstable features
 internally. The result is the compiling `rustc` is done in stages.
 
-- Stage 0: the current _beta_ compiler is compiled using the current _stable_ compiler.
-- Stage 1: the code in your clone is then compiled with the stage 0 compiler.
-- Stage 2: the code in your clone is then compiled with the stage 1 compiler (i.e. it builds itself).
+- **Stage 0:** the stage0 compiler is the current _beta_ compiler; we
+  download this binary from the internet.
+- **Stage 1:** the code in your clone is then compiled with the stage
+  0 compiler to produce the stage 1 compiler.
+- **Stage 2:** the code in your clone is then compiled with the stage
+  1 compiler *again* to produce the stage 2 compiler (i.e. it builds
+  itself).
 
-For hacking, often building the stage 1 compiler is enough, but for testing and
-release, the stage 2 compiler is used.
+For hacking, often building the stage 1 compiler is enough, but for
+final testing and release, the stage 2 compiler is used.
 
 Once you've created a config.toml, you are now ready to run
 `x.py`. There are a lot of options here, but let's start with what is
