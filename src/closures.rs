@@ -33,6 +33,7 @@ use utils::{last_line_width, left_most_sub_expr, stmt_expr};
 
 pub fn rewrite_closure(
     capture: ast::CaptureBy,
+    movability: ast::Movability,
     fn_decl: &ast::FnDecl,
     body: &ast::Expr,
     span: Span,
@@ -42,7 +43,7 @@ pub fn rewrite_closure(
     debug!("rewrite_closure {:?}", body);
 
     let (prefix, extra_offset) =
-        rewrite_closure_fn_decl(capture, fn_decl, body, span, context, shape)?;
+        rewrite_closure_fn_decl(capture, movability, fn_decl, body, span, context, shape)?;
     // 1 = space between `|...|` and body.
     let body_shape = shape.offset_left(extra_offset)?;
 
@@ -194,6 +195,7 @@ fn rewrite_closure_block(
 // Return type is (prefix, extra_offset)
 fn rewrite_closure_fn_decl(
     capture: ast::CaptureBy,
+    movability: ast::Movability,
     fn_decl: &ast::FnDecl,
     body: &ast::Expr,
     span: Span,
@@ -205,9 +207,17 @@ fn rewrite_closure_fn_decl(
     } else {
         ""
     };
+
+    let immovable = if movability == ast::Movability::Static {
+        "static "
+    } else {
+        ""
+    };
     // 4 = "|| {".len(), which is overconservative when the closure consists of
     // a single expression.
-    let nested_shape = shape.shrink_left(mover.len())?.sub_width(4)?;
+    let nested_shape = shape
+        .shrink_left(mover.len() + immovable.len())?
+        .sub_width(4)?;
 
     // 1 = |
     let argument_offset = nested_shape.indent + 1;
@@ -254,7 +264,7 @@ fn rewrite_closure_fn_decl(
         config: context.config,
     };
     let list_str = write_list(&item_vec, &fmt)?;
-    let mut prefix = format!("{}|{}|", mover, list_str);
+    let mut prefix = format!("{}{}|{}|", immovable, mover, list_str);
 
     if !ret_str.is_empty() {
         if prefix.contains('\n') {
@@ -278,7 +288,7 @@ pub fn rewrite_last_closure(
     expr: &ast::Expr,
     shape: Shape,
 ) -> Option<String> {
-    if let ast::ExprKind::Closure(capture, ref fn_decl, ref body, _) = expr.node {
+    if let ast::ExprKind::Closure(capture, movability, ref fn_decl, ref body, _) = expr.node {
         let body = match body.node {
             ast::ExprKind::Block(ref block)
                 if !is_unsafe_block(block) && is_simple_block(block, context.codemap) =>
@@ -287,8 +297,15 @@ pub fn rewrite_last_closure(
             }
             _ => body,
         };
-        let (prefix, extra_offset) =
-            rewrite_closure_fn_decl(capture, fn_decl, body, expr.span, context, shape)?;
+        let (prefix, extra_offset) = rewrite_closure_fn_decl(
+            capture,
+            movability,
+            fn_decl,
+            body,
+            expr.span,
+            context,
+            shape,
+        )?;
         // If the closure goes multi line before its body, do not overflow the closure.
         if prefix.contains('\n') {
             return None;
