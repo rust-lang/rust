@@ -107,7 +107,7 @@ not be executed at all.
 But now imagine that in the **next** compilation, the input has
 changed such that `subquery1` returns **false**. In this case, `subquery2` would never
 execute. If try-mark-green were to visit `reads(main_query)` out of order,
-however, it visit `subquery2` before `subquery1`, and hence execute it.
+however, it might visit `subquery2` before `subquery1`, and hence execute it.
 This can lead to ICEs and other problems in the compiler.
 
 [dep_graph]: https://github.com/rust-lang/rust/tree/master/src/librustc/dep_graph
