@@ -3998,14 +3998,20 @@ impl<'a> Resolver<'a> {
 
             if let (Ok(snippet), false) = (cm.span_to_snippet(binding.span),
                                            binding.is_renamed_extern_crate()) {
+                let suggested_name = if name.as_str().chars().next().unwrap().is_uppercase() {
+                    format!("Other{}", name)
+                } else {
+                    format!("other_{}", name)
+                };
+
                 err.span_suggestion(binding.span,
                                     rename_msg,
                                     if snippet.ends_with(';') {
-                                        format!("{} as Other{};",
+                                        format!("{} as {};",
                                                 &snippet[..snippet.len()-1],
-                                                name)
+                                                suggested_name)
                                     } else {
-                                        format!("{} as Other{}", snippet, name)
+                                        format!("{} as {}", snippet, suggested_name)
                                     });
             } else {
                 err.span_label(binding.span, rename_msg);
