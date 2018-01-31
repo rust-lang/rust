@@ -10,7 +10,7 @@ categories = ["development-tools", "development-tools::cargo-plugins"]
 version = "0.1.0"
 
 authors = ["Inokentiy Babushkin <twk@twki.de>"]
-license = "BSD3"
+license-file = "LICENSE"
 
 [badges]
 travis-ci = { repository = "rust-lang-nursery/rust-semverver" }
