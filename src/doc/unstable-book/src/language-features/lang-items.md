@@ -37,28 +37,23 @@ unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
     p
 }
 
-#[lang = "exchange_free"]
-unsafe fn deallocate(ptr: *mut u8, _size: usize, _align: usize) {
+#[lang = "box_free"]
+unsafe fn box_free<T: ?Sized>(ptr: *mut T) {
     libc::free(ptr as *mut libc::c_void)
 }
 
-#[lang = "box_free"]
-unsafe fn box_free<T: ?Sized>(ptr: *mut T) {
-    deallocate(ptr as *mut u8, ::core::mem::size_of_val(&*ptr), ::core::mem::align_of_val(&*ptr));
-}
-
 #[start]
-fn main(argc: isize, argv: *const *const u8) -> isize {
-    let x = box 1;
+fn main(_argc: isize, _argv: *const *const u8) -> isize {
+    let _x = box 1;
 
     0
 }
 
 #[lang = "eh_personality"] extern fn rust_eh_personality() {}
 #[lang = "panic_fmt"] extern fn rust_begin_panic() -> ! { unsafe { intrinsics::abort() } }
-# #[lang = "eh_unwind_resume"] extern fn rust_eh_unwind_resume() {}
-# #[no_mangle] pub extern fn rust_eh_register_frames () {}
-# #[no_mangle] pub extern fn rust_eh_unregister_frames () {}
+#[lang = "eh_unwind_resume"] extern fn rust_eh_unwind_resume() {}
+#[no_mangle] pub extern fn rust_eh_register_frames () {}
+#[no_mangle] pub extern fn rust_eh_unregister_frames () {}
 ```
 
 Note the use of `abort`: the `exchange_malloc` lang item is assumed to
@@ -80,7 +75,7 @@ Other features provided by lang items include:
 
 Lang items are loaded lazily by the compiler; e.g. if one never uses
 `Box` then there is no need to define functions for `exchange_malloc`
-and `exchange_free`. `rustc` will emit an error when an item is needed
+and `box_free`. `rustc` will emit an error when an item is needed
 but not found in the current crate or any that it depends on.
 
 Most lang items are defined by `libcore`, but if you're trying to build
