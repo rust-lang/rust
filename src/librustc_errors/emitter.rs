@@ -106,6 +106,7 @@ pub struct EmitterWriter {
     dst: Destination,
     cm: Option<Rc<CodeMapper>>,
     short_message: bool,
+    teach: bool,
 }
 
 struct FileWithAnnotatedLines {
@@ -117,32 +118,37 @@ struct FileWithAnnotatedLines {
 impl EmitterWriter {
     pub fn stderr(color_config: ColorConfig,
                   code_map: Option<Rc<CodeMapper>>,
-                  short_message: bool)
+                  short_message: bool,
+                  teach: bool)
                   -> EmitterWriter {
         if color_config.use_color() {
             let dst = Destination::from_stderr();
             EmitterWriter {
                 dst,
                 cm: code_map,
-                short_message: short_message,
+                short_message,
+                teach,
             }
         } else {
             EmitterWriter {
                 dst: Raw(Box::new(io::stderr())),
                 cm: code_map,
-                short_message: short_message,
+                short_message,
+                teach,
             }
         }
     }
 
     pub fn new(dst: Box<Write + Send>,
                code_map: Option<Rc<CodeMapper>>,
-               short_message: bool)
+               short_message: bool,
+               teach: bool)
                -> EmitterWriter {
         EmitterWriter {
             dst: Raw(dst),
             cm: code_map,
-            short_message: short_message,
+            short_message,
+            teach,
         }
     }
 
@@ -551,7 +557,14 @@ impl EmitterWriter {
                                code_offset + annotation.start_col,
                                style);
                 }
-                _ => (),
+                _ if self.teach => {
+                    buffer.set_style_range(line_offset,
+                                           code_offset + annotation.start_col,
+                                           code_offset + annotation.end_col,
+                                           style,
+                                           annotation.is_primary);
+                }
+                _ => {}
             }
         }
 

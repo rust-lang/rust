@@ -904,10 +904,13 @@ pub fn build_session_with_codemap(sopts: config::Options,
 
     let emitter: Box<Emitter> = match (sopts.error_format, emitter_dest) {
         (config::ErrorOutputType::HumanReadable(color_config), None) => {
-            Box::new(EmitterWriter::stderr(color_config, Some(codemap.clone()), false))
+            Box::new(EmitterWriter::stderr(color_config,
+                                           Some(codemap.clone()),
+                                           false,
+                                           sopts.debugging_opts.teach))
         }
         (config::ErrorOutputType::HumanReadable(_), Some(dst)) => {
-            Box::new(EmitterWriter::new(dst, Some(codemap.clone()), false))
+            Box::new(EmitterWriter::new(dst, Some(codemap.clone()), false, false))
         }
         (config::ErrorOutputType::Json(pretty), None) => {
             Box::new(JsonEmitter::stderr(Some(registry), codemap.clone(), pretty))
@@ -916,10 +919,10 @@ pub fn build_session_with_codemap(sopts: config::Options,
             Box::new(JsonEmitter::new(dst, Some(registry), codemap.clone(), pretty))
         }
         (config::ErrorOutputType::Short(color_config), None) => {
-            Box::new(EmitterWriter::stderr(color_config, Some(codemap.clone()), true))
+            Box::new(EmitterWriter::stderr(color_config, Some(codemap.clone()), true, false))
         }
         (config::ErrorOutputType::Short(_), Some(dst)) => {
-            Box::new(EmitterWriter::new(dst, Some(codemap.clone()), true))
+            Box::new(EmitterWriter::new(dst, Some(codemap.clone()), true, false))
         }
     };
 
@@ -1095,11 +1098,11 @@ pub enum IncrCompSession {
 pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
     let emitter: Box<Emitter> = match output {
         config::ErrorOutputType::HumanReadable(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config, None, false))
+            Box::new(EmitterWriter::stderr(color_config, None, false, false))
         }
         config::ErrorOutputType::Json(pretty) => Box::new(JsonEmitter::basic(pretty)),
         config::ErrorOutputType::Short(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config, None, true))
+            Box::new(EmitterWriter::stderr(color_config, None, true, false))
         }
     };
     let handler = errors::Handler::with_emitter(true, false, emitter);
@@ -1110,11 +1113,11 @@ pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
 pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
     let emitter: Box<Emitter> = match output {
         config::ErrorOutputType::HumanReadable(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config, None, false))
+            Box::new(EmitterWriter::stderr(color_config, None, false, false))
         }
         config::ErrorOutputType::Json(pretty) => Box::new(JsonEmitter::basic(pretty)),
         config::ErrorOutputType::Short(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config, None, true))
+            Box::new(EmitterWriter::stderr(color_config, None, true, false))
         }
     };
     let handler = errors::Handler::with_emitter(true, false, emitter);

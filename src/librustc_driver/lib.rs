@@ -167,7 +167,8 @@ pub fn run<F>(run_compiler: F) -> isize
                     let emitter =
                         errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto,
                                                                None,
-                                                               true);
+                                                               true,
+                                                               false);
                     let handler = errors::Handler::with_emitter(true, false, Box::new(emitter));
                     handler.emit(&MultiSpan::new(),
                                  "aborting due to previous error(s)",
@@ -1434,6 +1435,7 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
             let emitter =
                 Box::new(errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto,
                                                                 None,
+                                                                false,
                                                                 false));
             let handler = errors::Handler::with_emitter(true, false, emitter);
 

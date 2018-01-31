@@ -238,6 +238,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
     ));
     let emitter = errors::emitter::EmitterWriter::new(box Sink(data.clone()),
                                                       Some(codemap.clone()),
+                                                      false,
                                                       false);
     let old = io::set_panic(Some(box Sink(data.clone())));
     let _bomb = Bomb(data.clone(), old.unwrap_or(box io::stdout()));
