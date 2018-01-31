@@ -1586,6 +1586,7 @@ impl Display for ! {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for bool {
+    #[inline]
     fn fmt(&self, f: &mut Formatter) -> Result {
         Display::fmt(self, f)
     }
@@ -1748,6 +1749,7 @@ impl<T: Debug> Debug for [T] {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for () {
+    #[inline]
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.pad("()")
     }
