@@ -42,6 +42,7 @@ pub enum PatternError {
     StaticInPattern(Span),
     FloatBug,
     NonConstPath(Span),
+    AssociatedConstInPattern(Span),
 }
 
 #[derive(Copy, Clone, Debug)]

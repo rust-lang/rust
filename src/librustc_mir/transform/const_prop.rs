@@ -17,7 +17,6 @@ use rustc::mir::{Constant, Literal, Location, Place, Mir, Operand, Rvalue, Local
 use rustc::mir::{NullOp, StatementKind, Statement, BasicBlock, LocalKind};
 use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp};
 use rustc::mir::visit::{Visitor, PlaceContext};
-use rustc::ty::layout::LayoutOf;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{TyCtxt, self, Instance};
 use rustc::mir::interpret::{Value, PrimVal, GlobalId};
@@ -237,7 +236,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                 let r = ecx.value_to_primval(ValTy { value: right.0, ty: right.1 }).ok()?;
                 if op == BinOp::Shr || op == BinOp::Shl {
                     let param_env = self.tcx.param_env(self.source.def_id);
-                    let bits = (self.tcx, param_env).layout_of(place_ty).unwrap().size.bits();
+                    let bits = self.tcx.layout_of(param_env.and(place_ty)).unwrap().size.bits();
                     if r.to_bytes().ok().map_or(false, |b| b >= bits as u128) {
                         let scope_info = match self.mir.visibility_scope_info {
                             ClearCrossCrate::Set(ref data) => data,
@@ -286,8 +285,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
 fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           param_env: ty::ParamEnv<'tcx>,
                           ty: ty::Ty<'tcx>) -> Option<u64> {
-    use rustc::ty::layout::LayoutOf;
-    (tcx, param_env).layout_of(ty).ok().map(|layout| layout.size.bytes())
+    tcx.layout_of(param_env.and(ty)).ok().map(|layout| layout.size.bytes())
 }
 
 struct CanConstProp {

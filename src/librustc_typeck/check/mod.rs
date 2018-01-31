@@ -101,7 +101,6 @@ use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::maps::Providers;
 use rustc::ty::util::{Representability, IntTypeExt, Discr};
-use rustc::ty::layout::LayoutOf;
 use errors::{DiagnosticBuilder, DiagnosticId};
 
 use require_c_abi_if_variadic;

@@ -457,7 +457,7 @@ pub fn const_eval_provider<'a, 'tcx>(
             },
         };
         let ty = tcx.type_of(def_id);
-        let layout = (tcx, key.param_env).layout_of(ty).unwrap();
+        let layout = tcx.layout_of(key.param_env.and(ty)).unwrap();
         let ptr = MemoryPointer::new(id, 0);
         return Ok(tcx.mk_const(ty::Const {
             val: ConstVal::Value(Value::ByRef(ptr.into(), layout.align)),
