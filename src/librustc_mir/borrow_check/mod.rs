@@ -2073,7 +2073,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// currently in, when such distinction matters.
     fn each_borrow_involving_path<F>(
         &mut self,
-        _context: Context,
+        context: Context,
         access_place: (ShallowOrDeep, &Place<'tcx>),
         flow_state: &Flows<'cx, 'gcx, 'tcx>,
         mut op: F,
@@ -2085,20 +2085,50 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // FIXME: analogous code in check_loans first maps `place` to
         // its base_path.
 
+        // When this function is called as a result of an `access_terminator` call attempting
+        // to drop a struct, if that struct does not have a destructor, then we need to check
+        // each of the fields in the struct. See #47703.
+        let (access, places) = if let ContextKind::Drop = context.kind {
+            let ty = place.ty(self.mir, self.tcx).to_ty(self.tcx);
+
+            match ty.sty {
+                ty::TyAdt(def, substs) if def.is_struct() && !def.has_dtor(self.tcx) => {
+                    let mut places = Vec::new();
+
+                    for (index, field) in def.all_fields().enumerate() {
+                        let proj = Projection {
+                            base: place.clone(),
+                            elem: ProjectionElem::Field(Field::new(index),
+                                                        field.ty(self.tcx, substs)),
+                        };
+
+                        places.push(Place::Projection(Box::new(proj)));
+                    }
+
+                    (ShallowOrDeep::Shallow(None), places)
+                },
+                _ => (access, vec![ place.clone() ]),
+            }
+        } else {
+            (access, vec![ place.clone() ])
+        };
+
         let data = flow_state.borrows.operator().borrows();
 
         // check for loan restricting path P being used. Accounts for
         // borrows of P, P.a.b, etc.
-        let mut elems_incoming = flow_state.borrows.elems_incoming();
-        while let Some(i) = elems_incoming.next() {
-            let borrowed = &data[i.borrow_index()];
+        for place in places {
+            let mut elems_incoming = flow_state.borrows.elems_incoming();
+            while let Some(i) = elems_incoming.next() {
+                let borrowed = &data[i.borrow_index()];
 
-            if self.places_conflict(&borrowed.borrowed_place, place, access) {
-                debug!("each_borrow_involving_path: {:?} @ {:?} vs. {:?}/{:?}",
-                       i, borrowed, place, access);
-                let ctrl = op(self, i, borrowed);
-                if ctrl == Control::Break {
-                    return;
+                if self.places_conflict(&borrowed.borrowed_place, &place, access) {
+                    debug!("each_borrow_involving_path: {:?} @ {:?} vs. {:?}/{:?}",
+                           i, borrowed, place, access);
+                    let ctrl = op(self, i, borrowed);
+                    if ctrl == Control::Break {
+                        return;
+                    }
                 }
             }
         }
