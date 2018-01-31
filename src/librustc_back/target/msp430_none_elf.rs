@@ -53,6 +53,12 @@ pub fn target() -> TargetResult {
             // don't want to invoke that many gcc instances.
             default_codegen_units: Some(1),
 
+            // Since MSP430 doesn't meaningfully support faulting on illegal
+            // instructions, LLVM generates a call to abort() function instead
+            // of a trap instruction. Such calls are 4 bytes long, and that is
+            // too much overhead for such small target.
+            trap_unreachable: false,
+
             .. Default::default( )
         }
     })
