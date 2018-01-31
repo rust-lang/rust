@@ -1,0 +1,22 @@
+error: this block may be rewritten with the `?` operator
+ --> $DIR/question_mark.rs:2:2
+  |
+2 |       if a.is_none() {
+  |  _____^
+3 | |         return None
+4 | |     }
+  | |_____^ help: replace_it_with: `a?;`
+  |
+  = note: `-D question-mark` implied by `-D warnings`
+
+error: this block may be rewritten with the `?` operator
+  --> $DIR/question_mark.rs:37:3
+   |
+37 |           if (self.opt).is_none() {
+   |  _________^
+38 | |             return None;
+39 | |         }
+   | |_________^ help: replace_it_with: `(self.opt)?;`
+
+error: aborting due to 2 previous errors
+
