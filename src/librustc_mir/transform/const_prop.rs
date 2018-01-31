@@ -21,11 +21,12 @@ use rustc::ty::layout::LayoutOf;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{TyCtxt, self, Instance};
 use rustc::mir::interpret::{Value, PrimVal, GlobalId};
-use interpret::{eval_body_with_mir, eval_body, mk_borrowck_eval_cx, unary_op, ValTy};
+use interpret::{eval_body_with_mir, mk_borrowck_eval_cx, unary_op, ValTy};
 use transform::{MirPass, MirSource};
 use syntax::codemap::Span;
 use rustc::ty::subst::Substs;
 use rustc_data_structures::indexed_vec::IndexVec;
+use rustc::ty::ParamEnv;
 
 pub struct ConstProp;
 
@@ -56,6 +57,7 @@ struct ConstPropagator<'b, 'a, 'tcx:'a+'b> {
     source: MirSource,
     places: IndexVec<Local, Option<Const<'tcx>>>,
     can_const_prop: IndexVec<Local, bool>,
+    param_env: ParamEnv<'tcx>,
 }
 
 impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
@@ -64,13 +66,30 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         source: MirSource,
     ) -> ConstPropagator<'b, 'a, 'tcx> {
+        let param_env = tcx.param_env(source.def_id);
         ConstPropagator {
             mir,
             tcx,
             source,
+            param_env,
             can_const_prop: CanConstProp::check(mir),
             places: IndexVec::from_elem(None, &mir.local_decls),
         }
+    }
+
+    fn const_eval(&self, cid: GlobalId<'tcx>, span: Span) -> Option<Const<'tcx>> {
+        let value = match self.tcx.const_eval(self.param_env.and(cid)) {
+            Ok(val) => val,
+            // FIXME: report some errors
+            Err(_) => return None,
+        };
+        let val = match value.val {
+            ConstVal::Value(v) => v,
+            _ => bug!("eval produced: {:?}", value),
+        };
+        let val = (val, value.ty, span);
+        trace!("evaluated {:?} to {:?}", cid, val);
+        Some(val)
     }
 
     fn eval_constant(&mut self, c: &Constant<'tcx>) -> Option<Const<'tcx>> {
@@ -78,10 +97,9 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
             Literal::Value { value } => match value.val {
                 ConstVal::Value(v) => Some((v, value.ty, c.span)),
                 ConstVal::Unevaluated(did, substs) => {
-                    let param_env = self.tcx.param_env(self.source.def_id);
                     let instance = Instance::resolve(
                         self.tcx,
-                        param_env,
+                        self.param_env,
                         did,
                         substs,
                     )?;
@@ -89,10 +107,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                         instance,
                         promoted: None,
                     };
-                    let (value, _, ty) = eval_body(self.tcx, cid, param_env)?;
-                    let val = (value, ty, c.span);
-                    trace!("evaluated {:?} to {:?}", c, val);
-                    Some(val)
+                    self.const_eval(cid, c.span)
                 },
             },
             // evaluate the promoted and replace the constant with the evaluated result
@@ -108,8 +123,9 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                     instance,
                     promoted: Some(index),
                 };
-                let param_env = self.tcx.param_env(self.source.def_id);
-                let (value, _, ty) = eval_body_with_mir(self.tcx, cid, self.mir, param_env)?;
+                // cannot use `const_eval` here, because that would require having the MIR
+                // for the current function available, but we're producing said MIR right now
+                let (value, _, ty) = eval_body_with_mir(self.tcx, cid, self.mir, self.param_env)?;
                 let val = (value, ty, c.span);
                 trace!("evaluated {:?} to {:?}", c, val);
                 Some(val)

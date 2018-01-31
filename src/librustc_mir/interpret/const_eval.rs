@@ -61,7 +61,7 @@ pub fn eval_body_with_mir<'a, 'mir, 'tcx>(
     mir: &'mir mir::Mir<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 ) -> Option<(Value, Pointer, Ty<'tcx>)> {
-    let (res, ecx) = eval_body_and_ecx(tcx, cid, Some(mir), param_env);
+    let (res, ecx, _) = eval_body_and_ecx(tcx, cid, Some(mir), param_env);
     match res {
         Ok(val) => Some(val),
         Err(mut err) => {
@@ -76,7 +76,7 @@ pub fn eval_body<'a, 'tcx>(
     cid: GlobalId<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 ) -> Option<(Value, Pointer, Ty<'tcx>)> {
-    let (res, ecx) = eval_body_and_ecx(tcx, cid, None, param_env);
+    let (res, ecx, _) = eval_body_and_ecx(tcx, cid, None, param_env);
     match res {
         Ok(val) => Some(val),
         Err(mut err) => {
@@ -91,9 +91,12 @@ fn eval_body_and_ecx<'a, 'mir, 'tcx>(
     cid: GlobalId<'tcx>,
     mir: Option<&'mir mir::Mir<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
-) -> (EvalResult<'tcx, (Value, Pointer, Ty<'tcx>)>, EvalContext<'a, 'mir, 'tcx, CompileTimeEvaluator>) {
+) -> (EvalResult<'tcx, (Value, Pointer, Ty<'tcx>)>, EvalContext<'a, 'mir, 'tcx, CompileTimeEvaluator>, Span) {
     debug!("eval_body: {:?}, {:?}", cid, param_env);
     let mut ecx = EvalContext::new(tcx, param_env, CompileTimeEvaluator, ());
+    // we start out with the best span we have
+    // and try improving it down the road when more information is available
+    let mut span = tcx.def_span(cid.instance.def_id());
     let res = (|| {
         let mut mir = match mir {
             Some(mir) => mir,
@@ -102,6 +105,7 @@ fn eval_body_and_ecx<'a, 'mir, 'tcx>(
         if let Some(index) = cid.promoted {
             mir = &mir.promoted[index];
         }
+        span = mir.span;
         let layout = ecx.layout_of(mir.return_ty().subst(tcx, cid.instance.substs))?;
         let alloc = tcx.interpret_interner.get_cached(cid.instance.def_id());
         let alloc = match alloc {
@@ -120,8 +124,7 @@ fn eval_body_and_ecx<'a, 'mir, 'tcx>(
                 if tcx.is_static(cid.instance.def_id()).is_some() {
                     tcx.interpret_interner.cache(cid.instance.def_id(), ptr.alloc_id);
                 }
-                let span = tcx.def_span(cid.instance.def_id());
-                let internally_mutable = !layout.ty.is_freeze(tcx, param_env, span);
+                let internally_mutable = !layout.ty.is_freeze(tcx, param_env, mir.span);
                 let mutability = tcx.is_static(cid.instance.def_id());
                 let mutability = if mutability == Some(hir::Mutability::MutMutable) || internally_mutable {
                     Mutability::Mutable
@@ -152,7 +155,7 @@ fn eval_body_and_ecx<'a, 'mir, 'tcx>(
         };
         Ok((value, ptr, layout.ty))
     })();
-    (res, ecx)
+    (res, ecx, span)
 }
 
 pub struct CompileTimeEvaluator;
@@ -499,7 +502,7 @@ pub fn const_eval_provider<'a, 'tcx>(
         }
     };
 
-    let (res, ecx) = eval_body_and_ecx(tcx, cid, None, key.param_env);
+    let (res, ecx, span) = eval_body_and_ecx(tcx, cid, None, key.param_env);
     res.map(|(miri_value, _, miri_ty)| {
         tcx.mk_const(ty::Const {
             val: ConstVal::Value(miri_value),
@@ -509,7 +512,6 @@ pub fn const_eval_provider<'a, 'tcx>(
         if tcx.is_static(def_id).is_some() {
             ecx.report(&mut err, true, None);
         }
-        let span = ecx.frame().span;
         ConstEvalErr {
             kind: err.into(),
             span,
