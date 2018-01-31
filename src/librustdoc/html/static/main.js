@@ -1627,7 +1627,7 @@
                 e.innerHTML = labelForToggleButton(true);
             });
             toggle.title = "expand all docs";
-            
+
             onEach(document.getElementsByClassName("collapse-toggle"), function(e) {
                 collapseDocs(e, "hide");
             });
@@ -1638,7 +1638,7 @@
         if (!toggle || !toggle.parentNode) {
             return;
         }
-        
+
         function adjustToggle(arg) {
             return function(e) {
                 if (hasClass(e, 'toggle-label')) {
@@ -1653,7 +1653,7 @@
                 }
             };
         };
-        
+
         if (!hasClass(toggle.parentNode, "impl")) {
             var relatedDoc = toggle.parentNode.nextElementSibling;
             if (hasClass(relatedDoc, "stability")) {
@@ -1708,17 +1708,17 @@
                     }
                 }
             }
-            
+
             var relatedDoc = toggle.parentNode;
-            
+
             while (!hasClass(relatedDoc, "impl-items")) {
                 relatedDoc = relatedDoc.nextElementSibling;
             }
-            
+
             if (!relatedDoc) return;
-            
+
             // Hide all functions, but not associated types/consts
-            
+
             var action = mode;
             if (action == "toggle") {
                 if(hasClass(relatedDoc, "fns-now-collapsed")) {
@@ -1727,7 +1727,7 @@
                     action="hide";
                 }
             }
-            
+
             if(action == "show") {
                 removeClass(relatedDoc, "fns-now-collapsed");
                 onEach(toggle.childNodes, adjustToggle(false));
