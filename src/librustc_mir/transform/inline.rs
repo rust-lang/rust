@@ -19,7 +19,6 @@ use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::mir::*;
 use rustc::mir::visit::*;
 use rustc::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
-use rustc::ty::layout::LayoutOf;
 use rustc::ty::subst::{Subst,Substs};
 
 use std::collections::VecDeque;
@@ -655,7 +654,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           param_env: ty::ParamEnv<'tcx>,
                           ty: Ty<'tcx>) -> Option<u64> {
-    (tcx, param_env).layout_of(ty).ok().map(|layout| layout.size.bytes())
+    tcx.layout_of(param_env.and(ty)).ok().map(|layout| layout.size.bytes())
 }
 
 fn subst_and_normalize<'a, 'tcx: 'a>(

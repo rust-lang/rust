@@ -437,8 +437,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             // repr(transparent) types are allowed to have arbitrary ZSTs, not just
                             // PhantomData -- skip checking all ZST fields
                             if def.repr.transparent() {
-                                let is_zst = (cx, cx.param_env(field.did))
-                                    .layout_of(field_ty)
+                                let is_zst = cx
+                                    .layout_of(cx.param_env(field.did).and(field_ty))
                                     .map(|layout| layout.is_zst())
                                     .unwrap_or(false);
                                 if is_zst {
