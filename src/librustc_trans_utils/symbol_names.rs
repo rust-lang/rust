@@ -226,8 +226,8 @@ fn get_symbol_hash<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     hasher.finish()
 }
 
-fn def_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
-                             -> ty::SymbolName
+// The boolean is whether this is a clone shim
+fn def_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> ty::SymbolName
 {
     let mut buffer = SymbolPathBuffer::new();
     item_path::with_forced_absolute_paths(|| {
@@ -329,7 +329,19 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
 
     let hash = get_symbol_hash(tcx, def_id, instance, instance_ty, substs);
 
-    SymbolPathBuffer::from_interned(tcx.def_symbol_name(def_id)).finish(hash)
+    let shim_id = instance.def.shim_def_id();
+
+    let lookup_def_id = if let Some(shim_id) = shim_id {
+        shim_id
+    } else {
+        def_id
+    };
+
+    let mut buf = SymbolPathBuffer::from_interned(tcx.def_symbol_name(lookup_def_id));
+    if shim_id.is_some() {
+        buf.push("{{clone-shim}}");
+    }
+    buf.finish(hash)
 }
 
 // Follow C++ namespace-mangling style, see
