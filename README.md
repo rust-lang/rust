@@ -84,10 +84,10 @@ Options:
                         use local path as stable/old crate
     -c, --current-path PATH
                         use local path as current/new crate
-    -S, --stable-pkg SPEC
-                        use a name-version string as stable/old crate
-    -C, --current-pkg SPEC
-                        use a name-version string as current/new crate
+    -S, --stable-pkg NAME:VERSION
+                        use a `name:version` string as stable/old crate
+    -C, --current-pkg NAME:VERSION
+                        use a `name:version` string as current/new crate
 ```
 
 This means that you can compare any two crates' specified versions, as long as they are

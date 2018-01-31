@@ -10,8 +10,8 @@ macro_rules! full_test {
         fn $name() {
             let mut success = true;
 
-            let old_version = concat!($crate_name, "-", $old_version);
-            let new_version = concat!($crate_name, "-", $new_version);
+            let old_version = concat!($crate_name, ":", $old_version);
+            let new_version = concat!($crate_name, ":", $new_version);
 
             let prog = concat!(r#"
 # wait for the actual output
