@@ -42,11 +42,11 @@ case $1 in
         done
         ;;
     *)
-        run="cargo test --no-default-features --target $1"
-        $run --features 'gen-tests mangled-names'
-        $run --features 'gen-tests mangled-names' --release
-        $run --features 'gen-tests mangled-names c'
-        $run --features 'gen-tests mangled-names c' --release
+        run="cargo test --manifest-path testcrate/Cargo.toml --target $1"
+        $run
+        $run --release
+        $run --features c
+        $run --features c --release
         ;;
 esac
 

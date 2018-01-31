@@ -1,38 +1,37 @@
 [package]
 authors = ["Jorge Aparicio <japaricious@gmail.com>"]
-build = "build.rs"
 name = "compiler_builtins"
 version = "0.1.0"
 
-[build-dependencies]
-cast = { version = "0.2.2", features = ["x128"], optional = true }
-rand = { version = "0.3.15", optional = true }
+[lib]
+test = false
 
-[build-dependencies.cc]
-optional = true
-version = "1.0"
+[build-dependencies]
+cc = { optional = true, version = "1.0" }
 
 [features]
-c = ["cc"]
-compiler-builtins = []
 default = ["compiler-builtins"]
+
+# Enable compilation of C code in compiler-rt, filling in some more optimized
+# implementations and also filling in unimplemented intrinsics
+c = ["cc"]
+
+# Flag this library as the unstable compiler-builtins lib
+compiler-builtins = []
+
+# Generate memory-related intrinsics like memcpy
 mem = []
+
+# Mangle all names so this can be linked in with other versions or other
+# compiler-rt implementations. Also used for testing
 mangled-names = []
 
-# generate tests
-#
-# Note that this is an internal-only feature used in testing, this should not
-# be relied on with crates.io! Enabling this may expose you to breaking
-# changes.
-gen-tests = ["cast", "rand"]
-
-[target.'cfg(all(target_arch = "arm", not(any(target_env = "gnu", target_env = "musl")), target_os = "linux"))'.dev-dependencies]
-test = { git = "https://github.com/japaric/utest" }
-utest-cortex-m-qemu = { default-features = false, git = "https://github.com/japaric/utest" }
-utest-macros = { git = "https://github.com/japaric/utest" }
+# Don't generate lang items for i128 intrisnics and such
+no-lang-items = []
 
 [[example]]
 name = "intrinsics"
 required-features = ["c", "compiler-builtins"]
 
 [workspace]
+members = ["testcrate"]
