@@ -1,6 +1,8 @@
 error[E0596]: cannot borrow immutable local variable `x` as mutable
   --> $DIR/issue-37139.rs:22:23
    |
+21 |         TestEnum::Item(ref mut x) => {
+   |                        --------- given this existing mutable borrow...
 22 |             test(&mut x); //~ ERROR cannot borrow immutable
    |                       ^
    |                       |
