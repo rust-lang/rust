@@ -32,7 +32,7 @@ fresh types and things that it will create, as described in
 [the README in the ty module][ty-readme]. This arena is created by the `enter`
 function and disposed after it returns.
 
-[ty-readme]: src/librustc/ty/README.md
+[ty-readme]: ty.html
 
 Within the closure, the infcx will have the type `InferCtxt<'cx, 'gcx,
 'tcx>` for some fresh `'cx` and `'tcx` -- the latter corresponds to
@@ -107,7 +107,7 @@ actual return type is not `()`, but rather `InferOk<()>`. The
 to ensure that these are fulfilled (typically by enrolling them in a
 fulfillment context). See the [trait README] for more background here.
 
-[trait README]: ../traits/README.md
+[trait README]: trait-resolution.html
 
 You can also enforce subtyping through `infcx.at(..).sub(..)`. The same
 basic concepts apply as above.
