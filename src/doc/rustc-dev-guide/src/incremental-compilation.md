@@ -2,7 +2,7 @@
 
 The incremental compilation scheme is, in essence, a surprisingly
 simple extension to the overall query system. We'll start by describing
-a slightly simplified variant of the real thing, the "basic algorithm", and then describe
+a slightly simplified variant of the real thing – the "basic algorithm" – and then describe
 some possible improvements.
 
 ## The basic algorithm
@@ -11,8 +11,8 @@ The basic algorithm is
 called the **red-green** algorithm[^salsa]. The high-level idea is
 that, after each run of the compiler, we will save the results of all
 the queries that we do, as well as the **query DAG**. The
-**query DAG** is a [DAG] that indices which queries executed which
-other queries. So for example there would be an edge from a query Q1
+**query DAG** is a [DAG] that indexes which queries executed which
+other queries. So, for example, there would be an edge from a query Q1
 to another query Q2 if computing Q1 required computing Q2 (note that
 because queries cannot depend on themselves, this results in a DAG and
 not a general graph).
@@ -43,24 +43,23 @@ There are two key insights here:
     
 ### The try-mark-green algorithm
 
-The core of the incremental compilation is an algorithm called
+At the core of incremental compilation is an algorithm called
 "try-mark-green". It has the job of determining the color of a given
-query Q (which must not yet have been executed). In cases where Q has
+query Q (which must not have yet been executed). In cases where Q has
 red inputs, determining Q's color may involve re-executing Q so that
-we can compare its output; but if all of Q's inputs are green, then we
-can determine that Q must be green without re-executing it or inspect
-its value what-so-ever. In the compiler, this allows us to avoid
-deserializing the result from disk when we don't need it, and -- in
-fact -- enables us to sometimes skip *serializing* the result as well
+we can compare its output, but if all of Q's inputs are green, then we
+can conclude that Q must be green without re-executing it or inspecting
+its value, regardless. In the compiler, this allows us to avoid
+deserializing the result from disk when we don't need it, and in fact
+enables us to sometimes skip *serializing* the result as well
 (see the refinements section below).
 
 Try-mark-green works as follows:
 
-- First check if there is the query Q was executed during the previous
-  compilation.
+- First check if the query Q was executed during the previous compilation.
   - If not, we can just re-execute the query as normal, and assign it the
     color of red.
-- If yes, then load the 'dependent queries' that Q 
+- If yes, then load the 'dependent queries' of Q.
 - If there is a saved result, then we load the `reads(Q)` vector from the
   query DAG. The "reads" is the set of queries that Q executed during
   its execution.
@@ -106,9 +105,9 @@ query `main_query` executes will be `subquery2`, and `subquery3` will
 not be executed at all.
 
 But now imagine that in the **next** compilation, the input has
-changed such that `subquery` returns **false**. In this case, `subquery2` would never
+changed such that `subquery1` returns **false**. In this case, `subquery2` would never
 execute. If try-mark-green were to visit `reads(main_query)` out of order,
-however, it might have visited `subquery2` before `subquery1`, and hence executed it.
+however, it visit `subquery2` before `subquery1`, and hence execute it.
 This can lead to ICEs and other problems in the compiler.
 
 [dep_graph]: https://github.com/rust-lang/rust/tree/master/src/librustc/dep_graph
@@ -117,8 +116,8 @@ This can lead to ICEs and other problems in the compiler.
 
 In the description basic algorithm, we said that at the end of
 compilation we would save the results of all the queries that were
-performed.  In practice, this can be quite wasteful -- many of those
-results are very cheap to recompute, and serializing + deserializing
+performed.  In practice, this can be quite wasteful – many of those
+results are very cheap to recompute, and serializing and deserializing
 them is not a particular win. In practice, what we would do is to save
 **the hashes** of all the subqueries that we performed. Then, in select cases,
 we **also** save the results.
