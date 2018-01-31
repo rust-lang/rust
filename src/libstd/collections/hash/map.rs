@@ -1134,7 +1134,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// # Examples
     ///
     /// ```
-    /// #![feature(hashmap_get_pair)]
+    /// #![feature(map_get_pair)]
     /// use std::collections::HashMap;
     ///
     /// let mut map = HashMap::new();
@@ -1142,7 +1142,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// assert_eq!(map.get_pair(&1), Some((&1, &"a")));
     /// assert_eq!(map.get_pair(&2), None);
     /// ```
-    #[unstable(feature = "hashmap_get_pair", issue = "43143")]
+    #[unstable(feature = "map_get_pair", issue = "43143")]
     #[inline]
     pub fn get_pair<Q: ?Sized>(&self, k: &Q) -> Option<(&K, &V)>
         where K: Borrow<Q>,
