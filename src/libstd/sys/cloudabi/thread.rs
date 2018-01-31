@@ -111,10 +111,11 @@ impl Drop for Thread {
 
 #[cfg_attr(test, allow(dead_code))]
 pub mod guard {
-    pub unsafe fn current() -> Option<usize> {
+    pub type Guard = !;
+    pub unsafe fn current() -> Option<Guard> {
         None
     }
-    pub unsafe fn init() -> Option<usize> {
+    pub unsafe fn init() -> Option<Guard> {
         None
     }
 }
