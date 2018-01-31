@@ -386,3 +386,8 @@ kbd {
 		background: #353535;
 	}
 }
+
+.hidden-by-impl-hider, 
+.hidden-by-usual-hider {
+	display: none;
+}

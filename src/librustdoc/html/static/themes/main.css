@@ -383,3 +383,8 @@ kbd {
 		background: #fff;
 	}
 }
+
+.hidden-by-impl-hider, 
+.hidden-by-usual-hider {
+	display: none;
+}
