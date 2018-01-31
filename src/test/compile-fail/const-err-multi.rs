@@ -14,6 +14,9 @@ pub const A: i8 = -std::i8::MIN;
 //~^ ERROR E0080
 //~| ERROR const_err
 //~| ERROR const_err
+//~| ERROR constant evaluation error
+//~| ERROR constant evaluation error
+//~| ERROR constant evaluation error
 //~| ERROR E0080
 pub const B: i8 = A;
 //~^ ERROR E0080

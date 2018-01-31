@@ -23,64 +23,64 @@ use std::{u8, u16, u32, u64, usize};
 
 const VALS_I8: (i8,) =
      //~^ ERROR constant evaluation error
+     //~| ERROR constant evaluation error
      //~| attempt to subtract with overflow
     (
      i8::MIN - 1,
-     //~^ ERROR constant evaluation error
      );
 
 const VALS_I16: (i16,) =
      //~^ ERROR constant evaluation error
+     //~| ERROR constant evaluation error
      //~| attempt to subtract with overflow
     (
      i16::MIN - 1,
-     //~^ ERROR constant evaluation error
      );
 
 const VALS_I32: (i32,) =
      //~^ ERROR constant evaluation error
+     //~| ERROR constant evaluation error
      //~| attempt to subtract with overflow
     (
      i32::MIN - 1,
-     //~^ ERROR constant evaluation error
      );
 
 const VALS_I64: (i64,) =
      //~^ ERROR constant evaluation error
+     //~| ERROR constant evaluation error
      //~| attempt to subtract with overflow
     (
      i64::MIN - 1,
-     //~^ ERROR constant evaluation error
      );
 
 const VALS_U8: (u8,) =
      //~^ ERROR constant evaluation error
+     //~| ERROR constant evaluation error
      //~| attempt to subtract with overflow
     (
      u8::MIN - 1,
-     //~^ ERROR constant evaluation error
      );
 
 const VALS_U16: (u16,) = (
      //~^ ERROR constant evaluation error
+     //~| ERROR constant evaluation error
      //~| attempt to subtract with overflow
      u16::MIN - 1,
-     //~^ ERROR constant evaluation error
      );
 
 const VALS_U32: (u32,) = (
      //~^ ERROR constant evaluation error
+     //~| ERROR constant evaluation error
      //~| attempt to subtract with overflow
      u32::MIN - 1,
-     //~^ ERROR constant evaluation error
      );
 
 const VALS_U64: (u64,) =
      //~^ ERROR constant evaluation error
+     //~| ERROR constant evaluation error
      //~| attempt to subtract with overflow
     (
      u64::MIN - 1,
-     //~^ ERROR constant evaluation error
      );
 
 fn main() {

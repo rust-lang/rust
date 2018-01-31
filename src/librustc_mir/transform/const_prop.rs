@@ -81,7 +81,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
         let value = match self.tcx.const_eval(self.param_env.and(cid)) {
             Ok(val) => val,
             Err(err) => {
-                err.report(self.tcx, span, "const prop");
+                err.report(self.tcx, span, "constant propagated");
                 return None;
             },
         };
