@@ -134,8 +134,3 @@ take:
       (one for each "codegen unit").
 6. **Linking**
     - Finally, those `.o` files are linked together.
-
-
-
-
-The first thing you may wonder if 
