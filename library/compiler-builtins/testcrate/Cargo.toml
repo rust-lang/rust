@@ -1,0 +1,25 @@
+[package]
+name = "testcrate"
+version = "0.1.0"
+authors = ["Alex Crichton <alex@alexcrichton.com>"]
+
+[lib]
+test = false
+doctest = false
+
+[build-dependencies]
+cast = { version = "0.2.2", features = ["x128"] }
+rand = { version = "0.4", features = ["i128_support"] }
+
+[dependencies.compiler_builtins]
+path = ".."
+default-features = false
+features = ["mangled-names", "no-lang-items"]
+
+[target.'cfg(all(target_arch = "arm", not(any(target_env = "gnu", target_env = "musl")), target_os = "linux"))'.dev-dependencies]
+test = { git = "https://github.com/japaric/utest" }
+utest-cortex-m-qemu = { default-features = false, git = "https://github.com/japaric/utest" }
+utest-macros = { git = "https://github.com/japaric/utest" }
+
+[features]
+c = ["compiler_builtins/c"]

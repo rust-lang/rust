@@ -12,7 +12,6 @@
 #![feature(compiler_builtins)]
 #![feature(core_intrinsics)]
 #![feature(naked_functions)]
-#![feature(staged_api)]
 #![feature(i128_type)]
 #![feature(repr_simd)]
 #![feature(abi_unadjusted)]
@@ -20,9 +19,11 @@
 #![feature(lang_items)]
 #![allow(unused_features)]
 #![no_builtins]
-#![unstable(feature = "compiler_builtins_lib",
-            reason = "Compiler builtins. Will never become stable.",
-            issue = "0")]
+#![cfg_attr(feature = "compiler-builtins", feature(staged_api))]
+#![cfg_attr(feature = "compiler-builtins",
+            unstable(feature = "compiler_builtins_lib",
+                     reason = "Compiler builtins. Will never become stable.",
+                     issue = "0"))]
 
 // We disable #[no_mangle] for tests so that we can verify the test results
 // against the native compiler-rt implementations of the builtins.
