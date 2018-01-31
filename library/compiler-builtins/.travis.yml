@@ -28,6 +28,11 @@ matrix:
     - env: TARGET=x86_64-apple-darwin
       os: osx
     - env: TARGET=x86_64-unknown-linux-gnu
+  allow_failures:
+    - env: TARGET=thumbv6m-linux-eabi
+    - env: TARGET=thumbv7em-linux-eabi
+    - env: TARGET=thumbv7em-linux-eabihf
+    - env: TARGET=thumbv7m-linux-eabi
 
 install:
   - case $TARGET in
