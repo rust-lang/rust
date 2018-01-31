@@ -639,6 +639,9 @@ define_dep_nodes!( <'tcx>
     [] TargetFeaturesEnabled(DefId),
 
     [] InstanceDefSizeEstimate { instance_def: InstanceDef<'tcx> },
+
+    [] GetSymbolExportLevel(DefId),
+
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {

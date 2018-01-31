@@ -292,8 +292,8 @@ impl Error {
     /// # if cfg!(target_os = "linux") {
     /// use std::io;
     ///
-    /// let error = io::Error::from_raw_os_error(98);
-    /// assert_eq!(error.kind(), io::ErrorKind::AddrInUse);
+    /// let error = io::Error::from_raw_os_error(22);
+    /// assert_eq!(error.kind(), io::ErrorKind::InvalidInput);
     /// # }
     /// ```
     ///
@@ -303,8 +303,8 @@ impl Error {
     /// # if cfg!(windows) {
     /// use std::io;
     ///
-    /// let error = io::Error::from_raw_os_error(10048);
-    /// assert_eq!(error.kind(), io::ErrorKind::AddrInUse);
+    /// let error = io::Error::from_raw_os_error(10022);
+    /// assert_eq!(error.kind(), io::ErrorKind::InvalidInput);
     /// # }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]

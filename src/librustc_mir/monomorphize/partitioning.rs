@@ -107,6 +107,7 @@ use rustc::dep_graph::WorkProductId;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
 use rustc::mir::mono::{Linkage, Visibility};
+use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::ty::{self, TyCtxt, InstanceDef};
 use rustc::ty::item_path::characteristic_def_id_of_type;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
@@ -322,7 +323,16 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                             .or_insert_with(make_codegen_unit);
 
         let mut can_be_internalized = true;
-        let (linkage, visibility) = match trans_item.explicit_linkage(tcx) {
+        let default_visibility = |id: DefId| {
+            if tcx.sess.target.target.options.default_hidden_visibility &&
+                tcx.symbol_export_level(id) != SymbolExportLevel::C
+            {
+                Visibility::Hidden
+            } else {
+                Visibility::Default
+            }
+        };
+        let (linkage, mut visibility) = match trans_item.explicit_linkage(tcx) {
             Some(explicit_linkage) => (explicit_linkage, Visibility::Default),
             None => {
                 match trans_item {
@@ -352,7 +362,8 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     Visibility::Hidden
                                 } else if def_id.is_local() {
                                     if tcx.is_exported_symbol(def_id) {
-                                        Visibility::Default
+                                        can_be_internalized = false;
+                                        default_visibility(def_id)
                                     } else {
                                         Visibility::Hidden
                                     }
@@ -375,7 +386,8 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     MonoItem::GlobalAsm(node_id) => {
                         let def_id = tcx.hir.local_def_id(node_id);
                         let visibility = if tcx.is_exported_symbol(def_id) {
-                            Visibility::Default
+                            can_be_internalized = false;
+                            default_visibility(def_id)
                         } else {
                             Visibility::Hidden
                         };

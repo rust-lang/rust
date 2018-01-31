@@ -290,6 +290,10 @@ impl EmitterWriter {
                           line: &Line,
                           width_offset: usize,
                           code_offset: usize) -> Vec<(usize, Style)> {
+        if line.line_index == 0 {
+            return Vec::new();
+        }
+
         let source_string = match file.get_line(line.line_index - 1) {
             Some(s) => s,
             None => return Vec::new(),
