@@ -778,13 +778,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_ident_attr(&mut self) -> PResult<'a, ast::Ident> {
-        match self.token {
-            token::Ident(i) if i.name == keywords::SelfType.name() => {
-                self.bump();
-                Ok(i)
-            }
-            _ => self.parse_ident(),
-        }
+        self.parse_ident()
     }
 
     fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, ast::Ident> {

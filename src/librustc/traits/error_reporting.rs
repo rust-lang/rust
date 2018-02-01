@@ -372,9 +372,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let generics = self.tcx.generics_of(def_id);
         let self_ty = trait_ref.self_ty();
         let self_ty_str = self_ty.to_string();
-        // FIXME: remove once `Self` is accepted by the compiler
         flags.push(("_Self".to_string(), Some(self_ty_str.clone())));
-        flags.push(("Self".to_string(), Some(self_ty_str.clone())));
 
         for param in generics.types.iter() {
             let name = param.name.as_str().to_string();
