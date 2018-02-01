@@ -1745,8 +1745,9 @@
     function autoCollapseAllImpls() {
         // Automatically minimize all non-inherent impls
         onEach(document.getElementsByClassName('impl'), function(n) {
-            if (n.id !== 'impl') {
-                // non-inherent impl
+            // inherent impl ids are like 'impl' or impl-<number>'
+            var inherent = (n.id.match(/^impl(?:-\d+)?$/) !== null);
+            if (!inherent) {
                 onEach(n.childNodes, function(m) {
                     if (hasClass(m, "collapse-toggle")) {
                         collapseDocs(m, "hide");
