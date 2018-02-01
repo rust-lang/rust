@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deny(coerce_never)]
 fn assert_sizeof() -> ! {
     unsafe {
         ::std::mem::transmute::<f64, [u8; 8]>(panic!())
-            //~^ ERROR cannot coerce `[u8; 8]` to !
-            //~| hard error
+            //~^ ERROR mismatched types
     }
 }
 

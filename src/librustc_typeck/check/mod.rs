@@ -3944,7 +3944,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let t_cast = self.resolve_type_vars_if_possible(&t_cast);
             let t_expr = self.check_expr_with_expectation(e, ExpectCastableToType(t_cast));
             let t_cast = self.resolve_type_vars_if_possible(&t_cast);
-            let diverges = self.diverges.get();
 
             // Eagerly check for some obvious errors.
             if t_expr.references_error() || t_cast.references_error() {
@@ -3952,7 +3951,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             } else {
                 // Defer other checks until we're done type checking.
                 let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
-                match cast::CastCheck::new(self, e, t_expr, diverges, t_cast, t.span, expr.span) {
+                match cast::CastCheck::new(self, e, t_expr, t_cast, t.span, expr.span) {
                     Ok(cast_check) => {
                         deferred_cast_checks.push(cast_check);
                         t_cast

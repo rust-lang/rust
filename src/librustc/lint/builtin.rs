@@ -231,12 +231,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub COERCE_NEVER,
-    Deny,
-    "detect coercion to !"
-}
-
-declare_lint! {
     pub SINGLE_USE_LIFETIME,
     Allow,
    "detects single use lifetimes"
@@ -310,7 +304,6 @@ impl LintPass for HardwiredLints {
             DEPRECATED,
             UNUSED_UNSAFE,
             UNUSED_MUT,
-            COERCE_NEVER,
             SINGLE_USE_LIFETIME,
             TYVAR_BEHIND_RAW_POINTER,
             ELIDED_LIFETIME_IN_PATH,

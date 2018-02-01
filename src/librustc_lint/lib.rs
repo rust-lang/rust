@@ -271,11 +271,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             epoch: None,
         },
         FutureIncompatibleInfo {
-            id: LintId::of(COERCE_NEVER),
-            reference: "issue #46325 <https://github.com/rust-lang/rust/issues/46325>",
-            epoch: None,
-        },
-        FutureIncompatibleInfo {
             id: LintId::of(TYVAR_BEHIND_RAW_POINTER),
             reference: "issue #46906 <https://github.com/rust-lang/rust/issues/46906>",
             epoch: Some(Epoch::Epoch2018),
