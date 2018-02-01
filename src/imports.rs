@@ -105,10 +105,13 @@ fn compare_use_trees(a: &ast::UseTree, b: &ast::UseTree, nested: bool) -> Orderi
     }
 }
 
-fn compare_use_items(a: &ast::Item, b: &ast::Item) -> Option<Ordering> {
+fn compare_use_items(a: &ast::Item, b: &ast::Item) -> Ordering {
     match (&a.node, &b.node) {
+        (&ast::ItemKind::Mod(..), &ast::ItemKind::Mod(..)) => {
+            a.ident.name.as_str().cmp(&b.ident.name.as_str())
+        }
         (&ast::ItemKind::Use(ref a_tree), &ast::ItemKind::Use(ref b_tree)) => {
-            Some(compare_use_trees(a_tree, b_tree, false))
+            compare_use_trees(a_tree, b_tree, false)
         }
         (&ast::ItemKind::ExternCrate(ref a_name), &ast::ItemKind::ExternCrate(ref b_name)) => {
             // `extern crate foo as bar;`
@@ -119,7 +122,7 @@ fn compare_use_items(a: &ast::Item, b: &ast::Item) -> Option<Ordering> {
                 b_name.map_or_else(|| b.ident.name.as_str(), |symbol| symbol.as_str());
             let result = a_orig_name.cmp(&b_orig_name);
             if result != Ordering::Equal {
-                return Some(result);
+                return result;
             }
 
             // `extern crate foo as bar;`
@@ -128,11 +131,11 @@ fn compare_use_items(a: &ast::Item, b: &ast::Item) -> Option<Ordering> {
                 (Some(..), None) => Ordering::Greater,
                 (None, Some(..)) => Ordering::Less,
                 (None, None) => Ordering::Equal,
-                (Some(..), Some(..)) => a.ident.name.cmp(&b.ident.name),
+                (Some(..), Some(..)) => a.ident.name.as_str().cmp(&b.ident.name.as_str()),
             };
-            Some(result)
+            result
         }
-        _ => None,
+        _ => unreachable!(),
     }
 }
 
@@ -232,6 +235,16 @@ fn rewrite_import(
     }
 }
 
+/// Rewrite an inline mod.
+fn rewrite_mod(item: &ast::Item) -> String {
+    let mut result = String::with_capacity(32);
+    result.push_str(&*format_visibility(&item.vis));
+    result.push_str("mod ");
+    result.push_str(&item.ident.to_string());
+    result.push(';');
+    result
+}
+
 fn rewrite_imports(
     context: &RewriteContext,
     use_items: &[&ast::Item],
@@ -246,12 +259,13 @@ fn rewrite_imports(
         |item| item.span().lo(),
         |item| item.span().hi(),
         |item| {
-            let attrs_str = item.attrs.rewrite(context, shape)?;
+            let attrs = ::visitor::filter_inline_attrs(&item.attrs, item.span());
+            let attrs_str = attrs.rewrite(context, shape)?;
 
-            let missed_span = if item.attrs.is_empty() {
+            let missed_span = if attrs.is_empty() {
                 mk_sp(item.span.lo(), item.span.lo())
             } else {
-                mk_sp(item.attrs.last().unwrap().span.hi(), item.span.lo())
+                mk_sp(attrs.last().unwrap().span.hi(), item.span.lo())
             };
 
             let item_str = match item.node {
@@ -259,6 +273,7 @@ fn rewrite_imports(
                     rewrite_import(context, &item.vis, tree, &item.attrs, shape)?
                 }
                 ast::ItemKind::ExternCrate(..) => rewrite_extern_crate(context, item)?,
+                ast::ItemKind::Mod(..) => rewrite_mod(item),
                 _ => return None,
             };
 
@@ -276,7 +291,7 @@ fn rewrite_imports(
         false,
     );
     let mut item_pair_vec: Vec<_> = items.zip(use_items.iter()).collect();
-    item_pair_vec.sort_by(|a, b| compare_use_items(a.1, b.1).unwrap());
+    item_pair_vec.sort_by(|a, b| compare_use_items(a.1, b.1));
     let item_vec: Vec<_> = item_pair_vec.into_iter().map(|pair| pair.0).collect();
 
     let fmt = ListFormatting {

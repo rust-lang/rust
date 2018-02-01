@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Add `reorder_modules` configuration option.
+
 ## [0.3.6] 2018-01-18
 
 ### Fixed
