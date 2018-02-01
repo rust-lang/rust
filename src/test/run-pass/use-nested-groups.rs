@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(use_nested_groups)]
-
 mod a {
     pub enum B {}
 
