@@ -1,6 +1,6 @@
 # The HIR
 
-The HIR -- "High-level IR" -- is the primary IR used in most of
+The HIR – "High-level IR" – is the primary IR used in most of
 rustc. It is a desugared version of the "abstract syntax tree" (AST)
 that is generated after parsing, macro expansion, and name resolution
 have completed. Many parts of HIR resemble Rust surface syntax quite
@@ -91,7 +91,7 @@ with a HIR node.
 
 For example, if you have a `DefId`, and you would like to convert it
 to a `NodeId`, you can use `tcx.hir.as_local_node_id(def_id)`. This
-returns an `Option<NodeId>` -- this will be `None` if the def-id
+returns an `Option<NodeId>` – this will be `None` if the def-id
 refers to something outside of the current crate (since then it has no
 HIR node), but otherwise returns `Some(n)` where `n` is the node-id of
 the definition.
@@ -100,7 +100,7 @@ Similarly, you can use `tcx.hir.find(n)` to lookup the node for a
 `NodeId`. This returns a `Option<Node<'tcx>>`, where `Node` is an enum
 defined in the map; by matching on this you can find out what sort of
 node the node-id referred to and also get a pointer to the data
-itself. Often, you know what sort of node `n` is -- e.g., if you know
+itself. Often, you know what sort of node `n` is – e.g., if you know
 that `n` must be some HIR expression, you can do
 `tcx.hir.expect_expr(n)`, which will extract and return the
 `&hir::Expr`, panicking if `n` is not in fact an expression.

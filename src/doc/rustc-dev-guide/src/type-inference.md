@@ -35,7 +35,7 @@ function and disposed after it returns.
 [ty-readme]: ty.html
 
 Within the closure, the infcx will have the type `InferCtxt<'cx, 'gcx,
-'tcx>` for some fresh `'cx` and `'tcx` -- the latter corresponds to
+'tcx>` for some fresh `'cx` and `'tcx` – the latter corresponds to
 the lifetime of this temporary arena, and the `'cx` is the lifetime of
 the `InferCtxt` itself. (Again, see [that ty README][ty-readme] for
 more details on this setup.)
@@ -47,7 +47,7 @@ created. See `InferCtxtBuilder` for more information.
 ## Inference variables
 
 The main purpose of the inference context is to house a bunch of
-**inference variables** -- these represent types or regions whose precise
+**inference variables** – these represent types or regions whose precise
 value is not yet known, but will be uncovered as we perform type-checking.
 
 If you're familiar with the basic ideas of unification from H-M type
@@ -95,15 +95,15 @@ doing this unification, and in what environment, and the `eq` method
 performs the actual equality constraint.
 
 When you equate things, you force them to be precisely equal. Equating
-returns a `InferResult` -- if it returns `Err(err)`, then equating
+returns a `InferResult` – if it returns `Err(err)`, then equating
 failed, and the enclosing `TypeError` will tell you what went wrong.
 
 The success case is perhaps more interesting. The "primary" return
-type of `eq` is `()` -- that is, when it succeeds, it doesn't return a
+type of `eq` is `()` – that is, when it succeeds, it doesn't return a
 value of any particular interest. Rather, it is executed for its
 side-effects of constraining type variables and so forth. However, the
 actual return type is not `()`, but rather `InferOk<()>`. The
-`InferOk` type is used to carry extra trait obligations -- your job is
+`InferOk` type is used to carry extra trait obligations – your job is
 to ensure that these are fulfilled (typically by enrolling them in a
 fulfillment context). See the [trait README] for more background here.
 
@@ -117,7 +117,7 @@ basic concepts apply as above.
 Sometimes you would like to know if it is *possible* to equate two
 types without error.  You can test that with `infcx.can_eq` (or
 `infcx.can_sub` for subtyping). If this returns `Ok`, then equality
-is possible -- but in all cases, any side-effects are reversed.
+is possible – but in all cases, any side-effects are reversed.
 
 Be aware though that the success or failure of these methods is always
 **modulo regions**. That is, two types `&'a u32` and `&'b u32` will

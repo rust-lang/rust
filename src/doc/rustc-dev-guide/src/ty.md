@@ -80,9 +80,9 @@ pub type Ty<'tcx> = &'tcx TyS<'tcx>;
 
 [the HIR]: ./hir.html
 
-You can basically ignore the `TyS` struct -- you will basically never
+You can basically ignore the `TyS` struct – you will basically never
 access it explicitly. We always pass it by reference using the
-`Ty<'tcx>` alias -- the only exception I think is to define inherent
+`Ty<'tcx>` alias – the only exception I think is to define inherent
 methods on types. Instances of `TyS` are only ever allocated in one of
 the rustc arenas (never e.g. on the stack).
 
@@ -115,7 +115,7 @@ of type variants. For example:
 let array_ty = tcx.mk_array(elem_ty, len * 2);
 ```
 
-These methods all return a `Ty<'tcx>` -- note that the lifetime you
+These methods all return a `Ty<'tcx>` – note that the lifetime you
 get back is the lifetime of the innermost arena that this `tcx` has
 access to. In fact, types are always canonicalized and interned (so we
 never allocate exactly the same type twice) and are always allocated
@@ -125,7 +125,7 @@ allocated in the global arena). However, the lifetime `'tcx` is always
 a safe approximation, so that is what you get back.
 
 > NB. Because types are interned, it is possible to compare them for
-> equality efficiently using `==` -- however, this is almost never what
+> equality efficiently using `==` – however, this is almost never what
 > you want to do unless you happen to be hashing and looking for
 > duplicates. This is because often in Rust there are multiple ways to
 > represent the same type, particularly once inference is involved. If
@@ -141,10 +141,10 @@ In addition to types, there are a number of other arena-allocated data
 structures that you can allocate, and which are found in this
 module. Here are a few examples:
 
-- `Substs`, allocated with `mk_substs` -- this will intern a slice of types, often used to
+- `Substs`, allocated with `mk_substs` – this will intern a slice of types, often used to
   specify the values to be substituted for generics (e.g., `HashMap<i32, u32>`
   would be represented as a slice `&'tcx [tcx.types.i32, tcx.types.u32]`).
-- `TraitRef`, typically passed by value -- a **trait reference**
+- `TraitRef`, typically passed by value – a **trait reference**
   consists of a reference to a trait along with its various type
   parameters (including `Self`), like `i32: Display` (here, the def-id
   would reference the `Display` trait, and the substs would contain

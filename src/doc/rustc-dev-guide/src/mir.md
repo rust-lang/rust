@@ -49,17 +49,17 @@ query. Each suite consists of multiple optimizations and
 transformations. These suites represent useful intermediate points
 where we want to access the MIR for type checking or other purposes:
 
-- `mir_build(D)` -- not a query, but this constructs the initial MIR
-- `mir_const(D)` -- applies some simple transformations to make MIR ready for constant evaluation;
-- `mir_validated(D)` -- applies some more transformations, making MIR ready for borrow checking;
-- `optimized_mir(D)` -- the final state, after all optimizations have been performed.
+- `mir_build(D)` – not a query, but this constructs the initial MIR
+- `mir_const(D)` – applies some simple transformations to make MIR ready for constant evaluation;
+- `mir_validated(D)` – applies some more transformations, making MIR ready for borrow checking;
+- `optimized_mir(D)` – the final state, after all optimizations have been performed.
 
 ### Stealing
 
 The intermediate queries `mir_const()` and `mir_validated()` yield up
 a `&'tcx Steal<Mir<'tcx>>`, allocated using
 `tcx.alloc_steal_mir()`. This indicates that the result may be
-**stolen** by the next suite of optimizations -- this is an
+**stolen** by the next suite of optimizations – this is an
 optimization to avoid cloning the MIR. Attempting to use a stolen
 result will cause a panic in the compiler. Therefore, it is important
 that you do not read directly from these intermediate queries except as

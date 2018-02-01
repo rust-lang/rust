@@ -33,7 +33,7 @@ a tree of _tokens_.  A _token_ is a single "unit" of the grammar, such as an
 identifier (e.g., `foo`) or punctuation (e.g., `=>`). There are also other
 special tokens, such as `EOF`, which indicates that there are no more tokens.
 Token trees resulting from paired parentheses-like characters (`(`...`)`,
-`[`...`]`, and `{`...`}`) -- they include the open and close and all the tokens
+`[`...`]`, and `{`...`}`) – they include the open and close and all the tokens
 in between (we do require that parentheses-like characters be balanced). Having
 macro expansion operate on token streams rather than the raw bytes of a source
 file abstracts away a lot of complexity. The macro expander (and much of the

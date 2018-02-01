@@ -13,7 +13,7 @@ many more. The source for each crate can be found in a directory
 like `src/libXXX`, where `XXX` is the crate name.
 
 (NB. The names and divisions of these crates are not set in
-stone and may change over time -- for the time being, we tend towards
+stone and may change over time – for the time being, we tend towards
 a finer-grained division to help with compilation time, though as
 incremental improves that may change.)
 
@@ -53,7 +53,7 @@ also contains some amount of the compiler itself, although that is
 relatively limited.
 
 Finally, all the crates in the bulge in the middle define the bulk of
-the compiler -- they all depend on `rustc`, so that they can make use
+the compiler – they all depend on `rustc`, so that they can make use
 of the various types defined there, and they export public routines
 that `rustc_driver` will invoke as needed (more and more, what these
 crates export are "query definitions", but those are covered later
@@ -117,9 +117,9 @@ take:
     - An important step in processing the HIR is to perform type
       checking. This process assigns types to every HIR expression,
       for example, and also is responsible for resolving some
-      "type-dependent" paths, such as field accesses (`x.f` -- we
+      "type-dependent" paths, such as field accesses (`x.f` – we
       can't know what field `f` is being accessed until we know the
-      type of `x`) and associated type references (`T::Item` -- we
+      type of `x`) and associated type references (`T::Item` – we
       can't know what type `Item` is until we know what `T` is).
     - Type checking creates "side-tables" (`TypeckTables`) that include
       the types of expressions, the way to resolve methods, and so forth.

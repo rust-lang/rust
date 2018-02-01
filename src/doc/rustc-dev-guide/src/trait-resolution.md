@@ -73,16 +73,16 @@ resolved and, if so, how it is to be resolved (via impl, where clause, etc).
 The main interface is the `select()` function, which takes an obligation
 and returns a `SelectionResult`. There are three possible outcomes:
 
-- `Ok(Some(selection))` -- yes, the obligation can be resolved, and
+- `Ok(Some(selection))` – yes, the obligation can be resolved, and
   `selection` indicates how. If the impl was resolved via an impl,
   then `selection` may also indicate nested obligations that are required
   by the impl.
 
-- `Ok(None)` -- we are not yet sure whether the obligation can be
+- `Ok(None)` – we are not yet sure whether the obligation can be
   resolved or not. This happens most commonly when the obligation
   contains unbound type variables.
 
-- `Err(err)` -- the obligation definitely cannot be resolved due to a
+- `Err(err)` – the obligation definitely cannot be resolved due to a
   type error, or because there are no impls that could possibly apply,
   etc.
 
@@ -95,7 +95,7 @@ Searches for impls/where-clauses/etc that might
 possibly be used to satisfy the obligation. Each of those is called
 a candidate. To avoid ambiguity, we want to find exactly one
 candidate that is definitively applicable. In some cases, we may not
-know whether an impl/where-clause applies or not -- this occurs when
+know whether an impl/where-clause applies or not – this occurs when
 the obligation contains unbound inference variables.
 
 The basic idea for candidate assembly is to do a first pass in which
@@ -172,11 +172,11 @@ impl<T:Get> Get for Box<T> {
 ```
 
 What happens when we invoke `get_it(&box 1_u16)`, for example? In this
-case, the `Self` type is `Box<u16>` -- that unifies with both impls,
+case, the `Self` type is `Box<u16>` – that unifies with both impls,
 because the first applies to all types, and the second to all
 boxes. In the olden days we'd have called this ambiguous. But what we
 do now is do a second *winnowing* pass that considers where clauses
-and attempts to remove candidates -- in this case, the first impl only
+and attempts to remove candidates – in this case, the first impl only
 applies if `Box<u16> : Copy`, which doesn't hold. After winnowing,
 then, we are left with just one candidate, so we can proceed. There is
 a test of this in `src/test/run-pass/traits-conditional-dispatch.rs`.
@@ -326,7 +326,7 @@ to a `TraitRef`. We would then create the `TraitRef` from the impl,
 using fresh variables for it's bound regions (and thus getting
 `Foo<&'$a isize>`, where `'$a` is the inference variable for `'a`). Next
 we relate the two trait refs, yielding a graph with the constraint
-that `'0 == '$a`. Finally, we check for skolemization "leaks" -- a
+that `'0 == '$a`. Finally, we check for skolemization "leaks" – a
 leak is basically any attempt to relate a skolemized region to another
 skolemized region, or to any region that pre-existed the impl match.
 The leak check is done by searching from the skolemized region to find
@@ -457,7 +457,7 @@ and the graph is consulted when propagating defaults down the
 specialization hierarchy.
 
 You might expect that the specialization graph would be used during
-selection -- i.e., when actually performing specialization. This is
+selection – i.e., when actually performing specialization. This is
 not done for two reasons:
 
 - It's merely an optimization: given a set of candidates that apply,
@@ -476,7 +476,7 @@ not done for two reasons:
 
 Trait impl selection can succeed even when multiple impls can apply,
 as long as they are part of the same specialization family. In that
-case, it returns a *single* impl on success -- this is the most
+case, it returns a *single* impl on success – this is the most
 specialized impl *known* to apply. However, if there are any inference
 variables in play, the returned impl may not be the actual impl we
 will use at trans time. Thus, we take special care to avoid projecting

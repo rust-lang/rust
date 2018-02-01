@@ -11,7 +11,7 @@ it to you.
 
 [hl]: high-level-overview.html
 
-Query execution is **memoized** -- so the first time you invoke a
+Query execution is **memoized** – so the first time you invoke a
 query, it will go do the computation, but the next time, the result is
 returned from a hashtable. Moreover, query execution fits nicely into
 **incremental computation**; the idea is roughly that, when you do a
@@ -98,7 +98,7 @@ message"`. This is basically just a precaution in case you are wrong.
 
 So you may be wondering what happens when you invoke a query
 method. The answer is that, for each query, the compiler maintains a
-cache -- if your query has already been executed, then, the answer is
+cache – if your query has already been executed, then, the answer is
 simple: we clone the return value out of the cache and return it
 (therefore, you should try to ensure that the return types of queries
 are cheaply cloneable; insert a `Rc` if necessary).
