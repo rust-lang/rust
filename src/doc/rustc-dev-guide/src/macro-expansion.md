@@ -156,6 +156,6 @@ TODO
 
 [code_dir]: https://github.com/rust-lang/rust/tree/master/src/libsyntax/ext/tt
 [code_mp]: https://github.com/rust-lang/rust/tree/master/src/libsyntax/ext/tt/macro_parser.rs
-[code_mp]: https://github.com/rust-lang/rust/tree/master/src/libsyntax/ext/tt/macro_rules.rs
+[code_mr]: https://github.com/rust-lang/rust/tree/master/src/libsyntax/ext/tt/macro_rules.rs
 [code_parse_int]: https://github.com/rust-lang/rust/blob/a97cd17f5d71fb4ec362f4fbd79373a6e7ed7b82/src/libsyntax/ext/tt/macro_parser.rs#L421
 [parsing]: ./the-parser.html
