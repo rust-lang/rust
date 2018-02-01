@@ -454,7 +454,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             freshener: infcx.freshener(),
             intercrate: None,
             inferred_obligations: SnapshotVec::new(),
-            intercrate_ambiguity_causes: Vec::new(),
+            intercrate_ambiguity_causes: None,
             allow_negative_impls
         }
     }
