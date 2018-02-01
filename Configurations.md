@@ -1781,6 +1781,48 @@ fn lorem<Ipsum: Dolor+Sit=Amet>() {
 }
 ```
 
+## `use_field_init_shorthand`
+
+Use field initialize shorthand if possible.
+
+- **Default value**: `false`
+- **Possible values**: `true`, `false`
+- **Stable**: No
+
+#### `false` (default):
+
+```rust
+struct Foo {
+    x: u32,
+    y: u32,
+    z: u32,
+}
+
+fn main() {
+    let x = 1;
+    let y = 2;
+    let z = 3;
+    let a = Foo { x: x, y: y, z: z };
+}
+```
+
+#### `true`:
+
+```rust
+struct Foo {
+    x: u32,
+    y: u32,
+    z: u32,
+}
+
+fn main() {
+    let x = 1;
+    let y = 2;
+    let z = 3;
+    let a = Foo { x, y, z };
+}
+```
+
 ## `use_try_shorthand`
 
 Replace uses of the try! macro by the ? shorthand

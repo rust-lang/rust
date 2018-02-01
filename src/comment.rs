@@ -290,11 +290,11 @@ fn rewrite_comment_inner(
     let mut fmt = StringFormat {
         opener: "",
         closer: "",
-        line_start: line_start,
+        line_start,
         line_end: "",
         shape: Shape::legacy(max_chars, fmt_indent),
         trim_end: true,
-        config: config,
+        config,
     };
 
     let line_breaks = count_newlines(orig.trim_right());
@@ -900,7 +900,7 @@ pub struct CommentCodeSlices<'a> {
 impl<'a> CommentCodeSlices<'a> {
     pub fn new(slice: &'a str) -> CommentCodeSlices<'a> {
         CommentCodeSlices {
-            slice: slice,
+            slice,
             last_slice_kind: CodeCharKind::Comment,
             last_slice_end: 0,
         }
@@ -1024,7 +1024,7 @@ impl<'a> CommentReducer<'a> {
         let is_block = comment.starts_with("/*");
         let comment = remove_comment_header(comment);
         CommentReducer {
-            is_block: is_block,
+            is_block,
             at_start_line: false, // There are no supplementary '*' on the first line
             iter: comment.chars(),
         }

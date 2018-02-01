@@ -247,7 +247,7 @@ fn rewrite_aligned_items_inner<T: AlignedItem>(
     );
 
     let fmt = ListFormatting {
-        tactic: tactic,
+        tactic,
         separator: ",",
         trailing_separator: context.config.trailing_comma(),
         separator_place: SeparatorPlace::Back,

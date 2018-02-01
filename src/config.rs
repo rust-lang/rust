@@ -674,6 +674,7 @@ create_config! {
     condense_wildcard_suffixes: bool, false, false, "Replace strings of _ wildcards by a single .. \
                                               in tuple patterns";
     force_explicit_abi: bool, true, true, "Always print the abi for extern items";
+    use_field_init_shorthand: bool, false, false, "Use field initialization shorthand if possible";
 
     // Control options (changes the operation of rustfmt, rather than the formatting)
     write_mode: WriteMode, WriteMode::Overwrite, false,

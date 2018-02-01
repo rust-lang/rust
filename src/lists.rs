@@ -690,15 +690,15 @@ where
             };
 
             ListItem {
-                pre_comment: pre_comment,
-                pre_comment_style: pre_comment_style,
+                pre_comment,
+                pre_comment_style,
                 item: if self.inner.peek().is_none() && self.leave_last {
                     None
                 } else {
                     (self.get_item_string)(&item)
                 },
-                post_comment: post_comment,
-                new_lines: new_lines,
+                post_comment,
+                new_lines,
             }
         })
     }
@@ -724,16 +724,16 @@ where
     F3: Fn(&T) -> Option<String>,
 {
     ListItems {
-        codemap: codemap,
+        codemap,
         inner: inner.peekable(),
-        get_lo: get_lo,
-        get_hi: get_hi,
-        get_item_string: get_item_string,
-        prev_span_end: prev_span_end,
-        next_span_start: next_span_start,
-        terminator: terminator,
-        separator: separator,
-        leave_last: leave_last,
+        get_lo,
+        get_hi,
+        get_item_string,
+        prev_span_end,
+        next_span_start,
+        terminator,
+        separator,
+        leave_last,
     }
 }
 
@@ -841,7 +841,7 @@ pub fn struct_lit_formatting<'a>(
     let ends_with_newline = context.config.indent_style() != IndentStyle::Visual
         && tactic == DefinitiveListTactic::Vertical;
     ListFormatting {
-        tactic: tactic,
+        tactic,
         separator: ",",
         trailing_separator: if force_no_trailing_comma {
             SeparatorTactic::Never
@@ -849,8 +849,8 @@ pub fn struct_lit_formatting<'a>(
             context.config.trailing_comma()
         },
         separator_place: SeparatorPlace::Back,
-        shape: shape,
-        ends_with_newline: ends_with_newline,
+        shape,
+        ends_with_newline,
         preserve_newline: true,
         config: context.config,
     }

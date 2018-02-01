@@ -449,7 +449,7 @@ pub fn rewrite_array<T: Rewrite + Spanned + ToExpr>(
     let ends_with_newline = tactic.ends_with_newline(context.config.indent_style());
 
     let fmt = ListFormatting {
-        tactic: tactic,
+        tactic,
         separator: ",",
         trailing_separator: if trailing_comma {
             SeparatorTactic::Always
@@ -470,7 +470,7 @@ pub fn rewrite_array<T: Rewrite + Spanned + ToExpr>(
         },
         separator_place: SeparatorPlace::Back,
         shape: nested_shape,
-        ends_with_newline: ends_with_newline,
+        ends_with_newline,
         preserve_newline: false,
         config: context.config,
     };
@@ -787,35 +787,35 @@ impl<'a> ControlFlow<'a> {
     ) -> ControlFlow<'a> {
         ControlFlow {
             cond: Some(cond),
-            block: block,
-            else_block: else_block,
+            block,
+            else_block,
             label: None,
-            pat: pat,
+            pat,
             keyword: "if",
             matcher: match pat {
                 Some(..) => "let",
                 None => "",
             },
             connector: " =",
-            allow_single_line: allow_single_line,
-            nested_if: nested_if,
-            span: span,
+            allow_single_line,
+            nested_if,
+            span,
         }
     }
 
     fn new_loop(block: &'a ast::Block, label: Option<ast::Label>, span: Span) -> ControlFlow<'a> {
         ControlFlow {
             cond: None,
-            block: block,
+            block,
             else_block: None,
-            label: label,
+            label,
             pat: None,
             keyword: "loop",
             matcher: "",
             connector: "",
             allow_single_line: false,
             nested_if: false,
-            span: span,
+            span,
         }
     }
 
@@ -828,10 +828,10 @@ impl<'a> ControlFlow<'a> {
     ) -> ControlFlow<'a> {
         ControlFlow {
             cond: Some(cond),
-            block: block,
+            block,
             else_block: None,
-            label: label,
-            pat: pat,
+            label,
+            pat,
             keyword: "while",
             matcher: match pat {
                 Some(..) => "let",
@@ -840,7 +840,7 @@ impl<'a> ControlFlow<'a> {
             connector: " =",
             allow_single_line: false,
             nested_if: false,
-            span: span,
+            span,
         }
     }
 
@@ -853,16 +853,16 @@ impl<'a> ControlFlow<'a> {
     ) -> ControlFlow<'a> {
         ControlFlow {
             cond: Some(cond),
-            block: block,
+            block,
             else_block: None,
-            label: label,
+            label,
             pat: Some(pat),
             keyword: "for",
             matcher: "",
             connector: " in",
             allow_single_line: false,
             nested_if: false,
-            span: span,
+            span,
         }
     }
 
@@ -1488,7 +1488,7 @@ fn rewrite_match_pattern(
         )
     };
     let fmt = ListFormatting {
-        tactic: tactic,
+        tactic,
         separator: " |",
         trailing_separator: SeparatorTactic::Never,
         separator_place: context.config.binop_separator(),
@@ -1992,7 +1992,7 @@ where
     );
 
     let fmt = ListFormatting {
-        tactic: tactic,
+        tactic,
         separator: ",",
         trailing_separator: if force_trailing_comma {
             SeparatorTactic::Always
@@ -2569,9 +2569,13 @@ pub fn rewrite_field(
     if contains_skip(&field.attrs) {
         return Some(context.snippet(field.span()).to_owned());
     }
-    let name = &field.ident.node.to_string();
+    let mut attrs_str = field.attrs.rewrite(context, shape)?;
+    if !attrs_str.is_empty() {
+        attrs_str.push_str(&format!("\n{}", shape.indent.to_string(context.config)));
+    };
+    let name = field.ident.node.to_string();
     if field.is_shorthand {
-        Some(name.to_string())
+        Some(attrs_str + &name)
     } else {
         let mut separator = String::from(struct_lit_field_separator(context.config));
         for _ in 0..prefix_max_width.checked_sub(name.len()).unwrap_or(0) {
@@ -2581,12 +2585,10 @@ pub fn rewrite_field(
         let expr_shape = shape.offset_left(overhead)?;
         let expr = field.expr.rewrite(context, expr_shape);
 
-        let mut attrs_str = field.attrs.rewrite(context, shape)?;
-        if !attrs_str.is_empty() {
-            attrs_str.push_str(&format!("\n{}", shape.indent.to_string(context.config)));
-        };
-
         match expr {
+            Some(ref e) if e.as_str() == name && context.config.use_field_init_shorthand() => {
+                Some(attrs_str + &name)
+            }
             Some(e) => Some(format!("{}{}{}{}", attrs_str, name, separator, e)),
             None => {
                 let expr_offset = shape.indent.block_indent(context.config);
@@ -2675,11 +2677,11 @@ where
         nested_shape.width,
     );
     let fmt = ListFormatting {
-        tactic: tactic,
+        tactic,
         separator: ",",
         trailing_separator: SeparatorTactic::Never,
         separator_place: SeparatorPlace::Back,
-        shape: shape,
+        shape,
         ends_with_newline: false,
         preserve_newline: false,
         config: context.config,

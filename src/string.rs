@@ -36,9 +36,9 @@ impl<'a> StringFormat<'a> {
             closer: "\"",
             line_start: " ",
             line_end: "\\",
-            shape: shape,
+            shape,
             trim_end: false,
-            config: config,
+            config,
         }
     }
 }

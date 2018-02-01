@@ -13,7 +13,7 @@ where
     pub fn new(value: V) -> Self {
         Test {
             cloned_value: value.clone(),
-            value: value,
+            value,
         }
     }
 }

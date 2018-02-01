@@ -591,14 +591,14 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         snippet_provider: &'a SnippetProvider,
     ) -> FmtVisitor<'a> {
         FmtVisitor {
-            parse_session: parse_session,
+            parse_session,
             codemap: parse_session.codemap(),
             buffer: String::with_capacity(snippet_provider.big_snippet.len() * 2),
             last_pos: BytePos(0),
             block_indent: Indent::empty(),
-            config: config,
+            config,
             is_if_else_block: false,
-            snippet_provider: snippet_provider,
+            snippet_provider,
             line_number: 0,
             skipped_range: vec![],
         }

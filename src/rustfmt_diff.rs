@@ -31,7 +31,7 @@ pub struct Mismatch {
 impl Mismatch {
     fn new(line_number: u32) -> Mismatch {
         Mismatch {
-            line_number: line_number,
+            line_number,
             lines: Vec::new(),
         }
     }

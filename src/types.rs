@@ -352,7 +352,7 @@ where
     );
 
     let fmt = ListFormatting {
-        tactic: tactic,
+        tactic,
         separator: ",",
         trailing_separator: if !context.use_block_indent() || variadic {
             SeparatorTactic::Never
