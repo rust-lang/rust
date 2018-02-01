@@ -32,6 +32,33 @@ use shape::{Indent, Shape};
 use spanned::Spanned;
 use utils::{self, contains_skip, count_newlines, inner_attributes, mk_sp, ptr_vec_to_ref_vec};
 
+/// Returns attributes that are within `outer_span`.
+pub fn filter_inline_attrs(attrs: &[ast::Attribute], outer_span: Span) -> Vec<ast::Attribute> {
+    attrs
+        .iter()
+        .filter(|a| outer_span.lo() <= a.span.lo() && a.span.hi() <= outer_span.hi())
+        .cloned()
+        .collect()
+}
+
+/// Returns true for `mod foo;`, false for `mod foo { .. }`.
+fn is_mod_decl(item: &ast::Item) -> bool {
+    match item.node {
+        ast::ItemKind::Mod(ref m) => {
+            !(m.inner.lo() == BytePos(0) && m.inner.hi() == BytePos(0))
+                && m.inner.hi() != item.span.hi()
+        }
+        _ => false,
+    }
+}
+
+/// Returns true for `mod foo;` without any inline attributes.
+/// We cannot reorder modules with attributes because doing so can break the code.
+/// e.g. `#[macro_use]`.
+fn is_mod_decl_without_attr(item: &ast::Item) -> bool {
+    is_mod_decl(item) && filter_inline_attrs(&item.attrs, item.span()).is_empty()
+}
+
 fn is_use_item(item: &ast::Item) -> bool {
     match item.node {
         ast::ItemKind::Use(_) => true,
@@ -318,38 +345,25 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         let filtered_attrs;
         let mut attrs = &item.attrs;
         match item.node {
-            ast::ItemKind::Mod(ref m) => {
-                let outer_file = self.codemap.lookup_char_pos(item.span.lo()).file;
-                let inner_file = self.codemap.lookup_char_pos(m.inner.lo()).file;
-                if outer_file.name == inner_file.name {
-                    // Module is inline, in this case we treat modules like any
-                    // other item.
-                    if self.visit_attrs(&item.attrs, ast::AttrStyle::Outer) {
-                        self.push_skipped_with_span(item.span());
-                        return;
-                    }
-                } else if contains_skip(&item.attrs) {
-                    // Module is not inline, but should be skipped.
+            // Module is inline, in this case we treat it like any other item.
+            _ if !is_mod_decl(item) => {
+                if self.visit_attrs(&item.attrs, ast::AttrStyle::Outer) {
+                    self.push_skipped_with_span(item.span());
                     return;
-                } else {
-                    // Module is not inline and should not be skipped. We want
-                    // to process only the attributes in the current file.
-                    filtered_attrs = item.attrs
-                        .iter()
-                        .filter_map(|a| {
-                            let attr_file = self.codemap.lookup_char_pos(a.span.lo()).file;
-                            if attr_file.name == outer_file.name {
-                                Some(a.clone())
-                            } else {
-                                None
-                            }
-                        })
-                        .collect::<Vec<_>>();
-                    // Assert because if we should skip it should be caught by
-                    // the above case.
-                    assert!(!self.visit_attrs(&filtered_attrs, ast::AttrStyle::Outer));
-                    attrs = &filtered_attrs;
                 }
+            }
+            // Module is not inline, but should be skipped.
+            ast::ItemKind::Mod(..) if contains_skip(&item.attrs) => {
+                return;
+            }
+            // Module is not inline and should not be skipped. We want
+            // to process only the attributes in the current file.
+            ast::ItemKind::Mod(..) => {
+                filtered_attrs = filter_inline_attrs(&item.attrs, item.span());
+                // Assert because if we should skip it should be caught by
+                // the above case.
+                assert!(!self.visit_attrs(&filtered_attrs, ast::AttrStyle::Outer));
+                attrs = &filtered_attrs;
             }
             _ => {
                 if self.visit_attrs(&item.attrs, ast::AttrStyle::Outer) {
@@ -397,8 +411,9 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 self.last_pos = source!(self, item.span).hi();
             }
             ast::ItemKind::Mod(ref module) => {
+                let is_inline = !is_mod_decl(item);
                 self.format_missing_with_indent(source!(self, item.span).lo());
-                self.format_mod(module, &item.vis, item.span, item.ident, attrs);
+                self.format_mod(module, &item.vis, item.span, item.ident, attrs, is_inline);
             }
             ast::ItemKind::Mac(ref mac) => {
                 self.visit_mac(mac, Some(item.ident), MacroPosition::Item);
@@ -649,33 +664,34 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     }
 
     fn walk_items(&mut self, mut items_left: &[&ast::Item]) {
-        while !items_left.is_empty() {
-            // If the next item is a `use` declaration, then extract it and any subsequent `use`s
-            // to be potentially reordered within `format_imports`. Otherwise, just format the
-            // next item for output.
-            if self.config.reorder_imports() && is_use_item(&*items_left[0]) {
-                let used_items_len = self.reorder_items(
-                    items_left,
-                    &is_use_item,
-                    self.config.reorder_imports_in_group(),
-                );
+        macro try_reorder_items_with($reorder: ident, $in_group: ident, $pred: ident) {
+            if self.config.$reorder() && $pred(&*items_left[0]) {
+                let used_items_len =
+                    self.reorder_items(items_left, &$pred, self.config.$in_group());
                 let (_, rest) = items_left.split_at(used_items_len);
                 items_left = rest;
-            } else if self.config.reorder_extern_crates() && is_extern_crate(&*items_left[0]) {
-                let used_items_len = self.reorder_items(
-                    items_left,
-                    &is_extern_crate,
-                    self.config.reorder_extern_crates_in_group(),
-                );
-                let (_, rest) = items_left.split_at(used_items_len);
-                items_left = rest;
-            } else {
-                // `unwrap()` is safe here because we know `items_left`
-                // has elements from the loop condition
-                let (item, rest) = items_left.split_first().unwrap();
-                self.visit_item(item);
-                items_left = rest;
+                continue;
             }
+        }
+
+        while !items_left.is_empty() {
+            // If the next item is a `use`, `extern crate` or `mod`, then extract it and any
+            // subsequent items that have the same item kind to be reordered within
+            // `format_imports`. Otherwise, just format the next item for output.
+            {
+                try_reorder_items_with!(reorder_imports, reorder_imports_in_group, is_use_item);
+                try_reorder_items_with!(
+                    reorder_extern_crates,
+                    reorder_extern_crates_in_group,
+                    is_extern_crate
+                );
+                try_reorder_items_with!(reorder_modules, reorder_modules, is_mod_decl_without_attr);
+            }
+            // Reaching here means items were not reordered. There must be at least
+            // one item left in `items_left`, so calling `unwrap()` here is safe.
+            let (item, rest) = items_left.split_first().unwrap();
+            self.visit_item(item);
+            items_left = rest;
         }
     }
 
@@ -722,13 +738,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         s: Span,
         ident: ast::Ident,
         attrs: &[ast::Attribute],
+        is_internal: bool,
     ) {
-        // Decide whether this is an inline mod or an external mod.
-        let local_file_name = self.codemap.span_to_filename(s);
-        let inner_span = source!(self, m.inner);
-        let is_internal = !(inner_span.lo().0 == 0 && inner_span.hi().0 == 0)
-            && local_file_name == self.codemap.span_to_filename(inner_span);
-
         self.push_str(&*utils::format_visibility(vis));
         self.push_str("mod ");
         self.push_str(&ident.to_string());

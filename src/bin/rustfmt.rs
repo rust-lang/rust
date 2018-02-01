@@ -387,7 +387,7 @@ fn print_usage_to_stdout(opts: &Options, reason: &str) {
 fn print_version() {
     println!(
         "{}-nightly{}",
-        env!("CARGO_PKG_VERSION"),
+        option_env!("CARGO_PKG_VERSION").unwrap_or("unknown"),
         include_str!(concat!(env!("OUT_DIR"), "/commit-info.txt"))
     )
 }

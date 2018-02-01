@@ -135,16 +135,16 @@ pub fn format_expr(
         ast::ExprKind::AssignOp(ref op, ref lhs, ref rhs) => {
             rewrite_assignment(context, lhs, rhs, Some(op), shape)
         }
-        ast::ExprKind::Continue(ref opt_ident) => {
-            let id_str = match *opt_ident {
-                Some(ident) => format!(" {}", ident.node),
+        ast::ExprKind::Continue(ref opt_label) => {
+            let id_str = match *opt_label {
+                Some(label) => format!(" {}", label.ident),
                 None => String::new(),
             };
             Some(format!("continue{}", id_str))
         }
-        ast::ExprKind::Break(ref opt_ident, ref opt_expr) => {
-            let id_str = match *opt_ident {
-                Some(ident) => format!(" {}", ident.node),
+        ast::ExprKind::Break(ref opt_label, ref opt_expr) => {
+            let id_str = match *opt_label {
+                Some(label) => format!(" {}", label.ident),
                 None => String::new(),
             };
 
@@ -159,8 +159,16 @@ pub fn format_expr(
         } else {
             Some("yield".to_string())
         },
-        ast::ExprKind::Closure(capture, ref fn_decl, ref body, _) => {
-            closures::rewrite_closure(capture, fn_decl, body, expr.span, context, shape)
+        ast::ExprKind::Closure(capture, movability, ref fn_decl, ref body, _) => {
+            closures::rewrite_closure(
+                capture,
+                movability,
+                fn_decl,
+                body,
+                expr.span,
+                context,
+                shape,
+            )
         }
         ast::ExprKind::Try(..)
         | ast::ExprKind::Field(..)
@@ -718,7 +726,7 @@ struct ControlFlow<'a> {
     cond: Option<&'a ast::Expr>,
     block: &'a ast::Block,
     else_block: Option<&'a ast::Expr>,
-    label: Option<ast::SpannedIdent>,
+    label: Option<ast::Label>,
     pat: Option<&'a ast::Pat>,
     keyword: &'a str,
     matcher: &'a str,
@@ -795,11 +803,7 @@ impl<'a> ControlFlow<'a> {
         }
     }
 
-    fn new_loop(
-        block: &'a ast::Block,
-        label: Option<ast::SpannedIdent>,
-        span: Span,
-    ) -> ControlFlow<'a> {
+    fn new_loop(block: &'a ast::Block, label: Option<ast::Label>, span: Span) -> ControlFlow<'a> {
         ControlFlow {
             cond: None,
             block,
@@ -819,7 +823,7 @@ impl<'a> ControlFlow<'a> {
         pat: Option<&'a ast::Pat>,
         cond: &'a ast::Expr,
         block: &'a ast::Block,
-        label: Option<ast::SpannedIdent>,
+        label: Option<ast::Label>,
         span: Span,
     ) -> ControlFlow<'a> {
         ControlFlow {
@@ -844,7 +848,7 @@ impl<'a> ControlFlow<'a> {
         pat: &'a ast::Pat,
         cond: &'a ast::Expr,
         block: &'a ast::Block,
-        label: Option<ast::SpannedIdent>,
+        label: Option<ast::Label>,
         span: Span,
     ) -> ControlFlow<'a> {
         ControlFlow {
@@ -1166,9 +1170,9 @@ impl<'a> Rewrite for ControlFlow<'a> {
     }
 }
 
-fn rewrite_label(label: Option<ast::SpannedIdent>) -> Cow<'static, str> {
-    match label {
-        Some(ident) => Cow::from(format!("{}: ", ident.node)),
+fn rewrite_label(opt_label: Option<ast::Label>) -> Cow<'static, str> {
+    match opt_label {
+        Some(label) => Cow::from(format!("{}: ", label.ident)),
         None => Cow::from(""),
     }
 }

@@ -351,7 +351,7 @@ pub fn rewrite_macro_def(
 
     // Undo our replacement of macro variables.
     // FIXME: this could be *much* more efficient.
-    for (old, new) in substs.iter() {
+    for (old, new) in &substs {
         if old_body.find(new).is_some() {
             debug!(
                 "rewrite_macro_def: bailing matching variable: `{}` in `{}`",
@@ -368,7 +368,7 @@ pub fn rewrite_macro_def(
         ident,
         args_str,
         new_body,
-        indent.to_string(&context.config),
+        indent.to_string(context.config),
     );
 
     Some(result)
@@ -467,13 +467,10 @@ fn format_macro_args(toks: ThinTokenStream) -> Option<String> {
                 insert_space = next_space(&t);
             }
             TokenTree::Delimited(_, d) => {
-                let formatted = format_macro_args(d.tts)?;
-                match insert_space {
-                    SpaceState::Always => {
-                        result.push(' ');
-                    }
-                    _ => {}
+                if let SpaceState::Always = insert_space {
+                    result.push(' ');
                 }
+                let formatted = format_macro_args(d.tts)?;
                 match d.delim {
                     DelimToken::Paren => {
                         result.push_str(&format!("({})", formatted));
@@ -713,7 +710,7 @@ impl MacroParser {
     fn parse_branch(&mut self) -> Option<MacroBranch> {
         let (args_paren_kind, args) = match self.toks.next()? {
             TokenTree::Token(..) => return None,
-            TokenTree::Delimited(_, ref d) => (d.delim, d.tts.clone().into()),
+            TokenTree::Delimited(_, ref d) => (d.delim, d.tts.clone()),
         };
         match self.toks.next()? {
             TokenTree::Token(_, Token::FatArrow) => {}

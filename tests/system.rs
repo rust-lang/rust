@@ -95,7 +95,7 @@ fn verify_config_test_names() {
                 let config_name = path.file_name().unwrap().to_str().unwrap();
 
                 // Make sure that config name is used in the files in the directory.
-                verify_config_used(&path, &config_name);
+                verify_config_used(&path, config_name);
             }
         }
     }
@@ -105,7 +105,7 @@ fn verify_config_test_names() {
 // println!) that is used by `rustfmt::rustfmt_diff::print_diff`. Writing
 // using only one or the other will cause the output order to differ when
 // `print_diff` selects the approach not used.
-fn write_message(msg: String) {
+fn write_message(msg: &str) {
     let mut writer = OutputWriter::new(Color::Auto);
     writer.writeln(&format!("{}", msg), None);
 }
@@ -359,8 +359,8 @@ pub enum IdempotentCheckError {
 }
 
 pub fn idempotent_check(filename: &PathBuf) -> Result<FormatReport, IdempotentCheckError> {
-    let sig_comments = read_significant_comments(&filename);
-    let config = read_config(&filename);
+    let sig_comments = read_significant_comments(filename);
+    let config = read_config(filename);
     let (error_summary, file_map, format_report) = format_file(filename, &config);
     if error_summary.has_parsing_errors() {
         return Err(IdempotentCheckError::Parse);
@@ -660,7 +660,7 @@ impl ConfigCodeBlock {
         assert!(self.code_block.is_some() && self.code_block_start.is_some());
 
         if self.config_name.is_none() {
-            write_message(format!(
+            write_message(&format!(
                 "No configuration name for {}:{}",
                 CONFIGURATIONS_FILE_NAME,
                 self.code_block_start.unwrap()
@@ -668,7 +668,7 @@ impl ConfigCodeBlock {
             return false;
         }
         if self.config_value.is_none() {
-            write_message(format!(
+            write_message(&format!(
                 "No configuration value for {}:{}",
                 CONFIGURATIONS_FILE_NAME,
                 self.code_block_start.unwrap()
@@ -680,7 +680,7 @@ impl ConfigCodeBlock {
 
     fn has_parsing_errors(&self, error_summary: Summary) -> bool {
         if error_summary.has_parsing_errors() {
-            write_message(format!(
+            write_message(&format!(
                 "\u{261d}\u{1f3fd} Cannot format {}:{}",
                 CONFIGURATIONS_FILE_NAME,
                 self.code_block_start.unwrap()
@@ -703,7 +703,7 @@ impl ConfigCodeBlock {
         });
     }
 
-    fn formatted_has_diff(&self, file_map: FileMap) -> bool {
+    fn formatted_has_diff(&self, file_map: &FileMap) -> bool {
         let &(ref _file_name, ref text) = file_map.first().unwrap();
         let compare = make_diff(self.code_block.as_ref().unwrap(), text, DIFF_CONTEXT_SIZE);
         if !compare.is_empty() {
@@ -729,7 +729,7 @@ impl ConfigCodeBlock {
         let (error_summary, file_map, _report) =
             format_input::<io::Stdout>(input, &config, None).unwrap();
 
-        !self.has_parsing_errors(error_summary) && !self.formatted_has_diff(file_map)
+        !self.has_parsing_errors(error_summary) && !self.formatted_has_diff(&file_map)
     }
 
     // Extract a code block from the iterator. Behavior:
@@ -746,7 +746,7 @@ impl ConfigCodeBlock {
         prev: Option<&ConfigCodeBlock>,
     ) -> Option<ConfigCodeBlock> {
         let mut code_block = ConfigCodeBlock::new();
-        code_block.config_name = prev.map_or(None, |cb| cb.config_name.clone());
+        code_block.config_name = prev.and_then(|cb| cb.config_name.clone());
 
         loop {
             match ConfigurationSection::get_section(file) {
