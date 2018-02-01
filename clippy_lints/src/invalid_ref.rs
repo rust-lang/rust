@@ -13,7 +13,6 @@ use utils::{match_def_path, opt_def_id, paths, span_help_and_lint};
 /// ```rust
 /// let bad_ref: &usize = std::mem::zeroed();
 /// ```
-
 declare_lint! {
     pub INVALID_REF,
     Warn,

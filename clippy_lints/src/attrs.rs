@@ -97,12 +97,11 @@ declare_lint! {
 /// // Good (as inner attribute)
 /// #![inline(always)]
 ///
-/// fn this_is_fine_too(..) { ... }
+/// fn this_is_fine(..) { ... }
 ///
 /// // Good (as outer attribute)
 /// #[inline(always)]
-/// fn this_is_fine(..) { ... }
-///
+/// fn this_is_fine_too(..) { ... }
 /// ```
 declare_lint! {
     pub EMPTY_LINE_AFTER_OUTER_ATTR,

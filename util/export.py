@@ -24,7 +24,7 @@ def parse_lint_def(lint):
     last_section = None
 
     for line in lint.doc:
-        if len(line.strip()) == 0:
+        if len(line.strip()) == 0 and not last_section.startswith("Example"):
             continue
 
         match = re.match(lint_subheadline, line)
@@ -39,8 +39,13 @@ def parse_lint_def(lint):
             log.warn("Skipping comment line as it was not preceded by a heading")
             log.debug("in lint `%s`, line `%s`", lint.name, line)
 
-        lint_dict['docs'][last_section] = \
-            (lint_dict['docs'].get(last_section, "") + "\n" + text).strip()
+        fragment = lint_dict['docs'].get(last_section, "")
+        if text == "\n":
+            line = fragment + text
+        else:
+            line = (fragment + "\n" + text).strip()
+
+        lint_dict['docs'][last_section] = line
 
     return lint_dict
 
