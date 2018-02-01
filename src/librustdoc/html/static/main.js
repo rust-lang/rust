@@ -1742,6 +1742,20 @@
         }
     }
 
+    function autoCollapseAllImpls() {
+        // Automatically minimize all non-inherent impls
+        onEach(document.getElementsByClassName('impl'), function(n) {
+            if (n.id !== 'impl') {
+                // non-inherent impl
+                onEach(n.childNodes, function(m) {
+                    if (hasClass(m, "collapse-toggle")) {
+                        collapseDocs(m, "hide");
+                    }
+                });
+            }
+        });
+    }
+
     var x = document.getElementById('toggle-all-docs');
     if (x) {
         x.onclick = toggleAllDocs;
@@ -1818,6 +1832,8 @@
             }
         }
     })
+
+    autoCollapseAllImpls();
 
     function createToggleWrapper() {
         var span = document.createElement('span');
