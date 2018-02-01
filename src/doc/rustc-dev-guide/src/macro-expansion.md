@@ -134,8 +134,9 @@ it calls back to the normal Rust parser to get the contents of that
 non-terminal. In this case, the Rust parser would look for an `ident` token,
 which it finds (`foo`) and returns to the macro parser. Then, the macro parser
 proceeds in parsing as normal. Also, note that exactly one of the matchers from
-the various arms should match the invocation (otherwise, the macro is
-ambiguous).
+the various arms should match the invocation; if there is more than one match,
+the parse is ambiguous, while if there are no matches at all, there is a syntax
+error.
 
 For more information about the macro parser's implementation, see the comments
 in [`src/libsyntax/ext/tt/macro_parser.rs`][code_mp].
