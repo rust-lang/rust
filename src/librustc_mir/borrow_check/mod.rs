@@ -463,13 +463,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 target: _,
                 unwind: _,
             } => {
-                self.access_place(
-                    ContextKind::Drop.new(loc),
-                    (drop_place, span),
-                    (Deep, Write(WriteKind::StorageDeadOrDrop)),
-                    LocalMutationIsAllowed::Yes,
-                    flow_state,
-                );
+                self.visit_terminator_drop(loc, term, flow_state, drop_place, span);
             }
             TerminatorKind::DropAndReplace {
                 location: ref drop_place,
@@ -715,6 +709,65 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         self.tcx.sess.two_phase_borrows() &&
             (kind.allows_two_phase_borrow() ||
              self.tcx.sess.opts.debugging_opts.two_phase_beyond_autoref)
+    }
+
+    fn visit_terminator_drop(
+        &mut self,
+        loc: Location,
+        term: &Terminator<'tcx>,
+        flow_state: &Flows<'cx, 'gcx, 'tcx>,
+        drop_place: &Place<'tcx>,
+        span: Span,
+    ) {
+        let ty = drop_place.ty(self.mir, self.tcx).to_ty(self.tcx);
+        match ty.sty {
+            // When a struct is being dropped, we need to check whether it has a
+            // destructor, if it does, then we can call it, if it does not then we
+            // need to check the individual fields instead.
+            // See #47703.
+            ty::TyAdt(def, substs) if def.is_struct() && !def.has_dtor(self.tcx) => {
+                for (index, field) in def.all_fields().enumerate() {
+                    let field_ty = field.ty(self.tcx, substs);
+                    let proj = Projection {
+                        base: drop_place.clone(),
+                        elem: ProjectionElem::Field(Field::new(index), field_ty),
+                    };
+                    let place = Place::Projection(Box::new(proj));
+
+                    match field_ty.sty {
+                        // It may be the case that this issue occurs with a struct within a
+                        // struct, so we recurse to handle that.
+                        ty::TyAdt(def, _) if def.is_struct() && !def.has_dtor(self.tcx) => {
+                            self.visit_terminator_drop(
+                                loc,
+                                term,
+                                flow_state,
+                                &place,
+                                span,
+                            );
+                        },
+                        _ => {
+                            self.access_place(
+                                ContextKind::Drop.new(loc),
+                                (&place, span),
+                                (Shallow(None), Write(WriteKind::StorageDeadOrDrop)),
+                                LocalMutationIsAllowed::Yes,
+                                flow_state,
+                            );
+                        },
+                    }
+                }
+            },
+            _ => {
+                self.access_place(
+                    ContextKind::Drop.new(loc),
+                    (drop_place, span),
+                    (Deep, Write(WriteKind::StorageDeadOrDrop)),
+                    LocalMutationIsAllowed::Yes,
+                    flow_state,
+                );
+            },
+        }
     }
 
     /// Checks an access to the given place to see if it is allowed. Examines the set of borrows
@@ -2073,7 +2126,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// currently in, when such distinction matters.
     fn each_borrow_involving_path<F>(
         &mut self,
-        context: Context,
+        _context: Context,
         access_place: (ShallowOrDeep, &Place<'tcx>),
         flow_state: &Flows<'cx, 'gcx, 'tcx>,
         mut op: F,
@@ -2085,50 +2138,20 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // FIXME: analogous code in check_loans first maps `place` to
         // its base_path.
 
-        // When this function is called as a result of an `access_terminator` call attempting
-        // to drop a struct, if that struct does not have a destructor, then we need to check
-        // each of the fields in the struct. See #47703.
-        let (access, places) = if let ContextKind::Drop = context.kind {
-            let ty = place.ty(self.mir, self.tcx).to_ty(self.tcx);
-
-            match ty.sty {
-                ty::TyAdt(def, substs) if def.is_struct() && !def.has_dtor(self.tcx) => {
-                    let mut places = Vec::new();
-
-                    for (index, field) in def.all_fields().enumerate() {
-                        let proj = Projection {
-                            base: place.clone(),
-                            elem: ProjectionElem::Field(Field::new(index),
-                                                        field.ty(self.tcx, substs)),
-                        };
-
-                        places.push(Place::Projection(Box::new(proj)));
-                    }
-
-                    (ShallowOrDeep::Shallow(None), places)
-                },
-                _ => (access, vec![ place.clone() ]),
-            }
-        } else {
-            (access, vec![ place.clone() ])
-        };
-
         let data = flow_state.borrows.operator().borrows();
 
         // check for loan restricting path P being used. Accounts for
         // borrows of P, P.a.b, etc.
-        for place in places {
-            let mut elems_incoming = flow_state.borrows.elems_incoming();
-            while let Some(i) = elems_incoming.next() {
-                let borrowed = &data[i.borrow_index()];
+        let mut elems_incoming = flow_state.borrows.elems_incoming();
+        while let Some(i) = elems_incoming.next() {
+            let borrowed = &data[i.borrow_index()];
 
-                if self.places_conflict(&borrowed.borrowed_place, &place, access) {
-                    debug!("each_borrow_involving_path: {:?} @ {:?} vs. {:?}/{:?}",
-                           i, borrowed, place, access);
-                    let ctrl = op(self, i, borrowed);
-                    if ctrl == Control::Break {
-                        return;
-                    }
+            if self.places_conflict(&borrowed.borrowed_place, &place, access) {
+                debug!("each_borrow_involving_path: {:?} @ {:?} vs. {:?}/{:?}",
+                       i, borrowed, place, access);
+                let ctrl = op(self, i, borrowed);
+                if ctrl == Control::Break {
+                    return;
                 }
             }
         }
