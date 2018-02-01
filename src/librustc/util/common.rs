@@ -16,6 +16,7 @@ use std::ffi::CString;
 use std::fmt::Debug;
 use std::hash::{Hash, BuildHasher};
 use std::iter::repeat;
+use std::panic;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
@@ -23,6 +24,8 @@ use std::sync::mpsc::{Sender};
 use syntax_pos::{SpanData};
 use ty::maps::{QueryMsg};
 use dep_graph::{DepNode};
+use proc_macro;
+use lazy_static;
 
 // The name of the associated type for `Fn` return types
 pub const FN_OUTPUT_NAME: &'static str = "Output";
@@ -33,6 +36,24 @@ pub const FN_OUTPUT_NAME: &'static str = "Output";
 pub struct ErrorReported;
 
 thread_local!(static TIME_DEPTH: Cell<usize> = Cell::new(0));
+
+lazy_static! {
+    static ref DEFAULT_HOOK: Box<Fn(&panic::PanicInfo) + Sync + Send + 'static> = {
+        let hook = panic::take_hook();
+        panic::set_hook(Box::new(panic_hook));
+        hook
+    };
+}
+
+fn panic_hook(info: &panic::PanicInfo) {
+    if !proc_macro::__internal::in_sess() {
+        (*DEFAULT_HOOK)(info)
+    }
+}
+
+pub fn install_panic_hook() {
+    lazy_static::initialize(&DEFAULT_HOOK);
+}
 
 /// Initialized for -Z profile-queries
 thread_local!(static PROFQ_CHAN: RefCell<Option<Sender<ProfileQueriesMsg>>> = RefCell::new(None));

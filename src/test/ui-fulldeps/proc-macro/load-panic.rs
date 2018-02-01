@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // aux-build:derive-panic.rs
+// compile-flags:--error-format human
 
 #[macro_use]
 extern crate derive_panic;
