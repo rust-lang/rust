@@ -92,10 +92,10 @@ pub struct SelectionContext<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
 
     inferred_obligations: SnapshotVec<InferredObligationsSnapshotVecDelegate<'tcx>>,
 
-    intercrate_ambiguity_causes: Vec<IntercrateAmbiguityCause>,
+    intercrate_ambiguity_causes: Option<Vec<IntercrateAmbiguityCause>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum IntercrateAmbiguityCause {
     DownstreamCrate {
         trait_desc: String,
@@ -423,7 +423,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             freshener: infcx.freshener(),
             intercrate: None,
             inferred_obligations: SnapshotVec::new(),
-            intercrate_ambiguity_causes: Vec::new(),
+            intercrate_ambiguity_causes: None,
         }
     }
 
@@ -435,8 +435,28 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             freshener: infcx.freshener(),
             intercrate: Some(mode),
             inferred_obligations: SnapshotVec::new(),
-            intercrate_ambiguity_causes: Vec::new(),
+            intercrate_ambiguity_causes: None,
         }
+    }
+
+    /// Enables tracking of intercrate ambiguity causes. These are
+    /// used in coherence to give improved diagnostics. We don't do
+    /// this until we detect a coherence error because it can lead to
+    /// false overflow results (#47139) and because it costs
+    /// computation time.
+    pub fn enable_tracking_intercrate_ambiguity_causes(&mut self) {
+        assert!(self.intercrate.is_some());
+        assert!(self.intercrate_ambiguity_causes.is_none());
+        self.intercrate_ambiguity_causes = Some(vec![]);
+        debug!("selcx: enable_tracking_intercrate_ambiguity_causes");
+    }
+
+    /// Gets the intercrate ambiguity causes collected since tracking
+    /// was enabled and disables tracking at the same time. If
+    /// tracking is not enabled, just returns an empty vector.
+    pub fn take_intercrate_ambiguity_causes(&mut self) -> Vec<IntercrateAmbiguityCause> {
+        assert!(self.intercrate.is_some());
+        self.intercrate_ambiguity_causes.take().unwrap_or(vec![])
     }
 
     pub fn infcx(&self) -> &'cx InferCtxt<'cx, 'gcx, 'tcx> {
@@ -449,10 +469,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
     pub fn closure_typer(&self) -> &'cx InferCtxt<'cx, 'gcx, 'tcx> {
         self.infcx
-    }
-
-    pub fn intercrate_ambiguity_causes(&self) -> &[IntercrateAmbiguityCause] {
-        &self.intercrate_ambiguity_causes
     }
 
     /// Wraps the inference context's in_snapshot s.t. snapshot handling is only from the selection
@@ -828,19 +844,23 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             debug!("evaluate_stack({:?}) --> unbound argument, intercrate -->  ambiguous",
                    stack.fresh_trait_ref);
             // Heuristics: show the diagnostics when there are no candidates in crate.
-            if let Ok(candidate_set) = self.assemble_candidates(stack) {
-                if !candidate_set.ambiguous && candidate_set.vec.is_empty() {
-                    let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
-                    let self_ty = trait_ref.self_ty();
-                    let cause = IntercrateAmbiguityCause::DownstreamCrate {
-                        trait_desc: trait_ref.to_string(),
-                        self_desc: if self_ty.has_concrete_skeleton() {
-                            Some(self_ty.to_string())
-                        } else {
-                            None
-                        },
-                    };
-                    self.intercrate_ambiguity_causes.push(cause);
+            if self.intercrate_ambiguity_causes.is_some() {
+                debug!("evaluate_stack: intercrate_ambiguity_causes is some");
+                if let Ok(candidate_set) = self.assemble_candidates(stack) {
+                    if !candidate_set.ambiguous && candidate_set.vec.is_empty() {
+                        let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
+                        let self_ty = trait_ref.self_ty();
+                        let cause = IntercrateAmbiguityCause::DownstreamCrate {
+                            trait_desc: trait_ref.to_string(),
+                            self_desc: if self_ty.has_concrete_skeleton() {
+                                Some(self_ty.to_string())
+                            } else {
+                                None
+                            },
+                        };
+                        debug!("evaluate_stack: pushing cause = {:?}", cause);
+                        self.intercrate_ambiguity_causes.as_mut().unwrap().push(cause);
+                    }
                 }
             }
             return EvaluatedToAmbig;
@@ -1092,25 +1112,29 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             None => {}
             Some(conflict) => {
                 debug!("coherence stage: not knowable");
-                // Heuristics: show the diagnostics when there are no candidates in crate.
-                let candidate_set = self.assemble_candidates(stack)?;
-                if !candidate_set.ambiguous && candidate_set.vec.iter().all(|c| {
-                    !self.evaluate_candidate(stack, &c).may_apply()
-                }) {
-                    let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
-                    let self_ty = trait_ref.self_ty();
-                    let trait_desc = trait_ref.to_string();
-                    let self_desc = if self_ty.has_concrete_skeleton() {
-                        Some(self_ty.to_string())
-                    } else {
-                        None
-                    };
-                    let cause = if let Conflict::Upstream = conflict {
-                        IntercrateAmbiguityCause::UpstreamCrateUpdate { trait_desc, self_desc }
-                    } else {
-                        IntercrateAmbiguityCause::DownstreamCrate { trait_desc, self_desc }
-                    };
-                    self.intercrate_ambiguity_causes.push(cause);
+                if self.intercrate_ambiguity_causes.is_some() {
+                    debug!("evaluate_stack: intercrate_ambiguity_causes is some");
+                    // Heuristics: show the diagnostics when there are no candidates in crate.
+                    let candidate_set = self.assemble_candidates(stack)?;
+                    if !candidate_set.ambiguous && candidate_set.vec.iter().all(|c| {
+                        !self.evaluate_candidate(stack, &c).may_apply()
+                    }) {
+                        let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
+                        let self_ty = trait_ref.self_ty();
+                        let trait_desc = trait_ref.to_string();
+                        let self_desc = if self_ty.has_concrete_skeleton() {
+                            Some(self_ty.to_string())
+                        } else {
+                            None
+                        };
+                        let cause = if let Conflict::Upstream = conflict {
+                            IntercrateAmbiguityCause::UpstreamCrateUpdate { trait_desc, self_desc }
+                        } else {
+                            IntercrateAmbiguityCause::DownstreamCrate { trait_desc, self_desc }
+                        };
+                        debug!("evaluate_stack: pushing cause = {:?}", cause);
+                        self.intercrate_ambiguity_causes.as_mut().unwrap().push(cause);
+                    }
                 }
                 return Ok(None);
             }

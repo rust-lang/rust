@@ -66,6 +66,7 @@
 #![feature(specialization)]
 #![feature(unboxed_closures)]
 #![feature(underscore_lifetimes)]
+#![feature(universal_impl_trait)]
 #![feature(trace_macros)]
 #![feature(catch_expr)]
 #![feature(test)]
