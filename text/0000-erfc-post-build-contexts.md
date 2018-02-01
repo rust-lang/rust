@@ -269,6 +269,29 @@ these tools usually operate at a differeny layer of abstraction so it might not 
 A major drawback of this proposal is that it is very general, and perhaps too powerful. We're currently using the
 more focused API in the eRFC, and may switch to this during experimentation if a pressing need crops up.
 
+## Alternative procedural macro with minimal compiler changes
+
+The above proposal can be made even more general, minimizing the impact on the compiler.
+
+This assumes that `#![foo]` ("inner attribute") macros work on modules and on crates.
+
+The idea is that the compiler defines no new proc macro surface, and instead simply exposes
+a `--attribute` flag. This flag, like `-Zextra-plugins`, lets you attach a proc macro attribute
+to the whole crate before compiling. (This flag actually generalizes a bunch of flags that the
+compiler already has)
+
+Test crates are now simply proc macro attributes:
+
+```rust
+#[proc_macro_attr(attributes(test, foo, bar))]
+pub fn harness(crate: TokenStream) -> TokenStream {
+  // ...
+}
+```
+
+The cargo functionality will basically compile the file with the right dependencies
+and `--attribute=your_crate::harness`.
+
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
