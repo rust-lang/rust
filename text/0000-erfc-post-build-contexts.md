@@ -296,7 +296,9 @@ and `--attribute=your_crate::harness`.
 [unresolved]: #unresolved-questions
 
 These are mostly intended to be resolved during the experimental
-feature.
+feature. Many of these have strawman proposals -- unlike the rest of this RFC,
+these proposals have not been discussed as thoroughly. If folks feel like
+there's consensus on some of these we can move them into the main RFC.
 
 ## Integration with doctests
 
@@ -367,15 +369,45 @@ iterated on later. Naming the feature is hard, some candidates are:
 
 None of these are particularly great, ideas would be nice.
 
-## Other questions
+## Default folders and sets
 
- - Should a post-build context be able to declare "defaults" for what
-   folders and post-build sets it should be added to? This might save
-   users from some boilerplate in a large number of situations.
- - Should we be shipping a bencher by default at all (i.e., in libtest)?
-   Could we instead default `cargo bench` to a `rust-lang-nursery`
-   crate?
- - `specify-single-target = true` probably should be specified by the execution context itself,
-   not the consumer. It's also questionable if it's necessary -- cargo-fuzz is going to need
-   a wrapper script anyway, so it's fine if the CLI isn't as ergonomic for that use case.
+Should a post-build context be able to declare "defaults" for what folders and post-build sets it
+should be added to? This might save users from some boilerplate in a large number of situations.
+
+This could be done in the Cargo.toml as:
+
+```toml
+[post-build.defaults]
+folder = "tests/"
+set = "test" # will automatically be added to the `test` set
+```
+
+This is useful if a crate wishes to standardize things.
+
+## Bencher
+
+Should we be shipping a bencher by default at all (i.e., in libtest)? Could we instead default
+`cargo bench` to a `rust-lang-nursery` `bench` crate?
+
+If this RFC lands and [RFC 2287] is rejected, we should probably try to stabilize
+`test::black_box` in some form (maybe `mem::black_box` and `mem::clobber` as detailed
+in [this amendment]).
+
+
+
+ [RFC 2287]: https://github.com/rust-lang/rfcs/pull/2287
+ [this amendment]: https://github.com/Manishearth/rfcs/pull/1
+
+## Specify-single-target
+
+`specify-single-target = true` probably should be specified by the execution context itself, not the
+consumer. It's also questionable if it's necessary -- cargo-fuzz is going to need a wrapper script
+anyway, so it's fine if the CLI isn't as ergonomic for that use case.
+
+If we do `post-build.defaults` it would just make sense to include that there.
+
+
+
+
+
  
