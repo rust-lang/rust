@@ -47,6 +47,11 @@ struct Foo {
 mod foo {
 }
 
+/// This doc comment should not produce a warning
+
+/** This is also a doc comment and should not produce a warning
+ */
+
 // This should not produce a warning
 #[allow(non_camel_case_types)]
 #[allow(missing_docs)]

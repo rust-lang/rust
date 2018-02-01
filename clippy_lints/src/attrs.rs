@@ -262,6 +262,9 @@ fn check_attrs(cx: &LateContext, span: Span, name: &Name, attrs: &[Attribute]) {
     }
 
     for attr in attrs {
+        if attr.is_sugared_doc {
+            return;
+        }
         if attr.style == AttrStyle::Outer {
             if !is_present_in_source(cx, attr.span) {
                 return;
@@ -276,7 +279,7 @@ fn check_attrs(cx: &LateContext, span: Span, name: &Name, attrs: &[Attribute]) {
                         cx,
                         EMPTY_LINE_AFTER_OUTER_ATTR,
                         attr_to_item_span,
-                        &format!("Found an empty line after an outer attribute. Perhaps you forgot to add a '!' to make it an inner attribute?")
+                        "Found an empty line after an outer attribute. Perhaps you forgot to add a '!' to make it an inner attribute?"
                         );
 
                 }
