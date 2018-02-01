@@ -47,7 +47,10 @@ fn config(dir: &'static str, mode: &'static str) -> compiletest::Config {
 
     config.mode = cfg_mode;
     config.build_base = if rustc_test_suite().is_some() {
-        PathBuf::from("/tmp/clippy_test_build_base")
+        // we don't need access to the stderr files on travis
+        let mut path = PathBuf::from(env!("OUT_DIR"));
+        path.push("test_build_base");
+        path
     } else {
         let mut path = std::env::current_dir().unwrap();
         path.push("target/debug/test_build_base");
