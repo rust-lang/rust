@@ -38,34 +38,41 @@ pub struct JsonEmitter {
     registry: Option<Registry>,
     cm: Rc<CodeMapper + 'static>,
     pretty: bool,
+    /// Whether "approximate suggestions" are enabled in the config
+    approximate_suggestions: bool,
 }
 
 impl JsonEmitter {
     pub fn stderr(registry: Option<Registry>,
                   code_map: Rc<CodeMap>,
-                  pretty: bool) -> JsonEmitter {
+                  pretty: bool,
+                  approximate_suggestions: bool) -> JsonEmitter {
         JsonEmitter {
             dst: Box::new(io::stderr()),
             registry,
             cm: code_map,
             pretty,
+            approximate_suggestions,
         }
     }
 
     pub fn basic(pretty: bool) -> JsonEmitter {
         let file_path_mapping = FilePathMapping::empty();
-        JsonEmitter::stderr(None, Rc::new(CodeMap::new(file_path_mapping)), pretty)
+        JsonEmitter::stderr(None, Rc::new(CodeMap::new(file_path_mapping)),
+                            pretty, false)
     }
 
     pub fn new(dst: Box<Write + Send>,
                registry: Option<Registry>,
                code_map: Rc<CodeMap>,
-               pretty: bool) -> JsonEmitter {
+               pretty: bool,
+               approximate_suggestions: bool) -> JsonEmitter {
         JsonEmitter {
             dst,
             registry,
             cm: code_map,
             pretty,
+            approximate_suggestions,
         }
     }
 }
@@ -101,6 +108,7 @@ struct Diagnostic {
 }
 
 #[derive(RustcEncodable)]
+#[allow(unused_attributes)]
 struct DiagnosticSpan {
     file_name: String,
     byte_start: u32,
@@ -121,6 +129,9 @@ struct DiagnosticSpan {
     /// If we are suggesting a replacement, this will contain text
     /// that should be sliced in atop this span.
     suggested_replacement: Option<String>,
+    /// If the suggestion is approximate
+    #[rustc_serialize_exclude_null]
+    suggestion_approximate: Option<bool>,
     /// Macro invocations that created the code at this span, if any.
     expansion: Option<Box<DiagnosticSpanMacroExpansion>>,
 }
@@ -220,7 +231,7 @@ impl Diagnostic {
 
 impl DiagnosticSpan {
     fn from_span_label(span: SpanLabel,
-                       suggestion: Option<&String>,
+                       suggestion: Option<(&String, bool)>,
                        je: &JsonEmitter)
                        -> DiagnosticSpan {
         Self::from_span_etc(span.span,
@@ -233,7 +244,7 @@ impl DiagnosticSpan {
     fn from_span_etc(span: Span,
                      is_primary: bool,
                      label: Option<String>,
-                     suggestion: Option<&String>,
+                     suggestion: Option<(&String, bool)>,
                      je: &JsonEmitter)
                      -> DiagnosticSpan {
         // obtain the full backtrace from the `macro_backtrace`
@@ -253,7 +264,7 @@ impl DiagnosticSpan {
     fn from_span_full(span: Span,
                       is_primary: bool,
                       label: Option<String>,
-                      suggestion: Option<&String>,
+                      suggestion: Option<(&String, bool)>,
                       mut backtrace: vec::IntoIter<MacroBacktrace>,
                       je: &JsonEmitter)
                       -> DiagnosticSpan {
@@ -281,6 +292,13 @@ impl DiagnosticSpan {
                 def_site_span,
             })
         });
+
+        let suggestion_approximate = if je.approximate_suggestions {
+             suggestion.map(|x| x.1)
+        } else {
+            None
+        };
+
         DiagnosticSpan {
             file_name: start.file.name.to_string(),
             byte_start: span.lo().0 - start.file.start_pos.0,
@@ -291,7 +309,8 @@ impl DiagnosticSpan {
             column_end: end.col.0 + 1,
             is_primary,
             text: DiagnosticSpanLine::from_span(span, je),
-            suggested_replacement: suggestion.cloned(),
+            suggested_replacement: suggestion.map(|x| x.0.clone()),
+            suggestion_approximate,
             expansion: backtrace_step,
             label,
         }
@@ -309,14 +328,15 @@ impl DiagnosticSpan {
         suggestion.substitutions
                       .iter()
                       .flat_map(|substitution| {
-                          substitution.parts.iter().map(move |suggestion| {
+                          substitution.parts.iter().map(move |suggestion_inner| {
                               let span_label = SpanLabel {
-                                  span: suggestion.span,
+                                  span: suggestion_inner.span,
                                   is_primary: true,
                                   label: None,
                               };
                               DiagnosticSpan::from_span_label(span_label,
-                                                              Some(&suggestion.snippet),
+                                                              Some((&suggestion_inner.snippet,
+                                                                   suggestion.approximate)),
                                                               je)
                           })
                       })

@@ -913,10 +913,12 @@ pub fn build_session_with_codemap(sopts: config::Options,
             Box::new(EmitterWriter::new(dst, Some(codemap.clone()), false, false))
         }
         (config::ErrorOutputType::Json(pretty), None) => {
-            Box::new(JsonEmitter::stderr(Some(registry), codemap.clone(), pretty))
+            Box::new(JsonEmitter::stderr(Some(registry), codemap.clone(),
+                     pretty, sopts.debugging_opts.approximate_suggestions))
         }
         (config::ErrorOutputType::Json(pretty), Some(dst)) => {
-            Box::new(JsonEmitter::new(dst, Some(registry), codemap.clone(), pretty))
+            Box::new(JsonEmitter::new(dst, Some(registry), codemap.clone(),
+                     pretty, sopts.debugging_opts.approximate_suggestions))
         }
         (config::ErrorOutputType::Short(color_config), None) => {
             Box::new(EmitterWriter::stderr(color_config, Some(codemap.clone()), true, false))

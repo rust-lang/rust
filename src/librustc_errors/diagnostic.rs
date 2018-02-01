@@ -222,6 +222,7 @@ impl Diagnostic {
             }],
             msg: msg.to_owned(),
             show_code_when_inline: false,
+            approximate: false,
         });
         self
     }
@@ -252,6 +253,7 @@ impl Diagnostic {
             }],
             msg: msg.to_owned(),
             show_code_when_inline: true,
+            approximate: false,
         });
         self
     }
@@ -267,6 +269,41 @@ impl Diagnostic {
             }).collect(),
             msg: msg.to_owned(),
             show_code_when_inline: true,
+            approximate: false,
+        });
+        self
+    }
+
+    /// This is a suggestion that may contain mistakes or fillers and should
+    /// be read and understood by a human.
+    pub fn span_approximate_suggestion(&mut self, sp: Span, msg: &str,
+                                       suggestion: String) -> &mut Self {
+        self.suggestions.push(CodeSuggestion {
+            substitutions: vec![Substitution {
+                parts: vec![SubstitutionPart {
+                    snippet: suggestion,
+                    span: sp,
+                }],
+            }],
+            msg: msg.to_owned(),
+            show_code_when_inline: true,
+            approximate: true,
+        });
+        self
+    }
+
+    pub fn span_approximate_suggestions(&mut self, sp: Span, msg: &str,
+                                        suggestions: Vec<String>) -> &mut Self {
+        self.suggestions.push(CodeSuggestion {
+            substitutions: suggestions.into_iter().map(|snippet| Substitution {
+                parts: vec![SubstitutionPart {
+                    snippet,
+                    span: sp,
+                }],
+            }).collect(),
+            msg: msg.to_owned(),
+            show_code_when_inline: true,
+            approximate: true,
         });
         self
     }
