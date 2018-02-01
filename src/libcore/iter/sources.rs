@@ -12,7 +12,7 @@ use fmt;
 use marker;
 use usize;
 
-use super::{FusedIterator, TrustedLen};
+use super::{FusedIterator, TrustedLen, UnboundedIterator};
 
 /// An iterator that repeats an element endlessly.
 ///
@@ -43,6 +43,9 @@ impl<A: Clone> DoubleEndedIterator for Repeat<A> {
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<A: Clone> FusedIterator for Repeat<A> {}
+
+#[unstable(feature = "unbounded_iter", issue = "0")]
+unsafe impl<A: Clone> UnboundedIterator for Repeat<A> {}
 
 /// Creates a new iterator that endlessly repeats a single element.
 ///

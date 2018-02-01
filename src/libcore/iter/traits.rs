@@ -987,3 +987,34 @@ pub unsafe trait TrustedLen : Iterator {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<'a, I: TrustedLen + ?Sized> TrustedLen for &'a mut I {}
+
+/// An iterator that will never return [`None`].
+///
+/// Any iterator implementing this trait will either continue to return
+/// values infinitely, or diverge.
+/// Additionally, its [`.size_hint`] must return `(usize::MAX, None)`.
+///
+/// # Safety
+///
+/// This trait must only be implemented when the contract is upheld.
+///
+/// [`None`]: ../../std/option/enum.Option.html#variant.None
+/// [`.size_hint`]: ../../std/iter/trait.Iterator.html#method.size_hint
+// We can't implement FusedIterator for T where T: UnboundedIterator due to
+// a clash for &'a mut I. Thus, we need to make it a supertrait.
+#[unstable(feature = "unbounded_iter", issue = "0")]
+pub unsafe trait UnboundedIterator : FusedIterator {}
+
+#[unstable(feature = "unbounded_iter", issue = "0")]
+unsafe impl<'a, I: UnboundedIterator + ?Sized> UnboundedIterator for &'a mut I {}
+
+// Hacky auto trait to allow specialization of iter::Chain,
+// because it requares either A: UI or B: UI or both.
+// FIXME: #46813
+//#[unstable(feature = "unbounded_iter", issue = "0")]
+//#[doc(hidden)]
+//pub auto trait UnboundedIteratorAuto {}
+//
+//#[unstable(feature = "unbounded_iter", issue = "0")]
+//impl<A, B> !UnboundedIteratorAuto for (A, B)
+//    where A: UnboundedIteratorAuto, B: UnboundedIteratorAuto {}
