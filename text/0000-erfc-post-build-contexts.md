@@ -146,7 +146,7 @@ provider = { rust-fuzz = "1.0" }
 folders = ["fuzz/"]
 ```
 
-This defines an post-build context named `fuzz`, which uses the
+This defines a post-build context named `fuzz`, which uses the
 implementation provided by the `rust-fuzz` crate. When run, it will be
 applied to all files in the `fuzz` directory. By default, the following
 contexts are defined:
@@ -321,6 +321,9 @@ for `cargo context` (we cannot use `--target` because it is already used for
 the target architecture, and `--test` is too specific for tests). `--post-build-target`
 is one rather verbose suggestion.
 
+We also need to settle on a command name, `cargo context` and `cargo post-build`
+don't quite capture what's going on.
+
 ## Standardizing the output
 
 We should probably provide a crate with useful output formatters and
@@ -360,7 +363,7 @@ The general syntax and toml stuff should be approximately settled on before this
 iterated on later. Naming the feature is hard, some candidates are:
 
  - test framework
- - post-build context
+ - build context
  - execution context
 
 None of these are particularly great, ideas would be nice.
