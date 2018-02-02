@@ -606,6 +606,7 @@ pub fn format_input<T: Write>(
             Box::new(Vec::new()),
             Some(codemap.clone()),
             false,
+            false,
         ));
         Handler::with_emitter(true, false, silent_emitter)
     } else {
@@ -639,6 +640,7 @@ pub fn format_input<T: Write>(
     let silent_emitter = Box::new(EmitterWriter::new(
         Box::new(Vec::new()),
         Some(codemap.clone()),
+        false,
         false,
     ));
     parse_session.span_diagnostic = Handler::with_emitter(true, false, silent_emitter);
