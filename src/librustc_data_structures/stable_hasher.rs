@@ -241,10 +241,7 @@ impl<CTX> HashStable<CTX> for f32 {
     fn hash_stable<W: StableHasherResult>(&self,
                                           ctx: &mut CTX,
                                           hasher: &mut StableHasher<W>) {
-        let val: u32 = unsafe {
-            ::std::mem::transmute(*self)
-        };
-        val.hash_stable(ctx, hasher);
+        self.to_bits().hash_stable(ctx, hasher);
     }
 }
 
@@ -252,10 +249,7 @@ impl<CTX> HashStable<CTX> for f64 {
     fn hash_stable<W: StableHasherResult>(&self,
                                           ctx: &mut CTX,
                                           hasher: &mut StableHasher<W>) {
-        let val: u64 = unsafe {
-            ::std::mem::transmute(*self)
-        };
-        val.hash_stable(ctx, hasher);
+        self.to_bits().hash_stable(ctx, hasher);
     }
 }
 

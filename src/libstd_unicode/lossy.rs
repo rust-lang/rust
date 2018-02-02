@@ -12,7 +12,6 @@ use core::str as core_str;
 use core::fmt;
 use core::fmt::Write;
 use char;
-use core::mem;
 
 
 /// Lossy UTF-8 string.
@@ -27,7 +26,7 @@ impl Utf8Lossy {
     }
 
     pub fn from_bytes(bytes: &[u8]) -> &Utf8Lossy {
-        unsafe { mem::transmute(bytes) }
+        unsafe { &*(bytes as *const [u8] as *const Utf8Lossy) }
     }
 
     pub fn chunks(&self) -> Utf8LossyChunksIter {

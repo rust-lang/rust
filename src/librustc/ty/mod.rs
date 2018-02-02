@@ -47,7 +47,6 @@ use std::ops::Deref;
 use std::rc::Rc;
 use std::slice;
 use std::vec::IntoIter;
-use std::mem;
 use syntax::ast::{self, DUMMY_NODE_ID, Name, Ident, NodeId};
 use syntax::attr;
 use syntax::ext::hygiene::{Mark, SyntaxContext};
@@ -620,7 +619,8 @@ impl<'tcx> serialize::UseSpecializedDecodable for &'tcx Slice<Ty<'tcx>> {}
 impl<T> Slice<T> {
     pub fn empty<'a>() -> &'a Slice<T> {
         unsafe {
-            mem::transmute(slice::from_raw_parts(0x1 as *const T, 0))
+            let slice = slice::from_raw_parts(0x1 as *const T, 0);
+            &*(slice as *const [T] as *const Slice<T>)
         }
     }
 }

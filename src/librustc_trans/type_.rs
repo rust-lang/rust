@@ -21,7 +21,6 @@ use rustc::ty::layout::{self, Align, Size};
 
 use std::ffi::CString;
 use std::fmt;
-use std::mem;
 use std::ptr;
 
 use libc::c_uint;
@@ -59,7 +58,7 @@ impl Type {
     }
 
     pub fn to_ref_slice(slice: &[Type]) -> &[TypeRef] {
-        unsafe { mem::transmute(slice) }
+        unsafe { &*(slice as *const [Type] as *const [TypeRef]) }
     }
 
     pub fn void(cx: &CodegenCx) -> Type {

@@ -14,7 +14,6 @@
 use borrow::Cow;
 use fmt;
 use str;
-use mem;
 use rc::Rc;
 use sync::Arc;
 use sys_common::{AsInner, IntoInner};
@@ -105,7 +104,7 @@ impl Buf {
     }
 
     pub fn as_slice(&self) -> &Slice {
-        unsafe { mem::transmute(&*self.inner) }
+        unsafe { &*(&*self.inner as *const [u8] as *const Slice) }
     }
 
     pub fn into_string(self) -> Result<String, Buf> {
@@ -118,12 +117,13 @@ impl Buf {
 
     #[inline]
     pub fn into_box(self) -> Box<Slice> {
-        unsafe { mem::transmute(self.inner.into_boxed_slice()) }
+        let boxed = self.inner.into_boxed_slice();
+        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut Slice) }
     }
 
     #[inline]
     pub fn from_box(boxed: Box<Slice>) -> Buf {
-        let inner: Box<[u8]> = unsafe { mem::transmute(boxed) };
+        let inner = unsafe { Box::from_raw(Box::into_raw(boxed) as *mut [u8]) };
         Buf { inner: inner.into_vec() }
     }
 
@@ -140,7 +140,7 @@ impl Buf {
 
 impl Slice {
     fn from_u8_slice(s: &[u8]) -> &Slice {
-        unsafe { mem::transmute(s) }
+        unsafe { &*(s as *const [u8] as *const Slice) }
     }
 
     pub fn from_str(s: &str) -> &Slice {
@@ -162,12 +162,12 @@ impl Slice {
     #[inline]
     pub fn into_box(&self) -> Box<Slice> {
         let boxed: Box<[u8]> = self.inner.into();
-        unsafe { mem::transmute(boxed) }
+        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut Slice) }
     }
 
     pub fn empty_box() -> Box<Slice> {
         let boxed: Box<[u8]> = Default::default();
-        unsafe { mem::transmute(boxed) }
+        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut Slice) }
     }
 
     #[inline]
