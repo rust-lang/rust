@@ -120,7 +120,6 @@ mod tests {
 
     #[simd_test = "sse2"]
     unsafe fn test_mm_cvtsd_si64() {
-
         let r = _mm_cvtsd_si64(_mm_setr_pd(-2.0, 5.0));
         assert_eq!(r, -2_i64);
 

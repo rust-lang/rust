@@ -514,7 +514,8 @@ mod tests {
             -30001,
             i16::max_value() - 1,
         );
-        let e = _mm_setr_pi16(i16::min_value(), 30000, -30000, i16::max_value());
+        let e =
+            _mm_setr_pi16(i16::min_value(), 30000, -30000, i16::max_value());
         assert_eq_m64(e, _mm_add_pi16(a, b));
         assert_eq_m64(e, _m_paddw(a, b));
     }

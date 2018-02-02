@@ -86,13 +86,9 @@ mod tests {
             let x = _mm_setr_ps(xi, 1.0, 3.0, 4.0);
             let r = _mm_cvtss_si64(x);
             assert_eq!(
-                e,
-                r,
+                e, r,
                 "TestCase #{} _mm_cvtss_si64({:?}) = {}, expected: {}",
-                i,
-                x,
-                r,
-                e
+                i, x, r, e
             );
         }
     }
@@ -118,13 +114,9 @@ mod tests {
             let x = _mm_setr_ps(xi, 1.0, 3.0, 4.0);
             let r = _mm_cvttss_si64(x);
             assert_eq!(
-                e,
-                r,
+                e, r,
                 "TestCase #{} _mm_cvttss_si64({:?}) = {}, expected: {}",
-                i,
-                x,
-                r,
-                e
+                i, x, r, e
             );
         }
     }

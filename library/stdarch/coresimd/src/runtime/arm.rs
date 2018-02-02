@@ -1,5 +1,5 @@
 //! Run-time feature detection on ARM Aarch32.
-use runtime::bit;
+use runtime::cache;
 use runtime::arch::HasFeature;
 
 #[macro_export]
@@ -28,12 +28,12 @@ pub enum __Feature {
     pmull,
 }
 
-pub fn detect_features<T: HasFeature>(mut x: T) -> usize {
-    let mut value: usize = 0;
+pub fn detect_features<T: HasFeature>(mut x: T) -> cache::Initializer {
+    let mut value = cache::Initializer::default();
     {
         let mut enable_feature = |f| {
             if x.has_feature(&f) {
-                value = bit::set(value, f as u32);
+                value.set(f as u32);
             }
         };
         enable_feature(__Feature::neon);

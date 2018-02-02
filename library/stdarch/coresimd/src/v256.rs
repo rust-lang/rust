@@ -66,86 +66,14 @@ define_impl! {
     x24, x25, x26, x27, x28, x29, x30, x31
 }
 
-define_from!(
-    u64x4,
-    i64x4,
-    u32x8,
-    i32x8,
-    u16x16,
-    i16x16,
-    u8x32,
-    i8x32
-);
-define_from!(
-    i64x4,
-    u64x4,
-    u32x8,
-    i32x8,
-    u16x16,
-    i16x16,
-    u8x32,
-    i8x32
-);
-define_from!(
-    u32x8,
-    u64x4,
-    i64x4,
-    i32x8,
-    u16x16,
-    i16x16,
-    u8x32,
-    i8x32
-);
-define_from!(
-    i32x8,
-    u64x4,
-    i64x4,
-    u32x8,
-    u16x16,
-    i16x16,
-    u8x32,
-    i8x32
-);
-define_from!(
-    u16x16,
-    u64x4,
-    i64x4,
-    u32x8,
-    i32x8,
-    i16x16,
-    u8x32,
-    i8x32
-);
-define_from!(
-    i16x16,
-    u64x4,
-    i64x4,
-    u32x8,
-    i32x8,
-    u16x16,
-    u8x32,
-    i8x32
-);
-define_from!(
-    u8x32,
-    u64x4,
-    i64x4,
-    u32x8,
-    i32x8,
-    u16x16,
-    i16x16,
-    i8x32
-);
-define_from!(
-    i8x32,
-    u64x4,
-    i64x4,
-    u32x8,
-    i32x8,
-    u16x16,
-    i16x16,
-    u8x32
-);
+define_from!(u64x4, i64x4, u32x8, i32x8, u16x16, i16x16, u8x32, i8x32);
+define_from!(i64x4, u64x4, u32x8, i32x8, u16x16, i16x16, u8x32, i8x32);
+define_from!(u32x8, u64x4, i64x4, i32x8, u16x16, i16x16, u8x32, i8x32);
+define_from!(i32x8, u64x4, i64x4, u32x8, u16x16, i16x16, u8x32, i8x32);
+define_from!(u16x16, u64x4, i64x4, u32x8, i32x8, i16x16, u8x32, i8x32);
+define_from!(i16x16, u64x4, i64x4, u32x8, i32x8, u16x16, u8x32, i8x32);
+define_from!(u8x32, u64x4, i64x4, u32x8, i32x8, u16x16, i16x16, i8x32);
+define_from!(i8x32, u64x4, i64x4, u32x8, i32x8, u16x16, i16x16, u8x32);
 
 define_common_ops!(
     f64x4,

@@ -50,7 +50,9 @@ pub const _MM_FROUND_NEARBYINT: i32 =
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(pblendvb))]
-pub unsafe fn _mm_blendv_epi8(a: __m128i, b: __m128i, mask: __m128i) -> __m128i {
+pub unsafe fn _mm_blendv_epi8(
+    a: __m128i, b: __m128i, mask: __m128i
+) -> __m128i {
     mem::transmute(pblendvb(a.as_i8x16(), b.as_i8x16(), mask.as_i8x16()))
 }
 
@@ -539,13 +541,13 @@ pub unsafe fn _mm_ceil_ss(a: __m128, b: __m128) -> __m128 {
 /// use coresimd::vendor;
 ///
 /// // round to nearest, and suppress exceptions:
-/// (vendor::_MM_FROUND_TO_NEAREST_INT |vendor::_MM_FROUND_NO_EXC);
+/// (vendor::_MM_FROUND_TO_NEAREST_INT | vendor::_MM_FROUND_NO_EXC);
 /// // round down, and suppress exceptions:
-/// (vendor::_MM_FROUND_TO_NEG_INF |vendor::_MM_FROUND_NO_EXC);
+/// (vendor::_MM_FROUND_TO_NEG_INF | vendor::_MM_FROUND_NO_EXC);
 /// // round up, and suppress exceptions:
-/// (vendor::_MM_FROUND_TO_POS_INF |vendor::_MM_FROUND_NO_EXC);
+/// (vendor::_MM_FROUND_TO_POS_INF | vendor::_MM_FROUND_NO_EXC);
 /// // truncate, and suppress exceptions:
-/// (vendor::_MM_FROUND_TO_ZERO |vendor::_MM_FROUND_NO_EXC);
+/// (vendor::_MM_FROUND_TO_ZERO | vendor::_MM_FROUND_NO_EXC);
 /// // use MXCSR.RC; see `vendor::_MM_SET_ROUNDING_MODE`:
 /// vendor::_MM_FROUND_CUR_DIRECTION;
 /// ```
@@ -568,13 +570,13 @@ pub unsafe fn _mm_round_pd(a: __m128d, rounding: i32) -> __m128d {
 /// use coresimd::vendor;
 ///
 /// // round to nearest, and suppress exceptions:
-/// (vendor::_MM_FROUND_TO_NEAREST_INT |vendor::_MM_FROUND_NO_EXC);
+/// (vendor::_MM_FROUND_TO_NEAREST_INT | vendor::_MM_FROUND_NO_EXC);
 /// // round down, and suppress exceptions:
-/// (vendor::_MM_FROUND_TO_NEG_INF |vendor::_MM_FROUND_NO_EXC);
+/// (vendor::_MM_FROUND_TO_NEG_INF | vendor::_MM_FROUND_NO_EXC);
 /// // round up, and suppress exceptions:
-/// (vendor::_MM_FROUND_TO_POS_INF |vendor::_MM_FROUND_NO_EXC);
+/// (vendor::_MM_FROUND_TO_POS_INF | vendor::_MM_FROUND_NO_EXC);
 /// // truncate, and suppress exceptions:
-/// (vendor::_MM_FROUND_TO_ZERO |vendor::_MM_FROUND_NO_EXC);
+/// (vendor::_MM_FROUND_TO_ZERO | vendor::_MM_FROUND_NO_EXC);
 /// // use MXCSR.RC; see `vendor::_MM_SET_ROUNDING_MODE`:
 /// vendor::_MM_FROUND_CUR_DIRECTION;
 /// ```
@@ -599,13 +601,13 @@ pub unsafe fn _mm_round_ps(a: __m128, rounding: i32) -> __m128 {
 /// use coresimd::vendor;
 ///
 /// // round to nearest, and suppress exceptions:
-/// (vendor::_MM_FROUND_TO_NEAREST_INT |vendor::_MM_FROUND_NO_EXC);
+/// (vendor::_MM_FROUND_TO_NEAREST_INT | vendor::_MM_FROUND_NO_EXC);
 /// // round down, and suppress exceptions:
-/// (vendor::_MM_FROUND_TO_NEG_INF |vendor::_MM_FROUND_NO_EXC);
+/// (vendor::_MM_FROUND_TO_NEG_INF | vendor::_MM_FROUND_NO_EXC);
 /// // round up, and suppress exceptions:
-/// (vendor::_MM_FROUND_TO_POS_INF |vendor::_MM_FROUND_NO_EXC);
+/// (vendor::_MM_FROUND_TO_POS_INF | vendor::_MM_FROUND_NO_EXC);
 /// // truncate, and suppress exceptions:
-/// (vendor::_MM_FROUND_TO_ZERO |vendor::_MM_FROUND_NO_EXC);
+/// (vendor::_MM_FROUND_TO_ZERO | vendor::_MM_FROUND_NO_EXC);
 /// // use MXCSR.RC; see `vendor::_MM_SET_ROUNDING_MODE`:
 /// vendor::_MM_FROUND_CUR_DIRECTION;
 /// ```
@@ -630,13 +632,13 @@ pub unsafe fn _mm_round_sd(a: __m128d, b: __m128d, rounding: i32) -> __m128d {
 /// use coresimd::vendor;
 ///
 /// // round to nearest, and suppress exceptions:
-/// (vendor::_MM_FROUND_TO_NEAREST_INT |vendor::_MM_FROUND_NO_EXC);
+/// (vendor::_MM_FROUND_TO_NEAREST_INT | vendor::_MM_FROUND_NO_EXC);
 /// // round down, and suppress exceptions:
-/// (vendor::_MM_FROUND_TO_NEG_INF |vendor::_MM_FROUND_NO_EXC);
+/// (vendor::_MM_FROUND_TO_NEG_INF | vendor::_MM_FROUND_NO_EXC);
 /// // round up, and suppress exceptions:
-/// (vendor::_MM_FROUND_TO_POS_INF |vendor::_MM_FROUND_NO_EXC);
+/// (vendor::_MM_FROUND_TO_POS_INF | vendor::_MM_FROUND_NO_EXC);
 /// // truncate, and suppress exceptions:
-/// (vendor::_MM_FROUND_TO_ZERO |vendor::_MM_FROUND_NO_EXC);
+/// (vendor::_MM_FROUND_TO_ZERO | vendor::_MM_FROUND_NO_EXC);
 /// // use MXCSR.RC; see `vendor::_MM_SET_ROUNDING_MODE`:
 /// vendor::_MM_FROUND_CUR_DIRECTION;
 /// ```
@@ -689,8 +691,8 @@ pub unsafe fn _mm_mul_epi32(a: __m128i, b: __m128i) -> __m128i {
 /// 64-bit integers, and returns the lowest 32-bit, whatever they might be,
 /// reinterpreted as a signed integer. While `pmulld __m128i::splat(2),
 /// __m128i::splat(2)` returns the obvious `__m128i::splat(4)`, due to wrapping
-/// arithmetic `pmulld __m128i::splat(i32::MAX), __m128i::splat(2)` would return a
-/// negative number.
+/// arithmetic `pmulld __m128i::splat(i32::MAX), __m128i::splat(2)` would
+/// return a negative number.
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(pmulld))]
@@ -803,14 +805,20 @@ mod tests {
 
     #[simd_test = "sse4.1"]
     unsafe fn test_mm_blendv_epi8() {
-        let a =
-            _mm_setr_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let a = _mm_setr_epi8(
+            0, 1, 2, 3, 4, 5, 6, 7,
+            8, 9, 10, 11, 12, 13, 14, 15,
+        );
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let b = _mm_setr_epi8(
             16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
         );
-        let mask =
-            _mm_setr_epi8(0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let mask = _mm_setr_epi8(
+            0, -1, 0, -1, 0, -1, 0, -1,
+            0, -1, 0, -1, 0, -1, 0, -1,
+        );
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let e = _mm_setr_epi8(
             0, 17, 2, 19, 4, 21, 6, 23, 8, 25, 10, 27, 12, 29, 14, 31,
@@ -876,8 +884,11 @@ mod tests {
 
     #[simd_test = "sse4.1"]
     unsafe fn test_mm_extract_epi8() {
-        let a =
-            _mm_setr_epi8(-1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let a = _mm_setr_epi8(
+            -1, 1, 2, 3, 4, 5, 6, 7,
+            8, 9, 10, 11, 12, 13, 14, 15
+        );
         let r1 = _mm_extract_epi8(a, 0);
         let r2 = _mm_extract_epi8(a, 19);
         assert_eq!(r1, 0xFF);
@@ -1385,8 +1396,11 @@ mod tests {
 
     #[simd_test = "sse4.1"]
     unsafe fn test_mm_mpsadbw_epu8() {
-        let a =
-            _mm_setr_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let a = _mm_setr_epi8(
+            0, 1, 2, 3, 4, 5, 6, 7,
+            8, 9, 10, 11, 12, 13, 14, 15,
+        );
 
         let r = _mm_mpsadbw_epu8(a, a, 0b000);
         let e = _mm_setr_epi16(0, 4, 8, 12, 16, 20, 24, 28);

@@ -17,7 +17,7 @@ mod auxv;
 mod cpuinfo;
 
 /// Detects CPU features:
-pub fn detect_features() -> usize {
+pub fn detect_features() -> cache::Initializer {
     // Try to read the ELF Auxiliary Vector using libc's getauxval:
     if let Ok(v) = auxv::libc::auxv() {
         return arch::detect_features(v);
@@ -31,7 +31,7 @@ pub fn detect_features() -> usize {
         return arch::detect_features(v);
     }
     // Otherwise all features are disabled
-    0
+    cache::Initializer::default()
 }
 
 /// Performs run-time feature detection.

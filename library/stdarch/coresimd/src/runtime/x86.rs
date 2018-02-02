@@ -18,7 +18,7 @@
 
 use core::mem;
 
-use super::bit;
+use super::{bit, cache};
 
 /// This macro maps the string-literal feature names to values of the
 /// `__Feature` enum at compile-time. The feature names used are the same as
@@ -29,6 +29,12 @@ use super::bit;
 #[macro_export]
 #[doc(hidden)]
 macro_rules! __unstable_detect_feature {
+    ("aes", $unstable_detect_feature:path) => {
+        $unstable_detect_feature(
+            $crate::__vendor_runtime::__Feature::aes{})  };
+    ("tsc", $unstable_detect_feature:path) => {
+        $unstable_detect_feature(
+            $crate::__vendor_runtime::__Feature::tsc{})  };
     ("mmx", $unstable_detect_feature:path) => {
         $unstable_detect_feature(
             $crate::__vendor_runtime::__Feature::mmx{})  };
@@ -168,6 +174,10 @@ macro_rules! __unstable_detect_feature {
 #[allow(non_camel_case_types)]
 #[repr(u8)]
 pub enum __Feature {
+    /// AES (Advanced Encryption Standard New Instructions AES-NI)
+    aes,
+    /// TSC (Time Stamp Counter)
+    tsc,
     /// MMX
     mmx,
     /// SSE (Streaming SIMD Extensions)
@@ -232,7 +242,8 @@ pub enum __Feature {
     xsaves,
     /// XSAVEC (Save Processor Extended States Compacted)
     xsavec,
-    #[doc(hidden)] __NonExhaustive,
+    #[doc(hidden)]
+    __NonExhaustive,
 }
 
 /// Run-time feature detection on x86 works by using the CPUID instruction.
@@ -250,10 +261,10 @@ pub enum __Feature {
 /// [wiki_cpuid]: https://en.wikipedia.org/wiki/CPUID
 /// [intel64_ref]: http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
 /// [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
-pub fn detect_features() -> usize {
+pub fn detect_features() -> cache::Initializer {
     use vendor::{__cpuid, __cpuid_count, has_cpuid, CpuidResult};
     use vendor::_xgetbv;
-    let mut value: usize = 0;
+    let mut value = cache::Initializer::default();
 
     // If the x86 CPU does not support the CPUID instruction then it is too
     // old to support any of the currently-detectable features.
@@ -329,7 +340,7 @@ pub fn detect_features() -> usize {
         // borrows value till the end of this scope:
         let mut enable = |r, rb, f| {
             if bit::test(r as usize, rb) {
-                value = bit::set(value, f as u32);
+                value.set(f as u32);
             }
         };
 
@@ -339,8 +350,10 @@ pub fn detect_features() -> usize {
         enable(proc_info_ecx, 19, __Feature::sse4_1);
         enable(proc_info_ecx, 20, __Feature::sse4_2);
         enable(proc_info_ecx, 23, __Feature::popcnt);
-        enable(proc_info_edx, 24, __Feature::fxsr);
+        enable(proc_info_ecx, 25, __Feature::aes);
+        enable(proc_info_edx, 4, __Feature::tsc);
         enable(proc_info_edx, 23, __Feature::mmx);
+        enable(proc_info_edx, 24, __Feature::fxsr);
         enable(proc_info_edx, 25, __Feature::sse);
         enable(proc_info_edx, 26, __Feature::sse2);
 
@@ -449,6 +462,8 @@ mod tests {
 
     #[test]
     fn dump() {
+        println!("aes: {:?}", cfg_feature_enabled!("aes"));
+        println!("tsc: {:?}", cfg_feature_enabled!("tsc"));
         println!("sse: {:?}", cfg_feature_enabled!("sse"));
         println!("sse2: {:?}", cfg_feature_enabled!("sse2"));
         println!("sse3: {:?}", cfg_feature_enabled!("sse3"));
@@ -488,6 +503,8 @@ mod tests {
     #[test]
     fn compare_with_cupid() {
         let information = cupid::master().unwrap();
+        assert_eq!(cfg_feature_enabled!("aes"), information.aesni());
+        assert_eq!(cfg_feature_enabled!("tsc"), information.tsc());
         assert_eq!(cfg_feature_enabled!("sse"), information.sse());
         assert_eq!(cfg_feature_enabled!("sse2"), information.sse2());
         assert_eq!(cfg_feature_enabled!("sse3"), information.sse3());

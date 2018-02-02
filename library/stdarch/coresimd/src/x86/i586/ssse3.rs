@@ -313,10 +313,18 @@ mod tests {
 
     #[simd_test = "ssse3"]
     unsafe fn test_mm_shuffle_epi8() {
-        let a =
-            _mm_setr_epi8(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
-        let b =
-            _mm_setr_epi8(4, 128u8 as i8, 4, 3, 24, 12, 6, 19, 12, 5, 5, 10, 4, 1, 8, 0);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let a = _mm_setr_epi8(
+            1, 2, 3, 4, 5, 6, 7, 8,
+            9, 10, 11, 12, 13, 14, 15, 16,
+        );
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let b = _mm_setr_epi8(
+            4, 128_u8 as i8, 4, 3,
+            24, 12, 6, 19,
+            12, 5, 5, 10,
+            4, 1, 8, 0,
+        );
         let expected =
             _mm_setr_epi8(5, 0, 5, 4, 9, 13, 7, 4, 13, 6, 6, 11, 5, 2, 9, 1);
         let r = _mm_shuffle_epi8(a, b);
@@ -325,24 +333,38 @@ mod tests {
 
     #[simd_test = "ssse3"]
     unsafe fn test_mm_alignr_epi8() {
-        let a =
-            _mm_setr_epi8(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
-        let b =
-            _mm_setr_epi8(4, 63, 4, 3, 24, 12, 6, 19, 12, 5, 5, 10, 4, 1, 8, 0);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let a = _mm_setr_epi8(
+            1, 2, 3, 4, 5, 6, 7, 8,
+            9, 10, 11, 12, 13, 14, 15, 16,
+        );
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let b = _mm_setr_epi8(
+            4, 63, 4, 3,
+            24, 12, 6, 19,
+            12, 5, 5, 10,
+            4, 1, 8, 0,
+        );
         let r = _mm_alignr_epi8(a, b, 33);
         assert_eq_m128i(r, _mm_set1_epi8(0));
 
         let r = _mm_alignr_epi8(a, b, 17);
-        let expected =
-            _mm_setr_epi8(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 0);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let expected = _mm_setr_epi8(
+            2, 3, 4, 5, 6, 7, 8, 9,
+            10, 11, 12, 13, 14, 15, 16, 0,
+        );
         assert_eq_m128i(r, expected);
 
         let r = _mm_alignr_epi8(a, b, 16);
         assert_eq_m128i(r, a);
 
         let r = _mm_alignr_epi8(a, b, 15);
-        let expected =
-            _mm_setr_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let expected = _mm_setr_epi8(
+            0, 1, 2, 3, 4, 5, 6, 7,
+            8, 9, 10, 11, 12, 13, 14, 15,
+        );
         assert_eq_m128i(r, expected);
 
         let r = _mm_alignr_epi8(a, b, 0);
@@ -405,10 +427,18 @@ mod tests {
 
     #[simd_test = "ssse3"]
     unsafe fn test_mm_maddubs_epi16() {
-        let a =
-            _mm_setr_epi8(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
-        let b =
-            _mm_setr_epi8(4, 63, 4, 3, 24, 12, 6, 19, 12, 5, 5, 10, 4, 1, 8, 0);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let a = _mm_setr_epi8(
+            1, 2, 3, 4, 5, 6, 7, 8,
+            9, 10, 11, 12, 13, 14, 15, 16,
+        );
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let b = _mm_setr_epi8(
+            4, 63, 4, 3,
+            24, 12, 6, 19,
+            12, 5, 5, 10,
+            4, 1, 8, 0,
+        );
         let expected = _mm_setr_epi16(130, 24, 192, 194, 158, 175, 66, 120);
         let r = _mm_maddubs_epi16(a, b);
         assert_eq_m128i(r, expected);

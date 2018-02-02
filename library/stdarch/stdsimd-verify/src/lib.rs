@@ -1,7 +1,7 @@
 #![feature(proc_macro)]
 
-extern crate proc_macro2;
 extern crate proc_macro;
+extern crate proc_macro2;
 #[macro_use]
 extern crate quote;
 extern crate syn;
@@ -158,7 +158,7 @@ fn walk(root: &Path, files: &mut Vec<(syn::File, String)>) {
         }
 
         if path.file_name().and_then(|s| s.to_str()) == Some("test.rs") {
-            continue
+            continue;
         }
 
         let mut contents = String::new();
@@ -220,23 +220,19 @@ fn find_target_feature(attrs: &[syn::Attribute]) -> Option<syn::Lit> {
             _ => None,
         })
         .flat_map(|list| list)
-        .filter_map(|nested| {
-            match nested {
-                syn::NestedMeta::Meta(m) => Some(m),
-                syn::NestedMeta::Literal(_) => None,
-            }
+        .filter_map(|nested| match nested {
+            syn::NestedMeta::Meta(m) => Some(m),
+            syn::NestedMeta::Literal(_) => None,
         })
-        .filter_map(|m| {
-            match m {
-                syn::Meta::NameValue(i) => {
-                    if i.ident == "enable" {
-                        Some(i.lit)
-                    } else {
-                        None
-                    }
+        .filter_map(|m| match m {
+            syn::Meta::NameValue(i) => {
+                if i.ident == "enable" {
+                    Some(i.lit)
+                } else {
+                    None
                 }
-                _ => None,
             }
+            _ => None,
         })
         .next()
 }

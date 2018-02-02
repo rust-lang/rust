@@ -1,3 +1,23 @@
+//! Advanced Vector Extensions 2 (AVX)
+//!
+//! AVX2 expands most AVX commands to 256-bit wide vector registers and
+//! adds [FMA](https://en.wikipedia.org/wiki/Fused_multiply-accumulate).
+//!
+//! The references are:
+//!
+//! - [Intel 64 and IA-32 Architectures Software Developer's Manual Volume 2:
+//!   Instruction Set Reference, A-Z][intel64_ref].
+//! - [AMD64 Architecture Programmer's Manual, Volume 3: General-Purpose and
+//!   System Instructions][amd64_ref].
+//!
+//! Wikipedia's [AVX][wiki_avx] and [FMA][wiki_fma] pages provide a quick
+//! overview of the instructions available.
+//!
+//! [intel64_ref]: http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
+//! [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
+//! [wiki_avx]: https://en.wikipedia.org/wiki/Advanced_Vector_Extensions
+//! [wiki_fma]: https://en.wikipedia.org/wiki/Fused_multiply-accumulate
+
 use simd_llvm::*;
 use x86::*;
 

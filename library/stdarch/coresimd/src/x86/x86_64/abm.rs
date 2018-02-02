@@ -1,3 +1,22 @@
+//! Advanced Bit Manipulation (ABM) instructions
+//!
+//! The POPCNT and LZCNT have their own CPUID bits to indicate support.
+//!
+//! The references are:
+//!
+//! - [Intel 64 and IA-32 Architectures Software Developer's Manual Volume 2:
+//! Instruction Set Reference, A-Z][intel64_ref].
+//! - [AMD64 Architecture Programmer's Manual, Volume 3: General-Purpose and
+//! System Instructions][amd64_ref].
+//!
+//! [Wikipedia][wikipedia_bmi] provides a quick overview of the instructions
+//! available.
+//!
+//! [intel64_ref]: http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
+//! [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
+//! [wikipedia_bmi]:
+//! https://en.wikipedia.org/wiki/Bit_Manipulation_Instruction_Sets#ABM_.28Advanced_Bit_Manipulation.29
+
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 

@@ -627,7 +627,7 @@ mod tests {
             slice.get_unchecked_mut(0) as *mut u8 as *mut u8,
             s.len(),
         );
-         _mm_loadu_si128(slice.as_ptr() as *const _)
+        _mm_loadu_si128(slice.as_ptr() as *const _)
     }
 
     #[simd_test = "sse4.2"]
@@ -689,11 +689,7 @@ mod tests {
         );
         let a = a_bytes;
         let b = b_bytes;
-        let i = _mm_cmpistro(
-            a,
-            b,
-            _SIDD_UWORD_OPS | _SIDD_UNIT_MASK,
-        );
+        let i = _mm_cmpistro(a, b, _SIDD_UWORD_OPS | _SIDD_UNIT_MASK);
         assert_eq!(0, i);
     }
 
@@ -722,8 +718,7 @@ mod tests {
     unsafe fn test_mm_cmpestri() {
         let a = str_to_m128i(b"bar - garbage");
         let b = str_to_m128i(b"foobar");
-        let i =
-            _mm_cmpestri(a, 3, b, 6, _SIDD_CMP_EQUAL_ORDERED);
+        let i = _mm_cmpestri(a, 3, b, 6, _SIDD_CMP_EQUAL_ORDERED);
         assert_eq!(3, i);
     }
 
@@ -731,8 +726,7 @@ mod tests {
     unsafe fn test_mm_cmpestrz() {
         let a = str_to_m128i(b"");
         let b = str_to_m128i(b"Hello");
-        let i =
-            _mm_cmpestrz(a, 16, b, 6, _SIDD_CMP_EQUAL_ORDERED);
+        let i = _mm_cmpestrz(a, 16, b, 6, _SIDD_CMP_EQUAL_ORDERED);
         assert_eq!(1, i);
     }
 
@@ -769,13 +763,8 @@ mod tests {
     unsafe fn test_mm_cmpestra() {
         let a = str_to_m128i(b"Cannot match a");
         let b = str_to_m128i(b"Null after 14");
-        let i = _mm_cmpestra(
-            a,
-            14,
-            b,
-            16,
-            _SIDD_CMP_EQUAL_EACH | _SIDD_UNIT_MASK,
-        );
+        let i =
+            _mm_cmpestra(a, 14, b, 16, _SIDD_CMP_EQUAL_EACH | _SIDD_UNIT_MASK);
         assert_eq!(1, i);
     }
 

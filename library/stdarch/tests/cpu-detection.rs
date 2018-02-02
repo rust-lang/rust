@@ -1,6 +1,7 @@
 #![feature(cfg_target_feature)]
 #![cfg_attr(feature = "strict", deny(warnings))]
-#![cfg_attr(feature = "cargo-clippy", allow(option_unwrap_used))]
+#![cfg_attr(feature = "cargo-clippy",
+            allow(option_unwrap_used, use_debug, print_stdout))]
 
 #[cfg(any(target_arch = "arm", target_arch = "aarch64",
           target_arch = "x86", target_arch = "x86_64",

@@ -1,6 +1,5 @@
 //! `i686` Streaming SIMD Extensions (SSE)
 
-use core::mem;
 use x86::*;
 
 #[cfg(test)]
@@ -204,7 +203,7 @@ pub unsafe fn _m_psadbw(a: __m64, b: __m64) -> __m64 {
 #[target_feature(enable = "sse,mmx")]
 #[cfg_attr(test, assert_instr(cvtpi2ps))]
 pub unsafe fn _mm_cvtpi32_ps(a: __m128, b: __m64) -> __m128 {
-    cvtpi2ps(a, mem::transmute(b))
+    cvtpi2ps(a, b)
 }
 
 /// Converts two elements of a 64-bit vector of [2 x i32] into two
@@ -315,7 +314,7 @@ pub unsafe fn _m_maskmovq(a: __m64, mask: __m64, mem_addr: *mut i8) {
 #[cfg_attr(test, assert_instr(pextrw, imm2 = 0))]
 pub unsafe fn _mm_extract_pi16(a: __m64, imm2: i32) -> i16 {
     macro_rules! call {
-        ($imm2:expr) => { pextrw(mem::transmute(a), $imm2) as i16 }
+        ($imm2:expr) => { pextrw(a, $imm2) as i16 }
     }
     constify_imm2!(imm2, call)
 }
@@ -359,7 +358,7 @@ pub unsafe fn _m_pinsrw(a: __m64, d: i32, imm2: i32) -> __m64 {
 #[target_feature(enable = "sse,mmx")]
 #[cfg_attr(test, assert_instr(pmovmskb))]
 pub unsafe fn _mm_movemask_pi8(a: __m64) -> i32 {
-    pmovmskb(mem::transmute(a))
+    pmovmskb(a)
 }
 
 /// Takes the most significant bit from each 8-bit element in a 64-bit
@@ -399,7 +398,7 @@ pub unsafe fn _m_pshufw(a: __m64, imm8: i32) -> __m64 {
 #[target_feature(enable = "sse,mmx")]
 #[cfg_attr(test, assert_instr(cvttps2pi))]
 pub unsafe fn _mm_cvttps_pi32(a: __m128) -> __m64 {
-    mem::transmute(cvttps2pi(a))
+    cvttps2pi(a)
 }
 
 /// Convert the two lower packed single-precision (32-bit) floating-point
@@ -534,8 +533,11 @@ mod tests {
 
     #[simd_test = "sse,mmx"]
     unsafe fn test_mm_sad_pu8() {
-        let a = _mm_setr_pi8(255u8 as i8, 254u8 as i8, 253u8 as i8, 252u8 as i8,
-                             1, 2, 3, 4);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let a = _mm_setr_pi8(
+            255u8 as i8, 254u8 as i8, 253u8 as i8, 252u8 as i8,
+            1, 2, 3, 4,
+        );
         let b = _mm_setr_pi8(0, 0, 0, 0, 2, 1, 2, 1);
         let r = _mm_sad_pu8(a, b);
         assert_eq_m64(r, _mm_setr_pi16(1020, 0, 0, 0));
@@ -602,11 +604,7 @@ mod tests {
         let a = _mm_set1_pi8(9);
         let mask = _mm_setr_pi8(0, 0, 0x80u8 as i8, 0, 0, 0, 0, 0);
         let mut r = _mm_set1_pi8(0);
-        _mm_maskmove_si64(
-            a,
-            mask,
-            &mut r as *mut _ as *mut i8,
-        );
+        _mm_maskmove_si64(a, mask, &mut r as *mut _ as *mut i8);
         let e = _mm_setr_pi8(0, 0, 9, 0, 0, 0, 0, 0);
         assert_eq_m64(r, e);
 
@@ -643,7 +641,8 @@ mod tests {
 
     #[simd_test = "sse,mmx"]
     unsafe fn test_mm_movemask_pi8() {
-        let a = _mm_setr_pi16(0b1000_0000, 0b0100_0000, 0b1000_0000, 0b0100_0000);
+        let a =
+            _mm_setr_pi16(0b1000_0000, 0b0100_0000, 0b1000_0000, 0b0100_0000);
         let r = _mm_movemask_pi8(a);
         assert_eq!(r, 0b10001);
 

@@ -994,9 +994,9 @@ pub unsafe fn _mm_load_ps1(p: *const f32) -> __m128 {
     _mm_load1_ps(p)
 }
 
-/// Load four `f32` values from *aligned* memory into a `__m128`. If the pointer
-/// is not aligned to a 128-bit boundary (16 bytes) a general protection fault
-/// will be triggered (fatal program crash).
+/// Load four `f32` values from *aligned* memory into a `__m128`. If the
+/// pointer is not aligned to a 128-bit boundary (16 bytes) a general
+/// protection fault will be triggered (fatal program crash).
 ///
 /// Use [`_mm_loadu_ps`](fn._mm_loadu_ps.html) for potentially unaligned
 /// memory.
@@ -1031,7 +1031,8 @@ pub unsafe fn _mm_loadu_ps(p: *const f32) -> __m128 {
     dst
 }
 
-/// Load four `f32` values from aligned memory into a `__m128` in reverse order.
+/// Load four `f32` values from aligned memory into a `__m128` in reverse
+/// order.
 ///
 /// If the pointer is not aligned to a 128-bit boundary (16 bytes) a general
 /// protection fault will be triggered (fatal program crash).
@@ -1307,8 +1308,8 @@ pub unsafe fn _mm_getcsr() -> u32 {
 /// check if an operation caused some overflow:
 ///
 /// ```rust,ignore
-/// _MM_SET_EXCEPTION_STATE(0);  // clear all exception flags
-/// // perform calculations
+/// _MM_SET_EXCEPTION_STATE(0); // clear all exception flags
+///                             // perform calculations
 /// if _MM_GET_EXCEPTION_STATE() & _MM_EXCEPT_OVERFLOW != 0 {
 ///     // handle overflow
 /// }
@@ -1331,7 +1332,7 @@ pub unsafe fn _mm_getcsr() -> u32 {
 /// exception, use:
 ///
 /// ```rust,ignore
-/// _mm_setcsr(_mm_getcsr() & !_MM_MASK_UNDERFLOW);  // unmask underflow
+/// _mm_setcsr(_mm_getcsr() & !_MM_MASK_UNDERFLOW); // unmask underflow
 /// exception
 /// ```
 ///
@@ -1374,8 +1375,8 @@ pub unsafe fn _mm_getcsr() -> u32 {
 /// `_MM_GET_FLUSH_ZERO_MODE()` and `_MM_SET_FLUSH_ZERO_MODE()`:
 ///
 /// ```rust,ignore
-/// _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_OFF);  // turn off (default)
-/// _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);  // turn on
+/// _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_OFF); // turn off (default)
+/// _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON); // turn on
 /// ```
 ///
 #[inline]
@@ -2357,14 +2358,9 @@ mod tests {
             let r = _mm_comieq_ss(a, b);
 
             assert_eq!(
-                ee[i],
-                r,
+                ee[i], r,
                 "_mm_comieq_ss({:?}, {:?}) = {}, expected: {} (i={})",
-                a,
-                b,
-                r,
-                ee[i],
-                i
+                a, b, r, ee[i], i
             );
         }
     }
@@ -2383,14 +2379,9 @@ mod tests {
             let r = _mm_comilt_ss(a, b);
 
             assert_eq!(
-                ee[i],
-                r,
+                ee[i], r,
                 "_mm_comilt_ss({:?}, {:?}) = {}, expected: {} (i={})",
-                a,
-                b,
-                r,
-                ee[i],
-                i
+                a, b, r, ee[i], i
             );
         }
     }
@@ -2409,14 +2400,9 @@ mod tests {
             let r = _mm_comile_ss(a, b);
 
             assert_eq!(
-                ee[i],
-                r,
+                ee[i], r,
                 "_mm_comile_ss({:?}, {:?}) = {}, expected: {} (i={})",
-                a,
-                b,
-                r,
-                ee[i],
-                i
+                a, b, r, ee[i], i
             );
         }
     }
@@ -2435,14 +2421,9 @@ mod tests {
             let r = _mm_comige_ss(a, b);
 
             assert_eq!(
-                ee[i],
-                r,
+                ee[i], r,
                 "_mm_comige_ss({:?}, {:?}) = {}, expected: {} (i={})",
-                a,
-                b,
-                r,
-                ee[i],
-                i
+                a, b, r, ee[i], i
             );
         }
     }
@@ -2461,14 +2442,9 @@ mod tests {
             let r = _mm_comineq_ss(a, b);
 
             assert_eq!(
-                ee[i],
-                r,
+                ee[i], r,
                 "_mm_comineq_ss({:?}, {:?}) = {}, expected: {} (i={})",
-                a,
-                b,
-                r,
-                ee[i],
-                i
+                a, b, r, ee[i], i
             );
         }
     }
@@ -2487,14 +2463,9 @@ mod tests {
             let r = _mm_ucomieq_ss(a, b);
 
             assert_eq!(
-                ee[i],
-                r,
+                ee[i], r,
                 "_mm_ucomieq_ss({:?}, {:?}) = {}, expected: {} (i={})",
-                a,
-                b,
-                r,
-                ee[i],
-                i
+                a, b, r, ee[i], i
             );
         }
     }
@@ -2513,14 +2484,9 @@ mod tests {
             let r = _mm_ucomilt_ss(a, b);
 
             assert_eq!(
-                ee[i],
-                r,
+                ee[i], r,
                 "_mm_ucomilt_ss({:?}, {:?}) = {}, expected: {} (i={})",
-                a,
-                b,
-                r,
-                ee[i],
-                i
+                a, b, r, ee[i], i
             );
         }
     }
@@ -2539,14 +2505,9 @@ mod tests {
             let r = _mm_ucomile_ss(a, b);
 
             assert_eq!(
-                ee[i],
-                r,
+                ee[i], r,
                 "_mm_ucomile_ss({:?}, {:?}) = {}, expected: {} (i={})",
-                a,
-                b,
-                r,
-                ee[i],
-                i
+                a, b, r, ee[i], i
             );
         }
     }
@@ -2565,14 +2526,9 @@ mod tests {
             let r = _mm_ucomigt_ss(a, b);
 
             assert_eq!(
-                ee[i],
-                r,
+                ee[i], r,
                 "_mm_ucomigt_ss({:?}, {:?}) = {}, expected: {} (i={})",
-                a,
-                b,
-                r,
-                ee[i],
-                i
+                a, b, r, ee[i], i
             );
         }
     }
@@ -2591,14 +2547,9 @@ mod tests {
             let r = _mm_ucomige_ss(a, b);
 
             assert_eq!(
-                ee[i],
-                r,
+                ee[i], r,
                 "_mm_ucomige_ss({:?}, {:?}) = {}, expected: {} (i={})",
-                a,
-                b,
-                r,
-                ee[i],
-                i
+                a, b, r, ee[i], i
             );
         }
     }
@@ -2617,14 +2568,9 @@ mod tests {
             let r = _mm_ucomineq_ss(a, b);
 
             assert_eq!(
-                ee[i],
-                r,
+                ee[i], r,
                 "_mm_ucomineq_ss({:?}, {:?}) = {}, expected: {} (i={})",
-                a,
-                b,
-                r,
-                ee[i],
-                i
+                a, b, r, ee[i], i
             );
         }
     }
@@ -2652,24 +2598,14 @@ mod tests {
             let s2 = _MM_GET_EXCEPTION_STATE();
 
             assert_eq!(
-                ee[i],
-                r1,
+                ee[i], r1,
                 "_mm_comeq_ss({:?}, {:?}) = {}, expected: {} (i={})",
-                a,
-                b,
-                r1,
-                ee[i],
-                i
+                a, b, r1, ee[i], i
             );
             assert_eq!(
-                ee[i],
-                r2,
+                ee[i], r2,
                 "_mm_ucomeq_ss({:?}, {:?}) = {}, expected: {} (i={})",
-                a,
-                b,
-                r2,
-                ee[i],
-                i
+                a, b, r2, ee[i], i
             );
             assert_eq!(
                 s1,
@@ -2691,19 +2627,16 @@ mod tests {
     #[simd_test = "sse"]
     unsafe fn test_mm_cvtss_si32() {
         let inputs = &[42.0f32, -3.1, 4.0e10, 4.0e-20, NAN, 2147483500.1];
-        let result = &[42i32, -3, i32::min_value(), 0, i32::min_value(), 2147483520];
+        let result =
+            &[42i32, -3, i32::min_value(), 0, i32::min_value(), 2147483520];
         for i in 0..inputs.len() {
             let x = _mm_setr_ps(inputs[i], 1.0, 3.0, 4.0);
             let e = result[i];
             let r = _mm_cvtss_si32(x);
             assert_eq!(
-                e,
-                r,
+                e, r,
                 "TestCase #{} _mm_cvtss_si32({:?}) = {}, expected: {}",
-                i,
-                x,
-                r,
-                e
+                i, x, r, e
             );
         }
     }
@@ -2727,13 +2660,9 @@ mod tests {
             let x = _mm_setr_ps(xi, 1.0, 3.0, 4.0);
             let r = _mm_cvttss_si32(x);
             assert_eq!(
-                e,
-                r,
+                e, r,
                 "TestCase #{} _mm_cvttss_si32({:?}) = {}, expected: {}",
-                i,
-                x,
-                r,
-                e
+                i, x, r, e
             );
         }
     }
@@ -2904,7 +2833,8 @@ mod tests {
         }
 
         let r = _mm_load_ps(p);
-        let e = _mm_add_ps(_mm_setr_ps(1.0, 2.0, 3.0, 4.0), _mm_set1_ps(fixup));
+        let e =
+            _mm_add_ps(_mm_setr_ps(1.0, 2.0, 3.0, 4.0), _mm_set1_ps(fixup));
         assert_eq_m128(r, e);
     }
 
@@ -2934,7 +2864,8 @@ mod tests {
         }
 
         let r = _mm_loadr_ps(p);
-        let e = _mm_add_ps(_mm_setr_ps(4.0, 3.0, 2.0, 1.0), _mm_set1_ps(fixup));
+        let e =
+            _mm_add_ps(_mm_setr_ps(4.0, 3.0, 2.0, 1.0), _mm_set1_ps(fixup));
         assert_eq_m128(r, e);
     }
 
@@ -3146,8 +3077,7 @@ mod tests {
         let exp = _mm_setr_ps(1.1e-41, 0.0, 0.0, 1.0);
         assert_eq_m128(r, exp);
 
-        let underflow =
-            _MM_GET_EXCEPTION_STATE() & _MM_EXCEPT_UNDERFLOW != 0;
+        let underflow = _MM_GET_EXCEPTION_STATE() & _MM_EXCEPT_UNDERFLOW != 0;
         assert_eq!(underflow, true);
     }
 

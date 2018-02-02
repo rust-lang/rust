@@ -1,3 +1,5 @@
+//! RDTSC instructions.
+
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
@@ -22,7 +24,7 @@ pub unsafe fn _rdtsc() -> i64 {
 }
 
 /// Reads the current value of the processor’s time-stamp counter and
-/// the IA32_TSC_AUX MSR.
+/// the `IA32_TSC_AUX MSR`.
 ///
 /// The processor monotonically increments the time-stamp counter MSR
 /// every clock cycle and resets it to 0 whenever the processor is

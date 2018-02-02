@@ -85,7 +85,7 @@
 //!         unsafe { sum_sse2(x) }
 //!     }
 //!     #[cfg(not(all(any(target_arch = "x86_64", target_arch = "x86"),
-//!               target_feature = "sse2")))]
+//!                   target_feature = "sse2")))]
 //!     {
 //!         sum_portable(x)
 //!     }

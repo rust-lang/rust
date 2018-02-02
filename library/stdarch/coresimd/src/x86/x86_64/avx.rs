@@ -1,3 +1,18 @@
+//! Advanced Vector Extensions (AVX)
+//!
+//! The references are:
+//!
+//! - [Intel 64 and IA-32 Architectures Software Developer's Manual Volume 2:
+//! Instruction Set Reference, A-Z][intel64_ref]. - [AMD64 Architecture
+//! Programmer's Manual, Volume 3: General-Purpose and System
+//! Instructions][amd64_ref].
+//!
+//! [Wikipedia][wiki] provides a quick overview of the instructions available.
+//!
+//! [intel64_ref]: http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
+//! [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
+//! [wiki]: https://en.wikipedia.org/wiki/Advanced_Vector_Extensions
+
 use core::mem;
 
 use simd_llvm::*;
