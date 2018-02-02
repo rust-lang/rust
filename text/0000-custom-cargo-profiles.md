@@ -100,6 +100,9 @@ It is not possible to have the same crate compiled in different modes as a build
 giving profiles the same name as possible build targets.
 
 
+When in a workspace, `"*"` will apply to all dependencies that are _not_ workspace members, you can explicitly
+apply things to workspace members with `[profile.dev.overrides.membername]`.
+
 # Drawbacks
 [drawbacks]: #drawbacks
 
