@@ -141,3 +141,14 @@ fn underscores_and_numbers() {
     let __1___2 = 12; //~ERROR Consider a more descriptive name
     let _1_ok= 1;
 }
+
+struct Bar;
+
+impl Bar {
+    fn bar() {
+        let _1 = 1;
+        let ____1 = 1;
+        let __1___2 = 12;
+        let _1_ok= 1;
+    }
+}
