@@ -21,7 +21,9 @@ Grammar(
         "loop",
         "while",
         "if",
-        "match"
+        "match",
+        "const",
+        "static",
     ],
     tokens: [
         "ERROR",

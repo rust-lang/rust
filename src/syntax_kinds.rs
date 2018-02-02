@@ -28,6 +28,8 @@ pub enum SyntaxKind {
     WHILE_KW,
     IF_KW,
     MATCH_KW,
+    CONST_KW,
+    STATIC_KW,
     ERROR,
     IDENT,
     UNDERSCORE,
@@ -137,6 +139,8 @@ impl SyntaxKind {
             WHILE_KW => &SyntaxInfo { name: "WHILE_KW" },
             IF_KW => &SyntaxInfo { name: "IF_KW" },
             MATCH_KW => &SyntaxInfo { name: "MATCH_KW" },
+            CONST_KW => &SyntaxInfo { name: "CONST_KW" },
+            STATIC_KW => &SyntaxInfo { name: "STATIC_KW" },
             ERROR => &SyntaxInfo { name: "ERROR" },
             IDENT => &SyntaxInfo { name: "IDENT" },
             UNDERSCORE => &SyntaxInfo { name: "UNDERSCORE" },
@@ -242,6 +246,8 @@ pub(crate) fn ident_to_keyword(ident: &str) -> Option<SyntaxKind> {
         "while" => Some(WHILE_KW),
         "if" => Some(IF_KW),
         "match" => Some(MATCH_KW),
+        "const" => Some(CONST_KW),
+        "static" => Some(STATIC_KW),
         _ => None,
     }
 }
