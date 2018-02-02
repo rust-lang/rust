@@ -19,17 +19,35 @@ fn item(p: &mut Parser) {
     visibility(p);
     let la = p.nth(1);
     let item_kind = match p.current() {
+        USE_KW => {
+            use_item(p);
+            USE_ITEM
+        }
         EXTERN_KW if la == CRATE_KW => {
             extern_crate_item(p);
             EXTERN_CRATE_ITEM
         }
+        EXTERN_KW => {
+            abi(p);
+            match p.current() {
+                FN_KW => {
+                    fn_item(p);
+                    FN_ITEM
+                }
+                L_CURLY => {
+                    extern_block(p);
+                    EXTERN_BLOCK
+                }
+                _ => {
+                    item.abandon(p);
+                    p.error().message("expected `fn` or `{`").emit();
+                    return;
+                }
+            }
+        }
         MOD_KW => {
             mod_item(p);
             MOD_ITEM
-        }
-        USE_KW => {
-            use_item(p);
-            USE_ITEM
         }
         STRUCT_KW => {
             structs::struct_item(p);
@@ -155,6 +173,12 @@ fn mod_item(p: &mut Parser) {
     }
 }
 
+fn extern_block(p: &mut Parser) {
+    assert!(p.at(L_CURLY));
+    p.bump();
+    p.expect(R_CURLY);
+}
+
 pub(super) fn is_use_tree_start(kind: SyntaxKind) -> bool {
     kind == STAR || kind == L_CURLY
 }
@@ -223,6 +247,17 @@ fn use_item(p: &mut Parser) {
         }
         p.expect(R_CURLY);
     }
+}
+
+fn abi(p: &mut Parser) {
+    assert!(p.at(EXTERN_KW));
+    let abi = p.start();
+    p.bump();
+    match p.current() {
+        STRING | RAW_STRING => p.bump(),
+        _ => (),
+    }
+    abi.complete(p, ABI);
 }
 
 fn fn_item(p: &mut Parser) {
