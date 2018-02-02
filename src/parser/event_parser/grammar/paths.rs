@@ -20,7 +20,11 @@ fn path(p: &mut Parser) {
     path_segment(p, true);
     let mut qual = path.complete(p, PATH);
     loop {
-        if p.at(COLONCOLON) && !items::is_use_tree_start(p.nth(1)) {
+        let use_tree = match p.nth(1) {
+            STAR | L_CURLY => true,
+            _ => false,
+        };
+        if p.at(COLONCOLON) && !use_tree {
             let path = qual.precede(p);
             p.bump();
             path_segment(p, false);
