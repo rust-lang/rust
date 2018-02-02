@@ -1,10 +1,18 @@
 use super::*;
 
-pub(crate) fn is_path_start(p: &Parser) -> bool {
+pub(super) fn is_path_start(p: &Parser) -> bool {
     AnyOf(&[IDENT, SELF_KW, SUPER_KW, COLONCOLON]).is_ahead(p)
 }
 
-pub(crate) fn use_path(p: &mut Parser) {
+pub(super) fn use_path(p: &mut Parser) {
+    path(p)
+}
+
+pub(super) fn type_path(p: &mut Parser) {
+    path(p)
+}
+
+fn path(p: &mut Parser) {
     if !is_path_start(p) {
         return;
     }

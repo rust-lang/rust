@@ -17,6 +17,11 @@ Grammar(
         "super",
         "in",
         "where",
+        "for",
+        "loop",
+        "while",
+        "if",
+        "match"
     ],
     tokens: [
         "ERROR",

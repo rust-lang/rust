@@ -24,7 +24,7 @@ FILE@[0; 95)
   err: `expected item`
     L_CURLY@[20; 21)
     WHITESPACE@[21; 26)
-    IDENT@[26; 28) "if"
+    IF_KW@[26; 28)
     WHITESPACE@[28; 29)
     TRUE_KW@[29; 33)
     WHITESPACE@[33; 34)
