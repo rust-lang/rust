@@ -78,17 +78,20 @@ Grammar(
     ],
     nodes: [
         "FILE",
+
         "STRUCT_ITEM",
         "ENUM_ITEM",
+        "FN_ITEM",
+        "EXTERN_CRATE_ITEM",
+        "MOD_ITEM",
+        "USE_ITEM",
+
+        "EXTERN_BLOCK",
         "ENUM_VARIANT",
         "NAMED_FIELD",
         "POS_FIELD",
-        "FN_ITEM",
-        "EXTERN_CRATE_ITEM",
         "ATTR",
-        "META_ITEM",
-        "MOD_ITEM",
-        "USE_ITEM",
+        "META_ITEM", // not an item actually
         "USE_TREE",
         "PATH",
         "PATH_SEGMENT",
@@ -98,5 +101,6 @@ Grammar(
         "TYPE_PARAM_LIST",
         "LIFETIME_PARAM",
         "TYPE_PARAM",
+        "ABI",
     ]
 )
