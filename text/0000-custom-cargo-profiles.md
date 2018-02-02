@@ -150,4 +150,8 @@ community needs the ability to override profiles.
 
 - Bikeshedding the naming of the keys
 - The priority order when doing resolution
-- The current proposal provides a way to say "special-case all build dependencies, even if they are regular dependencies as well", but not "special-case all build-only dependencies" (which can be solved with a `!build_override` thing, but that's weird and unweildy)
+- The current proposal provides a way to say "special-case all build dependencies, even if they are regular dependencies as well",
+  but not "special-case all build-only dependencies" (which can be solved with a `!build_override` thing, but that's weird and unweildy)
+- It would be nice to have a way for crates to _declare_ that they use a particular
+  panic mode (something like `allow-panic=all` vs `allow-panic=abort`/`allow_panic=unwind`, with `all` as default)
+  so that they can assume a panic mode and cargo will refuse to compile them with anything else
