@@ -593,8 +593,30 @@ impl CodeMap {
         }
     }
 
-    /// Given a `Span`, try to get a shorter span ending just after the first
-    /// occurrence of `char` `c`.
+    /// Given a `Span`, get a new `Span` covering the first token and all its trailing whitespace or
+    /// the original `Span`.
+    ///
+    /// If `sp` points to `"let mut x"`, then a span pointing at `"let "` will be returned.
+    pub fn span_until_non_whitespace(&self, sp: Span) -> Span {
+        if let Ok(snippet) = self.span_to_snippet(sp) {
+            let mut offset = 0;
+            // get the bytes width of all the non-whitespace characters
+            for c in snippet.chars().take_while(|c| !c.is_whitespace()) {
+                offset += c.len_utf8();
+            }
+            // get the bytes width of all the whitespace characters after that
+            for c in snippet[offset..].chars().take_while(|c| c.is_whitespace()) {
+                offset += c.len_utf8();
+            }
+            if offset > 1 {
+                return sp.with_hi(BytePos(sp.lo().0 + offset as u32));
+            }
+        }
+        sp
+    }
+
+    /// Given a `Span`, try to get a shorter span ending just after the first occurrence of `char`
+    /// `c`.
     pub fn span_through_char(&self, sp: Span, c: char) -> Span {
         if let Ok(snippet) = self.span_to_snippet(sp) {
             if let Some(offset) = snippet.find(c) {
