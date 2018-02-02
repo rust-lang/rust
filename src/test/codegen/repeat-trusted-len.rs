@@ -26,6 +26,6 @@ pub fn repeat_take_collect() -> Vec<u8> {
 #[no_mangle]
 pub fn range_from_take_collect() -> Vec<u8> {
 // CHECK: %[[SPLATINSERT:.*]] = insertelement <{{[0-9]+}} x i8> undef, i8 %{{.*}}, i32 0
-// CHECK: %{{.*}} = shufflevector <[[WIDTH:[0-9]+]] x i8> %[[SPLATINSERT]], <[[WIDTH]] x i8> undef, <[[WIDTH]] x i32> zeroinitializer
+// CHECK-NEXT: %{{.*}} = shufflevector <[[WIDTH:[0-9]+]] x i8> %[[SPLATINSERT]], <[[WIDTH]] x i8> undef, <[[WIDTH]] x i32> zeroinitializer
     (0..).take(100000).collect()
 }
