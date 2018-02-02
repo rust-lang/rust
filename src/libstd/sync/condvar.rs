@@ -220,8 +220,9 @@ impl Condvar {
     }
 
     /// Blocks the current thread until this condition variable receives a
-    /// notification and the required condition is met. There are no spurious
-    /// wakeups when calling this.
+    /// notification and the required condition is met. Spurious wakeups are
+    /// ignored and this function will only return once the condition has been
+    /// met.
     ///
     /// This function will atomically unlock the mutex specified (represented by
     /// `guard`) and block the current thread. This means that any calls
@@ -260,14 +261,14 @@ impl Condvar {
     /// // Wait for the thread to start up.
     /// let &(ref lock, ref cvar) = &*pair;
     /// // As long as the value inside the `Mutex` is false, we wait.
-    /// cvar.wait_until(lock.lock().unwrap(), |ref started| { started });
+    /// cvar.wait_until(lock.lock().unwrap(), |started| { started });
     /// ```
     #[stable(feature = "wait_until", since = "1.24")]
     pub fn wait_until<'a, T, F>(&self, mut guard: MutexGuard<'a, T>,
                                 mut condition: F)
                                 -> LockResult<MutexGuard<'a, T>>
-                                where F: FnMut(&T) -> bool {
-        while !condition(&*guard) {
+                                where F: FnMut(&mut T) -> bool {
+        while !condition(&mut *guard) {
             guard = self.wait(guard)?;
         }
         Ok(guard)
@@ -418,7 +419,8 @@ impl Condvar {
     }
 
     /// Waits on this condition variable for a notification, timing out after a
-    /// specified duration.
+    /// specified duration.  Spurious wakes will not cause this function to
+    /// return.
     ///
     /// The semantics of this function are equivalent to [`wait_until`] except
     /// that the thread will be blocked for roughly no longer than `dur`. This
@@ -472,10 +474,10 @@ impl Condvar {
     pub fn wait_timeout_until<'a, T, F>(&self, mut guard: MutexGuard<'a, T>,
                                         mut dur: Duration, mut condition: F)
                                         -> LockResult<(MutexGuard<'a, T>, WaitTimeoutResult)>
-                                        where F: FnMut(&T) -> bool {
+                                        where F: FnMut(&mut T) -> bool {
         let timed_out = Duration::new(0, 0);
         loop {
-            if !condition(&*guard) {
+            if !condition(&mut *guard) {
                 return Ok((guard, WaitTimeoutResult(false)));
             } else if dur == timed_out {
                 return Ok((guard, WaitTimeoutResult(true)));
