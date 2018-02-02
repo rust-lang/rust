@@ -972,7 +972,8 @@ impl<'a, I: FusedIterator + ?Sized> FusedIterator for &'a mut I {}
 /// The upper bound must only be [`None`] if the actual iterator length is
 /// larger than [`usize::MAX`].
 ///
-/// The iterator must produce exactly the number of elements it reported.
+/// The iterator must produce exactly the number of elements it reported
+/// or diverge before reaching the end.
 ///
 /// # Safety
 ///
