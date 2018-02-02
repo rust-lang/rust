@@ -648,6 +648,7 @@ where
         ],
         msg: help_msg,
         show_code_when_inline: true,
+        approximate: false,
     };
     db.suggestions.push(sugg);
 }
