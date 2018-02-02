@@ -478,7 +478,7 @@ impl Condvar {
             if !condition(&*guard) {
                 return Ok((guard, WaitTimeoutResult(false)));
             } else if dur == timed_out {
-                return Ok((guard, WaitTimeoutResult(false)));
+                return Ok((guard, WaitTimeoutResult(true)));
             }
             let wait_timer = Instant::now();
             let wait_result = self.wait_timeout(guard, dur)?;
