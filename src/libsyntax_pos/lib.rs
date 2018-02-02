@@ -347,13 +347,24 @@ impl Span {
 
     /// Return a `Span` that would enclose both `self` and `end`.
     pub fn to(self, end: Span) -> Span {
-        let span = self.data();
-        let end = end.data();
+        let span_data = self.data();
+        let end_data = end.data();
+        // FIXME(jseyfried): self.ctxt should always equal end.ctxt here (c.f. issue #23480)
+        // Return the macro span on its own to avoid weird diagnostic output. It is preferable to
+        // have an incomplete span than a completely nonsensical one.
+        if span_data.ctxt != end_data.ctxt {
+            if span_data.ctxt == SyntaxContext::empty() {
+                return end;
+            } else if end_data.ctxt == SyntaxContext::empty() {
+                return self;
+            }
+            // both span fall within a macro
+            // FIXME(estebank) check if it is the *same* macro
+        }
         Span::new(
-            cmp::min(span.lo, end.lo),
-            cmp::max(span.hi, end.hi),
-            // FIXME(jseyfried): self.ctxt should always equal end.ctxt here (c.f. issue #23480)
-            if span.ctxt == SyntaxContext::empty() { end.ctxt } else { span.ctxt },
+            cmp::min(span_data.lo, end_data.lo),
+            cmp::max(span_data.hi, end_data.hi),
+            if span_data.ctxt == SyntaxContext::empty() { end_data.ctxt } else { span_data.ctxt },
         )
     }
 
