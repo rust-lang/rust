@@ -64,10 +64,8 @@ opt-level = 2
 opt-level = 3
 ```
 
-Custom profiles _can_ be listed in a `.cargo/config`, however the user is responsible for
-clearing up build directories if the profile changes. That is, it is undefined behavior
-to run `cargo build --profile foo` if `foo` has been defined in `.cargo/config` and the
-profile has been edited since the last time you ran `cargo build --profile foo`.
+Custom profiles _can_ be listed in a `.cargo/config`. When building cargo will calculate
+the current profile, and if it has changed, it will do a fresh/clean build.
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
