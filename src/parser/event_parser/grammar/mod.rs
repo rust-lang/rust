@@ -7,6 +7,7 @@ mod attributes;
 mod expressions;
 mod types;
 mod paths;
+mod type_params;
 
 pub(crate) fn file(p: &mut Parser) {
     let file = p.start();
