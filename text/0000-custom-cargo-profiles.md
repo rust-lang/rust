@@ -112,6 +112,9 @@ giving profiles the same name as possible build targets.
 When in a workspace, `"*"` will apply to all dependencies that are _not_ workspace members, you can explicitly
 apply things to workspace members with `[profile.dev.overrides.membername]`.
 
+The `panic` key cannot be specified in an override; only in the top level of a profile. Rust does not allow
+the linking together of crates with different `panic` settings.
+
 # Drawbacks
 [drawbacks]: #drawbacks
 
