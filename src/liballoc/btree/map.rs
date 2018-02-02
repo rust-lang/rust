@@ -17,7 +17,6 @@ use core::ops::Index;
 use core::{fmt, intrinsics, mem, ptr};
 
 use borrow::Borrow;
-use Bound::{Excluded, Included, Unbounded};
 use range::RangeArgument;
 
 use super::node::{self, Handle, NodeRef, marker};
@@ -792,9 +791,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
     pub fn range<T: ?Sized, R>(&self, range: R) -> Range<K, V>
         where T: Ord, K: Borrow<T>, R: RangeArgument<T>
     {
-        let root1 = self.root.as_ref();
-        let root2 = self.root.as_ref();
-        let (f, b) = range_search(root1, root2, range);
+        let root = self.root.as_ref();
+        let (f, b) = root.range_search(range);
 
         Range { front: f, back: b}
     }
@@ -832,9 +830,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
     pub fn range_mut<T: ?Sized, R>(&mut self, range: R) -> RangeMut<K, V>
         where T: Ord, K: Borrow<T>, R: RangeArgument<T>
     {
-        let root1 = self.root.as_mut();
-        let root2 = unsafe { ptr::read(&root1) };
-        let (f, b) = range_search(root1, root2, range);
+        let root = self.root.as_mut();
+        let (f, b) = root.range_search(range);
 
         RangeMut {
             front: f,
@@ -883,7 +880,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     }
 
     fn from_sorted_iter<I: Iterator<Item = (K, V)>>(&mut self, iter: I) {
-        let mut cur_node = last_leaf_edge(self.root.as_mut()).into_node();
+        let mut cur_node = self.root.as_mut().last_leaf_edge().into_node();
         // Iterate through all key-value pairs, pushing them into nodes at the right level.
         for (key, value) in iter {
             // Try to push key-value pair into the current leaf node.
@@ -923,7 +920,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
                 open_node.push(key, value, right_tree);
 
                 // Go down to the right-most leaf again.
-                cur_node = last_leaf_edge(open_node.forget_type()).into_node();
+                cur_node = open_node.forget_type().last_leaf_edge().into_node();
             }
 
             self.length += 1;
@@ -1250,8 +1247,8 @@ impl<K, V> IntoIterator for BTreeMap<K, V> {
         mem::forget(self);
 
         IntoIter {
-            front: first_leaf_edge(root1),
-            back: last_leaf_edge(root2),
+            front: root1.first_leaf_edge(),
+            back: root2.last_leaf_edge(),
             length: len,
         }
     }
@@ -1304,7 +1301,7 @@ impl<K, V> Iterator for IntoIter<K, V> {
                 Ok(kv) => {
                     let k = unsafe { ptr::read(kv.reborrow().into_kv().0) };
                     let v = unsafe { ptr::read(kv.reborrow().into_kv().1) };
-                    self.front = first_leaf_edge(kv.right_edge().descend());
+                    self.front = kv.right_edge().descend().first_leaf_edge();
                     return Some((k, v));
                 }
                 Err(last_edge) => unsafe {
@@ -1347,7 +1344,7 @@ impl<K, V> DoubleEndedIterator for IntoIter<K, V> {
                 Ok(kv) => {
                     let k = unsafe { ptr::read(kv.reborrow().into_kv().0) };
                     let v = unsafe { ptr::read(kv.reborrow().into_kv().1) };
-                    self.back = last_leaf_edge(kv.left_edge().descend());
+                    self.back = kv.left_edge().descend().last_leaf_edge();
                     return Some((k, v));
                 }
                 Err(last_edge) => unsafe {
@@ -1506,7 +1503,7 @@ impl<'a, K, V> Range<'a, K, V> {
             match cur_handle.right_kv() {
                 Ok(kv) => {
                     let ret = kv.into_kv();
-                    self.front = first_leaf_edge(kv.right_edge().descend());
+                    self.front = kv.right_edge().descend().first_leaf_edge();
                     return ret;
                 }
                 Err(last_edge) => {
@@ -1549,7 +1546,7 @@ impl<'a, K, V> Range<'a, K, V> {
             match cur_handle.left_kv() {
                 Ok(kv) => {
                     let ret = kv.into_kv();
-                    self.back = last_leaf_edge(kv.left_edge().descend());
+                    self.back = kv.left_edge().descend().last_leaf_edge();
                     return ret;
                 }
                 Err(last_edge) => {
@@ -1607,7 +1604,7 @@ impl<'a, K, V> RangeMut<'a, K, V> {
             match cur_handle.right_kv() {
                 Ok(kv) => {
                     let (k, v) = ptr::read(&kv).into_kv_mut();
-                    self.front = first_leaf_edge(kv.right_edge().descend());
+                    self.front = kv.right_edge().descend().first_leaf_edge();
                     return (k, v);
                 }
                 Err(last_edge) => {
@@ -1653,7 +1650,7 @@ impl<'a, K, V> RangeMut<'a, K, V> {
             match cur_handle.left_kv() {
                 Ok(kv) => {
                     let (k, v) = ptr::read(&kv).into_kv_mut();
-                    self.back = last_leaf_edge(kv.left_edge().descend());
+                    self.back = kv.left_edge().descend().last_leaf_edge();
                     return (k, v);
                 }
                 Err(last_edge) => {
@@ -1759,106 +1756,6 @@ impl<'a, K: Ord, Q: ?Sized, V> Index<&'a Q> for BTreeMap<K, V>
     }
 }
 
-fn first_leaf_edge<BorrowType, K, V>
-    (mut node: NodeRef<BorrowType, K, V, marker::LeafOrInternal>)
-     -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
-    loop {
-        match node.force() {
-            Leaf(leaf) => return leaf.first_edge(),
-            Internal(internal) => {
-                node = internal.first_edge().descend();
-            }
-        }
-    }
-}
-
-fn last_leaf_edge<BorrowType, K, V>
-    (mut node: NodeRef<BorrowType, K, V, marker::LeafOrInternal>)
-     -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
-    loop {
-        match node.force() {
-            Leaf(leaf) => return leaf.last_edge(),
-            Internal(internal) => {
-                node = internal.last_edge().descend();
-            }
-        }
-    }
-}
-
-fn range_search<BorrowType, K, V, Q: ?Sized, R: RangeArgument<Q>>(
-    root1: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
-    root2: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
-    range: R
-)-> (Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
-     Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>)
-        where Q: Ord, K: Borrow<Q>
-{
-    match (range.start(), range.end()) {
-        (Excluded(s), Excluded(e)) if s==e =>
-            panic!("range start and end are equal and excluded in BTreeMap"),
-        (Included(s), Included(e)) |
-        (Included(s), Excluded(e)) |
-        (Excluded(s), Included(e)) |
-        (Excluded(s), Excluded(e)) if s>e =>
-            panic!("range start is greater than range end in BTreeMap"),
-        _ => {},
-    };
-
-    let mut min_node = root1;
-    let mut max_node = root2;
-    let mut min_found = false;
-    let mut max_found = false;
-    let mut diverged = false;
-
-    loop {
-        let min_edge = match (min_found, range.start()) {
-            (false, Included(key)) => match search::search_linear(&min_node, key) {
-                (i, true) => { min_found = true; i },
-                (i, false) => i,
-            },
-            (false, Excluded(key)) => match search::search_linear(&min_node, key) {
-                (i, true) => { min_found = true; i+1 },
-                (i, false) => i,
-            },
-            (_, Unbounded) => 0,
-            (true, Included(_)) => min_node.keys().len(),
-            (true, Excluded(_)) => 0,
-        };
-
-        let max_edge = match (max_found, range.end()) {
-            (false, Included(key)) => match search::search_linear(&max_node, key) {
-                (i, true) => { max_found = true; i+1 },
-                (i, false) => i,
-            },
-            (false, Excluded(key)) => match search::search_linear(&max_node, key) {
-                (i, true) => { max_found = true; i },
-                (i, false) => i,
-            },
-            (_, Unbounded) => max_node.keys().len(),
-            (true, Included(_)) => 0,
-            (true, Excluded(_)) => max_node.keys().len(),
-        };
-
-        if !diverged {
-            if max_edge < min_edge { panic!("Ord is ill-defined in BTreeMap range") }
-            if min_edge != max_edge { diverged = true; }
-        }
-
-        let front = Handle::new_edge(min_node, min_edge);
-        let back = Handle::new_edge(max_node, max_edge);
-        match (front.force(), back.force()) {
-            (Leaf(f), Leaf(b)) => {
-                return (f, b);
-            },
-            (Internal(min_int), Internal(max_int)) => {
-                min_node = min_int.descend();
-                max_node = max_int.descend();
-            },
-            _ => unreachable!("BTreeMap has different depths"),
-        };
-    }
-}
-
 #[inline(always)]
 unsafe fn unwrap_unchecked<T>(val: Option<T>) -> T {
     val.unwrap_or_else(|| {
@@ -1896,8 +1793,8 @@ impl<K, V> BTreeMap<K, V> {
     pub fn iter(&self) -> Iter<K, V> {
         Iter {
             range: Range {
-                front: first_leaf_edge(self.root.as_ref()),
-                back: last_leaf_edge(self.root.as_ref()),
+                front: self.root.as_ref().first_leaf_edge(),
+                back: self.root.as_ref().last_leaf_edge(),
             },
             length: self.length,
         }
@@ -1930,8 +1827,8 @@ impl<K, V> BTreeMap<K, V> {
         let root2 = unsafe { ptr::read(&root1) };
         IterMut {
             range: RangeMut {
-                front: first_leaf_edge(root1),
-                back: last_leaf_edge(root2),
+                front: root1.first_leaf_edge(),
+                back: root2.last_leaf_edge(),
                 _marker: PhantomData,
             },
             length: self.length,
@@ -2140,6 +2037,68 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
             },
             Vacant(entry) => Vacant(entry),
         }
+    }
+
+    /// Gives access to the preceding and succeeding elements of an entry
+    /// in the form of two ranges.
+    ///
+    /// # Example
+    /// ```
+    /// #![feature(btreemap_entry_env)]
+    /// use std::collections::BTreeMap;
+    /// use std::iter::FromIterator;
+    ///
+    /// let mut map: BTreeMap<usize, usize> = BTreeMap::from_iter((0..100).enumerate());
+    ///
+    /// map.entry(42)
+    ///    .environment(|entry, (pred, succ)| {
+    ///         for e in pred { *e.1 = 0; }
+    ///         for e in succ { *e.1 = 100; }
+    ///    });
+    ///
+    ///    for e in map.iter() {
+    ///        assert_eq!(*e.1, if *e.0 < 42 { 0 } else if *e.0 > 42 { 100 } else { 42 });
+    ///    }
+    /// ```
+    #[unstable(feature = "btreemap_entry_env", issue = "0")]
+    pub fn environment<F>(mut self, mut f: F) -> Self
+        where F: FnMut(&mut Self, (RangeMut<K, V>, RangeMut<K, V>))
+    {
+        let ((first, last), (pred, succ)) = match &mut self {
+            &mut Occupied(ref mut entry) => {
+                let mut node = unsafe { ptr::read(&entry.handle).into_node() };
+                let root = unsafe { ptr::read(&node).into_root_mut().as_mut() };
+
+                let outer = root.first_and_last_leaf_edge();
+                let inner = node.env_search(entry.key());
+
+                (outer, inner)
+            },
+            &mut Vacant(ref mut entry) => {
+                let mut node = unsafe { ptr::read(&entry.handle).into_node() };
+                let root = node.into_root_mut().as_mut();
+
+                let outer = root.first_and_last_leaf_edge();
+                let inner = unsafe { (ptr::read(&entry.handle), ptr::read(&entry.handle)) };
+
+                (outer, inner)
+            }
+        };
+
+        let before_entry = RangeMut {
+            front: first,
+            back: pred,
+            _marker: PhantomData,
+        };
+
+        let after_entry = RangeMut {
+            front: succ,
+            back: last,
+            _marker: PhantomData,
+        };
+
+        f(&mut self, (before_entry, after_entry));
+        self
     }
 }
 
@@ -2427,7 +2386,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
                 let key_loc = internal.kv_mut().0 as *mut K;
                 let val_loc = internal.kv_mut().1 as *mut V;
 
-                let to_remove = first_leaf_edge(internal.right_edge().descend()).right_kv().ok();
+                let to_remove = internal.right_edge().descend().first_leaf_edge().right_kv().ok();
                 let to_remove = unsafe { unwrap_unchecked(to_remove) };
 
                 let (hole, key, val) = to_remove.remove();
