@@ -832,6 +832,93 @@ pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
     ptr::read(src as *const T as *const U)
 }
 
+/// Copies a value while making no assumptions about the result.
+///
+/// This essentially tells the compiler that the value may have changed since it
+/// was last read, and that it should not make any assumptions or or perform
+/// optimisations on the returned value based upon previous computations
+/// involving `x`.
+///
+/// Usually, this is done when `x` is located in memory that may be modified by
+/// something other than the running program, like an I/O device or the
+/// operating system.
+///
+/// However, this function can also be used to force the compiler to determine
+/// the value of `x` before the copy can be used, preventing optimisations
+/// across the boundaries of this function. This is very useful in benchmarking
+/// when you want to ensure that a specific part of a computation is run
+/// completely and not optimised out.
+///
+/// Note that this does not always guarantee that the value of `x` is computed,
+/// or that a copy is made; if the final computation involving the copy is
+/// unused, this function call may still be optimised out.
+#[inline]
+#[unstable(feature = "safe_volatile", issue = "0")]
+pub fn copy_opaque<T: Copy>(x: &T) -> T {
+    // this is okay because `T` is `Copy` and doesn't implement `Drop`
+    unsafe { ptr::read_volatile(x as *const T) }
+}
+
+/// Moves a value while making no assumptions about the result.
+///
+/// This is a version of `copy_opaque` that moves the value instead of copying
+/// it. This can also be used to force the compiler to determine the value of
+/// `x` before continuing, preventing optimisations across the boundaries of
+/// this function. This is very useful in benchmarking when you want to ensure
+/// that a specific part of a computation is run completely and not optimised
+/// out.
+///
+/// Note that this does not always guarantee that the value of `x` is computed;
+/// if the final computation involving the value is unused, this function call
+/// may still be optimised out.
+#[inline]
+#[unstable(feature = "safe_volatile", issue = "0")]
+pub fn move_opaque<T>(x: T) -> T {
+    let y = unsafe { ptr::read_volatile(&x as *const T) };
+
+    // if we don't do this, `x` will be dropped twice
+    forget(x);
+
+    // return the volatile version of the value
+    y
+}
+
+/// Replaces a value while guaranteeing that it is written.
+///
+/// This essentially tells the compiler that the value in `dest` may have been
+/// changed and be read in the future, and that it must compute the value of
+/// `dest` and `src`, and write `src` into `dest`.
+///
+/// Usually, this is done when `dest` is located in memory that may be read by
+/// something other than the running program, like an I/O device or the
+/// operating system.
+///
+/// However, this function can also be used to force the compiler to determine
+/// the value of `dest` and `src` before the original value of `dest` can be
+/// used, preventing optimisations across the boundaries of this function. This
+/// is very useful in benchmarking when you want to ensure that a specific part
+/// of a computation is run completely and not optimised out.
+#[inline]
+#[unstable(feature = "safe_volatile", issue = "0")]
+pub fn replace_opaque<T>(dest: &mut T, src: T) -> T {
+    let temp = unsafe { ptr::read_volatile(dest) };
+    unsafe { ptr::write_volatile(dest, src); }
+    temp
+}
+
+/// Drops a value while guaranteeing that it was computed.
+///
+/// This is very useful in benchmarking when you want to ensure that a specific
+/// computation is run completely and not optimised out.
+#[inline]
+#[unstable(feature = "safe_volatile", issue = "0")]
+pub fn drop_opaque<T>(x: T) {
+    // move `x` into `y`, which will be dropped
+    let mut y = unsafe { uninitialized() };
+    unsafe { ptr::write_volatile(&mut y, x); }
+}
+
+
 /// Opaque type representing the discriminant of an enum.
 ///
 /// See the `discriminant` function in this module for more information.
