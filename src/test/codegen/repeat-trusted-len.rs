@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // compile-flags: -O
+// ignore-tidy-linelength
 
 #![crate_type = "lib"]
 
