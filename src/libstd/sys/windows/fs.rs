@@ -611,9 +611,11 @@ fn remove_dir_all_recursive(path: &Path) -> io::Result<()> {
         let child = child?;
         let child_type = child.file_type()?;
         if child_type.is_dir() {
-            remove_dir_all_recursive(&child.path())?;
-        } else if child_type.is_symlink_dir() {
-            rmdir(&child.path())?;
+            if child_type.is_reparse_point() {
+                rmdir(&child.path())?;
+            } else {
+                remove_dir_all_recursive(&child.path())?;
+            }
         } else {
             unlink(&child.path())?;
         }
