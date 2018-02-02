@@ -705,9 +705,11 @@ impl<'a> CrateLoader<'a> {
             // Sanitizers can only be used on some tested platforms with
             // executables linked to `std`
             const ASAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu",
-                                                      "x86_64-apple-darwin"];
+                                                      "x86_64-apple-darwin",
+                                                      "x86_64-unknown-freebsd"];
             const TSAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu",
-                                                      "x86_64-apple-darwin"];
+                                                      "x86_64-apple-darwin",
+                                                      "x86_64-unknown-freebsd"];
             const LSAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu"];
             const MSAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu"];
 
