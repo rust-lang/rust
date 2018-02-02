@@ -46,6 +46,10 @@ fn item(p: &mut Parser) {
                 }
             }
         }
+        STATIC_KW => {
+            static_item(p);
+            STATIC_ITEM
+        }
         MOD_KW => {
             mod_item(p);
             MOD_ITEM
@@ -92,6 +96,24 @@ fn extern_crate_item(p: &mut Parser) {
     p.expect(IDENT) && alias(p) && p.expect(SEMI);
 }
 
+fn extern_block(p: &mut Parser) {
+    assert!(p.at(L_CURLY));
+    p.bump();
+    p.expect(R_CURLY);
+}
+
+fn static_item(p: &mut Parser) {
+    assert!(p.at(STATIC_KW));
+    p.bump();
+    p.eat(MUT_KW);
+    p.expect(IDENT);
+    p.expect(COLON);
+    types::type_ref(p);
+    p.expect(EQ);
+    expressions::expr(p);
+    p.expect(SEMI);
+}
+
 fn mod_item(p: &mut Parser) {
     assert!(p.at(MOD_KW));
     p.bump();
@@ -102,12 +124,6 @@ fn mod_item(p: &mut Parser) {
             p.expect(R_CURLY);
         }
     }
-}
-
-fn extern_block(p: &mut Parser) {
-    assert!(p.at(L_CURLY));
-    p.bump();
-    p.expect(R_CURLY);
 }
 
 fn abi(p: &mut Parser) {

@@ -24,6 +24,7 @@ Grammar(
         "match",
         "const",
         "static",
+        "mut",
     ],
     tokens: [
         "ERROR",
@@ -87,6 +88,7 @@ Grammar(
         "EXTERN_CRATE_ITEM",
         "MOD_ITEM",
         "USE_ITEM",
+        "STATIC_ITEM",
 
         "EXTERN_BLOCK",
         "ENUM_VARIANT",
