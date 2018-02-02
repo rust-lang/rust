@@ -1042,11 +1042,20 @@ pub fn check_ast_crate(sess: &Session, krate: &ast::Crate) {
     // Put the lint store levels and passes back in the session.
     cx.lint_sess.restore(&sess.lint_store);
 
-    // Emit all buffered lints from early on in the session now that we've
-    // calculated the lint levels for all AST nodes.
-    for (_id, lints) in cx.buffered.map {
-        for early_lint in lints {
-            span_bug!(early_lint.span, "failed to process buffered lint here");
+    // All of the buffered lints should have been emitted at this point.
+    // If not, that means that we somehow buffered a lint for a node id
+    // that was not lint-checked (perhaps it doesn't exist?). This is a bug.
+    //
+    // Rustdoc runs everybody-loops before the early lints and removes
+    // function bodies, so it's totally possible for linted
+    // node ids to not exist (e.g. macros defined within functions for the
+    // unused_macro lint) anymore. So we only run this check
+    // when we're not in rustdoc mode. (see issue #47639)
+    if !sess.opts.actually_rustdoc {
+        for (_id, lints) in cx.buffered.map {
+            for early_lint in lints {
+                span_bug!(early_lint.span, "failed to process buffered lint here");
+            }
         }
     }
 }
