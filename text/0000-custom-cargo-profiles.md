@@ -70,8 +70,12 @@ the current profile, and if it has changed, it will do a fresh/clean build.
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-In case of overlapping rules, the last mentioned rule will be applied. This applies to build scripts
-as well; if, for example, you have the following profile:
+In case of overlapping rules, the precedence order is that `overrides.foo`
+will win over `overrides."*"` and both will win over `build_override`.
+
+So if you specify `build_override`
+it will not affect the compilation of any dependencies which are both
+build-dependencies and regular dependencies. If you have
 
 ```toml
 [profile.dev]
@@ -81,7 +85,7 @@ opt-level = 3
 ```
 
 and the `image` crate is _both_ a build dependency and a regular dependency; it will be compiled
-as per the `build_override` rule. If you wish it to be compiled as per the original rule,
+as per the top level `opt-level=0` rule. If you wish it to be compiled as per the build_override rule,
 use a normal override rule:
 
 ```toml
@@ -90,15 +94,20 @@ opt-level = 0
 [profile.dev.build_override]
 opt-level = 3
 [profile.dev.overrides.image]
-opt-level = 0
+opt-level = 3
 ```
 
-It is not possible to have the same crate compiled in different modes as a build dependency and a regular dependency within the same profile.
+This clash may not occur whilst cross compiling since two separate versions of the crate will be compiled.
+(This RFC leaves the decision of whether or not to handle this up to the implementors)
 
+It is not possible to have the same crate compiled in different modes as a build dependency and a
+regular dependency within the same profile when not cross compiling. (This is a current limitation
+in Cargo, but it would be nice if we could fix this)
+
+Put succinctly, `build_override` is not able to affect anything compiled into the final binary.
 
 `cargo build --target foo` will fail to run if `foo` clashes with the name of a profile; so avoid
 giving profiles the same name as possible build targets.
-
 
 When in a workspace, `"*"` will apply to all dependencies that are _not_ workspace members, you can explicitly
 apply things to workspace members with `[profile.dev.overrides.membername]`.
@@ -138,5 +147,4 @@ community needs the ability to override profiles.
 
 - Bikeshedding the naming of the keys
 - The priority order when doing resolution
-- Should `build_override` itself take an `overrides.foo` key?
 - The current proposal provides a way to say "special-case all build dependencies, even if they are regular dependencies as well", but not "special-case all build-only dependencies" (which can be solved with a `!build_override` thing, but that's weird and unweildy)
