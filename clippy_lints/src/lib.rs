@@ -89,7 +89,6 @@ pub mod doc;
 pub mod double_comparison;
 pub mod double_parens;
 pub mod drop_forget_ref;
-pub mod question_mark;
 pub mod else_if_without_else;
 pub mod empty_enum;
 pub mod entry;
@@ -150,6 +149,7 @@ pub mod partialeq_ne_impl;
 pub mod precedence;
 pub mod print;
 pub mod ptr;
+pub mod question_mark;
 pub mod ranges;
 pub mod reference;
 pub mod regex;
@@ -587,6 +587,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         ptr::CMP_NULL,
         ptr::MUT_FROM_REF,
         ptr::PTR_ARG,
+        question_mark::QUESTION_MARK,
         ranges::ITERATOR_STEP_BY_ZERO,
         ranges::RANGE_MINUS_ONE,
         ranges::RANGE_ZIP_WITH_LEN,

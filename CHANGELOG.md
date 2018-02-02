@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.185
+* Rustup to *rustc 1.25.0-nightly (56733bc9f 2018-02-01)*
+* New lint: [`question_mark`]
+
 ## 0.0.184
 * Rustup to *rustc 1.25.0-nightly (90eb44a58 2018-01-29)*
 * New lints: [`double_comparisons`], [`empty_line_after_outer_attr`]
@@ -690,6 +694,7 @@ All notable changes to this project will be documented in this file.
 [`println_empty_string`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#println_empty_string
 [`ptr_arg`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#ptr_arg
 [`pub_enum_variant_names`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#pub_enum_variant_names
+[`question_mark`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#question_mark
 [`range_minus_one`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#range_minus_one
 [`range_plus_one`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#range_plus_one
 [`range_step_by_zero`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#range_step_by_zero
