@@ -15,7 +15,6 @@ use dataflow::move_paths::{HasMoveData, MoveData};
 use rustc::mir::{BasicBlock, Location, Mir};
 use rustc::mir::Local;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
-//use rustc::ty::subst::Kind;
 use rustc::traits;
 use rustc::infer::InferOk;
 use rustc::util::common::ErrorReported;
@@ -243,7 +242,6 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
 
                     final_obligations.extend(obligations);
 
-                    //let ty = self.cx.normalize(&ty, location);
                     let ty = cx.infcx.resolve_type_and_region_vars_if_possible(&ty);
                     match ty.sty {
                         ty::TyParam(..) | ty::TyProjection(..) | ty::TyAnon(..) => {
