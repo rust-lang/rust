@@ -15,6 +15,12 @@
 //! only supports one operation, creating a module from LLVM's assembly format
 //! and then serializing that module to a wasm module.
 
+#![deny(warnings)]
+
+// We are the compiler, so we can use anything for FFI.
+// Don't do this at home :)
+#![allow(improper_ctypes)]
+
 extern crate libc;
 
 use std::slice;
