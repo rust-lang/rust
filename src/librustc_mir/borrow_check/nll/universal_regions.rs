@@ -125,7 +125,7 @@ pub enum DefiningTy<'tcx> {
     /// The MIR represents some form of constant. The signature then
     /// is that it has no inputs and a single return value, which is
     /// the value of the constant.
-    Const(Ty<'tcx>),
+    Const(DefId, &'tcx Substs<'tcx>),
 }
 
 #[derive(Debug)]
@@ -534,34 +534,42 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
     /// see `DefiningTy` for details.
     fn defining_ty(&self) -> DefiningTy<'tcx> {
         let tcx = self.infcx.tcx;
-
         let closure_base_def_id = tcx.closure_base_def_id(self.mir_def_id);
 
-        let defining_ty = if self.mir_def_id == closure_base_def_id {
-            tcx.type_of(closure_base_def_id)
-        } else {
-            let tables = tcx.typeck_tables_of(self.mir_def_id);
-            tables.node_id_to_type(self.mir_hir_id)
-        };
-
-        let defining_ty = self.infcx
-            .replace_free_regions_with_nll_infer_vars(FR, &defining_ty);
-
         match tcx.hir.body_owner_kind(self.mir_node_id) {
-            BodyOwnerKind::Fn => match defining_ty.sty {
-                ty::TyClosure(def_id, substs) => DefiningTy::Closure(def_id, substs),
-                ty::TyGenerator(def_id, substs, interior) => {
-                    DefiningTy::Generator(def_id, substs, interior)
+            BodyOwnerKind::Fn => {
+                let defining_ty = if self.mir_def_id == closure_base_def_id {
+                    tcx.type_of(closure_base_def_id)
+                } else {
+                    let tables = tcx.typeck_tables_of(self.mir_def_id);
+                    tables.node_id_to_type(self.mir_hir_id)
+                };
+
+                let defining_ty = self.infcx
+                    .replace_free_regions_with_nll_infer_vars(FR, &defining_ty);
+
+                match defining_ty.sty  {
+                    ty::TyClosure(def_id, substs) => DefiningTy::Closure(def_id, substs),
+                    ty::TyGenerator(def_id, substs, interior) => {
+                        DefiningTy::Generator(def_id, substs, interior)
+                    }
+                    ty::TyFnDef(def_id, substs) => DefiningTy::FnDef(def_id, substs),
+                    _ => span_bug!(
+                        tcx.def_span(self.mir_def_id),
+                        "expected defining type for `{:?}`: `{:?}`",
+                        self.mir_def_id,
+                        defining_ty
+                    ),
                 }
-                ty::TyFnDef(def_id, substs) => DefiningTy::FnDef(def_id, substs),
-                _ => span_bug!(
-                    tcx.def_span(self.mir_def_id),
-                    "expected defining type for `{:?}`: `{:?}`",
-                    self.mir_def_id,
-                    defining_ty
-                ),
-            },
-            BodyOwnerKind::Const | BodyOwnerKind::Static(..) => DefiningTy::Const(defining_ty),
+            }
+
+            BodyOwnerKind::Const | BodyOwnerKind::Static(..) => {
+                assert_eq!(closure_base_def_id, self.mir_def_id);
+                let identity_substs = Substs::identity_for_item(tcx, closure_base_def_id);
+                let substs = self.infcx
+                    .replace_free_regions_with_nll_infer_vars(FR, &identity_substs);
+                DefiningTy::Const(self.mir_def_id, substs)
+            }
         }
     }
 
@@ -592,13 +600,7 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
                 substs.substs
             }
 
-            DefiningTy::FnDef(_, substs) => substs,
-
-            // When we encounter a constant body, just return whatever
-            // substitutions are in scope for that constant.
-            DefiningTy::Const(_) => {
-                identity_substs
-            }
+            DefiningTy::FnDef(_, substs) | DefiningTy::Const(_, substs) => substs,
         };
 
         let global_mapping = iter::once((gcx.types.re_static, fr_static));
@@ -660,9 +662,14 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
                 sig.inputs_and_output()
             }
 
-            // For a constant body, there are no inputs, and one
-            // "output" (the type of the constant).
-            DefiningTy::Const(ty) => ty::Binder::dummy(tcx.mk_type_list(iter::once(ty))),
+            DefiningTy::Const(def_id, _) => {
+                // For a constant body, there are no inputs, and one
+                // "output" (the type of the constant).
+                assert_eq!(self.mir_def_id, def_id);
+                let ty = tcx.type_of(def_id);
+                let ty = indices.fold_to_region_vids(tcx, &ty);
+                ty::Binder::dummy(tcx.mk_type_list(iter::once(ty)))
+            }
         }
     }
 
