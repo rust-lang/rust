@@ -45,6 +45,7 @@ use rustc::session::config::CrateType::CrateTypeExecutable;
 use rustc::ty::{self, TyCtxt};
 use rustc_typeck::hir_ty_to_ty;
 
+use std::cell::Cell;
 use std::default::Default;
 use std::env;
 use std::fs::File;
@@ -65,7 +66,7 @@ use dump_visitor::DumpVisitor;
 use span_utils::SpanUtils;
 
 use rls_data::{Def, DefKind, ExternalCrateData, GlobalCrateId, MacroRef, Ref, RefKind, Relation,
-               RelationKind, SpanData};
+               RelationKind, SpanData, Impl, ImplKind};
 use rls_data::config::Config;
 
 
@@ -75,13 +76,14 @@ pub struct SaveContext<'l, 'tcx: 'l> {
     analysis: &'l ty::CrateAnalysis,
     span_utils: SpanUtils<'tcx>,
     config: Config,
+    impl_counter: Cell<u32>,
 }
 
 #[derive(Debug)]
 pub enum Data {
     RefData(Ref),
     DefData(Def),
-    RelationData(Relation),
+    RelationData(Relation, Impl),
 }
 
 impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
@@ -315,7 +317,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     attributes: lower_attributes(item.attrs.to_owned(), self),
                 }))
             }
-            ast::ItemKind::Impl(.., ref trait_ref, ref typ, _) => {
+            ast::ItemKind::Impl(.., ref trait_ref, ref typ, ref impls) => {
                 if let ast::TyKind::Path(None, ref path) = typ.node {
                     // Common case impl for a struct or something basic.
                     if generated_code(path.span) {
@@ -324,17 +326,39 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     let sub_span = self.span_utils.sub_span_for_type_name(path.span);
                     filter!(self.span_utils, sub_span, typ.span, None);
 
+                    let impl_id = self.next_impl_id();
+                    let span = self.span_from_span(sub_span.unwrap());
+
                     let type_data = self.lookup_ref_id(typ.id);
                     type_data.map(|type_data| {
                         Data::RelationData(Relation {
-                            kind: RelationKind::Impl,
-                            span: self.span_from_span(sub_span.unwrap()),
+                            kind: RelationKind::Impl {
+                                id: impl_id,
+                            },
+                            span: span.clone(),
                             from: id_from_def_id(type_data),
                             to: trait_ref
                                 .as_ref()
                                 .and_then(|t| self.lookup_ref_id(t.ref_id))
                                 .map(id_from_def_id)
                                 .unwrap_or(null_id()),
+                        },
+                        Impl {
+                            id: impl_id,
+                            kind: match *trait_ref {
+                                Some(_) => ImplKind::Direct,
+                                None => ImplKind::Inherent,
+                            },
+                            span: span,
+                            value: String::new(),
+                            parent: None,
+                            children: impls
+                                .iter()
+                                .map(|i| id_from_node_id(i.id, self))
+                                .collect(),
+                            docs: String::new(),
+                            sig: None,
+                            attributes: vec![],
                         })
                     })
                 } else {
@@ -893,6 +917,12 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
         result
     }
+
+    fn next_impl_id(&self) -> u32 {
+        let next = self.impl_counter.get();
+        self.impl_counter.set(next + 1);
+        next
+    }
 }
 
 fn make_signature(decl: &ast::FnDecl, generics: &ast::Generics) -> String {
@@ -1099,6 +1129,7 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
             analysis,
             span_utils: SpanUtils::new(&tcx.sess),
             config: find_config(config),
+            impl_counter: Cell::new(0),
         };
 
         handler.save(save_ctxt, krate, cratename)
