@@ -35,3 +35,15 @@ fn main() {
     println!("{:?}", VAR_HEIGHT);
     println!("{}", false_positive);
 }
+
+trait Bar {
+    const TRAIT_VAR: &'static str;
+}
+
+impl Foo {
+    const IMPL_VAR: &'static str = "var";
+}
+
+impl Bar for Foo {
+    const TRAIT_VAR: &'static str = "foo";
+}

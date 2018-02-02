@@ -78,5 +78,23 @@ error: Constants have by default a `'static` lifetime
 24 | const VAR_ARRAY: &'static [u8; 1] = b"T"; // ERROR Consider removing 'static.
    |                  -^^^^^^^-------- help: consider removing `'static`: `&[u8; 1]`
 
-error: aborting due to 13 previous errors
+error: Constants have by default a `'static` lifetime
+  --> $DIR/const_static_lifetime.rs:40:23
+   |
+40 |     const TRAIT_VAR: &'static str;
+   |                      -^^^^^^^---- help: consider removing `'static`: `&str`
+
+error: Constants have by default a `'static` lifetime
+  --> $DIR/const_static_lifetime.rs:44:22
+   |
+44 |     const IMPL_VAR: &'static str = "var";
+   |                     -^^^^^^^---- help: consider removing `'static`: `&str`
+
+error: Constants have by default a `'static` lifetime
+  --> $DIR/const_static_lifetime.rs:48:23
+   |
+48 |     const TRAIT_VAR: &'static str = "foo";
+   |                      -^^^^^^^---- help: consider removing `'static`: `&str`
+
+error: aborting due to 16 previous errors
 

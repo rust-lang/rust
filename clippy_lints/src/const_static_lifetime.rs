@@ -1,4 +1,4 @@
-use syntax::ast::{Item, ItemKind, Ty, TyKind};
+use syntax::ast::*;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use utils::{in_macro, snippet, span_lint_and_then};
 
@@ -82,6 +82,24 @@ impl EarlyLintPass for StaticConst {
         if !in_macro(item.span) {
             // Match only constants...
             if let ItemKind::Const(ref var_type, _) = item.node {
+                self.visit_type(var_type, cx);
+            }
+        }
+    }
+
+    fn check_trait_item(&mut self, cx: &EarlyContext, item: &TraitItem) {
+        if !in_macro(item.span) {
+            // Match only constants...
+            if let TraitItemKind::Const(ref var_type, _) = item.node {
+                self.visit_type(var_type, cx);
+            }
+        }
+    }
+
+    fn check_impl_item(&mut self, cx: &EarlyContext, item: &ImplItem) {
+        if !in_macro(item.span) {
+            // Match only constants...
+            if let ImplItemKind::Const(ref var_type, _) = item.node {
                 self.visit_type(var_type, cx);
             }
         }
