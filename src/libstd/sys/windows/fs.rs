@@ -522,20 +522,26 @@ impl FileType {
             reparse_tag: reparse_tag,
         }
     }
-
     pub fn is_dir(&self) -> bool {
-        self.attributes & c::FILE_ATTRIBUTE_DIRECTORY != 0
+        !self.is_symlink() && self.is_directory()
     }
     pub fn is_file(&self) -> bool {
-        self.attributes & c::FILE_ATTRIBUTE_DIRECTORY == 0
+        !self.is_symlink() && !self.is_directory()
     }
     pub fn is_symlink(&self) -> bool {
-        self.is_reparse_point() && (
-            self.reparse_tag == c::IO_REPARSE_TAG_SYMLINK ||
-            self.reparse_tag == c::IO_REPARSE_TAG_MOUNT_POINT)
+        self.is_reparse_point() && self.is_reparse_tag_name_surrogate()
     }
-    pub fn is_reparse_point(&self) -> bool {
+    pub fn is_symlink_dir(&self) -> bool {
+        self.is_symlink() && self.is_directory()
+    }
+    fn is_directory(&self) -> bool {
+        self.attributes & c::FILE_ATTRIBUTE_DIRECTORY != 0
+    }
+    fn is_reparse_point(&self) -> bool {
         self.attributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0
+    }
+    fn is_reparse_tag_name_surrogate(&self) -> bool {
+        self.reparse_tag & 0x20000000 != 0
     }
 }
 
@@ -607,12 +613,10 @@ fn remove_dir_all_recursive(path: &Path) -> io::Result<()> {
     for child in readdir(path)? {
         let child = child?;
         let child_type = child.file_type()?;
-        if child_type.is_dir() {
-            if child_type.is_reparse_point() {
-                rmdir(&child.path())?;
-            } else {
-                remove_dir_all_recursive(&child.path())?;
-            }
+        if child_type.is_symlink_dir() {
+            rmdir(&child.path())?;
+        } else if child_type.is_dir() {
+            remove_dir_all_recursive(&child.path())?;
         } else {
             unlink(&child.path())?;
         }
