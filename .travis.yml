@@ -1,22 +1,21 @@
 language: rust
 
-rust:
-  - nightly
+rust: nightly
 
 os:
   - linux
+  - osx
 
-addons:
-  apt:
-    sources:
-      - kalakris-cmake
-    packages:
-      - cmake
-      - libcurl4-openssl-dev
-      - libelf-dev
-      - libdw-dev
+# addons:
+#   apt:
+#     sources:
+#       - kalakris-cmake
+#     packages:
+#       - cmake
+#       - libcurl4-openssl-dev
+#       - libelf-dev
+#       - libdw-dev
 
 script:
   - cargo build --verbose
-  - cargo update
   - RUST_BACKTRACE=full cargo test --verbose
