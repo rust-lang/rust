@@ -19,11 +19,25 @@ files to have the same name except for the leading number. In general,
 test suite should be append-only: old tests should not be modified,
 new tests should be created instead.
 
-
 Note that only `ok` tests are normative: `err` tests test error
 recovery and it is totally ok for a parser to not implement any error
 recovery at all. However, for libsyntax2.0 we do care about error
 recovery, and we do care about precise and useful error messages.
+
+There are also so-called "inline tests". They appear as the comments 
+with a `test` header in the source code, like this:
+
+```rust
+// test fn_basic
+// fn foo() {}
+fn fn_item(p: &mut Parser) {
+    // ...
+}
+``` 
+
+You can run `cargo collect-tests` command to collect all inline tests 
+into `tests/data/inline` directory. The main advantage of inline tests
+is that they help to illustrate what the relevant code is doing. 
 
 
 Contribution opportunity: design and implement testing infrastructure
