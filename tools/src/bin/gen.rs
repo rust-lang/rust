@@ -11,7 +11,10 @@ use std::fmt::Write;
 fn main() {
     let grammar = Grammar::read();
     let text = grammar.to_syntax_kinds();
-    file::put_text(&generated_file(), &text).unwrap();
+    let target = generated_file();
+    if text != file::get_text(&target).unwrap_or_default() {
+        file::put_text(&target, &text).unwrap();
+    }
 }
 
 #[derive(Deserialize)]
@@ -94,13 +97,11 @@ impl Grammar {
 }
 
 fn grammar_file() -> PathBuf {
-    let dir = env!("CARGO_MANIFEST_DIR");
-    PathBuf::from(dir).join("grammar.ron")
+    base_dir().join("grammar.ron")
 }
 
 fn generated_file() -> PathBuf {
-    let dir = env!("CARGO_MANIFEST_DIR");
-    PathBuf::from(dir).join("src/syntax_kinds.rs")
+    base_dir().join("src/syntax_kinds.rs")
 }
 
 fn scream(word: &str) -> String {
@@ -109,4 +110,9 @@ fn scream(word: &str) -> String {
 
 fn kw_token(keyword: &str) -> String {
     format!("{}_KW", scream(keyword))
+}
+
+fn base_dir() -> PathBuf {
+    let dir = env!("CARGO_MANIFEST_DIR");
+    PathBuf::from(dir).parent().unwrap().to_owned()
 }

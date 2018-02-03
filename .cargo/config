@@ -1,0 +1,3 @@
+[alias]
+parse = "run --package tools --bin parse"
+gen = "run --package tools --bin gen"

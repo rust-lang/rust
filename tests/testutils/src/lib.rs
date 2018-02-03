@@ -1,7 +1,7 @@
 extern crate difference;
 extern crate file;
 
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
 use std::fs::read_dir;
 
 use difference::Changeset;
@@ -21,12 +21,9 @@ fn read_text(path: &Path) -> String {
     file::get_text(path).unwrap().replace("\r\n", "\n")
 }
 
-pub fn dir_tests<F>(
-    paths: &[&str],
-    f: F
-)
+pub fn dir_tests<F>(paths: &[&str], f: F)
 where
-    F: Fn(&str) -> String
+    F: Fn(&str) -> String,
 {
     for path in collect_tests(paths) {
         let actual = {
@@ -47,21 +44,20 @@ where
     }
 }
 
-fn assert_equal_text(
-    expected: &str,
-    actual: &str,
-    path: &Path
-) {
+fn assert_equal_text(expected: &str, actual: &str, path: &Path) {
     if expected != actual {
         print_difference(expected, actual, path)
     }
 }
 
 fn collect_tests(paths: &[&str]) -> Vec<PathBuf> {
-    paths.iter().flat_map(|path|  {
-        let path = test_data_dir().join(path);
-        test_from_dir(&path).into_iter()
-    }).collect()
+    paths
+        .iter()
+        .flat_map(|path| {
+            let path = test_data_dir().join(path);
+            test_from_dir(&path).into_iter()
+        })
+        .collect()
 }
 
 fn test_from_dir(dir: &Path) -> Vec<PathBuf> {
@@ -95,8 +91,10 @@ fn print_difference(expected: &str, actual: &str, path: &Path) {
 fn project_dir() -> PathBuf {
     let dir = env!("CARGO_MANIFEST_DIR");
     PathBuf::from(dir)
-        .parent().unwrap()
-        .parent().unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
         .to_owned()
 }
 
