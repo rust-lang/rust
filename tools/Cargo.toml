@@ -9,4 +9,6 @@ serde = "1.0.26"
 serde_derive = "1.0.26"
 file = "1.1.1"
 ron = "0.1.5"
+walkdir = "2"
+itertools = "0.7"
 libsyntax2 = { path = "../" }

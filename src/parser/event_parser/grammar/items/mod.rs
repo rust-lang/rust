@@ -52,11 +52,15 @@ fn item(p: &mut Parser) {
             STATIC_ITEM
         }
         CONST_KW => match p.nth(1) {
+            // test const_fn
+            // const fn foo() {}
             FN_KW => {
                 p.bump();
                 fn_item(p);
                 FN_ITEM
             }
+            // test const_unsafe_fn
+            // const unsafe fn foo() {}
             UNSAFE_KW if p.nth(2) == FN_KW => {
                 p.bump();
                 p.bump();
