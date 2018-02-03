@@ -100,6 +100,26 @@ Options:
 This means that you can compare any two crates' specified versions, as long as they are
 available on crates.io or present on your filesystem.
 
+### CI setup
+
+Assuming you use a CI provider that gives you access to cargo, you can use the following
+snippet to check your build for semver compliance, and enforce that version bumps are
+carried out correctly with regards to the current version of your crate on crates.io:
+
+```sh
+# install a current version of rust-semverver
+cargo install semverver
+# fetch the version in the manifest of your crate (adapt this to your usecase if needed)
+eval "current_version=$(grep -e '^version = .*$' Cargo.toml | cut -d ' ' -f 3)"
+# run the semver checks and output them for convenience
+cargo semver | tee semver_out
+# fail the build if necessary
+head -n 1 semver_out | grep "\-> $current_version"
+```
+
+Make sure you do the above with access to a nightly toolchain. Check your CI provider's
+documentation on how to do that.
+
 ## Functionality
 
 The guideline used to implement semver compatibility is the [API evolution
