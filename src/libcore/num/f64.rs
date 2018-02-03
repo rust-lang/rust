@@ -237,6 +237,9 @@ impl Float for f64 {
     /// Converts to degrees, assuming the number is in radians.
     #[inline]
     fn to_degrees(self) -> f64 {
+        // The division here is correctly rounded with respect to the true
+        // value of 180/π. (This differs from f32, where a constant must be
+        // used to ensure a correctly rounded result.)
         self * (180.0f64 / consts::PI)
     }
 

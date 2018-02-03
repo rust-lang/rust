@@ -1531,6 +1531,7 @@ mod tests {
         assert!(nan.to_degrees().is_nan());
         assert_eq!(inf.to_degrees(), inf);
         assert_eq!(neg_inf.to_degrees(), neg_inf);
+        assert_eq!(1_f32.to_degrees(), 57.2957795130823208767981548141051703);
     }
 
     #[test]
