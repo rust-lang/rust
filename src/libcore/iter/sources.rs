@@ -44,6 +44,9 @@ impl<A: Clone> DoubleEndedIterator for Repeat<A> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<A: Clone> FusedIterator for Repeat<A> {}
 
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<A: Clone> TrustedLen for Repeat<A> {}
+
 /// Creates a new iterator that endlessly repeats a single element.
 ///
 /// The `repeat()` function repeats a single value over and over and over and

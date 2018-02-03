@@ -325,6 +325,9 @@ impl<A: Step> Iterator for ops::RangeFrom<A> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<A: Step> FusedIterator for ops::RangeFrom<A> {}
 
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<A: Step> TrustedLen for ops::RangeFrom<A> {}
+
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
 impl<A: Step> Iterator for ops::RangeInclusive<A> {
     type Item = A;
