@@ -23,7 +23,8 @@ script:
 
     # install
     mkdir -p ~/rust/cargo/bin
-    cp target/debug/{cargo-semver, rust-semverver} ~/rust/cargo/bin
+    cp target/debug/cargo-semver ~/rust/cargo/bin
+    cp target/debug/rust-semverver ~/rust/cargo/bin
 
     # become semververver
-    PATH=~/.
+    PATH=~/rust/cargo/bin:$PATH cargo semver
