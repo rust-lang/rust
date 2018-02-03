@@ -27,4 +27,5 @@ script:
     cp target/debug/rust-semverver ~/rust/cargo/bin
 
     # become semververver
-    PATH=~/rust/cargo/bin:$PATH cargo semver
+    eval "current_version=$(grep -e '^version = .*$' Cargo.toml | cut -d ' ' -f 3)"
+    PATH=~/rust/cargo/bin:$PATH cargo semver | head -n 1 | grep "$current_version"
