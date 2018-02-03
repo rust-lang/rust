@@ -33,6 +33,10 @@ mod storage_liveness;
 
 pub use self::storage_liveness::*;
 
+mod borrowed_locals;
+
+pub use self::borrowed_locals::*;
+
 #[allow(dead_code)]
 pub(super) mod borrows;
 

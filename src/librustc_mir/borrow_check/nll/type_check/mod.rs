@@ -533,15 +533,17 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                     }
                 }
                 ty::TyGenerator(def_id, substs, _) => {
-                    // Try upvars first. `field_tys` requires final optimized MIR.
-                    if let Some(ty) = substs.upvar_tys(def_id, tcx).nth(field.index()) {
+                    // Try pre-transform fields first (upvars and current state)
+                    if let Some(ty) = substs.pre_transforms_tys(def_id, tcx).nth(field.index()) {
                         return Ok(ty);
                     }
 
+                    // Then try `field_tys` which contains all the fields, but it
+                    // requires the final optimized MIR.
                     return match substs.field_tys(def_id, tcx).nth(field.index()) {
                         Some(ty) => Ok(ty),
                         None => Err(FieldAccessError::OutOfRange {
-                            field_count: substs.field_tys(def_id, tcx).count() + 1,
+                            field_count: substs.field_tys(def_id, tcx).count(),
                         }),
                     };
                 }
@@ -1233,13 +1235,16 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 }
             }
             AggregateKind::Generator(def_id, substs, _) => {
-                if let Some(ty) = substs.upvar_tys(def_id, tcx).nth(field_index) {
+                // Try pre-transform fields first (upvars and current state)
+                if let Some(ty) = substs.pre_transforms_tys(def_id, tcx).nth(field_index) {
                     Ok(ty)
                 } else {
+                    // Then try `field_tys` which contains all the fields, but it
+                    // requires the final optimized MIR.
                     match substs.field_tys(def_id, tcx).nth(field_index) {
                         Some(ty) => Ok(ty),
                         None => Err(FieldAccessError::OutOfRange {
-                            field_count: substs.field_tys(def_id, tcx).count() + 1,
+                            field_count: substs.field_tys(def_id, tcx).count(),
                         }),
                     }
                 }

@@ -1266,6 +1266,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 err.note("the return type of a function must have a \
                           statically known size");
             }
+            ObligationCauseCode::SizedYieldType => {
+                err.note("the yield type of a generator must have a \
+                          statically known size");
+            }
             ObligationCauseCode::AssignmentLhsSized => {
                 err.note("the left-hand-side of an assignment must have a statically known size");
             }

@@ -1015,7 +1015,9 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     let span = body.value.span;
 
     if body.is_generator && can_be_generator.is_some() {
-        fcx.yield_ty = Some(fcx.next_ty_var(TypeVariableOrigin::TypeInference(span)));
+        let yield_ty = fcx.next_ty_var(TypeVariableOrigin::TypeInference(span));
+        fcx.require_type_is_sized(yield_ty, span, traits::SizedYieldType);
+        fcx.yield_ty = Some(yield_ty);
     }
 
     GatherLocalsVisitor { fcx: &fcx, }.visit_body(body);

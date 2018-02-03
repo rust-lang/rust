@@ -467,9 +467,13 @@ impl<'tcx> Visitor<'tcx> for ExprLocatorVisitor {
     }
 
     fn visit_pat(&mut self, pat: &'tcx Pat) {
+        intravisit::walk_pat(self, pat);
+
         self.expr_and_pat_count += 1;
 
-        intravisit::walk_pat(self, pat);
+        if pat.id == self.id {
+            self.result = Some(self.expr_and_pat_count);
+        }
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr) {
@@ -814,7 +818,8 @@ impl<'tcx> ScopeTree {
 
     /// Checks whether the given scope contains a `yield`. If so,
     /// returns `Some((span, expr_count))` with the span of a yield we found and
-    /// the number of expressions appearing before the `yield` in the body.
+    /// the number of expressions and patterns appearing before the `yield` in the body + 1.
+    /// If there a are multiple yields in a scope, the one with the highest number is returned.
     pub fn yield_in_scope(&self, scope: Scope) -> Option<(Span, usize)> {
         self.yield_in_scope.get(&scope).cloned()
     }

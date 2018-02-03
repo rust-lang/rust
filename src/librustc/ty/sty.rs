@@ -390,14 +390,21 @@ impl<'a, 'gcx, 'tcx> ClosureSubsts<'tcx> {
         state.map(move |d| d.ty.subst(tcx, self.substs))
     }
 
+    /// This is the types of the fields of a generate which
+    /// is available before the generator transformation.
+    /// It includes the upvars and the state discriminant which is u32.
+    pub fn pre_transforms_tys(self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) ->
+        impl Iterator<Item=Ty<'tcx>> + 'a
+    {
+        self.upvar_tys(def_id, tcx).chain(iter::once(tcx.types.u32))
+    }
+
     /// This is the types of all the fields stored in a generator.
     /// It includes the upvars, state types and the state discriminant which is u32.
     pub fn field_tys(self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) ->
         impl Iterator<Item=Ty<'tcx>> + 'a
     {
-        let upvars = self.upvar_tys(def_id, tcx);
-        let state = self.state_tys(def_id, tcx);
-        upvars.chain(iter::once(tcx.types.u32)).chain(state)
+        self.pre_transforms_tys(def_id, tcx).chain(self.state_tys(def_id, tcx))
     }
 }
 

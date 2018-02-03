@@ -151,6 +151,8 @@ pub enum ObligationCauseCode<'tcx> {
     VariableType(ast::NodeId),
     /// Return type must be Sized
     SizedReturnType,
+    /// Yield type must be Sized
+    SizedYieldType,
     /// [T,..n] --> T must be Copy
     RepeatVec,
 
