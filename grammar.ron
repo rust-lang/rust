@@ -25,6 +25,7 @@ Grammar(
         "const",
         "static",
         "mut",
+        "unsafe",
     ],
     tokens: [
         "ERROR",
@@ -89,6 +90,7 @@ Grammar(
         "MOD_ITEM",
         "USE_ITEM",
         "STATIC_ITEM",
+        "CONST_ITEM",
 
         "EXTERN_BLOCK",
         "ENUM_VARIANT",
