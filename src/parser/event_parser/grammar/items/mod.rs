@@ -2,6 +2,7 @@ use super::*;
 
 mod structs;
 mod use_item;
+mod consts;
 
 pub(super) fn mod_contents(p: &mut Parser, stop_on_r_curly: bool) {
     attributes::inner_attributes(p);
@@ -47,9 +48,26 @@ fn item(p: &mut Parser) {
             }
         }
         STATIC_KW => {
-            static_item(p);
+            consts::static_item(p);
             STATIC_ITEM
         }
+        CONST_KW => match p.nth(1) {
+            FN_KW => {
+                p.bump();
+                fn_item(p);
+                FN_ITEM
+            }
+            UNSAFE_KW if p.nth(2) == FN_KW => {
+                p.bump();
+                p.bump();
+                fn_item(p);
+                FN_ITEM
+            }
+            _ => {
+                consts::const_item(p);
+                CONST_ITEM
+            }
+        },
         MOD_KW => {
             mod_item(p);
             MOD_ITEM
@@ -101,19 +119,6 @@ fn extern_block(p: &mut Parser) {
     p.bump();
     p.expect(R_CURLY);
 }
-
-fn static_item(p: &mut Parser) {
-    assert!(p.at(STATIC_KW));
-    p.bump();
-    p.eat(MUT_KW);
-    p.expect(IDENT);
-    p.expect(COLON);
-    types::type_ref(p);
-    p.expect(EQ);
-    expressions::expr(p);
-    p.expect(SEMI);
-}
-
 fn mod_item(p: &mut Parser) {
     assert!(p.at(MOD_KW));
     p.bump();
