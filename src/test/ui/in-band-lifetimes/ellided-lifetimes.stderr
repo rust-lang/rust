@@ -1,0 +1,14 @@
+error: hidden lifetime parameters are deprecated, try `Foo<'_>`
+  --> $DIR/ellided-lifetimes.rs:15:12
+   |
+15 | fn foo(x: &Foo) {
+   |            ^^^
+   |
+note: lint level defined here
+  --> $DIR/ellided-lifetimes.rs:12:9
+   |
+12 | #![deny(elided_lifetime_in_path)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
