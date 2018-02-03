@@ -4,7 +4,8 @@ rust: nightly
 
 os:
   - linux
-  - osx
+# coming soon:
+# - osx
 
 env:
   global:
