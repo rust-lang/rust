@@ -664,10 +664,12 @@ impl ConfigCodeBlock {
 
     fn get_block_config(&self) -> Config {
         let mut config = Config::default();
-        config.override_value(
-            self.config_name.as_ref().unwrap(),
-            self.config_value.as_ref().unwrap(),
-        );
+        if self.config_value.is_some() && self.config_value.is_some() {
+            config.override_value(
+                self.config_name.as_ref().unwrap(),
+                self.config_value.as_ref().unwrap(),
+            );
+        }
         config
     }
 
@@ -675,7 +677,15 @@ impl ConfigCodeBlock {
         // We never expect to not have a code block.
         assert!(self.code_block.is_some() && self.code_block_start.is_some());
 
-        if self.config_name.is_none() {
+        // See if code block begins with #![rustfmt_skip].
+        let fmt_skip = self.code_block
+            .as_ref()
+            .unwrap()
+            .split("\n")
+            .nth(0)
+            .unwrap_or("") == "#![rustfmt_skip]";
+
+        if self.config_name.is_none() && !fmt_skip {
             write_message(&format!(
                 "No configuration name for {}:{}",
                 CONFIGURATIONS_FILE_NAME,
@@ -683,7 +693,7 @@ impl ConfigCodeBlock {
             ));
             return false;
         }
-        if self.config_value.is_none() {
+        if self.config_value.is_none() && !fmt_skip {
             write_message(&format!(
                 "No configuration value for {}:{}",
                 CONFIGURATIONS_FILE_NAME,
@@ -752,7 +762,7 @@ impl ConfigCodeBlock {
     // - Rust code blocks are identifed by lines beginning with "```rust".
     // - One explicit configuration setting is supported per code block.
     // - Rust code blocks with no configuration setting are illegal and cause an
-    //   assertion failure.
+    //   assertion failure, unless the snippet begins with #![rustfmt_skip].
     // - Configuration names in Configurations.md must be in the form of
     //   "## `NAME`".
     // - Configuration values in Configurations.md must be in the form of
