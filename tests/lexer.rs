@@ -1,4 +1,3 @@
-extern crate file;
 extern crate libsyntax2;
 extern crate testutils;
 
