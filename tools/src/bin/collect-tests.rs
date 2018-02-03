@@ -1,11 +1,11 @@
 extern crate file;
-extern crate walkdir;
 extern crate itertools;
+extern crate walkdir;
 
 use walkdir::WalkDir;
 use itertools::Itertools;
 
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
 use std::collections::HashSet;
 use std::fs;
 
@@ -33,7 +33,6 @@ fn main() {
     }
 }
 
-
 #[derive(Debug, Eq)]
 struct Test {
     name: String,
@@ -57,13 +56,12 @@ fn tests_from_dir(dir: &Path) -> HashSet<Test> {
     for entry in WalkDir::new(dir) {
         let entry = entry.unwrap();
         if !entry.file_type().is_file() {
-            continue
+            continue;
         }
         if entry.path().extension().unwrap_or_default() != "rs" {
-            continue
+            continue;
         }
-        let text = file::get_text(entry.path())
-            .unwrap();
+        let text = file::get_text(entry.path()).unwrap();
 
         for test in collect_tests(&text) {
             if let Some(old_test) = res.replace(test) {
@@ -88,7 +86,7 @@ fn collect_tests(s: &str) -> Vec<Test> {
         let mut block = block.map(|line| &line[prefix.len()..]);
         let first = block.next().unwrap();
         if !first.starts_with("test ") {
-            continue
+            continue;
         }
         let name = first["test ".len()..].to_string();
         let text: String = itertools::join(block.chain(::std::iter::once("")), "\n");
@@ -104,7 +102,7 @@ fn existing_tests() -> HashSet<Test> {
         let file = file.unwrap();
         let path = file.path();
         if path.extension().unwrap_or_default() != "rs" {
-            continue
+            continue;
         }
         let name = path.file_name().unwrap().to_str().unwrap();
         let name = name["0000_".len()..name.len() - 3].to_string();
@@ -130,5 +128,3 @@ fn base_dir() -> PathBuf {
     let dir = env!("CARGO_MANIFEST_DIR");
     PathBuf::from(dir).parent().unwrap().to_owned()
 }
-
-
