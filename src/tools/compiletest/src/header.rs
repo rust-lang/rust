@@ -167,7 +167,7 @@ impl EarlyProps {
                         .expect("Malformed llvm version directive");
                     // Ignore if using system LLVM and actual version
                     // is smaller the minimum required version
-                    !(config.system_llvm && &actual_version[..] < min_version)
+                    config.system_llvm && &actual_version[..] < min_version
                 } else {
                     false
                 }

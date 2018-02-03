@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-arm
-// ignore-aarch64
-// ignore-wasm
-// ignore-cloudabi no processes
-// ignore-emscripten no processes
-// ignore-musl FIXME #31506
-// ignore-pretty
-// min-system-llvm-version 5.0
-// compile-flags: -C lto
-// no-prefer-dynamic
+enum Foo {
+    A,
+    B,
+    C,
+    D,
+    E,
+}
+use Foo::*;
 
-include!("stack-probes.rs");
+fn main() {
+    for foo in &[A, B, C, D, E] {
+        match *foo {
+            | A => println!("A"),
+            | B | C if 1 < 2 => println!("BC!"),
+            | _ => {},
+        }
+    }
+}

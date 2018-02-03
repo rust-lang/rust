@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-arm
-// ignore-aarch64
-// ignore-wasm
-// ignore-cloudabi no processes
-// ignore-emscripten no processes
-// ignore-musl FIXME #31506
-// ignore-pretty
-// min-system-llvm-version 5.0
-// compile-flags: -C lto
-// no-prefer-dynamic
+// Just check if we don't get an ICE for the _S type.
 
-include!("stack-probes.rs");
+#![feature(const_size_of)]
+
+use std::cell::Cell;
+use std::mem;
+
+pub struct S {
+    s: Cell<usize>
+}
+
+pub type _S = [usize; 0 - (mem::size_of::<S>() != 4) as usize];

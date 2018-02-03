@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-arm
-// ignore-aarch64
-// ignore-wasm
-// ignore-cloudabi no processes
-// ignore-emscripten no processes
-// ignore-musl FIXME #31506
-// ignore-pretty
-// min-system-llvm-version 5.0
-// compile-flags: -C lto
-// no-prefer-dynamic
+// Test that the 'static bound from the Copy impl is respected. Regression test for #29149.
 
-include!("stack-probes.rs");
+#![feature(nll)]
+
+#[derive(Clone)] struct Foo<'a>(&'a u32);
+impl Copy for Foo<'static> {}
+
+fn main() {
+    let s = 2;
+    let a = Foo(&s); //~ ERROR `s` does not live long enough [E0597]
+    drop(a);
+    drop(a);
+}
