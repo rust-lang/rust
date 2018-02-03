@@ -8,7 +8,7 @@ note: lifetime parameter instantiated with the lifetime 'a as defined on the imp
   --> $DIR/static-lifetime.rs:13:1
    |
 13 | impl<'a, A: Clone> Arbitrary for ::std::borrow::Cow<'a, A> {} //~ ERROR lifetime bound
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: but lifetime parameter must outlive the static lifetime
 
 error: aborting due to previous error

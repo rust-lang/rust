@@ -10,12 +10,8 @@ error[E0597]: borrowed value does not live long enough (Ast)
 note: borrowed value must be valid for the lifetime 'a as defined on the function body at 13:1...
   --> $DIR/issue-46472.rs:13:1
    |
-13 | / fn bar<'a>() -> &'a mut u32 {
-14 | |     &mut 4
-15 | |     //~^ ERROR borrowed value does not live long enough (Ast) [E0597]
-16 | |     //~| ERROR borrowed value does not live long enough (Mir) [E0597]
-17 | | }
-   | |_^
+13 | fn bar<'a>() -> &'a mut u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0597]: borrowed value does not live long enough (Mir)
   --> $DIR/issue-46472.rs:14:10
@@ -29,12 +25,8 @@ error[E0597]: borrowed value does not live long enough (Mir)
 note: borrowed value must be valid for the lifetime 'a as defined on the function body at 13:1...
   --> $DIR/issue-46472.rs:13:1
    |
-13 | / fn bar<'a>() -> &'a mut u32 {
-14 | |     &mut 4
-15 | |     //~^ ERROR borrowed value does not live long enough (Ast) [E0597]
-16 | |     //~| ERROR borrowed value does not live long enough (Mir) [E0597]
-17 | | }
-   | |_^
+13 | fn bar<'a>() -> &'a mut u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

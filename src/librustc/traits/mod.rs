@@ -100,6 +100,19 @@ pub struct ObligationCause<'tcx> {
     pub code: ObligationCauseCode<'tcx>
 }
 
+impl<'tcx> ObligationCause<'tcx> {
+    pub fn span<'a, 'gcx>(&self, tcx: &TyCtxt<'a, 'gcx, 'tcx>) -> Span {
+        match self.code {
+            ObligationCauseCode::CompareImplMethodObligation { .. } |
+            ObligationCauseCode::MainFunctionType |
+            ObligationCauseCode::StartFunctionType => {
+                tcx.sess.codemap().def_span(self.span)
+            }
+            _ => self.span,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ObligationCauseCode<'tcx> {
     /// Not well classified or should be obvious from span.

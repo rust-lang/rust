@@ -175,25 +175,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ty::ReEarlyBound(_) |
             ty::ReFree(_) => {
                 let scope = region.free_region_binding_scope(self);
-                let prefix = match *region {
-                    ty::ReEarlyBound(ref br) => {
-                        format!("the lifetime {} as defined on", br.name)
-                    }
-                    ty::ReFree(ref fr) => {
-                        match fr.bound_region {
-                            ty::BrAnon(idx) => {
-                                format!("the anonymous lifetime #{} defined on", idx + 1)
-                            }
-                            ty::BrFresh(_) => "an anonymous lifetime defined on".to_owned(),
-                            _ => {
-                                format!("the lifetime {} as defined on",
-                                        fr.bound_region)
-                            }
-                        }
-                    }
-                    _ => bug!()
-                };
-
                 let node = self.hir.as_local_node_id(scope)
                                    .unwrap_or(DUMMY_NODE_ID);
                 let unknown;
@@ -218,7 +199,26 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         &unknown
                     }
                 };
-                let (msg, opt_span) = explain_span(self, tag, self.hir.span(node));
+                let (prefix, span) = match *region {
+                    ty::ReEarlyBound(ref br) => {
+                        (format!("the lifetime {} as defined on", br.name),
+                         self.sess.codemap().def_span(self.hir.span(node)))
+                    }
+                    ty::ReFree(ref fr) => {
+                        match fr.bound_region {
+                            ty::BrAnon(idx) => {
+                                (format!("the anonymous lifetime #{} defined on", idx + 1),
+                                 self.hir.span(node))
+                            }
+                            ty::BrFresh(_) => ("an anonymous lifetime defined on".to_owned(),
+                                               self.hir.span(node)),
+                            _ => (format!("the lifetime {} as defined on", fr.bound_region),
+                                  self.sess.codemap().def_span(self.hir.span(node))),
+                        }
+                    }
+                    _ => bug!()
+                };
+                let (msg, opt_span) = explain_span(self, tag, span);
                 (format!("{} {}", prefix, msg), opt_span)
             }
 
@@ -807,7 +807,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
         };
 
-        let span = cause.span;
+        let span = cause.span(&self.tcx);
 
         diag.span_label(span, terr.to_string());
         if let Some((sp, msg)) = secondary_span {
@@ -842,7 +842,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                     "did you mean `{}(/* fields */)`?",
                                     self.tcx.item_path_str(def_id)
                                 );
-                                diag.span_label(cause.span, message);
+                                diag.span_label(span, message);
                             }
                         }
                     }
@@ -870,7 +870,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                trace,
                terr);
 
-        let span = trace.cause.span;
+        let span = trace.cause.span(&self.tcx);
         let failure_code = trace.cause.as_failure_code(terr);
         let mut diag = match failure_code {
             FailureCode::Error0317(failure_str) => {
@@ -1075,6 +1075,31 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             "first, the lifetime cannot outlive ",
             sup_region,
             "...");
+
+        match (&sup_origin, &sub_origin) {
+            (&infer::Subtype(ref sup_trace), &infer::Subtype(ref sub_trace)) => {
+                if let (Some((sup_expected, sup_found)),
+                        Some((sub_expected, sub_found))) = (self.values_str(&sup_trace.values),
+                                                            self.values_str(&sub_trace.values)) {
+                    if sub_expected == sup_expected && sub_found == sup_found {
+                        self.tcx.note_and_explain_region(
+                            region_scope_tree,
+                            &mut err,
+                            "...but the lifetime must also be valid for ",
+                            sub_region,
+                            "...",
+                        );
+                        err.note(&format!("...so that the {}:\nexpected {}\n   found {}",
+                                          sup_trace.cause.as_requirement_str(),
+                                          sup_expected.content(),
+                                          sup_found.content()));
+                        err.emit();
+                        return;
+                    }
+                }
+            }
+            _ => {}
+        }
 
         self.note_region_origin(&mut err, &sup_origin);
 

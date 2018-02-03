@@ -1,0 +1,22 @@
+error[E0601]: main function not found
+
+error[E0495]: cannot infer an appropriate lifetime for lifetime parameter in generic type due to conflicting requirements
+  --> $DIR/mismatched_trait_impl-2.rs:18:5
+   |
+18 |     fn deref(&self) -> &Trait {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first, the lifetime cannot outlive the anonymous lifetime #1 defined on the method body at 18:5...
+  --> $DIR/mismatched_trait_impl-2.rs:18:5
+   |
+18 | /     fn deref(&self) -> &Trait {
+19 | |         unimplemented!();
+20 | |     }
+   | |_____^
+   = note: ...but the lifetime must also be valid for the static lifetime...
+   = note: ...so that the method type is compatible with trait:
+           expected fn(&Struct) -> &Trait + 'static
+              found fn(&Struct) -> &Trait
+
+error: aborting due to 2 previous errors
+
