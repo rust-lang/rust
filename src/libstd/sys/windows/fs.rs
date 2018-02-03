@@ -613,10 +613,10 @@ fn remove_dir_all_recursive(path: &Path) -> io::Result<()> {
     for child in readdir(path)? {
         let child = child?;
         let child_type = child.file_type()?;
-        if child_type.is_symlink_dir() {
-            rmdir(&child.path())?;
-        } else if child_type.is_dir() {
+        if child_type.is_dir() {
             remove_dir_all_recursive(&child.path())?;
+        } else if child_type.is_symlink_dir() {
+            rmdir(&child.path())?;
         } else {
             unlink(&child.path())?;
         }
