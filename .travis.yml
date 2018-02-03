@@ -6,16 +6,24 @@ os:
   - linux
   - osx
 
-# addons:
-#   apt:
-#     sources:
-#       - kalakris-cmake
-#     packages:
-#       - cmake
-#       - libcurl4-openssl-dev
-#       - libelf-dev
-#       - libdw-dev
+env:
+  global:
+    - RUST_BACKTRACE=full
 
 script:
-  - cargo build --verbose
-  - RUST_BACKTRACE=full cargo test --verbose
+  - |
+    set -e
+    if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+      # test output for a different libc is expected to be different
+      mv tests/full_cases/libc-0.2.28-0.2.31.osx tests/full_cases/libc-0.2.28-0.2.31
+    fi
+
+    cargo build
+    cargo test --verbose
+
+    # install
+    mkdir -p ~/rust/cargo/bin
+    cp target/debug/{cargo-semver, rust-semverver} ~/rust/cargo/bin
+
+    # become semververver
+    PATH=~/.
