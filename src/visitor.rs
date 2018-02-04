@@ -44,10 +44,7 @@ pub fn filter_inline_attrs(attrs: &[ast::Attribute], outer_span: Span) -> Vec<as
 /// Returns true for `mod foo;`, false for `mod foo { .. }`.
 fn is_mod_decl(item: &ast::Item) -> bool {
     match item.node {
-        ast::ItemKind::Mod(ref m) => {
-            !(m.inner.lo() == BytePos(0) && m.inner.hi() == BytePos(0))
-                && m.inner.hi() != item.span.hi()
-        }
+        ast::ItemKind::Mod(ref m) => m.inner.hi() != item.span.hi(),
         _ => false,
     }
 }
