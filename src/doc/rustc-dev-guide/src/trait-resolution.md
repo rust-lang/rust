@@ -408,7 +408,7 @@ if we had a trait reference `usize : Foo<$1>`, where `$n` is an unbound
 inference variable, we might replace it with `usize : Foo<%0>`, where
 `%n` is a skolemized type. We would then look this up in the cache.
 If we found a hit, the hit would tell us the immediate next step to
-take in the selection process: i.e., apply impl #22, or apply where
+take in the selection process: i.e. apply impl #22, or apply where
 clause `X : Foo<Y>`. Let's say in this case there is no hit.
 Therefore, we search through impls and where clauses and so forth, and
 we come to the conclusion that the only possible impl is this one,

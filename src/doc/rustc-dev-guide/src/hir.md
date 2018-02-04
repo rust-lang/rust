@@ -18,7 +18,7 @@ data structure basically just contains the root module, the HIR
 `Crate` structure contains a number of maps and other things that
 serve to organize the content of the crate for easier access.
 
-For example, the contents of individual items (e.g., modules,
+For example, the contents of individual items (e.g. modules,
 functions, traits, impls, etc) in the HIR are not immediately
 accessible in the parents. So, for example, if there is a module item
 `foo` containing a function `bar()`:

@@ -48,7 +48,7 @@ more and more to the [query model], however, the
 
 At the other extreme, the `rustc` crate defines the common and
 pervasive data structures that all the rest of the compiler uses
-(e.g., how to represent types, traits, and the program itself). It
+(e.g. how to represent types, traits, and the program itself). It
 also contains some amount of the compiler itself, although that is
 relatively limited.
 
@@ -77,8 +77,8 @@ purely "pass-based" compiler, where we ran a number of passes over the
 entire program, and each did a particular check of transformation. We
 are gradually replacing this pass-based code with an alternative setup
 based on on-demand **queries**. In the query-model, we work backwards,
-executing a *query* that expresses our ultimate goal (e.g., "compile
-this crate"). This query in turn may make other queries (e.g., "get me
+executing a *query* that expresses our ultimate goal (e.g. "compile
+this crate"). This query in turn may make other queries (e.g. "get me
 a list of all modules in the crate"). Those queries make other queries
 that ultimately bottom out in the base operations, like parsing the
 input, running the type-checker, and so forth. This on-demand model

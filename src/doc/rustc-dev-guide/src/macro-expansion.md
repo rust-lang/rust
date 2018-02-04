@@ -30,7 +30,7 @@ macro_rules! printer {
 `$mvar` is called a _metavariable_. Unlike normal variables, rather than
 binding to a value in a computation, a metavariable binds _at compile time_ to
 a tree of _tokens_.  A _token_ is a single "unit" of the grammar, such as an
-identifier (e.g., `foo`) or punctuation (e.g., `=>`). There are also other
+identifier (e.g. `foo`) or punctuation (e.g. `=>`). There are also other
 special tokens, such as `EOF`, which indicates that there are no more tokens.
 Token trees resulting from paired parentheses-like characters (`(`...`)`,
 `[`...`]`, and `{`...`}`) – they include the open and close and all the tokens

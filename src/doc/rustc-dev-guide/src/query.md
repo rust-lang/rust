@@ -25,7 +25,7 @@ will in turn demand information about that crate, starting from the
 *end*.  For example:
 
 - This "compile" query might demand to get a list of codegen-units
-  (i.e., modules that need to be compiled by LLVM).
+  (i.e. modules that need to be compiled by LLVM).
 - But computing the list of codegen-units would invoke some subquery
   that returns the list of all modules defined in the Rust source.
 - That query in turn would invoke something asking for the HIR.
@@ -134,7 +134,7 @@ fn provider<'cx, 'tcx>(tcx: TyCtxt<'cx, 'tcx, 'tcx>,
 ```
 
 Providers take two arguments: the `tcx` and the query key. Note also
-that they take the *global* tcx (i.e., they use the `'tcx` lifetime
+that they take the *global* tcx (i.e. they use the `'tcx` lifetime
 twice), rather than taking a tcx with some active inference context.
 They return the result of the query.
 

@@ -90,7 +90,7 @@ method, roughly like so:
 infcx.at(...).eq(t, u);
 ```
 
-The first `at()` call provides a bit of context, i.e., why you are
+The first `at()` call provides a bit of context, i.e. why you are
 doing this unification, and in what environment, and the `eq` method
 performs the actual equality constraint.
 
