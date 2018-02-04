@@ -610,7 +610,6 @@ static HOST_COMPILETESTS: &[Test] = &[
         mode: "incremental",
         suite: "incremental-fulldeps",
     },
-    Test { path: "src/test/run-make", mode: "run-make", suite: "run-make" },
     Test { path: "src/test/rustdoc", mode: "rustdoc", suite: "rustdoc" },
 
     Test { path: "src/test/pretty", mode: "pretty", suite: "pretty" },
@@ -619,6 +618,7 @@ static HOST_COMPILETESTS: &[Test] = &[
     Test { path: "src/test/run-pass-valgrind/pretty", mode: "pretty", suite: "run-pass-valgrind" },
     Test { path: "src/test/run-pass-fulldeps/pretty", mode: "pretty", suite: "run-pass-fulldeps" },
     Test { path: "src/test/run-fail-fulldeps/pretty", mode: "pretty", suite: "run-fail-fulldeps" },
+    Test { path: "src/test/run-make", mode: "run-make", suite: "run-make" },
 ];
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

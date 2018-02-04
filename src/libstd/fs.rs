@@ -482,20 +482,42 @@ impl File {
         self.inner.file_attr().map(Metadata)
     }
 
-    /// Creates a new independently owned handle to the underlying file.
-    ///
-    /// The returned `File` is a reference to the same state that this object
-    /// references. Both handles will read and write with the same cursor
-    /// position.
+    /// Create a new `File` instance that shares the same underlying file handle
+    /// as the existing `File` instance. Reads, writes, and seeks will affect
+    /// both `File` instances simultaneously.
     ///
     /// # Examples
+    ///
+    /// Create two handles for a file named `foo.txt`:
     ///
     /// ```no_run
     /// use std::fs::File;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let mut f = File::open("foo.txt")?;
-    /// let file_copy = f.try_clone()?;
+    /// let mut file = File::open("foo.txt")?;
+    /// let file_copy = file.try_clone()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// Assuming there’s a file named `foo.txt` with contents `abcdef\n`, create
+    /// two handles, seek one of them, and read the remaining bytes from the
+    /// other handle:
+    ///
+    /// ```no_run
+    /// use std::fs::File;
+    /// use std::io::SeekFrom;
+    /// use std::io::prelude::*;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// let mut file = File::open("foo.txt")?;
+    /// let mut file_copy = file.try_clone()?;
+    ///
+    /// file.seek(SeekFrom::Start(3))?;
+    ///
+    /// let mut contents = vec![];
+    /// file_copy.read_to_end(&mut contents)?;
+    /// assert_eq!(contents, b"def\n");
     /// # Ok(())
     /// # }
     /// ```
@@ -1001,7 +1023,7 @@ impl Metadata {
         self.0.accessed().map(FromInner::from_inner)
     }
 
-    /// Returns the creation time listed in the this metadata.
+    /// Returns the creation time listed in this metadata.
     ///
     /// The returned value corresponds to the `birthtime` field of `stat` on
     /// Unix platforms and the `ftCreationTime` field on Windows platforms.

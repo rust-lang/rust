@@ -302,19 +302,38 @@ impl EarlyLintPass for UnusedParens {
             Assign(_, ref value) => (value, "assigned value", false),
             AssignOp(.., ref value) => (value, "assigned value", false),
             InPlace(_, ref value) => (value, "emplacement value", false),
-            Call(_, ref args) => {
-                for arg in args {
-                    self.check_unused_parens_core(cx, arg, "function argument", false)
+            // either function/method call, or something this lint doesn't care about
+            ref call_or_other => {
+                let args_to_check;
+                let call_kind;
+                match *call_or_other {
+                    Call(_, ref args) => {
+                        call_kind = "function";
+                        args_to_check = &args[..];
+                    },
+                    MethodCall(_, ref args) => {
+                        call_kind = "method";
+                        // first "argument" is self (which sometimes needs parens)
+                        args_to_check = &args[1..];
+                    }
+                    // actual catch-all arm
+                    _ => { return; }
                 }
-                return;
-            },
-            MethodCall(_, ref args) => {
-                for arg in &args[1..] { // first "argument" is self (which sometimes needs parens)
-                    self.check_unused_parens_core(cx, arg, "method argument", false)
+                // Don't lint if this is a nested macro expansion: otherwise, the lint could
+                // trigger in situations that macro authors shouldn't have to care about, e.g.,
+                // when a parenthesized token tree matched in one macro expansion is matched as
+                // an expression in another and used as a fn/method argument (Issue #47775)
+                if e.span.ctxt().outer().expn_info()
+                    .map_or(false, |info| info.call_site.ctxt().outer()
+                            .expn_info().is_some()) {
+                        return;
+                }
+                let msg = format!("{} argument", call_kind);
+                for arg in args_to_check {
+                    self.check_unused_parens_core(cx, arg, &msg, false);
                 }
                 return;
             }
-            _ => return,
         };
         self.check_unused_parens_core(cx, &value, msg, struct_lit_needs_parens);
     }

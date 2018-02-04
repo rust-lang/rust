@@ -1825,7 +1825,7 @@ pub struct Location {
     /// the location is within this block
     pub block: BasicBlock,
 
-    /// the location is the start of the this statement; or, if `statement_index`
+    /// the location is the start of the statement; or, if `statement_index`
     /// == num-statements, then the start of the terminator.
     pub statement_index: usize,
 }

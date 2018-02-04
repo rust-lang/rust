@@ -327,6 +327,10 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
                     return Ok(mk_const(Integral(Usize(ConstUsize::new(align,
                         tcx.sess.target.usize_ty).unwrap()))));
                 }
+                "type_id" => {
+                    let type_id = tcx.type_id_hash(substs.type_at(0));
+                    return Ok(mk_const(Integral(U64(type_id))));
+                }
                 _ => signal!(e, TypeckError)
             }
           }
