@@ -386,9 +386,6 @@ declare_features! (
     // allow `#[must_use]` on functions and comparison operators (RFC 1940)
     (active, fn_must_use, "1.21.0", Some(43302)),
 
-    // allow '|' at beginning of match arms (RFC 1925)
-    (active, match_beginning_vert, "1.21.0", Some(44101)),
-
     // Future-proofing enums/structs with #[non_exhaustive] attribute (RFC 2008)
     (active, non_exhaustive, "1.22.0", Some(44109)),
 
@@ -545,6 +542,8 @@ declare_features! (
     (accepted, abi_sysv64, "1.24.0", Some(36167)),
     // Allows `repr(align(16))` struct attribute (RFC 1358)
     (accepted, repr_align, "1.24.0", Some(33626)),
+    // allow '|' at beginning of match arms (RFC 1925)
+    (accepted, match_beginning_vert, "1.25.0", Some(44101)),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -1683,11 +1682,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_arm(&mut self, arm: &'a ast::Arm) {
-        if let Some(span) = arm.beginning_vert {
-            gate_feature_post!(&self, match_beginning_vert,
-                               span,
-                               "Use of a '|' at the beginning of a match arm is experimental")
-        }
         visit::walk_arm(self, arm)
     }
 

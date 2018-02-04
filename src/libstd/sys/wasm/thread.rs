@@ -43,6 +43,7 @@ impl Thread {
 }
 
 pub mod guard {
-    pub unsafe fn current() -> Option<usize> { None }
-    pub unsafe fn init() -> Option<usize> { None }
+    pub type Guard = !;
+    pub unsafe fn current() -> Option<Guard> { None }
+    pub unsafe fn init() -> Option<Guard> { None }
 }

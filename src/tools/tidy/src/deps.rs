@@ -33,6 +33,8 @@ static EXCEPTIONS: &'static [&'static str] = &[
     "openssl", // BSD+advertising clause, cargo, mdbook
     "pest", // MPL2, mdbook via handlebars
     "thread-id", // Apache-2.0, mdbook
+    "toml-query", // MPL-2.0, mdbook
+    "is-match", // MPL-2.0, mdbook
     "cssparser", // MPL-2.0, rustdoc
     "smallvec", // MPL-2.0, rustdoc
     "fuchsia-zircon-sys", // BSD-3-Clause, rustdoc, rustc, cargo
