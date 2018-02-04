@@ -33,7 +33,8 @@ use syntax::util::ThinVec;
 use codemap::SpanUtils;
 use comment::{contains_comment, remove_trailing_white_spaces, FindUncommented};
 use expr::{rewrite_array, rewrite_call_inner};
-use lists::{itemize_list, write_list, DefinitiveListTactic, ListFormatting, SeparatorPlace, SeparatorTactic};
+use lists::{itemize_list, write_list, DefinitiveListTactic, ListFormatting, SeparatorPlace,
+            SeparatorTactic};
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
 use utils::{format_visibility, mk_sp};
@@ -102,7 +103,7 @@ fn parse_macro_arg(parser: &mut Parser) -> Option<MacroArg> {
                     parser.sess.span_diagnostic.reset_err_count();
                 }
             }
-        }
+        };
     }
 
     parse_macro_arg!(Expr, parse_expr);
@@ -312,8 +313,8 @@ pub fn rewrite_macro_def(
 
     let arm_shape = if multi_branch_style {
         shape
-        .block_indent(context.config.tab_spaces())
-        .with_max_width(context.config)
+            .block_indent(context.config.tab_spaces())
+            .with_max_width(context.config)
     } else {
         shape
     };
@@ -743,7 +744,12 @@ struct MacroBranch {
 }
 
 impl MacroBranch {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape, multi_branch_style: bool) -> Option<String> {
+    fn rewrite(
+        &self,
+        context: &RewriteContext,
+        shape: Shape,
+        multi_branch_style: bool,
+    ) -> Option<String> {
         // Only attempt to format function-like macros.
         if self.args_paren_kind != DelimToken::Paren {
             // FIXME(#1539): implement for non-sugared macros.
@@ -807,10 +813,7 @@ impl MacroBranch {
         // FIXME: this could be *much* more efficient.
         for (old, new) in &substs {
             if old_body.find(new).is_some() {
-                debug!(
-                    "rewrite_macro_def: bailing matching variable: `{}`",
-                    new
-                );
+                debug!("rewrite_macro_def: bailing matching variable: `{}`", new);
                 return None;
             }
             new_body = new_body.replace(new, old);
