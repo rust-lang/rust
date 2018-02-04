@@ -497,7 +497,7 @@ impl CrateStore for cstore::CStore {
                 tokens: body.into(),
                 legacy: def.legacy,
             }),
-            vis: codemap::dummy_spanned(ast::VisibilityKind::Inherited),
+            vis: codemap::respan(local_span.empty(), ast::VisibilityKind::Inherited),
             tokens: None,
         })
     }

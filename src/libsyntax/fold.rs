@@ -21,7 +21,7 @@
 use ast::*;
 use ast;
 use syntax_pos::Span;
-use codemap::{Spanned, respan, dummy_spanned};
+use codemap::{Spanned, respan};
 use parse::token::{self, Token};
 use ptr::P;
 use symbol::keywords;
@@ -1018,7 +1018,7 @@ pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, span}: Crate,
         ident: keywords::Invalid.ident(),
         attrs,
         id: ast::DUMMY_NODE_ID,
-        vis: dummy_spanned(ast::VisibilityKind::Public),
+        vis: respan(span.empty(), ast::VisibilityKind::Public),
         span,
         node: ast::ItemKind::Mod(module),
         tokens: None,

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast::{self, Arg, Arm, Block, Expr, Item, Pat, Stmt, Ty};
-use codemap::dummy_spanned;
+use codemap::respan;
 use syntax_pos::Span;
 use ext::base::ExtCtxt;
 use ext::base;
@@ -858,7 +858,7 @@ fn expand_wrapper(cx: &ExtCtxt,
         let path = path.iter().map(|s| s.to_string()).collect();
         let use_item = cx.item_use_glob(
             sp,
-            dummy_spanned(ast::VisibilityKind::Inherited),
+            respan(sp.empty(), ast::VisibilityKind::Inherited),
             ids_ext(path),
         );
         cx.stmt_item(sp, use_item)

@@ -43,7 +43,7 @@ use syntax::print::pprust::{
     ty_to_string
 };
 use syntax::ptr::P;
-use syntax::codemap::{Spanned, DUMMY_SP, dummy_spanned};
+use syntax::codemap::{Spanned, DUMMY_SP, respan};
 use syntax_pos::*;
 
 use {escape, generated_code, lower_attributes, PathCollector, SaveContext};
@@ -1134,6 +1134,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
 
     fn process_trait_item(&mut self, trait_item: &'l ast::TraitItem, trait_id: DefId) {
         self.process_macro_use(trait_item.span);
+        let vis_span = trait_item.span.empty();
         match trait_item.node {
             ast::TraitItemKind::Const(ref ty, ref expr) => {
                 self.process_assoc_const(
@@ -1143,7 +1144,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                     &ty,
                     expr.as_ref().map(|e| &**e),
                     trait_id,
-                    dummy_spanned(ast::VisibilityKind::Public),
+                    respan(vis_span, ast::VisibilityKind::Public),
                     &trait_item.attrs,
                 );
             }
@@ -1154,7 +1155,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                     trait_item.id,
                     trait_item.ident,
                     &trait_item.generics,
-                    dummy_spanned(ast::VisibilityKind::Public),
+                    respan(vis_span, ast::VisibilityKind::Public),
                     trait_item.span,
                 );
             }

@@ -19,7 +19,7 @@
 /// therefore apply.
 
 use syntax::ast;
-use syntax::codemap::dummy_spanned;
+use syntax::codemap::respan;
 use syntax::ext::base;
 use syntax::ext::base::*;
 use syntax::feature_gate;
@@ -60,7 +60,7 @@ pub fn expand_global_asm<'cx>(cx: &'cx mut ExtCtxt,
             asm,
             ctxt: cx.backtrace(),
         })),
-        vis: dummy_spanned(ast::VisibilityKind::Inherited),
+        vis: respan(sp.empty(), ast::VisibilityKind::Inherited),
         span: sp,
         tokens: None,
     })))
