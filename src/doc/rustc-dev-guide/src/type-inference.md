@@ -1,7 +1,7 @@
 # Type inference
 
-The type inference is based on standard HM-type inference, but
-extended in various way to accommodate subtyping, region inference,
+The type inference is based on the standard Hindley–Milner (HM) system,
+but extended in various way to accommodate subtyping, region inference,
 and higher-ranked types.
 
 ## A note on terminology
