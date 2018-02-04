@@ -10,7 +10,7 @@
 
 #![feature(tool_attributes)]
 
-#![foo::bar] //~ ERROR An unkown tool name found in scoped attributes: `foo::bar`. [E0693]
+#![foo::bar] //~ ERROR An unknown tool name found in scoped attributes: `foo::bar`. [E0693]
 
-#[foo::bar] //~ ERROR An unkown tool name found in scoped attributes: `foo::bar`. [E0693]
+#[foo::bar] //~ ERROR An unknown tool name found in scoped attributes: `foo::bar`. [E0693]
 fn main() {}

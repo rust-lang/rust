@@ -110,7 +110,9 @@ pub fn is_known(attr: &Attribute) -> bool {
 const RUST_KNOWN_TOOL: &[&str] = &["clippy", "rustfmt"];
 
 pub fn is_known_tool(attr: &Attribute) -> bool {
-    RUST_KNOWN_TOOL.contains(&attr.name().as_str().as_ref())
+    let tool_name =
+        attr.path.segments.iter().next().expect("empty path in attribute").identifier.name;
+    RUST_KNOWN_TOOL.contains(&tool_name.as_str().as_ref())
 }
 
 impl NestedMetaItem {
@@ -211,7 +213,7 @@ impl NestedMetaItem {
 }
 
 fn name_from_path(path: &ast::Path) -> Name {
-    path.segments.iter().next().unwrap().identifier.name
+    path.segments.last().expect("empty path in attribute").identifier.name
 }
 
 impl Attribute {
@@ -223,8 +225,8 @@ impl Attribute {
         matches
     }
 
-    /// Returns the first segment of the name of this attribute.
-    /// E.g. `foo` for `#[foo]`, `rustfmt` for `#[rustfmt::skip]`.
+    /// Returns the **last** segment of the name of this attribute.
+    /// E.g. `foo` for `#[foo]`, `skip` for `#[rustfmt::skip]`.
     pub fn name(&self) -> Name {
         name_from_path(&self.path)
     }
@@ -1162,6 +1164,7 @@ impl MetaItem {
     fn tokens(&self) -> TokenStream {
         let mut idents = vec![];
         let mut last_pos = BytePos(0 as u32);
+        // FIXME: Share code with `parse_path`.
         for (i, segment) in self.name.segments.iter().enumerate() {
             let is_first = i == 0;
             if !is_first {
