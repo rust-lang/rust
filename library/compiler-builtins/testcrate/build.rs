@@ -121,6 +121,98 @@ fn main() {
         },
         "compiler_builtins::float::cmp::__lesf2(a, b)");
 
+    if target_arch_arm {
+        gen(|(a, b): (MyF32, MyF32)| {
+                if a.0.is_nan() || b.0.is_nan() {
+                    return None;
+                }
+                let c = (a.0 <= b.0) as i32;
+                Some(c)
+            },
+            "compiler_builtins::float::cmp::__aeabi_fcmple(a, b)");
+
+        gen(|(a, b): (MyF32, MyF32)| {
+                if a.0.is_nan() || b.0.is_nan() {
+                    return None;
+                }
+                let c = (a.0 >= b.0) as i32;
+                Some(c)
+            },
+            "compiler_builtins::float::cmp::__aeabi_fcmpge(a, b)");
+
+        gen(|(a, b): (MyF32, MyF32)| {
+                if a.0.is_nan() || b.0.is_nan() {
+                    return None;
+                }
+                let c = (a.0 == b.0) as i32;
+                Some(c)
+            },
+            "compiler_builtins::float::cmp::__aeabi_fcmpeq(a, b)");
+
+        gen(|(a, b): (MyF32, MyF32)| {
+                if a.0.is_nan() || b.0.is_nan() {
+                    return None;
+                }
+                let c = (a.0 < b.0) as i32;
+                Some(c)
+            },
+            "compiler_builtins::float::cmp::__aeabi_fcmplt(a, b)");
+
+        gen(|(a, b): (MyF32, MyF32)| {
+                if a.0.is_nan() || b.0.is_nan() {
+                    return None;
+                }
+                let c = (a.0 > b.0) as i32;
+                Some(c)
+            },
+            "compiler_builtins::float::cmp::__aeabi_fcmpgt(a, b)");
+
+        gen(|(a, b): (MyF64, MyF64)| {
+                if a.0.is_nan() || b.0.is_nan() {
+                    return None;
+                }
+                let c = (a.0 <= b.0) as i32;
+                Some(c)
+            },
+            "compiler_builtins::float::cmp::__aeabi_dcmple(a, b)");
+
+        gen(|(a, b): (MyF64, MyF64)| {
+                if a.0.is_nan() || b.0.is_nan() {
+                    return None;
+                }
+                let c = (a.0 >= b.0) as i32;
+                Some(c)
+            },
+            "compiler_builtins::float::cmp::__aeabi_dcmpge(a, b)");
+
+        gen(|(a, b): (MyF64, MyF64)| {
+                if a.0.is_nan() || b.0.is_nan() {
+                    return None;
+                }
+                let c = (a.0 == b.0) as i32;
+                Some(c)
+            },
+            "compiler_builtins::float::cmp::__aeabi_dcmpeq(a, b)");
+
+        gen(|(a, b): (MyF64, MyF64)| {
+                if a.0.is_nan() || b.0.is_nan() {
+                    return None;
+                }
+                let c = (a.0 < b.0) as i32;
+                Some(c)
+            },
+            "compiler_builtins::float::cmp::__aeabi_dcmplt(a, b)");
+
+        gen(|(a, b): (MyF64, MyF64)| {
+                if a.0.is_nan() || b.0.is_nan() {
+                    return None;
+                }
+                let c = (a.0 > b.0) as i32;
+                Some(c)
+            },
+            "compiler_builtins::float::cmp::__aeabi_dcmpgt(a, b)");
+    }
+
     // float/conv.rs
     gen(|a: MyF64| i64(a.0).ok(),
         "compiler_builtins::float::conv::__fixdfdi(a)");
