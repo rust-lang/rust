@@ -273,3 +273,11 @@ pub struct ReadinessCheckRegistry(Mutex<HashMap<Arc<String>, Box<Fn() -> Readine
 // #2144 unit struct with generics
 struct MyBox<T:?Sized>;
 struct MyBoxx<T, S> where T: ?Sized, S: Clone;
+
+// #2208
+struct Test {
+    /// foo
+    #[serde(default)]
+    pub join: Vec<String>,
+    #[serde(default)] pub tls: bool,
+}
