@@ -173,7 +173,6 @@ This section works like this:
 
 ```rust
 [testing.framework]
-name = "bench"          # mandatory
 folders = ["bench"]
 lib = true              # true by default
 single-target = true    # false by default
@@ -194,7 +193,7 @@ under a new `[[testing.frameworks]]` section in their
 ```toml
 [[testing.frameworks]]
 provider = { rust-fuzz = "1.0" }
-name = "fuzz"           # optional, overrides `name` on framework crate
+name = "fuzz"           # optional, overrides the crate name
 folders = ["fuzz"]     # optional, overrides `folders` on framework crate
 lib = false             # optional, overrides `lib` on framework crate
 ```
@@ -209,12 +208,6 @@ frameworks are defined:
 name = "test"
 provider = { test = "1.0" }
 folders = ["tests"]
-lib = false
-
-[[testing.frameworks]]
-name = "test-unit"
-provider = { test = "1.0" }
-folders = []
 lib = true
 
 [[testing.frameworks]]
@@ -240,26 +233,6 @@ test --framework bench`. Any additional
 arguments are passed to the testing binary. By convention, the
 first position argument should allow filtering which targets
 (tests/benchmarks/etc.) are run.
-
-To run multiple frameworks at once, a crate can declare testing
-*sets*. One such example is the `test` testing set, which
-will run doctests and the `test` and `examples` framework. This can be
-customized:
-
-```toml
-[testing.set.test]
-frameworks = [test, test-unit, quickcheck, examples]
-
-# Default set is [test, test-unit]
-```
-
-This means that `cargo test` will, aside from doctests, run `cargo
-test --framework test`, `cargo test --framework test-unit`,
-`cargo test --framework quickcheck`, and `cargo test --framework examples`
-(and similar stuff for `cargo bench`). It is not possible to make `cargo
-test` _not_ run doctests. If both a framework and a set exists with a
-given name, the set takes precedence.
-
 
 You can also add targets to a framework a la `[[test]]` and `[[example]]` via `[[testing.target]]`
 
@@ -292,7 +265,7 @@ like json output and whatnot.
 
  - This adds more sections to `Cargo.toml`.
  - This complicates the execution path for cargo, in that it now needs
-   to know about testing frameworks and sets.
+   to know about testing frameworks.
  - Flags and command-line parameters for test and bench will now vary
    between testing frameworks, which may confuse users as they move
    between crates.
