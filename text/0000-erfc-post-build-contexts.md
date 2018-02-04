@@ -60,6 +60,13 @@ The main two features proposed are:
 (As an eRFC I'm merging the "guide-level/reference-level" split for now; when we have more concrete
 ideas we can figure out how to frame it and then the split will make more sense)
 
+The basic idea is that crates can define post-build contexts, which specify 
+how to transform collected test functions and construct a `main()` function,
+and then crates using these can declare them in their Cargo.toml, which will let
+crate developers invoke various test-like post-build steps using the post-build
+context.
+
+
 ## Procedural macro for a new post-build context
 
 A custom post-build context is essentially a whole-crate procedural
