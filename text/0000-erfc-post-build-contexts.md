@@ -77,11 +77,11 @@ called `mytest`:
 
 ```rust
 extern crate proc_macro;
-use proc_macro::TokenStream;
+use proc_macro::{TestFrameworkContext, TokenStream};
 
 // attributes() is optional
 #[test_framework(attributes(foo, bar))]
-pub fn mytest(items: &[AnnotatedItem]) -> TokenStream {
+pub fn mytest(context: &TestFrameworkContext) -> TokenStream {
     // ...
 }
 ```
@@ -89,6 +89,11 @@ pub fn mytest(items: &[AnnotatedItem]) -> TokenStream {
 where
 
 ```rust
+struct TestFrameworkContext<'a> {
+    items: &'a [AnnotatedItem],
+    // ... (may be added in the future)
+}
+
 struct AnnotatedItem
     tokens: TokenStream,
     span: Span,
