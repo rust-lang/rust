@@ -1035,6 +1035,24 @@ h4 > .important-traits {
 
 	.show-it {
 		display: block;
+		width: 246px;
+	}
+
+	.show-it > .block.items {
+		margin: 8px 0;
+	}
+
+	.show-it > .block.items > ul {
+		margin: 0;
+	}
+
+	.show-it > .block.items > ul > li {
+		text-align: center;
+		margin: 2px 0;
+	}
+
+	.show-it > .block.items > ul > li > a {
+		font-size: 21px;
 	}
 
 	/* Because of ios, we need to actually have a full height sidebar title so the
