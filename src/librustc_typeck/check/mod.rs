@@ -100,7 +100,6 @@ use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::maps::Providers;
 use rustc::ty::util::{Representability, IntTypeExt};
-use rustc::ty::layout::LayoutOf;
 use errors::{DiagnosticBuilder, DiagnosticId};
 
 use require_c_abi_if_variadic;
@@ -1553,7 +1552,7 @@ fn check_transparent<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, def_id: De
     let field_infos: Vec<_> = adt.non_enum_variant().fields.iter().map(|field| {
         let ty = field.ty(tcx, Substs::identity_for_item(tcx, field.did));
         let param_env = tcx.param_env(field.did);
-        let layout = (tcx, param_env).layout_of(ty);
+        let layout = tcx.layout_of(param_env.and(ty));
         // We are currently checking the type this field came from, so it must be local
         let span = tcx.hir.span_if_local(field.did).unwrap();
         let zst = layout.map(|layout| layout.is_zst()).unwrap_or(false);

@@ -172,7 +172,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> LayoutOf<Ty<'tcx>> for &'a EvalContext<'a, 'tcx
     type TyLayout = EvalResult<'tcx, TyLayout<'tcx>>;
 
     fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
-        (self.tcx, self.param_env).layout_of(ty)
+        self.tcx.layout_of(self.param_env.and(ty))
             .map_err(|layout| EvalErrorKind::Layout(layout).into())
     }
 }

@@ -631,7 +631,7 @@ impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for &'a LateContext<'a, 'tcx> {
     type TyLayout = Result<TyLayout<'tcx>, LayoutError<'tcx>>;
 
     fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
-        (self.tcx, self.param_env.reveal_all()).layout_of(ty)
+        self.tcx.layout_of(self.param_env.and(ty))
     }
 }
 
