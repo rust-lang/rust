@@ -81,38 +81,74 @@ fn item(p: &mut Parser) {
                 CONST_ITEM
             }
         },
-        // test unsafe_trait
-        // unsafe trait T {}
-        UNSAFE_KW if la == TRAIT_KW => {
+        UNSAFE_KW => {
             p.bump();
-            traits::trait_item(p);
-            TRAIT_ITEM
-        }
+            let la = p.nth(1);
+            match p.current() {
+                // test unsafe_trait
+                // unsafe trait T {}
+                TRAIT_KW => {
+                    traits::trait_item(p);
+                    TRAIT_ITEM
+                }
 
-        // test unsafe_auto_trait
-        // unsafe auto trait T {}
-        UNSAFE_KW if p.at_kw(1, "auto") && p.nth(2) == TRAIT_KW => {
-            p.bump();
-            p.bump_remap(AUTO_KW);
-            traits::trait_item(p);
-            TRAIT_ITEM
-        }
+                // test unsafe_auto_trait
+                // unsafe auto trait T {}
+                IDENT if p.at_kw("auto") && la == TRAIT_KW => {
+                    p.bump_remap(AUTO_KW);
+                    traits::trait_item(p);
+                    TRAIT_ITEM
+                }
 
-        // test unsafe_impl
-        // unsafe impl Foo {}
-        UNSAFE_KW if la == IMPL_KW => {
-            p.bump();
-            traits::impl_item(p);
-            IMPL_ITEM
-        }
+                // test unsafe_impl
+                // unsafe impl Foo {}
+                IMPL_KW => {
+                    traits::impl_item(p);
+                    IMPL_ITEM
+                }
 
-        // test unsafe_default_impl
-        // unsafe default impl Foo {}
-        UNSAFE_KW if p.at_kw(1, "default") && p.nth(2) == IMPL_KW => {
-            p.bump();
-            p.bump_remap(DEFAULT_KW);
-            traits::impl_item(p);
-            IMPL_ITEM
+                // test unsafe_default_impl
+                // unsafe default impl Foo {}
+                IDENT if p.at_kw("default") && la == IMPL_KW => {
+                    p.bump_remap(DEFAULT_KW);
+                    traits::impl_item(p);
+                    IMPL_ITEM
+                }
+
+                // test unsafe_extern_fn
+                // unsafe extern "C" fn foo() {}
+                EXTERN_KW => {
+                    abi(p);
+                    if !p.at(FN_KW) {
+                        item.abandon(p);
+                        p.error().message("expected function").emit();
+                        return
+                    }
+                    fn_item(p);
+                    FN_ITEM
+                }
+
+                // test unsafe_fn
+                // unsafe fn foo() {}
+                FN_KW => {
+                    fn_item(p);
+                    FN_ITEM
+                }
+
+                t => {
+                    item.abandon(p);
+                    let message = "expected `trait`, `impl` or `fn`";
+
+                    // test unsafe_block_in_mod
+                    // fn foo(){} unsafe { } fn bar(){}
+                    if t == L_CURLY {
+                        error_block(p, message);
+                    } else {
+                        p.error().message(message).emit();
+                    }
+                    return;
+                }
+            }
         }
 
         MOD_KW => {

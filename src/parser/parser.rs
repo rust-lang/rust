@@ -1,6 +1,6 @@
 use super::Event;
 use super::input::{InputPosition, ParserInput};
-use SyntaxKind::{self, EOF, TOMBSTONE, IDENT};
+use SyntaxKind::{self, EOF, TOMBSTONE};
 
 pub(crate) struct Marker {
     pos: u32,
@@ -161,8 +161,8 @@ impl<'t> Parser<'t> {
         self.inp.kind(self.pos + n)
     }
 
-    pub(crate) fn at_kw(&self, n: u32, t: &str) -> bool {
-        self.nth(n) == IDENT && self.inp.text(self.pos + n) == t
+    pub(crate) fn at_kw(&self, t: &str) -> bool {
+        self.inp.text(self.pos) == t
     }
 
     pub(crate) fn current(&self) -> SyntaxKind {
