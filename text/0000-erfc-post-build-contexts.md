@@ -204,16 +204,25 @@ frameworks are defined:
 name = "test"
 provider = { test = "1.0" }
 folders = ["tests"]
+lib = false
+
+[[testing.frameworks]]
+name = "test-unit"
+provider = { test = "1.0" }
+folders = []
+lib = true
 
 [[testing.frameworks]]
 name = "bench"
 provider = { ?? = "1.0" }
 folders = ["benches"]
+lib = true # could also be split into two
 
 [[testing.frameworks]]
 name = "example"
 provider = { ?? = "1.0" }
 folders = ["examples"]
+lib = false
 ```
 
 Whereas having two frameworks of the same name is an error, if you define
@@ -234,11 +243,14 @@ customized:
 
 ```toml
 [testing.set.test]
-frameworks = [test, quickcheck, examples]
+frameworks = [test, test-unit, quickcheck, examples]
+
+# Default set is [test, test-unit]
 ```
 
 This means that `cargo test` will, aside from doctests, run `cargo
-test --framework test`, `cargo test --framework quickcheck`, and `cargo test --framework examples`
+test --framework test`, `cargo test --framework test-unit`,
+`cargo test --framework quickcheck`, and `cargo test --framework examples`
 (and similar stuff for `cargo bench`). It is not possible to make `cargo
 test` _not_ run doctests. If both a framework and a set exists with a
 given name, the set takes precedence.
