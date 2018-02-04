@@ -1,7 +1,6 @@
-use {SyntaxKind, TextUnit, Token};
 use super::Event;
-use super::is_insignificant;
-use SyntaxKind::{EOF, TOMBSTONE};
+use super::input::{InputPosition, ParserInput};
+use SyntaxKind::{self, EOF, TOMBSTONE};
 
 pub(crate) struct Marker {
     pos: u32,
@@ -98,35 +97,18 @@ macro_rules! token_set {
 }
 
 pub(crate) struct Parser<'t> {
-    #[allow(unused)]
-    text: &'t str,
-    #[allow(unused)]
-    start_offsets: Vec<TextUnit>,
-    tokens: Vec<Token>, // non-whitespace tokens
+    inp: &'t ParserInput<'t>,
 
-    pos: usize,
+    pos: InputPosition,
     events: Vec<Event>,
 }
 
 impl<'t> Parser<'t> {
-    pub(crate) fn new(text: &'t str, raw_tokens: &'t [Token]) -> Parser<'t> {
-        let mut tokens = Vec::new();
-        let mut start_offsets = Vec::new();
-        let mut len = TextUnit::new(0);
-        for &token in raw_tokens.iter() {
-            if !is_insignificant(token.kind) {
-                tokens.push(token);
-                start_offsets.push(len);
-            }
-            len += token.len;
-        }
-
+    pub(crate) fn new(inp: &'t ParserInput<'t>) -> Parser<'t> {
         Parser {
-            text,
-            start_offsets,
-            tokens,
+            inp,
 
-            pos: 0,
+            pos: InputPosition::new(),
             events: Vec::new(),
         }
     }
@@ -163,8 +145,8 @@ impl<'t> Parser<'t> {
         });
     }
 
-    pub(crate) fn nth(&self, n: usize) -> SyntaxKind {
-        self.tokens.get(self.pos + n).map(|t| t.kind).unwrap_or(EOF)
+    pub(crate) fn nth(&self, n: u32) -> SyntaxKind {
+        self.inp.kind(self.pos + n)
     }
 
     pub(crate) fn current(&self) -> SyntaxKind {
