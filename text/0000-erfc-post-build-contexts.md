@@ -152,6 +152,9 @@ that may use the same attributes. (We could change this by asking
 attributes to be registered in Cargo.toml, but we don't find this
 necessary)
 
+
+A crate may only define a single post-build context.
+
 ## Cargo integration
 
 Alternative post-build contexts need to integrate with cargo.
@@ -191,23 +194,22 @@ contexts are defined:
 
 ```toml
 [post-build.context.test]
-provider = { test = "1.0", context = "test" }
+provider = { test = "1.0" }
 folders = ["tests/"]
 
 [post-build.context.bench]
-provider = { test = "1.0", context = "bench" }
-folders = ["benchmarks/"]
+provider = { ?? = "1.0" }
+folders = ["benches/"]
+
+[post-build.context.examples]
+provider = { ?? = "1.0" }
+folders = ["examples/"]
 ```
 
 There's also an `example` context defined that just runs the `main()` of
 any files given.
 
-These can be overridden by a crate's `Cargo.toml`. The `context`
-property is used to disambiguate when a single crate has multiple
-functions tagged `#[post_build_context]` (if we were using the example
-post-build context further up as a provider, we'd give `mytest` here).
-`test` here is `libtest`, though note that it could be maintained
-out-of-tree, and shipped with rustup.
+These can be overridden by a crate's `Cargo.toml`.
 
 To invoke a particular post-build context, a user invokes `cargo context
 <context>`. `cargo test` and `cargo bench` are aliases for `cargo
