@@ -91,6 +91,7 @@
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
 #![feature(doc_spotlight)]
+#![feature(rustc_const_unstable)]
 
 #[prelude_import]
 #[allow(unused)]
