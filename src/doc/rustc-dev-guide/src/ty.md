@@ -135,7 +135,7 @@ a safe approximation, so that is what you get back.
 You can also find various common types in the `tcx` itself by accessing
 `tcx.types.bool`, `tcx.types.char`, etc (see `CommonTypes` for more).
 
-### Beyond types: Other kinds of arena-allocated data structures
+### Beyond types: other kinds of arena-allocated data structures
 
 In addition to types, there are a number of other arena-allocated data
 structures that you can allocate, and which are found in this

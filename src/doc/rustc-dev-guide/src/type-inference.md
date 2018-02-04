@@ -9,10 +9,10 @@ and higher-ranked types.
 We use the notation `?T` to refer to inference variables, also called
 existential variables.
 
-We use the term "region" and "lifetime" interchangeably. Both refer to
+We use the terms "region" and "lifetime" interchangeably. Both refer to
 the `'a` in `&'a T`.
 
-The term "bound region" refers to regions bound in a function
+The term "bound region" refers to a region bound in a function
 signature, such as the `'a` in `for<'a> fn(&'a u32)`. A region is
 "free" if it is not bound.
 
@@ -158,7 +158,7 @@ is to first "generalize" `&'a i32` into a type with a region variable:
 relate this new variable with the original bound:
 
     &'?b i32 <: &'a i32
-    
+
 This will result in a region constraint (see below) of `'?b: 'a`.
 
 One final interesting case is relating two unbound type variables,
@@ -175,7 +175,7 @@ make (almost) no attempt to solve regions. These constraints have the
 form of an outlives constraint:
 
     'a: 'b
-    
+
 Actually the code tends to view them as a subregion relation, but it's the same
 idea:
 
@@ -188,7 +188,7 @@ There is one case where we do some amount of eager unification. If you have an e
 between two regions
 
     'a = 'b
-    
+
 we will record that fact in a unification table. You can then use
 `opportunistic_resolve_var` to convert `'b` to `'a` (or vice
 versa). This is sometimes needed to ensure termination of fixed-point
