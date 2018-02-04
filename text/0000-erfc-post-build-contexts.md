@@ -144,8 +144,9 @@ fn main() {
 
 Because this procedural macro is only loaded when it is used as the
 post-build context, the `#[mytest]` annotation should probably be kept
-behind `#[cfg(mytest)]` (which is automatically set when the `mytest`
-context is used) so that you don't get unknown attribute warnings
+behind `#[cfg(mytest)]` (which is automatically set when we are currently running
+with the `mytest` context, i.e. `cargo post-build mytest` is being run)
+so that you don't get unknown attribute warnings
 whilst loading, and to avoid conflicts with other post-build contexts
 that may use the same attributes. (We could change this by asking
 attributes to be registered in Cargo.toml, but we don't find this
