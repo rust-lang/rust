@@ -124,7 +124,7 @@ fn inline_tests_dir() -> PathBuf {
 }
 
 fn grammar_dir() -> PathBuf {
-    base_dir().join("src/parser/event_parser/grammar")
+    base_dir().join("src/parser/grammar")
 }
 
 fn base_dir() -> PathBuf {
