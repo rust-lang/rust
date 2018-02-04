@@ -884,6 +884,11 @@ span.since {
 		margin-left: 0px;
 	}
 
+	#main {
+		margin-top: 50px;
+		padding: 0;
+	}
+
 	.content .in-band {
 		width: 100%;
 	}
