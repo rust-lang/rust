@@ -121,7 +121,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                 };
 
                 let rhs_spans = rhs.iter().map(|t| t.span()).collect::<Vec<_>>();
-                // rhs has holes ( `$id` and `$(...)` that need filled)
+                // rhs has holes ( `$id` and `$(...)` which need to be filled)
                 let mut tts = transcribe(cx, Some(named_matches), rhs);
 
                 // Replace all the tokens for the corresponding positions in the macro, to maintain

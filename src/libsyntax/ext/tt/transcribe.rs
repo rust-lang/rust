@@ -75,6 +75,7 @@ pub fn transcribe(cx: &ExtCtxt,
     let mut repeats = Vec::new();
     let mut result: Vec<TokenStream> = Vec::new();
     let mut result_stack = Vec::new();
+    let mut prev_token: Option<Token> = None;
 
     loop {
         let tree = if let Some(tree) = stack.last_mut().unwrap().next() {
@@ -116,7 +117,7 @@ pub fn transcribe(cx: &ExtCtxt,
             continue
         };
 
-        match tree {
+        match tree.clone() {
             quoted::TokenTree::Sequence(sp, seq) => {
                 // FIXME(pcwalton): Bad copy.
                 match lockstep_iter_size(&quoted::TokenTree::Sequence(sp, seq.clone()),
@@ -178,11 +179,26 @@ pub fn transcribe(cx: &ExtCtxt,
                 result_stack.push(mem::replace(&mut result, Vec::new()));
             }
             quoted::TokenTree::Token(sp, tok) => {
-                let mut marker = Marker(cx.current_expansion.mark);
-                result.push(noop_fold_tt(TokenTree::Token(sp, tok), &mut marker).into())
+                // Check if token is ident with opt-out hygiene (pound-sign prefix).
+                if let (Some(token::Pound), token::Ident(ident, is_raw)) = (prev_token, tok.clone()) {
+                    let call_site = cx.call_site();
+                    let sp = sp.with_ctxt(call_site.ctxt().apply_mark(cx.current_expansion.mark));
+                    let ident = Ident { ctxt: call_site.ctxt(), ..ident };
+                    result.pop();
+                    result.push(TokenTree::Token(sp, token::Ident(ident, is_raw)).into());
+                } else {
+                    let mut marker = Marker(cx.current_expansion.mark);
+                    result.push(noop_fold_tt(TokenTree::Token(sp, tok), &mut marker).into());
+                }
             }
             quoted::TokenTree::MetaVarDecl(..) => panic!("unexpected `TokenTree::MetaVarDecl"),
         }
+
+        prev_token = if let quoted::TokenTree::Token(_, tok) = tree {
+            Some(tok)
+        } else {
+            None
+        };
     }
 }
 
