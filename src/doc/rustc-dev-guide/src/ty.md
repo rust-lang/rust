@@ -102,7 +102,7 @@ The `sty` field (the origin of this name is unclear to me; perhaps
 structural type?) is of type `TypeVariants<'tcx>`, which is an enum
 defining all of the different kinds of types in the compiler.
 
-> NB: inspecting the `sty` field on types during type inference can be
+> N.B. inspecting the `sty` field on types during type inference can be
 > risky, as there may be inference variables and other things to
 > consider, or sometimes types are not yet known that will become
 > known later.).

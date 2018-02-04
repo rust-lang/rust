@@ -190,7 +190,7 @@ pub fn provide(providers: &mut Providers) {
 fn fubar<'cx, 'tcx>(tcx: TyCtxt<'cx, 'tcx>, key: DefId) -> Fubar<'tcx> { .. }
 ```
 
-NB. Most of the `rustc_*` crates only provide **local
+N.B. Most of the `rustc_*` crates only provide **local
 providers**. Almost all **extern providers** wind up going through the
 [`rustc_metadata` crate][rustc_metadata], which loads the information from the crate
 metadata.  But in some cases there are crates that provide queries for
