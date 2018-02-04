@@ -1,6 +1,6 @@
 use super::Event;
 use super::input::{InputPosition, ParserInput};
-use SyntaxKind::{self, EOF, TOMBSTONE};
+use SyntaxKind::{self, EOF, TOMBSTONE, IDENT};
 
 pub(crate) struct Marker {
     pos: u32,
@@ -145,13 +145,30 @@ impl<'t> Parser<'t> {
         });
     }
 
+    pub(crate) fn bump_remap(&mut self, kind: SyntaxKind) {
+        if self.current() == EOF {
+            // TODO: panic!?
+            return;
+        }
+        self.pos += 1;
+        self.event(Event::Token {
+            kind,
+            n_raw_tokens: 1,
+        });
+    }
+
     pub(crate) fn nth(&self, n: u32) -> SyntaxKind {
         self.inp.kind(self.pos + n)
+    }
+
+    pub(crate) fn at_kw(&self, n: u32, t: &str) -> bool {
+        self.nth(n) == IDENT && self.inp.text(self.pos + n) == t
     }
 
     pub(crate) fn current(&self) -> SyntaxKind {
         self.nth(0)
     }
+
 
     fn event(&mut self, event: Event) {
         self.events.push(event)

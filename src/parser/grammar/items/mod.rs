@@ -81,7 +81,6 @@ fn item(p: &mut Parser) {
                 CONST_ITEM
             }
         },
-        // TODO: auto trait
         // test unsafe_trait
         // unsafe trait T {}
         UNSAFE_KW if la == TRAIT_KW => {
@@ -89,7 +88,16 @@ fn item(p: &mut Parser) {
             traits::trait_item(p);
             TRAIT_ITEM
         }
-        // TODO: default impl
+
+        // test unsafe_auto_trait
+        // unsafe auto trait T {}
+        UNSAFE_KW if p.at_kw(1, "auto") && p.nth(2) == TRAIT_KW => {
+            p.bump();
+            p.bump_remap(AUTO_KW);
+            traits::trait_item(p);
+            TRAIT_ITEM
+        }
+
         // test unsafe_impl
         // unsafe impl Foo {}
         UNSAFE_KW if la == IMPL_KW => {
@@ -97,6 +105,16 @@ fn item(p: &mut Parser) {
             traits::impl_item(p);
             IMPL_ITEM
         }
+
+        // test unsafe_default_impl
+        // unsafe default impl Foo {}
+        UNSAFE_KW if p.at_kw(1, "default") && p.nth(2) == IMPL_KW => {
+            p.bump();
+            p.bump_remap(DEFAULT_KW);
+            traits::impl_item(p);
+            IMPL_ITEM
+        }
+
         MOD_KW => {
             mod_item(p);
             MOD_ITEM

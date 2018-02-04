@@ -27,6 +27,11 @@ Grammar(
         "mut",
         "unsafe",
     ],
+    contextual_keywords: [
+        "auto",
+        "default",
+        "union",
+    ],
     tokens: [
         "ERROR",
         "IDENT",

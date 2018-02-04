@@ -1,4 +1,4 @@
-use {File, FileBuilder, Sink, SyntaxKind, Token};
+use {File, FileBuilder, Sink, SyntaxKind, Token, TextUnit};
 use syntax_kinds::TOMBSTONE;
 use super::is_insignificant;
 
@@ -120,18 +120,25 @@ pub(super) fn to_file(text: String, tokens: &[Token], events: Vec<Event>) -> Fil
                 builder.finish_internal()
             }
             &Event::Token {
-                kind: _,
+                kind,
                 mut n_raw_tokens,
-            } => loop {
-                let token = tokens[idx];
-                if !is_insignificant(token.kind) {
-                    n_raw_tokens -= 1;
+            } => {
+                // FIXME: currently, we attach whitespace to some random node
+                // this should be done in a sensible manner instead
+                loop {
+                    let token = tokens[idx];
+                    if !is_insignificant(token.kind) {
+                        break;
+                    }
+                    builder.leaf(token.kind, token.len);
+                    idx += 1
                 }
-                idx += 1;
-                builder.leaf(token.kind, token.len);
-                if n_raw_tokens == 0 {
-                    break;
+                let mut len = TextUnit::new(0);
+                for _ in 0..n_raw_tokens {
+                    len += tokens[idx].len;
+                    idx += 1;
                 }
+                builder.leaf(kind, len);
             },
             &Event::Error { ref message } => builder.error().message(message.clone()).emit(),
         }
