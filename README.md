@@ -143,24 +143,19 @@ when a pull request contains unformatted code. Using `--write-mode=diff` instruc
 rustfmt to exit with an error code if the input is not formatted correctly.
 It will also print any found differences.
 
-(These instructions use the nightly version of Rustfmt. If you want to use the
-Syntex version replace `install rustfmt-nightly` with `install rustfmt`).
-
 A minimal Travis setup could look like this:
 
 ```yaml
 language: rust
-cache: cargo
 before_script:
-- export PATH="$PATH:$HOME/.cargo/bin"
-- which rustfmt || cargo install rustfmt-nightly
+- rustup toolchain install nightly
+- rustup component add --toolchain nightly rustfmt-preview
+- which rustfmt || cargo install --force rustfmt-nightly
 script:
-- cargo fmt -- --write-mode=diff
+- cargo +nightly fmt --all -- --write-mode=diff
 - cargo build
 - cargo test
 ```
-
-Note that using `cache: cargo` is optional but highly recommended to speed up the installation.
 
 ## How to build and test
 
