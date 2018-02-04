@@ -243,8 +243,19 @@ test --framework test`, `cargo test --framework quickcheck`, and `cargo test --f
 test` _not_ run doctests. If both a framework and a set exists with a
 given name, the set takes precedence.
 
-`[[test]]` and `[[example]]` in a crate's `Cargo.toml` add targets to the
-`test` and `example` frameworks respectively.
+
+You can also add targets to a framework a la `[[test]]` and `[[example]]` via `[[testing.target]]`
+
+```toml
+[[testing.target]]
+framework = fuzz
+path = "foo.rs"
+name = "foo"
+```
+
+`[[test]]` and `[[example]]` in a crate's `Cargo.toml` are aliases of
+`[[testing.target]] framework = test` and `[[testing.target]] framework = example`
+respectively. This also goes for `[[bench]]` if we decide to keep that around.
 
 ## To be designed
 
