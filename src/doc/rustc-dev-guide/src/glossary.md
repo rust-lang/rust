@@ -14,7 +14,7 @@ HirId                   |  identifies a particular node in the HIR by combining 
 'gcx                    |  the lifetime of the global arena ([see more](ty.html))
 generics                |  the set of generic type parameters defined on a type or item
 ICE                     |  internal compiler error. When the compiler crashes.
-ICH                     |  incremental compilation hash.
+ICH                     |  incremental compilation hash. ICHs are used as fingerprints for things such as HIR and crate metadata, to check if changes have been made.
 infcx                   |  the inference context (see `librustc/infer`)
 MIR                     |  the Mid-level IR that is created after type-checking for use by borrowck and trans ([see more](./mir.html))
 obligation              |  something that must be proven by the trait system ([see more](trait-resolution.html))
