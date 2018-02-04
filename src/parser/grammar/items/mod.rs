@@ -3,6 +3,7 @@ use super::*;
 mod structs;
 mod use_item;
 mod consts;
+mod traits;
 
 pub(super) fn mod_contents(p: &mut Parser, stop_on_r_curly: bool) {
     attributes::inner_attributes(p);
@@ -80,6 +81,22 @@ fn item(p: &mut Parser) {
                 CONST_ITEM
             }
         },
+        // TODO: auto trait
+        // test unsafe_trait
+        // unsafe trait T {}
+        UNSAFE_KW if la == TRAIT_KW => {
+            p.bump();
+            traits::trait_item(p);
+            TRAIT_ITEM
+        }
+        // TODO: default impl
+        // test unsafe_impl
+        // unsafe impl Foo {}
+        UNSAFE_KW if la == IMPL_KW => {
+            p.bump();
+            traits::impl_item(p);
+            IMPL_ITEM
+        }
         MOD_KW => {
             mod_item(p);
             MOD_ITEM
@@ -131,6 +148,7 @@ fn extern_block(p: &mut Parser) {
     p.bump();
     p.expect(R_CURLY);
 }
+
 fn mod_item(p: &mut Parser) {
     assert!(p.at(MOD_KW));
     p.bump();

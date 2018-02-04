@@ -79,16 +79,19 @@ fn collect_tests(s: &str) -> Vec<Test> {
         .map(str::trim_left)
         .group_by(|line| line.starts_with(prefix));
 
-    for (is_comment, block) in comment_blocks.into_iter() {
+    'outer: for (is_comment, block) in comment_blocks.into_iter() {
         if !is_comment {
             continue;
         }
         let mut block = block.map(|line| &line[prefix.len()..]);
-        let first = block.next().unwrap();
-        if !first.starts_with("test ") {
-            continue;
-        }
-        let name = first["test ".len()..].to_string();
+
+        let name = loop {
+            match block.next() {
+                Some(line) if line.starts_with("test ") => break line["test ".len()..].to_string(),
+                Some(_) => (),
+                None => continue 'outer,
+            }
+        };
         let text: String = itertools::join(block.chain(::std::iter::once("")), "\n");
         assert!(!text.trim().is_empty() && text.ends_with("\n"));
         res.push(Test { name, text })
@@ -121,7 +124,7 @@ fn inline_tests_dir() -> PathBuf {
 }
 
 fn grammar_dir() -> PathBuf {
-    base_dir().join("src/parser/event_parser/grammar")
+    base_dir().join("src/parser/grammar")
 }
 
 fn base_dir() -> PathBuf {

@@ -91,6 +91,8 @@ Grammar(
         "USE_ITEM",
         "STATIC_ITEM",
         "CONST_ITEM",
+        "TRAIT_ITEM",
+        "IMPL_ITEM",
 
         "EXTERN_BLOCK",
         "ENUM_VARIANT",

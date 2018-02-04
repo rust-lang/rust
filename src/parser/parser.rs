@@ -1,6 +1,6 @@
 use {SyntaxKind, TextUnit, Token};
 use super::Event;
-use super::super::is_insignificant;
+use super::is_insignificant;
 use SyntaxKind::{EOF, TOMBSTONE};
 
 pub(crate) struct Marker {
