@@ -17,5 +17,6 @@ fn write<T: AsRef<[u8]>>(buffer: T) { }
 
 fn main() {
     write(&buf);
-    buf[0]=2;                                   //[mir]~ ERROR E0594
+    buf[0]=2;                                   //[ast]~ ERROR E0389
+                                                //[mir]~^ ERROR E0594
 }
