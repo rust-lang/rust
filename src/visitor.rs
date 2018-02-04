@@ -11,7 +11,7 @@
 use std::cmp;
 
 use syntax::{ast, visit};
-use syntax::attr::HasAttrs;
+use syntax::attr::{self, HasAttrs};
 use syntax::codemap::{self, BytePos, CodeMap, Pos, Span};
 use syntax::parse::ParseSess;
 
@@ -49,11 +49,15 @@ fn is_mod_decl(item: &ast::Item) -> bool {
     }
 }
 
+fn contains_macro_use_attr(attrs: &[ast::Attribute], span: Span) -> bool {
+    attr::contains_name(&filter_inline_attrs(attrs, span), "macro_use")
+}
+
 /// Returns true for `mod foo;` without any inline attributes.
 /// We cannot reorder modules with attributes because doing so can break the code.
 /// e.g. `#[macro_use]`.
 fn is_mod_decl_without_attr(item: &ast::Item) -> bool {
-    is_mod_decl(item) && filter_inline_attrs(&item.attrs, item.span()).is_empty()
+    is_mod_decl(item) && !contains_macro_use_attr(&item.attrs, item.span())
 }
 
 fn is_use_item(item: &ast::Item) -> bool {
@@ -63,11 +67,19 @@ fn is_use_item(item: &ast::Item) -> bool {
     }
 }
 
+fn is_use_item_without_attr(item: &ast::Item) -> bool {
+    is_use_item(item) && !contains_macro_use_attr(&item.attrs, item.span())
+}
+
 fn is_extern_crate(item: &ast::Item) -> bool {
     match item.node {
         ast::ItemKind::ExternCrate(..) => true,
         _ => false,
     }
+}
+
+fn is_extern_crate_without_attr(item: &ast::Item) -> bool {
+    is_extern_crate(item) && !contains_macro_use_attr(&item.attrs, item.span())
 }
 
 /// Creates a string slice corresponding to the specified span.
@@ -676,11 +688,15 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             // subsequent items that have the same item kind to be reordered within
             // `format_imports`. Otherwise, just format the next item for output.
             {
-                try_reorder_items_with!(reorder_imports, reorder_imports_in_group, is_use_item);
+                try_reorder_items_with!(
+                    reorder_imports,
+                    reorder_imports_in_group,
+                    is_use_item_without_attr
+                );
                 try_reorder_items_with!(
                     reorder_extern_crates,
                     reorder_extern_crates_in_group,
-                    is_extern_crate
+                    is_extern_crate_without_attr
                 );
                 try_reorder_items_with!(reorder_modules, reorder_modules, is_mod_decl_without_attr);
             }
