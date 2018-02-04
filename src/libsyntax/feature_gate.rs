@@ -1127,7 +1127,7 @@ impl<'a> Context<'a> {
                             self.parse_sess.span_diagnostic,
                             attr.span,
                             E0693,
-                            "An unkown tool name found in scoped attributes: `{}`.",
+                            "An unknown tool name found in scoped attributes: `{}`.",
                             attr.path
                         );
                     }
