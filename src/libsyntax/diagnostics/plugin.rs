@@ -235,7 +235,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
                 ty,
                 expr,
             ),
-            vis: codemap::dummy_spanned(ast::VisibilityKind::Public),
+            vis: codemap::respan(span.empty(), ast::VisibilityKind::Public),
             span,
             tokens: None,
         })

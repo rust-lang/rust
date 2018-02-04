@@ -14,7 +14,7 @@ use std::cell::Cell;
 use ext::hygiene::{Mark, SyntaxContext};
 use symbol::{Symbol, keywords};
 use syntax_pos::{DUMMY_SP, Span};
-use codemap::{ExpnInfo, NameAndSpan, MacroAttribute, dummy_spanned};
+use codemap::{ExpnInfo, NameAndSpan, MacroAttribute, dummy_spanned, respan};
 use ptr::P;
 use tokenstream::TokenStream;
 
@@ -78,7 +78,7 @@ pub fn maybe_inject_crates_ref(mut krate: ast::Crate, alt_std_name: Option<Strin
             is_sugared_doc: false,
             span,
         }],
-        vis: dummy_spanned(ast::VisibilityKind::Inherited),
+        vis: respan(span.empty(), ast::VisibilityKind::Inherited),
         node: ast::ItemKind::Use(P(ast::UseTree {
             prefix: ast::Path {
                 segments: ["{{root}}", name, "prelude", "v1"].into_iter().map(|name| {
