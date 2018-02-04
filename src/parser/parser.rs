@@ -145,8 +145,24 @@ impl<'t> Parser<'t> {
         });
     }
 
+    pub(crate) fn bump_remap(&mut self, kind: SyntaxKind) {
+        if self.current() == EOF {
+            // TODO: panic!?
+            return;
+        }
+        self.pos += 1;
+        self.event(Event::Token {
+            kind,
+            n_raw_tokens: 1,
+        });
+    }
+
     pub(crate) fn nth(&self, n: u32) -> SyntaxKind {
         self.inp.kind(self.pos + n)
+    }
+
+    pub(crate) fn at_kw(&self, t: &str) -> bool {
+        self.inp.text(self.pos) == t
     }
 
     pub(crate) fn current(&self) -> SyntaxKind {

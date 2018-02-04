@@ -1,0 +1,1 @@
+unsafe auto trait T {}

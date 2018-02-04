@@ -20,6 +20,7 @@ fn main() {
 #[derive(Deserialize)]
 struct Grammar {
     keywords: Vec<String>,
+    contextual_keywords: Vec<String>,
     tokens: Vec<String>,
     nodes: Vec<String>,
 }
@@ -38,10 +39,11 @@ impl Grammar {
         acc.push_str("use tree::SyntaxInfo;\n");
         acc.push_str("\n");
 
-        let syntax_kinds: Vec<String> = self.keywords
+        let syntax_kinds: Vec<String> = self.tokens
             .iter()
-            .map(|kw| kw_token(kw))
-            .chain(self.tokens.iter().cloned())
+            .cloned()
+            .chain(self.keywords.iter().map(|kw| kw_token(kw)))
+            .chain(self.contextual_keywords.iter().map(|kw| kw_token(kw)))
             .chain(self.nodes.iter().cloned())
             .collect();
 
@@ -86,6 +88,7 @@ impl Grammar {
         // fn ident_to_keyword
         acc.push_str("pub(crate) fn ident_to_keyword(ident: &str) -> Option<SyntaxKind> {\n");
         acc.push_str("    match ident {\n");
+        // NB: no contextual_keywords here!
         for kw in self.keywords.iter() {
             write!(acc, "        {:?} => Some({}),\n", kw, kw_token(kw)).unwrap();
         }

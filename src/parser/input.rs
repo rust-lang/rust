@@ -46,9 +46,7 @@ impl<'t> ParserInput<'t> {
         if !(idx < self.tokens.len()) {
             return "";
         }
-        let start_offset = self.start_offsets[idx];
-        let end_offset = self.tokens[idx].len;
-        let range = TextRange::from_to(start_offset, end_offset);
+        let range = TextRange::from_len(self.start_offsets[idx], self.tokens[idx].len);
         &self.text[range]
     }
 }
