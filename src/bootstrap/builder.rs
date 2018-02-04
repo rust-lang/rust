@@ -509,10 +509,6 @@ impl<'a> Builder<'a> {
              })
              .env("TEST_MIRI", self.config.test_miri.to_string())
              .env("RUSTC_ERROR_METADATA_DST", self.extended_error_dir());
-        if let Some(n) = self.config.rust_codegen_units {
-            cargo.env("RUSTC_CODEGEN_UNITS", n.to_string());
-        }
-
 
         if let Some(host_linker) = self.build.linker(compiler.host) {
             cargo.env("RUSTC_HOST_LINKER", host_linker);
@@ -679,6 +675,13 @@ impl<'a> Builder<'a> {
         if self.is_very_verbose() {
             cargo.arg("-v");
         }
+
+        // This must be kept before the thinlto check, as we set codegen units
+        // to 1 forcibly there.
+        if let Some(n) = self.config.rust_codegen_units {
+            cargo.env("RUSTC_CODEGEN_UNITS", n.to_string());
+        }
+
         if self.config.rust_optimize {
             // FIXME: cargo bench does not accept `--release`
             if cmd != "bench" {
@@ -686,11 +689,17 @@ impl<'a> Builder<'a> {
             }
 
             if self.config.rust_codegen_units.is_none() &&
-               self.build.is_rust_llvm(compiler.host)
-            {
+               self.build.is_rust_llvm(compiler.host) &&
+               self.config.rust_thinlto {
                 cargo.env("RUSTC_THINLTO", "1");
+            } else if self.config.rust_codegen_units.is_none() {
+                // Generally, if ThinLTO has been disabled for some reason, we
+                // want to set the codegen units to 1. However, we shouldn't do
+                // this if the option was specifically set by the user.
+                cargo.env("RUSTC_CODEGEN_UNITS", "1");
             }
         }
+
         if self.config.locked_deps {
             cargo.arg("--locked");
         }
