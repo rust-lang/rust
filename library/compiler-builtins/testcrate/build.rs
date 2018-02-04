@@ -51,6 +51,28 @@ fn main() {
         },
         "compiler_builtins::float::add::__addsf3(a, b)");
 
+    if target_arch_arm {
+        gen(|(a, b): (MyF64, MyF64)| {
+                let c = a.0 + b.0;
+                if a.0.is_nan() || b.0.is_nan() || c.is_nan() {
+                    None
+                } else {
+                    Some(c)
+                }
+            },
+            "compiler_builtins::float::add::__adddf3vfp(a, b)");
+        gen(|(a, b): (LargeF32, LargeF32)| {
+                let c = a.0 + b.0;
+                if a.0.is_nan() || b.0.is_nan() || c.is_nan() {
+                    None
+                } else {
+                    Some(c)
+                }
+            },
+            "compiler_builtins::float::add::__addsf3vfp(a, b)");
+    }
+
+
     // float/cmp.rs
     gen(|(a, b): (MyF64, MyF64)| {
             let (a, b) = (a.0, b.0);
@@ -300,6 +322,27 @@ fn main() {
             }
         },
         "compiler_builtins::float::sub::__subsf3(a, b)");
+
+    if target_arch_arm {
+        gen(|(a, b): (MyF64, MyF64)| {
+                let c = a.0 - b.0;
+                if a.0.is_nan() || b.0.is_nan() || c.is_nan() {
+                    None
+                } else {
+                    Some(c)
+                }
+            },
+            "compiler_builtins::float::sub::__subdf3vfp(a, b)");
+        gen(|(a, b): (LargeF32, LargeF32)| {
+                let c = a.0 - b.0;
+                if a.0.is_nan() || b.0.is_nan() || c.is_nan() {
+                    None
+                } else {
+                    Some(c)
+                }
+            },
+            "compiler_builtins::float::sub::__subsf3vfp(a, b)");
+    }
 
     // float/mul.rs
     gen(|(a, b): (MyF64, MyF64)| {

@@ -85,8 +85,8 @@ features = ["c"]
 
 - [x] adddf3.c
 - [x] addsf3.c
-- [ ] arm/adddf3vfp.S
-- [ ] arm/addsf3vfp.S
+- [x] arm/adddf3vfp.S
+- [x] arm/addsf3vfp.S
 - [ ] arm/aeabi_dcmp.S
 - [ ] arm/aeabi_fcmp.S
 - [x] arm/aeabi_idivmod.S
@@ -127,8 +127,8 @@ features = ["c"]
 - [ ] arm/negsf2vfp.S
 - [ ] arm/nesf2vfp.S
 - [ ] arm/softfloat-alias.list
-- [ ] arm/subdf3vfp.S
-- [ ] arm/subsf3vfp.S
+- [x] arm/subdf3vfp.S
+- [x] arm/subsf3vfp.S
 - [ ] arm/truncdfsf2vfp.S
 - [ ] arm/udivmodsi4.S (generic version is done)
 - [ ] arm/udivsi3.S (generic version is done)
