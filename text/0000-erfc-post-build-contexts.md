@@ -169,7 +169,7 @@ This section works like this:
 ```rust
 [testing.framework]
 name = "bench"          # mandatory
-folders = ["bench/"]
+folders = ["bench"]
 lib = true              # true by default
 single-target = true    # false by default
 ```
@@ -190,7 +190,7 @@ under a new `[[testing.frameworks]]` section in their
 [[testing.frameworks]]
 provider = { rust-fuzz = "1.0" }
 name = "fuzz"           # optional, overrides `name` on framework crate
-folders = ["fuzz/"]     # optional, overrides `folders` on framework crate
+folders = ["fuzz"]     # optional, overrides `folders` on framework crate
 lib = false             # optional, overrides `lib` on framework crate
 ```
 
@@ -203,17 +203,17 @@ frameworks are defined:
 [[testing.frameworks]]
 name = "test"
 provider = { test = "1.0" }
-folders = ["tests/"]
+folders = ["tests"]
 
 [[testing.frameworks]]
 name = "bench"
 provider = { ?? = "1.0" }
-folders = ["benches/"]
+folders = ["benches"]
 
 [[testing.frameworks]]
 name = "example"
 provider = { ?? = "1.0" }
-folders = ["examples/"]
+folders = ["examples"]
 ```
 
 Whereas having two frameworks of the same name is an error, if you define
