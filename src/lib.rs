@@ -571,7 +571,12 @@ pub fn format_code_block(code_snippet: &str, config: &Config) -> Option<String> 
                     let indent_str =
                         Indent::from_width(config, config.tab_spaces()).to_string(config);
                     if line.starts_with(indent_str.as_ref()) {
-                        &line[config.tab_spaces()..]
+                        let offset = if config.hard_tabs() {
+                            1
+                        } else {
+                            config.tab_spaces()
+                        };
+                        &line[offset..]
                     } else {
                         line
                     }
