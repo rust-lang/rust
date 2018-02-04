@@ -122,7 +122,7 @@ fn item(p: &mut Parser) {
                     if !p.at(FN_KW) {
                         item.abandon(p);
                         p.error().message("expected function").emit();
-                        return
+                        return;
                     }
                     fn_item(p);
                     FN_ITEM

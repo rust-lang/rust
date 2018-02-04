@@ -39,7 +39,9 @@ impl Grammar {
         acc.push_str("use tree::SyntaxInfo;\n");
         acc.push_str("\n");
 
-        let syntax_kinds: Vec<String> =self.tokens.iter().cloned()
+        let syntax_kinds: Vec<String> = self.tokens
+            .iter()
+            .cloned()
             .chain(self.keywords.iter().map(|kw| kw_token(kw)))
             .chain(self.contextual_keywords.iter().map(|kw| kw_token(kw)))
             .chain(self.nodes.iter().cloned())

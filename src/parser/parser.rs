@@ -169,7 +169,6 @@ impl<'t> Parser<'t> {
         self.nth(0)
     }
 
-
     fn event(&mut self, event: Event) {
         self.events.push(event)
     }
