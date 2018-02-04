@@ -318,7 +318,10 @@ pub fn rewrite_macro_def(
     // variables for new names with the same length first.
 
     let old_body = context.snippet(branch.body).trim();
-    let (body_str, substs) = replace_names(old_body);
+    let (body_str, substs) = match replace_names(old_body) {
+        Some(result) => result,
+        None => return snippet,
+    };
 
     // We'll hack the indent below, take this into account when formatting,
     let mut config = context.config.clone();
@@ -377,7 +380,7 @@ pub fn rewrite_macro_def(
 // Replaces `$foo` with `zfoo`. We must check for name overlap to ensure we
 // aren't causing problems.
 // This should also work for escaped `$` variables, where we leave earlier `$`s.
-fn replace_names(input: &str) -> (String, HashMap<String, String>) {
+fn replace_names(input: &str) -> Option<(String, HashMap<String, String>)> {
     // Each substitution will require five or six extra bytes.
     let mut result = String::with_capacity(input.len() + 64);
     let mut substs = HashMap::new();
@@ -409,6 +412,9 @@ fn replace_names(input: &str) -> (String, HashMap<String, String>) {
 
             dollar_count = 0;
             cur_name = String::new();
+        } else if c == '(' && cur_name.is_empty() {
+            // FIXME: Support macro def with repeat.
+            return None;
         } else if c.is_alphanumeric() {
             cur_name.push(c);
         }
@@ -433,7 +439,7 @@ fn replace_names(input: &str) -> (String, HashMap<String, String>) {
 
     debug!("replace_names `{}` {:?}", result, substs);
 
-    (result, substs)
+    Some((result, substs))
 }
 
 // This is a bit sketchy. The token rules probably need tweaking, but it works
