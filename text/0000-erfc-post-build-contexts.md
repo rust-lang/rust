@@ -1,4 +1,4 @@
-- Feature Name: post_build_contexts
+- Feature Name: custom_test_frameworks
 - Start Date: 2018-01-25
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
@@ -6,7 +6,7 @@
 # Summary
 [summary]: #summary
 
-This is an *experimental RFC* for adding the ability to integrate custom test/bench/etc frameworks ("post-build frameworks") in Rust.
+This is an *experimental RFC* for adding the ability to integrate custom test/bench/etc frameworks ("test frameworks") in Rust.
 
 # Motivation
 [motivation]: #motivation
@@ -46,8 +46,8 @@ The main two features proposed are:
 
  - An API for crates that generate custom binaries, including
    introspection into the target crate.
- - A mechanism for `cargo` integration so that custom post-build
-   contexts are at the same level of integration as `test` or `bench` as
+ - A mechanism for `cargo` integration so that custom test frameworks
+are at the same level of integration as `test` or `bench` as
    far as build processes are concerned.
 
  [cargo-fuzz]: https://github.com/rust-fuzz/cargo-fuzz
@@ -60,20 +60,19 @@ The main two features proposed are:
 (As an eRFC I'm merging the "guide-level/reference-level" split for now; when we have more concrete
 ideas we can figure out how to frame it and then the split will make more sense)
 
-The basic idea is that crates can define post-build contexts, which specify 
+The basic idea is that crates can define test frameworks, which specify 
 how to transform collected test functions and construct a `main()` function,
 and then crates using these can declare them in their Cargo.toml, which will let
-crate developers invoke various test-like post-build steps using the post-build
-context.
+crate developers invoke various test-like steps using the framework.
 
 
-## Procedural macro for a new post-build context
+## Procedural macro for a new test framework
 
-A custom post-build context is like a whole-crate procedural
+A test framework is like a whole-crate procedural
 macro that is evaluated after all other macros in the target crate have
 been evaluated. It is passed the `TokenStream` for every element in the
-target crate that has a set of attributes the post-build context has
-registered interest in. For example, to declare a post-build context
+target crate that has a set of attributes the test framework has
+registered interest in. For example, to declare a test framework
 called `mytest`:
 
 ```rust
@@ -81,7 +80,7 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 
 // attributes() is optional
-#[post_build_context(attributes(foo, bar))]
+#[test_framework(attributes(foo, bar))]
 pub fn mytest(items: &[AnnotatedItem]) -> TokenStream {
     // ...
 }
@@ -100,17 +99,17 @@ struct AnnotatedItem
 
 `items` here contains an `AnnotatedItem` for every item in the
 target crate that has one of the attributes declared in `attributes`
-along with attributes sharing the name of the context (`mytest`, here).
+along with attributes sharing the name of the framework (`mytest`, here).
 
-A post-build context could declare that it reacts to multiple different
+A test framework could declare that it reacts to multiple different
 attributes, in which case it would get all items with any of the
 listed attributes. These items be modules, functions, structs,
-statics, or whatever else the post-build context wants to support. Note
-that the post-build context function can only see all the annotated
+statics, or whatever else the test framework wants to support. Note
+that the test framework function can only see all the annotated
 items, not modify them; modification would have to happen with regular
 procedural macros. The returned `TokenStream` must declare the `main()`
 that is to become the entry-point for the binary produced when this
-post-build context is used.
+test framework is used.
 
 So an example transformation would be to take something like this:
 
@@ -143,99 +142,109 @@ fn main() {
 ```
 
 Because this procedural macro is only loaded when it is used as the
-post-build context, the `#[mytest]` annotation should probably be kept
+test framework, the `#[mytest]` annotation should probably be kept
 behind `#[cfg(mytest)]` (which is automatically set when we are currently running
-with the `mytest` context, i.e. `cargo post-build mytest` is being run)
+with the `mytest` framework, i.e. `cargo test --framework mytest` is being run)
 so that you don't get unknown attribute warnings
-whilst loading, and to avoid conflicts with other post-build contexts
+whilst loading, and to avoid conflicts with other frameworks
 that may use the same attributes. (We could change this by asking
 attributes to be registered in Cargo.toml, but we don't find this
 necessary)
 
 
-A crate may only define a single post-build context.
+A crate may only define a single framework.
 
 ## Cargo integration
 
-Alternative post-build contexts need to integrate with cargo.
+Alternative frameworks need to integrate with cargo.
 In particular, when crate `a` uses a crate `b` which provides an
-post-build context, `a` needs to be able to specify when `b`'s post-build
-context should be used. Furthermore, cargo needs to understand that when
-`b`'s post-build context is used, `b`'s dependencies must also be linked.
-Note that `b` could potentially provide multiple post-build contexts ---
-these are named according to the name of their `#[post_build_context]`
-function.
+framework, `a` needs to be able to specify when `b`'s framework
+should be used. Furthermore, cargo needs to understand that when
+`b`'s framework is used, `b`'s dependencies must also be linked.
 
-Crates which define a post-build context must have an `post-build-context = true`
-key in their `Cargo.toml`. They cannot be used as regular dependencies. It can also specify
+Crates which define a test framework must have a `[testing.framework]`
+key in their `Cargo.toml`. They cannot be used as regular dependencies.
+This section works like this:
 
 ```rust
+[testing.framework]
+name = "bench"          # mandatory
+folders = ["bench/"]
+lib = true              # true by default
 single-target = true    # false by default
 ```
 
+`lib` specifies if the `--lib` mode exists for this framework by default,
+and `folders` specifies which folders the framework applies to. Both can be overridden
+by consumers.
+
 `single-target` indicates that only a single target can be run with this
-context at once (some tools, like cargo-fuzz, run forever, and so it
+framework at once (some tools, like cargo-fuzz, run forever, and so it
 does not make sense to specify multiple targets).
 
-Crates that wish to *use* a custom post-build context, do so by defining
-a new post-build context under a new `build-context` section in their
+Crates that wish to *use* a custom test framework, do so by including a framework
+under a new `[[testing.frameworks]]` section in their
 `Cargo.toml`:
 
 ```toml
-[post-build.context.fuzz]
+[[testing.frameworks]]
 provider = { rust-fuzz = "1.0" }
-folders = ["fuzz/"]
+name = "fuzz"           # optional, overrides `name` on framework crate
+folders = ["fuzz/"]     # optional, overrides `folders` on framework crate
+lib = false             # optional, overrides `lib` on framework crate
 ```
 
-This defines a post-build context named `fuzz`, which uses the
+This pulls in the framework named "fuzz", which uses the
 implementation provided by the `rust-fuzz` crate. When run, it will be
 applied to all files in the `fuzz` directory. By default, the following
-contexts are defined:
+frameworks are defined:
 
 ```toml
-[post-build.context.test]
+[[testing.frameworks]]
+name = "test"
 provider = { test = "1.0" }
 folders = ["tests/"]
 
-[post-build.context.bench]
+[[testing.frameworks]]
+name = "bench"
 provider = { ?? = "1.0" }
 folders = ["benches/"]
 
-[post-build.context.examples]
+[[testing.frameworks]]
+name = "example"
 provider = { ?? = "1.0" }
 folders = ["examples/"]
 ```
 
-There's also an `example` context defined that just runs the `main()` of
-any files given.
+Whereas having two frameworks of the same name is an error, if you define
+a framework named "test", "bench", or "example", it will override the implicitly
+defined builtin frameworks.
 
-These can be overridden by a crate's `Cargo.toml`.
-
-To invoke a particular post-build context, a user invokes `cargo context
-<context>`. `cargo test` and `cargo bench` are aliases for `cargo
-context test` and `cargo context bench` respectively. Any additional
-arguments are passed to the post-build context binary. By convention, the
+To invoke a particular framework, a user invokes `cargo test --framework
+<name>`. `cargo bench` is an alias for `cargo
+test --framework bench`. Any additional
+arguments are passed to the testing binary. By convention, the
 first position argument should allow filtering which targets
 (tests/benchmarks/etc.) are run.
 
-To run multiple contexts at once, a crate can declare post-build context
-*sets*. One such example is the `test` post-build context set, which
-will run doctests and the `test` and `examples` context. This can be
+To run multiple frameworks at once, a crate can declare testing
+*sets*. One such example is the `test` testing set, which
+will run doctests and the `test` and `examples` framework. This can be
 customized:
 
 ```toml
-[post-build.set.test]
-contexts = [test, quickcheck, examples]
+[testing.set.test]
+frameworks = [test, quickcheck, examples]
 ```
 
 This means that `cargo test` will, aside from doctests, run `cargo
-context test`, `cargo context quickcheck`, and `cargo context examples`
+test --framework test`, `cargo test --framework quickcheck`, and `cargo test --framework examples`
 (and similar stuff for `cargo bench`). It is not possible to make `cargo
-test` _not_ run doctests. If both a context and a set exists with a
+test` _not_ run doctests. If both a framework and a set exists with a
 given name, the set takes precedence.
 
-`[[test]]` and `[[example]]` in a crate's `Cargo.toml` add files to the
-`test` and `example` contexts respectively.
+`[[test]]` and `[[example]]` in a crate's `Cargo.toml` add targets to the
+`test` and `example` frameworks respectively.
 
 ## To be designed
 
@@ -255,9 +264,9 @@ like json output and whatnot.
 
  - This adds more sections to `Cargo.toml`.
  - This complicates the execution path for cargo, in that it now needs
-   to know about post-build contexts and sets.
+   to know about testing frameworks and sets.
  - Flags and command-line parameters for test and bench will now vary
-   between post-build contexts, which may confuse users as they move
+   between testing frameworks, which may confuse users as they move
    between crates.
 
 # Rationale and alternatives
@@ -273,7 +282,7 @@ forms of testing or benchmarking.
 An alternative proposal was to expose an extremely general whole-crate proc macro:
 
 ```rust
-#[post_build_context(attributes(foo, bar))]
+#[test_framework(attributes(foo, bar))]
 pub fn mytest(crate: TokenStream) -> TokenStream {
     // ...
 }
@@ -318,7 +327,7 @@ compiler already has)
 Test crates are now simply proc macro attributes:
 
 ```rust
-#[proc_macro_attr(attributes(test, foo, bar))]
+#[test_framework(attributes(test, foo, bar))]
 pub fn harness(crate: TokenStream) -> TokenStream {
   // ...
 }
@@ -339,30 +348,14 @@ there's consensus on some of these we can move them into the main RFC.
 
 Documentation tests are somewhat special, in that they cannot easily be
 expressed as `TokenStream` manipulations. In the first instance, the
-right thing to do is probably to have an implicitly defined post-build
-context called `doctest` which is included in the post-build context set
+right thing to do is probably to have an implicitly defined framework
+ called `doctest` which is included in the testing set
 `test` by default (as proposed above).
 
 Another argument for punting on doctests is that they are intended to
 demonstrate code that the user of a library would write. They're there
 to document *how* something should be used, and it then makes somewhat
 less sense to have different "ways" of running them.
-
-## Translating existing cargo test flags
-
-Today, `cargo test` takes a number of flags such as `--lib`, `--test
-foo`, and `--doc`. As it would be a breaking change to change these,
-cargo should recognize them and map to the appropriate post-build
-contexts.
-
-Furthermore, `cargo test` lets you pick a single testing target via `--test`,
-and `cargo bench` via `--bench`. We'll need to create an agnostic flag
-for `cargo context` (we cannot use `--target` because it is already used for
-the target architecture, and `--test` is too specific for tests). `--post-build-target`
-is one rather verbose suggestion.
-
-We also need to settle on a command name, `cargo context` and `cargo post-build`
-don't quite capture what's going on.
 
 ## Standardizing the output
 
@@ -373,27 +366,27 @@ to standardize things like json output and whatnot.
 
 ## Namespacing
 
-Currently, two post-build contexts can both declare interest in the same
+Currently, two frameworks can both declare interest in the same
 attributes. How do we deal with collisions (e.g., most test crates will
 want the attribute `#[test]`). Do we namespace the attributes by the
-context name (e.g., `#[mytest::test]`)? Do we require them to be behind
+framework name (e.g., `#[mytest::test]`)? Do we require them to be behind
 `#[cfg(mytest)]`?
 
 ## Runtime dependencies and flags
 
-The code generated by the post-build context may itself have dependencies.
-Currently there's no way for the post-build context to specify this. One
+The code generated by the framework may itself have dependencies.
+Currently there's no way for the framework to specify this. One
 proposal is for the crate to specify  _runtime_ dependencies of the
-post-build context via:
+framework via:
 
 ```toml
-[context-dependencies]
+[testing.framework.dependencies]
 libfuzzer-sys = ...
 ```
 
-If a crate is currently running this post-build context, its
-dev-dependencies will be semver-merged with the post-build context's
-`context-dependencies`. However, this may not be strictly necessary.
+If a crate is currently running this framework, its
+dev-dependencies will be semver-merged with the frameworks's
+`framework.dependencies`. However, this may not be strictly necessary.
 Custom derives have a similar problem and they solve it by just asking
 users to import the correct crate.
 
@@ -402,26 +395,12 @@ users to import the correct crate.
 The general syntax and toml stuff should be approximately settled on before this eRFC merges, but
 iterated on later. Naming the feature is hard, some candidates are:
 
- - test framework
+ - testing framework
+ - post-build context
  - build context
  - execution context
 
 None of these are particularly great, ideas would be nice.
-
-## Default folders and sets
-
-Should a post-build context be able to declare "defaults" for what folders and post-build sets it
-should be added to? This might save users from some boilerplate in a large number of situations.
-
-This could be done in the Cargo.toml as:
-
-```toml
-[post-build.defaults]
-folders = ["tests/"]
-set = "test" # will automatically be added to the `test` set
-```
-
-This is useful if a crate wishes to standardize things.
 
 ## Bencher
 
