@@ -1623,15 +1623,13 @@ bitflags! {
     #[derive(RustcEncodable, RustcDecodable, Default)]
     pub struct ReprFlags: u8 {
         const IS_C               = 1 << 0;
-        const IS_PACKED          = 1 << 1;
-        const IS_SIMD            = 1 << 2;
-        const IS_TRANSPARENT     = 1 << 3;
+        const IS_SIMD            = 1 << 1;
+        const IS_TRANSPARENT     = 1 << 2;
         // Internal only for now. If true, don't reorder fields.
-        const IS_LINEAR          = 1 << 4;
+        const IS_LINEAR          = 1 << 3;
 
         // Any of these flags being set prevent field reordering optimisation.
         const IS_UNOPTIMISABLE   = ReprFlags::IS_C.bits |
-                                   ReprFlags::IS_PACKED.bits |
                                    ReprFlags::IS_SIMD.bits |
                                    ReprFlags::IS_LINEAR.bits;
     }
@@ -1648,11 +1646,13 @@ impl_stable_hash_for!(struct ReprFlags {
 pub struct ReprOptions {
     pub int: Option<attr::IntType>,
     pub align: u32,
+    pub pack: u32,
     pub flags: ReprFlags,
 }
 
 impl_stable_hash_for!(struct ReprOptions {
     align,
+    pack,
     int,
     flags
 });
@@ -1662,11 +1662,19 @@ impl ReprOptions {
         let mut flags = ReprFlags::empty();
         let mut size = None;
         let mut max_align = 0;
+        let mut min_pack = 0;
         for attr in tcx.get_attrs(did).iter() {
             for r in attr::find_repr_attrs(tcx.sess.diagnostic(), attr) {
                 flags.insert(match r {
                     attr::ReprC => ReprFlags::IS_C,
-                    attr::ReprPacked => ReprFlags::IS_PACKED,
+                    attr::ReprPacked(pack) => {
+                        min_pack = if min_pack > 0 {
+                            cmp::min(pack, min_pack)
+                        } else {
+                            pack
+                        };
+                        ReprFlags::empty()
+                    },
                     attr::ReprTransparent => ReprFlags::IS_TRANSPARENT,
                     attr::ReprSimd => ReprFlags::IS_SIMD,
                     attr::ReprInt(i) => {
@@ -1685,7 +1693,7 @@ impl ReprOptions {
         if !tcx.consider_optimizing(|| format!("Reorder fields of {:?}", tcx.item_path_str(did))) {
             flags.insert(ReprFlags::IS_LINEAR);
         }
-        ReprOptions { int: size, align: max_align, flags: flags }
+        ReprOptions { int: size, align: max_align, pack: min_pack, flags: flags }
     }
 
     #[inline]
@@ -1693,7 +1701,7 @@ impl ReprOptions {
     #[inline]
     pub fn c(&self) -> bool { self.flags.contains(ReprFlags::IS_C) }
     #[inline]
-    pub fn packed(&self) -> bool { self.flags.contains(ReprFlags::IS_PACKED) }
+    pub fn packed(&self) -> bool { self.pack > 0 }
     #[inline]
     pub fn transparent(&self) -> bool { self.flags.contains(ReprFlags::IS_TRANSPARENT) }
     #[inline]
@@ -1708,6 +1716,12 @@ impl ReprOptions {
     /// single pointer.
     pub fn inhibit_enum_layout_opt(&self) -> bool {
         self.c() || self.int.is_some()
+    }
+
+    /// Returns true if this `#[repr()]` should inhibit struct field reordering
+    /// optimizations, such as with repr(C) or repr(packed(1)).
+    pub fn inhibit_struct_field_reordering_opt(&self) -> bool {
+        !(self.flags & ReprFlags::IS_UNOPTIMISABLE).is_empty() || (self.pack == 1)
     }
 }
 

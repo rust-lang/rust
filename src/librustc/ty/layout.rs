@@ -12,7 +12,7 @@ pub use self::Integer::*;
 pub use self::Primitive::*;
 
 use session::{self, DataTypeKind, Session};
-use ty::{self, Ty, TyCtxt, TypeFoldable, ReprOptions, ReprFlags};
+use ty::{self, Ty, TyCtxt, TypeFoldable, ReprOptions};
 
 use syntax::ast::{self, FloatTy, IntTy, UintTy};
 use syntax::attr;
@@ -344,8 +344,8 @@ impl AddAssign for Size {
 /// a maximum capacity of 2<sup>31</sup> - 1 or 2147483647.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct Align {
-    abi: u8,
-    pref: u8,
+    abi_pow2: u8,
+    pref_pow2: u8,
 }
 
 impl Align {
@@ -377,17 +377,17 @@ impl Align {
         };
 
         Ok(Align {
-            abi: log2(abi)?,
-            pref: log2(pref)?,
+            abi_pow2: log2(abi)?,
+            pref_pow2: log2(pref)?,
         })
     }
 
     pub fn abi(self) -> u64 {
-        1 << self.abi
+        1 << self.abi_pow2
     }
 
     pub fn pref(self) -> u64 {
-        1 << self.pref
+        1 << self.pref_pow2
     }
 
     pub fn abi_bits(self) -> u64 {
@@ -400,15 +400,15 @@ impl Align {
 
     pub fn min(self, other: Align) -> Align {
         Align {
-            abi: cmp::min(self.abi, other.abi),
-            pref: cmp::min(self.pref, other.pref),
+            abi_pow2: cmp::min(self.abi_pow2, other.abi_pow2),
+            pref_pow2: cmp::min(self.pref_pow2, other.pref_pow2),
         }
     }
 
     pub fn max(self, other: Align) -> Align {
         Align {
-            abi: cmp::max(self.abi, other.abi),
-            pref: cmp::max(self.pref, other.pref),
+            abi_pow2: cmp::max(self.abi_pow2, other.abi_pow2),
+            pref_pow2: cmp::max(self.pref_pow2, other.pref_pow2),
         }
     }
 }
@@ -974,6 +974,11 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 bug!("struct cannot be packed and aligned");
             }
 
+            let pack = {
+                let pack = repr.pack as u64;
+                Align::from_bytes(pack, pack).unwrap()
+            };
+
             let mut align = if packed {
                 dl.i8_align
             } else {
@@ -984,8 +989,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             let mut offsets = vec![Size::from_bytes(0); fields.len()];
             let mut inverse_memory_index: Vec<u32> = (0..fields.len() as u32).collect();
 
-            // Anything with repr(C) or repr(packed) doesn't optimize.
-            let mut optimize = (repr.flags & ReprFlags::IS_UNOPTIMISABLE).is_empty();
+            let mut optimize = !repr.inhibit_struct_field_reordering_opt();
             if let StructKind::Prefixed(_, align) = kind {
                 optimize &= align.abi() == 1;
             }
@@ -997,6 +1001,9 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     fields.len()
                 };
                 let optimizing = &mut inverse_memory_index[..end];
+                let field_align = |f: &TyLayout| {
+                    if packed { f.align.min(pack).abi() } else { f.align.abi() }
+                };
                 match kind {
                     StructKind::AlwaysSized |
                     StructKind::MaybeUnsized => {
@@ -1004,11 +1011,11 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                             // Place ZSTs first to avoid "interesting offsets",
                             // especially with only one or two non-ZST fields.
                             let f = &fields[x as usize];
-                            (!f.is_zst(), cmp::Reverse(f.align.abi()))
-                        })
+                            (!f.is_zst(), cmp::Reverse(field_align(f)))
+                        });
                     }
                     StructKind::Prefixed(..) => {
-                        optimizing.sort_by_key(|&x| fields[x as usize].align.abi());
+                        optimizing.sort_by_key(|&x| field_align(&fields[x as usize]));
                     }
                 }
             }
@@ -1022,7 +1029,10 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             let mut offset = Size::from_bytes(0);
 
             if let StructKind::Prefixed(prefix_size, prefix_align) = kind {
-                if !packed {
+                if packed {
+                    let prefix_align = prefix_align.min(pack);
+                    align = align.max(prefix_align);
+                } else {
                     align = align.max(prefix_align);
                 }
                 offset = prefix_size.abi_align(prefix_align);
@@ -1044,7 +1054,12 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 }
 
                 // Invariant: offset < dl.obj_size_bound() <= 1<<61
-                if !packed {
+                if packed {
+                    let field_pack = field.align.min(pack);
+                    offset = offset.abi_align(field_pack);
+                    align = align.max(field_pack);
+                }
+                else {
                     offset = offset.abi_align(field.align);
                     align = align.max(field.align);
                 }
@@ -1377,7 +1392,12 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                         bug!("Union cannot be packed and aligned");
                     }
 
-                    let mut align = if def.repr.packed() {
+                    let pack = {
+                        let pack = def.repr.pack as u64;
+                        Align::from_bytes(pack, pack).unwrap()
+                    };
+
+                    let mut align = if packed {
                         dl.i8_align
                     } else {
                         dl.aggregate_align
@@ -1393,7 +1413,10 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     for field in &variants[0] {
                         assert!(!field.is_unsized());
 
-                        if !packed {
+                        if packed {
+                            let field_pack = field.align.min(pack);
+                            align = align.max(field_pack);
+                        } else {
                             align = align.max(field.align);
                         }
                         size = cmp::max(size, field.size);
@@ -1740,12 +1763,13 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
     fn record_layout_for_printing_outlined(self, layout: TyLayout<'tcx>) {
         // (delay format until we actually need it)
-        let record = |kind, opt_discr_size, variants| {
+        let record = |kind, packed, opt_discr_size, variants| {
             let type_desc = format!("{:?}", layout.ty);
             self.tcx.sess.code_stats.borrow_mut().record_type_size(kind,
                                                                    type_desc,
                                                                    layout.align,
                                                                    layout.size,
+                                                                   packed,
                                                                    opt_discr_size,
                                                                    variants);
         };
@@ -1758,7 +1782,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
             ty::TyClosure(..) => {
                 debug!("print-type-size t: `{:?}` record closure", layout.ty);
-                record(DataTypeKind::Closure, None, vec![]);
+                record(DataTypeKind::Closure, false, None, vec![]);
                 return;
             }
 
@@ -1769,6 +1793,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
         };
 
         let adt_kind = adt_def.adt_kind();
+        let adt_packed = adt_def.repr.packed();
 
         let build_variant_info = |n: Option<ast::Name>,
                                   flds: &[ast::Name],
@@ -1821,6 +1846,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     let fields: Vec<_> =
                         variant_def.fields.iter().map(|f| f.name).collect();
                     record(adt_kind.into(),
+                           adt_packed,
                            None,
                            vec![build_variant_info(Some(variant_def.name),
                                                    &fields,
@@ -1828,7 +1854,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 } else {
                     // (This case arises for *empty* enums; so give it
                     // zero variants.)
-                    record(adt_kind.into(), None, vec![]);
+                    record(adt_kind.into(), adt_packed, None, vec![]);
                 }
             }
 
@@ -1845,7 +1871,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                                             layout.for_variant(self, i))
                     })
                     .collect();
-                record(adt_kind.into(), match layout.variants {
+                record(adt_kind.into(), adt_packed, match layout.variants {
                     Variants::Tagged { ref discr, .. } => Some(discr.value.size(self)),
                     _ => None
                 }, variant_infos);
@@ -2518,8 +2544,8 @@ impl_stable_hash_for!(enum ::ty::layout::Primitive {
 });
 
 impl_stable_hash_for!(struct ::ty::layout::Align {
-    abi,
-    pref
+    abi_pow2,
+    pref_pow2
 });
 
 impl_stable_hash_for!(struct ::ty::layout::Size {

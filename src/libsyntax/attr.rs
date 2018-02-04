@@ -993,7 +993,7 @@ pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> 
                     let word = &*mi.ident.name.as_str();
                     let hint = match word {
                         "C" => Some(ReprC),
-                        "packed" => Some(ReprPacked),
+                        "packed" => Some(ReprPacked(1)),
                         "simd" => Some(ReprSimd),
                         "transparent" => Some(ReprTransparent),
                         _ => match int_type_of_word(word) {
@@ -1009,27 +1009,41 @@ pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> 
                         acc.push(h);
                     }
                 } else if let Some((name, value)) = item.name_value_literal() {
-                    if name == "align" {
-                        recognised = true;
-                        let mut align_error = None;
-                        if let ast::LitKind::Int(align, ast::LitIntType::Unsuffixed) = value.node {
-                            if align.is_power_of_two() {
+                    let parse_alignment = |node: &ast::LitKind| -> Result<u32, &'static str> {
+                        if let ast::LitKind::Int(literal, ast::LitIntType::Unsuffixed) = node {
+                            if literal.is_power_of_two() {
                                 // rustc::ty::layout::Align restricts align to <= 2147483647
-                                if align <= 2147483647 {
-                                    acc.push(ReprAlign(align as u32));
+                                if *literal <= 2147483647 {
+                                    Ok(*literal as u32)
                                 } else {
-                                    align_error = Some("larger than 2147483647");
+                                    Err("larger than 2147483647")
                                 }
                             } else {
-                                align_error = Some("not a power of two");
+                                Err("not a power of two")
                             }
                         } else {
-                            align_error = Some("not an unsuffixed integer");
+                            Err("not an unsuffixed integer")
                         }
-                        if let Some(align_error) = align_error {
-                            span_err!(diagnostic, item.span, E0589,
-                                      "invalid `repr(align)` attribute: {}", align_error);
-                        }
+                    };
+
+                    let mut literal_error = None;
+                    if name == "align" {
+                        recognised = true;
+                        match parse_alignment(&value.node) {
+                            Ok(literal) => acc.push(ReprAlign(literal)),
+                            Err(message) => literal_error = Some(message)
+                        };
+                    }
+                    else if name == "packed" {
+                        recognised = true;
+                        match parse_alignment(&value.node) {
+                            Ok(literal) => acc.push(ReprPacked(literal)),
+                            Err(message) => literal_error = Some(message)
+                        };
+                    }
+                    if let Some(literal_error) = literal_error {
+                        span_err!(diagnostic, item.span, E0589,
+                                  "invalid `repr(align)` attribute: {}", literal_error);
                     }
                 }
                 if !recognised {
@@ -1065,7 +1079,7 @@ fn int_type_of_word(s: &str) -> Option<IntType> {
 pub enum ReprAttr {
     ReprInt(IntType),
     ReprC,
-    ReprPacked,
+    ReprPacked(u32),
     ReprSimd,
     ReprTransparent,
     ReprAlign(u32),

@@ -413,8 +413,12 @@ impl<'a> TraitDef<'a> {
         match *item {
             Annotatable::Item(ref item) => {
                 let is_packed = item.attrs.iter().any(|attr| {
-                    attr::find_repr_attrs(&cx.parse_sess.span_diagnostic, attr)
-                        .contains(&attr::ReprPacked)
+                    for r in attr::find_repr_attrs(&cx.parse_sess.span_diagnostic, attr) {
+                        if let attr::ReprPacked(_) = r {
+                            return true;
+                        }
+                    }
+                    false
                 });
                 let has_no_type_params = match item.node {
                     ast::ItemKind::Struct(_, ref generics) |
@@ -831,7 +835,7 @@ fn find_repr_type_name(diagnostic: &Handler, type_attrs: &[ast::Attribute]) -> &
     for a in type_attrs {
         for r in &attr::find_repr_attrs(diagnostic, a) {
             repr_type_name = match *r {
-                attr::ReprPacked | attr::ReprSimd | attr::ReprAlign(_) | attr::ReprTransparent =>
+                attr::ReprPacked(_) | attr::ReprSimd | attr::ReprAlign(_) | attr::ReprTransparent =>
                     continue,
 
                 attr::ReprC => "i32",
