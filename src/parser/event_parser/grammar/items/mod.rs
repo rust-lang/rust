@@ -25,6 +25,8 @@ fn item(p: &mut Parser) {
             use_item::use_item(p);
             USE_ITEM
         }
+        // test extern_crate
+        // extern crate foo;
         EXTERN_KW if la == CRATE_KW => {
             extern_crate_item(p);
             EXTERN_CRATE_ITEM
@@ -32,14 +34,20 @@ fn item(p: &mut Parser) {
         EXTERN_KW => {
             abi(p);
             match p.current() {
+                // test extern_fn
+                // extern fn foo() {}
                 FN_KW => {
                     fn_item(p);
                     FN_ITEM
                 }
+                // test extern_block
+                // extern {}
                 L_CURLY => {
                     extern_block(p);
                     EXTERN_BLOCK
                 }
+                // test extern_struct
+                // extern struct Foo;
                 _ => {
                     item.abandon(p);
                     p.error().message("expected `fn` or `{`").emit();
