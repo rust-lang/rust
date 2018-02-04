@@ -23,22 +23,21 @@ the following:
 
 ```rust
 tcx.infer_ctxt().enter(|infcx| {
-    // use the inference context `infcx` in here
+    // Use the inference context `infcx` here.
 })
 ```
 
 Each inference context creates a short-lived type arena to store the
-fresh types and things that it will create, as described in
-[the README in the ty module][ty-readme]. This arena is created by the `enter`
-function and disposed after it returns.
+fresh types and things that it will create, as described in the
+[README in the `ty` module][ty-readme]. This arena is created by the `enter`
+function and disposed of after it returns.
 
 [ty-readme]: ty.html
 
-Within the closure, the infcx will have the type `InferCtxt<'cx, 'gcx,
-'tcx>` for some fresh `'cx` and `'tcx` – the latter corresponds to
-the lifetime of this temporary arena, and the `'cx` is the lifetime of
-the `InferCtxt` itself. (Again, see [that ty README][ty-readme] for
-more details on this setup.)
+Within the closure, `infcx` has the type `InferCtxt<'cx, 'gcx, 'tcx>`
+for some fresh `'cx` and `'tcx` – the latter corresponds to the lifetime of
+this temporary arena, and the `'cx` is the lifetime of the `InferCtxt` itself.
+(Again, see the [`ty` README][ty-readme] for more details on this setup.)
 
 The `tcx.infer_ctxt` method actually returns a build, which means
 there are some kinds of configuration you can do before the `infcx` is
@@ -58,7 +57,7 @@ inference works, or perhaps this blog post on
 
 [Unification in the Chalk project]: http://smallcultfollowing.com/babysteps/blog/2017/03/25/unification-in-chalk-part-1/
 
-All told, the inference context stores four kinds of inference variables as of this
+All said, the inference context stores four kinds of inference variables as of
 writing:
 
 - Type variables, which come in three varieties:
@@ -67,7 +66,7 @@ writing:
     arise from an integer literal expression like `22`.
   - Float type variables, which can only be unified with a float type, and
     arise from a float literal expression like `22.0`.
-- Region variables, which represent lifetimes, and arise all over the dang place.
+- Region variables, which represent lifetimes, and arise all over the place.
 
 All the type variables work in much the same way: you can create a new
 type variable, and what you get is `Ty<'tcx>` representing an
@@ -86,7 +85,7 @@ The most basic operations you can perform in the type inferencer is
 recommended way to add an equality constraint is using the `at`
 method, roughly like so:
 
-```
+```rust
 infcx.at(...).eq(t, u);
 ```
 
@@ -95,7 +94,7 @@ doing this unification, and in what environment, and the `eq` method
 performs the actual equality constraint.
 
 When you equate things, you force them to be precisely equal. Equating
-returns a `InferResult` – if it returns `Err(err)`, then equating
+returns an `InferResult` – if it returns `Err(err)`, then equating
 failed, and the enclosing `TypeError` will tell you what went wrong.
 
 The success case is perhaps more interesting. The "primary" return
@@ -105,12 +104,12 @@ side-effects of constraining type variables and so forth. However, the
 actual return type is not `()`, but rather `InferOk<()>`. The
 `InferOk` type is used to carry extra trait obligations – your job is
 to ensure that these are fulfilled (typically by enrolling them in a
-fulfillment context). See the [trait README] for more background here.
+fulfillment context). See the [trait README] for more background on that.
 
 [trait README]: trait-resolution.html
 
-You can also enforce subtyping through `infcx.at(..).sub(..)`. The same
-basic concepts apply as above.
+You can similarly enforce subtyping through `infcx.at(..).sub(..)`. The same
+basic concepts as above apply.
 
 ## "Trying" equality
 
@@ -119,7 +118,7 @@ types without error.  You can test that with `infcx.can_eq` (or
 `infcx.can_sub` for subtyping). If this returns `Ok`, then equality
 is possible – but in all cases, any side-effects are reversed.
 
-Be aware though that the success or failure of these methods is always
+Be aware, though, that the success or failure of these methods is always
 **modulo regions**. That is, two types `&'a u32` and `&'b u32` will
 return `Ok` for `can_eq`, even if `'a != 'b`.  This falls out from the
 "two-phase" nature of how we solve region constraints.
@@ -146,7 +145,7 @@ patterns.
 
 ## Subtyping obligations
 
-One thing worth discussing are subtyping obligations. When you force
+One thing worth discussing is subtyping obligations. When you force
 two types to be a subtype, like `?T <: i32`, we can often convert those
 into equality constraints. This follows from Rust's rather limited notion
 of subtyping: so, in the above case, `?T <: i32` is equivalent to `?T = i32`.
@@ -172,11 +171,11 @@ mechanism. You'll have to try again when more details about `?T` or
 Regions are inferred somewhat differently from types. Rather than
 eagerly unifying things, we simply collect constraints as we go, but
 make (almost) no attempt to solve regions. These constraints have the
-form of an outlives constraint:
+form of an "outlives" constraint:
 
     'a: 'b
 
-Actually the code tends to view them as a subregion relation, but it's the same
+Actually, the code tends to view them as a subregion relation, but it's the same
 idea:
 
     'b <= 'a
@@ -202,7 +201,7 @@ ways to solve region constraints right now: lexical and
 non-lexical. Eventually there will only be one.
 
 To solve **lexical** region constraints, you invoke
-`resolve_regions_and_report_errors`.  This will "close" the region
+`resolve_regions_and_report_errors`.  This "closes" the region
 constraint process and invoke the `lexical_region_resolve` code. Once
 this is done, any further attempt to equate or create a subtyping
 relationship will yield an ICE.
@@ -224,4 +223,4 @@ Lexical region resolution is done by initially assigning each region
 variable to an empty value. We then process each outlives constraint
 repeatedly, growing region variables until a fixed-point is reached.
 Region variables can be grown using a least-upper-bound relation on
-the region lattice in a fairly straight-forward fashion.
+the region lattice in a fairly straightforward fashion.
