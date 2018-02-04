@@ -1023,7 +1023,7 @@ impl Metadata {
         self.0.accessed().map(FromInner::from_inner)
     }
 
-    /// Returns the creation time listed in the this metadata.
+    /// Returns the creation time listed in this metadata.
     ///
     /// The returned value corresponds to the `birthtime` field of `stat` on
     /// Unix platforms and the `ftCreationTime` field on Windows platforms.
