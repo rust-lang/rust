@@ -326,13 +326,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if reached_raw_pointer
                     && !self.tcx.sess.features.borrow().arbitrary_self_types {
                         // this case used to be allowed by the compiler,
-                        // so we do a future-compat lint here
+                        // so we do a future-compat lint here for the 2015 epoch
                         // (see https://github.com/rust-lang/rust/issues/46906)
-                        self.tcx.lint_node(
-                            lint::builtin::TYVAR_BEHIND_RAW_POINTER,
-                            scope_expr_id,
-                            span,
-                            &format!("the type of this value must be known in this context"));
+                        if self.tcx.sess.rust_2018() {
+                          span_err!(self.tcx.sess, span, E0908,
+                                    "the type of this value must be known \
+                                     to call a method on a raw pointer on it");
+                        } else {
+                            self.tcx.lint_node(
+                                lint::builtin::TYVAR_BEHIND_RAW_POINTER,
+                                scope_expr_id,
+                                span,
+                                &format!("the type of this value must be known in this context"));
+                        }
                     } else {
                         let t = self.structurally_resolved_type(span, final_ty);
                         assert_eq!(t, self.tcx.types.err);
