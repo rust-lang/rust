@@ -164,7 +164,7 @@ these are named according to the name of their `#[post_build_context]`
 function.
 
 Crates which define a post-build context must have an `post-build-context = true`
-key in their `Cargo.toml`. It can also specify
+key in their `Cargo.toml`. They cannot be used as regular dependencies. It can also specify
 
 ```rust
 single-target = true    # false by default
