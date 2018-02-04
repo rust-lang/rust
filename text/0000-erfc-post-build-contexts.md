@@ -69,7 +69,7 @@ context.
 
 ## Procedural macro for a new post-build context
 
-A custom post-build context is essentially a whole-crate procedural
+A custom post-build context is like a whole-crate procedural
 macro that is evaluated after all other macros in the target crate have
 been evaluated. It is passed the `TokenStream` for every element in the
 target crate that has a set of attributes the post-build context has
@@ -111,6 +111,36 @@ items, not modify them; modification would have to happen with regular
 procedural macros. The returned `TokenStream` must declare the `main()`
 that is to become the entry-point for the binary produced when this
 post-build context is used.
+
+So an example transformation would be to take something like this:
+
+```rust
+#[quickcheck]
+fn foo(x: u8) {
+    // ...
+}
+
+mod bar {
+    #[quickcheck]
+    fn bar(x: String, y: u8) {
+        // ...
+    }
+}
+```
+
+and output a `main()` that does something like:
+
+```rust
+fn main() {
+    // handles showing failures, etc
+    let mut runner = quickcheck::Runner();
+
+    runner.iter("foo", |random_source| foo(random_source.next().into()));
+    runner.iter("bar::bar", |random_source| bar::bar(random_source.next().into(),
+                                                     random_source.next().into()));
+    runner.finish();
+}
+```
 
 Because this procedural macro is only loaded when it is used as the
 post-build context, the `#[mytest]` annotation should probably be kept
