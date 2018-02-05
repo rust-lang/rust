@@ -9,7 +9,7 @@ use rustc::lint::{LateContext, Level, Lint, LintContext};
 use rustc::session::Session;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::layout::Align;
+use rustc::ty::layout::LayoutOf;
 use rustc_errors;
 use std::borrow::Cow;
 use std::env;
@@ -1041,7 +1041,7 @@ pub fn is_try(expr: &Expr) -> Option<&Expr> {
 }
 
 pub fn type_size<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Option<u64> {
-    cx.tcx.layout_of(cx.param_env.and(ty))
+    cx.layout_of(ty)
         .ok()
         .map(|layout| layout.size.bytes())
 }
@@ -1059,11 +1059,4 @@ pub fn get_arg_name(pat: &Pat) -> Option<ast::Name> {
         PatKind::Ref(ref subpat, _) => get_arg_name(subpat),
         _ => None,
     }
-}
-
-/// Returns alignment for a type, or None if alignment is undefined
-pub fn alignment<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Option<Align> {
-    cx.tcx.layout_of(cx.param_env.and(ty))
-        .ok()
-        .map(|layout| layout.align)
 }

@@ -1,10 +1,10 @@
 use rustc::lint::*;
 use rustc::ty::{self, Ty};
 use rustc::hir::*;
+use rustc::ty::layout::LayoutOf;
 use std::borrow::Cow;
 use syntax::ast;
-use utils::{last_path_segment, match_def_path, paths, snippet, span_lint, span_lint_and_then,
-            alignment};
+use utils::{last_path_segment, match_def_path, paths, snippet, span_lint, span_lint_and_then};
 use utils::{opt_def_id, sugg};
 
 /// **What it does:** Checks for transmutes that can't ever be correct on any
@@ -220,8 +220,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                 e.span,
                                 &format!("transmute from a type (`{}`) to itself", from_ty),
                             ),
-                            _ if alignment(cx, from_ty).map(|a| a.abi())
-                                < alignment(cx, to_ty).map(|a| a.abi())
+                            _ if cx.layout_of(from_ty).ok().map(|a| a.align.abi())
+                                < cx.layout_of(to_ty).ok().map(|a| a.align.abi())
                                 => span_lint(
                                     cx,
                                     MISALIGNED_TRANSMUTE,
