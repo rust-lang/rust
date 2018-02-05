@@ -29,15 +29,15 @@ tcx.infer_ctxt().enter(|infcx| {
 
 Each inference context creates a short-lived type arena to store the
 fresh types and things that it will create, as described in the
-[README in the `ty` module][ty-readme]. This arena is created by the `enter`
+[chapter on the `ty` module][ty-ch]. This arena is created by the `enter`
 function and disposed of after it returns.
 
-[ty-readme]: ty.html
+[ty-ch]: ty.html
 
 Within the closure, `infcx` has the type `InferCtxt<'cx, 'gcx, 'tcx>`
 for some fresh `'cx` and `'tcx` – the latter corresponds to the lifetime of
 this temporary arena, and the `'cx` is the lifetime of the `InferCtxt` itself.
-(Again, see the [`ty` README][ty-readme] for more details on this setup.)
+(Again, see the [`ty` chapter][ty-ch] for more details on this setup.)
 
 The `tcx.infer_ctxt` method actually returns a build, which means
 there are some kinds of configuration you can do before the `infcx` is
@@ -104,9 +104,9 @@ side-effects of constraining type variables and so forth. However, the
 actual return type is not `()`, but rather `InferOk<()>`. The
 `InferOk` type is used to carry extra trait obligations – your job is
 to ensure that these are fulfilled (typically by enrolling them in a
-fulfillment context). See the [trait README] for more background on that.
+fulfillment context). See the [trait chapter] for more background on that.
 
-[trait README]: trait-resolution.html
+[trait chapter]: trait-resolution.html
 
 You can similarly enforce subtyping through `infcx.at(..).sub(..)`. The same
 basic concepts as above apply.
