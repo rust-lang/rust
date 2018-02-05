@@ -475,17 +475,16 @@ impl Condvar {
                                         mut dur: Duration, mut condition: F)
                                         -> LockResult<(MutexGuard<'a, T>, WaitTimeoutResult)>
                                         where F: FnMut(&mut T) -> bool {
-        let timed_out = Duration::new(0, 0);
+        let start = Instant::now();
         loop {
-            if !condition(&mut *guard) {
+            if condition(&mut *guard) {
                 return Ok((guard, WaitTimeoutResult(false)));
-            } else if dur == timed_out {
-                return Ok((guard, WaitTimeoutResult(true)));
             }
-            let wait_timer = Instant::now();
-            let wait_result = self.wait_timeout(guard, dur)?;
-            dur = dur.checked_sub(wait_timer.elapsed()).unwrap_or(timed_out);
-            guard = wait_result.0;
+            let timeout = match dur.checked_sub(start.elapsed()) {
+                Some(timeout) => timeout,
+                None => return Ok((guard, WaitTimeoutResult(true))),
+            }
+            guard = self.wait_timeout(guard, dur)?.0;
         }
     }
 
