@@ -23,9 +23,9 @@ functions, traits, impls, etc) in the HIR are not immediately
 accessible in the parents. So, for example, if there is a module item
 `foo` containing a function `bar()`:
 
-```
+```rust
 mod foo {
-  fn bar() { }
+    fn bar() { }
 }
 ```
 

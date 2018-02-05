@@ -457,7 +457,7 @@ and the graph is consulted when propagating defaults down the
 specialization hierarchy.
 
 You might expect that the specialization graph would be used during
-selection – i.e., when actually performing specialization. This is
+selection – i.e. when actually performing specialization. This is
 not done for two reasons:
 
 - It's merely an optimization: given a set of candidates that apply,

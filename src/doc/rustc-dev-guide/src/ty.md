@@ -142,7 +142,7 @@ structures that you can allocate, and which are found in this
 module. Here are a few examples:
 
 - `Substs`, allocated with `mk_substs` – this will intern a slice of types, often used to
-  specify the values to be substituted for generics (e.g., `HashMap<i32, u32>`
+  specify the values to be substituted for generics (e.g. `HashMap<i32, u32>`
   would be represented as a slice `&'tcx [tcx.types.i32, tcx.types.u32]`).
 - `TraitRef`, typically passed by value – a **trait reference**
   consists of a reference to a trait along with its various type
@@ -161,5 +161,5 @@ use ty::{self, Ty, TyCtxt};
 
 In particular, since they are so common, the `Ty` and `TyCtxt` types
 are imported directly. Other types are often referenced with an
-explicit `ty::` prefix (e.g., `ty::TraitRef<'tcx>`). But some modules
+explicit `ty::` prefix (e.g. `ty::TraitRef<'tcx>`). But some modules
 choose to import a larger or smaller set of names explicitly.
