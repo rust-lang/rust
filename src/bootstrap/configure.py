@@ -144,6 +144,7 @@ o("jemalloc", "rust.use-jemalloc", "build liballoc with jemalloc")
 o("full-bootstrap", "build.full-bootstrap", "build three compilers instead of two")
 o("extended", "build.extended", "build an extended rust tool set")
 
+v("tools", "build.tools", "List of extended tools will be installed")
 v("build", "build.build", "GNUs ./configure syntax LLVM build triple")
 v("host", None, "GNUs ./configure syntax LLVM host triples")
 v("target", None, "GNUs ./configure syntax LLVM target triples")

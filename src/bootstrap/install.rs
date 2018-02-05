@@ -185,32 +185,39 @@ install!((self, builder, _config),
             install_std(builder, self.stage, *target);
         }
     };
-    Cargo, "cargo", _config.extended, only_hosts: true, {
+    Cargo, "cargo", _config.extended &&
+            _config.tools.as_ref().map_or(true, |t| t.contains("cargo")), only_hosts: true, {
         builder.ensure(dist::Cargo { stage: self.stage, target: self.target });
         install_cargo(builder, self.stage, self.target);
     };
-    Rls, "rls", _config.extended, only_hosts: true, {
-        if builder.ensure(dist::Rls { stage: self.stage, target: self.target }).is_some() {
+    Rls, "rls", _config.extended &&
+            _config.tools.as_ref().map_or(true, |t| t.contains("rls")), only_hosts: true, {
+        if builder.ensure(dist::Rls { stage: self.stage, target: self.target }).is_some() ||
+            builder.config.tools.as_ref().map_or(false, |t| t.contains("rls")) {
             install_rls(builder, self.stage, self.target);
         } else {
             println!("skipping Install RLS stage{} ({})", self.stage, self.target);
         }
     };
-    Rustfmt, "rustfmt", _config.extended, only_hosts: true, {
-        if builder.ensure(dist::Rustfmt { stage: self.stage, target: self.target }).is_some() {
+    Rustfmt, "rustfmt", _config.extended &&
+            _config.tools.as_ref().map_or(true, |t| t.contains("rustfmt")), only_hosts: true, {
+        if builder.ensure(dist::Rustfmt { stage: self.stage, target: self.target }).is_some() ||
+            builder.config.tools.as_ref().map_or(false, |t| t.contains("rustfmt"))  {
             install_rustfmt(builder, self.stage, self.target);
         } else {
             println!("skipping Install Rustfmt stage{} ({})", self.stage, self.target);
         }
     };
-    Analysis, "analysis", _config.extended, only_hosts: false, {
+    Analysis, "analysis", _config.extended &&
+            _config.tools.as_ref().map_or(true, |t| t.contains("analysis")), only_hosts: false, {
         builder.ensure(dist::Analysis {
             compiler: builder.compiler(self.stage, self.host),
             target: self.target
         });
         install_analysis(builder, self.stage, self.target);
     };
-    Src, "src", _config.extended, only_hosts: true, {
+    Src, "src", _config.extended &&
+            _config.tools.as_ref().map_or(true, |t| t.contains("src")), only_hosts: true, {
         builder.ensure(dist::Src);
         install_src(builder, self.stage);
     }, ONLY_BUILD;
