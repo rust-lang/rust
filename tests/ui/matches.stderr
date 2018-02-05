@@ -132,7 +132,9 @@ error: you don't need to add `&` to all patterns
     = note: `-D match-ref-pats` implied by `-D warnings`
 help: instead of prefixing all patterns with `&`, you can dereference the expression
     |
-138 |         match *v { .. }
+138 |         match *v {
+139 |             Some(v) => println!("{:?}", v),
+140 |             None => println!("none"),
     |
 
 error: you don't need to add `&` to all patterns
@@ -145,7 +147,8 @@ error: you don't need to add `&` to all patterns
     | |_____^
 help: instead of prefixing all patterns with `&`, you can dereference the expression
     |
-148 |     match *tup { .. }
+148 |     match *tup {
+149 |         (v, 1) => println!("{}", v),
     |
 
 error: you don't need to add `&` to both the expression and the patterns
@@ -155,7 +158,13 @@ error: you don't need to add `&` to both the expression and the patterns
 155 | |         &Some(v) => println!("{:?}", v),
 156 | |         &None => println!("none"),
 157 | |     }
-    | |_____^ help: try: `match w { .. }`
+    | |_____^
+help: try
+    |
+154 |     match w {
+155 |         Some(v) => println!("{:?}", v),
+156 |         None => println!("none"),
+    |
 
 error: you don't need to add `&` to all patterns
    --> $DIR/matches.rs:165:5
@@ -166,7 +175,7 @@ error: you don't need to add `&` to all patterns
     | |_____^
 help: instead of prefixing all patterns with `&`, you can dereference the expression
     |
-165 |     if let .. = *a { .. }
+165 |     if let None = *a {
     |
 
 error: you don't need to add `&` to both the expression and the patterns
@@ -175,7 +184,11 @@ error: you don't need to add `&` to both the expression and the patterns
 170 | /     if let &None = &b {
 171 | |         println!("none");
 172 | |     }
-    | |_____^ help: try: `if let .. = b { .. }`
+    | |_____^
+help: try
+    |
+170 |     if let None = b {
+    |
 
 error: some ranges overlap
    --> $DIR/matches.rs:179:9

@@ -11,8 +11,8 @@ use syntax::ast::LitKind;
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
 use utils::paths;
-use utils::{expr_block, in_external_macro, is_allowed, is_expn_of, match_qpath, match_type, remove_blocks,
-            snippet, span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty};
+use utils::{expr_block, in_external_macro, is_allowed, is_expn_of, match_qpath, match_type, multispan_sugg,
+            remove_blocks, snippet, span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty};
 use utils::sugg::Sugg;
 
 /// **What it does:** Checks for matches with a single arm where an `if let`
@@ -195,8 +195,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MatchPass {
             check_wild_err_arm(cx, ex, arms);
             check_match_as_ref(cx, ex, arms, expr);
         }
-        if let ExprMatch(ref ex, ref arms, source) = expr.node {
-            check_match_ref_pats(cx, ex, arms, source, expr);
+        if let ExprMatch(ref ex, ref arms, _) = expr.node {
+            check_match_ref_pats(cx, ex, arms, expr);
         }
     }
 }
@@ -400,37 +400,34 @@ fn is_panic_block(block: &Block) -> bool {
     }
 }
 
-fn check_match_ref_pats(cx: &LateContext, ex: &Expr, arms: &[Arm], source: MatchSource, expr: &Expr) {
+fn check_match_ref_pats(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
     if has_only_ref_pats(arms) {
-        if let ExprAddrOf(Mutability::MutImmutable, ref inner) = ex.node {
-            span_lint_and_then(
-                cx,
-                MATCH_REF_PATS,
-                expr.span,
+        let mut suggs = Vec::new();
+        let (title, msg) = if let ExprAddrOf(Mutability::MutImmutable, ref inner) = ex.node {
+            suggs.push((ex.span, Sugg::hir(cx, inner, "..").to_string()));
+            (
                 "you don't need to add `&` to both the expression and the patterns",
-                |db| {
-                    let inner = Sugg::hir(cx, inner, "..");
-                    let template = match_template(expr.span, source, &inner);
-                    db.span_suggestion(expr.span, "try", template);
-                },
-            );
+                "try",
+            )
         } else {
-            span_lint_and_then(
-                cx,
-                MATCH_REF_PATS,
-                expr.span,
+            suggs.push((ex.span, Sugg::hir(cx, ex, "..").deref().to_string()));
+            (
                 "you don't need to add `&` to all patterns",
-                |db| {
-                    let ex = Sugg::hir(cx, ex, "..");
-                    let template = match_template(expr.span, source, &ex.deref());
-                    db.span_suggestion(
-                        expr.span,
-                        "instead of prefixing all patterns with `&`, you can dereference the expression",
-                        template,
-                    );
-                },
-            );
-        }
+                "instead of prefixing all patterns with `&`, you can dereference the expression",
+            )
+        };
+
+        suggs.extend(arms.iter().flat_map(|a| &a.pats).filter_map(|p| {
+            if let PatKind::Ref(ref refp, _) = p.node {
+                Some((p.span, snippet(cx, refp.span, "..").to_string()))
+            } else {
+                None
+            }
+        }));
+
+        span_lint_and_then(cx, MATCH_REF_PATS, expr.span, title, |db| {
+            multispan_sugg(db, msg.to_owned(), suggs);
+        });
     }
 }
 
@@ -613,16 +610,6 @@ fn has_only_ref_pats(arms: &[Arm]) -> bool {
         .collect::<Option<Vec<bool>>>();
     // look for Some(v) where there's at least one true element
     mapped.map_or(false, |v| v.iter().any(|el| *el))
-}
-
-fn match_template(span: Span, source: MatchSource, expr: &Sugg) -> String {
-    match source {
-        MatchSource::Normal => format!("match {} {{ .. }}", expr),
-        MatchSource::IfLetDesugar { .. } => format!("if let .. = {} {{ .. }}", expr),
-        MatchSource::WhileLetDesugar => format!("while let .. = {} {{ .. }}", expr),
-        MatchSource::ForLoopDesugar => span_bug!(span, "for loop desugared to match with &-patterns!"),
-        MatchSource::TryDesugar => span_bug!(span, "`?` operator desugared to match with &-patterns!"),
-    }
 }
 
 pub fn overlapping<T>(ranges: &[SpannedRange<T>]) -> Option<(&SpannedRange<T>, &SpannedRange<T>)>
