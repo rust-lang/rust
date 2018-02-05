@@ -1,7 +1,7 @@
 error[E0432]: unresolved import `a::b1::C1`
-  --> $DIR/use-nested-groups-error.rs:21:14
+  --> $DIR/use-nested-groups-error.rs:19:14
    |
-21 | use a::{b1::{C1, C2}, B2};
+19 | use a::{b1::{C1, C2}, B2};
    |              ^^ no `C1` in `a::b1`. Did you mean to use `C2`?
 
 error: aborting due to previous error
