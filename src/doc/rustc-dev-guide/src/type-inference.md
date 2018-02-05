@@ -12,7 +12,7 @@ existential variables.
 We use the terms "region" and "lifetime" interchangeably. Both refer to
 the `'a` in `&'a T`.
 
-The term "bound region" refers to a region that is a bound in a function
+The term "bound region" refers to a region that is bound in a function
 signature, such as the `'a` in `for<'a> fn(&'a u32)`. A region is
 "free" if it is not bound.
 
