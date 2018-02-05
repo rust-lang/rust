@@ -1,5 +1,8 @@
 //! `i686` intrinsics
 
+mod aes;
+pub use self::aes::*;
+
 mod mmx;
 pub use self::mmx::*;
 
