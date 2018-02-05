@@ -347,18 +347,18 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
 
         match stmt.kind {
             StatementKind::Assign(ref lhs, ref rhs) => {
+                self.consume_rvalue(
+                    ContextKind::AssignRhs.new(location),
+                    (rhs, span),
+                    location,
+                    flow_state,
+                );
+
                 self.mutate_place(
                     ContextKind::AssignLhs.new(location),
                     (lhs, span),
                     Shallow(None),
                     JustWrite,
-                    flow_state,
-                );
-
-                self.consume_rvalue(
-                    ContextKind::AssignRhs.new(location),
-                    (rhs, span),
-                    location,
                     flow_state,
                 );
             }

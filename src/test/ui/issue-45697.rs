@@ -29,7 +29,7 @@ fn main() {
         let z = copy_borrowed_ptr(&mut y);
         *y.pointer += 1;
         //~^ ERROR cannot assign to `*y.pointer` because it is borrowed (Ast) [E0506]
-        //~| ERROR cannot assign to `*y.pointer` because it is borrowed (Mir) [E0506]
+        //~| ERROR cannot use `*y.pointer` because it was mutably borrowed (Mir) [E0503]
         *z.pointer += 1;
     }
 }
