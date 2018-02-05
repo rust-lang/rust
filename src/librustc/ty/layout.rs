@@ -1371,7 +1371,8 @@ impl<T, E> MaybeResult<T> for Result<T, E> {
     }
 }
 
-impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
+impl<'a, 'tcx> LayoutOf for LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
+    type Ty = Ty<'tcx>;
     type TyLayout = Result<TyLayout<'tcx>, LayoutError<'tcx>>;
 
     /// Computes the layout of a type. Note that this implicitly
@@ -1397,7 +1398,8 @@ impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
     }
 }
 
-impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for LayoutCx<'tcx, ty::maps::TyCtxtAt<'a, 'tcx, 'tcx>> {
+impl<'a, 'tcx> LayoutOf for LayoutCx<'tcx, ty::maps::TyCtxtAt<'a, 'tcx, 'tcx>> {
+    type Ty = Ty<'tcx>;
     type TyLayout = Result<TyLayout<'tcx>, LayoutError<'tcx>>;
 
     /// Computes the layout of a type. Note that this implicitly
@@ -1458,7 +1460,7 @@ impl<'a, 'tcx> ty::maps::TyCtxtAt<'a, 'tcx, 'tcx> {
 
 impl<'a, 'tcx> TyLayout<'tcx> {
     pub fn for_variant<C>(&self, cx: C, variant_index: usize) -> Self
-        where C: LayoutOf<Ty<'tcx>> + HasTyCtxt<'tcx>,
+        where C: LayoutOf<Ty = Ty<'tcx>> + HasTyCtxt<'tcx>,
               C::TyLayout: MaybeResult<TyLayout<'tcx>>
     {
         let details = match self.variants {
@@ -1495,7 +1497,7 @@ impl<'a, 'tcx> TyLayout<'tcx> {
     }
 
     pub fn field<C>(&self, cx: C, i: usize) -> C::TyLayout
-        where C: LayoutOf<Ty<'tcx>> + HasTyCtxt<'tcx>,
+        where C: LayoutOf<Ty = Ty<'tcx>> + HasTyCtxt<'tcx>,
               C::TyLayout: MaybeResult<TyLayout<'tcx>>
     {
         let tcx = cx.tcx();
@@ -1623,7 +1625,7 @@ impl<'a, 'tcx> TyLayout<'tcx> {
     // FIXME(eddyb) traverse already optimized enums.
     fn find_niche<C>(&self, cx: C, count: u128)
         -> Result<Option<(Size, Scalar, u128)>, LayoutError<'tcx>>
-        where C: LayoutOf<Ty<'tcx>, TyLayout = Result<Self, LayoutError<'tcx>>> +
+        where C: LayoutOf<Ty = Ty<'tcx>, TyLayout = Result<Self, LayoutError<'tcx>>> +
                  HasTyCtxt<'tcx>
     {
         let scalar_component = |scalar: &Scalar, offset| {

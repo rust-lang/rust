@@ -459,7 +459,8 @@ impl<'a, 'tcx> ty::layout::HasTyCtxt<'tcx> for &'a CodegenCx<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for &'a CodegenCx<'a, 'tcx> {
+impl<'a, 'tcx> LayoutOf for &'a CodegenCx<'a, 'tcx> {
+    type Ty = Ty<'tcx>;
     type TyLayout = TyLayout<'tcx>;
 
     fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {

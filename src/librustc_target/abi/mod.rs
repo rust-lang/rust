@@ -757,8 +757,9 @@ impl LayoutDetails {
     }
 }
 
-pub trait LayoutOf<T> {
+pub trait LayoutOf {
+    type Ty;
     type TyLayout;
 
-    fn layout_of(self, ty: T) -> Self::TyLayout;
+    fn layout_of(self, ty: Self::Ty) -> Self::TyLayout;
 }
