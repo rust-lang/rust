@@ -463,6 +463,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             ast::ItemKind::MacroDef(ref def) => {
                 let rewrite = rewrite_macro_def(
                     &self.get_context(),
+                    self.shape(),
                     self.block_indent,
                     def,
                     item.ident,

@@ -20,32 +20,30 @@ pub trait Spanned {
 }
 
 macro_rules! span_with_attrs_lo_hi {
-    ($this:ident, $lo:expr, $hi:expr) => {
-        {
-            let attrs = outer_attributes(&$this.attrs);
-            if attrs.is_empty() {
-                mk_sp($lo, $hi)
-            } else {
-                mk_sp(attrs[0].span.lo(), $hi)
-            }
+    ($this: ident, $lo: expr, $hi: expr) => {{
+        let attrs = outer_attributes(&$this.attrs);
+        if attrs.is_empty() {
+            mk_sp($lo, $hi)
+        } else {
+            mk_sp(attrs[0].span.lo(), $hi)
         }
-    }
+    }};
 }
 
 macro_rules! span_with_attrs {
-    ($this:ident) => {
+    ($this: ident) => {
         span_with_attrs_lo_hi!($this, $this.span.lo(), $this.span.hi())
-    }
+    };
 }
 
 macro_rules! implement_spanned {
-    ($this:ty) => {
+    ($this: ty) => {
         impl Spanned for $this {
             fn span(&self) -> Span {
                 span_with_attrs!(self)
             }
         }
-    }
+    };
 }
 
 // Implement `Spanned` for structs with `attrs` field.

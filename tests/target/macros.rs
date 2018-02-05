@@ -141,7 +141,7 @@ fn issue_1555() {
 
 fn issue1178() {
     macro_rules! foo {
-        (#[$attr:meta] $name:ident) => {}
+        (#[$attr: meta] $name: ident) => {};
     }
 
     foo!(
@@ -246,11 +246,15 @@ fn __bindgen_test_layout_HandleWithDtor_open0_int_close0_instantiation() {
 
 // #878
 macro_rules! try_opt {
-    ($expr:expr) => (match $expr {
-        Some(val) => val,
+    ($expr: expr) => {
+        match $expr {
+            Some(val) => val,
 
-        None => { return None; }
-    })
+            None => {
+                return None;
+            }
+        }
+    };
 }
 
 // #2214
@@ -885,9 +889,7 @@ fn macro_in_pattern_position() {
     };
 }
 
-macro foo() {
-
-}
+macro foo() {}
 
 pub macro bar($x: ident + $y: expr;) {
     fn foo($x: Foo) {
