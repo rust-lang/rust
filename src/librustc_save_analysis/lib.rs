@@ -791,7 +791,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         field_ref: &ast::Field,
         variant: &ty::VariantDef,
     ) -> Option<Ref> {
-        let f = variant.field_named(field_ref.ident.node.name);
+        let f = variant.find_field_named(field_ref.ident.node.name)?;
         // We don't really need a sub-span here, but no harm done
         let sub_span = self.span_utils.span_for_last_ident(field_ref.ident.span);
         filter!(self.span_utils, sub_span, field_ref.ident.span, None);
