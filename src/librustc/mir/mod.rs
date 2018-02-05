@@ -1515,8 +1515,8 @@ pub enum AggregateKind<'tcx> {
     Array(Ty<'tcx>),
     Tuple,
 
-    /// The second field is variant number (discriminant), it's equal
-    /// to 0 for struct and union expressions. The fourth field is
+    /// The second field is the variant index. It's equal to 0 for struct
+    /// and union expressions. The fourth field is
     /// active field number and is present only for union expressions
     /// -- e.g. for a union expression `SomeUnion { c: .. }`, the
     /// active field index would identity the field `c`
