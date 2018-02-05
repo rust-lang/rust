@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.186
+* Rustup to *rustc 1.25.0-nightly (0c6091fbd 2018-02-04)*
+* Various false positive fixes
+
 ## 0.0.185
 * Rustup to *rustc 1.25.0-nightly (56733bc9f 2018-02-01)*
 * New lint: [`question_mark`]
