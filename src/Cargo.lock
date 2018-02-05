@@ -2218,6 +2218,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustdoc-themes"
+version = "0.1.0"
+
+[[package]]
 name = "rustdoc-tool"
 version = "0.0.0"
 dependencies = [

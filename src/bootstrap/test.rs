@@ -113,7 +113,7 @@ impl Step for Linkcheck {
 
         let _time = util::timeit();
         try_run(build, builder.tool_cmd(Tool::Linkchecker)
-                            .arg(build.out.join(host).join("doc")));
+                              .arg(build.out.join(host).join("doc")));
     }
 
     fn should_run(run: ShouldRun) -> ShouldRun {
@@ -427,7 +427,6 @@ fn path_for_cargo(builder: &Builder, compiler: Compiler) -> OsString {
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct RustdocTheme {
     pub compiler: Compiler,
-    pub host: Interned<String>,
 }
 
 impl Step for RustdocTheme {
@@ -444,27 +443,25 @@ impl Step for RustdocTheme {
 
         run.builder.ensure(RustdocTheme {
             compiler: compiler,
-            host: run.builder.build.build,
         });
     }
 
     fn run(self, builder: &Builder) {
         let rustdoc = builder.rustdoc(self.compiler.host);
-        let mut cmd = Command::new(builder.config.python.clone().expect("python not defined"));
-        cmd.args(&[builder.src.join("src/tools/rustdoc-themes/test-themes.py").to_str().unwrap(),
-                   rustdoc.to_str().unwrap(),
-                   builder.src.join("src/librustdoc/html/static/themes").to_str().unwrap()]);
-        cmd.env("RUSTC_STAGE", self.compiler.stage.to_string())
+        let mut cmd = builder.tool_cmd(Tool::RustdocTheme);
+        cmd.arg(rustdoc.to_str().unwrap())
+           .arg(builder.src.join("src/librustdoc/html/static/themes").to_str().unwrap())
+           .env("RUSTC_STAGE", self.compiler.stage.to_string())
            .env("RUSTC_SYSROOT", builder.sysroot(self.compiler))
            .env("RUSTDOC_LIBDIR", builder.sysroot_libdir(self.compiler, self.compiler.host))
            .env("CFG_RELEASE_CHANNEL", &builder.build.config.channel)
-           .env("RUSTDOC_REAL", builder.rustdoc(self.host))
+           .env("RUSTDOC_REAL", builder.rustdoc(self.compiler.host))
            .env("RUSTDOC_CRATE_VERSION", builder.build.rust_version())
            .env("RUSTC_BOOTSTRAP", "1");
-        if let Some(linker) = builder.build.linker(self.host) {
+        if let Some(linker) = builder.build.linker(self.compiler.host) {
             cmd.env("RUSTC_TARGET_LINKER", linker);
         }
-        builder.run(&mut cmd);
+        try_run(builder.build, &mut cmd);
     }
 }
 

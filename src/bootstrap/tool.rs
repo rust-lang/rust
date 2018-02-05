@@ -260,6 +260,7 @@ tool!(
     BuildManifest, "src/tools/build-manifest", "build-manifest", Mode::Libstd;
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client", Mode::Libstd;
     RustInstaller, "src/tools/rust-installer", "fabricate", Mode::Libstd;
+    RustdocTheme, "src/tools/rustdoc-themes", "rustdoc-themes", Mode::Libstd;
 );
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
