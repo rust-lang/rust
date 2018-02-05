@@ -727,35 +727,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             // See #47703.
             ty::TyAdt(def, substs) if def.is_struct() && !def.has_dtor(self.tcx) => {
                 for (index, field) in def.all_fields().enumerate() {
-                    let field_ty = field.ty(self.tcx, substs);
-                    let proj = Projection {
-                        base: drop_place.clone(),
-                        elem: ProjectionElem::Field(Field::new(index), field_ty),
-                    };
-                    let place = Place::Projection(Box::new(proj));
+                    let place = drop_place.clone();
+                    let place = place.field(Field::new(index), field.ty(self.tcx, substs));
+                    let place = place.deref();
 
-                    match field_ty.sty {
-                        // It may be the case that this issue occurs with a struct within a
-                        // struct, so we recurse to handle that.
-                        ty::TyAdt(def, _) if def.is_struct() && !def.has_dtor(self.tcx) => {
-                            self.visit_terminator_drop(
-                                loc,
-                                term,
-                                flow_state,
-                                &place,
-                                span,
-                            );
-                        },
-                        _ => {
-                            self.access_place(
-                                ContextKind::Drop.new(loc),
-                                (&place, span),
-                                (Shallow(None), Write(WriteKind::StorageDeadOrDrop)),
-                                LocalMutationIsAllowed::Yes,
-                                flow_state,
-                            );
-                        },
-                    }
+                    self.visit_terminator_drop(
+                        loc,
+                        term,
+                        flow_state,
+                        &place,
+                        span,
+                    );
                 }
             },
             _ => {
