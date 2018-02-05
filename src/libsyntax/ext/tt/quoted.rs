@@ -204,16 +204,19 @@ pub fn parse(
                         }
                     }
                 } else {
-                    if let Ok((_, colon_sp, end_sp)) = parse_matcher(start_sp, ident, &mut trees.clone()) {
-                        if start_sp.hi() == colon_sp.lo() && colon_sp.hi() == end_sp.lo() {
+                    match parse_matcher(start_sp, ident, &mut trees.clone()) {
+                        Ok((_, colon_sp, end_sp))
+                        if start_sp.hi() == colon_sp.lo() && colon_sp.hi() == end_sp.lo() => {
                             sess.span_diagnostic
                                 .struct_span_warn(
                                     colon_sp.with_hi(end_sp.hi()),
                                     "matchers are treated literally on the expansion side"
                                 )
-                                .help("if this is what you want, insert spaces to silence this warning")
+                                .help("if this is what you want, \
+                                       insert spaces to silence this warning")
                                 .emit();
                         }
+                        _ => {}
                     }
                     result.push(tree)
                 }
@@ -238,7 +241,11 @@ pub fn parse(
 ///
 /// On success, returns a parsed `MetaVarDecl`, span of `:` and span of matcher's type
 /// On error, returns a span for error.
-fn parse_matcher<I>(start_sp: Span, ident: ast::Ident, trees: &mut I) -> Result<(TokenTree, Span, Span), Span>
+fn parse_matcher<I>(
+    start_sp: Span,
+    ident: ast::Ident,
+    trees: &mut I
+) -> Result<(TokenTree, Span, Span), Span>
 where
     I: Iterator<Item = tokenstream::TokenTree>
 {
