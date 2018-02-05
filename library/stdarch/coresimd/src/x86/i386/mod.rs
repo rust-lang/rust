@@ -13,4 +13,3 @@ pub use self::bswap::*;
 
 mod rdtsc;
 pub use self::rdtsc::*;
-
