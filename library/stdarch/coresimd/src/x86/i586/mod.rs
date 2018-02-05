@@ -3,10 +3,6 @@
 pub use self::cpuid::*;
 pub use self::xsave::*;
 
-pub use self::bswap::*;
-
-pub use self::rdtsc::*;
-
 pub use self::sse::*;
 pub use self::sse2::*;
 pub use self::sse3::*;
@@ -25,10 +21,6 @@ pub use self::tbm::*;
 
 mod cpuid;
 mod xsave;
-
-mod bswap;
-
-mod rdtsc;
 
 mod sse;
 mod sse2;
