@@ -518,6 +518,9 @@ pub fn get_enclosing_block<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, node: NodeI
             Node::NodeItem(&Item {
                 node: ItemFn(_, _, _, _, _, eid),
                 ..
+            }) | Node::NodeImplItem(&ImplItem {
+                node: ImplItemKind::Method(_, eid),
+                ..
             }) => match cx.tcx.hir.body(eid).value.node {
                 ExprBlock(ref block) => Some(block),
                 _ => None,

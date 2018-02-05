@@ -313,21 +313,32 @@ impl<'a, 'tcx> Visitor<'tcx> for SimilarNamesLocalVisitor<'a, 'tcx> {
 impl EarlyLintPass for NonExpressiveNames {
     fn check_item(&mut self, cx: &EarlyContext, item: &Item) {
         if let ItemKind::Fn(ref decl, _, _, _, _, ref blk) = item.node {
-            if !attr::contains_name(&item.attrs, "test") {
-                let mut visitor = SimilarNamesLocalVisitor {
-                    names: Vec::new(),
-                    cx: cx,
-                    lint: self,
-                    single_char_names: Vec::new(),
-                };
-                // initialize with function arguments
-                for arg in &decl.inputs {
-                    SimilarNamesNameVisitor(&mut visitor).visit_pat(&arg.pat);
-                }
-                // walk all other bindings
-                walk_block(&mut visitor, blk);
-            }
+            do_check(self, cx, &item.attrs, decl, blk);
         }
+    }
+
+    fn check_impl_item(&mut self, cx: &EarlyContext, item: &ImplItem) {
+        if let ImplItemKind::Method(ref sig, ref blk) = item.node {
+            do_check(self, cx, &item.attrs, &sig.decl, blk);
+        }
+    }
+
+}
+
+fn do_check(lint: &mut NonExpressiveNames, cx: &EarlyContext, attrs: &[Attribute], decl: &FnDecl, blk: &Block) {
+    if !attr::contains_name(attrs, "test") {
+        let mut visitor = SimilarNamesLocalVisitor {
+            names: Vec::new(),
+            cx: cx,
+            lint: lint,
+            single_char_names: Vec::new(),
+        };
+        // initialize with function arguments
+        for arg in &decl.inputs {
+            SimilarNamesNameVisitor(&mut visitor).visit_pat(&arg.pat);
+        }
+        // walk all other bindings
+        walk_block(&mut visitor, blk);
     }
 }
 
