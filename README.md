@@ -114,7 +114,7 @@ eval "current_version=$(grep -e '^version = .*$' Cargo.toml | cut -d ' ' -f 3)"
 # run the semver checks and output them for convenience
 cargo semver | tee semver_out
 # fail the build if necessary
-head -n 1 semver_out | grep "\-> $current_version"
+(head -n 1 semver_out | grep "\-> $current_version") || (echo "versioning mismatch" && return 1)
 ```
 
 Make sure you do the above with access to a nightly toolchain. Check your CI provider's
