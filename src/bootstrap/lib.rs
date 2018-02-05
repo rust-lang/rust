@@ -130,6 +130,7 @@ extern crate cc;
 extern crate getopts;
 extern crate num_cpus;
 extern crate toml;
+extern crate time;
 
 #[cfg(unix)]
 extern crate libc;
