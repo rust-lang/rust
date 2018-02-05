@@ -184,8 +184,8 @@ pub unsafe fn _mm_insert_ps(a: __m128, b: __m128, imm8: i32) -> __m128 {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(pinsrb, imm8 = 0))]
-pub unsafe fn _mm_insert_epi8(a: __m128i, i: i8, imm8: i32) -> __m128i {
-    mem::transmute(simd_insert(a.as_i8x16(), (imm8 & 0b1111) as u32, i))
+pub unsafe fn _mm_insert_epi8(a: __m128i, i: i32, imm8: i32) -> __m128i {
+    mem::transmute(simd_insert(a.as_i8x16(), (imm8 & 0b1111) as u32, i as i8))
 }
 
 /// Return a copy of `a` with the 32-bit integer from `i` inserted at a

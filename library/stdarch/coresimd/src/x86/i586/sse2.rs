@@ -1652,96 +1652,96 @@ pub unsafe fn _mm_cmpnge_pd(a: __m128d, b: __m128d) -> __m128d {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(comisd))]
-pub unsafe fn _mm_comieq_sd(a: __m128d, b: __m128d) -> bool {
-    comieqsd(a, b) as u8 != 0
+pub unsafe fn _mm_comieq_sd(a: __m128d, b: __m128d) -> i32 {
+    comieqsd(a, b)
 }
 
 /// Compare the lower element of `a` and `b` for less-than.
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(comisd))]
-pub unsafe fn _mm_comilt_sd(a: __m128d, b: __m128d) -> bool {
-    comiltsd(a, b) as u8 != 0
+pub unsafe fn _mm_comilt_sd(a: __m128d, b: __m128d) -> i32 {
+    comiltsd(a, b)
 }
 
 /// Compare the lower element of `a` and `b` for less-than-or-equal.
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(comisd))]
-pub unsafe fn _mm_comile_sd(a: __m128d, b: __m128d) -> bool {
-    comilesd(a, b) as u8 != 0
+pub unsafe fn _mm_comile_sd(a: __m128d, b: __m128d) -> i32 {
+    comilesd(a, b)
 }
 
 /// Compare the lower element of `a` and `b` for greater-than.
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(comisd))]
-pub unsafe fn _mm_comigt_sd(a: __m128d, b: __m128d) -> bool {
-    comigtsd(a, b) as u8 != 0
+pub unsafe fn _mm_comigt_sd(a: __m128d, b: __m128d) -> i32 {
+    comigtsd(a, b)
 }
 
 /// Compare the lower element of `a` and `b` for greater-than-or-equal.
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(comisd))]
-pub unsafe fn _mm_comige_sd(a: __m128d, b: __m128d) -> bool {
-    comigesd(a, b) as u8 != 0
+pub unsafe fn _mm_comige_sd(a: __m128d, b: __m128d) -> i32 {
+    comigesd(a, b)
 }
 
 /// Compare the lower element of `a` and `b` for not-equal.
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(comisd))]
-pub unsafe fn _mm_comineq_sd(a: __m128d, b: __m128d) -> bool {
-    comineqsd(a, b) as u8 != 0
+pub unsafe fn _mm_comineq_sd(a: __m128d, b: __m128d) -> i32 {
+    comineqsd(a, b)
 }
 
 /// Compare the lower element of `a` and `b` for equality.
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(ucomisd))]
-pub unsafe fn _mm_ucomieq_sd(a: __m128d, b: __m128d) -> bool {
-    ucomieqsd(a, b) as u8 != 0
+pub unsafe fn _mm_ucomieq_sd(a: __m128d, b: __m128d) -> i32 {
+    ucomieqsd(a, b)
 }
 
 /// Compare the lower element of `a` and `b` for less-than.
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(ucomisd))]
-pub unsafe fn _mm_ucomilt_sd(a: __m128d, b: __m128d) -> bool {
-    ucomiltsd(a, b) as u8 != 0
+pub unsafe fn _mm_ucomilt_sd(a: __m128d, b: __m128d) -> i32 {
+    ucomiltsd(a, b)
 }
 
 /// Compare the lower element of `a` and `b` for less-than-or-equal.
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(ucomisd))]
-pub unsafe fn _mm_ucomile_sd(a: __m128d, b: __m128d) -> bool {
-    ucomilesd(a, b) as u8 != 0
+pub unsafe fn _mm_ucomile_sd(a: __m128d, b: __m128d) -> i32 {
+    ucomilesd(a, b)
 }
 
 /// Compare the lower element of `a` and `b` for greater-than.
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(ucomisd))]
-pub unsafe fn _mm_ucomigt_sd(a: __m128d, b: __m128d) -> bool {
-    ucomigtsd(a, b) as u8 != 0
+pub unsafe fn _mm_ucomigt_sd(a: __m128d, b: __m128d) -> i32 {
+    ucomigtsd(a, b)
 }
 
 /// Compare the lower element of `a` and `b` for greater-than-or-equal.
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(ucomisd))]
-pub unsafe fn _mm_ucomige_sd(a: __m128d, b: __m128d) -> bool {
-    ucomigesd(a, b) as u8 != 0
+pub unsafe fn _mm_ucomige_sd(a: __m128d, b: __m128d) -> i32 {
+    ucomigesd(a, b)
 }
 
 /// Compare the lower element of `a` and `b` for not-equal.
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(ucomisd))]
-pub unsafe fn _mm_ucomineq_sd(a: __m128d, b: __m128d) -> bool {
-    ucomineqsd(a, b) as u8 != 0
+pub unsafe fn _mm_ucomineq_sd(a: __m128d, b: __m128d) -> i32 {
+    ucomineqsd(a, b)
 }
 
 /// Convert packed double-precision (64-bit) floating-point elements in "a" to
@@ -3876,79 +3876,79 @@ mod tests {
     #[simd_test = "sse2"]
     unsafe fn test_mm_comieq_sd() {
         let (a, b) = (_mm_setr_pd(1.0, 2.0), _mm_setr_pd(1.0, 3.0));
-        assert!(_mm_comieq_sd(a, b));
+        assert!(_mm_comieq_sd(a, b) != 0);
 
         let (a, b) = (_mm_setr_pd(NAN, 2.0), _mm_setr_pd(1.0, 3.0));
-        assert!(!_mm_comieq_sd(a, b));
+        assert!(_mm_comieq_sd(a, b) == 0);
     }
 
     #[simd_test = "sse2"]
     unsafe fn test_mm_comilt_sd() {
         let (a, b) = (_mm_setr_pd(1.0, 2.0), _mm_setr_pd(1.0, 3.0));
-        assert!(!_mm_comilt_sd(a, b));
+        assert!(_mm_comilt_sd(a, b) == 0);
     }
 
     #[simd_test = "sse2"]
     unsafe fn test_mm_comile_sd() {
         let (a, b) = (_mm_setr_pd(1.0, 2.0), _mm_setr_pd(1.0, 3.0));
-        assert!(_mm_comile_sd(a, b));
+        assert!(_mm_comile_sd(a, b) != 0);
     }
 
     #[simd_test = "sse2"]
     unsafe fn test_mm_comigt_sd() {
         let (a, b) = (_mm_setr_pd(1.0, 2.0), _mm_setr_pd(1.0, 3.0));
-        assert!(!_mm_comigt_sd(a, b));
+        assert!(_mm_comigt_sd(a, b) == 0);
     }
 
     #[simd_test = "sse2"]
     unsafe fn test_mm_comige_sd() {
         let (a, b) = (_mm_setr_pd(1.0, 2.0), _mm_setr_pd(1.0, 3.0));
-        assert!(_mm_comige_sd(a, b));
+        assert!(_mm_comige_sd(a, b) != 0);
     }
 
     #[simd_test = "sse2"]
     unsafe fn test_mm_comineq_sd() {
         let (a, b) = (_mm_setr_pd(1.0, 2.0), _mm_setr_pd(1.0, 3.0));
-        assert!(!_mm_comineq_sd(a, b));
+        assert!(_mm_comineq_sd(a, b) == 0);
     }
 
     #[simd_test = "sse2"]
     unsafe fn test_mm_ucomieq_sd() {
         let (a, b) = (_mm_setr_pd(1.0, 2.0), _mm_setr_pd(1.0, 3.0));
-        assert!(_mm_ucomieq_sd(a, b));
+        assert!(_mm_ucomieq_sd(a, b) != 0);
 
         let (a, b) = (_mm_setr_pd(NAN, 2.0), _mm_setr_pd(NAN, 3.0));
-        assert!(!_mm_ucomieq_sd(a, b));
+        assert!(_mm_ucomieq_sd(a, b) == 0);
     }
 
     #[simd_test = "sse2"]
     unsafe fn test_mm_ucomilt_sd() {
         let (a, b) = (_mm_setr_pd(1.0, 2.0), _mm_setr_pd(1.0, 3.0));
-        assert!(!_mm_ucomilt_sd(a, b));
+        assert!(_mm_ucomilt_sd(a, b) == 0);
     }
 
     #[simd_test = "sse2"]
     unsafe fn test_mm_ucomile_sd() {
         let (a, b) = (_mm_setr_pd(1.0, 2.0), _mm_setr_pd(1.0, 3.0));
-        assert!(_mm_ucomile_sd(a, b));
+        assert!(_mm_ucomile_sd(a, b) != 0);
     }
 
     #[simd_test = "sse2"]
     unsafe fn test_mm_ucomigt_sd() {
         let (a, b) = (_mm_setr_pd(1.0, 2.0), _mm_setr_pd(1.0, 3.0));
-        assert!(!_mm_ucomigt_sd(a, b));
+        assert!(_mm_ucomigt_sd(a, b) == 0);
     }
 
     #[simd_test = "sse2"]
     unsafe fn test_mm_ucomige_sd() {
         let (a, b) = (_mm_setr_pd(1.0, 2.0), _mm_setr_pd(1.0, 3.0));
-        assert!(_mm_ucomige_sd(a, b));
+        assert!(_mm_ucomige_sd(a, b) != 0);
     }
 
     #[simd_test = "sse2"]
     unsafe fn test_mm_ucomineq_sd() {
         let (a, b) = (_mm_setr_pd(1.0, 2.0), _mm_setr_pd(1.0, 3.0));
-        assert!(!_mm_ucomineq_sd(a, b));
+        assert!(_mm_ucomineq_sd(a, b) == 0);
     }
 
     #[simd_test = "sse2"]

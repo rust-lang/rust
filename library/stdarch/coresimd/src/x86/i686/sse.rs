@@ -312,9 +312,9 @@ pub unsafe fn _m_maskmovq(a: __m64, mask: __m64, mem_addr: *mut i8) {
 #[inline]
 #[target_feature(enable = "sse,mmx")]
 #[cfg_attr(test, assert_instr(pextrw, imm2 = 0))]
-pub unsafe fn _mm_extract_pi16(a: __m64, imm2: i32) -> i16 {
+pub unsafe fn _mm_extract_pi16(a: __m64, imm2: i32) -> i32 {
     macro_rules! call {
-        ($imm2:expr) => { pextrw(a, $imm2) as i16 }
+        ($imm2:expr) => { pextrw(a, $imm2) as i32 }
     }
     constify_imm2!(imm2, call)
 }
@@ -324,7 +324,7 @@ pub unsafe fn _mm_extract_pi16(a: __m64, imm2: i32) -> i16 {
 #[inline]
 #[target_feature(enable = "sse,mmx")]
 #[cfg_attr(test, assert_instr(pextrw, imm2 = 0))]
-pub unsafe fn _m_pextrw(a: __m64, imm2: i32) -> i16 {
+pub unsafe fn _m_pextrw(a: __m64, imm2: i32) -> i32 {
     _mm_extract_pi16(a, imm2)
 }
 

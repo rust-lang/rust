@@ -407,29 +407,11 @@ fn equate(t: &Type, intel: &str, intrinsic: &str) -> Result<(), String> {
         | (&Type::M256, "__m256")
         | (&Type::Ptr(&Type::M256), "__m256*") => {}
 
-        // These two intrinsics return a 16-bit element but in Intel's
-        // intrinsics they're listed as returning an `int`.
-        (&Type::PrimSigned(16), "int") if intrinsic == "_mm_extract_pi16" => {}
-        (&Type::PrimSigned(16), "int") if intrinsic == "_m_pextrw" => {}
-
-        // This intrinsic takes an `i8` to get inserted into an i8 vector, but
-        // Intel says the argument is i32...
-        (&Type::PrimSigned(8), "int") if intrinsic == "_mm_insert_epi8" => {}
-
         // This is a macro (?) in C which seems to mutate its arguments, but
         // that means that we're taking pointers to arguments in rust
         // as we're not exposing it as a macro.
         (&Type::Ptr(&Type::M128), "__m128")
             if intrinsic == "_MM_TRANSPOSE4_PS" => {}
-
-        // These intrinsics return an `int` in C but they're always either the
-        // bit 1 or 0 so we switch it to returning `bool` in rust
-        (&Type::Bool, "int")
-            if intrinsic.starts_with("_mm_comi")
-                && intrinsic.ends_with("_sd") => {}
-        (&Type::Bool, "int")
-            if intrinsic.starts_with("_mm_ucomi")
-                && intrinsic.ends_with("_sd") => {}
 
         _ => bail!(
             "failed to equate: `{}` and {:?} for {}",
