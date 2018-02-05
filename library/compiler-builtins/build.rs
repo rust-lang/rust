@@ -375,8 +375,6 @@ mod c {
             if !llvm_target[0].starts_with("thumbv7em") {
                 sources.extend(
                     &[
-                        "arm/adddf3vfp.S",
-                        "arm/addsf3vfp.S",
                         "arm/eqdf2vfp.S",
                         "arm/eqsf2vfp.S",
                         "arm/extendsfdf2vfp.S",
@@ -400,8 +398,6 @@ mod c {
                         "arm/nesf2vfp.S",
                         "arm/restore_vfp_d8_d15_regs.S",
                         "arm/save_vfp_d8_d15_regs.S",
-                        "arm/subdf3vfp.S",
-                        "arm/subsf3vfp.S",
                     ],
                 );
             }

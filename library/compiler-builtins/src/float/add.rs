@@ -193,4 +193,14 @@ intrinsics! {
     pub extern "C" fn __adddf3(a: f64, b: f64) -> f64 {
         add(a, b)
     }
+
+    #[cfg(target_arch = "arm")]
+    pub extern "C" fn __addsf3vfp(a: f32, b: f32) -> f32 {
+        a + b
+    }
+
+    #[cfg(target_arch = "arm")]
+    pub extern "C" fn __adddf3vfp(a: f64, b: f64) -> f64 {
+        a + b
+    }
 }
