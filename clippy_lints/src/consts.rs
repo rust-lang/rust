@@ -229,7 +229,18 @@ pub fn constant_simple(lcx: &LateContext, e: &Expr) -> Option<Constant> {
     constant(lcx, e).and_then(|(cst, res)| if res { None } else { Some(cst) })
 }
 
-struct ConstEvalLateContext<'a, 'tcx: 'a> {
+/// Creates a ConstEvalLateContext from the given LateContext and TypeckTables
+pub fn constant_context<'c, 'cc>(lcx: &LateContext<'c, 'cc>, tables: &'cc ty::TypeckTables<'cc>) -> ConstEvalLateContext<'c, 'cc> {
+    ConstEvalLateContext {
+        tcx: lcx.tcx,
+        tables,
+        param_env: lcx.param_env,
+        needed_resolution: false,
+        substs: lcx.tcx.intern_substs(&[]),
+    }
+}
+
+pub struct ConstEvalLateContext<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -239,7 +250,7 @@ struct ConstEvalLateContext<'a, 'tcx: 'a> {
 
 impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
     /// simple constant folding: Insert an expression, get a constant or none.
-    fn expr(&mut self, e: &Expr) -> Option<Constant> {
+    pub fn expr(&mut self, e: &Expr) -> Option<Constant> {
         match e.node {
             ExprPath(ref qpath) => self.fetch_path(qpath, e.hir_id),
             ExprBlock(ref block) => self.block(block),
