@@ -141,9 +141,9 @@ pub trait AsRef<T: ?Sized> {
 ///
 /// # Generic Implementations
 ///
-/// - `AsMut` auto-dereferences if the inner type is a reference or a mutable
-///   reference (e.g.: `foo.as_ref()` will work the same if `foo` has type
-///   `&mut Foo` or `&&mut Foo`)
+/// - `AsMut` auto-dereferences if the inner type is a mutable reference
+///   (e.g.: `foo.as_mut()` will work the same if `foo` has type `&mut Foo`
+///   or `&mut &mut Foo`)
 ///
 /// # Examples
 ///
