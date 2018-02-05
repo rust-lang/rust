@@ -679,7 +679,7 @@ macro_rules! count_idents {
 macro_rules! tuple {
     () => ();
     ( $($name:ident,)+ ) => (
-        impl<$($name:Decodable),*> Decodable for ($($name,)*) {
+        impl<$($name: Decodable),*> Decodable for ($($name,)*) {
             #[allow(non_snake_case)]
             fn decode<D: Decoder>(d: &mut D) -> Result<($($name,)*), D::Error> {
                 let len: usize = count_idents!($($name,)*);
@@ -693,7 +693,7 @@ macro_rules! tuple {
                 })
             }
         }
-        impl<$($name:Encodable),*> Encodable for ($($name,)*) {
+        impl<$($name: Encodable),*> Encodable for ($($name,)*) {
             #[allow(non_snake_case)]
             fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
                 let ($(ref $name,)*) = *self;
