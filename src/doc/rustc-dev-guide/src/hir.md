@@ -59,9 +59,9 @@ sorts of identifiers in active use:
 - `DefId` – primarily names "definitions" or top-level items.
   - You can think of a `DefId` as shorthand for a very explicit and complete
     path, like `std::collections::HashMap`. However, these paths are able to
-    name things that are not nameable in normal Rust (e.g. impls), and they also
-    include extra information about the crate (such as its version number, since
-    two versions of the same crate can co-exist).
+    name things that are not nameable in normal Rust (e.g. `impl`s), and they
+    also include extra information about the crate (such as its version number,
+    since two versions of the same crate can co-exist).
   - A `DefId` really consists of two parts, a `CrateNum` (which identifies the
     crate) and a `DefIndex` (which indexes into a list of items that is
     maintained per crate).

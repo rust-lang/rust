@@ -12,10 +12,10 @@ Rustc consists of a number of crates, including `syntax`,
 many more. The source for each crate can be found in a directory
 like `src/libXXX`, where `XXX` is the crate name.
 
-(NB. The names and divisions of these crates are not set in
-stone and may change over time – for the time being, we tend towards
-a finer-grained division to help with compilation time, though as
-incremental improves that may change.)
+(N.B. The names and divisions of these crates are not set in
+stone and may change over time. For the time being, we tend towards a
+finer-grained division to help with compilation time, though as incremental
+compilation improves, that may change.)
 
 The dependency structure of these crates is roughly a diamond:
 
@@ -37,7 +37,7 @@ rustc_trans    rustc_borrowck   ...  rustc_metadata
                     /    \
                   /       \
            syntax_pos  syntax_ext
-```                    
+```
 
 The `rustc_driver` crate, at the top of this lattice, is effectively
 the "main" function for the rust compiler. It doesn't have much "real
@@ -127,7 +127,7 @@ take:
 4. **Lowering to MIR and post-processing**
     - Once type-checking is done, we can lower the HIR into MIR ("middle IR"), which
       is a **very** desugared version of Rust, well suited to the borrowck but also
-      certain high-level optimizations. 
+      certain high-level optimizations.
 5. **Translation to LLVM and LLVM optimizations**
     - From MIR, we can produce LLVM IR.
     - LLVM then runs its various optimizations, which produces a number of `.o` files

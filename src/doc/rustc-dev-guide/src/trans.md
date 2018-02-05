@@ -1,1 +1,1 @@
-# The `trans` crate: generating LLVM IR
+# Generating LLVM IR

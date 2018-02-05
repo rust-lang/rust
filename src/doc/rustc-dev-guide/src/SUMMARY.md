@@ -19,5 +19,5 @@
     - [MIR construction](./mir-construction.md)
     - [MIR borrowck](./mir-borrowck.md)
     - [MIR optimizations](./mir-optimizations.md)
-- [The `trans` crate: generating LLVM IR](./trans.md)
+- [Generating LLVM IR](./trans.md)
 - [Glossary](./glossary.md)
