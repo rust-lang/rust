@@ -19,5 +19,7 @@ struct IndividuallyBogus<T = i32, U = i32>(TwoParams<T, U>) where TwoParams<T, U
 // Clauses with non-defaulted params are not checked.
 struct NonDefaultedInClause<T, U = i32>(TwoParams<T, U>) where TwoParams<T, U>: Marker;
 struct DefaultedLhs<U, V=i32>(U, V) where V: Trait<U>;
+// Dependent defaults.
+struct Dependent<T: Copy, U = T>(T, U) where U: Copy;
 
 fn main() {}

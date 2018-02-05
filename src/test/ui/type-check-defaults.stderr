@@ -102,5 +102,14 @@ note: required by `Bar`
 46 | trait Bar<V> {}
    | ^^^^^^^^^^^^
 
-error: aborting due to 10 previous errors
+error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
+  --> $DIR/type-check-defaults.rs:51:1
+   |
+51 | struct Dependent<T, U = T>(T, U) where U: Copy;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
+   |
+   = help: consider adding a `where T: std::marker::Copy` bound
+   = note: required by `std::marker::Copy`
+
+error: aborting due to 11 previous errors
 

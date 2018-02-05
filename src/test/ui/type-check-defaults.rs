@@ -47,4 +47,8 @@ trait Bar<V> {}
 impl Bar<String> for u32 { }
 impl Bar<i32> for String { }
 
+// Dependent defaults.
+struct Dependent<T, U = T>(T, U) where U: Copy;
+//~^ the trait bound `T: std::marker::Copy` is not satisfied [E0277]
+
 fn main() { }
