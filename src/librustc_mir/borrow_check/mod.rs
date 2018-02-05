@@ -711,6 +711,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
              self.tcx.sess.opts.debugging_opts.two_phase_beyond_autoref)
     }
 
+    /// Invokes `access_place` as appropriate for dropping the value
+    /// at `drop_place`. Note that the *actual* `Drop` in the MIR is
+    /// always for a variable (e.g., `Drop(x)`) -- but we recursively
+    /// break this variable down into subpaths (e.g., `Drop(x.foo)`)
+    /// to indicate more precisely which fields might actually be
+    /// accessed by a destructor.
     fn visit_terminator_drop(
         &mut self,
         loc: Location,
@@ -721,15 +727,16 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     ) {
         let ty = drop_place.ty(self.mir, self.tcx).to_ty(self.tcx);
         match ty.sty {
-            // When a struct is being dropped, we need to check whether it has a
-            // destructor, if it does, then we can call it, if it does not then we
-            // need to check the individual fields instead.
-            // See #47703.
+            // When a struct is being dropped, we need to check
+            // whether it has a destructor, if it does, then we can
+            // call it, if it does not then we need to check the
+            // individual fields instead. This way if `foo` has a
+            // destructor but `bar` does not, we will only check for
+            // borrows of `x.foo` and not `x.bar`. See #47703.
             ty::TyAdt(def, substs) if def.is_struct() && !def.has_dtor(self.tcx) => {
                 for (index, field) in def.all_fields().enumerate() {
                     let place = drop_place.clone();
                     let place = place.field(Field::new(index), field.ty(self.tcx, substs));
-                    let place = place.deref();
 
                     self.visit_terminator_drop(
                         loc,
@@ -741,13 +748,22 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 }
             },
             _ => {
-                self.access_place(
-                    ContextKind::Drop.new(loc),
-                    (drop_place, span),
-                    (Deep, Write(WriteKind::StorageDeadOrDrop)),
-                    LocalMutationIsAllowed::Yes,
-                    flow_state,
-                );
+                // We have now refined the type of the value being
+                // dropped (potentially) to just the type of a
+                // subfield; so check whether that field's type still
+                // "needs drop". If so, we assume that the destructor
+                // may access any data it likes (i.e., a Deep Write).
+                let gcx = self.tcx.global_tcx();
+                let erased_ty = gcx.lift(&self.tcx.erase_regions(&ty)).unwrap();
+                if erased_ty.needs_drop(gcx, self.param_env) {
+                    self.access_place(
+                        ContextKind::Drop.new(loc),
+                        (drop_place, span),
+                        (Deep, Write(WriteKind::StorageDeadOrDrop)),
+                        LocalMutationIsAllowed::Yes,
+                        flow_state,
+                    );
+                }
             },
         }
     }
