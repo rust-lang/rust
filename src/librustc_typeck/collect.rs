@@ -388,8 +388,7 @@ fn ensure_no_ty_param_bounds(tcx: TyCtxt,
         // part of this PR. Still, convert to warning to
         // make bootstrapping easier.
         span_warn!(tcx.sess, span, E0122,
-                   "trait bounds are not (yet) enforced \
-                   in {} definitions",
+                   "trait bounds are ignored in {} definitions",
                    thing);
     }
 }
