@@ -87,21 +87,5 @@ impl EarlyLintPass for StaticConst {
         }
     }
 
-    fn check_trait_item(&mut self, cx: &EarlyContext, item: &TraitItem) {
-        if !in_macro(item.span) {
-            // Match only constants...
-            if let TraitItemKind::Const(ref var_type, _) = item.node {
-                self.visit_type(var_type, cx);
-            }
-        }
-    }
-
-    fn check_impl_item(&mut self, cx: &EarlyContext, item: &ImplItem) {
-        if !in_macro(item.span) {
-            // Match only constants...
-            if let ImplItemKind::Const(ref var_type, _) = item.node {
-                self.visit_type(var_type, cx);
-            }
-        }
-    }
+    // Don't check associated consts because `'static` cannot be elided on those (issue #2438)
 }
