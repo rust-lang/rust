@@ -183,6 +183,7 @@ impl TokenTree {
 /// A collection of `self::TokenTree`. There may also be some errors emitted to `sess`.
 pub fn parse(
     input: tokenstream::TokenStream,
+    hygiene_optout: bool,
     expect_matchers: bool,
     sess: &ParseSess,
     features: &Features,
@@ -197,7 +198,7 @@ pub fn parse(
     while let Some(tree) = trees.next() {
         // Given the parsed tree, if there is a metavar and we are expecting matchers, actually
         // parse out the matcher (i.e. in `$id:ident` this would parse the `:` and `ident`).
-        let tree = parse_tree(tree, &mut trees, expect_matchers, sess, features, attrs);
+        let tree = parse_tree(tree, &mut trees, hygiene_optout, expect_matchers, sess, features, attrs);
         match tree {
             TokenTree::MetaVar(start_sp, ident, _) if expect_matchers => {
                 let span = match trees.next() {
@@ -251,6 +252,7 @@ pub fn parse(
 fn parse_tree<I>(
     tree: tokenstream::TokenTree,
     trees: &mut Peekable<I>,
+    hygiene_optout: bool,
     expect_matchers: bool,
     sess: &ParseSess,
     features: &Features,
@@ -261,11 +263,11 @@ where
 {
     // Depending on what `tree` is, we could be parsing different parts of a macro
     match tree {
-        // `tree` is `#` token. Look at the next token in `trees`.
-        tokenstream::TokenTree::Token(span, token::Pound) => match trees.peek() {
+        // `tree` is `#` token and hygiene opt-out syntax is on. Look at the next token in `trees`.
+        tokenstream::TokenTree::Token(span, token::Pound) if hygiene_optout => match trees.peek() {
             Some(tokenstream::TokenTree::Token(_, token::Dollar)) => {
                 if let tokenstream::TokenTree::Token(span, token::Dollar) = trees.next().unwrap() {
-                    parse_meta_var(true, span, trees, expect_matchers, sess, features, attrs)
+                    parse_meta_var(true, span, trees, hygiene_optout, expect_matchers, sess, features, attrs)
                 } else {
                     unreachable!();
                 }
@@ -284,7 +286,7 @@ where
 
         // `tree` is a `$` token. Look at the next token in `trees`.
         tokenstream::TokenTree::Token(span, token::Dollar) =>
-            parse_meta_var(false, span, trees, expect_matchers, sess, features, attrs),
+            parse_meta_var(false, span, trees, hygiene_optout, expect_matchers, sess, features, attrs),
 
         // `tree` is an arbitrary token. Keep it.
         tokenstream::TokenTree::Token(span, tok) => TokenTree::Token(span, tok),
@@ -295,7 +297,7 @@ where
             span,
             Lrc::new(Delimited {
                 delim: delimited.delim,
-                tts: parse(delimited.tts.into(), expect_matchers, sess, features, attrs),
+                tts: parse(delimited.tts.into(), hygiene_optout, expect_matchers, sess, features, attrs),
             }),
         ),
     }
@@ -306,6 +308,7 @@ fn parse_meta_var<I>(
     escape_hygiene: bool,
     span: Span,
     trees: &mut Peekable<I>,
+    hygiene_optout: bool,
     expect_matchers: bool,
     sess: &ParseSess,
     features: &Features,
@@ -325,7 +328,7 @@ where
                 sess.span_diagnostic.span_err(span, &msg);
             }
             // Parse the contents of the sequence itself
-            let sequence = parse(delimited.tts.into(), expect_matchers, sess, features, attrs);
+            let sequence = parse(delimited.tts.into(), hygiene_optout, expect_matchers, sess, features, attrs);
             // Get the Kleene operator and optional separator
             let (separator, op) = parse_sep_and_kleene_op(trees, span, sess, features, attrs);
             // Count the number of captured "names" (i.e. named metavars)

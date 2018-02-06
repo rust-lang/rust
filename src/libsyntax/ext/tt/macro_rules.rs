@@ -237,7 +237,7 @@ pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item) -> Syntax
             s.iter().map(|m| {
                 if let MatchedNonterminal(ref nt) = *m {
                     if let NtTT(ref tt) = **nt {
-                        let tt = quoted::parse(tt.clone().into(), true, sess, features, &def.attrs)
+                        let tt = quoted::parse(tt.clone().into(), false, true, sess, features, &def.attrs)
                             .pop().unwrap();
                         valid &= check_lhs_nt_follows(sess, features, &def.attrs, &tt);
                         return tt;
@@ -254,7 +254,7 @@ pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item) -> Syntax
             s.iter().map(|m| {
                 if let MatchedNonterminal(ref nt) = *m {
                     if let NtTT(ref tt) = **nt {
-                        return quoted::parse(tt.clone().into(), false, sess, features, &def.attrs)
+                        return quoted::parse(tt.clone().into(), !body.legacy, false, sess, features, &def.attrs)
                             .pop().unwrap();
                     }
                 }
