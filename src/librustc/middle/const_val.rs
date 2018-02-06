@@ -155,7 +155,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
             ConstEvalErrDescription::Backtrace(miri, frames) => {
                 diag.span_label(self.span, format!("{}", miri));
                 for frame in frames {
-                    diag.span_label(frame.span, format!("inside call to {}", frame.location));
+                    diag.span_label(frame.span, format!("inside call to `{}`", frame.location));
                 }
             }
         }

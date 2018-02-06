@@ -12,7 +12,7 @@
 
 #![feature(const_fn)]
 const fn a() -> usize { b() }
-const fn b() -> usize { a() }
-const ARR: [i32; a()] = [5; 6]; //~ ERROR constant evaluation error
+const fn b() -> usize { a() } //~ ERROR constant evaluation error
+const ARR: [i32; a()] = [5; 6];
 
 fn main(){}

@@ -203,7 +203,6 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                         bx.tcx(),
                         ty::ParamEnv::empty(traits::Reveal::All),
                         self.instance,
-                        constant.span,
                         None,
                         mir::Field::new(field as usize),
                         c,

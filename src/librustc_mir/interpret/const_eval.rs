@@ -61,7 +61,7 @@ pub fn eval_body_with_mir<'a, 'mir, 'tcx>(
     mir: &'mir mir::Mir<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 ) -> Option<(Value, Pointer, Ty<'tcx>)> {
-    let (res, ecx, _) = eval_body_and_ecx(tcx, cid, Some(mir), param_env);
+    let (res, ecx) = eval_body_and_ecx(tcx, cid, Some(mir), param_env);
     match res {
         Ok(val) => Some(val),
         Err(mut err) => {
@@ -76,7 +76,7 @@ pub fn eval_body<'a, 'tcx>(
     cid: GlobalId<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 ) -> Option<(Value, Pointer, Ty<'tcx>)> {
-    let (res, ecx, _) = eval_body_and_ecx(tcx, cid, None, param_env);
+    let (res, ecx) = eval_body_and_ecx(tcx, cid, None, param_env);
     match res {
         Ok(val) => Some(val),
         Err(mut err) => {
@@ -91,7 +91,7 @@ fn eval_body_and_ecx<'a, 'mir, 'tcx>(
     cid: GlobalId<'tcx>,
     mir: Option<&'mir mir::Mir<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
-) -> (EvalResult<'tcx, (Value, Pointer, Ty<'tcx>)>, EvalContext<'a, 'mir, 'tcx, CompileTimeEvaluator>, Span) {
+) -> (EvalResult<'tcx, (Value, Pointer, Ty<'tcx>)>, EvalContext<'a, 'mir, 'tcx, CompileTimeEvaluator>) {
     debug!("eval_body: {:?}, {:?}", cid, param_env);
     let mut ecx = EvalContext::new(tcx, param_env, CompileTimeEvaluator, ());
     // we start out with the best span we have
@@ -155,7 +155,7 @@ fn eval_body_and_ecx<'a, 'mir, 'tcx>(
         };
         Ok((value, ptr, layout.ty))
     })();
-    (res, ecx, span)
+    (res, ecx)
 }
 
 pub struct CompileTimeEvaluator;
@@ -367,7 +367,6 @@ pub fn const_val_field<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     instance: ty::Instance<'tcx>,
-    span: Span,
     variant: Option<usize>,
     field: mir::Field,
     value: Value,
@@ -403,7 +402,7 @@ pub fn const_val_field<'a, 'tcx>(
             ty,
         })),
         Err(err) => {
-            let trace = ecx.generate_stacktrace(None);
+            let (trace, span) = ecx.generate_stacktrace(None);
             let err = ErrKind::Miri(err, trace);
             Err(ConstEvalErr {
                 kind: err.into(),
@@ -490,7 +489,7 @@ pub fn const_eval_provider<'a, 'tcx>(
         }
     };
 
-    let (res, ecx, span) = eval_body_and_ecx(tcx, cid, None, key.param_env);
+    let (res, ecx) = eval_body_and_ecx(tcx, cid, None, key.param_env);
     res.map(|(miri_value, _, miri_ty)| {
         tcx.mk_const(ty::Const {
             val: ConstVal::Value(miri_value),
@@ -500,7 +499,7 @@ pub fn const_eval_provider<'a, 'tcx>(
         if tcx.is_static(def_id).is_some() {
             ecx.report(&mut err, true, None);
         }
-        let trace = ecx.generate_stacktrace(None);
+        let (trace, span) = ecx.generate_stacktrace(None);
         let err = ErrKind::Miri(err, trace);
         ConstEvalErr {
             kind: err.into(),
