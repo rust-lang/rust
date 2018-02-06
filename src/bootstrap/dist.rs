@@ -33,6 +33,7 @@ use builder::{Builder, RunConfig, ShouldRun, Step};
 use compile;
 use tool::{self, Tool};
 use cache::{INTERNER, Interned};
+use time;
 
 pub fn pkgname(build: &Build, component: &str) -> String {
     if component == "cargo" {
@@ -445,8 +446,7 @@ impl Step for Rustc {
             t!(fs::create_dir_all(image.join("share/man/man1")));
             let man_src = build.src.join("src/doc/man");
             let man_dst = image.join("share/man/man1");
-            let date_output = output(Command::new("date").arg("+%B %Y"));
-            let month_year = date_output.trim();
+            let month_year = t!(time::strftime("%B %Y", &time::now()));
             // don't use our `bootstrap::util::{copy, cp_r}`, because those try
             // to hardlink, and we don't want to edit the source templates
             for entry_result in t!(fs::read_dir(man_src)) {
@@ -456,7 +456,7 @@ impl Step for Rustc {
                 t!(fs::copy(&page_src, &page_dst));
                 // template in month/year and version number
                 replace_in_file(&page_dst,
-                                &[("<INSERT DATE HERE>", month_year),
+                                &[("<INSERT DATE HERE>", &month_year),
                                   ("<INSERT VERSION HERE>", channel::CFG_RELEASE_NUM)]);
             }
 

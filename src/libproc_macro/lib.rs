@@ -685,7 +685,7 @@ impl TokenTree {
                 })
             }
 
-            DotEq => unreachable!(),
+            DotEq => joint!('.', Eq),
             OpenDelim(..) | CloseDelim(..) => unreachable!(),
             Whitespace | Comment | Shebang(..) | Eof => unreachable!(),
         };

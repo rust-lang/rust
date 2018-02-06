@@ -256,6 +256,28 @@ trait Foo {
 }
 ```
 
+### The trait cannot contain associated constants
+
+Just like static functions, associated constants aren't stored on the method
+table. If the trait or any subtrait contain an associated constant, they cannot
+be made into an object.
+
+```compile_fail,E0038
+trait Foo {
+    const X: i32;
+}
+
+impl Foo {}
+```
+
+A simple workaround is to use a helper method instead:
+
+```
+trait Foo {
+    fn x(&self) -> i32;
+}
+```
+
 ### The trait cannot use `Self` as a type parameter in the supertrait listing
 
 This is similar to the second sub-error, but subtler. It happens in situations
