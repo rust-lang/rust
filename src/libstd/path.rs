@@ -2241,7 +2241,7 @@ impl Path {
     /// let path = Path::new("/../../../cannot_go_above_root");
     /// assert_eq!(path.clean(), PathBuf::from("/cannot_go_above_root"));
     /// ```
-    #[unstable(feature = "path cleaning", issue = "47402")]
+    #[unstable(feature = "path_clean", issue = "47402")]
     pub fn clean(&self) -> PathBuf {
         let mut stack: Vec<Component> = vec![];
 
