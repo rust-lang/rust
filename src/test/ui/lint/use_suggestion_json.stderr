@@ -89,6 +89,7 @@ mod foo {
       ],
       "label": "not found in this scope",
       "suggested_replacement": null,
+      "suggestion_approximate": null,
       "expansion": null
     }
   ],
@@ -118,6 +119,7 @@ mod foo {
           "suggested_replacement": "use std::collections::binary_heap::Iter;
 
 ",
+          "suggestion_approximate": null,
           "expansion": null
         },
         {
@@ -140,6 +142,7 @@ mod foo {
           "suggested_replacement": "use std::collections::btree_map::Iter;
 
 ",
+          "suggestion_approximate": null,
           "expansion": null
         },
         {
@@ -162,6 +165,7 @@ mod foo {
           "suggested_replacement": "use std::collections::btree_set::Iter;
 
 ",
+          "suggestion_approximate": null,
           "expansion": null
         },
         {
@@ -184,6 +188,7 @@ mod foo {
           "suggested_replacement": "use std::collections::hash_map::Iter;
 
 ",
+          "suggestion_approximate": null,
           "expansion": null
         },
         {
@@ -206,6 +211,7 @@ mod foo {
           "suggested_replacement": "use std::collections::hash_set::Iter;
 
 ",
+          "suggestion_approximate": null,
           "expansion": null
         },
         {
@@ -228,6 +234,7 @@ mod foo {
           "suggested_replacement": "use std::collections::linked_list::Iter;
 
 ",
+          "suggestion_approximate": null,
           "expansion": null
         },
         {
@@ -250,6 +257,7 @@ mod foo {
           "suggested_replacement": "use std::collections::vec_deque::Iter;
 
 ",
+          "suggestion_approximate": null,
           "expansion": null
         },
         {
@@ -272,6 +280,7 @@ mod foo {
           "suggested_replacement": "use std::option::Iter;
 
 ",
+          "suggestion_approximate": null,
           "expansion": null
         },
         {
@@ -294,6 +303,7 @@ mod foo {
           "suggested_replacement": "use std::path::Iter;
 
 ",
+          "suggestion_approximate": null,
           "expansion": null
         },
         {
@@ -316,6 +326,7 @@ mod foo {
           "suggested_replacement": "use std::result::Iter;
 
 ",
+          "suggestion_approximate": null,
           "expansion": null
         },
         {
@@ -338,6 +349,7 @@ mod foo {
           "suggested_replacement": "use std::slice::Iter;
 
 ",
+          "suggestion_approximate": null,
           "expansion": null
         },
         {
@@ -360,6 +372,7 @@ mod foo {
           "suggested_replacement": "use std::sync::mpsc::Iter;
 
 ",
+          "suggestion_approximate": null,
           "expansion": null
         }
       ],
