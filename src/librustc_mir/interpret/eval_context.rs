@@ -45,6 +45,11 @@ pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     /// This prevents infinite loops and huge computations from freezing up const eval.
     /// Remove once halting problem is solved.
     pub(crate) steps_remaining: usize,
+
+    /// The span that is used if no more stack frames are available
+    ///
+    /// This happens after successful evaluation when the result is inspected
+    root_span: codemap::Span,
 }
 
 /// A stack frame.
@@ -186,6 +191,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         param_env: ty::ParamEnv<'tcx>,
         machine: M,
         memory_data: M::MemoryData,
+        root_span: codemap::Span,
     ) -> Self {
         EvalContext {
             machine,
@@ -195,6 +201,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             stack: Vec::new(),
             stack_limit: tcx.sess.const_eval_stack_frame_limit.get(),
             steps_remaining: tcx.sess.const_eval_step_limit.get(),
+            root_span,
         }
     }
 
@@ -1594,12 +1601,15 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             };
             frames.push(FrameInfo { span, location });
         }
-        let frame = self.frame();
-        let bb = &frame.mir.basic_blocks()[frame.block];
-        let span = if let Some(stmt) = bb.statements.get(frame.stmt) {
-            stmt.source_info.span
+        let span = if let Some(frame) = self.stack().last() {
+            let bb = &frame.mir.basic_blocks()[frame.block];
+            if let Some(stmt) = bb.statements.get(frame.stmt) {
+                stmt.source_info.span
+            } else {
+                bb.terminator().source_info.span
+            }
         } else {
-            bb.terminator().source_info.span
+            self.root_span
         };
         trace!("generate stacktrace: {:#?}, {:?}", frames, explicit_span);
         (frames, span)

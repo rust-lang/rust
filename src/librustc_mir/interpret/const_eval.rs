@@ -24,7 +24,7 @@ pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
 ) -> EvalResult<'tcx, EvalContext<'a, 'mir, 'tcx, CompileTimeEvaluator>> {
     debug!("mk_borrowck_eval_cx: {:?}", instance);
     let param_env = tcx.param_env(instance.def_id());
-    let mut ecx = EvalContext::new(tcx, param_env, CompileTimeEvaluator, ());
+    let mut ecx = EvalContext::new(tcx, param_env, CompileTimeEvaluator, (), span);
     // insert a stack frame so any queries have the correct substs
     ecx.push_stack_frame(
         instance,
@@ -42,7 +42,8 @@ pub fn mk_eval_cx<'a, 'tcx>(
     param_env: ty::ParamEnv<'tcx>,
 ) -> EvalResult<'tcx, EvalContext<'a, 'tcx, 'tcx, CompileTimeEvaluator>> {
     debug!("mk_eval_cx: {:?}, {:?}", instance, param_env);
-    let mut ecx = EvalContext::new(tcx, param_env, CompileTimeEvaluator, ());
+    let span = tcx.def_span(instance.def_id());
+    let mut ecx = EvalContext::new(tcx, param_env, CompileTimeEvaluator, (), span);
     let mir = ecx.load_mir(instance.def)?;
     // insert a stack frame so any queries have the correct substs
     ecx.push_stack_frame(
@@ -93,10 +94,10 @@ fn eval_body_and_ecx<'a, 'mir, 'tcx>(
     param_env: ty::ParamEnv<'tcx>,
 ) -> (EvalResult<'tcx, (Value, Pointer, Ty<'tcx>)>, EvalContext<'a, 'mir, 'tcx, CompileTimeEvaluator>) {
     debug!("eval_body: {:?}, {:?}", cid, param_env);
-    let mut ecx = EvalContext::new(tcx, param_env, CompileTimeEvaluator, ());
     // we start out with the best span we have
     // and try improving it down the road when more information is available
     let mut span = tcx.def_span(cid.instance.def_id());
+    let mut ecx = EvalContext::new(tcx, param_env, CompileTimeEvaluator, (), mir.map(|mir| mir.span).unwrap_or(span));
     let res = (|| {
         let mut mir = match mir {
             Some(mir) => mir,
