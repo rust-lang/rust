@@ -399,37 +399,25 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
         // For more examples see tests `defaults-well-formedness.rs` and `type-check-defaults.rs`.
         //
         // First we build the defaulted substitution.
-        let mut defaulted_params = Vec::new();
         let substs = ty::subst::Substs::for_item(fcx.tcx, def_id, |def, _| {
                 // All regions are identity.
                 fcx.tcx.mk_region(ty::ReEarlyBound(def.to_early_bound_region_data()))
             }, |def, _| {
                 if !is_our_default(def) {
-                    // Identity substitution.
-                    fcx.tcx.mk_param_from_def(def)
+                    // We don't want to use non-defaulted params in a substitution, mark as err.
+                    fcx.tcx.types.err
                 } else  {
                     // Substitute with default.
-                    defaulted_params.push(def.index);
                     fcx.tcx.type_of(def.def_id)
                 }
             });
-        let defaulted_params = &defaulted_params;
         // Now we build the substituted predicates.
         for &pred in predicates.predicates.iter() {
-            struct HasNonDefaulted<'a> { defaulted_params: &'a Vec<u32> }
-            impl<'tcx, 'a> ty::fold::TypeVisitor<'tcx> for HasNonDefaulted<'a> {
-                fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
-                    match t.sty {
-                        ty::TyParam(p) => !self.defaulted_params.contains(&p.idx),
-                        _ => t.super_visit_with(self)
-                    }
-                }
-            }
+            let substituted_pred = pred.subst(fcx.tcx, substs);
             // If there is a non-defaulted param in the predicate, don't check it.
-            if pred.visit_with(&mut HasNonDefaulted { defaulted_params }) {
+            if substituted_pred.references_error() {
                 continue;
             }
-            let substituted_pred = pred.subst(fcx.tcx, substs);
             // In trait defs, don't check `Self: Sized` when `Self` is the default.
             if let ty::Predicate::Trait(trait_pred) = substituted_pred {
                 // `skip_binder()` is ok, we're only inspecting for `has_self_ty()`.
