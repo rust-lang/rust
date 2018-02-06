@@ -427,6 +427,14 @@ pub fn snippet_block<'a, 'b, T: LintContext<'b>>(cx: &T, span: Span, default: &'
     trim_multiline(snip, true)
 }
 
+/// Returns a new Span that covers the full last line of the given Span
+pub fn last_line_of_span<'a, T: LintContext<'a>>(cx: &T, span: Span) -> Span {
+    let file_map_and_line = cx.sess().codemap().lookup_line(span.lo()).unwrap();
+    let line_no = file_map_and_line.line;
+    let line_start = &file_map_and_line.fm.lines.clone().into_inner()[line_no];
+    Span::new(*line_start, span.hi(), span.ctxt())
+}
+
 /// Like `snippet_block`, but add braces if the expr is not an `ExprBlock`.
 /// Also takes an `Option<String>` which can be put inside the braces.
 pub fn expr_block<'a, 'b, T: LintContext<'b>>(

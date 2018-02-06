@@ -7,7 +7,7 @@ use rustc::ty::{self, TyCtxt};
 use semver::Version;
 use syntax::ast::{Attribute, AttrStyle, Lit, LitKind, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
 use syntax::codemap::Span;
-use utils::{in_macro, match_def_path, opt_def_id, paths, snippet_opt, span_lint, span_lint_and_then};
+use utils::{in_macro, last_line_of_span, match_def_path, opt_def_id, paths, snippet_opt, span_lint, span_lint_and_then};
 
 /// **What it does:** Checks for items annotated with `#[inline(always)]`,
 /// unless the annotated function is empty or simply panics.
@@ -156,17 +156,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
                                             }
                                         }
                                     }
-                                    if let Some(mut sugg) = snippet_opt(cx, attr.span) {
-                                        if sugg.len() > 1 {
+                                    let line_span = last_line_of_span(cx, attr.span);
+
+                                    if let Some(mut sugg) = snippet_opt(cx, line_span) {
+                                        if sugg.contains("#[") {
                                             span_lint_and_then(
                                                 cx,
                                                 USELESS_ATTRIBUTE,
-                                                attr.span,
+                                                line_span,
                                                 "useless lint attribute",
                                                 |db| {
-                                                    sugg.insert(1, '!');
+                                                    sugg = sugg.replacen("#[", "#![", 1);
                                                     db.span_suggestion(
-                                                        attr.span,
+                                                        line_span,
                                                         "if you just forgot a `!`, use",
                                                         sugg,
                                                     );
