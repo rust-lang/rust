@@ -6,9 +6,9 @@ The compiler uses a number of...idiosyncratic abbreviations and things. This glo
 Term                    | Meaning
 ------------------------|--------
 AST                     |  the abstract syntax tree produced by the syntax crate; reflects user syntax very closely.
-DAG                     |  a directed acyclic graph is used during compilation to index which queries execute which other queries. ([see more](incremental-compilation.html))
 codegen unit            |  when we produce LLVM IR, we group the Rust code into a number of codegen units. Each of these units is processed by LLVM independently from one another, enabling parallelism. They are also the unit of incremental re-use.
 cx                      |  we tend to use "cx" as an abbrevation for context. See also `tcx`, `infcx`, etc.
+DAG                     |  a directed acyclic graph is used during compilation to keep track of dependencies between queries. ([see more](incremental-compilation.html))
 DefId                   |  an index identifying a definition (see `librustc/hir/def_id.rs`). Uniquely identifies a `DefPath`.
 HIR                     |  the High-level IR, created by lowering and desugaring the AST ([see more](hir.html))
 HirId                   |  identifies a particular node in the HIR by combining a def-id with an "intra-definition offset".
