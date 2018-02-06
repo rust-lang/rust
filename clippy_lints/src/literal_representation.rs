@@ -74,9 +74,8 @@ declare_lint! {
 /// `255` => `0xFF`
 /// `65_535` => `0xFFFF`
 /// `4_042_322_160` => `0xF0F0_F0F0`
-declare_lint! {
+declare_restriction_lint! {
     pub DECIMAL_LITERAL_REPRESENTATION,
-    Warn,
     "using decimal representation when hexadecimal would be better"
 }
 

@@ -382,6 +382,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         else_if_without_else::ELSE_IF_WITHOUT_ELSE,
         methods::CLONE_ON_REF_PTR,
         misc::FLOAT_CMP_CONST,
+        literal_representation::DECIMAL_LITERAL_REPRESENTATION,
     ]);
 
     reg.register_lint_group("clippy_pedantic", vec![
@@ -496,7 +497,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         let_if_seq::USELESS_LET_IF_SEQ,
         lifetimes::NEEDLESS_LIFETIMES,
         lifetimes::UNUSED_LIFETIMES,
-        literal_representation::DECIMAL_LITERAL_REPRESENTATION,
         literal_representation::INCONSISTENT_DIGIT_GROUPING,
         literal_representation::LARGE_DIGIT_GROUPS,
         literal_representation::UNREADABLE_LITERAL,

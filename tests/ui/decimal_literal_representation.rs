@@ -4,11 +4,17 @@
 #[warn(decimal_literal_representation)]
 #[allow(unused_variables)]
 fn main() {
-    // Hex:      7F,  80, 100, 1FF,  800,  FFA,   F0F3,     7F0F_F00D
-    let good = (127, 128, 256, 511, 2048, 4090, 61_683, 2_131_750_925);
+    let good = (        // Hex:
+        127,            // 0x7F
+        256,            // 0x100
+        511,            // 0x1FF
+        2048,           // 0x800
+        4090,           // 0xFFA
+        16_371,         // 0x3FF3
+        61_683,         // 0xF0F3
+        2_131_750_925,  // 0x7F0F_F00D
+    );
     let bad = (        // Hex:
-        4096,          // 0x1000
-        16_371,        // 0x3FF3
         32_773,        // 0x8005
         65_280,        // 0xFF00
         2_131_750_927, // 0x7F0F_F00F
