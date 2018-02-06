@@ -8,24 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unused_imports, dead_code)]
+// compile-flags: -O
 
-mod a {
-    pub enum B {}
-    pub enum C {}
+// ignore-asmjs
 
-    pub mod d {
-        pub enum E {}
-        pub enum F {}
+#![feature(asm)]
+#![crate_type = "lib"]
 
-        pub mod g {
-            pub enum H {}
-        }
-    }
+// Check that inline assembly expressions without any outputs
+// are marked as having side effects / being volatile
+
+// CHECK-LABEL: @assembly
+#[no_mangle]
+pub fn assembly() {
+    unsafe { asm!("") }
+// CHECK: tail call void asm sideeffect "", {{.*}}
 }
-
-use a::{B, d::{*, g::H}};  //~ ERROR glob imports in `use` groups are experimental
-                           //~^ ERROR nested groups in `use` are experimental
-                           //~^^ ERROR paths in `use` groups are experimental
-
-fn main() {}

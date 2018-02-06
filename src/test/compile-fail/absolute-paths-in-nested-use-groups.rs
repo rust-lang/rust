@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(use_nested_groups)]
 #![allow(unused_imports)]
 
 mod foo {}

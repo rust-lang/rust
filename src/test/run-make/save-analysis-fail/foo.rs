@@ -451,3 +451,11 @@ extern {
     static EXTERN_FOO: u8;
     fn extern_foo(a: u8, b: i32) -> String;
 }
+
+struct Rls699 {
+  f: u32,
+}
+
+fn new(f: u32) -> Rls699 {
+    Rls699 { fs }
+}

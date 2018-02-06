@@ -423,9 +423,6 @@ declare_features! (
     // In-band lifetime bindings (e.g. `fn foo(x: &'a u8) -> &'a u8`)
     (active, in_band_lifetimes, "1.23.0", Some(44524)),
 
-    // Nested groups in `use` (RFC 2128)
-    (active, use_nested_groups, "1.23.0", Some(44494)),
-
     // generic associated types (RFC 1598)
     (active, generic_associated_types, "1.23.0", Some(44265)),
 
@@ -544,6 +541,8 @@ declare_features! (
     (accepted, repr_align, "1.24.0", Some(33626)),
     // allow '|' at beginning of match arms (RFC 1925)
     (accepted, match_beginning_vert, "1.25.0", Some(44101)),
+    // Nested groups in `use` (RFC 2128)
+    (accepted, use_nested_groups, "1.25.0", Some(44494)),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -1803,29 +1802,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
 
         visit::walk_path(self, path);
-    }
-
-    fn visit_use_tree(&mut self, use_tree: &'a ast::UseTree, id: NodeId, nested: bool) {
-        if nested {
-            match use_tree.kind {
-                ast::UseTreeKind::Simple(_) => {
-                    if use_tree.prefix.segments.len() != 1 {
-                        gate_feature_post!(&self, use_nested_groups, use_tree.span,
-                                           "paths in `use` groups are experimental");
-                    }
-                }
-                ast::UseTreeKind::Glob => {
-                    gate_feature_post!(&self, use_nested_groups, use_tree.span,
-                                       "glob imports in `use` groups are experimental");
-                }
-                ast::UseTreeKind::Nested(_) => {
-                    gate_feature_post!(&self, use_nested_groups, use_tree.span,
-                                       "nested groups in `use` are experimental");
-                }
-            }
-        }
-
-        visit::walk_use_tree(self, use_tree, id);
     }
 
     fn visit_vis(&mut self, vis: &'a ast::Visibility) {

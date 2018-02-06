@@ -8,18 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod a {
-    pub mod b1 {
-        pub enum C2 {}
-    }
+static TAB: [&mut [u8]; 0] = [];
 
-    pub enum B2 {}
+pub unsafe fn test() {
+    TAB[0].iter_mut(); //~ ERROR cannot borrow data mutably in a `&` reference [E0389]
 }
 
-use a::{b1::{C1, C2}, B2};
-//~^ ERROR unresolved import `a::b1::C1`
-
-fn main() {
-    let _: C2;
-    let _: B2;
-}
+pub fn main() {}
