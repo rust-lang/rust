@@ -383,7 +383,7 @@ fn ensure_no_param_bounds(tcx: TyCtxt,
         // part of this PR. Still, convert to warning to
         // make bootstrapping easier.
         span_warn!(tcx.sess, span, E0122,
-                   "bounds are ignored in {}",
+                   "generic bounds are ignored in {}",
                    thing);
     }
 }
