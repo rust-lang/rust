@@ -24,7 +24,6 @@
       ],
       "label": null,
       "suggested_replacement": null,
-      "suggestion_approximate": null,
       "expansion": null
     }
   ],
@@ -52,7 +51,6 @@
           ],
           "label": null,
           "suggested_replacement": null,
-          "suggestion_approximate": null,
           "expansion": null
         }
       ],
@@ -82,7 +80,6 @@
           ],
           "label": null,
           "suggested_replacement": "1 / (2 + 3)",
-          "suggestion_approximate": null,
           "expansion": null
         }
       ],
