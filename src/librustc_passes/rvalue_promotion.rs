@@ -291,7 +291,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
 
                 // References to a static that are themselves within a static
                 // are inherently promotable with the exception
-                //  of "#[thread_loca]" statics, which may not
+                //  of "#[thread_local]" statics, which may not
                 // outlive the current function
                 Def::Static(did, _) => {
 
