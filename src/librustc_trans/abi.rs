@@ -407,7 +407,8 @@ impl<'tcx> LayoutExt<'tcx> for TyLayout<'tcx> {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum CastTarget {
     Uniform(Uniform),
-    Pair(Reg, Reg)
+    Pair(Reg, Reg),
+    ChunkedPrefix { prefix: [RegKind; 8], chunk: Size, total: Size }
 }
 
 impl From<Reg> for CastTarget {
@@ -429,7 +430,8 @@ impl CastTarget {
             CastTarget::Pair(a, b) => {
                 (a.size.abi_align(a.align(cx)) + b.size)
                     .abi_align(self.align(cx))
-            }
+            },
+            CastTarget::ChunkedPrefix { total, .. } => total
         }
     }
 
@@ -440,6 +442,12 @@ impl CastTarget {
                 cx.data_layout().aggregate_align
                     .max(a.align(cx))
                     .max(b.align(cx))
+            },
+            CastTarget::ChunkedPrefix { chunk, .. } => {
+                cx.data_layout().aggregate_align
+                    .max(Reg { kind: RegKind::Integer, size: chunk }.align(cx))
+                    .max(Reg { kind: RegKind::Float, size: chunk }.align(cx))
+                    .max(Reg { kind: RegKind::Vector, size: chunk }.align(cx))
             }
         }
     }
@@ -452,6 +460,34 @@ impl CastTarget {
                     a.llvm_type(cx),
                     b.llvm_type(cx)
                 ], false)
+            },
+            CastTarget::ChunkedPrefix { prefix, chunk, total } => {
+                let total_chunks = total.bytes() / chunk.bytes();
+                let rem_bytes = total.bytes() % chunk.bytes();
+                let prefix_chunks = total_chunks.min(prefix.len() as u64);
+
+                let int_ll_type = Reg { kind: RegKind::Integer, size: chunk }.llvm_type(cx);
+
+                // Simple cases simplify to an array
+                if rem_bytes == 0 && prefix.into_iter().all(|&kind| kind == RegKind::Integer) {
+                    return Type::array(&int_ll_type, total_chunks);
+                }
+
+                // The final structure is made up of:
+                //  Up to 8 chunks of the type specified in the prefix
+                //  Any other complete chunks as integers
+                //  One final integer needed to make up the total structure size
+                let mut args: Vec<_> =
+                    prefix.into_iter().take(prefix_chunks as usize)
+                        .map(|&kind| Reg { kind: kind, size: chunk }.llvm_type(cx))
+                    .chain((0..total_chunks - prefix_chunks).map(|_| int_ll_type))
+                    .collect();
+
+                if rem_bytes > 0 {
+                    args.push(Type::ix(cx, rem_bytes * 8));
+                }
+
+                Type::struct_(cx, &args, false)
             }
         }
     }
