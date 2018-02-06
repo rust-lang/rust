@@ -1,4 +1,4 @@
-use consts::constant;
+use consts::{constant, constant_context};
 use rustc::lint::*;
 use rustc::hir::*;
 use std::hash::{Hash, Hasher};
@@ -117,8 +117,12 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
                 !self.ignore_fn && l_path == r_path && self.eq_exprs(l_args, r_args)
             },
             (&ExprRepeat(ref le, ll_id), &ExprRepeat(ref re, rl_id)) => {
-                self.eq_expr(le, re)
-                    && self.eq_expr(&self.cx.tcx.hir.body(ll_id).value, &self.cx.tcx.hir.body(rl_id).value)
+                let mut celcx = constant_context(self.cx, self.cx.tcx.body_tables(ll_id));
+                let ll = celcx.expr(&self.cx.tcx.hir.body(ll_id).value);
+                let mut celcx = constant_context(self.cx, self.cx.tcx.body_tables(rl_id));
+                let rl = celcx.expr(&self.cx.tcx.hir.body(rl_id).value);
+
+                self.eq_expr(le, re) && ll == rl
             },
             (&ExprRet(ref l), &ExprRet(ref r)) => both(l, r, |l, r| self.eq_expr(l, r)),
             (&ExprPath(ref l), &ExprPath(ref r)) => self.eq_qpath(l, r),

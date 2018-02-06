@@ -396,3 +396,18 @@ fn ifs_same_cond() {
 }
 
 fn main() {}
+
+// Issue #2423. This was causing an ICE
+fn func() {
+    if true {
+        f(&[0; 62]);
+        f(&[0; 4]);
+        f(&[0; 3]);
+    } else {
+        f(&[0; 62]);
+        f(&[0; 6]);
+        f(&[0; 6]);
+    }
+}
+
+fn f(val: &[u8]) {}
