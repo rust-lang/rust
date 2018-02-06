@@ -23,7 +23,7 @@ pub fn unwind_backtrace(_frames: &mut [Frame])
 pub fn resolve_symname<F>(_frame: Frame,
                           _callback: F,
                           _: &BacktraceContext) -> io::Result<()>
-    where F: FnOnce(Option<&str>) -> io::Result<()>
+    where F: FnOnce(Option<(&str, usize)>) -> io::Result<()>
 {
     unsupported()
 }
