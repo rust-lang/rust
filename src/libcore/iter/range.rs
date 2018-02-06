@@ -444,31 +444,13 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
         }
         Try::from_ok(accum)
     }
+
+    #[inline]
+    fn count(self) -> usize {
+        <A as Step>::steps_between(&self.start, &self.end)
+            .expect("Overflow on `RangeInclusive::count()`") + 1
+    }
 }
-
-macro_rules! impl_inclusive_range_count {
-    ($t:ty) => {
-        #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
-        impl Iterator for ops::RangeInclusive<$t> {
-            #[inline]
-            fn count(self) -> usize {
-                (self.end.wrapping_sub(self.start) as usize).wrapping_add(1)
-            }
-        }
-    };
-}
-
-impl_inclusive_range_count!(u8);
-impl_inclusive_range_count!(u16);
-impl_inclusive_range_count!(u32);
-impl_inclusive_range_count!(u64);
-impl_inclusive_range_count!(usize);
-
-impl_inclusive_range_count!(i8);
-impl_inclusive_range_count!(i16);
-impl_inclusive_range_count!(i32);
-impl_inclusive_range_count!(i64);
-impl_inclusive_range_count!(isize);
 
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
 impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
