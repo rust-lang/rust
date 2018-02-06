@@ -10,7 +10,7 @@
 
 use convert::TryFrom;
 use mem;
-use ops::{self, Add, Sub};
+use ops::{self, Add, Sub, Try};
 use usize;
 
 use super::{FusedIterator, TrustedLen};
@@ -397,6 +397,28 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
     fn max(mut self) -> Option<A> {
         self.next_back()
     }
+
+    #[inline]
+    fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R where
+        Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+    {
+        let mut accum = init;
+        if self.start <= self.end {
+            loop {
+                let (x, done) =
+                    if self.start < self.end {
+                        let n = self.start.add_one();
+                        (mem::replace(&mut self.start, n), false)
+                    } else {
+                        self.end.replace_zero();
+                        (self.start.replace_one(), true)
+                    };
+                accum = f(accum, x)?;
+                if done { break }
+            }
+        }
+        Try::from_ok(accum)
+    }
 }
 
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
@@ -417,6 +439,28 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
             },
             _ => None,
         }
+    }
+
+    #[inline]
+    fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R where
+        Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+    {
+        let mut accum = init;
+        if self.start <= self.end {
+            loop {
+                let (x, done) =
+                    if self.start < self.end {
+                        let n = self.end.sub_one();
+                        (mem::replace(&mut self.end, n), false)
+                    } else {
+                        self.start.replace_one();
+                        (self.end.replace_zero(), true)
+                    };
+                accum = f(accum, x)?;
+                if done { break }
+            }
+        }
+        Try::from_ok(accum)
     }
 }
 
