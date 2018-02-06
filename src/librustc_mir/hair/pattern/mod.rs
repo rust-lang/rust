@@ -775,6 +775,26 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         span: Span,
     ) -> Pattern<'tcx> {
         debug!("const_to_pat: cv={:#?}", cv);
+        let adt_subpattern = |i, variant_opt| {
+            let field = Field::new(i);
+            let val = match cv.val {
+                ConstVal::Value(miri) => const_val_field(
+                    self.tcx, self.param_env, instance, span,
+                    variant_opt, field, miri, cv.ty,
+                ).unwrap(),
+                _ => bug!("{:#?} is not a valid adt", cv),
+            };
+            self.const_to_pat(instance, val, id, span)
+        };
+        let adt_subpatterns = |n, variant_opt| {
+            (0..n).map(|i| {
+                let field = Field::new(i);
+                FieldPattern {
+                    field,
+                    pattern: adt_subpattern(i, variant_opt),
+                }
+            }).collect::<Vec<_>>()
+        };
         let kind = match cv.ty.sty {
             ty::TyFloat(_) => {
                 let id = self.tcx.hir.hir_to_node_id(id);
@@ -811,91 +831,37 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                             .discriminants(self.tcx)
                             .position(|var| var.val == discr)
                             .unwrap();
+                        let subpatterns = adt_subpatterns(
+                            adt_def.variants[variant_index].fields.len(),
+                            Some(variant_index),
+                        );
                         PatternKind::Variant {
                             adt_def,
                             substs,
                             variant_index,
-                            subpatterns: adt_def
-                                .variants[variant_index]
-                                .fields
-                                .iter()
-                                .enumerate()
-                                .map(|(i, _)| {
-                                let field = Field::new(i);
-                                let val = match cv.val {
-                                    ConstVal::Value(miri) => const_val_field(
-                                        self.tcx, self.param_env, instance, span,
-                                        Some(variant_index), field, miri, cv.ty,
-                                    ).unwrap(),
-                                    _ => bug!("{:#?} is not a valid tuple", cv),
-                                };
-                                FieldPattern {
-                                    field,
-                                    pattern: self.const_to_pat(instance, val, id, span),
-                                }
-                            }).collect(),
+                            subpatterns,
                         }
                     },
-                    _ => return Pattern {
-                        span,
-                        ty: cv.ty,
-                        kind: Box::new(PatternKind::Constant {
-                            value: cv,
-                        }),
+                    ConstVal::Unevaluated(..) =>
+                        span_bug!(span, "{:#?} is not a valid enum constant", cv),
                     }
-                }
             },
             ty::TyAdt(adt_def, _) => {
                 let struct_var = adt_def.non_enum_variant();
                 PatternKind::Leaf {
-                    subpatterns: struct_var.fields.iter().enumerate().map(|(i, _)| {
-                        let field = Field::new(i);
-                        let val = match cv.val {
-                            ConstVal::Value(miri) => const_val_field(
-                                self.tcx, self.param_env, instance, span,
-                                None, field, miri, cv.ty,
-                            ).unwrap(),
-                            _ => bug!("{:#?} is not a valid tuple", cv),
-                        };
-                        FieldPattern {
-                            field,
-                            pattern: self.const_to_pat(instance, val, id, span),
+                    subpatterns: adt_subpatterns(struct_var.fields.len(), None),
                         }
-                    }).collect()
                 }
-            }
             ty::TyTuple(fields, _) => {
                 PatternKind::Leaf {
-                    subpatterns: (0..fields.len()).map(|i| {
-                        let field = Field::new(i);
-                        let val = match cv.val {
-                            ConstVal::Value(miri) => const_val_field(
-                                self.tcx, self.param_env, instance, span,
-                                None, field, miri, cv.ty,
-                            ).unwrap(),
-                            _ => bug!("{:#?} is not a valid tuple", cv),
-                        };
-                        FieldPattern {
-                            field,
-                            pattern: self.const_to_pat(instance, val, id, span),
-                        }
-                    }).collect()
+                    subpatterns: adt_subpatterns(fields.len(), None),
                 }
             }
             ty::TyArray(_, n) => {
                 PatternKind::Array {
-                    prefix: (0..n.val.unwrap_u64()).map(|i| {
-                        let i = i as usize;
-                        let field = Field::new(i);
-                        let val = match cv.val {
-                            ConstVal::Value(miri) => const_val_field(
-                                self.tcx, self.param_env, instance, span,
-                                None, field, miri, cv.ty,
-                            ).unwrap(),
-                            _ => bug!("{:#?} is not a valid tuple", cv),
-                        };
-                        self.const_to_pat(instance, val, id, span)
-                    }).collect(),
+                    prefix: (0..n.val.unwrap_u64())
+                        .map(|i| adt_subpattern(i as usize, None))
+                        .collect(),
                     slice: None,
                     suffix: Vec::new(),
                 }
