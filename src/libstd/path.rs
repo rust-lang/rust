@@ -4234,22 +4234,22 @@ mod tests {
             // tc!(r#"\??\X:\ABC\..\XYZ"#, r#"X:\??\X:\XYZ"#);
             // tc!(r#"\??\X:\ABC\..\..\.."#, r#"X:\"#);
 
-            tn!(r#"a\b\c"#, r#"a\b\c"#);
-            tn!(r#"a/b\c"#, r#"a\b\c"#);
-            tn!(r#"a/b\c\"#, r#"a\b\c"#);
-            tn!(r#"a/b\c/"#, r#"a\b\c"#);
-            tn!(r#"\"#, r#"\"#);
-            tn!(r#"\\"#, r#"\"#);
-            tn!(r#"/"#, r#"\"#);
-            tn!(r#"//"#, r#"\"#);
+            tc!(r#"a\b\c"#, r#"a\b\c"#);
+            tc!(r#"a/b\c"#, r#"a\b\c"#);
+            tc!(r#"a/b\c\"#, r#"a\b\c"#);
+            tc!(r#"a/b\c/"#, r#"a\b\c"#);
+            tc!(r#"\"#, r#"\"#);
+            tc!(r#"\\"#, r#"\"#);
+            tc!(r#"/"#, r#"\"#);
+            tc!(r#"//"#, r#"\"#);
 
-            tn!(r#"C:\a\b"#, r#"C:\a\b"#);
-            tn!(r#"C:\"#, r#"C:\"#);
-            tn!(r#"C:\."#, r#"C:\"#);
-            tn!(r#"C:\.."#, r#"C:\"#);
-            tn!(r#"C:a"#, r#"C:a"#);
-            tn!(r#"C:."#, r#"C:."#);
-            tn!(r#"C:.."#, r#"C:.."#);
+            tc!(r#"C:\a\b"#, r#"C:\a\b"#);
+            tc!(r#"C:\"#, r#"C:\"#);
+            tc!(r#"C:\."#, r#"C:\"#);
+            tc!(r#"C:\.."#, r#"C:\"#);
+            tc!(r#"C:a"#, r#"C:a"#);
+            tc!(r#"C:."#, r#"C:."#);
+            tc!(r#"C:.."#, r#"C:.."#);
 
             // Should these not have a trailing slash?
             tc!(r#"\\server\share"#, r#"\\server\share\"#);
