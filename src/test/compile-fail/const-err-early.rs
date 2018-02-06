@@ -13,16 +13,11 @@
 pub const A: i8 = -std::i8::MIN; //~ ERROR E0080
 //~| ERROR const_err
 //~| ERROR const_err
-//~| ERROR E0080
 pub const B: u8 = 200u8 + 200u8; //~ ERROR E0080
-//~| ERROR E0080
 pub const C: u8 = 200u8 * 4; //~ ERROR E0080
-//~| ERROR E0080
 pub const D: u8 = 42u8 - (42u8 + 1); //~ ERROR E0080
-//~| ERROR E0080
 pub const E: u8 = [5u8][1];
 //~^ ERROR E0080
-//~| ERROR E0080
 
 fn main() {
     let _a = A;
