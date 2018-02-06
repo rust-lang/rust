@@ -397,9 +397,21 @@ pub struct HashMap<K, V, S = RandomState> {
     resize_policy: DefaultResizePolicy,
 }
 
-/// Search for a pre-hashed key.
+/// Search for a pre-hashed key when the hash map is known to be non-empty.
 #[inline]
-fn search_hashed<K, V, M, F>(table: M, hash: SafeHash, mut is_match: F) -> InternalEntry<K, V, M>
+fn search_hashed_nonempty<K, V, M, F>(table: M, hash: SafeHash, is_match: F)
+    -> InternalEntry<K, V, M>
+    where M: Deref<Target = RawTable<K, V>>,
+          F: FnMut(&K) -> bool
+{
+    // Do not check the capacity as an extra branch could slow the lookup.
+    search_hashed_body(table, hash, is_match)
+}
+
+/// Search for a pre-hashed key.
+/// If you don't already know the hash, use search or search_mut instead
+#[inline]
+fn search_hashed<K, V, M, F>(table: M, hash: SafeHash, is_match: F) -> InternalEntry<K, V, M>
     where M: Deref<Target = RawTable<K, V>>,
           F: FnMut(&K) -> bool
 {
@@ -410,6 +422,16 @@ fn search_hashed<K, V, M, F>(table: M, hash: SafeHash, mut is_match: F) -> Inter
         return InternalEntry::TableIsEmpty;
     }
 
+    search_hashed_body(table, hash, is_match)
+}
+
+/// The body of the search_hashed[_nonempty] functions
+#[inline]
+fn search_hashed_body<K, V, M, F>(table: M, hash: SafeHash, mut is_match: F)
+    -> InternalEntry<K, V, M>
+    where M: Deref<Target = RawTable<K, V>>,
+          F: FnMut(&K) -> bool
+{
     let size = table.size();
     let mut probe = Bucket::new(table, hash);
     let mut displacement = 0;
@@ -550,8 +572,12 @@ impl<K, V, S> HashMap<K, V, S>
         where K: Borrow<Q>,
               Q: Eq + Hash
     {
-        let hash = self.make_hash(q);
-        search_hashed(&self.table, hash, |k| q.eq(k.borrow()))
+        if self.table.capacity() != 0 {
+            let hash = self.make_hash(q);
+            search_hashed_nonempty(&self.table, hash, |k| q.eq(k.borrow()))
+        } else {
+            InternalEntry::TableIsEmpty
+        }
     }
 
     #[inline]
@@ -559,8 +585,12 @@ impl<K, V, S> HashMap<K, V, S>
         where K: Borrow<Q>,
               Q: Eq + Hash
     {
-        let hash = self.make_hash(q);
-        search_hashed(&mut self.table, hash, |k| q.eq(k.borrow()))
+        if self.table.capacity() != 0 {
+            let hash = self.make_hash(q);
+            search_hashed_nonempty(&mut self.table, hash, |k| q.eq(k.borrow()))
+        } else {
+            InternalEntry::TableIsEmpty
+        }
     }
 
     // The caller should ensure that invariants by Robin Hood Hashing hold
