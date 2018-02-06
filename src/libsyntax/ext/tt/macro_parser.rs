@@ -230,7 +230,6 @@ pub fn count_names(ms: &[TokenTree]) -> usize {
             TokenTree::MetaVar(..) => 0,
             TokenTree::MetaVarDecl(..) => 1,
             TokenTree::Token(..) => 0,
-            TokenTree::IdentToken(..) => 0,
         }
     })
 }
@@ -334,8 +333,7 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
                 }
             }
             TokenTree::MetaVar(..) |
-            TokenTree::Token(..) |
-            TokenTree::IdentToken(..) => (),
+            TokenTree::Token(..) => (),
         }
 
         Ok(())
@@ -543,7 +541,7 @@ fn inner_parse_loop(
                 //
                 // At the beginning of the loop, if we reach the end of the delimited submatcher,
                 // we pop the stack to backtrack out of the descent.
-                seq @ TokenTree::Delimited(..) | seq @ TokenTree::Token(_, DocComment(..)) => {
+                seq @ TokenTree::Delimited(..) | seq @ TokenTree::Token(_, DocComment(..), _) => {
                     let lower_elts = mem::replace(&mut item.top_elts, Tt(seq));
                     let idx = item.idx;
                     item.stack.push(MatcherTtFrame {
@@ -555,13 +553,7 @@ fn inner_parse_loop(
                 }
 
                 // We just matched a normal token. We can just advance the parser.
-                TokenTree::Token(_, ref t) if token_name_eq(t, token) => {
-                    item.idx += 1;
-                    next_items.push(item);
-                }
-
-                // We just matched an ident token. We can just advance the parser.
-                TokenTree::IdentToken(_, i, _) if token_name_eq(&token::Ident(i, false), token) => {
+                TokenTree::Token(_, ref t, _) if token_name_eq(t, token) => {
                     item.idx += 1;
                     next_items.push(item);
                 }
@@ -571,7 +563,6 @@ fn inner_parse_loop(
                 // `cur_items` end up doing this. There may still be some other matchers that do
                 // end up working out.
                 TokenTree::Token(..) |
-                TokenTree::IdentToken(..) |
                 TokenTree::MetaVar(..) => {}
             }
         }

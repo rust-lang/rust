@@ -46,7 +46,7 @@ impl Delimited {
         } else {
             span.with_lo(span.lo() + BytePos(self.delim.len() as u32))
         };
-        TokenTree::Token(open_span, self.open_token())
+        TokenTree::Token(open_span, self.open_token(), false)
     }
 
     /// Return a `self::TokenTree` with a `Span` corresponding to the closing delimiter.
@@ -56,7 +56,7 @@ impl Delimited {
         } else {
             span.with_lo(span.hi() - BytePos(self.delim.len() as u32))
         };
-        TokenTree::Token(close_span, self.close_token())
+        TokenTree::Token(close_span, self.close_token(), false)
     }
 }
 
@@ -88,13 +88,20 @@ pub enum KleeneOp {
 /// are "first-class" token trees. Useful for parsing macros.
 #[derive(Debug, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub enum TokenTree {
-    Token(Span, token::Token),
-    IdentToken(Span, ast::Ident, bool /* escape hygiene */),
+    Token(
+        Span,
+        token::Token,
+        bool, /* escape hygiene */
+    ),
     Delimited(Span, Lrc<Delimited>),
-    /// A kleene-style repetition sequence
+    /// A Kleene-style repetition sequence
     Sequence(Span, Lrc<SequenceRepetition>),
     /// E.g. `$var`
-    MetaVar(Span, ast::Ident, bool /* escape hygiene */),
+    MetaVar(
+        Span,
+        ast::Ident,
+        bool, /* escape hygiene */
+    ),
     /// E.g. `$var:expr`. This is only used in the left hand side of MBE macros.
     MetaVarDecl(
         Span,
@@ -152,12 +159,11 @@ impl TokenTree {
     /// Retrieve the `TokenTree`'s span.
     pub fn span(&self) -> Span {
         match *self {
-            TokenTree::Token(sp, _)
-            | TokenTree::IdentToken(sp, _, _)
-            | TokenTree::MetaVar(sp, _, _)
-            | TokenTree::MetaVarDecl(sp, _, _)
-            | TokenTree::Delimited(sp, _)
-            | TokenTree::Sequence(sp, _) => sp,
+            TokenTree::Token(sp, _, _) |
+            TokenTree::MetaVar(sp, _, _) |
+            TokenTree::MetaVarDecl(sp, _, _) |
+            TokenTree::Delimited(sp, _) |
+            TokenTree::Sequence(sp, _) => sp,
         }
     }
 }
@@ -273,15 +279,25 @@ where
                 }
             }
 
-            Some(tokenstream::TokenTree::Token(_, token::Ident(_, _))) => {
-                if let tokenstream::TokenTree::Token(span, token::Ident(ident, _)) = trees.next().unwrap() {
-                    TokenTree::IdentToken(span, ident, true)
+            Some(tokenstream::TokenTree::Token(_, token::Ident(..))) => {
+                if let tokenstream::TokenTree::Token(span, tok @ token::Ident(..)) =
+                    trees.next().unwrap() {
+                    TokenTree::Token(span, tok, true)
                 } else {
                     unreachable!();
                 }
             }
 
-            _ => TokenTree::Token(span, token::Pound),
+            Some(tokenstream::TokenTree::Token(_, token::Lifetime(..))) => {
+                if let tokenstream::TokenTree::Token(span, tok @ token::Lifetime(..)) =
+                    trees.next().unwrap() {
+                    TokenTree::Token(span, tok, true)
+                } else {
+                    unreachable!();
+                }
+            }
+
+            _ => TokenTree::Token(span, token::Pound, false),
         }
 
         // `tree` is a `$` token. Look at the next token in `trees`.
@@ -289,7 +305,7 @@ where
             parse_meta_var(false, span, trees, hygiene_optout, expect_matchers, sess, features, attrs),
 
         // `tree` is an arbitrary token. Keep it.
-        tokenstream::TokenTree::Token(span, tok) => TokenTree::Token(span, tok),
+        tokenstream::TokenTree::Token(span, tok) => TokenTree::Token(span, tok, false),
 
         // `tree` is the beginning of a delimited set of tokens (e.g. `(` or `{`). We need to
         // descend into the delimited set and further parse it.
@@ -347,11 +363,11 @@ where
         // `tree` is followed by an `ident`. This could be `$meta_var` or the `$crate` special
         // metavariable that names the crate of the invokation.
         Some(tokenstream::TokenTree::Token(ident_span, ref token)) if token.is_ident() => {
-            let (ident, _) = token.ident().unwrap();
+            let (ident, is_raw) = token.ident().unwrap();
             let span = ident_span.with_lo(span.lo());
             if ident.name == keywords::Crate.name() && !is_raw {
                 let ident = ast::Ident::new(keywords::DollarCrate.name(), ident.span);
-                TokenTree::Token(span, token::Ident(ident, is_raw))
+                TokenTree::Token(span, token::Ident(ident, is_raw), escape_hygiene)
             } else {
                 TokenTree::MetaVar(span, ident, escape_hygiene)
             }
@@ -368,7 +384,7 @@ where
         }
 
         // There are no more tokens. Just return the `$` we already have.
-        None => TokenTree::Token(span, token::Dollar),
+        None => TokenTree::Token(span, token::Dollar, false),
     }
 }
 

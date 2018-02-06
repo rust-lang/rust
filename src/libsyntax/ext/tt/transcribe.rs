@@ -177,20 +177,31 @@ pub fn transcribe(cx: &ExtCtxt,
                 stack.push(Frame::Delimited { forest: delimited, idx: 0, span: span });
                 result_stack.push(mem::replace(&mut result, Vec::new()));
             }
-            quoted::TokenTree::Token(sp, tok) => {
-                let mut marker = Marker(cx.current_expansion.mark);
-                result.push(noop_fold_tt(TokenTree::Token(sp, tok), &mut marker).into())
-            }
-            quoted::TokenTree::IdentToken(sp, ident, escape_hygiene) => {
+            quoted::TokenTree::Token(sp, tok, escape_hygiene) => {
                 let sp_ctxt = if escape_hygiene { cx.call_site() } else { sp }.ctxt();
                 let sp = sp.with_ctxt(sp_ctxt.apply_mark(cx.current_expansion.mark));
-                let ident_ctxt = if escape_hygiene {
-                    cx.call_site().ctxt()
-                } else {
-                    ident.ctxt.apply_mark(cx.current_expansion.mark)
+
+                let update_ident_ctxt = |ident: Ident| {
+                    let ident_ctxt = if escape_hygiene {
+                        cx.call_site().ctxt()
+                    } else {
+                        ident.ctxt.apply_mark(cx.current_expansion.mark)
+                    };
+                    Ident { ctxt: ident_ctxt, ..ident }
                 };
-                let ident = Ident { ctxt: ident_ctxt, ..ident };
-                result.push(TokenTree::Token(sp, token::Ident(ident, false)).into());
+
+                let result_tok = match tok {
+                    token::Ident(ident, is_raw) =>
+                        TokenTree::Token(sp, token::Ident(update_ident_ctxt(ident), is_raw)),
+                    token::Lifetime(ident) =>
+                        TokenTree::Token(sp, token::Lifetime(ident)),
+                    _ => {
+                        let mut marker = Marker(cx.current_expansion.mark);
+                        noop_fold_tt(TokenTree::Token(sp, tok), &mut marker)
+                    }
+                };
+
+                result.push(result_tok.into());
             }
             quoted::TokenTree::MetaVarDecl(..) => panic!("unexpected `TokenTree::MetaVarDecl"),
         }
@@ -269,6 +280,5 @@ fn lockstep_iter_size(tree: &quoted::TokenTree,
                 _ => LockstepIterSize::Unconstrained
             },
         TokenTree::Token(..) => LockstepIterSize::Unconstrained,
-        TokenTree::IdentToken(..) => LockstepIterSize::Unconstrained,
     }
 }
