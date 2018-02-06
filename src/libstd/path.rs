@@ -4150,6 +4150,90 @@ mod tests {
             tn!("/..", "/");
             tn!("/../../", "/");
         } else {
+            // Drive-absolute paths.
+            tc!(r#"X:\ABC\DEF"#, r#"X:\ABC\DEF"#);
+            tc!(r#"X:\"#, r#"X:\"#);
+            tc!(r#"X:\ABC\"#, r#"X:\ABC"#);
+            // tc!(r#"X:\ABC\DEF. ."#, r#"X:\ABC\DEF"#);
+            tc!(r#"X:/ABC/DEF"#, r#"X:\ABC\DEF"#);
+            tc!(r#"X:\ABC\..\XYZ"#, r#"X:\XYZ"#);
+            tc!(r#"X:\ABC\..\..\.."#, r#"X:\"#);
+
+            // Drive-relative paths.
+            tc!(r#"X:DEF\GHI"#, r#"X:DEF\GHI"#);
+            tc!(r#"X:"#, r#"X:"#);
+            // tc!(r#"X:DEF. ."#, r#"X:DEF"#);
+            tc!(r#"Y:"#, r#"Y:"#);
+            tc!(r#"Z:"#, r#"Z:"#);
+            tc!(r#"X:ABC\..\XYZ"#, r#"X:XYZ"#);
+            tc!(r#"X:ABC\..\..\.."#, r#"X:..\.."#);
+
+            // Rooted paths.
+            tc!(r#"\ABC\DEF"#, r#"\ABC\DEF"#);
+            tc!(r#"\"#, r#"\"#);
+            // tc!(r#"\ABC\DEF. ."#, r#"\ABC\DEF"#);
+            tc!(r#"/ABC/DEF"#, r#"\ABC\DEF"#);
+            tc!(r#"\ABC\..\XYZ"#, r#"\XYZ"#);
+            tc!(r#"\ABC\..\..\.."#, r#"\"#);
+
+            // Relative paths.
+            tc!(r#"ABC\DEF"#, r#"ABC\DEF"#);
+            tc!(r#"."#, r#"."#);
+            // tc!(r#"ABC\DEF. ."#, r#"ABC\DEF"#);
+            tc!(r#"ABC/DEF"#, r#"ABC\DEF"#);
+            tc!(r#"..\ABC"#, r#"..\ABC"#);
+            tc!(r#"ABC\..\..\.."#, r#"..\.."#);
+
+            // UNC absolute paths.
+            tc!(r#"\\server\share\ABC\DEF"#, r#"\\server\share\ABC\DEF"#);
+            tc!(r#"\\server"#, r#"\\server\"#);
+            tc!(r#"\\server\share"#, r#"\\server\share\"#);
+            // tc!(r#"\\server\share\ABC. ."#, r#"\\server\share\ABC"#);
+            // tc!(r#"//server/share/ABC/DEF"#, r#"\\server\share\ABC\DEF"#);
+            tc!(r#"\\server\share\ABC\..\XYZ"#, r#"\\server\share\XYZ"#);
+            tc!(r#"\\server\share\ABC\..\..\.."#, r#"\\server\share\"#);
+
+            // Local device paths.
+            tc!(r#"\\.\COM20"#, r#"\\.\COM20\"#);
+            tc!(r#"\\.\pipe\mypipe"#, r#"\\.\pipe\mypipe"#);
+            // tc!(r#"\\.\X:\ABC\DEF. ."#, r#"\\.\X:\ABC\DEF"#);
+            // tc!(r#"\\.\X:/ABC/DEF"#, r#"\\.\X:\ABC\DEF"#);
+            tc!(r#"\\.\X:\ABC\..\XYZ"#, r#"\\.\X:\XYZ"#);
+            // tc!(r#"\\.\X:\ABC\..\..\C:\"#, r#"\\.\C:\"#);
+            tc!(r#"\\.\pipe\mypipe\..\notmine"#, r#"\\.\pipe\notmine"#);
+
+            // More local device paths.
+            // tc!(r#"COM1"#, r#"\\.\COM1"#);
+            // tc!(r#"X:\COM1"#, r#"\\.\COM1"#);
+            // tc!(r#"X:COM1"#, r#"\\.\COM1"#);
+            // tc!(r#"valid\COM1"#, r#"\\.\COM1"#);
+            // tc!(r#"X:\notvalid\COM1"#, r#"\\.\COM1"#);
+            // tc!(r#"X:\COM1.blah"#, r#"\\.\COM1"#);
+            // tc!(r#"X:\COM1:blah"#, r#"\\.\COM1"#);
+            // tc!(r#"X:\COM1  .blah"#, r#"\\.\COM1"#);
+            // tc!(r#"\\.\X:\COM1"#, r#"\\.\X:\COM1"#);
+            // tc!(r#"\\abc\xyz\COM1"#, r#"\\abc\xyz\COM1"#);
+
+            // Root local device paths.
+            tc!(r#"\\?\X:\ABC\DEF"#, r#"\\?\X:\ABC\DEF"#);
+            tc!(r#"\\?\X:\"#, r#"\\?\X:\"#);
+            tc!(r#"\\?\X:"#, r#"\\?\X:"#);
+            tc!(r#"\\?\X:\COM1"#, r#"\\?\X:\COM1"#);
+            // tc!(r#"\\?\X:\ABC\DEF. ."#, r#"\\?\X:\ABC\DEF"#);
+            // tc!(r#"\\?\X:/ABC/DEF"#, r#"\\?\X:\ABC\DEF"#);
+            tc!(r#"\\?\X:\ABC\..\XYZ"#, r#"\\?\X:\XYZ"#);
+            tc!(r#"\\?\X:\ABC\..\..\.."#, r#"\\?\X:\"#);
+
+            // More root local device paths.
+            // tc!(r#"\??\X:\ABC\DEF"#, r#"X:\??\X:\ABC\DEF"#);
+            // tc!(r#"\??\X:\"#, r#"X:\??\X:\"#);
+            // tc!(r#"\??\X:"#, r#"X:\??\X:"#);
+            // tc!(r#"\??\X:\COM1"#, r#"X:\??\X:\COM1"#);
+            // tc!(r#"\??\X:\ABC\DEF. ."#, r#"X:\??\X:\ABC\DEF"#);
+            // tc!(r#"\??\X:/ABC/DEF"#, r#"X:\??\X:\ABC\DEF"#);
+            // tc!(r#"\??\X:\ABC\..\XYZ"#, r#"X:\??\X:\XYZ"#);
+            // tc!(r#"\??\X:\ABC\..\..\.."#, r#"X:\"#);
+
             tn!(r#"a\b\c"#, r#"a\b\c"#);
             tn!(r#"a/b\c"#, r#"a\b\c"#);
             tn!(r#"a/b\c\"#, r#"a\b\c"#);
