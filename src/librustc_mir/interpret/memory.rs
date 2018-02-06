@@ -2,7 +2,8 @@ use byteorder::{ReadBytesExt, WriteBytesExt, LittleEndian, BigEndian};
 use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque};
 use std::{ptr, io};
 
-use rustc::ty::{Instance, TyCtxt};
+use rustc::ty::Instance;
+use rustc::ty::maps::TyCtxtAt;
 use rustc::ty::layout::{self, Align, TargetDataLayout};
 use syntax::ast::Mutability;
 
@@ -51,11 +52,11 @@ pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     /// The current stack frame.  Used to check accesses against locks.
     pub cur_frame: usize,
 
-    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
 }
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, data: M::MemoryData) -> Self {
+    pub fn new(tcx: TyCtxtAt<'a, 'tcx, 'tcx>, data: M::MemoryData) -> Self {
         Memory {
             data,
             alloc_kind: HashMap::new(),

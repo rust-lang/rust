@@ -209,7 +209,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                         extra: PlaceExtra::None,
                     }
                 } else {
-                    let instance = ty::Instance::mono(self.tcx, static_.def_id);
+                    let instance = ty::Instance::mono(*self.tcx, static_.def_id);
                     let cid = GlobalId {
                         instance,
                         promoted: None
@@ -445,7 +445,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
     pub fn place_ty(&self, place: &mir::Place<'tcx>) -> Ty<'tcx> {
         self.monomorphize(
-            place.ty(self.mir(), self.tcx).to_ty(self.tcx),
+            place.ty(self.mir(), *self.tcx).to_ty(*self.tcx),
             self.substs(),
         )
     }

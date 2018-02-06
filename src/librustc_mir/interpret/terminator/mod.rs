@@ -5,8 +5,7 @@ use syntax::codemap::Span;
 use syntax::abi::Abi;
 
 use rustc::mir::interpret::{EvalResult, PrimVal, Value};
-use super::{EvalContext, eval_context,
-            Place, Machine, ValTy};
+use super::{EvalContext, Place, Machine, ValTy};
 
 use rustc_data_structures::indexed_vec::Idx;
 use interpret::memory::HasMemory;
@@ -72,10 +71,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     ty::TyFnPtr(sig) => {
                         let fn_ptr = self.value_to_primval(func)?.to_ptr()?;
                         let instance = self.memory.get_fn(fn_ptr)?;
-                        let instance_ty = instance.ty(self.tcx);
+                        let instance_ty = instance.ty(*self.tcx);
                         match instance_ty.sty {
                             ty::TyFnDef(..) => {
-                                let real_sig = instance_ty.fn_sig(self.tcx);
+                                let real_sig = instance_ty.fn_sig(*self.tcx);
                                 let sig = self.tcx.erase_late_bound_regions_and_normalize(&sig);
                                 let real_sig = self.tcx.erase_late_bound_regions_and_normalize(&real_sig);
                                 if !self.check_sig_compat(sig, real_sig)? {
@@ -88,7 +87,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     }
                     ty::TyFnDef(def_id, substs) => (
                         self.resolve(def_id, substs)?,
-                        func.ty.fn_sig(self.tcx),
+                        func.ty.fn_sig(*self.tcx),
                     ),
                     _ => {
                         let msg = format!("can't handle callee of type {:?}", func.ty);
@@ -117,7 +116,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let ty = self.tcx.trans_apply_param_substs(self.substs(), &ty);
                 trace!("TerminatorKind::drop: {:?}, type {}", location, ty);
 
-                let instance = eval_context::resolve_drop_in_place(self.tcx, ty);
+                let instance = ::monomorphize::resolve_drop_in_place(*self.tcx, ty);
                 self.drop_place(
                     place,
                     instance,

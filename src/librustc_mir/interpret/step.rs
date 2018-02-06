@@ -51,6 +51,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         // Some statements (e.g. box) push new stack frames.  We have to record the stack frame number
         // *before* executing the statement.
         let frame_idx = self.cur_frame();
+        self.tcx.span = stmt.source_info.span;
+        self.memory.tcx.span = stmt.source_info.span;
 
         match stmt.kind {
             Assign(ref place, ref rvalue) => self.eval_rvalue_into_place(rvalue, place)?,
@@ -99,6 +101,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
     fn terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> EvalResult<'tcx> {
         trace!("{:?}", terminator.kind);
+        self.tcx.span = terminator.source_info.span;
+        self.memory.tcx.span = terminator.source_info.span;
         self.eval_terminator(terminator)?;
         if !self.stack.is_empty() {
             trace!("// {:?}", self.frame().block);

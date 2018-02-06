@@ -3,8 +3,7 @@ use rustc::ty::layout::{Size, Align, LayoutOf};
 use syntax::ast::Mutability;
 
 use rustc::mir::interpret::{PrimVal, Value, MemoryPointer, EvalResult};
-use super::{EvalContext, eval_context,
-            Machine};
+use super::{EvalContext, Machine};
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     /// Creates a dynamic vtable for the given type and vtable origin. This is used only for
@@ -34,7 +33,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             None,
         )?;
 
-        let drop = eval_context::resolve_drop_in_place(self.tcx, ty);
+        let drop = ::monomorphize::resolve_drop_in_place(*self.tcx, ty);
         let drop = self.memory.create_fn_alloc(drop);
         self.memory.write_ptr_sized_unsigned(vtable, ptr_align, PrimVal::Ptr(drop))?;
 

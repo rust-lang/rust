@@ -5,13 +5,13 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::map::definitions::DefPathData;
 use rustc::middle::const_val::{ConstVal, ErrKind};
 use rustc::mir;
-use rustc::traits::Reveal;
 use rustc::ty::layout::{self, Size, Align, HasDataLayout, LayoutOf, TyLayout};
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::maps::TyCtxtAt;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::middle::const_val::FrameInfo;
-use syntax::codemap::{self, DUMMY_SP, Span};
+use syntax::codemap::{self, Span};
 use syntax::ast::Mutability;
 use rustc::mir::interpret::{
     GlobalId, Value, Pointer, PrimVal, PrimValKind,
@@ -27,7 +27,7 @@ pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     pub machine: M,
 
     /// The results of the type checker, from rustc.
-    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
 
     /// Bounds in scope for polymorphic evaluations.
     pub param_env: ty::ParamEnv<'tcx>,
@@ -45,11 +45,6 @@ pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     /// This prevents infinite loops and huge computations from freezing up const eval.
     /// Remove once halting problem is solved.
     pub(crate) steps_remaining: usize,
-
-    /// The span that is used if no more stack frames are available
-    ///
-    /// This happens after successful evaluation when the result is inspected
-    root_span: codemap::Span,
 }
 
 /// A stack frame.
@@ -154,7 +149,7 @@ impl<'c, 'b, 'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> layout::HasTyCtxt<'tcx> for &'a EvalContext<'a, 'mir, 'tcx, M> {
     #[inline]
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
-        self.tcx
+        *self.tcx
     }
 }
 
@@ -162,7 +157,7 @@ impl<'c, 'b, 'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> layout::HasTyCtxt<'tcx>
     for &'c &'b mut EvalContext<'a, 'mir, 'tcx, M> {
     #[inline]
     fn tcx<'d>(&'d self) -> TyCtxt<'d, 'tcx, 'tcx> {
-        self.tcx
+        *self.tcx
     }
 }
 
@@ -187,11 +182,10 @@ impl<'c, 'b, 'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf<Ty<'tcx>>
 
 impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     pub fn new(
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         machine: M,
         memory_data: M::MemoryData,
-        root_span: codemap::Span,
     ) -> Self {
         EvalContext {
             machine,
@@ -201,7 +195,6 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             stack: Vec::new(),
             stack_limit: tcx.sess.const_eval_stack_frame_limit.get(),
             steps_remaining: tcx.sess.const_eval_step_limit.get(),
-            root_span,
         }
     }
 
@@ -255,7 +248,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     pub(super) fn resolve(&self, def_id: DefId, substs: &'tcx Substs<'tcx>) -> EvalResult<'tcx, ty::Instance<'tcx>> {
         let substs = self.tcx.trans_apply_param_substs(self.substs(), &substs);
         ty::Instance::resolve(
-            self.tcx,
+            *self.tcx,
             self.param_env,
             def_id,
             substs,
@@ -263,7 +256,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     }
 
     pub(super) fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_sized(self.tcx.at(DUMMY_SP), self.param_env)
+        ty.is_sized(self.tcx, self.param_env)
     }
 
     pub fn load_mir(
@@ -290,7 +283,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         // miri doesn't care about lifetimes, and will choke on some crazy ones
         // let's simply get rid of them
         let without_lifetimes = self.tcx.erase_regions(&ty);
-        let substituted = without_lifetimes.subst(self.tcx, substs);
+        let substituted = without_lifetimes.subst(*self.tcx, substs);
         let substituted = self.tcx.fully_normalize_monormophic_ty(&substituted);
         substituted
     }
@@ -725,7 +718,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                             ty::TyClosure(def_id, substs) => {
                                 let substs = self.tcx.trans_apply_param_substs(self.substs(), &substs);
                                 let instance = ty::Instance::resolve_closure(
-                                    self.tcx,
+                                    *self.tcx,
                                     def_id,
                                     substs,
                                     ty::ClosureKind::FnOnce,
@@ -748,8 +741,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 let place = self.eval_place(place)?;
                 let discr_val = self.read_discriminant_value(place, ty)?;
                 if let ty::TyAdt(adt_def, _) = ty.sty {
-                    trace!("Read discriminant {}, valid discriminants {:?}", discr_val, adt_def.discriminants(self.tcx).collect::<Vec<_>>());
-                    if adt_def.discriminants(self.tcx).all(|v| {
+                    trace!("Read discriminant {}, valid discriminants {:?}", discr_val, adt_def.discriminants(*self.tcx).collect::<Vec<_>>());
+                    if adt_def.discriminants(*self.tcx).all(|v| {
                         discr_val != v.val
                     })
                     {
@@ -797,7 +790,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
     pub fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, ValTy<'tcx>> {
         use rustc::mir::Operand::*;
-        let ty = self.monomorphize(op.ty(self.mir(), self.tcx), self.substs());
+        let ty = self.monomorphize(op.ty(self.mir(), *self.tcx), self.substs());
         match *op {
             // FIXME: do some more logic on `move` to invalidate the old location
             Copy(ref place) |
@@ -905,7 +898,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             }
             layout::Variants::Tagged { .. } => {
                 let discr_val = dest_ty.ty_adt_def().unwrap()
-                    .discriminant_for_variant(self.tcx, variant_index)
+                    .discriminant_for_variant(*self.tcx, variant_index)
                     .val;
 
                 let (discr_dest, discr) = self.place_field(dest, mir::Field::new(0), layout)?;
@@ -1412,7 +1405,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             }
             (_, &ty::TyDynamic(ref data, _)) => {
                 let trait_ref = data.principal().unwrap().with_self_ty(
-                    self.tcx,
+                    *self.tcx,
                     src_pointee_ty,
                 );
                 let trait_ref = self.tcx.erase_regions(&trait_ref);
@@ -1601,18 +1594,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             };
             frames.push(FrameInfo { span, location });
         }
-        let span = if let Some(frame) = self.stack().last() {
-            let bb = &frame.mir.basic_blocks()[frame.block];
-            if let Some(stmt) = bb.statements.get(frame.stmt) {
-                stmt.source_info.span
-            } else {
-                bb.terminator().source_info.span
-            }
-        } else {
-            self.root_span
-        };
         trace!("generate stacktrace: {:#?}, {:?}", frames, explicit_span);
-        (frames, span)
+        (frames, self.tcx.span)
     }
 
     pub fn report(&self, e: &mut EvalError, as_err: bool, explicit_span: Option<Span>) {
@@ -1660,7 +1643,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             });
             trace!("reporting const eval failure at {:?}", span);
             let mut err = if as_err {
-                ::rustc::middle::const_val::struct_error(self.tcx, span, "constant evaluation error")
+                ::rustc::middle::const_val::struct_error(*self.tcx, span, "constant evaluation error")
             } else {
                 let node_id = self
                     .stack()
@@ -1721,15 +1704,4 @@ impl<'mir, 'tcx> Frame<'mir, 'tcx> {
         self.locals[local.index() - 1] = None;
         return Ok(old);
     }
-}
-
-// TODO(solson): Upstream these methods into rustc::ty::layout.
-
-pub fn resolve_drop_in_place<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    ty: Ty<'tcx>,
-) -> ty::Instance<'tcx> {
-    let def_id = tcx.require_lang_item(::rustc::middle::lang_items::DropInPlaceFnLangItem);
-    let substs = tcx.intern_substs(&[ty.into()]);
-    ty::Instance::resolve(tcx, ty::ParamEnv::empty(Reveal::All), def_id, substs).unwrap()
 }
