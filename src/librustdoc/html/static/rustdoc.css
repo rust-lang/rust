@@ -1192,5 +1192,6 @@ kbd {
 
 .hidden-by-impl-hider,
 .hidden-by-usual-hider {
-	display: none;
+	/* important because of conflicting rule for small screens */
+	display: none !important;
 }
