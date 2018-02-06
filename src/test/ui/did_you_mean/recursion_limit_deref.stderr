@@ -1,19 +1,19 @@
 error[E0055]: reached the recursion limit while auto-dereferencing I
-  --> $DIR/recursion_limit_deref.rs:60:22
+  --> $DIR/recursion_limit_deref.rs:62:22
    |
-60 |     let x: &Bottom = &t;
+62 |     let x: &Bottom = &t; //~ ERROR mismatched types
    |                      ^^ deref recursion limit reached
    |
-   = help: consider adding a `#[recursion_limit="20"]` attribute to your crate
+   = help: consider adding a `#![recursion_limit="20"]` attribute to your crate
 
 error[E0055]: reached the recursion limit while auto-dereferencing I
   |
-  = help: consider adding a `#[recursion_limit="20"]` attribute to your crate
+  = help: consider adding a `#![recursion_limit="20"]` attribute to your crate
 
 error[E0308]: mismatched types
-  --> $DIR/recursion_limit_deref.rs:60:22
+  --> $DIR/recursion_limit_deref.rs:62:22
    |
-60 |     let x: &Bottom = &t;
+62 |     let x: &Bottom = &t; //~ ERROR mismatched types
    |                      ^^ expected struct `Bottom`, found struct `Top`
    |
    = note: expected type `&Bottom`

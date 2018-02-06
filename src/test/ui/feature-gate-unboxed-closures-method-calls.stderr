@@ -1,0 +1,26 @@
+error: use of unstable library feature 'fn_traits' (see issue #29625)
+  --> $DIR/feature-gate-unboxed-closures-method-calls.rs:14:7
+   |
+14 |     f.call(()); //~ ERROR use of unstable library feature 'fn_traits'
+   |       ^^^^
+   |
+   = help: add #![feature(fn_traits)] to the crate attributes to enable
+
+error: use of unstable library feature 'fn_traits' (see issue #29625)
+  --> $DIR/feature-gate-unboxed-closures-method-calls.rs:15:7
+   |
+15 |     f.call_mut(()); //~ ERROR use of unstable library feature 'fn_traits'
+   |       ^^^^^^^^
+   |
+   = help: add #![feature(fn_traits)] to the crate attributes to enable
+
+error: use of unstable library feature 'fn_traits' (see issue #29625)
+  --> $DIR/feature-gate-unboxed-closures-method-calls.rs:16:7
+   |
+16 |     f.call_once(()); //~ ERROR use of unstable library feature 'fn_traits'
+   |       ^^^^^^^^^
+   |
+   = help: add #![feature(fn_traits)] to the crate attributes to enable
+
+error: aborting due to 3 previous errors
+

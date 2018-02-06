@@ -27,7 +27,8 @@ fn main() {
     let f2 = f;
     let dangling = {
         let pointer = Box::new(42);
-        f2.xmute(&pointer) //~ ERROR `pointer` does not live long enough
+        f2.xmute(&pointer)
     };
+    //~^^ ERROR `pointer` does not live long enough
     println!("{}", dangling);
 }

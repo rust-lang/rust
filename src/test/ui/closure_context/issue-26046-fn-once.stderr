@@ -1,20 +1,13 @@
 error[E0525]: expected a closure that implements the `Fn` trait, but this closure only implements `FnOnce`
   --> $DIR/issue-26046-fn-once.rs:14:19
    |
-14 |       let closure = move || {
-   |  ___________________^
-15 | |         vec
-16 | |     };
-   | |_____^
-17 | 
-18 |       Box::new(closure)
-   |       ----------------- the requirement to implement `Fn` derives from here
-   |
-note: closure is `FnOnce` because it moves the variable `vec` out of its environment
-  --> $DIR/issue-26046-fn-once.rs:15:9
-   |
+14 |     let closure = move || { //~ ERROR expected a closure
+   |                   ^^^^^^^ this closure implements `FnOnce`, not `Fn`
 15 |         vec
-   |         ^^^
+   |         --- closure is `FnOnce` because it moves the variable `vec` out of its environment
+...
+18 |     Box::new(closure)
+   |     ----------------- the requirement to implement `Fn` derives from here
 
 error: aborting due to previous error
 

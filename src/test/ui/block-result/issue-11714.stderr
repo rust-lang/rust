@@ -5,7 +5,7 @@ error[E0308]: mismatched types
    |  __________________^
 12 | |     1
 13 | |
-14 | |     ; //~ HELP consider removing this semicolon:
+14 | |     ;
    | |     - help: consider removing this semicolon
 15 | | }
    | |_^ expected i32, found ()

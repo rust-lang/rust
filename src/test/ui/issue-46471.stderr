@@ -1,0 +1,24 @@
+error[E0597]: `x` does not live long enough (Ast)
+  --> $DIR/issue-46471.rs:15:6
+   |
+15 |     &x
+   |      ^ borrowed value does not live long enough
+...
+18 | }
+   | - borrowed value only lives until here
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error[E0597]: `x` does not live long enough (Mir)
+  --> $DIR/issue-46471.rs:15:5
+   |
+15 |     &x
+   |     ^^ borrowed value does not live long enough
+...
+18 | }
+   |  - borrowed value only lives until here
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error: aborting due to 2 previous errors
+

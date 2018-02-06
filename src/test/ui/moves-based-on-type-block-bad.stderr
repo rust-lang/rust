@@ -1,0 +1,11 @@
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/moves-based-on-type-block-bad.rs:34:19
+   |
+34 |             match hellothere.x { //~ ERROR cannot move out
+   |                   ^^^^^^^^^^ cannot move out of borrowed content
+...
+37 |                 box E::Bar(x) => println!("{}", x.to_string()),
+   |                            - hint: to prevent move, use `ref x` or `ref mut x`
+
+error: aborting due to previous error
+

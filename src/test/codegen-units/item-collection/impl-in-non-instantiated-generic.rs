@@ -12,6 +12,7 @@
 // compile-flags:-Zprint-trans-items=eager
 
 #![deny(dead_code)]
+#![feature(start)]
 
 trait SomeTrait {
     fn foo(&self);
@@ -28,7 +29,10 @@ pub fn generic_function<T>(x: T) -> (T, i32) {
     (x, 0)
 }
 
-//~ TRANS_ITEM fn impl_in_non_instantiated_generic::main[0]
-fn main() {
+//~ TRANS_ITEM fn impl_in_non_instantiated_generic::start[0]
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize {
     0i64.foo();
+
+    0
 }

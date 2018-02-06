@@ -10,14 +10,14 @@
 
 fn main() {
     if true {
-    } else if {
+    } else if { //~ ERROR missing condition
     } else {
     }
 }
 
 fn foo() {
     if true {
-    } else if {
+    } else if { //~ ERROR missing condition
     }
     bar();
 }

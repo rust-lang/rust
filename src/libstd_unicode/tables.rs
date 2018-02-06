@@ -12,23 +12,8 @@
 
 #![allow(missing_docs, non_upper_case_globals, non_snake_case)]
 
-/// Represents a Unicode Version.
-///
-/// See also: <http://www.unicode.org/versions/>
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub struct UnicodeVersion {
-    /// Major version.
-    pub major: u32,
-
-    /// Minor version.
-    pub minor: u32,
-
-    /// Micro (or Update) version.
-    pub micro: u32,
-
-    // Private field to keep struct expandable.
-    _priv: (),
-}
+use version::UnicodeVersion;
+use bool_trie::{BoolTrie, SmallBoolTrie};
 
 /// The version of [Unicode](http://www.unicode.org/) that the Unicode parts of
 /// `CharExt` and `UnicodeStrPrelude` traits are based on.
@@ -38,76 +23,8 @@ pub const UNICODE_VERSION: UnicodeVersion = UnicodeVersion {
     micro: 0,
     _priv: (),
 };
-
-
-// BoolTrie is a trie for representing a set of Unicode codepoints. It is
-// implemented with postfix compression (sharing of identical child nodes),
-// which gives both compact size and fast lookup.
-//
-// The space of Unicode codepoints is divided into 3 subareas, each
-// represented by a trie with different depth. In the first (0..0x800), there
-// is no trie structure at all; each u64 entry corresponds to a bitvector
-// effectively holding 64 bool values.
-//
-// In the second (0x800..0x10000), each child of the root node represents a
-// 64-wide subrange, but instead of storing the full 64-bit value of the leaf,
-// the trie stores an 8-bit index into a shared table of leaf values. This
-// exploits the fact that in reasonable sets, many such leaves can be shared.
-//
-// In the third (0x10000..0x110000), each child of the root node represents a
-// 4096-wide subrange, and the trie stores an 8-bit index into a 64-byte slice
-// of a child tree. Each of these 64 bytes represents an index into the table
-// of shared 64-bit leaf values. This exploits the sparse structure in the
-// non-BMP range of most Unicode sets.
-pub struct BoolTrie {
-    // 0..0x800 (corresponding to 1 and 2 byte utf-8 sequences)
-    r1: [u64; 32],   // leaves
-
-    // 0x800..0x10000 (corresponding to 3 byte utf-8 sequences)
-    r2: [u8; 992],      // first level
-    r3: &'static [u64],  // leaves
-
-    // 0x10000..0x110000 (corresponding to 4 byte utf-8 sequences)
-    r4: [u8; 256],       // first level
-    r5: &'static [u8],   // second level
-    r6: &'static [u64],  // leaves
-}
-
-fn trie_range_leaf(c: usize, bitmap_chunk: u64) -> bool {
-    ((bitmap_chunk >> (c & 63)) & 1) != 0
-}
-
-fn trie_lookup_range_table(c: char, r: &'static BoolTrie) -> bool {
-    let c = c as usize;
-    if c < 0x800 {
-        trie_range_leaf(c, r.r1[c >> 6])
-    } else if c < 0x10000 {
-        let child = r.r2[(c >> 6) - 0x20];
-        trie_range_leaf(c, r.r3[child as usize])
-    } else {
-        let child = r.r4[(c >> 12) - 0x10];
-        let leaf = r.r5[((child as usize) << 6) + ((c >> 6) & 0x3f)];
-        trie_range_leaf(c, r.r6[leaf as usize])
-    }
-}
-
-pub struct SmallBoolTrie {
-    r1: &'static [u8],  // first level
-    r2: &'static [u64],  // leaves
-}
-
-impl SmallBoolTrie {
-    fn lookup(&self, c: char) -> bool {
-        let c = c as usize;
-        match self.r1.get(c >> 6) {
-            Some(&child) => trie_range_leaf(c, self.r2[child as usize]),
-            None => false,
-        }
-    }
-}
-
 pub mod general_category {
-    pub const Cc_table: &'static super::SmallBoolTrie = &super::SmallBoolTrie {
+    pub const Cc_table: &super::SmallBoolTrie = &super::SmallBoolTrie {
         r1: &[
             0, 1, 0
         ],
@@ -120,7 +37,7 @@ pub mod general_category {
         Cc_table.lookup(c)
     }
 
-    pub const N_table: &'static super::BoolTrie = &super::BoolTrie {
+    pub const N_table: &super::BoolTrie = &super::BoolTrie {
         r1: [
             0x03ff000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
             0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
@@ -212,13 +129,13 @@ pub mod general_category {
     };
 
     pub fn N(c: char) -> bool {
-        super::trie_lookup_range_table(c, N_table)
+        N_table.lookup(c)
     }
 
 }
 
 pub mod derived_property {
-    pub const Alphabetic_table: &'static super::BoolTrie = &super::BoolTrie {
+    pub const Alphabetic_table: &super::BoolTrie = &super::BoolTrie {
         r1: [
             0x0000000000000000, 0x07fffffe07fffffe, 0x0420040000000000, 0xff7fffffff7fffff,
             0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff,
@@ -397,10 +314,10 @@ pub mod derived_property {
     };
 
     pub fn Alphabetic(c: char) -> bool {
-        super::trie_lookup_range_table(c, Alphabetic_table)
+        Alphabetic_table.lookup(c)
     }
 
-    pub const Case_Ignorable_table: &'static super::BoolTrie = &super::BoolTrie {
+    pub const Case_Ignorable_table: &super::BoolTrie = &super::BoolTrie {
         r1: [
             0x0400408000000000, 0x0000000140000000, 0x0190a10000000000, 0x0000000000000000,
             0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
@@ -529,10 +446,10 @@ pub mod derived_property {
     };
 
     pub fn Case_Ignorable(c: char) -> bool {
-        super::trie_lookup_range_table(c, Case_Ignorable_table)
+        Case_Ignorable_table.lookup(c)
     }
 
-    pub const Cased_table: &'static super::BoolTrie = &super::BoolTrie {
+    pub const Cased_table: &super::BoolTrie = &super::BoolTrie {
         r1: [
             0x0000000000000000, 0x07fffffe07fffffe, 0x0420040000000000, 0xff7fffffff7fffff,
             0xffffffffffffffff, 0xffffffffffffffff, 0xf7ffffffffffffff, 0xfffffffffffffff0,
@@ -628,10 +545,10 @@ pub mod derived_property {
     };
 
     pub fn Cased(c: char) -> bool {
-        super::trie_lookup_range_table(c, Cased_table)
+        Cased_table.lookup(c)
     }
 
-    pub const Lowercase_table: &'static super::BoolTrie = &super::BoolTrie {
+    pub const Lowercase_table: &super::BoolTrie = &super::BoolTrie {
         r1: [
             0x0000000000000000, 0x07fffffe00000000, 0x0420040000000000, 0xff7fffff80000000,
             0x55aaaaaaaaaaaaaa, 0xd4aaaaaaaaaaab55, 0xe6512d2a4e243129, 0xaa29aaaab5555240,
@@ -725,10 +642,10 @@ pub mod derived_property {
     };
 
     pub fn Lowercase(c: char) -> bool {
-        super::trie_lookup_range_table(c, Lowercase_table)
+        Lowercase_table.lookup(c)
     }
 
-    pub const Uppercase_table: &'static super::BoolTrie = &super::BoolTrie {
+    pub const Uppercase_table: &super::BoolTrie = &super::BoolTrie {
         r1: [
             0x0000000000000000, 0x0000000007fffffe, 0x0000000000000000, 0x000000007f7fffff,
             0xaa55555555555555, 0x2b555555555554aa, 0x11aed2d5b1dbced6, 0x55d255554aaaa490,
@@ -823,10 +740,10 @@ pub mod derived_property {
     };
 
     pub fn Uppercase(c: char) -> bool {
-        super::trie_lookup_range_table(c, Uppercase_table)
+        Uppercase_table.lookup(c)
     }
 
-    pub const XID_Continue_table: &'static super::BoolTrie = &super::BoolTrie {
+    pub const XID_Continue_table: &super::BoolTrie = &super::BoolTrie {
         r1: [
             0x03ff000000000000, 0x07fffffe87fffffe, 0x04a0040000000000, 0xff7fffffff7fffff,
             0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff,
@@ -998,10 +915,10 @@ pub mod derived_property {
     };
 
     pub fn XID_Continue(c: char) -> bool {
-        super::trie_lookup_range_table(c, XID_Continue_table)
+        XID_Continue_table.lookup(c)
     }
 
-    pub const XID_Start_table: &'static super::BoolTrie = &super::BoolTrie {
+    pub const XID_Start_table: &super::BoolTrie = &super::BoolTrie {
         r1: [
             0x0000000000000000, 0x07fffffe07fffffe, 0x0420040000000000, 0xff7fffffff7fffff,
             0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff,
@@ -1175,13 +1092,13 @@ pub mod derived_property {
     };
 
     pub fn XID_Start(c: char) -> bool {
-        super::trie_lookup_range_table(c, XID_Start_table)
+        XID_Start_table.lookup(c)
     }
 
 }
 
 pub mod property {
-    pub const Pattern_White_Space_table: &'static super::SmallBoolTrie = &super::SmallBoolTrie {
+    pub const Pattern_White_Space_table: &super::SmallBoolTrie = &super::SmallBoolTrie {
         r1: &[
             0, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
             1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -1198,7 +1115,7 @@ pub mod property {
         Pattern_White_Space_table.lookup(c)
     }
 
-    pub const White_Space_table: &'static super::SmallBoolTrie = &super::SmallBoolTrie {
+    pub const White_Space_table: &super::SmallBoolTrie = &super::SmallBoolTrie {
         r1: &[
             0, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
             1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -1238,11 +1155,11 @@ pub mod conversions {
         }
     }
 
-    fn bsearch_case_table(c: char, table: &'static [(char, [char; 3])]) -> Option<usize> {
+    fn bsearch_case_table(c: char, table: &[(char, [char; 3])]) -> Option<usize> {
         table.binary_search_by(|&(key, _)| key.cmp(&c)).ok()
     }
 
-    const to_lowercase_table: &'static [(char, [char; 3])] = &[
+    const to_lowercase_table: &[(char, [char; 3])] = &[
         ('\u{41}', ['\u{61}', '\0', '\0']), ('\u{42}', ['\u{62}', '\0', '\0']), ('\u{43}',
         ['\u{63}', '\0', '\0']), ('\u{44}', ['\u{64}', '\0', '\0']), ('\u{45}', ['\u{65}', '\0',
         '\0']), ('\u{46}', ['\u{66}', '\0', '\0']), ('\u{47}', ['\u{67}', '\0', '\0']), ('\u{48}',
@@ -1826,7 +1743,7 @@ pub mod conversions {
         ('\u{1e920}', ['\u{1e942}', '\0', '\0']), ('\u{1e921}', ['\u{1e943}', '\0', '\0'])
     ];
 
-    const to_uppercase_table: &'static [(char, [char; 3])] = &[
+    const to_uppercase_table: &[(char, [char; 3])] = &[
         ('\u{61}', ['\u{41}', '\0', '\0']), ('\u{62}', ['\u{42}', '\0', '\0']), ('\u{63}',
         ['\u{43}', '\0', '\0']), ('\u{64}', ['\u{44}', '\0', '\0']), ('\u{65}', ['\u{45}', '\0',
         '\0']), ('\u{66}', ['\u{46}', '\0', '\0']), ('\u{67}', ['\u{47}', '\0', '\0']), ('\u{68}',

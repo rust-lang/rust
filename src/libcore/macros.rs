@@ -120,6 +120,9 @@ macro_rules! assert_eq {
             }
         }
     });
+    ($left:expr, $right:expr,) => ({
+        assert_eq!($left, $right)
+    });
     ($left:expr, $right:expr, $($arg:tt)+) => ({
         match (&($left), &($right)) {
             (left_val, right_val) => {
@@ -168,6 +171,9 @@ macro_rules! assert_ne {
             }
         }
     });
+    ($left:expr, $right:expr,) => {
+        assert_ne!($left, $right)
+    };
     ($left:expr, $right:expr, $($arg:tt)+) => ({
         match (&($left), &($right)) {
             (left_val, right_val) => {
@@ -324,6 +330,7 @@ macro_rules! debug_assert_ne {
 /// // The prefered method of quick returning Errors
 /// fn write_to_file_question() -> Result<(), MyError> {
 ///     let mut file = File::create("my_best_friends.txt")?;
+///     file.write_all(b"This is a list of my best friends.")?;
 ///     Ok(())
 /// }
 ///
@@ -355,7 +362,7 @@ macro_rules! try {
     })
 }
 
-/// Write formatted data into a buffer
+/// Write formatted data into a buffer.
 ///
 /// This macro accepts a format string, a list of arguments, and a 'writer'. Arguments will be
 /// formatted according to the specified format string and the result will be passed to the writer.
@@ -590,9 +597,9 @@ mod builtin {
 
     /// Unconditionally causes compilation to fail with the given error message when encountered.
     ///
-    /// For more information, see the [RFC].
+    /// For more information, see the documentation for [`std::compile_error!`].
     ///
-    /// [RFC]: https://github.com/rust-lang/rfcs/blob/master/text/1695-add-error-macro.md
+    /// [`std::compile_error!`]: ../std/macro.compile_error.html
     #[stable(feature = "compile_error_macro", since = "1.20.0")]
     #[macro_export]
     #[cfg(dox)]
@@ -606,9 +613,10 @@ mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     #[cfg(dox)]
-    macro_rules! format_args { ($fmt:expr, $($args:tt)*) => ({
-        /* compiler built-in */
-    }) }
+    macro_rules! format_args {
+        ($fmt:expr) => ({ /* compiler built-in */ });
+        ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ });
+    }
 
     /// Inspect an environment variable at compile time.
     ///
@@ -618,7 +626,10 @@ mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     #[cfg(dox)]
-    macro_rules! env { ($name:expr) => ({ /* compiler built-in */ }) }
+    macro_rules! env {
+        ($name:expr) => ({ /* compiler built-in */ });
+        ($name:expr,) => ({ /* compiler built-in */ });
+    }
 
     /// Optionally inspect an environment variable at compile time.
     ///
@@ -639,7 +650,8 @@ mod builtin {
     #[macro_export]
     #[cfg(dox)]
     macro_rules! concat_idents {
-        ($($e:ident),*) => ({ /* compiler built-in */ })
+        ($($e:ident),*) => ({ /* compiler built-in */ });
+        ($($e:ident,)*) => ({ /* compiler built-in */ });
     }
 
     /// Concatenates literals into a static string slice.
@@ -650,7 +662,10 @@ mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     #[cfg(dox)]
-    macro_rules! concat { ($($e:expr),*) => ({ /* compiler built-in */ }) }
+    macro_rules! concat {
+        ($($e:expr),*) => ({ /* compiler built-in */ });
+        ($($e:expr,)*) => ({ /* compiler built-in */ });
+    }
 
     /// A macro which expands to the line number on which it was invoked.
     ///
@@ -722,7 +737,7 @@ mod builtin {
     #[cfg(dox)]
     macro_rules! module_path { () => ({ /* compiler built-in */ }) }
 
-    /// Boolean evaluation of configuration flags.
+    /// Boolean evaluation of configuration flags, at compile-time.
     ///
     /// For more information, see the documentation for [`std::cfg!`].
     ///

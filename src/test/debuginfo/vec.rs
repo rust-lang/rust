@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // min-lldb-version: 310
+// ignore-gdb // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
 
 // compile-flags:-g
 

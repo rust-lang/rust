@@ -141,7 +141,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
             }
         }
 
-        let mut item = i.unwrap();
+        let mut item = i.into_inner();
         // We don't want to recurse into anything other than mods, since
         // mods or tests inside of functions will break things
         if let ast::ItemKind::Mod(module) = item.node {
@@ -272,7 +272,7 @@ fn generate_test_harness(sess: &ParseSess,
 
     let mark = Mark::fresh(Mark::root());
 
-    let mut cx: TestCtxt = TestCtxt {
+    let cx = TestCtxt {
         span_diagnostic: sd,
         ext_cx: ExtCtxt::new(sess, ExpansionConfig::default("test".to_string()), resolver),
         path: Vec::new(),
@@ -283,7 +283,6 @@ fn generate_test_harness(sess: &ParseSess,
         toplevel_reexport: None,
         ctxt: SyntaxContext::empty().apply_mark(mark),
     };
-    cx.ext_cx.crate_root = Some("std");
 
     mark.set_expn_info(ExpnInfo {
         call_site: DUMMY_SP,
@@ -364,7 +363,10 @@ fn is_bench_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
                     ast::FunctionRetTy::Ty(ref t) if t.node == ast::TyKind::Tup(vec![]) => true,
                     _ => false
                 };
-                let tparm_cnt = generics.ty_params.len();
+                let tparm_cnt = generics.params.iter()
+                    .filter(|param| param.is_type_param())
+                    .count();
+
                 // NB: inadequate check, but we're running
                 // well before resolve, can't get too deep.
                 input_cnt == 1
@@ -384,15 +386,15 @@ fn is_bench_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
 }
 
 fn is_ignored(i: &ast::Item) -> bool {
-    i.attrs.iter().any(|attr| attr.check_name("ignore"))
+    attr::contains_name(&i.attrs, "ignore")
 }
 
 fn is_allowed_fail(i: &ast::Item) -> bool {
-    i.attrs.iter().any(|attr| attr.check_name("allow_fail"))
+    attr::contains_name(&i.attrs, "allow_fail")
 }
 
 fn should_panic(i: &ast::Item, cx: &TestCtxt) -> ShouldPanic {
-    match i.attrs.iter().find(|attr| attr.check_name("should_panic")) {
+    match attr::find_by_name(&i.attrs, "should_panic") {
         Some(attr) => {
             let sd = cx.span_diagnostic;
             if attr.is_value_str() {
@@ -455,9 +457,11 @@ fn mk_std(cx: &TestCtxt) -> P<ast::Item> {
     let id_test = Ident::from_str("test");
     let sp = ignored_span(cx, DUMMY_SP);
     let (vi, vis, ident) = if cx.is_libtest {
-        (ast::ItemKind::Use(
-            P(nospan(ast::ViewPathSimple(id_test,
-                                         path_node(vec![id_test]))))),
+        (ast::ItemKind::Use(P(ast::UseTree {
+            span: DUMMY_SP,
+            prefix: path_node(vec![id_test]),
+            kind: ast::UseTreeKind::Simple(id_test),
+        })),
          ast::Visibility::Public, keywords::Invalid.ident())
     } else {
         (ast::ItemKind::ExternCrate(None), ast::Visibility::Inherited, id_test)
@@ -547,9 +551,11 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<P<ast::Item>>) {
         // building `use <ident> = __test::main`
         let reexport_ident = Ident::with_empty_ctxt(s);
 
-        let use_path =
-            nospan(ast::ViewPathSimple(reexport_ident,
-                                       path_node(vec![mod_ident, Ident::from_str("main")])));
+        let use_path = ast::UseTree {
+            span: DUMMY_SP,
+            prefix: path_node(vec![mod_ident, Ident::from_str("main")]),
+            kind: ast::UseTreeKind::Simple(reexport_ident),
+        };
 
         expander.fold_item(P(ast::Item {
             id: ast::DUMMY_NODE_ID,

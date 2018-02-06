@@ -1,0 +1,26 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/issue-30255.rs:18:24
+   |
+18 | fn f(a: &S, b: i32) -> &i32 {
+   |                        ^ expected lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say which one of `a`'s 2 lifetimes it is borrowed from
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/issue-30255.rs:23:34
+   |
+23 | fn g(a: &S, b: bool, c: &i32) -> &i32 {
+   |                                  ^ expected lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from one of `a`'s 2 lifetimes or `c`
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/issue-30255.rs:28:44
+   |
+28 | fn h(a: &bool, b: bool, c: &S, d: &i32) -> &i32 {
+   |                                            ^ expected lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from `a`, one of `c`'s 2 lifetimes, or `d`
+
+error: aborting due to 3 previous errors
+

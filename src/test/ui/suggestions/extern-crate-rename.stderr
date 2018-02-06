@@ -1,0 +1,15 @@
+error[E0259]: the name `m1` is defined multiple times
+  --> $DIR/extern-crate-rename.rs:16:1
+   |
+15 | extern crate m1;
+   | ---------------- previous import of the extern crate `m1` here
+16 | extern crate m2 as m1; //~ ERROR is defined multiple times
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | `m1` reimported here
+   | You can use `as` to change the binding name of the import
+   |
+   = note: `m1` must be defined only once in the type namespace of this module
+
+error: aborting due to previous error
+

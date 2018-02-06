@@ -56,31 +56,6 @@ use bad_style::{MethodLateContext, method_context};
 pub use lint::builtin::*;
 
 declare_lint! {
-    pub AUTO_IMPL,
-    Deny,
-    "The form `impl Foo for .. {}` will be removed, please use `auto trait Foo {}`"
-}
-
-#[derive(Copy, Clone)]
-pub struct AutoImpl;
-
-impl LintPass for AutoImpl {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(AUTO_IMPL)
-    }
-}
-
-impl EarlyLintPass for AutoImpl {
-    fn check_item(&mut self, cx: &EarlyContext, item: &ast::Item) {
-        let msg = "The form `impl Foo for .. {}` will be removed, please use `auto trait Foo {}`";
-        match item.node {
-            ast::ItemKind::AutoImpl(..) => cx.span_lint(AUTO_IMPL, item.span, msg),
-            _ => ()
-        }
-     }
-}
-
-declare_lint! {
     WHILE_TRUE,
     Warn,
     "suggest using `loop { }` instead of `while true { }`"
@@ -102,11 +77,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for WhileTrue {
                 if let ast::LitKind::Bool(true) = lit.node {
                     if lit.span.ctxt() == SyntaxContext::empty() {
                         let msg = "denote infinite loops with `loop { ... }`";
-                        let mut err = cx.struct_span_lint(WHILE_TRUE, e.span, msg);
                         let condition_span = cx.tcx.sess.codemap().def_span(e.span);
-                        err.span_suggestion_short(condition_span,
-                                                  "use `loop`",
-                                                  "loop".to_owned());
+                        let mut err = cx.struct_span_lint(WHILE_TRUE, condition_span, msg);
+                        err.span_suggestion_short(condition_span, "use `loop`", "loop".to_owned());
                         err.emit();
                     }
                 }
@@ -349,10 +322,30 @@ impl MissingDoc {
             }
         }
 
-        let has_doc = attrs.iter().any(|a| a.is_value_str() && a.check_name("doc"));
+        fn has_doc(attr: &ast::Attribute) -> bool {
+            if !attr.check_name("doc") {
+                return false;
+            }
+
+            if attr.is_value_str() {
+                return true;
+            }
+
+            if let Some(list) = attr.meta_item_list() {
+                for meta in list {
+                    if meta.check_name("include") {
+                        return true;
+                    }
+                }
+            }
+
+            false
+        }
+
+        let has_doc = attrs.iter().any(|a| has_doc(a));
         if !has_doc {
             cx.span_lint(MISSING_DOCS,
-                         sp,
+                         cx.tcx.sess.codemap().def_span(sp),
                          &format!("missing documentation for {}", desc));
         }
     }
@@ -507,21 +500,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
         }
         let (def, ty) = match item.node {
             hir::ItemStruct(_, ref ast_generics) => {
-                if ast_generics.is_parameterized() {
+                if !ast_generics.params.is_empty() {
                     return;
                 }
                 let def = cx.tcx.adt_def(cx.tcx.hir.local_def_id(item.id));
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             hir::ItemUnion(_, ref ast_generics) => {
-                if ast_generics.is_parameterized() {
+                if !ast_generics.params.is_empty() {
                     return;
                 }
                 let def = cx.tcx.adt_def(cx.tcx.hir.local_def_id(item.id));
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             hir::ItemEnum(_, ref ast_generics) => {
-                if ast_generics.is_parameterized() {
+                if !ast_generics.params.is_empty() {
                     return;
                 }
                 let def = cx.tcx.adt_def(cx.tcx.hir.local_def_id(item.id));
@@ -914,15 +907,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
         // no break */ }`) shouldn't be linted unless it actually
         // recurs.
         if !reached_exit_without_self_call && !self_call_spans.is_empty() {
+            let sp = cx.tcx.sess.codemap().def_span(sp);
             let mut db = cx.struct_span_lint(UNCONDITIONAL_RECURSION,
                                              sp,
                                              "function cannot return without recurring");
+            db.span_label(sp, "cannot return without recurring");
             // offer some help to the programmer.
             for call in &self_call_spans {
-                db.span_note(*call, "recursive call site");
+                db.span_label(*call, "recursive call site");
             }
-            db.help("a `loop` may express intention \
-                     better if this is on purpose");
+            db.help("a `loop` may express intention better if this is on purpose");
             db.emit();
         }
 
@@ -1195,8 +1189,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                     // don't have anything to attach a symbol to
                     let msg = "const items should never be #[no_mangle]";
                     let mut err = cx.struct_span_lint(NO_MANGLE_CONST_ITEMS, it.span, msg);
+
+                    // account for "pub const" (#45562)
+                    let start = cx.tcx.sess.codemap().span_to_snippet(it.span)
+                        .map(|snippet| snippet.find("const").unwrap_or(0))
+                        .unwrap_or(0) as u32;
                     // `const` is 5 chars
-                    let const_span = it.span.with_hi(BytePos(it.span.lo().0 + 5));
+                    let const_span = it.span.with_hi(BytePos(it.span.lo().0 + start + 5));
                     err.span_suggestion(const_span,
                                         "try a static value",
                                         "pub static".to_owned());

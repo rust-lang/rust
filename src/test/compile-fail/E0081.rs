@@ -9,10 +9,9 @@
 // except according to those terms.
 
 enum Enum {
-    P = 3, //~ NOTE first use of `3isize`
+    P = 3,
     X = 3,
     //~^ ERROR discriminant value `3isize` already exists
-    //~| NOTE enum already has `3isize`
     Y = 5
 }
 

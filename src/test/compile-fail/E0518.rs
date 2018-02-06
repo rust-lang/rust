@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[inline(always)] //~ ERROR E0518
-                  //~| requires a function
+#[inline(always)] //~ ERROR: E0518
 struct Foo;
 
-#[inline(never)] //~ ERROR E0518
-                 //~| requires a function
+#[inline(never)] //~ ERROR: E0518
 impl Foo {
 }
 

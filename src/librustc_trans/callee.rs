@@ -20,12 +20,14 @@ use consts;
 use declare;
 use llvm::{self, ValueRef};
 use monomorphize::Instance;
+use type_of::LayoutLlvmExt;
+
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, TypeFoldable};
+use rustc::ty::layout::LayoutOf;
 use rustc::traits;
 use rustc::ty::subst::Substs;
 use rustc_back::PanicStrategy;
-use type_of;
 
 /// Translates a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.
@@ -46,7 +48,7 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     assert!(!instance.substs.has_escaping_regions());
     assert!(!instance.substs.has_param_types());
 
-    let fn_ty = common::instance_ty(ccx.tcx(), &instance);
+    let fn_ty = instance.ty(ccx.tcx());
     if let Some(&llfn) = ccx.instances().borrow().get(&instance) {
         return llfn;
     }
@@ -56,7 +58,7 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     // Create a fn pointer with the substituted signature.
     let fn_ptr_ty = tcx.mk_fn_ptr(common::ty_fn_sig(ccx, fn_ty));
-    let llptrty = type_of::type_of(ccx, fn_ptr_ty);
+    let llptrty = ccx.layout_of(fn_ptr_ty).llvm_type(ccx);
 
     let llfn = if let Some(llfn) = declare::get_declared_value(ccx, &sym) {
         // This is subtle and surprising, but sometimes we have to bitcast
@@ -94,11 +96,10 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         assert_eq!(common::val_ty(llfn), llptrty);
         debug!("get_fn: not casting pointer!");
 
-        if common::is_inline_instance(tcx, &instance) {
+        if instance.def.is_inline(tcx) {
             attributes::inline(llfn, attributes::InlineAttr::Hint);
         }
-        let attrs = instance.def.attrs(ccx.tcx());
-        attributes::from_fn_attrs(ccx, &attrs, llfn);
+        attributes::from_fn_attrs(ccx, llfn, instance.def.def_id());
 
         let instance_def_id = instance.def_id();
 

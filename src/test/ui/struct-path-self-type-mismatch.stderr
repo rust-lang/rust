@@ -1,0 +1,32 @@
+error[E0308]: mismatched types
+  --> $DIR/struct-path-self-type-mismatch.rs:17:23
+   |
+17 |         Self { inner: 1.5f32 }; //~ ERROR mismatched types
+   |                       ^^^^^^ expected i32, found f32
+
+error[E0308]: mismatched types
+  --> $DIR/struct-path-self-type-mismatch.rs:25:20
+   |
+25 |             inner: u
+   |                    ^ expected type parameter, found a different type parameter
+   |
+   = note: expected type `T`
+              found type `U`
+
+error[E0308]: mismatched types
+  --> $DIR/struct-path-self-type-mismatch.rs:23:9
+   |
+22 |       fn new<U>(u: U) -> Foo<U> {
+   |                          ------ expected `Foo<U>` because of return type
+23 | /         Self {
+24 | |         //~^ ERROR mismatched types
+25 | |             inner: u
+26 | |             //~^ ERROR mismatched types
+27 | |         }
+   | |_________^ expected type parameter, found a different type parameter
+   |
+   = note: expected type `Foo<U>`
+              found type `Foo<T>`
+
+error: aborting due to 3 previous errors
+

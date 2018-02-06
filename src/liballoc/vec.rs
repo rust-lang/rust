@@ -71,6 +71,7 @@ use core::fmt;
 use core::hash::{self, Hash};
 use core::intrinsics::{arith_offset, assume};
 use core::iter::{FromIterator, FusedIterator, TrustedLen};
+use core::marker::PhantomData;
 use core::mem;
 #[cfg(not(test))]
 use core::num::Float;
@@ -223,8 +224,10 @@ use Bound::{Excluded, Included, Unbounded};
 /// types inside a `Vec`, it will not allocate space for them. *Note that in this case
 /// the `Vec` may not report a [`capacity`] of 0*. `Vec` will allocate if and only
 /// if [`mem::size_of::<T>`]`() * capacity() > 0`. In general, `Vec`'s allocation
-/// details are subtle enough that it is strongly recommended that you only
-/// free memory allocated by a `Vec` by creating a new `Vec` and dropping it.
+/// details are very subtle &mdash; if you intend to allocate memory using a `Vec`
+/// and use it for something else (either to pass to unsafe code, or to build your
+/// own memory-backed collection), be sure to deallocate this memory by using
+/// `from_raw_parts` to recover the `Vec` and then dropping it.
 ///
 /// If a `Vec` *has* allocated memory, then the memory it points to is on the heap
 /// (as defined by the allocator Rust is configured to use by default), and its
@@ -712,7 +715,7 @@ impl<T> Vec<T> {
     ///
     /// # Panics
     ///
-    /// Panics if `index` is out of bounds.
+    /// Panics if `index > len`.
     ///
     /// # Examples
     ///
@@ -1089,7 +1092,7 @@ impl<T> Vec<T> {
         // Memory safety
         //
         // When the Drain is first created, it shortens the length of
-        // the source vector to make sure no uninitalized or moved-from elements
+        // the source vector to make sure no uninitialized or moved-from elements
         // are accessible at all if the Drain's destructor never gets to run.
         //
         // Drain will ptr::read out the values to remove.
@@ -1423,10 +1426,7 @@ impl<T: PartialEq> Vec<T> {
     /// ```
     #[unstable(feature = "vec_remove_item", reason = "recently added", issue = "40062")]
     pub fn remove_item(&mut self, item: &T) -> Option<T> {
-        let pos = match self.iter().position(|x| *x == *item) {
-            Some(x) => x,
-            None => return None,
-        };
+        let pos = self.iter().position(|x| *x == *item)?;
         Some(self.remove(pos))
     }
 }
@@ -1746,6 +1746,7 @@ impl<T> IntoIterator for Vec<T> {
             mem::forget(self);
             IntoIter {
                 buf: Shared::new_unchecked(begin),
+                phantom: PhantomData,
                 cap,
                 ptr: begin,
                 end,
@@ -2267,6 +2268,7 @@ impl<'a, T> FromIterator<T> for Cow<'a, [T]> where T: Clone {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
     buf: Shared<T>,
+    phantom: PhantomData<T>,
     cap: usize,
     ptr: *const T,
     end: *const T,

@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `u32: std::ops::Add<()>` is not satisfied
   --> $DIR/multiline-span-simple.rs:23:18
    |
-23 |     foo(1 as u32 +
+23 |     foo(1 as u32 + //~ ERROR not satisfied
    |                  ^ no implementation for `u32 + ()`
    |
    = help: the trait `std::ops::Add<()>` is not implemented for `u32`

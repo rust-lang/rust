@@ -247,7 +247,7 @@ pub trait AsciiExt {
     /// Checks if the value is an ASCII graphic character:
     /// U+0021 '@' ... U+007E '~'.
     /// For strings, true if all characters in the string are
-    /// ASCII punctuation.
+    /// ASCII graphic characters.
     ///
     /// # Note
     ///
@@ -298,146 +298,83 @@ pub trait AsciiExt {
     fn is_ascii_control(&self) -> bool { unimplemented!(); }
 }
 
-// FIXME(LukasKalbertodt): this impl block can be removed in the future. This is
-// possible once the stage0 compiler is new enough to contain the inherent
-// ascii methods for `[str]`. See FIXME comment further down.
-#[cfg(stage0)]
-#[stable(feature = "rust1", since = "1.0.0")]
-impl AsciiExt for str {
-    type Owned = String;
+macro_rules! delegating_ascii_methods {
+    () => {
+        #[inline]
+        fn is_ascii(&self) -> bool { self.is_ascii() }
 
-    #[inline]
-    fn is_ascii(&self) -> bool {
-        self.bytes().all(|b| b.is_ascii())
-    }
+        #[inline]
+        fn to_ascii_uppercase(&self) -> Self::Owned { self.to_ascii_uppercase() }
 
-    #[inline]
-    fn to_ascii_uppercase(&self) -> String {
-        let mut bytes = self.as_bytes().to_vec();
-        bytes.make_ascii_uppercase();
-        // make_ascii_uppercase() preserves the UTF-8 invariant.
-        unsafe { String::from_utf8_unchecked(bytes) }
-    }
+        #[inline]
+        fn to_ascii_lowercase(&self) -> Self::Owned { self.to_ascii_lowercase() }
 
-    #[inline]
-    fn to_ascii_lowercase(&self) -> String {
-        let mut bytes = self.as_bytes().to_vec();
-        bytes.make_ascii_lowercase();
-        // make_ascii_uppercase() preserves the UTF-8 invariant.
-        unsafe { String::from_utf8_unchecked(bytes) }
-    }
+        #[inline]
+        fn eq_ignore_ascii_case(&self, o: &Self) -> bool { self.eq_ignore_ascii_case(o) }
 
-    #[inline]
-    fn eq_ignore_ascii_case(&self, other: &str) -> bool {
-        self.as_bytes().eq_ignore_ascii_case(other.as_bytes())
-    }
+        #[inline]
+        fn make_ascii_uppercase(&mut self) { self.make_ascii_uppercase(); }
 
-    fn make_ascii_uppercase(&mut self) {
-        let me = unsafe { self.as_bytes_mut() };
-        me.make_ascii_uppercase()
-    }
-
-    fn make_ascii_lowercase(&mut self) {
-        let me = unsafe { self.as_bytes_mut() };
-        me.make_ascii_lowercase()
-    }
-
-    #[inline]
-    fn is_ascii_alphabetic(&self) -> bool {
-        self.bytes().all(|b| b.is_ascii_alphabetic())
-    }
-
-    #[inline]
-    fn is_ascii_uppercase(&self) -> bool {
-        self.bytes().all(|b| b.is_ascii_uppercase())
-    }
-
-    #[inline]
-    fn is_ascii_lowercase(&self) -> bool {
-        self.bytes().all(|b| b.is_ascii_lowercase())
-    }
-
-    #[inline]
-    fn is_ascii_alphanumeric(&self) -> bool {
-        self.bytes().all(|b| b.is_ascii_alphanumeric())
-    }
-
-    #[inline]
-    fn is_ascii_digit(&self) -> bool {
-        self.bytes().all(|b| b.is_ascii_digit())
-    }
-
-    #[inline]
-    fn is_ascii_hexdigit(&self) -> bool {
-        self.bytes().all(|b| b.is_ascii_hexdigit())
-    }
-
-    #[inline]
-    fn is_ascii_punctuation(&self) -> bool {
-        self.bytes().all(|b| b.is_ascii_punctuation())
-    }
-
-    #[inline]
-    fn is_ascii_graphic(&self) -> bool {
-        self.bytes().all(|b| b.is_ascii_graphic())
-    }
-
-    #[inline]
-    fn is_ascii_whitespace(&self) -> bool {
-        self.bytes().all(|b| b.is_ascii_whitespace())
-    }
-
-    #[inline]
-    fn is_ascii_control(&self) -> bool {
-        self.bytes().all(|b| b.is_ascii_control())
+        #[inline]
+        fn make_ascii_lowercase(&mut self) { self.make_ascii_lowercase(); }
     }
 }
 
-// FIXME(LukasKalbertodt): this impl block can be removed in the future. This is
-// possible once the stage0 compiler is new enough to contain the inherent
-// ascii methods for `[u8]`. See FIXME comment further down.
-#[cfg(stage0)]
+macro_rules! delegating_ascii_ctype_methods {
+    () => {
+        #[inline]
+        fn is_ascii_alphabetic(&self) -> bool { self.is_ascii_alphabetic() }
+
+        #[inline]
+        fn is_ascii_uppercase(&self) -> bool { self.is_ascii_uppercase() }
+
+        #[inline]
+        fn is_ascii_lowercase(&self) -> bool { self.is_ascii_lowercase() }
+
+        #[inline]
+        fn is_ascii_alphanumeric(&self) -> bool { self.is_ascii_alphanumeric() }
+
+        #[inline]
+        fn is_ascii_digit(&self) -> bool { self.is_ascii_digit() }
+
+        #[inline]
+        fn is_ascii_hexdigit(&self) -> bool { self.is_ascii_hexdigit() }
+
+        #[inline]
+        fn is_ascii_punctuation(&self) -> bool { self.is_ascii_punctuation() }
+
+        #[inline]
+        fn is_ascii_graphic(&self) -> bool { self.is_ascii_graphic() }
+
+        #[inline]
+        fn is_ascii_whitespace(&self) -> bool { self.is_ascii_whitespace() }
+
+        #[inline]
+        fn is_ascii_control(&self) -> bool { self.is_ascii_control() }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AsciiExt for u8 {
+    type Owned = u8;
+
+    delegating_ascii_methods!();
+    delegating_ascii_ctype_methods!();
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AsciiExt for char {
+    type Owned = char;
+
+    delegating_ascii_methods!();
+    delegating_ascii_ctype_methods!();
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsciiExt for [u8] {
     type Owned = Vec<u8>;
-    #[inline]
-    fn is_ascii(&self) -> bool {
-        self.iter().all(|b| b.is_ascii())
-    }
 
-    #[inline]
-    fn to_ascii_uppercase(&self) -> Vec<u8> {
-        let mut me = self.to_vec();
-        me.make_ascii_uppercase();
-        return me
-    }
-
-    #[inline]
-    fn to_ascii_lowercase(&self) -> Vec<u8> {
-        let mut me = self.to_vec();
-        me.make_ascii_lowercase();
-        return me
-    }
-
-    #[inline]
-    fn eq_ignore_ascii_case(&self, other: &[u8]) -> bool {
-        self.len() == other.len() &&
-        self.iter().zip(other).all(|(a, b)| {
-            a.eq_ignore_ascii_case(b)
-        })
-    }
-
-    fn make_ascii_uppercase(&mut self) {
-        for byte in self {
-            byte.make_ascii_uppercase();
-        }
-    }
-
-    fn make_ascii_lowercase(&mut self) {
-        for byte in self {
-            byte.make_ascii_lowercase();
-        }
-    }
+    delegating_ascii_methods!();
 
     #[inline]
     fn is_ascii_alphabetic(&self) -> bool {
@@ -490,77 +427,62 @@ impl AsciiExt for [u8] {
     }
 }
 
-macro_rules! impl_by_delegating {
-    ($ty:ty, $owned:ty) => {
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl AsciiExt for $ty {
-            type Owned = $owned;
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AsciiExt for str {
+    type Owned = String;
 
-            #[inline]
-            fn is_ascii(&self) -> bool { self.is_ascii() }
+    delegating_ascii_methods!();
 
-            #[inline]
-            fn to_ascii_uppercase(&self) -> Self::Owned { self.to_ascii_uppercase() }
+    #[inline]
+    fn is_ascii_alphabetic(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_alphabetic())
+    }
 
-            #[inline]
-            fn to_ascii_lowercase(&self) -> Self::Owned { self.to_ascii_lowercase() }
+    #[inline]
+    fn is_ascii_uppercase(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_uppercase())
+    }
 
-            #[inline]
-            fn eq_ignore_ascii_case(&self, o: &Self) -> bool { self.eq_ignore_ascii_case(o) }
+    #[inline]
+    fn is_ascii_lowercase(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_lowercase())
+    }
 
-            #[inline]
-            fn make_ascii_uppercase(&mut self) { self.make_ascii_uppercase(); }
+    #[inline]
+    fn is_ascii_alphanumeric(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_alphanumeric())
+    }
 
-            #[inline]
-            fn make_ascii_lowercase(&mut self) { self.make_ascii_lowercase(); }
+    #[inline]
+    fn is_ascii_digit(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_digit())
+    }
 
-            #[inline]
-            fn is_ascii_alphabetic(&self) -> bool { self.is_ascii_alphabetic() }
+    #[inline]
+    fn is_ascii_hexdigit(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_hexdigit())
+    }
 
-            #[inline]
-            fn is_ascii_uppercase(&self) -> bool { self.is_ascii_uppercase() }
+    #[inline]
+    fn is_ascii_punctuation(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_punctuation())
+    }
 
-            #[inline]
-            fn is_ascii_lowercase(&self) -> bool { self.is_ascii_lowercase() }
+    #[inline]
+    fn is_ascii_graphic(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_graphic())
+    }
 
-            #[inline]
-            fn is_ascii_alphanumeric(&self) -> bool { self.is_ascii_alphanumeric() }
+    #[inline]
+    fn is_ascii_whitespace(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_whitespace())
+    }
 
-            #[inline]
-            fn is_ascii_digit(&self) -> bool { self.is_ascii_digit() }
-
-            #[inline]
-            fn is_ascii_hexdigit(&self) -> bool { self.is_ascii_hexdigit() }
-
-            #[inline]
-            fn is_ascii_punctuation(&self) -> bool { self.is_ascii_punctuation() }
-
-            #[inline]
-            fn is_ascii_graphic(&self) -> bool { self.is_ascii_graphic() }
-
-            #[inline]
-            fn is_ascii_whitespace(&self) -> bool { self.is_ascii_whitespace() }
-
-            #[inline]
-            fn is_ascii_control(&self) -> bool { self.is_ascii_control() }
-        }
+    #[inline]
+    fn is_ascii_control(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_control())
     }
 }
-
-impl_by_delegating!(u8, u8);
-impl_by_delegating!(char, char);
-
-// FIXME(LukasKalbertodt): the macro invocation should replace the impl block
-// for `[u8]` above. But this is not possible until the stage0 compiler is new
-// enough to contain the inherent ascii methods for `[u8]`.
-#[cfg(not(stage0))]
-impl_by_delegating!([u8], Vec<u8>);
-
-// FIXME(LukasKalbertodt): the macro invocation should replace the impl block
-// for `str` above. But this is not possible until the stage0 compiler is new
-// enough to contain the inherent ascii methods for `str`.
-#[cfg(not(stage0))]
-impl_by_delegating!(str, String);
 
 /// An iterator over the escaped version of a byte.
 ///
@@ -684,6 +606,7 @@ mod tests {
     //! Note that most of these tests are not testing `AsciiExt` methods, but
     //! test inherent ascii methods of char, u8, str and [u8]. `AsciiExt` is
     //! just using those methods, though.
+    use super::AsciiExt;
     use char::from_u32;
 
     #[test]

@@ -17,7 +17,6 @@
 //  for the error message we see here.)
 
 #![feature(rustc_private)]
-#![feature(const_atomic_usize_new)]
 
 extern crate arena;
 
@@ -125,4 +124,4 @@ fn f<'a>(arena: &'a TypedArena<C<'a>>) {
 fn main() {
     let arena = TypedArena::new();
     f(&arena);
-} //~ ERROR `arena` does not live long enough
+} //~^ ERROR `arena` does not live long enough

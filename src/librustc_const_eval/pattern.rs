@@ -150,7 +150,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                         Some(&adt_def.variants[variant_index])
                     }
                     _ => if let ty::TyAdt(adt, _) = self.ty.sty {
-                        if adt.is_univariant() {
+                        if !adt.is_enum() {
                             Some(&adt.variants[0])
                         } else {
                             None
@@ -280,7 +280,8 @@ impl<'a, 'tcx> Pattern<'tcx> {
         let mut pcx = PatternContext::new(tcx, param_env_and_substs, tables);
         let result = pcx.lower_pattern(pat);
         if !pcx.errors.is_empty() {
-            span_bug!(pat.span, "encountered errors lowering pattern: {:?}", pcx.errors)
+            let msg = format!("encountered errors lowering pattern: {:?}", pcx.errors);
+            tcx.sess.delay_span_bug(pat.span, &msg);
         }
         debug!("Pattern::from_hir({:?}) = {:?}", pat, result);
         result
@@ -598,7 +599,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             Def::Variant(variant_id) | Def::VariantCtor(variant_id, ..) => {
                 let enum_id = self.tcx.parent_def_id(variant_id).unwrap();
                 let adt_def = self.tcx.adt_def(enum_id);
-                if adt_def.variants.len() > 1 {
+                if adt_def.is_enum() {
                     let substs = match ty.sty {
                         ty::TyAdt(_, substs) |
                         ty::TyFnDef(_, substs) => substs,

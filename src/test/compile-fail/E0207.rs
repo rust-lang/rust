@@ -11,7 +11,6 @@
 struct Foo;
 
 impl<T: Default> Foo { //~ ERROR E0207
-                       //~| NOTE unconstrained type parameter
     fn get(&self) -> T {
         <T as Default>::default()
     }

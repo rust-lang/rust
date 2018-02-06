@@ -18,14 +18,10 @@ use rustc::ty::DefIdTree;
 
 use llvm;
 use llvm::debuginfo::{DIScope, DIBuilderRef, DIDescriptor, DIArray};
-use machine;
 use common::{CrateContext};
-use type_::Type;
 
 use syntax_pos::{self, Span};
 use syntax::ast;
-
-use std::ops;
 
 pub fn is_node_local_to_unit(cx: &CrateContext, node_id: ast::NodeId) -> bool
 {
@@ -51,15 +47,6 @@ pub fn create_DIArray(builder: DIBuilderRef, arr: &[DIDescriptor]) -> DIArray {
 /// Return syntax_pos::Loc corresponding to the beginning of the span
 pub fn span_start(cx: &CrateContext, span: Span) -> syntax_pos::Loc {
     cx.sess().codemap().lookup_char_pos(span.lo())
-}
-
-pub fn size_and_align_of(cx: &CrateContext, llvm_type: Type) -> (u64, u32) {
-    (machine::llsize_of_alloc(cx, llvm_type), machine::llalign_of_min(cx, llvm_type))
-}
-
-pub fn bytes_to_bits<T>(bytes: T) -> T
-    where T: ops::Mul<Output=T> + From<u8> {
-    bytes * 8u8.into()
 }
 
 #[inline]

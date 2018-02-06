@@ -1,46 +1,46 @@
 error[E0597]: `c` does not live long enough
-  --> $DIR/dropck-eyepatch.rs:96:1
-   |
-80 |     dt = Dt("dt", &c); //~ ERROR `c` does not live long enough
-   |                    - borrow occurs here
+   --> $DIR/dropck-eyepatch.rs:80:20
+    |
+80  |     dt = Dt("dt", &c);
+    |                    ^ borrowed value does not live long enough
 ...
-96 | }
-   | ^ `c` dropped here while still borrowed
-   |
-   = note: values in a scope are dropped in the opposite order they are created
+100 | }
+    | - `c` dropped here while still borrowed
+    |
+    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c` does not live long enough
-  --> $DIR/dropck-eyepatch.rs:96:1
-   |
-81 |     dr = Dr("dr", &c); //~ ERROR `c` does not live long enough
-   |                    - borrow occurs here
+   --> $DIR/dropck-eyepatch.rs:82:20
+    |
+82  |     dr = Dr("dr", &c);
+    |                    ^ borrowed value does not live long enough
 ...
-96 | }
-   | ^ `c` dropped here while still borrowed
-   |
-   = note: values in a scope are dropped in the opposite order they are created
+100 | }
+    | - `c` dropped here while still borrowed
+    |
+    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c` does not live long enough
-  --> $DIR/dropck-eyepatch.rs:96:1
-   |
-88 |     pt = Pt("pt", &c_long, &c); //~ ERROR `c` does not live long enough
-   |                             - borrow occurs here
+   --> $DIR/dropck-eyepatch.rs:90:29
+    |
+90  |     pt = Pt("pt", &c_long, &c);
+    |                             ^ borrowed value does not live long enough
 ...
-96 | }
-   | ^ `c` dropped here while still borrowed
-   |
-   = note: values in a scope are dropped in the opposite order they are created
+100 | }
+    | - `c` dropped here while still borrowed
+    |
+    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c` does not live long enough
-  --> $DIR/dropck-eyepatch.rs:96:1
-   |
-89 |     pr = Pr("pr", &c_long, &c); //~ ERROR `c` does not live long enough
-   |                             - borrow occurs here
+   --> $DIR/dropck-eyepatch.rs:92:29
+    |
+92  |     pr = Pr("pr", &c_long, &c);
+    |                             ^ borrowed value does not live long enough
 ...
-96 | }
-   | ^ `c` dropped here while still borrowed
-   |
-   = note: values in a scope are dropped in the opposite order they are created
+100 | }
+    | - `c` dropped here while still borrowed
+    |
+    = note: values in a scope are dropped in the opposite order they are created
 
 error: aborting due to 4 previous errors
 

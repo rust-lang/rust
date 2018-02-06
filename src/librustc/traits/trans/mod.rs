@@ -17,6 +17,7 @@ use dep_graph::{DepKind, DepTrackingMapConfig};
 use infer::TransNormalize;
 use std::marker::PhantomData;
 use syntax_pos::DUMMY_SP;
+use hir::def_id::DefId;
 use traits::{FulfillmentContext, Obligation, ObligationCause, SelectionContext, Vtable};
 use ty::{self, Ty, TyCtxt};
 use ty::subst::{Subst, Substs};
@@ -119,6 +120,12 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         let substituted = self.erase_regions(&substituted);
         AssociatedTypeNormalizerEnv::new(self, param_env).fold(&substituted)
     }
+
+    pub fn trans_impl_self_ty(&self, def_id: DefId, substs: &'tcx Substs<'tcx>)
+                              -> Ty<'tcx>
+    {
+        self.trans_apply_param_substs(substs, &self.type_of(def_id))
+    }
 }
 
 struct AssociatedTypeNormalizer<'a, 'gcx: 'a> {
@@ -214,4 +221,3 @@ impl<'gcx> DepTrackingMapConfig for ProjectionCache<'gcx> {
         DepKind::TraitSelect
     }
 }
-

@@ -1,11 +1,12 @@
 error[E0597]: `x` does not live long enough
-  --> $DIR/regions-escape-loop-via-variable.rs:22:5
+  --> $DIR/regions-escape-loop-via-variable.rs:21:14
    |
-21 |         p = &x; //~ ERROR `x` does not live long enough
-   |              - borrow occurs here
+21 |         p = &x;
+   |              ^ borrowed value does not live long enough
 22 |     }
-   |     ^ `x` dropped here while still borrowed
-23 | }
+   |     - `x` dropped here while still borrowed
+23 |     //~^^ ERROR `x` does not live long enough
+24 | }
    | - borrowed value needs to live until here
 
 error: aborting due to previous error

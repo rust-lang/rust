@@ -15,7 +15,7 @@
 fn main() {
     let foo = 22;
     match foo {
-        u32::XXX => { }
+        u32::XXX => { } //~ ERROR no associated item named
         _ => { }
     }
 }

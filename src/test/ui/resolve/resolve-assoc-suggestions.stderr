@@ -5,51 +5,51 @@ error[E0412]: cannot find type `field` in this scope
    |                ^^^^^ not found in this scope
 
 error[E0531]: cannot find tuple struct/variant `field` in this scope
-  --> $DIR/resolve-assoc-suggestions.rs:29:13
+  --> $DIR/resolve-assoc-suggestions.rs:28:13
    |
-29 |         let field(..);
+28 |         let field(..);
    |             ^^^^^ not found in this scope
 
 error[E0425]: cannot find value `field` in this scope
-  --> $DIR/resolve-assoc-suggestions.rs:32:9
+  --> $DIR/resolve-assoc-suggestions.rs:30:9
    |
-32 |         field;
+30 |         field;
    |         ^^^^^ help: try: `self.field`
 
 error[E0412]: cannot find type `Type` in this scope
-  --> $DIR/resolve-assoc-suggestions.rs:36:16
+  --> $DIR/resolve-assoc-suggestions.rs:33:16
    |
-36 |         let _: Type;
+33 |         let _: Type;
    |                ^^^^ help: try: `Self::Type`
 
 error[E0531]: cannot find tuple struct/variant `Type` in this scope
-  --> $DIR/resolve-assoc-suggestions.rs:39:13
+  --> $DIR/resolve-assoc-suggestions.rs:35:13
    |
-39 |         let Type(..);
+35 |         let Type(..);
    |             ^^^^ not found in this scope
 
 error[E0425]: cannot find value `Type` in this scope
-  --> $DIR/resolve-assoc-suggestions.rs:42:9
+  --> $DIR/resolve-assoc-suggestions.rs:37:9
    |
-42 |         Type;
+37 |         Type;
    |         ^^^^ not found in this scope
 
 error[E0412]: cannot find type `method` in this scope
-  --> $DIR/resolve-assoc-suggestions.rs:46:16
+  --> $DIR/resolve-assoc-suggestions.rs:40:16
    |
-46 |         let _: method;
+40 |         let _: method;
    |                ^^^^^^ not found in this scope
 
 error[E0531]: cannot find tuple struct/variant `method` in this scope
-  --> $DIR/resolve-assoc-suggestions.rs:49:13
+  --> $DIR/resolve-assoc-suggestions.rs:42:13
    |
-49 |         let method(..);
+42 |         let method(..);
    |             ^^^^^^ not found in this scope
 
 error[E0425]: cannot find value `method` in this scope
-  --> $DIR/resolve-assoc-suggestions.rs:52:9
+  --> $DIR/resolve-assoc-suggestions.rs:44:9
    |
-52 |         method;
+44 |         method;
    |         ^^^^^^ help: try: `self.method`
 
 error: aborting due to 9 previous errors

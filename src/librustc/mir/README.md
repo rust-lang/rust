@@ -59,7 +59,7 @@ ensure that, before the MIR at a particular phase in the processing
 pipeline is stolen, anyone who may want to read from it has already
 done so. Concretely, this means that if you have some query `foo(D)`
 that wants to access the result of `mir_const(D)` or
-`mir_validated(D)`, you need to have the successor pass either "force"
+`mir_validated(D)`, you need to have the successor pass "force"
 `foo(D)` using `ty::queries::foo::force(...)`. This will force a query
 to execute even though you don't directly require its result.
 

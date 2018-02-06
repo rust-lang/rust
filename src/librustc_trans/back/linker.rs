@@ -77,6 +77,9 @@ impl LinkerInfo {
                     is_ld: true,
                 }) as Box<Linker>
             }
+            LinkerFlavor::Binaryen => {
+                panic!("can't instantiate binaryen linker")
+            }
         }
     }
 }

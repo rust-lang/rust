@@ -8,14 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use infer::{InferCtxt, InferOk};
+use infer::{RegionObligation, InferCtxt, InferOk};
 use ty::{self, Ty, TypeFoldable, ToPolyTraitRef, ToPredicate};
 use ty::error::ExpectedFound;
 use rustc_data_structures::obligation_forest::{ObligationForest, Error};
 use rustc_data_structures::obligation_forest::{ForestObligation, ObligationProcessor};
 use std::marker::PhantomData;
-use syntax::ast;
-use util::nodemap::NodeMap;
 use hir::def_id::DefId;
 
 use super::CodeAmbiguity;
@@ -48,39 +46,19 @@ pub struct FulfillmentContext<'tcx> {
     // A list of all obligations that have been registered with this
     // fulfillment context.
     predicates: ObligationForest<PendingPredicateObligation<'tcx>>,
-
-    // A set of constraints that regionck must validate. Each
-    // constraint has the form `T:'a`, meaning "some type `T` must
-    // outlive the lifetime 'a". These constraints derive from
-    // instantiated type parameters. So if you had a struct defined
-    // like
+    // Should this fulfillment context register type-lives-for-region
+    // obligations on its parent infcx? In some cases, region
+    // obligations are either already known to hold (normalization) or
+    // hopefully verifed elsewhere (type-impls-bound), and therefore
+    // should not be checked.
     //
-    //     struct Foo<T:'static> { ... }
-    //
-    // then in some expression `let x = Foo { ... }` it will
-    // instantiate the type parameter `T` with a fresh type `$0`. At
-    // the same time, it will record a region obligation of
-    // `$0:'static`. This will get checked later by regionck. (We
-    // can't generally check these things right away because we have
-    // to wait until types are resolved.)
-    //
-    // These are stored in a map keyed to the id of the innermost
-    // enclosing fn body / static initializer expression. This is
-    // because the location where the obligation was incurred can be
-    // relevant with respect to which sublifetime assumptions are in
-    // place. The reason that we store under the fn-id, and not
-    // something more fine-grained, is so that it is easier for
-    // regionck to be sure that it has found *all* the region
-    // obligations (otherwise, it's easy to fail to walk to a
-    // particular node-id).
-    region_obligations: NodeMap<Vec<RegionObligation<'tcx>>>,
-}
-
-#[derive(Clone)]
-pub struct RegionObligation<'tcx> {
-    pub sub_region: ty::Region<'tcx>,
-    pub sup_type: Ty<'tcx>,
-    pub cause: ObligationCause<'tcx>,
+    // Note that if we are normalizing a type that we already
+    // know is well-formed, there should be no harm setting this
+    // to true - all the region variables should be determinable
+    // using the RFC 447 rules, which don't depend on
+    // type-lives-for-region constraints, and because the type
+    // is well-formed, the constraints should hold.
+    register_region_obligations: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -94,7 +72,14 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
     pub fn new() -> FulfillmentContext<'tcx> {
         FulfillmentContext {
             predicates: ObligationForest::new(),
-            region_obligations: NodeMap(),
+            register_region_obligations: true
+        }
+    }
+
+    pub fn new_ignoring_regions() -> FulfillmentContext<'tcx> {
+        FulfillmentContext {
+            predicates: ObligationForest::new(),
+            register_region_obligations: false
         }
     }
 
@@ -157,14 +142,6 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
         });
     }
 
-    pub fn register_region_obligation(&mut self,
-                                      t_a: Ty<'tcx>,
-                                      r_b: ty::Region<'tcx>,
-                                      cause: ObligationCause<'tcx>)
-    {
-        register_region_obligation(t_a, r_b, cause, &mut self.region_obligations);
-    }
-
     pub fn register_predicate_obligation(&mut self,
                                          infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                          obligation: PredicateObligation<'tcx>)
@@ -183,23 +160,13 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
         });
     }
 
-    pub fn register_predicate_obligations(&mut self,
-                                          infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                          obligations: Vec<PredicateObligation<'tcx>>)
+    pub fn register_predicate_obligations<I>(&mut self,
+                                             infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                             obligations: I)
+        where I: IntoIterator<Item = PredicateObligation<'tcx>>
     {
         for obligation in obligations {
             self.register_predicate_obligation(infcx, obligation);
-        }
-    }
-
-
-    pub fn region_obligations(&self,
-                              body_id: ast::NodeId)
-                              -> &[RegionObligation<'tcx>]
-    {
-        match self.region_obligations.get(&body_id) {
-            None => Default::default(),
-            Some(vec) => vec,
         }
     }
 
@@ -247,7 +214,7 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
             // Process pending obligations.
             let outcome = self.predicates.process_obligations(&mut FulfillProcessor {
                 selcx,
-                region_obligations: &mut self.region_obligations,
+                register_region_obligations: self.register_region_obligations
             });
             debug!("select: outcome={:?}", outcome);
 
@@ -277,7 +244,7 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
 
 struct FulfillProcessor<'a, 'b: 'a, 'gcx: 'tcx, 'tcx: 'b> {
     selcx: &'a mut SelectionContext<'b, 'gcx, 'tcx>,
-    region_obligations: &'a mut NodeMap<Vec<RegionObligation<'tcx>>>,
+    register_region_obligations: bool
 }
 
 impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 'tcx> {
@@ -288,9 +255,7 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
                           obligation: &mut Self::Obligation)
                           -> Result<Option<Vec<Self::Obligation>>, Self::Error>
     {
-        process_predicate(self.selcx,
-                          obligation,
-                          self.region_obligations)
+        process_predicate(self.selcx, obligation, self.register_region_obligations)
             .map(|os| os.map(|os| os.into_iter().map(|o| PendingPredicateObligation {
                 obligation: o,
                 stalled_on: vec![]
@@ -330,7 +295,7 @@ fn trait_ref_type_vars<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a, 'gcx, 't
 fn process_predicate<'a, 'gcx, 'tcx>(
     selcx: &mut SelectionContext<'a, 'gcx, 'tcx>,
     pending_obligation: &mut PendingPredicateObligation<'tcx>,
-    region_obligations: &mut NodeMap<Vec<RegionObligation<'tcx>>>)
+    register_region_obligations: bool)
     -> Result<Option<Vec<PredicateObligation<'tcx>>>,
               FulfillmentErrorCode<'tcx>>
 {
@@ -435,14 +400,14 @@ fn process_predicate<'a, 'gcx, 'tcx>(
 
         ty::Predicate::TypeOutlives(ref binder) => {
             // Check if there are higher-ranked regions.
-            match selcx.tcx().no_late_bound_regions(binder) {
+            match binder.no_late_bound_regions() {
                 // If there are, inspect the underlying type further.
                 None => {
                     // Convert from `Binder<OutlivesPredicate<Ty, Region>>` to `Binder<Ty>`.
                     let binder = binder.map_bound_ref(|pred| pred.0);
 
                     // Check if the type has any bound regions.
-                    match selcx.tcx().no_late_bound_regions(&binder) {
+                    match binder.no_late_bound_regions() {
                         // If so, this obligation is an error (for now). Eventually we should be
                         // able to support additional cases here, like `for<'a> &'a str: 'a`.
                         None => {
@@ -452,18 +417,30 @@ fn process_predicate<'a, 'gcx, 'tcx>(
                         // `for<'a> T: 'a where 'a not in T`, which we can treat as `T: 'static`.
                         Some(t_a) => {
                             let r_static = selcx.tcx().types.re_static;
-                            register_region_obligation(t_a, r_static,
-                                                       obligation.cause.clone(),
-                                                       region_obligations);
+                            if register_region_obligations {
+                                selcx.infcx().register_region_obligation(
+                                    obligation.cause.body_id,
+                                    RegionObligation {
+                                        sup_type: t_a,
+                                        sub_region: r_static,
+                                        cause: obligation.cause.clone(),
+                                    });
+                            }
                             Ok(Some(vec![]))
                         }
                     }
                 }
                 // If there aren't, register the obligation.
                 Some(ty::OutlivesPredicate(t_a, r_b)) => {
-                    register_region_obligation(t_a, r_b,
-                                               obligation.cause.clone(),
-                                               region_obligations);
+                    if register_region_obligations {
+                        selcx.infcx().register_region_obligation(
+                            obligation.cause.body_id,
+                            RegionObligation {
+                                sup_type: t_a,
+                                sub_region: r_b,
+                                cause: obligation.cause.clone()
+                            });
+                    }
                     Ok(Some(vec![]))
                 }
             }
@@ -491,8 +468,8 @@ fn process_predicate<'a, 'gcx, 'tcx>(
             }
         }
 
-        ty::Predicate::ClosureKind(closure_def_id, kind) => {
-            match selcx.infcx().closure_kind(closure_def_id) {
+        ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind) => {
+            match selcx.infcx().closure_kind(closure_def_id, closure_substs) {
                 Some(closure_kind) => {
                     if closure_kind.extends(kind) {
                         Ok(Some(vec![]))
@@ -564,25 +541,6 @@ fn process_predicate<'a, 'gcx, 'tcx>(
             }
         }
     }
-}
-
-
-fn register_region_obligation<'tcx>(t_a: Ty<'tcx>,
-                                    r_b: ty::Region<'tcx>,
-                                    cause: ObligationCause<'tcx>,
-                                    region_obligations: &mut NodeMap<Vec<RegionObligation<'tcx>>>)
-{
-    let region_obligation = RegionObligation { sup_type: t_a,
-                                               sub_region: r_b,
-                                               cause: cause };
-
-    debug!("register_region_obligation({:?}, cause={:?})",
-           region_obligation, region_obligation.cause);
-
-    region_obligations.entry(region_obligation.cause.body_id)
-                      .or_insert(vec![])
-                      .push(region_obligation);
-
 }
 
 fn to_fulfillment_error<'tcx>(

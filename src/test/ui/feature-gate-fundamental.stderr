@@ -1,0 +1,10 @@
+error: the `#[fundamental]` attribute is an experimental feature (see issue #29635)
+  --> $DIR/feature-gate-fundamental.rs:11:1
+   |
+11 | #[fundamental] //~ ERROR the `#[fundamental]` attribute is an experimental feature
+   | ^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(fundamental)] to the crate attributes to enable
+
+error: aborting due to previous error
+

@@ -11,15 +11,16 @@ test = false
 
 [dependencies]
 bitflags = "1.0"
-num_cpus = "1.0"
-flate2 = "0.2"
+flate2 = "1.0"
 jobserver = "0.1.5"
-log = "0.3"
-owning_ref = "0.3.3"
-rustc-demangle = "0.1.4"
+log = "0.4"
+num_cpus = "1.0"
 rustc = { path = "../librustc" }
+rustc-demangle = "0.1.4"
 rustc_allocator = { path = "../librustc_allocator" }
+rustc_apfloat = { path = "../librustc_apfloat" }
 rustc_back = { path = "../librustc_back" }
+rustc_binaryen = { path = "../librustc_binaryen" }
 rustc_const_math = { path = "../librustc_const_math" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }
@@ -27,9 +28,11 @@ rustc_incremental = { path = "../librustc_incremental" }
 rustc_llvm = { path = "../librustc_llvm" }
 rustc_platform_intrinsics = { path = "../librustc_platform_intrinsics" }
 rustc_trans_utils = { path = "../librustc_trans_utils" }
+rustc_mir = { path = "../librustc_mir" }
 serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
+tempdir = "0.3"
 
 [target."cfg(windows)".dependencies]
 cc = "1.0.1"

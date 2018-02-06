@@ -5,7 +5,7 @@ error[E0276]: impl has stricter requirements than trait
    |   ---------------------------- definition of `b` from trait
 ...
 25 |     fn b<F: Sync, G>(&self, _x: F) -> F { panic!() } //~ ERROR E0276
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `F: std::marker::Sync`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `F: std::marker::Sync`
 
 error: aborting due to previous error
 

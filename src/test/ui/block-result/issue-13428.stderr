@@ -7,7 +7,7 @@ error[E0308]: mismatched types
 15 | |             "world")
 16 | |     // Put the trailing semicolon on its own line to test that the
 17 | |     // note message gets the offending semicolon exactly
-18 | |     ;   //~ HELP consider removing this semicolon
+18 | |     ;
    | |     - help: consider removing this semicolon
 19 | | }
    | |_^ expected struct `std::string::String`, found ()
@@ -21,7 +21,7 @@ error[E0308]: mismatched types
 21 |   fn bar() -> String {  //~ ERROR mismatched types
    |  ____________________^
 22 | |     "foobar".to_string()
-23 | |     ;   //~ HELP consider removing this semicolon
+23 | |     ;
    | |     - help: consider removing this semicolon
 24 | | }
    | |_^ expected struct `std::string::String`, found ()

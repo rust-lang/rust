@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// revisions: ast mir
+//[mir]compile-flags: -Z borrowck=mir
+
 use std::cell::RefCell;
 
 fn main() {
@@ -16,10 +19,15 @@ fn main() {
     let x = RefCell::new((&mut r,s));
 
     let val: &_ = x.borrow().0;
-    //~^ ERROR borrowed value does not live long enough
-    //~| temporary value dropped here while still borrowed
-    //~| temporary value created here
-    //~| consider using a `let` binding to increase its lifetime
+    //[ast]~^ ERROR borrowed value does not live long enough [E0597]
+    //[ast]~| NOTE temporary value dropped here while still borrowed
+    //[ast]~| NOTE temporary value does not live long enough
+    //[ast]~| NOTE consider using a `let` binding to increase its lifetime
+    //[mir]~^^^^^ ERROR borrowed value does not live long enough [E0597]
+    //[mir]~| NOTE temporary value dropped here while still borrowed
+    //[mir]~| NOTE temporary value does not live long enough
+    //[mir]~| NOTE consider using a `let` binding to increase its lifetime
     println!("{}", val);
 }
-//~^ temporary value needs to live until here
+//[ast]~^ NOTE temporary value needs to live until here
+//[mir]~^^ NOTE temporary value needs to live until here

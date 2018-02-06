@@ -10,7 +10,6 @@
 
 use cell::UnsafeCell;
 use fmt;
-use marker;
 use mem;
 use ops::{Deref, DerefMut};
 use ptr;
@@ -37,7 +36,7 @@ use sys_common::rwlock as sys;
 /// required that `T` satisfies [`Send`] to be shared across threads and
 /// [`Sync`] to allow concurrent access through readers. The RAII guards
 /// returned from the locking methods implement [`Deref`][] (and [`DerefMut`]
-/// for the `write` methods) to allow access to the contained of the lock.
+/// for the `write` methods) to allow access to the content of the lock.
 ///
 /// # Poisoning
 ///
@@ -102,7 +101,10 @@ pub struct RwLockReadGuard<'a, T: ?Sized + 'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized> !marker::Send for RwLockReadGuard<'a, T> {}
+impl<'a, T: ?Sized> !Send for RwLockReadGuard<'a, T> {}
+
+#[stable(feature = "rwlock_guard_sync", since = "1.23.0")]
+unsafe impl<'a, T: ?Sized + Sync> Sync for RwLockReadGuard<'a, T> {}
 
 /// RAII structure used to release the exclusive write access of a lock when
 /// dropped.
@@ -121,7 +123,10 @@ pub struct RwLockWriteGuard<'a, T: ?Sized + 'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized> !marker::Send for RwLockWriteGuard<'a, T> {}
+impl<'a, T: ?Sized> !Send for RwLockWriteGuard<'a, T> {}
+
+#[stable(feature = "rwlock_guard_sync", since = "1.23.0")]
+unsafe impl<'a, T: ?Sized + Sync> Sync for RwLockWriteGuard<'a, T> {}
 
 impl<T> RwLock<T> {
     /// Creates a new instance of an `RwLock<T>` which is unlocked.
@@ -452,6 +457,17 @@ impl<T: Default> Default for RwLock<T> {
     }
 }
 
+#[stable(feature = "rw_lock_from", since = "1.24.0")]
+impl<T> From<T> for RwLock<T> {
+    /// Creates a new instance of an `RwLock<T>` which is unlocked.
+    /// This is equivalent to [`RwLock::new`].
+    ///
+    /// [`RwLock::new`]: #method.new
+    fn from(t: T) -> Self {
+        RwLock::new(t)
+    }
+}
+
 impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
     unsafe fn new(lock: &'rwlock RwLock<T>)
                   -> LockResult<RwLockReadGuard<'rwlock, T>> {
@@ -549,8 +565,6 @@ impl<'a, T: ?Sized> Drop for RwLockWriteGuard<'a, T> {
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
-    #![allow(deprecated)] // rand
-
     use rand::{self, Rng};
     use sync::mpsc::channel;
     use thread;
@@ -571,7 +585,7 @@ mod tests {
 
     #[test]
     fn frob() {
-        const N: usize = 10;
+        const N: u32 = 10;
         const M: usize = 1000;
 
         let r = Arc::new(RwLock::new(()));

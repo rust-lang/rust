@@ -85,28 +85,12 @@
 #![feature(prelude_import)]
 #![feature(repr_simd, platform_intrinsics)]
 #![feature(rustc_attrs)]
-#![feature(rustc_const_unstable)]
 #![feature(specialization)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
-#![feature(const_min_value)]
-#![feature(const_max_value)]
-#![feature(const_atomic_bool_new)]
-#![feature(const_atomic_isize_new)]
-#![feature(const_atomic_usize_new)]
-#![feature(const_atomic_i8_new)]
-#![feature(const_atomic_u8_new)]
-#![feature(const_atomic_i16_new)]
-#![feature(const_atomic_u16_new)]
-#![feature(const_atomic_i32_new)]
-#![feature(const_atomic_u32_new)]
-#![feature(const_atomic_i64_new)]
-#![feature(const_atomic_u64_new)]
-#![feature(const_unsafe_cell_new)]
-#![feature(const_cell_new)]
-#![feature(const_nonzero_new)]
+#![feature(doc_spotlight)]
 
 #[prelude_import]
 #[allow(unused)]
@@ -189,3 +173,4 @@ pub mod fmt;
 mod char_private;
 mod iter_private;
 mod tuple;
+mod unit;

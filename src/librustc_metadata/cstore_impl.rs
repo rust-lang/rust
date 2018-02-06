@@ -17,8 +17,7 @@ use schema;
 use rustc::ty::maps::QueryConfig;
 use rustc::middle::cstore::{CrateStore, DepKind,
                             MetadataLoader, LinkMeta,
-                            LoadedMacro, EncodedMetadata,
-                            EncodedMetadataHashes, NativeLibraryKind};
+                            LoadedMacro, EncodedMetadata, NativeLibraryKind};
 use rustc::middle::stability::DeprecationEntry;
 use rustc::hir::def;
 use rustc::session::{CrateDisambiguator, Session};
@@ -38,14 +37,14 @@ use syntax::attr;
 use syntax::ext::base::SyntaxExtension;
 use syntax::parse::filemap_to_stream;
 use syntax::symbol::Symbol;
-use syntax_pos::{Span, NO_EXPANSION};
+use syntax_pos::{Span, NO_EXPANSION, FileName};
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc::hir;
 
 macro_rules! provide {
     (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident,
       $($name:ident => $compute:block)*) => {
-        pub fn provide<$lt>(providers: &mut Providers<$lt>) {
+        pub fn provide_extern<$lt>(providers: &mut Providers<$lt>) {
             $(fn $name<'a, $lt:$lt, T>($tcx: TyCtxt<'a, $lt, $lt>, def_id_arg: T)
                                     -> <ty::queries::$name<$lt> as
                                         QueryConfig>::Value
@@ -99,11 +98,13 @@ impl IntoArgs for (CrateNum, DefId) {
 
 provide! { <'tcx> tcx, def_id, other, cdata,
     type_of => { cdata.get_type(def_id.index, tcx) }
-    generics_of => { tcx.alloc_generics(cdata.get_generics(def_id.index)) }
+    generics_of => {
+        tcx.alloc_generics(cdata.get_generics(def_id.index, tcx.sess))
+    }
     predicates_of => { cdata.get_predicates(def_id.index, tcx) }
     super_predicates_of => { cdata.get_super_predicates(def_id.index, tcx) }
     trait_def => {
-        tcx.alloc_trait_def(cdata.get_trait_def(def_id.index))
+        tcx.alloc_trait_def(cdata.get_trait_def(def_id.index, tcx.sess))
     }
     adt_def => { cdata.get_adt_def(def_id.index, tcx) }
     adt_destructor => {
@@ -134,17 +135,14 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
         mir
     }
-    generator_sig => { cdata.generator_sig(def_id.index, tcx) }
     mir_const_qualif => {
         (cdata.mir_const_qualif(def_id.index), Rc::new(IdxSetBuf::new_empty(0)))
     }
     typeck_tables_of => { cdata.item_body_tables(def_id.index, tcx) }
-    closure_kind => { cdata.closure_kind(def_id.index) }
     fn_sig => { cdata.fn_sig(def_id.index, tcx) }
     inherent_impls => { Rc::new(cdata.get_inherent_implementations_for_type(def_id.index)) }
     is_const_fn => { cdata.is_const_fn(def_id.index) }
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
-    is_auto_impl => { cdata.is_auto_impl(def_id.index) }
     describe_def => { cdata.get_def(def_id.index) }
     def_span => { cdata.get_span(def_id.index, &tcx.sess) }
     lookup_stability => {
@@ -153,7 +151,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     lookup_deprecation_entry => {
         cdata.get_deprecation(def_id.index).map(DeprecationEntry::external)
     }
-    item_attrs => { cdata.get_item_attrs(def_id.index) }
+    item_attrs => { cdata.get_item_attrs(def_id.index, tcx.sess) }
     // FIXME(#38501) We've skipped a `read` on the `HirBody` of
     // a `fn` when encoding, so the dep-tracking wouldn't work.
     // This is only used by rustdoc anyway, which shouldn't have
@@ -171,17 +169,17 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
 
     dylib_dependency_formats => { Rc::new(cdata.get_dylib_dependency_formats()) }
-    is_panic_runtime => { cdata.is_panic_runtime() }
-    is_compiler_builtins => { cdata.is_compiler_builtins() }
+    is_panic_runtime => { cdata.is_panic_runtime(tcx.sess) }
+    is_compiler_builtins => { cdata.is_compiler_builtins(tcx.sess) }
     has_global_allocator => { cdata.has_global_allocator() }
-    is_sanitizer_runtime => { cdata.is_sanitizer_runtime() }
-    is_profiler_runtime => { cdata.is_profiler_runtime() }
+    is_sanitizer_runtime => { cdata.is_sanitizer_runtime(tcx.sess) }
+    is_profiler_runtime => { cdata.is_profiler_runtime(tcx.sess) }
     panic_strategy => { cdata.panic_strategy() }
     extern_crate => { Rc::new(cdata.extern_crate.get()) }
-    is_no_builtins => { cdata.is_no_builtins() }
+    is_no_builtins => { cdata.is_no_builtins(tcx.sess) }
     impl_defaultness => { cdata.get_impl_defaultness(def_id.index) }
     exported_symbol_ids => { Rc::new(cdata.get_exported_symbols()) }
-    native_libraries => { Rc::new(cdata.get_native_libraries()) }
+    native_libraries => { Rc::new(cdata.get_native_libraries(tcx.sess)) }
     plugin_registrar_fn => {
         cdata.root.plugin_registrar_fn.map(|index| {
             DefId { krate: def_id.krate, index }
@@ -237,11 +235,11 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
     used_crate_source => { Rc::new(cdata.source.clone()) }
 
-    has_copy_closures => { cdata.has_copy_closures() }
-    has_clone_closures => { cdata.has_clone_closures() }
+    has_copy_closures => { cdata.has_copy_closures(tcx.sess) }
+    has_clone_closures => { cdata.has_clone_closures(tcx.sess) }
 }
 
-pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
+pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
     fn is_const_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool {
         let node_id = tcx.hir.as_local_node_id(def_id)
                              .expect("Non-local call to local provider is_const_fn");
@@ -295,22 +293,51 @@ pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
             assert_eq!(cnum, LOCAL_CRATE);
             let mut visible_parent_map: DefIdMap<DefId> = DefIdMap();
 
-            for &cnum in tcx.crates().iter() {
+            // Issue 46112: We want the map to prefer the shortest
+            // paths when reporting the path to an item. Therefore we
+            // build up the map via a breadth-first search (BFS),
+            // which naturally yields minimal-length paths.
+            //
+            // Note that it needs to be a BFS over the whole forest of
+            // crates, not just each individual crate; otherwise you
+            // only get paths that are locally minimal with respect to
+            // whatever crate we happened to encounter first in this
+            // traversal, but not globally minimal across all crates.
+            let bfs_queue = &mut VecDeque::new();
+
+            // Preferring shortest paths alone does not guarantee a
+            // deterministic result; so sort by crate num to avoid
+            // hashtable iteration non-determinism. This only makes
+            // things as deterministic as crate-nums assignment is,
+            // which is to say, its not deterministic in general. But
+            // we believe that libstd is consistently assigned crate
+            // num 1, so it should be enough to resolve #46112.
+            let mut crates: Vec<CrateNum> = (*tcx.crates()).clone();
+            crates.sort();
+
+            for &cnum in crates.iter() {
                 // Ignore crates without a corresponding local `extern crate` item.
                 if tcx.missing_extern_crate_item(cnum) {
                     continue
                 }
 
-                let bfs_queue = &mut VecDeque::new();
+                bfs_queue.push_back(DefId {
+                    krate: cnum,
+                    index: CRATE_DEF_INDEX
+                });
+            }
+
+            // (restrict scope of mutable-borrow of `visible_parent_map`)
+            {
                 let visible_parent_map = &mut visible_parent_map;
                 let mut add_child = |bfs_queue: &mut VecDeque<_>,
                                      child: &def::Export,
                                      parent: DefId| {
-                    let child = child.def.def_id();
-
-                    if tcx.visibility(child) != ty::Visibility::Public {
+                    if child.vis != ty::Visibility::Public {
                         return;
                     }
+
+                    let child = child.def.def_id();
 
                     match visible_parent_map.entry(child) {
                         Entry::Occupied(mut entry) => {
@@ -327,10 +354,6 @@ pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
                     }
                 };
 
-                bfs_queue.push_back(DefId {
-                    krate: cnum,
-                    index: CRATE_DEF_INDEX
-                });
                 while let Some(def) = bfs_queue.pop_front() {
                     for child in tcx.item_children(def).iter() {
                         add_child(bfs_queue, child, def);
@@ -358,8 +381,8 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(def.krate).get_visibility(def.index)
     }
 
-    fn item_generics_cloned_untracked(&self, def: DefId) -> ty::Generics {
-        self.get_crate_data(def.krate).get_generics(def.index)
+    fn item_generics_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::Generics {
+        self.get_crate_data(def.krate).get_generics(def.index, sess)
     }
 
     fn associated_item_cloned_untracked(&self, def: DefId) -> ty::AssociatedItem
@@ -439,7 +462,7 @@ impl CrateStore for cstore::CStore {
     fn load_macro_untracked(&self, id: DefId, sess: &Session) -> LoadedMacro {
         let data = self.get_crate_data(id.krate);
         if let Some(ref proc_macros) = data.proc_macros {
-            return LoadedMacro::ProcMacro(proc_macros[id.index.as_usize() - 1].1.clone());
+            return LoadedMacro::ProcMacro(proc_macros[id.index.to_proc_macro_index()].1.clone());
         } else if data.name == "proc_macro" &&
                   self.get_crate_data(id.krate).item_name(id.index) == "quote" {
             let ext = SyntaxExtension::ProcMacro(Box::new(::proc_macro::__internal::Quoter));
@@ -447,14 +470,14 @@ impl CrateStore for cstore::CStore {
         }
 
         let (name, def) = data.get_macro(id.index);
-        let source_name = format!("<{} macros>", name);
+        let source_name = FileName::Macros(name.to_string());
 
         let filemap = sess.parse_sess.codemap().new_filemap(source_name, def.body);
         let local_span = Span::new(filemap.start_pos, filemap.end_pos, NO_EXPANSION);
         let body = filemap_to_stream(&sess.parse_sess, filemap, None);
 
         // Mark the attrs as used
-        let attrs = data.get_item_attrs(id.index);
+        let attrs = data.get_item_attrs(id.index, sess);
         for attr in attrs.iter() {
             attr::mark_used(attr);
         }
@@ -498,7 +521,7 @@ impl CrateStore for cstore::CStore {
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  link_meta: &LinkMeta,
                                  reachable: &NodeSet)
-                                 -> (EncodedMetadata, EncodedMetadataHashes)
+                                 -> EncodedMetadata
     {
         encoder::encode_metadata(tcx, link_meta, reachable)
     }

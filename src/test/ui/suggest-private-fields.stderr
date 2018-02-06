@@ -1,0 +1,28 @@
+error[E0560]: struct `xc::B` has no field named `aa`
+  --> $DIR/suggest-private-fields.rs:25:9
+   |
+25 |         aa: 20,
+   |         ^^^ field does not exist - did you mean `a`?
+
+error[E0560]: struct `xc::B` has no field named `bb`
+  --> $DIR/suggest-private-fields.rs:27:9
+   |
+27 |         bb: 20,
+   |         ^^^ `xc::B` does not have this field
+   |
+   = note: available fields are: `a`
+
+error[E0560]: struct `A` has no field named `aa`
+  --> $DIR/suggest-private-fields.rs:32:9
+   |
+32 |         aa: 20,
+   |         ^^^ field does not exist - did you mean `a`?
+
+error[E0560]: struct `A` has no field named `bb`
+  --> $DIR/suggest-private-fields.rs:34:9
+   |
+34 |         bb: 20,
+   |         ^^^ field does not exist - did you mean `b`?
+
+error: aborting due to 4 previous errors
+

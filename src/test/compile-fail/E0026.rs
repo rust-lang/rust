@@ -18,6 +18,5 @@ fn main() {
     match thing {
         Thing { x, y, z } => {}
         //~^ ERROR struct `Thing` does not have a field named `z` [E0026]
-        //~| NOTE struct `Thing` does not have field `z`
     }
 }

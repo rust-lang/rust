@@ -19,6 +19,5 @@ fn main() {
     match d {
         Dog { age: x } => {}
         //~^ ERROR pattern does not mention field `name`
-        //~| NOTE missing field `name`
     }
 }

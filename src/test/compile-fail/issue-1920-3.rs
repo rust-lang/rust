@@ -10,15 +10,17 @@
 
 //! Test that when a crate is linked multiple times that the shortest absolute path name is used
 
+// aux-build:issue_1920.rs
+
 mod foo {
-    pub extern crate core;
+    pub extern crate issue_1920;
 }
 
-extern crate core;
+extern crate issue_1920;
 
 fn assert_clone<T>() where T : Clone { }
 
 fn main() {
-    assert_clone::<foo::core::sync::atomic::AtomicBool>();
-    //~^ ERROR `core::sync::atomic::AtomicBool: core::clone::Clone` is not satisfied
+    assert_clone::<foo::issue_1920::S>();
+    //~^ ERROR `issue_1920::S: std::clone::Clone` is not satisfied
 }

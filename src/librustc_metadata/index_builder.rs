@@ -62,7 +62,6 @@ use isolated_encoder::IsolatedEncoder;
 
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::middle::cstore::EncodedMetadataHash;
 use rustc::ty::TyCtxt;
 use syntax::ast;
 
@@ -120,28 +119,18 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
         where DATA: DepGraphRead
     {
         assert!(id.is_local());
-        let tcx: TyCtxt<'b, 'tcx, 'tcx> = self.ecx.tcx;
 
         // We don't track this since we are explicitly computing the incr. comp.
         // hashes anyway. In theory we could do some tracking here and use it to
         // avoid rehashing things (and instead cache the hashes) but it's
         // unclear whether that would be a win since hashing is cheap enough.
-        let _task = tcx.dep_graph.in_ignore();
+        self.ecx.tcx.dep_graph.with_ignore(move || {
+            let mut entry_builder = IsolatedEncoder::new(self.ecx);
+            let entry = op(&mut entry_builder, data);
+            let entry = entry_builder.lazy(&entry);
 
-        let ecx: &'x mut EncodeContext<'b, 'tcx> = &mut *self.ecx;
-        let mut entry_builder = IsolatedEncoder::new(ecx);
-        let entry = op(&mut entry_builder, data);
-        let entry = entry_builder.lazy(&entry);
-
-        let (fingerprint, ecx) = entry_builder.finish();
-        if let Some(hash) = fingerprint {
-            ecx.metadata_hashes.hashes.push(EncodedMetadataHash {
-                def_index: id.index,
-                hash,
-            });
-        }
-
-        self.items.record(id, entry);
+            self.items.record(id, entry);
+        })
     }
 
     pub fn into_items(self) -> Index {

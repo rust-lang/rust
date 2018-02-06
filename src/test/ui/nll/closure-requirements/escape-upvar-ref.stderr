@@ -1,0 +1,45 @@
+note: External requirements
+  --> $DIR/escape-upvar-ref.rs:33:27
+   |
+33 |         let mut closure = || p = &y;
+   |                           ^^^^^^^^^
+   |
+   = note: defining type: DefId(0/1:9 ~ escape_upvar_ref[317d]::test[0]::{{closure}}[0]) with closure substs [
+               i16,
+               extern "rust-call" fn(()),
+               &'_#1r mut &'_#2r i32,
+               &'_#3r i32
+           ]
+   = note: number of external vids: 4
+   = note: where '_#3r: '_#2r
+
+note: No external requirements
+  --> $DIR/escape-upvar-ref.rs:27:1
+   |
+27 | / fn test() {
+28 | |     let x = 44;
+29 | |     let mut p = &x;
+30 | |
+...  |
+38 | |     deref(p);
+39 | | }
+   | |_^
+   |
+   = note: defining type: DefId(0/0:3 ~ escape_upvar_ref[317d]::test[0]) with substs []
+
+error[E0597]: `y` does not live long enough
+  --> $DIR/escape-upvar-ref.rs:33:27
+   |
+33 |         let mut closure = || p = &y;
+   |                           ^^^^^^^^^ borrowed value does not live long enough
+...
+36 |     }
+   |      - borrowed value only lives until here
+37 | 
+38 |     deref(p);
+   |           - borrow later used here
+   |
+   = note: borrowed value must be valid for lifetime '_#4r...
+
+error: aborting due to previous error
+

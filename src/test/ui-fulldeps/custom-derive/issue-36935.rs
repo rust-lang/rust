@@ -15,7 +15,7 @@
 
 #[macro_use] extern crate plugin;
 
-#[derive(Foo, Bar)]
+#[derive(Foo, Bar)] //~ ERROR proc-macro derive panicked
 struct Baz {
     a: i32,
     b: i32,

@@ -1,0 +1,10 @@
+error[E0384]: cannot assign twice to immutable variable `x`
+  --> $DIR/command-line-diagnostics.rs:16:5
+   |
+15 |     let x = 42;
+   |         - first assignment to `x`
+16 |     x = 43;
+   |     ^^^^^^ cannot assign twice to immutable variable
+
+error: aborting due to previous error
+

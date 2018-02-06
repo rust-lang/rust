@@ -21,7 +21,7 @@ fn main() {
 }
 
 // END RUST SOURCE
-// START rustc.node4.SimplifyCfg-initial.after.mir
+// START rustc.main.SimplifyCfg-initial.after.mir
 //     bb0: {
 //         StorageLive(_1);
 //         _1 = const false;
@@ -31,7 +31,7 @@ fn main() {
 //     bb1: {
 //         StorageLive(_4);
 //         _4 = _1;
-//         switchInt(_4) -> [0u8: bb3, otherwise: bb2];
+//         switchInt(move _4) -> [0u8: bb3, otherwise: bb2];
 //     }
 //
 //     bb2: {
@@ -48,4 +48,4 @@ fn main() {
 //         _2 = ();
 //         goto -> bb1;
 //     }
-// END rustc.node4.SimplifyCfg-initial.after.mir
+// END rustc.main.SimplifyCfg-initial.after.mir

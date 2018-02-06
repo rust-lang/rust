@@ -19,7 +19,6 @@ extern crate custom;
 extern crate custom_as_global;
 extern crate helper;
 
-use std::env;
 use std::heap::{Heap, Alloc, System, Layout};
 use std::sync::atomic::{Ordering, ATOMIC_USIZE_INIT};
 

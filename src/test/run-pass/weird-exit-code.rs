@@ -17,13 +17,10 @@
 // Note that this is disabled on unix as processes exiting with 259 will have
 // their exit status truncated to 3 (only the lower 8 bits are used).
 
-use std::process::{self, Command};
-use std::env;
-
+#[cfg(windows)]
 fn main() {
-    if !cfg!(windows) {
-        return
-    }
+    use std::process::{self, Command};
+    use std::env;
 
     if env::args().len() == 1 {
         let status = Command::new(env::current_exe().unwrap())
@@ -35,3 +32,6 @@ fn main() {
         process::exit(259);
     }
 }
+
+#[cfg(not(windows))]
+fn main() {}

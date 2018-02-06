@@ -1,12 +1,12 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/issue-15480.rs:16:6
+  --> $DIR/issue-15480.rs:15:10
    |
 15 |         &id(3)
-   |          ----- temporary value created here
+   |          ^^^^^ temporary value does not live long enough
 16 |     ];
-   |      ^ temporary value dropped here while still borrowed
+   |      - temporary value dropped here while still borrowed
 ...
-21 | }
+22 | }
    | - temporary value needs to live until here
    |
    = note: consider using a `let` binding to increase its lifetime

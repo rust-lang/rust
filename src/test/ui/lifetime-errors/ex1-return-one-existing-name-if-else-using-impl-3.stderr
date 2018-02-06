@@ -4,7 +4,7 @@ error[E0621]: explicit lifetime required in the type of `x`
 16 |   fn foo<'a>(&'a self, x: &i32) -> &i32 {
    |                        - consider changing the type of `x` to `&'a i32`
 17 | 
-18 |     if true { &self.field } else { x }
+18 |     if true { &self.field } else { x } //~ ERROR explicit lifetime
    |                                    ^ lifetime `'a` required
 
 error: aborting due to previous error

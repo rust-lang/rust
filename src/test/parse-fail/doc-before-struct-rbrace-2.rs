@@ -16,5 +16,5 @@ struct X {
 }
 
 fn main() {
-    let y = X {a = 1};
+    let y = X {a: 1};
 }

@@ -8,27 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// revisions: rpass1 rpass2
+// revisions: cfail1 cfail2
 // compile-flags: -Z query-dep-graph
+// must-compile-successfully
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]
-#![rustc_partition_reused(module="krate_inherent-x", cfg="rpass2")]
+#![rustc_partition_reused(module="krate_inherent-x", cfg="cfail2")]
+#![crate_type = "rlib"]
 
-fn main() { }
-
-mod x {
-    struct Foo;
+pub mod x {
+    pub struct Foo;
     impl Foo {
-        fn foo(&self) { }
+        pub fn foo(&self) { }
     }
 
-    fn method() {
+    pub fn method() {
         let x: Foo = Foo;
         x.foo(); // inherent methods used to add an edge from Krate
     }
 }
 
-#[cfg(rpass1)]
-fn bar() { } // remove this unrelated fn in rpass2, which should not affect `x::method`
+#[cfg(cfail1)]
+pub fn bar() { } // remove this unrelated fn in cfail2, which should not affect `x::method`
 

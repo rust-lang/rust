@@ -50,6 +50,11 @@ const UNEXPLAINED_IGNORE_DOCTEST_INFO: &str = r#"unexplained "```ignore" doctest
 
 "#;
 
+const LLVM_UNREACHABLE_INFO: &str = r"\
+C++ code used llvm_unreachable, which triggers undefined behavior
+when executed when assertions are disabled.
+Use llvm::report_fatal_error for increased robustness.";
+
 /// Parser states for line_is_url.
 #[derive(PartialEq)]
 #[allow(non_camel_case_types)]
@@ -108,7 +113,7 @@ pub fn check(path: &Path, bad: &mut bool) {
     let mut contents = String::new();
     super::walk(path, &mut super::filter_dirs, &mut |file| {
         let filename = file.file_name().unwrap().to_string_lossy();
-        let extensions = [".rs", ".py", ".js", ".sh", ".c", ".h"];
+        let extensions = [".rs", ".py", ".js", ".sh", ".c", ".cpp", ".h"];
         if extensions.iter().all(|e| !filename.ends_with(e)) ||
            filename.starts_with(".#") {
             return
@@ -125,6 +130,7 @@ pub fn check(path: &Path, bad: &mut bool) {
         let skip_tab = contents.contains("ignore-tidy-tab");
         let skip_length = contents.contains("ignore-tidy-linelength");
         let skip_end_whitespace = contents.contains("ignore-tidy-end-whitespace");
+        let mut trailing_new_lines = 0;
         for (i, line) in contents.split("\n").enumerate() {
             let mut err = |msg: &str| {
                 tidy_error!(bad, "{}:{}: {}", file.display(), i + 1, msg);
@@ -153,10 +159,23 @@ pub fn check(path: &Path, bad: &mut bool) {
             if line.ends_with("```ignore") || line.ends_with("```rust,ignore") {
                 err(UNEXPLAINED_IGNORE_DOCTEST_INFO);
             }
+            if filename.ends_with(".cpp") && line.contains("llvm_unreachable") {
+                err(LLVM_UNREACHABLE_INFO);
+            }
+            if line.is_empty() {
+                trailing_new_lines += 1;
+            } else {
+                trailing_new_lines = 0;
+            }
         }
         if !licenseck(file, &contents) {
             tidy_error!(bad, "{}: incorrect license", file.display());
         }
+        match trailing_new_lines {
+            0 => tidy_error!(bad, "{}: missing trailing newline", file.display()),
+            1 | 2 => {}
+            n => tidy_error!(bad, "{}: too many trailing newlines ({})", file.display(), n),
+        };
     })
 }
 

@@ -11,8 +11,7 @@ crate-type = ["dylib"]
 [dependencies]
 arena = { path = "../libarena" }
 graphviz = { path = "../libgraphviz" }
-log = { version = "0.3", features = ["release_max_level_info"] }
-owning_ref = "0.3.3"
+log = { version = "0.4", features = ["release_max_level_info"] }
 env_logger = { version = "0.4", default-features = false }
 rustc = { path = "../librustc" }
 rustc_allocator = { path = "../librustc_allocator" }

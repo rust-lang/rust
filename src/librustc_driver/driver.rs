@@ -19,11 +19,10 @@ use rustc::session::CompileIncomplete;
 use rustc::session::config::{self, Input, OutputFilenames, OutputType};
 use rustc::session::search_paths::PathKind;
 use rustc::lint;
-use rustc::middle::{self, stability, reachable};
+use rustc::middle::{self, stability, reachable, resolve_lifetime};
 use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevels;
-use rustc::mir::transform::{MIR_CONST, MIR_VALIDATED, MIR_OPTIMIZED, Passes};
-use rustc::ty::{self, TyCtxt, Resolutions, GlobalArenas};
+use rustc::ty::{self, TyCtxt, Resolutions, AllArenas};
 use rustc::traits;
 use rustc::util::common::{ErrorReported, time};
 use rustc_allocator as allocator;
@@ -57,18 +56,21 @@ use std::sync::mpsc;
 use syntax::{ast, diagnostics, visit};
 use syntax::attr;
 use syntax::ext::base::ExtCtxt;
+use syntax::fold::Folder;
 use syntax::parse::{self, PResult};
 use syntax::util::node_count::NodeCounter;
+use syntax_pos::FileName;
 use syntax;
 use syntax_ext;
-use arena::DroplessArena;
 
 use derive_registrar;
+use pretty::ReplaceBodyWithLoop;
 
 use profile;
 
 pub fn compile_input(sess: &Session,
                      cstore: &CStore,
+                     input_path: &Option<PathBuf>,
                      input: &Input,
                      outdir: &Option<PathBuf>,
                      output: &Option<PathBuf>,
@@ -140,6 +142,20 @@ pub fn compile_input(sess: &Session,
         };
 
         let outputs = build_output_filenames(input, outdir, output, &krate.attrs, sess);
+
+        // Ensure the source file isn't accidentally overwritten during compilation.
+        match *input_path {
+            Some(ref input_path) => {
+                if outputs.contains_path(input_path) && sess.opts.will_create_output_file() {
+                    sess.err(&format!(
+                        "the input file \"{}\" would be overwritten by the generated executable",
+                        input_path.display()));
+                    return Err(CompileIncomplete::Stopped);
+                }
+            },
+            None => {}
+        }
+
         let crate_name =
             ::rustc_trans_utils::link::find_crate_name(Some(sess), &krate.attrs, input);
         let ExpansionResult { expanded_crate, defs, analysis, resolutions, mut hir_forest } = {
@@ -167,8 +183,7 @@ pub fn compile_input(sess: &Session,
             return Ok(())
         }
 
-        let arena = DroplessArena::new();
-        let arenas = GlobalArenas::new();
+        let arenas = AllArenas::new();
 
         // Construct the HIR map
         let hir_map = time(sess.time_passes(),
@@ -176,14 +191,13 @@ pub fn compile_input(sess: &Session,
                            || hir_map::map_crate(sess, cstore, &mut hir_forest, &defs));
 
         {
-            let _ignore = hir_map.dep_graph.in_ignore();
+            hir_map.dep_graph.assert_ignored();
             controller_entry_point!(after_hir_lowering,
                                     sess,
                                     CompileState::state_after_hir_lowering(input,
                                                                   sess,
                                                                   outdir,
                                                                   output,
-                                                                  &arena,
                                                                   &arenas,
                                                                   &cstore,
                                                                   &hir_map,
@@ -196,10 +210,6 @@ pub fn compile_input(sess: &Session,
                                     Ok(()));
         }
 
-        time(sess.time_passes(), "attribute checking", || {
-            hir::check_attr::check_crate(sess, &expanded_crate);
-        });
-
         let opt_crate = if control.keep_ast {
             Some(&expanded_crate)
         } else {
@@ -207,30 +217,30 @@ pub fn compile_input(sess: &Session,
             None
         };
 
-        phase_3_run_analysis_passes(sess,
+        phase_3_run_analysis_passes(control,
+                                    sess,
                                     cstore,
                                     hir_map,
                                     analysis,
                                     resolutions,
-                                    &arena,
                                     &arenas,
                                     &crate_name,
                                     &outputs,
                                     |tcx, analysis, rx, result| {
             {
                 // Eventually, we will want to track plugins.
-                let _ignore = tcx.dep_graph.in_ignore();
-
-                let mut state = CompileState::state_after_analysis(input,
-                                                                   sess,
-                                                                   outdir,
-                                                                   output,
-                                                                   opt_crate,
-                                                                   tcx.hir.krate(),
-                                                                   &analysis,
-                                                                   tcx,
-                                                                   &crate_name);
-                (control.after_analysis.callback)(&mut state);
+                tcx.dep_graph.with_ignore(|| {
+                    let mut state = CompileState::state_after_analysis(input,
+                                                                       sess,
+                                                                       outdir,
+                                                                       output,
+                                                                       opt_crate,
+                                                                       tcx.hir.krate(),
+                                                                       &analysis,
+                                                                       tcx,
+                                                                       &crate_name);
+                    (control.after_analysis.callback)(&mut state);
+                });
 
                 if control.after_analysis.stop == Compilation::Stop {
                     return result.and_then(|_| Err(CompileIncomplete::Stopped));
@@ -239,14 +249,14 @@ pub fn compile_input(sess: &Session,
 
             result?;
 
-            if log_enabled!(::log::LogLevel::Info) {
+            if log_enabled!(::log::Level::Info) {
                 println!("Pre-trans");
                 tcx.print_debug_stats();
             }
 
             let trans = phase_4_translate_to_llvm::<DefaultTransCrate>(tcx, rx);
 
-            if log_enabled!(::log::LogLevel::Info) {
+            if log_enabled!(::log::Level::Info) {
                 println!("Post-trans");
                 tcx.print_debug_stats();
             }
@@ -304,17 +314,9 @@ fn keep_hygiene_data(sess: &Session) -> bool {
     sess.opts.debugging_opts.keep_hygiene_data
 }
 
-
-/// The name used for source code that doesn't originate in a file
-/// (e.g. source from stdin or a string)
-pub fn anon_src() -> String {
-    "<anon>".to_string()
-}
-
-pub fn source_name(input: &Input) -> String {
+pub fn source_name(input: &Input) -> FileName {
     match *input {
-        // FIXME (#9639): This needs to handle non-utf8 paths
-        Input::File(ref ifile) => ifile.to_str().unwrap().to_string(),
+        Input::File(ref ifile) => ifile.clone().into(),
         Input::Str { ref name, .. } => name.clone(),
     }
 }
@@ -348,6 +350,13 @@ pub struct CompileController<'a> {
     pub keep_ast: bool,
     // -Zcontinue-parse-after-error
     pub continue_parse_after_error: bool,
+
+    /// Allows overriding default rustc query providers,
+    /// after `default_provide` has installed them.
+    pub provide: Box<Fn(&mut ty::maps::Providers) + 'a>,
+    /// Same as `provide`, but only for non-local crates,
+    /// applied after `default_provide_extern`.
+    pub provide_extern: Box<Fn(&mut ty::maps::Providers) + 'a>,
 }
 
 impl<'a> CompileController<'a> {
@@ -362,6 +371,8 @@ impl<'a> CompileController<'a> {
             make_glob_map: MakeGlobMap::No,
             keep_ast: false,
             continue_parse_after_error: false,
+            provide: box |_| {},
+            provide_extern: box |_| {},
         }
     }
 }
@@ -397,8 +408,7 @@ pub struct CompileState<'a, 'tcx: 'a> {
     pub output_filenames: Option<&'a OutputFilenames>,
     pub out_dir: Option<&'a Path>,
     pub out_file: Option<&'a Path>,
-    pub arena: Option<&'tcx DroplessArena>,
-    pub arenas: Option<&'tcx GlobalArenas<'tcx>>,
+    pub arenas: Option<&'tcx AllArenas<'tcx>>,
     pub expanded_crate: Option<&'a ast::Crate>,
     pub hir_crate: Option<&'a hir::Crate>,
     pub hir_map: Option<&'a hir_map::Map<'tcx>>,
@@ -418,7 +428,6 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
             session,
             out_dir: out_dir.as_ref().map(|s| &**s),
             out_file: None,
-            arena: None,
             arenas: None,
             krate: None,
             registry: None,
@@ -473,8 +482,7 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
                                 session: &'tcx Session,
                                 out_dir: &'a Option<PathBuf>,
                                 out_file: &'a Option<PathBuf>,
-                                arena: &'tcx DroplessArena,
-                                arenas: &'tcx GlobalArenas<'tcx>,
+                                arenas: &'tcx AllArenas<'tcx>,
                                 cstore: &'tcx CStore,
                                 hir_map: &'a hir_map::Map<'tcx>,
                                 analysis: &'a ty::CrateAnalysis,
@@ -486,7 +494,6 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
                                 -> Self {
         CompileState {
             crate_name: Some(crate_name),
-            arena: Some(arena),
             arenas: Some(arenas),
             cstore: Some(cstore),
             hir_map: Some(hir_map),
@@ -562,7 +569,9 @@ pub fn phase_1_parse_input<'a>(control: &CompileController,
                 parse::parse_crate_from_file(file, &sess.parse_sess)
             }
             Input::Str { ref input, ref name } => {
-                parse::parse_crate_from_source_str(name.clone(), input.clone(), &sess.parse_sess)
+                parse::parse_crate_from_source_str(name.clone(),
+                                                   input.clone(),
+                                                   &sess.parse_sess)
             }
         }
     })?;
@@ -640,14 +649,11 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         disambiguator,
     );
 
-    let dep_graph = if sess.opts.build_dep_graph() {
-        let prev_dep_graph = time(time_passes, "load prev dep-graph", || {
-            rustc_incremental::load_dep_graph(sess)
-        });
-
-        DepGraph::new(prev_dep_graph)
+    // If necessary, compute the dependency graph (in the background).
+    let future_dep_graph = if sess.opts.build_dep_graph() {
+        Some(rustc_incremental::load_dep_graph(sess, time_passes))
     } else {
-        DepGraph::new_disabled()
+        None
     };
 
     time(time_passes, "recursion limit", || {
@@ -800,6 +806,12 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
                                          sess.diagnostic())
     });
 
+    // If we're actually rustdoc then there's no need to actually compile
+    // anything, so switch everything to just looping
+    if sess.opts.actually_rustdoc {
+        krate = ReplaceBodyWithLoop::new(sess).fold_crate(krate);
+    }
+
     // If we're in rustdoc we're always compiling as an rlib, but that'll trip a
     // bunch of checks in the `modify` function below. For now just skip this
     // step entirely if we're rustdoc as it's not too useful anyway.
@@ -869,6 +881,18 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
     })?;
 
     // Lower ast -> hir.
+    // First, we need to collect the dep_graph.
+    let dep_graph = match future_dep_graph {
+        None => DepGraph::new_disabled(),
+        Some(future) => {
+            let prev_graph = time(time_passes, "blocked while dep-graph loading finishes", || {
+                future.open()
+                      .expect("Could not join with background dep_graph thread")
+                      .open(sess)
+            });
+            DepGraph::new(prev_graph)
+        }
+    };
     let hir_forest = time(time_passes, "lowering ast -> hir", || {
         let hir_crate = lower_crate(sess, cstore, &dep_graph, &krate, &mut resolver);
 
@@ -907,16 +931,39 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
     })
 }
 
+pub fn default_provide(providers: &mut ty::maps::Providers) {
+    borrowck::provide(providers);
+    mir::provide(providers);
+    reachable::provide(providers);
+    resolve_lifetime::provide(providers);
+    rustc_privacy::provide(providers);
+    DefaultTransCrate::provide(providers);
+    typeck::provide(providers);
+    ty::provide(providers);
+    traits::provide(providers);
+    reachable::provide(providers);
+    rustc_const_eval::provide(providers);
+    rustc_passes::provide(providers);
+    middle::region::provide(providers);
+    cstore::provide(providers);
+    lint::provide(providers);
+}
+
+pub fn default_provide_extern(providers: &mut ty::maps::Providers) {
+    cstore::provide_extern(providers);
+    DefaultTransCrate::provide_extern(providers);
+}
+
 /// Run the resolution, typechecking, region checking and other
 /// miscellaneous analysis passes on the crate. Return various
 /// structures carrying the results of the analysis.
-pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
+pub fn phase_3_run_analysis_passes<'tcx, F, R>(control: &CompileController,
+                                               sess: &'tcx Session,
                                                cstore: &'tcx CrateStore,
                                                hir_map: hir_map::Map<'tcx>,
                                                mut analysis: ty::CrateAnalysis,
                                                resolutions: Resolutions,
-                                               arena: &'tcx DroplessArena,
-                                               arenas: &'tcx GlobalArenas<'tcx>,
+                                               arenas: &'tcx AllArenas<'tcx>,
                                                name: &str,
                                                output_filenames: &OutputFilenames,
                                                f: F)
@@ -944,10 +991,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
         "load query result cache",
         || rustc_incremental::load_query_result_cache(sess));
 
-    let named_region_map = time(time_passes,
-                                "lifetime resolution",
-                                || middle::resolve_lifetime::krate(sess, cstore, &hir_map))?;
-
     time(time_passes,
          "looking for entry point",
          || middle::entry::find_entry_point(sess, &hir_map));
@@ -966,78 +1009,12 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
               || static_recursion::check_crate(sess, &hir_map))?;
 
     let mut local_providers = ty::maps::Providers::default();
-    borrowck::provide(&mut local_providers);
-    mir::provide(&mut local_providers);
-    reachable::provide(&mut local_providers);
-    rustc_privacy::provide(&mut local_providers);
-    DefaultTransCrate::provide_local(&mut local_providers);
-    typeck::provide(&mut local_providers);
-    ty::provide(&mut local_providers);
-    traits::provide(&mut local_providers);
-    reachable::provide(&mut local_providers);
-    rustc_const_eval::provide(&mut local_providers);
-    rustc_passes::provide(&mut local_providers);
-    middle::region::provide(&mut local_providers);
-    cstore::provide_local(&mut local_providers);
-    lint::provide(&mut local_providers);
+    default_provide(&mut local_providers);
+    (control.provide)(&mut local_providers);
 
-    let mut extern_providers = ty::maps::Providers::default();
-    cstore::provide(&mut extern_providers);
-    DefaultTransCrate::provide_extern(&mut extern_providers);
-    ty::provide_extern(&mut extern_providers);
-    traits::provide_extern(&mut extern_providers);
-    // FIXME(eddyb) get rid of this once we replace const_eval with miri.
-    rustc_const_eval::provide(&mut extern_providers);
-
-    // Setup the MIR passes that we want to run.
-    let mut passes = Passes::new();
-    passes.push_hook(mir::transform::dump_mir::DumpMir);
-
-    // Remove all `EndRegion` statements that are not involved in borrows.
-    passes.push_pass(MIR_CONST, mir::transform::clean_end_regions::CleanEndRegions);
-
-    // What we need to do constant evaluation.
-    passes.push_pass(MIR_CONST, mir::transform::simplify::SimplifyCfg::new("initial"));
-    passes.push_pass(MIR_CONST, mir::transform::type_check::TypeckMir);
-    passes.push_pass(MIR_CONST, mir::transform::rustc_peek::SanityCheck);
-
-    // We compute "constant qualifications" between MIR_CONST and MIR_VALIDATED.
-
-    // What we need to run borrowck etc.
-
-    passes.push_pass(MIR_VALIDATED, mir::transform::qualify_consts::QualifyAndPromoteConstants);
-    passes.push_pass(MIR_VALIDATED, mir::transform::simplify::SimplifyCfg::new("qualify-consts"));
-
-    // borrowck runs between MIR_VALIDATED and MIR_OPTIMIZED.
-
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::no_landing_pads::NoLandingPads);
-    passes.push_pass(MIR_OPTIMIZED,
-                     mir::transform::simplify_branches::SimplifyBranches::new("initial"));
-
-    // These next passes must be executed together
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::add_call_guards::CriticalCallEdges);
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::elaborate_drops::ElaborateDrops);
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::no_landing_pads::NoLandingPads);
-    // AddValidation needs to run after ElaborateDrops and before EraseRegions, and it needs
-    // an AllCallEdges pass right before it.
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::add_call_guards::AllCallEdges);
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::add_validation::AddValidation);
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::simplify::SimplifyCfg::new("elaborate-drops"));
-    // No lifetime analysis based on borrowing can be done from here on out.
-
-    // From here on out, regions are gone.
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::erase_regions::EraseRegions);
-
-    // Optimizations begin.
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::inline::Inline);
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::instcombine::InstCombine);
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::deaggregator::Deaggregator);
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::copy_prop::CopyPropagation);
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::simplify::SimplifyLocals);
-
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::generator::StateTransform);
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::add_call_guards::CriticalCallEdges);
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::dump_mir::Marker("PreTrans"));
+    let mut extern_providers = local_providers;
+    default_provide_extern(&mut extern_providers);
+    (control.provide_extern)(&mut extern_providers);
 
     let (tx, rx) = mpsc::channel();
 
@@ -1045,11 +1022,8 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                              cstore,
                              local_providers,
                              extern_providers,
-                             Rc::new(passes),
                              arenas,
-                             arena,
                              resolutions,
-                             named_region_map,
                              hir_map,
                              query_result_on_disk_cache,
                              name,
@@ -1059,6 +1033,10 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
         // Do some initialization of the DepGraph that can only be done with the
         // tcx available.
         rustc_incremental::dep_graph_tcx_init(tcx);
+
+        time(sess.time_passes(), "attribute checking", || {
+            hir::check_attr::check_crate(tcx)
+        });
 
         time(time_passes,
              "stability checking",
@@ -1096,7 +1074,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
         time(time_passes,
              "MIR borrow checking",
-             || for def_id in tcx.body_owners() { tcx.mir_borrowck(def_id) });
+             || for def_id in tcx.body_owners() { tcx.mir_borrowck(def_id); });
 
         time(time_passes,
              "MIR effect checking",
@@ -1166,10 +1144,10 @@ pub fn phase_5_run_llvm_passes<Trans: TransCrate>(sess: &Session,
     (sess.compile_status(), trans)
 }
 
-fn escape_dep_filename(filename: &str) -> String {
+fn escape_dep_filename(filename: &FileName) -> String {
     // Apparently clang and gcc *only* escape spaces:
     // http://llvm.org/klaus/clang/commit/9d50634cfc268ecc9a7250226dd5ca0e945240d4
-    filename.replace(" ", "\\ ")
+    filename.to_string().replace(" ", "\\ ")
 }
 
 fn write_out_deps(sess: &Session, outputs: &OutputFilenames, crate_name: &str) {

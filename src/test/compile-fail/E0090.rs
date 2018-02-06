@@ -12,5 +12,4 @@ fn foo<'a: 'b, 'b: 'a>() {}
 
 fn main() {
     foo::<'static>(); //~ ERROR expected 2 lifetime parameters, found 1 lifetime parameter [E0090]
-                      //~^ NOTE expected 2 lifetime parameters
 }

@@ -17,14 +17,14 @@ use rustc::hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefIndex};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::hir::svh::Svh;
 use rustc::middle::cstore::{DepKind, ExternCrate, MetadataLoader};
-use rustc::session::CrateDisambiguator;
+use rustc::session::{Session, CrateDisambiguator};
 use rustc_back::PanicStrategy;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::util::nodemap::{FxHashMap, FxHashSet, NodeMap};
 
 use std::cell::{RefCell, Cell};
 use std::rc::Rc;
-use owning_ref::ErasedBoxRef;
+use rustc_data_structures::owning_ref::ErasedBoxRef;
 use syntax::{ast, attr};
 use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;
@@ -34,7 +34,7 @@ pub use rustc::middle::cstore::{NativeLibrary, NativeLibraryKind, LinkagePrefere
 pub use rustc::middle::cstore::NativeLibraryKind::*;
 pub use rustc::middle::cstore::{CrateSource, LibSource};
 
-pub use cstore_impl::{provide, provide_local};
+pub use cstore_impl::{provide, provide_extern};
 
 // A map from external crate numbers (as decoded from some crate file) to
 // local crate numbers (as generated during this session). Each external
@@ -91,7 +91,7 @@ pub struct CrateMetadata {
 }
 
 pub struct CStore {
-    metas: RefCell<FxHashMap<CrateNum, Rc<CrateMetadata>>>,
+    metas: RefCell<IndexVec<CrateNum, Option<Rc<CrateMetadata>>>>,
     /// Map from NodeId's of local extern crate statements to crate numbers
     extern_mod_crate_map: RefCell<NodeMap<CrateNum>>,
     pub metadata_loader: Box<MetadataLoader>,
@@ -100,7 +100,7 @@ pub struct CStore {
 impl CStore {
     pub fn new(metadata_loader: Box<MetadataLoader>) -> CStore {
         CStore {
-            metas: RefCell::new(FxHashMap()),
+            metas: RefCell::new(IndexVec::new()),
             extern_mod_crate_map: RefCell::new(FxHashMap()),
             metadata_loader,
         }
@@ -111,18 +111,25 @@ impl CStore {
     }
 
     pub fn get_crate_data(&self, cnum: CrateNum) -> Rc<CrateMetadata> {
-        self.metas.borrow().get(&cnum).unwrap().clone()
+        self.metas.borrow()[cnum].clone().unwrap()
     }
 
     pub fn set_crate_data(&self, cnum: CrateNum, data: Rc<CrateMetadata>) {
-        self.metas.borrow_mut().insert(cnum, data);
+        use rustc_data_structures::indexed_vec::Idx;
+        let mut met = self.metas.borrow_mut();
+        while met.len() <= cnum.index() {
+            met.push(None);
+        }
+        met[cnum] = Some(data);
     }
 
     pub fn iter_crate_data<I>(&self, mut i: I)
         where I: FnMut(CrateNum, &Rc<CrateMetadata>)
     {
-        for (&k, v) in self.metas.borrow().iter() {
-            i(k, v);
+        for (k, v) in self.metas.borrow().iter_enumerated() {
+            if let &Some(ref v) = v {
+                i(k, v);
+            }
         }
     }
 
@@ -150,8 +157,10 @@ impl CStore {
 
     pub fn do_postorder_cnums_untracked(&self) -> Vec<CrateNum> {
         let mut ordering = Vec::new();
-        for (&num, _) in self.metas.borrow().iter() {
-            self.push_dependencies_in_postorder(&mut ordering, num);
+        for (num, v) in self.metas.borrow().iter_enumerated() {
+            if let &Some(_) = v {
+                self.push_dependencies_in_postorder(&mut ordering, num);
+            }
         }
         return ordering
     }
@@ -176,8 +185,8 @@ impl CrateMetadata {
         self.root.disambiguator
     }
 
-    pub fn needs_allocator(&self) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+    pub fn needs_allocator(&self, sess: &Session) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
         attr::contains_name(&attrs, "needs_allocator")
     }
 
@@ -189,43 +198,43 @@ impl CrateMetadata {
         self.root.has_default_lib_allocator.clone()
     }
 
-    pub fn is_panic_runtime(&self) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+    pub fn is_panic_runtime(&self, sess: &Session) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
         attr::contains_name(&attrs, "panic_runtime")
     }
 
-    pub fn needs_panic_runtime(&self) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+    pub fn needs_panic_runtime(&self, sess: &Session) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
         attr::contains_name(&attrs, "needs_panic_runtime")
     }
 
-    pub fn is_compiler_builtins(&self) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+    pub fn is_compiler_builtins(&self, sess: &Session) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
         attr::contains_name(&attrs, "compiler_builtins")
     }
 
-    pub fn is_sanitizer_runtime(&self) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+    pub fn is_sanitizer_runtime(&self, sess: &Session) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
         attr::contains_name(&attrs, "sanitizer_runtime")
     }
 
-    pub fn is_profiler_runtime(&self) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+    pub fn is_profiler_runtime(&self, sess: &Session) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
         attr::contains_name(&attrs, "profiler_runtime")
     }
 
-    pub fn is_no_builtins(&self) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+    pub fn is_no_builtins(&self, sess: &Session) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
         attr::contains_name(&attrs, "no_builtins")
     }
 
-     pub fn has_copy_closures(&self) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+     pub fn has_copy_closures(&self, sess: &Session) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
         attr::contains_feature_attr(&attrs, "copy_closures")
     }
 
-    pub fn has_clone_closures(&self) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+    pub fn has_clone_closures(&self, sess: &Session) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
         attr::contains_feature_attr(&attrs, "clone_closures")
     }
 

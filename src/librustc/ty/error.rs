@@ -49,11 +49,17 @@ pub enum TypeError<'tcx> {
     FloatMismatch(ExpectedFound<ast::FloatTy>),
     Traits(ExpectedFound<DefId>),
     VariadicMismatch(ExpectedFound<bool>),
-    CyclicTy,
+
+    /// Instantiating a type variable with the given type would have
+    /// created a cycle (because it appears somewhere within that
+    /// type).
+    CyclicTy(Ty<'tcx>),
     ProjectionMismatched(ExpectedFound<DefId>),
     ProjectionBoundsLength(ExpectedFound<usize>),
     TyParamDefaultMismatch(ExpectedFound<type_variable::Default<'tcx>>),
     ExistentialMismatch(ExpectedFound<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>),
+
+    OldStyleLUB(Box<TypeError<'tcx>>),
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
@@ -82,7 +88,7 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
         }
 
         match *self {
-            CyclicTy => write!(f, "cyclic type of infinite size"),
+            CyclicTy(_) => write!(f, "cyclic type of infinite size"),
             Mismatch => write!(f, "types differ"),
             UnsafetyMismatch(values) => {
                 write!(f, "expected {} fn, found {} fn",
@@ -170,6 +176,9 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                 report_maybe_different(f, format!("trait `{}`", values.expected),
                                        format!("trait `{}`", values.found))
             }
+            OldStyleLUB(ref err) => {
+                write!(f, "{}", err)
+            }
         }
     }
 }
@@ -251,10 +260,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 let expected_str = values.expected.sort_string(self);
                 let found_str = values.found.sort_string(self);
                 if expected_str == found_str && expected_str == "closure" {
-                    db.span_note(sp,
-                        "no two closures, even if identical, have the same type");
-                    db.span_help(sp,
-                        "consider boxing your closure and/or using it as a trait object");
+                    db.note("no two closures, even if identical, have the same type");
+                    db.help("consider boxing your closure and/or using it as a trait object");
                 }
             },
             TyParamDefaultMismatch(values) => {
@@ -292,6 +299,20 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
                 db.span_note(found.origin_span,
                              "...that also applies to the same type variable here");
+            }
+            OldStyleLUB(err) => {
+                db.note("this was previously accepted by the compiler but has been phased out");
+                db.note("for more information, see https://github.com/rust-lang/rust/issues/45852");
+
+                self.note_and_explain_type_err(db, &err, sp);
+            }
+            CyclicTy(ty) => {
+                // Watch out for various cases of cyclic types and try to explain.
+                if ty.is_closure() || ty.is_generator() {
+                    db.note("closures cannot capture themselves or take themselves as argument;\n\
+                             this error may be the result of a recent compiler bug-fix,\n\
+                             see https://github.com/rust-lang/rust/issues/46062 for more details");
+                }
             }
             _ => {}
         }

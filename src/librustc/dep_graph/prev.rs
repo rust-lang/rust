@@ -45,6 +45,11 @@ impl PreviousDepGraph {
     }
 
     #[inline]
+    pub fn node_to_index(&self, dep_node: &DepNode) -> SerializedDepNodeIndex {
+        self.index[dep_node]
+    }
+
+    #[inline]
     pub fn fingerprint_of(&self, dep_node: &DepNode) -> Option<Fingerprint> {
         self.index
             .get(dep_node)
@@ -56,5 +61,9 @@ impl PreviousDepGraph {
                                 dep_node_index: SerializedDepNodeIndex)
                                 -> Fingerprint {
         self.data.nodes[dep_node_index].1
+    }
+
+    pub fn node_count(&self) -> usize {
+        self.index.len()
     }
 }

@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/issue-35030.rs:19:14
    |
-19 |         Some(true)
+19 |         Some(true) //~ ERROR mismatched types
    |              ^^^^ expected type parameter, found bool
    |
    = note: expected type `bool` (type parameter)

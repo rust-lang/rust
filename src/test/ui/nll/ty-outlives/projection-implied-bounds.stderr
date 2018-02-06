@@ -1,0 +1,16 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/projection-implied-bounds.rs:45:36
+   |
+45 |     twice(value, |value_ref, item| invoke2(value_ref, item));
+   |                                    ^^^^^^^
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/projection-implied-bounds.rs:45:18
+   |
+45 |     twice(value, |value_ref, item| invoke2(value_ref, item));
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `T: 'static`...
+
+error: aborting due to previous error
+

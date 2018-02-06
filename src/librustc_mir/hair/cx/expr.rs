@@ -20,6 +20,7 @@ use rustc::ty::{self, AdtKind, VariantDef, Ty};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
 use rustc::ty::cast::CastKind as TyCastKind;
 use rustc::hir;
+use rustc::hir::def_id::LocalDefId;
 
 impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
     type Output = Expr<'tcx>;
@@ -115,7 +116,7 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 },
             };
 
-            overloaded_lvalue(cx, hir_expr, adjustment.target, Some(call), vec![expr.to_ref()])
+            overloaded_place(cx, hir_expr, adjustment.target, Some(call), vec![expr.to_ref()])
         }
         Adjust::Borrow(AutoBorrow::Ref(r, m)) => {
             ExprKind::Borrow {
@@ -334,7 +335,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
         hir::ExprIndex(ref lhs, ref index) => {
             if cx.tables().is_method_call(expr) {
-                overloaded_lvalue(cx, expr, expr_ty, None, vec![lhs.to_ref(), index.to_ref()])
+                overloaded_place(cx, expr, expr_ty, None, vec![lhs.to_ref(), index.to_ref()])
             } else {
                 ExprKind::Index {
                     lhs: lhs.to_ref(),
@@ -345,7 +346,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
         hir::ExprUnary(hir::UnOp::UnDeref, ref arg) => {
             if cx.tables().is_method_call(expr) {
-                overloaded_lvalue(cx, expr, expr_ty, None, vec![arg.to_ref()])
+                overloaded_place(cx, expr, expr_ty, None, vec![arg.to_ref()])
             } else {
                 ExprKind::Deref { arg: arg.to_ref() }
             }
@@ -712,8 +713,8 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             });
             let region = cx.tcx.mk_region(region);
 
-            let self_expr = if let ty::TyClosure(..) = closure_ty.sty {
-                match cx.tcx.closure_kind(closure_def_id) {
+            let self_expr = if let ty::TyClosure(_, closure_substs) = closure_ty.sty {
+                match cx.infcx.closure_kind(closure_def_id, closure_substs).unwrap() {
                     ty::ClosureKind::Fn => {
                         let ref_closure_ty = cx.tcx.mk_ref(region,
                                                            ty::TypeAndMut {
@@ -783,7 +784,7 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             // point we need an implicit deref
             let upvar_id = ty::UpvarId {
                 var_id: var_hir_id,
-                closure_expr_id: closure_def_id.index,
+                closure_expr_id: LocalDefId::from_def_id(closure_def_id),
             };
             match cx.tables().upvar_capture(upvar_id) {
                 ty::UpvarCapture::ByValue => field_kind,
@@ -843,15 +844,15 @@ fn overloaded_operator<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     }
 }
 
-fn overloaded_lvalue<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
+fn overloaded_place<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                      expr: &'tcx hir::Expr,
-                                     lvalue_ty: Ty<'tcx>,
+                                     place_ty: Ty<'tcx>,
                                      custom_callee: Option<(DefId, &'tcx Substs<'tcx>)>,
                                      args: Vec<ExprRef<'tcx>>)
                                      -> ExprKind<'tcx> {
     // For an overloaded *x or x[y] expression of type T, the method
     // call returns an &T and we must add the deref so that the types
-    // line up (this is because `*x` and `x[y]` represent lvalues):
+    // line up (this is because `*x` and `x[y]` represent places):
 
     let recv_ty = match args[0] {
         ExprRef::Hair(e) => cx.tables().expr_ty_adjusted(e),
@@ -863,10 +864,10 @@ fn overloaded_lvalue<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     // `Deref(Mut)::Deref(_mut)` and `Index(Mut)::index(_mut)`.
     let (region, mt) = match recv_ty.sty {
         ty::TyRef(region, mt) => (region, mt),
-        _ => span_bug!(expr.span, "overloaded_lvalue: receiver is not a reference"),
+        _ => span_bug!(expr.span, "overloaded_place: receiver is not a reference"),
     };
     let ref_ty = cx.tcx.mk_ref(region, ty::TypeAndMut {
-        ty: lvalue_ty,
+        ty: place_ty,
         mutbl: mt.mutbl,
     });
 
@@ -897,7 +898,7 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     let var_hir_id = cx.tcx.hir.node_to_hir_id(freevar.var_id());
     let upvar_id = ty::UpvarId {
         var_id: var_hir_id,
-        closure_expr_id: cx.tcx.hir.local_def_id(closure_expr.id).index,
+        closure_expr_id: cx.tcx.hir.local_def_id(closure_expr.id).to_local(),
     };
     let upvar_capture = cx.tables().upvar_capture(upvar_id);
     let temp_lifetime = cx.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);

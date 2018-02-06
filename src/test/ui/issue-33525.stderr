@@ -1,19 +1,19 @@
 error[E0425]: cannot find value `a` in this scope
   --> $DIR/issue-33525.rs:12:5
    |
-12 |     a;
+12 |     a; //~ ERROR cannot find value `a`
    |     ^ not found in this scope
 
 error[E0609]: no field `lorem` on type `&'static str`
   --> $DIR/issue-33525.rs:13:8
    |
-13 |     "".lorem;
+13 |     "".lorem; //~ ERROR no field
    |        ^^^^^
 
 error[E0609]: no field `ipsum` on type `&'static str`
   --> $DIR/issue-33525.rs:14:8
    |
-14 |     "".ipsum;
+14 |     "".ipsum; //~ ERROR no field
    |        ^^^^^
 
 error: aborting due to 3 previous errors

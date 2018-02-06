@@ -29,7 +29,7 @@ pub const FN_OUTPUT_NAME: &'static str = "Output";
 
 // Useful type to use with `Result<>` indicate that an error has already
 // been reported to the user, so no need to continue checking.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable)]
 pub struct ErrorReported;
 
 thread_local!(static TIME_DEPTH: Cell<usize> = Cell::new(0));
@@ -215,24 +215,15 @@ pub fn record_time<T, F>(accu: &Cell<Duration>, f: F) -> T where
     rv
 }
 
-// Like std::macros::try!, but for Option<>.
-#[cfg(unix)]
-macro_rules! option_try(
-    ($e:expr) => (match $e { Some(e) => e, None => return None })
-);
-
 // Memory reporting
 #[cfg(unix)]
 fn get_resident() -> Option<usize> {
-    use std::fs::File;
-    use std::io::Read;
+    use std::fs;
 
     let field = 1;
-    let mut f = option_try!(File::open("/proc/self/statm").ok());
-    let mut contents = String::new();
-    option_try!(f.read_to_string(&mut contents).ok());
-    let s = option_try!(contents.split_whitespace().nth(field));
-    let npages = option_try!(s.parse::<usize>().ok());
+    let contents = fs::read_string("/proc/self/statm").ok()?;
+    let s = contents.split_whitespace().nth(field)?;
+    let npages = s.parse::<usize>().ok()?;
     Some(npages * 4096)
 }
 

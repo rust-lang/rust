@@ -1,49 +1,47 @@
 error: expected one of `:` or `@`, found `<`
   --> $DIR/issue-34264.rs:11:14
    |
-11 | fn foo(Option<i32>, String) {}
+11 | fn foo(Option<i32>, String) {} //~ ERROR expected one of
    |              ^ expected one of `:` or `@` here
 
 error: expected one of `:` or `@`, found `)`
   --> $DIR/issue-34264.rs:11:27
    |
-11 | fn foo(Option<i32>, String) {}
+11 | fn foo(Option<i32>, String) {} //~ ERROR expected one of
    |                           ^ expected one of `:` or `@` here
 
 error: expected one of `:` or `@`, found `,`
-  --> $DIR/issue-34264.rs:12:9
+  --> $DIR/issue-34264.rs:13:9
    |
-12 | fn bar(x, y: usize) {}
+13 | fn bar(x, y: usize) {} //~ ERROR expected one of
    |         ^ expected one of `:` or `@` here
 
 error[E0061]: this function takes 2 parameters but 3 parameters were supplied
-  --> $DIR/issue-34264.rs:16:9
+  --> $DIR/issue-34264.rs:17:5
    |
-11 | fn foo(Option<i32>, String) {}
-   | ------------------------------ defined here
+11 | fn foo(Option<i32>, String) {} //~ ERROR expected one of
+   | --------------------------- defined here
 ...
-16 |     foo(Some(42), 2, "");
-   |         ^^^^^^^^^^^^^^^ expected 2 parameters
+17 |     foo(Some(42), 2, ""); //~ ERROR this function takes
+   |     ^^^^^^^^^^^^^^^^^^^^ expected 2 parameters
 
 error[E0308]: mismatched types
-  --> $DIR/issue-34264.rs:17:13
+  --> $DIR/issue-34264.rs:18:13
    |
-17 |     bar("", "");
+18 |     bar("", ""); //~ ERROR mismatched types
    |             ^^ expected usize, found reference
    |
    = note: expected type `usize`
               found type `&'static str`
-   = help: here are some functions which might fulfill your needs:
-           - .len()
 
 error[E0061]: this function takes 2 parameters but 3 parameters were supplied
-  --> $DIR/issue-34264.rs:19:9
+  --> $DIR/issue-34264.rs:20:5
    |
-12 | fn bar(x, y: usize) {}
-   | ---------------------- defined here
+13 | fn bar(x, y: usize) {} //~ ERROR expected one of
+   | ------------------- defined here
 ...
-19 |     bar(1, 2, 3);
-   |         ^^^^^^^ expected 2 parameters
+20 |     bar(1, 2, 3); //~ ERROR this function takes
+   |     ^^^^^^^^^^^^ expected 2 parameters
 
 error: aborting due to 6 previous errors
 

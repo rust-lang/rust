@@ -18,7 +18,7 @@ use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::mir::*;
 use rustc::mir::visit::{MutVisitor, TyContext};
-use rustc::mir::transform::{MirPass, MirSource};
+use transform::{MirPass, MirSource};
 
 struct EraseRegionsVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,

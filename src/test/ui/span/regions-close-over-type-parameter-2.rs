@@ -30,7 +30,8 @@ fn main() {
 
     let _ = {
         let tmp0 = 3;
-        let tmp1 = &tmp0; //~ ERROR `tmp0` does not live long enough
+        let tmp1 = &tmp0;
         repeater3(tmp1)
     };
+    //~^^^ ERROR `tmp0` does not live long enough
 }

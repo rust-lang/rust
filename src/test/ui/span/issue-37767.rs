@@ -17,7 +17,7 @@ trait B : A {
 }
 
 fn bar<T: B>(a: &T) {
-    a.foo()
+    a.foo() //~ ERROR multiple applicable items
 }
 
 trait C {
@@ -29,7 +29,7 @@ trait D : C {
 }
 
 fn quz<T: D>(a: &T) {
-    a.foo()
+    a.foo() //~ ERROR multiple applicable items
 }
 
 trait E : Sized {
@@ -41,7 +41,7 @@ trait F : E {
 }
 
 fn foo<T: F>(a: T) {
-    a.foo()
+    a.foo() //~ ERROR multiple applicable items
 }
 
 fn pass<T: C>(a: &T) {

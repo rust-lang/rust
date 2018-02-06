@@ -12,7 +12,7 @@ pub use self::CommentStyle::*;
 
 use ast;
 use codemap::CodeMap;
-use syntax_pos::{BytePos, CharPos, Pos};
+use syntax_pos::{BytePos, CharPos, Pos, FileName};
 use parse::lexer::{is_block_doc_comment, is_pattern_whitespace};
 use parse::lexer::{self, ParseSess, StringReader, TokenAndSpan};
 use print::pprust;
@@ -101,7 +101,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
                     break;
                 }
             }
-            if i > line.len() {
+            if i >= line.len() {
                 can_trim = false;
             }
             if !can_trim {
@@ -343,7 +343,7 @@ pub struct Literal {
 
 // it appears this function is called only from pprust... that's
 // probably not a good thing.
-pub fn gather_comments_and_literals(sess: &ParseSess, path: String, srdr: &mut Read)
+pub fn gather_comments_and_literals(sess: &ParseSess, path: FileName, srdr: &mut Read)
                                     -> (Vec<Comment>, Vec<Literal>) {
     let mut src = Vec::new();
     srdr.read_to_end(&mut src).unwrap();

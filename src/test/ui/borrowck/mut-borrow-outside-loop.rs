@@ -14,13 +14,13 @@ fn main() {
     let mut void = ();
 
     let first = &mut void;
-    let second = &mut void;
+    let second = &mut void; //~ ERROR cannot borrow
 
     loop {
         let mut inner_void = ();
 
         let inner_first = &mut inner_void;
-        let inner_second = &mut inner_void;
+        let inner_second = &mut inner_void; //~ ERROR cannot borrow
     }
 }
 

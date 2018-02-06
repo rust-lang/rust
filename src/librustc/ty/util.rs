@@ -10,14 +10,15 @@
 
 //! misc. type-system utilities too small to deserve their own file
 
-use hir::def_id::{DefId, LOCAL_CRATE};
-use hir::map::DefPathData;
+use hir::def::Def;
+use hir::def_id::DefId;
+use hir::map::{DefPathData, Node};
+use hir;
 use ich::NodeIdHashingMode;
 use middle::const_val::ConstVal;
 use traits::{self, Reveal};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 use ty::fold::TypeVisitor;
-use ty::layout::{Layout, LayoutError};
 use ty::subst::{Subst, Kind};
 use ty::TypeVariants::*;
 use util::common::ErrorReported;
@@ -54,7 +55,7 @@ macro_rules! typed_literal {
             SignedInt(ast::IntTy::I32)   => ConstInt::I32($lit),
             SignedInt(ast::IntTy::I64)   => ConstInt::I64($lit),
             SignedInt(ast::IntTy::I128)   => ConstInt::I128($lit),
-            SignedInt(ast::IntTy::Is) => match $tcx.sess.target.isize_ty {
+            SignedInt(ast::IntTy::Isize) => match $tcx.sess.target.isize_ty {
                 ast::IntTy::I16 => ConstInt::Isize(ConstIsize::Is16($lit)),
                 ast::IntTy::I32 => ConstInt::Isize(ConstIsize::Is32($lit)),
                 ast::IntTy::I64 => ConstInt::Isize(ConstIsize::Is64($lit)),
@@ -65,7 +66,7 @@ macro_rules! typed_literal {
             UnsignedInt(ast::UintTy::U32) => ConstInt::U32($lit),
             UnsignedInt(ast::UintTy::U64) => ConstInt::U64($lit),
             UnsignedInt(ast::UintTy::U128) => ConstInt::U128($lit),
-            UnsignedInt(ast::UintTy::Us) => match $tcx.sess.target.usize_ty {
+            UnsignedInt(ast::UintTy::Usize) => match $tcx.sess.target.usize_ty {
                 ast::UintTy::U16 => ConstInt::Usize(ConstUsize::Us16($lit)),
                 ast::UintTy::U32 => ConstInt::Usize(ConstUsize::Us32($lit)),
                 ast::UintTy::U64 => ConstInt::Usize(ConstUsize::Us64($lit)),
@@ -83,13 +84,13 @@ impl IntTypeExt for attr::IntType {
             SignedInt(ast::IntTy::I32)     => tcx.types.i32,
             SignedInt(ast::IntTy::I64)     => tcx.types.i64,
             SignedInt(ast::IntTy::I128)     => tcx.types.i128,
-            SignedInt(ast::IntTy::Is)   => tcx.types.isize,
+            SignedInt(ast::IntTy::Isize)   => tcx.types.isize,
             UnsignedInt(ast::UintTy::U8)    => tcx.types.u8,
             UnsignedInt(ast::UintTy::U16)   => tcx.types.u16,
             UnsignedInt(ast::UintTy::U32)   => tcx.types.u32,
             UnsignedInt(ast::UintTy::U64)   => tcx.types.u64,
             UnsignedInt(ast::UintTy::U128)   => tcx.types.u128,
-            UnsignedInt(ast::UintTy::Us) => tcx.types.usize,
+            UnsignedInt(ast::UintTy::Usize) => tcx.types.usize,
         }
     }
 
@@ -104,13 +105,13 @@ impl IntTypeExt for attr::IntType {
             (SignedInt(ast::IntTy::I32), ConstInt::I32(_)) => {},
             (SignedInt(ast::IntTy::I64), ConstInt::I64(_)) => {},
             (SignedInt(ast::IntTy::I128), ConstInt::I128(_)) => {},
-            (SignedInt(ast::IntTy::Is), ConstInt::Isize(_)) => {},
+            (SignedInt(ast::IntTy::Isize), ConstInt::Isize(_)) => {},
             (UnsignedInt(ast::UintTy::U8), ConstInt::U8(_)) => {},
             (UnsignedInt(ast::UintTy::U16), ConstInt::U16(_)) => {},
             (UnsignedInt(ast::UintTy::U32), ConstInt::U32(_)) => {},
             (UnsignedInt(ast::UintTy::U64), ConstInt::U64(_)) => {},
             (UnsignedInt(ast::UintTy::U128), ConstInt::U128(_)) => {},
-            (UnsignedInt(ast::UintTy::Us), ConstInt::Usize(_)) => {},
+            (UnsignedInt(ast::UintTy::Usize), ConstInt::Usize(_)) => {},
             _ => bug!("disr type mismatch: {:?} vs {:?}", self, val),
         }
     }
@@ -257,7 +258,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 adt.variant_with_id(vid).fields.get(i).map(|f| f.ty(self, substs))
             }
             (&TyAdt(adt, substs), None) => {
-                // Don't use `struct_variant`, this may be a univariant enum.
+                // Don't use `non_enum_variant`, this may be a univariant enum.
                 adt.variants[0].fields.get(i).map(|f| f.ty(self, substs))
             }
             (&TyTuple(ref v, _), None) => v.get(i).cloned(),
@@ -276,7 +277,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 adt.variant_with_id(vid).find_field_named(n).map(|f| f.ty(self, substs))
             }
             (&TyAdt(adt, substs), None) => {
-                adt.struct_variant().find_field_named(n).map(|f| f.ty(self, substs))
+                adt.non_enum_variant().find_field_named(n).map(|f| f.ty(self, substs))
             }
             _ => return None
         }
@@ -292,7 +293,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     if !def.is_struct() {
                         break;
                     }
-                    match def.struct_variant().fields.last() {
+                    match def.non_enum_variant().fields.last() {
                         Some(f) => ty = f.ty(self, substs),
                         None => break,
                     }
@@ -328,7 +329,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             match (&a.sty, &b.sty) {
                 (&TyAdt(a_def, a_substs), &TyAdt(b_def, b_substs))
                         if a_def == b_def && a_def.is_struct() => {
-                    if let Some(f) = a_def.struct_variant().fields.last() {
+                    if let Some(f) = a_def.non_enum_variant().fields.last() {
                         a = f.ty(self, a_substs);
                         b = f.ty(self, b_substs);
                     } else {
@@ -426,7 +427,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             return None;
         };
 
-        self.coherent_trait((LOCAL_CRATE, drop_trait));
+        ty::maps::queries::coherent_trait::ensure(self, drop_trait);
 
         let mut dtor_did = None;
         let ty = self.type_of(adt_did);
@@ -438,12 +439,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }
         });
 
-        let dtor_did = match dtor_did {
-            Some(dtor) => dtor,
-            None => return None,
-        };
-
-        Some(ty::Destructor { did: dtor_did })
+        Some(ty::Destructor { did: dtor_did? })
     }
 
     /// Return the set of types that are required to be alive in
@@ -619,14 +615,52 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         result
     }
 
+    pub fn is_closure(self, def_id: DefId) -> bool {
+        self.def_key(def_id).disambiguated_data.data == DefPathData::ClosureExpr
+    }
+
+    /// Given the `DefId` of a fn or closure, returns the `DefId` of
+    /// the innermost fn item that the closure is contained within.
+    /// This is a significant def-id because, when we do
+    /// type-checking, we type-check this fn item and all of its
+    /// (transitive) closures together.  Therefore, when we fetch the
+    /// `typeck_tables_of` the closure, for example, we really wind up
+    /// fetching the `typeck_tables_of` the enclosing fn item.
     pub fn closure_base_def_id(self, def_id: DefId) -> DefId {
         let mut def_id = def_id;
-        while self.def_key(def_id).disambiguated_data.data == DefPathData::ClosureExpr {
+        while self.is_closure(def_id) {
             def_id = self.parent_def_id(def_id).unwrap_or_else(|| {
                 bug!("closure {:?} has no parent", def_id);
             });
         }
         def_id
+    }
+
+    /// Given the def-id and substs a closure, creates the type of
+    /// `self` argument that the closure expects. For example, for a
+    /// `Fn` closure, this would return a reference type `&T` where
+    /// `T=closure_ty`.
+    ///
+    /// Returns `None` if this closure's kind has not yet been inferred.
+    /// This should only be possible during type checking.
+    ///
+    /// Note that the return value is a late-bound region and hence
+    /// wrapped in a binder.
+    pub fn closure_env_ty(self,
+                          closure_def_id: DefId,
+                          closure_substs: ty::ClosureSubsts<'tcx>)
+                          -> Option<ty::Binder<Ty<'tcx>>>
+    {
+        let closure_ty = self.mk_closure(closure_def_id, closure_substs);
+        let env_region = ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrEnv);
+        let closure_kind_ty = closure_substs.closure_kind_ty(closure_def_id, self);
+        let closure_kind = closure_kind_ty.to_opt_closure_kind()?;
+        let env_ty = match closure_kind {
+            ty::ClosureKind::Fn => self.mk_imm_ref(self.mk_region(env_region), closure_ty),
+            ty::ClosureKind::FnMut => self.mk_mut_ref(self.mk_region(env_region), closure_ty),
+            ty::ClosureKind::FnOnce => closure_ty,
+        };
+        Some(ty::Binder(env_ty))
     }
 
     /// Given the def-id of some item that has no type parameters, make
@@ -645,6 +679,26 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ast::UintTy::U32 => ConstInt::Usize(ConstUsize::Us32(val as u32)),
             ast::UintTy::U64 => ConstInt::Usize(ConstUsize::Us64(val as u64)),
             _ => bug!(),
+        }
+    }
+
+    /// Check if the node pointed to by def_id is a mutable static item
+    pub fn is_static_mut(&self, def_id: DefId) -> bool {
+        if let Some(node) = self.hir.get_if_local(def_id) {
+            match node {
+                Node::NodeItem(&hir::Item {
+                    node: hir::ItemStatic(_, hir::MutMutable, _), ..
+                }) => true,
+                Node::NodeForeignItem(&hir::ForeignItem {
+                    node: hir::ForeignItemStatic(_, mutbl), ..
+                }) => mutbl,
+                _ => false
+            }
+        } else {
+            match self.describe_def(def_id) {
+                Some(Def::Static(_, mutbl)) => mutbl,
+                _ => false
+            }
         }
     }
 }
@@ -768,6 +822,8 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
             ty::ReEarlyBound(ty::EarlyBoundRegion { def_id, .. }) => {
                 self.def_id(def_id);
             }
+
+            ty::ReClosureBound(..) |
             ty::ReLateBound(..) |
             ty::ReFree(..) |
             ty::ReScope(..) |
@@ -825,30 +881,6 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                       -> bool {
         tcx.needs_drop_raw(param_env.and(self))
     }
-
-    /// Computes the layout of a type. Note that this implicitly
-    /// executes in "reveal all" mode.
-    #[inline]
-    pub fn layout<'lcx>(&'tcx self,
-                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                        param_env: ty::ParamEnv<'tcx>)
-                        -> Result<&'tcx Layout, LayoutError<'tcx>> {
-        let ty = tcx.erase_regions(&self);
-        let layout = tcx.layout_raw(param_env.reveal_all().and(ty));
-
-        // NB: This recording is normally disabled; when enabled, it
-        // can however trigger recursive invocations of `layout()`.
-        // Therefore, we execute it *after* the main query has
-        // completed, to avoid problems around recursive structures
-        // and the like. (Admitedly, I wasn't able to reproduce a problem
-        // here, but it seems like the right thing to do. -nmatsakis)
-        if let Ok(l) = layout {
-            Layout::record_layout_for_printing(tcx, ty, param_env, l);
-        }
-
-        layout
-    }
-
 
     /// Check whether a type is representable. This means it cannot contain unboxed
     /// structural recursion. This check is needed for structs and enums.
@@ -1158,24 +1190,62 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn layout_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                        query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
-                        -> Result<&'tcx Layout, LayoutError<'tcx>>
-{
-    let (param_env, ty) = query.into_parts();
+pub enum ExplicitSelf<'tcx> {
+    ByValue,
+    ByReference(ty::Region<'tcx>, hir::Mutability),
+    ByRawPointer(hir::Mutability),
+    ByBox,
+    Other
+}
 
-    let rec_limit = tcx.sess.recursion_limit.get();
-    let depth = tcx.layout_depth.get();
-    if depth > rec_limit {
-        tcx.sess.fatal(
-            &format!("overflow representing the type `{}`", ty));
+impl<'tcx> ExplicitSelf<'tcx> {
+    /// Categorizes an explicit self declaration like `self: SomeType`
+    /// into either `self`, `&self`, `&mut self`, `Box<self>`, or
+    /// `Other`.
+    /// This is mainly used to require the arbitrary_self_types feature
+    /// in the case of `Other`, to improve error messages in the common cases,
+    /// and to make `Other` non-object-safe.
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// impl<'a> Foo for &'a T {
+    ///     // Legal declarations:
+    ///     fn method1(self: &&'a T); // ExplicitSelf::ByReference
+    ///     fn method2(self: &'a T); // ExplicitSelf::ByValue
+    ///     fn method3(self: Box<&'a T>); // ExplicitSelf::ByBox
+    ///     fn method4(self: Rc<&'a T>); // ExplicitSelf::Other
+    ///
+    ///     // Invalid cases will be caught by `check_method_receiver`:
+    ///     fn method_err1(self: &'a mut T); // ExplicitSelf::Other
+    ///     fn method_err2(self: &'static T) // ExplicitSelf::ByValue
+    ///     fn method_err3(self: &&T) // ExplicitSelf::ByReference
+    /// }
+    /// ```
+    ///
+    pub fn determine<P>(
+        self_arg_ty: Ty<'tcx>,
+        is_self_ty: P
+    ) -> ExplicitSelf<'tcx>
+    where
+        P: Fn(Ty<'tcx>) -> bool
+    {
+        use self::ExplicitSelf::*;
+
+        match self_arg_ty.sty {
+            _ if is_self_ty(self_arg_ty) => ByValue,
+            ty::TyRef(region, ty::TypeAndMut { ty, mutbl }) if is_self_ty(ty) => {
+                ByReference(region, mutbl)
+            }
+            ty::TyRawPtr(ty::TypeAndMut { ty, mutbl }) if is_self_ty(ty) => {
+                ByRawPointer(mutbl)
+            }
+            ty::TyAdt(def, _) if def.is_box() && is_self_ty(self_arg_ty.boxed_ty()) => {
+                ByBox
+            }
+            _ => Other
+        }
     }
-
-    tcx.layout_depth.set(depth+1);
-    let layout = Layout::compute_uncached(tcx, param_env, ty);
-    tcx.layout_depth.set(depth);
-
-    layout
 }
 
 pub fn provide(providers: &mut ty::maps::Providers) {
@@ -1184,7 +1254,6 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         is_sized_raw,
         is_freeze_raw,
         needs_drop_raw,
-        layout_raw,
         ..*providers
     };
 }

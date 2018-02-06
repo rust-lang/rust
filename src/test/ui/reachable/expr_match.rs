@@ -17,7 +17,7 @@
 fn a() {
     // The match is considered unreachable here, because the `return`
     // diverges:
-    match {return} { }
+    match {return} { } //~ ERROR unreachable
 }
 
 fn b() {

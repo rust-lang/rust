@@ -10,11 +10,12 @@
 
 set -ex
 
-url="http://crosstool-ng.org/download/crosstool-ng/crosstool-ng-1.22.0.tar.bz2"
-curl -f $url | tar xjf -
-cd crosstool-ng
+url="https://github.com/crosstool-ng/crosstool-ng/archive/crosstool-ng-1.22.0.tar.gz"
+curl -Lf $url | tar xzf -
+cd crosstool-ng-crosstool-ng-1.22.0
+./bootstrap
 ./configure --prefix=/usr/local
 make -j$(nproc)
 make install
 cd ..
-rm -rf crosstool-ng
+rm -rf crosstool-ng-crosstool-ng-1.22.0

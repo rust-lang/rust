@@ -5,9 +5,9 @@ error: macro expansion ignores token `,` and any following
    |         ^
    |
 note: caused by the macro expansion here; the usage of `ignored_item!` is likely invalid in item context
-  --> $DIR/macro-incomplete-parse.rs:32:1
+  --> $DIR/macro-incomplete-parse.rs:31:1
    |
-32 | ignored_item!(); //~ NOTE caused by the macro expansion here
+31 | ignored_item!();
    | ^^^^^^^^^^^^^^^^
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
@@ -16,19 +16,19 @@ error: expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
 22 |     () => ( 1,  //~ ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
    |              ^ expected one of `.`, `;`, `?`, `}`, or an operator here
 ...
-35 |     ignored_expr!(); //~ NOTE in this expansion
+34 |     ignored_expr!();
    |     ---------------- in this macro invocation
 
 error: macro expansion ignores token `,` and any following
-  --> $DIR/macro-incomplete-parse.rs:29:14
+  --> $DIR/macro-incomplete-parse.rs:28:14
    |
-29 |     () => ( 1, 2 ) //~ ERROR macro expansion ignores token `,`
+28 |     () => ( 1, 2 ) //~ ERROR macro expansion ignores token `,`
    |              ^
    |
 note: caused by the macro expansion here; the usage of `ignored_pat!` is likely invalid in pattern context
-  --> $DIR/macro-incomplete-parse.rs:37:9
+  --> $DIR/macro-incomplete-parse.rs:36:9
    |
-37 |         ignored_pat!() => (), //~ NOTE caused by the macro expansion here
+36 |         ignored_pat!() => (),
    |         ^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors

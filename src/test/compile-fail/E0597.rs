@@ -16,4 +16,5 @@ fn main() {
     let mut x = Foo { x: None };
     let y = 0;
     x.x = Some(&y);
-} //~ `y` does not live long enough [E0597]
+    //~^ `y` does not live long enough [E0597]
+}

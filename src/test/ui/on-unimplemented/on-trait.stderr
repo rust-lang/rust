@@ -8,9 +8,9 @@ error[E0277]: the trait bound `std::option::Option<std::vec::Vec<u8>>: MyFromIte
    = note: required by `collect`
 
 error[E0277]: the trait bound `std::string::String: Bar::Foo<u8, _, u32>` is not satisfied
-  --> $DIR/on-trait.rs:42:21
+  --> $DIR/on-trait.rs:40:21
    |
-42 |     let x: String = foobar(); //~ ERROR
+40 |     let x: String = foobar(); //~ ERROR
    |                     ^^^^^^ test error `std::string::String` with `u8` `_` `u32` in `Bar::Foo`
    |
    = help: the trait `Bar::Foo<u8, _, u32>` is not implemented for `std::string::String`

@@ -1,32 +1,38 @@
 error[E0308]: mismatched types
   --> $DIR/str-lit-type-mismatch.rs:13:20
    |
-13 |     let x: &[u8] = "foo";
-   |                    ^^^^^ expected slice, found str
+13 |     let x: &[u8] = "foo"; //~ ERROR mismatched types
+   |                    ^^^^^
+   |                    |
+   |                    expected slice, found str
+   |                    help: consider adding a leading `b`: `b"foo"`
    |
    = note: expected type `&[u8]`
               found type `&'static str`
-   = help: try `b"foo"`
 
 error[E0308]: mismatched types
   --> $DIR/str-lit-type-mismatch.rs:14:23
    |
-14 |     let y: &[u8; 4] = "baaa";
-   |                       ^^^^^^ expected array of 4 elements, found str
+14 |     let y: &[u8; 4] = "baaa"; //~ ERROR mismatched types
+   |                       ^^^^^^
+   |                       |
+   |                       expected array of 4 elements, found str
+   |                       help: consider adding a leading `b`: `b"baaa"`
    |
    = note: expected type `&[u8; 4]`
               found type `&'static str`
-   = help: try `b"baaa"`
 
 error[E0308]: mismatched types
   --> $DIR/str-lit-type-mismatch.rs:15:19
    |
-15 |     let z: &str = b"foo";
-   |                   ^^^^^^ expected str, found array of 3 elements
+15 |     let z: &str = b"foo"; //~ ERROR mismatched types
+   |                   ^^^^^^
+   |                   |
+   |                   expected str, found array of 3 elements
+   |                   help: consider removing the leading `b`: `"foo"`
    |
    = note: expected type `&str`
               found type `&'static [u8; 3]`
-   = help: try `"foo"`
 
 error: aborting due to 3 previous errors
 

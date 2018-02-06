@@ -17,7 +17,7 @@ pub use self::definitions::{Definitions, DefKey, DefPath, DefPathData,
 
 use dep_graph::{DepGraph, DepNode, DepKind, DepNodeIndex};
 
-use hir::def_id::{CRATE_DEF_INDEX, DefId, DefIndexAddressSpace};
+use hir::def_id::{CRATE_DEF_INDEX, DefId, LocalDefId, DefIndexAddressSpace};
 
 use syntax::abi::Abi;
 use syntax::ast::{self, Name, NodeId, CRATE_NODE_ID};
@@ -26,6 +26,7 @@ use syntax_pos::Span;
 
 use hir::*;
 use hir::print::Nested;
+use hir::svh::Svh;
 use util::nodemap::{DefIdMap, FxHashMap};
 
 use arena::TypedArena;
@@ -241,6 +242,9 @@ pub struct Map<'hir> {
     /// deref. This is a gratuitous micro-optimization.
     pub dep_graph: DepGraph,
 
+    /// The SVH of the local crate.
+    pub crate_hash: Svh,
+
     /// NodeIds are sequential integers from 0, so we can be
     /// super-compact by storing them in a vector. Not everything with
     /// a NodeId is in the map, but empirically the occupancy is about
@@ -359,6 +363,16 @@ impl<'hir> Map<'hir> {
         self.definitions.as_local_node_id(DefId::local(def_index)).unwrap()
     }
 
+    #[inline]
+    pub fn local_def_id_to_hir_id(&self, def_id: LocalDefId) -> HirId {
+        self.definitions.def_index_to_hir_id(def_id.to_def_id().index)
+    }
+
+    #[inline]
+    pub fn local_def_id_to_node_id(&self, def_id: LocalDefId) -> NodeId {
+        self.definitions.as_local_node_id(def_id.to_def_id()).unwrap()
+    }
+
     fn entry_count(&self) -> usize {
         self.map.len()
     }
@@ -416,6 +430,12 @@ impl<'hir> Map<'hir> {
     /// if the node is a body owner, otherwise returns `None`.
     pub fn maybe_body_owned_by(&self, id: NodeId) -> Option<BodyId> {
         if let Some(entry) = self.find_entry(id) {
+            if self.dep_graph.is_fully_enabled() {
+                let hir_id_owner = self.node_to_hir_id(id).owner;
+                let def_path_hash = self.definitions.def_path_hash(hir_id_owner);
+                self.dep_graph.read(def_path_hash.to_dep_node(DepKind::HirBody));
+            }
+
             if let Some(body_id) = entry.associated_body() {
                 // For item-like things and closures, the associated
                 // body has its own distinct id, and that is returned
@@ -440,6 +460,28 @@ impl<'hir> Map<'hir> {
             span_bug!(self.span(id), "body_owned_by: {} has no associated body",
                       self.node_to_string(id));
         })
+    }
+
+    pub fn body_owner_kind(&self, id: NodeId) -> BodyOwnerKind {
+        // Handle constants in enum discriminants, types, and repeat expressions.
+        let def_id = self.local_def_id(id);
+        let def_key = self.def_key(def_id);
+        if def_key.disambiguated_data.data == DefPathData::Initializer {
+            return BodyOwnerKind::Const;
+        }
+
+        match self.get(id) {
+            NodeItem(&Item { node: ItemConst(..), .. }) |
+            NodeTraitItem(&TraitItem { node: TraitItemKind::Const(..), .. }) |
+            NodeImplItem(&ImplItem { node: ImplItemKind::Const(..), .. }) => {
+                BodyOwnerKind::Const
+            }
+            NodeItem(&Item { node: ItemStatic(_, m, _), .. }) => {
+                BodyOwnerKind::Static(m)
+            }
+            // Default to function if it's not a constant or static.
+            _ => BodyOwnerKind::Fn
+        }
     }
 
     pub fn ty_param_owner(&self, id: NodeId) -> NodeId {
@@ -530,6 +572,12 @@ impl<'hir> Map<'hir> {
     /// from a node to the root of the ast (unless you get the same id back here
     /// that can happen if the id is not in the map itself or is just weird).
     pub fn get_parent_node(&self, id: NodeId) -> NodeId {
+        if self.dep_graph.is_fully_enabled() {
+            let hir_id_owner = self.node_to_hir_id(id).owner;
+            let def_path_hash = self.definitions.def_path_hash(hir_id_owner);
+            self.dep_graph.read(def_path_hash.to_dep_node(DepKind::HirBody));
+        }
+
         self.find_entry(id).and_then(|x| x.parent_node()).unwrap_or(id)
     }
 
@@ -934,9 +982,8 @@ impl<'a, 'hir> NodesMatchingSuffix<'a, 'hir> {
         // chain, then returns `None`.
         fn find_first_mod_parent<'a>(map: &'a Map, mut id: NodeId) -> Option<(NodeId, Name)> {
             loop {
-                match map.find(id) {
-                    None => return None,
-                    Some(NodeItem(item)) if item_is_mod(&item) =>
+                match map.find(id)? {
+                    NodeItem(item) if item_is_mod(&item) =>
                         return Some((id, item.name)),
                     _ => {}
                 }
@@ -1005,7 +1052,7 @@ pub fn map_crate<'hir>(sess: &::session::Session,
                        forest: &'hir mut Forest,
                        definitions: &'hir Definitions)
                        -> Map<'hir> {
-    let map = {
+    let (map, crate_hash) = {
         let hcx = ::ich::StableHashingContext::new(sess, &forest.krate, definitions, cstore);
 
         let mut collector = NodeCollector::root(&forest.krate,
@@ -1015,10 +1062,13 @@ pub fn map_crate<'hir>(sess: &::session::Session,
         intravisit::walk_crate(&mut collector, &forest.krate);
 
         let crate_disambiguator = sess.local_crate_disambiguator();
-        collector.finalize_and_compute_crate_hash(crate_disambiguator)
+        let cmdline_args = sess.opts.dep_tracking_hash();
+        collector.finalize_and_compute_crate_hash(crate_disambiguator,
+                                                  cstore,
+                                                  cmdline_args)
     };
 
-    if log_enabled!(::log::LogLevel::Debug) {
+    if log_enabled!(::log::Level::Debug) {
         // This only makes sense for ordered stores; note the
         // enumerate to count the number of entries.
         let (entries_less_1, _) = map.iter().filter(|&x| {
@@ -1041,6 +1091,7 @@ pub fn map_crate<'hir>(sess: &::session::Session,
     let map = Map {
         forest,
         dep_graph: forest.dep_graph.clone(),
+        crate_hash,
         map,
         hir_to_node_id,
         definitions,
@@ -1139,8 +1190,8 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                 ItemStruct(..) => "struct",
                 ItemUnion(..) => "union",
                 ItemTrait(..) => "trait",
+                ItemTraitAlias(..) => "trait alias",
                 ItemImpl(..) => "impl",
-                ItemAutoImpl(..) => "default impl",
             };
             format!("{} {}{}", item_str, path_str(), id_str)
         }

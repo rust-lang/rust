@@ -291,7 +291,7 @@ pub trait AstBuilder {
                        -> ast::MetaItem;
 
     fn item_use(&self, sp: Span,
-                vis: ast::Visibility, vp: P<ast::ViewPath>) -> P<ast::Item>;
+                vis: ast::Visibility, vp: P<ast::UseTree>) -> P<ast::Item>;
     fn item_use_simple(&self, sp: Span, vis: ast::Visibility, path: ast::Path) -> P<ast::Item>;
     fn item_use_simple_(&self, sp: Span, vis: ast::Visibility,
                         ident: ast::Ident, path: ast::Path) -> P<ast::Item>;
@@ -319,9 +319,12 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 types: Vec<P<ast::Ty>>,
                 bindings: Vec<ast::TypeBinding> )
                 -> ast::Path {
+        use syntax::parse::token;
+
         let last_identifier = idents.pop().unwrap();
         let mut segments: Vec<ast::PathSegment> = Vec::new();
-        if global {
+        if global &&
+           !idents.first().map_or(false, |&ident| token::Ident(ident).is_path_segment_keyword()) {
             segments.push(ast::PathSegment::crate_root(span));
         }
 
@@ -459,7 +462,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn poly_trait_ref(&self, span: Span, path: ast::Path) -> ast::PolyTraitRef {
         ast::PolyTraitRef {
-            bound_lifetimes: Vec::new(),
+            bound_generic_params: Vec::new(),
             trait_ref: self.trait_ref(path),
             span,
         }
@@ -591,6 +594,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
            id: ast::DUMMY_NODE_ID,
            rules: BlockCheckMode::Default,
            span,
+           recovered: false,
         })
     }
 
@@ -690,17 +694,17 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
     fn expr_usize(&self, span: Span, i: usize) -> P<ast::Expr> {
         self.expr_lit(span, ast::LitKind::Int(i as u128,
-                                              ast::LitIntType::Unsigned(ast::UintTy::Us)))
+                                              ast::LitIntType::Unsigned(ast::UintTy::Usize)))
     }
     fn expr_isize(&self, sp: Span, i: isize) -> P<ast::Expr> {
         if i < 0 {
             let i = (-i) as u128;
-            let lit_ty = ast::LitIntType::Signed(ast::IntTy::Is);
+            let lit_ty = ast::LitIntType::Signed(ast::IntTy::Isize);
             let lit = self.expr_lit(sp, ast::LitKind::Int(i, lit_ty));
             self.expr_unary(sp, ast::UnOp::Neg, lit)
         } else {
             self.expr_lit(sp, ast::LitKind::Int(i as u128,
-                                                ast::LitIntType::Signed(ast::IntTy::Is)))
+                                                ast::LitIntType::Signed(ast::IntTy::Isize)))
         }
     }
     fn expr_u32(&self, sp: Span, u: u32) -> P<ast::Expr> {
@@ -756,7 +760,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn expr_fail(&self, span: Span, msg: Symbol) -> P<ast::Expr> {
         let loc = self.codemap().lookup_char_pos(span.lo());
-        let expr_file = self.expr_str(span, Symbol::intern(&loc.file.name));
+        let expr_file = self.expr_str(span, Symbol::intern(&loc.file.name.to_string()));
         let expr_line = self.expr_u32(span, loc.line as u32);
         let expr_col = self.expr_u32(span, loc.col.to_usize() as u32 + 1);
         let expr_loc_tuple = self.expr_tuple(span, vec![expr_file, expr_line, expr_col]);
@@ -1142,7 +1146,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn item_use(&self, sp: Span,
-                vis: ast::Visibility, vp: P<ast::ViewPath>) -> P<ast::Item> {
+                vis: ast::Visibility, vp: P<ast::UseTree>) -> P<ast::Item> {
         P(ast::Item {
             id: ast::DUMMY_NODE_ID,
             ident: keywords::Invalid.ident(),
@@ -1161,33 +1165,36 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn item_use_simple_(&self, sp: Span, vis: ast::Visibility,
                         ident: ast::Ident, path: ast::Path) -> P<ast::Item> {
-        self.item_use(sp, vis,
-                      P(respan(sp,
-                               ast::ViewPathSimple(ident,
-                                                   path))))
+        self.item_use(sp, vis, P(ast::UseTree {
+            span: sp,
+            prefix: path,
+            kind: ast::UseTreeKind::Simple(ident),
+        }))
     }
 
     fn item_use_list(&self, sp: Span, vis: ast::Visibility,
                      path: Vec<ast::Ident>, imports: &[ast::Ident]) -> P<ast::Item> {
         let imports = imports.iter().map(|id| {
-            let item = ast::PathListItem_ {
-                name: *id,
-                rename: None,
-                id: ast::DUMMY_NODE_ID,
-            };
-            respan(sp, item)
+            (ast::UseTree {
+                span: sp,
+                prefix: self.path(sp, vec![*id]),
+                kind: ast::UseTreeKind::Simple(*id),
+            }, ast::DUMMY_NODE_ID)
         }).collect();
 
-        self.item_use(sp, vis,
-                      P(respan(sp,
-                               ast::ViewPathList(self.path(sp, path),
-                                                 imports))))
+        self.item_use(sp, vis, P(ast::UseTree {
+            span: sp,
+            prefix: self.path(sp, path),
+            kind: ast::UseTreeKind::Nested(imports),
+        }))
     }
 
     fn item_use_glob(&self, sp: Span,
                      vis: ast::Visibility, path: Vec<ast::Ident>) -> P<ast::Item> {
-        self.item_use(sp, vis,
-                      P(respan(sp,
-                               ast::ViewPathGlob(self.path(sp, path)))))
+        self.item_use(sp, vis, P(ast::UseTree {
+            span: sp,
+            prefix: self.path(sp, path),
+            kind: ast::UseTreeKind::Glob,
+        }))
     }
 }

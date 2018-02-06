@@ -232,7 +232,7 @@ impl<'a, B: ?Sized> Cow<'a, B>
     ///
     /// assert_eq!(
     ///   cow.into_owned(),
-    ///   Cow::Owned(String::from(s))
+    ///   String::from(s)
     /// );
     /// ```
     ///
@@ -246,7 +246,7 @@ impl<'a, B: ?Sized> Cow<'a, B>
     ///
     /// assert_eq!(
     ///   cow.into_owned(),
-    ///   Cow::Owned(String::from(s))
+    ///   String::from(s)
     /// );
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]

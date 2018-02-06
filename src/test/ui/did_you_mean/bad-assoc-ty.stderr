@@ -1,0 +1,106 @@
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-ty.rs:11:10
+   |
+11 | type A = [u8; 4]::AssocTy;
+   |          ^^^^^^^^^^^^^^^^ help: try: `<[u8; 4]>::AssocTy`
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-ty.rs:15:10
+   |
+15 | type B = [u8]::AssocTy;
+   |          ^^^^^^^^^^^^^ help: try: `<[u8]>::AssocTy`
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-ty.rs:19:10
+   |
+19 | type C = (u8)::AssocTy;
+   |          ^^^^^^^^^^^^^ help: try: `<(u8)>::AssocTy`
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-ty.rs:23:10
+   |
+23 | type D = (u8, u8)::AssocTy;
+   |          ^^^^^^^^^^^^^^^^^ help: try: `<(u8, u8)>::AssocTy`
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-ty.rs:27:10
+   |
+27 | type E = _::AssocTy;
+   |          ^^^^^^^^^^ help: try: `<_>::AssocTy`
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-ty.rs:31:19
+   |
+31 | type F = &'static (u8)::AssocTy;
+   |                   ^^^^^^^^^^^^^ help: try: `<(u8)>::AssocTy`
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-ty.rs:37:10
+   |
+37 | type G = 'static + (Send)::AssocTy;
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `<'static + Send>::AssocTy`
+
+error[E0223]: ambiguous associated type
+  --> $DIR/bad-assoc-ty.rs:11:10
+   |
+11 | type A = [u8; 4]::AssocTy;
+   |          ^^^^^^^^^^^^^^^^ ambiguous associated type
+   |
+   = note: specify the type using the syntax `<[u8; <unevaluated[]>] as Trait>::AssocTy`
+
+error[E0223]: ambiguous associated type
+  --> $DIR/bad-assoc-ty.rs:15:10
+   |
+15 | type B = [u8]::AssocTy;
+   |          ^^^^^^^^^^^^^ ambiguous associated type
+   |
+   = note: specify the type using the syntax `<[u8] as Trait>::AssocTy`
+
+error[E0223]: ambiguous associated type
+  --> $DIR/bad-assoc-ty.rs:19:10
+   |
+19 | type C = (u8)::AssocTy;
+   |          ^^^^^^^^^^^^^ ambiguous associated type
+   |
+   = note: specify the type using the syntax `<u8 as Trait>::AssocTy`
+
+error[E0223]: ambiguous associated type
+  --> $DIR/bad-assoc-ty.rs:23:10
+   |
+23 | type D = (u8, u8)::AssocTy;
+   |          ^^^^^^^^^^^^^^^^^ ambiguous associated type
+   |
+   = note: specify the type using the syntax `<(u8, u8) as Trait>::AssocTy`
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/bad-assoc-ty.rs:27:10
+   |
+27 | type E = _::AssocTy;
+   |          ^ not allowed in type signatures
+
+error[E0223]: ambiguous associated type
+  --> $DIR/bad-assoc-ty.rs:31:19
+   |
+31 | type F = &'static (u8)::AssocTy;
+   |                   ^^^^^^^^^^^^^ ambiguous associated type
+   |
+   = note: specify the type using the syntax `<u8 as Trait>::AssocTy`
+
+error[E0223]: ambiguous associated type
+  --> $DIR/bad-assoc-ty.rs:37:10
+   |
+37 | type G = 'static + (Send)::AssocTy;
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^ ambiguous associated type
+   |
+   = note: specify the type using the syntax `<std::marker::Send + 'static as Trait>::AssocTy`
+
+error[E0223]: ambiguous associated type
+  --> $DIR/bad-assoc-ty.rs:43:10
+   |
+43 | type H = Fn(u8) -> (u8)::Output;
+   |          ^^^^^^^^^^^^^^^^^^^^^^ ambiguous associated type
+   |
+   = note: specify the type using the syntax `<std::ops::Fn(u8) -> u8 + 'static as Trait>::Output`
+
+error: aborting due to 15 previous errors
+

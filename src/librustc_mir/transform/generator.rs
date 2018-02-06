@@ -63,8 +63,7 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::*;
-use rustc::mir::transform::{MirPass, MirSource};
-use rustc::mir::visit::{LvalueContext, Visitor, MutVisitor};
+use rustc::mir::visit::{PlaceContext, Visitor, MutVisitor};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty, GeneratorInterior};
 use rustc::ty::subst::{Kind, Substs};
 use util::dump_mir;
@@ -76,9 +75,10 @@ use std::collections::HashMap;
 use std::borrow::Cow;
 use std::iter::once;
 use std::mem;
+use transform::{MirPass, MirSource};
 use transform::simplify;
 use transform::no_landing_pads::no_landing_pads;
-use dataflow::{self, MaybeStorageLive, state_for_location};
+use dataflow::{do_dataflow, DebugFormatted, MaybeStorageLive, state_for_location};
 
 pub struct StateTransform;
 
@@ -90,7 +90,7 @@ struct RenameLocalVisitor {
 impl<'tcx> MutVisitor<'tcx> for RenameLocalVisitor {
     fn visit_local(&mut self,
                    local: &mut Local,
-                   _: LvalueContext<'tcx>,
+                   _: PlaceContext<'tcx>,
                    _: Location) {
         if *local == self.from {
             *local = self.to;
@@ -103,22 +103,22 @@ struct DerefArgVisitor;
 impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor {
     fn visit_local(&mut self,
                    local: &mut Local,
-                   _: LvalueContext<'tcx>,
+                   _: PlaceContext<'tcx>,
                    _: Location) {
         assert_ne!(*local, self_arg());
     }
 
-    fn visit_lvalue(&mut self,
-                    lvalue: &mut Lvalue<'tcx>,
-                    context: LvalueContext<'tcx>,
+    fn visit_place(&mut self,
+                    place: &mut Place<'tcx>,
+                    context: PlaceContext<'tcx>,
                     location: Location) {
-        if *lvalue == Lvalue::Local(self_arg()) {
-            *lvalue = Lvalue::Projection(Box::new(Projection {
-                base: lvalue.clone(),
+        if *place == Place::Local(self_arg()) {
+            *place = Place::Projection(Box::new(Projection {
+                base: place.clone(),
                 elem: ProjectionElem::Deref,
             }));
         } else {
-            self.super_lvalue(lvalue, context, location);
+            self.super_place(place, context, location);
         }
     }
 }
@@ -151,7 +151,7 @@ struct TransformVisitor<'a, 'tcx: 'a> {
     // A list of suspension points, generated during the transform
     suspension_points: Vec<SuspensionPoint>,
 
-    // The original RETURN_POINTER local
+    // The original RETURN_PLACE local
     new_ret_local: Local,
 }
 
@@ -162,14 +162,14 @@ impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
         Rvalue::Aggregate(box adt, vec![val])
     }
 
-    // Create a Lvalue referencing a generator struct field
-    fn make_field(&self, idx: usize, ty: Ty<'tcx>) -> Lvalue<'tcx> {
-        let base = Lvalue::Local(self_arg());
+    // Create a Place referencing a generator struct field
+    fn make_field(&self, idx: usize, ty: Ty<'tcx>) -> Place<'tcx> {
+        let base = Place::Local(self_arg());
         let field = Projection {
             base: base,
             elem: ProjectionElem::Field(Field::new(idx), ty),
         };
-        Lvalue::Projection(Box::new(field))
+        Place::Projection(Box::new(field))
     }
 
     // Create a statement which changes the generator state
@@ -195,22 +195,22 @@ impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
 impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
     fn visit_local(&mut self,
                    local: &mut Local,
-                   _: LvalueContext<'tcx>,
+                   _: PlaceContext<'tcx>,
                    _: Location) {
         assert_eq!(self.remap.get(local), None);
     }
 
-    fn visit_lvalue(&mut self,
-                    lvalue: &mut Lvalue<'tcx>,
-                    context: LvalueContext<'tcx>,
+    fn visit_place(&mut self,
+                    place: &mut Place<'tcx>,
+                    context: PlaceContext<'tcx>,
                     location: Location) {
-        if let Lvalue::Local(l) = *lvalue {
+        if let Place::Local(l) = *place {
             // Replace an Local in the remap with a generator struct access
             if let Some(&(ty, idx)) = self.remap.get(&l) {
-                *lvalue = self.make_field(idx, ty);
+                *place = self.make_field(idx, ty);
             }
         } else {
-            self.super_lvalue(lvalue, context, location);
+            self.super_place(place, context, location);
         }
     }
 
@@ -230,7 +230,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
         let ret_val = match data.terminator().kind {
             TerminatorKind::Return => Some((1,
                 None,
-                Operand::Consume(Lvalue::Local(self.new_ret_local)),
+                Operand::Move(Place::Local(self.new_ret_local)),
                 None)),
             TerminatorKind::Yield { ref value, resume, drop } => Some((0,
                 Some(resume),
@@ -244,7 +244,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
             // We must assign the value first in case it gets declared dead below
             data.statements.push(Statement {
                 source_info,
-                kind: StatementKind::Assign(Lvalue::Local(RETURN_POINTER),
+                kind: StatementKind::Assign(Place::Local(RETURN_PLACE),
                     self.make_state(state_idx, v)),
             });
             let state = if let Some(resume) = resume { // Yield
@@ -301,7 +301,7 @@ fn replace_result_variable<'tcx>(ret_ty: Ty<'tcx>,
         ty: ret_ty,
         name: None,
         source_info: source_info(mir),
-        lexical_scope: ARGUMENT_VISIBILITY_SCOPE,
+        syntactic_scope: ARGUMENT_VISIBILITY_SCOPE,
         internal: false,
         is_user_variable: false,
     };
@@ -310,7 +310,7 @@ fn replace_result_variable<'tcx>(ret_ty: Ty<'tcx>,
     mir.local_decls.swap(0, new_ret_local.index());
 
     RenameLocalVisitor {
-        from: RETURN_POINTER,
+        from: RETURN_PLACE,
         to: new_ret_local,
     }.visit_mir(mir);
 
@@ -338,11 +338,11 @@ fn locals_live_across_suspend_points<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                (liveness::LocalSet,
                                                 HashMap<BasicBlock, liveness::LocalSet>) {
     let dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
-    let node_id = source.item_id();
+    let node_id = tcx.hir.as_local_node_id(source.def_id).unwrap();
     let analysis = MaybeStorageLive::new(mir);
     let storage_live =
-        dataflow::do_dataflow(tcx, mir, node_id, &[], &dead_unwinds, analysis,
-                              |bd, p| &bd.mir().local_decls[p]);
+        do_dataflow(tcx, mir, node_id, &[], &dead_unwinds, analysis,
+                    |bd, p| DebugFormatted::new(&bd.mir().local_decls[p]));
 
     let mut ignored = StorageIgnored(IdxSetBuf::new_filled(mir.local_decls.len()));
     ignored.visit_mir(mir);
@@ -363,7 +363,7 @@ fn locals_live_across_suspend_points<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 statement_index: data.statements.len(),
             };
 
-            let storage_liveness = state_for_location(loc, &analysis, &storage_live);
+            let storage_liveness = state_for_location(loc, &analysis, &storage_live, mir);
 
             storage_liveness_map.insert(block, storage_liveness.clone());
 
@@ -452,7 +452,7 @@ fn insert_switch<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let default_block = insert_term_block(mir, default);
 
     let switch = TerminatorKind::SwitchInt {
-        discr: Operand::Consume(transform.make_field(transform.state_field, tcx.types.u32)),
+        discr: Operand::Copy(transform.make_field(transform.state_field, tcx.types.u32)),
         switch_ty: tcx.types.u32,
         values: Cow::from(cases.iter().map(|&(i, _)| ConstInt::U32(i)).collect::<Vec<_>>()),
         targets: cases.iter().map(|&(_, d)| d).chain(once(default_block)).collect(),
@@ -494,7 +494,7 @@ fn elaborate_generator_drops<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             &Terminator {
                 source_info,
                 kind: TerminatorKind::Drop {
-                    location: Lvalue::Local(local),
+                    location: Place::Local(local),
                     target,
                     unwind
                 }
@@ -516,7 +516,7 @@ fn elaborate_generator_drops<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             elaborate_drop(
                 &mut elaborator,
                 source_info,
-                &Lvalue::Local(gen),
+                &Place::Local(gen),
                 (),
                 target,
                 unwind,
@@ -557,13 +557,12 @@ fn create_generator_drop_shim<'a, 'tcx>(
     }
 
     // Replace the return variable
-    mir.return_ty = tcx.mk_nil();
-    mir.local_decls[RETURN_POINTER] = LocalDecl {
+    mir.local_decls[RETURN_PLACE] = LocalDecl {
         mutability: Mutability::Mut,
         ty: tcx.mk_nil(),
         name: None,
         source_info,
-        lexical_scope: ARGUMENT_VISIBILITY_SCOPE,
+        syntactic_scope: ARGUMENT_VISIBILITY_SCOPE,
         internal: false,
         is_user_variable: false,
     };
@@ -579,7 +578,7 @@ fn create_generator_drop_shim<'a, 'tcx>(
         }),
         name: None,
         source_info,
-        lexical_scope: ARGUMENT_VISIBILITY_SCOPE,
+        syntactic_scope: ARGUMENT_VISIBILITY_SCOPE,
         internal: false,
         is_user_variable: false,
     };
@@ -692,7 +691,7 @@ fn insert_clean_drop<'a, 'tcx>(mir: &mut Mir<'tcx>) -> BasicBlock {
     // Create a block to destroy an unresumed generators. This can only destroy upvars.
     let drop_clean = BasicBlock::new(mir.basic_blocks().len());
     let term = TerminatorKind::Drop {
-        location: Lvalue::Local(self_arg()),
+        location: Place::Local(self_arg()),
         target: return_block,
         unwind: None,
     };
@@ -763,12 +762,16 @@ impl MirPass for StateTransform {
 
         assert!(mir.generator_drop.is_none());
 
-        let node_id = source.item_id();
-        let def_id = tcx.hir.local_def_id(source.item_id());
+        let def_id = source.def_id;
+        let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
         let hir_id = tcx.hir.node_to_hir_id(node_id);
 
         // Get the interior types which typeck computed
-        let interior = *tcx.typeck_tables_of(def_id).generator_interiors().get(hir_id).unwrap();
+        let tables = tcx.typeck_tables_of(def_id);
+        let interior = match tables.node_id_to_type(hir_id).sty {
+            ty::TyGenerator(_, _, interior) => interior,
+            ref t => bug!("type of generator not a generator: {:?}", t),
+        };
 
         // The first argument is the generator type passed by value
         let gen_ty = mir.local_decls.raw[1].ty;
@@ -777,11 +780,11 @@ impl MirPass for StateTransform {
         let state_did = tcx.lang_items().gen_state().unwrap();
         let state_adt_ref = tcx.adt_def(state_did);
         let state_substs = tcx.mk_substs([Kind::from(yield_ty),
-            Kind::from(mir.return_ty)].iter());
+            Kind::from(mir.return_ty())].iter());
         let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
 
-        // We rename RETURN_POINTER which has type mir.return_ty to new_ret_local
-        // RETURN_POINTER then is a fresh unused local with type ret_ty.
+        // We rename RETURN_PLACE which has type mir.return_ty to new_ret_local
+        // RETURN_PLACE then is a fresh unused local with type ret_ty.
         let new_ret_local = replace_result_variable(ret_ty, mir);
 
         // Extract locals which are live across suspension point into `layout`
@@ -791,7 +794,7 @@ impl MirPass for StateTransform {
 
         let state_field = mir.upvar_decls.len();
 
-        // Run the transformation which converts Lvalues from Local to generator struct
+        // Run the transformation which converts Places from Local to generator struct
         // accesses for locals in `remap`.
         // It also rewrites `return x` and `yield y` as writing a new generator state and returning
         // GeneratorState::Complete(x) and GeneratorState::Yielded(y) respectively.
@@ -808,7 +811,6 @@ impl MirPass for StateTransform {
         transform.visit_mir(mir);
 
         // Update our MIR struct to reflect the changed we've made
-        mir.return_ty = ret_ty;
         mir.yield_ty = None;
         mir.arg_count = 1;
         mir.spread_arg = None;

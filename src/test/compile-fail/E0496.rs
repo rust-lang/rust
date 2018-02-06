@@ -13,9 +13,7 @@ struct Foo<'a> {
 }
 
 impl<'a> Foo<'a> {
-   //~^  NOTE first declared here
     fn f<'a>(x: &'a i32) { //~ ERROR E0496
-       //~^ NOTE lifetime 'a already in scope
     }
 }
 

@@ -1,0 +1,37 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/propagate-despite-same-free-region.rs:54:21
+   |
+54 |             let p = x.get();
+   |                     ^^^^^^^
+
+note: External requirements
+  --> $DIR/propagate-despite-same-free-region.rs:52:9
+   |
+52 | /         |_outlives1, _outlives2, x, y| {
+53 | |             // Only works if 'x: 'y:
+54 | |             let p = x.get();
+55 | |             demand_y(x, y, p)
+56 | |         },
+   | |_________^
+   |
+   = note: defining type: DefId(0/1:16 ~ propagate_despite_same_free_region[317d]::supply[0]::{{closure}}[0]) with closure substs [
+               i16,
+               for<'r, 's> extern "rust-call" fn((std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 'r)) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 's)) &'_#2r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 'r)) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 's)) u32>))
+           ]
+   = note: number of external vids: 3
+   = note: where '_#1r: '_#2r
+
+note: No external requirements
+  --> $DIR/propagate-despite-same-free-region.rs:49:1
+   |
+49 | / fn supply<'a>(cell_a: Cell<&'a u32>) {
+50 | |     establish_relationships(
+51 | |         cell_a,
+52 | |         |_outlives1, _outlives2, x, y| {
+...  |
+57 | |     );
+58 | | }
+   | |_^
+   |
+   = note: defining type: DefId(0/0:6 ~ propagate_despite_same_free_region[317d]::supply[0]) with substs []
+

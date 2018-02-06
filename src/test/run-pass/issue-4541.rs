@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-cloudabi no std::env
+
 fn parse_args() -> String {
     let args: Vec<_> = ::std::env::args().collect();
     let mut n = 0;

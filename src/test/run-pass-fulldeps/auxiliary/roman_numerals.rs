@@ -29,8 +29,8 @@ use rustc_plugin::Registry;
 // WARNING WARNING WARNING WARNING WARNING
 // =======================================
 //
-// This code also appears in src/doc/guide-plugin.md. Please keep
-// the two copies in sync!  FIXME: have rustdoc read this file
+// This code also appears in src/doc/unstable-book/src/language-features/plugin.md.
+// Please keep the two copies in sync!  FIXME: have rustdoc read this file
 
 fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
         -> Box<MacResult + 'static> {

@@ -22,16 +22,17 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(custom_attribute)]
+#![feature(fs_read_write)]
 #![allow(unused_attributes)]
 #![feature(i128_type)]
+#![feature(i128)]
+#![feature(inclusive_range)]
+#![feature(inclusive_range_syntax)]
 #![feature(libc)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
 #![feature(conservative_impl_trait)]
-
-#![feature(const_atomic_bool_new)]
-#![feature(const_once_new)]
 
 use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;
@@ -40,19 +41,21 @@ use syntax_pos::symbol::Symbol;
 extern crate bitflags;
 extern crate flate2;
 extern crate libc;
-extern crate owning_ref;
 #[macro_use] extern crate rustc;
+extern crate jobserver;
+extern crate num_cpus;
+extern crate rustc_mir;
 extern crate rustc_allocator;
+extern crate rustc_apfloat;
 extern crate rustc_back;
+extern crate rustc_binaryen;
+extern crate rustc_const_math;
 extern crate rustc_data_structures;
+extern crate rustc_demangle;
 extern crate rustc_incremental;
 extern crate rustc_llvm as llvm;
 extern crate rustc_platform_intrinsics as intrinsics;
-extern crate rustc_const_math;
 extern crate rustc_trans_utils;
-extern crate rustc_demangle;
-extern crate jobserver;
-extern crate num_cpus;
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
@@ -61,12 +64,13 @@ extern crate rustc_errors as errors;
 extern crate serialize;
 #[cfg(windows)]
 extern crate cc; // Used to locate MSVC
+extern crate tempdir;
 
 pub use base::trans_crate;
 use back::bytecode::RLIB_BYTECODE_EXTENSION;
 
 pub use metadata::LlvmMetadataLoader;
-pub use llvm_util::{init, target_features, print_version, print_passes, print, enable_llvm_debug};
+pub use llvm_util::{init, target_features, print_version, print_passes, print};
 
 use std::any::Any;
 use std::path::PathBuf;
@@ -79,12 +83,10 @@ use rustc::middle::cstore::MetadataLoader;
 use rustc::middle::cstore::{NativeLibrary, CrateSource, LibSource};
 use rustc::session::Session;
 use rustc::session::config::{OutputFilenames, OutputType};
-use rustc::ty::maps::Providers;
 use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 
-use rustc_trans_utils::collector;
-use rustc_trans_utils::monomorphize;
+use rustc_mir::monomorphize;
 
 mod diagnostics;
 
@@ -102,7 +104,6 @@ pub mod back {
 }
 
 mod abi;
-mod adt;
 mod allocator;
 mod asm;
 mod assert_module_sources;
@@ -135,15 +136,12 @@ mod declare;
 mod glue;
 mod intrinsic;
 mod llvm_util;
-mod machine;
 mod metadata;
 mod meth;
 mod mir;
-mod partitioning;
 mod symbol_names_test;
 mod time_graph;
 mod trans_item;
-mod tvec;
 mod type_;
 mod type_of;
 mod value;
@@ -165,12 +163,15 @@ impl rustc_trans_utils::trans_crate::TransCrate for LlvmTransCrate {
         box metadata::LlvmMetadataLoader
     }
 
-    fn provide_local(providers: &mut ty::maps::Providers) {
-        provide_local(providers);
+    fn provide(providers: &mut ty::maps::Providers) {
+        back::symbol_names::provide(providers);
+        back::symbol_export::provide(providers);
+        base::provide(providers);
+        attributes::provide(providers);
     }
 
     fn provide_extern(providers: &mut ty::maps::Providers) {
-        provide_extern(providers);
+        back::symbol_export::provide_extern(providers);
     }
 
     fn trans_crate<'a, 'tcx>(
@@ -329,16 +330,5 @@ pub struct CrateInfo {
     used_crates_dynamic: Vec<(CrateNum, LibSource)>,
 }
 
+#[cfg(not(stage0))] // remove after the next snapshot
 __build_diagnostic_array! { librustc_trans, DIAGNOSTICS }
-
-pub fn provide_local(providers: &mut Providers) {
-    back::symbol_names::provide(providers);
-    back::symbol_export::provide_local(providers);
-    base::provide_local(providers);
-}
-
-pub fn provide_extern(providers: &mut Providers) {
-    back::symbol_names::provide(providers);
-    back::symbol_export::provide_extern(providers);
-    base::provide_extern(providers);
-}

@@ -1,7 +1,7 @@
 error[E0053]: method `foo` has an incompatible type for trait
   --> $DIR/E0053.rs:19:15
    |
-12 |     fn foo(x: u16); //~ NOTE type in trait
+12 |     fn foo(x: u16);
    |               --- type in trait
 ...
 19 |     fn foo(x: i16) { }
@@ -11,12 +11,12 @@ error[E0053]: method `foo` has an incompatible type for trait
               found type `fn(i16)`
 
 error[E0053]: method `bar` has an incompatible type for trait
-  --> $DIR/E0053.rs:22:12
+  --> $DIR/E0053.rs:21:12
    |
-13 |     fn bar(&self); //~ NOTE type in trait
+13 |     fn bar(&self);
    |            ----- type in trait
 ...
-22 |     fn bar(&mut self) { }
+21 |     fn bar(&mut self) { }
    |            ^^^^^^^^^ types differ in mutability
    |
    = note: expected type `fn(&Bar)`

@@ -78,11 +78,9 @@ impl<'cm> CachingCodemapView<'cm> {
         // If the entry doesn't point to the correct file, fix it up
         if pos < cache_entry.file.start_pos || pos >= cache_entry.file.end_pos {
             let file_valid;
-            let files = self.codemap.files();
-
-            if files.len() > 0 {
+            if self.codemap.files().len() > 0 {
                 let file_index = self.codemap.lookup_filemap_idx(pos);
-                let file = files[file_index].clone();
+                let file = self.codemap.files()[file_index].clone();
 
                 if pos >= file.start_pos && pos < file.end_pos {
                     cache_entry.file = file;

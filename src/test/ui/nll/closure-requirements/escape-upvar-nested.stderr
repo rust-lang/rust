@@ -1,0 +1,68 @@
+note: External requirements
+  --> $DIR/escape-upvar-nested.rs:31:32
+   |
+31 |             let mut closure1 = || p = &y;
+   |                                ^^^^^^^^^
+   |
+   = note: defining type: DefId(0/1:10 ~ escape_upvar_nested[317d]::test[0]::{{closure}}[0]::{{closure}}[0]) with closure substs [
+               i16,
+               extern "rust-call" fn(()),
+               &'_#1r mut &'_#2r i32,
+               &'_#3r i32
+           ]
+   = note: number of external vids: 4
+   = note: where '_#3r: '_#2r
+
+note: External requirements
+  --> $DIR/escape-upvar-nested.rs:30:27
+   |
+30 |           let mut closure = || { //~ ERROR `y` does not live long enough [E0597]
+   |  ___________________________^
+31 | |             let mut closure1 = || p = &y;
+32 | |             closure1();
+33 | |         };
+   | |_________^
+   |
+   = note: defining type: DefId(0/1:9 ~ escape_upvar_nested[317d]::test[0]::{{closure}}[0]) with closure substs [
+               i16,
+               extern "rust-call" fn(()),
+               &'_#1r mut &'_#2r i32,
+               &'_#3r i32
+           ]
+   = note: number of external vids: 4
+   = note: where '_#3r: '_#2r
+
+note: No external requirements
+  --> $DIR/escape-upvar-nested.rs:23:1
+   |
+23 | / fn test() {
+24 | |     let x = 44;
+25 | |     let mut p = &x;
+26 | |
+...  |
+38 | |     deref(p);
+39 | | }
+   | |_^
+   |
+   = note: defining type: DefId(0/0:3 ~ escape_upvar_nested[317d]::test[0]) with substs []
+
+error[E0597]: `y` does not live long enough
+  --> $DIR/escape-upvar-nested.rs:30:27
+   |
+30 |           let mut closure = || { //~ ERROR `y` does not live long enough [E0597]
+   |  ___________________________^
+31 | |             let mut closure1 = || p = &y;
+32 | |             closure1();
+33 | |         };
+   | |_________^ borrowed value does not live long enough
+...
+36 |       }
+   |        - borrowed value only lives until here
+37 | 
+38 |       deref(p);
+   |             - borrow later used here
+   |
+   = note: borrowed value must be valid for lifetime '_#4r...
+
+error: aborting due to previous error
+

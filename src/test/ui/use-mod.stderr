@@ -1,0 +1,32 @@
+error[E0430]: `self` import can only appear once in an import list
+  --> $DIR/use-mod.rs:12:5
+   |
+12 |     self,
+   |     ^^^^ can only appear once in an import list
+...
+15 |     self
+   |     ---- another `self` import appears here
+
+error[E0431]: `self` import can only appear in an import list with a non-empty prefix
+  --> $DIR/use-mod.rs:19:6
+   |
+19 | use {self};
+   |      ^^^^ can only appear in an import list with a non-empty prefix
+
+error[E0252]: the name `bar` is defined multiple times
+  --> $DIR/use-mod.rs:15:5
+   |
+12 |     self,
+   |     ---- previous import of the module `bar` here
+...
+15 |     self
+   |     ^^^^ `bar` reimported here
+   |
+   = note: `bar` must be defined only once in the type namespace of this module
+help: You can use `as` to change the binding name of the import
+   |
+15 |     self as Otherbar
+   |
+
+error: aborting due to 3 previous errors
+

@@ -10,11 +10,11 @@
 
 fn main() {
     println!("%.*3$s %s!\n", "Hello,", "World", 4);
-    println!("%1$*2$.*3$f", 123.456);
+    println!("%1$*2$.*3$f", 123.456); //~ ERROR never used
 
     // This should *not* produce hints, on the basis that there's equally as
     // many "correct" format specifiers.  It's *probably* just an actual typo.
-    println!("{} %f", "one", 2.0);
+    println!("{} %f", "one", 2.0); //~ ERROR never used
 
-    println!("Hi there, $NAME.", NAME="Tim");
+    println!("Hi there, $NAME.", NAME="Tim"); //~ ERROR never used
 }

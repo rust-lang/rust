@@ -69,7 +69,9 @@ struct TypedArenaChunk<T> {
 impl<T> TypedArenaChunk<T> {
     #[inline]
     unsafe fn new(capacity: usize) -> TypedArenaChunk<T> {
-        TypedArenaChunk { storage: RawVec::with_capacity(capacity) }
+        TypedArenaChunk {
+            storage: RawVec::with_capacity(capacity),
+        }
     }
 
     /// Destroys this arena chunk.
@@ -132,7 +134,9 @@ impl<T> TypedArena<T> {
 
         unsafe {
             if mem::size_of::<T>() == 0 {
-                self.ptr.set(intrinsics::arith_offset(self.ptr.get() as *mut u8, 1) as *mut T);
+                self.ptr
+                    .set(intrinsics::arith_offset(self.ptr.get() as *mut u8, 1)
+                        as *mut T);
                 let ptr = mem::align_of::<T>() as *mut T;
                 // Don't drop the object. This `write` is equivalent to `forget`.
                 ptr::write(ptr, object);
@@ -148,15 +152,18 @@ impl<T> TypedArena<T> {
         }
     }
 
-    /// Allocates a slice of objects that are copy into the `TypedArena`, returning a mutable
+    /// Allocates a slice of objects that are copied into the `TypedArena`, returning a mutable
     /// reference to it. Will panic if passed a zero-sized types.
     ///
     /// Panics:
+    ///
     ///  - Zero-sized types
     ///  - Zero-length slices
     #[inline]
     pub fn alloc_slice(&self, slice: &[T]) -> &mut [T]
-        where T: Copy {
+    where
+        T: Copy,
+    {
         assert!(mem::size_of::<T>() != 0);
         assert!(slice.len() != 0);
 
@@ -320,7 +327,10 @@ impl DroplessArena {
             let (chunk, mut new_capacity);
             if let Some(last_chunk) = chunks.last_mut() {
                 let used_bytes = self.ptr.get() as usize - last_chunk.start() as usize;
-                if last_chunk.storage.reserve_in_place(used_bytes, needed_bytes) {
+                if last_chunk
+                    .storage
+                    .reserve_in_place(used_bytes, needed_bytes)
+                {
                     self.end.set(last_chunk.end());
                     return;
                 } else {
@@ -356,9 +366,9 @@ impl DroplessArena {
 
             let ptr = self.ptr.get();
             // Set the pointer past ourselves
-            self.ptr.set(intrinsics::arith_offset(
-                    self.ptr.get(), mem::size_of::<T>() as isize
-            ) as *mut u8);
+            self.ptr.set(
+                intrinsics::arith_offset(self.ptr.get(), mem::size_of::<T>() as isize) as *mut u8,
+            );
             // Write into uninitialized memory.
             ptr::write(ptr as *mut T, object);
             &mut *(ptr as *mut T)
@@ -369,11 +379,14 @@ impl DroplessArena {
     /// reference to it. Will panic if passed a zero-sized type.
     ///
     /// Panics:
+    ///
     ///  - Zero-sized types
     ///  - Zero-length slices
     #[inline]
     pub fn alloc_slice<T>(&self, slice: &[T]) -> &mut [T]
-        where T: Copy {
+    where
+        T: Copy,
+    {
         assert!(!mem::needs_drop::<T>());
         assert!(mem::size_of::<T>() != 0);
         assert!(slice.len() != 0);
@@ -389,7 +402,8 @@ impl DroplessArena {
         unsafe {
             let arena_slice = slice::from_raw_parts_mut(self.ptr.get() as *mut T, slice.len());
             self.ptr.set(intrinsics::arith_offset(
-                    self.ptr.get(), (slice.len() * mem::size_of::<T>()) as isize
+                self.ptr.get(),
+                (slice.len() * mem::size_of::<T>()) as isize,
             ) as *mut u8);
             arena_slice.copy_from_slice(slice);
             arena_slice
@@ -454,8 +468,9 @@ mod tests {
 
         let arena = Wrap(TypedArena::new());
 
-        let result =
-            arena.alloc_outer(|| Outer { inner: arena.alloc_inner(|| Inner { value: 10 }) });
+        let result = arena.alloc_outer(|| Outer {
+            inner: arena.alloc_inner(|| Inner { value: 10 }),
+        });
 
         assert_eq!(result.inner.value, 10);
     }

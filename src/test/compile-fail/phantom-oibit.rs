@@ -16,10 +16,7 @@
 
 use std::marker::{PhantomData};
 
-unsafe trait Zen {}
-
-#[allow(auto_impl)]
-unsafe impl Zen for .. {}
+unsafe auto trait Zen {}
 
 unsafe impl<'a, T: 'a> Zen for &'a T where T: Sync {}
 

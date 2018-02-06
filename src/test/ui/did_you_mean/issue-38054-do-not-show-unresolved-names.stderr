@@ -1,13 +1,13 @@
 error[E0432]: unresolved import `Foo`
   --> $DIR/issue-38054-do-not-show-unresolved-names.rs:11:5
    |
-11 | use Foo;
+11 | use Foo; //~ ERROR unresolved
    |     ^^^ no `Foo` in the root
 
 error[E0432]: unresolved import `Foo1`
   --> $DIR/issue-38054-do-not-show-unresolved-names.rs:13:5
    |
-13 | use Foo1;
+13 | use Foo1; //~ ERROR unresolved
    |     ^^^^ no `Foo1` in the root
 
 error: aborting due to 2 previous errors

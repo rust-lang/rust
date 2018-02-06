@@ -1,0 +1,32 @@
+warning: #[target_feature = ".."] is deprecated and will eventually be removed, use #[target_feature(enable = "..")] instead
+  --> $DIR/target-feature-wrong.rs:18:1
+   |
+18 | #[target_feature = "+sse2"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: the feature named `foo` is not valid for this target
+  --> $DIR/target-feature-wrong.rs:20:18
+   |
+20 | #[target_feature(enable = "foo")]
+   |                  ^^^^^^^^^^^^^^
+
+error: #[target_feature(..)] only accepts sub-keys of `enable` currently
+  --> $DIR/target-feature-wrong.rs:22:18
+   |
+22 | #[target_feature(bar)]
+   |                  ^^^
+
+error: #[target_feature(..)] only accepts sub-keys of `enable` currently
+  --> $DIR/target-feature-wrong.rs:24:18
+   |
+24 | #[target_feature(disable = "baz")]
+   |                  ^^^^^^^^^^^^^^^
+
+error: #[target_feature(..)] can only be applied to `unsafe` function
+  --> $DIR/target-feature-wrong.rs:28:1
+   |
+28 | #[target_feature(enable = "sse2")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

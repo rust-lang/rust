@@ -26,7 +26,7 @@
 
 use self::TargetLint::*;
 
-use rustc_back::slice;
+use std::slice;
 use lint::{EarlyLintPassObject, LateLintPassObject};
 use lint::{Level, Lint, LintId, LintPass, LintBuffer};
 use lint::levels::{LintLevelSets, LintLevelsBuilder};
@@ -34,7 +34,8 @@ use middle::privacy::AccessLevels;
 use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use session::{config, early_error, Session};
 use traits::Reveal;
-use ty::{self, TyCtxt};
+use ty::{self, TyCtxt, Ty};
+use ty::layout::{LayoutError, LayoutOf, TyLayout};
 use util::nodemap::FxHashMap;
 
 use std::default::Default as StdDefault;
@@ -307,7 +308,7 @@ impl LintStore {
                     Some(ids) => CheckLintNameResult::Ok(&ids.0),
                 }
             }
-            Some(&Id(ref id)) => CheckLintNameResult::Ok(slice::ref_slice(id)),
+            Some(&Id(ref id)) => CheckLintNameResult::Ok(slice::from_ref(id)),
         }
     }
 }
@@ -626,6 +627,14 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
     }
 }
 
+impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for &'a LateContext<'a, 'tcx> {
+    type TyLayout = Result<TyLayout<'tcx>, LayoutError<'tcx>>;
+
+    fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
+        (self.tcx, self.param_env.reveal_all()).layout_of(ty)
+    }
+}
+
 impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
     /// Because lints are scoped lexically, we want to walk nested
     /// items in the context of the outer item, so enable
@@ -774,6 +783,11 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
         hir_visit::walk_decl(self, d);
     }
 
+    fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam) {
+        run_lints!(self, check_generic_param, late_passes, p);
+        hir_visit::walk_generic_param(self, p);
+    }
+
     fn visit_generics(&mut self, g: &'tcx hir::Generics) {
         run_lints!(self, check_generics, late_passes, g);
         hir_visit::walk_generics(self, g);
@@ -808,11 +822,6 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
     fn visit_lifetime(&mut self, lt: &'tcx hir::Lifetime) {
         run_lints!(self, check_lifetime, late_passes, lt);
         hir_visit::walk_lifetime(self, lt);
-    }
-
-    fn visit_lifetime_def(&mut self, lt: &'tcx hir::LifetimeDef) {
-        run_lints!(self, check_lifetime_def, late_passes, lt);
-        hir_visit::walk_lifetime_def(self, lt);
     }
 
     fn visit_path(&mut self, p: &'tcx hir::Path, id: ast::NodeId) {
@@ -936,6 +945,11 @@ impl<'a> ast_visit::Visitor<'a> for EarlyContext<'a> {
         run_lints!(self, check_expr_post, early_passes, e);
     }
 
+    fn visit_generic_param(&mut self, param: &'a ast::GenericParam) {
+        run_lints!(self, check_generic_param, early_passes, param);
+        ast_visit::walk_generic_param(self, param);
+    }
+
     fn visit_generics(&mut self, g: &'a ast::Generics) {
         run_lints!(self, check_generics, early_passes, g);
         ast_visit::walk_generics(self, g);
@@ -962,20 +976,10 @@ impl<'a> ast_visit::Visitor<'a> for EarlyContext<'a> {
         self.check_id(lt.id);
     }
 
-    fn visit_lifetime_def(&mut self, lt: &'a ast::LifetimeDef) {
-        run_lints!(self, check_lifetime_def, early_passes, lt);
-    }
-
     fn visit_path(&mut self, p: &'a ast::Path, id: ast::NodeId) {
         run_lints!(self, check_path, early_passes, p, id);
         self.check_id(id);
         ast_visit::walk_path(self, p);
-    }
-
-    fn visit_path_list_item(&mut self, prefix: &'a ast::Path, item: &'a ast::PathListItem) {
-        run_lints!(self, check_path_list_item, early_passes, item);
-        self.check_id(item.node.id);
-        ast_visit::walk_path_list_item(self, prefix, item);
     }
 
     fn visit_attribute(&mut self, attr: &'a ast::Attribute) {
@@ -1042,7 +1046,7 @@ pub fn check_ast_crate(sess: &Session, krate: &ast::Crate) {
     // calculated the lint levels for all AST nodes.
     for (_id, lints) in cx.buffered.map {
         for early_lint in lints {
-            span_bug!(early_lint.span, "failed to process bufferd lint here");
+            span_bug!(early_lint.span, "failed to process buffered lint here");
         }
     }
 }

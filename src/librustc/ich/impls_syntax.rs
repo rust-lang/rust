@@ -155,8 +155,8 @@ impl_stable_hash_for!(enum ::syntax::ast::LitKind {
     Bool(value)
 });
 
-impl_stable_hash_for!(enum ::syntax::ast::IntTy { Is, I8, I16, I32, I64, I128 });
-impl_stable_hash_for!(enum ::syntax::ast::UintTy { Us, U8, U16, U32, U64, U128 });
+impl_stable_hash_for!(enum ::syntax::ast::IntTy { Isize, I8, I16, I32, I64, I128 });
+impl_stable_hash_for!(enum ::syntax::ast::UintTy { Usize, U8, U16, U32, U64, U128 });
 impl_stable_hash_for!(enum ::syntax::ast::FloatTy { F32, F64 });
 impl_stable_hash_for!(enum ::syntax::ast::Unsafety { Unsafe, Normal });
 impl_stable_hash_for!(enum ::syntax::ast::Constness { Const, NotConst });
@@ -347,12 +347,48 @@ impl_stable_hash_for!(enum ::syntax::ast::MetaItemKind {
     NameValue(lit)
 });
 
+impl_stable_hash_for!(struct ::syntax_pos::hygiene::ExpnInfo {
+    call_site,
+    callee
+});
+
+impl_stable_hash_for!(struct ::syntax_pos::hygiene::NameAndSpan {
+    format,
+    allow_internal_unstable,
+    allow_internal_unsafe,
+    span
+});
+
+impl_stable_hash_for!(enum ::syntax_pos::hygiene::ExpnFormat {
+    MacroAttribute(sym),
+    MacroBang(sym),
+    CompilerDesugaring(kind)
+});
+
+impl_stable_hash_for!(enum ::syntax_pos::hygiene::CompilerDesugaringKind {
+    BackArrow,
+    DotFill,
+    QuestionMark
+});
+
+impl_stable_hash_for!(enum ::syntax_pos::FileName {
+    Real(pb),
+    Macros(s),
+    QuoteExpansion,
+    Anon,
+    MacroExpansion,
+    ProcMacroSourceCode,
+    CfgSpec,
+    Custom(s)
+});
+
 impl<'gcx> HashStable<StableHashingContext<'gcx>> for FileMap {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         let FileMap {
-            ref name,
+            name: _, // We hash the smaller name_hash instead of this
+            name_hash,
             name_was_remapped,
             unmapped_path: _,
             crate_of_origin,
@@ -367,7 +403,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for FileMap {
             ref non_narrow_chars,
         } = *self;
 
-        name.hash_stable(hcx, hasher);
+        (name_hash as u64).hash_stable(hcx, hasher);
         name_was_remapped.hash_stable(hcx, hasher);
 
         DefId {

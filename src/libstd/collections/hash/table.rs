@@ -123,9 +123,6 @@ pub struct RawTable<K, V> {
     marker: marker::PhantomData<(K, V)>,
 }
 
-unsafe impl<K: Send, V: Send> Send for RawTable<K, V> {}
-unsafe impl<K: Sync, V: Sync> Sync for RawTable<K, V> {}
-
 // An unsafe view of a RawTable bucket
 // Valid indexes are within [0..table_capacity)
 pub struct RawBucket<K, V> {

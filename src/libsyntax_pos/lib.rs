@@ -30,7 +30,7 @@ use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
 use std::cmp::{self, Ordering};
 use std::fmt;
-use std::hash::Hasher;
+use std::hash::{Hasher, Hash};
 use std::ops::{Add, Sub};
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -54,7 +54,78 @@ pub use span_encoding::{Span, DUMMY_SP};
 
 pub mod symbol;
 
-pub type FileName = String;
+/// Differentiates between real files and common virtual files
+#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, RustcDecodable, RustcEncodable)]
+pub enum FileName {
+    Real(PathBuf),
+    /// e.g. "std" macros
+    Macros(String),
+    /// call to `quote!`
+    QuoteExpansion,
+    /// Command line
+    Anon,
+    /// Hack in src/libsyntax/parse.rs
+    /// FIXME(jseyfried)
+    MacroExpansion,
+    ProcMacroSourceCode,
+    /// Strings provided as --cfg [cfgspec] stored in a crate_cfg
+    CfgSpec,
+    /// Custom sources for explicit parser calls from plugins and drivers
+    Custom(String),
+}
+
+impl std::fmt::Display for FileName {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use self::FileName::*;
+        match *self {
+            Real(ref path) => write!(fmt, "{}", path.display()),
+            Macros(ref name) => write!(fmt, "<{} macros>", name),
+            QuoteExpansion => write!(fmt, "<quote expansion>"),
+            MacroExpansion => write!(fmt, "<macro expansion>"),
+            Anon => write!(fmt, "<anon>"),
+            ProcMacroSourceCode => write!(fmt, "<proc-macro source code>"),
+            CfgSpec => write!(fmt, "cfgspec"),
+            Custom(ref s) => write!(fmt, "<{}>", s),
+        }
+    }
+}
+
+impl From<PathBuf> for FileName {
+    fn from(p: PathBuf) -> Self {
+        assert!(!p.to_string_lossy().ends_with('>'));
+        FileName::Real(p)
+    }
+}
+
+impl FileName {
+    pub fn is_real(&self) -> bool {
+        use self::FileName::*;
+        match *self {
+            Real(_) => true,
+            Macros(_) |
+            Anon |
+            MacroExpansion |
+            ProcMacroSourceCode |
+            CfgSpec |
+            Custom(_) |
+            QuoteExpansion => false,
+        }
+    }
+
+    pub fn is_macros(&self) -> bool {
+        use self::FileName::*;
+        match *self {
+            Real(_) |
+            Anon |
+            MacroExpansion |
+            ProcMacroSourceCode |
+            CfgSpec |
+            Custom(_) |
+            QuoteExpansion => false,
+            Macros(_) => true,
+        }
+    }
+}
 
 /// Spans represent a region of code, used for error reporting. Positions in spans
 /// are *absolute* positions from the beginning of the codemap, not positions
@@ -503,6 +574,8 @@ pub enum NonNarrowChar {
     ZeroWidth(BytePos),
     /// Represents a wide (fullwidth) character
     Wide(BytePos),
+    /// Represents a tab character, represented visually with a width of 4 characters
+    Tab(BytePos),
 }
 
 impl NonNarrowChar {
@@ -510,6 +583,7 @@ impl NonNarrowChar {
         match width {
             0 => NonNarrowChar::ZeroWidth(pos),
             2 => NonNarrowChar::Wide(pos),
+            4 => NonNarrowChar::Tab(pos),
             _ => panic!("width {} given for non-narrow character", width),
         }
     }
@@ -518,7 +592,8 @@ impl NonNarrowChar {
     pub fn pos(&self) -> BytePos {
         match *self {
             NonNarrowChar::ZeroWidth(p) |
-            NonNarrowChar::Wide(p) => p,
+            NonNarrowChar::Wide(p) |
+            NonNarrowChar::Tab(p) => p,
         }
     }
 
@@ -527,6 +602,7 @@ impl NonNarrowChar {
         match *self {
             NonNarrowChar::ZeroWidth(_) => 0,
             NonNarrowChar::Wide(_) => 2,
+            NonNarrowChar::Tab(_) => 4,
         }
     }
 }
@@ -538,6 +614,7 @@ impl Add<BytePos> for NonNarrowChar {
         match self {
             NonNarrowChar::ZeroWidth(pos) => NonNarrowChar::ZeroWidth(pos + rhs),
             NonNarrowChar::Wide(pos) => NonNarrowChar::Wide(pos + rhs),
+            NonNarrowChar::Tab(pos) => NonNarrowChar::Tab(pos + rhs),
         }
     }
 }
@@ -549,6 +626,7 @@ impl Sub<BytePos> for NonNarrowChar {
         match self {
             NonNarrowChar::ZeroWidth(pos) => NonNarrowChar::ZeroWidth(pos - rhs),
             NonNarrowChar::Wide(pos) => NonNarrowChar::Wide(pos - rhs),
+            NonNarrowChar::Tab(pos) => NonNarrowChar::Tab(pos - rhs),
         }
     }
 }
@@ -593,7 +671,7 @@ pub struct FileMap {
     pub name_was_remapped: bool,
     /// The unmapped path of the file that the source came from.
     /// Set to `None` if the FileMap was imported from an external crate.
-    pub unmapped_path: Option<PathBuf>,
+    pub unmapped_path: Option<FileName>,
     /// Indicates which crate this FileMap was imported from.
     pub crate_of_origin: u32,
     /// The complete source code
@@ -613,6 +691,8 @@ pub struct FileMap {
     pub multibyte_chars: RefCell<Vec<MultiByteChar>>,
     /// Width of characters that are not narrow in the source code
     pub non_narrow_chars: RefCell<Vec<NonNarrowChar>>,
+    /// A hash of the filename, used for speeding up the incr. comp. hashing.
+    pub name_hash: u128,
 }
 
 impl Encodable for FileMap {
@@ -620,10 +700,10 @@ impl Encodable for FileMap {
         s.emit_struct("FileMap", 8, |s| {
             s.emit_struct_field("name", 0, |s| self.name.encode(s))?;
             s.emit_struct_field("name_was_remapped", 1, |s| self.name_was_remapped.encode(s))?;
-            s.emit_struct_field("src_hash", 6, |s| self.src_hash.encode(s))?;
-            s.emit_struct_field("start_pos", 2, |s| self.start_pos.encode(s))?;
-            s.emit_struct_field("end_pos", 3, |s| self.end_pos.encode(s))?;
-            s.emit_struct_field("lines", 4, |s| {
+            s.emit_struct_field("src_hash", 2, |s| self.src_hash.encode(s))?;
+            s.emit_struct_field("start_pos", 4, |s| self.start_pos.encode(s))?;
+            s.emit_struct_field("end_pos", 5, |s| self.end_pos.encode(s))?;
+            s.emit_struct_field("lines", 6, |s| {
                 let lines = self.lines.borrow();
                 // store the length
                 s.emit_u32(lines.len() as u32)?;
@@ -669,11 +749,14 @@ impl Encodable for FileMap {
 
                 Ok(())
             })?;
-            s.emit_struct_field("multibyte_chars", 5, |s| {
+            s.emit_struct_field("multibyte_chars", 7, |s| {
                 (*self.multibyte_chars.borrow()).encode(s)
             })?;
-            s.emit_struct_field("non_narrow_chars", 7, |s| {
+            s.emit_struct_field("non_narrow_chars", 8, |s| {
                 (*self.non_narrow_chars.borrow()).encode(s)
+            })?;
+            s.emit_struct_field("name_hash", 9, |s| {
+                self.name_hash.encode(s)
             })
         })
     }
@@ -683,15 +766,15 @@ impl Decodable for FileMap {
     fn decode<D: Decoder>(d: &mut D) -> Result<FileMap, D::Error> {
 
         d.read_struct("FileMap", 8, |d| {
-            let name: String = d.read_struct_field("name", 0, |d| Decodable::decode(d))?;
+            let name: FileName = d.read_struct_field("name", 0, |d| Decodable::decode(d))?;
             let name_was_remapped: bool =
                 d.read_struct_field("name_was_remapped", 1, |d| Decodable::decode(d))?;
             let src_hash: u128 =
-                d.read_struct_field("src_hash", 6, |d| Decodable::decode(d))?;
+                d.read_struct_field("src_hash", 2, |d| Decodable::decode(d))?;
             let start_pos: BytePos =
-                d.read_struct_field("start_pos", 2, |d| Decodable::decode(d))?;
-            let end_pos: BytePos = d.read_struct_field("end_pos", 3, |d| Decodable::decode(d))?;
-            let lines: Vec<BytePos> = d.read_struct_field("lines", 4, |d| {
+                d.read_struct_field("start_pos", 4, |d| Decodable::decode(d))?;
+            let end_pos: BytePos = d.read_struct_field("end_pos", 5, |d| Decodable::decode(d))?;
+            let lines: Vec<BytePos> = d.read_struct_field("lines", 6, |d| {
                 let num_lines: u32 = Decodable::decode(d)?;
                 let mut lines = Vec::with_capacity(num_lines as usize);
 
@@ -720,9 +803,11 @@ impl Decodable for FileMap {
                 Ok(lines)
             })?;
             let multibyte_chars: Vec<MultiByteChar> =
-                d.read_struct_field("multibyte_chars", 5, |d| Decodable::decode(d))?;
+                d.read_struct_field("multibyte_chars", 7, |d| Decodable::decode(d))?;
             let non_narrow_chars: Vec<NonNarrowChar> =
-                d.read_struct_field("non_narrow_chars", 7, |d| Decodable::decode(d))?;
+                d.read_struct_field("non_narrow_chars", 8, |d| Decodable::decode(d))?;
+            let name_hash: u128 =
+                d.read_struct_field("name_hash", 9, |d| Decodable::decode(d))?;
             Ok(FileMap {
                 name,
                 name_was_remapped,
@@ -738,7 +823,8 @@ impl Decodable for FileMap {
                 external_src: RefCell::new(ExternalSource::AbsentOk),
                 lines: RefCell::new(lines),
                 multibyte_chars: RefCell::new(multibyte_chars),
-                non_narrow_chars: RefCell::new(non_narrow_chars)
+                non_narrow_chars: RefCell::new(non_narrow_chars),
+                name_hash,
             })
         })
     }
@@ -753,15 +839,21 @@ impl fmt::Debug for FileMap {
 impl FileMap {
     pub fn new(name: FileName,
                name_was_remapped: bool,
-               unmapped_path: PathBuf,
+               unmapped_path: FileName,
                mut src: String,
                start_pos: BytePos) -> FileMap {
         remove_bom(&mut src);
 
-        let mut hasher: StableHasher<u128> = StableHasher::new();
-        hasher.write(src.as_bytes());
-        let src_hash = hasher.finish();
-
+        let src_hash = {
+            let mut hasher: StableHasher<u128> = StableHasher::new();
+            hasher.write(src.as_bytes());
+            hasher.finish()
+        };
+        let name_hash = {
+            let mut hasher: StableHasher<u128> = StableHasher::new();
+            name.hash(&mut hasher);
+            hasher.finish()
+        };
         let end_pos = start_pos.to_usize() + src.len();
 
         FileMap {
@@ -777,6 +869,7 @@ impl FileMap {
             lines: RefCell::new(Vec::new()),
             multibyte_chars: RefCell::new(Vec::new()),
             non_narrow_chars: RefCell::new(Vec::new()),
+            name_hash,
         }
     }
 
@@ -868,8 +961,10 @@ impl FileMap {
 
     pub fn record_width(&self, pos: BytePos, ch: char) {
         let width = match ch {
-            '\t' | '\n' =>
-                // Tabs will consume one column.
+            '\t' =>
+                // Tabs will consume 4 columns.
+                4,
+            '\n' =>
                 // Make newlines take one column so that displayed spans can point them.
                 1,
             ch =>
@@ -884,8 +979,7 @@ impl FileMap {
     }
 
     pub fn is_real_file(&self) -> bool {
-        !(self.name.starts_with("<") &&
-          self.name.ends_with(">"))
+        self.name.is_real()
     }
 
     pub fn is_imported(&self) -> bool {
@@ -930,6 +1024,11 @@ impl FileMap {
         } else {
             (lines[line_index], lines[line_index + 1])
         }
+    }
+
+    #[inline]
+    pub fn contains(&self, byte_pos: BytePos) -> bool {
+        byte_pos >= self.start_pos && byte_pos <= self.end_pos
     }
 }
 
@@ -1100,18 +1199,18 @@ pub enum SpanSnippetError {
     IllFormedSpan(Span),
     DistinctSources(DistinctSources),
     MalformedForCodemap(MalformedCodemapPositions),
-    SourceNotAvailable { filename: String }
+    SourceNotAvailable { filename: FileName }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct DistinctSources {
-    pub begin: (String, BytePos),
-    pub end: (String, BytePos)
+    pub begin: (FileName, BytePos),
+    pub end: (FileName, BytePos)
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct MalformedCodemapPositions {
-    pub name: String,
+    pub name: FileName,
     pub source_len: usize,
     pub begin_pos: BytePos,
     pub end_pos: BytePos

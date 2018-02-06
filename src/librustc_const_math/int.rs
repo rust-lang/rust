@@ -12,8 +12,8 @@ use std::cmp::Ordering;
 use syntax::attr::IntType;
 use syntax::ast::{IntTy, UintTy};
 
-use super::is::*;
-use super::us::*;
+use super::isize::*;
+use super::usize::*;
 use super::err::*;
 
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, Hash, Eq, PartialEq)]
@@ -83,7 +83,7 @@ impl ConstInt {
             UintTy::U16 if val <= ubounds::U16MAX => Some(U16(val as u16)),
             UintTy::U32 if val <= ubounds::U32MAX => Some(U32(val as u32)),
             UintTy::U64 if val <= ubounds::U64MAX => Some(U64(val as u64)),
-            UintTy::Us if val <= ubounds::U64MAX => ConstUsize::new(val as u64, usize_ty).ok()
+            UintTy::Usize if val <= ubounds::U64MAX => ConstUsize::new(val as u64, usize_ty).ok()
                 .map(Usize),
             UintTy::U128 => Some(U128(val)),
             _ => None
@@ -98,7 +98,7 @@ impl ConstInt {
             IntTy::I16 if val <= ibounds::I16MAX => Some(I16(val as i16)),
             IntTy::I32 if val <= ibounds::I32MAX => Some(I32(val as i32)),
             IntTy::I64 if val <= ibounds::I64MAX => Some(I64(val as i64)),
-            IntTy::Is if val <= ibounds::I64MAX => ConstIsize::new(val as i64, isize_ty).ok()
+            IntTy::Isize if val <= ibounds::I64MAX => ConstIsize::new(val as i64, isize_ty).ok()
                 .map(Isize),
             IntTy::I128 => Some(I128(val)),
             _ => None
@@ -112,7 +112,7 @@ impl ConstInt {
             UintTy::U16 => U16(val as u16),
             UintTy::U32 => U32(val as u32),
             UintTy::U64 => U64(val as u64),
-            UintTy::Us => Usize(ConstUsize::new_truncating(val, usize_ty)),
+            UintTy::Usize => Usize(ConstUsize::new_truncating(val, usize_ty)),
             UintTy::U128 => U128(val)
         }
     }
@@ -124,7 +124,7 @@ impl ConstInt {
             IntTy::I16 => I16(val as i16),
             IntTy::I32 => I32(val as i32),
             IntTy::I64 => I64(val as i64),
-            IntTy::Is => Isize(ConstIsize::new_truncating(val, isize_ty)),
+            IntTy::Isize => Isize(ConstIsize::new_truncating(val, isize_ty)),
             IntTy::I128 => I128(val)
         }
     }
@@ -280,13 +280,13 @@ impl ConstInt {
             ConstInt::I32(_) => IntType::SignedInt(IntTy::I32),
             ConstInt::I64(_) => IntType::SignedInt(IntTy::I64),
             ConstInt::I128(_) => IntType::SignedInt(IntTy::I128),
-            ConstInt::Isize(_) => IntType::SignedInt(IntTy::Is),
+            ConstInt::Isize(_) => IntType::SignedInt(IntTy::Isize),
             ConstInt::U8(_) => IntType::UnsignedInt(UintTy::U8),
             ConstInt::U16(_) => IntType::UnsignedInt(UintTy::U16),
             ConstInt::U32(_) => IntType::UnsignedInt(UintTy::U32),
             ConstInt::U64(_) => IntType::UnsignedInt(UintTy::U64),
             ConstInt::U128(_) => IntType::UnsignedInt(UintTy::U128),
-            ConstInt::Usize(_) => IntType::UnsignedInt(UintTy::Us),
+            ConstInt::Usize(_) => IntType::UnsignedInt(UintTy::Usize),
         }
     }
 }

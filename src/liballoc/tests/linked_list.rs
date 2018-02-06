@@ -366,3 +366,191 @@ fn test_contains() {
 
     assert!(!l.contains(&3));
 }
+
+#[test]
+fn drain_filter_empty() {
+    let mut list: LinkedList<i32> = LinkedList::new();
+
+    {
+        let mut iter = list.drain_filter(|_| true);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+    }
+
+    assert_eq!(list.len(), 0);
+    assert_eq!(list.into_iter().collect::<Vec<_>>(), vec![]);
+}
+
+#[test]
+fn drain_filter_zst() {
+    let mut list: LinkedList<_> = vec![(), (), (), (), ()].into_iter().collect();
+    let initial_len = list.len();
+    let mut count = 0;
+
+    {
+        let mut iter = list.drain_filter(|_| true);
+        assert_eq!(iter.size_hint(), (0, Some(initial_len)));
+        while let Some(_) = iter.next() {
+            count += 1;
+            assert_eq!(iter.size_hint(), (0, Some(initial_len - count)));
+        }
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+    }
+
+    assert_eq!(count, initial_len);
+    assert_eq!(list.len(), 0);
+    assert_eq!(list.into_iter().collect::<Vec<_>>(), vec![]);
+}
+
+#[test]
+fn drain_filter_false() {
+    let mut list: LinkedList<_> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10].into_iter().collect();
+
+    let initial_len = list.len();
+    let mut count = 0;
+
+    {
+        let mut iter = list.drain_filter(|_| false);
+        assert_eq!(iter.size_hint(), (0, Some(initial_len)));
+        for _ in iter.by_ref() {
+            count += 1;
+        }
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+    }
+
+    assert_eq!(count, 0);
+    assert_eq!(list.len(), initial_len);
+    assert_eq!(list.into_iter().collect::<Vec<_>>(), vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+}
+
+#[test]
+fn drain_filter_true() {
+    let mut list: LinkedList<_> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10].into_iter().collect();
+
+    let initial_len = list.len();
+    let mut count = 0;
+
+    {
+        let mut iter = list.drain_filter(|_| true);
+        assert_eq!(iter.size_hint(), (0, Some(initial_len)));
+        while let Some(_) = iter.next() {
+            count += 1;
+            assert_eq!(iter.size_hint(), (0, Some(initial_len - count)));
+        }
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+    }
+
+    assert_eq!(count, initial_len);
+    assert_eq!(list.len(), 0);
+    assert_eq!(list.into_iter().collect::<Vec<_>>(), vec![]);
+}
+
+#[test]
+fn drain_filter_complex() {
+
+    {   //                [+xxx++++++xxxxx++++x+x++]
+        let mut list = vec![
+            1,
+            2, 4, 6,
+            7, 9, 11, 13, 15, 17,
+            18, 20, 22, 24, 26,
+            27, 29, 31, 33,
+            34,
+            35,
+            36,
+            37, 39
+        ].into_iter().collect::<LinkedList<_>>();
+
+        let removed = list.drain_filter(|x| *x % 2 == 0).collect::<Vec<_>>();
+        assert_eq!(removed.len(), 10);
+        assert_eq!(removed, vec![2, 4, 6, 18, 20, 22, 24, 26, 34, 36]);
+
+        assert_eq!(list.len(), 14);
+        assert_eq!(
+            list.into_iter().collect::<Vec<_>>(),
+            vec![1, 7, 9, 11, 13, 15, 17, 27, 29, 31, 33, 35, 37, 39]
+        );
+    }
+
+    {   // [xxx++++++xxxxx++++x+x++]
+        let mut list = vec![
+            2, 4, 6,
+            7, 9, 11, 13, 15, 17,
+            18, 20, 22, 24, 26,
+            27, 29, 31, 33,
+            34,
+            35,
+            36,
+            37, 39
+        ].into_iter().collect::<LinkedList<_>>();
+
+        let removed = list.drain_filter(|x| *x % 2 == 0).collect::<Vec<_>>();
+        assert_eq!(removed.len(), 10);
+        assert_eq!(removed, vec![2, 4, 6, 18, 20, 22, 24, 26, 34, 36]);
+
+        assert_eq!(list.len(), 13);
+        assert_eq!(
+            list.into_iter().collect::<Vec<_>>(),
+            vec![7, 9, 11, 13, 15, 17, 27, 29, 31, 33, 35, 37, 39]
+        );
+    }
+
+    {   // [xxx++++++xxxxx++++x+x]
+        let mut list = vec![
+            2, 4, 6,
+            7, 9, 11, 13, 15, 17,
+            18, 20, 22, 24, 26,
+            27, 29, 31, 33,
+            34,
+            35,
+            36
+        ].into_iter().collect::<LinkedList<_>>();
+
+        let removed = list.drain_filter(|x| *x % 2 == 0).collect::<Vec<_>>();
+        assert_eq!(removed.len(), 10);
+        assert_eq!(removed, vec![2, 4, 6, 18, 20, 22, 24, 26, 34, 36]);
+
+        assert_eq!(list.len(), 11);
+        assert_eq!(
+            list.into_iter().collect::<Vec<_>>(),
+            vec![7, 9, 11, 13, 15, 17, 27, 29, 31, 33, 35]
+        );
+    }
+
+    {   // [xxxxxxxxxx+++++++++++]
+        let mut list = vec![
+            2, 4, 6, 8, 10, 12, 14, 16, 18, 20,
+            1, 3, 5, 7, 9, 11, 13, 15, 17, 19
+        ].into_iter().collect::<LinkedList<_>>();
+
+        let removed = list.drain_filter(|x| *x % 2 == 0).collect::<Vec<_>>();
+        assert_eq!(removed.len(), 10);
+        assert_eq!(removed, vec![2, 4, 6, 8, 10, 12, 14, 16, 18, 20]);
+
+        assert_eq!(list.len(), 10);
+        assert_eq!(list.into_iter().collect::<Vec<_>>(), vec![1, 3, 5, 7, 9, 11, 13, 15, 17, 19]);
+    }
+
+    {   // [+++++++++++xxxxxxxxxx]
+        let mut list = vec![
+            1, 3, 5, 7, 9, 11, 13, 15, 17, 19,
+            2, 4, 6, 8, 10, 12, 14, 16, 18, 20
+        ].into_iter().collect::<LinkedList<_>>();
+
+        let removed = list.drain_filter(|x| *x % 2 == 0).collect::<Vec<_>>();
+        assert_eq!(removed.len(), 10);
+        assert_eq!(removed, vec![2, 4, 6, 8, 10, 12, 14, 16, 18, 20]);
+
+        assert_eq!(list.len(), 10);
+        assert_eq!(list.into_iter().collect::<Vec<_>>(), vec![1, 3, 5, 7, 9, 11, 13, 15, 17, 19]);
+    }
+}

@@ -12,7 +12,7 @@
 //! the parent links in the region hierarchy.
 //!
 //! Most of the documentation on regions can be found in
-//! `middle/infer/region_inference/README.md`
+//! `middle/infer/region_constraints/README.md`
 
 use ich::{StableHashingContext, NodeIdHashingMode};
 use util::nodemap::{FxHashMap, FxHashSet};
@@ -31,7 +31,6 @@ use hir;
 use hir::def_id::DefId;
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir::{Block, Arm, Pat, PatKind, Stmt, Expr, Local};
-use mir::transform::MirSource;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
@@ -54,9 +53,9 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
 /// expression for the indexed statement, until the end of the block.
 ///
 /// So: the following code can be broken down into the scopes beneath:
-/// ```
+///
+/// ```text
 /// let a = f().g( 'b: { let x = d(); let y = d(); x.h(y)  }   ) ;
-/// ```
 ///
 ///                                                              +-+ (D12.)
 ///                                                        +-+       (D11.)
@@ -83,6 +82,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
 /// (R10.): Remainder scope for block `'b:`, stmt 1 (let y = ...).
 /// (D11.): DestructionScope for temporaries and bindings from block `'b:`.
 /// (D12.): DestructionScope for temporaries created during M1 (e.g. f()).
+/// ```
 ///
 /// Note that while the above picture shows the destruction scopes
 /// as following their corresponding node scopes, in the internal
@@ -321,7 +321,7 @@ pub struct ScopeTree {
     /// hierarchy based on their lexical mapping. This is used to
     /// handle the relationships between regions in a fn and in a
     /// closure defined by that fn. See the "Modeling closures"
-    /// section of the README in infer::region_inference for
+    /// section of the README in infer::region_constraints for
     /// more details.
     closure_tree: FxHashMap<hir::ItemLocalId, hir::ItemLocalId>,
 
@@ -408,7 +408,7 @@ pub struct Context {
     /// of the innermost fn body. Each fn forms its own disjoint tree
     /// in the region hierarchy. These fn bodies are themselves
     /// arranged into a tree. See the "Modeling closures" section of
-    /// the README in infer::region_inference for more
+    /// the README in infer::region_constraints for more
     /// details.
     root_id: Option<hir::ItemLocalId>,
 
@@ -647,7 +647,7 @@ impl<'tcx> ScopeTree {
             // different functions.  Compare those fn for lexical
             // nesting. The reasoning behind this is subtle.  See the
             // "Modeling closures" section of the README in
-            // infer::region_inference for more details.
+            // infer::region_constraints for more details.
             let a_root_scope = a_ancestors[a_index];
             let b_root_scope = a_ancestors[a_index];
             return match (a_root_scope.data(), b_root_scope.data()) {
@@ -1298,7 +1298,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
 
         // The body of the every fn is a root scope.
         self.cx.parent = self.cx.var_parent;
-        if let MirSource::Fn(_) = MirSource::from_node(self.tcx, owner_id) {
+        if let hir::BodyOwnerKind::Fn = self.tcx.hir.body_owner_kind(owner_id) {
             self.visit_expr(&body.value);
         } else {
             // Only functions have an outer terminating (drop) scope, while

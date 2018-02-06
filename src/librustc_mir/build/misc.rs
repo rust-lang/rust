@@ -19,7 +19,7 @@ use rustc::ty::{self, Ty};
 
 use rustc::mir::*;
 use syntax::ast;
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Add a new temporary value of type `ty` storing the result of
@@ -27,12 +27,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     ///
     /// NB: **No cleanup is scheduled for this temporary.** You should
     /// call `schedule_drop` once the temporary is initialized.
-    pub fn temp(&mut self, ty: Ty<'tcx>, span: Span) -> Lvalue<'tcx> {
+    pub fn temp(&mut self, ty: Ty<'tcx>, span: Span) -> Place<'tcx> {
         let temp = self.local_decls.push(LocalDecl::new_temp(ty, span));
-        let lvalue = Lvalue::Local(temp);
+        let place = Place::Local(temp);
         debug!("temp: created temp {:?} with type {:?}",
-               lvalue, self.local_decls[temp].ty);
-        lvalue
+               place, self.local_decls[temp].ty);
+        place
     }
 
     pub fn literal_operand(&mut self,
@@ -74,7 +74,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     ast::UintTy::U32 => ConstInt::U32(0),
                     ast::UintTy::U64 => ConstInt::U64(0),
                     ast::UintTy::U128 => ConstInt::U128(0),
-                    ast::UintTy::Us => {
+                    ast::UintTy::Usize => {
                         let uint_ty = self.hir.tcx().sess.target.usize_ty;
                         let val = ConstUsize::new(0, uint_ty).unwrap();
                         ConstInt::Usize(val)
@@ -95,7 +95,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     ast::IntTy::I32 => ConstInt::I32(0),
                     ast::IntTy::I64 => ConstInt::I64(0),
                     ast::IntTy::I128 => ConstInt::I128(0),
-                    ast::IntTy::Is => {
+                    ast::IntTy::Isize => {
                         let int_ty = self.hir.tcx().sess.target.isize_ty;
                         let val = ConstIsize::new(0, int_ty).unwrap();
                         ConstInt::Isize(val)
@@ -121,7 +121,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                       block: BasicBlock,
                       source_info: SourceInfo,
                       value: u64)
-                      -> Lvalue<'tcx> {
+                      -> Place<'tcx> {
         let usize_ty = self.hir.usize_ty();
         let temp = self.temp(usize_ty, source_info.span);
         self.cfg.push_assign_constant(
@@ -132,5 +132,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 literal: self.hir.usize_literal(value),
             });
         temp
+    }
+
+    pub fn consume_by_copy_or_move(&self, place: Place<'tcx>) -> Operand<'tcx> {
+        let tcx = self.hir.tcx();
+        let ty = place.ty(&self.local_decls, tcx).to_ty(tcx);
+        if self.hir.type_moves_by_default(ty, DUMMY_SP) {
+            Operand::Move(place)
+        } else {
+            Operand::Copy(place)
+        }
     }
 }

@@ -21,9 +21,9 @@ trait TraversesWorld {
     fn attemptTraverse(&self, room: &Room, directionStr: &str) -> Result<&Room, &str> {
         let direction = str_to_direction(directionStr);
         let maybe_room = room.direction_to_room.get(&direction);
-        //~^ ERROR cannot infer an appropriate lifetime for autoref due to conflicting requirements
         match maybe_room {
             Some(entry) => Ok(entry),
+            //~^ ERROR 25:28: 25:37: lifetime mismatch [E0623]
             _ => Err("Direction does not exist in room.")
         }
     }

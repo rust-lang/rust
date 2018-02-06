@@ -606,14 +606,14 @@ impl<T> [T] {
         core_slice::SliceExt::windows(self, size)
     }
 
-    /// Returns an iterator over `size` elements of the slice at a
-    /// time. The chunks are slices and do not overlap. If `size` does
+    /// Returns an iterator over `chunk_size` elements of the slice at a
+    /// time. The chunks are slices and do not overlap. If `chunk_size` does
     /// not divide the length of the slice, then the last chunk will
-    /// not have length `size`.
+    /// not have length `chunk_size`.
     ///
     /// # Panics
     ///
-    /// Panics if `size` is 0.
+    /// Panics if `chunk_size` is 0.
     ///
     /// # Examples
     ///
@@ -627,8 +627,8 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn chunks(&self, size: usize) -> Chunks<T> {
-        core_slice::SliceExt::chunks(self, size)
+    pub fn chunks(&self, chunk_size: usize) -> Chunks<T> {
+        core_slice::SliceExt::chunks(self, chunk_size)
     }
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time.
@@ -699,7 +699,7 @@ impl<T> [T] {
         core_slice::SliceExt::split_at(self, mid)
     }
 
-    /// Divides one `&mut` into two at an index.
+    /// Divides one mutable slice into two at an index.
     ///
     /// The first will contain all indices from `[0, mid)` (excluding
     /// the index `mid` itself) and the second will contain all
@@ -1360,24 +1360,16 @@ impl<T> [T] {
         core_slice::SliceExt::sort_unstable_by_key(self, f);
     }
 
-    /// Permutes the slice in-place such that `self[mid..]` moves to the
-    /// beginning of the slice while `self[..mid]` moves to the end of the
-    /// slice.  Equivalently, rotates the slice `mid` places to the left
-    /// or `k = self.len() - mid` places to the right.
-    ///
-    /// This is a "k-rotation", a permutation in which item `i` moves to
-    /// position `i + k`, modulo the length of the slice.  See _Elements
-    /// of Programming_ [§10.4][eop].
-    ///
-    /// Rotation by `mid` and rotation by `k` are inverse operations.
-    ///
-    /// [eop]: https://books.google.com/books?id=CO9ULZGINlsC&pg=PA178&q=k-rotation
+    /// Rotates the slice in-place such that the first `mid` elements of the
+    /// slice move to the end while the last `self.len() - mid` elements move to
+    /// the front. After calling `rotate_left`, the element previously at index
+    /// `mid` will become the first element in the slice.
     ///
     /// # Panics
     ///
     /// This function will panic if `mid` is greater than the length of the
-    /// slice.  (Note that `mid == self.len()` does _not_ panic; it's a nop
-    /// rotation with `k == 0`, the inverse of a rotation with `mid == 0`.)
+    /// slice. Note that `mid == self.len()` does _not_ panic and is a no-op
+    /// rotation.
     ///
     /// # Complexity
     ///
@@ -1388,31 +1380,68 @@ impl<T> [T] {
     /// ```
     /// #![feature(slice_rotate)]
     ///
-    /// let mut a = [1, 2, 3, 4, 5, 6, 7];
-    /// let mid = 2;
-    /// a.rotate(mid);
-    /// assert_eq!(&a, &[3, 4, 5, 6, 7, 1, 2]);
-    /// let k = a.len() - mid;
-    /// a.rotate(k);
-    /// assert_eq!(&a, &[1, 2, 3, 4, 5, 6, 7]);
+    /// let mut a = ['a', 'b', 'c', 'd', 'e', 'f'];
+    /// a.rotate_left(2);
+    /// assert_eq!(a, ['c', 'd', 'e', 'f', 'a', 'b']);
+    /// ```
     ///
-    /// use std::ops::Range;
-    /// fn slide<T>(slice: &mut [T], range: Range<usize>, to: usize) {
-    ///     if to < range.start {
-    ///         slice[to..range.end].rotate(range.start-to);
-    ///     } else if to > range.end {
-    ///         slice[range.start..to].rotate(range.end-range.start);
-    ///     }
-    /// }
-    /// let mut v: Vec<_> = (0..10).collect();
-    /// slide(&mut v, 1..4, 7);
-    /// assert_eq!(&v, &[0, 4, 5, 6, 1, 2, 3, 7, 8, 9]);
-    /// slide(&mut v, 6..8, 1);
-    /// assert_eq!(&v, &[0, 3, 7, 4, 5, 6, 1, 2, 8, 9]);
+    /// Rotating a subslice:
+    ///
+    /// ```
+    /// #![feature(slice_rotate)]
+    ///
+    /// let mut a = ['a', 'b', 'c', 'd', 'e', 'f'];
+    /// a[1..5].rotate_left(1);
+    /// assert_eq!(a, ['a', 'c', 'd', 'e', 'b', 'f']);
     /// ```
     #[unstable(feature = "slice_rotate", issue = "41891")]
+    pub fn rotate_left(&mut self, mid: usize) {
+        core_slice::SliceExt::rotate_left(self, mid);
+    }
+
+    #[unstable(feature = "slice_rotate", issue = "41891")]
+    #[rustc_deprecated(since = "", reason = "renamed to `rotate_left`")]
     pub fn rotate(&mut self, mid: usize) {
-        core_slice::SliceExt::rotate(self, mid);
+        core_slice::SliceExt::rotate_left(self, mid);
+    }
+
+    /// Rotates the slice in-place such that the first `self.len() - k`
+    /// elements of the slice move to the end while the last `k` elements move
+    /// to the front. After calling `rotate_right`, the element previously at
+    /// index `self.len() - k` will become the first element in the slice.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if `k` is greater than the length of the
+    /// slice. Note that `k == self.len()` does _not_ panic and is a no-op
+    /// rotation.
+    ///
+    /// # Complexity
+    ///
+    /// Takes linear (in `self.len()`) time.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_rotate)]
+    ///
+    /// let mut a = ['a', 'b', 'c', 'd', 'e', 'f'];
+    /// a.rotate_right(2);
+    /// assert_eq!(a, ['e', 'f', 'a', 'b', 'c', 'd']);
+    /// ```
+    ///
+    /// Rotate a subslice:
+    ///
+    /// ```
+    /// #![feature(slice_rotate)]
+    ///
+    /// let mut a = ['a', 'b', 'c', 'd', 'e', 'f'];
+    /// a[1..5].rotate_right(1);
+    /// assert_eq!(a, ['a', 'e', 'b', 'c', 'd', 'f']);
+    /// ```
+    #[unstable(feature = "slice_rotate", issue = "41891")]
+    pub fn rotate_right(&mut self, k: usize) {
+        core_slice::SliceExt::rotate_right(self, k);
     }
 
     /// Copies the elements from `src` into `self`.
@@ -1428,15 +1457,45 @@ impl<T> [T] {
     ///
     /// # Examples
     ///
-    /// ```
-    /// let mut dst = [0, 0, 0];
-    /// let src = [1, 2, 3];
+    /// Cloning two elements from a slice into another:
     ///
-    /// dst.clone_from_slice(&src);
-    /// assert!(dst == [1, 2, 3]);
+    /// ```
+    /// let src = [1, 2, 3, 4];
+    /// let mut dst = [0, 0];
+    ///
+    /// dst.clone_from_slice(&src[2..]);
+    ///
+    /// assert_eq!(src, [1, 2, 3, 4]);
+    /// assert_eq!(dst, [3, 4]);
+    /// ```
+    ///
+    /// Rust enforces that there can only be one mutable reference with no
+    /// immutable references to a particular piece of data in a particular
+    /// scope. Because of this, attempting to use `clone_from_slice` on a
+    /// single slice will result in a compile failure:
+    ///
+    /// ```compile_fail
+    /// let mut slice = [1, 2, 3, 4, 5];
+    ///
+    /// slice[..2].clone_from_slice(&slice[3..]); // compile fail!
+    /// ```
+    ///
+    /// To work around this, we can use [`split_at_mut`] to create two distinct
+    /// sub-slices from a slice:
+    ///
+    /// ```
+    /// let mut slice = [1, 2, 3, 4, 5];
+    ///
+    /// {
+    ///     let (left, right) = slice.split_at_mut(2);
+    ///     left.clone_from_slice(&right[1..]);
+    /// }
+    ///
+    /// assert_eq!(slice, [4, 5, 3, 4, 5]);
     /// ```
     ///
     /// [`copy_from_slice`]: #method.copy_from_slice
+    /// [`split_at_mut`]: #method.split_at_mut
     #[stable(feature = "clone_from_slice", since = "1.7.0")]
     pub fn clone_from_slice(&mut self, src: &[T]) where T: Clone {
         core_slice::SliceExt::clone_from_slice(self, src)
@@ -1454,23 +1513,53 @@ impl<T> [T] {
     ///
     /// # Examples
     ///
-    /// ```
-    /// let mut dst = [0, 0, 0];
-    /// let src = [1, 2, 3];
+    /// Copying two elements from a slice into another:
     ///
-    /// dst.copy_from_slice(&src);
-    /// assert_eq!(src, dst);
+    /// ```
+    /// let src = [1, 2, 3, 4];
+    /// let mut dst = [0, 0];
+    ///
+    /// dst.copy_from_slice(&src[2..]);
+    ///
+    /// assert_eq!(src, [1, 2, 3, 4]);
+    /// assert_eq!(dst, [3, 4]);
+    /// ```
+    ///
+    /// Rust enforces that there can only be one mutable reference with no
+    /// immutable references to a particular piece of data in a particular
+    /// scope. Because of this, attempting to use `copy_from_slice` on a
+    /// single slice will result in a compile failure:
+    ///
+    /// ```compile_fail
+    /// let mut slice = [1, 2, 3, 4, 5];
+    ///
+    /// slice[..2].copy_from_slice(&slice[3..]); // compile fail!
+    /// ```
+    ///
+    /// To work around this, we can use [`split_at_mut`] to create two distinct
+    /// sub-slices from a slice:
+    ///
+    /// ```
+    /// let mut slice = [1, 2, 3, 4, 5];
+    ///
+    /// {
+    ///     let (left, right) = slice.split_at_mut(2);
+    ///     left.copy_from_slice(&right[1..]);
+    /// }
+    ///
+    /// assert_eq!(slice, [4, 5, 3, 4, 5]);
     /// ```
     ///
     /// [`clone_from_slice`]: #method.clone_from_slice
+    /// [`split_at_mut`]: #method.split_at_mut
     #[stable(feature = "copy_from_slice", since = "1.9.0")]
     pub fn copy_from_slice(&mut self, src: &[T]) where T: Copy {
         core_slice::SliceExt::copy_from_slice(self, src)
     }
 
-    /// Swaps all elements in `self` with those in `src`.
+    /// Swaps all elements in `self` with those in `other`.
     ///
-    /// The length of `src` must be the same as `self`.
+    /// The length of `other` must be the same as `self`.
     ///
     /// # Panics
     ///
@@ -1478,19 +1567,52 @@ impl<T> [T] {
     ///
     /// # Example
     ///
+    /// Swapping two elements across slices:
+    ///
     /// ```
     /// #![feature(swap_with_slice)]
     ///
-    /// let mut src = [1, 2, 3];
-    /// let mut dst = [7, 8, 9];
+    /// let mut slice1 = [0, 0];
+    /// let mut slice2 = [1, 2, 3, 4];
     ///
-    /// src.swap_with_slice(&mut dst);
-    /// assert_eq!(src, [7, 8, 9]);
-    /// assert_eq!(dst, [1, 2, 3]);
+    /// slice1.swap_with_slice(&mut slice2[2..]);
+    ///
+    /// assert_eq!(slice1, [3, 4]);
+    /// assert_eq!(slice2, [1, 2, 0, 0]);
     /// ```
+    ///
+    /// Rust enforces that there can only be one mutable reference to a
+    /// particular piece of data in a particular scope. Because of this,
+    /// attempting to use `swap_with_slice` on a single slice will result in
+    /// a compile failure:
+    ///
+    /// ```compile_fail
+    /// #![feature(swap_with_slice)]
+    ///
+    /// let mut slice = [1, 2, 3, 4, 5];
+    /// slice[..2].swap_with_slice(&mut slice[3..]); // compile fail!
+    /// ```
+    ///
+    /// To work around this, we can use [`split_at_mut`] to create two distinct
+    /// mutable sub-slices from a slice:
+    ///
+    /// ```
+    /// #![feature(swap_with_slice)]
+    ///
+    /// let mut slice = [1, 2, 3, 4, 5];
+    ///
+    /// {
+    ///     let (left, right) = slice.split_at_mut(2);
+    ///     left.swap_with_slice(&mut right[1..]);
+    /// }
+    ///
+    /// assert_eq!(slice, [4, 5, 3, 1, 2]);
+    /// ```
+    ///
+    /// [`split_at_mut`]: #method.split_at_mut
     #[unstable(feature = "swap_with_slice", issue = "44030")]
-    pub fn swap_with_slice(&mut self, src: &mut [T]) {
-        core_slice::SliceExt::swap_with_slice(self, src)
+    pub fn swap_with_slice(&mut self, other: &mut [T]) {
+        core_slice::SliceExt::swap_with_slice(self, other)
     }
 
     /// Copies `self` into a new `Vec`.
@@ -1502,6 +1624,7 @@ impl<T> [T] {
     /// let x = s.to_vec();
     /// // Here, `s` and `x` can be modified independently.
     /// ```
+    #[rustc_conversion_suggestion]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn to_vec(&self) -> Vec<T>
@@ -1533,14 +1656,11 @@ impl<T> [T] {
     }
 }
 
-// FIXME(LukasKalbertodt): the `not(stage0)` constraint can be removed in the
-// future once the stage0 compiler is new enough to know about the `slice_u8`
-// lang item.
 #[lang = "slice_u8"]
-#[cfg(all(not(stage0), not(test)))]
+#[cfg(not(test))]
 impl [u8] {
     /// Checks if all bytes in this slice are within the ASCII range.
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn is_ascii(&self) -> bool {
         self.iter().all(|b| b.is_ascii())
@@ -1555,7 +1675,7 @@ impl [u8] {
     /// To uppercase the value in-place, use [`make_ascii_uppercase`].
     ///
     /// [`make_ascii_uppercase`]: #method.make_ascii_uppercase
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_uppercase(&self) -> Vec<u8> {
         let mut me = self.to_vec();
@@ -1572,7 +1692,7 @@ impl [u8] {
     /// To lowercase the value in-place, use [`make_ascii_lowercase`].
     ///
     /// [`make_ascii_lowercase`]: #method.make_ascii_lowercase
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_lowercase(&self) -> Vec<u8> {
         let mut me = self.to_vec();
@@ -1584,7 +1704,7 @@ impl [u8] {
     ///
     /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,
     /// but without allocating and copying temporaries.
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn eq_ignore_ascii_case(&self, other: &[u8]) -> bool {
         self.len() == other.len() &&
@@ -1602,7 +1722,7 @@ impl [u8] {
     /// [`to_ascii_uppercase`].
     ///
     /// [`to_ascii_uppercase`]: #method.to_ascii_uppercase
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn make_ascii_uppercase(&mut self) {
         for byte in self {
@@ -1619,126 +1739,12 @@ impl [u8] {
     /// [`to_ascii_lowercase`].
     ///
     /// [`to_ascii_lowercase`]: #method.to_ascii_lowercase
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn make_ascii_lowercase(&mut self) {
         for byte in self {
             byte.make_ascii_lowercase();
         }
-    }
-
-    /// Checks if all bytes of this slice are ASCII alphabetic characters:
-    ///
-    /// - U+0041 'A' ... U+005A 'Z', or
-    /// - U+0061 'a' ... U+007A 'z'.
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_alphabetic(&self) -> bool {
-        self.iter().all(|b| b.is_ascii_alphabetic())
-    }
-
-    /// Checks if all bytes of this slice are ASCII uppercase characters:
-    /// U+0041 'A' ... U+005A 'Z'.
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_uppercase(&self) -> bool {
-        self.iter().all(|b| b.is_ascii_uppercase())
-    }
-
-    /// Checks if all bytes of this slice are ASCII lowercase characters:
-    /// U+0061 'a' ... U+007A 'z'.
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_lowercase(&self) -> bool {
-        self.iter().all(|b| b.is_ascii_lowercase())
-    }
-
-    /// Checks if all bytes of this slice are ASCII alphanumeric characters:
-    ///
-    /// - U+0041 'A' ... U+005A 'Z', or
-    /// - U+0061 'a' ... U+007A 'z', or
-    /// - U+0030 '0' ... U+0039 '9'.
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_alphanumeric(&self) -> bool {
-        self.iter().all(|b| b.is_ascii_alphanumeric())
-    }
-
-    /// Checks if all bytes of this slice are ASCII decimal digit:
-    /// U+0030 '0' ... U+0039 '9'.
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_digit(&self) -> bool {
-        self.iter().all(|b| b.is_ascii_digit())
-    }
-
-    /// Checks if all bytes of this slice are ASCII hexadecimal digits:
-    ///
-    /// - U+0030 '0' ... U+0039 '9', or
-    /// - U+0041 'A' ... U+0046 'F', or
-    /// - U+0061 'a' ... U+0066 'f'.
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_hexdigit(&self) -> bool {
-        self.iter().all(|b| b.is_ascii_hexdigit())
-    }
-
-    /// Checks if all bytes of this slice are ASCII punctuation characters:
-    ///
-    /// - U+0021 ... U+002F `! " # $ % & ' ( ) * + , - . /`, or
-    /// - U+003A ... U+0040 `: ; < = > ? @`, or
-    /// - U+005B ... U+0060 `[ \\ ] ^ _ \``, or
-    /// - U+007B ... U+007E `{ | } ~`
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_punctuation(&self) -> bool {
-        self.iter().all(|b| b.is_ascii_punctuation())
-    }
-
-    /// Checks if all bytes of this slice are ASCII graphic characters:
-    /// U+0021 '@' ... U+007E '~'.
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_graphic(&self) -> bool {
-        self.iter().all(|b| b.is_ascii_graphic())
-    }
-
-    /// Checks if all bytes of this slice are ASCII whitespace characters:
-    /// U+0020 SPACE, U+0009 HORIZONTAL TAB, U+000A LINE FEED,
-    /// U+000C FORM FEED, or U+000D CARRIAGE RETURN.
-    ///
-    /// Rust uses the WhatWG Infra Standard's [definition of ASCII
-    /// whitespace][infra-aw]. There are several other definitions in
-    /// wide use. For instance, [the POSIX locale][pct] includes
-    /// U+000B VERTICAL TAB as well as all the above characters,
-    /// but—from the very same specification—[the default rule for
-    /// "field splitting" in the Bourne shell][bfs] considers *only*
-    /// SPACE, HORIZONTAL TAB, and LINE FEED as whitespace.
-    ///
-    /// If you are writing a program that will process an existing
-    /// file format, check what that format's definition of whitespace is
-    /// before using this function.
-    ///
-    /// [infra-aw]: https://infra.spec.whatwg.org/#ascii-whitespace
-    /// [pct]: http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap07.html#tag_07_03_01
-    /// [bfs]: http://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_06_05
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_whitespace(&self) -> bool {
-        self.iter().all(|b| b.is_ascii_whitespace())
-    }
-
-    /// Checks if all bytes of this slice are ASCII control characters:
-    ///
-    /// - U+0000 NUL ... U+001F UNIT SEPARATOR, or
-    /// - U+007F DELETE.
-    ///
-    /// Note that most ASCII whitespace characters are control
-    /// characters, but SPACE is not.
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_control(&self) -> bool {
-        self.iter().all(|b| b.is_ascii_control())
     }
 }
 
@@ -1749,6 +1755,14 @@ impl [u8] {
            reason = "trait should not have to exist",
            issue = "27747")]
 /// An extension trait for concatenating slices
+///
+/// While this trait is unstable, the methods are stable. `SliceConcatExt` is
+/// included in the [standard library prelude], so you can use [`join()`] and
+/// [`concat()`] as if they existed on `[T]` itself.
+///
+/// [standard library prelude]: ../../std/prelude/index.html
+/// [`join()`]: #tymethod.join
+/// [`concat()`]: #tymethod.concat
 pub trait SliceConcatExt<T: ?Sized> {
     #[unstable(feature = "slice_concat_ext",
                reason = "trait should not have to exist",

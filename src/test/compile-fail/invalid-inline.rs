@@ -21,4 +21,8 @@ fn b() {
 fn c() {
 }
 
-fn main() {}
+fn main() {
+    a();
+    b();
+    c();
+}

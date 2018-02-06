@@ -15,7 +15,7 @@ use llvm;
 use llvm::{False, ObjectFile, mk_section_iter};
 use llvm::archive_ro::ArchiveRO;
 
-use owning_ref::{ErasedBoxRef, OwningRef};
+use rustc_data_structures::owning_ref::{ErasedBoxRef, OwningRef};
 use std::path::Path;
 use std::ptr;
 use std::slice;

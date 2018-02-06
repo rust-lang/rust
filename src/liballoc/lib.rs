@@ -135,6 +135,8 @@
 extern crate std;
 #[cfg(test)]
 extern crate test;
+#[cfg(test)]
+extern crate rand;
 
 extern crate std_unicode;
 

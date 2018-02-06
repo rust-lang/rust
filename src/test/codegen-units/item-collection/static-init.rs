@@ -9,6 +9,9 @@
 // except according to those terms.
 
 // compile-flags:-Zprint-trans-items=eager
+// ignore-tidy-linelength
+
+#![feature(start)]
 
 pub static FN : fn() = foo::<i32>;
 
@@ -17,6 +20,9 @@ pub fn foo<T>() { }
 //~ TRANS_ITEM fn static_init::foo[0]<i32>
 //~ TRANS_ITEM static static_init::FN[0]
 
-fn main() { }
+//~ TRANS_ITEM fn static_init::start[0]
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize {
+    0
+}
 
-//~ TRANS_ITEM fn static_init::main[0]

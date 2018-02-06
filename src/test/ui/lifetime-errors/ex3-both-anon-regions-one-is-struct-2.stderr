@@ -5,7 +5,7 @@ error[E0623]: lifetime mismatch
    |               ---     ----
    |               |
    |               these two types are declared with different lifetimes...
-14 |     y = x.b;
+14 |     y = x.b; //~ ERROR lifetime mismatch
    |         ^^^ ...but data from `x` flows into `y` here
 
 error: aborting due to previous error

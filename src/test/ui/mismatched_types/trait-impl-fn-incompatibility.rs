@@ -18,8 +18,8 @@ trait Foo {
 struct Bar;
 
 impl Foo for Bar {
-    fn foo(x: i16) { }
-    fn bar(&mut self, bar: &Bar) { }
+    fn foo(x: i16) { } //~ ERROR incompatible type
+    fn bar(&mut self, bar: &Bar) { } //~ ERROR incompatible type
 }
 
 fn main() {

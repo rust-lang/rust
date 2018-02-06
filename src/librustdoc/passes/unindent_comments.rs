@@ -12,7 +12,7 @@ use std::cmp;
 use std::string::String;
 use std::usize;
 
-use clean::{self, Item};
+use clean::{self, DocFragment, Item};
 use plugins;
 use fold::{self, DocFolder};
 
@@ -31,8 +31,17 @@ impl fold::DocFolder for CommentCleaner {
 
 impl clean::Attributes {
     pub fn unindent_doc_comments(&mut self) {
-        for doc_string in &mut self.doc_strings {
-            *doc_string = unindent(doc_string);
+        unindent_fragments(&mut self.doc_strings);
+    }
+}
+
+fn unindent_fragments(docs: &mut Vec<DocFragment>) {
+    for fragment in docs {
+        match *fragment {
+            DocFragment::SugaredDoc(_, _, ref mut doc_string) |
+            DocFragment::RawDoc(_, _, ref mut doc_string) |
+            DocFragment::Include(_, _, _, ref mut doc_string) =>
+                *doc_string = unindent(doc_string),
         }
     }
 }

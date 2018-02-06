@@ -19,32 +19,16 @@ use syntax::ptr::P;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
-macro_rules! pathvec {
-    ($($x:ident)::+) => (
-        vec![ $( stringify!($x) ),+ ]
-    )
+macro path_local($x:ident) {
+    generic::ty::Path::new_local(stringify!($x))
 }
 
-macro_rules! path_local {
-    ($x:ident) => (
-        ::deriving::generic::ty::Path::new_local(stringify!($x))
-    )
-}
+macro pathvec_std($cx:expr, $($rest:ident)::+) {{
+    vec![ $( stringify!($rest) ),+ ]
+}}
 
-macro_rules! pathvec_std {
-    ($cx:expr, $first:ident :: $($rest:ident)::+) => ({
-        let mut v = pathvec![$($rest)::+];
-        if let Some(s) = $cx.crate_root {
-            v.insert(0, s);
-        }
-        v
-    })
-}
-
-macro_rules! path_std {
-    ($($x:tt)*) => (
-        ::deriving::generic::ty::Path::new( pathvec_std!( $($x)* ) )
-    )
+macro path_std($($x:tt)*) {
+    generic::ty::Path::new( pathvec_std!( $($x)* ) )
 }
 
 pub mod bounds;
@@ -137,10 +121,12 @@ fn hygienic_type_parameter(item: &Annotatable, base: &str) -> String {
     let mut typaram = String::from(base);
     if let Annotatable::Item(ref item) = *item {
         match item.node {
-            ast::ItemKind::Struct(_, ast::Generics { ref ty_params, .. }) |
-            ast::ItemKind::Enum(_, ast::Generics { ref ty_params, .. }) => {
-                for ty in ty_params.iter() {
-                    typaram.push_str(&ty.ident.name.as_str());
+            ast::ItemKind::Struct(_, ast::Generics { ref params, .. }) |
+            ast::ItemKind::Enum(_, ast::Generics { ref params, .. }) => {
+                for param in params.iter() {
+                    if let ast::GenericParam::Type(ref ty) = *param{
+                        typaram.push_str(&ty.ident.name.as_str());
+                    }
                 }
             }
 
@@ -174,5 +160,6 @@ fn call_intrinsic(cx: &ExtCtxt,
         id: ast::DUMMY_NODE_ID,
         rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
         span,
+        recovered: false,
     }))
 }

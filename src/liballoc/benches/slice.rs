@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::__rand::{thread_rng};
+use rand::{thread_rng};
 use std::mem;
 use std::ptr;
 
@@ -343,7 +343,7 @@ macro_rules! rotate {
         fn $name(b: &mut Bencher) {
             let size = mem::size_of_val(&$gen(1)[0]);
             let mut v = $gen($len * 8 / size);
-            b.iter(|| black_box(&mut v).rotate(($mid*8+size-1)/size));
+            b.iter(|| black_box(&mut v).rotate_left(($mid*8+size-1)/size));
             b.bytes = (v.len() * size) as u64;
         }
     }

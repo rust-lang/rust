@@ -21,12 +21,15 @@ pub enum E {
 #[no_mangle]
 pub fn exhaustive_match(e: E) {
 // CHECK: switch{{.*}}, label %[[OTHERWISE:[a-zA-Z0-9_]+]] [
-// CHECK-NEXT: i[[TY:[0-9]+]] [[DISCR:[0-9]+]], label %[[TRUE:[a-zA-Z0-9_]+]]
+// CHECK-NEXT: i[[TY:[0-9]+]] [[DISCR:[0-9]+]], label %[[A:[a-zA-Z0-9_]+]]
+// CHECK-NEXT: i[[TY:[0-9]+]] [[DISCR:[0-9]+]], label %[[B:[a-zA-Z0-9_]+]]
 // CHECK-NEXT: ]
-// CHECK: [[TRUE]]:
+// CHECK: [[A]]:
+// CHECK-NEXT: br label %[[EXIT:[a-zA-Z0-9_]+]]
+// CHECK: [[B]]:
 // CHECK-NEXT: br label %[[EXIT:[a-zA-Z0-9_]+]]
 // CHECK: [[OTHERWISE]]:
-// CHECK-NEXT: br label %[[EXIT:[a-zA-Z0-9_]+]]
+// CHECK-NEXT: unreachable
     match e {
         E::A => (),
         E::B => (),

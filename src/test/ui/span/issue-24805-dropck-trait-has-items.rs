@@ -46,19 +46,19 @@ fn f_sm() {
     d1 = D_HasSelfMethod(1);
     _d = D_HasSelfMethod(&d1);
 }
-//~^ ERROR `d1` does not live long enough
+//~^^ ERROR `d1` does not live long enough
 fn f_mwsa() {
     let (_d, d1);
     d1 = D_HasMethodWithSelfArg(1);
     _d = D_HasMethodWithSelfArg(&d1);
 }
-//~^ ERROR `d1` does not live long enough
+//~^^ ERROR `d1` does not live long enough
 fn f_t() {
     let (_d, d1);
     d1 = D_HasType(1);
     _d = D_HasType(&d1);
 }
-//~^ ERROR `d1` does not live long enough
+//~^^ ERROR `d1` does not live long enough
 
 fn main() {
     f_sm();

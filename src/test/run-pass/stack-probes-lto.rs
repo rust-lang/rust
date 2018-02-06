@@ -11,6 +11,7 @@
 // ignore-arm
 // ignore-aarch64
 // ignore-wasm
+// ignore-cloudabi no processes
 // ignore-emscripten no processes
 // ignore-musl FIXME #31506
 // ignore-pretty

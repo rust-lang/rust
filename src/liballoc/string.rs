@@ -596,7 +596,7 @@ impl String {
     /// Decode a UTF-16 encoded vector `v` into a `String`, returning [`Err`]
     /// if `v` contains any invalid data.
     ///
-    /// [`Err`]: ../../std/result/enum.Result.htlm#variant.Err
+    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
     ///
     /// # Examples
     ///
@@ -1044,10 +1044,7 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pop(&mut self) -> Option<char> {
-        let ch = match self.chars().rev().next() {
-            Some(ch) => ch,
-            None => return None,
-        };
+        let ch = self.chars().rev().next()?;
         let newlen = self.len() - ch.len_utf8();
         unsafe {
             self.vec.set_len(newlen);
@@ -2037,6 +2034,7 @@ pub trait ToString {
     ///
     /// assert_eq!(five, i.to_string());
     /// ```
+    #[rustc_conversion_suggestion]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn to_string(&self) -> String;
 }

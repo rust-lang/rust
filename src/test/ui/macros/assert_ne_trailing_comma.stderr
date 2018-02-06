@@ -1,8 +1,0 @@
-error: unexpected end of macro invocation
-  --> $DIR/assert_ne_trailing_comma.rs:12:20
-   |
-12 |     assert_ne!(1, 2,);
-   |                    ^
-
-error: aborting due to previous error
-

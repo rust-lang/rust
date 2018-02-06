@@ -65,11 +65,11 @@ pub trait Semantics: Sized {
     /// Number of bits in the significand. This includes the integer bit.
     const PRECISION: usize;
 
-    /// The largest E such that 2^E is representable; this matches the
+    /// The largest E such that 2<sup>E</sup> is representable; this matches the
     /// definition of IEEE 754.
     const MAX_EXP: ExpInt;
 
-    /// The smallest E such that 2^E is a normalized number; this
+    /// The smallest E such that 2<sup>E</sup> is a normalized number; this
     /// matches the definition of IEEE 754.
     const MIN_EXP: ExpInt = -Self::MAX_EXP + 1;
 
@@ -2608,7 +2608,7 @@ mod sig {
     ///
     /// `(n - 1) * (n - 1) + 2 * (n - 1) == (n - 1) * (n + 1)`
     ///
-    /// which is less than n^2.
+    /// which is less than n<sup>2</sup>.
     pub(super) fn widening_mul(a: Limb, b: Limb) -> [Limb; 2] {
         let mut wide = [0, 0];
 

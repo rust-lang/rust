@@ -1,0 +1,16 @@
+error: expected `{`, found `=>`
+  --> $DIR/missing-block-hint.rs:13:18
+   |
+13 |         if (foo) => {} //~ ERROR expected `{`, found `=>`
+   |                  ^^
+
+error: expected `{`, found `bar`
+  --> $DIR/missing-block-hint.rs:17:13
+   |
+17 |             bar; //~ ERROR expected `{`, found `bar`
+   |             ^^^-
+   |             |
+   |             help: try placing this code inside a block: `{ bar; }`
+
+error: aborting due to 2 previous errors
+

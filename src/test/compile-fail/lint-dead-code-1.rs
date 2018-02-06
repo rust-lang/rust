@@ -74,7 +74,7 @@ pub enum pub_enum3 {
 enum priv_enum { foo2, bar2 } //~ ERROR: enum is never used
 enum used_enum {
     foo3,
-    bar3 //~ ERROR variant is never used
+    bar3 //~ ERROR variant is never constructed
 }
 
 fn f<T>() {}

@@ -19,7 +19,7 @@ fn borrow_local_inline() {
     // (This error occurs because the region shows up in the type of
     // `b` and gets extended by region inference.)
     let mut b = move || {
-        let a = &3; //~ ERROR
+        let a = &3;
         yield();
         println!("{}", a);
     };

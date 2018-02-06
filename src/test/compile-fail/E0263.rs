@@ -10,8 +10,6 @@
 
 fn foo<'a, 'b, 'a>(x: &'a str, y: &'b str) {
     //~^ ERROR E0263
-    //~| NOTE declared twice
-    //~| NOTE previous declaration here
 }
 
 fn main() {}

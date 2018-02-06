@@ -14,7 +14,7 @@ use codemap::{CodeMap, FilePathMapping};
 use errors::{FatalError, DiagnosticBuilder};
 use parse::{token, ParseSess};
 use str::char_at;
-use symbol::{Symbol, keywords};
+use symbol::Symbol;
 use std_unicode::property::Pattern_White_Space;
 
 use std::borrow::Cow;
@@ -72,6 +72,13 @@ pub struct StringReader<'a> {
 impl<'a> StringReader<'a> {
     fn mk_sp(&self, lo: BytePos, hi: BytePos) -> Span {
         unwrap_or!(self.override_span, Span::new(lo, hi, NO_EXPANSION))
+    }
+    fn mk_ident(&self, string: &str) -> Ident {
+        let mut ident = Ident::from_str(string);
+        if let Some(span) = self.override_span {
+            ident.ctxt = span.ctxt();
+        }
+        ident
     }
 
     fn next_token(&mut self) -> TokenAndSpan where Self: Sized {
@@ -1103,7 +1110,7 @@ impl<'a> StringReader<'a> {
                     token::Underscore
                 } else {
                     // FIXME: perform NFKC normalization here. (Issue #2253)
-                    token::Ident(Ident::from_str(string))
+                    token::Ident(self.mk_ident(string))
                 }
             }));
         }
@@ -1286,20 +1293,8 @@ impl<'a> StringReader<'a> {
                     // expansion purposes. See #12512 for the gory details of why
                     // this is necessary.
                     let ident = self.with_str_from(start, |lifetime_name| {
-                        Ident::from_str(&format!("'{}", lifetime_name))
+                        self.mk_ident(&format!("'{}", lifetime_name))
                     });
-
-                    // Conjure up a "keyword checking ident" to make sure that
-                    // the lifetime name is not a keyword.
-                    let keyword_checking_ident = self.with_str_from(start, |lifetime_name| {
-                        Ident::from_str(lifetime_name)
-                    });
-                    let keyword_checking_token = &token::Ident(keyword_checking_ident);
-                    let last_bpos = self.pos;
-                    if keyword_checking_token.is_reserved_ident() &&
-                       !keyword_checking_token.is_keyword(keywords::Static) {
-                        self.err_span_(start, last_bpos, "lifetimes cannot use keyword names");
-                    }
 
                     return Ok(token::Lifetime(ident));
                 }
@@ -1311,8 +1306,34 @@ impl<'a> StringReader<'a> {
                                                    '\'');
 
                 if !self.ch_is('\'') {
+                    let pos = self.pos;
+                    loop {
+                        self.bump();
+                        if self.ch_is('\'') {
+                            let start = self.byte_offset(start).to_usize();
+                            let end = self.byte_offset(self.pos).to_usize();
+                            self.bump();
+                            let span = self.mk_sp(start_with_quote, self.pos);
+                            self.sess.span_diagnostic
+                                .struct_span_err(span,
+                                                 "character literal may only contain one codepoint")
+                                .span_suggestion(span,
+                                                 "if you meant to write a `str` literal, \
+                                                  use double quotes",
+                                                 format!("\"{}\"",
+                                                         &self.source_text[start..end]))
+                                .emit();
+                            return Ok(token::Literal(token::Str_(Symbol::intern("??")), None))
+                        }
+                        if self.ch_is('\n') || self.is_eof() || self.ch_is('/') {
+                            // Only attempt to infer single line string literals. If we encounter
+                            // a slash, bail out in order to avoid nonsensical suggestion when
+                            // involving comments.
+                            break;
+                        }
+                    }
                     panic!(self.fatal_span_verbose(
-                           start_with_quote, self.pos,
+                           start_with_quote, pos,
                            String::from("character literal may only contain one codepoint")));
                 }
 
@@ -1719,6 +1740,7 @@ mod tests {
     use std::cell::RefCell;
     use std::collections::HashSet;
     use std::io;
+    use std::path::PathBuf;
     use std::rc::Rc;
 
     fn mk_sess(cm: Rc<CodeMap>) -> ParseSess {
@@ -1732,6 +1754,7 @@ mod tests {
             included_mod_stack: RefCell::new(Vec::new()),
             code_map: cm,
             missing_fragment_specifiers: RefCell::new(HashSet::new()),
+            non_modrs_mods: RefCell::new(vec![]),
         }
     }
 
@@ -1740,7 +1763,7 @@ mod tests {
                  sess: &'a ParseSess,
                  teststr: String)
                  -> StringReader<'a> {
-        let fm = cm.new_filemap("zebra.rs".to_string(), teststr);
+        let fm = cm.new_filemap(PathBuf::from("zebra.rs").into(), teststr);
         StringReader::new(sess, fm)
     }
 

@@ -20,13 +20,13 @@ fn ordering1<'a, 'b>(x: &'a &'b usize) -> &'a usize {
 
 fn ordering2<'a, 'b>(x: &'a &'b usize, y: &'a usize) -> &'b usize {
     // However, it is not safe to assume that 'b <= 'a
-    &*y //~ ERROR cannot infer
+    &*y //~ ERROR 23:5: 23:8: lifetime mismatch [E0623]
 }
 
 fn ordering3<'a, 'b>(x: &'a usize, y: &'b usize) -> &'a &'b usize {
     // Do not infer an ordering from the return value.
     let z: &'b usize = &*x;
-    //~^ ERROR cannot infer
+    //~^ ERROR 28:24: 28:27: lifetime mismatch [E0623]
     panic!();
 }
 

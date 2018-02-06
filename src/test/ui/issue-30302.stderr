@@ -1,0 +1,25 @@
+warning[E0170]: pattern binding `Nil` is named the same as one of the variants of the type `Stack`
+  --> $DIR/issue-30302.rs:23:9
+   |
+23 |         Nil => true,
+   |         ^^^
+   |
+   = help: if you meant to match on a variant, consider making the path in the pattern qualified: `Stack::Nil`
+
+error: unreachable pattern
+  --> $DIR/issue-30302.rs:25:9
+   |
+23 |         Nil => true,
+   |         --- matches any value
+24 | //~^ WARN pattern binding `Nil` is named the same as one of the variants of the type `Stack`
+25 |         _ => false
+   |         ^ unreachable pattern
+   |
+note: lint level defined here
+  --> $DIR/issue-30302.rs:14:9
+   |
+14 | #![deny(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -106,7 +106,8 @@ impl AssocOp {
             Token::OrOr => Some(LOr),
             Token::DotDot => Some(DotDot),
             Token::DotDotEq => Some(DotDotEq),
-            Token::DotDotDot => Some(DotDotEq), // remove this after SNAP
+            // DotDotDot is no longer supported, but we need some way to display the error
+            Token::DotDotDot => Some(DotDotEq),
             Token::Colon => Some(Colon),
             _ if t.is_keyword(keywords::As) => Some(As),
             _ => None

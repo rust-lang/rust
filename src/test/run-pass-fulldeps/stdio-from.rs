@@ -12,7 +12,7 @@
 
 #![feature(rustc_private)]
 
-extern crate rustc_back;
+extern crate tempdir;
 
 use std::env;
 use std::fs::File;
@@ -20,7 +20,7 @@ use std::io;
 use std::io::{Read, Write};
 use std::process::{Command, Stdio};
 
-use rustc_back::tempdir::TempDir;
+use tempdir::TempDir;
 
 fn main() {
     if env::args().len() > 1 {

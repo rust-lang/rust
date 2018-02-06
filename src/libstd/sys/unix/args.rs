@@ -69,7 +69,7 @@ impl DoubleEndedIterator for Args {
           target_os = "fuchsia"))]
 mod imp {
     use os::unix::prelude::*;
-    use mem;
+    use ptr;
     use ffi::{CStr, OsString};
     use marker::PhantomData;
     use libc;
@@ -77,49 +77,42 @@ mod imp {
 
     use sys_common::mutex::Mutex;
 
-    static mut GLOBAL_ARGS_PTR: usize = 0;
+    static mut ARGC: isize = 0;
+    static mut ARGV: *const *const u8 = ptr::null();
     static LOCK: Mutex = Mutex::new();
 
     pub unsafe fn init(argc: isize, argv: *const *const u8) {
-        let args = (0..argc).map(|i| {
-            CStr::from_ptr(*argv.offset(i) as *const libc::c_char).to_bytes().to_vec()
-        }).collect();
-
         LOCK.lock();
-        let ptr = get_global_ptr();
-        assert!((*ptr).is_none());
-        (*ptr) = Some(box args);
+        ARGC = argc;
+        ARGV = argv;
         LOCK.unlock();
     }
 
     pub unsafe fn cleanup() {
         LOCK.lock();
-        *get_global_ptr() = None;
+        ARGC = 0;
+        ARGV = ptr::null();
         LOCK.unlock();
     }
 
     pub fn args() -> Args {
-        let bytes = clone().unwrap_or(Vec::new());
-        let v: Vec<OsString> = bytes.into_iter().map(|v| {
-            OsStringExt::from_vec(v)
-        }).collect();
-        Args { iter: v.into_iter(), _dont_send_or_sync_me: PhantomData }
+        Args {
+            iter: clone().into_iter(),
+            _dont_send_or_sync_me: PhantomData
+        }
     }
 
-    fn clone() -> Option<Vec<Vec<u8>>> {
+    fn clone() -> Vec<OsString> {
         unsafe {
             LOCK.lock();
-            let ptr = get_global_ptr();
-            let ret = (*ptr).as_ref().map(|s| (**s).clone());
+            let ret = (0..ARGC).map(|i| {
+                let cstr = CStr::from_ptr(*ARGV.offset(i) as *const libc::c_char);
+                OsStringExt::from_vec(cstr.to_bytes().to_vec())
+            }).collect();
             LOCK.unlock();
             return ret
         }
     }
-
-    fn get_global_ptr() -> *mut Option<Box<Vec<Vec<u8>>>> {
-        unsafe { mem::transmute(&GLOBAL_ARGS_PTR) }
-    }
-
 }
 
 #[cfg(any(target_os = "macos",

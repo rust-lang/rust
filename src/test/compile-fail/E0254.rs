@@ -12,7 +12,6 @@
 #![allow(unused_extern_crates)]
 
 extern crate alloc;
-//~^ NOTE previous import of the extern crate `alloc` here
 
 mod foo {
     pub trait alloc {
@@ -22,7 +21,5 @@ mod foo {
 
 use foo::alloc;
 //~^ ERROR E0254
-//~| NOTE `alloc` reimported here
-//~| NOTE `alloc` must be defined only once in the type namespace of this module
 
 fn main() {}

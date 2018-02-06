@@ -12,6 +12,8 @@ use super::*;
 
 use dep_graph::{DepGraph, DepKind, DepNodeIndex};
 use hir::intravisit::{Visitor, NestedVisitorMap};
+use hir::svh::Svh;
+use middle::cstore::CrateStore;
 use session::CrateDisambiguator;
 use std::iter::repeat;
 use syntax::ast::{NodeId, CRATE_NODE_ID};
@@ -43,7 +45,7 @@ pub(super) struct NodeCollector<'a, 'hir> {
 
     // We are collecting DepNode::HirBody hashes here so we can compute the
     // crate hash from then later on.
-    hir_body_nodes: Vec<DefPathHash>,
+    hir_body_nodes: Vec<(DefPathHash, DepNodeIndex)>,
 }
 
 impl<'a, 'hir> NodeCollector<'a, 'hir> {
@@ -98,7 +100,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             );
         }
 
-        let hir_body_nodes = vec![root_mod_def_path_hash];
+        let hir_body_nodes = vec![(root_mod_def_path_hash, root_mod_full_dep_index)];
 
         let mut collector = NodeCollector {
             krate,
@@ -119,24 +121,45 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
     }
 
     pub(super) fn finalize_and_compute_crate_hash(self,
-                                                  crate_disambiguator: CrateDisambiguator)
-                                                  -> Vec<MapEntry<'hir>> {
+                                                  crate_disambiguator: CrateDisambiguator,
+                                                  cstore: &CrateStore,
+                                                  commandline_args_hash: u64)
+                                                  -> (Vec<MapEntry<'hir>>, Svh) {
         let mut node_hashes: Vec<_> = self
             .hir_body_nodes
             .iter()
-            .map(|&def_path_hash| {
-                let dep_node = def_path_hash.to_dep_node(DepKind::HirBody);
-                (def_path_hash, self.dep_graph.fingerprint_of(&dep_node))
+            .map(|&(def_path_hash, dep_node_index)| {
+                (def_path_hash, self.dep_graph.fingerprint_of(dep_node_index))
             })
             .collect();
 
         node_hashes.sort_unstable_by(|&(ref d1, _), &(ref d2, _)| d1.cmp(d2));
 
-        self.dep_graph.with_task(DepNode::new_no_params(DepKind::Krate),
-                                 &self.hcx,
-                                 (node_hashes, crate_disambiguator.to_fingerprint()),
-                                 identity_fn);
-        self.map
+        let mut upstream_crates: Vec<_> = cstore.crates_untracked().iter().map(|&cnum| {
+            let name = cstore.crate_name_untracked(cnum).as_str();
+            let disambiguator = cstore.crate_disambiguator_untracked(cnum)
+                                      .to_fingerprint();
+            let hash = cstore.crate_hash_untracked(cnum);
+            (name, disambiguator, hash)
+        }).collect();
+
+        upstream_crates.sort_unstable_by(|&(name1, dis1, _), &(name2, dis2, _)| {
+            (name1, dis1).cmp(&(name2, dis2))
+        });
+
+        let (_, crate_dep_node_index) = self
+            .dep_graph
+            .with_task(DepNode::new_no_params(DepKind::Krate),
+                       &self.hcx,
+                       ((node_hashes, upstream_crates),
+                        (commandline_args_hash,
+                         crate_disambiguator.to_fingerprint())),
+                       identity_fn);
+
+        let svh = Svh::new(self.dep_graph
+                               .fingerprint_of(crate_dep_node_index)
+                               .to_smaller_hash());
+        (self.map, svh)
     }
 
     fn insert_entry(&mut self, id: NodeId, entry: MapEntry<'hir>) {
@@ -238,7 +261,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             identity_fn
         ).1;
 
-        self.hir_body_nodes.push(def_path_hash);
+        self.hir_body_nodes.push((def_path_hash, self.current_full_dep_index));
 
         self.current_dep_node_owner = dep_node_owner;
         self.currently_in_body = false;
@@ -309,7 +332,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_generics(&mut self, generics: &'hir Generics) {
-        for ty_param in generics.ty_params.iter() {
+        for ty_param in generics.ty_params() {
             self.insert(ty_param.id, NodeTyParam(ty_param));
         }
 

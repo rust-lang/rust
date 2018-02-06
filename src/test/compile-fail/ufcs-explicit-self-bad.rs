@@ -15,7 +15,8 @@ struct Foo {
 }
 
 impl Foo {
-    fn foo(self: isize, x: isize) -> isize {  //~ ERROR mismatched method receiver
+    fn foo(self: isize, x: isize) -> isize {
+        //~^ ERROR invalid `self` type
         self.f + x
     }
 }
@@ -25,10 +26,12 @@ struct Bar<T> {
 }
 
 impl<T> Bar<T> {
-    fn foo(self: Bar<isize>, x: isize) -> isize { //~ ERROR mismatched method receiver
+    fn foo(self: Bar<isize>, x: isize) -> isize {
+        //~^ ERROR invalid `self` type
         x
     }
-    fn bar(self: &Bar<usize>, x: isize) -> isize {   //~ ERROR mismatched method receiver
+    fn bar(self: &Bar<usize>, x: isize) -> isize {
+        //~^ ERROR invalid `self` type
         x
     }
 }
@@ -45,12 +48,12 @@ impl<'a, T> SomeTrait for &'a Bar<T> {
     //~^ ERROR mismatched method receiver
     fn dummy3(self: &&Bar<T>) {}
     //~^ ERROR mismatched method receiver
-    //~| expected type `&&'a Bar<T>`
-    //~| found type `&&Bar<T>`
+    //~| expected type `&'a Bar<T>`
+    //~| found type `&Bar<T>`
     //~| lifetime mismatch
     //~| ERROR mismatched method receiver
-    //~| expected type `&&'a Bar<T>`
-    //~| found type `&&Bar<T>`
+    //~| expected type `&'a Bar<T>`
+    //~| found type `&Bar<T>`
     //~| lifetime mismatch
 }
 

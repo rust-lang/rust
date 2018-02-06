@@ -35,29 +35,39 @@ macro_rules! attr_proc_mac {
 }
 
 #[derive(FooWithLongNan)]
+//~^ ERROR cannot find
 struct Foo;
 
 #[attr_proc_macra]
+//~^ ERROR cannot find
 struct Bar;
 
 #[FooWithLongNan]
+//~^ ERROR cannot find
 struct Asdf;
 
 #[derive(Dlone)]
+//~^ ERROR cannot find
 struct A;
 
 #[derive(Dlona)]
+//~^ ERROR cannot find
 struct B;
 
 #[derive(attr_proc_macra)]
+//~^ ERROR cannot find
 struct C;
 
 fn main() {
     FooWithLongNama!();
+    //~^ ERROR cannot find
 
     attr_proc_macra!();
+    //~^ ERROR cannot find
 
     Dlona!();
+    //~^ ERROR cannot find
 
     bang_proc_macrp!();
+    //~^ ERROR cannot find
 }

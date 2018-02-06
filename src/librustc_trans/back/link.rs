@@ -26,8 +26,8 @@ use {CrateTranslation, CrateInfo};
 use rustc::util::common::time;
 use rustc::util::fs::fix_windows_verbatim_for_gcc;
 use rustc::hir::def_id::CrateNum;
-use rustc_back::tempdir::TempDir;
-use rustc_back::{PanicStrategy, RelroLevel};
+use tempdir::TempDir;
+use rustc_back::{PanicStrategy, RelroLevel, LinkerFlavor};
 use context::get_reloc_model;
 use llvm;
 
@@ -57,7 +57,7 @@ pub use rustc_trans_utils::link::{find_crate_name, filename_for_input, default_o
 // The third parameter is for env vars, used on windows to set up the
 // path for MSVC to find its DLLs, and gcc to find its bundled
 // toolchain
-pub fn get_linker(sess: &Session) -> (String, Command, Vec<(OsString, OsString)>) {
+pub fn get_linker(sess: &Session) -> (PathBuf, Command, Vec<(OsString, OsString)>) {
     let envs = vec![("PATH".into(), command_path(sess))];
 
     // If our linker looks like a batch script on Windows then to execute this
@@ -68,7 +68,7 @@ pub fn get_linker(sess: &Session) -> (String, Command, Vec<(OsString, OsString)>
     // This worked historically but is needed manually since #42436 (regression
     // was tagged as #42791) and some more info can be found on #44443 for
     // emscripten itself.
-    let cmd = |linker: &str| {
+    let cmd = |linker: &Path| {
         if cfg!(windows) && linker.ends_with(".bat") {
             let mut cmd = Command::new("cmd");
             cmd.arg("/c").arg(linker);
@@ -82,10 +82,11 @@ pub fn get_linker(sess: &Session) -> (String, Command, Vec<(OsString, OsString)>
         (linker.clone(), cmd(linker), envs)
     } else if sess.target.target.options.is_like_msvc {
         let (cmd, envs) = msvc_link_exe_cmd(sess);
-        ("link.exe".to_string(), cmd, envs)
+        (PathBuf::from("link.exe"), cmd, envs)
     } else {
-        let linker = &sess.target.target.options.linker;
-        (linker.clone(), cmd(linker), envs)
+        let linker = PathBuf::from(&sess.target.target.options.linker);
+        let cmd = cmd(&linker);
+        (linker, cmd, envs)
     }
 }
 
@@ -245,12 +246,12 @@ pub fn each_linked_rlib(sess: &Session,
 /// It's unusual for a crate to not participate in LTO. Typically only
 /// compiler-specific and unstable crates have a reason to not participate in
 /// LTO.
-pub fn ignored_for_lto(info: &CrateInfo, cnum: CrateNum) -> bool {
-    // `#![no_builtins]` crates don't participate in LTO because the state
-    // of builtins gets messed up (our crate isn't tagged with no builtins).
-    // Similarly `#![compiler_builtins]` doesn't participate because we want
-    // those builtins!
-    info.is_no_builtins.contains(&cnum) || info.compiler_builtins == Some(cnum)
+pub fn ignored_for_lto(sess: &Session, info: &CrateInfo, cnum: CrateNum) -> bool {
+    // If our target enables builtin function lowering in LLVM then the
+    // crates providing these functions don't participate in LTO (e.g.
+    // no_builtins or compiler builtins crates).
+    !sess.target.target.options.no_builtins &&
+        (info.is_no_builtins.contains(&cnum) || info.compiler_builtins == Some(cnum))
 }
 
 fn link_binary_output(sess: &Session,
@@ -262,18 +263,30 @@ fn link_binary_output(sess: &Session,
         check_file_is_writeable(obj, sess);
     }
 
-    let tmpdir = match TempDir::new("rustc") {
-        Ok(tmpdir) => tmpdir,
-        Err(err) => sess.fatal(&format!("couldn't create a temp dir: {}", err)),
-    };
-
     let mut out_filenames = vec![];
 
     if outputs.outputs.contains_key(&OutputType::Metadata) {
         let out_filename = filename_for_metadata(sess, crate_name, outputs);
-        emit_metadata(sess, trans, &out_filename);
+        // To avoid races with another rustc process scanning the output directory,
+        // we need to write the file somewhere else and atomically move it to its
+        // final destination, with a `fs::rename` call. In order for the rename to
+        // always succeed, the temporary file needs to be on the same filesystem,
+        // which is why we create it inside the output directory specifically.
+        let metadata_tmpdir = match TempDir::new_in(out_filename.parent().unwrap(), "rmeta") {
+            Ok(tmpdir) => tmpdir,
+            Err(err) => sess.fatal(&format!("couldn't create a temp dir: {}", err)),
+        };
+        let metadata = emit_metadata(sess, trans, &metadata_tmpdir);
+        if let Err(e) = fs::rename(metadata, &out_filename) {
+            sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
+        }
         out_filenames.push(out_filename);
     }
+
+    let tmpdir = match TempDir::new("rustc") {
+        Ok(tmpdir) => tmpdir,
+        Err(err) => sess.fatal(&format!("couldn't create a temp dir: {}", err)),
+    };
 
     if outputs.outputs.should_trans() {
         let out_filename = out_filename(sess, crate_type, outputs, crate_name);
@@ -283,10 +296,10 @@ fn link_binary_output(sess: &Session,
                           trans,
                           RlibFlavor::Normal,
                           &out_filename,
-                          tmpdir.path()).build();
+                          &tmpdir).build();
             }
             config::CrateTypeStaticlib => {
-                link_staticlib(sess, trans, &out_filename, tmpdir.path());
+                link_staticlib(sess, trans, &out_filename, &tmpdir);
             }
             _ => {
                 link_natively(sess, crate_type, &out_filename, trans, tmpdir.path());
@@ -321,14 +334,21 @@ fn archive_config<'a>(sess: &'a Session,
     }
 }
 
-fn emit_metadata<'a>(sess: &'a Session, trans: &CrateTranslation, out_filename: &Path) {
-    let result = fs::File::create(out_filename).and_then(|mut f| {
-        f.write_all(&trans.metadata.raw_data)
-    });
+/// We use a temp directory here to avoid races between concurrent rustc processes,
+/// such as builds in the same directory using the same filename for metadata while
+/// building an `.rlib` (stomping over one another), or writing an `.rmeta` into a
+/// directory being searched for `extern crate` (observing an incomplete file).
+/// The returned path is the temporary file containing the complete metadata.
+fn emit_metadata<'a>(sess: &'a Session, trans: &CrateTranslation, tmpdir: &TempDir)
+                     -> PathBuf {
+    let out_filename = tmpdir.path().join(METADATA_FILENAME);
+    let result = fs::write(&out_filename, &trans.metadata.raw_data);
 
     if let Err(e) = result {
         sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
     }
+
+    out_filename
 }
 
 enum RlibFlavor {
@@ -346,7 +366,7 @@ fn link_rlib<'a>(sess: &'a Session,
                  trans: &CrateTranslation,
                  flavor: RlibFlavor,
                  out_filename: &Path,
-                 tmpdir: &Path) -> ArchiveBuilder<'a> {
+                 tmpdir: &TempDir) -> ArchiveBuilder<'a> {
     info!("preparing rlib to {:?}", out_filename);
     let mut ab = ArchiveBuilder::new(archive_config(sess, out_filename, None));
 
@@ -408,12 +428,8 @@ fn link_rlib<'a>(sess: &'a Session,
     match flavor {
         RlibFlavor::Normal => {
             // Instead of putting the metadata in an object file section, rlibs
-            // contain the metadata in a separate file. We use a temp directory
-            // here so concurrent builds in the same directory don't try to use
-            // the same filename for metadata (stomping over one another)
-            let metadata = tmpdir.join(METADATA_FILENAME);
-            emit_metadata(sess, trans, &metadata);
-            ab.add_file(&metadata);
+            // contain the metadata in a separate file.
+            ab.add_file(&emit_metadata(sess, trans, tmpdir));
 
             // For LTO purposes, the bytecode of this library is also inserted
             // into the archive.
@@ -457,7 +473,7 @@ fn link_rlib<'a>(sess: &'a Session,
 fn link_staticlib(sess: &Session,
                   trans: &CrateTranslation,
                   out_filename: &Path,
-                  tempdir: &Path) {
+                  tempdir: &TempDir) {
     let mut ab = link_rlib(sess,
                            trans,
                            RlibFlavor::StaticlibBase,
@@ -488,7 +504,7 @@ fn link_staticlib(sess: &Session,
         });
         ab.add_rlib(path,
                     &name.as_str(),
-                    sess.lto() && !ignored_for_lto(&trans.crate_info, cnum),
+                    sess.lto() && !ignored_for_lto(sess, &trans.crate_info, cnum),
                     skip_object_files).unwrap();
 
         all_native_libs.extend(trans.crate_info.native_libraries[&cnum].iter().cloned());
@@ -503,28 +519,7 @@ fn link_staticlib(sess: &Session,
     if !all_native_libs.is_empty() {
         if sess.opts.prints.contains(&PrintRequest::NativeStaticLibs) {
             print_native_static_libs(sess, &all_native_libs);
-        } else {
-            // Fallback for backwards compatibility only
-            print_native_static_libs_legacy(sess, &all_native_libs);
         }
-    }
-}
-
-fn print_native_static_libs_legacy(sess: &Session, all_native_libs: &[NativeLibrary]) {
-    sess.note_without_error("link against the following native artifacts when linking against \
-                             this static library");
-    sess.note_without_error("This list will not be printed by default. \
-        Please add --print=native-static-libs if you need this information");
-
-    for lib in all_native_libs.iter().filter(|l| relevant_lib(sess, l)) {
-        let name = match lib.kind {
-            NativeLibraryKind::NativeStaticNobundle |
-            NativeLibraryKind::NativeUnknown => "library",
-            NativeLibraryKind::NativeFramework => "framework",
-            // These are included, no need to print them
-            NativeLibraryKind::NativeStatic => continue,
-        };
-        sess.note_without_error(&format!("{}: {}", name, lib.name));
     }
 }
 
@@ -568,6 +563,11 @@ fn link_natively(sess: &Session,
                  tmpdir: &Path) {
     info!("preparing {:?} to {:?}", crate_type, out_filename);
     let flavor = sess.linker_flavor();
+
+    // The "binaryen linker" is massively special, so skip everything below.
+    if flavor == LinkerFlavor::Binaryen {
+        return link_binaryen(sess, crate_type, out_filename, trans, tmpdir);
+    }
 
     // The invocations of cc share some flags across platforms
     let (pname, mut cmd, envs) = get_linker(sess);
@@ -665,17 +665,18 @@ fn link_natively(sess: &Session,
         let mut out = output.stderr.clone();
         out.extend(&output.stdout);
         let out = String::from_utf8_lossy(&out);
-        let msg = "clang: error: unable to execute command: \
-                   Segmentation fault: 11";
-        if !out.contains(msg) {
+        let msg_segv = "clang: error: unable to execute command: Segmentation fault: 11";
+        let msg_bus  = "clang: error: unable to execute command: Bus error: 10";
+        if !(out.contains(msg_segv) || out.contains(msg_bus)) {
             break
         }
 
-        sess.struct_warn("looks like the linker segfaulted when we tried to \
-                          call it, automatically retrying again")
-            .note(&format!("{:?}", cmd))
-            .note(&out)
-            .emit();
+        warn!(
+            "looks like the linker segfaulted when we tried to call it, \
+             automatically retrying again. cmd = {:?}, out = {}.",
+            cmd,
+            out,
+        );
     }
 
     match prog {
@@ -694,7 +695,7 @@ fn link_natively(sess: &Session,
                 let mut output = prog.stderr.clone();
                 output.extend_from_slice(&prog.stdout);
                 sess.struct_err(&format!("linking with `{}` failed: {}",
-                                         pname,
+                                         pname.display(),
                                          prog.status))
                     .note(&format!("{:?}", &cmd))
                     .note(&escape_string(&output))
@@ -705,10 +706,25 @@ fn link_natively(sess: &Session,
             info!("linker stdout:\n{}", escape_string(&prog.stdout));
         },
         Err(e) => {
-            sess.struct_err(&format!("could not exec the linker `{}`: {}", pname, e))
-                .note(&format!("{:?}", &cmd))
-                .emit();
-            if sess.target.target.options.is_like_msvc && e.kind() == io::ErrorKind::NotFound {
+            let linker_not_found = e.kind() == io::ErrorKind::NotFound;
+
+            let mut linker_error = {
+                if linker_not_found {
+                    sess.struct_err(&format!("linker `{}` not found", pname.display()))
+                } else {
+                    sess.struct_err(&format!("could not exec the linker `{}`", pname.display()))
+                }
+            };
+
+            linker_error.note(&format!("{}", e));
+
+            if !linker_not_found {
+                linker_error.note(&format!("{:?}", &cmd));
+            }
+
+            linker_error.emit();
+
+            if sess.target.target.options.is_like_msvc && linker_not_found {
                 sess.note_without_error("the msvc targets depend on the msvc linker \
                     but `link.exe` was not found");
                 sess.note_without_error("please ensure that VS 2013 or VS 2015 was installed \
@@ -1196,7 +1212,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
             lib.kind == NativeLibraryKind::NativeStatic && !relevant_lib(sess, lib)
         });
 
-        if (!sess.lto() || ignored_for_lto(&trans.crate_info, cnum)) &&
+        if (!sess.lto() || ignored_for_lto(sess, &trans.crate_info, cnum)) &&
            crate_type != config::CrateTypeDylib &&
            !skip_native {
             cmd.link_rlib(&fix_windows_verbatim_for_gcc(cratepath));
@@ -1249,8 +1265,10 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
                 // file, then we don't need the object file as it's part of the
                 // LTO module. Note that `#![no_builtins]` is excluded from LTO,
                 // though, so we let that object file slide.
-                let skip_because_lto = sess.lto() && is_rust_object &&
-                                        !trans.crate_info.is_no_builtins.contains(&cnum);
+                let skip_because_lto = sess.lto() &&
+                    is_rust_object &&
+                    (sess.target.target.options.no_builtins ||
+                     !trans.crate_info.is_no_builtins.contains(&cnum));
 
                 if skip_because_cfg_say_so || skip_because_lto {
                     archive.remove_file(&f);
@@ -1363,5 +1381,32 @@ fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {
     match lib.cfg {
         Some(ref cfg) => attr::cfg_matches(cfg, &sess.parse_sess, None),
         None => true,
+    }
+}
+
+/// For now "linking with binaryen" is just "move the one module we generated in
+/// the backend to the final output"
+///
+/// That is, all the heavy lifting happens during the `back::write` phase. Here
+/// we just clean up after that.
+///
+/// Note that this is super temporary and "will not survive the night", this is
+/// guaranteed to get removed as soon as a linker for wasm exists. This should
+/// not be used for anything other than wasm.
+fn link_binaryen(sess: &Session,
+                 _crate_type: config::CrateType,
+                 out_filename: &Path,
+                 trans: &CrateTranslation,
+                 _tmpdir: &Path) {
+    assert!(trans.allocator_module.is_none());
+    assert_eq!(trans.modules.len(), 1);
+
+    let object = trans.modules[0].object.as_ref().expect("object must exist");
+    let res = fs::hard_link(object, out_filename)
+        .or_else(|_| fs::copy(object, out_filename).map(|_| ()));
+    if let Err(e) = res {
+        sess.fatal(&format!("failed to create `{}`: {}",
+                            out_filename.display(),
+                            e));
     }
 }

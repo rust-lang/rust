@@ -13,7 +13,7 @@
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, AdtKind, Ty, TyCtxt};
-use rustc::ty::layout::{Layout, Primitive};
+use rustc::ty::layout::{self, LayoutOf};
 use middle::const_val::ConstVal;
 use rustc_const_eval::ConstContext;
 use util::nodemap::FxHashSet;
@@ -140,7 +140,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                         match lit.node {
                             ast::LitKind::Int(v, ast::LitIntType::Signed(_)) |
                             ast::LitKind::Int(v, ast::LitIntType::Unsuffixed) => {
-                                let int_type = if let ast::IntTy::Is = t {
+                                let int_type = if let ast::IntTy::Isize = t {
                                     cx.sess().target.isize_ty
                                 } else {
                                     t
@@ -163,7 +163,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                         };
                     }
                     ty::TyUint(t) => {
-                        let uint_type = if let ast::UintTy::Us = t {
+                        let uint_type = if let ast::UintTy::Usize = t {
                             cx.sess().target.usize_ty
                         } else {
                             t
@@ -230,7 +230,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
         // warnings are consistent between 32- and 64-bit platforms
         fn int_ty_range(int_ty: ast::IntTy) -> (i128, i128) {
             match int_ty {
-                ast::IntTy::Is => (i64::min_value() as i128, i64::max_value() as i128),
+                ast::IntTy::Isize => (i64::min_value() as i128, i64::max_value() as i128),
                 ast::IntTy::I8 => (i8::min_value() as i64 as i128, i8::max_value() as i128),
                 ast::IntTy::I16 => (i16::min_value() as i64 as i128, i16::max_value() as i128),
                 ast::IntTy::I32 => (i32::min_value() as i64 as i128, i32::max_value() as i128),
@@ -241,7 +241,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
 
         fn uint_ty_range(uint_ty: ast::UintTy) -> (u128, u128) {
             match uint_ty {
-                ast::UintTy::Us => (u64::min_value() as u128, u64::max_value() as u128),
+                ast::UintTy::Usize => (u64::min_value() as u128, u64::max_value() as u128),
                 ast::UintTy::U8 => (u8::min_value() as u128, u8::max_value() as u128),
                 ast::UintTy::U16 => (u16::min_value() as u128, u16::max_value() as u128),
                 ast::UintTy::U32 => (u32::min_value() as u128, u32::max_value() as u128),
@@ -252,7 +252,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
 
         fn int_ty_bits(int_ty: ast::IntTy, isize_ty: ast::IntTy) -> u64 {
             match int_ty {
-                ast::IntTy::Is => int_ty_bits(isize_ty, isize_ty),
+                ast::IntTy::Isize => int_ty_bits(isize_ty, isize_ty),
                 ast::IntTy::I8 => 8,
                 ast::IntTy::I16 => 16 as u64,
                 ast::IntTy::I32 => 32,
@@ -263,7 +263,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
 
         fn uint_ty_bits(uint_ty: ast::UintTy, usize_ty: ast::UintTy) -> u64 {
             match uint_ty {
-                ast::UintTy::Us => uint_ty_bits(usize_ty, usize_ty),
+                ast::UintTy::Usize => uint_ty_bits(usize_ty, usize_ty),
                 ast::UintTy::U8 => 8,
                 ast::UintTy::U16 => 16,
                 ast::UintTy::U32 => 32,
@@ -387,7 +387,7 @@ fn is_ffi_safe(ty: attr::IntType) -> bool {
         attr::SignedInt(ast::IntTy::I32) | attr::UnsignedInt(ast::UintTy::U32) |
         attr::SignedInt(ast::IntTy::I64) | attr::UnsignedInt(ast::UintTy::U64) |
         attr::SignedInt(ast::IntTy::I128) | attr::UnsignedInt(ast::UintTy::U128) => true,
-        attr::SignedInt(ast::IntTy::Is) | attr::UnsignedInt(ast::UintTy::Us) => false
+        attr::SignedInt(ast::IntTy::Isize) | attr::UnsignedInt(ast::UintTy::Usize) => false
     }
 }
 
@@ -422,7 +422,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                               consider adding a #[repr(C)] attribute to the type");
                         }
 
-                        if def.struct_variant().fields.is_empty() {
+                        if def.non_enum_variant().fields.is_empty() {
                             return FfiUnsafe("found zero-size struct in foreign module, consider \
                                               adding a member to this struct");
                         }
@@ -430,7 +430,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         // We can't completely trust repr(C) markings; make sure the
                         // fields are actually safe.
                         let mut all_phantom = true;
-                        for field in &def.struct_variant().fields {
+                        for field in &def.non_enum_variant().fields {
                             let field_ty = cx.fully_normalize_associated_types_in(
                                 &field.ty(cx, substs)
                             );
@@ -458,13 +458,13 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                               consider adding a #[repr(C)] attribute to the type");
                         }
 
-                        if def.struct_variant().fields.is_empty() {
+                        if def.non_enum_variant().fields.is_empty() {
                             return FfiUnsafe("found zero-size union in foreign module, consider \
                                               adding a member to this union");
                         }
 
                         let mut all_phantom = true;
-                        for field in &def.struct_variant().fields {
+                        for field in &def.non_enum_variant().fields {
                             let field_ty = cx.fully_normalize_associated_types_in(
                                 &field.ty(cx, substs)
                             );
@@ -744,29 +744,27 @@ impl LintPass for VariantSizeDifferences {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         if let hir::ItemEnum(ref enum_definition, ref gens) = it.node {
-            if gens.ty_params.is_empty() {
+            if gens.params.iter().all(|param| param.is_lifetime_param()) {
                 // sizes only make sense for non-generic types
                 let item_def_id = cx.tcx.hir.local_def_id(it.id);
                 let t = cx.tcx.type_of(item_def_id);
-                let param_env = cx.param_env.reveal_all();
                 let ty = cx.tcx.erase_regions(&t);
-                let layout = ty.layout(cx.tcx, param_env).unwrap_or_else(|e| {
+                let layout = cx.layout_of(ty).unwrap_or_else(|e| {
                     bug!("failed to get layout for `{}`: {}", t, e)
                 });
 
-                if let Layout::General { ref variants, ref size, discr, .. } = *layout {
-                    let discr_size = Primitive::Int(discr).size(cx.tcx).bytes();
+                if let layout::Variants::Tagged { ref variants, ref discr, .. } = layout.variants {
+                    let discr_size = discr.value.size(cx.tcx).bytes();
 
                     debug!("enum `{}` is {} bytes large with layout:\n{:#?}",
-                      t, size.bytes(), layout);
+                      t, layout.size.bytes(), layout);
 
                     let (largest, slargest, largest_index) = enum_definition.variants
                         .iter()
                         .zip(variants)
                         .map(|(variant, variant_layout)| {
                             // Subtract the size of the enum discriminant
-                            let bytes = variant_layout.min_size
-                                .bytes()
+                            let bytes = variant_layout.size.bytes()
                                 .saturating_sub(discr_size);
 
                             debug!("- variant `{}` is {} bytes large", variant.node.name, bytes);

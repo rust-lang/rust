@@ -1,7 +1,7 @@
 error[E0232]: `#[rustc_on_unimplemented]` requires a value
   --> $DIR/bad-annotation.rs:26:1
    |
-26 | #[rustc_on_unimplemented] //~ ERROR this attribute must have a value
+26 | #[rustc_on_unimplemented] //~ ERROR `#[rustc_on_unimplemented]` requires a value
    | ^^^^^^^^^^^^^^^^^^^^^^^^^ value required here
    |
    = note: eg `#[rustc_on_unimplemented = "foo"]`
@@ -27,47 +27,47 @@ error[E0232]: this attribute must have a valid value
    = note: eg `#[rustc_on_unimplemented = "foo"]`
 
 error[E0232]: this attribute must have a valid value
-  --> $DIR/bad-annotation.rs:43:26
+  --> $DIR/bad-annotation.rs:44:26
    |
-43 | #[rustc_on_unimplemented(lorem(ipsum(dolor)))]
+44 | #[rustc_on_unimplemented(lorem(ipsum(dolor)))]
    |                          ^^^^^^^^^^^^^^^^^^^ expected value here
    |
    = note: eg `#[rustc_on_unimplemented = "foo"]`
 
 error[E0232]: this attribute must have a valid value
-  --> $DIR/bad-annotation.rs:46:39
+  --> $DIR/bad-annotation.rs:48:39
    |
-46 | #[rustc_on_unimplemented(message="x", message="y")]
+48 | #[rustc_on_unimplemented(message="x", message="y")]
    |                                       ^^^^^^^^^^^ expected value here
    |
    = note: eg `#[rustc_on_unimplemented = "foo"]`
 
 error[E0232]: this attribute must have a valid value
-  --> $DIR/bad-annotation.rs:49:39
+  --> $DIR/bad-annotation.rs:52:39
    |
-49 | #[rustc_on_unimplemented(message="x", on(desugared, message="y"))]
+52 | #[rustc_on_unimplemented(message="x", on(desugared, message="y"))]
    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected value here
    |
    = note: eg `#[rustc_on_unimplemented = "foo"]`
 
 error[E0232]: empty `on`-clause in `#[rustc_on_unimplemented]`
-  --> $DIR/bad-annotation.rs:52:26
+  --> $DIR/bad-annotation.rs:56:26
    |
-52 | #[rustc_on_unimplemented(on(), message="y")]
+56 | #[rustc_on_unimplemented(on(), message="y")]
    |                          ^^^^ empty on-clause here
 
 error[E0232]: this attribute must have a valid value
-  --> $DIR/bad-annotation.rs:55:26
+  --> $DIR/bad-annotation.rs:60:26
    |
-55 | #[rustc_on_unimplemented(on="x", message="y")]
+60 | #[rustc_on_unimplemented(on="x", message="y")]
    |                          ^^^^^^ expected value here
    |
    = note: eg `#[rustc_on_unimplemented = "foo"]`
 
 error[E0232]: this attribute must have a valid value
-  --> $DIR/bad-annotation.rs:61:40
+  --> $DIR/bad-annotation.rs:67:40
    |
-61 | #[rustc_on_unimplemented(on(desugared, on(desugared, message="x")), message="y")]
+67 | #[rustc_on_unimplemented(on(desugared, on(desugared, message="x")), message="y")]
    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected value here
    |
    = note: eg `#[rustc_on_unimplemented = "foo"]`

@@ -1,21 +1,21 @@
 error[E0597]: `bomb` does not live long enough
-  --> $DIR/dropck_misc_variants.rs:34:1
+  --> $DIR/dropck_misc_variants.rs:33:37
    |
 33 |     _w = Wrap::<&[&str]>(NoisyDrop(&bomb));
-   |                                     ---- borrow occurs here
+   |                                     ^^^^ borrowed value does not live long enough
 34 | }
-   | ^ `bomb` dropped here while still borrowed
+   | - `bomb` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `v` does not live long enough
-  --> $DIR/dropck_misc_variants.rs:44:1
+  --> $DIR/dropck_misc_variants.rs:41:28
    |
 41 |         let u = NoisyDrop(&v);
-   |                            - borrow occurs here
+   |                            ^ borrowed value does not live long enough
 ...
-44 | }
-   | ^ `v` dropped here while still borrowed
+45 | }
+   | - `v` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 

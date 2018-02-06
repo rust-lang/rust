@@ -18,6 +18,5 @@ all:
 ifeq ($(ASAN_SUPPORT),1)
 	$(RUSTC) -g -Z sanitizer=address --crate-type cdylib --target $(TARGET) $(EXTRA_RUSTFLAG) library.rs
 	$(RUSTC) -g -Z sanitizer=address --crate-type bin --target $(TARGET) $(EXTRA_RUSTFLAG) -llibrary program.rs
-	LD_LIBRARY_PATH=$(TMPDIR) $(TMPDIR)/program 2>&1 | tee $(LOG)
-	grep -q stack-buffer-overflow $(LOG)
+	LD_LIBRARY_PATH=$(TMPDIR) $(TMPDIR)/program 2>&1 | $(CGREP) stack-buffer-overflow
 endif

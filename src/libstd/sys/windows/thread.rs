@@ -52,7 +52,7 @@ impl Thread {
         };
 
         extern "system" fn thread_start(main: *mut c_void) -> c::DWORD {
-            unsafe { start_thread(main); }
+            unsafe { start_thread(main as *mut u8); }
             0
         }
     }

@@ -14,13 +14,18 @@ extern crate build_helper;
 
 use std::env;
 use std::process::Command;
-use build_helper::{run, native_lib_boilerplate, BuildExpectation};
+use build_helper::{run, native_lib_boilerplate};
 
 fn main() {
     let target = env::var("TARGET").expect("TARGET was not set");
     let host = env::var("HOST").expect("HOST was not set");
-    if cfg!(feature = "backtrace") && !target.contains("msvc") &&
-        !target.contains("emscripten") && !target.contains("fuchsia") {
+    if cfg!(feature = "backtrace") &&
+        !target.contains("cloudabi") &&
+        !target.contains("emscripten") &&
+        !target.contains("fuchsia") &&
+        !target.contains("msvc") &&
+        !target.contains("wasm32")
+    {
         let _ = build_libbacktrace(&host, &target);
     }
 
@@ -70,6 +75,12 @@ fn main() {
         println!("cargo:rustc-link-lib=zircon");
         println!("cargo:rustc-link-lib=fdio");
         println!("cargo:rustc-link-lib=launchpad"); // for std::process
+    } else if target.contains("cloudabi") {
+        if cfg!(feature = "backtrace") {
+            println!("cargo:rustc-link-lib=unwind");
+        }
+        println!("cargo:rustc-link-lib=c");
+        println!("cargo:rustc-link-lib=compiler_rt");
     }
 }
 
@@ -87,14 +98,11 @@ fn build_libbacktrace(host: &str, target: &str) -> Result<(), ()> {
                 .arg("--disable-host-shared")
                 .arg(format!("--host={}", build_helper::gnu_target(target)))
                 .arg(format!("--build={}", build_helper::gnu_target(host)))
-                .env("CFLAGS", env::var("CFLAGS").unwrap_or_default() + " -fvisibility=hidden"),
-        BuildExpectation::None);
+                .env("CFLAGS", env::var("CFLAGS").unwrap_or_default() + " -fvisibility=hidden"));
 
     run(Command::new(build_helper::make(host))
                 .current_dir(&native.out_dir)
                 .arg(format!("INCDIR={}", native.src_dir.display()))
-                .arg("-j").arg(env::var("NUM_JOBS").expect("NUM_JOBS was not set")),
-        BuildExpectation::None);
-
+                .arg("-j").arg(env::var("NUM_JOBS").expect("NUM_JOBS was not set")));
     Ok(())
 }

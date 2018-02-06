@@ -16,12 +16,12 @@ fn main() {
     let foo = Foo {
         one: 111,
         ..Foo::default(),
-        //~^ ERROR cannot use a comma after struct expansion
+        //~^ ERROR cannot use a comma after the base struct
     };
 
     let foo = Foo {
         ..Foo::default(),
-        //~^ ERROR cannot use a comma after struct expansion
+        //~^ ERROR cannot use a comma after the base struct
         one: 111,
     };
 }

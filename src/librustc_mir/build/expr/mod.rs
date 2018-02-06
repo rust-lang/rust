@@ -24,13 +24,13 @@
 //! - `as_operand` -- evaluates the value and yields an `Operand`,
 //!   suitable for use as an argument to an `Rvalue`
 //! - `as_temp` -- evaluates into a temporary; this is similar to `as_operand`
-//!   except it always returns a fresh lvalue, even for constants
+//!   except it always returns a fresh place, even for constants
 //! - `as_rvalue` -- yields an `Rvalue`, suitable for use in an assignment;
 //!   as of this writing, never needed outside of the `expr` module itself
 //!
 //! Sometimes though want the expression's *location*. An example
 //! would be during a match statement, or the operand of the `&`
-//! operator. In that case, you want `as_lvalue`. This will create a
+//! operator. In that case, you want `as_place`. This will create a
 //! temporary if necessary.
 //!
 //! Finally, if it's a constant you seek, then call
@@ -46,7 +46,7 @@
 //! struct expression (or other expression that creates a new value)
 //! is typically easiest to write in terms of `as_rvalue` or `into`,
 //! whereas a reference to a field is easiest to write in terms of
-//! `as_lvalue`. (The exception to this is scope and paren
+//! `as_place`. (The exception to this is scope and paren
 //! expressions, which have no category.)
 //!
 //! Therefore, the various functions above make use of one another in
@@ -54,12 +54,12 @@
 //! the most suitable spot to implement it, and then just let the
 //! other fns cycle around. The handoff works like this:
 //!
-//! - `into(lv)` -> fallback is to create a rvalue with `as_rvalue` and assign it to `lv`
+//! - `into(place)` -> fallback is to create a rvalue with `as_rvalue` and assign it to `place`
 //! - `as_rvalue` -> fallback is to create an Operand with `as_operand` and use `Rvalue::use`
 //! - `as_operand` -> either invokes `as_constant` or `as_temp`
 //! - `as_constant` -> (no fallback)
-//! - `as_temp` -> creates a temporary and either calls `as_lvalue` or `into`
-//! - `as_lvalue` -> for rvalues, falls back to `as_temp` and returns that
+//! - `as_temp` -> creates a temporary and either calls `as_place` or `into`
+//! - `as_place` -> for rvalues, falls back to `as_temp` and returns that
 //!
 //! As you can see, there is a cycle where `into` can (in theory) fallback to `as_temp`
 //! which can fallback to `into`. So if one of the `ExprKind` variants is not, in fact,
@@ -68,10 +68,10 @@
 //! Of those fallbacks, the most interesting one is `as_temp`, because
 //! it discriminates based on the category of the expression. This is
 //! basically the point where the "by value" operations are bridged
-//! over to the "by reference" mode (`as_lvalue`).
+//! over to the "by reference" mode (`as_place`).
 
 mod as_constant;
-mod as_lvalue;
+mod as_place;
 mod as_rvalue;
 mod as_operand;
 mod as_temp;

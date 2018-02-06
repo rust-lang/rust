@@ -11,6 +11,7 @@
 // compile-flags:-C panic=abort
 // aux-build:exit-success-if-unwind.rs
 // no-prefer-dynamic
+// ignore-cloudabi no processes
 // ignore-emscripten no processes
 
 extern crate exit_success_if_unwind;

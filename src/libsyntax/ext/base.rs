@@ -21,10 +21,11 @@ use fold::{self, Folder};
 use parse::{self, parser, DirectoryOwnership};
 use parse::token;
 use ptr::P;
-use symbol::Symbol;
+use symbol::{keywords, Ident, Symbol};
 use util::small_vector::SmallVector;
 
 use std::collections::HashMap;
+use std::iter;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::default::Default;
@@ -84,15 +85,27 @@ impl Annotatable {
 
     pub fn expect_trait_item(self) -> ast::TraitItem {
         match self {
-            Annotatable::TraitItem(i) => i.unwrap(),
+            Annotatable::TraitItem(i) => i.into_inner(),
             _ => panic!("expected Item")
         }
     }
 
     pub fn expect_impl_item(self) -> ast::ImplItem {
         match self {
-            Annotatable::ImplItem(i) => i.unwrap(),
+            Annotatable::ImplItem(i) => i.into_inner(),
             _ => panic!("expected Item")
+        }
+    }
+
+    pub fn derive_allowed(&self) -> bool {
+        match *self {
+            Annotatable::Item(ref item) => match item.node {
+                ast::ItemKind::Struct(..) |
+                ast::ItemKind::Enum(..) |
+                ast::ItemKind::Union(..) => true,
+                _ => false,
+            },
+            _ => false,
         }
     }
 }
@@ -664,7 +677,7 @@ pub struct ExpansionData {
 pub struct ExtCtxt<'a> {
     pub parse_sess: &'a parse::ParseSess,
     pub ecfg: expand::ExpansionConfig<'a>,
-    pub crate_root: Option<&'static str>,
+    pub root_path: PathBuf,
     pub resolver: &'a mut Resolver,
     pub resolve_err_count: usize,
     pub current_expansion: ExpansionData,
@@ -679,14 +692,14 @@ impl<'a> ExtCtxt<'a> {
         ExtCtxt {
             parse_sess,
             ecfg,
-            crate_root: None,
+            root_path: PathBuf::new(),
             resolver,
             resolve_err_count: 0,
             current_expansion: ExpansionData {
                 mark: Mark::root(),
                 depth: 0,
                 module: Rc::new(ModuleData { mod_path: Vec::new(), directory: PathBuf::new() }),
-                directory_ownership: DirectoryOwnership::Owned,
+                directory_ownership: DirectoryOwnership::Owned { relative: None },
             },
             expansions: HashMap::new(),
         }
@@ -763,7 +776,8 @@ impl<'a> ExtCtxt<'a> {
     /// Emit `msg` attached to `sp`, and stop compilation immediately.
     ///
     /// `span_err` should be strongly preferred where-ever possible:
-    /// this should *only* be used when
+    /// this should *only* be used when:
+    ///
     /// - continuing has a high risk of flow-on errors (e.g. errors in
     ///   declaring a macro would cause all uses of that macro to
     ///   complain about "undefined macro"), or
@@ -820,12 +834,10 @@ impl<'a> ExtCtxt<'a> {
         ast::Ident::from_str(st)
     }
     pub fn std_path(&self, components: &[&str]) -> Vec<ast::Ident> {
-        let mut v = Vec::new();
-        if let Some(s) = self.crate_root {
-            v.push(self.ident_of(s));
-        }
-        v.extend(components.iter().map(|s| self.ident_of(s)));
-        v
+        let def_site = SyntaxContext::empty().apply_mark(self.current_expansion.mark);
+        iter::once(Ident { ctxt: def_site, ..keywords::DollarCrate.ident() })
+            .chain(components.iter().map(|s| self.ident_of(s)))
+            .collect()
     }
     pub fn name_of(&self, st: &str) -> ast::Name {
         Symbol::intern(st)

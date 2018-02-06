@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::iter;
 
 use check::FnCtxt;
 use rustc::infer::InferOk;
@@ -134,54 +135,48 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
-        if let Some(suggestion) = self.check_ref(expr,
-                                                 checked_ty,
-                                                 expected) {
-            err.help(&suggestion);
+        if let Some((msg, suggestion)) = self.check_ref(expr, checked_ty, expected) {
+            err.span_suggestion(expr.span, msg, suggestion);
         } else {
-            let mode = probe::Mode::MethodCall;
-            let suggestions = self.probe_for_return_type(syntax_pos::DUMMY_SP,
-                                                         mode,
-                                                         expected,
-                                                         checked_ty,
-                                                         ast::DUMMY_NODE_ID);
-            if suggestions.len() > 0 {
-                err.help(&format!("here are some functions which \
-                                   might fulfill your needs:\n{}",
-                                  self.get_best_match(&suggestions).join("\n")));
+            let methods = self.get_conversion_methods(expected, checked_ty);
+            if let Ok(expr_text) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
+                let suggestions = iter::repeat(expr_text).zip(methods.iter())
+                    .map(|(receiver, method)| format!("{}.{}()", receiver, method.name))
+                    .collect::<Vec<_>>();
+                if !suggestions.is_empty() {
+                    err.span_suggestions(expr.span,
+                                         "try using a conversion method",
+                                         suggestions);
+                }
             }
         }
         (expected, Some(err))
     }
 
-    fn format_method_suggestion(&self, method: &AssociatedItem) -> String {
-        format!("- .{}({})",
-                method.name,
-                if self.has_no_input_arg(method) {
-                    ""
-                } else {
-                    "..."
-                })
-    }
+    fn get_conversion_methods(&self, expected: Ty<'tcx>, checked_ty: Ty<'tcx>)
+                              -> Vec<AssociatedItem> {
+        let mut methods = self.probe_for_return_type(syntax_pos::DUMMY_SP,
+                                                     probe::Mode::MethodCall,
+                                                     expected,
+                                                     checked_ty,
+                                                     ast::DUMMY_NODE_ID);
+        methods.retain(|m| {
+            self.has_no_input_arg(m) &&
+                self.tcx.get_attrs(m.def_id).iter()
+                // This special internal attribute is used to whitelist
+                // "identity-like" conversion methods to be suggested here.
+                //
+                // FIXME (#46459 and #46460): ideally
+                // `std::convert::Into::into` and `std::borrow:ToOwned` would
+                // also be `#[rustc_conversion_suggestion]`, if not for
+                // method-probing false-positives and -negatives (respectively).
+                //
+                // FIXME? Other potential candidate methods: `as_ref` and
+                // `as_mut`?
+                .find(|a| a.check_name("rustc_conversion_suggestion")).is_some()
+        });
 
-    fn display_suggested_methods(&self, methods: &[AssociatedItem]) -> Vec<String> {
-        methods.iter()
-               .take(5)
-               .map(|method| self.format_method_suggestion(&*method))
-               .collect::<Vec<String>>()
-    }
-
-    fn get_best_match(&self, methods: &[AssociatedItem]) -> Vec<String> {
-        let no_argument_methods: Vec<_> =
-            methods.iter()
-                   .filter(|ref x| self.has_no_input_arg(&*x))
-                   .map(|x| x.clone())
-                   .collect();
-        if no_argument_methods.len() > 0 {
-            self.display_suggested_methods(&no_argument_methods)
-        } else {
-            self.display_suggested_methods(&methods)
-        }
+        methods
     }
 
     // This function checks if the method isn't static and takes other arguments than `self`.
@@ -214,7 +209,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                  expr: &hir::Expr,
                  checked_ty: Ty<'tcx>,
                  expected: Ty<'tcx>)
-                 -> Option<String> {
+                 -> Option<(&'static str, String)> {
         match (&expected.sty, &checked_ty.sty) {
             (&ty::TyRef(_, exp), &ty::TyRef(_, check)) => match (&exp.ty.sty, &check.ty.sty) {
                 (&ty::TyStr, &ty::TyArray(arr, _)) |
@@ -222,7 +217,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if let hir::ExprLit(_) = expr.node {
                         let sp = self.sess().codemap().call_span_if_macro(expr.span);
                         if let Ok(src) = self.tcx.sess.codemap().span_to_snippet(sp) {
-                            return Some(format!("try `{}`", &src[1..]));
+                            return Some(("consider removing the leading `b`",
+                                         src[1..].to_string()));
                         }
                     }
                     None
@@ -232,7 +228,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if let hir::ExprLit(_) = expr.node {
                         let sp = self.sess().codemap().call_span_if_macro(expr.span);
                         if let Ok(src) = self.tcx.sess.codemap().span_to_snippet(sp) {
-                            return Some(format!("try `b{}`", src));
+                            return Some(("consider adding a leading `b`",
+                                         format!("b{}", src)));
                         }
                     }
                     None
@@ -260,12 +257,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // Use the callsite's span if this is a macro call. #41858
                     let sp = self.sess().codemap().call_span_if_macro(expr.span);
                     if let Ok(src) = self.tcx.sess.codemap().span_to_snippet(sp) {
-                        return Some(format!("try with `{}{}`",
-                                            match mutability.mutbl {
-                                                hir::Mutability::MutMutable => "&mut ",
-                                                hir::Mutability::MutImmutable => "&",
-                                            },
-                                            &src));
+                        let sugg_expr = match expr.node { // parenthesize if needed (Issue #46756)
+                            hir::ExprCast(_, _) | hir::ExprBinary(_, _, _) => format!("({})", src),
+                            _ => src,
+                        };
+                        return Some(match mutability.mutbl {
+                            hir::Mutability::MutMutable => {
+                                ("consider mutably borrowing here", format!("&mut {}", sugg_expr))
+                            }
+                            hir::Mutability::MutImmutable => {
+                                ("consider borrowing here", format!("&{}", sugg_expr))
+                            }
+                        });
                     }
                 }
                 None
@@ -284,7 +287,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         // Maybe remove `&`?
                         hir::ExprAddrOf(_, ref expr) => {
                             if let Ok(code) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
-                                return Some(format!("try with `{}`", code));
+                                return Some(("consider removing the borrow",
+                                             code));
                             }
                         }
 
@@ -295,7 +299,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                                 expr.span) {
                                 let sp = self.sess().codemap().call_span_if_macro(expr.span);
                                 if let Ok(code) = self.tcx.sess.codemap().span_to_snippet(sp) {
-                                    return Some(format!("try with `*{}`", code));
+                                    return Some(("consider dereferencing the borrow",
+                                                 format!("*{}", code)));
                                 }
                             }
                         },

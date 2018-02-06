@@ -445,14 +445,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             infer::CompareImplMethodObligation { span,
                                                  item_name,
                                                  impl_item_def_id,
-                                                 trait_item_def_id,
-                                                 lint_id } => {
+                                                 trait_item_def_id } => {
                 self.report_extra_impl_obligation(span,
                                                   item_name,
                                                   impl_item_def_id,
                                                   trait_item_def_id,
-                                                  &format!("`{}: {}`", sup, sub),
-                                                  lint_id)
+                                                  &format!("`{}: {}`", sup, sub))
             }
         }
     }

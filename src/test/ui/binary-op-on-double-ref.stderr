@@ -1,0 +1,11 @@
+error[E0369]: binary operation `%` cannot be applied to type `&&{integer}`
+  --> $DIR/binary-op-on-double-ref.rs:14:9
+   |
+14 |         x % 2 == 0
+   |         ^^^^^
+   |
+   = note: this is a reference to a type that `%` can be applied to; you need to dereference this variable once for this operation to work
+   = note: an implementation of `std::ops::Rem` might be missing for `&&{integer}`
+
+error: aborting due to previous error
+

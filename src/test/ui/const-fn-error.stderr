@@ -1,0 +1,46 @@
+warning: constant evaluation error: non-constant path in constant expression
+  --> $DIR/const-fn-error.rs:27:19
+   |
+27 |     let a : [i32; f(X)];
+   |                   ^^^^
+   |
+   = note: #[warn(const_err)] on by default
+
+error[E0016]: blocks in constant functions are limited to items and tail expressions
+  --> $DIR/const-fn-error.rs:16:19
+   |
+16 |     let mut sum = 0; //~ ERROR blocks in constant functions are limited
+   |                   ^
+
+error[E0015]: calls in constant functions are limited to constant functions, struct and enum constructors
+  --> $DIR/const-fn-error.rs:17:5
+   |
+17 | /     for i in 0..x { //~ ERROR calls in constant functions
+18 | |     //~| ERROR constant function contains unimplemented
+19 | |         sum += i;
+20 | |     }
+   | |_____^
+
+error[E0019]: constant function contains unimplemented expression type
+  --> $DIR/const-fn-error.rs:17:5
+   |
+17 | /     for i in 0..x { //~ ERROR calls in constant functions
+18 | |     //~| ERROR constant function contains unimplemented
+19 | |         sum += i;
+20 | |     }
+   | |_____^
+
+error[E0080]: constant evaluation error
+  --> $DIR/const-fn-error.rs:21:5
+   |
+21 |     sum //~ ERROR E0080
+   |     ^^^ non-constant path in constant expression
+   |
+note: for constant expression here
+  --> $DIR/const-fn-error.rs:27:13
+   |
+27 |     let a : [i32; f(X)];
+   |             ^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

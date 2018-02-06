@@ -7,9 +7,10 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
 // error-pattern:drop 1
 // error-pattern:drop 2
-
+// ignore-cloudabi no std::process
 
 /// Structure which will not allow to be dropped twice.
 struct Droppable<'a>(&'a mut bool, u32);

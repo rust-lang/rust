@@ -1,0 +1,20 @@
+error[E0265]: recursive constant
+  --> $DIR/issue-36163.rs:11:1
+   |
+11 | const A: i32 = Foo::B; //~ ERROR E0265
+   | ^^^^^^^^^^^^^^^^^^^^^^ recursion not allowed in constant
+
+error[E0265]: recursive constant
+  --> $DIR/issue-36163.rs:14:9
+   |
+14 |     B = A, //~ ERROR E0265
+   |         ^ recursion not allowed in constant
+
+error[E0265]: recursive constant
+  --> $DIR/issue-36163.rs:18:9
+   |
+18 |     C = Bar::C, //~ ERROR E0265
+   |         ^^^^^^ recursion not allowed in constant
+
+error: aborting due to 3 previous errors
+

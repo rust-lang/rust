@@ -1,0 +1,16 @@
+error[E0109]: type parameters are not allowed on this type
+  --> $DIR/qualified-path-params-2.rs:28:26
+   |
+28 | type A = <S as Tr>::A::f<u8>;
+   |                          ^^ type parameter not allowed
+
+error[E0223]: ambiguous associated type
+  --> $DIR/qualified-path-params-2.rs:28:10
+   |
+28 | type A = <S as Tr>::A::f<u8>;
+   |          ^^^^^^^^^^^^^^^^^^^ ambiguous associated type
+   |
+   = note: specify the type using the syntax `<<S as Tr>::A as Trait>::f`
+
+error: aborting due to 2 previous errors
+

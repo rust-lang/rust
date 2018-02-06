@@ -66,7 +66,7 @@ mod duration;
 ///    println!("{}", now.elapsed().as_secs());
 /// }
 /// ```
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[stable(feature = "time2", since = "1.8.0")]
 pub struct Instant(time::Instant);
 
@@ -118,7 +118,7 @@ pub struct Instant(time::Instant);
 ///    }
 /// }
 /// ```
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[stable(feature = "time2", since = "1.8.0")]
 pub struct SystemTime(time::SystemTime);
 

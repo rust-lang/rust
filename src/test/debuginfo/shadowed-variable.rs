@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // min-lldb-version: 310
-
 // compile-flags:-g
 
 // === GDB TESTS ===================================================================================
@@ -34,6 +33,17 @@
 // gdb-check:$6 = 20
 // gdb-command:continue
 
+// gdb-command:print x
+// gdb-check:$7 = 10.5
+// gdb-command:print y
+// gdb-check:$8 = 20
+// gdb-command:continue
+
+// gdb-command:print x
+// gdb-check:$9 = 11.5
+// gdb-command:print y
+// gdb-check:$10 = 20
+// gdb-command:continue
 
 // === LLDB TESTS ==================================================================================
 
@@ -57,6 +67,18 @@
 // lldb-check:[...]$5 = 20
 // lldb-command:continue
 
+// lldb-command:print x
+// lldb-check:[...]$6 = 10.5
+// lldb-command:print y
+// lldb-check:[...]$7 = 20
+// lldb-command:continue
+
+// lldb-command:print x
+// lldb-check:[...]$8 = 11.5
+// lldb-command:print y
+// lldb-check:[...]$9 = 20
+// lldb-command:continue
+
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
@@ -77,6 +99,15 @@ fn main() {
 
     zzz(); // #break
     sentinel();
+
+    let x = {
+        zzz(); // #break
+        sentinel();
+        11.5
+    };
+
+    zzz(); // #break
+    sentinel()
 }
 
 fn zzz() {()}

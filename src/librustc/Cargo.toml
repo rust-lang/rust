@@ -14,8 +14,8 @@ bitflags = "1.0"
 fmt_macros = { path = "../libfmt_macros" }
 graphviz = { path = "../libgraphviz" }
 jobserver = "0.1"
-log = "0.3"
-owning_ref = "0.3.3"
+log = "0.4"
+rustc_apfloat = { path = "../librustc_apfloat" }
 rustc_back = { path = "../librustc_back" }
 rustc_const_math = { path = "../librustc_const_math" }
 rustc_data_structures = { path = "../librustc_data_structures" }
@@ -23,6 +23,9 @@ rustc_errors = { path = "../librustc_errors" }
 serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
+backtrace = "0.3.3"
+byteorder = { version = "1.1", features = ["i128"]}
+
 
 # Note that these dependencies are a lie, they're just here to get linkage to
 # work.
@@ -51,4 +54,4 @@ syntax_pos = { path = "../libsyntax_pos" }
 # tl;dr; this is not needed to get `rustc` to compile, but if you remove it then
 #        later crate stop compiling. If you can remove this and everything
 #        compiles, then please feel free to do so!
-flate2 = "0.2"
+flate2 = "1.0"

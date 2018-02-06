@@ -12,7 +12,7 @@
 //! A Simple, Fast Dominance Algorithm.
 //! Keith D. Cooper, Timothy J. Harvey, and Ken Kennedy
 //! Rice Computer Science TS-06-33870
-//! https://www.cs.rice.edu/~keith/EMBED/dom.pdf
+//! <https://www.cs.rice.edu/~keith/EMBED/dom.pdf>
 
 use super::ControlFlowGraph;
 use super::iterate::reverse_post_order;

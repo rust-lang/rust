@@ -1,0 +1,8 @@
+error[E0244]: wrong number of type arguments: expected 1, found 2
+  --> $DIR/typeck_type_placeholder_lifetime_1.rs:19:12
+   |
+19 |     let c: Foo<_, _> = Foo { r: &5 };
+   |            ^^^^^^^^^ expected 1 type argument
+
+error: aborting due to previous error
+

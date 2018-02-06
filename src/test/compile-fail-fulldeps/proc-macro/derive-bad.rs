@@ -17,7 +17,8 @@ extern crate derive_bad;
 #[derive(
     A
 )]
-//~^^ ERROR: proc-macro derive produced unparseable tokens
+//~^^ ERROR proc-macro derive produced unparseable tokens
+//~| ERROR expected `:`, found `}`
 struct A;
 
 fn main() {}

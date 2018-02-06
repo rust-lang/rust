@@ -1,0 +1,128 @@
+error: first final: "hello"
+  --> $DIR/parent-source-spans.rs:27:12
+   |
+27 |     three!($a, $b);
+   |            ^^
+...
+44 |     one!("hello", "world");
+   |     ----------------------- in this macro invocation
+
+error: second final: "world"
+  --> $DIR/parent-source-spans.rs:27:16
+   |
+27 |     three!($a, $b);
+   |                ^^
+...
+44 |     one!("hello", "world");
+   |     ----------------------- in this macro invocation
+
+error: first parent: "hello"
+  --> $DIR/parent-source-spans.rs:21:5
+   |
+21 |     two!($a, $b);
+   |     ^^^^^^^^^^^^^
+...
+44 |     one!("hello", "world");
+   |     ----------------------- in this macro invocation
+
+error: second parent: "world"
+  --> $DIR/parent-source-spans.rs:21:5
+   |
+21 |     two!($a, $b);
+   |     ^^^^^^^^^^^^^
+...
+44 |     one!("hello", "world");
+   |     ----------------------- in this macro invocation
+
+error: first grandparent: "hello"
+  --> $DIR/parent-source-spans.rs:44:5
+   |
+44 |     one!("hello", "world");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: second grandparent: "world"
+  --> $DIR/parent-source-spans.rs:44:5
+   |
+44 |     one!("hello", "world");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: first source: "hello"
+  --> $DIR/parent-source-spans.rs:44:5
+   |
+44 |     one!("hello", "world");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: second source: "world"
+  --> $DIR/parent-source-spans.rs:44:5
+   |
+44 |     one!("hello", "world");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: first final: "yay"
+  --> $DIR/parent-source-spans.rs:27:12
+   |
+27 |     three!($a, $b);
+   |            ^^
+...
+50 |     two!("yay", "rust");
+   |     -------------------- in this macro invocation
+
+error: second final: "rust"
+  --> $DIR/parent-source-spans.rs:27:16
+   |
+27 |     three!($a, $b);
+   |                ^^
+...
+50 |     two!("yay", "rust");
+   |     -------------------- in this macro invocation
+
+error: first parent: "yay"
+  --> $DIR/parent-source-spans.rs:50:5
+   |
+50 |     two!("yay", "rust");
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: second parent: "rust"
+  --> $DIR/parent-source-spans.rs:50:5
+   |
+50 |     two!("yay", "rust");
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: first source: "yay"
+  --> $DIR/parent-source-spans.rs:50:5
+   |
+50 |     two!("yay", "rust");
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: second source: "rust"
+  --> $DIR/parent-source-spans.rs:50:5
+   |
+50 |     two!("yay", "rust");
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: first final: "hip"
+  --> $DIR/parent-source-spans.rs:56:12
+   |
+56 |     three!("hip", "hop");
+   |            ^^^^^
+
+error: second final: "hop"
+  --> $DIR/parent-source-spans.rs:56:19
+   |
+56 |     three!("hip", "hop");
+   |                   ^^^^^
+
+error: first source: "hip"
+  --> $DIR/parent-source-spans.rs:56:12
+   |
+56 |     three!("hip", "hop");
+   |            ^^^^^
+
+error: second source: "hop"
+  --> $DIR/parent-source-spans.rs:56:19
+   |
+56 |     three!("hip", "hop");
+   |                   ^^^^^
+
+error: aborting due to 18 previous errors
+

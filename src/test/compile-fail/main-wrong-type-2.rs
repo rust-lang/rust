@@ -7,8 +7,9 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+#![feature(termination_trait)]
 
 fn main() -> char {
-//~^ ERROR: main function has wrong type [E0580]
+//~^ ERROR: the trait bound `char: std::Termination` is not satisfied
     ' '
 }

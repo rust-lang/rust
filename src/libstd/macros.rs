@@ -282,9 +282,34 @@ pub mod builtin {
 
     /// Unconditionally causes compilation to fail with the given error message when encountered.
     ///
-    /// For more information, see the [RFC].
+    /// This macro should be used when a crate uses a conditional compilation strategy to provide
+    /// better error messages for erroneous conditions.
     ///
-    /// [RFC]: https://github.com/rust-lang/rfcs/blob/master/text/1695-add-error-macro.md
+    /// # Examples
+    ///
+    /// Two such examples are macros and `#[cfg]` environments.
+    ///
+    /// Emit better compiler error if a macro is passed invalid values.
+    ///
+    /// ```compile_fail
+    /// macro_rules! give_me_foo_or_bar {
+    ///     (foo) => {};
+    ///     (bar) => {};
+    ///     ($x:ident) => {
+    ///         compile_error!("This macro only accepts `foo` or `bar`");
+    ///     }
+    /// }
+    ///
+    /// give_me_foo_or_bar!(neither);
+    /// // ^ will fail at compile time with message "This macro only accepts `foo` or `bar`"
+    /// ```
+    ///
+    /// Emit compiler error if one of a number of features isn't available.
+    ///
+    /// ```compile_fail
+    /// #[cfg(not(any(feature = "foo", feature = "bar")))]
+    /// compile_error!("Either feature \"foo\" or \"bar\" must be enabled for this crate.")
+    /// ```
     #[stable(feature = "compile_error_macro", since = "1.20.0")]
     #[macro_export]
     macro_rules! compile_error { ($msg:expr) => ({ /* compiler built-in */ }) }
@@ -325,9 +350,10 @@ pub mod builtin {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
-    macro_rules! format_args { ($fmt:expr, $($args:tt)*) => ({
-        /* compiler built-in */
-    }) }
+    macro_rules! format_args {
+        ($fmt:expr) => ({ /* compiler built-in */ });
+        ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ });
+    }
 
     /// Inspect an environment variable at compile time.
     ///
@@ -348,7 +374,10 @@ pub mod builtin {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
-    macro_rules! env { ($name:expr) => ({ /* compiler built-in */ }) }
+    macro_rules! env {
+        ($name:expr) => ({ /* compiler built-in */ });
+        ($name:expr,) => ({ /* compiler built-in */ });
+    }
 
     /// Optionally inspect an environment variable at compile time.
     ///
@@ -400,7 +429,8 @@ pub mod builtin {
     #[unstable(feature = "concat_idents_macro", issue = "29599")]
     #[macro_export]
     macro_rules! concat_idents {
-        ($($e:ident),*) => ({ /* compiler built-in */ })
+        ($($e:ident),*) => ({ /* compiler built-in */ });
+        ($($e:ident,)*) => ({ /* compiler built-in */ });
     }
 
     /// Concatenates literals into a static string slice.
@@ -420,16 +450,22 @@ pub mod builtin {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
-    macro_rules! concat { ($($e:expr),*) => ({ /* compiler built-in */ }) }
+    macro_rules! concat {
+        ($($e:expr),*) => ({ /* compiler built-in */ });
+        ($($e:expr,)*) => ({ /* compiler built-in */ });
+    }
 
     /// A macro which expands to the line number on which it was invoked.
     ///
     /// With [`column!`] and [`file!`], these macros provide debugging information for
     /// developers about the location within the source.
     ///
-    /// The expanded expression has type `u32`, and the returned line is not
-    /// the invocation of the `line!()` macro itself, but rather the first macro
-    /// invocation leading up to the invocation of the `line!()` macro.
+    /// The expanded expression has type `u32` and is 1-based, so the first line
+    /// in each file evaluates to 1, the second to 2, etc. This is consistent
+    /// with error messages by common compilers or popular editors.
+    /// The returned line is not the invocation of the `line!` macro itself,
+    /// but rather the first macro invocation leading up to the invocation
+    /// of the `line!` macro.
     ///
     /// [`column!`]: macro.column.html
     /// [`file!`]: macro.file.html
@@ -449,9 +485,12 @@ pub mod builtin {
     /// With [`line!`] and [`file!`], these macros provide debugging information for
     /// developers about the location within the source.
     ///
-    /// The expanded expression has type `u32`, and the returned column is not
-    /// the invocation of the `column!` macro itself, but rather the first macro
-    /// invocation leading up to the invocation of the `column!` macro.
+    /// The expanded expression has type `u32` and is 1-based, so the first column
+    /// in each line evaluates to 1, the second to 2, etc. This is consistent
+    /// with error messages by common compilers or popular editors.
+    /// The returned column is not the invocation of the `column!` macro itself,
+    /// but rather the first macro invocation leading up to the invocation
+    /// of the `column!` macro.
     ///
     /// [`line!`]: macro.line.html
     /// [`file!`]: macro.file.html
@@ -598,7 +637,7 @@ pub mod builtin {
     #[macro_export]
     macro_rules! module_path { () => ({ /* compiler built-in */ }) }
 
-    /// Boolean evaluation of configuration flags.
+    /// Boolean evaluation of configuration flags, at compile-time.
     ///
     /// In addition to the `#[cfg]` attribute, this macro is provided to allow
     /// boolean expression evaluation of configuration flags. This frequently
@@ -662,4 +701,40 @@ pub mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! include { ($file:expr) => ({ /* compiler built-in */ }) }
+}
+
+/// A macro for defining #[cfg] if-else statements.
+///
+/// This is similar to the `if/elif` C preprocessor macro by allowing definition
+/// of a cascade of `#[cfg]` cases, emitting the implementation which matches
+/// first.
+///
+/// This allows you to conveniently provide a long list #[cfg]'d blocks of code
+/// without having to rewrite each clause multiple times.
+macro_rules! cfg_if {
+    ($(
+        if #[cfg($($meta:meta),*)] { $($it:item)* }
+    ) else * else {
+        $($it2:item)*
+    }) => {
+        __cfg_if_items! {
+            () ;
+            $( ( ($($meta),*) ($($it)*) ), )*
+            ( () ($($it2)*) ),
+        }
+    }
+}
+
+macro_rules! __cfg_if_items {
+    (($($not:meta,)*) ; ) => {};
+    (($($not:meta,)*) ; ( ($($m:meta),*) ($($it:item)*) ), $($rest:tt)*) => {
+        __cfg_if_apply! { cfg(all(not(any($($not),*)), $($m,)*)), $($it)* }
+        __cfg_if_items! { ($($not,)* $($m,)*) ; $($rest)* }
+    }
+}
+
+macro_rules! __cfg_if_apply {
+    ($m:meta, $($it:item)*) => {
+        $(#[$m] $it)*
+    }
 }

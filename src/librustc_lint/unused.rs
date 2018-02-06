@@ -330,6 +330,43 @@ declare_lint! {
 #[derive(Copy, Clone)]
 pub struct UnusedImportBraces;
 
+impl UnusedImportBraces {
+    fn check_use_tree(&self, cx: &EarlyContext, use_tree: &ast::UseTree, item: &ast::Item) {
+        if let ast::UseTreeKind::Nested(ref items) = use_tree.kind {
+            // Recursively check nested UseTrees
+            for &(ref tree, _) in items {
+                self.check_use_tree(cx, tree, item);
+            }
+
+            // Trigger the lint only if there is one nested item
+            if items.len() != 1 {
+                return;
+            }
+
+            // Trigger the lint if the nested item is a non-self single item
+            let node_ident;
+            match items[0].0.kind {
+                ast::UseTreeKind::Simple(ident) => {
+                    if ident.name == keywords::SelfValue.name() {
+                        return;
+                    } else {
+                        node_ident = ident;
+                    }
+                }
+                ast::UseTreeKind::Glob => {
+                    node_ident = ast::Ident::from_str("*");
+                }
+                ast::UseTreeKind::Nested(_) => {
+                    return;
+                }
+            }
+
+            let msg = format!("braces around {} is unnecessary", node_ident.name);
+            cx.span_lint(UNUSED_IMPORT_BRACES, item.span, &msg);
+        }
+    }
+}
+
 impl LintPass for UnusedImportBraces {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNUSED_IMPORT_BRACES)
@@ -338,13 +375,8 @@ impl LintPass for UnusedImportBraces {
 
 impl EarlyLintPass for UnusedImportBraces {
     fn check_item(&mut self, cx: &EarlyContext, item: &ast::Item) {
-        if let ast::ItemKind::Use(ref view_path) = item.node {
-            if let ast::ViewPathList(_, ref items) = view_path.node {
-                if items.len() == 1 && items[0].node.name.name != keywords::SelfValue.name() {
-                    let msg = format!("braces around {} is unnecessary", items[0].node.name);
-                    cx.span_lint(UNUSED_IMPORT_BRACES, item.span, &msg);
-                }
-            }
+        if let ast::ItemKind::Use(ref use_tree) = item.node {
+            self.check_use_tree(cx, use_tree, item);
         }
     }
 }

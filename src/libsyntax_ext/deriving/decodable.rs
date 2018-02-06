@@ -10,7 +10,7 @@
 
 //! The compiler code necessary for `#[derive(Decodable)]`. See encodable.rs for more.
 
-use deriving;
+use deriving::{self, pathvec_std};
 use deriving::generic::*;
 use deriving::generic::ty::*;
 use deriving::warn_if_deprecated;
@@ -46,20 +46,12 @@ fn expand_deriving_decodable_imp(cx: &mut ExtCtxt,
                                  item: &Annotatable,
                                  push: &mut FnMut(Annotatable),
                                  krate: &'static str) {
-    if cx.crate_root != Some("std") {
-        // FIXME(#21880): lift this requirement.
-        cx.span_err(span,
-                    "this trait cannot be derived with #![no_std] \
-                           or #![no_core]");
-        return;
-    }
-
     let typaram = &*deriving::hygienic_type_parameter(item, "__D");
 
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
-        path: Path::new_(vec![krate, "Decodable"], None, vec![], true),
+        path: Path::new_(vec![krate, "Decodable"], None, vec![], PathKind::Global),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
@@ -72,18 +64,18 @@ fn expand_deriving_decodable_imp(cx: &mut ExtCtxt,
                                             vec![Path::new_(vec![krate, "Decoder"],
                                                             None,
                                                             vec![],
-                                                            true)])],
+                                                            PathKind::Global)])],
                           },
                           explicit_self: None,
                           args: vec![Ptr(Box::new(Literal(Path::new_local(typaram))),
                                          Borrowed(None, Mutability::Mutable))],
                           ret_ty:
-                              Literal(Path::new_(pathvec_std!(cx, core::result::Result),
+                              Literal(Path::new_(pathvec_std!(cx, result::Result),
                                                  None,
                                                  vec![Box::new(Self_), Box::new(Literal(Path::new_(
-                        vec![typaram, "Error"], None, vec![], false
+                        vec![typaram, "Error"], None, vec![], PathKind::Local
                     )))],
-                                                 true)),
+                                                 PathKind::Std)),
                           attributes: Vec::new(),
                           is_unsafe: false,
                           unify_fieldless_variants: false,

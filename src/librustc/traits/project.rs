@@ -1264,8 +1264,7 @@ fn confirm_generator_candidate<'cx, 'gcx, 'tcx>(
     vtable: VtableGeneratorData<'tcx, PredicateObligation<'tcx>>)
     -> Progress<'tcx>
 {
-    let gen_sig = selcx.infcx().generator_sig(vtable.closure_def_id).unwrap()
-        .subst(selcx.tcx(), vtable.substs.substs);
+    let gen_sig = vtable.substs.generator_poly_sig(vtable.closure_def_id, selcx.tcx());
     let Normalized {
         value: gen_sig,
         obligations
@@ -1340,26 +1339,27 @@ fn confirm_closure_candidate<'cx, 'gcx, 'tcx>(
     vtable: VtableClosureData<'tcx, PredicateObligation<'tcx>>)
     -> Progress<'tcx>
 {
-    let closure_typer = selcx.closure_typer();
-    let closure_type = closure_typer.fn_sig(vtable.closure_def_id)
-        .subst(selcx.tcx(), vtable.substs.substs);
+    let tcx = selcx.tcx();
+    let infcx = selcx.infcx();
+    let closure_sig_ty = vtable.substs.closure_sig_ty(vtable.closure_def_id, tcx);
+    let closure_sig = infcx.shallow_resolve(&closure_sig_ty).fn_sig(tcx);
     let Normalized {
-        value: closure_type,
+        value: closure_sig,
         obligations
     } = normalize_with_depth(selcx,
                              obligation.param_env,
                              obligation.cause.clone(),
                              obligation.recursion_depth+1,
-                             &closure_type);
+                             &closure_sig);
 
-    debug!("confirm_closure_candidate: obligation={:?},closure_type={:?},obligations={:?}",
+    debug!("confirm_closure_candidate: obligation={:?},closure_sig={:?},obligations={:?}",
            obligation,
-           closure_type,
+           closure_sig,
            obligations);
 
     confirm_callable_candidate(selcx,
                                obligation,
-                               closure_type,
+                               closure_sig,
                                util::TupleArgumentsFlag::No)
         .with_addl_obligations(vtable.nested)
         .with_addl_obligations(obligations)
@@ -1560,7 +1560,7 @@ impl<'cx, 'gcx, 'tcx> ProjectionCacheKey<'tcx> {
         let infcx = selcx.infcx();
         // We don't do cross-snapshot caching of obligations with escaping regions,
         // so there's no cache key to use
-        infcx.tcx.no_late_bound_regions(&predicate)
+        predicate.no_late_bound_regions()
             .map(|predicate| ProjectionCacheKey {
                 // We don't attempt to match up with a specific type-variable state
                 // from a specific call to `opt_normalize_projection_type` - if

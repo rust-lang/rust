@@ -1,0 +1,10 @@
+error: may_dangle has unstable semantics and may be removed in the future (see issue #34761)
+  --> $DIR/feature-gate-may-dangle.rs:18:6
+   |
+18 | impl<#[may_dangle] A> Drop for Pt<A> {
+   |      ^^^^^^^^^^^^^
+   |
+   = help: add #![feature(dropck_eyepatch)] to the crate attributes to enable
+
+error: aborting due to previous error
+

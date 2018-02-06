@@ -2,7 +2,7 @@ error[E0597]: `a` does not live long enough
   --> $DIR/borrowing.rs:18:20
    |
 18 |         (|| yield &a).resume()
-   |          --        ^ does not live long enough
+   |          --        ^ borrowed value does not live long enough
    |          |
    |          capture occurs here
 19 |         //~^ ERROR: `a` does not live long enough
@@ -18,7 +18,7 @@ error[E0597]: `a` does not live long enough
 24 |         || {
    |         -- capture occurs here
 25 |             yield &a
-   |                    ^ does not live long enough
+   |                    ^ borrowed value does not live long enough
 ...
 28 |     };
    |     - borrowed value only lives until here

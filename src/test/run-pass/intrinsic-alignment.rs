@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-wasm32-bare seems not important to test here
 
 #![feature(intrinsics, main)]
 
@@ -18,14 +19,15 @@ mod rusti {
     }
 }
 
-#[cfg(any(target_os = "linux",
-          target_os = "macos",
-          target_os = "freebsd",
+#[cfg(any(target_os = "cloudabi",
           target_os = "dragonfly",
+          target_os = "emscripten",
+          target_os = "freebsd",
+          target_os = "linux",
+          target_os = "macos",
           target_os = "netbsd",
           target_os = "openbsd",
-          target_os = "solaris",
-          target_os = "emscripten"))]
+          target_os = "solaris"))]
 mod m {
     #[main]
     #[cfg(target_arch = "x86")]

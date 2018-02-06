@@ -259,7 +259,7 @@ pub trait Hasher {
     /// println!("Hash is {:x}!", hasher.finish());
     /// ```
     ///
-    /// ['write']: #tymethod.write
+    /// [`write`]: #tymethod.write
     #[stable(feature = "rust1", since = "1.0.0")]
     fn finish(&self) -> u64;
 

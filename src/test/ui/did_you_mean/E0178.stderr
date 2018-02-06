@@ -1,25 +1,25 @@
 error[E0178]: expected a path on the left-hand side of `+`, not `&'a Foo`
   --> $DIR/E0178.rs:14:8
    |
-14 |     w: &'a Foo + Copy,
+14 |     w: &'a Foo + Copy, //~ ERROR expected a path
    |        ^^^^^^^^^^^^^^ help: try adding parentheses: `&'a (Foo + Copy)`
 
 error[E0178]: expected a path on the left-hand side of `+`, not `&'a Foo`
   --> $DIR/E0178.rs:15:8
    |
-15 |     x: &'a Foo + 'a,
+15 |     x: &'a Foo + 'a, //~ ERROR expected a path
    |        ^^^^^^^^^^^^ help: try adding parentheses: `&'a (Foo + 'a)`
 
 error[E0178]: expected a path on the left-hand side of `+`, not `&'a mut Foo`
   --> $DIR/E0178.rs:16:8
    |
-16 |     y: &'a mut Foo + 'a,
+16 |     y: &'a mut Foo + 'a, //~ ERROR expected a path
    |        ^^^^^^^^^^^^^^^^ help: try adding parentheses: `&'a mut (Foo + 'a)`
 
 error[E0178]: expected a path on the left-hand side of `+`, not `fn() -> Foo`
   --> $DIR/E0178.rs:17:8
    |
-17 |     z: fn() -> Foo + 'a,
+17 |     z: fn() -> Foo + 'a, //~ ERROR expected a path
    |        ^^^^^^^^^^^^^^^^ perhaps you forgot parentheses?
 
 error: aborting due to 4 previous errors

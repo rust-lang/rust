@@ -140,9 +140,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
     {
         let attrs = tcx.get_attrs(impl_def_id);
 
-        let attr = if let Some(item) =
-            attrs.into_iter().find(|a| a.check_name("rustc_on_unimplemented"))
-        {
+        let attr = if let Some(item) = attr::find_by_name(&attrs, "rustc_on_unimplemented") {
             item
         } else {
             return Ok(None);
@@ -254,7 +252,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
                         }
                     },
                     // `{:1}` and `{}` are not to be used
-                    Position::ArgumentIs(_) => {
+                    Position::ArgumentIs(_) | Position::ArgumentImplicitlyIs(_) => {
                         span_err!(tcx.sess, span, E0231,
                                   "only named substitution \
                                    parameters are allowed");

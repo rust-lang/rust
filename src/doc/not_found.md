@@ -13,20 +13,20 @@ Some things that might be helpful to you though:
 
 # Search
 
-* <form action="https://duckduckgo.com/">
+<form action="https://duckduckgo.com/">
     <input type="text" id="site-search" name="q" size="80"></input>
-    <input type="submit" value="Search DuckDuckGo">
-</form>
-* Rust doc search: <span id="core-search"></span>
+    <input type="submit" value="Search DuckDuckGo"></form>
+
+Rust doc search: <span id="core-search"></span>
 
 # Reference
 
-* [The Rust official site](https://www.rust-lang.org)
-* [The Rust reference](https://doc.rust-lang.org/reference.html)
+ * [The Rust official site](https://www.rust-lang.org)
+ * [The Rust reference](https://doc.rust-lang.org/reference/index.html)
 
 # Docs
 
-* [The standard library](https://doc.rust-lang.org/std/)
+[The standard library](https://doc.rust-lang.org/std/)
 
 <script>
 function get_url_fragments() {

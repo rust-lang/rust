@@ -719,7 +719,8 @@ impl Eq for Ipv4Addr {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl hash::Hash for Ipv4Addr {
     fn hash<H: hash::Hasher>(&self, s: &mut H) {
-        self.inner.s_addr.hash(s)
+        // `inner` is #[repr(packed)], so we need to copy `s_addr`.
+        {self.inner.s_addr}.hash(s)
     }
 }
 
@@ -1449,6 +1450,9 @@ mod tests {
         assert_eq!(None, none);
         // two double colons
         let none: Option<Ipv6Addr> = "1:2::6::8".parse().ok();
+        assert_eq!(None, none);
+        // `::` indicating zero groups of zeros
+        let none: Option<Ipv6Addr> = "1:2:3:4::5:6:7:8".parse().ok();
         assert_eq!(None, none);
     }
 

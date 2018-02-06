@@ -20,6 +20,6 @@ extern crate test;
 mod any;
 mod hash;
 mod iter;
-mod mem;
 mod num;
 mod ops;
+mod slice;

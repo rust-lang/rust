@@ -31,95 +31,49 @@ fn main() {
 
 
     1u32.method();
-    //~^ HELP following traits are implemented but not in scope, perhaps add a `use` for one of them
-    //~| ERROR no method named
-    //~| HELP `use foo::Bar;`
-    //~| HELP `use no_method_suggested_traits::foo::PubPub;`
+    //~^ ERROR no method named
+    //~|items from traits can only be used if the trait is in scope
     std::rc::Rc::new(&mut Box::new(&1u32)).method();
-    //~^ HELP following traits are implemented but not in scope, perhaps add a `use` for one of them
-    //~| ERROR no method named
-    //~| HELP `use foo::Bar;`
-    //~| HELP `use no_method_suggested_traits::foo::PubPub;`
+    //~^items from traits can only be used if the trait is in scope
+    //~| ERROR no method named `method` found for type
 
     'a'.method();
     //~^ ERROR no method named
-    //~| HELP the following trait is implemented but not in scope, perhaps add a `use` for it:
-    //~| HELP `use foo::Bar;`
     std::rc::Rc::new(&mut Box::new(&'a')).method();
     //~^ ERROR no method named
-    //~| HELP the following trait is implemented but not in scope, perhaps add a `use` for it:
-    //~| HELP `use foo::Bar;`
 
     1i32.method();
     //~^ ERROR no method named
-    //~| HELP the following trait is implemented but not in scope, perhaps add a `use` for it:
-    //~| HELP `use no_method_suggested_traits::foo::PubPub;`
     std::rc::Rc::new(&mut Box::new(&1i32)).method();
     //~^ ERROR no method named
-    //~| HELP the following trait is implemented but not in scope, perhaps add a `use` for it:
-    //~| HELP `use no_method_suggested_traits::foo::PubPub;`
 
     Foo.method();
     //~^ ERROR no method named
-    //~| HELP following traits define an item `method`, perhaps you need to implement one of them
-    //~| HELP `foo::Bar`
-    //~| HELP `no_method_suggested_traits::foo::PubPub`
-    //~| HELP `no_method_suggested_traits::Reexported`
-    //~| HELP `no_method_suggested_traits::bar::PubPriv`
-    //~| HELP `no_method_suggested_traits::qux::PrivPub`
-    //~| HELP `no_method_suggested_traits::quz::PrivPriv`
     std::rc::Rc::new(&mut Box::new(&Foo)).method();
     //~^ ERROR no method named
-    //~| HELP following traits define an item `method`, perhaps you need to implement one of them
-    //~| HELP `foo::Bar`
-    //~| HELP `no_method_suggested_traits::foo::PubPub`
-    //~| HELP `no_method_suggested_traits::Reexported`
-    //~| HELP `no_method_suggested_traits::bar::PubPriv`
-    //~| HELP `no_method_suggested_traits::qux::PrivPub`
-    //~| HELP `no_method_suggested_traits::quz::PrivPriv`
 
     1u64.method2();
     //~^ ERROR no method named
-    //~| HELP the following trait defines an item `method2`, perhaps you need to implement it
-    //~| HELP `foo::Bar`
     std::rc::Rc::new(&mut Box::new(&1u64)).method2();
     //~^ ERROR no method named
-    //~| HELP the following trait defines an item `method2`, perhaps you need to implement it
-    //~| HELP `foo::Bar`
 
     no_method_suggested_traits::Foo.method2();
     //~^ ERROR no method named
-    //~| HELP following trait defines an item `method2`, perhaps you need to implement it
-    //~| HELP `foo::Bar`
     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Foo)).method2();
     //~^ ERROR no method named
-    //~| HELP following trait defines an item `method2`, perhaps you need to implement it
-    //~| HELP `foo::Bar`
     no_method_suggested_traits::Bar::X.method2();
     //~^ ERROR no method named
-    //~| HELP following trait defines an item `method2`, perhaps you need to implement it
-    //~| HELP `foo::Bar`
     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Bar::X)).method2();
     //~^ ERROR no method named
-    //~| HELP following trait defines an item `method2`, perhaps you need to implement it
-    //~| HELP `foo::Bar`
 
     Foo.method3();
     //~^ ERROR no method named
-    //~| HELP following trait defines an item `method3`, perhaps you need to implement it
-    //~| HELP `no_method_suggested_traits::foo::PubPub`
     std::rc::Rc::new(&mut Box::new(&Foo)).method3();
     //~^ ERROR no method named
-    //~| HELP following trait defines an item `method3`, perhaps you need to implement it
-    //~| HELP `no_method_suggested_traits::foo::PubPub`
     Bar::X.method3();
     //~^ ERROR no method named
-    //~| HELP following trait defines an item `method3`, perhaps you need to implement it
-    //~| HELP `no_method_suggested_traits::foo::PubPub`
     std::rc::Rc::new(&mut Box::new(&Bar::X)).method3();
     //~^ ERROR no method named
-    //~| HELP following trait defines an item `method3`, perhaps you need to implement it
-    //~| HELP `no_method_suggested_traits::foo::PubPub`
 
     // should have no help:
     1_usize.method3(); //~ ERROR no method named

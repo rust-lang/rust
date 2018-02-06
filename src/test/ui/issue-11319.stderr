@@ -1,0 +1,19 @@
+error[E0308]: match arms have incompatible types
+  --> $DIR/issue-11319.rs:12:5
+   |
+12 | /     match Some(10) {
+13 | |     //~^ ERROR match arms have incompatible types
+14 | |     //~| expected type `bool`
+15 | |     //~| found type `()`
+...  |
+19 | |         None    => (),
+   | |                    -- match arm with an incompatible type
+20 | |         _       => true
+21 | |     }
+   | |_____^ expected bool, found ()
+   |
+   = note: expected type `bool`
+              found type `()`
+
+error: aborting due to previous error
+

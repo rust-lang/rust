@@ -3,7 +3,6 @@ error[E0404]: expected trait, found type parameter `Add`
    |
 15 | impl<T: Clone, Add> Add for Foo<T> {
    |                     ^^^ not a trait
-   |
 help: possible better candidate is found in another module, you can import it into scope
    |
 13 | use std::ops::Add;

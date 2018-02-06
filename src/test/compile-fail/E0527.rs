@@ -15,7 +15,6 @@ fn main() {
     match r {
         &[a, b] => {
             //~^ ERROR E0527
-            //~| NOTE expected 4 elements
             println!("a={}, b={}", a, b);
         }
     }

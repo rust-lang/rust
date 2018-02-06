@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::bar::{foo1, foo2};
+use std::bar::{foo1, foo2}; //~ ERROR unresolved import
 
 fn main() {}

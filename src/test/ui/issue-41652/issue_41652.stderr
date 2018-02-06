@@ -1,18 +1,12 @@
-error[E0599]: no method named `f` found for type `{integer}` in the current scope
+error[E0689]: can't call method `f` on ambiguous numeric type `{integer}`
   --> $DIR/issue_41652.rs:19:11
    |
 19 |         3.f()
    |           ^
+help: you must specify a concrete type for this numeric value, like `i32`
    |
-   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
-   = help: try with `{integer}::f`
-note: candidate #1 is defined in the trait `issue_41652_b::Tr`
-  --> $DIR/auxiliary/issue_41652_b.rs:14:5
-   |
-14 | /     fn f()
-15 | |         where Self: Sized;
-   | |__________________________^
-   = help: to disambiguate the method call, write `issue_41652_b::Tr::f(3)` instead
+19 |         3_i32.f()
+   |         ^^^^^
 
 error: aborting due to previous error
 

@@ -13,8 +13,8 @@ use back::write::create_target_machine;
 use llvm;
 use rustc::session::Session;
 use rustc::session::config::PrintRequest;
-use libc::{c_int, c_char};
-use std::ffi::CString;
+use libc::c_int;
+use std::ffi::{CStr, CString};
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Once;
@@ -78,7 +78,14 @@ const AARCH64_WHITELIST: &'static [&'static str] = &["neon\0"];
 const X86_WHITELIST: &'static [&'static str] = &["avx\0", "avx2\0", "bmi\0", "bmi2\0", "sse\0",
                                                  "sse2\0", "sse3\0", "sse4.1\0", "sse4.2\0",
                                                  "ssse3\0", "tbm\0", "lzcnt\0", "popcnt\0",
-                                                 "sse4a\0", "rdrnd\0", "rdseed\0", "fma\0"];
+                                                 "sse4a\0", "rdrnd\0", "rdseed\0", "fma\0",
+                                                 "xsave\0", "xsaveopt\0", "xsavec\0",
+                                                 "xsaves\0",
+                                                 "avx512bw\0", "avx512cd\0",
+                                                 "avx512dq\0", "avx512er\0",
+                                                 "avx512f\0", "avx512ifma\0",
+                                                 "avx512pf\0", "avx512vbmi\0",
+                                                 "avx512vl\0", "avx512vpopcntdq\0", "mmx\0"];
 
 const HEXAGON_WHITELIST: &'static [&'static str] = &["hvx\0", "hvx-double\0"];
 
@@ -87,26 +94,33 @@ const POWERPC_WHITELIST: &'static [&'static str] = &["altivec\0",
                                                      "power8-vector\0", "power9-vector\0",
                                                      "vsx\0"];
 
-pub fn target_features(sess: &Session) -> Vec<Symbol> {
-    let target_machine = create_target_machine(sess);
+const MIPS_WHITELIST: &'static [&'static str] = &["msa\0"];
 
+pub fn target_features(sess: &Session) -> Vec<Symbol> {
+    let whitelist = target_feature_whitelist(sess);
+    let target_machine = create_target_machine(sess);
+    let mut features = Vec::new();
+    for feat in whitelist {
+        if unsafe { llvm::LLVMRustHasFeature(target_machine, feat.as_ptr()) } {
+            features.push(Symbol::intern(feat.to_str().unwrap()));
+        }
+    }
+    features
+}
+
+pub fn target_feature_whitelist(sess: &Session) -> Vec<&CStr> {
     let whitelist = match &*sess.target.target.arch {
         "arm" => ARM_WHITELIST,
         "aarch64" => AARCH64_WHITELIST,
         "x86" | "x86_64" => X86_WHITELIST,
         "hexagon" => HEXAGON_WHITELIST,
+        "mips" | "mips64" => MIPS_WHITELIST,
         "powerpc" | "powerpc64" => POWERPC_WHITELIST,
         _ => &[],
     };
-
-    let mut features = Vec::new();
-    for feat in whitelist {
-        assert_eq!(feat.chars().last(), Some('\0'));
-        if unsafe { llvm::LLVMRustHasFeature(target_machine, feat.as_ptr() as *const c_char) } {
-            features.push(Symbol::intern(&feat[..feat.len() - 1]));
-        }
-    }
-    features
+    whitelist.iter().map(|m| {
+        CStr::from_bytes_with_nul(m.as_bytes()).unwrap()
+    }).collect()
 }
 
 pub fn print_version() {
@@ -129,8 +143,4 @@ pub fn print(req: PrintRequest, sess: &Session) {
             _ => bug!("rustc_trans can't handle print request: {:?}", req),
         }
     }
-}
-
-pub fn enable_llvm_debug() {
-    unsafe { llvm::LLVMRustSetDebug(1); }
 }

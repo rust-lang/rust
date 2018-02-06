@@ -16,7 +16,7 @@
 struct Foo;
 
 impl Foo {
-    fn id() {}
+    fn id() {} //~ ERROR duplicate definitions
 }
 
 impl Foo {
@@ -26,7 +26,7 @@ impl Foo {
 struct Bar<T>(T);
 
 impl<T> Bar<T> {
-    fn bar(&self) {}
+    fn bar(&self) {} //~ ERROR duplicate definitions
 }
 
 impl Bar<u32> {
@@ -36,7 +36,7 @@ impl Bar<u32> {
 struct Baz<T>(T);
 
 impl<T: Copy> Baz<T> {
-    fn baz(&self) {}
+    fn baz(&self) {} //~ ERROR duplicate definitions
 }
 
 impl<T> Baz<Vec<T>> {

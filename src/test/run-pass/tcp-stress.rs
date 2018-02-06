@@ -10,9 +10,10 @@
 
 // ignore-android needs extra network permissions
 // ignore-bitrig system ulimit (Too many open files)
+// ignore-cloudabi no global network namespace access
+// ignore-emscripten no threads or sockets support
 // ignore-netbsd system ulimit (Too many open files)
 // ignore-openbsd system ulimit (Too many open files)
-// ignore-emscripten no threads or sockets support
 
 use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream};

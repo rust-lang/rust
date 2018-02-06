@@ -20,7 +20,7 @@ use a::LolTo;
 
 struct LocalType<T>(Option<T>);
 
-impl<'a, T> LolFrom<&'a [T]> for LocalType<T> {
+impl<'a, T> LolFrom<&'a [T]> for LocalType<T> { //~ ERROR conflicting implementations of trait
     fn from(_: &'a [T]) -> LocalType<T> { LocalType(None) }
 }
 

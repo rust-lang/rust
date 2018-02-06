@@ -136,10 +136,7 @@ impl Iterator for LookupHost {
     fn next(&mut self) -> Option<SocketAddr> {
         loop {
             unsafe {
-                let cur = match self.cur.as_ref() {
-                    None => return None,
-                    Some(c) => c,
-                };
+                let cur = self.cur.as_ref()?;
                 self.cur = cur.ai_next;
                 match sockaddr_to_addr(mem::transmute(cur.ai_addr),
                                        cur.ai_addrlen as usize)

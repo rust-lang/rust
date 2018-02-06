@@ -18,7 +18,7 @@ enum MyError<S: Storage> {
     StorageProblem(S::Error),
 }
 
-impl<S: Storage> From<S::Error> for MyError<S> {
+impl<S: Storage> From<S::Error> for MyError<S> { //~ ERROR conflicting implementations
     fn from(error: S::Error) -> MyError<S> {
         MyError::StorageProblem(error)
     }

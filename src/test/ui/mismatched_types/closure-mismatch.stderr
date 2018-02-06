@@ -1,7 +1,7 @@
 error[E0271]: type mismatch resolving `for<'r> <[closure@$DIR/closure-mismatch.rs:18:9: 18:15] as std::ops::FnOnce<(&'r (),)>>::Output == ()`
   --> $DIR/closure-mismatch.rs:18:5
    |
-18 |     baz(|_| ());
+18 |     baz(|_| ()); //~ ERROR type mismatch
    |     ^^^ expected bound lifetime parameter, found concrete lifetime
    |
    = note: required because of the requirements on the impl of `Foo` for `[closure@$DIR/closure-mismatch.rs:18:9: 18:15]`
@@ -10,7 +10,7 @@ error[E0271]: type mismatch resolving `for<'r> <[closure@$DIR/closure-mismatch.r
 error[E0631]: type mismatch in closure arguments
   --> $DIR/closure-mismatch.rs:18:5
    |
-18 |     baz(|_| ());
+18 |     baz(|_| ()); //~ ERROR type mismatch
    |     ^^^ ------ found signature of `fn(_) -> _`
    |     |
    |     expected signature of `for<'r> fn(&'r ()) -> _`

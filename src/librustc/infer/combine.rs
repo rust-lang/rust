@@ -270,6 +270,7 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
             for_vid_sub_root: self.infcx.type_variables.borrow_mut().sub_root_var(for_vid),
             ambient_variance,
             needs_wf: false,
+            root_ty: ty,
         };
 
         let ty = generalize.relate(&ty, &ty)?;
@@ -280,10 +281,23 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
 
 struct Generalizer<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
     infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
+
+    /// Span, used when creating new type variables and things.
     span: Span,
+
+    /// The vid of the type variable that is in the process of being
+    /// instantiated; if we find this within the type we are folding,
+    /// that means we would have created a cyclic type.
     for_vid_sub_root: ty::TyVid,
+
+    /// Track the variance as we descend into the type.
     ambient_variance: ty::Variance,
-    needs_wf: bool, // see the field `needs_wf` in `Generalization`
+
+    /// See the field `needs_wf` in `Generalization`.
+    needs_wf: bool,
+
+    /// The root type that we are generalizing. Used when reporting cycles.
+    root_ty: Ty<'tcx>,
 }
 
 /// Result from a generalization operation. This includes
@@ -386,7 +400,7 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
                 if sub_vid == self.for_vid_sub_root {
                     // If sub-roots are equal, then `for_vid` and
                     // `vid` are related via subtyping.
-                    return Err(TypeError::CyclicTy);
+                    return Err(TypeError::CyclicTy(self.root_ty));
                 } else {
                     match variables.probe_root(vid) {
                         Some(u) => {
@@ -460,6 +474,14 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
                     ty::Invariant => return Ok(r),
                     ty::Bivariant | ty::Covariant | ty::Contravariant => (),
                 }
+            }
+
+            ty::ReClosureBound(..) => {
+                span_bug!(
+                    self.span,
+                    "encountered unexpected ReClosureBound: {:?}",
+                    r,
+                );
             }
         }
 

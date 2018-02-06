@@ -96,12 +96,18 @@ impl MultiItemModifier for ProcMacroDerive {
             }
         };
 
+        let error_count_before = ecx.parse_sess.span_diagnostic.err_count();
         __internal::set_sess(ecx, || {
+            let msg = "proc-macro derive produced unparseable tokens";
             match __internal::token_stream_parse_items(stream) {
+                // fail if there have been errors emitted
+                Ok(_) if ecx.parse_sess.span_diagnostic.err_count() > error_count_before => {
+                    ecx.struct_span_fatal(span, msg).emit();
+                    panic!(FatalError);
+                }
                 Ok(new_items) => new_items.into_iter().map(Annotatable::Item).collect(),
                 Err(_) => {
                     // FIXME: handle this better
-                    let msg = "proc-macro derive produced unparseable tokens";
                     ecx.struct_span_fatal(span, msg).emit();
                     panic!(FatalError);
                 }

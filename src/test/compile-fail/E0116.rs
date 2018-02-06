@@ -10,8 +10,6 @@
 
 impl Vec<u8> {}
 //~^ ERROR E0116
-//~| NOTE impl for type defined outside of crate.
-//~| NOTE define and implement a trait or new type instead
 
 fn main() {
 }

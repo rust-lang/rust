@@ -20,8 +20,7 @@ macro_rules! ignored_item {
 
 macro_rules! ignored_expr {
     () => ( 1,  //~ ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
-                //~^ NOTE expected one of `.`, `;`, `?`, `}`, or an operator here
-                //~| NOTE unexpected token
+
             2 )
 }
 
@@ -29,12 +28,12 @@ macro_rules! ignored_pat {
     () => ( 1, 2 ) //~ ERROR macro expansion ignores token `,`
 }
 
-ignored_item!(); //~ NOTE caused by the macro expansion here
+ignored_item!();
 
 fn main() {
-    ignored_expr!(); //~ NOTE in this expansion
+    ignored_expr!();
     match 1 {
-        ignored_pat!() => (), //~ NOTE caused by the macro expansion here
+        ignored_pat!() => (),
         _ => (),
     }
 }

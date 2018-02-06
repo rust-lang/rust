@@ -50,9 +50,10 @@ fn baz<'a,'b>(x: &'a u32) -> &'static u32 {
 
 #[cfg(krisskross)] // two instantiations, mixing and matching: BAD
 fn transmute<'a,'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
-   let a = bar(foo, y); //[krisskross]~ ERROR E0495
-   let b = bar(foo, x); //[krisskross]~ ERROR E0495
-   (a, b)
+   let a = bar(foo, y);
+   let b = bar(foo, x);
+   (a, b) //[krisskross]~ ERROR 55:5: 55:6: lifetime mismatch [E0623]
+   //[krisskross]~^ ERROR 55:8: 55:9: lifetime mismatch [E0623]
 }
 
 #[rustc_error]

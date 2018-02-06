@@ -1,7 +1,7 @@
 error[E0507]: cannot move out of captured outer variable in an `Fn` closure
   --> $DIR/unboxed-closures-move-upvar-from-non-once-ref-closure.rs:21:9
    |
-19 |     let y = vec![format!("World")];  //~ NOTE moved
+19 |     let y = vec![format!("World")];
    |         - captured outer variable
 20 |     call(|| {
 21 |         y.into_iter();

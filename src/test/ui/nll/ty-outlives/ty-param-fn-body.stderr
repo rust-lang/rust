@@ -1,0 +1,16 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/ty-param-fn-body.rs:30:5
+   |
+30 |     outlives(cell, t)
+   |     ^^^^^^^^
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/ty-param-fn-body.rs:30:5
+   |
+30 |     outlives(cell, t)
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `T: 'a`...
+
+error: aborting due to previous error
+

@@ -22,6 +22,7 @@ use fmt;
           all(target_os = "android", any(target_arch = "aarch64",
                                          target_arch = "arm")),
           all(target_os = "l4re", target_arch = "x86_64"),
+          all(target_os = "openbsd", target_arch = "aarch64"),
           all(target_os = "fuchsia", target_arch = "aarch64")))]
 #[stable(feature = "raw_os", since = "1.1.0")] pub type c_char = u8;
 #[cfg(not(any(all(target_os = "linux", any(target_arch = "aarch64",
@@ -32,6 +33,7 @@ use fmt;
               all(target_os = "android", any(target_arch = "aarch64",
                                              target_arch = "arm")),
               all(target_os = "l4re", target_arch = "x86_64"),
+              all(target_os = "openbsd", target_arch = "aarch64"),
               all(target_os = "fuchsia", target_arch = "aarch64"))))]
 #[stable(feature = "raw_os", since = "1.1.0")] pub type c_char = i8;
 #[stable(feature = "raw_os", since = "1.1.0")] pub type c_schar = i8;

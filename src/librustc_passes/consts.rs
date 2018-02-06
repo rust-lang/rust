@@ -37,13 +37,12 @@ use rustc::hir::map::blocks::FnLikeNode;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
-use rustc::mir::transform::MirSource;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::maps::{queries, Providers};
 use rustc::ty::subst::Substs;
 use rustc::traits::Reveal;
 use rustc::util::common::ErrorReported;
-use rustc::util::nodemap::{ItemLocalMap, NodeSet};
+use rustc::util::nodemap::{ItemLocalSet, NodeSet};
 use rustc::lint::builtin::CONST_ERR;
 use rustc::hir::{self, PatKind, RangeEnd};
 use std::rc::Rc;
@@ -79,12 +78,12 @@ fn const_is_rvalue_promotable_to_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                      .expect("rvalue_promotable_map invoked with non-local def-id");
     let body_id = tcx.hir.body_owned_by(node_id);
     let body_hir_id = tcx.hir.node_to_hir_id(body_id.node_id);
-    tcx.rvalue_promotable_map(def_id).contains_key(&body_hir_id.local_id)
+    tcx.rvalue_promotable_map(def_id).contains(&body_hir_id.local_id)
 }
 
 fn rvalue_promotable_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    def_id: DefId)
-                                   -> Rc<ItemLocalMap<bool>>
+                                   -> Rc<ItemLocalSet>
 {
     let outer_def_id = tcx.closure_base_def_id(def_id);
     if outer_def_id != def_id {
@@ -100,7 +99,7 @@ fn rvalue_promotable_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         mut_rvalue_borrows: NodeSet(),
         param_env: ty::ParamEnv::empty(Reveal::UserFacing),
         identity_substs: Substs::empty(),
-        result_map: ItemLocalMap(),
+        result: ItemLocalSet(),
     };
 
     // `def_id` should be a `Body` owner
@@ -109,7 +108,7 @@ fn rvalue_promotable_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let body_id = tcx.hir.body_owned_by(node_id);
     visitor.visit_nested_body(body_id);
 
-    Rc::new(visitor.result_map)
+    Rc::new(visitor.result)
 }
 
 struct CheckCrateVisitor<'a, 'tcx: 'a> {
@@ -121,7 +120,7 @@ struct CheckCrateVisitor<'a, 'tcx: 'a> {
     param_env: ty::ParamEnv<'tcx>,
     identity_substs: &'tcx Substs<'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
-    result_map: ItemLocalMap<bool>,
+    result: ItemLocalSet,
 }
 
 impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
@@ -136,6 +135,7 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
                 IndexOpFeatureGated => {}
                 ErroneousReferencedConstant(_) => {}
                 TypeckError => {}
+                MiscCatchAll => {}
                 _ => {
                     self.tcx.lint_node(CONST_ERR,
                                        expr.id,
@@ -184,9 +184,9 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         self.in_fn = false;
         self.in_static = false;
 
-        match MirSource::from_node(self.tcx, item_id) {
-            MirSource::Fn(_) => self.in_fn = true,
-            MirSource::Static(_, _) => self.in_static = true,
+        match self.tcx.hir.body_owner_kind(item_id) {
+            hir::BodyOwnerKind::Fn => self.in_fn = true,
+            hir::BodyOwnerKind::Static(_) => self.in_static = true,
             _ => {}
         };
 
@@ -322,7 +322,9 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
             }
         }
 
-        self.result_map.insert(ex.hir_id.local_id, self.promotable);
+        if self.promotable {
+            self.result.insert(ex.hir_id.local_id);
+        }
         self.promotable &= outer;
     }
 }

@@ -1,0 +1,35 @@
+error[E0025]: field `a` bound multiple times in the pattern
+  --> $DIR/issue-15260.rs:18:9
+   |
+17 |         a: _,
+   |         ---- first use of `a`
+18 |         a: _
+   |         ^^^^ multiple uses of `a` in pattern
+
+error[E0025]: field `a` bound multiple times in the pattern
+  --> $DIR/issue-15260.rs:24:9
+   |
+23 |         a,
+   |         - first use of `a`
+24 |         a: _
+   |         ^^^^ multiple uses of `a` in pattern
+
+error[E0025]: field `a` bound multiple times in the pattern
+  --> $DIR/issue-15260.rs:30:9
+   |
+29 |         a,
+   |         - first use of `a`
+30 |         a: _,
+   |         ^^^^ multiple uses of `a` in pattern
+
+error[E0025]: field `a` bound multiple times in the pattern
+  --> $DIR/issue-15260.rs:32:9
+   |
+29 |         a,
+   |         - first use of `a`
+...
+32 |         a: x
+   |         ^^^^ multiple uses of `a` in pattern
+
+error: aborting due to 4 previous errors
+

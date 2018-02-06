@@ -1,21 +1,22 @@
 error[E0597]: `d2` does not live long enough
-  --> $DIR/dropck_direct_cycle_with_drop.rs:48:1
+  --> $DIR/dropck_direct_cycle_with_drop.rs:46:20
    |
 46 |     d1.p.set(Some(&d2));
-   |                    -- borrow occurs here
-47 |     d2.p.set(Some(&d1));
-48 | }
-   | ^ `d2` dropped here while still borrowed
+   |                    ^^ borrowed value does not live long enough
+...
+50 | }
+   | - `d2` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `d1` does not live long enough
-  --> $DIR/dropck_direct_cycle_with_drop.rs:48:1
+  --> $DIR/dropck_direct_cycle_with_drop.rs:48:20
    |
-47 |     d2.p.set(Some(&d1));
-   |                    -- borrow occurs here
-48 | }
-   | ^ `d1` dropped here while still borrowed
+48 |     d2.p.set(Some(&d1));
+   |                    ^^ borrowed value does not live long enough
+49 |     //~^ ERROR `d1` does not live long enough
+50 | }
+   | - `d1` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 

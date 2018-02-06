@@ -110,10 +110,7 @@ impl Step for Llvm {
             None => "X86;ARM;AArch64;Mips;PowerPC;SystemZ;JSBackend;MSP430;Sparc;NVPTX;Hexagon",
         };
 
-        let llvm_exp_targets = match build.config.llvm_experimental_targets {
-            Some(ref s) => s,
-            None => "",
-        };
+        let llvm_exp_targets = &build.config.llvm_experimental_targets;
 
         let assertions = if build.config.llvm_assertions {"ON"} else {"OFF"};
 
@@ -319,7 +316,7 @@ impl Step for TestHelpers {
            .warnings(false)
            .debug(false)
            .file(build.src.join("src/rt/rust_test_helpers.c"))
-           .compile("librust_test_helpers.a");
+           .compile("rust_test_helpers");
     }
 }
 
@@ -432,6 +429,8 @@ impl Step for Openssl {
             "arm-unknown-linux-gnueabihf" => "linux-armv4",
             "armv7-linux-androideabi" => "android-armv7",
             "armv7-unknown-linux-gnueabihf" => "linux-armv4",
+            "i586-unknown-linux-gnu" => "linux-elf",
+            "i586-unknown-linux-musl" => "linux-elf",
             "i686-apple-darwin" => "darwin-i386-cc",
             "i686-linux-android" => "android-x86",
             "i686-unknown-freebsd" => "BSD-x86-elf",

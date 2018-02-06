@@ -1,0 +1,34 @@
+error: generic associated types are unstable (see issue #44265)
+  --> $DIR/feature-gate-generic_associated_types.rs:14:5
+   |
+14 |     type Pointer<T>: Deref<Target = T>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(generic_associated_types)] to the crate attributes to enable
+
+error: generic associated types are unstable (see issue #44265)
+  --> $DIR/feature-gate-generic_associated_types.rs:16:5
+   |
+16 |     type Pointer2<T>: Deref<Target = T> where T: Clone, U: Clone;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(generic_associated_types)] to the crate attributes to enable
+
+error: generic associated types are unstable (see issue #44265)
+  --> $DIR/feature-gate-generic_associated_types.rs:22:5
+   |
+22 |     type Pointer<usize> = Box<usize>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(generic_associated_types)] to the crate attributes to enable
+
+error: generic associated types are unstable (see issue #44265)
+  --> $DIR/feature-gate-generic_associated_types.rs:24:5
+   |
+24 |     type Pointer2<u32> = Box<u32>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(generic_associated_types)] to the crate attributes to enable
+
+error: aborting due to 4 previous errors
+

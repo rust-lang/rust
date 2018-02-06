@@ -1,14 +1,11 @@
 error[E0276]: impl has stricter requirements than trait
   --> $DIR/region-extra-2.rs:19:5
    |
-15 |       fn renew<'b: 'a>(self) -> &'b mut [T];
-   |       -------------------------------------- definition of `renew` from trait
+15 |     fn renew<'b: 'a>(self) -> &'b mut [T];
+   |     -------------------------------------- definition of `renew` from trait
 ...
-19 | /     fn renew<'b: 'a>(self) -> &'b mut [T] where 'a: 'b {
-20 | |         //~^ ERROR E0276
-21 | |         &mut self[..]
-22 | |     }
-   | |_____^ impl has extra requirement `'a: 'b`
+19 |     fn renew<'b: 'a>(self) -> &'b mut [T] where 'a: 'b {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `'a: 'b`
 
 error: aborting due to previous error
 

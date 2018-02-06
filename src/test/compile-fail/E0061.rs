@@ -9,10 +9,8 @@
 // except according to those terms.
 
 fn f(a: u16, b: &str) {}
-//~^ NOTE defined here
 
 fn f2(a: u16) {}
-//~^ NOTE defined here
 
 fn main() {
     f(0);

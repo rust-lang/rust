@@ -1,7 +1,7 @@
 error: incorrect visibility restriction
   --> $DIR/pub-restricted.rs:15:6
    |
-15 | pub (a) fn afn() {}
+15 | pub (a) fn afn() {} //~ incorrect visibility restriction
    |      ^ help: make this visible only to module `a` with `in`: `in a`
    |
    = help: some possible visibility restrictions are:
@@ -12,7 +12,7 @@ error: incorrect visibility restriction
 error: incorrect visibility restriction
   --> $DIR/pub-restricted.rs:16:6
    |
-16 | pub (b) fn bfn() {}
+16 | pub (b) fn bfn() {} //~ incorrect visibility restriction
    |      ^ help: make this visible only to module `b` with `in`: `in b`
    |
    = help: some possible visibility restrictions are:
@@ -23,7 +23,7 @@ error: incorrect visibility restriction
 error: incorrect visibility restriction
   --> $DIR/pub-restricted.rs:32:14
    |
-32 |         pub (a) invalid: usize,
+32 |         pub (a) invalid: usize, //~ incorrect visibility restriction
    |              ^ help: make this visible only to module `a` with `in`: `in a`
    |
    = help: some possible visibility restrictions are:
@@ -34,7 +34,7 @@ error: incorrect visibility restriction
 error: incorrect visibility restriction
   --> $DIR/pub-restricted.rs:41:6
    |
-41 | pub (xyz) fn xyz() {}
+41 | pub (xyz) fn xyz() {} //~ incorrect visibility restriction
    |      ^^^ help: make this visible only to module `xyz` with `in`: `in xyz`
    |
    = help: some possible visibility restrictions are:
@@ -45,7 +45,7 @@ error: incorrect visibility restriction
 error: visibilities can only be restricted to ancestor modules
   --> $DIR/pub-restricted.rs:33:17
    |
-33 |         pub (in x) non_parent_invalid: usize,
+33 |         pub (in x) non_parent_invalid: usize, //~ ERROR visibilities can only be restricted
    |                 ^
 
 error: aborting due to 5 previous errors

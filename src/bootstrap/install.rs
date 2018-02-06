@@ -39,6 +39,10 @@ pub fn install_rls(builder: &Builder, stage: u32, host: Interned<String>) {
     install_sh(builder, "rls", "rls", stage, Some(host));
 }
 
+pub fn install_rustfmt(builder: &Builder, stage: u32, host: Interned<String>) {
+    install_sh(builder, "rustfmt", "rustfmt", stage, Some(host));
+}
+
 pub fn install_analysis(builder: &Builder, stage: u32, host: Interned<String>) {
     install_sh(builder, "analysis", "rust-analysis", stage, Some(host));
 }
@@ -186,8 +190,18 @@ install!((self, builder, _config),
         install_cargo(builder, self.stage, self.target);
     };
     Rls, "rls", _config.extended, only_hosts: true, {
-        builder.ensure(dist::Rls { stage: self.stage, target: self.target });
-        install_rls(builder, self.stage, self.target);
+        if builder.ensure(dist::Rls { stage: self.stage, target: self.target }).is_some() {
+            install_rls(builder, self.stage, self.target);
+        } else {
+            println!("skipping Install RLS stage{} ({})", self.stage, self.target);
+        }
+    };
+    Rustfmt, "rustfmt", _config.extended, only_hosts: true, {
+        if builder.ensure(dist::Rustfmt { stage: self.stage, target: self.target }).is_some() {
+            install_rustfmt(builder, self.stage, self.target);
+        } else {
+            println!("skipping Install Rustfmt stage{} ({})", self.stage, self.target);
+        }
     };
     Analysis, "analysis", _config.extended, only_hosts: false, {
         builder.ensure(dist::Analysis {
