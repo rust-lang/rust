@@ -131,7 +131,7 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
     results
 }
 
-pub fn run(config: Config, testpaths: &TestPaths) {
+pub fn run(config: Config, testpaths: &TestPaths, revision: Option<String>) {
     match &*config.target {
         "arm-linux-androideabi" | "armv7-linux-androideabi" | "aarch64-linux-android" => {
             if !config.adb_device_status {
@@ -162,19 +162,17 @@ pub fn run(config: Config, testpaths: &TestPaths) {
     };
     base_cx.init_all();
 
-    if base_props.revisions.is_empty() {
-        base_cx.run_revision()
+    if let Some(rev) = revision {
+        let revision_props = TestProps::from_file(&testpaths.file, Some(&rev), &config);
+        let rev_cx = TestCx {
+            config: &config,
+            props: &revision_props,
+            testpaths,
+            revision: Some(&rev),
+        };
+        rev_cx.run_revision();
     } else {
-        for revision in &base_props.revisions {
-            let revision_props = TestProps::from_file(&testpaths.file, Some(revision), &config);
-            let rev_cx = TestCx {
-                config: &config,
-                props: &revision_props,
-                testpaths,
-                revision: Some(revision),
-            };
-            rev_cx.run_revision();
-        }
+        base_cx.run_revision();
     }
 
     base_cx.complete_all();
@@ -1823,13 +1821,22 @@ impl<'test> TestCx<'test> {
 
     /// Given a test path like `compile-fail/foo/bar.rs` Returns a name like
     ///
-    ///     <output>/foo/bar-stage1
+    ///     <output>/foo/bar/stage1
+    ///
+    /// If the test has revisions, like `nll` Returns a name like
+    ///
+    ///     <output>/foo/bar/nll/stage1
     fn output_base_name(&self) -> PathBuf {
-        let dir = self.config.build_base.join(&self.testpaths.relative_dir);
+        let mut dir = self.config.build_base.join(&self.testpaths.relative_dir);
 
         // Note: The directory `dir` is created during `collect_tests_from_dir`
-        dir.join(&self.output_testname(&self.testpaths.file))
-            .with_extension(&self.config.stage_id)
+        dir = dir.join(&self.output_testname(&self.testpaths.file));
+        if let Some(r) = self.revision {
+            dir = dir.join(r);
+        }
+        dir = dir.join(&self.config.stage_id);
+
+        dir
     }
 
     fn maybe_dump_to_stdout(&self, out: &str, err: &str) {
@@ -2740,6 +2747,10 @@ impl<'test> TestCx<'test> {
         debug!("input_file: {:?}", self.testpaths.file);
         mir_dump_dir.push(&self.testpaths.relative_dir);
         mir_dump_dir.push(self.testpaths.file.file_stem().unwrap());
+        if let Some(r) = self.revision {
+            mir_dump_dir.push(r);
+        }
+
         mir_dump_dir
     }
 
