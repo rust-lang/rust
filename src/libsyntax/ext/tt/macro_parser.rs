@@ -230,6 +230,7 @@ pub fn count_names(ms: &[TokenTree]) -> usize {
             TokenTree::MetaVar(..) => 0,
             TokenTree::MetaVarDecl(..) => 1,
             TokenTree::Token(..) => 0,
+            TokenTree::IdentToken(..) => 0,
         }
     })
 }
@@ -332,7 +333,9 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
                     }
                 }
             }
-            TokenTree::MetaVar(..) | TokenTree::Token(..) => (),
+            TokenTree::MetaVar(..) |
+            TokenTree::Token(..) |
+            TokenTree::IdentToken(..) => (),
         }
 
         Ok(())
@@ -557,11 +560,19 @@ fn inner_parse_loop(
                     next_items.push(item);
                 }
 
+                // We just matched an ident token. We can just advance the parser.
+                TokenTree::IdentToken(_, i, _) if token_name_eq(&token::Ident(i, false), token) => {
+                    item.idx += 1;
+                    next_items.push(item);
+                }
+
                 // There was another token that was not `token`... This means we can't add any
                 // rules. NOTE that this is not necessarily an error unless _all_ items in
                 // `cur_items` end up doing this. There may still be some other matchers that do
                 // end up working out.
-                TokenTree::Token(..) | TokenTree::MetaVar(..) => {}
+                TokenTree::Token(..) |
+                TokenTree::IdentToken(..) |
+                TokenTree::MetaVar(..) => {}
             }
         }
     }

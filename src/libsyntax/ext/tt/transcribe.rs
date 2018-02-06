@@ -75,7 +75,6 @@ pub fn transcribe(cx: &ExtCtxt,
     let mut repeats = Vec::new();
     let mut result: Vec<TokenStream> = Vec::new();
     let mut result_stack = Vec::new();
-    let mut prev_token: Option<Token> = None;
 
     loop {
         let tree = if let Some(tree) = stack.last_mut().unwrap().next() {
@@ -151,7 +150,7 @@ pub fn transcribe(cx: &ExtCtxt,
                 }
             }
             // FIXME #2887: think about span stuff here
-            quoted::TokenTree::MetaVar(mut sp, ident) => {
+            quoted::TokenTree::MetaVar(mut sp, ident, _escape_hygiene) => {
                 if let Some(cur_matched) = lookup_cur_matched(ident, &interpolations, &repeats) {
                     if let MatchedNonterminal(ref nt) = *cur_matched {
                         if let NtTT(ref tt) = **nt {
@@ -179,26 +178,22 @@ pub fn transcribe(cx: &ExtCtxt,
                 result_stack.push(mem::replace(&mut result, Vec::new()));
             }
             quoted::TokenTree::Token(sp, tok) => {
-                // Check if token is ident with opt-out hygiene (pound-sign prefix).
-                if let (Some(token::Pound), token::Ident(ident, is_raw)) = (prev_token, tok.clone()) {
-                    let call_site = cx.call_site();
-                    let sp = sp.with_ctxt(call_site.ctxt().apply_mark(cx.current_expansion.mark));
-                    let ident = Ident { ctxt: call_site.ctxt(), ..ident };
-                    result.pop();
-                    result.push(TokenTree::Token(sp, token::Ident(ident, is_raw)).into());
+                let mut marker = Marker(cx.current_expansion.mark);
+                result.push(noop_fold_tt(TokenTree::Token(sp, tok), &mut marker).into())
+            }
+            quoted::TokenTree::IdentToken(sp, ident, escape_hygiene) => {
+                let sp_ctxt = if escape_hygiene { cx.call_site() } else { sp }.ctxt();
+                let sp = sp.with_ctxt(sp_ctxt.apply_mark(cx.current_expansion.mark));
+                let ident_ctxt = if escape_hygiene {
+                    cx.call_site().ctxt()
                 } else {
-                    let mut marker = Marker(cx.current_expansion.mark);
-                    result.push(noop_fold_tt(TokenTree::Token(sp, tok), &mut marker).into());
-                }
+                    ident.ctxt.apply_mark(cx.current_expansion.mark)
+                };
+                let ident = Ident { ctxt: ident_ctxt, ..ident };
+                result.push(TokenTree::Token(sp, token::Ident(ident, false)).into());
             }
             quoted::TokenTree::MetaVarDecl(..) => panic!("unexpected `TokenTree::MetaVarDecl"),
         }
-
-        prev_token = if let quoted::TokenTree::Token(_, tok) = tree {
-            Some(tok)
-        } else {
-            None
-        };
     }
 }
 
@@ -265,7 +260,7 @@ fn lockstep_iter_size(tree: &quoted::TokenTree,
                 size + lockstep_iter_size(tt, interpolations, repeats)
             })
         },
-        TokenTree::MetaVar(_, name) | TokenTree::MetaVarDecl(_, name, _) =>
+        TokenTree::MetaVar(_, name, _) | TokenTree::MetaVarDecl(_, name, _) =>
             match lookup_cur_matched(name, interpolations, repeats) {
                 Some(matched) => match *matched {
                     MatchedNonterminal(_) => LockstepIterSize::Unconstrained,
@@ -274,5 +269,6 @@ fn lockstep_iter_size(tree: &quoted::TokenTree,
                 _ => LockstepIterSize::Unconstrained
             },
         TokenTree::Token(..) => LockstepIterSize::Unconstrained,
+        TokenTree::IdentToken(..) => LockstepIterSize::Unconstrained,
     }
 }

@@ -328,7 +328,10 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[quoted::TokenTree]) -> bool {
     use self::quoted::TokenTree;
     for tt in tts {
         match *tt {
-            TokenTree::Token(..) | TokenTree::MetaVar(..) | TokenTree::MetaVarDecl(..) => (),
+            TokenTree::Token(..) |
+            TokenTree::IdentToken(..) |
+            TokenTree::MetaVar(..) |
+            TokenTree::MetaVarDecl(..) => (),
             TokenTree::Delimited(_, ref del) => if !check_lhs_no_empty_seq(sess, &del.tts) {
                 return false;
             },
@@ -410,7 +413,10 @@ impl FirstSets {
             let mut first = TokenSet::empty();
             for tt in tts.iter().rev() {
                 match *tt {
-                    TokenTree::Token(..) | TokenTree::MetaVar(..) | TokenTree::MetaVarDecl(..) => {
+                    TokenTree::Token(..) |
+                    TokenTree::IdentToken(..) |
+                    TokenTree::MetaVar(..) |
+                    TokenTree::MetaVarDecl(..) => {
                         first.replace_with(tt.clone());
                     }
                     TokenTree::Delimited(span, ref delimited) => {
@@ -470,7 +476,10 @@ impl FirstSets {
         for tt in tts.iter() {
             assert!(first.maybe_empty);
             match *tt {
-                TokenTree::Token(..) | TokenTree::MetaVar(..) | TokenTree::MetaVarDecl(..) => {
+                TokenTree::Token(..) |
+                TokenTree::IdentToken(..) |
+                TokenTree::MetaVar(..) |
+                TokenTree::MetaVarDecl(..) => {
                     first.add_one(tt.clone());
                     return first;
                 }
@@ -641,7 +650,10 @@ fn check_matcher_core(sess: &ParseSess,
         // First, update `last` so that it corresponds to the set
         // of NT tokens that might end the sequence `... token`.
         match *token {
-            TokenTree::Token(..) | TokenTree::MetaVar(..) | TokenTree::MetaVarDecl(..) => {
+            TokenTree::Token(..) |
+            TokenTree::IdentToken(..) |
+            TokenTree::MetaVar(..) |
+            TokenTree::MetaVarDecl(..) => {
                 let can_be_followed_by_any;
                 if let Err(bad_frag) = has_legal_fragment_specifier(sess, features, attrs, token) {
                     let msg = format!("invalid fragment specifier `{}`", bad_frag);
@@ -932,7 +944,8 @@ fn is_legal_fragment_specifier(sess: &ParseSess,
 fn quoted_tt_to_string(tt: &quoted::TokenTree) -> String {
     match *tt {
         quoted::TokenTree::Token(_, ref tok) => ::print::pprust::token_to_string(tok),
-        quoted::TokenTree::MetaVar(_, name) => format!("${}", name),
+        quoted::TokenTree::IdentToken(_, ident, _) => ::print::pprust::token_to_string(&token::Ident(ident, false)),
+        quoted::TokenTree::MetaVar(_, name, _) => format!("${}", name),
         quoted::TokenTree::MetaVarDecl(_, name, kind) => format!("${}:{}", name, kind),
         _ => panic!("unexpected quoted::TokenTree::{{Sequence or Delimited}} \
                      in follow set checker"),

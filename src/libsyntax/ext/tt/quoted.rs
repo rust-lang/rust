@@ -80,6 +80,7 @@ pub enum KleeneOp {
     ZeroOrMore,
     /// Kleene plus (`+`) for one or more repetitions
     OneOrMore,
+    /// Question mark (`?`) for zero or one repetitions
     ZeroOrOne,
 }
 
@@ -88,11 +89,12 @@ pub enum KleeneOp {
 #[derive(Debug, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub enum TokenTree {
     Token(Span, token::Token),
+    IdentToken(Span, ast::Ident, bool /* escape hygiene */),
     Delimited(Span, Lrc<Delimited>),
     /// A kleene-style repetition sequence
     Sequence(Span, Lrc<SequenceRepetition>),
     /// E.g. `$var`
-    MetaVar(Span, ast::Ident),
+    MetaVar(Span, ast::Ident, bool /* escape hygiene */),
     /// E.g. `$var:expr`. This is only used in the left hand side of MBE macros.
     MetaVarDecl(
         Span,
@@ -151,7 +153,8 @@ impl TokenTree {
     pub fn span(&self) -> Span {
         match *self {
             TokenTree::Token(sp, _)
-            | TokenTree::MetaVar(sp, _)
+            | TokenTree::IdentToken(sp, _, _)
+            | TokenTree::MetaVar(sp, _, _)
             | TokenTree::MetaVarDecl(sp, _, _)
             | TokenTree::Delimited(sp, _)
             | TokenTree::Sequence(sp, _) => sp,
@@ -196,7 +199,7 @@ pub fn parse(
         // parse out the matcher (i.e. in `$id:ident` this would parse the `:` and `ident`).
         let tree = parse_tree(tree, &mut trees, expect_matchers, sess, features, attrs);
         match tree {
-            TokenTree::MetaVar(start_sp, ident) if expect_matchers => {
+            TokenTree::MetaVar(start_sp, ident, _) if expect_matchers => {
                 let span = match trees.next() {
                     Some(tokenstream::TokenTree::Token(span, token::Colon)) => match trees.next() {
                         Some(tokenstream::TokenTree::Token(end_sp, ref tok)) => match tok.ident() {
@@ -258,60 +261,30 @@ where
 {
     // Depending on what `tree` is, we could be parsing different parts of a macro
     match tree {
-        // `tree` is a `$` token. Look at the next token in `trees`
-        tokenstream::TokenTree::Token(span, token::Dollar) => match trees.next() {
-            // `tree` is followed by a delimited set of token trees. This indicates the beginning
-            // of a repetition sequence in the macro (e.g. `$(pat)*`).
-            Some(tokenstream::TokenTree::Delimited(span, delimited)) => {
-                // Must have `(` not `{` or `[`
-                if delimited.delim != token::Paren {
-                    let tok = pprust::token_to_string(&token::OpenDelim(delimited.delim));
-                    let msg = format!("expected `(`, found `{}`", tok);
-                    sess.span_diagnostic.span_err(span, &msg);
-                }
-                // Parse the contents of the sequence itself
-                let sequence = parse(delimited.tts.into(), expect_matchers, sess, features, attrs);
-                // Get the Kleene operator and optional separator
-                let (separator, op) = parse_sep_and_kleene_op(trees, span, sess, features, attrs);
-                // Count the number of captured "names" (i.e. named metavars)
-                let name_captures = macro_parser::count_names(&sequence);
-                TokenTree::Sequence(
-                    span,
-                    Lrc::new(SequenceRepetition {
-                        tts: sequence,
-                        separator,
-                        op,
-                        num_captures: name_captures,
-                    }),
-                )
-            }
-
-            // `tree` is followed by an `ident`. This could be `$meta_var` or the `$crate` special
-            // metavariable that names the crate of the invokation.
-            Some(tokenstream::TokenTree::Token(ident_span, ref token)) if token.is_ident() => {
-                let (ident, is_raw) = token.ident().unwrap();
-                let span = ident_span.with_lo(span.lo());
-                if ident.name == keywords::Crate.name() && !is_raw {
-                    let ident = ast::Ident::new(keywords::DollarCrate.name(), ident.span);
-                    TokenTree::Token(span, token::Ident(ident, is_raw))
+        // `tree` is `#` token. Look at the next token in `trees`.
+        tokenstream::TokenTree::Token(span, token::Pound) => match trees.peek() {
+            Some(tokenstream::TokenTree::Token(_, token::Dollar)) => {
+                if let tokenstream::TokenTree::Token(span, token::Dollar) = trees.next().unwrap() {
+                    parse_meta_var(true, span, trees, expect_matchers, sess, features, attrs)
                 } else {
-                    TokenTree::MetaVar(span, ident)
+                    unreachable!();
                 }
             }
 
-            // `tree` is followed by a random token. This is an error.
-            Some(tokenstream::TokenTree::Token(span, tok)) => {
-                let msg = format!(
-                    "expected identifier, found `{}`",
-                    pprust::token_to_string(&tok)
-                );
-                sess.span_diagnostic.span_err(span, &msg);
-                TokenTree::MetaVar(span, keywords::Invalid.ident())
+            Some(tokenstream::TokenTree::Token(_, token::Ident(_, _))) => {
+                if let tokenstream::TokenTree::Token(span, token::Ident(ident, _)) = trees.next().unwrap() {
+                    TokenTree::IdentToken(span, ident, true)
+                } else {
+                    unreachable!();
+                }
             }
 
-            // There are no more tokens. Just return the `$` we already have.
-            None => TokenTree::Token(span, token::Dollar),
-        },
+            _ => TokenTree::Token(span, token::Pound),
+        }
+
+        // `tree` is a `$` token. Look at the next token in `trees`.
+        tokenstream::TokenTree::Token(span, token::Dollar) =>
+            parse_meta_var(false, span, trees, expect_matchers, sess, features, attrs),
 
         // `tree` is an arbitrary token. Keep it.
         tokenstream::TokenTree::Token(span, tok) => TokenTree::Token(span, tok),
@@ -325,6 +298,74 @@ where
                 tts: parse(delimited.tts.into(), expect_matchers, sess, features, attrs),
             }),
         ),
+    }
+}
+
+/// Attempt to parse a single meta variable or meta variable sequence.
+fn parse_meta_var<I>(
+    escape_hygiene: bool,
+    span: Span,
+    trees: &mut Peekable<I>,
+    expect_matchers: bool,
+    sess: &ParseSess,
+    features: &Features,
+    attrs: &[ast::Attribute],
+) -> TokenTree
+where
+    I: Iterator<Item = tokenstream::TokenTree>,
+{
+    match trees.next() {
+        // `tree` is followed by a delimited set of token trees. This indicates the beginning
+        // of a repetition sequence in the macro (e.g. `$(pat)*`).
+        Some(tokenstream::TokenTree::Delimited(span, delimited)) => {
+            // Must have `(` not `{` or `[`
+            if delimited.delim != token::Paren {
+                let tok = pprust::token_to_string(&token::OpenDelim(delimited.delim));
+                let msg = format!("expected `(`, found `{}`", tok);
+                sess.span_diagnostic.span_err(span, &msg);
+            }
+            // Parse the contents of the sequence itself
+            let sequence = parse(delimited.tts.into(), expect_matchers, sess, features, attrs);
+            // Get the Kleene operator and optional separator
+            let (separator, op) = parse_sep_and_kleene_op(trees, span, sess, features, attrs);
+            // Count the number of captured "names" (i.e. named metavars)
+            let name_captures = macro_parser::count_names(&sequence);
+            TokenTree::Sequence(
+                span,
+                Lrc::new(SequenceRepetition {
+                    tts: sequence,
+                    separator,
+                    op,
+                    num_captures: name_captures,
+                }),
+            )
+        }
+
+        // `tree` is followed by an `ident`. This could be `$meta_var` or the `$crate` special
+        // metavariable that names the crate of the invokation.
+        Some(tokenstream::TokenTree::Token(ident_span, ref token)) if token.is_ident() => {
+            let (ident, _) = token.ident().unwrap();
+            let span = ident_span.with_lo(span.lo());
+            if ident.name == keywords::Crate.name() && !is_raw {
+                let ident = ast::Ident::new(keywords::DollarCrate.name(), ident.span);
+                TokenTree::Token(span, token::Ident(ident, is_raw))
+            } else {
+                TokenTree::MetaVar(span, ident, escape_hygiene)
+            }
+        }
+
+        // `tree` is followed by an arbitrary token. This is an error.
+        Some(tokenstream::TokenTree::Token(span, tok)) => {
+            let msg = format!(
+                "expected identifier, found `{}`",
+                pprust::token_to_string(&tok)
+            );
+            sess.span_diagnostic.span_err(span, &msg);
+            TokenTree::MetaVar(span, keywords::Invalid.ident(), escape_hygiene)
+        }
+
+        // There are no more tokens. Just return the `$` we already have.
+        None => TokenTree::Token(span, token::Dollar),
     }
 }
 
