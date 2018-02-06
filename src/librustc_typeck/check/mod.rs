@@ -2925,7 +2925,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let rcvr = &args[0];
         let rcvr_t = self.check_expr_with_needs(&rcvr, needs);
         // no need to check for bot/err -- callee does that
-        let rcvr_t = self.structurally_resolved_type(expr.span, rcvr_t);
+        let rcvr_t = self.structurally_resolved_type(args[0].span, rcvr_t);
 
         let method = match self.lookup_method(rcvr_t,
                                               segment,
