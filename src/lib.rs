@@ -615,7 +615,13 @@ pub fn format_input<T: Write>(
         ));
         Handler::with_emitter(true, false, silent_emitter)
     } else {
-        Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(codemap.clone()))
+        let supports_color = term::stderr().map_or(false, |term| term.supports_color());
+        let color_cfg = if supports_color {
+            ColorConfig::Auto
+        } else {
+            ColorConfig::Never
+        };
+        Handler::with_tty_emitter(color_cfg, true, false, Some(codemap.clone()))
     };
     let mut parse_session = ParseSess::with_span_handler(tty_handler, codemap.clone());
 
