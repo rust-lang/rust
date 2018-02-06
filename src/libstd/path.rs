@@ -2174,7 +2174,7 @@ impl Path {
         fs::canonicalize(self)
     }
 
-    /// Returns the normalized (or "cleaned") form of the path with all current
+    /// Returns a cleaned representation of the path with all current
     /// directory (.) and parent directory (..) references resolved.
     ///
     /// This is a purely logical calculation; the file system is not accessed. Namely,
@@ -2189,14 +2189,14 @@ impl Path {
     /// use std::path::{Path, PathBuf};
     ///
     /// let path = Path::new("/recipes/./snacks/../desserts/banana_creme_pie.txt");
-    /// assert_eq!(path.normalize(), PathBuf::from("/recipes/desserts/banana_creme_pie.txt"));
+    /// assert_eq!(path.clean(), PathBuf::from("/recipes/desserts/banana_creme_pie.txt"));
     /// let path = Path::new("../.././lots///of////./separators/");
-    /// assert_eq!(path.normalize(), PathBuf::from("../../lots/of/separators"));
+    /// assert_eq!(path.clean(), PathBuf::from("../../lots/of/separators"));
     /// let path = Path::new("/../../../cannot_go_above_root");
-    /// assert_eq!(path.normalize(), PathBuf::from("/cannot_go_above_root"));
+    /// assert_eq!(path.clean(), PathBuf::from("/cannot_go_above_root"));
     /// ```
     #[unstable]
-    pub fn normalize(&self) -> PathBuf {
+    pub fn clean(&self) -> PathBuf {
         let mut stack: Vec<Component> = vec![];
 
         // We assume .components() removes redundant consecutive path separators.
@@ -4056,77 +4056,77 @@ mod tests {
     }
 
     #[test]
-    pub fn test_normalize() {
-        macro_rules! tn(
+    pub fn test_clean() {
+        macro_rules! tc(
             ($path:expr, $expected:expr) => ( {
-                let mut actual = PathBuf::from($path).normalize();
+                let mut actual = PathBuf::from($path).clean();
                 assert!(actual.to_str() == Some($expected),
-                        "normalizing {:?}: Expected {:?}, got {:?}",
+                        "cleaning {:?}: Expected {:?}, got {:?}",
                         $path, $expected,
                         actual.to_str().unwrap());
             });
         );
 
         if cfg!(unix) {
-            tn!("", ".");
-            tn!("/", "/");
-            tn!("//", "/");  /* Double-slash root is a separate entity in POSIX,
+            tc!("", ".");
+            tc!("/", "/");
+            tc!("//", "/");  /* Double-slash root is a separate entity in POSIX,
                             but in Rust we treat it as a normal root slash. */
-            tn!("foo", "foo");
-            tn!(".", ".");
-            tn!("..", "..");
-            tn!(".foo", ".foo");
-            tn!("..foo", "..foo");
-            tn!("/foo", "/foo");
-            tn!("//foo", "/foo");
-            tn!("./foo/", "foo");
-            tn!("../foo/", "../foo");
-            tn!("/foo/bar", "/foo/bar");
-            tn!("foo/bar", "foo/bar");
-            tn!("foo/.", "foo");
-            tn!("foo//bar", "foo/bar");
-            tn!("./foo//bar//", "foo/bar");
+            tc!("foo", "foo");
+            tc!(".", ".");
+            tc!("..", "..");
+            tc!(".foo", ".foo");
+            tc!("..foo", "..foo");
+            tc!("/foo", "/foo");
+            tc!("//foo", "/foo");
+            tc!("./foo/", "foo");
+            tc!("../foo/", "../foo");
+            tc!("/foo/bar", "/foo/bar");
+            tc!("foo/bar", "foo/bar");
+            tc!("foo/.", "foo");
+            tc!("foo//bar", "foo/bar");
+            tc!("./foo//bar//", "foo/bar");
 
-            tn!("foo/bar/baz/..", "foo/bar");
-            tn!("foo/bar/baz/../", "foo/bar");
-            tn!("foo/bar/baz/../..", "foo");
-            tn!("foo/bar/baz/../../..", ".");
-            tn!("foo/bar/baz/../../../..", "..");
-            tn!("foo/bar/baz/../../../../..", "../..");
-            tn!("/foo/bar/baz/../../../../..", "/");
-            tn!("foo/../bar/../baz/../", ".");
-            tn!("/.", "/");
-            tn!("/..", "/");
-            tn!("/../../", "/");
+            tc!("foo/bar/baz/..", "foo/bar");
+            tc!("foo/bar/baz/../", "foo/bar");
+            tc!("foo/bar/baz/../..", "foo");
+            tc!("foo/bar/baz/../../..", ".");
+            tc!("foo/bar/baz/../../../..", "..");
+            tc!("foo/bar/baz/../../../../..", "../..");
+            tc!("/foo/bar/baz/../../../../..", "/");
+            tc!("foo/../bar/../baz/../", ".");
+            tc!("/.", "/");
+            tc!("/..", "/");
+            tc!("/../../", "/");
         } else {
-            tn!(r#"a\b\c"#, r#"a\b\c"#);
-            tn!(r#"a/b\c"#, r#"a\b\c"#);
-            tn!(r#"a/b\c\"#, r#"a\b\c"#);
-            tn!(r#"a/b\c/"#, r#"a\b\c"#);
-            tn!(r#"\"#, r#"\"#);
-            tn!(r#"\\"#, r#"\"#);
-            tn!(r#"/"#, r#"\"#);
-            tn!(r#"//"#, r#"\"#);
+            tc!(r#"a\b\c"#, r#"a\b\c"#);
+            tc!(r#"a/b\c"#, r#"a\b\c"#);
+            tc!(r#"a/b\c\"#, r#"a\b\c"#);
+            tc!(r#"a/b\c/"#, r#"a\b\c"#);
+            tc!(r#"\"#, r#"\"#);
+            tc!(r#"\\"#, r#"\"#);
+            tc!(r#"/"#, r#"\"#);
+            tc!(r#"//"#, r#"\"#);
 
-            tn!(r#"C:\a\b"#, r#"C:\a\b"#);
-            tn!(r#"C:\"#, r#"C:\"#);
-            tn!(r#"C:\."#, r#"C:\"#);
-            tn!(r#"C:\.."#, r#"C:\"#);
-            tn!(r#"C:a"#, r#"C:a"#);
-            tn!(r#"C:."#, r#"C:."#);
-            tn!(r#"C:.."#, r#"C:.."#);
+            tc!(r#"C:\a\b"#, r#"C:\a\b"#);
+            tc!(r#"C:\"#, r#"C:\"#);
+            tc!(r#"C:\."#, r#"C:\"#);
+            tc!(r#"C:\.."#, r#"C:\"#);
+            tc!(r#"C:a"#, r#"C:a"#);
+            tc!(r#"C:."#, r#"C:."#);
+            tc!(r#"C:.."#, r#"C:.."#);
 
             // Should these not have a trailing slash?
-            tn!(r#"\\server\share"#, r#"\\server\share\"#);
-            tn!(r#"\\server\share\a\b"#, r#"\\server\share\a\b"#);
-            tn!(r#"\\server\share\a\.\b"#, r#"\\server\share\a\b"#);
-            tn!(r#"\\server\share\a\..\b"#, r#"\\server\share\b"#);
-            tn!(r#"\\server\share\a\b\"#, r#"\\server\share\a\b"#);
+            tc!(r#"\\server\share"#, r#"\\server\share\"#);
+            tc!(r#"\\server\share\a\b"#, r#"\\server\share\a\b"#);
+            tc!(r#"\\server\share\a\.\b"#, r#"\\server\share\a\b"#);
+            tc!(r#"\\server\share\a\..\b"#, r#"\\server\share\b"#);
+            tc!(r#"\\server\share\a\b\"#, r#"\\server\share\a\b"#);
 
-            tn!(r#"\\?\a\b"#, r#"\\?\a\b"#);
-            tn!(r#"\\?\a/\\b\"#, r#"\\?\a/\\b"#);
-            tn!(r#"\\?\a/\\b/"#, r#"\\?\a/\\b/"#);
-            tn!(r#"\\?\a\b"#, r#"\\?\a\b"#);
+            tc!(r#"\\?\a\b"#, r#"\\?\a\b"#);
+            tc!(r#"\\?\a/\\b\"#, r#"\\?\a/\\b"#);
+            tc!(r#"\\?\a/\\b/"#, r#"\\?\a/\\b/"#);
+            tc!(r#"\\?\a\b"#, r#"\\?\a\b"#);
         }
     }
 }
