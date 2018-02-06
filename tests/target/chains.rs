@@ -246,3 +246,16 @@ impl Foo {
             .collect();
     }
 }
+
+// #2415
+// Avoid orphan in chain
+fn issue2415() {
+    let base_url = (|| {
+        // stuff
+
+        Ok((|| {
+            // stuff
+            Some(value.to_string())
+        })().ok_or("")?)
+    })().unwrap_or_else(|_: Box<::std::error::Error>| String::from(""));
+}

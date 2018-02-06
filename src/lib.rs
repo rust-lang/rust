@@ -10,7 +10,6 @@
 
 #![feature(decl_macro)]
 #![feature(match_default_bindings)]
-#![feature(rustc_private)]
 #![feature(type_ascription)]
 
 #[macro_use]
