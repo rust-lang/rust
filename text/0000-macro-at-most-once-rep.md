@@ -170,4 +170,5 @@ Finally, we could do nothing and wait for macros 2.0. However, it will be a whil
 
 Unresolved Questions
 --------------------
-None that I can think of...
+
+- Should the `?` Kleene operator accept a separator? Adding a separator is completely meaningless (since we don't accept trailing separators, and `?` can accept "at most one" repetition), but allowing it is consistent with `+` and `*`. Currently, we allow a separator. We could also make it an error or lint.
