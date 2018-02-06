@@ -127,13 +127,12 @@ fn compare_use_items(a: &ast::Item, b: &ast::Item) -> Ordering {
 
             // `extern crate foo as bar;`
             //                      ^^^ Comparing this.
-            let result = match (a_name, b_name) {
+            match (a_name, b_name) {
                 (Some(..), None) => Ordering::Greater,
                 (None, Some(..)) => Ordering::Less,
                 (None, None) => Ordering::Equal,
                 (Some(..), Some(..)) => a.ident.name.as_str().cmp(&b.ident.name.as_str()),
-            };
-            result
+            }
         }
         _ => unreachable!(),
     }
