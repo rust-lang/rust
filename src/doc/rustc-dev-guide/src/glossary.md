@@ -18,6 +18,9 @@ generics                |  the set of generic type parameters defined on a type 
 ICE                     |  internal compiler error. When the compiler crashes.
 ICH                     |  incremental compilation hash. ICHs are used as fingerprints for things such as HIR and crate metadata, to check if changes have been made. This is useful in incremental compilation to see if part of a crate has changed and should be recompiled.
 infcx                   |  the inference context (see `librustc/infer`)
+MIR                     |  the Mid-level IR that is created after type-checking for use by borrowck and trans ([see more](./mir.html))
+miri                    |  an interpreter for MIR used for constant evaluation ([see more](./miri.html))
+obligation              |  something that must be proven by the trait system ([see more](trait-resolution.html))
 local crate             |  the crate currently being compiled.
 MIR                     |  the Mid-level IR that is created after type-checking for use by borrowck and trans ([see more](./mir.html))
 node-id or NodeId       |  an index identifying a particular node in the AST or HIR; gradually being phased out and replaced with `HirId`.

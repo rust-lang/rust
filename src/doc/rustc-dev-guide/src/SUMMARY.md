@@ -23,5 +23,8 @@
     - [MIR construction](./mir-construction.md)
     - [MIR borrowck](./mir-borrowck.md)
     - [MIR optimizations](./mir-optimizations.md)
+- [Constant evaluation](./const-eval.md)
+    - [miri const evaluator](./miri.md)
+- [Parameter Environments](./param_env.md)
 - [Generating LLVM IR](./trans.md)
 - [Glossary](./glossary.md)
