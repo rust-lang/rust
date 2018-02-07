@@ -183,6 +183,17 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // obligations within. This is expected to be done 'late enough'
     // that all type inference variables have been bound and so forth.
     pub region_obligations: RefCell<Vec<(ast::NodeId, RegionObligation<'tcx>)>>,
+
+    /// What is the innermost universe we have created? Starts out as
+    /// `UniverseIndex::root()` but grows from there as we enter
+    /// universal quantifiers.
+    ///
+    /// NB: At present, we exclude the universal quantifiers on the
+    /// item we are type-checking, and just consider those names as
+    /// part of the root universe. So this would only get incremented
+    /// when we enter into a higher-ranked (`for<..>`) type or trait
+    /// bound.
+    pub universe: ty::UniverseIndex,
 }
 
 /// A map returned by `skolemize_late_bound_regions()` indicating the skolemized
@@ -455,6 +466,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             err_count_on_creation: tcx.sess.err_count(),
             in_snapshot: Cell::new(false),
             region_obligations: RefCell::new(vec![]),
+            universe: ty::UniverseIndex::ROOT,
         }))
     }
 }

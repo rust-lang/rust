@@ -1376,9 +1376,7 @@ pub struct UniverseIndex(u32);
 impl UniverseIndex {
     /// The root universe, where things that the user defined are
     /// visible.
-    pub fn root() -> UniverseIndex {
-        UniverseIndex(0)
-    }
+    pub const ROOT: Self = UniverseIndex(0);
 
     /// A "subuniverse" corresponds to being inside a `forall` quantifier.
     /// So, for example, suppose we have this type in universe `U`:
