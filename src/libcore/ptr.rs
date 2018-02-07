@@ -2461,7 +2461,7 @@ impl<'a, T: ?Sized> From<NonNull<T>> for Unique<T> {
 }
 
 /// Previous name of `NonNull`.
-#[rustc_deprecated(since = "1.24", reason = "renamed to `NonNull`")]
+#[rustc_deprecated(since = "1.25.0", reason = "renamed to `NonNull`")]
 #[unstable(feature = "shared", issue = "27730")]
 pub type Shared<T> = NonNull<T>;
 
@@ -2482,26 +2482,19 @@ pub type Shared<T> = NonNull<T>;
 /// Usually this won't be necessary; covariance is correct for most safe abstractions,
 /// such as Box, Rc, Arc, Vec, and LinkedList. This is the case because they
 /// provide a public API that follows the normal shared XOR mutable rules of Rust.
-#[stable(feature = "nonnull", since = "1.24.0")]
+#[stable(feature = "nonnull", since = "1.25.0")]
 pub struct NonNull<T: ?Sized> {
     pointer: NonZero<*const T>,
 }
 
-#[stable(feature = "nonnull", since = "1.24.0")]
-impl<T: ?Sized> fmt::Debug for NonNull<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Pointer::fmt(&self.as_ptr(), f)
-    }
-}
-
 /// `NonNull` pointers are not `Send` because the data they reference may be aliased.
 // NB: This impl is unnecessary, but should provide better error messages.
-#[stable(feature = "nonnull", since = "1.24.0")]
+#[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> !Send for NonNull<T> { }
 
 /// `NonNull` pointers are not `Sync` because the data they reference may be aliased.
 // NB: This impl is unnecessary, but should provide better error messages.
-#[stable(feature = "nonnull", since = "1.24.0")]
+#[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> !Sync for NonNull<T> { }
 
 impl<T: Sized> NonNull<T> {
@@ -2509,7 +2502,7 @@ impl<T: Sized> NonNull<T> {
     ///
     /// This is useful for initializing types which lazily allocate, like
     /// `Vec::new` does.
-    #[stable(feature = "nonnull", since = "1.24.0")]
+    #[stable(feature = "nonnull", since = "1.25.0")]
     pub fn dangling() -> Self {
         unsafe {
             let ptr = mem::align_of::<T>() as *mut T;
@@ -2524,19 +2517,19 @@ impl<T: ?Sized> NonNull<T> {
     /// # Safety
     ///
     /// `ptr` must be non-null.
-    #[stable(feature = "nonnull", since = "1.24.0")]
+    #[stable(feature = "nonnull", since = "1.25.0")]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
         NonNull { pointer: NonZero::new_unchecked(ptr) }
     }
 
     /// Creates a new `NonNull` if `ptr` is non-null.
-    #[stable(feature = "nonnull", since = "1.24.0")]
+    #[stable(feature = "nonnull", since = "1.25.0")]
     pub fn new(ptr: *mut T) -> Option<Self> {
         NonZero::new(ptr as *const T).map(|nz| NonNull { pointer: nz })
     }
 
     /// Acquires the underlying `*mut` pointer.
-    #[stable(feature = "nonnull", since = "1.24.0")]
+    #[stable(feature = "nonnull", since = "1.25.0")]
     pub fn as_ptr(self) -> *mut T {
         self.pointer.get() as *mut T
     }
@@ -2546,7 +2539,7 @@ impl<T: ?Sized> NonNull<T> {
     /// The resulting lifetime is bound to self so this behaves "as if"
     /// it were actually an instance of T that is getting borrowed. If a longer
     /// (unbound) lifetime is needed, use `&*my_ptr.as_ptr()`.
-    #[stable(feature = "nonnull", since = "1.24.0")]
+    #[stable(feature = "nonnull", since = "1.25.0")]
     pub unsafe fn as_ref(&self) -> &T {
         &*self.as_ptr()
     }
@@ -2556,47 +2549,93 @@ impl<T: ?Sized> NonNull<T> {
     /// The resulting lifetime is bound to self so this behaves "as if"
     /// it were actually an instance of T that is getting borrowed. If a longer
     /// (unbound) lifetime is needed, use `&mut *my_ptr.as_ptr()`.
-    #[stable(feature = "nonnull", since = "1.24.0")]
+    #[stable(feature = "nonnull", since = "1.25.0")]
     pub unsafe fn as_mut(&mut self) -> &mut T {
         &mut *self.as_ptr()
     }
+
+    /// Cast to a pointer of another type
+    #[unstable(feature = "nonnull_cast", issue = "47653")]
+    pub fn cast<U>(self) -> NonNull<U> {
+        unsafe {
+            NonNull::new_unchecked(self.as_ptr() as *mut U)
+        }
+    }
 }
 
-#[stable(feature = "nonnull", since = "1.24.0")]
+#[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> Clone for NonNull<T> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-#[stable(feature = "nonnull", since = "1.24.0")]
+#[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> Copy for NonNull<T> { }
 
-#[stable(feature = "nonnull", since = "1.24.0")]
+#[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized, U: ?Sized> CoerceUnsized<NonNull<U>> for NonNull<T> where T: Unsize<U> { }
 
-#[stable(feature = "nonnull", since = "1.24.0")]
+#[stable(feature = "nonnull", since = "1.25.0")]
+impl<T: ?Sized> fmt::Debug for NonNull<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Pointer::fmt(&self.as_ptr(), f)
+    }
+}
+
+#[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> fmt::Pointer for NonNull<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Pointer::fmt(&self.as_ptr(), f)
     }
 }
 
-#[stable(feature = "nonnull", since = "1.24.0")]
+#[stable(feature = "nonnull", since = "1.25.0")]
+impl<T: ?Sized> Eq for NonNull<T> {}
+
+#[stable(feature = "nonnull", since = "1.25.0")]
+impl<T: ?Sized> PartialEq for NonNull<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.as_ptr() == other.as_ptr()
+    }
+}
+
+#[stable(feature = "nonnull", since = "1.25.0")]
+impl<T: ?Sized> Ord for NonNull<T> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.as_ptr().cmp(&other.as_ptr())
+    }
+}
+
+#[stable(feature = "nonnull", since = "1.25.0")]
+impl<T: ?Sized> PartialOrd for NonNull<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.as_ptr().partial_cmp(&other.as_ptr())
+    }
+}
+
+#[stable(feature = "nonnull", since = "1.25.0")]
+impl<T: ?Sized> hash::Hash for NonNull<T> {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.as_ptr().hash(state)
+    }
+}
+
+#[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> From<Unique<T>> for NonNull<T> {
     fn from(unique: Unique<T>) -> Self {
         NonNull { pointer: unique.pointer }
     }
 }
 
-#[stable(feature = "nonnull", since = "1.24.0")]
+#[stable(feature = "nonnull", since = "1.25.0")]
 impl<'a, T: ?Sized> From<&'a mut T> for NonNull<T> {
     fn from(reference: &'a mut T) -> Self {
         NonNull { pointer: NonZero::from(reference) }
     }
 }
 
-#[stable(feature = "nonnull", since = "1.24.0")]
+#[stable(feature = "nonnull", since = "1.25.0")]
 impl<'a, T: ?Sized> From<&'a T> for NonNull<T> {
     fn from(reference: &'a T) -> Self {
         NonNull { pointer: NonZero::from(reference) }
