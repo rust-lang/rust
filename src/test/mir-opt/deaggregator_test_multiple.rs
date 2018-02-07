@@ -52,7 +52,8 @@ fn main() {
 //     ((_4 as A).0: i32) = move _5;
 //     discriminant(_4) = 0;
 //     ...
-//     _0 = [move _2, move _4];
+//     _0[0 of 1] = move _2;
+//     _0[1 of 2] = move _4;
 //     ...
 //     return;
 // }

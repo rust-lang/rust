@@ -78,7 +78,6 @@ fn main() {
 // bb1: {
 //     StorageDead(_3);
 //     _1 = const 5u8;
-//     _0 = ();
 //     return;
 // }
 // END rustc.bar.CopyPropagation.before.mir
@@ -100,7 +99,6 @@ fn main() {
 //     _2 = _1;
 //     _1 = move _2;
 //     StorageDead(_2);
-//     _0 = ();
 //     return;
 // }
 // END rustc.baz.CopyPropagation.before.mir
