@@ -42,6 +42,7 @@ use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
 use rustc::mir::visit::{MutVisitor, Visitor, PlaceContext};
+use rustc::session::config::FullDebugInfo;
 use std::borrow::Cow;
 use transform::{MirPass, MirSource};
 
@@ -281,16 +282,24 @@ pub struct SimplifyLocals;
 
 impl MirPass for SimplifyLocals {
     fn run_pass<'a, 'tcx>(&self,
-                          _: TyCtxt<'a, 'tcx, 'tcx>,
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _: MirSource,
                           mir: &mut Mir<'tcx>) {
         let mut marker = DeclMarker { locals: BitVector::new(mir.local_decls.len()) };
         marker.visit_mir(mir);
         // Return pointer and arguments are always live
-        marker.locals.insert(0);
-        for idx in mir.args_iter() {
-            marker.locals.insert(idx.index());
+        marker.locals.insert(RETURN_PLACE.index());
+        for arg in mir.args_iter() {
+            marker.locals.insert(arg.index());
         }
+
+        // We may need to keep dead user variables live for debuginfo.
+        if tcx.sess.opts.debuginfo == FullDebugInfo {
+            for local in mir.vars_iter() {
+                marker.locals.insert(local.index());
+            }
+        }
+
         let map = make_local_map(&mut mir.local_decls, marker.locals);
         // Update references to all vars and tmps now
         LocalUpdater { map: map }.visit_mir(mir);
