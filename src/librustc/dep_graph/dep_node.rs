@@ -627,7 +627,6 @@ define_dep_nodes!( <'tcx>
     [input] AllCrateNums,
     [] ExportedSymbols(CrateNum),
     [eval_always] CollectAndPartitionTranslationItems,
-    [] ExportName(DefId),
     [] ContainsExternIndicator(DefId),
     [] IsTranslatedItem(DefId),
     [] CodegenUnit(InternedString),

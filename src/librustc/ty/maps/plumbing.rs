@@ -926,7 +926,6 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::CollectAndPartitionTranslationItems => {
             force!(collect_and_partition_translation_items, LOCAL_CRATE);
         }
-        DepKind::ExportName => { force!(export_name, def_id!()); }
         DepKind::ContainsExternIndicator => {
             force!(contains_extern_indicator, def_id!());
         }

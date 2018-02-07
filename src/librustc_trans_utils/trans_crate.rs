@@ -233,7 +233,6 @@ impl TransCrate for MetadataOnlyTransCrate {
                 MonoItem::Fn(inst) => {
                     let def_id = inst.def_id();
                     if def_id.is_local()  {
-                        let _ = tcx.export_name(def_id);
                         let _ = tcx.contains_extern_indicator(def_id);
                         let _ = inst.def.is_inline(tcx);
                         let _ = tcx.trans_fn_attrs(def_id);

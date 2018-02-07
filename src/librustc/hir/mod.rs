@@ -2216,6 +2216,7 @@ pub fn provide(providers: &mut Providers) {
 pub struct TransFnAttrs {
     pub flags: TransFnAttrFlags,
     pub inline: InlineAttr,
+    pub export_name: Option<Symbol>,
 }
 
 bitflags! {
@@ -2234,6 +2235,7 @@ impl TransFnAttrs {
         TransFnAttrs {
             flags: TransFnAttrFlags::empty(),
             inline: InlineAttr::None,
+            export_name: None,
         }
     }
 

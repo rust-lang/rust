@@ -1147,10 +1147,12 @@ impl<'hir> HashStable<StableHashingContext<'hir>> for hir::TransFnAttrs
         let hir::TransFnAttrs {
             flags,
             inline,
+            export_name,
         } = *self;
 
         flags.hash_stable(hcx, hasher);
         inline.hash_stable(hcx, hasher);
+        export_name.hash_stable(hcx, hasher);
     }
 }
 

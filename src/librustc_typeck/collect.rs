@@ -1777,6 +1777,15 @@ fn trans_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> TransFnAt
                     _ => ia,
                 }
             });
+        } else if attr.check_name("export_name") {
+            if let s @ Some(_) = attr.value_str() {
+                trans_fn_attrs.export_name = s;
+            } else {
+                struct_span_err!(tcx.sess, attr.span, E0558,
+                                    "export_name attribute has invalid format")
+                    .span_label(attr.span, "did you mean #[export_name=\"*\"]?")
+                    .emit();
+            }
         }
     }
 
