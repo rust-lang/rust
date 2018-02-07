@@ -177,7 +177,7 @@ pub trait CodegenUnitExt<'tcx> {
                         InstanceDef::DropGlue(..) |
                         InstanceDef::CloneCopyShim(..) |
                         InstanceDef::CloneStructuralShim(..) |
-                        InstanceDef::CloneNominalShim(..) => {
+                        InstanceDef::CloneNominalShim { .. } => {
                             None
                         }
                     }
@@ -380,7 +380,7 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             InstanceDef::DropGlue(..) |
                             InstanceDef::CloneCopyShim(..) |
                             InstanceDef::CloneStructuralShim(..) |
-                            InstanceDef::CloneNominalShim(..) => {
+                            InstanceDef::CloneNominalShim { .. } => {
                                 Visibility::Hidden
                             }
                         };
@@ -625,7 +625,7 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 ty::InstanceDef::Virtual(..) |
                 ty::InstanceDef::CloneCopyShim(..) |
                 ty::InstanceDef::CloneStructuralShim(..) |
-                ty::InstanceDef::CloneNominalShim(..) => return None
+                ty::InstanceDef::CloneNominalShim { .. } => return None
             };
 
             // If this is a method, we want to put it into the same module as

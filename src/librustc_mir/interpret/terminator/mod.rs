@@ -297,7 +297,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             ty::InstanceDef::DropGlue(..) |
             ty::InstanceDef::CloneCopyShim(..) |
             ty::InstanceDef::CloneStructuralShim(..) |
-            ty::InstanceDef::CloneNominalShim(..) |
+            ty::InstanceDef::CloneNominalShim { .. } |
             ty::InstanceDef::Item(_) => {
                 // Push the stack frame, and potentially be entirely done if the call got hooked
                 if M::eval_fn_call(self, instance, destination, args, span, sig)? {

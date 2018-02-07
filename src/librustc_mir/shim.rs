@@ -106,7 +106,10 @@ fn make_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             builder.copy_shim();
             builder.into_mir()
         }
-        ty::InstanceDef::CloneNominalShim(def_id, ty) |
+        ty::InstanceDef::CloneNominalShim { clone, ty } => {
+            let ty = tcx.type_of(ty);
+            build_clone_shim(tcx, clone, ty)
+        }
         ty::InstanceDef::CloneStructuralShim(def_id, ty) => {
             build_clone_shim(tcx, def_id, ty)
         }
