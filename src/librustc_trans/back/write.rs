@@ -759,7 +759,10 @@ unsafe fn codegen(cgcx: &CodegenContext,
 
         if asm2wasm && config.emit_obj {
             let assembly = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
-            binaryen_assemble(cgcx, diag_handler, &assembly, &obj_out);
+            let suffix = ".wasm.map"; // FIXME use target suffix
+            let map = cgcx.output_filenames.path(OutputType::Exe)
+                .with_extension(&suffix[1..]);
+            binaryen_assemble(cgcx, diag_handler, &assembly, &obj_out, &map);
             timeline.record("binaryen");
 
             if !config.emit_asm {
@@ -814,7 +817,8 @@ unsafe fn codegen(cgcx: &CodegenContext,
 fn binaryen_assemble(cgcx: &CodegenContext,
                      handler: &Handler,
                      assembly: &Path,
-                     object: &Path) {
+                     object: &Path,
+                     map: &Path) {
     use rustc_binaryen::{Module, ModuleOptions};
 
     let input = fs::read(&assembly).and_then(|contents| {
@@ -823,6 +827,8 @@ fn binaryen_assemble(cgcx: &CodegenContext,
     let mut options = ModuleOptions::new();
     if cgcx.debuginfo != config::NoDebugInfo {
         options.debuginfo(true);
+        let map_file_name = map.file_name().unwrap();
+        options.source_map_url(map_file_name.to_str().unwrap());
     }
 
     options.stack(1024 * 1024);
@@ -832,7 +838,13 @@ fn binaryen_assemble(cgcx: &CodegenContext,
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
     });
     let err = assembled.and_then(|binary| {
-        fs::write(&object, binary.data())
+        fs::write(&object, binary.data()).and_then(|()| {
+            if cgcx.debuginfo != config::NoDebugInfo {
+                fs::write(map, binary.source_map())
+            } else {
+                Ok(())
+            }
+        })
     });
     if let Err(e) = err {
         handler.err(&format!("failed to run binaryen assembler: {}", e));

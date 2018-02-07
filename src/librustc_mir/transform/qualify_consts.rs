@@ -17,6 +17,7 @@
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc_data_structures::fx::FxHashSet;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::middle::const_val::ConstVal;
@@ -30,6 +31,7 @@ use rustc::mir::visit::{PlaceContext, Visitor};
 use rustc::middle::lang_items;
 use syntax::abi::Abi;
 use syntax::attr;
+use syntax::ast::LitKind;
 use syntax::feature_gate::UnstableFeatures;
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -407,7 +409,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                         _ => {}
                     }
                 }
-                Candidate::ShuffleIndices(_) => {}
+                Candidate::Argument { .. } => {}
             }
         }
 
@@ -730,8 +732,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             self.visit_operand(func, location);
 
             let fn_ty = func.ty(self.mir, self.tcx);
+            let mut callee_def_id = None;
             let (mut is_shuffle, mut is_const_fn) = (false, None);
             if let ty::TyFnDef(def_id, _) = fn_ty.sty {
+                callee_def_id = Some(def_id);
                 match self.tcx.fn_sig(def_id).abi() {
                     Abi::RustIntrinsic |
                     Abi::PlatformIntrinsic => {
@@ -754,17 +758,39 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 }
             }
 
+            let constant_arguments = callee_def_id.and_then(|id| {
+                args_required_const(self.tcx, id)
+            });
             for (i, arg) in args.iter().enumerate() {
                 self.nest(|this| {
                     this.visit_operand(arg, location);
-                    if is_shuffle && i == 2 && this.mode == Mode::Fn {
-                        let candidate = Candidate::ShuffleIndices(bb);
+                    if this.mode != Mode::Fn {
+                        return
+                    }
+                    let candidate = Candidate::Argument { bb, index: i };
+                    if is_shuffle && i == 2 {
                         if this.can_promote() {
                             this.promotion_candidates.push(candidate);
                         } else {
                             span_err!(this.tcx.sess, this.span, E0526,
                                       "shuffle indices are not constant");
                         }
+                        return
+                    }
+
+                    let constant_arguments = match constant_arguments.as_ref() {
+                        Some(s) => s,
+                        None => return,
+                    };
+                    if !constant_arguments.contains(&i) {
+                        return
+                    }
+                    if this.can_promote() {
+                        this.promotion_candidates.push(candidate);
+                    } else {
+                        this.tcx.sess.span_err(this.span,
+                            &format!("argument {} is required to be a constant",
+                                     i + 1));
                     }
                 });
             }
@@ -1084,4 +1110,17 @@ impl MirPass for QualifyAndPromoteConstants {
             });
         }
     }
+}
+
+fn args_required_const(tcx: TyCtxt, def_id: DefId) -> Option<FxHashSet<usize>> {
+    let attrs = tcx.get_attrs(def_id);
+    let attr = attrs.iter().find(|a| a.check_name("rustc_args_required_const"))?;
+    let mut ret = FxHashSet();
+    for meta in attr.meta_item_list()? {
+        match meta.literal()?.node {
+            LitKind::Int(a, _) => { ret.insert(a as usize); }
+            _ => return None,
+        }
+    }
+    Some(ret)
 }

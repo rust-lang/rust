@@ -58,7 +58,7 @@ mod traits {
     pub trait PubTr {}
 
     pub type Alias<T: PrivTr> = T; //~ ERROR private trait `traits::PrivTr` in public interface
-    //~^ WARN trait bounds are not (yet) enforced in type definitions
+    //~^ WARN bounds are ignored in type aliases
     //~| WARNING hard error
     pub trait Tr1: PrivTr {} //~ ERROR private trait `traits::PrivTr` in public interface
     //~^ WARNING hard error

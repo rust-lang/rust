@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::ops::Add;
+// ignore-tidy-linelength
+// compile-flags: -Zepoch=2018 -Zunstable-options
 
+// tests that epochs work with the tyvar warning-turned-error
+
+#[deny(warnings)]
 fn main() {
-    <i32 as Add<u32>>::add(1, 2);
-    //~^ ERROR cannot add `u32` to `i32`
-    <i32 as Add<i32>>::add(1u32, 2);
-    //~^ ERROR mismatched types
-    <i32 as Add<i32>>::add(1, 2u32);
-    //~^ ERROR mismatched types
+    let x = 0;
+    let y = &x as *const _;
+    let _ = y.is_null();
+    //~^ error: the type of this value must be known to call a method on a raw pointer on it [E0908]
 }

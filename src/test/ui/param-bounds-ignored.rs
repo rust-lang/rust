@@ -8,13 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::ops::Add;
+// must-compile-successfully
+
+use std::rc::Rc;
+
+type SVec<T: Send> = Vec<T>;
+type VVec<'b, 'a: 'b> = Vec<&'a i32>;
+type WVec<'b, T: 'b> = Vec<T>;
+
+fn foo<'a>(y: &'a i32) {
+    // If the bounds above would matter, the code below would be rejected.
+    let mut x : SVec<_> = Vec::new();
+    x.push(Rc::new(42));
+
+    let mut x : VVec<'static, 'a> = Vec::new();
+    x.push(y);
+
+    let mut x : WVec<'static, & 'a i32> = Vec::new();
+    x.push(y);
+}
 
 fn main() {
-    <i32 as Add<u32>>::add(1, 2);
-    //~^ ERROR cannot add `u32` to `i32`
-    <i32 as Add<i32>>::add(1u32, 2);
-    //~^ ERROR mismatched types
-    <i32 as Add<i32>>::add(1, 2u32);
-    //~^ ERROR mismatched types
+    foo(&42);
 }

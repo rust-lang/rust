@@ -348,7 +348,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         if direct {
             // this is a "direct", user-specified, rather than derived,
             // obligation.
-            flags.push(("direct", None));
+            flags.push(("direct".to_string(), None));
         }
 
         if let ObligationCauseCode::ItemObligation(item) = obligation.cause.code {
@@ -359,21 +359,37 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             // Currently I'm leaving it for what I need for `try`.
             if self.tcx.trait_of_item(item) == Some(trait_ref.def_id) {
                 method = self.tcx.item_name(item);
-                flags.push(("from_method", None));
-                flags.push(("from_method", Some(&*method)));
+                flags.push(("from_method".to_string(), None));
+                flags.push(("from_method".to_string(), Some(method.to_string())));
             }
         }
 
         if let Some(k) = obligation.cause.span.compiler_desugaring_kind() {
             desugaring = k.as_symbol().as_str();
-            flags.push(("from_desugaring", None));
-            flags.push(("from_desugaring", Some(&*desugaring)));
+            flags.push(("from_desugaring".to_string(), None));
+            flags.push(("from_desugaring".to_string(), Some(desugaring.to_string())));
+        }
+        let generics = self.tcx.generics_of(def_id);
+        let self_ty = trait_ref.self_ty();
+        let self_ty_str = self_ty.to_string();
+        flags.push(("_Self".to_string(), Some(self_ty_str.clone())));
+
+        for param in generics.types.iter() {
+            let name = param.name.as_str().to_string();
+            let ty = trait_ref.substs.type_for_def(param);
+            let ty_str = ty.to_string();
+            flags.push((name.clone(),
+                        Some(ty_str.clone())));
+        }
+
+        if let Some(true) = self_ty.ty_to_def_id().map(|def_id| def_id.is_local()) {
+            flags.push(("crate_local".to_string(), None));
         }
 
         if let Ok(Some(command)) = OnUnimplementedDirective::of_item(
             self.tcx, trait_ref.def_id, def_id
         ) {
-            command.evaluate(self.tcx, trait_ref, &flags)
+            command.evaluate(self.tcx, trait_ref, &flags[..])
         } else {
             OnUnimplementedNote::empty()
         }
@@ -549,7 +565,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                 .map(|t| (format!(" in `{}`", t), format!("within `{}`, ", t)))
                             .unwrap_or((String::new(), String::new()));
 
-                        let OnUnimplementedNote { message, label }
+                        let OnUnimplementedNote { message, label, note }
                             = self.on_unimplemented_note(trait_ref, obligation);
                         let have_alt_message = message.is_some() || label.is_some();
 
@@ -577,6 +593,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                      pre_message,
                                                      trait_ref,
                                                      trait_ref.self_ty()));
+                        }
+                        if let Some(ref s) = note {
+                            // If it has a custom "#[rustc_on_unimplemented]" note, let's display it
+                            err.note(s.as_str());
                         }
 
                         self.suggest_borrow_on_unsized_slice(&obligation.cause.code, &mut err);

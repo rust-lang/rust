@@ -51,6 +51,15 @@ impl Module {
             slice::from_raw_parts(ptr, len)
         }
     }
+
+    /// Returns the data of the source map JSON.
+    pub fn source_map(&self) -> &[u8] {
+        unsafe {
+            let ptr = BinaryenRustModuleSourceMapPtr(self.ptr);
+            let len = BinaryenRustModuleSourceMapLen(self.ptr);
+            slice::from_raw_parts(ptr, len)
+        }
+    }
 }
 
 impl Drop for Module {
@@ -94,6 +103,15 @@ impl ModuleOptions {
         self
     }
 
+    /// Configures a `sourceMappingURL` custom section value for the module.
+    pub fn source_map_url(&mut self, url: &str) -> &mut Self {
+        let url = CString::new(url).unwrap();
+        unsafe {
+            BinaryenRustModuleOptionsSetSourceMapUrl(self.ptr, url.as_ptr());
+        }
+        self
+    }
+
     /// Configures how much stack is initially allocated for the module. 1MB is
     /// probably good enough for now.
     pub fn stack(&mut self, amt: u64) -> &mut Self {
@@ -130,6 +148,8 @@ extern {
         -> *mut BinaryenRustModule;
     fn BinaryenRustModulePtr(module: *const BinaryenRustModule) -> *const u8;
     fn BinaryenRustModuleLen(module: *const BinaryenRustModule) -> usize;
+    fn BinaryenRustModuleSourceMapPtr(module: *const BinaryenRustModule) -> *const u8;
+    fn BinaryenRustModuleSourceMapLen(module: *const BinaryenRustModule) -> usize;
     fn BinaryenRustModuleFree(module: *mut BinaryenRustModule);
 
     fn BinaryenRustModuleOptionsCreate()
@@ -138,6 +158,8 @@ extern {
                                              debuginfo: bool);
     fn BinaryenRustModuleOptionsSetStart(module: *mut BinaryenRustModuleOptions,
                                          start: *const libc::c_char);
+    fn BinaryenRustModuleOptionsSetSourceMapUrl(module: *mut BinaryenRustModuleOptions,
+                                                sourceMapUrl: *const libc::c_char);
     fn BinaryenRustModuleOptionsSetStackAllocation(
         module: *mut BinaryenRustModuleOptions,
         stack: u64,

@@ -58,6 +58,7 @@
 #![feature(macro_vis_matcher)]
 #![feature(match_default_bindings)]
 #![feature(never_type)]
+#![feature(non_exhaustive)]
 #![feature(nonzero)]
 #![feature(quote)]
 #![feature(refcell_replace_swap)]

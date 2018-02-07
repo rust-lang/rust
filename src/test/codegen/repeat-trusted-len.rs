@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::ops::Add;
+// compile-flags: -O
+// ignore-tidy-linelength
 
-fn main() {
-    <i32 as Add<u32>>::add(1, 2);
-    //~^ ERROR cannot add `u32` to `i32`
-    <i32 as Add<i32>>::add(1u32, 2);
-    //~^ ERROR mismatched types
-    <i32 as Add<i32>>::add(1, 2u32);
-    //~^ ERROR mismatched types
+#![crate_type = "lib"]
+
+use std::iter;
+
+// CHECK-LABEL: @repeat_take_collect
+#[no_mangle]
+pub fn repeat_take_collect() -> Vec<u8> {
+// CHECK: call void @llvm.memset.p0i8
+    iter::repeat(42).take(100000).collect()
 }

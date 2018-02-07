@@ -2322,6 +2322,9 @@ impl<I> ExactSizeIterator for Take<I> where I: ExactSizeIterator {}
 #[unstable(feature = "fused", issue = "35602")]
 impl<I> FusedIterator for Take<I> where I: FusedIterator {}
 
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<I: TrustedLen> TrustedLen for Take<I> {}
+
 /// An iterator to maintain state while iterating another iterator.
 ///
 /// This `struct` is created by the [`scan`] method on [`Iterator`]. See its

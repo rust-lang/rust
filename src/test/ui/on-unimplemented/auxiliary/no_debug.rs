@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -7,14 +7,8 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+// ignore-tidy-linelength
 
-use std::ops::Add;
+#![crate_type = "lib"]
 
-fn main() {
-    <i32 as Add<u32>>::add(1, 2);
-    //~^ ERROR cannot add `u32` to `i32`
-    <i32 as Add<i32>>::add(1u32, 2);
-    //~^ ERROR mismatched types
-    <i32 as Add<i32>>::add(1, 2u32);
-    //~^ ERROR mismatched types
-}
+pub struct Bar;

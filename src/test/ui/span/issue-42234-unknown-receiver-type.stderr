@@ -1,0 +1,15 @@
+error[E0619]: the type of this value must be known in this context
+  --> $DIR/issue-42234-unknown-receiver-type.rs:17:5
+   |
+17 |     x.unwrap().method_that_could_exist_on_some_type();
+   |     ^^^^^^^^^^
+
+error[E0619]: the type of this value must be known in this context
+  --> $DIR/issue-42234-unknown-receiver-type.rs:22:5
+   |
+22 | /     data.iter() //~ ERROR 22:5: 23:20: the type of this value must be known in this context
+23 | |         .sum::<_>()
+   | |___________________^
+
+error: aborting due to 2 previous errors
+
