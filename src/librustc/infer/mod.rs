@@ -853,7 +853,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn next_ty_var_id(&self, diverging: bool, origin: TypeVariableOrigin) -> TyVid {
         self.type_variables
             .borrow_mut()
-            .new_var(diverging, origin)
+            .new_var(self.universe, diverging, origin)
     }
 
     pub fn next_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
@@ -921,7 +921,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             -> Ty<'tcx> {
         let ty_var_id = self.type_variables
                             .borrow_mut()
-                            .new_var(false,
+                            .new_var(self.universe,
+                                     false,
                                      TypeVariableOrigin::TypeParameterDefinition(span, def.name));
 
         self.tcx.mk_var(ty_var_id)
