@@ -1585,6 +1585,10 @@ impl MirPass for TypeckMir {
         let id = tcx.hir.as_local_node_id(def_id).unwrap();
         debug!("run_pass: {:?}", def_id);
 
+        if tcx.sess.nll() {
+            return;
+        }
+
         if tcx.sess.err_count() > 0 {
             // compiling a broken program can obviously result in a
             // broken MIR, so try not to report duplicate errors.
