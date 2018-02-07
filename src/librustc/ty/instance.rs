@@ -47,7 +47,7 @@ pub enum InstanceDef<'tcx> {
     ///`<T as Clone>::clone` shim for Copy types
     ///
     /// The DefId is the DefId of the Clone::clone function
-    CloneCopyShim(DefId, Ty<'tcx>),
+    CloneCopyShim(DefId),
     ///`<T as Clone>::clone` shim for arrays and tuples
     ///
     /// The DefId is the DefId of the Clone::clone function
@@ -78,7 +78,7 @@ impl<'tcx> InstanceDef<'tcx> {
             InstanceDef::Intrinsic(def_id, ) |
             InstanceDef::ClosureOnceShim { call_once: def_id } |
             InstanceDef::DropGlue(def_id, _) |
-            InstanceDef::CloneCopyShim(def_id, _) |
+            InstanceDef::CloneCopyShim(def_id) |
             InstanceDef::CloneStructuralShim(def_id, _) |
             InstanceDef::CloneNominalShim(def_id, _) => def_id
         }
@@ -146,7 +146,9 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
             InstanceDef::DropGlue(_, ty) => {
                 write!(f, " - shim({:?})", ty)
             }
-            InstanceDef::CloneCopyShim(_, ty) |
+            InstanceDef::CloneCopyShim(def) => {
+                write!(f, " - shim({:?})", def)
+            }
             InstanceDef::CloneStructuralShim(_, ty) |
             InstanceDef::CloneNominalShim(_, ty) => {
                 write!(f, " - shim({:?})", ty)
@@ -311,7 +313,7 @@ fn resolve_associated_item<'a, 'tcx>(
                     let self_ty = trait_ref.self_ty();
                     match self_ty.sty {
                         _ if !self_ty.moves_by_default(tcx, param_env, DUMMY_SP) => {
-                            ty::InstanceDef::CloneCopyShim(def_id, self_ty)
+                            ty::InstanceDef::CloneCopyShim(def_id)
                         }
                         ty::TyArray(..) => ty::InstanceDef::CloneStructuralShim(def_id, self_ty),
                         ty::TyTuple(..) => ty::InstanceDef::CloneStructuralShim(def_id, self_ty),
