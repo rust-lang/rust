@@ -403,13 +403,14 @@ portability guarantees (like `std::os` and unlike the rest of `std`). APIs
 present on one platform may not be present on another.
 
 The contents of the `vendor` modules are defined by, well, vendors! For example
-Intel has an [intrinsics guide][intr-guide] which will serve as a guideline for
+Intel has an [intrinsics guide][intel-intr] which will serve as a guideline for
 all contents in the `vendor` module itself. The standard library will not
 deviate in naming or type signature of any intrinsic defined by a vendor.
 
 For example most Intel intrinsics start with `_mm_` or `_mm256_` for 128 and
 256-bit registers. While perhaps unergonomic, we'll be sticking to what Intel
-says. Note that all intrinsics will also be `unsafe`, according to [RFC 2045].
+says. Note that all intrinsics will also be `unsafe`, according to [RFC
+2045][rfc2045].
 
 Function signatures defined by vendors are typically defined in terms of C
 types. In Rust, however, those aren't always available! Instead the intrinsics
@@ -490,16 +491,16 @@ the target features enabled for a function everything should agree on how packed
 SIMD arguments are passed across boundaries and whatnot.
 
 Again though, note that this section is largely an implementation detail of SIMD
-in Rust today, though it's enabling the usage Effortsfectively without a lot of
-codegen errors popping up all over the place.
+in Rust today, though it's enabling usage without a lot of codegen errors
+popping up all over the place.
 
 ## Intrinsics in `std::vendor` and constant arguments
 
 There are a number of intrinsics on x86 (and other) platforms that require their
 arguments to be constants rather than decided at runtime. For example
-[`_mm_insert_pi16`] requires its third argument to be a constant value where
-only the lowest two bits are used. The Rust type system, however, does not
-currently have a stable way of expressing this information.
+[`_mm_insert_pi16`][_mm_insert_pi16] requires its third argument to be a
+constant value where only the lowest two bits are used. The Rust type system,
+however, does not currently have a stable way of expressing this information.
 
 Eventually we will likely have some form of `const` arguments or `const`
 machinery to guarantee that these functions are called and monomorphized with
@@ -510,6 +511,7 @@ being invoked with non-constant arguments. Prototyped in [#48018][const-pr] the
 provide this guarantee.
 
 [const-pr]: https://github.com/rust-lang/rust/pull/48018
+[_mm_insert_pi16]: https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=insert_pi&expand=2973
 
 It's hoped that this restriction will allow `stdsimd` to be forward compatible
 with a future const-powered world of Rust but in the meantime not otherwise
@@ -587,7 +589,7 @@ difficult and costly.
 
 Over the years quite a few iterations have happened for SIMD in Rust. This RFC
 draws from as many of those as it can and attempts to strike a balance between
-exposing functionality whiel still allowing us to implement everything in a
+exposing functionality while still allowing us to implement everything in a
 stable fashion for years to come (and without blocking us from updating LLVM,
 for example). Despite this there's a few alternatives we could do as well.
 
