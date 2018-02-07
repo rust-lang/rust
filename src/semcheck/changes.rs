@@ -674,10 +674,14 @@ impl<'tcx> ChangeSet<'tcx> {
     /// Format the contents of a change set for user output.
     pub fn output(&self, session: &Session, version: &str, verbose: bool) {
         if let Ok(mut new_version) = Version::parse(version) {
-            match self.max {
-                Patch => new_version.increment_patch(),
-                NonBreaking | TechnicallyBreaking => new_version.increment_minor(),
-                Breaking => new_version.increment_major(),
+            if new_version.major == 0 {
+                new_version.increment_patch();
+            } else {
+                match self.max {
+                    Patch => new_version.increment_patch(),
+                    NonBreaking | TechnicallyBreaking => new_version.increment_minor(),
+                    Breaking => new_version.increment_major(),
+                }
             }
 
             println!("version bump: {} -> ({}) -> {}", version, self.max, new_version);
