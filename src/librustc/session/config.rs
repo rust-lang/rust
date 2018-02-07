@@ -112,6 +112,31 @@ pub enum OutputType {
     DepInfo,
 }
 
+/// The epoch of the compiler (RFC 2052)
+#[derive(Clone, Copy, Hash, PartialOrd, Ord, Eq, PartialEq)]
+#[non_exhaustive]
+pub enum Epoch {
+    // epochs must be kept in order, newest to oldest
+
+    /// The 2015 epoch
+    Epoch2015,
+    /// The 2018 epoch
+    Epoch2018,
+
+    // when adding new epochs, be sure to update:
+    //
+    // - the list in the `parse_epoch` static
+    // - the match in the `parse_epoch` function
+    // - add a `rust_####()` function to the session
+    // - update the enum in Cargo's sources as well
+    //
+    // When -Zepoch becomes --epoch, there will
+    // also be a check for the epoch being nightly-only
+    // somewhere. That will need to be updated
+    // whenever we're stabilizing/introducing a new epoch
+    // as well as changing the default Cargo template.
+}
+
 impl_stable_hash_for!(enum self::OutputType {
     Bitcode,
     Assembly,
@@ -783,11 +808,13 @@ macro_rules! options {
             Some("`string` or `string=string`");
         pub const parse_lto: Option<&'static str> =
             Some("one of `thin`, `fat`, or omitted");
+        pub const parse_epoch: Option<&'static str> =
+            Some("one of: `2015`, `2018`");
     }
 
     #[allow(dead_code)]
     mod $mod_set {
-        use super::{$struct_name, Passes, SomePasses, AllPasses, Sanitizer, Lto};
+        use super::{$struct_name, Passes, SomePasses, AllPasses, Sanitizer, Lto, Epoch};
         use rustc_back::{LinkerFlavor, PanicStrategy, RelroLevel};
         use std::path::PathBuf;
 
@@ -989,6 +1016,15 @@ macro_rules! options {
                 Some("fat") => Lto::Fat,
                 Some(_) => return false,
             };
+            true
+        }
+
+        fn parse_epoch(slot: &mut Epoch, v: Option<&str>) -> bool {
+            match v {
+                Some("2015") => *slot = Epoch::Epoch2015,
+                Some("2018") => *slot = Epoch::Epoch2018,
+                _ => return false,
+            }
             true
         }
     }
@@ -1278,6 +1314,10 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         `everybody_loops` (all function bodies replaced with `loop {}`),
         `hir` (the HIR), `hir,identified`, or
         `hir,typed` (HIR with types for each node)."),
+    epoch: Epoch = (Epoch::Epoch2015, parse_epoch, [TRACKED],
+        "The epoch to build Rust with. Newer epochs may include features
+         that require breaking changes. The default epoch is 2015 (the first
+         epoch). Crates compiled with different epochs can be linked together."),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -2069,7 +2109,7 @@ mod dep_tracking {
     use std::path::PathBuf;
     use std::collections::hash_map::DefaultHasher;
     use super::{Passes, CrateType, OptLevel, DebugInfoLevel, Lto,
-                OutputTypes, Externs, ErrorOutputType, Sanitizer};
+                OutputTypes, Externs, ErrorOutputType, Sanitizer, Epoch};
     use syntax::feature_gate::UnstableFeatures;
     use rustc_back::{PanicStrategy, RelroLevel};
 
@@ -2131,6 +2171,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(cstore::NativeLibraryKind);
     impl_dep_tracking_hash_via_hash!(Sanitizer);
     impl_dep_tracking_hash_via_hash!(Option<Sanitizer>);
+    impl_dep_tracking_hash_via_hash!(Epoch);
 
     impl_dep_tracking_hash_for_sortable_vec_of!(String);
     impl_dep_tracking_hash_for_sortable_vec_of!(PathBuf);

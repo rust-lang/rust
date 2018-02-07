@@ -19,7 +19,7 @@ use lint;
 use middle::allocator::AllocatorKind;
 use middle::dependency_format;
 use session::search_paths::PathKind;
-use session::config::{BorrowckMode, DebugInfoLevel, OutputType};
+use session::config::{BorrowckMode, DebugInfoLevel, OutputType, Epoch};
 use ty::tls;
 use util::nodemap::{FxHashMap, FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
@@ -863,6 +863,11 @@ impl Session {
 
     pub fn teach(&self, code: &DiagnosticId) -> bool {
         self.opts.debugging_opts.teach && !self.parse_sess.span_diagnostic.code_emitted(code)
+    }
+
+    /// Are we allowed to use features from the Rust 2018 epoch?
+    pub fn rust_2018(&self) -> bool {
+        self.opts.debugging_opts.epoch >= Epoch::Epoch2018
     }
 }
 
