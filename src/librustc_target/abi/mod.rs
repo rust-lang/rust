@@ -14,7 +14,7 @@ pub use self::Primitive::*;
 use spec::Target;
 
 use std::cmp;
-use std::ops::{Add, Sub, Mul, AddAssign, RangeInclusive};
+use std::ops::{Add, Deref, Sub, Mul, AddAssign, RangeInclusive};
 
 pub mod call;
 
@@ -757,9 +757,67 @@ impl LayoutDetails {
     }
 }
 
+/// The details of the layout of a type, alongside the type itself.
+/// Provides various type traversal APIs (e.g. recursing into fields).
+///
+/// Note that the details are NOT guaranteed to always be identical
+/// to those obtained from `layout_of(ty)`, as we need to produce
+/// layouts for which Rust types do not exist, such as enum variants
+/// or synthetic fields of enums (i.e. discriminants) and fat pointers.
+#[derive(Copy, Clone, Debug)]
+pub struct TyLayout<'a, Ty> {
+    pub ty: Ty,
+    pub details: &'a LayoutDetails
+}
+
+impl<'a, Ty> Deref for TyLayout<'a, Ty> {
+    type Target = &'a LayoutDetails;
+    fn deref(&self) -> &&'a LayoutDetails {
+        &self.details
+    }
+}
+
 pub trait LayoutOf {
     type Ty;
     type TyLayout;
 
     fn layout_of(self, ty: Self::Ty) -> Self::TyLayout;
+}
+
+pub trait TyLayoutMethods<'a, C: LayoutOf>: Sized {
+    fn for_variant(this: TyLayout<'a, Self>, cx: C, variant_index: usize) -> TyLayout<'a, Self>;
+    fn field(this: TyLayout<'a, Self>, cx: C, i: usize) -> C::TyLayout;
+}
+
+impl<'a, Ty> TyLayout<'a, Ty> {
+    pub fn for_variant<C>(self, cx: C, variant_index: usize) -> Self
+    where Ty: TyLayoutMethods<'a, C>, C: LayoutOf {
+        Ty::for_variant(self, cx, variant_index)
+    }
+    pub fn field<C>(self, cx: C, i: usize) -> C::TyLayout 
+    where Ty: TyLayoutMethods<'a, C>, C: LayoutOf {
+        Ty::field(self, cx, i)
+    }
+}
+
+impl<'a, Ty> TyLayout<'a, Ty> {
+    /// Returns true if the layout corresponds to an unsized type.
+    pub fn is_unsized(&self) -> bool {
+        self.abi.is_unsized()
+    }
+
+    /// Returns true if the type is a ZST and not unsized.
+    pub fn is_zst(&self) -> bool {
+        match self.abi {
+            Abi::Uninhabited => true,
+            Abi::Scalar(_) |
+            Abi::ScalarPair(..) |
+            Abi::Vector { .. } => false,
+            Abi::Aggregate { sized } => sized && self.size.bytes() == 0
+        }
+    }
+
+    pub fn size_and_align(&self) -> (Size, Align) {
+        (self.size, self.align)
+    }
 }

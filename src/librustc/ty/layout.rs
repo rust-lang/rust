@@ -19,7 +19,7 @@ use std::cmp;
 use std::fmt;
 use std::i128;
 use std::mem;
-use std::ops::{Deref, RangeInclusive};
+use std::ops::RangeInclusive;
 
 use ich::StableHashingContext;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
@@ -801,9 +801,9 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
                     if let Some(i) = dataful_variant {
                         let count = (niche_variants.end - niche_variants.start + 1) as u128;
-                        for (field_index, field) in variants[i].iter().enumerate() {
+                        for (field_index, &field) in variants[i].iter().enumerate() {
                             let (offset, niche, niche_start) =
-                                match field.find_niche(self, count)? {
+                                match self.find_niche(field, count)? {
                                     Some(niche) => niche,
                                     None => continue
                                 };
@@ -1300,26 +1300,6 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
     }
 }
 
-/// The details of the layout of a type, alongside the type itself.
-/// Provides various type traversal APIs (e.g. recursing into fields).
-///
-/// Note that the details are NOT guaranteed to always be identical
-/// to those obtained from `layout_of(ty)`, as we need to produce
-/// layouts for which Rust types do not exist, such as enum variants
-/// or synthetic fields of enums (i.e. discriminants) and fat pointers.
-#[derive(Copy, Clone, Debug)]
-pub struct TyLayout<'tcx> {
-    pub ty: Ty<'tcx>,
-    details: &'tcx LayoutDetails
-}
-
-impl<'tcx> Deref for TyLayout<'tcx> {
-    type Target = &'tcx LayoutDetails;
-    fn deref(&self) -> &&'tcx LayoutDetails {
-        &self.details
-    }
-}
-
 pub trait HasTyCtxt<'tcx>: HasDataLayout {
     fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx>;
 }
@@ -1370,6 +1350,8 @@ impl<T, E> MaybeResult<T> for Result<T, E> {
         self.map(f)
     }
 }
+
+pub type TyLayout<'tcx> = ::rustc_target::abi::TyLayout<'tcx, Ty<'tcx>>;
 
 impl<'a, 'tcx> LayoutOf for LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
     type Ty = Ty<'tcx>;
@@ -1458,22 +1440,22 @@ impl<'a, 'tcx> ty::maps::TyCtxtAt<'a, 'tcx, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TyLayout<'tcx> {
-    pub fn for_variant<C>(&self, cx: C, variant_index: usize) -> Self
-        where C: LayoutOf<Ty = Ty<'tcx>> + HasTyCtxt<'tcx>,
-              C::TyLayout: MaybeResult<TyLayout<'tcx>>
-    {
-        let details = match self.variants {
-            Variants::Single { index } if index == variant_index => self.details,
+impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx> 
+    where C: LayoutOf<Ty = Ty<'tcx>> + HasTyCtxt<'tcx>,
+          C::TyLayout: MaybeResult<TyLayout<'tcx>>
+{
+    fn for_variant(this: TyLayout<'tcx>, cx: C, variant_index: usize) -> TyLayout<'tcx> {
+        let details = match this.variants {
+            Variants::Single { index } if index == variant_index => this.details,
 
             Variants::Single { index } => {
                 // Deny calling for_variant more than once for non-Single enums.
-                cx.layout_of(self.ty).map_same(|layout| {
+                cx.layout_of(this.ty).map_same(|layout| {
                     assert_eq!(layout.variants, Variants::Single { index });
                     layout
                 });
 
-                let fields = match self.ty.sty {
+                let fields = match this.ty.sty {
                     ty::TyAdt(def, _) => def.variants[variant_index].fields.len(),
                     _ => bug!()
                 };
@@ -1491,17 +1473,14 @@ impl<'a, 'tcx> TyLayout<'tcx> {
         assert_eq!(details.variants, Variants::Single { index: variant_index });
 
         TyLayout {
-            ty: self.ty,
+            ty: this.ty,
             details
         }
     }
 
-    pub fn field<C>(&self, cx: C, i: usize) -> C::TyLayout
-        where C: LayoutOf<Ty = Ty<'tcx>> + HasTyCtxt<'tcx>,
-              C::TyLayout: MaybeResult<TyLayout<'tcx>>
-    {
+    fn field(this: TyLayout<'tcx>, cx: C, i: usize) -> C::TyLayout {
         let tcx = cx.tcx();
-        cx.layout_of(match self.ty.sty {
+        cx.layout_of(match this.ty.sty {
             ty::TyBool |
             ty::TyChar |
             ty::TyInt(_) |
@@ -1513,7 +1492,7 @@ impl<'a, 'tcx> TyLayout<'tcx> {
             ty::TyGeneratorWitness(..) |
             ty::TyForeign(..) |
             ty::TyDynamic(..) => {
-                bug!("TyLayout::field_type({:?}): not applicable", self)
+                bug!("TyLayout::field_type({:?}): not applicable", this)
             }
 
             // Potentially-fat pointers.
@@ -1527,13 +1506,13 @@ impl<'a, 'tcx> TyLayout<'tcx> {
                 // as the `Abi` or `FieldPlacement` is checked by users.
                 if i == 0 {
                     let nil = tcx.mk_nil();
-                    let ptr_ty = if self.ty.is_unsafe_ptr() {
+                    let ptr_ty = if this.ty.is_unsafe_ptr() {
                         tcx.mk_mut_ptr(nil)
                     } else {
                         tcx.mk_mut_ref(tcx.types.re_static, nil)
                     };
                     return cx.layout_of(ptr_ty).map_same(|mut ptr_layout| {
-                        ptr_layout.ty = self.ty;
+                        ptr_layout.ty = this.ty;
                         ptr_layout
                     });
                 }
@@ -1546,7 +1525,7 @@ impl<'a, 'tcx> TyLayout<'tcx> {
                         // the correct number of vtables slots.
                         tcx.mk_imm_ref(tcx.types.re_static, tcx.mk_nil())
                     }
-                    _ => bug!("TyLayout::field_type({:?}): not applicable", self)
+                    _ => bug!("TyLayout::field_type({:?}): not applicable", this)
                 }
             }
 
@@ -1568,12 +1547,12 @@ impl<'a, 'tcx> TyLayout<'tcx> {
 
             // SIMD vector types.
             ty::TyAdt(def, ..) if def.repr.simd() => {
-                self.ty.simd_type(tcx)
+                this.ty.simd_type(tcx)
             }
 
             // ADTs.
             ty::TyAdt(def, substs) => {
-                match self.variants {
+                match this.variants {
                     Variants::Single { index } => {
                         def.variants[index].fields[i].ty(tcx, substs)
                     }
@@ -1593,45 +1572,25 @@ impl<'a, 'tcx> TyLayout<'tcx> {
 
             ty::TyProjection(_) | ty::TyAnon(..) | ty::TyParam(_) |
             ty::TyInfer(_) | ty::TyError => {
-                bug!("TyLayout::field_type: unexpected type `{}`", self.ty)
+                bug!("TyLayout::field_type: unexpected type `{}`", this.ty)
             }
         })
     }
+}
 
-    /// Returns true if the layout corresponds to an unsized type.
-    pub fn is_unsized(&self) -> bool {
-        self.abi.is_unsized()
-    }
-
-    /// Returns true if the type is a ZST and not unsized.
-    pub fn is_zst(&self) -> bool {
-        match self.abi {
-            Abi::Uninhabited => true,
-            Abi::Scalar(_) |
-            Abi::ScalarPair(..) |
-            Abi::Vector { .. } => false,
-            Abi::Aggregate { sized } => sized && self.size.bytes() == 0
-        }
-    }
-
-    pub fn size_and_align(&self) -> (Size, Align) {
-        (self.size, self.align)
-    }
-
+impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
     /// Find the offset of a niche leaf field, starting from
     /// the given type and recursing through aggregates, which
     /// has at least `count` consecutive invalid values.
     /// The tuple is `(offset, scalar, niche_value)`.
     // FIXME(eddyb) traverse already optimized enums.
-    fn find_niche<C>(&self, cx: C, count: u128)
+    fn find_niche(self, layout: TyLayout<'tcx>, count: u128)
         -> Result<Option<(Size, Scalar, u128)>, LayoutError<'tcx>>
-        where C: LayoutOf<Ty = Ty<'tcx>, TyLayout = Result<Self, LayoutError<'tcx>>> +
-                 HasTyCtxt<'tcx>
     {
         let scalar_component = |scalar: &Scalar, offset| {
             let Scalar { value, valid_range: ref v } = *scalar;
 
-            let bits = value.size(cx).bits();
+            let bits = value.size(self).bits();
             assert!(bits <= 128);
             let max_value = !0u128 >> (128 - bits);
 
@@ -1658,17 +1617,17 @@ impl<'a, 'tcx> TyLayout<'tcx> {
         // Locals variables which live across yields are stored
         // in the generator type as fields. These may be uninitialized
         // so we don't look for niches there.
-        if let ty::TyGenerator(..) = self.ty.sty {
+        if let ty::TyGenerator(..) = layout.ty.sty {
             return Ok(None);
         }
 
-        match self.abi {
+        match layout.abi {
             Abi::Scalar(ref scalar) => {
                 return Ok(scalar_component(scalar, Size::from_bytes(0)));
             }
             Abi::ScalarPair(ref a, ref b) => {
                 return Ok(scalar_component(a, Size::from_bytes(0)).or_else(|| {
-                    scalar_component(b, a.value.size(cx).abi_align(b.value.align(cx)))
+                    scalar_component(b, a.value.size(self).abi_align(b.value.align(self)))
                 }));
             }
             Abi::Vector { ref element, .. } => {
@@ -1678,22 +1637,22 @@ impl<'a, 'tcx> TyLayout<'tcx> {
         }
 
         // Perhaps one of the fields is non-zero, let's recurse and find out.
-        if let FieldPlacement::Union(_) = self.fields {
+        if let FieldPlacement::Union(_) = layout.fields {
             // Only Rust enums have safe-to-inspect fields
             // (a discriminant), other unions are unsafe.
-            if let Variants::Single { .. } = self.variants {
+            if let Variants::Single { .. } = layout.variants {
                 return Ok(None);
             }
         }
-        if let FieldPlacement::Array { .. } = self.fields {
-            if self.fields.count() > 0 {
-                return self.field(cx, 0)?.find_niche(cx, count);
+        if let FieldPlacement::Array { .. } = layout.fields {
+            if layout.fields.count() > 0 {
+                return self.find_niche(layout.field(self, 0)?, count);
             }
         }
-        for i in 0..self.fields.count() {
-            let r = self.field(cx, i)?.find_niche(cx, count)?;
+        for i in 0..layout.fields.count() {
+            let r = self.find_niche(layout.field(self, i)?, count)?;
             if let Some((offset, scalar, niche_value)) = r {
-                let offset = self.fields.offset(i) + offset;
+                let offset = layout.fields.offset(i) + offset;
                 return Ok(Some((offset, scalar, niche_value)));
             }
         }
