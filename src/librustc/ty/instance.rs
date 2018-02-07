@@ -10,7 +10,7 @@
 
 use hir::def_id::DefId;
 use ty::{self, Ty, TypeFoldable, Substs, TyCtxt};
-use ty::subst::{Kind, Subst};
+use ty::subst::Kind;
 use traits;
 use syntax::abi::Abi;
 use util::ppaux;

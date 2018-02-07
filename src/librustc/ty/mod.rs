@@ -2606,8 +2606,31 @@ fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                        def_id: DefId)
                        -> ParamEnv<'tcx> {
     // Compute the bounds on Self and the type parameters.
+    let mut predicates = tcx.predicates_of(def_id);
+    match tcx.hir.as_local_node_id(def_id)
+           .and_then(|node_id| tcx.hir.find(node_id))
+           .and_then(|item| {
+        match item {
+            hir::map::NodeItem(..) => {
+                if tcx.impl_is_default(def_id) {
+                    tcx.impl_trait_ref(def_id)
+                } else {
+                    None
+                }
+            }
+            _ => None
+        }
+    }) {
+        Some(trait_ref) =>
+            predicates.predicates
+                      .push(
+                trait_ref.to_poly_trait_ref()
+                         .to_predicate()
+            ),
+        None => {}
+    }
 
-    let bounds = tcx.predicates_of(def_id).instantiate_identity(tcx);
+    let bounds = predicates.instantiate_identity(tcx);
     let predicates = bounds.predicates;
 
     // Finally, we have to normalize the bounds in the environment, in

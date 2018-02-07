@@ -1296,12 +1296,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             return false;
         }
 
-        // Using local cache if the infcx can emit `default impls`
-        if self.infcx.emit_defaul_impl_candidates.get() {
-            return false;
-        }
-
-
         // Otherwise, we can use the global cache.
         true
     }
@@ -1716,11 +1710,30 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     {
         debug!("assemble_candidates_from_impls(obligation={:?})", obligation);
 
+        // Check if default impls should be emitted.
+        // default impls are emitted if the param_env is refered to a default impl.
+        // The param_env should contain a Self: Trait<..> predicate in those cases
+        let self_trait_is_present:Vec<&ty::Predicate<'tcx>> =
+                    obligation.param_env
+                               .caller_bounds
+                               .iter()
+                               .filter(|predicate| {
+                                    match **predicate {
+                                         ty::Predicate::Trait(ref trait_predicate) => {
+                                             trait_predicate.def_id() ==
+                                                 obligation.predicate.def_id() &&
+                                             obligation.predicate.0.trait_ref.self_ty() ==
+                                                 trait_predicate.skip_binder().self_ty()
+                                         }
+                                         _ => false
+                                    }
+                               }).collect::<Vec<&ty::Predicate<'tcx>>>();
+
         self.tcx().for_each_relevant_impl(
             obligation.predicate.def_id(),
             obligation.predicate.0.trait_ref.self_ty(),
             |impl_def_id| {
-                if self.infcx().emit_defaul_impl_candidates.get() ||
+                if self_trait_is_present.len() > 0 ||
                    !self.tcx().impl_is_default(impl_def_id) {
                     self.probe(|this, snapshot| { /* [1] */
                         match this.match_impl(impl_def_id, obligation, snapshot) {
