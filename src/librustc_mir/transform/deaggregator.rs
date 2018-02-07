@@ -39,11 +39,6 @@ impl MirPass for Deaggregator {
             }
         }
 
-        // We only run when the MIR optimization level is > 2.
-        if tcx.sess.opts.debugging_opts.mir_opt_level <= 2 {
-            return;
-        }
-
         let can_deaggregate = |statement: &Statement| {
             if let StatementKind::Assign(_, ref rhs) = statement.kind {
                 if let Rvalue::Aggregate(..) = *rhs {
