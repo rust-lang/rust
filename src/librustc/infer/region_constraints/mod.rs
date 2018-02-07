@@ -25,9 +25,7 @@ use ty::ReStatic;
 use ty::{BrFresh, ReLateBound, ReSkolemized, ReVar};
 
 use std::collections::BTreeMap;
-use std::fmt;
-use std::mem;
-use std::u32;
+use std::{cmp, fmt, mem, u32};
 
 mod taint;
 
@@ -233,6 +231,7 @@ type CombineMap<'tcx> = FxHashMap<TwoRegions<'tcx>, RegionVid>;
 #[derive(Debug, Clone, Copy)]
 pub struct RegionVariableInfo {
     pub origin: RegionVariableOrigin,
+    pub universe: ty::UniverseIndex,
 }
 
 pub struct RegionSnapshot {
@@ -438,9 +437,12 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         }
     }
 
-    pub fn new_region_var(&mut self, origin: RegionVariableOrigin) -> RegionVid {
+    pub fn new_region_var(&mut self,
+                          universe: ty::UniverseIndex,
+                          origin: RegionVariableOrigin) -> RegionVid {
         let vid = self.var_infos.push(RegionVariableInfo {
             origin,
+            universe,
         });
 
         let u_vid = self.unification_table
@@ -455,6 +457,11 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
             origin
         );
         return vid;
+    }
+
+    /// Returns the universe for the given variable.
+    pub fn var_universe(&self, vid: RegionVid) -> ty::UniverseIndex {
+        self.var_infos[vid].universe
     }
 
     /// Returns the origin for the given variable.
@@ -812,7 +819,10 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         if let Some(&c) = self.combine_map(t).get(&vars) {
             return tcx.mk_region(ReVar(c));
         }
-        let c = self.new_region_var(MiscVariable(origin.span()));
+        let a_universe = self.universe(a);
+        let b_universe = self.universe(b);
+        let c_universe = cmp::max(a_universe, b_universe);
+        let c = self.new_region_var(c_universe, MiscVariable(origin.span()));
         self.combine_map(t).insert(vars, c);
         if self.in_snapshot() {
             self.undo_log.push(AddCombination(t, vars));
@@ -826,6 +836,22 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         }
         debug!("combine_vars() c={:?}", c);
         new_r
+    }
+
+    fn universe(&self, region: Region<'tcx>) -> ty::UniverseIndex {
+        match *region {
+            ty::ReScope(..) |
+            ty::ReStatic |
+            ty::ReEmpty |
+            ty::ReErased |
+            ty::ReFree(..) |
+            ty::ReEarlyBound(..) => ty::UniverseIndex::ROOT,
+            ty::ReSkolemized(universe, _) => universe,
+            ty::ReClosureBound(vid) |
+            ty::ReVar(vid) => self.var_universe(vid),
+            ty::ReLateBound(..) =>
+                bug!("universe(): encountered bound region {:?}", region),
+        }
     }
 
     pub fn vars_created_since_snapshot(&self, mark: &RegionSnapshot) -> Vec<RegionVid> {

@@ -884,7 +884,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ///   during diagnostics / error-reporting.
     pub fn next_region_var(&self, origin: RegionVariableOrigin)
                            -> ty::Region<'tcx> {
-        self.tcx.mk_region(ty::ReVar(self.borrow_region_constraints().new_region_var(origin)))
+        let region_var = self.borrow_region_constraints()
+            .new_region_var(self.universe, origin);
+        self.tcx.mk_region(ty::ReVar(region_var))
     }
 
     /// Number of region variables created so far.
