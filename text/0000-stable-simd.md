@@ -119,7 +119,7 @@ to the appropriate function, and only `foo_avx2` is using our `%ymmN` registers!
 
 [asm1]: https://play.rust-lang.org/?gist=36b253cd70840ea2ce6aad90418ec58b&version=nightly&mode=release
 [asm2]: https://play.rust-lang.org/?gist=a31bdd3ce2b9a60e3317ccafb0133490&version=nightly&mode=release
-[asm3]: https://play.rust-lang.org/?gist=111fe75d944aaec409203a3b72e7d742&version=undefined
+[asm3]: https://play.rust-lang.org/?gist=5083f8af2563889a49fe0a3219a1f236&version=nightly&mode=release
 [rfc2045]: https://github.com/rust-lang/rfcs/blob/master/text/2045-target-feature.md
 
 Ok great! At this point we've seen how to enable CPU features for
