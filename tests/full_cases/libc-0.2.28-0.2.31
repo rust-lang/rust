@@ -1,4 +1,4 @@
-version bump: 0.2.28 -> (breaking) -> 1.0.0
+version bump: 0.2.28 -> (breaking) -> 0.2.29
 warning: path changes to `INADDR_LOOPBACK`
    --> libc-0.2.31/src/unix/mod.rs:227:1
     |
