@@ -1333,6 +1333,18 @@ fn test_range_inclusive_exhaustion() {
     assert_eq!(r, 1..=0);
 
     let mut r = 10..=12;
+    assert_eq!(r.next(), Some(10));
+    assert_eq!(r.next(), Some(11));
+    assert_eq!(r.next(), Some(12));
+    assert_eq!(r, 1..=0);
+
+    let mut r = 10..=12;
+    assert_eq!(r.next_back(), Some(12));
+    assert_eq!(r.next_back(), Some(11));
+    assert_eq!(r.next_back(), Some(10));
+    assert_eq!(r, 1..=0);
+
+    let mut r = 10..=12;
     assert_eq!(r.nth(2), Some(12));
     assert_eq!(r, 1..=0);
 
@@ -1340,6 +1352,13 @@ fn test_range_inclusive_exhaustion() {
     assert_eq!(r.nth(5), None);
     assert_eq!(r, 1..=0);
 
+    let mut r = 100..=10;
+    assert_eq!(r.next(), None);
+    assert_eq!(r, 100..=10);
+
+    let mut r = 100..=10;
+    assert_eq!(r.next_back(), None);
+    assert_eq!(r, 100..=10);
 }
 
 #[test]
