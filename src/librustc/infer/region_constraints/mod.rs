@@ -30,7 +30,7 @@ use std::{cmp, fmt, mem, u32};
 mod taint;
 
 pub struct RegionConstraintCollector<'tcx> {
-    /// For each `RegionVid`, the corresponding `RegionVariableOrigin`.
+    /// For each `RegionVid`, the corresponding `RegionVariableInfo`.
     var_infos: IndexVec<RegionVid, RegionVariableInfo>,
 
     data: RegionConstraintData<'tcx>,
@@ -817,8 +817,8 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         if let Some(&c) = self.combine_map(t).get(&vars) {
             return tcx.mk_region(ReVar(c));
         }
-        let a_universe = self.universe(a);
-        let b_universe = self.universe(b);
+        let a_universe = region_universe(&self.var_infos, a);
+        let b_universe = region_universe(&self.var_infos, b);
         let c_universe = cmp::max(a_universe, b_universe);
         let c = self.new_region_var(c_universe, MiscVariable(origin.span()));
         self.combine_map(t).insert(vars, c);
@@ -834,22 +834,6 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         }
         debug!("combine_vars() c={:?}", c);
         new_r
-    }
-
-    fn universe(&self, region: Region<'tcx>) -> ty::UniverseIndex {
-        match *region {
-            ty::ReScope(..) |
-            ty::ReStatic |
-            ty::ReEmpty |
-            ty::ReErased |
-            ty::ReFree(..) |
-            ty::ReEarlyBound(..) => ty::UniverseIndex::ROOT,
-            ty::ReSkolemized(universe, _) => universe,
-            ty::ReClosureBound(vid) |
-            ty::ReVar(vid) => self.var_universe(vid),
-            ty::ReLateBound(..) =>
-                bug!("universe(): encountered bound region {:?}", region),
-        }
     }
 
     pub fn vars_created_since_snapshot(&self, mark: &RegionSnapshot) -> Vec<RegionVid> {
@@ -891,6 +875,22 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         taint_set.fixed_point(tcx, &self.undo_log[mark.length..], &self.data.verifys);
         debug!("tainted: result={:?}", taint_set);
         return taint_set.into_set();
+    }
+}
+
+pub fn region_universe(var_infos: &VarInfos, region: Region<'_>) -> ty::UniverseIndex {
+    match *region {
+        ty::ReScope(..) |
+        ty::ReStatic |
+        ty::ReEmpty |
+        ty::ReErased |
+        ty::ReFree(..) |
+        ty::ReEarlyBound(..) => ty::UniverseIndex::ROOT,
+        ty::ReSkolemized(universe, _) => universe,
+        ty::ReClosureBound(vid) |
+        ty::ReVar(vid) => var_infos[vid].universe,
+        ty::ReLateBound(..) =>
+            bug!("region_universe(): encountered bound region {:?}", region),
     }
 }
 

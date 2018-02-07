@@ -1358,6 +1358,12 @@ impl UniverseIndex {
     pub fn as_usize(&self) -> usize {
         self.0 as usize
     }
+
+    /// Indicates whether a name in this universe is visible in the
+    /// universe `other`.
+    pub fn is_visible_in(self, other: UniverseIndex) -> bool {
+        self <= other
+    }
 }
 
 impl From<u32> for UniverseIndex {

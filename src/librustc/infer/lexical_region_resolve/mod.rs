@@ -12,11 +12,8 @@
 
 use infer::SubregionOrigin;
 use infer::RegionVariableOrigin;
-use infer::region_constraints::Constraint;
-use infer::region_constraints::GenericKind;
-use infer::region_constraints::RegionConstraintData;
-use infer::region_constraints::VarInfos;
-use infer::region_constraints::VerifyBound;
+use infer::region_constraints::{Constraint, GenericKind, RegionConstraintData,
+                                VarInfos, VerifyBound, region_universe};
 use middle::free_region::RegionRelations;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::fx::FxHashSet;
@@ -232,9 +229,38 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
 
         match *b_data {
             VarValue::Value(cur_region) => {
-                let lub = self.lub_concrete_regions(a_region, cur_region);
+                let b_universe = self.var_infos[b_vid].universe;
+                let mut lub = self.lub_concrete_regions(a_region, cur_region);
                 if lub == cur_region {
                     return false;
+                }
+
+                // Find the universe of the new value (`lub`) and
+                // check whether this value is something that we can
+                // legally name in this variable. If not, promote the
+                // variable to `'static`, which is surely greater than
+                // or equal to `lub`. This is obviously a kind of sub-optimal
+                // choice -- in the future, when we incorporate a knowledge
+                // of the parameter environment, we might be able to find a
+                // tighter bound than `'static`.
+                //
+                // To make this more concrete, imagine a bound like:
+                //
+                //     for<'a> '0: 'a
+                //
+                // Here we have that `'0` must outlive `'a` -- no
+                // matter what `'a` is. When solving such a
+                // constraint, we would initially assign `'0` to be
+                // `'empty`. We would then compute the LUB of `'empty`
+                // and `'a` (which is something like `ReSkolemized(1)`),
+                // resulting in `'a`.
+                //
+                // At this point, `lub_universe` would be `1` and
+                // `b_universe` would be `0`, and hence we would wind
+                // up promoting `lub` to `'static`.
+                let lub_universe = region_universe(&self.var_infos, lub);
+                if !lub_universe.is_visible_in(b_universe) {
+                    lub = self.region_rels.tcx.types.re_static;
                 }
 
                 debug!(
