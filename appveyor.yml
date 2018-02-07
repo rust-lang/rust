@@ -47,9 +47,6 @@ install:
 # ???
 build: false
 
-# Build rustfmt, run the executables as
 test_script:
   - cargo build --verbose
-  - cargo run --bin rustfmt -- --help
-  - cargo run --bin cargo-fmt -- --help
   - cargo test
