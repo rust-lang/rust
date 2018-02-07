@@ -311,12 +311,12 @@ corresponds to the `cfg_target_feature` feature today in rustc, and can be seen
 via:
 
 ```rust
-#[cfg(target_feature = "avx)]
+#[cfg(target_feature = "avx")]
 fn foo() {
     // implementation that can use `avx`
 }
 
-#[cfg(not(target_feature = "avx))]
+#[cfg(not(target_feature = "avx"))]
 fn foo() {
     // a fallback implementation
 }
