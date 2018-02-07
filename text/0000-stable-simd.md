@@ -712,7 +712,7 @@ being.
 Despite the CI infrastructure of the `stdsimd` crate it seems inevitable that
 we'll get an intrinsic wrong at some point. What do we do in a situation like
 that? This situation is somewhat analagous to the `libc` crate but there you can
-fix the problem downstream (just have a corrected type/definition) for for
+fix the problem downstream (just have a corrected type/definition) for
 vendor intrinsics it's not so easy.
 
 Currently it seems that our only recourse would be to add a `2` suffix to the
