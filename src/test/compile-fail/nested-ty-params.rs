@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:can't use type parameters from outer function; try using
+// error-pattern:can't use type parameters from outer function
 fn hd<U>(v: Vec<U> ) -> U {
     fn hd1(w: [U]) -> U { return w[0]; }
 
