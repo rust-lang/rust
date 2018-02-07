@@ -1,8 +1,19 @@
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 extern crate env_logger;
 extern crate getopts;
 #[macro_use]
 extern crate log;
-extern crate rustfmt_nightly as rustfmt;
+extern crate rustfmt_config as config;
+extern crate rustfmt_core as rustfmt;
 
 use std::env;
 use std::path::{Path, PathBuf};
@@ -12,7 +23,6 @@ use std::str::FromStr;
 use getopts::{Matches, Options};
 
 use rustfmt::{run, Input};
-use rustfmt::config;
 
 fn prune_files(files: Vec<&str>) -> Vec<&str> {
     let prefixes: Vec<_> = files
