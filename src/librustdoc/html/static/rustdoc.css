@@ -870,6 +870,7 @@ span.since {
 		display: block;
 		border-bottom: 1px solid;
 		border-right: 1px solid;
+		height: 45px;
 	}
 
 	.sidebar-elems {
@@ -889,11 +890,17 @@ span.since {
 	}
 
 	nav.sub {
-		margin: 0 auto;
+		width: calc(100% - 32px);
+		float: right;
 	}
 
 	.content {
 		margin-left: 0px;
+	}
+
+	#main {
+		margin-top: 50px;
+		padding: 0;
 	}
 
 	.content .in-band {
@@ -1042,6 +1049,24 @@ h4 > .important-traits {
 
 	.show-it {
 		display: block;
+		width: 246px;
+	}
+
+	.show-it > .block.items {
+		margin: 8px 0;
+	}
+
+	.show-it > .block.items > ul {
+		margin: 0;
+	}
+
+	.show-it > .block.items > ul > li {
+		text-align: center;
+		margin: 2px 0;
+	}
+
+	.show-it > .block.items > ul > li > a {
+		font-size: 21px;
 	}
 
 	/* Because of ios, we need to actually have a full height sidebar title so the
@@ -1198,8 +1223,8 @@ kbd {
 
 @media (max-width: 700px) {
 	.theme-picker {
-		left: 109px;
-		top: 7px;
+		left: 10px;
+		top: 54px;
 		z-index: 1;
 	}
 }
