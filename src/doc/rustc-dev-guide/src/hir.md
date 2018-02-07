@@ -10,6 +10,14 @@ been desugared away (as an example, `for` loops are converted into a
 
 This chapter covers the main concepts of the HIR.
 
+You can view the HIR representation of your code by passing the
+`-Zunpretty=hir-tree` flag to rustc, for example by setting the `RUSTFLAGS`
+environment variable:
+
+```
+RUSTFLAGS=-Zunpretty=hir-tree cargo build
+```
+
 ### Out-of-band storage and the `Crate` type
 
 The top-level data-structure in the HIR is the `Crate`, which stores
