@@ -12,12 +12,25 @@
 
 use std::{cmp, iter, str};
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use serde::de::{Deserialize, Deserializer};
 use serde_json as json;
 
-use codemap::LineRange;
-use syntax::codemap::FileName;
+use syntax::codemap::{FileMap, FileName};
+
+/// A range of lines in a file, inclusive of both ends.
+pub struct LineRange {
+    pub file: Rc<FileMap>,
+    pub lo: usize,
+    pub hi: usize,
+}
+
+impl LineRange {
+    pub fn file_name(&self) -> &FileName {
+        &self.file.name
+    }
+}
 
 /// A range that is inclusive of both ends.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Deserialize)]
