@@ -28,8 +28,13 @@ fn _assert_is_object_safe(_: &Iterator<Item=()>) {}
 /// [module-level documentation]: index.html
 /// [impl]: index.html#implementing-iterator
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented = "`{Self}` is not an iterator; maybe try calling \
-                            `.iter()` or a similar method"]
+#[rustc_on_unimplemented(
+    on(
+        _Self="&str",
+        label="`{Self}` is not an iterator; try calling `.chars()` or `.bytes()`"
+    ),
+    label="`{Self}` is not an iterator; maybe try calling `.iter()` or a similar method"
+)]
 #[doc(spotlight)]
 pub trait Iterator {
     /// The type of the elements being iterated over.

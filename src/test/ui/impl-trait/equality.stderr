@@ -7,7 +7,7 @@ error[E0308]: mismatched types
    = note: expected type `i32`
               found type `u32`
 
-error[E0277]: the trait bound `u32: std::ops::Add<impl Foo>` is not satisfied
+error[E0277]: cannot add `impl Foo` to `u32`
   --> $DIR/equality.rs:34:11
    |
 34 |         n + sum_to(n - 1)
