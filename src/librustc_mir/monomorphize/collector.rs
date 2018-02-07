@@ -711,7 +711,9 @@ fn visit_instance_use<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::InstanceDef::ClosureOnceShim { .. } |
         ty::InstanceDef::Item(..) |
         ty::InstanceDef::FnPtrShim(..) |
-        ty::InstanceDef::CloneShim(..) => {
+        ty::InstanceDef::CloneCopyShim(..) |
+        ty::InstanceDef::CloneStructuralShim(..) |
+        ty::InstanceDef::CloneNominalShim(..) => {
             output.push(create_fn_mono_item(instance));
         }
     }
@@ -729,7 +731,9 @@ fn should_monomorphize_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: 
         ty::InstanceDef::FnPtrShim(..) |
         ty::InstanceDef::DropGlue(..) |
         ty::InstanceDef::Intrinsic(_) |
-        ty::InstanceDef::CloneShim(..) => return true
+        ty::InstanceDef::CloneCopyShim(..) |
+        ty::InstanceDef::CloneStructuralShim(..) |
+        ty::InstanceDef::CloneNominalShim(..) => return true
     };
     match tcx.hir.get_if_local(def_id) {
         Some(hir_map::NodeForeignItem(..)) => {

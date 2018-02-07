@@ -13,6 +13,7 @@ use ty::{self, Ty, TypeFoldable, Substs, TyCtxt};
 use ty::subst::Kind;
 use traits;
 use syntax::abi::Abi;
+use syntax::codemap::DUMMY_SP;
 use util::ppaux;
 
 use std::fmt;
@@ -39,10 +40,22 @@ pub enum InstanceDef<'tcx> {
     ClosureOnceShim { call_once: DefId },
 
     /// drop_in_place::<T>; None for empty drop glue.
+    ///
+    /// The DefId is the DefId of drop_in_place
     DropGlue(DefId, Option<Ty<'tcx>>),
 
-    ///`<T as Clone>::clone` shim.
-    CloneShim(DefId, Ty<'tcx>),
+    ///`<T as Clone>::clone` shim for Copy types
+    ///
+    /// The DefId is the DefId of the Clone::clone function
+    CloneCopyShim(DefId, Ty<'tcx>),
+    ///`<T as Clone>::clone` shim for arrays and tuples
+    ///
+    /// The DefId is the DefId of the Clone::clone function
+    CloneStructuralShim(DefId, Ty<'tcx>),
+    ///`<T as Clone>::clone` shim for closures
+    ///
+    /// The DefId is the DefId of the Clone::clone function
+    CloneNominalShim(DefId, Ty<'tcx>),
 }
 
 impl<'a, 'tcx> Instance<'tcx> {
@@ -65,7 +78,9 @@ impl<'tcx> InstanceDef<'tcx> {
             InstanceDef::Intrinsic(def_id, ) |
             InstanceDef::ClosureOnceShim { call_once: def_id } |
             InstanceDef::DropGlue(def_id, _) |
-            InstanceDef::CloneShim(def_id, _) => def_id
+            InstanceDef::CloneCopyShim(def_id, _) |
+            InstanceDef::CloneStructuralShim(def_id, _) |
+            InstanceDef::CloneNominalShim(def_id, _) => def_id
         }
     }
 
@@ -131,7 +146,9 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
             InstanceDef::DropGlue(_, ty) => {
                 write!(f, " - shim({:?})", ty)
             }
-            InstanceDef::CloneShim(_, ty) => {
+            InstanceDef::CloneCopyShim(_, ty) |
+            InstanceDef::CloneStructuralShim(_, ty) |
+            InstanceDef::CloneNominalShim(_, ty) => {
                 write!(f, " - shim({:?})", ty)
             }
         }
@@ -291,7 +308,16 @@ fn resolve_associated_item<'a, 'tcx>(
             if let Some(_) = tcx.lang_items().clone_trait() {
                 let name = tcx.item_name(def_id);
                 let def = if name == "clone" {
-                    ty::InstanceDef::CloneShim(def_id, trait_ref.self_ty())
+                    let self_ty = trait_ref.self_ty();
+                    match self_ty.sty {
+                        _ if !self_ty.moves_by_default(tcx, param_env, DUMMY_SP) => {
+                            ty::InstanceDef::CloneCopyShim(def_id, self_ty)
+                        }
+                        ty::TyArray(..) => ty::InstanceDef::CloneStructuralShim(def_id, self_ty),
+                        ty::TyTuple(..) => ty::InstanceDef::CloneStructuralShim(def_id, self_ty),
+                        ty::TyClosure(..) => ty::InstanceDef::CloneNominalShim(def_id, self_ty),
+                        _ => unreachable!("Type {:?} does not have clone shims", self_ty)
+                    }
                 } else {
                     ty::InstanceDef::Item(def_id)
                 };
