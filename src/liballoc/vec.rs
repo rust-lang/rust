@@ -813,14 +813,19 @@ impl<T> Vec<T> {
             for i in 0..len {
                 if !f(&v[i]) {
                     del += 1;
+                    unsafe {
+                        ptr::read(&v[i]);
+                    }
                 } else if del > 0 {
-                    v.swap(i - del, i);
+                    let src: *const T = &v[i];
+                    let dst: *mut T = &mut v[i - del];
+                    unsafe {
+                        ptr::copy_nonoverlapping(src, dst, 1);
+                    }
                 }
             }
         }
-        if del > 0 {
-            self.truncate(len - del);
-        }
+        self.len = len - del;
     }
 
     /// Removes all but the first of consecutive elements in the vector that resolve to the same
