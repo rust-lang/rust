@@ -8,9 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Format list-like expressions and items.
+
 use std::cmp;
 use std::iter::Peekable;
 
+use config::lists::*;
 use syntax::codemap::{BytePos, CodeMap};
 
 use comment::{find_comment_end, rewrite_comment, FindUncommented};
@@ -18,44 +21,6 @@ use config::{Config, IndentStyle};
 use rewrite::RewriteContext;
 use shape::{Indent, Shape};
 use utils::{count_newlines, first_line_width, last_line_width, mk_sp, starts_with_newline};
-
-/// Formatting tactic for lists. This will be cast down to a
-/// `DefinitiveListTactic` depending on the number and length of the items and
-/// their comments.
-#[derive(Eq, PartialEq, Debug, Copy, Clone)]
-pub enum ListTactic {
-    // One item per row.
-    Vertical,
-    // All items on one row.
-    Horizontal,
-    // Try Horizontal layout, if that fails then vertical.
-    HorizontalVertical,
-    // HorizontalVertical with a soft limit of n characters.
-    LimitedHorizontalVertical(usize),
-    // Pack as many items as possible per row over (possibly) many rows.
-    Mixed,
-}
-
-impl_enum_serialize_and_deserialize!(ListTactic, Vertical, Horizontal, HorizontalVertical, Mixed);
-
-#[derive(Eq, PartialEq, Debug, Copy, Clone)]
-pub enum SeparatorTactic {
-    Always,
-    Never,
-    Vertical,
-}
-
-impl_enum_serialize_and_deserialize!(SeparatorTactic, Always, Never, Vertical);
-
-impl SeparatorTactic {
-    pub fn from_bool(b: bool) -> SeparatorTactic {
-        if b {
-            SeparatorTactic::Always
-        } else {
-            SeparatorTactic::Never
-        }
-    }
-}
 
 pub struct ListFormatting<'a> {
     pub tactic: DefinitiveListTactic,
@@ -154,25 +119,6 @@ impl ListItem {
     }
 }
 
-/// The definitive formatting tactic for lists.
-#[derive(Eq, PartialEq, Debug, Copy, Clone)]
-pub enum DefinitiveListTactic {
-    Vertical,
-    Horizontal,
-    Mixed,
-    /// Special case tactic for `format!()`, `write!()` style macros.
-    SpecialMacro(usize),
-}
-
-impl DefinitiveListTactic {
-    pub fn ends_with_newline(&self, indent_style: IndentStyle) -> bool {
-        match indent_style {
-            IndentStyle::Block => *self != DefinitiveListTactic::Horizontal,
-            IndentStyle::Visual => false,
-        }
-    }
-}
-
 /// The type of separator for lists.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum Separator {
@@ -187,40 +133,6 @@ impl Separator {
             Separator::Comma => 2,
             // 3 = ` | `
             Separator::VerticalBar => 3,
-        }
-    }
-}
-
-/// Where to put separator.
-#[derive(Eq, PartialEq, Debug, Copy, Clone)]
-pub enum SeparatorPlace {
-    Front,
-    Back,
-}
-
-impl_enum_serialize_and_deserialize!(SeparatorPlace, Front, Back);
-
-impl SeparatorPlace {
-    pub fn is_front(&self) -> bool {
-        *self == SeparatorPlace::Front
-    }
-
-    pub fn is_back(&self) -> bool {
-        *self == SeparatorPlace::Back
-    }
-
-    pub fn from_tactic(
-        default: SeparatorPlace,
-        tactic: DefinitiveListTactic,
-        sep: &str,
-    ) -> SeparatorPlace {
-        match tactic {
-            DefinitiveListTactic::Vertical => default,
-            _ => if sep == "," {
-                SeparatorPlace::Back
-            } else {
-                default
-            },
         }
     }
 }

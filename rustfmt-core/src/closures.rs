@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use config::lists::*;
 use syntax::{ast, ptr};
 use syntax::codemap::Span;
 use syntax::parse::classify;
@@ -15,8 +16,7 @@ use syntax::parse::classify;
 use codemap::SpanUtils;
 use expr::{block_contains_comment, is_simple_block, is_unsafe_block, rewrite_cond, ToExpr};
 use items::{span_hi_for_arg, span_lo_for_arg};
-use lists::{definitive_tactic, itemize_list, write_list, DefinitiveListTactic, ListFormatting,
-            ListTactic, Separator, SeparatorPlace, SeparatorTactic};
+use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use utils::{last_line_width, left_most_sub_expr, stmt_expr};

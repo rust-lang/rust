@@ -20,6 +20,8 @@
 // and those with brackets will be formatted as array literals.
 
 use std::collections::HashMap;
+
+use config::lists::*;
 use syntax::ast;
 use syntax::codemap::{BytePos, Span};
 use syntax::parse::new_parser_from_tts;
@@ -33,8 +35,7 @@ use syntax::util::ThinVec;
 use codemap::SpanUtils;
 use comment::{contains_comment, remove_trailing_white_spaces, FindUncommented};
 use expr::{rewrite_array, rewrite_call_inner};
-use lists::{itemize_list, write_list, DefinitiveListTactic, ListFormatting, SeparatorPlace,
-            SeparatorTactic};
+use lists::{itemize_list, write_list, ListFormatting};
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
 use utils::{format_visibility, mk_sp};

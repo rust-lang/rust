@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use config::lists::*;
 use syntax::ast::{self, BindingMode, FieldPat, Pat, PatKind, RangeEnd, RangeSyntax};
 use syntax::codemap::{self, BytePos, Span};
 use syntax::ptr;
@@ -17,7 +18,7 @@ use comment::FindUncommented;
 use expr::{can_be_overflowed_expr, rewrite_call_inner, rewrite_pair, rewrite_unary_prefix,
            wrap_struct_field, PairParts};
 use lists::{itemize_list, shape_for_tactic, struct_lit_formatting, struct_lit_shape,
-            struct_lit_tactic, write_list, DefinitiveListTactic, SeparatorPlace, SeparatorTactic};
+            struct_lit_tactic, write_list};
 use macros::{rewrite_macro, MacroPosition};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;

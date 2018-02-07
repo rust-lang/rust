@@ -19,10 +19,7 @@ extern crate diff;
 extern crate log;
 extern crate regex;
 extern crate rustc_errors as errors;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_json;
+extern crate rustfmt_config as config;
 extern crate syntax;
 extern crate term;
 extern crate unicode_segmentation;
@@ -44,14 +41,13 @@ use syntax::parse::{self, ParseSess};
 
 use checkstyle::{output_footer, output_header};
 use comment::{CharClasses, FullCodeCharKind};
-pub use config::Config;
-use filemap::FileMap;
 use issues::{BadIssueSeeker, Issue};
 use shape::Indent;
 use utils::use_colored_tty;
 use visitor::{FmtVisitor, SnippetProvider};
 
-pub use self::summary::Summary;
+use config::Config;
+use config::summary::Summary;
 
 #[macro_use]
 mod utils;
@@ -60,9 +56,7 @@ mod checkstyle;
 mod closures;
 pub mod codemap;
 mod comment;
-pub mod config;
 mod expr;
-pub mod file_lines;
 pub mod filemap;
 mod imports;
 mod issues;
@@ -77,10 +71,14 @@ pub mod rustfmt_diff;
 mod shape;
 mod spanned;
 mod string;
-mod summary;
 mod types;
 mod vertical;
 pub mod visitor;
+
+// A map of the files of a crate, with their new content
+pub type FileMap = Vec<FileRecord>;
+
+pub type FileRecord = (FileName, String);
 
 #[derive(Clone, Copy)]
 pub enum ErrorKind {

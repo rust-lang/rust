@@ -10,6 +10,7 @@
 
 use std::cmp;
 
+use config::lists::*;
 use syntax::{ast, visit};
 use syntax::attr::{self, HasAttrs};
 use syntax::codemap::{self, BytePos, CodeMap, Pos, Span};
@@ -23,8 +24,7 @@ use config::{BraceStyle, Config};
 use expr::rewrite_literal;
 use items::{format_impl, format_trait, format_trait_alias, rewrite_associated_impl_type,
             rewrite_associated_type, rewrite_type_alias, FnSig, StaticParts, StructParts};
-use lists::{itemize_list, write_list, DefinitiveListTactic, ListFormatting, SeparatorPlace,
-            SeparatorTactic};
+use lists::{itemize_list, write_list, ListFormatting};
 use macros::{rewrite_macro, rewrite_macro_def, MacroPosition};
 use regex::Regex;
 use rewrite::{Rewrite, RewriteContext};

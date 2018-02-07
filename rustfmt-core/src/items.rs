@@ -13,6 +13,7 @@
 use std::borrow::Cow;
 use std::cmp::min;
 
+use config::lists::*;
 use syntax::{abi, ast, ptr, symbol};
 use syntax::ast::{CrateSugar, ImplItem};
 use syntax::codemap::{BytePos, Span};
@@ -24,8 +25,7 @@ use comment::{combine_strs_with_missing_comments, contains_comment, recover_comm
 use config::{BraceStyle, Config, Density, IndentStyle};
 use expr::{format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs,
            rewrite_call_inner, ExprType};
-use lists::{definitive_tactic, itemize_list, write_list, DefinitiveListTactic, ListFormatting,
-            ListItem, ListTactic, Separator, SeparatorPlace, SeparatorTactic};
+use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
 use spanned::Spanned;

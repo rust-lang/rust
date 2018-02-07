@@ -11,6 +11,7 @@
 use std::iter::ExactSizeIterator;
 use std::ops::Deref;
 
+use config::lists::*;
 use syntax::ast::{self, FunctionRetTy, Mutability};
 use syntax::codemap::{self, BytePos, Span};
 use syntax::print::pprust;
@@ -20,8 +21,7 @@ use codemap::SpanUtils;
 use config::{IndentStyle, TypeDensity};
 use expr::{rewrite_pair, rewrite_tuple, rewrite_unary_prefix, wrap_args_with_parens, PairParts};
 use items::{format_generics_item_list, generics_shape_from_config};
-use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListTactic, Separator,
-            SeparatorPlace, SeparatorTactic};
+use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
 use macros::{rewrite_macro, MacroPosition};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;

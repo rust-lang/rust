@@ -10,14 +10,14 @@
 
 use std::cmp::Ordering;
 
+use config::lists::*;
 use syntax::ast;
 use syntax::codemap::{BytePos, Span};
 
 use codemap::SpanUtils;
 use comment::combine_strs_with_missing_comments;
 use config::IndentStyle;
-use lists::{definitive_tactic, itemize_list, write_list, DefinitiveListTactic, ListFormatting,
-            ListItem, Separator, SeparatorPlace, SeparatorTactic};
+use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use spanned::Spanned;

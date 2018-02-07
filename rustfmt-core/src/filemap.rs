@@ -19,10 +19,7 @@ use config::{Config, NewlineStyle, WriteMode};
 use rustfmt_diff::{make_diff, print_diff, Mismatch};
 use syntax::codemap::FileName;
 
-// A map of the files of a crate, with their new content
-pub type FileMap = Vec<FileRecord>;
-
-pub type FileRecord = (FileName, String);
+use FileRecord;
 
 // Append a newline to the end of each file.
 pub fn append_newline(s: &mut String) {

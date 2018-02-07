@@ -11,24 +11,10 @@
 //! This module contains utilities that work with the `CodeMap` from `libsyntax` / `syntex_syntax`.
 //! This includes extension traits and methods for looking up spans and line ranges for AST nodes.
 
-use std::rc::Rc;
-
-use syntax::codemap::{BytePos, CodeMap, FileMap, FileName, Span};
+use config::file_lines::LineRange;
+use syntax::codemap::{BytePos, CodeMap, Span};
 
 use comment::FindUncommented;
-
-/// A range of lines in a file, inclusive of both ends.
-pub struct LineRange {
-    pub file: Rc<FileMap>,
-    pub lo: usize,
-    pub hi: usize,
-}
-
-impl LineRange {
-    pub fn file_name(&self) -> &FileName {
-        &self.file.name
-    }
-}
 
 pub trait SpanUtils {
     fn span_after(&self, original: Span, needle: &str) -> BytePos;

@@ -14,17 +14,15 @@
 
 use std::fmt;
 
-pub use config::ReportTactic;
+use config::ReportTactic;
 
 const TO_DO_CHARS: &[char] = &['t', 'o', 'd', 'o'];
 const FIX_ME_CHARS: &[char] = &['f', 'i', 'x', 'm', 'e'];
 
 // Enabled implementation detail is here because it is
 // irrelevant outside the issues module
-impl ReportTactic {
-    fn is_enabled(&self) -> bool {
-        *self != ReportTactic::Never
-    }
+fn is_enabled(report_tactic: ReportTactic) -> bool {
+    report_tactic != ReportTactic::Never
 }
 
 #[derive(Clone, Copy)]
@@ -128,7 +126,7 @@ impl BadIssueSeeker {
 
     fn inspect_issue(&mut self, c: char, mut todo_idx: usize, mut fixme_idx: usize) -> Seeking {
         if let Some(lower_case_c) = c.to_lowercase().next() {
-            if self.report_todo.is_enabled() && lower_case_c == TO_DO_CHARS[todo_idx] {
+            if is_enabled(self.report_todo) && lower_case_c == TO_DO_CHARS[todo_idx] {
                 todo_idx += 1;
                 if todo_idx == TO_DO_CHARS.len() {
                     return Seeking::Number {
@@ -144,7 +142,7 @@ impl BadIssueSeeker {
                     };
                 }
                 fixme_idx = 0;
-            } else if self.report_fixme.is_enabled() && lower_case_c == FIX_ME_CHARS[fixme_idx] {
+            } else if is_enabled(self.report_fixme) && lower_case_c == FIX_ME_CHARS[fixme_idx] {
                 // Exploit the fact that the character sets of todo and fixme
                 // are disjoint by adding else.
                 fixme_idx += 1;

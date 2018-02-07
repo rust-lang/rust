@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_private)]
-
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
 extern crate regex;
-extern crate rustfmt_nightly as rustfmt;
+extern crate rustfmt_config as config;
+extern crate rustfmt_core as rustfmt;
 extern crate term;
 
 use std::collections::HashMap;
@@ -26,8 +25,10 @@ use std::path::{Path, PathBuf};
 use std::str::Chars;
 
 use rustfmt::*;
-use rustfmt::config::{Color, Config, ReportTactic};
-use rustfmt::filemap::{write_system_newlines, FileMap};
+use config::{Color, Config, ReportTactic};
+use config::summary::Summary;
+use config::file_lines::FileLines;
+use rustfmt::filemap::write_system_newlines;
 use rustfmt::rustfmt_diff::*;
 
 const DIFF_CONTEXT_SIZE: usize = 3;
@@ -186,10 +187,26 @@ fn idempotence_tests() {
 // no warnings are emitted.
 #[test]
 fn self_tests() {
-    let mut files = get_test_files(Path::new("src/bin"), false);
-    files.append(&mut get_test_files(Path::new("tests"), false));
-    files.push(PathBuf::from("src/lib.rs"));
-    files.push(PathBuf::from("build.rs"));
+    let mut files = get_test_files(Path::new("tests"), false);
+    let bin_directories = vec![
+        "cargo-fmt",
+        "git-rustfmt",
+        "rustfmt-bin",
+        "rustfmt-format-diff",
+    ];
+    for dir in bin_directories {
+        let mut path = PathBuf::from("..");
+        path.push(dir);
+        path.push("src/main.rs");
+        files.push(path);
+    }
+    let lib_directories = vec!["rustfmt-core", "rustfmt-config"];
+    for dir in lib_directories {
+        let mut path = PathBuf::from("..");
+        path.push(dir);
+        path.push("src/lib.rs");
+        files.push(path);
+    }
 
     let (reports, count, fails) = check_files(files);
     let mut warnings = 0;
