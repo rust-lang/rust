@@ -68,6 +68,9 @@ macro_rules! panic {
     ($msg:expr) => ({
         $crate::rt::begin_panic($msg, &(file!(), line!(), __rust_unstable_column!()))
     });
+    ($msg:expr,) => ({
+        panic!($msg)
+    });
     ($fmt:expr, $($arg:tt)+) => ({
         $crate::rt::begin_panic_fmt(&format_args!($fmt, $($arg)+),
                                     &(file!(), line!(), __rust_unstable_column!()))
