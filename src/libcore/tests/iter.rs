@@ -1371,6 +1371,29 @@ fn test_range_from_nth() {
     assert_eq!(r, 16..);
     assert_eq!(r.nth(10), Some(26));
     assert_eq!(r, 27..);
+
+    assert_eq!((0..).size_hint(), (usize::MAX, None));
+}
+
+fn is_trusted_len<I: TrustedLen>(_: I) {}
+
+#[test]
+fn test_range_from_take() {
+    let mut it = (0..).take(3);
+    assert_eq!(it.next(), Some(0));
+    assert_eq!(it.next(), Some(1));
+    assert_eq!(it.next(), Some(2));
+    assert_eq!(it.next(), None);
+    is_trusted_len((0..).take(3));
+    assert_eq!((0..).take(3).size_hint(), (3, Some(3)));
+    assert_eq!((0..).take(0).size_hint(), (0, Some(0)));
+    assert_eq!((0..).take(usize::MAX).size_hint(), (usize::MAX, Some(usize::MAX)));
+}
+
+#[test]
+fn test_range_from_take_collect() {
+    let v: Vec<_> = (0..).take(3).collect();
+    assert_eq!(v, vec![0, 1, 2]);
 }
 
 #[test]
@@ -1485,6 +1508,26 @@ fn test_repeat() {
     assert_eq!(it.next(), Some(42));
     assert_eq!(it.next(), Some(42));
     assert_eq!(it.next(), Some(42));
+    assert_eq!(repeat(42).size_hint(), (usize::MAX, None));
+}
+
+#[test]
+fn test_repeat_take() {
+    let mut it = repeat(42).take(3);
+    assert_eq!(it.next(), Some(42));
+    assert_eq!(it.next(), Some(42));
+    assert_eq!(it.next(), Some(42));
+    assert_eq!(it.next(), None);
+    is_trusted_len(repeat(42).take(3));
+    assert_eq!(repeat(42).take(3).size_hint(), (3, Some(3)));
+    assert_eq!(repeat(42).take(0).size_hint(), (0, Some(0)));
+    assert_eq!(repeat(42).take(usize::MAX).size_hint(), (usize::MAX, Some(usize::MAX)));
+}
+
+#[test]
+fn test_repeat_take_collect() {
+    let v: Vec<_> = repeat(42).take(3).collect();
+    assert_eq!(v, vec![42, 42, 42]);
 }
 
 #[test]
