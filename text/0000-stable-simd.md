@@ -104,7 +104,7 @@ pub fn foo(a: &[u8], b: &[u8], c: &mut [u8]) {
 
 #[target_feature(enable = "avx2")]
 unsafe fn foo_avx2(a: &[u8], b: &[u8], c: &mut [u8]) {
-    foo_fallback(a, b, c) // this will inline the function below
+    foo_fallback(a, b, c) // the function below is inlined here
 }
 
 fn foo_fallback(a: &[u8], b: &[u8], c: &mut [u8]) {
