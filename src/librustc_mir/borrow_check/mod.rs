@@ -17,7 +17,7 @@ use rustc::hir::map::definitions::DefPathData;
 use rustc::infer::InferCtxt;
 use rustc::ty::{self, ParamEnv, TyCtxt};
 use rustc::ty::maps::Providers;
-use rustc::mir::{AssertMessage, BasicBlock, BorrowKind, Local, Location, Place};
+use rustc::mir::{AssertMessage, BasicBlock, BorrowKind, Location, Place};
 use rustc::mir::{Mir, Mutability, Operand, Projection, ProjectionElem, Rvalue};
 use rustc::mir::{Field, Statement, StatementKind, Terminator, TerminatorKind};
 use rustc::mir::ClosureRegionRequirements;
@@ -228,8 +228,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
             hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) => false,
             hir::BodyOwnerKind::Fn => true,
         },
-        storage_dead_or_drop_error_reported_l: FxHashSet(),
-        storage_dead_or_drop_error_reported_s: FxHashSet(),
+        access_place_error_reported: FxHashSet(),
         reservation_error_reported: FxHashSet(),
         nonlexical_regioncx: opt_regioncx.clone(),
     };
@@ -294,12 +293,12 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     /// I'm not sure this is the right approach - @eddyb could you try and
     /// figure this out?
     locals_are_invalidated_at_exit: bool,
-    /// This field keeps track of when storage dead or drop errors are reported
-    /// in order to stop duplicate error reporting and identify the conditions required
-    /// for a "temporary value dropped here while still borrowed" error. See #45360.
-    storage_dead_or_drop_error_reported_l: FxHashSet<Local>,
-    /// Same as the above, but for statics (thread-locals)
-    storage_dead_or_drop_error_reported_s: FxHashSet<DefId>,
+    /// This field keeps track of when borrow errors are reported in the access_place function
+    /// so that there is no duplicate reporting. This field cannot also be used for the conflicting
+    /// borrow errors that is handled by the `reservation_error_reported` field as the inclusion
+    /// of the `Span` type (while required to mute some errors) stops the muting of the reservation
+    /// errors.
+    access_place_error_reported: FxHashSet<(Place<'tcx>, Span)>,
     /// This field keeps track of when borrow conflict errors are reported
     /// for reservations, so that we don't report seemingly duplicate
     /// errors for corresponding activations
@@ -348,18 +347,18 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
 
         match stmt.kind {
             StatementKind::Assign(ref lhs, ref rhs) => {
+                self.consume_rvalue(
+                    ContextKind::AssignRhs.new(location),
+                    (rhs, span),
+                    location,
+                    flow_state,
+                );
+
                 self.mutate_place(
                     ContextKind::AssignLhs.new(location),
                     (lhs, span),
                     Shallow(None),
                     JustWrite,
-                    flow_state,
-                );
-
-                self.consume_rvalue(
-                    ContextKind::AssignRhs.new(location),
-                    (rhs, span),
-                    location,
                     flow_state,
                 );
             }
@@ -726,12 +725,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         if let Activation(_, borrow_index) = rw {
             if self.reservation_error_reported.contains(&place_span.0) {
-                debug!(
-                    "skipping access_place for activation of invalid reservation \
-                     place: {:?} borrow_index: {:?}",
-                    place_span.0,
-                    borrow_index
-                );
+                debug!("skipping access_place for activation of invalid reservation \
+                     place: {:?} borrow_index: {:?}", place_span.0, borrow_index);
                 return AccessErrorsReported {
                     mutability_error: false,
                     conflict_error: true,
@@ -739,10 +734,25 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
         }
 
+        if self.access_place_error_reported.contains(&(place_span.0.clone(), place_span.1)) {
+            debug!("access_place: suppressing error place_span=`{:?}` kind=`{:?}`",
+                   place_span, kind);
+            return AccessErrorsReported {
+                mutability_error: false,
+                conflict_error: true,
+            };
+        }
+
         let mutability_error =
             self.check_access_permissions(place_span, rw, is_local_mutation_allowed);
         let conflict_error =
             self.check_access_for_conflict(context, place_span, sd, rw, flow_state);
+
+        if conflict_error || mutability_error {
+            debug!("access_place: logging error place_span=`{:?}` kind=`{:?}`",
+                   place_span, kind);
+            self.access_place_error_reported.insert((place_span.0.clone(), place_span.1));
+        }
 
         AccessErrorsReported {
             mutability_error,
@@ -829,15 +839,15 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                 place_span.0
                             );
                             this.reservation_error_reported.insert(place_span.0.clone());
-                        }
+                        },
                         Activation(_, activating) => {
                             debug!(
                                 "observing check_place for activation of \
                                  borrow_index: {:?}",
                                 activating
                             );
-                        }
-                        Read(..) | Write(..) => {}
+                        },
+                        Read(..) | Write(..) => {},
                     }
 
                     match kind {

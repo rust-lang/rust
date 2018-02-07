@@ -1,0 +1,18 @@
+error[E0506]: cannot assign to `*y.pointer` because it is borrowed (Ast)
+  --> $DIR/issue-45697.rs:30:9
+   |
+29 |         let z = copy_borrowed_ptr(&mut y);
+   |                                        - borrow of `*y.pointer` occurs here
+30 |         *y.pointer += 1;
+   |         ^^^^^^^^^^^^^^^ assignment to borrowed `*y.pointer` occurs here
+
+error[E0503]: cannot use `*y.pointer` because it was mutably borrowed (Mir)
+  --> $DIR/issue-45697.rs:30:9
+   |
+29 |         let z = copy_borrowed_ptr(&mut y);
+   |                                   ------ borrow of `y` occurs here
+30 |         *y.pointer += 1;
+   |         ^^^^^^^^^^^^^^^ use of borrowed `y`
+
+error: aborting due to 2 previous errors
+
