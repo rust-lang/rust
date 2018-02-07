@@ -289,8 +289,14 @@ fn resolve_associated_item<'a, 'tcx>(
         }
         traits::VtableBuiltin(..) => {
             if let Some(_) = tcx.lang_items().clone_trait() {
+                let name = tcx.item_name(def_id);
+                let def = if name == "clone" {
+                    ty::InstanceDef::CloneShim(def_id, trait_ref.self_ty())
+                } else {
+                    ty::InstanceDef::Item(def_id)
+                };
                 Some(Instance {
-                    def: ty::InstanceDef::CloneShim(def_id, trait_ref.self_ty()),
+                    def,
                     substs: rcvr_substs
                 })
             } else {

@@ -100,15 +100,7 @@ fn make_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             build_drop_shim(tcx, def_id, ty)
         }
         ty::InstanceDef::CloneShim(def_id, ty) => {
-            let name = tcx.item_name(def_id);
-            if name == "clone" {
-                build_clone_shim(tcx, def_id, ty)
-            } else if name == "clone_from" {
-                debug!("make_shim({:?}: using default trait implementation", instance);
-                return tcx.optimized_mir(def_id);
-            } else {
-                bug!("builtin clone shim {:?} not supported", instance)
-            }
+            build_clone_shim(tcx, def_id, ty)
         }
         ty::InstanceDef::Intrinsic(_) => {
             bug!("creating shims from intrinsics ({:?}) is unsupported", instance)
