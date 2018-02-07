@@ -14,7 +14,6 @@ use std::fmt;
 use syntax::abi;
 use syntax::ast;
 use errors::DiagnosticBuilder;
-use syntax_pos::Span;
 
 use hir;
 
@@ -52,8 +51,6 @@ pub enum TypeError<'tcx> {
     ProjectionMismatched(ExpectedFound<DefId>),
     ProjectionBoundsLength(ExpectedFound<usize>),
     ExistentialMismatch(ExpectedFound<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>),
-
-    OldStyleLUB(Box<TypeError<'tcx>>),
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
@@ -165,9 +162,6 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                 report_maybe_different(f, format!("trait `{}`", values.expected),
                                        format!("trait `{}`", values.found))
             }
-            OldStyleLUB(ref err) => {
-                write!(f, "{}", err)
-            }
         }
     }
 }
@@ -239,10 +233,11 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    pub fn note_and_explain_type_err(self,
-                                     db: &mut DiagnosticBuilder,
-                                     err: &TypeError<'tcx>,
-                                     sp: Span) {
+    pub fn note_and_explain_type_err(
+        self,
+        db: &mut DiagnosticBuilder,
+        err: &TypeError<'tcx>,
+    ) {
         use self::TypeError::*;
 
         match err.clone() {
@@ -254,12 +249,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     db.help("consider boxing your closure and/or using it as a trait object");
                 }
             },
-            OldStyleLUB(err) => {
-                db.note("this was previously accepted by the compiler but has been phased out");
-                db.note("for more information, see https://github.com/rust-lang/rust/issues/45852");
-
-                self.note_and_explain_type_err(db, &err, sp);
-            }
             CyclicTy(ty) => {
                 // Watch out for various cases of cyclic types and try to explain.
                 if ty.is_closure() || ty.is_generator() {
