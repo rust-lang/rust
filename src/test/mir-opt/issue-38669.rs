@@ -27,27 +27,28 @@ fn main() {
 //         _1 = const false;
 //         goto -> bb2;
 //     }
-//
 //     bb1: {
 //         resume;
 //     }
 //     bb2: {
-//         StorageLive(_4);
-//         _4 = _1;
-//         switchInt(move _4) -> [0u8: bb4, otherwise: bb3];
+//         falseUnwind -> [real: bb3, cleanup: bb1];
 //     }
 //     bb3: {
+//         StorageLive(_4);
+//         _4 = _1;
+//         switchInt(move _4) -> [0u8: bb5, otherwise: bb4];
+//     }
+//     bb4: {
 //         _0 = ();
 //         StorageDead(_4);
 //         StorageDead(_1);
 //         return;
 //     }
-//
-//     bb4: {
+//     bb5: {
 //         _3 = ();
 //         StorageDead(_4);
 //         _1 = const true;
 //         _2 = ();
-//         falseUnwind -> [real: bb2, cleanup: bb1];
+//         goto -> bb2;
 //     }
 // END rustc.main.SimplifyCfg-initial.after.mir
