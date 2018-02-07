@@ -8,24 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_private)]
 #![cfg(not(test))]
 
 extern crate env_logger;
 extern crate getopts;
-extern crate rustfmt_nightly as rustfmt;
+extern crate rustfmt_config as config;
+extern crate rustfmt_core as rustfmt;
 
 use std::{env, error};
 use std::fs::File;
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 
 use getopts::{Matches, Options};
 
+use config::{get_toml_path, Color, Config, WriteMode};
+use config::file_lines::FileLines;
 use rustfmt::{run, FileName, Input, Summary};
-use rustfmt::config::{get_toml_path, Color, Config, WriteMode};
-use rustfmt::file_lines::FileLines;
+
+use std::str::FromStr;
 
 type FmtError = Box<error::Error + Send + Sync>;
 type FmtResult<T> = std::result::Result<T, FmtError>;
