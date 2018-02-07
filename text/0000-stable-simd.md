@@ -92,7 +92,7 @@ AVX2 or not. Thankfully, though, libstd has a handy macro for this!
 [rfc2212]: https://github.com/rust-lang/rfcs/pull/2212
 
 ```rust
-pub unsafe fn foo(a: &[u8], b: &[u8], c: &mut [u8]) {
+pub fn foo(a: &[u8], b: &[u8], c: &mut [u8]) {
     // Note that this `unsafe` block is safe because we're testing
     // that the `avx2` feature is indeed available on our CPU.
     if cfg_feature_enabled!("avx2") {
@@ -107,7 +107,7 @@ unsafe fn foo_avx2(a: &[u8], b: &[u8], c: &mut [u8]) {
     foo_fallback(a, b, c) // this will inline the function below
 }
 
-unsafe fn foo_fallback(a: &[u8], b: &[u8], c: &mut [u8]) {
+fn foo_fallback(a: &[u8], b: &[u8], c: &mut [u8]) {
     for ((a, b), c) in a.iter().zip(b).zip(c) {
         *c = *a + *b;
     }
