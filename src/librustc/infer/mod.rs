@@ -42,7 +42,7 @@ use arena::SyncDroplessArena;
 use self::combine::CombineFields;
 use self::higher_ranked::HrMatchResult;
 use self::region_constraints::{RegionConstraintCollector, RegionSnapshot};
-use self::region_constraints::{GenericKind, VerifyBound, RegionConstraintData, VarOrigins};
+use self::region_constraints::{GenericKind, VerifyBound, RegionConstraintData, VarInfos};
 use self::lexical_region_resolve::LexicalRegionResolutions;
 use self::outlives::env::OutlivesEnvironment;
 use self::type_variable::TypeVariableOrigin;
@@ -889,7 +889,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     /// Number of region variables created so far.
     pub fn num_region_vars(&self) -> usize {
-        self.borrow_region_constraints().var_origins().len()
+        self.borrow_region_constraints().num_region_vars()
     }
 
     /// Just a convenient wrapper of `next_region_var` for using during NLL.
@@ -1017,12 +1017,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                 region_context,
                                                 region_map,
                                                 outlives_env.free_region_map());
-        let (var_origins, data) = self.region_constraints.borrow_mut()
+        let (var_infos, data) = self.region_constraints.borrow_mut()
                                                          .take()
                                                          .expect("regions already resolved")
-                                                         .into_origins_and_data();
+                                                         .into_infos_and_data();
         let (lexical_region_resolutions, errors) =
-            lexical_region_resolve::resolve(region_rels, var_origins, data);
+            lexical_region_resolve::resolve(region_rels, var_infos, data);
 
         let old_value = self.lexical_region_resolutions.replace(Some(lexical_region_resolutions));
         assert!(old_value.is_none());
@@ -1070,13 +1070,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// hence that `resolve_regions_and_report_errors` can never be
     /// called. This is used only during NLL processing to "hand off" ownership
     /// of the set of region vairables into the NLL region context.
-    pub fn take_region_var_origins(&self) -> VarOrigins {
-        let (var_origins, data) = self.region_constraints.borrow_mut()
+    pub fn take_region_var_origins(&self) -> VarInfos {
+        let (var_infos, data) = self.region_constraints.borrow_mut()
                                                          .take()
                                                          .expect("regions already resolved")
-                                                         .into_origins_and_data();
+                                                         .into_infos_and_data();
         assert!(data.is_empty());
-        var_origins
+        var_infos
     }
 
     pub fn ty_to_string(&self, t: Ty<'tcx>) -> String {

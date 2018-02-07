@@ -15,7 +15,7 @@ use infer::RegionVariableOrigin;
 use infer::region_constraints::Constraint;
 use infer::region_constraints::GenericKind;
 use infer::region_constraints::RegionConstraintData;
-use infer::region_constraints::VarOrigins;
+use infer::region_constraints::VarInfos;
 use infer::region_constraints::VerifyBound;
 use middle::free_region::RegionRelations;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
@@ -37,7 +37,7 @@ mod graphviz;
 /// all the variables as well as a set of errors that must be reported.
 pub fn resolve<'tcx>(
     region_rels: &RegionRelations<'_, '_, 'tcx>,
-    var_origins: VarOrigins,
+    var_infos: VarInfos,
     data: RegionConstraintData<'tcx>,
 ) -> (
     LexicalRegionResolutions<'tcx>,
@@ -47,7 +47,7 @@ pub fn resolve<'tcx>(
     let mut errors = vec![];
     let mut resolver = LexicalResolver {
         region_rels,
-        var_origins,
+        var_infos,
         data,
     };
     let values = resolver.infer_variable_values(&mut errors);
@@ -103,7 +103,7 @@ type RegionGraph<'tcx> = graph::Graph<(), Constraint<'tcx>>;
 
 struct LexicalResolver<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     region_rels: &'cx RegionRelations<'cx, 'gcx, 'tcx>,
-    var_origins: VarOrigins,
+    var_infos: VarInfos,
     data: RegionConstraintData<'tcx>,
 }
 
@@ -132,7 +132,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
     }
 
     fn num_vars(&self) -> usize {
-        self.var_origins.len()
+        self.var_infos.len()
     }
 
     /// Initially, the value for all variables is set to `'empty`, the
@@ -279,7 +279,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
 
             (&ReVar(v_id), _) | (_, &ReVar(v_id)) => {
                 span_bug!(
-                    self.var_origins[v_id].span(),
+                    self.var_infos[v_id].origin.span(),
                     "lub_concrete_regions invoked with non-concrete \
                      regions: {:?}, {:?}",
                     a,
@@ -576,7 +576,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
                 if !self.region_rels
                     .is_subregion_of(lower_bound.region, upper_bound.region)
                 {
-                    let origin = self.var_origins[node_idx].clone();
+                    let origin = self.var_infos[node_idx].origin.clone();
                     debug!(
                         "region inference error at {:?} for {:?}: SubSupConflict sub: {:?} \
                          sup: {:?}",
@@ -598,7 +598,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
         }
 
         span_bug!(
-            self.var_origins[node_idx].span(),
+            self.var_infos[node_idx].origin.span(),
             "collect_error_for_expanding_node() could not find \
              error for var {:?}, lower_bounds={:?}, \
              upper_bounds={:?}",

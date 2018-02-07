@@ -33,7 +33,7 @@ mod taint;
 
 pub struct RegionConstraintCollector<'tcx> {
     /// For each `RegionVid`, the corresponding `RegionVariableOrigin`.
-    var_origins: IndexVec<RegionVid, RegionVariableOrigin>,
+    var_infos: IndexVec<RegionVid, RegionVariableInfo>,
 
     data: RegionConstraintData<'tcx>,
 
@@ -76,7 +76,7 @@ pub struct RegionConstraintCollector<'tcx> {
     unification_table: ut::UnificationTable<ut::InPlace<ty::RegionVid>>,
 }
 
-pub type VarOrigins = IndexVec<RegionVid, RegionVariableOrigin>;
+pub type VarInfos = IndexVec<RegionVid, RegionVariableInfo>;
 
 /// The full set of region constraints gathered up by the collector.
 /// Describes constraints between the region variables and other
@@ -230,6 +230,11 @@ enum CombineMapType {
 
 type CombineMap<'tcx> = FxHashMap<TwoRegions<'tcx>, RegionVid>;
 
+#[derive(Debug, Clone, Copy)]
+pub struct RegionVariableInfo {
+    pub origin: RegionVariableOrigin,
+}
+
 pub struct RegionSnapshot {
     length: usize,
     region_snapshot: ut::Snapshot<ut::InPlace<ty::RegionVid>>,
@@ -273,7 +278,7 @@ impl TaintDirections {
 impl<'tcx> RegionConstraintCollector<'tcx> {
     pub fn new() -> RegionConstraintCollector<'tcx> {
         RegionConstraintCollector {
-            var_origins: VarOrigins::default(),
+            var_infos: VarInfos::default(),
             data: RegionConstraintData::default(),
             lubs: FxHashMap(),
             glbs: FxHashMap(),
@@ -284,8 +289,8 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         }
     }
 
-    pub fn var_origins(&self) -> &VarOrigins {
-        &self.var_origins
+    pub fn num_region_vars(&self) -> usize {
+        self.var_infos.len()
     }
 
     pub fn region_constraint_data(&self) -> &RegionConstraintData<'tcx> {
@@ -295,9 +300,9 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
     /// Once all the constraints have been gathered, extract out the final data.
     ///
     /// Not legal during a snapshot.
-    pub fn into_origins_and_data(self) -> (VarOrigins, RegionConstraintData<'tcx>) {
+    pub fn into_infos_and_data(self) -> (VarInfos, RegionConstraintData<'tcx>) {
         assert!(!self.in_snapshot());
-        (self.var_origins, self.data)
+        (self.var_infos, self.data)
     }
 
     /// Takes (and clears) the current set of constraints. Note that
@@ -319,7 +324,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         // should think carefully about whether it needs to be cleared
         // or updated in some way.
         let RegionConstraintCollector {
-            var_origins,
+            var_infos,
             data,
             lubs,
             glbs,
@@ -343,7 +348,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         // also insert `a <= b` and a `b <= a` edges, so the
         // `RegionConstraintData` contains the relationship here.
         *unification_table = ut::UnificationTable::new();
-        for vid in var_origins.indices() {
+        for vid in var_infos.indices() {
             unification_table.new_key(unify_key::RegionVidKey { min_vid: vid });
         }
 
@@ -411,8 +416,8 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
                 // nothing to do here
             }
             AddVar(vid) => {
-                self.var_origins.pop().unwrap();
-                assert_eq!(self.var_origins.len(), vid.index() as usize);
+                self.var_infos.pop().unwrap();
+                assert_eq!(self.var_infos.len(), vid.index() as usize);
             }
             AddConstraint(ref constraint) => {
                 self.data.constraints.remove(constraint);
@@ -434,7 +439,9 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
     }
 
     pub fn new_region_var(&mut self, origin: RegionVariableOrigin) -> RegionVid {
-        let vid = self.var_origins.push(origin.clone());
+        let vid = self.var_infos.push(RegionVariableInfo {
+            origin,
+        });
 
         let u_vid = self.unification_table
             .new_key(unify_key::RegionVidKey { min_vid: vid });
@@ -452,7 +459,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
     /// Returns the origin for the given variable.
     pub fn var_origin(&self, vid: RegionVid) -> RegionVariableOrigin {
-        self.var_origins[vid].clone()
+        self.var_infos[vid].origin
     }
 
     /// Creates a new skolemized region. Skolemized regions are fresh
