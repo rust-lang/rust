@@ -66,7 +66,8 @@ fn callback(state: &driver::CompileState, version: &str) {
     debug!("running semver analysis");
     let changes = run_analysis(tcx, old_def_id, new_def_id);
 
-    changes.output(tcx.sess, version);
+    // TODO: arm the verbosity switch
+    changes.output(tcx.sess, version, false);
 }
 
 /// A wrapper to control compilation.

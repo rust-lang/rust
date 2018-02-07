@@ -314,6 +314,12 @@ impl<'tcx> ChangeType<'tcx> {
             FnConstChanged { now_const: true } => NonBreaking,
         }
     }
+
+    /// Get a detailed explanation of a change, and why it is categorized as-is.
+    fn explanation(&self) -> &'static str {
+        // TODO: meaningful explanations
+        "test"
+    }
 }
 
 impl<'a> fmt::Display for ChangeType<'a> {
@@ -485,7 +491,7 @@ impl<'tcx> Change<'tcx> {
     }
 
     /// Report the change in a structured manner, using rustc's error reporting capabilities.
-    fn report(&self, session: &Session) {
+    fn report(&self, session: &Session, verbose: bool) {
         if self.max == Patch || !self.output {
             return;
         }
@@ -499,7 +505,12 @@ impl<'tcx> Change<'tcx> {
 
         for change in &self.changes {
             let cat = change.0.to_category();
-            let sub_msg = format!("{} ({})", change.0, cat);
+            let sub_msg = if verbose {
+                format!("{} ({}):\n{}", change.0, cat, change.0.explanation())
+            } else {
+                format!("{} ({})", change.0, cat)
+            };
+
             if let Some(span) = change.1 {
                 if cat == Breaking {
                     builder.span_warn(span, &sub_msg);
@@ -661,7 +672,7 @@ impl<'tcx> ChangeSet<'tcx> {
     }
 
     /// Format the contents of a change set for user output.
-    pub fn output(&self, session: &Session, version: &str) {
+    pub fn output(&self, session: &Session, version: &str, verbose: bool) {
         if let Ok(mut new_version) = Version::parse(version) {
             match self.max {
                 Patch => new_version.increment_patch(),
@@ -680,7 +691,7 @@ impl<'tcx> ChangeSet<'tcx> {
             }
 
             if let Some(change) = self.changes.get(key) {
-                change.report(session);
+                change.report(session, verbose);
             }
         }
     }
