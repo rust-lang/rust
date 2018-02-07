@@ -2,7 +2,9 @@
 
 - [About this guide](./about-this-guide.md)
 - [How to build the compiler and run what you built](./how-to-build-and-run.md)
-- [Using the compiler testing framework](./running-tests.md)
+- [The compiler testing framework](./tests/intro.md)
+    - [Running tests](./tests/running.md)
+    - [Adding new tests](./tests/adding.md)
 - [Walkthrough: a typical contribution](./walkthrough.md)
 - [High-level overview of the compiler source](./high-level-overview.md)
 - [Queries: demand-driven compilation](./query.md)
