@@ -46,8 +46,8 @@ use shape::Indent;
 use utils::use_colored_tty;
 use visitor::{FmtVisitor, SnippetProvider};
 
-use config::Config;
-use config::summary::Summary;
+pub use config::Config;
+pub use config::summary::Summary;
 
 #[macro_use]
 mod utils;
