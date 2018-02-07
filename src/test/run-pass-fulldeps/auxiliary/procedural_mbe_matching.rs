@@ -39,6 +39,7 @@ fn expand_mbe_matches(cx: &mut ExtCtxt, _: Span, args: &[TokenTree])
 
     let mbe_matcher = quote_tokens!(cx, $$matched:expr, $$($$pat:pat)|+);
     let mbe_matcher = quoted::parse(mbe_matcher.into_iter().collect(),
+                                    false,
                                     true,
                                     cx.parse_sess,
                                     &Features::new(),
