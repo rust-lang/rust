@@ -501,6 +501,7 @@ pub struct CombinedSnapshot<'a, 'tcx:'a> {
     float_snapshot: ut::Snapshot<ut::InPlace<ty::FloatVid>>,
     region_constraints_snapshot: RegionSnapshot,
     region_obligations_snapshot: usize,
+    universe: ty::UniverseIndex,
     was_in_snapshot: bool,
     _in_progress_tables: Option<Ref<'a, ty::TypeckTables<'tcx>>>,
 }
@@ -630,6 +631,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             float_snapshot: self.float_unification_table.borrow_mut().snapshot(),
             region_constraints_snapshot: self.borrow_region_constraints().start_snapshot(),
             region_obligations_snapshot: self.region_obligations.borrow().len(),
+            universe: self.universe(),
             was_in_snapshot: in_snapshot,
             // Borrow tables "in progress" (i.e. during typeck)
             // to ban writes from within a snapshot to them.
@@ -647,10 +649,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                float_snapshot,
                                region_constraints_snapshot,
                                region_obligations_snapshot,
+                               universe,
                                was_in_snapshot,
                                _in_progress_tables } = snapshot;
 
         self.in_snapshot.set(was_in_snapshot);
+        self.universe.set(universe);
 
         self.projection_cache
             .borrow_mut()
@@ -679,6 +683,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                float_snapshot,
                                region_constraints_snapshot,
                                region_obligations_snapshot: _,
+                               universe: _,
                                was_in_snapshot,
                                _in_progress_tables } = snapshot;
 
@@ -823,7 +828,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         Some(self.commit_if_ok(|snapshot| {
             let (ty::SubtypePredicate { a_is_expected, a, b}, skol_map) =
-                self.skolemize_late_bound_regions(predicate, snapshot);
+                self.skolemize_late_bound_regions(predicate);
 
             let cause_span = cause.span;
             let ok = self.at(cause, param_env).sub_exp(a_is_expected, a, b)?;
@@ -840,7 +845,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     {
         self.commit_if_ok(|snapshot| {
             let (ty::OutlivesPredicate(r_a, r_b), skol_map) =
-                self.skolemize_late_bound_regions(predicate, snapshot);
+                self.skolemize_late_bound_regions(predicate);
             let origin =
                 SubregionOrigin::from_obligation_cause(cause,
                                                        || RelateRegionParamBound(cause.span));

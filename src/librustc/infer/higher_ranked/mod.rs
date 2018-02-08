@@ -62,7 +62,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
             // Second, we instantiate each bound region in the supertype with a
             // fresh concrete region.
             let (b_prime, skol_map) =
-                self.infcx.skolemize_late_bound_regions(b, snapshot);
+                self.infcx.skolemize_late_bound_regions(b);
 
             debug!("a_prime={:?}", a_prime);
             debug!("b_prime={:?}", b_prime);
@@ -587,14 +587,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ///
     /// [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/trait-hrtb.html
     pub fn skolemize_late_bound_regions<T>(&self,
-                                           binder: &ty::Binder<T>,
-                                           snapshot: &CombinedSnapshot<'a, 'tcx>)
+                                           binder: &ty::Binder<T>)
                                            -> (T, SkolemizationMap<'tcx>)
         where T : TypeFoldable<'tcx>
     {
         let (result, map) = self.tcx.replace_late_bound_regions(binder, |br| {
-            self.borrow_region_constraints()
-                .push_skolemized(self.tcx, br, &snapshot.region_constraints_snapshot)
+            self.universe.set(self.universe().subuniverse());
+            self.tcx.mk_region(ty::ReSkolemized(self.universe(), br))
         });
 
         debug!("skolemize_bound_regions(binder={:?}, result={:?}, map={:?})",
@@ -779,7 +778,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         debug!("pop_skolemized({:?})", skol_map);
         let skol_regions: FxHashSet<_> = skol_map.values().cloned().collect();
         self.borrow_region_constraints()
-            .pop_skolemized(self.tcx, &skol_regions, &snapshot.region_constraints_snapshot);
+            .pop_skolemized(self.universe(), &skol_regions, &snapshot.region_constraints_snapshot);
+        self.universe.set(snapshot.universe);
         if !skol_map.is_empty() {
             self.projection_cache.borrow_mut().rollback_skolemized(
                 &snapshot.projection_cache_snapshot);

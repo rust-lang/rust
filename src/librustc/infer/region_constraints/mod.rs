@@ -22,7 +22,7 @@ use rustc_data_structures::unify as ut;
 use ty::{self, Ty, TyCtxt};
 use ty::{Region, RegionVid};
 use ty::ReStatic;
-use ty::{BrFresh, ReLateBound, ReSkolemized, ReVar};
+use ty::{BrFresh, ReLateBound, ReVar};
 
 use std::collections::BTreeMap;
 use std::{cmp, fmt, mem, u32};
@@ -44,9 +44,6 @@ pub struct RegionConstraintCollector<'tcx> {
     /// is designated as their GLB (edges R3 <= R1 and R3 <= R2
     /// exist). This prevents us from making many such regions.
     glbs: CombineMap<'tcx>,
-
-    /// Number of skolemized variables currently active.
-    skolemization_count: ty::UniverseIndex,
 
     /// Global counter used during the GLB algorithm to create unique
     /// names for fresh bound regions
@@ -237,7 +234,6 @@ pub struct RegionVariableInfo {
 pub struct RegionSnapshot {
     length: usize,
     region_snapshot: ut::Snapshot<ut::InPlace<ty::RegionVid>>,
-    skolemization_count: ty::UniverseIndex,
 }
 
 /// When working with skolemized regions, we often wish to find all of
@@ -281,7 +277,6 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
             data: RegionConstraintData::default(),
             lubs: FxHashMap(),
             glbs: FxHashMap(),
-            skolemization_count: ty::UniverseIndex::ROOT,
             bound_count: 0,
             undo_log: Vec::new(),
             unification_table: ut::UnificationTable::new(),
@@ -327,13 +322,10 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
             data,
             lubs,
             glbs,
-            skolemization_count,
             bound_count: _,
             undo_log: _,
             unification_table,
         } = self;
-
-        assert_eq!(*skolemization_count, ty::UniverseIndex::ROOT);
 
         // Clear the tables of (lubs, glbs), so that we will create
         // fresh regions if we do a LUB operation. As it happens,
@@ -369,7 +361,6 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         RegionSnapshot {
             length,
             region_snapshot: self.unification_table.snapshot(),
-            skolemization_count: self.skolemization_count,
         }
     }
 
@@ -377,12 +368,6 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         debug!("RegionConstraintCollector: commit({})", snapshot.length);
         assert!(self.undo_log.len() > snapshot.length);
         assert!(self.undo_log[snapshot.length] == OpenSnapshot);
-        assert!(
-            self.skolemization_count == snapshot.skolemization_count,
-            "failed to pop skolemized regions: {:?} now vs {:?} at start",
-            self.skolemization_count,
-            snapshot.skolemization_count
-        );
 
         if snapshot.length == 0 {
             self.undo_log.truncate(0);
@@ -402,7 +387,6 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         }
         let c = self.undo_log.pop().unwrap();
         assert!(c == OpenSnapshot);
-        self.skolemization_count = snapshot.skolemization_count;
         self.unification_table.rollback_to(snapshot.region_snapshot);
     }
 
@@ -469,48 +453,13 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         self.var_infos[vid].origin
     }
 
-    /// Creates a new skolemized region. Skolemized regions are fresh
-    /// regions used when performing higher-ranked computations. They
-    /// must be used in a very particular way and are never supposed
-    /// to "escape" out into error messages or the code at large.
-    ///
-    /// The idea is to always create a snapshot. Skolemized regions
-    /// can be created in the context of this snapshot, but before the
-    /// snapshot is committed or rolled back, they must be popped
-    /// (using `pop_skolemized_regions`), so that their numbers can be
-    /// recycled. Normally you don't have to think about this: you use
-    /// the APIs in `higher_ranked/mod.rs`, such as
-    /// `skolemize_late_bound_regions` and `plug_leaks`, which will
-    /// guide you on this path (ensure that the `SkolemizationMap` is
-    /// consumed and you are good). For more info on how skolemization
-    /// for HRTBs works, see the [rustc guide].
-    ///
-    /// [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/trait-hrtb.html
-    ///
-    /// The `snapshot` argument to this function is not really used;
-    /// it's just there to make it explicit which snapshot bounds the
-    /// skolemized region that results. It should always be the top-most snapshot.
-    pub fn push_skolemized(
-        &mut self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
-        br: ty::BoundRegion,
-        snapshot: &RegionSnapshot,
-    ) -> Region<'tcx> {
-        assert!(self.in_snapshot());
-        assert!(self.undo_log[snapshot.length] == OpenSnapshot);
-
-        let universe = self.skolemization_count.subuniverse();
-        self.skolemization_count = universe;
-        tcx.mk_region(ReSkolemized(universe, br))
-    }
-
     /// Removes all the edges to/from the skolemized regions that are
     /// in `skols`. This is used after a higher-ranked operation
     /// completes to remove all trace of the skolemized regions
     /// created in that time.
     pub fn pop_skolemized(
         &mut self,
-        _tcx: TyCtxt<'_, '_, 'tcx>,
+        skolemization_count: ty::UniverseIndex,
         skols: &FxHashSet<ty::Region<'tcx>>,
         snapshot: &RegionSnapshot,
     ) {
@@ -519,24 +468,16 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         assert!(self.in_snapshot());
         assert!(self.undo_log[snapshot.length] == OpenSnapshot);
         assert!(
-            self.skolemization_count.as_usize() >= skols.len(),
+            skolemization_count.as_usize() >= skols.len(),
             "popping more skolemized variables than actually exist, \
              sc now = {:?}, skols.len = {:?}",
-            self.skolemization_count,
+            skolemization_count,
             skols.len()
         );
 
-        let last_to_pop = self.skolemization_count.subuniverse();
+        let last_to_pop = skolemization_count.subuniverse();
         let first_to_pop = ty::UniverseIndex::from(last_to_pop.as_u32() - skols.len() as u32);
 
-        assert!(
-            first_to_pop >= snapshot.skolemization_count,
-            "popping more regions than snapshot contains, \
-             sc now = {:?}, sc then = {:?}, skols.len = {:?}",
-            self.skolemization_count,
-            snapshot.skolemization_count,
-            skols.len()
-        );
         debug_assert! {
             skols.iter()
                  .all(|&k| match *k {
@@ -547,8 +488,8 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
                          false
                  }),
             "invalid skolemization keys or keys out of range ({:?}..{:?}): {:?}",
-            snapshot.skolemization_count,
-            self.skolemization_count,
+            first_to_pop,
+            last_to_pop,
             skols
         }
 
@@ -565,7 +506,6 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
             self.rollback_undo_entry(undo_entry);
         }
 
-        self.skolemization_count = snapshot.skolemization_count;
         return;
 
         fn kill_constraint<'tcx>(
@@ -900,12 +840,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
 impl fmt::Debug for RegionSnapshot {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "RegionSnapshot(length={},skolemization={:?})",
-            self.length,
-            self.skolemization_count
-        )
+        write!(f, "RegionSnapshot(length={})", self.length)
     }
 }
 
