@@ -1,0 +1,8 @@
+error[E0463]: can't find crate for `cookie_monster`
+  --> $DIR/E0463.rs:12:11
+   |
+12 | #![plugin(cookie_monster)]
+   |           ^^^^^^^^^^^^^^ can't find crate
+
+error: aborting due to previous error
+

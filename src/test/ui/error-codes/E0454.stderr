@@ -1,0 +1,8 @@
+error[E0454]: #[link(name = "")] given with empty name
+  --> $DIR/E0454.rs:11:1
+   |
+11 | #[link(name = "")] extern {}
+   | ^^^^^^^^^^^^^^^^^^ empty name given
+
+error: aborting due to previous error
+

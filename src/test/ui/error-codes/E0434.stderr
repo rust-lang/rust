@@ -1,0 +1,10 @@
+error[E0434]: can't capture dynamic environment in a fn item
+  --> $DIR/E0434.rs:14:9
+   |
+14 |         y //~ ERROR E0434
+   |         ^
+   |
+   = help: use the `|| { ... }` closure form instead
+
+error: aborting due to previous error
+

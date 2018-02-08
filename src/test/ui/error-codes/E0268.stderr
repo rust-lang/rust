@@ -1,0 +1,8 @@
+error[E0268]: `break` outside of loop
+  --> $DIR/E0268.rs:12:5
+   |
+12 |     break; //~ ERROR E0268
+   |     ^^^^^ cannot break outside of a loop
+
+error: aborting due to previous error
+

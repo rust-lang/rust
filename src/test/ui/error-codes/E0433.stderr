@@ -1,0 +1,8 @@
+error[E0433]: failed to resolve. Use of undeclared type or module `HashMap`
+  --> $DIR/E0433.rs:12:15
+   |
+12 |     let map = HashMap::new(); //~ ERROR E0433
+   |               ^^^^^^^ Use of undeclared type or module `HashMap`
+
+error: aborting due to previous error
+

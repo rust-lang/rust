@@ -1,0 +1,35 @@
+error[E0517]: attribute should be applied to struct, enum or union
+  --> $DIR/E0517.rs:11:8
+   |
+11 | #[repr(C)] //~ ERROR: E0517
+   |        ^
+12 | type Foo = u8;
+   | -------------- not a struct, enum or union
+
+error[E0517]: attribute should be applied to struct or union
+  --> $DIR/E0517.rs:14:8
+   |
+14 | #[repr(packed)] //~ ERROR: E0517
+   |        ^^^^^^
+15 | enum Foo2 {Bar, Baz}
+   | -------------------- not a struct or union
+
+error[E0517]: attribute should be applied to enum
+  --> $DIR/E0517.rs:17:8
+   |
+17 | #[repr(u8)] //~ ERROR: E0517
+   |        ^^
+18 | struct Foo3 {bar: bool, baz: bool}
+   | ---------------------------------- not an enum
+
+error[E0517]: attribute should be applied to struct, enum or union
+  --> $DIR/E0517.rs:20:8
+   |
+20 |   #[repr(C)] //~ ERROR: E0517
+   |          ^
+21 | / impl Foo3 {
+22 | | }
+   | |_- not a struct, enum or union
+
+error: aborting due to 4 previous errors
+

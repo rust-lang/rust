@@ -1,0 +1,8 @@
+error[E0396]: raw pointers cannot be dereferenced in constants
+  --> $DIR/E0396.rs:13:28
+   |
+13 | const VALUE: u8 = unsafe { *REG_ADDR }; //~ ERROR E0396
+   |                            ^^^^^^^^^ dereference of raw pointer in constant
+
+error: aborting due to previous error
+

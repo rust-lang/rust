@@ -1,0 +1,8 @@
+error[E0529]: expected an array or slice, found `f32`
+  --> $DIR/E0529.rs:16:9
+   |
+16 |         [a, b] => {
+   |         ^^^^^^ pattern cannot match with input type `f32`
+
+error: aborting due to previous error
+

@@ -1,0 +1,8 @@
+error[E0416]: identifier `x` is bound more than once in the same pattern
+  --> $DIR/E0416.rs:13:13
+   |
+13 |         (x, x) => {} //~ ERROR E0416
+   |             ^ used in a pattern more than once
+
+error: aborting due to previous error
+

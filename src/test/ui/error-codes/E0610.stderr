@@ -1,0 +1,8 @@
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/E0610.rs:13:15
+   |
+13 |     let _ = x.foo; //~ ERROR E0610
+   |               ^^^
+
+error: aborting due to previous error
+

@@ -1,0 +1,8 @@
+error[E0494]: cannot refer to the interior of another static, use a constant instead
+  --> $DIR/E0494.rs:16:27
+   |
+16 | static A : &'static u32 = &S.a; //~ ERROR E0494
+   |                           ^^^^
+
+error: aborting due to previous error
+

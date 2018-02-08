@@ -1,0 +1,11 @@
+error[E0137]: multiple functions with a #[main] attribute
+  --> $DIR/E0137.rs:17:1
+   |
+14 | fn foo() {}
+   | ----------- first #[main] function
+...
+17 | fn f() {}
+   | ^^^^^^^^^ additional #[main] function
+
+error: aborting due to previous error
+

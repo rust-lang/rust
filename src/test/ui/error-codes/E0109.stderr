@@ -1,0 +1,8 @@
+error[E0109]: type parameters are not allowed on this type
+  --> $DIR/E0109.rs:11:14
+   |
+11 | type X = u32<i32>; //~ ERROR E0109
+   |              ^^^ type parameter not allowed
+
+error: aborting due to previous error
+

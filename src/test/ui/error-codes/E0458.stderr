@@ -1,0 +1,14 @@
+error[E0458]: unknown kind: `wonderful_unicorn`
+  --> $DIR/E0458.rs:11:1
+   |
+11 | #[link(kind = "wonderful_unicorn")] extern {} //~ ERROR E0458
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unknown kind
+
+error[E0459]: #[link(...)] specified without `name = "foo"`
+  --> $DIR/E0458.rs:11:1
+   |
+11 | #[link(kind = "wonderful_unicorn")] extern {} //~ ERROR E0458
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `name` argument
+
+error: aborting due to 2 previous errors
+

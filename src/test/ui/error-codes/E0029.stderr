@@ -1,0 +1,19 @@
+error[E0658]: non-reference pattern used to match a reference (see issue #42640)
+  --> $DIR/E0029.rs:15:9
+   |
+15 |         "hello" ... "world" => {}
+   |         ^^^^^^^^^^^^^^^^^^^ help: consider using a reference: `&"hello" ... "world"`
+   |
+   = help: add #![feature(match_default_bindings)] to the crate attributes to enable
+
+error[E0029]: only char and numeric types are allowed in range patterns
+  --> $DIR/E0029.rs:15:9
+   |
+15 |         "hello" ... "world" => {}
+   |         ^^^^^^^^^^^^^^^^^^^ ranges require char or numeric types
+   |
+   = note: start type: &'static str
+   = note: end type: &'static str
+
+error: aborting due to 2 previous errors
+
