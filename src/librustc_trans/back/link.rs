@@ -897,16 +897,33 @@ fn link_args(cmd: &mut Linker,
 
     let used_link_args = &trans.crate_info.link_args;
 
-    if crate_type == config::CrateTypeExecutable &&
-       t.options.position_independent_executables {
-        let empty_vec = Vec::new();
-        let args = sess.opts.cg.link_args.as_ref().unwrap_or(&empty_vec);
-        let more_args = &sess.opts.cg.link_arg;
-        let mut args = args.iter().chain(more_args.iter()).chain(used_link_args.iter());
+    if crate_type == config::CrateTypeExecutable {
+        let mut position_independent_executable = false;
 
-        if get_reloc_model(sess) == llvm::RelocMode::PIC
-            && !sess.crt_static() && !args.any(|x| *x == "-static") {
-            cmd.position_independent_executable();
+        if t.options.position_independent_executables {
+            let empty_vec = Vec::new();
+            let args = sess.opts.cg.link_args.as_ref().unwrap_or(&empty_vec);
+            let more_args = &sess.opts.cg.link_arg;
+            let mut args = args.iter().chain(more_args.iter()).chain(used_link_args.iter());
+
+            if get_reloc_model(sess) == llvm::RelocMode::PIC
+                && !sess.crt_static() && !args.any(|x| *x == "-static") {
+                position_independent_executable = true;
+            }
+        }
+
+        // Check to see if gcc defaults to generating a position independent
+        // executable. If so, tell it when to disable pie. Otherwise, tell it
+        // when to enable it. We can't do both because older versions of gcc
+        // don't understand -no-pie and will blow up.
+        if is_pie_default(sess) {
+            if !position_independent_executable {
+                cmd.no_position_independent_executable();
+            }
+        } else {
+            if position_independent_executable {
+                cmd.position_independent_executable();
+            }
         }
     }
 
@@ -1419,5 +1436,34 @@ fn is_full_lto_enabled(sess: &Session) -> bool {
         Lto::Fat => true,
         Lto::No |
         Lto::ThinLocal => false,
+    }
+}
+
+fn is_pie_default(sess: &Session) -> bool {
+    match sess.linker_flavor() {
+        LinkerFlavor::Gcc => {
+            let (_, mut cmd, envs) = get_linker(sess);
+            // This will set PATH on windows
+            cmd.envs(envs);
+            cmd.arg("-v");
+
+            info!("{:?}", &cmd);
+
+            let output = cmd.command()
+                .stdout(Stdio::piped()).stderr(Stdio::piped())
+                .spawn()
+                .unwrap()
+                .wait_with_output()
+                .unwrap();
+
+            let ret = String::from_utf8_lossy(&output.stderr)
+                .contains("--enable-default-pie");
+
+            info!("gcc {} compiled with --enable-default-pie",
+                  if ret { "IS" } else { "is NOT" });
+
+            ret
+        },
+        _ => false,
     }
 }
