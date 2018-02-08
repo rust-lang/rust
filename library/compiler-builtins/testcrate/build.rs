@@ -235,6 +235,15 @@ fn main() {
             "compiler_builtins::float::cmp::__aeabi_dcmpgt(a, b)");
     }
 
+    // float/extend.rs
+    gen(|a: MyF32| {
+            if a.0.is_nan() {
+                return None;
+            }
+            Some(f64(a.0))
+        },
+        "compiler_builtins::float::extend::__extendsfdf2(a)");
+
     // float/conv.rs
     gen(|a: MyF64| i64(a.0).ok(),
         "compiler_builtins::float::conv::__fixdfdi(a)");
