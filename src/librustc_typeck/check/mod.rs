@@ -858,17 +858,19 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             fcx
         };
 
-        fcx.check_casts();
-
         // All type checking constraints were added, try to fallback unsolved variables.
         fcx.select_obligations_where_possible();
         for ty in &fcx.unsolved_variables() {
-            fcx.fallback_if_possible(ty, Fallback::Full);
+            fcx.fallback_if_possible(ty);
         }
         fcx.select_obligations_where_possible();
 
+        // Even though coercion casts provide type hints, we check casts after fallback for
+        // backwards compatibility. This makes fallback a stronger type hint than a cast coercion.
+        fcx.check_casts();
+
         // Closure and generater analysis may run after fallback
-        // because they doen't constrain other type variables.
+        // because they don't constrain other type variables.
         fcx.closure_analyze(body);
         assert!(fcx.deferred_call_resolutions.borrow().is_empty());
         fcx.resolve_generator_interiors(def_id);
@@ -1734,12 +1736,6 @@ enum TupleArgumentsFlag {
     TupleArguments,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Fallback {
-    Full,
-    Numeric
-}
-
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn new(inh: &'a Inherited<'a, 'gcx, 'tcx>,
                param_env: ty::ParamEnv<'tcx>,
@@ -2149,7 +2145,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // unconstrained floats with f64.
     // Fallback becomes very dubious if we have encountered type-checking errors.
     // In that case, fallback to TyError.
-    fn fallback_if_possible(&self, ty: Ty<'tcx>, fallback: Fallback) {
+    fn fallback_if_possible(&self, ty: Ty<'tcx>) {
         use rustc::ty::error::UnconstrainedNumeric::Neither;
         use rustc::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
 
@@ -2158,12 +2154,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             _ if self.is_tainted_by_errors() => self.tcx().types.err,
             UnconstrainedInt => self.tcx.types.i32,
             UnconstrainedFloat => self.tcx.types.f64,
-            Neither if self.type_var_diverges(ty) => {
-                match fallback {
-                    Fallback::Full => self.tcx.mk_diverging_default(),
-                    Fallback::Numeric => return,
-                }
-            }
+            Neither if self.type_var_diverges(ty) => self.tcx.mk_diverging_default(),
             Neither => return
         };
         debug!("default_type_parameters: defaulting `{:?}` to `{:?}`", ty, fallback);

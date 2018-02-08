@@ -38,7 +38,7 @@
 //! expression, `e as U2` is not necessarily so (in fact it will only be valid if
 //! `U1` coerces to `U2`).
 
-use super::{Diverges, Fallback, FnCtxt};
+use super::{Diverges, FnCtxt};
 
 use errors::DiagnosticBuilder;
 use hir::def_id::DefId;
@@ -290,9 +290,6 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
             }
             CastError::UnknownCastPtrKind |
             CastError::UnknownExprPtrKind => {
-                if fcx.is_tainted_by_errors() {
-                    return;
-                }
                 let unknown_cast_to = match e {
                     CastError::UnknownCastPtrKind => true,
                     CastError::UnknownExprPtrKind => false,
@@ -396,12 +393,6 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
 
     pub fn check(mut self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) {
         self.expr_ty = fcx.structurally_resolved_type(self.span, self.expr_ty);
-        // For backwards compatibility we apply numeric fallback here. This means that in:
-        // `let x = 100; x as u8;`, we infer `x` to `i32` rather than `u8`.
-        if self.expr_ty.is_ty_infer() {
-            fcx.fallback_if_possible(self.expr_ty, Fallback::Numeric);
-            self.expr_ty = fcx.structurally_resolved_type(self.span, self.expr_ty);
-        }
         self.cast_ty = fcx.structurally_resolved_type(self.span, self.cast_ty);
 
         debug!("check_cast({}, {:?} as {:?})",

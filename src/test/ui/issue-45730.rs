@@ -11,13 +11,9 @@
 use std::fmt;
 fn main() {
     let x: *const _ = 0 as _; //~ ERROR cannot cast
-}
 
-fn a() {
     let x: *const _ = 0 as *const _; //~ ERROR cannot cast
     let y: Option<*const fmt::Debug> = Some(x) as _;
-}
 
-fn c() {
     let x = 0 as *const i32 as *const _ as *mut _; //~ ERROR cannot cast
 }
