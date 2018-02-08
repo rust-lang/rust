@@ -37,6 +37,13 @@ pub trait Termination {
     /// Is called to get the representation of the value as status code.
     /// This status code is returned to the operating system.
     fn report(self) -> i32;
+
+    /// Invoked when unit tests terminate. Should panic if the unit
+    /// test is considered a failure. By default, invokes `report()`
+    /// and checks for a `0` result.
+    fn assert_unit_test_successful(self) where Self: Sized {
+        assert_eq!(self.report(), 0);
+    }
 }
 
 #[unstable(feature = "termination_trait", issue = "43301")]

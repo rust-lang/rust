@@ -32,6 +32,7 @@ use ext::build::AstBuilder;
 use ext::expand::ExpansionConfig;
 use ext::hygiene::{Mark, SyntaxContext};
 use fold::Folder;
+use feature_gate::Features;
 use util::move_map::MoveMap;
 use fold;
 use parse::{token, ParseSess};
@@ -63,6 +64,7 @@ struct TestCtxt<'a> {
     reexport_test_harness_main: Option<Symbol>,
     is_libtest: bool,
     ctxt: SyntaxContext,
+    features: &'a Features,
 
     // top-level re-export submodule, filled out after folding is finished
     toplevel_reexport: Option<Ident>,
@@ -74,7 +76,8 @@ pub fn modify_for_testing(sess: &ParseSess,
                           resolver: &mut Resolver,
                           should_test: bool,
                           krate: ast::Crate,
-                          span_diagnostic: &errors::Handler) -> ast::Crate {
+                          span_diagnostic: &errors::Handler,
+                          features: &Features) -> ast::Crate {
     // Check for #[reexport_test_harness_main = "some_name"] which
     // creates a `use some_name = __test::main;`. This needs to be
     // unconditional, so that the attribute is still marked as used in
@@ -84,7 +87,8 @@ pub fn modify_for_testing(sess: &ParseSess,
                                            "reexport_test_harness_main");
 
     if should_test {
-        generate_test_harness(sess, resolver, reexport_test_harness_main, krate, span_diagnostic)
+        generate_test_harness(sess, resolver, reexport_test_harness_main,
+                              krate, span_diagnostic, features)
     } else {
         krate
     }
@@ -265,16 +269,20 @@ fn generate_test_harness(sess: &ParseSess,
                          resolver: &mut Resolver,
                          reexport_test_harness_main: Option<Symbol>,
                          krate: ast::Crate,
-                         sd: &errors::Handler) -> ast::Crate {
+                         sd: &errors::Handler,
+                         features: &Features) -> ast::Crate {
     // Remove the entry points
     let mut cleaner = EntryPointCleaner { depth: 0 };
     let krate = cleaner.fold_crate(krate);
 
     let mark = Mark::fresh(Mark::root());
 
+    let mut econfig = ExpansionConfig::default("test".to_string());
+    econfig.features = Some(features);
+
     let cx = TestCtxt {
         span_diagnostic: sd,
-        ext_cx: ExtCtxt::new(sess, ExpansionConfig::default("test".to_string()), resolver),
+        ext_cx: ExtCtxt::new(sess, econfig, resolver),
         path: Vec::new(),
         testfns: Vec::new(),
         reexport_test_harness_main,
@@ -282,6 +290,7 @@ fn generate_test_harness(sess: &ParseSess,
         is_libtest: attr::find_crate_name(&krate.attrs).map(|s| s == "test").unwrap_or(false),
         toplevel_reexport: None,
         ctxt: SyntaxContext::empty().apply_mark(mark),
+        features,
     };
 
     mark.set_expn_info(ExpnInfo {
@@ -318,71 +327,105 @@ enum HasTestSignature {
 fn is_test_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
     let has_test_attr = attr::contains_name(&i.attrs, "test");
 
-    fn has_test_signature(i: &ast::Item) -> HasTestSignature {
+    fn has_test_signature(cx: &TestCtxt, i: &ast::Item) -> HasTestSignature {
         match i.node {
-          ast::ItemKind::Fn(ref decl, _, _, _, ref generics, _) => {
-            let no_output = match decl.output {
-                ast::FunctionRetTy::Default(..) => true,
-                ast::FunctionRetTy::Ty(ref t) if t.node == ast::TyKind::Tup(vec![]) => true,
-                _ => false
-            };
-            if decl.inputs.is_empty()
-                   && no_output
-                   && !generics.is_parameterized() {
-                Yes
-            } else {
-                No
+            ast::ItemKind::Fn(ref decl, _, _, _, ref generics, _) => {
+                // If the termination trait is active, the compiler will check that the output
+                // type implements the `Termination` trait as `libtest` enforces that.
+                let output_matches = if cx.features.termination_trait {
+                    true
+                } else {
+                    let no_output = match decl.output {
+                        ast::FunctionRetTy::Default(..) => true,
+                        ast::FunctionRetTy::Ty(ref t) if t.node == ast::TyKind::Tup(vec![]) => true,
+                        _ => false
+                    };
+
+                    no_output && !generics.is_parameterized()
+                };
+
+                if decl.inputs.is_empty() && output_matches {
+                    Yes
+                } else {
+                    No
+                }
             }
-          }
-          _ => NotEvenAFunction,
+            _ => NotEvenAFunction,
         }
     }
 
-    if has_test_attr {
+    let has_test_signature = if has_test_attr {
         let diag = cx.span_diagnostic;
-        match has_test_signature(i) {
-            Yes => {},
-            No => diag.span_err(i.span, "functions used as tests must have signature fn() -> ()"),
-            NotEvenAFunction => diag.span_err(i.span,
-                                              "only functions may be used as tests"),
+        match has_test_signature(cx, i) {
+            Yes => true,
+            No => {
+                if cx.features.termination_trait {
+                    diag.span_err(i.span, "functions used as tests can not have any arguments");
+                } else {
+                    diag.span_err(i.span, "functions used as tests must have signature fn() -> ()");
+                }
+                false
+            },
+            NotEvenAFunction => {
+                diag.span_err(i.span, "only functions may be used as tests");
+                false
+            },
         }
-    }
+    } else {
+        false
+    };
 
-    has_test_attr && has_test_signature(i) == Yes
+    has_test_attr && has_test_signature
 }
 
 fn is_bench_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
     let has_bench_attr = attr::contains_name(&i.attrs, "bench");
 
-    fn has_test_signature(i: &ast::Item) -> bool {
+    fn has_bench_signature(cx: &TestCtxt, i: &ast::Item) -> bool {
         match i.node {
             ast::ItemKind::Fn(ref decl, _, _, _, ref generics, _) => {
                 let input_cnt = decl.inputs.len();
-                let no_output = match decl.output {
-                    ast::FunctionRetTy::Default(..) => true,
-                    ast::FunctionRetTy::Ty(ref t) if t.node == ast::TyKind::Tup(vec![]) => true,
-                    _ => false
+
+                // If the termination trait is active, the compiler will check that the output
+                // type implements the `Termination` trait as `libtest` enforces that.
+                let output_matches = if cx.features.termination_trait {
+                    true
+                } else {
+                    let no_output = match decl.output {
+                        ast::FunctionRetTy::Default(..) => true,
+                        ast::FunctionRetTy::Ty(ref t) if t.node == ast::TyKind::Tup(vec![]) => true,
+                        _ => false
+                    };
+                    let tparm_cnt = generics.params.iter()
+                        .filter(|param| param.is_type_param())
+                        .count();
+
+                    no_output && tparm_cnt == 0
                 };
-                let tparm_cnt = generics.params.iter()
-                    .filter(|param| param.is_type_param())
-                    .count();
 
                 // NB: inadequate check, but we're running
                 // well before resolve, can't get too deep.
-                input_cnt == 1
-                    && no_output && tparm_cnt == 0
+                input_cnt == 1 && output_matches
             }
           _ => false
         }
     }
 
-    if has_bench_attr && !has_test_signature(i) {
+    let has_bench_signature = has_bench_signature(cx, i);
+
+    if has_bench_attr && !has_bench_signature {
         let diag = cx.span_diagnostic;
-        diag.span_err(i.span, "functions used as benches must have signature \
-                      `fn(&mut Bencher) -> ()`");
+
+        if cx.features.termination_trait {
+            diag.span_err(i.span, "functions used as benches must have signature \
+                                   `fn(&mut Bencher) -> impl Termination`");
+        } else {
+            diag.span_err(i.span, "functions used as benches must have signature \
+                                   `fn(&mut Bencher) -> ()`");
+        }
     }
 
-    has_bench_attr && has_test_signature(i)
+    has_bench_attr && has_bench_signature
 }
 
 fn is_ignored(i: &ast::Item) -> bool {
@@ -700,9 +743,52 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
     };
     visible_path.extend(path);
 
-    let fn_expr = ecx.expr_path(ecx.path_global(span, visible_path));
+    // If termination feature is enabled, create a wrapper that invokes the fn
+    // like this:
+    //
+    //     fn wrapper() {
+    //         assert_eq!(0, real_function().report());
+    //     }
+    //
+    // and then put a reference to `wrapper` into the test descriptor. Otherwise,
+    // just put a direct reference to `real_function`.
+    let fn_expr = {
+        let base_fn_expr = ecx.expr_path(ecx.path_global(span, visible_path));
+        if cx.features.termination_trait {
+            // ::std::Termination::assert_unit_test_successful
+            let assert_unit_test_successful = ecx.path_global(
+                span,
+                vec![
+                    ecx.ident_of("std"),
+                    ecx.ident_of("Termination"),
+                    ecx.ident_of("assert_unit_test_successful"),
+                ],
+            );
+            // || {..}
+            ecx.lambda(
+                span,
+                vec![],
+                // ::std::Termination::assert_unit_test_successful(..)
+                ecx.expr_call(
+                    span,
+                    ecx.expr_path(assert_unit_test_successful),
+                    vec![
+                        // $base_fn_expr()
+                        ecx.expr_call(
+                            span,
+                            base_fn_expr,
+                            vec![],
+                        )
+                    ],
+                ),
+            )
+        } else {
+            base_fn_expr
+        }
+    };
 
     let variant_name = if test.bench { "StaticBenchFn" } else { "StaticTestFn" };
+
     // self::test::$variant_name($fn_expr)
     let testfn_expr = ecx.expr_call(span, ecx.expr_path(test_path(variant_name)), vec![fn_expr]);
 

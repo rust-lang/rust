@@ -105,6 +105,7 @@ pub mod syntax {
     pub use ext;
     pub use parse;
     pub use ast;
+    pub use tokenstream;
 }
 
 pub mod abi;
