@@ -1,14 +1,7 @@
 #![feature(dotdoteq_in_patterns, inclusive_range_syntax)]
 
-#![allow(dead_code, no_effect, unnecessary_operation)]
-#![allow(let_and_return)]
-#![allow(needless_return)]
-#![allow(unused_variables)]
-#![allow(cyclomatic_complexity)]
-#![allow(blacklisted_name)]
-#![allow(collapsible_if)]
-#![allow(zero_divided_by_zero, eq_op)]
-#![allow(path_statements)]
+#![allow(blacklisted_name, collapsible_if, cyclomatic_complexity, eq_op, needless_continue,
+         needless_return, never_loop, no_effect, zero_divided_by_zero)]
 
 fn bar<T>(_: T) {}
 fn foo() -> bool { unimplemented!() }
@@ -35,7 +28,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
         0..=10;
         foo();
     }
-    else {
+    else { //~ ERROR same body as `if` block
         Foo { bar: 42 };
         0..10;
         ..;
@@ -84,7 +77,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
             a = -31-a;
             a
         }
-        _ => {
+        _ => { //~ ERROR match arms have same body
             foo();
             let mut a = 42 + [23].len() as i32;
             if true {
@@ -98,7 +91,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     let _ = match Abc::A {
         Abc::A => 0,
         Abc::B => 1,
-        _ => 0,
+        _ => 0, //~ ERROR match arms have same body
     };
 
     if true {
@@ -108,7 +101,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     let _ = if true {
         42
     }
-    else {
+    else { //~ ERROR same body as `if` block
         42
     };
 
@@ -122,7 +115,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
             }
         }
     }
-    else {
+    else { //~ ERROR same body as `if` block
         for _ in &[42] {
             let foo: &Option<_> = &Some::<u8>(42);
             if true {
@@ -144,7 +137,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
         while foo() { break; }
         bar + 1;
     }
-    else {
+    else { //~ ERROR same body as `if` block
         let bar = if true {
             42
         }
@@ -167,7 +160,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     else if false {
         foo();
     }
-    else if foo() {
+    else if foo() { //~ ERROR same body as `if` block
         let _ = match 42 {
             42 => 1,
             a if a > 0 => 2,
@@ -179,14 +172,14 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     if true {
         if let Some(a) = Some(42) {}
     }
-    else {
+    else { //~ ERROR same body as `if` block
         if let Some(a) = Some(42) {}
     }
 
     if true {
         if let (1, .., 3) = (1, 2, 3) {}
     }
-    else {
+    else { //~ ERROR same body as `if` block
         if let (1, .., 3) = (1, 2, 3) {}
     }
 
@@ -241,13 +234,13 @@ fn if_same_then_else() -> Result<&'static str, ()> {
 
     let _ = match 42 {
         42 => foo(),
-        51 => foo(),
+        51 => foo(), //~ ERROR match arms have same body
         _ => true,
     };
 
     let _ = match Some(42) {
         Some(_) => 24,
-        None => 24,
+        None => 24, //~ ERROR match arms have same body
     };
 
     let _ = match Some(42) {
@@ -269,31 +262,31 @@ fn if_same_then_else() -> Result<&'static str, ()> {
 
     match (Some(42), Some(42)) {
         (Some(a), None) => bar(a),
-        (None, Some(a)) => bar(a),
+        (None, Some(a)) => bar(a), //~ ERROR match arms have same body
         _ => (),
     }
 
     match (Some(42), Some(42)) {
         (Some(a), ..) => bar(a),
-        (.., Some(a)) => bar(a),
+        (.., Some(a)) => bar(a), //~ ERROR match arms have same body
         _ => (),
     }
 
     match (1, 2, 3) {
         (1, .., 3) => 42,
-        (.., 3) => 42,
+        (.., 3) => 42, //~ ERROR match arms have same body
         _ => 0,
     };
 
     let _ = if true {
         0.0
-    } else {
+    } else { //~ ERROR same body as `if` block
         0.0
     };
 
     let _ = if true {
         -0.0
-    } else {
+    } else { //~ ERROR same body as `if` block
         -0.0
     };
 
@@ -313,7 +306,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     // Same NaNs
     let _ = if true {
         std::f32::NAN
-    } else {
+    } else { //~ ERROR same body as `if` block
         std::f32::NAN
     };
 
@@ -331,7 +324,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     if true {
         try!(Ok("foo"));
     }
-    else {
+    else { //~ ERROR same body as `if` block
         try!(Ok("foo"));
     }
 
@@ -343,7 +336,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
         let foo = "bar";
         return Ok(&foo[0..]);
     }
-    else {
+    else { //~ ERROR same body as `if` block
         let foo = "";
         return Ok(&foo[0..]);
     }
@@ -357,19 +350,19 @@ fn ifs_same_cond() {
 
     if b {
     }
-    else if b {
+    else if b { //~ ERROR ifs same condition
     }
 
     if a == 1 {
     }
-    else if a == 1 {
+    else if a == 1 { //~ ERROR ifs same condition
     }
 
     if 2*a == 1 {
     }
     else if 2*a == 2 {
     }
-    else if 2*a == 1 {
+    else if 2*a == 1 { //~ ERROR ifs same condition
     }
     else if a == 1 {
     }
