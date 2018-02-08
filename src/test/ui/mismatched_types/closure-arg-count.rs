@@ -36,6 +36,9 @@ fn main() {
     //~^ ERROR closure is expected to take
     let _it = vec![1, 2, 3].into_iter().enumerate().map(qux);
     //~^ ERROR function is expected to take
+
+    let _it = vec![1, 2, 3].into_iter().map(usize::checked_add);
+    //~^ ERROR function is expected to take
 }
 
 fn foo() {}
