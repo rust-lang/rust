@@ -814,7 +814,7 @@ impl<T> Vec<T> {
                 if !f(&v[i]) {
                     del += 1;
                     unsafe {
-                        ptr::read(&v[i]);
+                        ptr::drop_in_place(&mut v[i]);
                     }
                 } else if del > 0 {
                     let src: *const T = &v[i];
