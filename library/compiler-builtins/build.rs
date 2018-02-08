@@ -171,7 +171,6 @@ mod c {
                 "divdc3.c",
                 "divsc3.c",
                 "divxc3.c",
-                "extendsfdf2.c",
                 "extendhfsf2.c",
                 "floatdisf.c",
                 "floatundisf.c",

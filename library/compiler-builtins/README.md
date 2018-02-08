@@ -146,7 +146,7 @@ features = ["c"]
 - [x] divsf3.c
 - [x] divsi3.c
 - [ ] extendhfsf2.c
-- [ ] extendsfdf2.c
+- [x] extendsfdf2.c
 - [x] fixdfdi.c
 - [x] fixdfsi.c
 - [x] fixsfdi.c

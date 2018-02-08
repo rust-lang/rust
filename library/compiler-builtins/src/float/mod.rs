@@ -10,6 +10,7 @@ pub mod pow;
 pub mod sub;
 pub mod mul;
 pub mod div;
+pub mod extend;
 
 /// Trait for some basic operations on floats
 pub trait Float:
