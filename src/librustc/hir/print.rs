@@ -25,6 +25,7 @@ use syntax_pos::{self, BytePos, FileName};
 
 use hir;
 use hir::{PatKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier, RangeEnd};
+use hir::GenericPathParam;
 
 use std::cell::Cell;
 use std::io::{self, Write, Read};
@@ -1269,8 +1270,7 @@ impl<'a> State<'a> {
         self.print_name(segment.name)?;
 
         segment.with_parameters(|parameters| {
-            if !parameters.lifetimes.is_empty() ||
-                !parameters.types.is_empty() ||
+            if !parameters.parameters.is_empty() ||
                 !parameters.bindings.is_empty()
             {
                 self.print_path_parameters(&parameters, segment.infer_types, true)
@@ -1707,18 +1707,18 @@ impl<'a> State<'a> {
     }
 
     fn print_path_parameters(&mut self,
-                             parameters: &hir::PathParameters,
+                             path_params: &hir::PathParameters,
                              infer_types: bool,
                              colons_before_params: bool)
                              -> io::Result<()> {
-        if parameters.parenthesized {
+        if path_params.parenthesized {
             self.s.word("(")?;
-            self.commasep(Inconsistent, parameters.inputs(), |s, ty| s.print_type(&ty))?;
+            self.commasep(Inconsistent, path_params.inputs(), |s, ty| s.print_type(&ty))?;
             self.s.word(")")?;
 
             self.space_if_not_bol()?;
             self.word_space("->")?;
-            self.print_type(&parameters.bindings[0].ty)?;
+            self.print_type(&path_params.bindings[0].ty)?;
         } else {
             let start = if colons_before_params { "::<" } else { "<" };
             let empty = Cell::new(true);
@@ -1731,17 +1731,27 @@ impl<'a> State<'a> {
                 }
             };
 
-            if !parameters.lifetimes.iter().all(|lt| lt.is_elided()) {
-                for lifetime in &parameters.lifetimes {
-                    start_or_comma(self)?;
-                    self.print_lifetime(lifetime)?;
+            let elide_lifetimes = path_params.parameters.iter().all(|p| {
+                if let GenericPathParam::Lifetime(lt) = p {
+                    if !lt.is_elided() {
+                        return false;
+                    }
                 }
-            }
+                true
+            });
 
-            if !parameters.types.is_empty() {
-                start_or_comma(self)?;
-                self.commasep(Inconsistent, &parameters.types, |s, ty| s.print_type(&ty))?;
-            }
+            self.commasep(Inconsistent, &path_params.parameters, |s, p| {
+                match p {
+                    GenericPathParam::Lifetime(lt) => {
+                        if !elide_lifetimes {
+                            s.print_lifetime(lt)
+                        } else {
+                            Ok(())
+                        }
+                    }
+                    GenericPathParam::Type(ty) => s.print_type(ty),
+                }
+            })?;
 
             // FIXME(eddyb) This would leak into error messages, e.g.:
             // "non-exhaustive patterns: `Some::<..>(_)` not covered".
@@ -1750,7 +1760,7 @@ impl<'a> State<'a> {
                 self.s.word("..")?;
             }
 
-            for binding in parameters.bindings.iter() {
+            for binding in path_params.bindings.iter() {
                 start_or_comma(self)?;
                 self.print_name(binding.name)?;
                 self.s.space()?;

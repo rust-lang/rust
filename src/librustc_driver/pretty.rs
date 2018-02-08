@@ -680,7 +680,7 @@ impl<'a> ReplaceBodyWithLoop<'a> {
                         match seg.parameters.as_ref().map(|p| &**p) {
                             None => false,
                             Some(&ast::PathParameters::AngleBracketed(ref data)) =>
-                                any_involves_impl_trait(data.types.iter()) ||
+                                any_involves_impl_trait(data.types().into_iter()) ||
                                 any_involves_impl_trait(data.bindings.iter().map(|b| &b.ty)),
                             Some(&ast::PathParameters::Parenthesized(ref data)) =>
                                 any_involves_impl_trait(data.inputs.iter()) ||

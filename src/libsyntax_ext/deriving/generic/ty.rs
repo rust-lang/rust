@@ -15,7 +15,7 @@ pub use self::PtrTy::*;
 pub use self::Ty::*;
 
 use syntax::ast;
-use syntax::ast::{Expr, GenericParam, Generics, Ident, SelfKind};
+use syntax::ast::{Expr, GenericParam, Generics, Ident, SelfKind, GenericAngleBracketedParam};
 use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
 use syntax::codemap::{respan, DUMMY_SP};
@@ -86,15 +86,20 @@ impl<'a> Path<'a> {
                    -> ast::Path {
         let mut idents = self.path.iter().map(|s| cx.ident_of(*s)).collect();
         let lt = mk_lifetimes(cx, span, &self.lifetime);
-        let tys = self.params.iter().map(|t| t.to_ty(cx, span, self_ty, self_generics)).collect();
+        let tys: Vec<P<ast::Ty>> =
+            self.params.iter().map(|t| t.to_ty(cx, span, self_ty, self_generics)).collect();
+        let params = lt.into_iter()
+                       .map(|lt| GenericAngleBracketedParam::Lifetime(lt))
+                       .chain(tys.into_iter().map(|ty| GenericAngleBracketedParam::Type(ty)))
+                       .collect();
 
         match self.kind {
-            PathKind::Global => cx.path_all(span, true, idents, lt, tys, Vec::new()),
-            PathKind::Local => cx.path_all(span, false, idents, lt, tys, Vec::new()),
+            PathKind::Global => cx.path_all(span, true, idents, params, Vec::new()),
+            PathKind::Local => cx.path_all(span, false, idents, params, Vec::new()),
             PathKind::Std => {
                 let def_site = DUMMY_SP.apply_mark(cx.current_expansion.mark);
                 idents.insert(0, Ident::new(keywords::DollarCrate.name(), def_site));
-                cx.path_all(span, false, idents, lt, tys, Vec::new())
+                cx.path_all(span, false, idents, params, Vec::new())
             }
         }
 
@@ -184,7 +189,7 @@ impl<'a> Ty<'a> {
                    -> ast::Path {
         match *self {
             Self_ => {
-                let self_params = self_generics.params
+                let ty_params: Vec<P<ast::Ty>> = self_generics.params
                     .iter()
                     .filter_map(|param| match *param {
                         GenericParam::Type(ref ty_param) => Some(cx.ty_ident(span, ty_param.ident)),
@@ -200,11 +205,16 @@ impl<'a> Ty<'a> {
                     })
                     .collect();
 
+                let params = lifetimes.into_iter()
+                                      .map(|lt| GenericAngleBracketedParam::Lifetime(lt))
+                                      .chain(ty_params.into_iter().map(|ty|
+                                            GenericAngleBracketedParam::Type(ty)))
+                                      .collect();
+
                 cx.path_all(span,
                             false,
                             vec![self_ty],
-                            lifetimes,
-                            self_params,
+                            params,
                             Vec::new())
             }
             Literal(ref p) => p.to_path(cx, span, self_ty, self_generics),

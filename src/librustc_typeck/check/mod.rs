@@ -4833,8 +4833,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             match param.kind {
                 GenericParamDefKind::Lifetime => {
-                    let lifetimes = segment.map_or(&[][..], |(s, _)| {
-                        s.parameters.as_ref().map_or(&[][..], |p| &p.lifetimes[..])
+                    let lifetimes = segment.map_or(vec![], |(s, _)| {
+                        s.parameters.as_ref().map_or(vec![], |p| p.lifetimes())
                     });
 
                     if let Some(lifetime) = lifetimes.get(i) {
@@ -4844,8 +4844,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
                 GenericParamDefKind::Type {..} => {
-                    let (types, infer_types) = segment.map_or((&[][..], true), |(s, _)| {
-                        (s.parameters.as_ref().map_or(&[][..], |p| &p.types[..]), s.infer_types)
+                    let (types, infer_types) = segment.map_or((vec![], true), |(s, _)| {
+                        (s.parameters.as_ref().map_or(vec![], |p| |p| p.types()), s.infer_types)
                     });
 
                     // Skip over the lifetimes in the same segment.
@@ -4961,10 +4961,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   is_method_call: bool,
                                   supress_mismatch_error: bool) {
         let (lifetimes, types, infer_types, bindings) = segment.map_or(
-            (&[][..], &[][..], true, &[][..]),
+            (vec![], vec![], true, &[][..]),
             |(s, _)| s.parameters.as_ref().map_or(
-                (&[][..], &[][..], s.infer_types, &[][..]),
-                |p| (&p.lifetimes[..], &p.types[..],
+                (vec![], vec![], s.infer_types, &[][..]),
+                |p| (p.lifetimes(), p.types(),
                      s.infer_types, &p.bindings[..])));
         let infer_lifetimes = lifetimes.len() == 0;
 

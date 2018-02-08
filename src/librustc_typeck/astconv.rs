@@ -214,8 +214,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // region with the current anon region binding (in other words,
         // whatever & would get replaced with).
         let decl_generics = tcx.generics_of(def_id);
-        let ty_provided = parameters.types.len();
-        let lt_provided = parameters.lifetimes.len();
+        let ty_provided = parameters.types().len();
+        let lt_provided = parameters.lifetimes().len();
 
         let mut lt_accepted = 0;
         let mut ty_params = ParamRange { required: 0, accepted: 0 };
@@ -269,7 +269,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             match param.kind {
                 GenericParamDefKind::Lifetime => {
                     let i = param.index as usize - own_self;
-                    if let Some(lifetime) = parameters.lifetimes.get(i) {
+                    if let Some(lifetime) = parameters.lifetimes().get(i) {
                         self.ast_region_to_region(lifetime, Some(param)).into()
                     } else {
                         tcx.types.re_static.into()
@@ -286,7 +286,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     let i = i - (lt_accepted + own_self);
                     if i < ty_provided {
                         // A provided type parameter.
-                        self.ast_ty_to_ty(&parameters.types[i]).into()
+                        self.ast_ty_to_ty(&parameters.types()[i]).into()
                     } else if infer_types {
                         // No type parameters were provided, we can infer all.
                         if !default_needs_object_self(param) {
@@ -970,23 +970,27 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
     pub fn prohibit_type_params(&self, segments: &[hir::PathSegment]) {
         for segment in segments {
-            segment.with_parameters(|parameters| {
-                for typ in &parameters.types {
-                    struct_span_err!(self.tcx().sess, typ.span, E0109,
-                                     "type parameters are not allowed on this type")
-                        .span_label(typ.span, "type parameter not allowed")
-                        .emit();
+            segment.with_parameters(|params| {
+                for p in &params.parameters {
+                    let (mut span_err, span, kind) = match p {
+                        hir::GenericPathParam::Lifetime(lt) => {
+                            (struct_span_err!(self.tcx().sess, lt.span, E0110,
+                                              "lifetime parameters are not allowed on this type"),
+                             lt.span,
+                             "lifetime")
+                        }
+                        hir::GenericPathParam::Type(ty) => {
+                            (struct_span_err!(self.tcx().sess, ty.span, E0109,
+                                              "type parameters are not allowed on this type"),
+                             ty.span,
+                             "type")
+                        }
+                    };
+                    span_err.span_label(span, format!("{} parameter not allowed", kind))
+                            .emit();
                     break;
                 }
-                for lifetime in &parameters.lifetimes {
-                    struct_span_err!(self.tcx().sess, lifetime.span, E0110,
-                                     "lifetime parameters are not allowed on this type")
-                        .span_label(lifetime.span,
-                                    "lifetime parameter not allowed on this type")
-                        .emit();
-                    break;
-                }
-                for binding in &parameters.bindings {
+                for binding in &params.bindings {
                     self.prohibit_projection(binding.span);
                     break;
                 }

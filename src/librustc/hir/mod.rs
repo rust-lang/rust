@@ -373,11 +373,15 @@ impl PathSegment {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum GenericPathParam {
+    Lifetime(Lifetime),
+    Type(P<Ty>),
+}
+
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct PathParameters {
-    /// The lifetime parameters for this path segment.
-    pub lifetimes: HirVec<Lifetime>,
-    /// The type parameters for this path segment, if present.
-    pub types: HirVec<P<Ty>>,
+    /// The generic parameters for this path segment.
+    pub parameters: HirVec<GenericPathParam>,
     /// Bindings (equality constraints) on associated types, if present.
     /// E.g., `Foo<A=Bar>`.
     pub bindings: HirVec<TypeBinding>,
@@ -390,27 +394,45 @@ pub struct PathParameters {
 impl PathParameters {
     pub fn none() -> Self {
         Self {
-            lifetimes: HirVec::new(),
-            types: HirVec::new(),
+            parameters: HirVec::new(),
             bindings: HirVec::new(),
             parenthesized: false,
         }
     }
 
     pub fn is_empty(&self) -> bool {
-        self.lifetimes.is_empty() && self.types.is_empty() &&
-            self.bindings.is_empty() && !self.parenthesized
+        self.parameters.is_empty() && self.bindings.is_empty() && !self.parenthesized
     }
 
     pub fn inputs(&self) -> &[P<Ty>] {
         if self.parenthesized {
-            if let Some(ref ty) = self.types.get(0) {
+            if let Some(ref ty) = self.types().get(0) {
                 if let TyTup(ref tys) = ty.node {
                     return tys;
                 }
             }
         }
         bug!("PathParameters::inputs: not a `Fn(T) -> U`");
+    }
+
+    pub fn lifetimes(&self) -> Vec<&Lifetime> {
+        self.parameters.iter().filter_map(|p| {
+            if let GenericPathParam::Lifetime(lt) = p {
+                Some(lt)
+            } else {
+                None
+            }
+        }).collect()
+    }
+
+    pub fn types(&self) -> Vec<&P<Ty>> {
+        self.parameters.iter().filter_map(|p| {
+            if let GenericPathParam::Type(ty) = p {
+                Some(ty)
+            } else {
+                None
+            }
+        }).collect()
     }
 }
 

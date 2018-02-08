@@ -132,6 +132,10 @@ pub trait Folder : Sized {
         noop_fold_exprs(es, self)
     }
 
+    fn fold_param(&mut self, p: GenericAngleBracketedParam) -> GenericAngleBracketedParam {
+        noop_fold_param(p, self)
+    }
+
     fn fold_ty(&mut self, t: P<Ty>) -> P<Ty> {
         noop_fold_ty(t, self)
     }
@@ -353,6 +357,19 @@ pub fn noop_fold_ty_binding<T: Folder>(b: TypeBinding, fld: &mut T) -> TypeBindi
     }
 }
 
+pub fn noop_fold_param<T: Folder>(p: GenericAngleBracketedParam,
+                                  fld: &mut T)
+                                  -> GenericAngleBracketedParam {
+    match p {
+        GenericAngleBracketedParam::Lifetime(lt) => {
+            GenericAngleBracketedParam::Lifetime(noop_fold_lifetime(lt, fld))
+        }
+        GenericAngleBracketedParam::Type(ty) => {
+            GenericAngleBracketedParam::Type(noop_fold_ty(ty, fld))
+        }
+    }
+}
+
 pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
     t.map(|Ty {id, node, span}| Ty {
         id: fld.new_id(id),
@@ -469,9 +486,8 @@ pub fn noop_fold_angle_bracketed_parameter_data<T: Folder>(data: AngleBracketedP
                                                            fld: &mut T)
                                                            -> AngleBracketedParameterData
 {
-    let AngleBracketedParameterData { lifetimes, types, bindings, span } = data;
-    AngleBracketedParameterData { lifetimes: lifetimes.move_map(|l| noop_fold_lifetime(l, fld)),
-                                  types: types.move_map(|ty| fld.fold_ty(ty)),
+    let AngleBracketedParameterData { parameters, bindings, span } = data;
+    AngleBracketedParameterData { parameters: parameters.move_map(|p| fld.fold_param(p)),
                                   bindings: bindings.move_map(|b| fld.fold_ty_binding(b)),
                                   span: fld.new_span(span) }
 }

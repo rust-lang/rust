@@ -192,10 +192,8 @@ use std::collections::HashSet;
 use std::vec;
 
 use rustc_target::spec::abi::Abi;
-use syntax::ast::{
-    self, BinOpKind, EnumDef, Expr, GenericParam, Generics, Ident, PatKind, VariantData
-};
-
+use syntax::ast::{self, BinOpKind, EnumDef, Expr, GenericParam, Generics, Ident, PatKind};
+use syntax::ast::{VariantData, GenericAngleBracketedParam};
 use syntax::attr;
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
@@ -667,7 +665,7 @@ impl<'a> TraitDef<'a> {
         let trait_ref = cx.trait_ref(trait_path);
 
         // Create the type parameters on the `self` path.
-        let self_ty_params = generics.params
+        let self_ty_params: Vec<P<ast::Ty>> = generics.params
             .iter()
             .filter_map(|param| match *param {
                 GenericParam::Type(ref ty_param)
@@ -684,12 +682,17 @@ impl<'a> TraitDef<'a> {
             })
             .collect();
 
+        let self_params = self_lifetimes.into_iter()
+                                        .map(|lt| GenericAngleBracketedParam::Lifetime(lt))
+                                        .chain(self_ty_params.into_iter().map(|ty|
+                                            GenericAngleBracketedParam::Type(ty)))
+                                        .collect();
+
         // Create the type of `self`.
         let self_type = cx.ty_path(cx.path_all(self.span,
                                                false,
                                                vec![type_ident],
-                                               self_lifetimes,
-                                               self_ty_params,
+                                               self_params,
                                                Vec::new()));
 
         let attr = cx.attribute(self.span,

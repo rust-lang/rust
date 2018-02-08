@@ -30,10 +30,9 @@ pub trait AstBuilder {
     fn path_global(&self, span: Span, strs: Vec<ast::Ident> ) -> ast::Path;
     fn path_all(&self, sp: Span,
                 global: bool,
-                idents: Vec<ast::Ident> ,
-                lifetimes: Vec<ast::Lifetime>,
-                types: Vec<P<ast::Ty>>,
-                bindings: Vec<ast::TypeBinding> )
+                idents: Vec<ast::Ident>,
+                parameters: Vec<ast::GenericAngleBracketedParam>,
+                bindings: Vec<ast::TypeBinding>)
         -> ast::Path;
 
     fn qpath(&self, self_type: P<ast::Ty>,
@@ -43,8 +42,7 @@ pub trait AstBuilder {
     fn qpath_all(&self, self_type: P<ast::Ty>,
                 trait_path: ast::Path,
                 ident: ast::Ident,
-                lifetimes: Vec<ast::Lifetime>,
-                types: Vec<P<ast::Ty>>,
+                parameters: Vec<ast::GenericAngleBracketedParam>,
                 bindings: Vec<ast::TypeBinding>)
                 -> (ast::QSelf, ast::Path);
 
@@ -304,20 +302,19 @@ pub trait AstBuilder {
 
 impl<'a> AstBuilder for ExtCtxt<'a> {
     fn path(&self, span: Span, strs: Vec<ast::Ident> ) -> ast::Path {
-        self.path_all(span, false, strs, Vec::new(), Vec::new(), Vec::new())
+        self.path_all(span, false, strs, Vec::new(), Vec::new())
     }
     fn path_ident(&self, span: Span, id: ast::Ident) -> ast::Path {
         self.path(span, vec![id])
     }
     fn path_global(&self, span: Span, strs: Vec<ast::Ident> ) -> ast::Path {
-        self.path_all(span, true, strs, Vec::new(), Vec::new(), Vec::new())
+        self.path_all(span, true, strs, Vec::new(), Vec::new())
     }
     fn path_all(&self,
                 span: Span,
                 global: bool,
                 mut idents: Vec<ast::Ident> ,
-                lifetimes: Vec<ast::Lifetime>,
-                types: Vec<P<ast::Ty>>,
+                parameters: Vec<ast::GenericAngleBracketedParam>,
                 bindings: Vec<ast::TypeBinding> )
                 -> ast::Path {
         let last_ident = idents.pop().unwrap();
@@ -326,8 +323,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         segments.extend(idents.into_iter().map(|ident| {
             ast::PathSegment::from_ident(ident.with_span_pos(span))
         }));
-        let parameters = if !lifetimes.is_empty() || !types.is_empty() || !bindings.is_empty() {
-            ast::AngleBracketedParameterData { lifetimes, types, bindings, span }.into()
+        let parameters = if !parameters.is_empty() !bindings.is_empty() {
+            ast::AngleBracketedParameterData { parameters, bindings, span }.into()
         } else {
             None
         };
@@ -349,7 +346,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
              trait_path: ast::Path,
              ident: ast::Ident)
              -> (ast::QSelf, ast::Path) {
-        self.qpath_all(self_type, trait_path, ident, vec![], vec![], vec![])
+        self.qpath_all(self_type, trait_path, ident, vec![], vec![])
     }
 
     /// Constructs a qualified path.
@@ -359,13 +356,12 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                  self_type: P<ast::Ty>,
                  trait_path: ast::Path,
                  ident: ast::Ident,
-                 lifetimes: Vec<ast::Lifetime>,
-                 types: Vec<P<ast::Ty>>,
+                 parameters: Vec<ast::GenericAngleBracketedParam>,
                  bindings: Vec<ast::TypeBinding>)
                  -> (ast::QSelf, ast::Path) {
         let mut path = trait_path;
-        let parameters = if !lifetimes.is_empty() || !types.is_empty() || !bindings.is_empty() {
-            ast::AngleBracketedParameterData { lifetimes, types, bindings, span: ident.span }.into()
+        let parameters = if !parameters.is_empty() || !bindings.is_empty() {
+            ast::AngleBracketedParameterData { parameters, bindings, span: ident.span }.into()
         } else {
             None
         };
@@ -428,8 +424,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             self.path_all(DUMMY_SP,
                           true,
                           self.std_path(&["option", "Option"]),
-                          Vec::new(),
-                          vec![ ty ],
+                          vec![ ast::GenericAngleBracketedParam::Type(ty) ],
                           Vec::new()))
     }
 

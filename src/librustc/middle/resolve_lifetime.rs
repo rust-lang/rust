@@ -155,7 +155,7 @@ impl Region {
         }
     }
 
-    fn subst(self, params: &[hir::Lifetime], map: &NamedRegionMap) -> Option<Region> {
+    fn subst(self, params: Vec<&hir::Lifetime>, map: &NamedRegionMap) -> Option<Region> {
         if let Region::EarlyBound(index, _, _) = self {
             params
                 .get(index as usize)
@@ -820,7 +820,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_lifetime(&mut self, lifetime_ref: &'tcx hir::Lifetime) {
         if lifetime_ref.is_elided() {
-            self.resolve_elided_lifetimes(slice::from_ref(lifetime_ref), false);
+            self.resolve_elided_lifetimes(vec![lifetime_ref], false);
             return;
         }
         if lifetime_ref.is_static() {
@@ -1613,10 +1613,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             return;
         }
 
-        if params.lifetimes.iter().all(|l| l.is_elided()) {
-            self.resolve_elided_lifetimes(&params.lifetimes, true);
+        if params.lifetimes().iter().all(|l| l.is_elided()) {
+            self.resolve_elided_lifetimes(params.lifetimes(), true);
         } else {
-            for l in &params.lifetimes {
+            for l in &params.lifetimes() {
                 self.visit_lifetime(l);
             }
         }
@@ -1688,13 +1688,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     } else {
                         Some(Region::Static)
                     },
-                    Set1::One(r) => r.subst(&params.lifetimes, map),
+                    Set1::One(r) => r.subst(params.lifetimes(), map),
                     Set1::Many => None,
                 })
                 .collect()
         });
 
-        for (i, ty) in params.types.iter().enumerate() {
+        for (i, ty) in params.types().iter().enumerate() {
             if let Some(&lt) = object_lifetime_defaults.get(i) {
                 let scope = Scope::ObjectLifetimeDefault {
                     lifetime: lt,
@@ -1981,7 +1981,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         }
     }
 
-    fn resolve_elided_lifetimes(&mut self, lifetime_refs: &'tcx [hir::Lifetime], deprecated: bool) {
+    fn resolve_elided_lifetimes(&mut self,
+                                lifetime_refs: Vec<&'tcx hir::Lifetime>,
+                                deprecated: bool) {
         if lifetime_refs.is_empty() {
             return;
         }

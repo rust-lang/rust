@@ -13,7 +13,7 @@ pub use self::AnnNode::*;
 use rustc_target::spec::abi::{self, Abi};
 use ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
 use ast::{SelfKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
-use ast::{Attribute, MacDelimiter};
+use ast::{Attribute, MacDelimiter, GenericAngleBracketedParam};
 use util::parser::{self, AssocOp, Fixity};
 use attr;
 use codemap::{self, CodeMap};
@@ -1015,6 +1015,13 @@ impl<'a> State<'a> {
             self.nbsp()?;
         }
         Ok(())
+    }
+
+    pub fn print_param(&mut self, param: &GenericAngleBracketedParam) -> io::Result<()> {
+        match param {
+            GenericAngleBracketedParam::Lifetime(lt) => self.print_lifetime(lt),
+            GenericAngleBracketedParam::Type(ty) => self.print_type(ty),
+        }
     }
 
     pub fn print_type(&mut self, ty: &ast::Ty) -> io::Result<()> {
@@ -2474,25 +2481,9 @@ impl<'a> State<'a> {
             ast::PathParameters::AngleBracketed(ref data) => {
                 self.s.word("<")?;
 
-                let mut comma = false;
-                for lifetime in &data.lifetimes {
-                    if comma {
-                        self.word_space(",")?
-                    }
-                    self.print_lifetime(lifetime)?;
-                    comma = true;
-                }
+                self.commasep(Inconsistent, &data.parameters, |s, p| s.print_param(p))?;
 
-                if !data.types.is_empty() {
-                    if comma {
-                        self.word_space(",")?
-                    }
-                    self.commasep(
-                        Inconsistent,
-                        &data.types,
-                        |s, ty| s.print_type(ty))?;
-                        comma = true;
-                }
+                let mut comma = data.parameters.len() != 0;
 
                 for binding in data.bindings.iter() {
                     if comma {

@@ -22,6 +22,7 @@ use ast::{Expr, ExprKind, RangeLimits};
 use ast::{Field, FnDecl};
 use ast::{ForeignItem, ForeignItemKind, FunctionRetTy};
 use ast::GenericParam;
+use ast::GenericAngleBracketedParam;
 use ast::{Ident, ImplItem, IsAuto, Item, ItemKind};
 use ast::{Label, Lifetime, LifetimeDef, Lit, LitKind};
 use ast::Local;
@@ -1971,10 +1972,10 @@ impl<'a> Parser<'a> {
 
             let parameters = if self.eat_lt() {
                 // `<'a, T, A = U>`
-                let (lifetimes, types, bindings) = self.parse_generic_args()?;
+                let (parameters, bindings) = self.parse_generic_args()?;
                 self.expect_gt()?;
                 let span = lo.to(self.prev_span);
-                AngleBracketedParameterData { lifetimes, types, bindings, span }.into()
+                AngleBracketedParameterData { parameters, bindings, span }.into()
             } else {
                 // `(T, U) -> R`
                 self.bump(); // `(`
@@ -4936,16 +4937,16 @@ impl<'a> Parser<'a> {
 
     /// Parses (possibly empty) list of lifetime and type arguments and associated type bindings,
     /// possibly including trailing comma.
-    fn parse_generic_args(&mut self) -> PResult<'a, (Vec<Lifetime>, Vec<P<Ty>>, Vec<TypeBinding>)> {
-        let mut lifetimes = Vec::new();
-        let mut types = Vec::new();
+    fn parse_generic_args(&mut self)
+                          -> PResult<'a, (Vec<GenericAngleBracketedParam>, Vec<TypeBinding>)> {
+        let mut parameters = Vec::new();
         let mut bindings = Vec::new();
         let mut seen_type = false;
         let mut seen_binding = false;
         loop {
             if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
                 // Parse lifetime argument.
-                lifetimes.push(self.expect_lifetime());
+                parameters.push(GenericAngleBracketedParam::Lifetime(self.expect_lifetime()));
                 if seen_type || seen_binding {
                     self.span_err(self.prev_span,
                         "lifetime parameters must be declared prior to type parameters");
@@ -4965,11 +4966,12 @@ impl<'a> Parser<'a> {
                 seen_binding = true;
             } else if self.check_type() {
                 // Parse type argument.
-                types.push(self.parse_ty()?);
+                let ty_param = self.parse_ty()?;
                 if seen_binding {
-                    self.span_err(types[types.len() - 1].span,
+                    self.span_err(ty_param.span,
                         "type parameters must be declared prior to associated type bindings");
                 }
+                parameters.push(GenericAngleBracketedParam::Type(ty_param));
                 seen_type = true;
             } else {
                 break
@@ -4979,7 +4981,7 @@ impl<'a> Parser<'a> {
                 break
             }
         }
-        Ok((lifetimes, types, bindings))
+        Ok((parameters, bindings))
     }
 
     /// Parses an optional `where` clause and places it in `generics`.
