@@ -716,6 +716,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     ReifyFnPointer => {
                         match self.eval_operand(operand)?.ty.sty {
                             ty::TyFnDef(def_id, substs) => {
+                                if self.tcx.has_attr(def_id, "rustc_args_required_const") {
+                                    bug!("reifying a fn ptr that requires \
+                                          const arguments");
+                                }
                                 let instance = self.resolve(def_id, substs)?;
                                 let fn_ptr = self.memory.create_fn_alloc(instance);
                                 let valty = ValTy {
