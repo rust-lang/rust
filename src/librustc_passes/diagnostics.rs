@@ -320,4 +320,5 @@ register_diagnostics! {
     E0567, // auto traits can not have generic parameters
     E0568, // auto traits can not have super traits
     E0642, // patterns aren't allowed in methods without bodies
+    E0666, // nested `impl Trait` is illegal
 }

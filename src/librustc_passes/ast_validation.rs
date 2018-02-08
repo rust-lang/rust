@@ -420,6 +420,75 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 }
 
+// Bans nested `impl Trait`, e.g. `impl Into<impl Debug>`.
+// Nested `impl Trait` _is_ allowed in associated type position,
+// e.g `impl Iterator<Item=impl Debug>`
+struct NestedImplTraitVisitor<'a> {
+    session: &'a Session,
+    outer_impl_trait: Option<Span>,
+}
+
+impl<'a> NestedImplTraitVisitor<'a> {
+    fn with_impl_trait<F>(&mut self, outer_impl_trait: Option<Span>, f: F)
+        where F: FnOnce(&mut NestedImplTraitVisitor<'a>)
+    {
+        let old_outer_impl_trait = self.outer_impl_trait;
+        self.outer_impl_trait = outer_impl_trait;
+        f(self);
+        self.outer_impl_trait = old_outer_impl_trait;
+    }
+}
+
+
+impl<'a> Visitor<'a> for NestedImplTraitVisitor<'a> {
+    fn visit_ty(&mut self, t: &'a Ty) {
+        if let TyKind::ImplTrait(_) = t.node {
+            if let Some(outer_impl_trait) = self.outer_impl_trait {
+                struct_span_err!(self.session, t.span, E0666,
+                                 "nested `impl Trait` is not allowed")
+                    .span_label(outer_impl_trait, "outer `impl Trait`")
+                    .span_label(t.span, "devilishly nested `impl Trait` here")
+                    .emit();
+
+            }
+            self.with_impl_trait(Some(t.span), |this| visit::walk_ty(this, t));
+        } else {
+            visit::walk_ty(self, t);
+        }
+    }
+    fn visit_path_parameters(&mut self, _: Span, path_parameters: &'a PathParameters) {
+        match *path_parameters {
+            PathParameters::AngleBracketed(ref params) => {
+                for type_ in &params.types {
+                    self.visit_ty(type_);
+                }
+                for type_binding in &params.bindings {
+                    // Type bindings such as `Item=impl Debug` in `Iterator<Item=Debug>`
+                    // are allowed to contain nested `impl Trait`.
+                    self.with_impl_trait(None, |this| visit::walk_ty(this, &type_binding.ty));
+                }
+            }
+            PathParameters::Parenthesized(ref params) => {
+                for type_ in &params.inputs {
+                    self.visit_ty(type_);
+                }
+                if let Some(ref type_) = params.output {
+                    // `-> Foo` syntax is essentially an associated type binding,
+                    // so it is also allowed to contain nested `impl Trait`.
+                    self.with_impl_trait(None, |this| visit::walk_ty(this, type_));
+                }
+            }
+        }
+    }
+}
+
+
 pub fn check_crate(session: &Session, krate: &Crate) {
+    visit::walk_crate(
+        &mut NestedImplTraitVisitor {
+            session,
+            outer_impl_trait: None,
+        }, krate);
+
     visit::walk_crate(&mut AstValidator { session: session }, krate)
 }
