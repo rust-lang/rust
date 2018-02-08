@@ -14,19 +14,28 @@
 
 /// A trait identifying how borrowed data behaves.
 ///
-/// If a type implements this trait, it signals that a reference to it behaves
-/// exactly like a reference to `Borrowed`. As a consequence, if a trait is
-/// implemented both by `Self` and `Borrowed`, all trait methods that
-/// take a `&self` argument must produce the same result in both
-/// implementations.
+/// In Rust, it is common to provide different representations of a type for
+/// different use cases. For instance, storage location and management for a
+/// value can be specifically chosen as appropriate for a particular use via
+/// pointer types such as [`Box<T>`] or [`Rc<T>`] or one can opt into
+/// concurrency via synchronization types such as [`Mutex<T>`], avoiding the
+/// associated cost when in parallel doesn’t happen. Beyond these generic
+/// wrappers that can be used with any type, some types provide optional
+/// facets providing potentially costly functionality. An example for such a
+/// type is [`String`] which adds the ability to extend a string to the basic
+/// [`str`]. This requires keeping additional information unnecessary for a
+/// simple, imutable string.
 ///
-/// As a consequence, this trait should only be implemented for types managing
-/// a value of another type without modifying its behavior. Examples are
-/// smart pointers such as [`Box<T>`] or [`Rc<T>`] as well the owned version
-/// of slices such as [`Vec<T>`].
+/// These types signal that they are a specialized representation of a basic
+/// type `T` by implementing `Borrow<T>`. The method `borrow` provides a way
+/// to convert a reference to the type into a reference to the underlying
+/// basic type.
 ///
-/// A relaxed version that allows converting a reference to some other type
-/// without any further promises is available through [`AsRef`].
+/// If a type implementing `Borrow<T>` implements other traits also
+/// implemented by `T`, these implementations behave identically if the trait
+/// is concerned with the data rather than its representation. For instance,
+/// the comparison traits such as `PartialEq` or `PartialOrd` must behave
+/// identical for `T` and any type implemeting `Borrow<T>`.
 ///
 /// When writing generic code, a use of `Borrow` should always be justified
 /// by additional trait bounds, making it clear that the two types need to
@@ -37,11 +46,13 @@
 /// The companion trait [`BorrowMut`] provides the same guarantees for
 /// mutable references.
 ///
-/// [`Box<T>`]: ../../std/boxed/struct.Box.html
-/// [`Rc<T>`]: ../../std/rc/struct.Rc.html
-/// [`Vec<T>`]: ../../std/vec/struct.Vec.html
 /// [`AsRef`]: ../../std/convert/trait.AsRef.html
 /// [`BorrowMut`]: trait.BorrowMut.html
+/// [`Box<T>`]: ../../std/boxed/struct.Box.html
+/// [`Mutex<T>`]: ../../std/sync/struct.Mutex.html
+/// [`Rc<T>`]: ../../std/rc/struct.Rc.html
+/// [`str`]: ../../std/primitive.str.html
+/// [`String`]: ../../std/string/struct.String.html
 ///
 /// # Examples
 ///
@@ -85,30 +96,34 @@
 /// ```
 ///
 /// The entire hash map is generic over a key type `K`. Because these keys
-/// are stored by with the hash map, this type as to own the key’s data.
+/// are stored with the hash map, this type has to own the key’s data.
 /// When inserting a key-value pair, the map is given such a `K` and needs
 /// to find the correct hash bucket and check if the key is already present
 /// based on that `K`. It therefore requires `K: Hash + Eq`.
 ///
-/// In order to search for a value based on the key’s data, the `get` method
-/// is generic over some type `Q`. Technically, it needs to convert that `Q`
-/// into a `K` in order to use `K`’s [`Hash`] implementation to be able to
-/// arrive at the same hash value as during insertion in order to look into
-/// the right hash bucket. Since `K` is some kind of owned value, this likely
-/// would involve cloning and isn’t really practical.
+/// When searching for a value in the map, however, having to provide a
+/// reference to a `K` as the key to search for would require to always
+/// create such an owned value. For string keys, this would mean a `String`
+/// value needs to be created just for the search for cases where only a
+/// `str` is available.
 ///
-/// Instead, `get` relies on `Q`’s implementation of `Hash` and uses `Borrow`
-/// to indicate that `K`’s implementation of `Hash` must produce the same
-/// result as `Q`’s by demanding that `K: Borrow<Q>`.
+/// Instead, the `get` method is generic over the type of the underlying key
+/// data, called `Q` in the method signature above. It states that `K` is a
+/// representation of `Q` by requiring that `K: Borrow<Q>`. By additionally
+/// requiring `Q: Hash + Eq`, it demands that `K` and `Q` have
+/// implementations of the `Hash` and `Eq` traits that procude identical
+/// results.
+///
+/// The implementation of `get` relies in particular on identical
+/// implementations of `Hash` by determining the key’s hash bucket by calling
+/// `Hash::hash` on the `Q` value even though it inserted the key based on
+/// the hash value calculated from the `K` value.
 ///
 /// As a consequence, the hash map breaks if a `K` wrapping a `Q` value
 /// produces a different hash than `Q`. For instance, imagine you have a
 /// type that wraps a string but compares ASCII letters ignoring their case:
 ///
 /// ```
-/// # #[allow(unused_imports)]
-/// use std::ascii::AsciiExt;
-///
 /// pub struct CIString(String);
 ///
 /// impl PartialEq for CIString {
@@ -124,7 +139,6 @@
 /// implementation of `Hash` needs to reflect that, too:
 ///
 /// ```
-/// # #[allow(unused_imports)] use std::ascii::AsciiExt;
 /// # use std::hash::{Hash, Hasher};
 /// # pub struct CIString(String);
 /// impl Hash for CIString {
