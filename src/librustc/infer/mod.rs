@@ -193,7 +193,7 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// part of the root universe. So this would only get incremented
     /// when we enter into a higher-ranked (`for<..>`) type or trait
     /// bound.
-    pub universe: ty::UniverseIndex,
+    universe: Cell<ty::UniverseIndex>,
 }
 
 /// A map returned by `skolemize_late_bound_regions()` indicating the skolemized
@@ -466,7 +466,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             err_count_on_creation: tcx.sess.err_count(),
             in_snapshot: Cell::new(false),
             region_obligations: RefCell::new(vec![]),
-            universe: ty::UniverseIndex::ROOT,
+            universe: Cell::new(ty::UniverseIndex::ROOT),
         }))
     }
 }
@@ -853,7 +853,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn next_ty_var_id(&self, diverging: bool, origin: TypeVariableOrigin) -> TyVid {
         self.type_variables
             .borrow_mut()
-            .new_var(self.universe, diverging, origin)
+            .new_var(self.universe(), diverging, origin)
     }
 
     pub fn next_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
@@ -885,7 +885,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn next_region_var(&self, origin: RegionVariableOrigin)
                            -> ty::Region<'tcx> {
         let region_var = self.borrow_region_constraints()
-            .new_region_var(self.universe, origin);
+            .new_region_var(self.universe(), origin);
         self.tcx.mk_region(ty::ReVar(region_var))
     }
 
@@ -923,7 +923,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             -> Ty<'tcx> {
         let ty_var_id = self.type_variables
                             .borrow_mut()
-                            .new_var(self.universe,
+                            .new_var(self.universe(),
                                      false,
                                      TypeVariableOrigin::TypeParameterDefinition(span, def.name));
 
@@ -1370,6 +1370,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.selection_cache.clear();
         self.evaluation_cache.clear();
         self.projection_cache.borrow_mut().clear();
+    }
+
+    fn universe(&self) -> ty::UniverseIndex {
+        self.universe.get()
     }
 }
 
