@@ -188,7 +188,7 @@ pub fn poly_project_and_unify_type<'cx, 'gcx, 'tcx>(
     let infcx = selcx.infcx();
     infcx.commit_if_ok(|snapshot| {
         let (skol_predicate, skol_map) =
-            infcx.skolemize_late_bound_regions(&obligation.predicate, snapshot);
+            infcx.skolemize_late_bound_regions(&obligation.predicate);
 
         let skol_obligation = obligation.with(skol_predicate);
         let r = match project_and_unify_type(selcx, &skol_obligation) {
