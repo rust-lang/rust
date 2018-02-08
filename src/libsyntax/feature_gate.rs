@@ -446,6 +446,9 @@ declare_features! (
 
     // Allows `#[repr(transparent)]` attribute on newtype structs
     (active, repr_transparent, "1.25.0", Some(43036)),
+
+    // Qualified path `impl Trait` (`<impl Iterator>::Item`)
+    (active, qualified_path_impl_trait, "1.25.0", Some(34511)),
 );
 
 declare_features! (
@@ -1341,12 +1344,17 @@ fn contains_novel_literal(item: &ast::MetaItem) -> bool {
     }
 }
 
-// Bans nested `impl Trait`, e.g. `impl Into<impl Debug>`.
+// Bans nested `impl Trait`, e.g. `impl Into<impl Debug>` and
+// projections from `impl Trait` types, e.g. `-> <impl Iterator>::Item`.
 // Nested `impl Trait` _is_ allowed in associated type position,
 // e.g `impl Iterator<Item=impl Debug>`
 struct NestedImplTraitVisitor<'a> {
     context: &'a Context<'a>,
     is_in_impl_trait: bool,
+    // Whether or not we're in the explicit `Self` type of a qualified path:
+    // <Vec<T> as Trait>::AssociatedItem
+    //  ^^^^^^^^^^^^^^^ this spot
+    is_in_path_self_type: bool,
 }
 
 impl<'a> NestedImplTraitVisitor<'a> {
@@ -1363,15 +1371,29 @@ impl<'a> NestedImplTraitVisitor<'a> {
 
 impl<'a> Visitor<'a> for NestedImplTraitVisitor<'a> {
     fn visit_ty(&mut self, t: &'a ast::Ty) {
-        if let ast::TyKind::ImplTrait(_) = t.node {
-            if self.is_in_impl_trait {
-                gate_feature_post!(&self, nested_impl_trait, t.span,
-                    "nested `impl Trait` is experimental"
-                );
+        match t.node {
+            ast::TyKind::ImplTrait(_) => {
+                if self.is_in_impl_trait {
+                    gate_feature_post!(&self, nested_impl_trait, t.span,
+                        "nested `impl Trait` is experimental"
+                    );
+                }
+                if self.is_in_path_self_type {
+                    gate_feature_post!(&self, qualified_path_impl_trait, t.span,
+                        "`impl Trait` in qualified paths is experimental"
+                    );
+                }
+                self.with_impl_trait(true, |this| visit::walk_ty(this, t));
             }
-            self.with_impl_trait(true, |this| visit::walk_ty(this, t));
-        } else {
-            visit::walk_ty(self, t);
+            ast::TyKind::Path(Some(ref qself), ref path) => {
+                let old_is_in_path_self_type = self.is_in_path_self_type;
+                self.is_in_path_self_type = true;
+                self.visit_ty(&qself.ty);
+                self.is_in_path_self_type = old_is_in_path_self_type;
+
+                self.visit_path(path, t.id);
+            }
+            _ => visit::walk_ty(self, t),
         }
     }
     fn visit_path_parameters(&mut self, _: Span, path_parameters: &'a ast::PathParameters) {
@@ -1406,6 +1428,7 @@ impl<'a> PostExpansionVisitor<'a> {
             &mut NestedImplTraitVisitor {
                 context: self.context,
                 is_in_impl_trait: false,
+                is_in_path_self_type: false,
             }, krate);
 
         for &(ident, span) in &*self.context.parse_sess.non_modrs_mods.borrow() {
