@@ -728,7 +728,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         r
     }
 
-    // Execute `f` in a snapshot, and commit the bindings it creates
+    /// Execute `f` in a snapshot, and commit the bindings it creates
     pub fn in_snapshot<T, F>(&self, f: F) -> T where
         F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> T
     {
@@ -823,14 +823,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             return None;
         }
 
-        Some(self.commit_if_ok(|snapshot| {
-            let (ty::SubtypePredicate { a_is_expected, a, b}, skol_map) =
+        Some(self.commit_if_ok(|_snapshot| {
+            let ty::SubtypePredicate { a_is_expected, a, b} =
                 self.skolemize_late_bound_regions(predicate);
 
-            let cause_span = cause.span;
             let ok = self.at(cause, param_env).sub_exp(a_is_expected, a, b)?;
-            self.leak_check(false, cause_span, &skol_map, snapshot)?;
-            self.pop_skolemized(skol_map, snapshot);
             Ok(ok.unit())
         }))
     }
@@ -840,16 +837,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                      predicate: &ty::PolyRegionOutlivesPredicate<'tcx>)
         -> UnitResult<'tcx>
     {
-        self.commit_if_ok(|snapshot| {
-            let (ty::OutlivesPredicate(r_a, r_b), skol_map) =
-                self.skolemize_late_bound_regions(predicate);
-            let origin =
-                SubregionOrigin::from_obligation_cause(cause,
-                                                       || RelateRegionParamBound(cause.span));
-            self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
-            self.leak_check(false, cause.span, &skol_map, snapshot)?;
-            Ok(self.pop_skolemized(skol_map, snapshot))
-        })
+        let ty::OutlivesPredicate(r_a, r_b) =
+            self.skolemize_late_bound_regions(predicate);
+        let origin =
+            SubregionOrigin::from_obligation_cause(cause,
+                                                   || RelateRegionParamBound(cause.span));
+        self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
+        Ok(())
     }
 
     pub fn next_ty_var_id(&self, diverging: bool, origin: TypeVariableOrigin) -> TyVid {

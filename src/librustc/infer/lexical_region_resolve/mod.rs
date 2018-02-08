@@ -264,10 +264,13 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
                 }
 
                 debug!(
-                    "Expanding value of {:?} from {:?} to {:?}",
+                    "Expanding value of {:?} from {:?} to {:?} \
+                     (lub_universe={:?}, b_universe={:?})",
                     b_vid,
                     cur_region,
-                    lub
+                    lub,
+                    lub_universe,
+                    b_universe
                 );
 
                 *b_data = VarValue::Value(lub);
