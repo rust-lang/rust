@@ -9,6 +9,13 @@ are converted into a `loop` and do not appear in the HIR).
 
 This chapter covers the main concepts of the HIR.
 
+You can view the HIR representation of your code by passing the
+`-Zunpretty=hir-tree` flag to rustc:
+
+```
+cargo rustc -- -Zunpretty=hir-tree
+```
+
 ### Out-of-band storage and the `Crate` type
 
 The top-level data-structure in the HIR is the `Crate`, which stores
