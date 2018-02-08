@@ -334,19 +334,17 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        use cmp::Ordering::*;
-
-        match self.start.partial_cmp(&self.end) {
-            Some(Less) => {
+        if self.start <= self.end {
+            if self.start < self.end {
                 let n = self.start.add_one();
                 Some(mem::replace(&mut self.start, n))
-            },
-            Some(Equal) => {
+            } else {
                 let last = self.start.replace_one();
                 self.end.replace_zero();
                 Some(last)
-            },
-            _ => None,
+            }
+        } else {
+            None
         }
     }
 
@@ -428,19 +426,17 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
 impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
-        use cmp::Ordering::*;
-
-        match self.start.partial_cmp(&self.end) {
-            Some(Less) => {
+        if self.start <= self.end {
+            if self.start < self.end {
                 let n = self.end.sub_one();
                 Some(mem::replace(&mut self.end, n))
-            },
-            Some(Equal) => {
+            } else {
                 let last = self.end.replace_zero();
                 self.start.replace_one();
                 Some(last)
-            },
-            _ => None,
+            }
+        } else {
+            None
         }
     }
 
