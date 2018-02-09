@@ -12,7 +12,7 @@
 // gate is not used.
 
 macro_rules! m { ($(a)?) => {} }
-//~^ ERROR Using the `?` macro Kleene operator for "at most one" repetition is unstable
+//~^ ERROR Using the `?` macro Kleene operator for "at most one" repetition is unstable (see issue #48075)
 
 fn main() {
     m!();
