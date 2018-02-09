@@ -454,9 +454,7 @@ declare_features! (
     (active, repr_transparent, "1.25.0", Some(43036)),
 
     // Use `?` as the Kleene "at most one" operator
-    // FIXME(mark-i-m): make sure we use the correct issue number when there is
-    //   a tracking issue...
-    (active, macro_at_most_once_rep, "1.25.0", None),
+    (active, macro_at_most_once_rep, "1.25.0", Some(48075)),
 );
 
 declare_features! (
