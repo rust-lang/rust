@@ -219,6 +219,10 @@ for mir::TerminatorKind<'gcx> {
                     target.hash_stable(hcx, hasher);
                 }
             }
+            mir::TerminatorKind::FalseUnwind { ref real_target, ref unwind } => {
+                real_target.hash_stable(hcx, hasher);
+                unwind.hash_stable(hcx, hasher);
+            }
         }
     }
 }

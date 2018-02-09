@@ -636,7 +636,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             mir::TerminatorKind::Assert { .. } => {}
             mir::TerminatorKind::GeneratorDrop |
             mir::TerminatorKind::Yield { .. } |
-            mir::TerminatorKind::FalseEdges { .. } => bug!(),
+            mir::TerminatorKind::FalseEdges { .. } |
+            mir::TerminatorKind::FalseUnwind { .. } => bug!(),
         }
 
         self.super_terminator_kind(block, kind, location);

@@ -728,7 +728,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                TerminatorKind::FalseEdges {
                                    real_target: block,
                                    imaginary_targets:
-                                       vec![candidate.next_candidate_pre_binding_block]});
+                                       vec![candidate.next_candidate_pre_binding_block],
+                               });
 
         self.bind_matched_candidate(block, candidate.bindings);
 
@@ -749,7 +750,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                TerminatorKind::FalseEdges {
                                    real_target: otherwise,
                                    imaginary_targets:
-                                       vec![candidate.next_candidate_pre_binding_block] });
+                                       vec![candidate.next_candidate_pre_binding_block],
+                               });
             Some(otherwise)
         } else {
             self.cfg.terminate(block, candidate_source_info,

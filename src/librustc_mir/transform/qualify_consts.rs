@@ -329,7 +329,8 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 TerminatorKind::GeneratorDrop |
                 TerminatorKind::Yield { .. } |
                 TerminatorKind::Unreachable |
-                TerminatorKind::FalseEdges { .. } => None,
+                TerminatorKind::FalseEdges { .. } |
+                TerminatorKind::FalseUnwind { .. } => None,
 
                 TerminatorKind::Return => {
                     // Check for unused values. This usually means

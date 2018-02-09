@@ -796,7 +796,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Unreachable
             | TerminatorKind::Drop { .. }
-            | TerminatorKind::FalseEdges { .. } => {
+            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseUnwind { .. } => {
                 // no checks needed for these
             }
 
@@ -1150,6 +1151,18 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 self.assert_iscleanup(mir, block_data, real_target, is_cleanup);
                 for target in imaginary_targets {
                     self.assert_iscleanup(mir, block_data, *target, is_cleanup);
+                }
+            }
+            TerminatorKind::FalseUnwind {
+                real_target,
+                unwind
+            } => {
+                self.assert_iscleanup(mir, block_data, real_target, is_cleanup);
+                if let Some(unwind) = unwind {
+                    if is_cleanup {
+                        span_mirbug!(self, block_data, "cleanup in cleanup block via false unwind");
+                    }
+                    self.assert_iscleanup(mir, block_data, unwind, true);
                 }
             }
         }

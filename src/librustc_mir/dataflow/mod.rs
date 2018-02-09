@@ -864,6 +864,14 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
                     self.propagate_bits_into_entry_set_for(in_out, changed, target);
                 }
             }
+            mir::TerminatorKind::FalseUnwind { ref real_target, unwind } => {
+                self.propagate_bits_into_entry_set_for(in_out, changed, real_target);
+                if let Some(ref unwind) = unwind {
+                    if !self.dead_unwinds.contains(&bb) {
+                        self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
+                    }
+                }
+            }
         }
     }
 

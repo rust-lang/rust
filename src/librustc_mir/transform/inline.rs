@@ -813,6 +813,9 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                     *target = self.update_target(*target);
                 }
             }
+            TerminatorKind::FalseUnwind { real_target: _ , unwind: _ } =>
+                // see the ordering of passes in the optimized_mir query.
+                bug!("False unwinds should have been removed before inlining")
         }
     }
 

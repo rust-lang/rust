@@ -104,8 +104,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // Or:
                 //
                 // [block: If(lhs)] -false-> [else_block: If(rhs)] -true-> [true_block]
-                //        |                          | (false)
-                //        +----------true------------+-------------------> [false_block]
+                //        | (true)                   | (false)
+                //  [true_block]               [false_block]
 
                 let (true_block, false_block, mut else_block, join_block) =
                     (this.cfg.start_new_block(), this.cfg.start_new_block(),
@@ -147,20 +147,24 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 join_block.unit()
             }
             ExprKind::Loop { condition: opt_cond_expr, body } => {
-                // [block] --> [loop_block] ~~> [loop_block_end] -1-> [exit_block]
-                //                  ^                  |
-                //                  |                  0
-                //                  |                  |
-                //                  |                  v
-                //           [body_block_end] <~~~ [body_block]
+                // [block] --> [loop_block] -/eval. cond./-> [loop_block_end] -1-> [exit_block]
+                //                  ^                               |
+                //                  |                               0
+                //                  |                               |
+                //                  |                               v
+                //           [body_block_end] <-/eval. body/-- [body_block]
                 //
                 // If `opt_cond_expr` is `None`, then the graph is somewhat simplified:
                 //
-                // [block] --> [loop_block / body_block ] ~~> [body_block_end]    [exit_block]
-                //                         ^                          |
-                //                         |                          |
-                //                         +--------------------------+
-                //
+                // [block]
+                //    |
+                //   [loop_block] -> [body_block] -/eval. body/-> [body_block_end]
+                //    |        ^                                         |
+                // false link  |                                         |
+                //    |        +-----------------------------------------+
+                //    +-> [diverge_cleanup]
+                // The false link is required to make sure borrowck considers unwinds through the
+                // body, even when the exact code in the body cannot unwind
 
                 let loop_block = this.cfg.start_new_block();
                 let exit_block = this.cfg.start_new_block();
@@ -188,7 +192,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             // always `()` anyway
                             this.cfg.push_assign_unit(exit_block, source_info, destination);
                         } else {
-                            body_block = loop_block;
+                            body_block = this.cfg.start_new_block();
+                            let diverge_cleanup = this.diverge_cleanup();
+                            this.cfg.terminate(loop_block, source_info,
+                                               TerminatorKind::FalseUnwind {
+                                                   real_target: body_block,
+                                                   unwind: Some(diverge_cleanup)
+                                               })
                         }
 
                         // The “return” value of the loop body must always be an unit. We therefore
