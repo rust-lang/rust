@@ -487,6 +487,10 @@ pub struct CombinedSnapshot<'a, 'tcx:'a> {
 
 /// Helper trait for shortening the lifetimes inside a
 /// value for post-type-checking normalization.
+///
+/// This trait offers a normalization method where the inputs and
+/// outputs both have the `'gcx` lifetime; the implementations
+/// internally create inference contexts and/or lift as needed.
 pub trait TransNormalize<'gcx>: TypeFoldable<'gcx> {
     fn trans_normalize<'a, 'tcx>(&self,
                                  infcx: &InferCtxt<'a, 'gcx, 'tcx>,
