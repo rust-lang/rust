@@ -85,13 +85,13 @@ and add to `main.rs` or  `lib.rs`:
 #![cfg_attr(test, plugin(clippy))]
 ```
 
-### Running clippy from the command line without installing
+### Running clippy from the command line without installing it
 
-To have cargo compile your crate with clippy without needing `#![plugin(clippy)]`
+To have cargo compile your crate with clippy without clippy installation and without needing `#![plugin(clippy)]`
 in your code, you can use:
 
 ```terminal
-cargo rustc -- -L /path/to/clippy_so/dir/ -Z extra-plugins=clippy
+cargo run --bin cargo-clippy --manifest-path=path_to_clippys_Cargo.toml
 ```
 
 *[Note](https://github.com/rust-lang-nursery/rust-clippy/wiki#a-word-of-warning):*
