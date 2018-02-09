@@ -38,6 +38,22 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                       -> BlockAnd<()> {
         let discriminant_place = unpack!(block = self.as_place(block, discriminant));
 
+        // Matching on a `discriminant_place` with an uninhabited type doesn't
+        // generate any memory reads by itself, and so if the place "expression"
+        // contains unsafe operations like raw pointer dereferences or union
+        // field projections, we wouldn't know to require an `unsafe` block
+        // around a `match` equivalent to `std::intrinsics::unreachable()`.
+        // See issue #47412 for this hole being discovered in the wild.
+        //
+        // HACK(eddyb) Work around the above issue by adding a dummy inspection
+        // of `discriminant_place`, specifically by applying `Rvalue::Discriminant`
+        // (which will work regardless of type) and storing the result in a temp.
+        let dummy_source_info = self.source_info(span);
+        let dummy_access = Rvalue::Discriminant(discriminant_place.clone());
+        let dummy_ty = dummy_access.ty(&self.local_decls, self.hir.tcx());
+        let dummy_temp = self.temp(dummy_ty, dummy_source_info.span);
+        self.cfg.push_assign(block, dummy_source_info, &dummy_temp, dummy_access);
+
         let mut arm_blocks = ArmBlocks {
             blocks: arms.iter()
                         .map(|_| self.cfg.start_new_block())
