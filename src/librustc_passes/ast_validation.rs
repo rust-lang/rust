@@ -447,7 +447,7 @@ impl<'a> Visitor<'a> for NestedImplTraitVisitor<'a> {
                 struct_span_err!(self.session, t.span, E0666,
                                  "nested `impl Trait` is not allowed")
                     .span_label(outer_impl_trait, "outer `impl Trait`")
-                    .span_label(t.span, "devilishly nested `impl Trait` here")
+                    .span_label(t.span, "nested `impl Trait` here")
                     .emit();
 
             }
@@ -482,12 +482,78 @@ impl<'a> Visitor<'a> for NestedImplTraitVisitor<'a> {
     }
 }
 
+// Bans `impl Trait` in path projections like `<impl Iterator>::Item` or `Foo::Bar<impl Trait>`.
+struct ImplTraitProjectionVisitor<'a> {
+    session: &'a Session,
+    is_banned: bool,
+}
+
+impl<'a> ImplTraitProjectionVisitor<'a> {
+    fn with_ban<F>(&mut self, f: F)
+        where F: FnOnce(&mut ImplTraitProjectionVisitor<'a>)
+    {
+        let old_is_banned = self.is_banned;
+        self.is_banned = true;
+        f(self);
+        self.is_banned = old_is_banned;
+    }
+}
+
+impl<'a> Visitor<'a> for ImplTraitProjectionVisitor<'a> {
+    fn visit_ty(&mut self, t: &'a Ty) {
+        match t.node {
+            TyKind::ImplTrait(_) => {
+                if self.is_banned {
+                    struct_span_err!(self.session, t.span, E0667,
+                                 "`impl Trait` is not allowed in path parameters")
+                        .emit();
+                }
+            }
+            TyKind::Path(ref qself, ref path) => {
+                // We allow these:
+                //  - `Option<impl Trait>`
+                //  - `option::Option<impl Trait>`
+                //  - `option::Option<T>::Foo<impl Trait>
+                //
+                // But not these:
+                //  - `<impl Trait>::Foo`
+                //  - `option::Option<impl Trait>::Foo`.
+                //
+                // To implement this, we disallow `impl Trait` from `qself`
+                // (for cases like `<impl Trait>::Foo>`)
+                // but we allow `impl Trait` in `PathParameters`
+                // iff there are no more PathSegments.
+                if let Some(ref qself) = *qself {
+                    // `impl Trait` in `qself` is always illegal
+                    self.with_ban(|this| this.visit_ty(&qself.ty));
+                }
+
+                for (i, segment) in path.segments.iter().enumerate() {
+                    // Allow `impl Trait` iff we're on the final path segment
+                    if i == (path.segments.len() - 1) {
+                        visit::walk_path_segment(self, path.span, segment);
+                    } else {
+                        self.with_ban(|this|
+                            visit::walk_path_segment(this, path.span, segment));
+                    }
+                }
+            }
+            _ => visit::walk_ty(self, t),
+        }
+    }
+}
 
 pub fn check_crate(session: &Session, krate: &Crate) {
     visit::walk_crate(
         &mut NestedImplTraitVisitor {
             session,
             outer_impl_trait: None,
+        }, krate);
+
+    visit::walk_crate(
+        &mut ImplTraitProjectionVisitor {
+            session,
+            is_banned: false,
         }, krate);
 
     visit::walk_crate(&mut AstValidator { session: session }, krate)
