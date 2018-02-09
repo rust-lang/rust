@@ -76,3 +76,7 @@ fn calculate_predecessors(mir: &Mir) -> IndexVec<BasicBlock, Vec<BasicBlock>> {
 
     result
 }
+
+CloneTypeFoldableAndLiftImpls! {
+    Cache,
+}

@@ -18,7 +18,6 @@ use middle::const_val::ConstVal;
 use traits::Reveal;
 use ty::subst::{UnpackedKind, Substs};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
-use ty::fold::{TypeVisitor, TypeFolder};
 use ty::error::{ExpectedFound, TypeError};
 use mir::interpret::{GlobalId, Value, PrimVal};
 use util::common::ErrorReported;
@@ -326,13 +325,9 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialTraitRef<'tcx> {
 #[derive(Debug, Clone)]
 struct GeneratorWitness<'tcx>(&'tcx ty::Slice<Ty<'tcx>>);
 
-impl<'tcx> TypeFoldable<'tcx> for GeneratorWitness<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        GeneratorWitness(self.0.fold_with(folder))
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.0.visit_with(visitor)
+TupleStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for GeneratorWitness<'tcx> {
+        a
     }
 }
 

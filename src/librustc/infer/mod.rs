@@ -1647,19 +1647,6 @@ impl<'tcx> TypeFoldable<'tcx> for ValuePairs<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for TypeTrace<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        TypeTrace {
-            cause: self.cause.fold_with(folder),
-            values: self.values.fold_with(folder)
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.cause.visit_with(visitor) || self.values.visit_with(visitor)
-    }
-}
-
 impl<'tcx> fmt::Debug for RegionObligation<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "RegionObligation(sub_region={:?}, sup_type={:?})",

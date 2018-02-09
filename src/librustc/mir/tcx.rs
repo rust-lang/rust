@@ -16,7 +16,6 @@
 use mir::*;
 use ty::subst::{Subst, Substs};
 use ty::{self, AdtDef, Ty, TyCtxt};
-use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use hir;
 use ty::util::IntTypeExt;
 
@@ -100,25 +99,10 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for PlaceTy<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        match *self {
-            PlaceTy::Ty { ty } => PlaceTy::Ty { ty: ty.fold_with(folder) },
-            PlaceTy::Downcast { adt_def, substs, variant_index } => {
-                PlaceTy::Downcast {
-                    adt_def,
-                    substs: substs.fold_with(folder),
-                    variant_index,
-                }
-            }
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        match *self {
-            PlaceTy::Ty { ty } => ty.visit_with(visitor),
-            PlaceTy::Downcast { substs, .. } => substs.visit_with(visitor)
-        }
+EnumTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for PlaceTy<'tcx> {
+        (PlaceTy::Ty) { ty },
+        (PlaceTy::Downcast) { adt_def, substs, variant_index },
     }
 }
 
