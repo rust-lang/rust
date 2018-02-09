@@ -27,9 +27,9 @@ impl Marker {
         if idx == p.events.len() - 1 {
             match p.events.pop() {
                 Some(Event::Start {
-                    kind: TOMBSTONE,
-                    forward_parent: None,
-                }) => (),
+                         kind: TOMBSTONE,
+                         forward_parent: None,
+                     }) => (),
                 _ => unreachable!(),
             }
         }
@@ -129,8 +129,8 @@ impl<'t> Parser<'t> {
         m
     }
 
-    pub(crate) fn error<'p>(&'p mut self) -> ErrorBuilder<'p, 't> {
-        ErrorBuilder::new(self)
+    pub(crate) fn error<'p, T: Into<String>>(&'p mut self, msg: T) -> ErrorBuilder<'p, 't> {
+        ErrorBuilder::new(self, msg.into())
     }
 
     pub(crate) fn bump(&mut self) {
@@ -175,25 +175,22 @@ impl<'t> Parser<'t> {
 }
 
 pub(crate) struct ErrorBuilder<'p, 't: 'p> {
-    message: Option<String>,
+    message: String,
     parser: &'p mut Parser<'t>,
 }
 
+impl<'p, 't: 'p> Drop for ErrorBuilder<'p, 't> {
+    fn drop(&mut self) {
+        let message = ::std::mem::replace(&mut self.message, String::new());
+        self.parser.event(Event::Error { message });
+    }
+}
+
 impl<'t, 'p> ErrorBuilder<'p, 't> {
-    fn new(parser: &'p mut Parser<'t>) -> Self {
+    fn new(parser: &'p mut Parser<'t>, message: String) -> Self {
         ErrorBuilder {
-            message: None,
+            message,
             parser,
         }
-    }
-
-    pub fn message<M: Into<String>>(mut self, m: M) -> Self {
-        self.message = Some(m.into());
-        self
-    }
-
-    pub fn emit(self) {
-        let message = self.message.expect("Error message not set");
-        self.parser.event(Event::Error { message });
     }
 }

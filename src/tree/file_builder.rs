@@ -14,7 +14,7 @@ pub(crate) trait Sink {
     fn leaf(&mut self, kind: SyntaxKind, len: TextUnit);
     fn start_internal(&mut self, kind: SyntaxKind);
     fn finish_internal(&mut self);
-    fn error(&mut self) -> ErrorBuilder;
+    fn error(&mut self, err: ErrorMsg);
 }
 
 #[derive(Debug)]
@@ -22,7 +22,8 @@ pub(crate) struct FileBuilder {
     text: String,
     nodes: Vec<NodeData>,
     errors: Vec<SyntaxErrorData>,
-    in_progress: Vec<(NodeIdx, Option<NodeIdx>)>, // (parent, last_child)
+    in_progress: Vec<(NodeIdx, Option<NodeIdx>)>,
+    // (parent, last_child)
     pos: TextUnit,
 }
 
@@ -65,8 +66,13 @@ impl Sink for FileBuilder {
         }
     }
 
-    fn error(&mut self) -> ErrorBuilder {
-        ErrorBuilder::new(self)
+    fn error(&mut self, err: ErrorMsg) {
+        let &(node, after_child) = self.in_progress.last().unwrap();
+        self.errors.push(SyntaxErrorData {
+            node,
+            message: err.message,
+            after_child,
+        })
     }
 }
 
@@ -149,32 +155,7 @@ fn grow(left: &mut TextRange, right: TextRange) {
     *left = TextRange::from_to(left.start(), right.end())
 }
 
-#[derive(Debug)]
-pub struct ErrorBuilder<'f> {
-    message: Option<String>,
-    builder: &'f mut FileBuilder,
-}
-
-impl<'f> ErrorBuilder<'f> {
-    fn new(builder: &'f mut FileBuilder) -> Self {
-        ErrorBuilder {
-            message: None,
-            builder,
-        }
-    }
-
-    pub fn message<M: Into<String>>(mut self, m: M) -> Self {
-        self.message = Some(m.into());
-        self
-    }
-
-    pub fn emit(self) {
-        let message = self.message.expect("Error message not set");
-        let &(node, after_child) = self.builder.in_progress.last().unwrap();
-        self.builder.errors.push(SyntaxErrorData {
-            node,
-            message,
-            after_child,
-        })
-    }
+#[derive(Default)]
+pub(crate) struct ErrorMsg {
+    pub(crate) message: String
 }

@@ -53,7 +53,7 @@ fn alias(p: &mut Parser) -> bool {
 fn error_block(p: &mut Parser, message: &str) {
     assert!(p.at(L_CURLY));
     let err = p.start();
-    p.error().message(message).emit();
+    p.error(message);
     p.bump();
     let mut level: u32 = 1;
     while level > 0 && !p.at(EOF) {
@@ -74,7 +74,7 @@ impl<'p> Parser<'p> {
 
     fn err_and_bump(&mut self, message: &str) {
         let err = self.start();
-        self.error().message(message).emit();
+        self.error(message);
         self.bump();
         err.complete(self, ERROR);
     }
@@ -84,7 +84,7 @@ impl<'p> Parser<'p> {
             self.bump();
             true
         } else {
-            self.error().message(format!("expected {:?}", kind)).emit();
+            self.error(format!("expected {:?}", kind));
             false
         }
     }

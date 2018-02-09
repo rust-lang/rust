@@ -43,7 +43,9 @@ fn path_segment(p: &mut Parser, first: bool) {
     }
     match p.current() {
         IDENT | SELF_KW | SUPER_KW => p.bump(),
-        _ => p.error().message("expected identifier").emit(),
+        _ => {
+            p.error("expected identifier");
+        },
     };
     segment.complete(p, PATH_SEGMENT);
 }

@@ -4,7 +4,7 @@ use std::fmt;
 use std::cmp;
 
 mod file_builder;
-pub(crate) use self::file_builder::{FileBuilder, Sink};
+pub(crate) use self::file_builder::{FileBuilder, Sink, ErrorMsg};
 
 pub use syntax_kinds::SyntaxKind;
 

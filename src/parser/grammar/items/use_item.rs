@@ -37,7 +37,7 @@ fn use_tree(p: &mut Parser) {
                         L_CURLY => nested_trees(p),
                         _ => {
                             // is this unreachable?
-                            p.error().message("expected `{` or `*`").emit();
+                            p.error("expected `{` or `*`");
                         }
                     }
                 }

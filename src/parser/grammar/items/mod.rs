@@ -51,7 +51,7 @@ fn item(p: &mut Parser) {
                 // extern struct Foo;
                 _ => {
                     item.abandon(p);
-                    p.error().message("expected `fn` or `{`").emit();
+                    p.error("expected `fn` or `{`");
                     return;
                 }
             }
@@ -121,7 +121,7 @@ fn item(p: &mut Parser) {
                     abi(p);
                     if !p.at(FN_KW) {
                         item.abandon(p);
-                        p.error().message("expected function").emit();
+                        p.error("expected function");
                         return;
                     }
                     fn_item(p);
@@ -144,7 +144,7 @@ fn item(p: &mut Parser) {
                     if t == L_CURLY {
                         error_block(p, message);
                     } else {
-                        p.error().message(message).emit();
+                        p.error(message);
                     }
                     return;
                 }
@@ -234,7 +234,7 @@ fn fn_item(p: &mut Parser) {
     if p.at(L_PAREN) {
         fn_value_parameters(p);
     } else {
-        p.error().message("expected function arguments").emit();
+        p.error("expected function arguments");
     }
 
     if p.at(L_CURLY) {
