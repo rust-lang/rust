@@ -1,4 +1,4 @@
-use {File, FileBuilder, ErrorMsg, Sink, SyntaxKind, TextUnit, Token};
+use {ErrorMsg, File, FileBuilder, Sink, SyntaxKind, TextUnit, Token};
 use syntax_kinds::TOMBSTONE;
 use super::is_insignificant;
 
@@ -141,8 +141,8 @@ pub(super) fn to_file(text: String, tokens: &[Token], events: Vec<Event>) -> Fil
                 builder.leaf(kind, len);
             }
             &Event::Error { ref message } => builder.error(ErrorMsg {
-                message: message.clone()
-            })
+                message: message.clone(),
+            }),
         }
     }
     builder.finish()

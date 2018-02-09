@@ -27,9 +27,9 @@ impl Marker {
         if idx == p.events.len() - 1 {
             match p.events.pop() {
                 Some(Event::Start {
-                         kind: TOMBSTONE,
-                         forward_parent: None,
-                     }) => (),
+                    kind: TOMBSTONE,
+                    forward_parent: None,
+                }) => (),
                 _ => unreachable!(),
             }
         }
@@ -188,9 +188,6 @@ impl<'p, 't: 'p> Drop for ErrorBuilder<'p, 't> {
 
 impl<'t, 'p> ErrorBuilder<'p, 't> {
     fn new(parser: &'p mut Parser<'t>, message: String) -> Self {
-        ErrorBuilder {
-            message,
-            parser,
-        }
+        ErrorBuilder { message, parser }
     }
 }

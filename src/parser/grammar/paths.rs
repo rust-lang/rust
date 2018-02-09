@@ -45,7 +45,7 @@ fn path_segment(p: &mut Parser, first: bool) {
         IDENT | SELF_KW | SUPER_KW => p.bump(),
         _ => {
             p.error("expected identifier");
-        },
+        }
     };
     segment.complete(p, PATH_SEGMENT);
 }

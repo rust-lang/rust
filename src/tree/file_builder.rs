@@ -157,5 +157,5 @@ fn grow(left: &mut TextRange, right: TextRange) {
 
 #[derive(Default)]
 pub(crate) struct ErrorMsg {
-    pub(crate) message: String
+    pub(crate) message: String,
 }
