@@ -703,6 +703,9 @@ macro_rules! gen_float {
                 // Special values
                 *rng.choose(&[-0.0,
                               0.0,
+                              ::std::$fty::MIN,
+                              ::std::$fty::MIN_POSITIVE,
+                              ::std::$fty::MAX,
                               ::std::$fty::NAN,
                               ::std::$fty::INFINITY,
                               -::std::$fty::INFINITY])
@@ -754,6 +757,9 @@ macro_rules! gen_large_float {
                 // Special values
                 *rng.choose(&[-0.0,
                               0.0,
+                              ::std::$fty::MIN,
+                              ::std::$fty::MIN_POSITIVE,
+                              ::std::$fty::MAX,
                               ::std::$fty::NAN,
                               ::std::$fty::INFINITY,
                               -::std::$fty::INFINITY])
