@@ -345,6 +345,7 @@ pub fn make_test(s: &str,
                  opts: &TestOptions)
                  -> (String, usize) {
     let (crate_attrs, everything_else) = partition_source(s);
+    let everything_else = everything_else.trim();
     let mut line_offset = 0;
     let mut prog = String::new();
 
@@ -392,12 +393,11 @@ pub fn make_test(s: &str,
         .any(|code| code.contains("fn main"));
 
     if dont_insert_main || already_has_main {
-        prog.push_str(&everything_else);
+        prog.push_str(everything_else);
     } else {
         prog.push_str("fn main() {\n");
         line_offset += 1;
-        prog.push_str(&everything_else);
-        prog = prog.trim().into();
+        prog.push_str(everything_else);
         prog.push_str("\n}");
     }
 
