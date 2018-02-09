@@ -152,32 +152,6 @@ note: same as this
     | |_____^
 
 error: this `if` has identical blocks
-   --> $DIR/copies.rs:163:19
-    |
-163 |       else if foo() { //~ ERROR same body as `if` block
-    |  ___________________^
-164 | |         let _ = match 42 {
-165 | |             42 => 1,
-166 | |             a if a > 0 => 2,
-...   |
-169 | |         };
-170 | |     }
-    | |_____^
-    |
-note: same as this
-   --> $DIR/copies.rs:152:13
-    |
-152 |       if true {
-    |  _____________^
-153 | |         let _ = match 42 {
-154 | |             42 => 1,
-155 | |             a if a > 0 => 2,
-...   |
-158 | |         };
-159 | |     }
-    | |_____^
-
-error: this `if` has identical blocks
    --> $DIR/copies.rs:175:10
     |
 175 |       else { //~ ERROR same body as `if` block
@@ -370,26 +344,6 @@ note: same as this
 326 | |     }
     | |_____^
 
-error: this `if` has identical blocks
-   --> $DIR/copies.rs:339:10
-    |
-339 |       else { //~ ERROR same body as `if` block
-    |  __________^
-340 | |         let foo = "";
-341 | |         return Ok(&foo[0..]);
-342 | |     }
-    | |_____^
-    |
-note: same as this
-   --> $DIR/copies.rs:331:13
-    |
-331 |       if true {
-    |  _____________^
-332 | |         let foo = "";
-333 | |         return Ok(&foo[0..]);
-334 | |     }
-    | |_____^
-
 error: this `if` has the same condition as a previous if
    --> $DIR/copies.rs:353:13
     |
@@ -427,5 +381,5 @@ note: same as this
 361 |     if 2*a == 1 {
     |        ^^^^^^^^
 
-error: aborting due to 22 previous errors
+error: aborting due to 20 previous errors
 
