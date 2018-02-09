@@ -30,25 +30,11 @@ struct WhereClause<T=String>(T) where T: Copy;
 trait TraitBound<T:Copy=String> {}
 //~^ error: the trait bound `std::string::String: std::marker::Copy` is not satisfied [E0277]
 
-trait SelfBound<T:Copy=Self> {}
-//~^ error: the trait bound `Self: std::marker::Copy` is not satisfied [E0277]
-
 trait Super<T: Copy> { }
 trait Base<T = String>: Super<T> { }
 //~^ error: the trait bound `T: std::marker::Copy` is not satisfied [E0277]
 
 trait ProjectionPred<T:Iterator = IntoIter<i32>> where T::Item : Add<u8> {}
-//~^ error: the trait bound `i32: std::ops::Add<u8>` is not satisfied [E0277]
-
-// Defaults must work together.
-struct TwoParams<T = u32, U = i32>(T, U) where T: Bar<U>;
-//~^ the trait bound `u32: Bar<i32>` is not satisfied [E0277]
-trait Bar<V> {}
-impl Bar<String> for u32 { }
-impl Bar<i32> for String { }
-
-// Dependent defaults.
-struct Dependent<T, U = T>(T, U) where U: Copy;
-//~^ the trait bound `T: std::marker::Copy` is not satisfied [E0277]
+//~^ error:  cannot add `u8` to `i32` [E0277]
 
 fn main() { }

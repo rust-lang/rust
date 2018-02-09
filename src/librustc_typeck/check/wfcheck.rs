@@ -278,7 +278,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
     fn check_trait(&mut self, item: &hir::Item) {
         let trait_def_id = self.tcx.hir.local_def_id(item.id);
         self.for_item(item).with_fcx(|fcx, _| {
-            self.check_trait_where_clauses(fcx, item.span, trait_def_id);
+            self.check_where_clauses(fcx, item.span, trait_def_id);
             vec![]
         });
     }
@@ -354,23 +354,6 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                                        fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
                                        span: Span,
                                        def_id: DefId) {
-        self.inner_check_where_clauses(fcx, span, def_id, false)
-    }
-
-    fn check_trait_where_clauses<'fcx, 'tcx>(&mut self,
-                                       fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
-                                       span: Span,
-                                       def_id: DefId) {
-        self.inner_check_where_clauses(fcx, span, def_id, true)
-    }
-
-    /// Checks where clauses and inline bounds that are declared on def_id.
-    fn inner_check_where_clauses<'fcx, 'tcx>(&mut self,
-                                       fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
-                                       span: Span,
-                                       def_id: DefId,
-                                       is_trait: bool)
-    {
         use ty::subst::Subst;
         use rustc::ty::TypeFoldable;
 
@@ -390,12 +373,10 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
         }
 
         // Check that trait predicates are WF when params are substituted by their defaults.
-        // We don't want to overly constrain the predicates that may be written but we
-        // want to catch obviously wrong cases such as `struct Foo<T: Copy = String>`
-        // or cases where defaults don't work together such as:
-        // `struct Foo<T = i32, U = u8> where T: into<U>`
-        // Therefore we check if a predicate in which all type params are defaulted
-        // is WF with those defaults simultaneously substituted.
+        // We don't want to overly constrain the predicates that may be written but we want to
+        // catch cases where a default my never be applied such as `struct Foo<T: Copy = String>`.
+        // Therefore we check if a predicate which contains a single type param
+        // with a concrete default is WF with that default substituted.
         // For more examples see tests `defaults-well-formedness.rs` and `type-check-defaults.rs`.
         //
         // First we build the defaulted substitution.
@@ -403,29 +384,38 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                 // All regions are identity.
                 fcx.tcx.mk_region(ty::ReEarlyBound(def.to_early_bound_region_data()))
             }, |def, _| {
-                if !is_our_default(def) {
-                    // We don't want to use non-defaulted params in a substitution, mark as err.
-                    fcx.tcx.types.err
-                } else  {
-                    // Substitute with default.
-                    fcx.tcx.type_of(def.def_id)
+                // If the param has a default,
+                if is_our_default(def) {
+                    let default_ty = fcx.tcx.type_of(def.def_id);
+                    // and it's not a dependent default
+                    if !default_ty.needs_subst() {
+                        // then substitute with the default.
+                        return default_ty;
+                    }
                 }
+                // Mark unwanted params as err.
+                fcx.tcx.types.err
             });
         // Now we build the substituted predicates.
         for &pred in predicates.predicates.iter() {
-            let substituted_pred = pred.subst(fcx.tcx, substs);
-            // If there is a non-defaulted param in the predicate, don't check it.
-            if substituted_pred.references_error() {
-                continue;
-            }
-            // In trait defs, don't check `Self: Sized` when `Self` is the default.
-            if let ty::Predicate::Trait(trait_pred) = substituted_pred {
-                // `skip_binder()` is ok, we're only inspecting for `has_self_ty()`.
-                let lhs_is_self = trait_pred.skip_binder().self_ty().has_self_ty();
-                let pred_sized = Some(trait_pred.def_id()) == fcx.tcx.lang_items().sized_trait();
-                if is_trait && lhs_is_self && pred_sized {
-                    continue;
+            struct CountParams { params: FxHashSet<u32> }
+            impl<'tcx> ty::fold::TypeVisitor<'tcx> for CountParams {
+                fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
+                    match t.sty {
+                        ty::TyParam(p) => {
+                            self.params.insert(p.idx);
+                            t.super_visit_with(self)
+                        }
+                        _ => t.super_visit_with(self)
+                    }
                 }
+            }
+            let mut param_count = CountParams { params: FxHashSet() };
+            pred.visit_with(&mut param_count);
+            let substituted_pred = pred.subst(fcx.tcx, substs);
+            // Don't check non-defaulted params, dependent defaults or preds with multiple params.
+            if substituted_pred.references_error() || param_count.params.len() > 1 {
+                continue;
             }
             // Avoid duplication of predicates that contain no parameters, for example.
             if !predicates.predicates.contains(&substituted_pred) {
