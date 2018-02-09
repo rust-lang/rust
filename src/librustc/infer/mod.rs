@@ -1246,7 +1246,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 // it can be resolved to an int/float variable, which
                 // can then be recursively resolved, hence the
                 // recursion. Note though that we prevent type
-                // variables from unifying to other type variables
+                // variables from unifyxing to other type variables
                 // directly (though they may be embedded
                 // structurally), and we prevent cycles in any case,
                 // so this recursion should always be of very limited
