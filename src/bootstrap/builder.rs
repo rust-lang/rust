@@ -119,7 +119,28 @@ impl StepDescription {
         }
     }
 
-    fn maybe_run(&self, builder: &Builder, path: Option<&Path>) {
+    fn maybe_run(&self, builder: &Builder, should_run: &ShouldRun, path: Option<&Path>) {
+        if let Some(path) = path {
+            if builder.config.exclude.iter().any(|e| e == path) {
+                eprintln!("Skipping {:?} because this path is excluded", path);
+                return;
+            } else if !builder.config.exclude.is_empty() {
+                eprintln!("{:?} not skipped -- not in {:?}", path, builder.config.exclude);
+            }
+        } else {
+            if !should_run.paths.is_empty() {
+                if should_run.paths.iter().all(|p| builder.config.exclude.contains(&p)) {
+                    eprintln!("Skipping because all of its paths ({:?}) are excluded",
+                        should_run.paths);
+                    return;
+                } else if should_run.paths.len() > 1 {
+                    for path in &should_run.paths {
+                        self.maybe_run(builder, should_run, Some(path));
+                    }
+                    return;
+                }
+            }
+        }
         let build = builder.build;
         let hosts = if self.only_build_targets || self.only_build {
             build.build_triple()
@@ -160,7 +181,7 @@ impl StepDescription {
         if paths.is_empty() {
             for (desc, should_run) in v.iter().zip(should_runs) {
                 if desc.default && should_run.is_really_default {
-                    desc.maybe_run(builder, None);
+                    desc.maybe_run(builder, &should_run, None);
                 }
             }
         } else {
@@ -169,7 +190,7 @@ impl StepDescription {
                 for (desc, should_run) in v.iter().zip(&should_runs) {
                     if should_run.run(path) {
                         attempted_run = true;
-                        desc.maybe_run(builder, Some(path));
+                        desc.maybe_run(builder, &should_run, Some(path));
                     }
                 }
 
@@ -208,13 +229,13 @@ impl<'a> ShouldRun<'a> {
 
     pub fn krate(mut self, name: &str) -> Self {
         for (_, krate_path) in self.builder.crates(name) {
-            self.paths.insert(PathBuf::from(krate_path));
+            self.paths.insert(t!(env::current_dir()).join(krate_path));
         }
         self
     }
 
     pub fn path(mut self, path: &str) -> Self {
-        self.paths.insert(PathBuf::from(path));
+        self.paths.insert(t!(env::current_dir()).join(path));
         self
     }
 

@@ -42,6 +42,7 @@ pub struct Flags {
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
     pub incremental: bool,
+    pub exclude: Vec<PathBuf>,
 }
 
 pub enum Subcommand {
@@ -109,6 +110,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
         opts.optopt("", "build", "build target of the stage0 compiler", "BUILD");
         opts.optmulti("", "host", "host targets to build", "HOST");
         opts.optmulti("", "target", "target targets to build", "TARGET");
+        opts.optmulti("", "exclude", "build paths to exclude", "PATH");
         opts.optopt("", "on-fail", "command to run on failure", "CMD");
         opts.optopt("", "stage", "stage to build", "N");
         opts.optopt("", "keep-stage", "stage to keep without recompiling", "N");
@@ -358,10 +360,9 @@ Arguments:
             stage = Some(1);
         }
 
-        let cwd = t!(env::current_dir());
         let src = matches.opt_str("src").map(PathBuf::from)
             .or_else(|| env::var_os("SRC").map(PathBuf::from))
-            .unwrap_or(cwd);
+            .unwrap_or(cwd.clone());
 
         Flags {
             verbose: matches.opt_count("verbose"),
@@ -378,6 +379,8 @@ Arguments:
             jobs: matches.opt_str("jobs").map(|j| j.parse().unwrap()),
             cmd,
             incremental: matches.opt_present("incremental"),
+            exclude: split(matches.opt_strs("exclude"))
+                .into_iter().map(|p| cwd.join(p)).collect::<Vec<_>>(),
         }
     }
 }
