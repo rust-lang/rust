@@ -8,18 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// revisions: ast mir
+//[mir]compile-flags: -Z borrowck=mir
+
 struct FancyNum {
     num: u8,
 }
 
 fn main() {
-    let fancy_num = FancyNum { num: 5 };
+    let mut fancy_num = FancyNum { num: 5 };
     let fancy_ref = &fancy_num;
 
     let x = move || {
-        println!("child function: {}", fancy_num.num); //~ ERROR E0504
+        println!("child function: {}", fancy_num.num);
+        //[ast]~^ ERROR cannot move `fancy_num` into closure because it is borrowed
+        //[mir]~^^ ERROR cannot move `fancy_num` into closure because it is borrowed
     };
 
-    x();
     println!("main function: {}", fancy_ref.num);
 }
