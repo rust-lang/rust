@@ -1427,9 +1427,9 @@ fn test_range_inclusive_nth() {
     assert_eq!(r, 13..=20);
     assert_eq!(r.nth(2), Some(15));
     assert_eq!(r, 16..=20);
-    assert_eq!(r.is_empty(), false);
+    assert_eq!(ExactSizeIterator::is_empty(&r), false);
     assert_eq!(r.nth(10), None);
-    assert_eq!(r.is_empty(), true);
+    assert_eq!(ExactSizeIterator::is_empty(&r), true);
     assert_eq!(r, 1..=0);  // We may not want to document/promise this detail
 }
 

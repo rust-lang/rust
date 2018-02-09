@@ -92,7 +92,6 @@ impl<Idx: fmt::Debug> fmt::Debug for Range<Idx> {
     }
 }
 
-#[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
 impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// Returns `true` if `item` is contained in the range.
     ///
@@ -109,8 +108,25 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// assert!(!(3..3).contains(3));
     /// assert!(!(3..2).contains(3));
     /// ```
+    #[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
     pub fn contains(&self, item: Idx) -> bool {
         (self.start <= item) && (item < self.end)
+    }
+
+    /// Returns `true` if the range contains no items.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(range_is_empty)]
+    ///
+    /// assert!(!(3..5).is_empty());
+    /// assert!( (3..3).is_empty());
+    /// assert!( (3..2).is_empty());
+    /// ```
+    #[unstable(feature = "range_is_empty", reason = "recently added", issue = "123456789")]
+    pub fn is_empty(&self) -> bool {
+        !(self.start < self.end)
     }
 }
 
@@ -280,7 +296,6 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeInclusive<Idx> {
     }
 }
 
-#[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
 impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// Returns `true` if `item` is contained in the range.
     ///
@@ -298,8 +313,25 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// assert!( (3..=3).contains(3));
     /// assert!(!(3..=2).contains(3));
     /// ```
+    #[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
     pub fn contains(&self, item: Idx) -> bool {
         self.start <= item && item <= self.end
+    }
+
+    /// Returns `true` if the range contains no items.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(range_is_empty,inclusive_range_syntax)]
+    ///
+    /// assert!(!(3..=5).is_empty());
+    /// assert!(!(3..=3).is_empty());
+    /// assert!( (3..=2).is_empty());
+    /// ```
+    #[unstable(feature = "range_is_empty", reason = "recently added", issue = "123456789")]
+    pub fn is_empty(&self) -> bool {
+        !(self.start <= self.end)
     }
 }
 
