@@ -1051,6 +1051,10 @@ impl Clean<Attributes> for [ast::Attribute] {
         if UnstableFeatures::from_environment().is_nightly_build() {
             let dox = attrs.collapsed_doc_value().unwrap_or_else(String::new);
             for link in markdown_links(&dox, cx.render_type) {
+                // bail early for real links
+                if link.contains('/') {
+                    continue;
+                }
                 let (def, fragment)  = {
                     let mut kind = PathKind::Unknown;
                     let path_str = if let Some(prefix) =

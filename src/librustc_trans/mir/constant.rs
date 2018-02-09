@@ -714,6 +714,10 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     mir::CastKind::ReifyFnPointer => {
                         match operand.ty.sty {
                             ty::TyFnDef(def_id, substs) => {
+                                if tcx.has_attr(def_id, "rustc_args_required_const") {
+                                    bug!("reifying a fn ptr that requires \
+                                          const arguments");
+                                }
                                 callee::resolve_and_get_fn(self.cx, def_id, substs)
                             }
                             _ => {

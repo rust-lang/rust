@@ -106,7 +106,9 @@ pub fn where_clauses(cx: &DocContext, clauses: Vec<WP>) -> Vec<WP> {
                 }
                 PP::Parenthesized { ref mut output, .. } => {
                     assert!(output.is_none());
-                    *output = Some(rhs.clone());
+                    if *rhs != clean::Type::Tuple(Vec::new()) {
+                        *output = Some(rhs.clone());
+                    }
                 }
             };
             true

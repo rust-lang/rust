@@ -170,6 +170,13 @@ pub fn compile_input(trans: Box<TransCrate>,
             return Ok(())
         }
 
+        if let &Some(ref dir) = outdir {
+            if fs::create_dir_all(dir).is_err() {
+                sess.err("failed to find or create the directory specified by --out-dir");
+                return Err(CompileIncomplete::Stopped);
+            }
+        }
+
         let arenas = AllArenas::new();
 
         // Construct the HIR map

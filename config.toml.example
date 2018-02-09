@@ -151,6 +151,10 @@
 # default.
 #extended = false
 
+# Installs choosen set of extended tools if enables. By default builds all.
+# If choosen tool failed to build the installation fails.
+#tools = ["cargo", "rls", "rustfmt", "analysis", "src"]
+
 # Verbosity level: 0 == not verbose, 1 == verbose, 2 == very verbose
 #verbose = 0
 
