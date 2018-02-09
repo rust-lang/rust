@@ -245,7 +245,7 @@ impl Step for Rls {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        builder.ensure(tool::Rls { compiler, target: self.host });
+        builder.ensure(tool::Rls { compiler, target: self.host, extra_features: Vec::new() });
         let mut cargo = tool::prepare_tool_cargo(builder,
                                                  compiler,
                                                  host,
@@ -291,7 +291,7 @@ impl Step for Rustfmt {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        builder.ensure(tool::Rustfmt { compiler, target: self.host });
+        builder.ensure(tool::Rustfmt { compiler, target: self.host, extra_features: Vec::new() });
         let mut cargo = tool::prepare_tool_cargo(builder,
                                                  compiler,
                                                  host,
@@ -339,7 +339,12 @@ impl Step for Miri {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        if let Some(miri) = builder.ensure(tool::Miri { compiler, target: self.host }) {
+        let miri = builder.ensure(tool::Miri {
+            compiler,
+            target: self.host,
+            extra_features: Vec::new(),
+        });
+        if let Some(miri) = miri {
             let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
             cargo.arg("--manifest-path").arg(build.src.join("src/tools/miri/Cargo.toml"));
 
@@ -391,7 +396,12 @@ impl Step for Clippy {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        if let Some(clippy) = builder.ensure(tool::Clippy { compiler, target: self.host }) {
+        let clippy = builder.ensure(tool::Clippy {
+            compiler,
+            target: self.host,
+            extra_features: Vec::new(),
+        });
+        if let Some(clippy) = clippy {
             let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
             cargo.arg("--manifest-path").arg(build.src.join("src/tools/clippy/Cargo.toml"));
 

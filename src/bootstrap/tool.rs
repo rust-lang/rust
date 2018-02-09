@@ -12,6 +12,7 @@ use std::fs;
 use std::env;
 use std::path::PathBuf;
 use std::process::{Command, exit};
+use std::slice::SliceConcatExt;
 
 use Mode;
 use Compiler;
@@ -74,7 +75,7 @@ impl Step for CleanTools {
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 struct ToolBuild {
     compiler: Compiler,
     target: Interned<String>,
@@ -82,6 +83,7 @@ struct ToolBuild {
     path: &'static str,
     mode: Mode,
     is_ext_tool: bool,
+    extra_features: Vec<String>,
 }
 
 impl Step for ToolBuild {
@@ -114,6 +116,7 @@ impl Step for ToolBuild {
         println!("Building stage{} tool {} ({})", compiler.stage, tool, target);
 
         let mut cargo = prepare_tool_cargo(builder, compiler, target, "build", path);
+        cargo.arg("--features").arg(self.extra_features.join(" "));
         let is_expected = build.try_run(&mut cargo);
         build.save_toolstate(tool, if is_expected {
             ToolState::TestFail
@@ -242,6 +245,7 @@ macro_rules! tool {
                     mode: $mode,
                     path: $path,
                     is_ext_tool: false,
+                    extra_features: Vec::new(),
                 }).expect("expected to build -- essential tool")
             }
         }
@@ -291,6 +295,7 @@ impl Step for RemoteTestServer {
             mode: Mode::Libstd,
             path: "src/tools/remote-test-server",
             is_ext_tool: false,
+            extra_features: Vec::new(),
         }).expect("expected to build -- essential tool")
     }
 }
@@ -409,6 +414,7 @@ impl Step for Cargo {
             mode: Mode::Librustc,
             path: "src/tools/cargo",
             is_ext_tool: false,
+            extra_features: Vec::new(),
         }).expect("expected to build -- essential tool")
     }
 }
@@ -421,10 +427,11 @@ macro_rules! tool_extended {
        $tool_name:expr,
        $extra_deps:block;)+) => {
         $(
-            #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+            #[derive(Debug, Clone, Hash, PartialEq, Eq)]
         pub struct $name {
             pub compiler: Compiler,
             pub target: Interned<String>,
+            pub extra_features: Vec<String>,
         }
 
         impl Step for $name {
@@ -441,10 +448,12 @@ macro_rules! tool_extended {
                 run.builder.ensure($name {
                     compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.build),
                     target: run.target,
+                    extra_features: Vec::new(),
                 });
             }
 
-            fn run($sel, $builder: &Builder) -> Option<PathBuf> {
+            #[allow(unused_mut)]
+            fn run(mut $sel, $builder: &Builder) -> Option<PathBuf> {
                 $extra_deps
                 $builder.ensure(ToolBuild {
                     compiler: $sel.compiler,
@@ -452,6 +461,7 @@ macro_rules! tool_extended {
                     tool: $tool_name,
                     mode: Mode::Librustc,
                     path: $path,
+                    extra_features: $sel.extra_features,
                     is_ext_tool: true,
                 })
             }
@@ -472,6 +482,14 @@ tool_extended!((self, builder),
     };
     Miri, miri, "src/tools/miri", "miri", {};
     Rls, rls, "src/tools/rls", "rls", {
+        let clippy = builder.ensure(Clippy {
+            compiler: self.compiler,
+            target: self.target,
+            extra_features: Vec::new(),
+        });
+        if clippy.is_some() {
+            self.extra_features.push("clippy".to_owned());
+        }
         builder.ensure(native::Openssl {
             target: self.target,
         });
