@@ -2,8 +2,8 @@
 
 use rustc::lint::*;
 use rustc::hir::*;
-use utils::{snippet_opt, span_lint_and_then, type_size};
-use rustc::ty::TypeFoldable;
+use utils::{snippet_opt, span_lint_and_then};
+use rustc::ty::layout::LayoutOf;
 
 /// **What it does:** Checks for large size differences between variants on
 /// `enum`s.
@@ -61,13 +61,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeEnumVariant {
                 let size: u64 = variant
                     .fields
                     .iter()
-                    .map(|f| {
+                    .filter_map(|f| {
                         let ty = cx.tcx.type_of(f.did);
-                        if ty.needs_subst() {
-                            0 // we can't reason about generics, so we treat them as zero sized
-                        } else {
-                            type_size(cx, ty).expect("size should be computable for concrete type")
-                        }
+                        // don't count generics by filtering out everything
+                        // that does not have a layout
+                        cx.layout_of(ty).ok().map(|l| l.size.bytes())
                     })
                     .sum();
 
