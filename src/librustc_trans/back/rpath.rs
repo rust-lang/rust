@@ -22,6 +22,7 @@ pub struct RPathConfig<'a> {
     pub is_like_osx: bool,
     pub has_rpath: bool,
     pub linker_is_gnu: bool,
+    pub sysroot_lib_path: PathBuf,
     pub get_install_prefix_lib_path: &'a mut FnMut() -> PathBuf,
 }
 
@@ -64,15 +65,24 @@ fn rpaths_to_flags(rpaths: &[String]) -> Vec<String> {
 
 fn get_rpaths(config: &mut RPathConfig, libs: &[PathBuf]) -> Vec<String> {
     debug!("output: {:?}", config.out_filename.display());
+    debug!("sysroot libs: {:?}", config.sysroot_lib_path.display());
     debug!("libs:");
     for libpath in libs {
         debug!("    {:?}", libpath.display());
     }
 
-    // Use relative paths to the libraries. Binaries can be moved
-    // as long as they maintain the relative relationship to the
-    // crates they depend on.
-    let rel_rpaths = get_rpaths_relative_to_output(config, libs);
+    // Use relative paths to the libraries, except if the library
+    // is part of the sysroot. Binaries can be moved as long as
+    // they maintain the relative relationship to the crates they
+    // depend on. Naturally, if the binaries are moved we don't expect
+    // the sysroot to be moved, which is why those paths are absolute.
+    let rpaths : Vec<String> = libs.iter().map(|lib_path| {
+        if lib_path.starts_with(&config.sysroot_lib_path) {
+            get_rpath_absolute_dir(lib_path)
+        } else {
+            get_rpath_relative_to_output(config, lib_path)
+        }
+    }).collect();
 
     // And a final backup rpath to the global library location.
     let fallback_rpaths = vec![get_install_prefix_rpath(config)];
@@ -84,10 +94,10 @@ fn get_rpaths(config: &mut RPathConfig, libs: &[PathBuf]) -> Vec<String> {
         }
     }
 
-    log_rpaths("relative", &rel_rpaths);
+    log_rpaths("relative", &rpaths);
     log_rpaths("fallback", &fallback_rpaths);
 
-    let mut rpaths = rel_rpaths;
+    let mut rpaths = rpaths;
     rpaths.extend_from_slice(&fallback_rpaths);
 
     // Remove duplicates
@@ -95,9 +105,12 @@ fn get_rpaths(config: &mut RPathConfig, libs: &[PathBuf]) -> Vec<String> {
     return rpaths;
 }
 
-fn get_rpaths_relative_to_output(config: &mut RPathConfig,
-                                 libs: &[PathBuf]) -> Vec<String> {
-    libs.iter().map(|a| get_rpath_relative_to_output(config, a)).collect()
+fn get_rpath_absolute_dir(lib: &Path) -> String {
+    let cwd = env::current_dir().unwrap();
+    let mut lib = fs::canonicalize(&cwd.join(lib)).unwrap_or(cwd.join(lib));
+    lib.pop();
+    // FIXME (#9639): This needs to handle non-utf8 paths
+    lib.to_str().expect("non-utf8 component in path").to_owned()
 }
 
 fn get_rpath_relative_to_output(config: &mut RPathConfig, lib: &Path) -> String {
