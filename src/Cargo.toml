@@ -22,6 +22,7 @@ members = [
   "tools/rls",
   "tools/rustfmt",
   "tools/miri",
+  "tools/rustdoc-themes",
   # FIXME(https://github.com/rust-lang/cargo/issues/4089): move these to exclude
   "tools/rls/test_data/bin_lib",
   "tools/rls/test_data/borrow_error",

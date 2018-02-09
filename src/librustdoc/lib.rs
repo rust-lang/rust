@@ -91,6 +91,7 @@ pub mod plugins;
 pub mod visit_ast;
 pub mod visit_lib;
 pub mod test;
+pub mod theme;
 
 use clean::AttributesExt;
 
@@ -267,6 +268,11 @@ pub fn opts() -> Vec<RustcOptGroup> {
                        "additional themes which will be added to the generated docs",
                        "FILES")
         }),
+        unstable("theme-checker", |o| {
+            o.optmulti("", "theme-checker",
+                       "check if given theme is valid",
+                       "FILES")
+        }),
     ]
 }
 
@@ -312,6 +318,31 @@ pub fn main_args(args: &[String]) -> isize {
         println!("\nDefault passes for rustdoc:");
         for &name in passes::DEFAULT_PASSES {
             println!("{:>20}", name);
+        }
+        return 0;
+    }
+
+    let to_check = matches.opt_strs("theme-checker");
+    if !to_check.is_empty() {
+        let paths = theme::load_css_paths(include_bytes!("html/static/themes/main.css"));
+        let mut errors = 0;
+
+        println!("rustdoc: [theme-checker] Starting tests!");
+        for theme_file in to_check.iter() {
+            print!(" - Checking \"{}\"...", theme_file);
+            let (success, differences) = theme::test_theme_against(theme_file, &paths);
+            if !differences.is_empty() || !success {
+                println!(" FAILED");
+                errors += 1;
+                if !differences.is_empty() {
+                    println!("{}", differences.join("\n"));
+                }
+            } else {
+                println!(" OK");
+            }
+        }
+        if errors != 0 {
+            return 1;
         }
         return 0;
     }
@@ -369,12 +400,24 @@ pub fn main_args(args: &[String]) -> isize {
     }
 
     let mut themes = Vec::new();
-    for theme in matches.opt_strs("themes").iter().map(|s| PathBuf::from(&s)) {
-        if !theme.is_file() {
-            eprintln!("rustdoc: option --themes arguments must all be files");
-            return 1;
+    if matches.opt_present("themes") {
+        let paths = theme::load_css_paths(include_bytes!("html/static/themes/main.css"));
+
+        for (theme_file, theme_s) in matches.opt_strs("themes")
+                                            .iter()
+                                            .map(|s| (PathBuf::from(&s), s.to_owned())) {
+            if !theme_file.is_file() {
+                println!("rustdoc: option --themes arguments must all be files");
+                return 1;
+            }
+            let (success, ret) = theme::test_theme_against(&theme_file, &paths);
+            if !success || !ret.is_empty() {
+                println!("rustdoc: invalid theme: \"{}\"", theme_s);
+                println!("         Check what's wrong with the \"theme-checker\" option");
+                return 1;
+            }
+            themes.push(theme_file);
         }
-        themes.push(theme);
     }
 
     let external_html = match ExternalHtml::load(

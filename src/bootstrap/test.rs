@@ -113,7 +113,7 @@ impl Step for Linkcheck {
 
         let _time = util::timeit();
         try_run(build, builder.tool_cmd(Tool::Linkchecker)
-                            .arg(build.out.join(host).join("doc")));
+                              .arg(build.out.join(host).join("doc")));
     }
 
     fn should_run(run: ShouldRun) -> ShouldRun {
@@ -422,6 +422,47 @@ fn path_for_cargo(builder: &Builder, compiler: Compiler) -> OsString {
     let path = builder.sysroot(compiler).join("bin");
     let old_path = env::var_os("PATH").unwrap_or_default();
     env::join_paths(iter::once(path).chain(env::split_paths(&old_path))).expect("")
+}
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct RustdocTheme {
+    pub compiler: Compiler,
+}
+
+impl Step for RustdocTheme {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/tools/rustdoc-themes")
+    }
+
+    fn make_run(run: RunConfig) {
+        let compiler = run.builder.compiler(run.builder.top_stage, run.host);
+
+        run.builder.ensure(RustdocTheme {
+            compiler: compiler,
+        });
+    }
+
+    fn run(self, builder: &Builder) {
+        let rustdoc = builder.rustdoc(self.compiler.host);
+        let mut cmd = builder.tool_cmd(Tool::RustdocTheme);
+        cmd.arg(rustdoc.to_str().unwrap())
+           .arg(builder.src.join("src/librustdoc/html/static/themes").to_str().unwrap())
+           .env("RUSTC_STAGE", self.compiler.stage.to_string())
+           .env("RUSTC_SYSROOT", builder.sysroot(self.compiler))
+           .env("RUSTDOC_LIBDIR", builder.sysroot_libdir(self.compiler, self.compiler.host))
+           .env("CFG_RELEASE_CHANNEL", &builder.build.config.channel)
+           .env("RUSTDOC_REAL", builder.rustdoc(self.compiler.host))
+           .env("RUSTDOC_CRATE_VERSION", builder.build.rust_version())
+           .env("RUSTC_BOOTSTRAP", "1");
+        if let Some(linker) = builder.build.linker(self.compiler.host) {
+            cmd.env("RUSTC_TARGET_LINKER", linker);
+        }
+        try_run(builder.build, &mut cmd);
+    }
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]

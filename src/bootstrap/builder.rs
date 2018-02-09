@@ -258,7 +258,7 @@ impl<'a> Builder<'a> {
                 test::HostCompiletest, test::Crate, test::CrateLibrustc, test::Rustdoc,
                 test::Linkcheck, test::Cargotest, test::Cargo, test::Rls, test::Docs,
                 test::ErrorIndex, test::Distcheck, test::Rustfmt, test::Miri, test::Clippy,
-                test::RustdocJS),
+                test::RustdocJS, test::RustdocTheme),
             Kind::Bench => describe!(test::Crate, test::CrateLibrustc),
             Kind::Doc => describe!(doc::UnstableBook, doc::UnstableBookGen, doc::TheBook,
                 doc::Standalone, doc::Std, doc::Test, doc::Rustc, doc::ErrorIndex, doc::Nomicon,

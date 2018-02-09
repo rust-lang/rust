@@ -112,10 +112,13 @@ pre {
 }
 .content .highlighted a, .content .highlighted span { color: #eee !important; }
 .content .highlighted.trait { background-color: #013191; }
+.content .highlighted.mod,
+.content .highlighted.externcrate { background-color: #afc6e4; }
 .content .highlighted.mod { background-color: #803a1b; }
 .content .highlighted.externcrate { background-color: #396bac; }
 .content .highlighted.enum { background-color: #5b4e68; }
 .content .highlighted.struct { background-color: #194e9f; }
+.content .highlighted.union { background-color: #b7bd49; }
 .content .highlighted.fn,
 .content .highlighted.method,
 .content .highlighted.tymethod { background-color: #4950ed; }
