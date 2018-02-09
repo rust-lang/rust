@@ -575,6 +575,44 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             = self.on_unimplemented_note(trait_ref, obligation);
                         let have_alt_message = message.is_some() || label.is_some();
 
+                        // {
+                        //     let ty::Binder(trait_ref) = trait_ref;
+                        //     println!("TraitRef: {:?}", trait_ref);
+                        //     println!("TraitRef: id:{:?}; subst:{:?}", trait_ref.def_id, trait_ref.substs);
+
+                        //     if let ty::Predicate::Trait(trait_predicate_binder) =
+                        //         trait_ref.to_predicate() {
+                        //             let trait_predicate = trait_predicate_binder.skip_binder();
+                        //             println!("TraitPredicateBinder: {:?}", trait_predicate_binder);
+                        //             println!("TraitPredicate: {:?}", trait_predicate);
+
+                        //             let trait_ty = trait_ref.self_ty();
+                        //             println!("TraitPredicateTy: {:?}", trait_ty);
+                        //             println!("TraitPredicateTy: sty:{:?}; flags{:?}", trait_ty.sty, trait_ty.flags);
+                        //         }
+
+                        //     for in_ty in trait_ref.input_types() {
+                        //         println!("\t- {:?}", in_ty);
+                        //         println!("\t\t- sty:{:?}; flags:{:?}", in_ty.sty, in_ty.flags);
+                        //     }
+
+                        //     println!("Message: {:?}", message);
+                        //     println!("Label: {:?}", label);
+                        //     println!("Obligation: {:?}", obligation);
+                        //     println!("Span: {:?}", self.tcx.sess.codemap().span_to_string(span));
+
+                        //     let body_id = obligation.cause.body_id;
+                        //     println!("BodyId: {:?}", body_id);
+                        //     println!("BodyIdSpan: {:?}", self.tcx.hir.span(body_id));
+
+                        //     match self.tcx.hir.find(body_id) {
+                        //         Some(node) => println!("Node: {:?}", node),
+                        //         None => println!("Node not found."),
+                        //     }
+
+                        //     println!("=------------------------------=");
+                        // }
+
                         let mut err = struct_span_err!(
                             self.tcx.sess,
                             span,
@@ -606,6 +644,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         }
 
                         self.suggest_borrow_on_unsized_slice(&obligation.cause.code, &mut err);
+                        self.suggest_remove_reference(&obligation, &mut err, &trait_ref);
 
                         // Try to report a help message
                         if !trait_ref.has_infer_types() &&
@@ -841,6 +880,54 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
             }
+        }
+    }
+
+    fn suggest_remove_reference(&self,
+                                obligation: &PredicateObligation<'tcx>,
+                                err: &mut DiagnosticBuilder<'tcx>,
+                                trait_ref: &ty::Binder<ty::TraitRef<'tcx>>) {
+        let ty::Binder(trait_ref) = trait_ref;
+
+        let span = obligation.cause.span;
+        let mut snippet = match self.tcx.sess.codemap().span_to_snippet(span) {
+            Ok(s) => s,
+            Err(_) => String::from(""),
+        };
+
+        let mut refs_number = 0;
+
+        for c in snippet.chars() {
+            if c == '&' {
+                refs_number += 1;
+            }
+        }
+
+        let mut refs_remaining = refs_number;
+        let mut trait_type = trait_ref.self_ty();
+        let mut selcx = SelectionContext::new(self);
+
+        while refs_remaining > 0 {
+            if let ty::TypeVariants::TyRef(_, ty::TypeAndMut{ ty: t_type, mutbl: _ }) =
+                trait_type.sty {
+                    trait_type = t_type;
+                    refs_remaining -= 1;
+
+                    let substs = self.tcx.mk_substs_trait(trait_type, &[]);
+                    let new_trait_ref = ty::TraitRef::new(trait_ref.def_id, substs);
+                    let new_obligation = Obligation::new(ObligationCause::dummy(),
+                                                         obligation.param_env,
+                                                         new_trait_ref.to_predicate());
+
+                    if selcx.evaluate_obligation(&new_obligation) {
+                        for i in 0..refs_number {
+                            snippet.remove(i);
+                        }
+                        err.span_suggestion(span, "consider removing `&`s like", format!("{}", snippet));
+                    }
+                } else {
+                    break;
+                }
         }
     }
 
