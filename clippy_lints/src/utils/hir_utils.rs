@@ -1,4 +1,4 @@
-use consts::{constant, constant_context};
+use consts::{constant_simple, constant_context};
 use rustc::lint::*;
 use rustc::hir::*;
 use std::hash::{Hash, Hasher};
@@ -64,7 +64,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             return false;
         }
 
-        if let (Some(l), Some(r)) = (constant(self.cx, left), constant(self.cx, right)) {
+        if let (Some(l), Some(r)) = (constant_simple(self.cx, left), constant_simple(self.cx, right)) {
             if l == r {
                 return true;
             }
@@ -317,7 +317,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
     }
 
     pub fn hash_expr(&mut self, e: &Expr) {
-        if let Some(e) = constant(self.cx, e) {
+        if let Some(e) = constant_simple(self.cx, e) {
             return e.hash(&mut self.s);
         }
 
