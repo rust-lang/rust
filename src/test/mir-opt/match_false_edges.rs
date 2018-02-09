@@ -239,7 +239,7 @@ fn main() {
 //     _11 = const guard2(move _12) -> [return: bb14, unwind: bb1];
 // }
 // bb14: { // end of guard2
-//     StorageDead(_11);
+//     StorageDead(_12);
 //     switchInt(move _11) -> [false: bb15, otherwise: bb3];
 // }
 // bb15: { // to pre_binding4

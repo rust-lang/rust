@@ -42,7 +42,6 @@ pub enum PatternError {
     StaticInPattern(Span),
     FloatBug,
     NonConstPath(Span),
-    AssociatedConstInPattern(Span),
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -382,10 +381,24 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                 "lower range bound must be less than upper",
                             ),
                             (RangeEnd::Included, Ordering::Greater) => {
-                                struct_span_err!(self.tcx.sess, lo_expr.span, E0030,
-                                    "lower range bound must be less than or equal to upper")
-                                    .span_label(lo_expr.span, "lower bound larger than upper bound")
-                                    .emit();
+                                let mut err = struct_span_err!(
+                                    self.tcx.sess,
+                                    lo_expr.span,
+                                    E0030,
+                                    "lower range bound must be less than or equal to upper"
+                                );
+                                err.span_label(
+                                    lo_expr.span,
+                                    "lower bound larger than upper bound",
+                                );
+                                if self.tcx.sess.teach(&err.get_code().unwrap()) {
+                                    err.note("When matching against a range, the compiler \
+                                              verifies that the range is non-empty. Range \
+                                              patterns include both end-points, so this is \
+                                              equivalent to requiring the start of the range \
+                                              to be less than or equal to the end of the range.");
+                                }
+                                err.emit();
                             },
                             (RangeEnd::Included, _) => {}
                         }

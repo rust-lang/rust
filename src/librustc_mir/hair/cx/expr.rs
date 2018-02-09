@@ -18,7 +18,6 @@ use rustc::middle::const_val::ConstVal;
 use rustc::mir::interpret::{GlobalId, Value, PrimVal};
 use rustc::ty::{self, AdtKind, VariantDef, Ty};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability};
-use rustc::mir::interpret::{Value, PrimVal};
 use rustc::ty::cast::CastKind as TyCastKind;
 use rustc::hir;
 use rustc::hir::def_id::LocalDefId;
