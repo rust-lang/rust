@@ -984,6 +984,11 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                  "wasm_import_memory attribute is currently unstable",
                                  cfg_fn!(wasm_import_memory))),
 
+    ("rustc_args_required_const", Whitelisted, Gated(Stability::Unstable,
+                                 "rustc_attrs",
+                                 "never will be stable",
+                                 cfg_fn!(rustc_attrs))),
+
     // Crate level attributes
     ("crate_name", CrateLevel, Ungated),
     ("crate_type", CrateLevel, Ungated),
