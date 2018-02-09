@@ -160,7 +160,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     else if false {
         foo();
     }
-    else if foo() { //~ ERROR same body as `if` block
+    else if foo() {
         let _ = match 42 {
             42 => 1,
             a if a > 0 => 2,
@@ -336,7 +336,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
         let foo = "bar";
         return Ok(&foo[0..]);
     }
-    else { //~ ERROR same body as `if` block
+    else {
         let foo = "";
         return Ok(&foo[0..]);
     }

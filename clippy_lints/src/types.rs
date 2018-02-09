@@ -4,6 +4,7 @@ use rustc::hir::*;
 use rustc::hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
 use rustc::lint::*;
 use rustc::ty::{self, Ty, TyCtxt, TypeckTables};
+use rustc::ty::layout::LayoutOf;
 use rustc::ty::subst::Substs;
 use rustc_typeck::hir_ty_to_ty;
 use std::cmp::Ordering;
@@ -15,7 +16,7 @@ use syntax::codemap::Span;
 use syntax::errors::DiagnosticBuilder;
 use utils::{comparisons, higher, in_constant, in_external_macro, in_macro, last_path_segment, match_def_path, match_path,
             multispan_sugg, opt_def_id, same_tys, snippet, snippet_opt, span_help_and_lint, span_lint,
-            span_lint_and_sugg, span_lint_and_then, type_size};
+            span_lint_and_sugg, span_lint_and_then};
 use utils::paths;
 
 /// Handles all the linting of funky types
@@ -1478,7 +1479,7 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(
         let pre_cast_ty = cx.tables.expr_ty(cast_exp);
         let cast_ty = cx.tables.expr_ty(expr);
         // if it's a cast from i32 to u32 wrapping will invalidate all these checks
-        if type_size(cx, pre_cast_ty) == type_size(cx, cast_ty) {
+        if cx.layout_of(pre_cast_ty).ok().map(|l| l.size) == cx.layout_of(cast_ty).ok().map(|l| l.size) {
             return None;
         }
         match pre_cast_ty.sty {

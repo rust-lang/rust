@@ -134,15 +134,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CopyAndPaste {
 
 /// Implementation of `IF_SAME_THEN_ELSE`.
 fn lint_same_then_else(cx: &LateContext, blocks: &[&Block]) {
-    let hash: &Fn(&&Block) -> u64 = &|block| -> u64 {
-        let mut h = SpanlessHash::new(cx);
-        h.hash_block(block);
-        h.finish()
-    };
-
     let eq: &Fn(&&Block, &&Block) -> bool = &|&lhs, &rhs| -> bool { SpanlessEq::new(cx).eq_block(lhs, rhs) };
 
-    if let Some((i, j)) = search_same(blocks, hash, eq) {
+    if let Some((i, j)) = search_same_sequenced(blocks, eq) {
         span_note_and_lint(
             cx,
             IF_SAME_THEN_ELSE,
@@ -307,6 +301,19 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<Interned
     let mut result = HashMap::new();
     bindings_impl(cx, pat, &mut result);
     result
+}
+
+
+fn search_same_sequenced<T, Eq>(exprs: &[T], eq: Eq) -> Option<(&T, &T)>
+where
+    Eq: Fn(&T, &T) -> bool,
+{
+    for win in exprs.windows(2) {
+        if eq(&win[0], &win[1]) {
+            return Some((&win[0], &win[1]));
+        }
+    }
+    None
 }
 
 fn search_same<T, Hash, Eq>(exprs: &[T], hash: Hash, eq: Eq) -> Option<(&T, &T)>

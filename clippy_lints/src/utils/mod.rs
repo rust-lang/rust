@@ -9,7 +9,6 @@ use rustc::lint::{LateContext, Level, Lint, LintContext};
 use rustc::session::Session;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::layout::LayoutOf;
 use rustc_errors;
 use std::borrow::Cow;
 use std::env;
@@ -1046,12 +1045,6 @@ pub fn is_try(expr: &Expr) -> Option<&Expr> {
     }
 
     None
-}
-
-pub fn type_size<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Option<u64> {
-    cx.layout_of(ty)
-        .ok()
-        .map(|layout| layout.size.bytes())
 }
 
 /// Returns true if the lint is allowed in the current context
