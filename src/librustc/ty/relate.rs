@@ -16,7 +16,7 @@
 use hir::def_id::DefId;
 use middle::const_val::ConstVal;
 use traits::Reveal;
-use ty::subst::{UnpackedKind, Substs};
+use ty::subst::{Kind, UnpackedKind, Substs};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 use ty::error::{ExpectedFound, TypeError};
 use mir::interpret::{GlobalId, Value, PrimVal};
@@ -142,15 +142,7 @@ pub fn relate_substs<'a, 'gcx, 'tcx, R>(relation: &mut R,
 
     let params = a_subst.iter().zip(b_subst).enumerate().map(|(i, (a, b))| {
         let variance = variances.map_or(ty::Invariant, |v| v[i]);
-        match (a.unpack(), b.unpack()) {
-            (UnpackedKind::Lifetime(a_lt), UnpackedKind::Lifetime(b_lt)) => {
-                Ok(relation.relate_with_variance(variance, &a_lt, &b_lt)?.into())
-            }
-            (UnpackedKind::Type(a_ty), UnpackedKind::Type(b_ty)) => {
-                Ok(relation.relate_with_variance(variance, &a_ty, &b_ty)?.into())
-            }
-            (UnpackedKind::Lifetime(_), _) | (UnpackedKind::Type(_), _) => bug!()
-        }
+        relation.relate_with_variance(variance, a, b)
     });
 
     Ok(tcx.mk_substs(params)?)
@@ -690,6 +682,27 @@ impl<'tcx, T: Relate<'tcx>> Relate<'tcx> for Box<T> {
         let a: &T = a;
         let b: &T = b;
         Ok(Box::new(relation.relate(a, b)?))
+    }
+}
+
+impl<'tcx> Relate<'tcx> for Kind<'tcx> {
+    fn relate<'a, 'gcx, R>(
+        relation: &mut R,
+        a: &Kind<'tcx>,
+        b: &Kind<'tcx>
+    ) -> RelateResult<'tcx, Kind<'tcx>>
+    where
+        R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a,
+    {
+        match (a.unpack(), b.unpack()) {
+            (UnpackedKind::Lifetime(a_lt), UnpackedKind::Lifetime(b_lt)) => {
+                Ok(relation.relate(&a_lt, &b_lt)?.into())
+            }
+            (UnpackedKind::Type(a_ty), UnpackedKind::Type(b_ty)) => {
+                Ok(relation.relate(&a_ty, &b_ty)?.into())
+            }
+            (UnpackedKind::Lifetime(_), _) | (UnpackedKind::Type(_), _) => bug!()
+        }
     }
 }
 
