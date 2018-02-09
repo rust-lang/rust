@@ -41,7 +41,7 @@ fn extend<F: Float, R: Float>(a: F) -> R where
         let abs_dst: R::Int = a_abs.cast();
         let bias_dst: R::Int = exp_bias_delta.cast();
         abs_result = abs_dst.wrapping_shl(sign_bits_delta);
-        abs_result |= bias_dst.wrapping_shl(dst_sign_bits);
+        abs_result += bias_dst.wrapping_shl(dst_sign_bits);
     } else if a_abs >= src_infinity {
         // a is NaN or infinity.
         // Conjure the result by beginning with infinity, then setting the qNaN
