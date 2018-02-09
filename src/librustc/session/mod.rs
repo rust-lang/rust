@@ -872,8 +872,8 @@ impl Session {
 
     /// Returns the number of query threads that should be used for this
     /// compilation
-    pub fn query_threads_from_opts(opts: &config::Options) -> usize {
-        opts.debugging_opts.query_threads.unwrap_or(1)
+    pub fn query_threads_from_opts(_opts: &config::Options) -> usize {
+        /*opts.debugging_opts.query_threads.unwrap_or(1)*/8
     }
 
     /// Returns the number of query threads that should be used for this
