@@ -834,6 +834,9 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
             ty::ReEmpty => {
                 // No variant fields to hash for these ...
             }
+            ty::ReCanonical(c) => {
+                self.hash(c);
+            }
             ty::ReLateBound(db, ty::BrAnon(i)) => {
                 self.hash(db.depth);
                 self.hash(i);

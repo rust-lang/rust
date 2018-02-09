@@ -50,6 +50,7 @@ use self::unify_key::ToType;
 
 pub mod anon_types;
 pub mod at;
+pub mod canonical;
 mod combine;
 mod equate;
 pub mod error_reporting;
@@ -470,6 +471,12 @@ impl<T> ExpectedFound<T> {
 impl<'tcx, T> InferOk<'tcx, T> {
     pub fn unit(self) -> InferOk<'tcx, ()> {
         InferOk { value: (), obligations: self.obligations }
+    }
+}
+
+impl<'tcx> InferOk<'tcx, ()> {
+    pub fn into_obligations(self) -> PredicateObligations<'tcx> {
+        self.obligations
     }
 }
 
@@ -1644,4 +1651,3 @@ impl<'tcx> fmt::Debug for RegionObligation<'tcx> {
                self.sup_type)
     }
 }
-

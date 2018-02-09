@@ -119,6 +119,25 @@ macro_rules! impl_stable_hash_for {
             }
         }
     };
+
+    (impl<$tcx:lifetime $(, $T:ident)*> for struct $struct_name:path {
+        $($field:ident),* $(,)*
+    }) => {
+        impl<'a, $tcx, $($T,)*> ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>> for $struct_name
+            where $($T: ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>>),*
+        {
+            #[inline]
+            fn hash_stable<W: ::rustc_data_structures::stable_hasher::StableHasherResult>(&self,
+                                                  __ctx: &mut $crate::ich::StableHashingContext<'a>,
+                                                  __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher<W>) {
+                let $struct_name {
+                    $(ref $field),*
+                } = *self;
+
+                $( $field.hash_stable(__ctx, __hasher));*
+            }
+        }
+    };
 }
 
 #[macro_export]
