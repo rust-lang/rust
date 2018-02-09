@@ -25,7 +25,7 @@ mod parser;
 pub mod syntax_kinds;
 pub use text::{TextRange, TextUnit};
 pub use tree::{File, Node, SyntaxKind, Token};
-pub(crate) use tree::{FileBuilder, Sink};
+pub(crate) use tree::{ErrorMsg, FileBuilder, Sink};
 pub use lexer::{next_token, tokenize};
 pub use parser::parse;
 

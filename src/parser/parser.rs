@@ -129,8 +129,8 @@ impl<'t> Parser<'t> {
         m
     }
 
-    pub(crate) fn error<'p>(&'p mut self) -> ErrorBuilder<'p, 't> {
-        ErrorBuilder::new(self)
+    pub(crate) fn error<'p, T: Into<String>>(&'p mut self, msg: T) -> ErrorBuilder<'p, 't> {
+        ErrorBuilder::new(self, msg.into())
     }
 
     pub(crate) fn bump(&mut self) {
@@ -175,25 +175,19 @@ impl<'t> Parser<'t> {
 }
 
 pub(crate) struct ErrorBuilder<'p, 't: 'p> {
-    message: Option<String>,
+    message: String,
     parser: &'p mut Parser<'t>,
 }
 
-impl<'t, 'p> ErrorBuilder<'p, 't> {
-    fn new(parser: &'p mut Parser<'t>) -> Self {
-        ErrorBuilder {
-            message: None,
-            parser,
-        }
-    }
-
-    pub fn message<M: Into<String>>(mut self, m: M) -> Self {
-        self.message = Some(m.into());
-        self
-    }
-
-    pub fn emit(self) {
-        let message = self.message.expect("Error message not set");
+impl<'p, 't: 'p> Drop for ErrorBuilder<'p, 't> {
+    fn drop(&mut self) {
+        let message = ::std::mem::replace(&mut self.message, String::new());
         self.parser.event(Event::Error { message });
+    }
+}
+
+impl<'t, 'p> ErrorBuilder<'p, 't> {
+    fn new(parser: &'p mut Parser<'t>, message: String) -> Self {
+        ErrorBuilder { message, parser }
     }
 }

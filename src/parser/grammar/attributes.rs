@@ -37,7 +37,7 @@ fn meta_item(p: &mut Parser) {
             EQ => {
                 p.bump();
                 if !expressions::literal(p) {
-                    p.error().message("expected literal").emit();
+                    p.error("expected literal");
                 }
             }
             L_PAREN => meta_item_arg_list(p),
@@ -45,7 +45,7 @@ fn meta_item(p: &mut Parser) {
         }
         meta_item.complete(p, META_ITEM);
     } else {
-        p.error().message("expected attribute value").emit()
+        p.error("expected attribute value");
     }
 }
 
@@ -60,12 +60,12 @@ fn meta_item_arg_list(p: &mut Parser) {
                 let message = "expected attribute";
 
                 if items::ITEM_FIRST.contains(c) {
-                    p.error().message(message).emit();
+                    p.error(message);
                     return;
                 }
 
                 let err = p.start();
-                p.error().message(message).emit();
+                p.error(message);
                 p.bump();
                 err.complete(p, ERROR);
                 continue;

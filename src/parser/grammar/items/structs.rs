@@ -19,7 +19,7 @@ pub(super) fn struct_item(p: &mut Parser) {
                 L_CURLY => named_fields(p),
                 _ => {
                     //TODO: special case `(` error message
-                    p.error().message("expected `;` or `{`").emit();
+                    p.error("expected `;` or `{`");
                     return;
                 }
             }
@@ -34,7 +34,7 @@ pub(super) fn struct_item(p: &mut Parser) {
             p.expect(SEMI);
         }
         _ => {
-            p.error().message("expected `;`, `{`, or `(`").emit();
+            p.error("expected `;`, `{`, or `(`");
             return;
         }
     }
