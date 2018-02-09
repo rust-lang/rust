@@ -975,6 +975,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ) -> Option<(DiagnosticStyledString, DiagnosticStyledString)> {
         match *values {
             infer::Types(ref exp_found) => self.expected_found_str_ty(exp_found),
+            infer::Regions(ref exp_found) => self.expected_found_str(exp_found),
             infer::TraitRefs(ref exp_found) => self.expected_found_str(exp_found),
             infer::PolyTraitRefs(ref exp_found) => self.expected_found_str(exp_found),
         }

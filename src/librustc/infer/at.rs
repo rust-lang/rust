@@ -281,6 +281,20 @@ impl<'tcx> ToTrace<'tcx> for Ty<'tcx> {
     }
 }
 
+impl<'tcx> ToTrace<'tcx> for ty::Region<'tcx> {
+    fn to_trace(cause: &ObligationCause<'tcx>,
+                a_is_expected: bool,
+                a: Self,
+                b: Self)
+                -> TypeTrace<'tcx>
+    {
+        TypeTrace {
+            cause: cause.clone(),
+            values: Regions(ExpectedFound::new(a_is_expected, a, b))
+        }
+    }
+}
+
 impl<'tcx> ToTrace<'tcx> for ty::TraitRef<'tcx> {
     fn to_trace(cause: &ObligationCause<'tcx>,
                 a_is_expected: bool,
