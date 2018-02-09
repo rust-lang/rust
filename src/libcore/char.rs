@@ -211,7 +211,7 @@ impl From<u8> for char {
 
 /// An error which can be returned when parsing a char.
 #[stable(feature = "char_from_str", since = "1.20.0")]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ParseCharError {
     kind: CharErrorKind,
 }
