@@ -58,8 +58,8 @@ macro_rules! full_test {
                 panic!("could not pipe to awk");
             };
 
-            success &= Command::new("cargo")
-                .args(&["semver", "-S", &old_version, "-C", &new_version])
+            success &= Command::new("./target/debug/cargo-semver")
+                .args(&["-S", &old_version, "-C", &new_version])
                 .env("RUST_BACKTRACE", "full")
                 .stdin(Stdio::null())
                 .stdout(out_pipe)
