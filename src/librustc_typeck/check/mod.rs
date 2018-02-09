@@ -96,7 +96,7 @@ use rustc::middle::region;
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::{self, FulfillmentContext, ObligationCause, ObligationCauseCode};
 use rustc::ty::{self, Ty, TyCtxt, Visibility, ToPredicate};
-use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
+use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::maps::Providers;
 use rustc::ty::util::{Representability, IntTypeExt};
@@ -2357,8 +2357,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 let mut adjustments = autoderef.adjust_steps(needs);
                 if let ty::TyRef(region, mt) = method.sig.inputs()[0].sty {
+                    let mutbl = match mt.mutbl {
+                        hir::MutImmutable => AutoBorrowMutability::Immutable,
+                        hir::MutMutable => AutoBorrowMutability::Mutable {
+                            // FIXME (#46747): arguably indexing is
+                            // "just another kind of call"; perhaps it
+                            // would be more consistent to allow
+                            // two-phase borrows for .index()
+                            // receivers here.
+                            allow_two_phase_borrow: false,
+                        }
+                    };
                     adjustments.push(Adjustment {
-                        kind: Adjust::Borrow(AutoBorrow::Ref(region, mt.mutbl)),
+                        kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
                         target: self.tcx.mk_ref(region, ty::TypeAndMut {
                             mutbl: mt.mutbl,
                             ty: adjusted_ty
@@ -3646,8 +3657,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 expr.span, oprnd_t, needs) {
                             let method = self.register_infer_ok_obligations(ok);
                             if let ty::TyRef(region, mt) = method.sig.inputs()[0].sty {
+                                let mutbl = match mt.mutbl {
+                                    hir::MutImmutable => AutoBorrowMutability::Immutable,
+                                    hir::MutMutable => AutoBorrowMutability::Mutable {
+                                        // (It shouldn't actually matter for unary ops whether
+                                        // we enable two-phase borrows or not, since a unary
+                                        // op has no additional operands.)
+                                        allow_two_phase_borrow: false,
+                                    }
+                                };
                                 self.apply_adjustments(oprnd, vec![Adjustment {
-                                    kind: Adjust::Borrow(AutoBorrow::Ref(region, mt.mutbl)),
+                                    kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
                                     target: method.sig.inputs()[0]
                                 }]);
                             }

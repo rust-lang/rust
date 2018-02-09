@@ -163,6 +163,20 @@ impl_stable_hash_for!(struct ty::adjustment::Adjustment<'tcx> { kind, target });
 impl_stable_hash_for!(struct ty::adjustment::OverloadedDeref<'tcx> { region, mutbl });
 impl_stable_hash_for!(struct ty::UpvarBorrow<'tcx> { kind, region });
 
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for ty::adjustment::AutoBorrowMutability {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        mem::discriminant(self).hash_stable(hcx, hasher);
+        match *self {
+            ty::adjustment::AutoBorrowMutability::Mutable { ref allow_two_phase_borrow } => {
+                allow_two_phase_borrow.hash_stable(hcx, hasher);
+            }
+            ty::adjustment::AutoBorrowMutability::Immutable => {}
+        }
+    }
+}
+
 impl_stable_hash_for!(struct ty::UpvarId { var_id, closure_expr_id });
 
 impl_stable_hash_for!(enum ty::BorrowKind {

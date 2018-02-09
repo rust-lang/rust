@@ -264,7 +264,7 @@ impl<'tcx> BinOp {
 impl BorrowKind {
     pub fn to_mutbl_lossy(self) -> hir::Mutability {
         match self {
-            BorrowKind::Mut => hir::MutMutable,
+            BorrowKind::Mut { .. } => hir::MutMutable,
             BorrowKind::Shared => hir::MutImmutable,
 
             // We have no type corresponding to a unique imm borrow, so

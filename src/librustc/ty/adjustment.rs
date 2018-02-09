@@ -120,9 +120,24 @@ impl<'a, 'gcx, 'tcx> OverloadedDeref<'tcx> {
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable)]
+pub enum AutoBorrowMutability {
+    Mutable { allow_two_phase_borrow: bool },
+    Immutable,
+}
+
+impl From<AutoBorrowMutability> for hir::Mutability {
+    fn from(m: AutoBorrowMutability) -> Self {
+        match m {
+            AutoBorrowMutability::Mutable { .. } => hir::MutMutable,
+            AutoBorrowMutability::Immutable => hir::MutImmutable,
+        }
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable)]
 pub enum AutoBorrow<'tcx> {
     /// Convert from T to &T.
-    Ref(ty::Region<'tcx>, hir::Mutability),
+    Ref(ty::Region<'tcx>, AutoBorrowMutability),
 
     /// Convert from T to *T.
     RawPtr(hir::Mutability),

@@ -426,7 +426,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     debug!("Creating temp for return destination");
                     let dest = Rvalue::Ref(
                         self.tcx.types.re_erased,
-                        BorrowKind::Mut,
+                        BorrowKind::Mut { allow_two_phase_borrow: false },
                         destination.0);
 
                     let ty = dest.ty(caller_mir, self.tcx);
@@ -511,7 +511,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                          callsite: &CallSite<'tcx>, caller_mir: &mut Mir<'tcx>) -> Local {
         let arg = Rvalue::Ref(
             self.tcx.types.re_erased,
-            BorrowKind::Mut,
+            BorrowKind::Mut { allow_two_phase_borrow: false },
             arg.deref());
 
         let ty = arg.ty(caller_mir, self.tcx);

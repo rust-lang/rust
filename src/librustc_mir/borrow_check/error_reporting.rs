@@ -256,8 +256,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             "immutable",
             "mutable",
         ) {
-            (BorrowKind::Shared, lft, _, BorrowKind::Mut, _, rgt) |
-            (BorrowKind::Mut, _, lft, BorrowKind::Shared, rgt, _) => self.tcx
+            (BorrowKind::Shared, lft, _, BorrowKind::Mut { .. }, _, rgt) |
+            (BorrowKind::Mut { .. }, _, lft, BorrowKind::Shared, rgt, _) => self.tcx
                 .cannot_reborrow_already_borrowed(
                     span,
                     &desc_place,
@@ -271,7 +271,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     Origin::Mir,
                 ),
 
-            (BorrowKind::Mut, _, _, BorrowKind::Mut, _, _) => self.tcx
+            (BorrowKind::Mut { .. }, _, _, BorrowKind::Mut { .. }, _, _) => self.tcx
                 .cannot_mutably_borrow_multiply(
                     span,
                     &desc_place,
@@ -314,7 +314,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     Origin::Mir,
                 ),
 
-            (BorrowKind::Mut, _, lft, BorrowKind::Unique, _, _) => self.tcx
+            (BorrowKind::Mut { .. }, _, lft, BorrowKind::Unique, _, _) => self.tcx
                 .cannot_reborrow_already_uniquely_borrowed(
                     span,
                     &desc_place,

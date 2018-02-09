@@ -1063,7 +1063,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         match *autoref {
             adjustment::AutoBorrow::Ref(r, m) => {
                 self.link_region(expr.span, r,
-                                 ty::BorrowKind::from_mutbl(m), expr_cmt);
+                                 ty::BorrowKind::from_mutbl(m.into()), expr_cmt);
             }
 
             adjustment::AutoBorrow::RawPtr(m) => {

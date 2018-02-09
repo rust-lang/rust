@@ -531,7 +531,9 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         let result = BasicBlockData {
             statements: vec![self.assign(
                 &Place::Local(ref_place),
-                Rvalue::Ref(tcx.types.re_erased, BorrowKind::Mut, self.place.clone())
+                Rvalue::Ref(tcx.types.re_erased,
+                            BorrowKind::Mut { allow_two_phase_borrow: false },
+                            self.place.clone())
             )],
             terminator: Some(Terminator {
                 kind: TerminatorKind::Call {
@@ -591,7 +593,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         } else {
             (Rvalue::Ref(
                  tcx.types.re_erased,
-                 BorrowKind::Mut,
+                 BorrowKind::Mut { allow_two_phase_borrow: false },
                  self.place.clone().index(cur)),
              Rvalue::BinaryOp(BinOp::Add, copy(&Place::Local(cur)), one))
         };
@@ -735,7 +737,9 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             // cur = tmp as *mut T;
             // end = Offset(cur, len);
             drop_block_stmts.push(self.assign(&tmp, Rvalue::Ref(
-                tcx.types.re_erased, BorrowKind::Mut, self.place.clone()
+                tcx.types.re_erased,
+                BorrowKind::Mut { allow_two_phase_borrow: false },
+                self.place.clone()
             )));
             drop_block_stmts.push(self.assign(&cur, Rvalue::Cast(
                 CastKind::Misc, Operand::Move(tmp.clone()), iter_ty

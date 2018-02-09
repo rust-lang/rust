@@ -413,7 +413,20 @@ pub enum BorrowKind {
     Unique,
 
     /// Data is mutable and not aliasable.
-    Mut,
+    Mut {
+        /// True if this borrow arose from method-call auto-ref
+        /// (i.e. `adjustment::Adjust::Borrow`)
+        allow_two_phase_borrow: bool
+    }
+}
+
+impl BorrowKind {
+    pub fn allows_two_phase_borrow(&self) -> bool {
+        match *self {
+            BorrowKind::Shared | BorrowKind::Unique => false,
+            BorrowKind::Mut { allow_two_phase_borrow } => allow_two_phase_borrow,
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1611,7 +1624,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             Ref(region, borrow_kind, ref place) => {
                 let kind_str = match borrow_kind {
                     BorrowKind::Shared => "",
-                    BorrowKind::Mut | BorrowKind::Unique => "mut ",
+                    BorrowKind::Mut { .. } | BorrowKind::Unique => "mut ",
                 };
 
                 // When printing regions, add trailing space if necessary.

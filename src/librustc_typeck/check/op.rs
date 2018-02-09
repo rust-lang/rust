@@ -14,7 +14,7 @@ use super::{FnCtxt, Needs};
 use super::method::MethodCallee;
 use rustc::ty::{self, Ty, TypeFoldable, TypeVariants};
 use rustc::ty::TypeVariants::{TyStr, TyRef};
-use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
+use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability};
 use rustc::infer::type_variable::TypeVariableOrigin;
 use errors;
 use syntax_pos::Span;
@@ -198,8 +198,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let by_ref_binop = !op.node.is_by_value();
                 if is_assign == IsAssign::Yes || by_ref_binop {
                     if let ty::TyRef(region, mt) = method.sig.inputs()[0].sty {
+                        let mutbl = match mt.mutbl {
+                            hir::MutImmutable => AutoBorrowMutability::Immutable,
+                            hir::MutMutable => AutoBorrowMutability::Mutable {
+                                // For initial two-phase borrow
+                                // deployment, conservatively omit
+                                // overloaded binary ops.
+                                allow_two_phase_borrow: false,
+                            }
+                        };
                         let autoref = Adjustment {
-                            kind: Adjust::Borrow(AutoBorrow::Ref(region, mt.mutbl)),
+                            kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
                             target: method.sig.inputs()[0]
                         };
                         self.apply_adjustments(lhs_expr, vec![autoref]);
@@ -207,8 +216,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 if by_ref_binop {
                     if let ty::TyRef(region, mt) = method.sig.inputs()[1].sty {
+                        let mutbl = match mt.mutbl {
+                            hir::MutImmutable => AutoBorrowMutability::Immutable,
+                            hir::MutMutable => AutoBorrowMutability::Mutable {
+                                // For initial two-phase borrow
+                                // deployment, conservatively omit
+                                // overloaded binary ops.
+                                allow_two_phase_borrow: false,
+                            }
+                        };
                         let autoref = Adjustment {
-                            kind: Adjust::Borrow(AutoBorrow::Ref(region, mt.mutbl)),
+                            kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
                             target: method.sig.inputs()[1]
                         };
                         // HACK(eddyb) Bypass checks due to reborrows being in

@@ -17,10 +17,11 @@ use hair::cx::to_ref::ToRef;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{self, AdtKind, VariantDef, Ty};
-use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
+use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::cast::CastKind as TyCastKind;
 use rustc::hir;
 use rustc::hir::def_id::LocalDefId;
+use rustc::mir::{BorrowKind};
 
 impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
     type Output = Expr<'tcx>;
@@ -111,7 +112,7 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 span,
                 kind: ExprKind::Borrow {
                     region: deref.region,
-                    borrow_kind: to_borrow_kind(deref.mutbl),
+                    borrow_kind: deref.mutbl.to_borrow_kind(),
                     arg: expr.to_ref(),
                 },
             };
@@ -121,7 +122,7 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         Adjust::Borrow(AutoBorrow::Ref(r, m)) => {
             ExprKind::Borrow {
                 region: r,
-                borrow_kind: to_borrow_kind(m),
+                borrow_kind: m.to_borrow_kind(),
                 arg: expr.to_ref(),
             }
         }
@@ -141,7 +142,7 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 span,
                 kind: ExprKind::Borrow {
                     region,
-                    borrow_kind: to_borrow_kind(m),
+                    borrow_kind: m.to_borrow_kind(),
                     arg: expr.to_ref(),
                 },
             };
@@ -287,7 +288,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             };
             ExprKind::Borrow {
                 region,
-                borrow_kind: to_borrow_kind(mutbl),
+                borrow_kind: mutbl.to_borrow_kind(),
                 arg: expr.to_ref(),
             }
         }
@@ -642,10 +643,25 @@ fn method_callee<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     }
 }
 
-fn to_borrow_kind(m: hir::Mutability) -> BorrowKind {
-    match m {
-        hir::MutMutable => BorrowKind::Mut,
-        hir::MutImmutable => BorrowKind::Shared,
+trait ToBorrowKind { fn to_borrow_kind(&self) -> BorrowKind; }
+
+impl ToBorrowKind for AutoBorrowMutability {
+    fn to_borrow_kind(&self) -> BorrowKind {
+        match *self {
+            AutoBorrowMutability::Mutable { allow_two_phase_borrow } =>
+                BorrowKind::Mut { allow_two_phase_borrow },
+            AutoBorrowMutability::Immutable =>
+                BorrowKind::Shared,
+        }
+    }
+}
+
+impl ToBorrowKind for hir::Mutability {
+    fn to_borrow_kind(&self) -> BorrowKind {
+        match *self {
+            hir::MutMutable => BorrowKind::Mut { allow_two_phase_borrow: false },
+            hir::MutImmutable => BorrowKind::Shared,
+        }
     }
 }
 
@@ -947,7 +963,7 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             let borrow_kind = match upvar_borrow.kind {
                 ty::BorrowKind::ImmBorrow => BorrowKind::Shared,
                 ty::BorrowKind::UniqueImmBorrow => BorrowKind::Unique,
-                ty::BorrowKind::MutBorrow => BorrowKind::Mut,
+                ty::BorrowKind::MutBorrow => BorrowKind::Mut { allow_two_phase_borrow: false }
             };
             Expr {
                 temp_lifetime,

@@ -602,7 +602,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 }
 
                 let ty = place.ty(self.mir, self.tcx).to_ty(self.tcx);
-                if kind == BorrowKind::Mut {
+                if let BorrowKind::Mut { .. } = kind {
                     // In theory, any zero-sized value could be borrowed
                     // mutably without consequences. However, only &mut []
                     // is allowed right now, and only in functions.

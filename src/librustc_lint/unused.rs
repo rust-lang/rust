@@ -437,8 +437,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAllocation {
         for adj in cx.tables.expr_adjustments(e) {
             if let adjustment::Adjust::Borrow(adjustment::AutoBorrow::Ref(_, m)) = adj.kind {
                 let msg = match m {
-                    hir::MutImmutable => "unnecessary allocation, use & instead",
-                    hir::MutMutable => "unnecessary allocation, use &mut instead"
+                    adjustment::AutoBorrowMutability::Immutable =>
+                        "unnecessary allocation, use & instead",
+                    adjustment::AutoBorrowMutability::Mutable { .. }=>
+                        "unnecessary allocation, use &mut instead"
                 };
                 cx.span_lint(UNUSED_ALLOCATION, e.span, msg);
             }
