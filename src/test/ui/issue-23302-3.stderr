@@ -1,4 +1,4 @@
-error[E0391]: unsupported cyclic reference between types/traits detected
+error[E0391]: cyclic dependency detected
   --> $DIR/issue-23302-3.rs:11:16
    |
 11 | const A: i32 = B; //~ ERROR E0391

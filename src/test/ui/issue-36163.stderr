@@ -1,4 +1,4 @@
-error[E0391]: unsupported cyclic reference between types/traits detected
+error[E0391]: cyclic dependency detected
   --> $DIR/issue-36163.rs:14:9
    |
 14 |     B = A, //~ ERROR E0391
