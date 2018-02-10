@@ -124,7 +124,7 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// assert!( (3..3).is_empty());
     /// assert!( (3..2).is_empty());
     /// ```
-    #[unstable(feature = "range_is_empty", reason = "recently added", issue = "123456789")]
+    #[unstable(feature = "range_is_empty", reason = "recently added", issue = "48111")]
     pub fn is_empty(&self) -> bool {
         !(self.start < self.end)
     }
@@ -347,7 +347,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// // Precise field values are unspecified here
     /// assert!(r.is_empty());
     /// ```
-    #[unstable(feature = "range_is_empty", reason = "recently added", issue = "123456789")]
+    #[unstable(feature = "range_is_empty", reason = "recently added", issue = "48111")]
     pub fn is_empty(&self) -> bool {
         !(self.start <= self.end)
     }
