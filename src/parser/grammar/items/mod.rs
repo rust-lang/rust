@@ -236,7 +236,7 @@ fn type_item(p: &mut Parser) {
     assert!(p.at(TYPE_KW));
     p.bump();
 
-    p.expect(IDENT);
+    name(p);
 
     // test type_item_type_params
     // type Result<T> = ();

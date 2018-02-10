@@ -1,10 +1,11 @@
 FILE@[0; 31)
   TYPE_ITEM@[0; 31)
     TYPE_KW@[0; 4)
-    WHITESPACE@[4; 5)
-    IDENT@[5; 8) "Foo"
-    WHERE_CLAUSE@[8; 25)
+    NAME@[4; 9)
+      WHITESPACE@[4; 5)
+      IDENT@[5; 8) "Foo"
       WHITESPACE@[8; 9)
+    WHERE_CLAUSE@[9; 25)
       WHERE_KW@[9; 14)
       WHITESPACE@[14; 15)
       IDENT@[15; 18) "Foo"
