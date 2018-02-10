@@ -11,15 +11,23 @@ FILE@[0; 34)
         WHITESPACE@[10; 15)
         IDENT@[15; 16) "a"
       COLON@[16; 17)
-      WHITESPACE@[17; 18)
-      IDENT@[18; 21) "u32"
-      WHITESPACE@[21; 26)
+      PATH_TYPE@[17; 26)
+        PATH@[17; 26)
+          PATH_SEGMENT@[17; 26)
+            NAME_REF@[17; 26)
+              WHITESPACE@[17; 18)
+              IDENT@[18; 21) "u32"
+              WHITESPACE@[21; 26)
     err: `expected COMMA`
     NAMED_FIELD@[26; 33)
       NAME@[26; 27)
         IDENT@[26; 27) "b"
       COLON@[27; 28)
-      WHITESPACE@[28; 29)
-      IDENT@[29; 32) "u32"
-      WHITESPACE@[32; 33)
+      PATH_TYPE@[28; 33)
+        PATH@[28; 33)
+          PATH_SEGMENT@[28; 33)
+            NAME_REF@[28; 33)
+              WHITESPACE@[28; 29)
+              IDENT@[29; 32) "u32"
+              WHITESPACE@[32; 33)
     R_CURLY@[33; 34)

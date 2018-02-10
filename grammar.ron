@@ -101,6 +101,11 @@ Grammar(
         "IMPL_ITEM",
         "TYPE_ITEM",
 
+        "PAREN_TYPE",
+        "TUPLE_TYPE",
+        "NEVER_TYPE",
+        "PATH_TYPE",
+
         "EXTERN_BLOCK",
         "ENUM_VARIANT",
         "NAMED_FIELD",

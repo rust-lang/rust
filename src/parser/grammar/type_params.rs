@@ -62,7 +62,7 @@ pub(super) fn list(p: &mut Parser) {
             }
         }
         if p.at(EQ) {
-            types::type_ref(p)
+            types::ty(p)
         }
         m.complete(p, TYPE_PARAM);
     }

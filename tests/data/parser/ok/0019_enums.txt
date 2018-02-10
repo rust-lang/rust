@@ -81,8 +81,12 @@ FILE@[0; 182)
           WHITESPACE@[104; 113)
           IDENT@[113; 114) "a"
         COLON@[114; 115)
-        WHITESPACE@[115; 116)
-        IDENT@[116; 119) "u32"
+        PATH_TYPE@[115; 119)
+          PATH@[115; 119)
+            PATH_SEGMENT@[115; 119)
+              NAME_REF@[115; 119)
+                WHITESPACE@[115; 116)
+                IDENT@[116; 119) "u32"
       COMMA@[119; 120)
       NAMED_FIELD@[120; 139)
         VISIBILITY@[120; 133)
@@ -92,8 +96,12 @@ FILE@[0; 182)
         NAME@[133; 134)
           IDENT@[133; 134) "b"
         COLON@[134; 135)
-        WHITESPACE@[135; 136)
-        IDENT@[136; 139) "f64"
+        PATH_TYPE@[135; 139)
+          PATH@[135; 139)
+            PATH_SEGMENT@[135; 139)
+              NAME_REF@[135; 139)
+                WHITESPACE@[135; 136)
+                IDENT@[136; 139) "f64"
       COMMA@[139; 140)
       WHITESPACE@[140; 145)
       R_CURLY@[145; 146)
@@ -110,7 +118,11 @@ FILE@[0; 182)
       IDENT@[162; 163) "D"
       L_PAREN@[163; 164)
       POS_FIELD@[164; 167)
-        IDENT@[164; 167) "u32"
+        PATH_TYPE@[164; 167)
+          PATH@[164; 167)
+            PATH_SEGMENT@[164; 167)
+              NAME_REF@[164; 167)
+                IDENT@[164; 167) "u32"
       COMMA@[167; 168)
       R_PAREN@[168; 169)
     COMMA@[169; 170)

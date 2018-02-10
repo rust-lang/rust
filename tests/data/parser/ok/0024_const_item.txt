@@ -5,9 +5,13 @@ FILE@[0; 46)
       WHITESPACE@[5; 6)
       IDENT@[6; 9) "FOO"
     COLON@[9; 10)
-    WHITESPACE@[10; 11)
-    IDENT@[11; 14) "u32"
-    WHITESPACE@[14; 15)
+    PATH_TYPE@[10; 15)
+      PATH@[10; 15)
+        PATH_SEGMENT@[10; 15)
+          NAME_REF@[10; 15)
+            WHITESPACE@[10; 11)
+            IDENT@[11; 14) "u32"
+            WHITESPACE@[14; 15)
     EQ@[15; 16)
     LITERAL@[16; 19)
       WHITESPACE@[16; 17)
@@ -22,9 +26,13 @@ FILE@[0; 46)
       WHITESPACE@[30; 31)
       IDENT@[31; 34) "BAR"
     COLON@[34; 35)
-    WHITESPACE@[35; 36)
-    IDENT@[36; 39) "u32"
-    WHITESPACE@[39; 40)
+    PATH_TYPE@[35; 40)
+      PATH@[35; 40)
+        PATH_SEGMENT@[35; 40)
+          NAME_REF@[35; 40)
+            WHITESPACE@[35; 36)
+            IDENT@[36; 39) "u32"
+            WHITESPACE@[39; 40)
     EQ@[40; 41)
     LITERAL@[41; 44)
       WHITESPACE@[41; 42)
