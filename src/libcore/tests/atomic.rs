@@ -49,6 +49,13 @@ fn uint_and() {
 }
 
 #[test]
+fn uint_nand() {
+    let x = AtomicUsize::new(0xf731);
+    assert_eq!(x.fetch_nand(0x137f, SeqCst), 0xf731);
+    assert_eq!(x.load(SeqCst), !(0xf731 & 0x137f));
+}
+
+#[test]
 fn uint_or() {
     let x = AtomicUsize::new(0xf731);
     assert_eq!(x.fetch_or(0x137f, SeqCst), 0xf731);
@@ -67,6 +74,13 @@ fn int_and() {
     let x = AtomicIsize::new(0xf731);
     assert_eq!(x.fetch_and(0x137f, SeqCst), 0xf731);
     assert_eq!(x.load(SeqCst), 0xf731 & 0x137f);
+}
+
+#[test]
+fn int_nand() {
+    let x = AtomicIsize::new(0xf731);
+    assert_eq!(x.fetch_nand(0x137f, SeqCst), 0xf731);
+    assert_eq!(x.load(SeqCst), !(0xf731 & 0x137f));
 }
 
 #[test]
