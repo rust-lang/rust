@@ -3077,7 +3077,7 @@ impl Path {
                 params: PathParameters::AngleBracketed {
                     lifetimes: Vec::new(),
                     types: Vec::new(),
-                    bindings: Vec::new()
+                    bindings: Vec::new(),
                 }
             }]
         }
@@ -3152,23 +3152,23 @@ fn strip_type(ty: Type) -> Type {
     match ty {
         Type::ResolvedPath { path, typarams, did, is_generic } => {
             Type::ResolvedPath { path: strip_path(&path), typarams, did, is_generic }
-        },
+        }
         Type::Tuple(inner_tys) => {
             Type::Tuple(inner_tys.iter().map(|t| strip_type(t.clone())).collect())
-        },
+        }
         Type::Slice(inner_ty) => Type::Slice(Box::new(strip_type(*inner_ty))),
         Type::Array(inner_ty, s) => Type::Array(Box::new(strip_type(*inner_ty)), s),
         Type::Unique(inner_ty) => Type::Unique(Box::new(strip_type(*inner_ty))),
         Type::RawPointer(m, inner_ty) => Type::RawPointer(m, Box::new(strip_type(*inner_ty))),
         Type::BorrowedRef { lifetime, mutability, type_ } => {
             Type::BorrowedRef { lifetime, mutability, type_: Box::new(strip_type(*type_)) }
-        },
+        }
         Type::QPath { name, self_type, trait_ } => {
             Type::QPath {
                 name,
                 self_type: Box::new(strip_type(*self_type)), trait_: Box::new(strip_type(*trait_))
             }
-        },
+        }
         _ => ty
     }
 }
@@ -3180,7 +3180,7 @@ fn strip_path(path: &Path) -> Path {
             params: PathParameters::AngleBracketed {
                 lifetimes: Vec::new(),
                 types: Vec::new(),
-                bindings: Vec::new()
+                bindings: Vec::new(),
             }
         }
     }).collect();
@@ -3188,7 +3188,7 @@ fn strip_path(path: &Path) -> Path {
     Path {
         global: path.global,
         def: path.def.clone(),
-        segments
+        segments,
     }
 }
 
@@ -3361,7 +3361,6 @@ pub fn get_auto_traits_with_node_id(cx: &DocContext, id: ast::NodeId, name: Stri
 }
 
 pub fn get_auto_traits_with_def_id(cx: &DocContext, id: DefId) -> Vec<Item> {
-
     let finder = AutoTraitFinder {
         cx,
     };
@@ -3404,7 +3403,7 @@ impl Clean<Vec<Item>> for doctree::Impl {
                 for_: self.for_.clean(cx),
                 items,
                 polarity: Some(self.polarity.clean(cx)),
-                synthetic: false
+                synthetic: false,
             })
         });
         ret
@@ -3819,8 +3818,6 @@ impl Clean<TypeBinding> for hir::TypeBinding {
     }
 }
 
-
-
 pub fn def_id_to_path(cx: &DocContext, did: DefId, name: Option<String>) -> Vec<String> {
     let crate_name = name.unwrap_or_else(|| cx.tcx.crate_name(did.krate).to_string());
     let relative = cx.tcx.def_path(did).data.into_iter().filter_map(|elem| {
@@ -3835,15 +3832,14 @@ pub fn def_id_to_path(cx: &DocContext, did: DefId, name: Option<String>) -> Vec<
     once(crate_name).chain(relative).collect()
 }
 
-
 // Start of code copied from rust-clippy
 
 pub fn get_trait_def_id(tcx: &TyCtxt, path: &[&str], use_local: bool) -> Option<DefId> {
-    return if use_local {
+    if use_local {
         path_to_def_local(tcx, path)
     } else {
         path_to_def(tcx, path)
-    };
+    }
 }
 
 pub fn path_to_def_local(tcx: &TyCtxt, path: &[&str]) -> Option<DefId> {
@@ -3878,7 +3874,6 @@ pub fn path_to_def_local(tcx: &TyCtxt, path: &[&str]) -> Option<DefId> {
 pub fn path_to_def(tcx: &TyCtxt, path: &[&str]) -> Option<DefId> {
     let crates = tcx.crates();
 
-
     let krate = crates
         .iter()
         .find(|&&krate| tcx.crate_name(krate) == path[0]);
@@ -3902,7 +3897,7 @@ pub fn path_to_def(tcx: &TyCtxt, path: &[&str]) -> Option<DefId> {
                     if path_it.peek().is_none() {
                         return match item.def {
                             def::Def::Trait(did) => Some(did),
-                            _ => None
+                            _ => None,
                         }
                     }
 
@@ -3942,7 +3937,7 @@ fn get_path_for_type(tcx: TyCtxt, def_id: DefId, def_ctor: fn(DefId) -> Def) -> 
         segments: hir::HirVec::from_vec(apb.names.iter().map(|s| hir::PathSegment {
             name: ast::Name::intern(&s),
             parameters: None,
-            infer_types: false
+            infer_types: false,
         }).collect())
     }
 }
@@ -3970,24 +3965,20 @@ enum SimpleBound {
 
 enum AutoTraitResult {
     ExplicitImpl,
-
     PositiveImpl(Generics),
-
     NegativeImpl,
 }
 
 impl AutoTraitResult {
-
     fn is_auto(&self) -> bool {
         match *self {
             AutoTraitResult::PositiveImpl(_) | AutoTraitResult::NegativeImpl => true,
-            _ => false
+            _ => false,
         }
     }
 }
 
 impl From<TyParamBound> for SimpleBound {
-
     fn from(bound: TyParamBound) -> Self {
         match bound.clone() {
             TyParamBound::RegionBound(l) => SimpleBound::RegionBound(l),
@@ -4001,7 +3992,7 @@ impl From<TyParamBound> for SimpleBound {
                                             t.generic_params,
                                             mod_)
                 },
-                _ => panic!("Unexpected bound {:?}", bound)
+                _ => panic!("Unexpected bound {:?}", bound),
             }
         }
     }

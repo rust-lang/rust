@@ -429,7 +429,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             intercrate: None,
             inferred_obligations: SnapshotVec::new(),
             intercrate_ambiguity_causes: None,
-            allow_negative_impls: false
+            allow_negative_impls: false,
         }
     }
 
@@ -442,7 +442,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             intercrate: Some(mode),
             inferred_obligations: SnapshotVec::new(),
             intercrate_ambiguity_causes: None,
-            allow_negative_impls: false
+            allow_negative_impls: false,
         }
     }
 
@@ -455,7 +455,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             intercrate: None,
             inferred_obligations: SnapshotVec::new(),
             intercrate_ambiguity_causes: None,
-            allow_negative_impls
+            allow_negative_impls,
         }
     }
 

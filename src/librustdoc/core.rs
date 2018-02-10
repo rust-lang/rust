@@ -239,13 +239,11 @@ pub fn run_core(search_paths: SearchPaths,
                                   .collect()
         };
 
-        let send_trait;
-
-        if crate_name == Some("core".to_string()) {
-            send_trait = clean::get_trait_def_id(&tcx, &["marker", "Send"], true);
+        let send_trait = if crate_name == Some("core".to_string()) {
+            clean::get_trait_def_id(&tcx, &["marker", "Send"], true)
         } else {
-            send_trait = clean::get_trait_def_id(&tcx, &["core", "marker", "Send"], false)
-        }
+            clean::get_trait_def_id(&tcx, &["core", "marker", "Send"], false)
+        };
 
         let ctxt = DocContext {
             tcx,
@@ -262,7 +260,7 @@ pub fn run_core(search_paths: SearchPaths,
             send_trait: send_trait,
             fake_def_ids: RefCell::new(FxHashMap()),
             all_fake_def_ids: RefCell::new(FxHashSet()),
-            generated_synthetics: RefCell::new(FxHashSet())
+            generated_synthetics: RefCell::new(FxHashSet()),
         };
         debug!("crate: {:?}", tcx.hir.krate());
 

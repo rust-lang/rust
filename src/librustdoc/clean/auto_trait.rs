@@ -315,7 +315,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
 
             // Due to the way projections are handled by SelectionContext, we need to run
             // evaluate_predicates twice: once on the original param env, and once on the result of
-            // the first evaluate_predicates call
+            // the first evaluate_predicates call.
             //
             // The problem is this: most of rustc, including SelectionContext and traits::project,
             // are designed to work with a concrete usage of a type (e.g. Vec<u8>
@@ -338,7 +338,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
             // We fix the first assumption by manually clearing out all of the InferCtxt's caches
             // in between calls to SelectionContext.select. This allows us to keep all of the
             // intermediate types we create bound to the 'tcx lifetime, rather than needing to lift
-            // them between calls
+            // them between calls.
             //
             // We fix the second assumption by reprocessing the result of our first call to
             // evaluate_predicates. Using the example of '<T as SomeTrait>::SomeItem = K', our first
@@ -457,13 +457,8 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         infcx.freshen(p)
     }
 
-    fn evaluate_nested_obligations<
-        'b,
-        'c,
-        'd,
-        'cx,
-        T: Iterator<Item = Obligation<'cx, ty::Predicate<'cx>>>,
-    >(
+    fn evaluate_nested_obligations<'b, 'c, 'd, 'cx,
+                                    T: Iterator<Item = Obligation<'cx, ty::Predicate<'cx>>>>(
         &self,
         ty: ty::Ty,
         nested: T,
@@ -732,8 +727,8 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         }
     }
 
-    // This is very simiiar to handle_lifetimes. Instead of matching ty::Region's to ty::Region's,
-    // however, we match ty::RegionVid's to ty::Region's
+    // This is very similar to handle_lifetimes. However, instead of matching ty::Region's
+    // to each other, we match ty::RegionVid's to ty::Region's
     fn map_vid_to_region<'cx>(
         &self,
         regions: &RegionConstraintData<'cx>,
@@ -843,7 +838,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
     // with determining if a given set up constraints/predicates *are* met, given some
     // starting conditions (e.g. user-provided code). For this reason, it's easier
     // to perform the calculations we need on our own, rather than trying to make
-    // existing inference/solver code do what we want
+    // existing inference/solver code do what we want.
     fn handle_lifetimes<'cx>(
         &self,
         regions: &RegionConstraintData<'cx>,
@@ -852,8 +847,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         // Our goal is to 'flatten' the list of constraints by eliminating
         // all intermediate RegionVids. At the end, all constraints should
         // be between Regions (aka region variables). This gives us the information
-        // we need to create the Generics
-        //
+        // we need to create the Generics.
         let mut finished = FxHashMap();
 
         let mut vid_map: FxHashMap<RegionTarget, RegionDeps> = FxHashMap();
@@ -1021,7 +1015,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         ty_to_fn: FxHashMap<Type, (Option<PolyTrait>, Option<Type>)>,
         lifetime_to_bounds: FxHashMap<Lifetime, FxHashSet<Lifetime>>,
     ) -> Vec<WherePredicate> {
-        let final_predicates = ty_to_bounds
+        ty_to_bounds
             .into_iter()
             .flat_map(|(ty, mut bounds)| {
                 if let Some(data) = ty_to_fn.get(&ty) {
@@ -1096,9 +1090,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                         bounds: bounds.into_iter().collect(),
                     }),
             )
-            .collect();
-
-        final_predicates
+            .collect()
     }
 
     // Converts the calculated ParamEnv and lifetime information to a clean::Generics, suitable for
@@ -1380,7 +1372,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
     }
 
     // This is an ugly hack, but it's the simplest way to handle synthetic impls without greatly
-    // refactorying either librustdoc or librustc. In particular, allowing new DefIds to be
+    // refactoring either librustdoc or librustc. In particular, allowing new DefIds to be
     // registered after the AST is constructed would require storing the defid mapping in a
     // RefCell, decreasing the performance for normal compilation for very little gain.
     //

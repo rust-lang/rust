@@ -120,7 +120,6 @@ pub fn load_attrs(cx: &DocContext, did: DefId) -> clean::Attributes {
     cx.tcx.get_attrs(did).clean(cx)
 }
 
-
 /// Record an external fully qualified name in the external_paths cache.
 ///
 /// These names are used later on by HTML rendering to generate things like
@@ -267,7 +266,6 @@ pub fn build_impls(cx: &DocContext, did: DefId, auto_traits: bool) -> Vec<clean:
 
     cx.populated_all_crate_impls.set(true);
 
-
     for &cnum in tcx.crates().iter() {
         for did in tcx.all_trait_implementations(cnum).iter() {
             build_impl(cx, *did, &mut impls);
@@ -373,7 +371,7 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
             for_,
             items: trait_items,
             polarity: Some(polarity.clean(cx)),
-            synthetic: false
+            synthetic: false,
         }),
         source: tcx.def_span(did).clean(cx),
         name: None,

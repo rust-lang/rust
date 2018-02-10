@@ -169,7 +169,6 @@ pub enum ExternalLocation {
     Unknown,
 }
 
-
 /// Metadata about implementations for a type or trait.
 #[derive(Clone)]
 pub struct Impl {
@@ -522,7 +521,6 @@ pub fn run(mut krate: clean::Crate,
         sort_modules_alphabetically,
         themes,
     };
-
 
     // If user passed in `--playground-url` arg, we fill in crate name here
     if let Some(url) = playground_url {
@@ -2512,22 +2510,6 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             }
             write!(w, "</ul>")?;
         }
-
-        write!(w, r#"<script type="text/javascript">
-               window.inlined_types=new Set();"#)?;
-
-        write!(w, r#"<script type="text/javascript" async
-                     src="{root_path}/implementors/{path}/{ty}.{name}.js">
-             </script>"#,
-        root_path = vec![".."; cx.current.len()].join("/"),
-        path = if it.def_id.is_local() {
-            cx.current.join("/")
-        } else {
-            let (ref path, _) = cache.external_paths[&it.def_id];
-            path[..path.len() - 1].join("/")
-        },
-        ty = it.type_().css_class(),
-        name = *it.name.as_ref().unwrap())?;
     } else {
         // even without any implementations to write in, we still want the heading and list, so the
         // implementors javascript file pulled in below has somewhere to write the impls into

@@ -1569,19 +1569,16 @@
         for (var i = 0; i < libs.length; ++i) {
             if (libs[i] === currentCrate) { continue; }
             var structs = imp[libs[i]];
+
+            struct_loop:
             for (var j = 0; j < structs.length; ++j) {
                 var struct = structs[j];
                 var list = struct.synthetic ? synthetic_implementors : implementors;
 
-                var bail = false;
                 for (var k = 0; k < struct.types.length; k++) {
                     if (window.inlined_types.has(struct.types[k])) {
-                        bail = true;
-                        break;
+                        continue struct_loop;
                     }
-                }
-                if (bail) {
-                    continue;
                 }
 
                 var code = document.createElement('code');
