@@ -42,8 +42,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     ) -> Ty<'tcx> {
         debug!(
             "check_expr_closure(expr={:?},expected={:?})",
-            expr,
-            expected
+            expr, expected
         );
 
         // It's always helpful for inference if we know the kind of
@@ -68,8 +67,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     ) -> Ty<'tcx> {
         debug!(
             "check_closure(opt_kind={:?}, expected_sig={:?})",
-            opt_kind,
-            expected_sig
+            opt_kind, expected_sig
         );
 
         let expr_def_id = self.tcx.hir.local_def_id(expr.id);
@@ -109,19 +107,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let closure_type = self.tcx.mk_closure(expr_def_id, substs);
 
         if let Some(GeneratorTypes { yield_ty, interior }) = generator_types {
-            self.demand_eqtype(expr.span,
-                               yield_ty,
-                               substs.generator_yield_ty(expr_def_id, self.tcx));
-            self.demand_eqtype(expr.span,
-                               liberated_sig.output(),
-                               substs.generator_return_ty(expr_def_id, self.tcx));
+            self.demand_eqtype(
+                expr.span,
+                yield_ty,
+                substs.generator_yield_ty(expr_def_id, self.tcx),
+            );
+            self.demand_eqtype(
+                expr.span,
+                liberated_sig.output(),
+                substs.generator_return_ty(expr_def_id, self.tcx),
+            );
             return self.tcx.mk_generator(expr_def_id, substs, interior);
         }
 
         debug!(
             "check_closure: expr.id={:?} closure_type={:?}",
-            expr.id,
-            closure_type
+            expr.id, closure_type
         );
 
         // Tuple up the arguments and insert the resulting function type into
@@ -138,20 +139,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         debug!(
             "check_closure: expr_def_id={:?}, sig={:?}, opt_kind={:?}",
-            expr_def_id,
-            sig,
-            opt_kind
+            expr_def_id, sig, opt_kind
         );
 
         let sig_fn_ptr_ty = self.tcx.mk_fn_ptr(sig);
-        self.demand_eqtype(expr.span,
-                           sig_fn_ptr_ty,
-                           substs.closure_sig_ty(expr_def_id, self.tcx));
+        self.demand_eqtype(
+            expr.span,
+            sig_fn_ptr_ty,
+            substs.closure_sig_ty(expr_def_id, self.tcx),
+        );
 
         if let Some(kind) = opt_kind {
-            self.demand_eqtype(expr.span,
-                               kind.to_ty(self.tcx),
-                               substs.closure_kind_ty(expr_def_id, self.tcx));
+            self.demand_eqtype(
+                expr.span,
+                kind.to_ty(self.tcx),
+                substs.closure_kind_ty(expr_def_id, self.tcx),
+            );
         }
 
         closure_type
@@ -314,8 +317,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let self_ty = self.shallow_resolve(trait_ref.self_ty());
         debug!(
             "self_type_matches_expected_vid(trait_ref={:?}, self_ty={:?})",
-            trait_ref,
-            self_ty
+            trait_ref, self_ty
         );
         match self_ty.sty {
             ty::TyInfer(ty::TyVar(v)) if expected_vid == v => Some(trait_ref),
@@ -564,7 +566,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         body: &hir::Body,
         bound_sig: ty::PolyFnSig<'tcx>,
     ) -> ClosureSignatures<'tcx> {
-        let liberated_sig = self.tcx().liberate_late_bound_regions(expr_def_id, &bound_sig);
+        let liberated_sig = self.tcx()
+            .liberate_late_bound_regions(expr_def_id, &bound_sig);
         let liberated_sig = self.inh.normalize_associated_types_in(
             body.value.span,
             body.value.id,
