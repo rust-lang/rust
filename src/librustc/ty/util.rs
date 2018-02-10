@@ -183,9 +183,22 @@ pub enum Representability {
 
 impl<'tcx> ty::ParamEnv<'tcx> {
     /// Construct a trait environment suitable for contexts where
-    /// there are no where clauses in scope.
-    pub fn empty(reveal: Reveal) -> Self {
-        Self::new(ty::Slice::empty(), reveal, ty::UniverseIndex::ROOT)
+    /// there are no where clauses in scope. Hidden types (like `impl
+    /// Trait`) are left hidden, so this is suitable for ordinary
+    /// type-checking.
+    pub fn empty() -> Self {
+        Self::new(ty::Slice::empty(), Reveal::UserFacing, ty::UniverseIndex::ROOT)
+    }
+
+    /// Construct a trait environment with no where clauses in scope
+    /// where the values of all `impl Trait` and other hidden types
+    /// are revealed. This is suitable for monomorphized, post-typeck
+    /// environments like trans or doing optimizations.
+    ///
+    /// NB. If you want to have predicates in scope, use `ParamEnv::new`,
+    /// or invoke `param_env.with_reveal_all()`.
+    pub fn reveal_all() -> Self {
+        Self::new(ty::Slice::empty(), Reveal::All, ty::UniverseIndex::ROOT)
     }
 
     /// Construct a trait environment with the given set of predicates.
@@ -202,8 +215,13 @@ impl<'tcx> ty::ParamEnv<'tcx> {
     /// the desired behavior during trans and certain other special
     /// contexts; normally though we want to use `Reveal::UserFacing`,
     /// which is the default.
-    pub fn reveal_all(self) -> Self {
+    pub fn with_reveal_all(self) -> Self {
         ty::ParamEnv { reveal: Reveal::All, ..self }
+    }
+
+    /// Returns this same environment but with no caller bounds.
+    pub fn without_caller_bounds(self) -> Self {
+        ty::ParamEnv { caller_bounds: ty::Slice::empty(), ..self }
     }
 
     pub fn can_type_implement_copy<'a>(self,

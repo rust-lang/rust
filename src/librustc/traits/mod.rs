@@ -695,7 +695,7 @@ fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            predicates);
 
     let result = tcx.infer_ctxt().enter(|infcx| {
-        let param_env = ty::ParamEnv::empty(Reveal::All);
+        let param_env = ty::ParamEnv::reveal_all();
         let mut selcx = SelectionContext::new(&infcx);
         let mut fulfill_cx = FulfillmentContext::new();
         let cause = ObligationCause::dummy();

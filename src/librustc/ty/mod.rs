@@ -1420,7 +1420,7 @@ impl<'tcx> ParamEnv<'tcx> {
             }
         } else {
             ParamEnvAnd {
-                param_env: ParamEnv::empty(self.reveal),
+                param_env: self.without_caller_bounds(),
                 value,
             }
         }
@@ -1829,7 +1829,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         expr_did: DefId,
     ) -> Option<Discr<'tcx>> {
-        let param_env = ParamEnv::empty(traits::Reveal::UserFacing);
+        let param_env = ParamEnv::empty();
         let repr_type = self.repr.discr_type();
         let bit_size = layout::Integer::from_attr(tcx, repr_type).size().bits();
         let substs = Substs::identity_for_item(tcx.global_tcx(), expr_did);

@@ -16,7 +16,7 @@ use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::middle::region;
 use rustc::ty::subst::{Subst, Substs, UnpackedKind};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::traits::{self, Reveal, ObligationCause};
+use rustc::traits::{self, ObligationCause};
 use util::common::ErrorReported;
 use util::nodemap::FxHashSet;
 
@@ -126,7 +126,7 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
         // it did the wrong thing, so I chose to preserve existing
         // behavior, since it ought to be simply more
         // conservative. -nmatsakis
-        let outlives_env = OutlivesEnvironment::new(ty::ParamEnv::empty(Reveal::UserFacing));
+        let outlives_env = OutlivesEnvironment::new(ty::ParamEnv::empty());
 
         infcx.resolve_regions_and_report_errors(drop_impl_did, &region_scope_tree, &outlives_env);
         Ok(())

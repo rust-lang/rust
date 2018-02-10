@@ -777,7 +777,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             // value in order to work, so we can clear out the param env and get better
             // caching. (If the current param env is inconsistent, we don't care what happens).
             debug!("evaluate_trait_predicate_recursively({:?}) - in global", obligation);
-            obligation.param_env = ty::ParamEnv::empty(obligation.param_env.reveal);
+            obligation.param_env = obligation.param_env.without_caller_bounds();
         }
 
         let stack = self.push_stack(previous_stack, &obligation);

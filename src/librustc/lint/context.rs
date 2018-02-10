@@ -34,7 +34,6 @@ use lint::levels::{LintLevelSets, LintLevelsBuilder};
 use middle::privacy::AccessLevels;
 use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use session::{config, early_error, Session};
-use traits::Reveal;
 use ty::{self, TyCtxt, Ty};
 use ty::layout::{LayoutError, LayoutOf, TyLayout};
 use util::nodemap::FxHashMap;
@@ -1055,7 +1054,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut cx = LateContext {
         tcx,
         tables: &ty::TypeckTables::empty(None),
-        param_env: ty::ParamEnv::empty(Reveal::UserFacing),
+        param_env: ty::ParamEnv::empty(),
         access_levels,
         lint_sess: LintSession::new(&tcx.sess.lint_store),
         last_ast_node_with_lint_attrs: ast::CRATE_NODE_ID,

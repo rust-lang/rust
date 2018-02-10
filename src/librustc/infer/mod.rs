@@ -28,7 +28,7 @@ use ty::{self, Ty, TyCtxt};
 use ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use ty::fold::TypeFoldable;
 use ty::relate::RelateResult;
-use traits::{self, ObligationCause, PredicateObligations, Reveal};
+use traits::{self, ObligationCause, PredicateObligations};
 use rustc_data_structures::unify as ut;
 use std::cell::{Cell, RefCell, Ref, RefMut};
 use std::collections::BTreeMap;
@@ -563,7 +563,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     {
         debug!("fully_normalize_associated_types_in(t={:?})", value);
 
-        let param_env = ty::ParamEnv::empty(Reveal::All);
+        let param_env = ty::ParamEnv::reveal_all();
         let value = self.erase_regions(value);
 
         if !value.has_projections() {
@@ -593,7 +593,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         }
 
         self.infer_ctxt().enter(|infcx| {
-            value.trans_normalize(&infcx, env.reveal_all())
+            value.trans_normalize(&infcx, env.with_reveal_all())
        })
     }
 }

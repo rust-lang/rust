@@ -949,8 +949,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
     pub fn const_eval(&self, gid: GlobalId<'tcx>) -> EvalResult<'tcx, &'tcx ty::Const<'tcx>> {
         let param_env = if self.tcx.is_static(gid.instance.def_id()).is_some() {
-            use rustc::traits;
-            ty::ParamEnv::empty(traits::Reveal::All)
+            ty::ParamEnv::reveal_all()
         } else {
             self.param_env
         };

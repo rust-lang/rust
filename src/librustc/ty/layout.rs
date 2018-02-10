@@ -2058,7 +2058,7 @@ impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
     /// Computes the layout of a type. Note that this implicitly
     /// executes in "reveal all" mode.
     fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
-        let param_env = self.param_env.reveal_all();
+        let param_env = self.param_env.with_reveal_all();
         let ty = self.tcx.normalize_associated_type_in_env(&ty, param_env);
         let details = self.tcx.layout_raw(param_env.and(ty))?;
         let layout = TyLayout {
@@ -2084,9 +2084,9 @@ impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for LayoutCx<'tcx, ty::maps::TyCtxtAt<'a, 'tcx
     /// Computes the layout of a type. Note that this implicitly
     /// executes in "reveal all" mode.
     fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
-        let param_env = self.param_env.reveal_all();
-        let ty = self.tcx.normalize_associated_type_in_env(&ty, param_env.reveal_all());
-        let details = self.tcx.layout_raw(param_env.reveal_all().and(ty))?;
+        let param_env = self.param_env.with_reveal_all();
+        let ty = self.tcx.normalize_associated_type_in_env(&ty, param_env);
+        let details = self.tcx.layout_raw(param_env.and(ty))?;
         let layout = TyLayout {
             ty,
             details
