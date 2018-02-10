@@ -113,17 +113,15 @@ pub fn to_llvm_feature(s: &str) -> &str {
 }
 
 pub fn target_features(sess: &Session) -> Vec<Symbol> {
-    let whitelist = target_feature_whitelist(sess);
     let target_machine = create_target_machine(sess);
-    let mut features = Vec::new();
-    for feature in whitelist {
-        let llvm_feature = to_llvm_feature(feature);
-        let ptr = CString::new(llvm_feature).as_ptr();
-        if unsafe { llvm::LLVMRustHasFeature(target_machine, ptr) } {
-            features.push(Symbol::intern(feature));
-        }
-    }
-    features
+    target_feature_whitelist(sess)
+        .iter()
+        .filter(|feature| {
+            let llvm_feature = to_llvm_feature(feature);
+            let ptr = CString::new(llvm_feature).as_ptr();
+            unsafe { llvm::LLVMRustHasFeature(target_machine, ptr) }
+        })
+        .map(Symbol::intern).collect()
 }
 
 pub fn target_feature_whitelist(sess: &Session) -> &'static [&'static str] {
