@@ -47,10 +47,12 @@ pub(crate) fn collapse_interchangable_instances<'a, 'tcx>(
                 if false /*param.name.as_str().starts_with("<")*/ {
                     ty.into()
                 } else {
+                    tcx.sess.warn(&format!("Unused subst for {:?}", inst));
                     tcx.mk_ty(ty::TyNever)
                 }
             } else {
                 // Can't use TyError as it gives some ICE in rustc_trans::callee::get_fn
+                tcx.sess.warn(&format!("Unused subst for {:?}", inst));
                 tcx.mk_ty(ty::TyNever)
             };
             Kind::from(ty)
@@ -140,7 +142,7 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> TypeFolder<'gcx, 'tcx> for SubstsVisitor<'a,
 
 fn used_substs_for_instance<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a ,'tcx, 'tcx>,
-    instance: Instance<'tcx>
+    instance: Instance<'tcx>,
 ) -> UsedSubsts {
     let mir = tcx.instance_mir(instance.def);
     let sig = ::rustc::ty::ty_fn_sig(tcx, instance.ty(tcx));
@@ -154,5 +156,19 @@ fn used_substs_for_instance<'a, 'tcx: 'a>(
     let mut used_substs = substs_visitor.2;
     used_substs.substs.sort_by_key(|s|s.idx);
     used_substs.substs.dedup_by_key(|s|s.idx);
+    used_substs.promoted = mir.promoted.iter().map(|mir| used_substs_for_mir(tcx, mir)).collect();
+    used_substs
+}
+
+fn used_substs_for_mir<'a, 'tcx: 'a>(
+    tcx: TyCtxt<'a ,'tcx, 'tcx>,
+    mir: &'tcx Mir<'tcx>,
+) -> UsedSubsts {
+    let mut substs_visitor = SubstsVisitor(tcx, mir, UsedSubsts::default());
+    substs_visitor.visit_mir(mir);
+    let mut used_substs = substs_visitor.2;
+    used_substs.substs.sort_by_key(|s|s.idx);
+    used_substs.substs.dedup_by_key(|s|s.idx);
+    used_substs.promoted = mir.promoted.iter().map(|mir| used_substs_for_mir(tcx, mir)).collect();
     used_substs
 }
