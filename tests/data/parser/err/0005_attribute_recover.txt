@@ -23,8 +23,9 @@ FILE@[0; 54)
       R_BRACK@[17; 18)
       WHITESPACE@[18; 19)
     FN_KW@[19; 21)
-    WHITESPACE@[21; 22)
-    IDENT@[22; 25) "foo"
+    NAME@[21; 25)
+      WHITESPACE@[21; 22)
+      IDENT@[22; 25) "foo"
     L_PAREN@[25; 26)
     R_PAREN@[26; 27)
     WHITESPACE@[27; 28)
@@ -43,8 +44,9 @@ FILE@[0; 54)
         WHITESPACE@[40; 41)
       err: `expected R_BRACK`
     FN_KW@[41; 43)
-    WHITESPACE@[43; 44)
-    IDENT@[44; 47) "foo"
+    NAME@[43; 47)
+      WHITESPACE@[43; 44)
+      IDENT@[44; 47) "foo"
     L_PAREN@[47; 48)
     R_PAREN@[48; 49)
     WHITESPACE@[49; 50)

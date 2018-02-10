@@ -1,8 +1,9 @@
 FILE@[0; 33)
   FN_ITEM@[0; 11)
     FN_KW@[0; 2)
-    WHITESPACE@[2; 3)
-    IDENT@[3; 6) "foo"
+    NAME@[2; 6)
+      WHITESPACE@[2; 3)
+      IDENT@[3; 6) "foo"
     L_PAREN@[6; 7)
     R_PAREN@[7; 8)
     L_CURLY@[8; 9)
@@ -18,8 +19,9 @@ FILE@[0; 33)
     WHITESPACE@[21; 22)
   FN_ITEM@[22; 33)
     FN_KW@[22; 24)
-    WHITESPACE@[24; 25)
-    IDENT@[25; 28) "bar"
+    NAME@[24; 28)
+      WHITESPACE@[24; 25)
+      IDENT@[25; 28) "bar"
     L_PAREN@[28; 29)
     R_PAREN@[29; 30)
     L_CURLY@[30; 31)

@@ -23,8 +23,9 @@ FILE@[0; 118)
     FN_ITEM@[26; 52)
       WHITESPACE@[26; 31)
       FN_KW@[31; 33)
-      WHITESPACE@[33; 34)
-      IDENT@[34; 37) "foo"
+      NAME@[33; 37)
+        WHITESPACE@[33; 34)
+        IDENT@[34; 37) "foo"
       L_PAREN@[37; 38)
       R_PAREN@[38; 39)
       WHITESPACE@[39; 40)

@@ -211,7 +211,7 @@ fn fn_item(p: &mut Parser) {
     assert!(p.at(FN_KW));
     p.bump();
 
-    p.expect(IDENT);
+    name(p);
     if p.at(L_PAREN) {
         fn_value_parameters(p);
     } else {

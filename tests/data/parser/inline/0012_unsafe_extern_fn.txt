@@ -8,8 +8,9 @@ FILE@[0; 30)
       STRING@[14; 17)
       WHITESPACE@[17; 18)
     FN_KW@[18; 20)
-    WHITESPACE@[20; 21)
-    IDENT@[21; 24) "foo"
+    NAME@[20; 24)
+      WHITESPACE@[20; 21)
+      IDENT@[21; 24) "foo"
     L_PAREN@[24; 25)
     R_PAREN@[25; 26)
     WHITESPACE@[26; 27)
