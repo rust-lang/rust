@@ -965,8 +965,8 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             walk_list!(visitor, visit_expr, subexpressions);
         }
         ExprCall(ref callee_expression, ref arguments) => {
+            visitor.visit_expr(callee_expression);
             walk_list!(visitor, visit_expr, arguments);
-            visitor.visit_expr(callee_expression)
         }
         ExprMethodCall(ref segment, _, ref arguments) => {
             visitor.visit_path_segment(expression.span, segment);
