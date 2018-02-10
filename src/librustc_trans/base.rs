@@ -72,6 +72,7 @@ use type_::Type;
 use type_of::LayoutLlvmExt;
 use rustc::util::nodemap::{FxHashMap, FxHashSet, DefIdSet};
 use CrateInfo;
+use rustc_data_structures::sync::Lrc;
 
 use std::any::Any;
 use std::collections::BTreeMap;
@@ -1072,14 +1073,15 @@ impl CrateInfo {
             used_crates_static: cstore::used_crates(tcx, LinkagePreference::RequireStatic),
             used_crate_source: FxHashMap(),
             wasm_custom_sections: BTreeMap::new(),
+            wasm_imports: FxHashMap(),
         };
 
-        let load_wasm_sections = tcx.sess.crate_types.borrow()
+        let load_wasm_items = tcx.sess.crate_types.borrow()
             .iter()
             .any(|c| *c != config::CrateTypeRlib) &&
             tcx.sess.opts.target_triple == "wasm32-unknown-unknown";
 
-        if load_wasm_sections {
+        if load_wasm_items {
             info!("attempting to load all wasm sections");
             for &id in tcx.wasm_custom_sections(LOCAL_CRATE).iter() {
                 let (name, contents) = fetch_wasm_section(tcx, id);
@@ -1087,6 +1089,7 @@ impl CrateInfo {
                     .or_insert(Vec::new())
                     .extend(contents);
             }
+            info.load_wasm_imports(tcx, LOCAL_CRATE);
         }
 
         for &cnum in tcx.crates().iter() {
@@ -1108,18 +1111,26 @@ impl CrateInfo {
             if tcx.is_no_builtins(cnum) {
                 info.is_no_builtins.insert(cnum);
             }
-            if load_wasm_sections {
+            if load_wasm_items {
                 for &id in tcx.wasm_custom_sections(cnum).iter() {
                     let (name, contents) = fetch_wasm_section(tcx, id);
                     info.wasm_custom_sections.entry(name)
                         .or_insert(Vec::new())
                         .extend(contents);
                 }
+                info.load_wasm_imports(tcx, cnum);
             }
         }
 
-
         return info
+    }
+
+    fn load_wasm_imports(&mut self, tcx: TyCtxt, cnum: CrateNum) {
+        for (&id, module) in tcx.wasm_import_module_map(cnum).iter() {
+            let instance = Instance::mono(tcx, id);
+            let import_name = tcx.symbol_name(instance);
+            self.wasm_imports.insert(import_name.to_string(), module.clone());
+        }
     }
 }
 
@@ -1248,6 +1259,39 @@ pub fn provide(providers: &mut Providers) {
             .expect(&format!("failed to find cgu with name {:?}", name))
     };
     providers.compile_codegen_unit = compile_codegen_unit;
+
+    provide_extern(providers);
+}
+
+pub fn provide_extern(providers: &mut Providers) {
+    providers.dllimport_foreign_items = |tcx, krate| {
+        let module_map = tcx.foreign_modules(krate);
+        let module_map = module_map.iter()
+            .map(|lib| (lib.def_id, lib))
+            .collect::<FxHashMap<_, _>>();
+
+        let dllimports = tcx.native_libraries(krate)
+            .iter()
+            .filter(|lib| {
+                if lib.kind != cstore::NativeLibraryKind::NativeUnknown {
+                    return false
+                }
+                let cfg = match lib.cfg {
+                    Some(ref cfg) => cfg,
+                    None => return true,
+                };
+                attr::cfg_matches(cfg, &tcx.sess.parse_sess, None)
+            })
+            .filter_map(|lib| lib.foreign_module)
+            .map(|id| &module_map[&id])
+            .flat_map(|module| module.foreign_items.iter().cloned())
+            .collect();
+        Lrc::new(dllimports)
+    };
+
+    providers.is_dllimport_foreign_item = |tcx, def_id| {
+        tcx.dllimport_foreign_items(def_id.krate).contains(&def_id)
+    };
 }
 
 pub fn linkage_to_llvm(linkage: Linkage) -> llvm::Linkage {

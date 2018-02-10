@@ -216,6 +216,8 @@ impl TransCrate for LlvmTransCrate {
 
     fn provide_extern(&self, providers: &mut ty::maps::Providers) {
         back::symbol_export::provide_extern(providers);
+        base::provide_extern(providers);
+        attributes::provide_extern(providers);
     }
 
     fn trans_crate<'a, 'tcx>(
@@ -403,6 +405,7 @@ struct CrateInfo {
     used_crates_static: Vec<(CrateNum, LibSource)>,
     used_crates_dynamic: Vec<(CrateNum, LibSource)>,
     wasm_custom_sections: BTreeMap<String, Vec<u8>>,
+    wasm_imports: FxHashMap<String, String>,
 }
 
 __build_diagnostic_array! { librustc_trans, DIAGNOSTICS }

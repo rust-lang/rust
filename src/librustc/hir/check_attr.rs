@@ -26,6 +26,7 @@ enum Target {
     Union,
     Enum,
     Const,
+    ForeignMod,
     Other,
 }
 
@@ -37,6 +38,7 @@ impl Target {
             hir::ItemUnion(..) => Target::Union,
             hir::ItemEnum(..) => Target::Enum,
             hir::ItemConst(..) => Target::Const,
+            hir::ItemForeignMod(..) => Target::ForeignMod,
             _ => Target::Other,
         }
     }
@@ -57,23 +59,40 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                 .emit();
         }
 
+        let mut has_wasm_import_module = false;
         for attr in &item.attrs {
-            if let Some(name) = attr.name() {
-                if name == "inline" {
-                    self.check_inline(attr, item, target)
+            if attr.check_name("inline") {
+                self.check_inline(attr, item, target)
+            } else if attr.check_name("wasm_import_module") {
+                has_wasm_import_module = true;
+                if attr.value_str().is_none() {
+                    self.tcx.sess.span_err(attr.span, "\
+                        must be of the form #[wasm_import_module = \"...\"]");
+                }
+                if target != Target::ForeignMod {
+                    self.tcx.sess.span_err(attr.span, "\
+                        must only be attached to foreign modules");
+                }
+            } else if attr.check_name("wasm_custom_section") {
+                if target != Target::Const {
+                    self.tcx.sess.span_err(attr.span, "only allowed on consts");
                 }
 
-                if name == "wasm_custom_section" {
-                    if target != Target::Const {
-                        self.tcx.sess.span_err(attr.span, "only allowed on consts");
-                    }
-
-                    if attr.value_str().is_none() {
-                        self.tcx.sess.span_err(attr.span, "must be of the form \
-                            #[wasm_custom_section = \"foo\"]");
-                    }
+                if attr.value_str().is_none() {
+                    self.tcx.sess.span_err(attr.span, "must be of the form \
+                        #[wasm_custom_section = \"foo\"]");
                 }
             }
+        }
+
+        if target == Target::ForeignMod &&
+            !has_wasm_import_module &&
+            self.tcx.sess.target.target.arch == "wasm32" &&
+            false // FIXME: eventually enable this warning when stable
+        {
+            self.tcx.sess.span_warn(item.span, "\
+                must have a #[wasm_import_module = \"...\"] attribute, this \
+                will become a hard error before too long");
         }
 
         self.check_repr(item, target);

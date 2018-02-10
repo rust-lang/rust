@@ -18,6 +18,7 @@ use rustc::session::config::Sanitizer;
 use rustc::ty::TyCtxt;
 use rustc::ty::maps::Providers;
 use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::fx::FxHashMap;
 
 use llvm::{self, Attribute, ValueRef};
 use llvm::AttributePlace::Function;
@@ -141,6 +142,20 @@ pub fn from_fn_attrs(cx: &CodegenCx, llfn: ValueRef, id: DefId) {
             llfn, llvm::AttributePlace::Function,
             cstr("target-features\0"), &val);
     }
+
+    // Note that currently the `wasm-import-module` doesn't do anything, but
+    // eventually LLVM 7 should read this and ferry the appropriate import
+    // module to the output file.
+    if cx.tcx.sess.target.target.arch == "wasm32" {
+        if let Some(module) = wasm_import_module(cx.tcx, id) {
+            llvm::AddFunctionAttrStringValue(
+                llfn,
+                llvm::AttributePlace::Function,
+                cstr("wasm-import-module\0"),
+                &module,
+            );
+        }
+    }
 }
 
 fn cstr(s: &'static str) -> &CStr {
@@ -170,6 +185,8 @@ pub fn provide(providers: &mut Providers) {
         tcx.hir.krate().visit_all_item_likes(&mut finder);
         Lrc::new(finder.list)
     };
+
+    provide_extern(providers);
 }
 
 struct WasmSectionFinder<'a, 'tcx: 'a> {
@@ -191,4 +208,33 @@ impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for WasmSectionFinder<'a, 'tcx> {
     fn visit_trait_item(&mut self, _: &'tcx hir::TraitItem) {}
 
     fn visit_impl_item(&mut self, _: &'tcx hir::ImplItem) {}
+}
+
+pub fn provide_extern(providers: &mut Providers) {
+    providers.wasm_import_module_map = |tcx, cnum| {
+        let mut ret = FxHashMap();
+        for lib in tcx.foreign_modules(cnum).iter() {
+            let attrs = tcx.get_attrs(lib.def_id);
+            let mut module = None;
+            for attr in attrs.iter().filter(|a| a.check_name("wasm_import_module")) {
+                module = attr.value_str();
+            }
+            let module = match module {
+                Some(s) => s,
+                None => continue,
+            };
+            for id in lib.foreign_items.iter() {
+                assert_eq!(id.krate, cnum);
+                ret.insert(*id, module.to_string());
+            }
+        }
+
+        Lrc::new(ret)
+    }
+}
+
+fn wasm_import_module(tcx: TyCtxt, id: DefId) -> Option<CString> {
+    tcx.wasm_import_module_map(id.krate)
+        .get(&id)
+        .map(|s| CString::new(&s[..]).unwrap())
 }

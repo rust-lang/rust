@@ -14,7 +14,7 @@ use isolated_encoder::IsolatedEncoder;
 use schema::*;
 
 use rustc::middle::cstore::{LinkMeta, LinkagePreference, NativeLibrary,
-                            EncodedMetadata};
+                            EncodedMetadata, ForeignModule};
 use rustc::hir::def::CtorKind;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId, LocalDefId, LOCAL_CRATE};
 use rustc::hir::map::definitions::DefPathTable;
@@ -412,6 +412,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             ());
         let native_lib_bytes = self.position() - i;
 
+        let foreign_modules = self.tracked(
+            IsolatedEncoder::encode_foreign_modules,
+            ());
+
         // Encode codemap
         i = self.position();
         let codemap = self.encode_codemap();
@@ -480,6 +484,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             lang_items,
             lang_items_missing,
             native_libraries,
+            foreign_modules,
             codemap,
             def_path_table,
             impls,
@@ -1335,6 +1340,11 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
     fn encode_native_libraries(&mut self, _: ()) -> LazySeq<NativeLibrary> {
         let used_libraries = self.tcx.native_libraries(LOCAL_CRATE);
         self.lazy_seq(used_libraries.iter().cloned())
+    }
+
+    fn encode_foreign_modules(&mut self, _: ()) -> LazySeq<ForeignModule> {
+        let foreign_modules = self.tcx.foreign_modules(LOCAL_CRATE);
+        self.lazy_seq(foreign_modules.iter().cloned())
     }
 
     fn encode_crate_deps(&mut self, _: ()) -> LazySeq<CrateDep> {

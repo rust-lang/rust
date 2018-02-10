@@ -18,7 +18,7 @@ use infer::canonical::{Canonical, QueryResult};
 use lint;
 use middle::borrowck::BorrowCheckResult;
 use middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary,
-                     ExternBodyNestedBodies};
+                     ExternBodyNestedBodies, ForeignModule};
 use middle::cstore::{NativeLibraryKind, DepKind, CrateSource, ExternConstBody};
 use middle::privacy::AccessLevels;
 use middle::reachable::ReachableSet;
@@ -320,6 +320,9 @@ define_maps! { <'tcx>
 
 
     [] fn native_libraries: NativeLibraries(CrateNum) -> Lrc<Vec<NativeLibrary>>,
+
+    [] fn foreign_modules: ForeignModules(CrateNum) -> Lrc<Vec<ForeignModule>>,
+
     [] fn plugin_registrar_fn: PluginRegistrarFn(CrateNum) -> Option<DefId>,
     [] fn derive_registrar_fn: DeriveRegistrarFn(CrateNum) -> Option<DefId>,
     [] fn crate_disambiguator: CrateDisambiguator(CrateNum) -> CrateDisambiguator,
@@ -331,6 +334,8 @@ define_maps! { <'tcx>
     [] fn all_trait_implementations: AllTraitImplementations(CrateNum)
         -> Lrc<Vec<DefId>>,
 
+    [] fn dllimport_foreign_items: DllimportForeignItems(CrateNum)
+        -> Lrc<FxHashSet<DefId>>,
     [] fn is_dllimport_foreign_item: IsDllimportForeignItem(DefId) -> bool,
     [] fn is_statically_included_foreign_item: IsStaticallyIncludedForeignItem(DefId) -> bool,
     [] fn native_library_kind: NativeLibraryKind(DefId)
@@ -426,6 +431,8 @@ define_maps! { <'tcx>
     [] fn program_clauses_for: ProgramClausesFor(DefId) -> Lrc<Vec<Clause<'tcx>>>,
 
     [] fn wasm_custom_sections: WasmCustomSections(CrateNum) -> Lrc<Vec<DefId>>,
+    [] fn wasm_import_module_map: WasmImportModuleMap(CrateNum)
+        -> Lrc<FxHashMap<DefId, String>>,
 }
 
 //////////////////////////////////////////////////////////////////////

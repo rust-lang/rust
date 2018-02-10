@@ -10,7 +10,7 @@
 
 // Decoding metadata from a single crate's metadata
 
-use cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary};
+use cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary, ForeignModule};
 use schema::*;
 
 use rustc_data_structures::sync::{Lrc, ReadGuard};
@@ -1031,6 +1031,10 @@ impl<'a, 'tcx> CrateMetadata {
         self.root.native_libraries.decode((self, sess)).collect()
     }
 
+    pub fn get_foreign_modules(&self, sess: &Session) -> Vec<ForeignModule> {
+        self.root.foreign_modules.decode((self, sess)).collect()
+    }
+
     pub fn get_dylib_dependency_formats(&self) -> Vec<(CrateNum, LinkagePreference)> {
         self.root
             .dylib_dependency_formats
@@ -1101,10 +1105,6 @@ impl<'a, 'tcx> CrateMetadata {
             EntryKind::ForeignFn(_) => true,
             _ => false,
         }
-    }
-
-    pub fn is_dllimport_foreign_item(&self, id: DefIndex) -> bool {
-        self.dllimport_foreign_items.contains(&id)
     }
 
     pub fn fn_sig(&self,

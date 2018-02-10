@@ -813,6 +813,7 @@ fn link_natively(sess: &Session,
     }
 
     if sess.opts.target_triple == "wasm32-unknown-unknown" {
+        wasm::rewrite_imports(&out_filename, &trans.crate_info.wasm_imports);
         wasm::add_custom_sections(&out_filename,
                                   &trans.crate_info.wasm_custom_sections);
     }

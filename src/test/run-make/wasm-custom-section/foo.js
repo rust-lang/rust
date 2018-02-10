@@ -43,4 +43,4 @@ assert.strictEqual(section[1], 6);
 assert.strictEqual(section[2], 1);
 assert.strictEqual(section[3], 2);
 
-process.exit(1);
+process.exit(0);
