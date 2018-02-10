@@ -1026,9 +1026,12 @@ fn import_path_to_string(names: &[SpannedIdent],
         if names.is_empty() {
             import_directive_subclass_to_string(subclass)
         } else {
-            (format!("{}::{}",
+            let x = format!("{}::{}",
                      names_to_string(names),
-                     import_directive_subclass_to_string(subclass)))
+                     import_directive_subclass_to_string(subclass));
+            assert!(!names.is_empty());
+            assert!(!x.starts_with("::"));
+            return x
         }
     }
 }
