@@ -666,7 +666,7 @@ impl Build {
         }
     }
 
-    /// Returns the path to the linker for the given target if it needs to be overriden.
+    /// Returns the path to the linker for the given target if it needs to be overridden.
     fn linker(&self, target: Interned<String>) -> Option<&Path> {
         if let Some(linker) = self.config.target_config.get(&target)
                                                        .and_then(|c| c.linker.as_ref()) {

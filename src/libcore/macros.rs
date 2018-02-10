@@ -327,7 +327,7 @@ macro_rules! debug_assert_ne {
 ///     }
 /// }
 ///
-/// // The prefered method of quick returning Errors
+/// // The preferred method of quick returning Errors
 /// fn write_to_file_question() -> Result<(), MyError> {
 ///     let mut file = File::create("my_best_friends.txt")?;
 ///     file.write_all(b"This is a list of my best friends.")?;

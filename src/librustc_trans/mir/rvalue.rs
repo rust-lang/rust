@@ -195,6 +195,10 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                     mir::CastKind::ReifyFnPointer => {
                         match operand.layout.ty.sty {
                             ty::TyFnDef(def_id, substs) => {
+                                if bx.cx.tcx.has_attr(def_id, "rustc_args_required_const") {
+                                    bug!("reifying a fn ptr that requires \
+                                          const arguments");
+                                }
                                 OperandValue::Immediate(
                                     callee::resolve_and_get_fn(bx.cx, def_id, substs))
                             }

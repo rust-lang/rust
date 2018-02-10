@@ -73,7 +73,7 @@ pub struct FormatSpec<'a> {
 /// Enum describing where an argument for a format can be located.
 #[derive(Copy, Clone, PartialEq)]
 pub enum Position<'a> {
-    /// The arugment is implied to be located at an index
+    /// The argument is implied to be located at an index
     ArgumentImplicitlyIs(usize),
     /// The argument is located at a specific index given in the format
     ArgumentIs(usize),

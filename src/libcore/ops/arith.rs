@@ -181,7 +181,7 @@ add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 #[lang = "sub"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented(message="cannot substract `{RHS}` from `{Self}`",
+#[rustc_on_unimplemented(message="cannot subtract `{RHS}` from `{Self}`",
                          label="no implementation for `{Self} - {RHS}`")]
 pub trait Sub<RHS=Self> {
     /// The resulting type after applying the `-` operator.
@@ -716,7 +716,7 @@ add_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 #[lang = "sub_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
-#[rustc_on_unimplemented(message="cannot substract-assign `{Rhs}` from `{Self}`",
+#[rustc_on_unimplemented(message="cannot subtract-assign `{Rhs}` from `{Self}`",
                          label="no implementation for `{Self} -= {Rhs}`")]
 pub trait SubAssign<Rhs=Self> {
     /// Performs the `-=` operation.

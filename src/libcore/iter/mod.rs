@@ -298,7 +298,21 @@
 //!
 //! This will print the numbers `0` through `4`, each on their own line.
 //!
+//! Bear in mind that methods on infinite iterators, even those for which a
+//! result can be determined mathematically in finite time, may not terminate.
+//! Specifically, methods such as [`min`], which in the general case require
+//! traversing every element in the iterator, are likely not to return
+//! successfully for any infinite iterators.
+//!
+//! ```no_run
+//! let ones = std::iter::repeat(1);
+//! let least = ones.min().unwrap(); // Oh no! An infinite loop!
+//! // `ones.min()` causes an infinite loop, so we won't reach this point!
+//! println!("The smallest number one is {}.", least);
+//! ```
+//!
 //! [`take`]: trait.Iterator.html#method.take
+//! [`min`]: trait.Iterator.html#method.min
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

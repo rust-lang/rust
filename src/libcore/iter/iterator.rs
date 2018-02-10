@@ -1431,6 +1431,10 @@ pub trait Iterator {
     /// Folding is useful whenever you have a collection of something, and want
     /// to produce a single value from it.
     ///
+    /// Note: `fold()`, and similar methods that traverse the entire iterator,
+    /// may not terminate for infinite iterators, even on traits for which a
+    /// result is determinable in finite time.
+    ///
     /// # Examples
     ///
     /// Basic usage:

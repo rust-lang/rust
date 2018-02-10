@@ -90,7 +90,7 @@ error[E0593]: function is expected to take a single 2-tuple as argument, but it 
 32 |     let _it = vec![1, 2, 3].into_iter().enumerate().map(foo);
    |                                                     ^^^ expected function that takes a single 2-tuple as argument
 ...
-41 | fn foo() {}
+44 | fn foo() {}
    | -------- takes 0 arguments
 
 error[E0593]: closure is expected to take a single 2-tuple as argument, but it takes 3 distinct arguments
@@ -107,8 +107,14 @@ error[E0593]: function is expected to take a single 2-tuple as argument, but it 
 37 |     let _it = vec![1, 2, 3].into_iter().enumerate().map(qux);
    |                                                     ^^^ expected function that takes a single 2-tuple as argument
 ...
-42 | fn qux(x: usize, y: usize) {}
+45 | fn qux(x: usize, y: usize) {}
    | -------------------------- takes 2 distinct arguments
 
-error: aborting due to 11 previous errors
+error[E0593]: function is expected to take 1 argument, but it takes 2 arguments
+  --> $DIR/closure-arg-count.rs:40:41
+   |
+40 |     let _it = vec![1, 2, 3].into_iter().map(usize::checked_add);
+   |                                         ^^^ expected function that takes 1 argument
+
+error: aborting due to 12 previous errors
 

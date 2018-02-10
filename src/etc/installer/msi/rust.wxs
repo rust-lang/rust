@@ -18,7 +18,7 @@
     <!-- Upgrade code should be different for each platform -->
     <?if $(sys.BUILDARCH)="x64" ?>
         <?if $(env.CFG_ABI)="GNU" ?>
-            <!-- UpgradeCode shoud stay the same for all MSI versions in channel -->
+            <!-- UpgradeCode should stay the same for all MSI versions in channel -->
             <?if $(env.CFG_CHANNEL)="stable" ?>
                 <?define UpgradeCode="B440B077-F8D1-4730-8E1D-D6D37702B4CE" ?>
             <?elseif $(env.CFG_CHANNEL)="beta" ?>
@@ -129,7 +129,7 @@
 
         <!-- Path of cmd.exe for the shortcut -->
         <Property Id="SHORTCUTTARGET" Value="%windir%\System32\cmd.exe" />
-        <!-- Microsoft Installer will resolve any Enviroment Variables in the working directory at install time -->
+        <!-- Microsoft Installer will resolve any Environment Variables in the working directory at install time -->
         <Property Id="SHORTCUTWKDIR" Value="%SystemDrive%\" />
 
         <InstallUISequence>
