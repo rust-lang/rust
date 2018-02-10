@@ -71,5 +71,8 @@ pub(super) fn list(p: &mut Parser) {
 pub(super) fn where_clause(p: &mut Parser) {
     if p.at(WHERE_KW) {
         p.bump();
+        p.expect(IDENT);
+        p.expect(COLON);
+        p.expect(IDENT);
     }
 }
