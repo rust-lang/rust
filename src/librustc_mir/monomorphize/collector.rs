@@ -889,6 +889,7 @@ fn create_mono_items_for_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         ty::ParamEnv::reveal_all(),
                         def_id,
                         substs).unwrap())
+                .map(|instance|tcx.collapse_interchangable_instances(instance))
                 .filter(|&instance| should_monomorphize_locally(tcx, &instance))
                 .map(|instance| create_fn_mono_item(instance));
             output.extend(methods);
