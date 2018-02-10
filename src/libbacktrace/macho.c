@@ -327,7 +327,7 @@ macho_get_commands (struct backtrace_state *state, int descriptor,
         goto end;
       file_header_view_valid = 1;
 
-      // The endianess of the slice may be different than the fat image
+      // The endianness of the slice may be different than the fat image
       switch (*(uint32_t *) file_header_view.data)
         {
           case MH_MAGIC:
