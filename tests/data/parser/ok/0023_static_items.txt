@@ -1,8 +1,9 @@
 FILE@[0; 47)
   STATIC_ITEM@[0; 21)
     STATIC_KW@[0; 6)
-    WHITESPACE@[6; 7)
-    IDENT@[7; 10) "FOO"
+    NAME@[6; 10)
+      WHITESPACE@[6; 7)
+      IDENT@[7; 10) "FOO"
     COLON@[10; 11)
     WHITESPACE@[11; 12)
     IDENT@[12; 15) "u32"
@@ -17,8 +18,9 @@ FILE@[0; 47)
     STATIC_KW@[21; 27)
     WHITESPACE@[27; 28)
     MUT_KW@[28; 31)
-    WHITESPACE@[31; 32)
-    IDENT@[32; 35) "BAR"
+    NAME@[31; 35)
+      WHITESPACE@[31; 32)
+      IDENT@[32; 35) "BAR"
     COLON@[35; 36)
     WHITESPACE@[36; 37)
     IDENT@[37; 40) "i32"
