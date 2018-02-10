@@ -41,7 +41,7 @@ pub(super) fn struct_item(p: &mut Parser) {
 pub(super) fn enum_item(p: &mut Parser) {
     assert!(p.at(ENUM_KW));
     p.bump();
-    p.expect(IDENT);
+    name(p);
     type_params::list(p);
     type_params::where_clause(p);
     if p.expect(L_CURLY) {
