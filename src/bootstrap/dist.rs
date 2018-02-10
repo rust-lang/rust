@@ -31,6 +31,7 @@ use channel;
 use util::{cp_r, libdir, is_dylib, cp_filtered, copy, replace_in_file};
 use builder::{Builder, RunConfig, ShouldRun, Step};
 use compile;
+use native;
 use tool::{self, Tool};
 use cache::{INTERNER, Interned};
 use time;
@@ -898,6 +899,12 @@ impl Step for PlainSourceTarball {
                    .arg("--vers").arg(CARGO_VENDOR_VERSION)
                    .arg("cargo-vendor")
                    .env("RUSTC", &build.initial_rustc);
+                if let Some(dir) = build.openssl_install_dir(build.config.build) {
+                    builder.ensure(native::Openssl {
+                        target: build.config.build,
+                    });
+                    cmd.env("OPENSSL_DIR", dir);
+                }
                 build.run(&mut cmd);
             }
 
