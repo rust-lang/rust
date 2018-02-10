@@ -652,9 +652,6 @@ fn link_natively(sess: &Session,
         prog = time(sess.time_passes(), "running linker", || {
             exec_linker(sess, &mut cmd, tmpdir)
         });
-        if !retry_on_segfault || i > 3 {
-            break
-        }
         let output = match prog {
             Ok(ref output) => output,
             Err(_) => break,
@@ -665,6 +662,26 @@ fn link_natively(sess: &Session,
         let mut out = output.stderr.clone();
         out.extend(&output.stdout);
         let out = String::from_utf8_lossy(&out);
+
+        // Check to see if the link failed with "unrecognized command line option:
+        // '-no-pie'". If so, reperform the link step without the -no-pie option. This
+        // is safe because if the linker doesn't support -no-pie then it should not
+        // default to linking executables as pie. Different versions of gcc seem to
+        // use different quotes in the error message so don't check for them.
+        if out.contains("unrecognized command line option") && out.contains("-no-pie") {
+            info!("linker output: {:?}", out);
+            warn!("Linker does not support -no-pie command line option. Retrying without.");
+            for arg in cmd.take_args() {
+                if arg.to_string_lossy() != "-no-pie" {
+                    cmd.arg(arg);
+                }
+            }
+            info!("{:?}", &cmd);
+            continue;
+        }
+        if !retry_on_segfault || i > 3 {
+            break
+        }
         let msg_segv = "clang: error: unable to execute command: Segmentation fault: 11";
         let msg_bus  = "clang: error: unable to execute command: Bus error: 10";
         if !(out.contains(msg_segv) || out.contains(msg_bus)) {
@@ -912,18 +929,10 @@ fn link_args(cmd: &mut Linker,
             }
         }
 
-        // Check to see if gcc defaults to generating a position independent
-        // executable. If so, tell it when to disable pie. Otherwise, tell it
-        // when to enable it. We can't do both because older versions of gcc
-        // don't understand -no-pie and will blow up.
-        if is_pie_default(sess) {
-            if !position_independent_executable {
-                cmd.no_position_independent_executable();
-            }
+        if position_independent_executable {
+            cmd.position_independent_executable();
         } else {
-            if position_independent_executable {
-                cmd.position_independent_executable();
-            }
+            cmd.no_position_independent_executable();
         }
     }
 
@@ -1436,34 +1445,5 @@ fn is_full_lto_enabled(sess: &Session) -> bool {
         Lto::Fat => true,
         Lto::No |
         Lto::ThinLocal => false,
-    }
-}
-
-fn is_pie_default(sess: &Session) -> bool {
-    match sess.linker_flavor() {
-        LinkerFlavor::Gcc => {
-            let (_, mut cmd, envs) = get_linker(sess);
-            // This will set PATH on windows
-            cmd.envs(envs);
-            cmd.arg("-v");
-
-            info!("{:?}", &cmd);
-
-            let output = cmd.command()
-                .stdout(Stdio::piped()).stderr(Stdio::piped())
-                .spawn()
-                .unwrap()
-                .wait_with_output()
-                .unwrap();
-
-            let ret = String::from_utf8_lossy(&output.stderr)
-                .contains("--enable-default-pie");
-
-            info!("gcc {} compiled with --enable-default-pie",
-                  if ret { "IS" } else { "is NOT" });
-
-            ret
-        },
-        _ => false,
     }
 }
