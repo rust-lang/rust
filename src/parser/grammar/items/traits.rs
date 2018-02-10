@@ -3,7 +3,7 @@ use super::*;
 pub(super) fn trait_item(p: &mut Parser) {
     assert!(p.at(TRAIT_KW));
     p.bump();
-    p.expect(IDENT);
+    name(p);
     p.expect(L_CURLY);
     p.expect(R_CURLY);
 }
