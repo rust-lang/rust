@@ -3868,7 +3868,6 @@ pub fn path_to_def_local(tcx: &TyCtxt, path: &[&str]) -> Option<DefId> {
             }
         }
     }
-
 }
 
 pub fn path_to_def(tcx: &TyCtxt, path: &[&str]) -> Option<DefId> {
@@ -3991,7 +3990,7 @@ impl From<TyParamBound> for SimpleBound {
                                                         .collect()),
                                             t.generic_params,
                                             mod_)
-                },
+                }
                 _ => panic!("Unexpected bound {:?}", bound),
             }
         }
