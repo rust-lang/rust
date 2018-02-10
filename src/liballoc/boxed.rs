@@ -359,8 +359,6 @@ impl<T: ?Sized> Box<T> {
     /// Simple usage:
     ///
     /// ```
-    /// #![feature(box_leak)]
-    ///
     /// fn main() {
     ///     let x = Box::new(41);
     ///     let static_ref: &'static mut usize = Box::leak(x);
@@ -372,8 +370,6 @@ impl<T: ?Sized> Box<T> {
     /// Unsized data:
     ///
     /// ```
-    /// #![feature(box_leak)]
-    ///
     /// fn main() {
     ///     let x = vec![1, 2, 3].into_boxed_slice();
     ///     let static_ref = Box::leak(x);
