@@ -1,3 +1,117 @@
+Version 1.24.0 (2018-02-15)
+==========================
+
+Language
+--------
+- [External `sysv64` ffi is now available.][46528]
+  eg. `extern "sysv64" fn foo () {}`
+
+Compiler
+--------
+- [rustc now uses 16 codegen units by default for release builds.][46910]
+  For the fastest builds, utilize `codegen-units=1`.
+- [Added `armv4t-unknown-linux-gnueabi` target.][47018]
+- [Add `aarch64-unknown-openbsd` support][46760]
+
+Libraries
+---------
+- [`str::find::<char>` now uses memchr.][46735] This should lead to a 10x
+  improvement in performance in the majority of cases.
+- [`OsStr`'s `Debug` implementation is now lossless and consistent
+  with Windows.][46798]
+- [`time::{SystemTime, Instant}` now implement `Hash`.][46828]
+- [impl `From<bool>` for `AtomicBool`][46293]
+- [impl `From<{CString, &CStr}>` for `{Arc<CStr>, Rc<CStr>}`][45990]
+- [impl `From<{OsString, &OsStr}>` for `{Arc<OsStr>, Rc<OsStr>}`][45990]
+- [impl `From<{PathBuf, &Path}>` for `{Arc<Path>, Rc<Path>}`][45990]
+- [float::from_bits now just uses transmute.][46012] This provides
+  some optimisations from LLVM.
+- [Copied `AsciiExt` methods onto `char`][46077]
+- [Remove `T: Sized` requirement on `ptr::is_null()`][46094]
+- [impl `From<RecvError>` for `{TryRecvError, RecvTimeoutError}`][45506]
+- [Optimised `f32::{min, max}` to generate more efficent x86 assembly][47080]
+- [`[u8]::contains` now uses memchr which provides a 3x speed improvement][46713]
+
+Stabilized APIs
+---------------
+- [`RefCell::replace`]
+- [`RefCell::swap`]
+- [`atomic::spin_loop_hint`]
+
+The following functions can now be used in a constant expression.
+eg. `let buffer: [u8; size_of::<usize>()];`, `static COUNTER: AtomicUsize = AtomicUsize::new(1);`
+
+- [`AtomicBool::new`][46287]
+- [`AtomicUsize::new`][46287]
+- [`AtomicIsize::new`][46287]
+- [`AtomicPtr::new`][46287]
+- [`Cell::new`][46287]
+- [`{integer}::min_value`][46287]
+- [`{integer}::max_value`][46287]
+- [`mem::size_of`][46287]
+- [`mem::align_of`][46287]
+- [`ptr::null`][46287]
+- [`ptr::null_mut`][46287]
+- [`RefCell::new`][46287]
+- [`UnsafeCell::new`][46287]
+
+Cargo
+-----
+- [Added a `workspace.default-members` config that
+  overrides implied `--all` in virtual workspaces.][cargo/4743]
+- [Enable incremental by default on development builds.][cargo/4817] Also added
+  configuration keys to `Cargo.toml` and `.cargo/config` to disable on a
+  per-project or global basis respectively.
+
+Misc
+----
+
+Compatibility Notes
+-------------------
+- [Floating point types `Debug` impl now always prints a decimal point.][46831]
+- [`Ipv6Addr` now rejects superfluous `::`'s in IPv6 addresses][46671] This is
+  in accordance with IETF RFC 4291 §2.2.
+- [Unwinding will no longer go past FFI boundaries, and will instead abort.][46833]
+- [`Formatter::flags` method is now deprecated.][46284] The `sign_plus`,
+  `sign_minus`, `alternate`, and `sign_aware_zero_pad` should be used instead.
+- [Leading zeros in tuple struct members is now an error][47084]
+- [`column!()` macro is one-based instead of zero-based][46977]
+- [`fmt::Arguments` can no longer be shared across threads][45198]
+- [Access to `#[repr(packed)]` struct fields is now unsafe][44884]
+
+[44884]: https://github.com/rust-lang/rust/pull/44884
+[45198]: https://github.com/rust-lang/rust/pull/45198
+[45506]: https://github.com/rust-lang/rust/pull/45506
+[45904]: https://github.com/rust-lang/rust/pull/45904
+[45990]: https://github.com/rust-lang/rust/pull/45990
+[46012]: https://github.com/rust-lang/rust/pull/46012
+[46077]: https://github.com/rust-lang/rust/pull/46077
+[46094]: https://github.com/rust-lang/rust/pull/46094
+[46284]: https://github.com/rust-lang/rust/pull/46284
+[46287]: https://github.com/rust-lang/rust/pull/46287
+[46293]: https://github.com/rust-lang/rust/pull/46293
+[46528]: https://github.com/rust-lang/rust/pull/46528
+[46671]: https://github.com/rust-lang/rust/pull/46671
+[46713]: https://github.com/rust-lang/rust/pull/46713
+[46735]: https://github.com/rust-lang/rust/pull/46735
+[46749]: https://github.com/rust-lang/rust/pull/46749
+[46760]: https://github.com/rust-lang/rust/pull/46760
+[46798]: https://github.com/rust-lang/rust/pull/46798
+[46828]: https://github.com/rust-lang/rust/pull/46828
+[46831]: https://github.com/rust-lang/rust/pull/46831
+[46833]: https://github.com/rust-lang/rust/pull/46833
+[46910]: https://github.com/rust-lang/rust/pull/46910
+[46977]: https://github.com/rust-lang/rust/pull/46977
+[47018]: https://github.com/rust-lang/rust/pull/47018
+[47080]: https://github.com/rust-lang/rust/pull/47080
+[47084]: https://github.com/rust-lang/rust/pull/47084
+[cargo/4743]: https://github.com/rust-lang/cargo/pull/4743
+[cargo/4817]: https://github.com/rust-lang/cargo/pull/4817
+[`RefCell::replace`]: https://doc.rust-lang.org/std/cell/struct.RefCell.html#method.replace
+[`RefCell::swap`]: https://doc.rust-lang.org/std/cell/struct.RefCell.html#method.swap
+[`atomic::spin_loop_hint`]: https://doc.rust-lang.org/std/sync/atomic/fn.spin_loop_hint.html
+
+
 Version 1.23.0 (2018-01-04)
 ==========================
 
