@@ -250,6 +250,7 @@ impl<'test> TestCx<'test> {
     fn run_cfail_test(&self) {
         let proc_res = self.compile_test();
         self.check_if_test_should_compile(&proc_res);
+        self.check_no_compiler_crash(&proc_res);
 
         let output_to_check = self.get_output(&proc_res);
         let expected_errors = errors::load_errors(&self.testpaths.file, self.revision);
@@ -262,7 +263,6 @@ impl<'test> TestCx<'test> {
             self.check_error_patterns(&output_to_check, &proc_res);
         }
 
-        self.check_no_compiler_crash(&proc_res);
         self.check_forbid_output(&output_to_check, &proc_res);
     }
 
