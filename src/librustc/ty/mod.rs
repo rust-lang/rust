@@ -2761,7 +2761,6 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         crate_hash,
         trait_impls_of: trait_def::trait_impls_of_provider,
         instance_def_size_estimate,
-        collapse_interchangable_instances: |tcx, instance| instance._collapse_interchangable_instances(tcx),
         ..*providers
     };
 }

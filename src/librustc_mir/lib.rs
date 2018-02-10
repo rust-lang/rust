@@ -74,6 +74,7 @@ pub fn provide(providers: &mut Providers) {
     transform::provide(providers);
     providers.const_eval = interpret::const_eval_provider;
     providers.check_match = hair::pattern::check_match;
+    providers.collapse_interchangable_instances = monomorphize::deduplicate_instances::collapse_interchangable_instances;
 }
 
 __build_diagnostic_array! { librustc_mir, DIAGNOSTICS }
