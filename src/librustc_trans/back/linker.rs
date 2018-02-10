@@ -45,6 +45,7 @@ impl LinkerInfo {
                          cmd: Command,
                          sess: &'a Session) -> Box<Linker+'a> {
         match sess.linker_flavor() {
+            LinkerFlavor::Lld(LldFlavor::Link) |
             LinkerFlavor::Msvc => {
                 Box::new(MsvcLinker {
                     cmd,
@@ -68,6 +69,9 @@ impl LinkerInfo {
                     is_ld: false,
                 }) as Box<Linker>
             }
+
+            LinkerFlavor::Lld(LldFlavor::Ld) |
+            LinkerFlavor::Lld(LldFlavor::Ld64) |
             LinkerFlavor::Ld => {
                 Box::new(GccLinker {
                     cmd,

@@ -81,17 +81,6 @@ impl Command {
         self
     }
 
-    pub fn envs<I, K, V>(&mut self, envs: I) -> &mut Command
-        where I: IntoIterator<Item=(K, V)>,
-              K: AsRef<OsStr>,
-              V: AsRef<OsStr>
-    {
-        for (key, value) in envs {
-            self._env(key.as_ref(), value.as_ref());
-        }
-        self
-    }
-
     fn _env(&mut self, key: &OsStr, value: &OsStr) {
         self.env.push((key.to_owned(), value.to_owned()));
     }
@@ -112,6 +101,9 @@ impl Command {
                 let mut c = process::Command::new(p);
                 c.arg("-flavor").arg(match flavor {
                     LldFlavor::Wasm => "wasm",
+                    LldFlavor::Ld => "gnu",
+                    LldFlavor::Link => "link",
+                    LldFlavor::Ld64 => "darwin",
                 });
                 c
             }
