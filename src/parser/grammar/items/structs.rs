@@ -86,7 +86,8 @@ fn named_fields(p: &mut Parser) {
     fn named_field(p: &mut Parser) {
         let field = p.start();
         visibility(p);
-        if p.expect(IDENT) {
+        if p.at(IDENT) {
+            name(p);
             p.expect(COLON);
             types::type_ref(p);
             field.complete(p, NAMED_FIELD);

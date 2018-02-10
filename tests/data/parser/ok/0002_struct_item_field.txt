@@ -7,8 +7,9 @@ FILE@[0; 25)
       WHITESPACE@[8; 9)
     L_CURLY@[9; 10)
     NAMED_FIELD@[10; 24)
-      WHITESPACE@[10; 15)
-      IDENT@[15; 18) "foo"
+      NAME@[10; 18)
+        WHITESPACE@[10; 15)
+        IDENT@[15; 18) "foo"
       COLON@[18; 19)
       WHITESPACE@[19; 20)
       IDENT@[20; 23) "u32"

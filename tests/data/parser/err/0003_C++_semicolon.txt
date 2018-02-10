@@ -7,15 +7,17 @@ FILE@[0; 40)
       WHITESPACE@[8; 9)
     L_CURLY@[9; 10)
     NAMED_FIELD@[10; 21)
-      WHITESPACE@[10; 15)
-      IDENT@[15; 16) "a"
+      NAME@[10; 16)
+        WHITESPACE@[10; 15)
+        IDENT@[15; 16) "a"
       COLON@[16; 17)
       WHITESPACE@[17; 18)
       IDENT@[18; 21) "i32"
     COMMA@[21; 22)
     NAMED_FIELD@[22; 36)
-      WHITESPACE@[22; 27)
-      IDENT@[27; 28) "b"
+      NAME@[22; 28)
+        WHITESPACE@[22; 27)
+        IDENT@[27; 28) "b"
       COLON@[28; 29)
       WHITESPACE@[29; 30)
       IDENT@[30; 36) "String"

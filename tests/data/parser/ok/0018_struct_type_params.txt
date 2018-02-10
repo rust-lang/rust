@@ -40,8 +40,9 @@ FILE@[0; 290)
       WHITESPACE@[45; 46)
     L_CURLY@[46; 47)
     NAMED_FIELD@[47; 55)
-      WHITESPACE@[47; 48)
-      IDENT@[48; 49) "u"
+      NAME@[47; 49)
+        WHITESPACE@[47; 48)
+        IDENT@[48; 49) "u"
       COLON@[49; 50)
       WHITESPACE@[50; 51)
       IDENT@[51; 54) "u32"

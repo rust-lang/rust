@@ -7,8 +7,9 @@ FILE@[0; 74)
       WHITESPACE@[8; 9)
     L_CURLY@[9; 10)
     NAMED_FIELD@[10; 21)
-      WHITESPACE@[10; 15)
-      IDENT@[15; 16) "f"
+      NAME@[10; 16)
+        WHITESPACE@[10; 15)
+        IDENT@[15; 16) "f"
       COLON@[16; 17)
       WHITESPACE@[17; 18)
       IDENT@[18; 21) "u32"
@@ -17,11 +18,11 @@ FILE@[0; 74)
       WHITESPACE@[22; 27)
       PUB_KW@[27; 30)
       WHITESPACE@[30; 31)
-    err: `expected IDENT`
     ERROR@[31; 38)
     err: `expected field declaration`
       INT_NUMBER@[31; 33)
       WHITESPACE@[33; 38)
+    err: `expected COMMA`
     ERROR@[38; 40)
     err: `expected field declaration`
       PLUS@[38; 39)
@@ -38,14 +39,16 @@ FILE@[0; 74)
       VISIBILITY@[48; 52)
         PUB_KW@[48; 51)
         WHITESPACE@[51; 52)
-      IDENT@[52; 53) "x"
+      NAME@[52; 53)
+        IDENT@[52; 53) "x"
       COLON@[53; 54)
       WHITESPACE@[54; 55)
       IDENT@[55; 58) "u32"
     COMMA@[58; 59)
     NAMED_FIELD@[59; 70)
-      WHITESPACE@[59; 64)
-      IDENT@[64; 65) "z"
+      NAME@[59; 65)
+        WHITESPACE@[59; 64)
+        IDENT@[64; 65) "z"
       COLON@[65; 66)
       WHITESPACE@[66; 67)
       IDENT@[67; 70) "f64"

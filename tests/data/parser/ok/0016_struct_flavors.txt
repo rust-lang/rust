@@ -32,8 +32,9 @@ FILE@[0; 97)
       WHITESPACE@[43; 44)
     L_CURLY@[44; 45)
     NAMED_FIELD@[45; 56)
-      WHITESPACE@[45; 50)
-      IDENT@[50; 51) "a"
+      NAME@[45; 51)
+        WHITESPACE@[45; 50)
+        IDENT@[50; 51) "a"
       COLON@[51; 52)
       WHITESPACE@[52; 53)
       IDENT@[53; 56) "u32"
@@ -43,7 +44,8 @@ FILE@[0; 97)
         WHITESPACE@[57; 62)
         PUB_KW@[62; 65)
         WHITESPACE@[65; 66)
-      IDENT@[66; 67) "b"
+      NAME@[66; 67)
+        IDENT@[66; 67) "b"
       COLON@[67; 68)
       WHITESPACE@[68; 69)
       IDENT@[69; 72) "u32"

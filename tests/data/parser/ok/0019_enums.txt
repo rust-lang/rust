@@ -77,8 +77,9 @@ FILE@[0; 182)
       WHITESPACE@[102; 103)
       L_CURLY@[103; 104)
       NAMED_FIELD@[104; 119)
-        WHITESPACE@[104; 113)
-        IDENT@[113; 114) "a"
+        NAME@[104; 114)
+          WHITESPACE@[104; 113)
+          IDENT@[113; 114) "a"
         COLON@[114; 115)
         WHITESPACE@[115; 116)
         IDENT@[116; 119) "u32"
@@ -88,7 +89,8 @@ FILE@[0; 182)
           WHITESPACE@[120; 129)
           PUB_KW@[129; 132)
           WHITESPACE@[132; 133)
-        IDENT@[133; 134) "b"
+        NAME@[133; 134)
+          IDENT@[133; 134) "b"
         COLON@[134; 135)
         WHITESPACE@[135; 136)
         IDENT@[136; 139) "f64"
