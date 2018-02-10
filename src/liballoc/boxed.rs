@@ -381,8 +381,7 @@ impl<T: ?Sized> Box<T> {
     ///     assert_eq!(*static_ref, [4, 2, 3]);
     /// }
     /// ```
-    #[unstable(feature = "box_leak", reason = "needs an FCP to stabilize",
-               issue = "46179")]
+    #[stable(feature = "box_leak", since = "1.26.0")]
     #[inline]
     pub fn leak<'a>(b: Box<T>) -> &'a mut T
     where
