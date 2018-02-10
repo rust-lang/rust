@@ -196,8 +196,9 @@ fn extern_crate_item(p: &mut Parser) {
     p.bump();
     assert!(p.at(CRATE_KW));
     p.bump();
-
-    p.expect(IDENT) && alias(p) && p.expect(SEMI);
+    name(p);
+    alias(p);
+    p.expect(SEMI);
 }
 
 fn extern_block(p: &mut Parser) {

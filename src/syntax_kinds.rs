@@ -116,6 +116,8 @@ pub enum SyntaxKind {
     LIFETIME_PARAM,
     TYPE_PARAM,
     ABI,
+    NAME,
+    NAME_REF,
 
     // Technical SyntaxKinds: they appear temporally during parsing,
     // but never end up in the final tree
@@ -239,6 +241,8 @@ impl SyntaxKind {
             LIFETIME_PARAM => &SyntaxInfo { name: "LIFETIME_PARAM" },
             TYPE_PARAM => &SyntaxInfo { name: "TYPE_PARAM" },
             ABI => &SyntaxInfo { name: "ABI" },
+            NAME => &SyntaxInfo { name: "NAME" },
+            NAME_REF => &SyntaxInfo { name: "NAME_REF" },
 
             TOMBSTONE => &SyntaxInfo { name: "TOMBSTONE" },
             EOF => &SyntaxInfo { name: "EOF" },

@@ -118,5 +118,7 @@ Grammar(
         "LIFETIME_PARAM",
         "TYPE_PARAM",
         "ABI",
+        "NAME",
+        "NAME_REF",
     ]
 )

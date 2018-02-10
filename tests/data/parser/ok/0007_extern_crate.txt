@@ -3,20 +3,23 @@ FILE@[0; 43)
     EXTERN_KW@[0; 6)
     WHITESPACE@[6; 7)
     CRATE_KW@[7; 12)
-    WHITESPACE@[12; 13)
-    IDENT@[13; 16) "foo"
+    NAME@[12; 16)
+      WHITESPACE@[12; 13)
+      IDENT@[13; 16) "foo"
     SEMI@[16; 17)
     WHITESPACE@[17; 18)
   EXTERN_CRATE_ITEM@[18; 43)
     EXTERN_KW@[18; 24)
     WHITESPACE@[24; 25)
     CRATE_KW@[25; 30)
-    WHITESPACE@[30; 31)
-    IDENT@[31; 34) "foo"
-    ALIAS@[34; 41)
+    NAME@[30; 35)
+      WHITESPACE@[30; 31)
+      IDENT@[31; 34) "foo"
       WHITESPACE@[34; 35)
+    ALIAS@[35; 41)
       AS_KW@[35; 37)
-      WHITESPACE@[37; 38)
-      IDENT@[38; 41) "bar"
+      NAME@[37; 41)
+        WHITESPACE@[37; 38)
+        IDENT@[38; 41) "bar"
     SEMI@[41; 42)
     WHITESPACE@[42; 43)

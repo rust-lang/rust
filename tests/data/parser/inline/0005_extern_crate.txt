@@ -3,7 +3,8 @@ FILE@[0; 18)
     EXTERN_KW@[0; 6)
     WHITESPACE@[6; 7)
     CRATE_KW@[7; 12)
-    WHITESPACE@[12; 13)
-    IDENT@[13; 16) "foo"
+    NAME@[12; 16)
+      WHITESPACE@[12; 13)
+      IDENT@[13; 16) "foo"
     SEMI@[16; 17)
     WHITESPACE@[17; 18)
