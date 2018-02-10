@@ -150,7 +150,14 @@ fn item(p: &mut Parser) {
                 }
             }
         }
-
+        FN_KW => {
+            fn_item(p);
+            FN_ITEM
+        }
+        TYPE_KW => {
+            type_item(p);
+            TYPE_ITEM
+        }
         MOD_KW => {
             mod_item(p);
             MOD_ITEM
@@ -162,10 +169,6 @@ fn item(p: &mut Parser) {
         ENUM_KW => {
             structs::enum_item(p);
             ENUM_ITEM
-        }
-        FN_KW => {
-            fn_item(p);
-            FN_ITEM
         }
         L_CURLY => {
             item.abandon(p);
@@ -203,29 +206,6 @@ fn extern_block(p: &mut Parser) {
     p.expect(R_CURLY);
 }
 
-fn mod_item(p: &mut Parser) {
-    assert!(p.at(MOD_KW));
-    p.bump();
-
-    if p.expect(IDENT) && !p.eat(SEMI) {
-        if p.expect(L_CURLY) {
-            mod_contents(p, true);
-            p.expect(R_CURLY);
-        }
-    }
-}
-
-fn abi(p: &mut Parser) {
-    assert!(p.at(EXTERN_KW));
-    let abi = p.start();
-    p.bump();
-    match p.current() {
-        STRING | RAW_STRING => p.bump(),
-        _ => (),
-    }
-    abi.complete(p, ABI);
-}
-
 fn fn_item(p: &mut Parser) {
     assert!(p.at(FN_KW));
     p.bump();
@@ -247,4 +227,48 @@ fn fn_item(p: &mut Parser) {
         p.bump();
         p.expect(R_PAREN);
     }
+}
+
+// test type_item
+// type Foo = Bar;
+fn type_item(p: &mut Parser) {
+    assert!(p.at(TYPE_KW));
+    p.bump();
+
+    p.expect(IDENT);
+
+    // test type_item_type_params
+    // type Result<T> = ();
+    type_params::list(p);
+
+    // test type_item_where_clause
+    // type Foo where Foo: Copy = ();
+    type_params::where_clause(p);
+
+    p.expect(EQ);
+    types::type_ref(p);
+    p.expect(SEMI);
+}
+
+fn mod_item(p: &mut Parser) {
+    assert!(p.at(MOD_KW));
+    p.bump();
+
+    if p.expect(IDENT) && !p.eat(SEMI) {
+        if p.expect(L_CURLY) {
+            mod_contents(p, true);
+            p.expect(R_CURLY);
+        }
+    }
+}
+
+fn abi(p: &mut Parser) {
+    assert!(p.at(EXTERN_KW));
+    let abi = p.start();
+    p.bump();
+    match p.current() {
+        STRING | RAW_STRING => p.bump(),
+        _ => (),
+    }
+    abi.complete(p, ABI);
 }

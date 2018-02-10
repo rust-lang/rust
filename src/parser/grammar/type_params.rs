@@ -70,6 +70,11 @@ pub(super) fn list(p: &mut Parser) {
 
 pub(super) fn where_clause(p: &mut Parser) {
     if p.at(WHERE_KW) {
+        let m = p.start();
         p.bump();
+        p.expect(IDENT);
+        p.expect(COLON);
+        p.expect(IDENT);
+        m.complete(p, WHERE_CLAUSE);
     }
 }

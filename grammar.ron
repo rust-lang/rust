@@ -26,6 +26,7 @@ Grammar(
         "static",
         "mut",
         "unsafe",
+        "type",
     ],
     contextual_keywords: [
         "auto",
@@ -98,6 +99,7 @@ Grammar(
         "CONST_ITEM",
         "TRAIT_ITEM",
         "IMPL_ITEM",
+        "TYPE_ITEM",
 
         "EXTERN_BLOCK",
         "ENUM_VARIANT",
@@ -112,6 +114,7 @@ Grammar(
         "ALIAS",
         "VISIBILITY",
         "TYPE_PARAM_LIST",
+        "WHERE_CLAUSE",
         "LIFETIME_PARAM",
         "TYPE_PARAM",
         "ABI",
