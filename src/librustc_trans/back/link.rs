@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use cc::windows_registry;
 use super::archive::{ArchiveBuilder, ArchiveConfig};
 use super::bytecode::RLIB_BYTECODE_EXTENSION;
 use super::linker::Linker;
@@ -35,7 +36,6 @@ use llvm;
 use std::ascii;
 use std::char;
 use std::env;
-use std::ffi::OsString;
 use std::fmt;
 use std::fs;
 use std::io;
@@ -58,9 +58,7 @@ pub use rustc_trans_utils::link::{find_crate_name, filename_for_input, default_o
 // The third parameter is for env vars, used on windows to set up the
 // path for MSVC to find its DLLs, and gcc to find its bundled
 // toolchain
-pub fn get_linker(sess: &Session) -> (PathBuf, Command, Vec<(OsString, OsString)>) {
-    let envs = vec![("PATH".into(), command_path(sess))];
-
+pub fn get_linker(sess: &Session) -> (PathBuf, Command) {
     // If our linker looks like a batch script on Windows then to execute this
     // we'll need to spawn `cmd` explicitly. This is primarily done to handle
     // emscripten where the linker is `emcc.bat` and needs to be spawned as
@@ -75,60 +73,57 @@ pub fn get_linker(sess: &Session) -> (PathBuf, Command, Vec<(OsString, OsString)
                 return Command::bat_script(linker)
             }
         }
-        Command::new(linker)
+        match sess.linker_flavor() {
+            LinkerFlavor::Lld(f) => Command::lld(linker, f),
+            _ => Command::new(linker),
+
+        }
     };
 
-    if let Some(ref linker) = sess.opts.cg.linker {
-        (linker.clone(), cmd(linker), envs)
-    } else if sess.target.target.options.is_like_msvc {
-        let (cmd, envs) = msvc_link_exe_cmd(sess);
-        (PathBuf::from("link.exe"), cmd, envs)
-    } else if let LinkerFlavor::Lld(f) = sess.linker_flavor() {
-        let linker = PathBuf::from(&sess.target.target.options.linker);
-        let cmd = Command::lld(&linker, f);
-        (linker, cmd, envs)
-    } else {
-        let linker = PathBuf::from(&sess.target.target.options.linker);
-        let cmd = cmd(&linker);
-        (linker, cmd, envs)
-    }
-}
+    let msvc_tool = windows_registry::find_tool(&sess.opts.target_triple, "link.exe");
 
-#[cfg(windows)]
-pub fn msvc_link_exe_cmd(sess: &Session) -> (Command, Vec<(OsString, OsString)>) {
-    use cc::windows_registry;
+    let linker_path = sess.opts.cg.linker.as_ref().map(|s| &**s)
+        .or(sess.target.target.options.linker.as_ref().map(|s| s.as_ref()))
+        .unwrap_or(match sess.linker_flavor() {
+            LinkerFlavor::Msvc => {
+                msvc_tool.as_ref().map(|t| t.path()).unwrap_or("link.exe".as_ref())
+            }
+            LinkerFlavor::Em if cfg!(windows) => "emcc.bat".as_ref(),
+            LinkerFlavor::Em => "emcc".as_ref(),
+            LinkerFlavor::Gcc => "cc".as_ref(),
+            LinkerFlavor::Ld => "ld".as_ref(),
+            LinkerFlavor::Lld(_) => "lld".as_ref(),
+        });
 
-    let target = &sess.opts.target_triple;
-    let tool = windows_registry::find_tool(target, "link.exe");
+    let mut cmd = cmd(linker_path);
 
-    if let Some(tool) = tool {
-        let mut cmd = Command::new(tool.path());
-        cmd.args(tool.args());
-        for &(ref k, ref v) in tool.env() {
-            cmd.env(k, v);
-        }
-        let envs = tool.env().to_vec();
-        (cmd, envs)
-    } else {
-        debug!("Failed to locate linker.");
-        (Command::new("link.exe"), vec![])
-    }
-}
-
-#[cfg(not(windows))]
-pub fn msvc_link_exe_cmd(_sess: &Session) -> (Command, Vec<(OsString, OsString)>) {
-    (Command::new("link.exe"), vec![])
-}
-
-fn command_path(sess: &Session) -> OsString {
     // The compiler's sysroot often has some bundled tools, so add it to the
     // PATH for the child.
     let mut new_path = sess.host_filesearch(PathKind::All)
                            .get_tools_search_paths();
-    if let Some(path) = env::var_os("PATH") {
-        new_path.extend(env::split_paths(&path));
+    let mut msvc_changed_path = false;
+    if sess.target.target.options.is_like_msvc {
+        if let Some(ref tool) = msvc_tool {
+            cmd.args(tool.args());
+            for &(ref k, ref v) in tool.env() {
+                if k == "PATH" {
+                    new_path.extend(env::split_paths(v));
+                    msvc_changed_path = true;
+                } else {
+                    cmd.env(k, v);
+                }
+            }
+        }
     }
-    env::join_paths(new_path).unwrap()
+
+    if !msvc_changed_path {
+        if let Some(path) = env::var_os("PATH") {
+            new_path.extend(env::split_paths(&path));
+        }
+    }
+    cmd.env("PATH", env::join_paths(new_path).unwrap());
+
+    (linker_path.to_path_buf(), cmd)
 }
 
 pub fn remove(sess: &Session, path: &Path) {
@@ -618,9 +613,7 @@ fn link_natively(sess: &Session,
     let flavor = sess.linker_flavor();
 
     // The invocations of cc share some flags across platforms
-    let (pname, mut cmd, envs) = get_linker(sess);
-    // This will set PATH on windows
-    cmd.envs(envs);
+    let (pname, mut cmd) = get_linker(sess);
 
     let root = sess.target_filesearch(PathKind::Native).get_lib_path();
     if let Some(args) = sess.target.target.options.pre_link_args.get(&flavor) {

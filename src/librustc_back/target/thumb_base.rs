@@ -45,7 +45,7 @@ pub fn opts() -> TargetOptions {
         executables: true,
         // In 99%+ of cases, we want to use the `arm-none-eabi-gcc` compiler (there aren't many
         // options around)
-        linker: "arm-none-eabi-gcc".to_string(),
+        linker: Some("arm-none-eabi-gcc".to_string()),
         // Because these devices have very little resources having an unwinder is too onerous so we
         // default to "abort" because the "unwind" strategy is very rare.
         panic_strategy: PanicStrategy::Abort,

@@ -62,7 +62,6 @@ extern crate rustc_trans_utils;
 extern crate syntax_pos;
 extern crate rustc_errors as errors;
 extern crate serialize;
-#[cfg(windows)]
 extern crate cc; // Used to locate MSVC
 extern crate tempdir;
 

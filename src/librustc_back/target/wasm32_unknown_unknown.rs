@@ -22,8 +22,6 @@ use super::{Target, TargetOptions, PanicStrategy};
 
 pub fn target() -> Result<Target, String> {
     let opts = TargetOptions {
-        linker: "lld".to_string(),
-
         // we allow dynamic linking, but only cdylibs. Basically we allow a
         // final library artifact that exports some symbols (a wasm module) but
         // we don't allow intermediate `dylib` crate types

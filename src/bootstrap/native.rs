@@ -208,7 +208,7 @@ impl Step for Llvm {
             cfg.define("LLVM_NATIVE_BUILD", build.llvm_out(build.build).join("build"));
         }
 
-        configure_cmake(build, target, &mut cfg);
+        configure_cmake(build, target, &mut cfg, false);
 
         // FIXME: we don't actually need to build all LLVM tools and all LLVM
         //        libraries here, e.g. we just want a few components and a few
@@ -241,7 +241,8 @@ fn check_llvm_version(build: &Build, llvm_config: &Path) {
 
 fn configure_cmake(build: &Build,
                    target: Interned<String>,
-                   cfg: &mut cmake::Config) {
+                   cfg: &mut cmake::Config,
+                   building_dist_binaries: bool) {
     if build.config.ninja {
         cfg.generator("Ninja");
     }
@@ -294,8 +295,10 @@ fn configure_cmake(build: &Build,
     cfg.build_arg("-j").build_arg(build.jobs().to_string());
     cfg.define("CMAKE_C_FLAGS", build.cflags(target).join(" "));
     let mut cxxflags = build.cflags(target).join(" ");
-    if build.config.llvm_static_stdcpp && !target.contains("windows") {
-        cxxflags.push_str(" -static-libstdc++");
+    if building_dist_binaries {
+        if build.config.llvm_static_stdcpp && !target.contains("windows") {
+            cxxflags.push_str(" -static-libstdc++");
+        }
     }
     cfg.define("CMAKE_CXX_FLAGS", cxxflags);
     if let Some(ar) = build.ar(target) {
@@ -350,7 +353,7 @@ impl Step for Lld {
         t!(fs::create_dir_all(&out_dir));
 
         let mut cfg = cmake::Config::new(build.src.join("src/tools/lld"));
-        configure_cmake(build, target, &mut cfg);
+        configure_cmake(build, target, &mut cfg, true);
 
         cfg.out_dir(&out_dir)
            .profile("Release")

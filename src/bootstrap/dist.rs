@@ -606,8 +606,10 @@ impl Step for Std {
         let mut src = builder.sysroot_libdir(compiler, target).to_path_buf();
         src.pop(); // Remove the trailing /lib folder from the sysroot_libdir
         cp_filtered(&src, &dst, &|path| {
-            path.file_name().and_then(|s| s.to_str()) !=
-                Some(build.config.rust_codegen_backends_dir.as_str())
+            let name = path.file_name().and_then(|s| s.to_str());
+            name != Some(build.config.rust_codegen_backends_dir.as_str()) &&
+                name != Some("bin")
+
         });
 
         let mut cmd = rust_installer(builder);

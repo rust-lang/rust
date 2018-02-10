@@ -32,7 +32,7 @@ pub fn target() -> TargetResult {
             // to gcc to get object files. For this reason we have a hard
             // dependency on this specific gcc.
             asm_args: vec!["-mcpu=msp430".to_string()],
-            linker: "msp430-elf-gcc".to_string(),
+            linker: Some("msp430-elf-gcc".to_string()),
             no_integrated_as: true,
 
             // There are no atomic instructions available in the MSP430
