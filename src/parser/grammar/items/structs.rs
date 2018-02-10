@@ -4,9 +4,7 @@ pub(super) fn struct_item(p: &mut Parser) {
     assert!(p.at(STRUCT_KW));
     p.bump();
 
-    if !p.expect(IDENT) {
-        return;
-    }
+    name(p);
     type_params::list(p);
     match p.current() {
         WHERE_KW => {

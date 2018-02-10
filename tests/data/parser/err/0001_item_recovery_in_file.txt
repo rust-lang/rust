@@ -9,8 +9,9 @@ FILE@[0; 21)
     WHITESPACE@[8; 10)
   STRUCT_ITEM@[10; 21)
     STRUCT_KW@[10; 16)
-    WHITESPACE@[16; 17)
-    IDENT@[17; 18) "S"
-    WHITESPACE@[18; 19)
+    NAME@[16; 19)
+      WHITESPACE@[16; 17)
+      IDENT@[17; 18) "S"
+      WHITESPACE@[18; 19)
     L_CURLY@[19; 20)
     R_CURLY@[20; 21)

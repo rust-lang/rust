@@ -35,9 +35,10 @@ FILE@[0; 118)
       WHITESPACE@[47; 52)
     STRUCT_ITEM@[52; 64)
       STRUCT_KW@[52; 58)
-      WHITESPACE@[58; 59)
-      IDENT@[59; 60) "S"
-      WHITESPACE@[60; 61)
+      NAME@[58; 61)
+        WHITESPACE@[58; 59)
+        IDENT@[59; 60) "S"
+        WHITESPACE@[60; 61)
       L_CURLY@[61; 62)
       R_CURLY@[62; 63)
       WHITESPACE@[63; 64)

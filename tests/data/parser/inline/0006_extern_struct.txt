@@ -5,7 +5,8 @@ FILE@[0; 19)
   err: `expected `fn` or `{``
   STRUCT_ITEM@[7; 19)
     STRUCT_KW@[7; 13)
-    WHITESPACE@[13; 14)
-    IDENT@[14; 17) "Foo"
+    NAME@[13; 17)
+      WHITESPACE@[13; 14)
+      IDENT@[14; 17) "Foo"
     SEMI@[17; 18)
     WHITESPACE@[18; 19)
