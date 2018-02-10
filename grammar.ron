@@ -114,6 +114,7 @@ Grammar(
         "ALIAS",
         "VISIBILITY",
         "TYPE_PARAM_LIST",
+        "WHERE_CLAUSE",
         "LIFETIME_PARAM",
         "TYPE_PARAM",
         "ABI",
