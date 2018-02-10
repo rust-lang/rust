@@ -22,8 +22,8 @@ fn read_text(path: &Path) -> String {
 }
 
 pub fn dir_tests<F>(paths: &[&str], f: F)
-    where
-        F: Fn(&str) -> String,
+where
+    F: Fn(&str) -> String,
 {
     for path in collect_tests(paths) {
         let actual = {
