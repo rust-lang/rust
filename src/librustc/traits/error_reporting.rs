@@ -764,8 +764,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 } else {
                     let (closure_span, found) = found_did
                         .and_then(|did| self.tcx.hir.get_if_local(did))
-                        .map(|node| self.get_fn_like_arguments(node))
-                        .unwrap_or((found_span.unwrap(), found));
+                        .map(|node| {
+                            let (found_span, found) = self.get_fn_like_arguments(node);
+                            (Some(found_span), found)
+                        }).unwrap_or((found_span, found));
 
                     self.report_arg_count_mismatch(span,
                                                    closure_span,
@@ -875,7 +877,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     fn report_arg_count_mismatch(
         &self,
         span: Span,
-        found_span: Span,
+        found_span: Option<Span>,
         expected_args: Vec<ArgKind>,
         found_args: Vec<ArgKind>,
         is_closure: bool,
@@ -913,48 +915,51 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         );
 
         err.span_label(span, format!( "expected {} that takes {}", kind, expected_str));
-        err.span_label(found_span, format!("takes {}", found_str));
 
-        if let &[ArgKind::Tuple(_, ref fields)] = &found_args[..] {
-            if fields.len() == expected_args.len() {
-                let sugg = fields.iter()
-                    .map(|(name, _)| name.to_owned())
-                    .collect::<Vec<String>>().join(", ");
-                err.span_suggestion(found_span,
-                                    "change the closure to take multiple arguments instead of \
-                                     a single tuple",
-                                    format!("|{}|", sugg));
+        if let Some(found_span) = found_span {
+            err.span_label(found_span, format!("takes {}", found_str));
+
+            if let &[ArgKind::Tuple(_, ref fields)] = &found_args[..] {
+                if fields.len() == expected_args.len() {
+                    let sugg = fields.iter()
+                        .map(|(name, _)| name.to_owned())
+                        .collect::<Vec<String>>().join(", ");
+                    err.span_suggestion(found_span,
+                                        "change the closure to take multiple arguments instead of \
+                                         a single tuple",
+                                        format!("|{}|", sugg));
+                }
             }
-        }
-        if let &[ArgKind::Tuple(_, ref fields)] = &expected_args[..] {
-            if fields.len() == found_args.len() && is_closure {
-                let sugg = format!(
-                    "|({}){}|",
-                    found_args.iter()
-                        .map(|arg| match arg {
-                            ArgKind::Arg(name, _) => name.to_owned(),
-                            _ => "_".to_owned(),
-                        })
-                        .collect::<Vec<String>>()
-                        .join(", "),
-                    // add type annotations if available
-                    if found_args.iter().any(|arg| match arg {
-                        ArgKind::Arg(_, ty) => ty != "_",
-                        _ => false,
-                    }) {
-                        format!(": ({})",
-                                fields.iter()
-                                    .map(|(_, ty)| ty.to_owned())
-                                    .collect::<Vec<String>>()
-                                    .join(", "))
-                    } else {
-                        "".to_owned()
-                    },
-                );
-                err.span_suggestion(found_span,
-                                    "change the closure to accept a tuple instead of individual \
-                                     arguments",
-                                    sugg);
+            if let &[ArgKind::Tuple(_, ref fields)] = &expected_args[..] {
+                if fields.len() == found_args.len() && is_closure {
+                    let sugg = format!(
+                        "|({}){}|",
+                        found_args.iter()
+                            .map(|arg| match arg {
+                                ArgKind::Arg(name, _) => name.to_owned(),
+                                _ => "_".to_owned(),
+                            })
+                            .collect::<Vec<String>>()
+                            .join(", "),
+                        // add type annotations if available
+                        if found_args.iter().any(|arg| match arg {
+                            ArgKind::Arg(_, ty) => ty != "_",
+                            _ => false,
+                        }) {
+                            format!(": ({})",
+                                    fields.iter()
+                                        .map(|(_, ty)| ty.to_owned())
+                                        .collect::<Vec<String>>()
+                                        .join(", "))
+                        } else {
+                            "".to_owned()
+                        },
+                    );
+                    err.span_suggestion(found_span,
+                                        "change the closure to accept a tuple instead of \
+                                         individual arguments",
+                                        sugg);
+                }
             }
         }
 
