@@ -13,7 +13,7 @@
 //! This module implements parsing `config.toml` configuration files to tweak
 //! how the build runs.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
@@ -52,6 +52,7 @@ pub struct Config {
     pub target_config: HashMap<Interned<String>, Target>,
     pub full_bootstrap: bool,
     pub extended: bool,
+    pub tools: Option<HashSet<String>>,
     pub sanitizers: bool,
     pub profiler: bool,
     pub ignore_git: bool,
@@ -191,6 +192,7 @@ struct Build {
     python: Option<String>,
     full_bootstrap: Option<bool>,
     extended: Option<bool>,
+    tools: Option<HashSet<String>>,
     verbose: Option<usize>,
     sanitizers: Option<bool>,
     profiler: Option<bool>,
@@ -395,6 +397,7 @@ impl Config {
         set(&mut config.vendor, build.vendor);
         set(&mut config.full_bootstrap, build.full_bootstrap);
         set(&mut config.extended, build.extended);
+        config.tools = build.tools;
         set(&mut config.verbose, build.verbose);
         set(&mut config.sanitizers, build.sanitizers);
         set(&mut config.profiler, build.profiler);
