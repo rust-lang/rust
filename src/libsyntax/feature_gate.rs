@@ -455,6 +455,9 @@ declare_features! (
 
     // Parentheses in patterns
     (active, pattern_parentheses, "1.26.0", None, None),
+
+    // The #![wasm_import_module] attribute
+    (active, wasm_import_module, "1.26.0", None, None),
 );
 
 declare_features! (
@@ -908,6 +911,10 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
         "the `#[no_debug]` attribute was an experimental feature that has been \
          deprecated due to lack of demand",
         cfg_fn!(no_debug))),
+    ("wasm_import_module", Normal, Gated(Stability::Unstable,
+                                 "wasm_import_module",
+                                 "experimental attribute",
+                                 cfg_fn!(wasm_import_module))),
     ("omit_gdb_pretty_printer_section", Whitelisted, Gated(Stability::Unstable,
                                                        "omit_gdb_pretty_printer_section",
                                                        "the `#[omit_gdb_pretty_printer_section]` \

@@ -1,0 +1,11 @@
+error[E0658]: experimental attribute
+  --> $DIR/feature-gate-wasm_import_module.rs:11:1
+   |
+LL | #[wasm_import_module = "test"] //~ ERROR: experimental
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(wasm_import_module)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0658"
