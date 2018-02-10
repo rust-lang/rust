@@ -315,7 +315,7 @@ pub fn collect_crate_mono_items<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           &mut inlining_map);
     }
 
-    tcx.sess.warn(&format!("{:#?}", visited));
+    //tcx.sess.warn(&format!("{:#?}", visited));
 
     (visited, inlining_map)
 }
