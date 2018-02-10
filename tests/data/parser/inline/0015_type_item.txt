@@ -6,7 +6,11 @@ FILE@[0; 16)
       IDENT@[5; 8) "Foo"
       WHITESPACE@[8; 9)
     EQ@[9; 10)
-    WHITESPACE@[10; 11)
-    IDENT@[11; 14) "Bar"
+    PATH_TYPE@[10; 14)
+      PATH@[10; 14)
+        PATH_SEGMENT@[10; 14)
+          NAME_REF@[10; 14)
+            WHITESPACE@[10; 11)
+            IDENT@[11; 14) "Bar"
     SEMI@[14; 15)
     WHITESPACE@[15; 16)
