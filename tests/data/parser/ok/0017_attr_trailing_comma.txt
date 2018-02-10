@@ -13,8 +13,9 @@ FILE@[0; 23)
       R_BRACK@[9; 10)
       WHITESPACE@[10; 11)
     FN_KW@[11; 13)
-    WHITESPACE@[13; 14)
-    IDENT@[14; 17) "foo"
+    NAME@[13; 17)
+      WHITESPACE@[13; 14)
+      IDENT@[14; 17) "foo"
     L_PAREN@[17; 18)
     R_PAREN@[18; 19)
     WHITESPACE@[19; 20)

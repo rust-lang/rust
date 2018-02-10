@@ -1,35 +1,40 @@
 FILE@[0; 97)
   STRUCT_ITEM@[0; 10)
     STRUCT_KW@[0; 6)
-    WHITESPACE@[6; 7)
-    IDENT@[7; 8) "A"
+    NAME@[6; 8)
+      WHITESPACE@[6; 7)
+      IDENT@[7; 8) "A"
     SEMI@[8; 9)
     WHITESPACE@[9; 10)
   STRUCT_ITEM@[10; 22)
     STRUCT_KW@[10; 16)
-    WHITESPACE@[16; 17)
-    IDENT@[17; 18) "B"
-    WHITESPACE@[18; 19)
+    NAME@[16; 19)
+      WHITESPACE@[16; 17)
+      IDENT@[17; 18) "B"
+      WHITESPACE@[18; 19)
     L_CURLY@[19; 20)
     R_CURLY@[20; 21)
     WHITESPACE@[21; 22)
   STRUCT_ITEM@[22; 35)
     STRUCT_KW@[22; 28)
-    WHITESPACE@[28; 29)
-    IDENT@[29; 30) "C"
+    NAME@[28; 30)
+      WHITESPACE@[28; 29)
+      IDENT@[29; 30) "C"
     L_PAREN@[30; 31)
     R_PAREN@[31; 32)
     SEMI@[32; 33)
     WHITESPACE@[33; 35)
   STRUCT_ITEM@[35; 76)
     STRUCT_KW@[35; 41)
-    WHITESPACE@[41; 42)
-    IDENT@[42; 43) "D"
-    WHITESPACE@[43; 44)
+    NAME@[41; 44)
+      WHITESPACE@[41; 42)
+      IDENT@[42; 43) "D"
+      WHITESPACE@[43; 44)
     L_CURLY@[44; 45)
     NAMED_FIELD@[45; 56)
-      WHITESPACE@[45; 50)
-      IDENT@[50; 51) "a"
+      NAME@[45; 51)
+        WHITESPACE@[45; 50)
+        IDENT@[50; 51) "a"
       COLON@[51; 52)
       WHITESPACE@[52; 53)
       IDENT@[53; 56) "u32"
@@ -39,7 +44,8 @@ FILE@[0; 97)
         WHITESPACE@[57; 62)
         PUB_KW@[62; 65)
         WHITESPACE@[65; 66)
-      IDENT@[66; 67) "b"
+      NAME@[66; 67)
+        IDENT@[66; 67) "b"
       COLON@[67; 68)
       WHITESPACE@[68; 69)
       IDENT@[69; 72) "u32"
@@ -48,8 +54,9 @@ FILE@[0; 97)
     WHITESPACE@[74; 76)
   STRUCT_ITEM@[76; 97)
     STRUCT_KW@[76; 82)
-    WHITESPACE@[82; 83)
-    IDENT@[83; 84) "E"
+    NAME@[82; 84)
+      WHITESPACE@[82; 83)
+      IDENT@[83; 84) "E"
     L_PAREN@[84; 85)
     POS_FIELD@[85; 90)
       VISIBILITY@[85; 89)

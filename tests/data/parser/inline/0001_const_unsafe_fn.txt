@@ -5,8 +5,9 @@ FILE@[0; 25)
     UNSAFE_KW@[6; 12)
     WHITESPACE@[12; 13)
     FN_KW@[13; 15)
-    WHITESPACE@[15; 16)
-    IDENT@[16; 19) "foo"
+    NAME@[15; 19)
+      WHITESPACE@[15; 16)
+      IDENT@[16; 19) "foo"
     L_PAREN@[19; 20)
     R_PAREN@[20; 21)
     WHITESPACE@[21; 22)

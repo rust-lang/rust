@@ -1,8 +1,9 @@
 FILE@[0; 43)
   STRUCT_ITEM@[0; 12)
     STRUCT_KW@[0; 6)
-    WHITESPACE@[6; 7)
-    IDENT@[7; 8) "S"
+    NAME@[6; 8)
+      WHITESPACE@[6; 7)
+      IDENT@[7; 8) "S"
     TYPE_PARAM_LIST@[8; 12)
       L_ANGLE@[8; 9)
       ERROR@[9; 12)
@@ -36,7 +37,8 @@ FILE@[0; 43)
     WHITESPACE@[31; 33)
   STRUCT_ITEM@[33; 43)
     STRUCT_KW@[33; 39)
-    WHITESPACE@[39; 40)
-    IDENT@[40; 41) "T"
+    NAME@[39; 41)
+      WHITESPACE@[39; 40)
+      IDENT@[40; 41) "T"
     SEMI@[41; 42)
     WHITESPACE@[42; 43)

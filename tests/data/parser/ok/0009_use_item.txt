@@ -4,8 +4,9 @@ FILE@[0; 19)
     USE_TREE@[3; 7)
       PATH@[3; 7)
         PATH_SEGMENT@[3; 7)
-          WHITESPACE@[3; 4)
-          IDENT@[4; 7) "foo"
+          NAME_REF@[3; 7)
+            WHITESPACE@[3; 4)
+            IDENT@[4; 7) "foo"
     SEMI@[7; 8)
     WHITESPACE@[8; 9)
   USE_ITEM@[9; 19)
@@ -15,5 +16,6 @@ FILE@[0; 19)
         PATH_SEGMENT@[12; 18)
           WHITESPACE@[12; 13)
           COLONCOLON@[13; 15)
-          IDENT@[15; 18) "bar"
+          NAME_REF@[15; 18)
+            IDENT@[15; 18) "bar"
     SEMI@[18; 19)

@@ -196,8 +196,9 @@ fn extern_crate_item(p: &mut Parser) {
     p.bump();
     assert!(p.at(CRATE_KW));
     p.bump();
-
-    p.expect(IDENT) && alias(p) && p.expect(SEMI);
+    name(p);
+    alias(p);
+    p.expect(SEMI);
 }
 
 fn extern_block(p: &mut Parser) {
@@ -210,7 +211,7 @@ fn fn_item(p: &mut Parser) {
     assert!(p.at(FN_KW));
     p.bump();
 
-    p.expect(IDENT);
+    name(p);
     if p.at(L_PAREN) {
         fn_value_parameters(p);
     } else {
@@ -235,7 +236,7 @@ fn type_item(p: &mut Parser) {
     assert!(p.at(TYPE_KW));
     p.bump();
 
-    p.expect(IDENT);
+    name(p);
 
     // test type_item_type_params
     // type Result<T> = ();
@@ -254,7 +255,8 @@ fn mod_item(p: &mut Parser) {
     assert!(p.at(MOD_KW));
     p.bump();
 
-    if p.expect(IDENT) && !p.eat(SEMI) {
+    name(p);
+    if !p.eat(SEMI) {
         if p.expect(L_CURLY) {
             mod_contents(p, true);
             p.expect(R_CURLY);

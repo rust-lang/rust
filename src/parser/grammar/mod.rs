@@ -44,10 +44,30 @@ fn alias(p: &mut Parser) -> bool {
     if p.at(AS_KW) {
         let alias = p.start();
         p.bump();
-        p.expect(IDENT);
+        name(p);
         alias.complete(p, ALIAS);
     }
     true //FIXME: return false if three are errors
+}
+
+fn name(p: &mut Parser) {
+    if p.at(IDENT) {
+        let m = p.start();
+        p.bump();
+        m.complete(p, NAME);
+    } else {
+        p.error("expected a name");
+    }
+}
+
+fn name_ref(p: &mut Parser) {
+    if p.at(IDENT) {
+        let m = p.start();
+        p.bump();
+        m.complete(p, NAME_REF);
+    } else {
+        p.error("expected identifier");
+    }
 }
 
 fn error_block(p: &mut Parser, message: &str) {

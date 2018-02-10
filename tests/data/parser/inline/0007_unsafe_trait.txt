@@ -3,9 +3,10 @@ FILE@[0; 18)
     UNSAFE_KW@[0; 6)
     WHITESPACE@[6; 7)
     TRAIT_KW@[7; 12)
-    WHITESPACE@[12; 13)
-    IDENT@[13; 14) "T"
-    WHITESPACE@[14; 15)
+    NAME@[12; 15)
+      WHITESPACE@[12; 13)
+      IDENT@[13; 14) "T"
+      WHITESPACE@[14; 15)
     L_CURLY@[15; 16)
     R_CURLY@[16; 17)
     WHITESPACE@[17; 18)

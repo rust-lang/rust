@@ -1,8 +1,9 @@
 FILE@[0; 13)
   FN_ITEM@[0; 13)
     FN_KW@[0; 2)
-    WHITESPACE@[2; 3)
-    IDENT@[3; 6) "foo"
+    NAME@[2; 6)
+      WHITESPACE@[2; 3)
+      IDENT@[3; 6) "foo"
     L_PAREN@[6; 7)
     R_PAREN@[7; 8)
     WHITESPACE@[8; 9)

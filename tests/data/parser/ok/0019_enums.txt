@@ -1,17 +1,19 @@
 FILE@[0; 182)
   ENUM_ITEM@[0; 13)
     ENUM_KW@[0; 4)
-    WHITESPACE@[4; 5)
-    IDENT@[5; 7) "E1"
-    WHITESPACE@[7; 8)
+    NAME@[4; 8)
+      WHITESPACE@[4; 5)
+      IDENT@[5; 7) "E1"
+      WHITESPACE@[7; 8)
     L_CURLY@[8; 9)
     WHITESPACE@[9; 10)
     R_CURLY@[10; 11)
     WHITESPACE@[11; 13)
   ENUM_ITEM@[13; 29)
     ENUM_KW@[13; 17)
-    WHITESPACE@[17; 18)
-    IDENT@[18; 20) "E2"
+    NAME@[17; 20)
+      WHITESPACE@[17; 18)
+      IDENT@[18; 20) "E2"
     TYPE_PARAM_LIST@[20; 24)
       L_ANGLE@[20; 21)
       TYPE_PARAM@[21; 22)
@@ -24,9 +26,10 @@ FILE@[0; 182)
     WHITESPACE@[27; 29)
   ENUM_ITEM@[29; 48)
     ENUM_KW@[29; 33)
-    WHITESPACE@[33; 34)
-    IDENT@[34; 36) "E3"
-    WHITESPACE@[36; 37)
+    NAME@[33; 37)
+      WHITESPACE@[33; 34)
+      IDENT@[34; 36) "E3"
+      WHITESPACE@[36; 37)
     L_CURLY@[37; 38)
     ENUM_VARIANT@[38; 45)
       WHITESPACE@[38; 43)
@@ -36,9 +39,10 @@ FILE@[0; 182)
     WHITESPACE@[46; 48)
   ENUM_ITEM@[48; 68)
     ENUM_KW@[48; 52)
-    WHITESPACE@[52; 53)
-    IDENT@[53; 55) "E4"
-    WHITESPACE@[55; 56)
+    NAME@[52; 56)
+      WHITESPACE@[52; 53)
+      IDENT@[53; 55) "E4"
+      WHITESPACE@[55; 56)
     L_CURLY@[56; 57)
     ENUM_VARIANT@[57; 63)
       WHITESPACE@[57; 62)
@@ -49,9 +53,10 @@ FILE@[0; 182)
     WHITESPACE@[66; 68)
   ENUM_ITEM@[68; 182)
     ENUM_KW@[68; 72)
-    WHITESPACE@[72; 73)
-    IDENT@[73; 75) "E5"
-    WHITESPACE@[75; 76)
+    NAME@[72; 76)
+      WHITESPACE@[72; 73)
+      IDENT@[73; 75) "E5"
+      WHITESPACE@[75; 76)
     L_CURLY@[76; 77)
     ENUM_VARIANT@[77; 83)
       WHITESPACE@[77; 82)
@@ -72,8 +77,9 @@ FILE@[0; 182)
       WHITESPACE@[102; 103)
       L_CURLY@[103; 104)
       NAMED_FIELD@[104; 119)
-        WHITESPACE@[104; 113)
-        IDENT@[113; 114) "a"
+        NAME@[104; 114)
+          WHITESPACE@[104; 113)
+          IDENT@[113; 114) "a"
         COLON@[114; 115)
         WHITESPACE@[115; 116)
         IDENT@[116; 119) "u32"
@@ -83,7 +89,8 @@ FILE@[0; 182)
           WHITESPACE@[120; 129)
           PUB_KW@[129; 132)
           WHITESPACE@[132; 133)
-        IDENT@[133; 134) "b"
+        NAME@[133; 134)
+          IDENT@[133; 134) "b"
         COLON@[134; 135)
         WHITESPACE@[135; 136)
         IDENT@[136; 139) "f64"

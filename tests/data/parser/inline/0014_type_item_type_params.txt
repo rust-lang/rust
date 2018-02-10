@@ -1,8 +1,9 @@
 FILE@[0; 21)
   TYPE_ITEM@[0; 21)
     TYPE_KW@[0; 4)
-    WHITESPACE@[4; 5)
-    IDENT@[5; 11) "Result"
+    NAME@[4; 11)
+      WHITESPACE@[4; 5)
+      IDENT@[5; 11) "Result"
     TYPE_PARAM_LIST@[11; 15)
       L_ANGLE@[11; 12)
       TYPE_PARAM@[12; 13)

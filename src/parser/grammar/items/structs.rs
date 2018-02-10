@@ -4,9 +4,7 @@ pub(super) fn struct_item(p: &mut Parser) {
     assert!(p.at(STRUCT_KW));
     p.bump();
 
-    if !p.expect(IDENT) {
-        return;
-    }
+    name(p);
     type_params::list(p);
     match p.current() {
         WHERE_KW => {
@@ -43,7 +41,7 @@ pub(super) fn struct_item(p: &mut Parser) {
 pub(super) fn enum_item(p: &mut Parser) {
     assert!(p.at(ENUM_KW));
     p.bump();
-    p.expect(IDENT);
+    name(p);
     type_params::list(p);
     type_params::where_clause(p);
     if p.expect(L_CURLY) {
@@ -88,7 +86,8 @@ fn named_fields(p: &mut Parser) {
     fn named_field(p: &mut Parser) {
         let field = p.start();
         visibility(p);
-        if p.expect(IDENT) {
+        if p.at(IDENT) {
+            name(p);
             p.expect(COLON);
             types::type_ref(p);
             field.complete(p, NAMED_FIELD);

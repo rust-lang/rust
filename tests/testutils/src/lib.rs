@@ -73,16 +73,24 @@ fn test_from_dir(dir: &Path) -> Vec<PathBuf> {
     acc
 }
 
+const REWRITE: bool = false;
+
 fn print_difference(expected: &str, actual: &str, path: &Path) {
     let dir = project_dir();
     let path = path.strip_prefix(&dir).unwrap_or_else(|_| path);
     if expected.trim() == actual.trim() {
         println!("whitespace difference, rewriting");
+        println!("file: {}\n", path.display());
         file::put_text(path, actual).unwrap();
-    } else {
-        let changeset = Changeset::new(actual, expected, "\n");
-        print!("{}", changeset);
+        return;
     }
+    if REWRITE {
+        println!("rewriting {}", path.display());
+        file::put_text(path, actual).unwrap();
+        return;
+    }
+    let changeset = Changeset::new(actual, expected, "\n");
+    print!("{}", changeset);
     println!("file: {}\n", path.display());
     panic!("Comparison failed")
 }
