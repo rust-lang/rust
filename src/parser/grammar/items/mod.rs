@@ -255,7 +255,8 @@ fn mod_item(p: &mut Parser) {
     assert!(p.at(MOD_KW));
     p.bump();
 
-    if p.expect(IDENT) && !p.eat(SEMI) {
+    name(p);
+    if !p.eat(SEMI) {
         if p.expect(L_CURLY) {
             mod_contents(p, true);
             p.expect(R_CURLY);
