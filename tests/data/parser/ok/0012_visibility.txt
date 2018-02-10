@@ -67,14 +67,17 @@ FILE@[0; 98)
         PATH@[72; 81)
           PATH@[72; 76)
             PATH_SEGMENT@[72; 76)
-              WHITESPACE@[72; 73)
-              IDENT@[73; 76) "foo"
+              NAME_REF@[72; 76)
+                WHITESPACE@[72; 73)
+                IDENT@[73; 76) "foo"
           COLONCOLON@[76; 78)
           PATH_SEGMENT@[78; 81)
-            IDENT@[78; 81) "bar"
+            NAME_REF@[78; 81)
+              IDENT@[78; 81) "bar"
         COLONCOLON@[81; 83)
         PATH_SEGMENT@[83; 86)
-          IDENT@[83; 86) "baz"
+          NAME_REF@[83; 86)
+            IDENT@[83; 86) "baz"
       R_PAREN@[86; 87)
       WHITESPACE@[87; 88)
     FN_KW@[88; 90)

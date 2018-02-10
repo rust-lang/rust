@@ -97,8 +97,9 @@ FILE@[0; 200)
         PLUS@[107; 108)
         PATH@[108; 114)
           PATH_SEGMENT@[108; 114)
-            WHITESPACE@[108; 109)
-            IDENT@[109; 114) "Clone"
+            NAME_REF@[108; 114)
+              WHITESPACE@[108; 109)
+              IDENT@[109; 114) "Clone"
       R_ANGLE@[114; 115)
     SEMI@[115; 116)
     WHITESPACE@[116; 117)
@@ -114,14 +115,16 @@ FILE@[0; 200)
         COLON@[127; 128)
         PATH@[128; 135)
           PATH_SEGMENT@[128; 135)
-            WHITESPACE@[128; 129)
-            IDENT@[129; 134) "Clone"
-            WHITESPACE@[134; 135)
+            NAME_REF@[128; 135)
+              WHITESPACE@[128; 129)
+              IDENT@[129; 134) "Clone"
+              WHITESPACE@[134; 135)
         PLUS@[135; 136)
         PATH@[136; 141)
           PATH_SEGMENT@[136; 141)
-            WHITESPACE@[136; 137)
-            IDENT@[137; 141) "Copy"
+            NAME_REF@[136; 141)
+              WHITESPACE@[136; 137)
+              IDENT@[137; 141) "Copy"
       R_ANGLE@[141; 142)
     SEMI@[142; 143)
     WHITESPACE@[143; 144)
@@ -139,8 +142,9 @@ FILE@[0; 200)
           PATH_SEGMENT@[155; 162)
             WHITESPACE@[155; 156)
             COLONCOLON@[156; 158)
-            IDENT@[158; 161) "Foo"
-            WHITESPACE@[161; 162)
+            NAME_REF@[158; 162)
+              IDENT@[158; 161) "Foo"
+              WHITESPACE@[161; 162)
         PLUS@[162; 163)
         PATH@[163; 174)
           PATH@[163; 168)
@@ -149,8 +153,9 @@ FILE@[0; 200)
               SELF_KW@[164; 168)
           COLONCOLON@[168; 170)
           PATH_SEGMENT@[170; 174)
-            IDENT@[170; 173) "Bar"
-            WHITESPACE@[173; 174)
+            NAME_REF@[170; 174)
+              IDENT@[170; 173) "Bar"
+              WHITESPACE@[173; 174)
         PLUS@[174; 175)
         WHITESPACE@[175; 176)
         LIFETIME@[176; 178) "'a"

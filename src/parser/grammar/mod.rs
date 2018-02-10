@@ -60,6 +60,16 @@ fn name(p: &mut Parser) {
     }
 }
 
+fn name_ref(p: &mut Parser) {
+    if p.at(IDENT) {
+        let m = p.start();
+        p.bump();
+        m.complete(p, NAME_REF);
+    } else {
+        p.error("expected identifier");
+    }
+}
+
 fn error_block(p: &mut Parser, message: &str) {
     assert!(p.at(L_CURLY));
     let err = p.start();

@@ -9,7 +9,8 @@ FILE@[0; 65)
             SELF_KW@[4; 8)
         COLONCOLON@[8; 10)
         PATH_SEGMENT@[10; 13)
-          IDENT@[10; 13) "foo"
+          NAME_REF@[10; 13)
+            IDENT@[10; 13) "foo"
     SEMI@[13; 14)
     WHITESPACE@[14; 15)
   USE_ITEM@[15; 38)
@@ -26,7 +27,8 @@ FILE@[0; 65)
             SUPER_KW@[26; 31)
         COLONCOLON@[31; 33)
         PATH_SEGMENT@[33; 36)
-          IDENT@[33; 36) "bar"
+          NAME_REF@[33; 36)
+            IDENT@[33; 36) "bar"
     SEMI@[36; 37)
     WHITESPACE@[37; 38)
   USE_ITEM@[38; 65)
@@ -42,12 +44,14 @@ FILE@[0; 65)
                 SELF_KW@[44; 48)
             COLONCOLON@[48; 50)
             PATH_SEGMENT@[50; 51)
-              IDENT@[50; 51) "a"
+              NAME_REF@[50; 51)
+                IDENT@[50; 51) "a"
           COLONCOLON@[51; 53)
           PATH_SEGMENT@[53; 58)
             SUPER_KW@[53; 58)
         COLONCOLON@[58; 60)
         PATH_SEGMENT@[60; 63)
-          IDENT@[60; 63) "bar"
+          NAME_REF@[60; 63)
+            IDENT@[60; 63) "bar"
     SEMI@[63; 64)
     WHITESPACE@[64; 65)

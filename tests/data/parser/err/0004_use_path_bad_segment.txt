@@ -5,8 +5,9 @@ FILE@[0; 12)
       PATH@[3; 9)
         PATH@[3; 7)
           PATH_SEGMENT@[3; 7)
-            WHITESPACE@[3; 4)
-            IDENT@[4; 7) "foo"
+            NAME_REF@[3; 7)
+              WHITESPACE@[3; 4)
+              IDENT@[4; 7) "foo"
         COLONCOLON@[7; 9)
         PATH_SEGMENT@[9; 9)
         err: `expected identifier`

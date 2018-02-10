@@ -8,13 +8,16 @@ FILE@[0; 40)
             PATH_SEGMENT@[3; 9)
               WHITESPACE@[3; 4)
               COLONCOLON@[4; 6)
-              IDENT@[6; 9) "foo"
+              NAME_REF@[6; 9)
+                IDENT@[6; 9) "foo"
           COLONCOLON@[9; 11)
           PATH_SEGMENT@[11; 14)
-            IDENT@[11; 14) "bar"
+            NAME_REF@[11; 14)
+              IDENT@[11; 14) "bar"
         COLONCOLON@[14; 16)
         PATH_SEGMENT@[16; 19)
-          IDENT@[16; 19) "baz"
+          NAME_REF@[16; 19)
+            IDENT@[16; 19) "baz"
     SEMI@[19; 20)
     WHITESPACE@[20; 21)
   USE_ITEM@[21; 40)
@@ -24,13 +27,16 @@ FILE@[0; 40)
         PATH@[24; 33)
           PATH@[24; 28)
             PATH_SEGMENT@[24; 28)
-              WHITESPACE@[24; 25)
-              IDENT@[25; 28) "foo"
+              NAME_REF@[24; 28)
+                WHITESPACE@[24; 25)
+                IDENT@[25; 28) "foo"
           COLONCOLON@[28; 30)
           PATH_SEGMENT@[30; 33)
-            IDENT@[30; 33) "bar"
+            NAME_REF@[30; 33)
+              IDENT@[30; 33) "bar"
         COLONCOLON@[33; 35)
         PATH_SEGMENT@[35; 38)
-          IDENT@[35; 38) "baz"
+          NAME_REF@[35; 38)
+            IDENT@[35; 38) "baz"
     SEMI@[38; 39)
     WHITESPACE@[39; 40)

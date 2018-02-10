@@ -42,7 +42,8 @@ fn path_segment(p: &mut Parser, first: bool) {
         p.eat(COLONCOLON);
     }
     match p.current() {
-        IDENT | SELF_KW | SUPER_KW => p.bump(),
+        IDENT => name_ref(p),
+        SELF_KW | SUPER_KW => p.bump(),
         _ => {
             p.error("expected identifier");
         }
