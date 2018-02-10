@@ -4897,11 +4897,43 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
+        self.check_rustc_args_require_const(def.def_id(), node_id, span);
+
         debug!("instantiate_value_path: type of {:?} is {:?}",
                node_id,
                ty_substituted);
         self.write_substs(self.tcx.hir.node_to_hir_id(node_id), substs);
         ty_substituted
+    }
+
+    fn check_rustc_args_require_const(&self,
+                                      def_id: DefId,
+                                      node_id: ast::NodeId,
+                                      span: Span) {
+        // We're only interested in functions tagged with
+        // #[rustc_args_required_const], so ignore anything that's not.
+        if !self.tcx.has_attr(def_id, "rustc_args_required_const") {
+            return
+        }
+
+        // If our calling expression is indeed the function itself, we're good!
+        // If not, generate an error that this can only be called directly.
+        match self.tcx.hir.get(self.tcx.hir.get_parent_node(node_id)) {
+            Node::NodeExpr(expr) => {
+                match expr.node {
+                    hir::ExprCall(ref callee, ..) => {
+                        if callee.id == node_id {
+                            return
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
+
+        self.tcx.sess.span_err(span, "this function can only be invoked \
+                                      directly, not through a function pointer");
     }
 
     /// Report errors if the provided parameters are too few or too many.
