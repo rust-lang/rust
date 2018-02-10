@@ -79,45 +79,54 @@ unsafe fn configure_llvm(sess: &Session) {
 // detection code will walk past the end of the feature array,
 // leading to crashes.
 
-const ARM_WHITELIST: &'static [&'static str] = &["neon\0", "v7\0", "vfp2\0", "vfp3\0", "vfp4\0"];
+const ARM_WHITELIST: &'static [&'static str] = &["neon", "v7", "vfp2", "vfp3", "vfp4"];
 
-const AARCH64_WHITELIST: &'static [&'static str] = &["neon\0", "v7\0"];
+const AARCH64_WHITELIST: &'static [&'static str] = &["neon", "v7"];
 
-const X86_WHITELIST: &'static [&'static str] = &["avx\0", "avx2\0", "bmi\0", "bmi2\0", "sse\0",
-                                                 "sse2\0", "sse3\0", "sse4.1\0", "sse4.2\0",
-                                                 "ssse3\0", "tbm\0", "lzcnt\0", "popcnt\0",
-                                                 "sse4a\0", "rdrnd\0", "rdseed\0", "fma\0",
-                                                 "xsave\0", "xsaveopt\0", "xsavec\0",
-                                                 "xsaves\0", "aes\0", "pclmul\0",
-                                                 "avx512bw\0", "avx512cd\0",
-                                                 "avx512dq\0", "avx512er\0",
-                                                 "avx512f\0", "avx512ifma\0",
-                                                 "avx512pf\0", "avx512vbmi\0",
-                                                 "avx512vl\0", "avx512vpopcntdq\0",
-                                                 "mmx\0", "fxsr\0"];
+const X86_WHITELIST: &'static [&'static str] = &["avx", "avx2", "bmi", "bmi2", "sse",
+                                                 "sse2", "sse3", "sse4.1", "sse4.2",
+                                                 "ssse3", "tbm", "lzcnt", "popcnt",
+                                                 "sse4a", "rdrnd", "rdseed", "fma",
+                                                 "xsave", "xsaveopt", "xsavec",
+                                                 "xsaves", "aes", "pclmulqdq",
+                                                 "avx512bw", "avx512cd",
+                                                 "avx512dq", "avx512er",
+                                                 "avx512f", "avx512ifma",
+                                                 "avx512pf", "avx512vbmi",
+                                                 "avx512vl", "avx512vpopcntdq",
+                                                 "mmx", "fxsr"];
 
-const HEXAGON_WHITELIST: &'static [&'static str] = &["hvx\0", "hvx-double\0"];
+const HEXAGON_WHITELIST: &'static [&'static str] = &["hvx", "hvx-double"];
 
-const POWERPC_WHITELIST: &'static [&'static str] = &["altivec\0",
-                                                     "power8-altivec\0", "power9-altivec\0",
-                                                     "power8-vector\0", "power9-vector\0",
-                                                     "vsx\0"];
+const POWERPC_WHITELIST: &'static [&'static str] = &["altivec",
+                                                     "power8-altivec", "power9-altivec",
+                                                     "power8-vector", "power9-vector",
+                                                     "vsx"];
 
-const MIPS_WHITELIST: &'static [&'static str] = &["msa\0"];
+const MIPS_WHITELIST: &'static [&'static str] = &["msa"];
+
+pub fn to_llvm_feature(s: &str) -> &str {
+    match s {
+        "pclmulqdq" => "pclmul",
+        s => s,
+    }
+}
 
 pub fn target_features(sess: &Session) -> Vec<Symbol> {
     let whitelist = target_feature_whitelist(sess);
     let target_machine = create_target_machine(sess);
     let mut features = Vec::new();
-    for feat in whitelist {
-        if unsafe { llvm::LLVMRustHasFeature(target_machine, feat.as_ptr()) } {
-            features.push(Symbol::intern(feat.to_str().unwrap()));
+    for feature in whitelist {
+        let llvm_feature = to_llvm_feature(feature);
+        let ptr = CString::new(llvm_feature).as_ptr();
+        if unsafe { llvm::LLVMRustHasFeature(target_machine, ptr) } {
+            features.push(Symbol::intern(feature));
         }
     }
     features
 }
 
-pub fn target_feature_whitelist(sess: &Session) -> Vec<&CStr> {
+pub fn target_feature_whitelist(sess: &Session) -> &'static [&'static str] {
     let whitelist = match &*sess.target.target.arch {
         "arm" => ARM_WHITELIST,
         "aarch64" => AARCH64_WHITELIST,
@@ -126,10 +135,7 @@ pub fn target_feature_whitelist(sess: &Session) -> Vec<&CStr> {
         "mips" | "mips64" => MIPS_WHITELIST,
         "powerpc" | "powerpc64" => POWERPC_WHITELIST,
         _ => &[],
-    };
-    whitelist.iter().map(|m| {
-        CStr::from_bytes_with_nul(m.as_bytes()).unwrap()
-    }).collect()
+    }
 }
 
 pub fn print_version() {

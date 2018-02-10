@@ -142,7 +142,7 @@ pub fn provide(providers: &mut Providers) {
         assert_eq!(cnum, LOCAL_CRATE);
         Rc::new(llvm_util::target_feature_whitelist(tcx.sess)
             .iter()
-            .map(|c| c.to_str().unwrap().to_string())
+            .map(|c| c.to_string())
             .collect())
     };
 
@@ -212,7 +212,8 @@ fn from_target_feature(
         let value = value.as_str();
         for feature in value.split(',') {
             if whitelist.contains(feature) {
-                target_features.push(format!("+{}", feature));
+                let llvm_feature = llvm_util::to_llvm_feature(feature);
+                target_features.push(format!("+{}", llvm_feature));
                 continue
             }
 
