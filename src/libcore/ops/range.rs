@@ -262,6 +262,13 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// The `RangeInclusive` `start..=end` contains all values with `x >= start`
 /// and `x <= end`.
 ///
+/// This iterator is [fused], but the specific values of `start` and `end` after
+/// iteration has finished are **unspecified** other than that [`.is_empty()`]
+/// will return `true` once no more values will be produced.
+///
+/// [fused]: ../iter/trait.FusedIterator.html
+/// [`.is_empty()`]: #method.is_empty
+///
 /// # Examples
 ///
 /// ```
@@ -328,6 +335,17 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// assert!(!(3..=5).is_empty());
     /// assert!(!(3..=3).is_empty());
     /// assert!( (3..=2).is_empty());
+    /// ```
+    ///
+    /// This method returns `true` after iteration has finished:
+    ///
+    /// ```
+    /// #![feature(range_is_empty,inclusive_range_syntax)]
+    ///
+    /// let mut r = 3..=5;
+    /// for _ in r.by_ref() {}
+    /// // Precise field values are unspecified here
+    /// assert!(r.is_empty());
     /// ```
     #[unstable(feature = "range_is_empty", reason = "recently added", issue = "123456789")]
     pub fn is_empty(&self) -> bool {
