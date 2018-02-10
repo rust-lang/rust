@@ -41,7 +41,7 @@ Instead, we take the input and compute the true value with bignum arithmetic
 (as a fraction, using the ``fractions`` module).
 
 Given an input string and the corresponding float computed via Rust, simply
-decode the float into f * 2^k (for intergers f, k) and the ULP.
+decode the float into f * 2^k (for integers f, k) and the ULP.
 We can now easily compute the error and check if it is within 0.5 ULP as it
 should be. Zero and infinites are handled similarly:
 
