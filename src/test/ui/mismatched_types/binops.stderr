@@ -6,10 +6,10 @@ error[E0277]: cannot add `std::option::Option<{integer}>` to `{integer}`
    |
    = help: the trait `std::ops::Add<std::option::Option<{integer}>>` is not implemented for `{integer}`
 
-error[E0277]: cannot substract `std::option::Option<{integer}>` from `usize`
+error[E0277]: cannot subtract `std::option::Option<{integer}>` from `usize`
   --> $DIR/binops.rs:13:16
    |
-13 |     2 as usize - Some(1); //~ ERROR cannot substract `std::option::Option<{integer}>` from `usize`
+13 |     2 as usize - Some(1); //~ ERROR cannot subtract `std::option::Option<{integer}>` from `usize`
    |                ^ no implementation for `usize - std::option::Option<{integer}>`
    |
    = help: the trait `std::ops::Sub<std::option::Option<{integer}>>` is not implemented for `usize`
