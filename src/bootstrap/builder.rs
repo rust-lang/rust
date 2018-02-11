@@ -286,8 +286,7 @@ impl<'a> Builder<'a> {
                 doc::Reference, doc::Rustdoc, doc::RustByExample, doc::CargoBook),
             Kind::Dist => describe!(dist::Docs, dist::Mingw, dist::Rustc, dist::DebuggerScripts,
                 dist::Std, dist::Analysis, dist::Src, dist::PlainSourceTarball, dist::Cargo,
-                dist::Rls, dist::Rustfmt, dist::Extended, dist::HashSign,
-                dist::DontDistWithMiriEnabled),
+                dist::Rls, dist::Rustfmt, dist::Extended, dist::HashSign),
             Kind::Install => describe!(install::Docs, install::Std, install::Cargo, install::Rls,
                 install::Rustfmt, install::Analysis, install::Src, install::Rustc),
         }
@@ -343,6 +342,12 @@ impl<'a> Builder<'a> {
             cache: Cache::new(),
             stack: RefCell::new(Vec::new()),
         };
+
+        if kind == Kind::Dist {
+            assert!(!build.config.test_miri, "Do not distribute with miri enabled.\n\
+                The distributed libraries would include all MIR (increasing binary size).
+                The distributed MIR would include validation statements.");
+        }
 
         StepDescription::run(&Builder::get_step_descriptions(builder.kind), &builder, paths);
     }
