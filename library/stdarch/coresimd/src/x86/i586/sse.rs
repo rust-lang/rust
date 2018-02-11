@@ -832,8 +832,7 @@ pub unsafe fn _mm_unpacklo_ps(a: __m128, b: __m128) -> __m128 {
 /// lower half of result.
 #[inline]
 #[target_feature(enable = "sse")]
-#[cfg_attr(all(test, not(windows)), assert_instr(movhlps))]
-#[cfg_attr(all(test, windows), assert_instr(unpckhpd))]
+#[cfg_attr(test, assert_instr(movhlps))]
 pub unsafe fn _mm_movehl_ps(a: __m128, b: __m128) -> __m128 {
     // TODO; figure why this is a different instruction on Windows?
     simd_shuffle4(a, b, [6, 7, 2, 3])
@@ -843,8 +842,7 @@ pub unsafe fn _mm_movehl_ps(a: __m128, b: __m128) -> __m128 {
 /// higher half of result.
 #[inline]
 #[target_feature(enable = "sse")]
-#[cfg_attr(all(test, target_feature = "sse2"), assert_instr(unpcklpd))]
-#[cfg_attr(all(test, not(target_feature = "sse2")), assert_instr(movlhps))]
+#[cfg_attr(test, assert_instr(movlhps))]
 pub unsafe fn _mm_movelh_ps(a: __m128, b: __m128) -> __m128 {
     simd_shuffle4(a, b, [0, 1, 4, 5])
 }
@@ -900,7 +898,7 @@ pub unsafe fn _mm_movemask_ps(a: __m128) -> i32 {
 // 32-bit codegen does not generate `movhps` or `movhpd`, but instead
 // `movsd` followed by `unpcklpd` (or `movss'/`unpcklps` if there's no SSE2).
 #[cfg_attr(all(test, target_arch = "x86", target_feature = "sse2"),
-           assert_instr(unpcklpd))]
+           assert_instr(movlhps))]
 #[cfg_attr(all(test, target_arch = "x86", not(target_feature = "sse2")),
            assert_instr(unpcklps))]
 // TODO: This function is actually not limited to floats, but that's what
@@ -1095,13 +1093,8 @@ pub unsafe fn _mm_storeh_pi(p: *mut __m64, a: __m128) {
 #[inline]
 #[target_feature(enable = "sse")]
 // On i586 the codegen just generates plane MOVs. No need to test for that.
-#[cfg_attr(all(test, any(target_arch = "x86_64", target_feature = "sse2"),
-               not(target_family = "windows")),
+#[cfg_attr(all(test, any(target_arch = "x86_64", target_feature = "sse2")),
            assert_instr(movlps))]
-// Win64 passes `a` by reference, which causes it to generate two 64 bit moves.
-#[cfg_attr(all(test, any(target_arch = "x86_64", target_feature = "sse2"),
-               target_family = "windows"),
-           assert_instr(movsd))]
 pub unsafe fn _mm_storel_pi(p: *mut __m64, a: __m128) {
     #[cfg(target_arch = "x86")]
     {

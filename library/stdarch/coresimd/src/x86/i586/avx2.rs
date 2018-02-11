@@ -226,7 +226,7 @@ pub unsafe fn _mm256_avg_epu8(a: __m256i, b: __m256i) -> __m256i {
 /// Blend packed 32-bit integers from `a` and `b` using control mask `imm8`.
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpblendd, imm8 = 9))]
+#[cfg_attr(test, assert_instr(vblendps, imm8 = 9))]
 pub unsafe fn _mm_blend_epi32(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
     let imm8 = (imm8 & 0xFF) as u8;
     let a = a.as_i32x4();
@@ -258,7 +258,7 @@ pub unsafe fn _mm_blend_epi32(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// Blend packed 32-bit integers from `a` and `b` using control mask `imm8`.
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpblendd, imm8 = 9))]
+#[cfg_attr(test, assert_instr(vblendps, imm8 = 9))]
 pub unsafe fn _mm256_blend_epi32(
     a: __m256i, b: __m256i, imm8: i32
 ) -> __m256i {
@@ -1790,7 +1790,7 @@ pub unsafe fn _mm256_packus_epi32(a: __m256i, b: __m256i) -> __m256i {
 /// integers of `a`.
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpermd))]
+#[cfg_attr(test, assert_instr(vpermps))]
 pub unsafe fn _mm256_permutevar8x32_epi32(a: __m256i, b: __m256i) -> __m256i {
     mem::transmute(permd(a.as_u32x8(), b.as_u32x8()))
 }
@@ -1798,7 +1798,7 @@ pub unsafe fn _mm256_permutevar8x32_epi32(a: __m256i, b: __m256i) -> __m256i {
 /// Permutes 64-bit integers from `a` using control mask `imm8`.
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpermq, imm8 = 9))]
+#[cfg_attr(test, assert_instr(vpermpd, imm8 = 9))]
 pub unsafe fn _mm256_permute4x64_epi64(a: __m256i, imm8: i32) -> __m256i {
     let imm8 = (imm8 & 0xFF) as u8;
     let zero = _mm256_setzero_si256().as_i64x4();
@@ -2007,7 +2007,7 @@ pub unsafe fn _mm256_shuffle_epi8(a: __m256i, b: __m256i) -> __m256i {
 /// ```
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpshufd, imm8 = 9))]
+#[cfg_attr(test, assert_instr(vpermilps, imm8 = 9))]
 pub unsafe fn _mm256_shuffle_epi32(a: __m256i, imm8: i32) -> __m256i {
     // simd_shuffleX requires that its selector parameter be made up of
     // constant values, but we can't enforce that here. In spirit, we need
@@ -2762,7 +2762,7 @@ pub unsafe fn _mm256_unpacklo_epi16(a: __m256i, b: __m256i) -> __m256i {
 /// ```
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpunpckhdq))]
+#[cfg_attr(test, assert_instr(vunpckhps))]
 pub unsafe fn _mm256_unpackhi_epi32(a: __m256i, b: __m256i) -> __m256i {
     let r: i32x8 = simd_shuffle8(
         a.as_i32x8(),
@@ -2802,7 +2802,7 @@ pub unsafe fn _mm256_unpackhi_epi32(a: __m256i, b: __m256i) -> __m256i {
 /// ```
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpunpckldq))]
+#[cfg_attr(test, assert_instr(vunpcklps))]
 pub unsafe fn _mm256_unpacklo_epi32(a: __m256i, b: __m256i) -> __m256i {
     let r: i32x8 =
         simd_shuffle8(a.as_i32x8(), b.as_i32x8(), [0, 8, 1, 9, 4, 12, 5, 13]);
@@ -2839,7 +2839,7 @@ pub unsafe fn _mm256_unpacklo_epi32(a: __m256i, b: __m256i) -> __m256i {
 /// ```
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpunpckhqdq))]
+#[cfg_attr(test, assert_instr(vunpckhpd))]
 pub unsafe fn _mm256_unpackhi_epi64(a: __m256i, b: __m256i) -> __m256i {
     let r: i64x4 = simd_shuffle4(a.as_i64x4(), b.as_i64x4(), [1, 5, 3, 7]);
     mem::transmute(r)
@@ -2875,7 +2875,7 @@ pub unsafe fn _mm256_unpackhi_epi64(a: __m256i, b: __m256i) -> __m256i {
 /// ```
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpunpcklqdq))]
+#[cfg_attr(test, assert_instr(vunpcklpd))]
 pub unsafe fn _mm256_unpacklo_epi64(a: __m256i, b: __m256i) -> __m256i {
     let r: i64x4 = simd_shuffle4(a.as_i64x4(), b.as_i64x4(), [0, 4, 2, 6]);
     mem::transmute(r)

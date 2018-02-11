@@ -80,9 +80,17 @@ pub fn assert_instr(
         })
         .collect::<Vec<_>>();
     let attrs = Append(&attrs);
+
+    // Use an ABI on Windows that passes SIMD values in registers, like what
+    // happens on Unix (I think?) by default.
+    let abi = if cfg!(windows) {
+        syn::LitStr::new("vectorcall", proc_macro2::Span::call_site())
+    } else {
+        syn::LitStr::new("C", proc_macro2::Span::call_site())
+    };
     let to_test = quote! {
         #attrs
-        unsafe extern fn #shim_name(#(#inputs),*) #ret {
+        unsafe extern #abi fn #shim_name(#(#inputs),*) #ret {
             #name(#(#input_vals),*)
         }
     };

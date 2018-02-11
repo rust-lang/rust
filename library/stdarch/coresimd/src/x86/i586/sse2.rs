@@ -710,7 +710,7 @@ pub unsafe fn _mm_cvtsi32_si128(a: i32) -> __m128i {
 /// Return the lowest element of `a`.
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(all(test, not(windows)), assert_instr(movd))] // FIXME mov on windows
+#[cfg_attr(test, assert_instr(movd))]
 pub unsafe fn _mm_cvtsi128_si32(a: __m128i) -> i32 {
     simd_extract(a.as_i32x4(), 0)
 }
@@ -1207,7 +1207,7 @@ pub unsafe fn _mm_unpackhi_epi16(a: __m128i, b: __m128i) -> __m128i {
 /// Unpack and interleave 32-bit integers from the high half of `a` and `b`.
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(test, assert_instr(punpckhdq))]
+#[cfg_attr(test, assert_instr(unpckhps))]
 pub unsafe fn _mm_unpackhi_epi32(a: __m128i, b: __m128i) -> __m128i {
     mem::transmute::<i32x4, _>(simd_shuffle4(
         a.as_i32x4(),
@@ -1219,7 +1219,7 @@ pub unsafe fn _mm_unpackhi_epi32(a: __m128i, b: __m128i) -> __m128i {
 /// Unpack and interleave 64-bit integers from the high half of `a` and `b`.
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(test, assert_instr(punpckhqdq))]
+#[cfg_attr(test, assert_instr(unpckhpd))]
 pub unsafe fn _mm_unpackhi_epi64(a: __m128i, b: __m128i) -> __m128i {
     mem::transmute::<i64x2, _>(simd_shuffle2(
         a.as_i64x2(),
@@ -1253,7 +1253,7 @@ pub unsafe fn _mm_unpacklo_epi16(a: __m128i, b: __m128i) -> __m128i {
 /// Unpack and interleave 32-bit integers from the low half of `a` and `b`.
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(test, assert_instr(punpckldq))]
+#[cfg_attr(test, assert_instr(unpcklps))]
 pub unsafe fn _mm_unpacklo_epi32(a: __m128i, b: __m128i) -> __m128i {
     mem::transmute::<i32x4, _>(simd_shuffle4(
         a.as_i32x4(),
@@ -1265,7 +1265,7 @@ pub unsafe fn _mm_unpacklo_epi32(a: __m128i, b: __m128i) -> __m128i {
 /// Unpack and interleave 64-bit integers from the low half of `a` and `b`.
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(test, assert_instr(punpcklqdq))]
+#[cfg_attr(test, assert_instr(movlhps))]
 pub unsafe fn _mm_unpacklo_epi64(a: __m128i, b: __m128i) -> __m128i {
     mem::transmute::<i64x2, _>(simd_shuffle2(
         a.as_i64x2(),
@@ -1795,7 +1795,6 @@ pub unsafe fn _mm_cvtsd_ss(a: __m128, b: __m128d) -> __m128 {
 /// Return the lower double-precision (64-bit) floating-point element of "a".
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(all(test, windows), assert_instr(movsd))] // FIXME movq/movlps/mov on other platform
 pub unsafe fn _mm_cvtsd_f64(a: __m128d) -> f64 {
     simd_extract(a, 0)
 }
@@ -1953,7 +1952,7 @@ pub unsafe fn _mm_stream_pd(mem_addr: *mut f64, a: __m128d) {
 /// memory location.
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(all(test, not(windows)), assert_instr(movlps))] // FIXME movsd only on windows
+#[cfg_attr(test, assert_instr(movlps))]
 pub unsafe fn _mm_store_sd(mem_addr: *mut f64, a: __m128d) {
     *mem_addr = simd_extract(a, 0)
 }
@@ -2022,7 +2021,7 @@ pub unsafe fn _mm_storeh_pd(mem_addr: *mut f64, a: __m128d) {
 /// memory location.
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(all(test, not(windows)), assert_instr(movlps))] // FIXME movlpd (movsd on windows)
+#[cfg_attr(test, assert_instr(movlps))] // FIXME movlpd
 pub unsafe fn _mm_storel_pd(mem_addr: *mut f64, a: __m128d) {
     *mem_addr = simd_extract(a, 0);
 }
@@ -2179,7 +2178,7 @@ pub unsafe fn _mm_unpackhi_pd(a: __m128d, b: __m128d) -> __m128d {
 /// * The [63:0] bits are copied from the [63:0] bits of the first input
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(test, assert_instr(unpcklpd))]
+#[cfg_attr(test, assert_instr(movlhps))]
 pub unsafe fn _mm_unpacklo_pd(a: __m128d, b: __m128d) -> __m128d {
     simd_shuffle2(a, b, [0, 2])
 }

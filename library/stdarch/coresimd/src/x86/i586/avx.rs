@@ -1921,7 +1921,6 @@ pub unsafe fn _mm256_set_epi32(
 #[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
-#[cfg_attr(test, assert_instr(vinsertf128))]
 pub unsafe fn _mm256_set_epi64x(a: i64, b: i64, c: i64, d: i64) -> __m256i {
     _mm256_setr_epi64x(d, c, b, a)
 }
@@ -2001,7 +2000,6 @@ pub unsafe fn _mm256_setr_epi32(
 #[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
-#[cfg_attr(test, assert_instr(vinsertf128))]
 pub unsafe fn _mm256_setr_epi64x(a: i64, b: i64, c: i64, d: i64) -> __m256i {
     mem::transmute(i64x4::new(a, b, c, d))
 }

@@ -120,7 +120,7 @@ pub unsafe fn _mm_blend_ps(a: __m128, b: __m128, imm4: i32) -> __m128 {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 // TODO: Add test for Windows
-#[cfg_attr(all(test, not(windows)), assert_instr(extractps, imm8 = 0))]
+#[cfg_attr(test, assert_instr(extractps, imm8 = 0))]
 pub unsafe fn _mm_extract_ps(a: __m128, imm8: i32) -> i32 {
     mem::transmute(simd_extract::<_, f32>(a, imm8 as u32 & 0b11))
 }
@@ -141,7 +141,7 @@ pub unsafe fn _mm_extract_epi8(a: __m128i, imm8: i32) -> i32 {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 // TODO: Add test for Windows
-#[cfg_attr(all(test, not(windows)), assert_instr(pextrd, imm8 = 1))]
+#[cfg_attr(test, assert_instr(extractps, imm8 = 1))]
 pub unsafe fn _mm_extract_epi32(a: __m128i, imm8: i32) -> i32 {
     let imm8 = (imm8 & 3) as u32;
     simd_extract::<_, i32>(a.as_i32x4(), imm8)
