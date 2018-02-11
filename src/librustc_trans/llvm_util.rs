@@ -14,7 +14,7 @@ use llvm;
 use rustc::session::Session;
 use rustc::session::config::PrintRequest;
 use libc::c_int;
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Once;
@@ -118,14 +118,14 @@ pub fn target_features(sess: &Session) -> Vec<Symbol> {
         .iter()
         .filter(|feature| {
             let llvm_feature = to_llvm_feature(feature);
-            let ptr = CString::new(llvm_feature).as_ptr();
+            let ptr = CString::new(llvm_feature).unwrap().as_ptr();
             unsafe { llvm::LLVMRustHasFeature(target_machine, ptr) }
         })
-        .map(Symbol::intern).collect()
+        .map(|feature| Symbol::intern(feature)).collect()
 }
 
 pub fn target_feature_whitelist(sess: &Session) -> &'static [&'static str] {
-    let whitelist = match &*sess.target.target.arch {
+    match &*sess.target.target.arch {
         "arm" => ARM_WHITELIST,
         "aarch64" => AARCH64_WHITELIST,
         "x86" | "x86_64" => X86_WHITELIST,
