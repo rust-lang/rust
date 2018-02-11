@@ -106,6 +106,8 @@ Grammar(
         "NEVER_TYPE",
         "PATH_TYPE",
         "POINTER_TYPE",
+        "ARRAY_TYPE",
+        "SLICE_TYPE",
 
         "EXTERN_BLOCK",
         "ENUM_VARIANT",

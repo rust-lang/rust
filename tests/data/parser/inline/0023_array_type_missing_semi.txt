@@ -1,0 +1,28 @@
+FILE@[0; 18)
+  TYPE_ITEM@[0; 13)
+    TYPE_KW@[0; 4)
+    NAME@[4; 7)
+      WHITESPACE@[4; 5)
+      IDENT@[5; 6) "T"
+      WHITESPACE@[6; 7)
+    EQ@[7; 8)
+    SLICE_TYPE@[8; 13)
+      WHITESPACE@[8; 9)
+      L_BRACK@[9; 10)
+      TUPLE_TYPE@[10; 13)
+        L_PAREN@[10; 11)
+        R_PAREN@[11; 12)
+        WHITESPACE@[12; 13)
+      err: `expected `;` or `]``
+    err: `expected SEMI`
+  ERROR@[13; 15)
+  err: `expected item`
+    INT_NUMBER@[13; 15)
+  ERROR@[15; 16)
+  err: `expected item`
+    R_BRACK@[15; 16)
+  ERROR@[16; 18)
+  err: `expected item, found `;`
+consider removing this semicolon`
+    SEMI@[16; 17)
+    WHITESPACE@[17; 18)

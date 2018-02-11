@@ -5,6 +5,7 @@ pub(super) fn type_(p: &mut Parser) {
         L_PAREN => paren_or_tuple_type(p),
         EXCL => never_type(p),
         STAR => pointer_type(p),
+        L_BRACK => array_or_slice_type(p),
         IDENT => path_type(p),
         _ => {
             p.error("expected type");
@@ -80,6 +81,38 @@ fn pointer_type(p: &mut Parser) {
 
     type_no_plus(p);
     m.complete(p, POINTER_TYPE);
+}
+
+fn array_or_slice_type(p: &mut Parser) {
+    assert!(p.at(L_BRACK));
+    let m = p.start();
+    p.bump();
+
+    type_(p);
+    let kind = match p.current() {
+        // test slice_type
+        // type T = [()];
+        R_BRACK => {
+            p.bump();
+            SLICE_TYPE
+        },
+
+        // test array_type
+        // type T = [(); 92];
+        SEMI => {
+            p.bump();
+            expressions::expr(p);
+            p.expect(R_BRACK);
+            ARRAY_TYPE
+        }
+        // test array_type_missing_semi
+        // type T = [() 92];
+        _ => {
+            p.error("expected `;` or `]`");
+            SLICE_TYPE
+        }
+    };
+    m.complete(p, kind);
 }
 
 fn path_type(p: &mut Parser) {
