@@ -94,7 +94,7 @@ fn item(p: &mut Parser) {
 
                 // test unsafe_auto_trait
                 // unsafe auto trait T {}
-                IDENT if p.at_kw("auto") && la == TRAIT_KW => {
+                IDENT if p.at_contextual_kw("auto") && la == TRAIT_KW => {
                     p.bump_remap(AUTO_KW);
                     traits::trait_item(p);
                     TRAIT_ITEM
@@ -109,7 +109,7 @@ fn item(p: &mut Parser) {
 
                 // test unsafe_default_impl
                 // unsafe default impl Foo {}
-                IDENT if p.at_kw("default") && la == IMPL_KW => {
+                IDENT if p.at_contextual_kw("default") && la == IMPL_KW => {
                     p.bump_remap(DEFAULT_KW);
                     traits::impl_item(p);
                     IMPL_ITEM

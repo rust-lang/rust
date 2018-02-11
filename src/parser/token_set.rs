@@ -22,4 +22,3 @@ macro_rules! token_set {
         token_set!($($t),*)
     };
 }
-

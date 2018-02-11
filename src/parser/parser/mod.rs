@@ -126,7 +126,6 @@ impl Drop for Marker {
     }
 }
 
-
 pub(crate) struct CompletedMarker(u32);
 
 impl CompletedMarker {

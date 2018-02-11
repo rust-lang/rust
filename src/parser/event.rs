@@ -140,9 +140,7 @@ pub(super) fn to_file(text: String, tokens: &[Token], events: Vec<Event>) -> Fil
                 }
                 builder.leaf(kind, len);
             }
-            &Event::Error { ref msg } => builder.error(ErrorMsg {
-                msg: msg.clone(),
-            }),
+            &Event::Error { ref msg } => builder.error(ErrorMsg { msg: msg.clone() }),
         }
     }
     builder.finish()

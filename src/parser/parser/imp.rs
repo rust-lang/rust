@@ -1,8 +1,8 @@
-use parser::input::{ParserInput, InputPosition};
+use parser::input::{InputPosition, ParserInput};
 use parser::event::Event;
 
 use SyntaxKind;
-use syntax_kinds::{TOMBSTONE, EOF};
+use syntax_kinds::{EOF, TOMBSTONE};
 
 /// Implementation details of `Parser`, extracted
 /// to a separate struct in order not to pollute
@@ -28,7 +28,6 @@ impl<'t> ParserImpl<'t> {
         assert_eq!(self.nth(0), EOF);
         self.events
     }
-
 
     pub(super) fn nth(&self, n: u32) -> SyntaxKind {
         self.inp.kind(self.pos + n)
@@ -92,9 +91,9 @@ impl<'t> ParserImpl<'t> {
         if idx == self.events.len() - 1 {
             match self.events.pop() {
                 Some(Event::Start {
-                         kind: TOMBSTONE,
-                         forward_parent: None,
-                     }) => (),
+                    kind: TOMBSTONE,
+                    forward_parent: None,
+                }) => (),
                 _ => unreachable!(),
             }
         }
@@ -113,7 +112,6 @@ impl<'t> ParserImpl<'t> {
         }
         new_pos
     }
-
 
     fn event(&mut self, event: Event) {
         self.events.push(event)
