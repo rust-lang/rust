@@ -60,7 +60,7 @@ impl fmt::Debug for RangeFull {
 /// (`start..end`).
 ///
 /// The `Range` `start..end` contains all values with `x >= start` and
-/// `x < end`.
+/// `x < end`.  It is empty unless `start < end`.
 ///
 /// # Examples
 ///
@@ -123,6 +123,17 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// assert!(!(3..5).is_empty());
     /// assert!( (3..3).is_empty());
     /// assert!( (3..2).is_empty());
+    /// ```
+    ///
+    /// The range is empty if either side is incomparable:
+    ///
+    /// ```
+    /// #![feature(range_is_empty,inclusive_range_syntax)]
+    ///
+    /// use std::f32::NAN;
+    /// assert!(!(3.0..5.0).is_empty());
+    /// assert!( (3.0..NAN).is_empty());
+    /// assert!( (NAN..5.0).is_empty());
     /// ```
     #[unstable(feature = "range_is_empty", reason = "recently added", issue = "48111")]
     pub fn is_empty(&self) -> bool {
@@ -260,7 +271,7 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// An range bounded inclusively below and above (`start..=end`).
 ///
 /// The `RangeInclusive` `start..=end` contains all values with `x >= start`
-/// and `x <= end`.
+/// and `x <= end`.  It is empty unless `start <= end`.
 ///
 /// This iterator is [fused], but the specific values of `start` and `end` after
 /// iteration has finished are **unspecified** other than that [`.is_empty()`]
@@ -335,6 +346,17 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// assert!(!(3..=5).is_empty());
     /// assert!(!(3..=3).is_empty());
     /// assert!( (3..=2).is_empty());
+    /// ```
+    ///
+    /// The range is empty if either side is incomparable:
+    ///
+    /// ```
+    /// #![feature(range_is_empty,inclusive_range_syntax)]
+    ///
+    /// use std::f32::NAN;
+    /// assert!(!(3.0..=5.0).is_empty());
+    /// assert!( (3.0..=NAN).is_empty());
+    /// assert!( (NAN..=5.0).is_empty());
     /// ```
     ///
     /// This method returns `true` after iteration has finished:
