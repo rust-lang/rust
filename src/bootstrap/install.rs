@@ -161,7 +161,6 @@ macro_rules! install {
         impl Step for $name {
             type Output = ();
             const DEFAULT: bool = true;
-            const ONLY_BUILD_TARGETS: bool = true;
             const ONLY_HOSTS: bool = $only_hosts;
             $(const $c: bool = true;)*
 
@@ -174,7 +173,7 @@ macro_rules! install {
                 run.builder.ensure($name {
                     stage: run.builder.top_stage,
                     target: run.target,
-                    host: run.host,
+                    host: run.builder.build.build,
                 });
             }
 

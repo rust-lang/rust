@@ -60,9 +60,6 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
     /// Run this rule for all hosts without cross compiling.
     const ONLY_HOSTS: bool = false;
 
-    /// Run this rule for all targets, but only with the native host.
-    const ONLY_BUILD_TARGETS: bool = false;
-
     /// Only run this step with the build triple as host and target.
     const ONLY_BUILD: bool = false;
 
@@ -101,7 +98,6 @@ pub struct RunConfig<'a> {
 struct StepDescription {
     default: bool,
     only_hosts: bool,
-    only_build_targets: bool,
     only_build: bool,
     should_run: fn(ShouldRun) -> ShouldRun,
     make_run: fn(RunConfig),
@@ -138,7 +134,6 @@ impl StepDescription {
         StepDescription {
             default: S::DEFAULT,
             only_hosts: S::ONLY_HOSTS,
-            only_build_targets: S::ONLY_BUILD_TARGETS,
             only_build: S::ONLY_BUILD,
             should_run: S::should_run,
             make_run: S::make_run,
@@ -155,7 +150,7 @@ impl StepDescription {
                 self.name, builder.config.exclude);
         }
         let build = builder.build;
-        let hosts = if self.only_build_targets || self.only_build {
+        let hosts = if self.only_build {
             build.build_triple()
         } else {
             &build.hosts
