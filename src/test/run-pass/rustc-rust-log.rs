@@ -9,5 +9,6 @@
 // except according to those terms.
 
 // rustc-env:RUST_LOG=debug
+// ignore-musl - workaround to avoid consuming all CI storage, see #48118
 
 fn main() {}
