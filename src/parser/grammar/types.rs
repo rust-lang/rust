@@ -6,6 +6,7 @@ pub(super) fn type_(p: &mut Parser) {
         EXCL => never_type(p),
         STAR => pointer_type(p),
         L_BRACK => array_or_slice_type(p),
+        AMPERSAND => reference_type(p),
         IDENT => path_type(p),
         _ => {
             p.error("expected type");
@@ -113,6 +114,20 @@ fn array_or_slice_type(p: &mut Parser) {
         }
     };
     m.complete(p, kind);
+}
+
+// test reference_type;
+// type A = &();
+// type B = &'static ();
+// type C = &mut ();
+fn reference_type(p: &mut Parser) {
+    assert!(p.at(AMPERSAND));
+    let m = p.start();
+    p.bump();
+    p.eat(LIFETIME);
+    p.eat(MUT_KW);
+    type_no_plus(p);
+    m.complete(p, REFERENCE_TYPE);
 }
 
 fn path_type(p: &mut Parser) {

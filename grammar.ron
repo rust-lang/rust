@@ -108,6 +108,7 @@ Grammar(
         "POINTER_TYPE",
         "ARRAY_TYPE",
         "SLICE_TYPE",
+        "REFERENCE_TYPE",
 
         "EXTERN_BLOCK",
         "ENUM_VARIANT",
