@@ -46,6 +46,7 @@ pub unsafe fn _mm_shuffle_pi8(a: __m64, b: __m64) -> __m64 {
 #[inline]
 #[target_feature(enable = "ssse3,mmx")]
 #[cfg_attr(test, assert_instr(palignr, n = 15))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_alignr_pi8(a: __m64, b: __m64, n: i32) -> __m64 {
     macro_rules! call {
         ($imm8:expr) => {

@@ -312,6 +312,7 @@ pub unsafe fn _m_maskmovq(a: __m64, mask: __m64, mem_addr: *mut i8) {
 #[inline]
 #[target_feature(enable = "sse,mmx")]
 #[cfg_attr(test, assert_instr(pextrw, imm2 = 0))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm_extract_pi16(a: __m64, imm2: i32) -> i32 {
     macro_rules! call {
         ($imm2:expr) => { pextrw(a, $imm2) as i32 }
@@ -324,8 +325,12 @@ pub unsafe fn _mm_extract_pi16(a: __m64, imm2: i32) -> i32 {
 #[inline]
 #[target_feature(enable = "sse,mmx")]
 #[cfg_attr(test, assert_instr(pextrw, imm2 = 0))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _m_pextrw(a: __m64, imm2: i32) -> i32 {
-    _mm_extract_pi16(a, imm2)
+    macro_rules! call {
+        ($imm2:expr) => { pextrw(a, $imm2) as i32 }
+    }
+    constify_imm2!(imm2, call)
 }
 
 /// Copies data from the 64-bit vector of [4 x i16] to the destination,
@@ -334,6 +339,7 @@ pub unsafe fn _m_pextrw(a: __m64, imm2: i32) -> i32 {
 #[inline]
 #[target_feature(enable = "sse,mmx")]
 #[cfg_attr(test, assert_instr(pinsrw, imm2 = 0))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_insert_pi16(a: __m64, d: i32, imm2: i32) -> __m64 {
     macro_rules! call {
         ($imm2:expr) => { pinsrw(a, d, $imm2) }
@@ -347,8 +353,12 @@ pub unsafe fn _mm_insert_pi16(a: __m64, d: i32, imm2: i32) -> __m64 {
 #[inline]
 #[target_feature(enable = "sse,mmx")]
 #[cfg_attr(test, assert_instr(pinsrw, imm2 = 0))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _m_pinsrw(a: __m64, d: i32, imm2: i32) -> __m64 {
-    _mm_insert_pi16(a, d, imm2)
+    macro_rules! call {
+        ($imm2:expr) => { pinsrw(a, d, $imm2) }
+    }
+    constify_imm2!(imm2, call)
 }
 
 /// Takes the most significant bit from each 8-bit element in a 64-bit
@@ -376,6 +386,7 @@ pub unsafe fn _m_pmovmskb(a: __m64) -> i32 {
 #[inline]
 #[target_feature(enable = "sse,mmx")]
 #[cfg_attr(test, assert_instr(pshufw, imm8 = 0))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm_shuffle_pi16(a: __m64, imm8: i32) -> __m64 {
     macro_rules! call {
         ($imm8:expr) => { pshufw(a, $imm8) }
@@ -388,8 +399,12 @@ pub unsafe fn _mm_shuffle_pi16(a: __m64, imm8: i32) -> __m64 {
 #[inline]
 #[target_feature(enable = "sse,mmx")]
 #[cfg_attr(test, assert_instr(pshufw, imm8 = 0))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _m_pshufw(a: __m64, imm8: i32) -> __m64 {
-    _mm_shuffle_pi16(a, imm8)
+    macro_rules! call {
+        ($imm8:expr) => { pshufw(a, $imm8) }
+    }
+    constify_imm8!(imm8, call)
 }
 
 /// Convert the two lower packed single-precision (32-bit) floating-point

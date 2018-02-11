@@ -14,8 +14,8 @@
 #![feature(const_fn, link_llvm_intrinsics, platform_intrinsics, repr_simd,
            simd_ffi, target_feature, cfg_target_feature, i128_type, asm,
            integer_atomics, stmt_expr_attributes, core_intrinsics,
-           crate_in_paths)]
-#![cfg_attr(test, feature(proc_macro, test, attr_literals, abi_vectorcall))]
+           crate_in_paths, attr_literals, rustc_attrs)]
+#![cfg_attr(test, feature(proc_macro, test, abi_vectorcall))]
 #![cfg_attr(feature = "cargo-clippy",
             allow(inline_always, too_many_arguments, cast_sign_loss,
                   cast_lossless, cast_possible_wrap,

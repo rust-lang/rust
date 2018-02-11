@@ -24,6 +24,7 @@ use x86::*;
 /// Extract a 64-bit integer from `a`, selected with `imm8`.
 #[inline]
 #[target_feature(enable = "avx2")]
+#[rustc_args_required_const(1)]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_extract_epi64(a: __m256i, imm8: i32) -> i64 {
     let imm8 = (imm8 & 3) as u32;

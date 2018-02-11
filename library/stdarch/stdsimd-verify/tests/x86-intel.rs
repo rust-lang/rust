@@ -25,9 +25,9 @@ struct Function {
     target_feature: Option<&'static str>,
     instrs: &'static [&'static str],
     file: &'static str,
+    required_const: &'static [usize],
 }
 
-static BOOL: Type = Type::Bool;
 static F32: Type = Type::PrimFloat(32);
 static F64: Type = Type::PrimFloat(64);
 static I16: Type = Type::PrimSigned(16);
@@ -63,7 +63,6 @@ enum Type {
     M256,
     M256D,
     M256I,
-    Bool,
     Tuple,
     CpuidResult,
 }
@@ -301,7 +300,7 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
 
     // Make sure we've got the right return type.
     if let Some(t) = rust.ret {
-        equate(t, &intel.rettype, rust.name)?;
+        equate(t, &intel.rettype, rust.name, false)?;
     } else if intel.rettype != "" && intel.rettype != "void" {
         bail!(
             "{} returns `{}` with intel, void in rust",
@@ -321,8 +320,9 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
         if rust.arguments.len() != intel.parameters.len() {
             bail!("wrong number of arguments on {}", rust.name)
         }
-        for (a, b) in intel.parameters.iter().zip(rust.arguments) {
-            equate(b, &a.type_, &intel.name)?;
+        for (i, (a, b)) in intel.parameters.iter().zip(rust.arguments).enumerate() {
+            let is_const = rust.required_const.contains(&i);
+            equate(b, &a.type_, &intel.name, is_const)?;
         }
     }
 
@@ -361,16 +361,25 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
     Ok(())
 }
 
-fn equate(t: &Type, intel: &str, intrinsic: &str) -> Result<(), String> {
+fn equate(t: &Type,
+          intel: &str,
+          intrinsic: &str,
+          is_const: bool) -> Result<(), String> {
     let intel = intel.replace(" *", "*");
     let intel = intel.replace(" const*", "*");
+    let require_const = || {
+        if is_const {
+            return Ok(())
+        }
+        Err(format!("argument required to be const but isn't"))
+    };
     match (t, &intel[..]) {
         (&Type::PrimFloat(32), "float") => {}
         (&Type::PrimFloat(64), "double") => {}
         (&Type::PrimSigned(16), "__int16") => {}
         (&Type::PrimSigned(16), "short") => {}
         (&Type::PrimSigned(32), "__int32") => {}
-        (&Type::PrimSigned(32), "const int") => {}
+        (&Type::PrimSigned(32), "const int") => require_const()?,
         (&Type::PrimSigned(32), "int") => {}
         (&Type::PrimSigned(64), "__int64") => {}
         (&Type::PrimSigned(64), "long long") => {}

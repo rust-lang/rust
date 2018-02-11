@@ -74,6 +74,7 @@ pub unsafe fn _mm_shuffle_epi8(a: __m128i, b: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(palignr, n = 15))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_alignr_epi8(a: __m128i, b: __m128i, n: i32) -> __m128i {
     let n = n as u32;
     // If palignr is shifting the pair of vectors more than the size of two

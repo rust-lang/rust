@@ -64,6 +64,7 @@ pub unsafe fn _mm_blendv_epi8(
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(pblendw, imm8 = 0xF0))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_blend_epi16(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
     let a = a.as_i16x8();
     let b = b.as_i16x8();
@@ -96,6 +97,7 @@ pub unsafe fn _mm_blendv_ps(a: __m128, b: __m128, mask: __m128) -> __m128 {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(blendpd, imm2 = 0b10))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_blend_pd(a: __m128d, b: __m128d, imm2: i32) -> __m128d {
     macro_rules! call {
         ($imm2:expr) => { blendpd(a, b, $imm2) }
@@ -108,6 +110,7 @@ pub unsafe fn _mm_blend_pd(a: __m128d, b: __m128d, imm2: i32) -> __m128d {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(blendps, imm4 = 0b0101))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_blend_ps(a: __m128, b: __m128, imm4: i32) -> __m128 {
     macro_rules! call {
         ($imm4:expr) => { blendps(a, b, $imm4) }
@@ -121,6 +124,7 @@ pub unsafe fn _mm_blend_ps(a: __m128, b: __m128, imm4: i32) -> __m128 {
 #[target_feature(enable = "sse4.1")]
 // TODO: Add test for Windows
 #[cfg_attr(test, assert_instr(extractps, imm8 = 0))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm_extract_ps(a: __m128, imm8: i32) -> i32 {
     mem::transmute(simd_extract::<_, f32>(a, imm8 as u32 & 0b11))
 }
@@ -132,6 +136,7 @@ pub unsafe fn _mm_extract_ps(a: __m128, imm8: i32) -> i32 {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(pextrb, imm8 = 0))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm_extract_epi8(a: __m128i, imm8: i32) -> i32 {
     let imm8 = (imm8 & 15) as u32;
     simd_extract::<_, u8>(a.as_u8x16(), imm8) as i32
@@ -142,6 +147,7 @@ pub unsafe fn _mm_extract_epi8(a: __m128i, imm8: i32) -> i32 {
 #[target_feature(enable = "sse4.1")]
 // TODO: Add test for Windows
 #[cfg_attr(test, assert_instr(extractps, imm8 = 1))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm_extract_epi32(a: __m128i, imm8: i32) -> i32 {
     let imm8 = (imm8 & 3) as u32;
     simd_extract::<_, i32>(a.as_i32x4(), imm8)
@@ -172,6 +178,7 @@ pub unsafe fn _mm_extract_epi32(a: __m128i, imm8: i32) -> i32 {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(insertps, imm8 = 0b1010))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_insert_ps(a: __m128, b: __m128, imm8: i32) -> __m128 {
     macro_rules! call {
         ($imm8:expr) => { insertps(a, b, $imm8) }
@@ -184,6 +191,7 @@ pub unsafe fn _mm_insert_ps(a: __m128, b: __m128, imm8: i32) -> __m128 {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(pinsrb, imm8 = 0))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_insert_epi8(a: __m128i, i: i32, imm8: i32) -> __m128i {
     mem::transmute(simd_insert(a.as_i8x16(), (imm8 & 0b1111) as u32, i as i8))
 }
@@ -193,6 +201,7 @@ pub unsafe fn _mm_insert_epi8(a: __m128i, i: i32, imm8: i32) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(pinsrd, imm8 = 0))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_insert_epi32(a: __m128i, i: i32, imm8: i32) -> __m128i {
     mem::transmute(simd_insert(a.as_i32x4(), (imm8 & 0b11) as u32, i))
 }
@@ -420,6 +429,7 @@ pub unsafe fn _mm_cvtepu32_epi64(a: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(dppd, imm8 = 0))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_dp_pd(a: __m128d, b: __m128d, imm8: i32) -> __m128d {
     macro_rules! call {
         ($imm8:expr) => { dppd(a, b, $imm8) }
@@ -437,6 +447,7 @@ pub unsafe fn _mm_dp_pd(a: __m128d, b: __m128d, imm8: i32) -> __m128d {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(dpps, imm8 = 0))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_dp_ps(a: __m128, b: __m128, imm8: i32) -> __m128 {
     macro_rules! call {
         ($imm8:expr) => { dpps(a, b, $imm8) }
@@ -554,6 +565,7 @@ pub unsafe fn _mm_ceil_ss(a: __m128, b: __m128) -> __m128 {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(roundpd, rounding = 0))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm_round_pd(a: __m128d, rounding: i32) -> __m128d {
     macro_rules! call {
         ($imm4:expr) => { roundpd(a, $imm4) }
@@ -583,6 +595,7 @@ pub unsafe fn _mm_round_pd(a: __m128d, rounding: i32) -> __m128d {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(roundps, rounding = 0))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm_round_ps(a: __m128, rounding: i32) -> __m128 {
     macro_rules! call {
         ($imm4:expr) => { roundps(a, $imm4) }
@@ -614,6 +627,7 @@ pub unsafe fn _mm_round_ps(a: __m128, rounding: i32) -> __m128 {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(roundsd, rounding = 0))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_round_sd(a: __m128d, b: __m128d, rounding: i32) -> __m128d {
     macro_rules! call {
         ($imm4:expr) => { roundsd(a, b, $imm4) }
@@ -645,6 +659,7 @@ pub unsafe fn _mm_round_sd(a: __m128d, b: __m128d, rounding: i32) -> __m128d {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(roundss, rounding = 0))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_round_ss(a: __m128, b: __m128, rounding: i32) -> __m128 {
     macro_rules! call {
         ($imm4:expr) => { roundss(a, b, $imm4) }
@@ -734,6 +749,7 @@ pub unsafe fn _mm_mullo_epi32(a: __m128i, b: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(mpsadbw, imm8 = 0))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_mpsadbw_epu8(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
     let a = a.as_u8x16();
     let b = b.as_u8x16();

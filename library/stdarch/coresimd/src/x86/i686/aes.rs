@@ -75,6 +75,7 @@ pub unsafe fn _mm_aesimc_si128(a: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "aes")]
 #[cfg_attr(test, assert_instr(aeskeygenassist, imm8 = 0))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm_aeskeygenassist_si128(a: __m128i, imm8: i32) -> __m128i {
     macro_rules! call {
         ($imm8:expr) => (aeskeygenassist(a, $imm8))

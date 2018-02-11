@@ -764,6 +764,7 @@ pub unsafe fn _mm_setzero_ps() -> __m128 {
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(shufps, mask = 3))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_shuffle_ps(a: __m128, b: __m128, mask: u32) -> __m128 {
     let mask = (mask & 0xFF) as u8;
 
@@ -1548,6 +1549,7 @@ pub const _MM_HINT_NTA: i32 = 0;
 #[cfg_attr(test, assert_instr(prefetcht1, strategy = _MM_HINT_T1))]
 #[cfg_attr(test, assert_instr(prefetcht2, strategy = _MM_HINT_T2))]
 #[cfg_attr(test, assert_instr(prefetchnta, strategy = _MM_HINT_NTA))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm_prefetch(p: *const i8, strategy: i32) {
     // The `strategy` must be a compile-time constant, so we use a short form
     // of `constify_imm8!` for now.
@@ -2739,8 +2741,7 @@ mod tests {
     unsafe fn test_mm_shuffle_ps() {
         let a = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
         let b = _mm_setr_ps(5.0, 6.0, 7.0, 8.0);
-        let mask = 0b00_01_01_11;
-        let r = _mm_shuffle_ps(a, b, mask);
+        let r = _mm_shuffle_ps(a, b, 0b00_01_01_11);
         assert_eq_m128(r, _mm_setr_ps(4.0, 2.0, 6.0, 5.0));
     }
 

@@ -123,6 +123,7 @@ pub unsafe fn _mm256_adds_epu16(a: __m256i, b: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpalignr, n = 15))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_alignr_epi8(a: __m256i, b: __m256i, n: i32) -> __m256i {
     let n = n as u32;
     // If palignr is shifting the pair of vectors more than the size of two
@@ -227,6 +228,7 @@ pub unsafe fn _mm256_avg_epu8(a: __m256i, b: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vblendps, imm8 = 9))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_blend_epi32(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
     let imm8 = (imm8 & 0xFF) as u8;
     let a = a.as_i32x4();
@@ -259,6 +261,7 @@ pub unsafe fn _mm_blend_epi32(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vblendps, imm8 = 9))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_blend_epi32(
     a: __m256i, b: __m256i, imm8: i32
 ) -> __m256i {
@@ -313,6 +316,7 @@ pub unsafe fn _mm256_blend_epi32(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpblendw, imm8 = 9))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_blend_epi16(
     a: __m256i, b: __m256i, imm8: i32
 ) -> __m256i {
@@ -697,6 +701,7 @@ pub unsafe fn _mm256_cvtepu8_epi64(a: __m128i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vextractf128, imm8 = 1))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm256_extracti128_si256(a: __m256i, imm8: i32) -> __m128i {
     let a = a.as_i64x4();
     let b = _mm256_undefined_si256().as_i64x4();
@@ -763,6 +768,7 @@ pub unsafe fn _mm256_hsubs_epi16(a: __m256i, b: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherdd, scale = 1))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_i32gather_epi32(
     slice: *const i32, offsets: __m128i, scale: i32
 ) -> __m128i {
@@ -784,6 +790,7 @@ pub unsafe fn _mm_i32gather_epi32(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherdd, scale = 1))]
+#[rustc_args_required_const(4)]
 pub unsafe fn _mm_mask_i32gather_epi32(
     src: __m128i, slice: *const i32, offsets: __m128i, mask: __m128i,
     scale: i32,
@@ -805,6 +812,7 @@ pub unsafe fn _mm_mask_i32gather_epi32(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherdd, scale = 1))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_i32gather_epi32(
     slice: *const i32, offsets: __m256i, scale: i32
 ) -> __m256i {
@@ -826,6 +834,7 @@ pub unsafe fn _mm256_i32gather_epi32(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherdd, scale = 1))]
+#[rustc_args_required_const(4)]
 pub unsafe fn _mm256_mask_i32gather_epi32(
     src: __m256i, slice: *const i32, offsets: __m256i, mask: __m256i,
     scale: i32,
@@ -847,6 +856,7 @@ pub unsafe fn _mm256_mask_i32gather_epi32(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherdps, scale = 1))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_i32gather_ps(
     slice: *const f32, offsets: __m128i, scale: i32
 ) -> __m128 {
@@ -867,6 +877,7 @@ pub unsafe fn _mm_i32gather_ps(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherdps, scale = 1))]
+#[rustc_args_required_const(4)]
 pub unsafe fn _mm_mask_i32gather_ps(
     src: __m128, slice: *const f32, offsets: __m128i, mask: __m128, scale: i32
 ) -> __m128 {
@@ -884,6 +895,7 @@ pub unsafe fn _mm_mask_i32gather_ps(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherdps, scale = 1))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_i32gather_ps(
     slice: *const f32, offsets: __m256i, scale: i32
 ) -> __m256 {
@@ -904,6 +916,7 @@ pub unsafe fn _mm256_i32gather_ps(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherdps, scale = 1))]
+#[rustc_args_required_const(4)]
 pub unsafe fn _mm256_mask_i32gather_ps(
     src: __m256, slice: *const f32, offsets: __m256i, mask: __m256, scale: i32
 ) -> __m256 {
@@ -921,6 +934,7 @@ pub unsafe fn _mm256_mask_i32gather_ps(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherdq, scale = 1))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_i32gather_epi64(
     slice: *const i64, offsets: __m128i, scale: i32
 ) -> __m128i {
@@ -942,6 +956,7 @@ pub unsafe fn _mm_i32gather_epi64(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherdq, scale = 1))]
+#[rustc_args_required_const(4)]
 pub unsafe fn _mm_mask_i32gather_epi64(
     src: __m128i, slice: *const i64, offsets: __m128i, mask: __m128i,
     scale: i32,
@@ -963,6 +978,7 @@ pub unsafe fn _mm_mask_i32gather_epi64(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherdq, scale = 1))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_i32gather_epi64(
     slice: *const i64, offsets: __m128i, scale: i32
 ) -> __m256i {
@@ -984,6 +1000,7 @@ pub unsafe fn _mm256_i32gather_epi64(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherdq, scale = 1))]
+#[rustc_args_required_const(4)]
 pub unsafe fn _mm256_mask_i32gather_epi64(
     src: __m256i, slice: *const i64, offsets: __m128i, mask: __m256i,
     scale: i32,
@@ -1005,6 +1022,7 @@ pub unsafe fn _mm256_mask_i32gather_epi64(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherdpd, scale = 1))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_i32gather_pd(
     slice: *const f64, offsets: __m128i, scale: i32
 ) -> __m128d {
@@ -1025,6 +1043,7 @@ pub unsafe fn _mm_i32gather_pd(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherdpd, scale = 1))]
+#[rustc_args_required_const(4)]
 pub unsafe fn _mm_mask_i32gather_pd(
     src: __m128d, slice: *const f64, offsets: __m128i, mask: __m128d,
     scale: i32,
@@ -1043,6 +1062,7 @@ pub unsafe fn _mm_mask_i32gather_pd(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherdpd, scale = 1))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_i32gather_pd(
     slice: *const f64, offsets: __m128i, scale: i32
 ) -> __m256d {
@@ -1063,6 +1083,7 @@ pub unsafe fn _mm256_i32gather_pd(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherdpd, scale = 1))]
+#[rustc_args_required_const(4)]
 pub unsafe fn _mm256_mask_i32gather_pd(
     src: __m256d, slice: *const f64, offsets: __m128i, mask: __m256d,
     scale: i32,
@@ -1081,6 +1102,7 @@ pub unsafe fn _mm256_mask_i32gather_pd(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherqd, scale = 1))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_i64gather_epi32(
     slice: *const i32, offsets: __m128i, scale: i32
 ) -> __m128i {
@@ -1102,6 +1124,7 @@ pub unsafe fn _mm_i64gather_epi32(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherqd, scale = 1))]
+#[rustc_args_required_const(4)]
 pub unsafe fn _mm_mask_i64gather_epi32(
     src: __m128i, slice: *const i32, offsets: __m128i, mask: __m128i,
     scale: i32,
@@ -1123,6 +1146,7 @@ pub unsafe fn _mm_mask_i64gather_epi32(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherqd, scale = 1))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_i64gather_epi32(
     slice: *const i32, offsets: __m256i, scale: i32
 ) -> __m128i {
@@ -1144,6 +1168,7 @@ pub unsafe fn _mm256_i64gather_epi32(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherqd, scale = 1))]
+#[rustc_args_required_const(4)]
 pub unsafe fn _mm256_mask_i64gather_epi32(
     src: __m128i, slice: *const i32, offsets: __m256i, mask: __m128i,
     scale: i32,
@@ -1165,6 +1190,7 @@ pub unsafe fn _mm256_mask_i64gather_epi32(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherqps, scale = 1))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_i64gather_ps(
     slice: *const f32, offsets: __m128i, scale: i32
 ) -> __m128 {
@@ -1185,6 +1211,7 @@ pub unsafe fn _mm_i64gather_ps(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherqps, scale = 1))]
+#[rustc_args_required_const(4)]
 pub unsafe fn _mm_mask_i64gather_ps(
     src: __m128, slice: *const f32, offsets: __m128i, mask: __m128, scale: i32
 ) -> __m128 {
@@ -1202,6 +1229,7 @@ pub unsafe fn _mm_mask_i64gather_ps(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherqps, scale = 1))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_i64gather_ps(
     slice: *const f32, offsets: __m256i, scale: i32
 ) -> __m128 {
@@ -1222,6 +1250,7 @@ pub unsafe fn _mm256_i64gather_ps(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherqps, scale = 1))]
+#[rustc_args_required_const(4)]
 pub unsafe fn _mm256_mask_i64gather_ps(
     src: __m128, slice: *const f32, offsets: __m256i, mask: __m128, scale: i32
 ) -> __m128 {
@@ -1239,6 +1268,7 @@ pub unsafe fn _mm256_mask_i64gather_ps(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherqq, scale = 1))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_i64gather_epi64(
     slice: *const i64, offsets: __m128i, scale: i32
 ) -> __m128i {
@@ -1260,6 +1290,7 @@ pub unsafe fn _mm_i64gather_epi64(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherqq, scale = 1))]
+#[rustc_args_required_const(4)]
 pub unsafe fn _mm_mask_i64gather_epi64(
     src: __m128i, slice: *const i64, offsets: __m128i, mask: __m128i,
     scale: i32,
@@ -1281,6 +1312,7 @@ pub unsafe fn _mm_mask_i64gather_epi64(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherqq, scale = 1))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_i64gather_epi64(
     slice: *const i64, offsets: __m256i, scale: i32
 ) -> __m256i {
@@ -1302,6 +1334,7 @@ pub unsafe fn _mm256_i64gather_epi64(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherqq, scale = 1))]
+#[rustc_args_required_const(4)]
 pub unsafe fn _mm256_mask_i64gather_epi64(
     src: __m256i, slice: *const i64, offsets: __m256i, mask: __m256i,
     scale: i32,
@@ -1323,6 +1356,7 @@ pub unsafe fn _mm256_mask_i64gather_epi64(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherqpd, scale = 1))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_i64gather_pd(
     slice: *const f64, offsets: __m128i, scale: i32
 ) -> __m128d {
@@ -1343,6 +1377,7 @@ pub unsafe fn _mm_i64gather_pd(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherqpd, scale = 1))]
+#[rustc_args_required_const(4)]
 pub unsafe fn _mm_mask_i64gather_pd(
     src: __m128d, slice: *const f64, offsets: __m128i, mask: __m128d,
     scale: i32,
@@ -1361,6 +1396,7 @@ pub unsafe fn _mm_mask_i64gather_pd(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherqpd, scale = 1))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_i64gather_pd(
     slice: *const f64, offsets: __m256i, scale: i32
 ) -> __m256d {
@@ -1381,6 +1417,7 @@ pub unsafe fn _mm256_i64gather_pd(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherqpd, scale = 1))]
+#[rustc_args_required_const(4)]
 pub unsafe fn _mm256_mask_i64gather_pd(
     src: __m256d, slice: *const f64, offsets: __m256i, mask: __m256d,
     scale: i32,
@@ -1398,6 +1435,7 @@ pub unsafe fn _mm256_mask_i64gather_pd(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vinsertf128, imm8 = 1))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_inserti128_si256(
     a: __m256i, b: __m128i, imm8: i32
 ) -> __m256i {
@@ -1654,6 +1692,7 @@ pub unsafe fn _mm256_movemask_epi8(a: __m256i) -> i32 {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vmpsadbw, imm8 = 0))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_mpsadbw_epu8(
     a: __m256i, b: __m256i, imm8: i32
 ) -> __m256i {
@@ -1799,6 +1838,7 @@ pub unsafe fn _mm256_permutevar8x32_epi32(a: __m256i, b: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpermpd, imm8 = 9))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm256_permute4x64_epi64(a: __m256i, imm8: i32) -> __m256i {
     let imm8 = (imm8 & 0xFF) as u8;
     let zero = _mm256_setzero_si256().as_i64x4();
@@ -1851,6 +1891,7 @@ pub unsafe fn _mm256_permute4x64_epi64(a: __m256i, imm8: i32) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vperm2f128, imm8 = 9))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_permute2x128_si256(
     a: __m256i, b: __m256i, imm8: i32
 ) -> __m256i {
@@ -1869,6 +1910,7 @@ pub unsafe fn _mm256_permute2x128_si256(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpermpd, imm8 = 1))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm256_permute4x64_pd(a: __m256d, imm8: i32) -> __m256d {
     use x86::i586::avx::_mm256_undefined_pd;
     let imm8 = (imm8 & 0xFF) as u8;
@@ -1989,11 +2031,8 @@ pub unsafe fn _mm256_shuffle_epi8(a: __m256i, b: __m256i) -> __m256i {
 ///
 /// let a = _mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7);
 ///
-/// let shuffle1 = 0b00_11_10_01;
-/// let shuffle2 = 0b01_00_10_11;
-///
-/// let c1 = _mm256_shuffle_epi32(a, shuffle1);
-/// let c2 = _mm256_shuffle_epi32(a, shuffle2);
+/// let c1 = _mm256_shuffle_epi32(a, 0b00_11_10_01);
+/// let c2 = _mm256_shuffle_epi32(a, 0b01_00_10_11);
 ///
 /// let expected1 = _mm256_setr_epi32(1, 2, 3, 0, 5, 6, 7, 4);
 /// let expected2 = _mm256_setr_epi32(3, 2, 0, 1, 7, 6, 4, 5);
@@ -2008,6 +2047,7 @@ pub unsafe fn _mm256_shuffle_epi8(a: __m256i, b: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpermilps, imm8 = 9))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm256_shuffle_epi32(a: __m256i, imm8: i32) -> __m256i {
     // simd_shuffleX requires that its selector parameter be made up of
     // constant values, but we can't enforce that here. In spirit, we need
@@ -2069,6 +2109,7 @@ pub unsafe fn _mm256_shuffle_epi32(a: __m256i, imm8: i32) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpshufhw, imm8 = 9))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm256_shufflehi_epi16(a: __m256i, imm8: i32) -> __m256i {
     let imm8 = (imm8 & 0xFF) as u8;
     let a = a.as_i16x16();
@@ -2126,6 +2167,7 @@ pub unsafe fn _mm256_shufflehi_epi16(a: __m256i, imm8: i32) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpshuflw, imm8 = 9))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm256_shufflelo_epi16(a: __m256i, imm8: i32) -> __m256i {
     let imm8 = (imm8 & 0xFF) as u8;
     let a = a.as_i16x16();
@@ -2265,6 +2307,7 @@ pub unsafe fn _mm256_slli_epi64(a: __m256i, imm8: i32) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpslldq, imm8 = 3))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm256_slli_si256(a: __m256i, imm8: i32) -> __m256i {
     let a = a.as_i64x4();
     macro_rules! call {
@@ -2279,8 +2322,15 @@ pub unsafe fn _mm256_slli_si256(a: __m256i, imm8: i32) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpslldq, imm8 = 3))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm256_bslli_epi128(a: __m256i, imm8: i32) -> __m256i {
-    _mm256_slli_si256(a, imm8)
+    let a = a.as_i64x4();
+    macro_rules! call {
+        ($imm8:expr) => {
+            vpslldq(a, $imm8)
+        }
+    }
+    mem::transmute(constify_imm8!(imm8 * 8, call))
 }
 
 /// Shift packed 32-bit integers in `a` left by the amount
@@ -2381,6 +2431,7 @@ pub unsafe fn _mm256_srav_epi32(a: __m256i, count: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsrldq, imm8 = 3))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm256_srli_si256(a: __m256i, imm8: i32) -> __m256i {
     let a = a.as_i64x4();
     macro_rules! call {
@@ -2395,8 +2446,15 @@ pub unsafe fn _mm256_srli_si256(a: __m256i, imm8: i32) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsrldq, imm8 = 3))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm256_bsrli_epi128(a: __m256i, imm8: i32) -> __m256i {
-    _mm256_srli_si256(a, imm8)
+    let a = a.as_i64x4();
+    macro_rules! call {
+        ($imm8:expr) => {
+            vpsrldq(a, $imm8)
+        }
+    }
+    mem::transmute(constify_imm8!(imm8 * 8, call))
 }
 
 /// Shift packed 16-bit integers in `a` right by `count` while shifting in
@@ -2897,6 +2955,7 @@ pub unsafe fn _mm256_xor_si256(a: __m256i, b: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 // This intrinsic has no corresponding instruction.
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm256_extract_epi8(a: __m256i, imm8: i32) -> i8 {
     let imm8 = (imm8 & 31) as u32;
     simd_extract(a.as_i8x32(), imm8)
@@ -2909,6 +2968,7 @@ pub unsafe fn _mm256_extract_epi8(a: __m256i, imm8: i32) -> i8 {
 #[inline]
 #[target_feature(enable = "avx2")]
 // This intrinsic has no corresponding instruction.
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm256_extract_epi16(a: __m256i, imm8: i32) -> i16 {
     let imm8 = (imm8 & 15) as u32;
     simd_extract(a.as_i16x16(), imm8)
@@ -2918,6 +2978,7 @@ pub unsafe fn _mm256_extract_epi16(a: __m256i, imm8: i32) -> i16 {
 #[inline]
 #[target_feature(enable = "avx2")]
 // This intrinsic has no corresponding instruction.
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm256_extract_epi32(a: __m256i, imm8: i32) -> i32 {
     let imm8 = (imm8 & 7) as u32;
     simd_extract(a.as_i32x8(), imm8)

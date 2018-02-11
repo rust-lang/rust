@@ -314,7 +314,14 @@ pub unsafe fn _mm_subs_epu16(a: __m128i, b: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pslldq, imm8 = 1))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm_slli_si128(a: __m128i, imm8: i32) -> __m128i {
+    _mm_slli_si128_impl(a, imm8)
+}
+
+#[inline]
+#[target_feature(enable = "sse2")]
+unsafe fn _mm_slli_si128_impl(a: __m128i, imm8: i32) -> __m128i {
     let (zero, imm8) = (_mm_set1_epi8(0).as_i8x16(), imm8 as u32);
     let a = a.as_i8x16();
     macro_rules! shuffle {
@@ -357,22 +364,25 @@ pub unsafe fn _mm_slli_si128(a: __m128i, imm8: i32) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pslldq, imm8 = 1))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm_bslli_si128(a: __m128i, imm8: i32) -> __m128i {
-    _mm_slli_si128(a, imm8)
+    _mm_slli_si128_impl(a, imm8)
 }
 
 /// Shift `a` right by `imm8` bytes while shifting in zeros.
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(psrldq, imm8 = 1))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm_bsrli_si128(a: __m128i, imm8: i32) -> __m128i {
-    _mm_srli_si128(a, imm8)
+    _mm_srli_si128_impl(a, imm8)
 }
 
 /// Shift packed 16-bit integers in `a` left by `imm8` while shifting in zeros.
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(test, assert_instr(psllw))]
+#[cfg_attr(test, assert_instr(psllw, imm8 = 7))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm_slli_epi16(a: __m128i, imm8: i32) -> __m128i {
     mem::transmute(pslliw(a.as_i16x8(), imm8))
 }
@@ -389,7 +399,8 @@ pub unsafe fn _mm_sll_epi16(a: __m128i, count: __m128i) -> __m128i {
 /// Shift packed 32-bit integers in `a` left by `imm8` while shifting in zeros.
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(test, assert_instr(pslld))]
+#[cfg_attr(test, assert_instr(pslld, imm8 = 7))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm_slli_epi32(a: __m128i, imm8: i32) -> __m128i {
     mem::transmute(psllid(a.as_i32x4(), imm8))
 }
@@ -406,7 +417,8 @@ pub unsafe fn _mm_sll_epi32(a: __m128i, count: __m128i) -> __m128i {
 /// Shift packed 64-bit integers in `a` left by `imm8` while shifting in zeros.
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(test, assert_instr(psllq))]
+#[cfg_attr(test, assert_instr(psllq, imm8 = 7))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm_slli_epi64(a: __m128i, imm8: i32) -> __m128i {
     mem::transmute(pslliq(a.as_i64x2(), imm8))
 }
@@ -424,7 +436,8 @@ pub unsafe fn _mm_sll_epi64(a: __m128i, count: __m128i) -> __m128i {
 /// bits.
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(test, assert_instr(psraw))]
+#[cfg_attr(test, assert_instr(psraw, imm8 = 1))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm_srai_epi16(a: __m128i, imm8: i32) -> __m128i {
     mem::transmute(psraiw(a.as_i16x8(), imm8))
 }
@@ -442,7 +455,8 @@ pub unsafe fn _mm_sra_epi16(a: __m128i, count: __m128i) -> __m128i {
 /// bits.
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(test, assert_instr(psrad))]
+#[cfg_attr(test, assert_instr(psrad, imm8 = 1))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm_srai_epi32(a: __m128i, imm8: i32) -> __m128i {
     mem::transmute(psraid(a.as_i32x4(), imm8))
 }
@@ -460,7 +474,14 @@ pub unsafe fn _mm_sra_epi32(a: __m128i, count: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(psrldq, imm8 = 1))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm_srli_si128(a: __m128i, imm8: i32) -> __m128i {
+    _mm_srli_si128_impl(a, imm8)
+}
+
+#[inline]
+#[target_feature(enable = "sse2")]
+unsafe fn _mm_srli_si128_impl(a: __m128i, imm8: i32) -> __m128i {
     let (zero, imm8) = (_mm_set1_epi8(0).as_i8x16(), imm8 as u32);
     let a = a.as_i8x16();
     macro_rules! shuffle {
@@ -503,7 +524,8 @@ pub unsafe fn _mm_srli_si128(a: __m128i, imm8: i32) -> __m128i {
 /// zeros.
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(test, assert_instr(psrlw))]
+#[cfg_attr(test, assert_instr(psrlw, imm8 = 1))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm_srli_epi16(a: __m128i, imm8: i32) -> __m128i {
     mem::transmute(psrliw(a.as_i16x8(), imm8))
 }
@@ -521,7 +543,8 @@ pub unsafe fn _mm_srl_epi16(a: __m128i, count: __m128i) -> __m128i {
 /// zeros.
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(test, assert_instr(psrld))]
+#[cfg_attr(test, assert_instr(psrld, imm8 = 8))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm_srli_epi32(a: __m128i, imm8: i32) -> __m128i {
     mem::transmute(psrlid(a.as_i32x4(), imm8))
 }
@@ -539,7 +562,8 @@ pub unsafe fn _mm_srl_epi32(a: __m128i, count: __m128i) -> __m128i {
 /// zeros.
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(test, assert_instr(psrlq))]
+#[cfg_attr(test, assert_instr(psrlq, imm8 = 1))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm_srli_epi64(a: __m128i, imm8: i32) -> __m128i {
     mem::transmute(psrliq(a.as_i64x2(), imm8))
 }
@@ -985,6 +1009,7 @@ pub unsafe fn _mm_packus_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pextrw, imm8 = 9))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm_extract_epi16(a: __m128i, imm8: i32) -> i32 {
     simd_extract::<_, i16>(a.as_i16x8(), (imm8 & 7) as u32) as i32
 }
@@ -993,6 +1018,7 @@ pub unsafe fn _mm_extract_epi16(a: __m128i, imm8: i32) -> i32 {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pinsrw, imm8 = 9))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_insert_epi16(a: __m128i, i: i32, imm8: i32) -> __m128i {
     mem::transmute(simd_insert(a.as_i16x8(), (imm8 & 7) as u32, i as i16))
 }
@@ -1009,6 +1035,7 @@ pub unsafe fn _mm_movemask_epi8(a: __m128i) -> i32 {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pshufd, imm8 = 9))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm_shuffle_epi32(a: __m128i, imm8: i32) -> __m128i {
     // simd_shuffleX requires that its selector parameter be made up of
     // constant values, but we can't enforce that here. In spirit, we need
@@ -1072,6 +1099,7 @@ pub unsafe fn _mm_shuffle_epi32(a: __m128i, imm8: i32) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pshufhw, imm8 = 9))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm_shufflehi_epi16(a: __m128i, imm8: i32) -> __m128i {
     // See _mm_shuffle_epi32.
     let imm8 = (imm8 & 0xFF) as u8;
@@ -1130,6 +1158,7 @@ pub unsafe fn _mm_shufflehi_epi16(a: __m128i, imm8: i32) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pshuflw, imm8 = 9))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm_shufflelo_epi16(a: __m128i, imm8: i32) -> __m128i {
     // See _mm_shuffle_epi32.
     let imm8 = (imm8 & 0xFF) as u8;
@@ -2078,6 +2107,7 @@ pub unsafe fn _mm_loadu_pd(mem_addr: *const f64) -> __m128d {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(shufpd, imm8 = 1))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_shuffle_pd(a: __m128d, b: __m128d, imm8: i32) -> __m128d {
     match imm8 & 0b11 {
         0b00 => simd_shuffle2(a, b, [0, 2]),

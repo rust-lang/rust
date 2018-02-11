@@ -4,6 +4,7 @@ extern crate proc_macro;
 extern crate proc_macro2;
 #[macro_use]
 extern crate quote;
+#[macro_use]
 extern crate syn;
 
 use std::path::Path;
@@ -77,6 +78,7 @@ pub fn x86_functions(input: TokenStream) -> TokenStream {
                 Some(i) => my_quote! { Some(#i) },
                 None => my_quote! { None },
             };
+            let required_const = find_required_const(&f.attrs);
             my_quote! {
                 Function {
                     name: stringify!(#name),
@@ -85,6 +87,7 @@ pub fn x86_functions(input: TokenStream) -> TokenStream {
                     target_feature: #target_feature,
                     instrs: &[#(stringify!(#instrs)),*],
                     file: stringify!(#path),
+                    required_const: &[#(#required_const),*],
                 }
             }
         })
@@ -235,4 +238,30 @@ fn find_target_feature(attrs: &[syn::Attribute]) -> Option<syn::Lit> {
             _ => None,
         })
         .next()
+}
+
+fn find_required_const(attrs: &[syn::Attribute]) -> Vec<usize> {
+    attrs.iter()
+        .filter(|a| a.path.segments[0].ident == "rustc_args_required_const")
+        .map(|a| a.tts.clone())
+        .map(|a| syn::parse::<RustcArgsRequiredConst>(a.into()).unwrap())
+        .flat_map(|a| a.args)
+        .collect()
+}
+
+struct RustcArgsRequiredConst {
+    args: Vec<usize>,
+}
+
+impl syn::synom::Synom for RustcArgsRequiredConst {
+    named!(parse -> Self, do_parse!(
+        items: parens!(
+            call!(syn::punctuated::Punctuated::<syn::LitInt, syn::token::Comma>::parse_terminated)
+        ) >>
+        (RustcArgsRequiredConst {
+            args: items.1.into_iter()
+                .map(|a| a.value() as usize)
+                .collect(),
+        })
+    ));
 }

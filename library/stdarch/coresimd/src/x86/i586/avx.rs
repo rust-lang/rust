@@ -96,6 +96,7 @@ pub unsafe fn _mm256_or_ps(a: __m256, b: __m256) -> __m256 {
 #[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vshufpd, imm8 = 0x1))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_shuffle_pd(a: __m256d, b: __m256d, imm8: i32) -> __m256d {
     let imm8 = (imm8 & 0xFF) as u8;
     macro_rules! shuffle4 {
@@ -138,6 +139,7 @@ pub unsafe fn _mm256_shuffle_pd(a: __m256d, b: __m256d, imm8: i32) -> __m256d {
 #[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vshufps, imm8 = 0x0))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_shuffle_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
     let imm8 = (imm8 & 0xFF) as u8;
     macro_rules! shuffle4 {
@@ -330,6 +332,7 @@ pub unsafe fn _mm256_div_pd(a: __m256d, b: __m256d) -> __m256d {
 #[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vroundpd, b = 0x3))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm256_round_pd(a: __m256d, b: i32) -> __m256d {
     macro_rules! call {
         ($imm8:expr) => { roundpd256(a, $imm8) }
@@ -369,6 +372,7 @@ pub unsafe fn _mm256_floor_pd(a: __m256d) -> __m256d {
 #[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vroundps, b = 0x00))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm256_round_ps(a: __m256, b: i32) -> __m256 {
     macro_rules! call {
         ($imm8:expr) => {
@@ -419,6 +423,7 @@ pub unsafe fn _mm256_sqrt_pd(a: __m256d) -> __m256d {
 #[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vblendpd, imm8 = 9))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_blend_pd(a: __m256d, b: __m256d, imm8: i32) -> __m256d {
     let imm8 = (imm8 & 0xFF) as u8;
     macro_rules! blend4 {
@@ -461,6 +466,7 @@ pub unsafe fn _mm256_blend_pd(a: __m256d, b: __m256d, imm8: i32) -> __m256d {
 #[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vblendps, imm8 = 9))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_blend_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
     let imm8 = (imm8 & 0xFF) as u8;
     macro_rules! blend4 {
@@ -531,6 +537,7 @@ pub unsafe fn _mm256_blendv_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
 #[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vdpps, imm8 = 0x0))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_dp_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
     macro_rules! call {
         ($imm8:expr) => { vdpps(a, b, $imm8) }
@@ -678,6 +685,7 @@ pub const _CMP_TRUE_US: i32 = 0x1f;
 #[inline]
 #[target_feature(enable = "avx,sse2")]
 #[cfg_attr(test, assert_instr(vcmpeqpd, imm8 = 0))] // TODO Validate vcmppd
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_cmp_pd(a: __m128d, b: __m128d, imm8: i32) -> __m128d {
     macro_rules! call {
         ($imm8:expr) => { vcmppd(a, b, $imm8) }
@@ -691,6 +699,7 @@ pub unsafe fn _mm_cmp_pd(a: __m128d, b: __m128d, imm8: i32) -> __m128d {
 #[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vcmpeqpd, imm8 = 0))] // TODO Validate vcmppd
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_cmp_pd(a: __m256d, b: __m256d, imm8: i32) -> __m256d {
     macro_rules! call {
         ($imm8:expr) => { vcmppd256(a, b, $imm8) }
@@ -704,6 +713,7 @@ pub unsafe fn _mm256_cmp_pd(a: __m256d, b: __m256d, imm8: i32) -> __m256d {
 #[inline]
 #[target_feature(enable = "avx,sse")]
 #[cfg_attr(test, assert_instr(vcmpeqps, imm8 = 0))] // TODO Validate vcmpps
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_cmp_ps(a: __m128, b: __m128, imm8: i32) -> __m128 {
     macro_rules! call {
         ($imm8:expr) => { vcmpps(a, b, $imm8) }
@@ -717,6 +727,7 @@ pub unsafe fn _mm_cmp_ps(a: __m128, b: __m128, imm8: i32) -> __m128 {
 #[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vcmpeqps, imm8 = 0))] // TODO Validate vcmpps
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_cmp_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
     macro_rules! call {
         ($imm8:expr) => { vcmpps256(a, b, $imm8) }
@@ -732,6 +743,7 @@ pub unsafe fn _mm256_cmp_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
 #[inline]
 #[target_feature(enable = "avx,sse2")]
 #[cfg_attr(test, assert_instr(vcmpeqsd, imm8 = 0))] // TODO Validate vcmpsd
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_cmp_sd(a: __m128d, b: __m128d, imm8: i32) -> __m128d {
     macro_rules! call {
         ($imm8:expr) => { vcmpsd(a, b, $imm8) }
@@ -747,6 +759,7 @@ pub unsafe fn _mm_cmp_sd(a: __m128d, b: __m128d, imm8: i32) -> __m128d {
 #[inline]
 #[target_feature(enable = "avx,sse")]
 #[cfg_attr(test, assert_instr(vcmpeqss, imm8 = 0))] // TODO Validate vcmpss
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm_cmp_ss(a: __m128, b: __m128, imm8: i32) -> __m128 {
     macro_rules! call {
         ($imm8:expr) => { vcmpss(a, b, $imm8) }
@@ -830,7 +843,8 @@ pub unsafe fn _mm256_cvttps_epi32(a: __m256) -> __m256i {
 /// floating-point elements) from `a`, selected with `imm8`.
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(test, assert_instr(vextractf128))]
+#[cfg_attr(test, assert_instr(vextractf128, imm8 = 1))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm256_extractf128_ps(a: __m256, imm8: i32) -> __m128 {
     match imm8 & 1 {
         0 => simd_shuffle4(a, _mm256_undefined_ps(), [0, 1, 2, 3]),
@@ -842,7 +856,8 @@ pub unsafe fn _mm256_extractf128_ps(a: __m256, imm8: i32) -> __m128 {
 /// floating-point elements) from `a`, selected with `imm8`.
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(test, assert_instr(vextractf128))]
+#[cfg_attr(test, assert_instr(vextractf128, imm8 = 1))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm256_extractf128_pd(a: __m256d, imm8: i32) -> __m128d {
     match imm8 & 1 {
         0 => simd_shuffle2(a, _mm256_undefined_pd(), [0, 1]),
@@ -853,7 +868,8 @@ pub unsafe fn _mm256_extractf128_pd(a: __m256d, imm8: i32) -> __m128d {
 /// Extract 128 bits (composed of integer data) from `a`, selected with `imm8`.
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(test, assert_instr(vextractf128))]
+#[cfg_attr(test, assert_instr(vextractf128, imm8 = 1))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm256_extractf128_si256(a: __m256i, imm8: i32) -> __m128i {
     let b = _mm256_undefined_si256().as_i64x4();
     let dst: i64x2 = match imm8 & 1 {
@@ -903,6 +919,7 @@ pub unsafe fn _mm_permutevar_ps(a: __m128, b: __m128i) -> __m128 {
 #[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vpermilps, imm8 = 9))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm256_permute_ps(a: __m256, imm8: i32) -> __m256 {
     let imm8 = (imm8 & 0xFF) as u8;
     macro_rules! shuffle4 {
@@ -955,6 +972,7 @@ pub unsafe fn _mm256_permute_ps(a: __m256, imm8: i32) -> __m256 {
 #[inline]
 #[target_feature(enable = "avx,sse")]
 #[cfg_attr(test, assert_instr(vpermilps, imm8 = 9))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm_permute_ps(a: __m128, imm8: i32) -> __m128 {
     let imm8 = (imm8 & 0xFF) as u8;
     macro_rules! shuffle4 {
@@ -1025,6 +1043,7 @@ pub unsafe fn _mm_permutevar_pd(a: __m128d, b: __m128i) -> __m128d {
 #[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vpermilpd, imm8 = 0x1))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm256_permute_pd(a: __m256d, imm8: i32) -> __m256d {
     let imm8 = (imm8 & 0xFF) as u8;
     macro_rules! shuffle4 {
@@ -1067,6 +1086,7 @@ pub unsafe fn _mm256_permute_pd(a: __m256d, imm8: i32) -> __m256d {
 #[inline]
 #[target_feature(enable = "avx,sse2")]
 #[cfg_attr(test, assert_instr(vpermilpd, imm8 = 0x1))]
+#[rustc_args_required_const(1)]
 pub unsafe fn _mm_permute_pd(a: __m128d, imm8: i32) -> __m128d {
     let imm8 = (imm8 & 0xFF) as u8;
     macro_rules! shuffle2 {
@@ -1093,6 +1113,7 @@ pub unsafe fn _mm_permute_pd(a: __m128d, imm8: i32) -> __m128d {
 #[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vperm2f128, imm8 = 0x5))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_permute2f128_ps(
     a: __m256, b: __m256, imm8: i32
 ) -> __m256 {
@@ -1107,6 +1128,7 @@ pub unsafe fn _mm256_permute2f128_ps(
 #[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vperm2f128, imm8 = 0x31))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_permute2f128_pd(
     a: __m256d, b: __m256d, imm8: i32
 ) -> __m256d {
@@ -1121,6 +1143,7 @@ pub unsafe fn _mm256_permute2f128_pd(
 #[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vperm2f128, imm8 = 0x31))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_permute2f128_si256(
     a: __m256i, b: __m256i, imm8: i32
 ) -> __m256i {
@@ -1184,6 +1207,7 @@ pub unsafe fn _mm256_broadcast_pd(a: &__m128d) -> __m256d {
 #[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vinsertf128, imm8 = 1))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_insertf128_ps(a: __m256, b: __m128, imm8: i32) -> __m256 {
     let b = _mm256_castps128_ps256(b);
     match imm8 & 1 {
@@ -1198,6 +1222,7 @@ pub unsafe fn _mm256_insertf128_ps(a: __m256, b: __m128, imm8: i32) -> __m256 {
 #[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vinsertf128, imm8 = 1))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_insertf128_pd(
     a: __m256d, b: __m128d, imm8: i32
 ) -> __m256d {
@@ -1212,6 +1237,7 @@ pub unsafe fn _mm256_insertf128_pd(
 #[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vinsertf128, imm8 = 1))]
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_insertf128_si256(
     a: __m256i, b: __m128i, imm8: i32
 ) -> __m256i {
@@ -1228,6 +1254,7 @@ pub unsafe fn _mm256_insertf128_si256(
 #[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_insert_epi8(a: __m256i, i: i8, index: i32) -> __m256i {
     mem::transmute(simd_insert(a.as_i8x32(), (index as u32) & 31, i))
 }
@@ -1237,6 +1264,7 @@ pub unsafe fn _mm256_insert_epi8(a: __m256i, i: i8, index: i32) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_insert_epi16(a: __m256i, i: i16, index: i32) -> __m256i {
     mem::transmute(simd_insert(a.as_i16x16(), (index as u32) & 15, i))
 }
@@ -1246,6 +1274,7 @@ pub unsafe fn _mm256_insert_epi16(a: __m256i, i: i16, index: i32) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
+#[rustc_args_required_const(2)]
 pub unsafe fn _mm256_insert_epi32(a: __m256i, i: i32, index: i32) -> __m256i {
     mem::transmute(simd_insert(a.as_i32x8(), (index as u32) & 7, i))
 }
