@@ -1,4 +1,28 @@
-use super::parser::{Parser, TokenSet};
+//! This is the actual "grammar" of the Rust language.
+//!
+//! Each function in this module and its children corresponds
+//! to a production of the format grammar. Submodules roughly
+//! correspond to different *areas* of the grammar. By convention,
+//! each submodule starts with `use super::*` import and exports
+//! "public" productions via `pub(super)`.
+//!
+//! See docs for `Parser` to learn about API, available to the grammar,
+//! and see docs for `Event` to learn how this actually manages to
+//! produce parse trees.
+//!
+//! Code in this module also contains inline tests, which start with
+//! `// test name-of-the-test` comment and look like this:
+//!
+//! ```
+//! // test fn_item_with_zero_parameters
+//! // fn foo() {}
+//! ```
+//!
+//! After adding a new inline-test, run `cargo collect-tests` to extract
+//! it as a standalone text-fixture into `tests/data/parser/inline`, and
+//! run `cargo test` once to create the "gold" value.
+use parser::parser::Parser;
+use parser::token_set::TokenSet;
 use SyntaxKind;
 use syntax_kinds::*;
 

@@ -42,7 +42,7 @@ pub(crate) enum Event {
     ///    |
     ///   'foo'
     ///
-    /// See also `CompleteMarker::precede`.
+    /// See also `CompletedMarker::precede`.
     Start {
         kind: SyntaxKind,
         forward_parent: Option<u32>,
@@ -61,7 +61,7 @@ pub(crate) enum Event {
     },
 
     Error {
-        message: String,
+        msg: String,
     },
 }
 
@@ -140,9 +140,7 @@ pub(super) fn to_file(text: String, tokens: &[Token], events: Vec<Event>) -> Fil
                 }
                 builder.leaf(kind, len);
             }
-            &Event::Error { ref message } => builder.error(ErrorMsg {
-                message: message.clone(),
-            }),
+            &Event::Error { ref msg } => builder.error(ErrorMsg { msg: msg.clone() }),
         }
     }
     builder.finish()

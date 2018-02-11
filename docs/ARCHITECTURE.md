@@ -33,19 +33,22 @@ The centerpiece of this whole endeavor is the syntax tree, in the
 
 The syntax tree is produced using a three-staged process. 
 
-First, a raw text is split into tokens with a lexer. Lexer has a
-peculiar signature: it is an `Fn(&str) -> Token`, where token is a
-pair of `SyntaxKind` (you should have read the `tree` module and RFC
+First, a raw text is split into tokens with a lexer (the `lexer` module).
+Lexer has a peculiar signature: it is an `Fn(&str) -> Token`, where token 
+is a pair of `SyntaxKind` (you should have read the `tree` module and RFC
 by this time! :)) and a len. That is, lexer chomps only the first
 token of the input. This forces the lexer to be stateless, and makes
 it possible to implement incremental relexing easily.
 
 Then, the bulk of work, the parser turns a stream of tokens into
-stream of events. Not that parser **does not** construct a tree right
-away. This is done for several reasons:
+stream of events (the `parser` module; of particular interest are 
+the `parser/event` and `parser/parser` modules, which contain parsing 
+API, and the `parser/grammar` module, which contains actual parsing code
+for various Rust syntactic constructs). Not that parser **does not** 
+construct a tree right away. This is done for several reasons:
 
 * to decouple the actual tree data structure from the parser: you can
-  build any datastructre you want from the stream of events
+  build any data structure you want from the stream of events
   
 * to make parsing fast: you can produce a list of events without
   allocations
@@ -76,12 +79,6 @@ access to the text.
 And at last, the TreeBuilder converts a flat stream of events into a
 tree structure. It also *should* be responsible for attaching comments
 and rebalancing the tree, but it does not do this yet :) 
-
-
-## Error reporing
-
-TODO: describe how stuff like `skip_to_first` works
-
 
 ## Validator
 
