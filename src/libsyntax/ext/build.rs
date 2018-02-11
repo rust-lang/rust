@@ -319,14 +319,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 types: Vec<P<ast::Ty>>,
                 bindings: Vec<ast::TypeBinding> )
                 -> ast::Path {
-        use syntax::parse::token;
-
         let last_identifier = idents.pop().unwrap();
         let mut segments: Vec<ast::PathSegment> = Vec::new();
-        if global &&
-           !idents.first().map_or(false, |&ident| token::Ident(ident).is_path_segment_keyword()) {
-            segments.push(ast::PathSegment::crate_root(span));
-        }
 
         segments.extend(idents.into_iter().map(|i| ast::PathSegment::from_ident(i, span)));
         let parameters = if !lifetimes.is_empty() || !types.is_empty() || !bindings.is_empty() {
@@ -335,7 +329,9 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             None
         };
         segments.push(ast::PathSegment { identifier: last_identifier, span, parameters });
-        ast::Path { span, segments }
+        let path = ast::Path { span, segments };
+
+        if global { path.default_to_global() } else { path }
     }
 
     /// Constructs a qualified path.

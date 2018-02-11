@@ -733,9 +733,12 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
              field("should_panic", fail_expr),
              field("allow_fail", allow_fail_expr)]);
 
-
-    let mut visible_path = match cx.toplevel_reexport {
-        Some(id) => vec![id],
+    let mut visible_path = vec![];
+    if cx.features.extern_absolute_paths {
+        visible_path.push(keywords::Crate.ident());
+    }
+    match cx.toplevel_reexport {
+        Some(id) => visible_path.push(id),
         None => {
             let diag = cx.span_diagnostic;
             diag.bug("expected to find top-level re-export name, but found None");
