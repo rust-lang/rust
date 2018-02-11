@@ -13,7 +13,6 @@
 //! This file implements the various regression test suites that we execute on
 //! our CI.
 
-use std::collections::HashSet;
 use std::env;
 use std::ffi::OsString;
 use std::iter;
@@ -26,6 +25,7 @@ use std::io::Read;
 use build_helper::{self, output};
 
 use builder::{Kind, RunConfig, ShouldRun, Builder, Compiler, Step};
+use Crate as CargoCrate;
 use cache::{INTERNER, Interned};
 use compile;
 use dist;
@@ -550,180 +550,213 @@ fn testdir(build: &Build, host: Interned<String>) -> PathBuf {
     build.out.join(host).join("test")
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-struct Test {
-    path: &'static str,
-    mode: &'static str,
-    suite: &'static str,
+macro_rules! default_test {
+    ($name:ident { path: $path:expr, mode: $mode:expr, suite: $suite:expr }) => {
+        test!($name { path: $path, mode: $mode, suite: $suite, default: true, host: false });
+    }
 }
 
-static DEFAULT_COMPILETESTS: &[Test] = &[
-    Test { path: "src/test/ui", mode: "ui", suite: "ui" },
-    Test { path: "src/test/run-pass", mode: "run-pass", suite: "run-pass" },
-    Test { path: "src/test/compile-fail", mode: "compile-fail", suite: "compile-fail" },
-    Test { path: "src/test/parse-fail", mode: "parse-fail", suite: "parse-fail" },
-    Test { path: "src/test/run-fail", mode: "run-fail", suite: "run-fail" },
-    Test {
-        path: "src/test/run-pass-valgrind",
-        mode: "run-pass-valgrind",
-        suite: "run-pass-valgrind"
-    },
-    Test { path: "src/test/mir-opt", mode: "mir-opt", suite: "mir-opt" },
-    Test { path: "src/test/codegen", mode: "codegen", suite: "codegen" },
-    Test { path: "src/test/codegen-units", mode: "codegen-units", suite: "codegen-units" },
-    Test { path: "src/test/incremental", mode: "incremental", suite: "incremental" },
+macro_rules! host_test {
+    ($name:ident { path: $path:expr, mode: $mode:expr, suite: $suite:expr }) => {
+        test!($name { path: $path, mode: $mode, suite: $suite, default: true, host: true });
+    }
+}
 
+macro_rules! test {
+    ($name:ident {
+        path: $path:expr,
+        mode: $mode:expr,
+        suite: $suite:expr,
+        default: $default:expr,
+        host: $host:expr
+    }) => {
+        #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+        pub struct $name {
+            pub compiler: Compiler,
+            pub target: Interned<String>,
+        }
+
+        impl Step for $name {
+            type Output = ();
+            const DEFAULT: bool = $default;
+            const ONLY_HOSTS: bool = $host;
+
+            fn should_run(run: ShouldRun) -> ShouldRun {
+                run.path($path)
+            }
+
+            fn make_run(run: RunConfig) {
+                let compiler = run.builder.compiler(run.builder.top_stage, run.host);
+
+                run.builder.ensure($name {
+                    compiler,
+                    target: run.target,
+                });
+            }
+
+            fn run(self, builder: &Builder) {
+                builder.ensure(Compiletest {
+                    compiler: self.compiler,
+                    target: self.target,
+                    mode: $mode,
+                    suite: $suite,
+                })
+            }
+        }
+    }
+}
+
+default_test!(Ui {
+    path: "src/test/ui",
+    mode: "ui",
+    suite: "ui"
+});
+
+default_test!(RunPass {
+    path: "src/test/run-pass",
+    mode: "run-pass",
+    suite: "run-pass"
+});
+
+default_test!(CompileFail {
+    path: "src/test/compile-fail",
+    mode: "compile-fail",
+    suite: "compile-fail"
+});
+
+default_test!(ParseFail {
+    path: "src/test/parse-fail",
+    mode: "parse-fail",
+    suite: "parse-fail"
+});
+
+default_test!(RunFail {
+    path: "src/test/run-fail",
+    mode: "run-fail",
+    suite: "run-fail"
+});
+
+default_test!(RunPassValgrind {
+    path: "src/test/run-pass-valgrind",
+    mode: "run-pass-valgrind",
+    suite: "run-pass-valgrind"
+});
+
+default_test!(MirOpt {
+    path: "src/test/mir-opt",
+    mode: "mir-opt",
+    suite: "mir-opt"
+});
+
+default_test!(Codegen {
+    path: "src/test/codegen",
+    mode: "codegen",
+    suite: "codegen"
+});
+
+default_test!(CodegenUnits {
+    path: "src/test/codegen-units",
+    mode: "codegen-units",
+    suite: "codegen-units"
+});
+
+default_test!(Incremental {
+    path: "src/test/incremental",
+    mode: "incremental",
+    suite: "incremental"
+});
+
+default_test!(Debuginfo {
+    path: "src/test/debuginfo",
     // What this runs varies depending on the native platform being apple
-    Test { path: "src/test/debuginfo", mode: "debuginfo-XXX", suite: "debuginfo" },
-];
+    mode: "debuginfo-XXX",
+    suite: "debuginfo"
+});
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct DefaultCompiletest {
-    compiler: Compiler,
-    target: Interned<String>,
-    mode: &'static str,
-    suite: &'static str,
-}
+host_test!(UiFullDeps {
+    path: "src/test/ui-fulldeps",
+    mode: "ui",
+    suite: "ui-fulldeps"
+});
 
-impl Step for DefaultCompiletest {
-    type Output = ();
-    const DEFAULT: bool = true;
+host_test!(RunPassFullDeps {
+    path: "src/test/run-pass-fulldeps",
+    mode: "run-pass",
+    suite: "run-pass-fulldeps"
+});
 
-    fn should_run(mut run: ShouldRun) -> ShouldRun {
-        for test in DEFAULT_COMPILETESTS {
-            run = run.path(test.path);
-        }
-        run
-    }
+host_test!(RunFailFullDeps {
+    path: "src/test/run-fail-fulldeps",
+    mode: "run-fail",
+    suite: "run-fail-fulldeps"
+});
 
-    fn make_run(run: RunConfig) {
-        let compiler = run.builder.compiler(run.builder.top_stage, run.host);
+host_test!(CompileFailFullDeps {
+    path: "src/test/compile-fail-fulldeps",
+    mode: "compile-fail",
+    suite: "compile-fail-fulldeps"
+});
 
-        let test = run.path.map(|path| {
-            DEFAULT_COMPILETESTS.iter().find(|&&test| {
-                path.ends_with(test.path)
-            }).unwrap_or_else(|| {
-                panic!("make_run in compile test to receive test path, received {:?}", path);
-            })
-        });
+host_test!(IncrementalFullDeps {
+    path: "src/test/incremental-fulldeps",
+    mode: "incremental",
+    suite: "incremental-fulldeps"
+});
 
-        if let Some(test) = test {
-            run.builder.ensure(DefaultCompiletest {
-                compiler,
-                target: run.target,
-                mode: test.mode,
-                suite: test.suite,
-            });
-        } else {
-            for test in DEFAULT_COMPILETESTS {
-                run.builder.ensure(DefaultCompiletest {
-                    compiler,
-                    target: run.target,
-                    mode: test.mode,
-                    suite: test.suite
-                });
-            }
-        }
-    }
+host_test!(Rustdoc {
+    path: "src/test/rustdoc",
+    mode: "rustdoc",
+    suite: "rustdoc"
+});
 
-    fn run(self, builder: &Builder) {
-        builder.ensure(Compiletest {
-            compiler: self.compiler,
-            target: self.target,
-            mode: self.mode,
-            suite: self.suite,
-        })
-    }
-}
+test!(Pretty {
+    path: "src/test/pretty",
+    mode: "pretty",
+    suite: "pretty",
+    default: false,
+    host: true
+});
+test!(RunPassPretty {
+    path: "src/test/run-pass/pretty",
+    mode: "pretty",
+    suite: "run-pass",
+    default: false,
+    host: true
+});
+test!(RunFailPretty {
+    path: "src/test/run-fail/pretty",
+    mode: "pretty",
+    suite: "run-fail",
+    default: false,
+    host: true
+});
+test!(RunPassValgrindPretty {
+    path: "src/test/run-pass-valgrind/pretty",
+    mode: "pretty",
+    suite: "run-pass-valgrind",
+    default: false,
+    host: true
+});
+test!(RunPassFullDepsPretty {
+    path: "src/test/run-pass-fulldeps/pretty",
+    mode: "pretty",
+    suite: "run-pass-fulldeps",
+    default: false,
+    host: true
+});
+test!(RunFailFullDepsPretty {
+    path: "src/test/run-fail-fulldeps/pretty",
+    mode: "pretty",
+    suite: "run-fail-fulldeps",
+    default: false,
+    host: true
+});
 
-// Also default, but host-only.
-static HOST_COMPILETESTS: &[Test] = &[
-    Test { path: "src/test/ui-fulldeps", mode: "ui", suite: "ui-fulldeps" },
-    Test { path: "src/test/run-pass-fulldeps", mode: "run-pass", suite: "run-pass-fulldeps" },
-    Test { path: "src/test/run-fail-fulldeps", mode: "run-fail", suite: "run-fail-fulldeps" },
-    Test {
-        path: "src/test/compile-fail-fulldeps",
-        mode: "compile-fail",
-        suite: "compile-fail-fulldeps",
-    },
-    Test {
-        path: "src/test/incremental-fulldeps",
-        mode: "incremental",
-        suite: "incremental-fulldeps",
-    },
-    Test { path: "src/test/rustdoc", mode: "rustdoc", suite: "rustdoc" },
-
-    Test { path: "src/test/pretty", mode: "pretty", suite: "pretty" },
-    Test { path: "src/test/run-pass/pretty", mode: "pretty", suite: "run-pass" },
-    Test { path: "src/test/run-fail/pretty", mode: "pretty", suite: "run-fail" },
-    Test { path: "src/test/run-pass-valgrind/pretty", mode: "pretty", suite: "run-pass-valgrind" },
-    Test { path: "src/test/run-pass-fulldeps/pretty", mode: "pretty", suite: "run-pass-fulldeps" },
-    Test { path: "src/test/run-fail-fulldeps/pretty", mode: "pretty", suite: "run-fail-fulldeps" },
-    Test { path: "src/test/run-make", mode: "run-make", suite: "run-make" },
-];
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct HostCompiletest {
-    compiler: Compiler,
-    target: Interned<String>,
-    mode: &'static str,
-    suite: &'static str,
-}
-
-impl Step for HostCompiletest {
-    type Output = ();
-    const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
-
-    fn should_run(mut run: ShouldRun) -> ShouldRun {
-        for test in HOST_COMPILETESTS {
-            run = run.path(test.path);
-        }
-        run
-    }
-
-    fn make_run(run: RunConfig) {
-        let compiler = run.builder.compiler(run.builder.top_stage, run.host);
-
-        let test = run.path.map(|path| {
-            HOST_COMPILETESTS.iter().find(|&&test| {
-                path.ends_with(test.path)
-            }).unwrap_or_else(|| {
-                panic!("make_run in compile test to receive test path, received {:?}", path);
-            })
-        });
-
-        if let Some(test) = test {
-            run.builder.ensure(HostCompiletest {
-                compiler,
-                target: run.target,
-                mode: test.mode,
-                suite: test.suite,
-            });
-        } else {
-            for test in HOST_COMPILETESTS {
-                if test.mode == "pretty" {
-                    continue;
-                }
-                run.builder.ensure(HostCompiletest {
-                    compiler,
-                    target: run.target,
-                    mode: test.mode,
-                    suite: test.suite
-                });
-            }
-        }
-    }
-
-    fn run(self, builder: &Builder) {
-        builder.ensure(Compiletest {
-            compiler: self.compiler,
-            target: self.target,
-            mode: self.mode,
-            suite: self.suite,
-        })
-    }
-}
+host_test!(RunMake {
+    path: "src/test/run-make",
+    mode: "run-make",
+    suite: "run-make"
+});
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 struct Compiletest {
@@ -902,7 +935,7 @@ impl Step for Compiletest {
             }
         }
         if suite == "run-make" && !build.config.llvm_enabled {
-            println!("Ignoring run-make test suite as they generally don't work without LLVM");
+            println!("Ignoring run-make test suite as they generally dont work without LLVM");
             return;
         }
 
@@ -1099,7 +1132,7 @@ pub struct CrateLibrustc {
     compiler: Compiler,
     target: Interned<String>,
     test_kind: TestKind,
-    krate: Option<Interned<String>>,
+    krate: Interned<String>,
 }
 
 impl Step for CrateLibrustc {
@@ -1115,34 +1148,25 @@ impl Step for CrateLibrustc {
         let builder = run.builder;
         let compiler = builder.compiler(builder.top_stage, run.host);
 
-        let make = |name: Option<Interned<String>>| {
-            let test_kind = if builder.kind == Kind::Test {
-                TestKind::Test
-            } else if builder.kind == Kind::Bench {
-                TestKind::Bench
-            } else {
-                panic!("unexpected builder.kind in crate: {:?}", builder.kind);
-            };
+        for krate in builder.in_tree_crates("rustc-main") {
+            if run.path.ends_with(&krate.path) {
+                let test_kind = if builder.kind == Kind::Test {
+                    TestKind::Test
+                } else if builder.kind == Kind::Bench {
+                    TestKind::Bench
+                } else {
+                    panic!("unexpected builder.kind in crate: {:?}", builder.kind);
+                };
 
-            builder.ensure(CrateLibrustc {
-                compiler,
-                target: run.target,
-                test_kind,
-                krate: name,
-            });
-        };
-
-        if let Some(path) = run.path {
-            for (name, krate_path) in builder.crates("rustc-main") {
-                if path.ends_with(krate_path) {
-                    make(Some(name));
-                }
+                builder.ensure(CrateLibrustc {
+                    compiler,
+                    target: run.target,
+                    test_kind,
+                    krate: krate.name,
+                });
             }
-        } else {
-            make(None);
         }
     }
-
 
     fn run(self, builder: &Builder) {
         builder.ensure(Crate {
@@ -1156,27 +1180,95 @@ impl Step for CrateLibrustc {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Crate {
+pub struct CrateNotDefault {
     compiler: Compiler,
     target: Interned<String>,
-    mode: Mode,
     test_kind: TestKind,
-    krate: Option<Interned<String>>,
+    krate: &'static str,
 }
 
-impl Step for Crate {
+impl Step for CrateNotDefault {
     type Output = ();
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.krate("std").krate("test")
+        run.path("src/liballoc_jemalloc")
+            .path("src/librustc_asan")
+            .path("src/librustc_lsan")
+            .path("src/librustc_msan")
+            .path("src/librustc_tsan")
     }
 
     fn make_run(run: RunConfig) {
         let builder = run.builder;
         let compiler = builder.compiler(builder.top_stage, run.host);
 
-        let make = |mode: Mode, name: Option<Interned<String>>| {
+        let test_kind = if builder.kind == Kind::Test {
+            TestKind::Test
+        } else if builder.kind == Kind::Bench {
+            TestKind::Bench
+        } else {
+            panic!("unexpected builder.kind in crate: {:?}", builder.kind);
+        };
+
+        builder.ensure(CrateNotDefault {
+            compiler,
+            target: run.target,
+            test_kind,
+            krate: match run.path {
+                _ if run.path.ends_with("src/liballoc_jemalloc") => "alloc_jemalloc",
+                _ if run.path.ends_with("src/librustc_asan") => "rustc_asan",
+                _ if run.path.ends_with("src/librustc_lsan") => "rustc_lsan",
+                _ if run.path.ends_with("src/librustc_msan") => "rustc_msan",
+                _ if run.path.ends_with("src/librustc_tsan") => "rustc_tsan",
+                _ => panic!("unexpected path {:?}", run.path),
+            },
+        });
+    }
+
+    fn run(self, builder: &Builder) {
+        builder.ensure(Crate {
+            compiler: self.compiler,
+            target: self.target,
+            mode: Mode::Libstd,
+            test_kind: self.test_kind,
+            krate: INTERNER.intern_str(self.krate),
+        });
+    }
+}
+
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Crate {
+    compiler: Compiler,
+    target: Interned<String>,
+    mode: Mode,
+    test_kind: TestKind,
+    krate: Interned<String>,
+}
+
+impl Step for Crate {
+    type Output = ();
+    const DEFAULT: bool = true;
+
+    fn should_run(mut run: ShouldRun) -> ShouldRun {
+        let builder = run.builder;
+        run = run.krate("test");
+        for krate in run.builder.in_tree_crates("std") {
+            if krate.is_local(&run.builder) &&
+                !krate.name.contains("jemalloc") &&
+                !(krate.name.starts_with("rustc_") && krate.name.ends_with("san")) &&
+                krate.name != "dlmalloc" {
+                run = run.path(krate.local_path(&builder).to_str().unwrap());
+            }
+        }
+        run
+    }
+
+    fn make_run(run: RunConfig) {
+        let builder = run.builder;
+        let compiler = builder.compiler(builder.top_stage, run.host);
+
+        let make = |mode: Mode, krate: &CargoCrate| {
             let test_kind = if builder.kind == Kind::Test {
                 TestKind::Test
             } else if builder.kind == Kind::Bench {
@@ -1190,29 +1282,24 @@ impl Step for Crate {
                 target: run.target,
                 mode,
                 test_kind,
-                krate: name,
+                krate: krate.name,
             });
         };
 
-        if let Some(path) = run.path {
-            for (name, krate_path) in builder.crates("std") {
-                if path.ends_with(krate_path) {
-                    make(Mode::Libstd, Some(name));
-                }
+        for krate in builder.in_tree_crates("std") {
+            if run.path.ends_with(&krate.local_path(&builder)) {
+                make(Mode::Libstd, krate);
             }
-            for (name, krate_path) in builder.crates("test") {
-                if path.ends_with(krate_path) {
-                    make(Mode::Libtest, Some(name));
-                }
+        }
+        for krate in builder.in_tree_crates("test") {
+            if run.path.ends_with(&krate.local_path(&builder)) {
+                make(Mode::Libtest, krate);
             }
-        } else {
-            make(Mode::Libstd, None);
-            make(Mode::Libtest, None);
         }
     }
 
-    /// Run all unit tests plus documentation tests for an entire crate DAG defined
-    /// by a `Cargo.toml`
+    /// Run all unit tests plus documentation tests for a given crate defined
+    /// by a `Cargo.toml` (single manifest)
     ///
     /// This is what runs tests for crates like the standard library, compiler, etc.
     /// It essentially is the driver for running `cargo test`.
@@ -1241,27 +1328,23 @@ impl Step for Crate {
         };
 
         let mut cargo = builder.cargo(compiler, mode, target, test_kind.subcommand());
-        let (name, root) = match mode {
+        match mode {
             Mode::Libstd => {
                 compile::std_cargo(build, &compiler, target, &mut cargo);
-                ("libstd", "std")
             }
             Mode::Libtest => {
                 compile::test_cargo(build, &compiler, target, &mut cargo);
-                ("libtest", "test")
             }
             Mode::Librustc => {
                 builder.ensure(compile::Rustc { compiler, target });
                 compile::rustc_cargo(build, &mut cargo);
-                ("librustc", "rustc-main")
             }
             _ => panic!("can only test libraries"),
         };
-        let root = INTERNER.intern_string(String::from(root));
         let _folder = build.fold_output(|| {
-            format!("{}_stage{}-{}", test_kind.subcommand(), compiler.stage, name)
+            format!("{}_stage{}-{}", test_kind.subcommand(), compiler.stage, krate)
         });
-        println!("{} {} stage{} ({} -> {})", test_kind, name, compiler.stage,
+        println!("{} {} stage{} ({} -> {})", test_kind, krate, compiler.stage,
                 &compiler.host, target);
 
         // Build up the base `cargo test` command.
@@ -1273,37 +1356,7 @@ impl Step for Crate {
             cargo.arg("--no-fail-fast");
         }
 
-        match krate {
-            Some(krate) => {
-                cargo.arg("-p").arg(krate);
-            }
-            None => {
-                let mut visited = HashSet::new();
-                let mut next = vec![root];
-                while let Some(name) = next.pop() {
-                    // Right now jemalloc and the sanitizer crates are
-                    // target-specific crate in the sense that it's not present
-                    // on all platforms. Custom skip it here for now, but if we
-                    // add more this probably wants to get more generalized.
-                    //
-                    // Also skip `build_helper` as it's not compiled normally
-                    // for target during the bootstrap and it's just meant to be
-                    // a helper crate, not tested. If it leaks through then it
-                    // ends up messing with various mtime calculations and such.
-                    if !name.contains("jemalloc") &&
-                       *name != *"build_helper" &&
-                       !(name.starts_with("rustc_") && name.ends_with("san")) &&
-                       name != "dlmalloc" {
-                        cargo.arg("-p").arg(&format!("{}:0.0.0", name));
-                    }
-                    for dep in build.crates[&name].deps.iter() {
-                        if visited.insert(dep) {
-                            next.push(*dep);
-                        }
-                    }
-                }
-            }
-        }
+        cargo.arg("-p").arg(krate);
 
         // The tests are going to run with the *target* libraries, so we need to
         // ensure that those libraries show up in the LD_LIBRARY_PATH equivalent.
@@ -1355,18 +1408,18 @@ impl Step for Crate {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Rustdoc {
+pub struct CrateRustdoc {
     host: Interned<String>,
     test_kind: TestKind,
 }
 
-impl Step for Rustdoc {
+impl Step for CrateRustdoc {
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/librustdoc").path("src/tools/rustdoc")
+        run.paths(&["src/librustdoc", "src/tools/rustdoc"])
     }
 
     fn make_run(run: RunConfig) {
@@ -1380,7 +1433,7 @@ impl Step for Rustdoc {
             panic!("unexpected builder.kind in crate: {:?}", builder.kind);
         };
 
-        builder.ensure(Rustdoc {
+        builder.ensure(CrateRustdoc {
             host: run.host,
             test_kind,
         });

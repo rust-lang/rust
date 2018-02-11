@@ -95,7 +95,7 @@ pub struct RunConfig<'a> {
     pub builder: &'a Builder<'a>,
     pub host: Interned<String>,
     pub target: Interned<String>,
-    pub path: Option<&'a Path>,
+    pub path: &'a Path,
 }
 
 struct StepDescription {
@@ -105,6 +105,28 @@ struct StepDescription {
     only_build: bool,
     should_run: fn(ShouldRun) -> ShouldRun,
     make_run: fn(RunConfig),
+    name: &'static str,
+}
+
+#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq)]
+struct PathSet {
+    set: BTreeSet<PathBuf>,
+}
+
+impl PathSet {
+    fn one<P: Into<PathBuf>>(path: P) -> PathSet {
+        let mut set = BTreeSet::new();
+        set.insert(path.into());
+        PathSet { set }
+    }
+
+    fn has(&self, needle: &Path) -> bool {
+        self.set.iter().any(|p| p.ends_with(needle))
+    }
+
+    fn path(&self) -> &Path {
+        self.set.iter().next().unwrap()
+    }
 }
 
 impl StepDescription {
@@ -116,30 +138,17 @@ impl StepDescription {
             only_build: S::ONLY_BUILD,
             should_run: S::should_run,
             make_run: S::make_run,
+            name: unsafe { ::std::intrinsics::type_name::<S>() },
         }
     }
 
-    fn maybe_run(&self, builder: &Builder, should_run: &ShouldRun, path: Option<&Path>) {
-        if let Some(path) = path {
-            if builder.config.exclude.iter().any(|e| e == path) {
-                eprintln!("Skipping {:?} because this path is excluded", path);
-                return;
-            } else if !builder.config.exclude.is_empty() {
-                eprintln!("{:?} not skipped -- not in {:?}", path, builder.config.exclude);
-            }
-        } else {
-            if !should_run.paths.is_empty() {
-                if should_run.paths.iter().all(|p| builder.config.exclude.contains(&p)) {
-                    eprintln!("Skipping because all of its paths ({:?}) are excluded",
-                        should_run.paths);
-                    return;
-                } else if should_run.paths.len() > 1 {
-                    for path in &should_run.paths {
-                        self.maybe_run(builder, should_run, Some(path));
-                    }
-                    return;
-                }
-            }
+    fn maybe_run(&self, builder: &Builder, pathset: &PathSet) {
+        if builder.config.exclude.iter().any(|e| pathset.has(e)) {
+            eprintln!("Skipping {:?} because it is excluded", pathset);
+            return;
+        } else if !builder.config.exclude.is_empty() {
+            eprintln!("{:?} not skipped for {:?} -- not in {:?}", pathset,
+                self.name, builder.config.exclude);
         }
         let build = builder.build;
         let hosts = if self.only_build_targets || self.only_build {
@@ -165,7 +174,7 @@ impl StepDescription {
             for target in targets {
                 let run = RunConfig {
                     builder,
-                    path,
+                    path: pathset.path(),
                     host: *host,
                     target: *target,
                 };
@@ -178,19 +187,28 @@ impl StepDescription {
         let should_runs = v.iter().map(|desc| {
             (desc.should_run)(ShouldRun::new(builder))
         }).collect::<Vec<_>>();
+
+        // sanity checks on rules
+        for (desc, should_run) in v.iter().zip(&should_runs) {
+            assert!(!should_run.paths.is_empty(),
+                "{:?} should have at least one pathset", desc.name);
+        }
+
         if paths.is_empty() {
             for (desc, should_run) in v.iter().zip(should_runs) {
                 if desc.default && should_run.is_really_default {
-                    desc.maybe_run(builder, &should_run, None);
+                    for pathset in &should_run.paths {
+                        desc.maybe_run(builder, pathset);
+                    }
                 }
             }
         } else {
             for path in paths {
                 let mut attempted_run = false;
                 for (desc, should_run) in v.iter().zip(&should_runs) {
-                    if should_run.run(path) {
+                    if let Some(pathset) = should_run.pathset_for_path(path) {
                         attempted_run = true;
-                        desc.maybe_run(builder, &should_run, Some(path));
+                        desc.maybe_run(builder, pathset);
                     }
                 }
 
@@ -206,7 +224,7 @@ impl StepDescription {
 pub struct ShouldRun<'a> {
     pub builder: &'a Builder<'a>,
     // use a BTreeSet to maintain sort order
-    paths: BTreeSet<PathBuf>,
+    paths: BTreeSet<PathSet>,
 
     // If this is a default rule, this is an additional constraint placed on
     // it's run. Generally something like compiler docs being enabled.
@@ -227,15 +245,35 @@ impl<'a> ShouldRun<'a> {
         self
     }
 
+    // Unlike `krate` this will create just one pathset. As such, it probably shouldn't actually
+    // ever be used, but as we transition to having all rules properly handle passing krate(...) by
+    // actually doing something different for every crate passed.
+    pub fn all_krates(mut self, name: &str) -> Self {
+        let mut set = BTreeSet::new();
+        for krate in self.builder.in_tree_crates(name) {
+            set.insert(PathBuf::from(&krate.path));
+        }
+        self.paths.insert(PathSet { set });
+        self
+    }
+
     pub fn krate(mut self, name: &str) -> Self {
-        for (_, krate_path) in self.builder.crates(name) {
-            self.paths.insert(t!(env::current_dir()).join(krate_path));
+        for krate in self.builder.in_tree_crates(name) {
+            self.paths.insert(PathSet::one(&krate.path));
         }
         self
     }
 
-    pub fn path(mut self, path: &str) -> Self {
-        self.paths.insert(t!(env::current_dir()).join(path));
+    // single, non-aliased path
+    pub fn path(self, path: &str) -> Self {
+        self.paths(&[path])
+    }
+
+    // multiple aliases for the same job
+    pub fn paths(mut self, paths: &[&str]) -> Self {
+        self.paths.insert(PathSet {
+            set: paths.iter().map(PathBuf::from).collect(),
+        });
         self
     }
 
@@ -244,8 +282,8 @@ impl<'a> ShouldRun<'a> {
         self
     }
 
-    fn run(&self, path: &Path) -> bool {
-        self.paths.iter().any(|p| path.ends_with(p))
+    fn pathset_for_path(&self, path: &Path) -> Option<&PathSet> {
+        self.paths.iter().find(|pathset| pathset.has(path))
     }
 }
 
@@ -275,11 +313,16 @@ impl<'a> Builder<'a> {
                 tool::RustInstaller, tool::Cargo, tool::Rls, tool::Rustdoc, tool::Clippy,
                 native::Llvm, tool::Rustfmt, tool::Miri),
             Kind::Check => describe!(check::Std, check::Test, check::Rustc),
-            Kind::Test => describe!(test::Tidy, test::Bootstrap, test::DefaultCompiletest,
-                test::HostCompiletest, test::Crate, test::CrateLibrustc, test::Rustdoc,
-                test::Linkcheck, test::Cargotest, test::Cargo, test::Rls, test::Docs,
-                test::ErrorIndex, test::Distcheck, test::Rustfmt, test::Miri, test::Clippy,
-                test::RustdocJS, test::RustdocTheme),
+            Kind::Test => describe!(test::Tidy, test::Bootstrap, test::Ui, test::RunPass,
+                test::CompileFail, test::ParseFail, test::RunFail, test::RunPassValgrind,
+                test::MirOpt, test::Codegen, test::CodegenUnits, test::Incremental, test::Debuginfo,
+                test::UiFullDeps, test::RunPassFullDeps, test::RunFailFullDeps,
+                test::CompileFailFullDeps, test::IncrementalFullDeps, test::Rustdoc, test::Pretty,
+                test::RunPassPretty, test::RunFailPretty, test::RunPassValgrindPretty,
+                test::RunPassFullDepsPretty, test::RunFailFullDepsPretty, test::RunMake,
+                test::Crate, test::CrateLibrustc, test::Rustdoc, test::Linkcheck, test::Cargotest,
+                test::Cargo, test::Rls, test::Docs, test::ErrorIndex, test::Distcheck,
+                test::Rustfmt, test::Miri, test::Clippy, test::RustdocJS, test::RustdocTheme),
             Kind::Bench => describe!(test::Crate, test::CrateLibrustc),
             Kind::Doc => describe!(doc::UnstableBook, doc::UnstableBookGen, doc::TheBook,
                 doc::Standalone, doc::Std, doc::Test, doc::Rustc, doc::ErrorIndex, doc::Nomicon,
@@ -317,8 +360,10 @@ impl<'a> Builder<'a> {
             should_run = (desc.should_run)(should_run);
         }
         let mut help = String::from("Available paths:\n");
-        for path in should_run.paths {
-            help.push_str(format!("    ./x.py {} {}\n", subcommand, path.display()).as_str());
+        for pathset in should_run.paths {
+            for path in pathset.set {
+                help.push_str(format!("    ./x.py {} {}\n", subcommand, path.display()).as_str());
+            }
         }
         Some(help)
     }
