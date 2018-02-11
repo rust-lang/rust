@@ -1,8 +1,9 @@
 use super::*;
 
-pub(super) fn ty(p: &mut Parser) {
+pub(super) fn type_(p: &mut Parser) {
     match p.current() {
-        L_PAREN => paren_or_tuple_ty(p),
+        L_PAREN => paren_or_tuple_type(p),
+        EXCL => never_type(p),
         IDENT => path_type(p),
         _ => {
             p.error("expected type");
@@ -10,7 +11,7 @@ pub(super) fn ty(p: &mut Parser) {
     }
 }
 
-fn paren_or_tuple_ty(p: &mut Parser) {
+fn paren_or_tuple_type(p: &mut Parser) {
     assert!(p.at(L_PAREN));
     let m = p.start();
     p.bump();
@@ -18,7 +19,7 @@ fn paren_or_tuple_ty(p: &mut Parser) {
     let mut trailing_comma: bool = false;
     while !p.at(EOF) && !p.at(R_PAREN) {
         n_types += 1;
-        ty(p);
+        type_(p);
         if p.eat(COMMA) {
             trailing_comma = true;
         } else {
@@ -41,6 +42,15 @@ fn paren_or_tuple_ty(p: &mut Parser) {
         TUPLE_TYPE
     };
     m.complete(p, kind);
+}
+
+// test never_type
+// type Never = !;
+fn never_type(p: &mut Parser) {
+    assert!(p.at(EXCL));
+    let m = p.start();
+    p.bump();
+    m.complete(p, NEVER_TYPE);
 }
 
 fn path_type(p: &mut Parser) {

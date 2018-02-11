@@ -247,7 +247,7 @@ fn type_item(p: &mut Parser) {
     type_params::where_clause(p);
 
     p.expect(EQ);
-    types::ty(p);
+    types::type_(p);
     p.expect(SEMI);
 }
 
