@@ -118,8 +118,8 @@ pub fn target_features(sess: &Session) -> Vec<Symbol> {
         .iter()
         .filter(|feature| {
             let llvm_feature = to_llvm_feature(feature);
-            let ptr = CString::new(llvm_feature).unwrap().as_ptr();
-            unsafe { llvm::LLVMRustHasFeature(target_machine, ptr) }
+            let cstr = CString::new(llvm_feature).unwrap();
+            unsafe { llvm::LLVMRustHasFeature(target_machine, cstr.as_ptr()) }
         })
         .map(|feature| Symbol::intern(feature)).collect()
 }
