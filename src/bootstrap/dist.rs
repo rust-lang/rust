@@ -336,7 +336,7 @@ impl Step for Rustc {
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(Rustc {
-            compiler: run.builder.compiler(run.builder.top_stage, run.target),
+            compiler: run.builder.compiler(run.builder.top_stage, run.host),
         });
     }
 
@@ -987,7 +987,7 @@ impl Step for Cargo {
     fn make_run(run: RunConfig) {
         run.builder.ensure(Cargo {
             stage: run.builder.top_stage,
-            target: run.target,
+            target: run.host,
         });
     }
 
@@ -1074,7 +1074,7 @@ impl Step for Rls {
     fn make_run(run: RunConfig) {
         run.builder.ensure(Rls {
             stage: run.builder.top_stage,
-            target: run.target,
+            target: run.host,
         });
     }
 
@@ -1155,7 +1155,7 @@ impl Step for Rustfmt {
     fn make_run(run: RunConfig) {
         run.builder.ensure(Rustfmt {
             stage: run.builder.top_stage,
-            target: run.target,
+            target: run.host,
         });
     }
 
@@ -1242,7 +1242,7 @@ impl Step for Extended {
         run.builder.ensure(Extended {
             stage: run.builder.top_stage,
             host: run.builder.build.build,
-            target: run.target,
+            target: run.host,
         });
     }
 

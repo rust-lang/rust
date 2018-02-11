@@ -122,7 +122,7 @@ impl Step for Linkcheck {
     }
 
     fn make_run(run: RunConfig) {
-        run.builder.ensure(Linkcheck { host: run.target });
+        run.builder.ensure(Linkcheck { host: run.host });
     }
 }
 
@@ -143,7 +143,7 @@ impl Step for Cargotest {
     fn make_run(run: RunConfig) {
         run.builder.ensure(Cargotest {
             stage: run.builder.top_stage,
-            host: run.target,
+            host: run.host,
         });
     }
 
@@ -188,7 +188,7 @@ impl Step for Cargo {
     fn make_run(run: RunConfig) {
         run.builder.ensure(Cargo {
             stage: run.builder.top_stage,
-            host: run.target,
+            host: run.host,
         });
     }
 
@@ -232,7 +232,7 @@ impl Step for Rls {
     fn make_run(run: RunConfig) {
         run.builder.ensure(Rls {
             stage: run.builder.top_stage,
-            host: run.target,
+            host: run.host,
         });
     }
 
@@ -278,7 +278,7 @@ impl Step for Rustfmt {
     fn make_run(run: RunConfig) {
         run.builder.ensure(Rustfmt {
             stage: run.builder.top_stage,
-            host: run.target,
+            host: run.host,
         });
     }
 
@@ -326,7 +326,7 @@ impl Step for Miri {
     fn make_run(run: RunConfig) {
         run.builder.ensure(Miri {
             stage: run.builder.top_stage,
-            host: run.target,
+            host: run.host,
         });
     }
 
@@ -378,7 +378,7 @@ impl Step for Clippy {
     fn make_run(run: RunConfig) {
         run.builder.ensure(Clippy {
             stage: run.builder.top_stage,
-            host: run.target,
+            host: run.host,
         });
     }
 
