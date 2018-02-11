@@ -1330,92 +1330,102 @@ impl isize {
 
 // `Int` + `UnsignedInt` implemented for unsigned integers
 macro_rules! uint_impl {
-    ($SelfT:ty, $ActualT:ty, $BITS:expr) => {
-        /// Returns the smallest value that can be represented by this integer type.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// assert_eq!(u8::min_value(), 0);
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[inline]
-        pub const fn min_value() -> Self { 0 }
+    ($SelfT:ty, $ActualT:ty, $BITS:expr, $MaxV:expr) => {
+        doc_comment! {
+            concat!("Returns the smallest value that can be represented by this integer type.
 
-        /// Returns the largest value that can be represented by this integer type.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// assert_eq!(u8::max_value(), 255);
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[inline]
-        pub const fn max_value() -> Self { !0 }
+# Examples
 
-        /// Converts a string slice in a given base to an integer.
-        ///
-        /// The string is expected to be an optional `+` sign
-        /// followed by digits.
-        /// Leading and trailing whitespace represent an error.
-        /// Digits are a subset of these characters, depending on `radix`:
-        ///
-        /// * `0-9`
-        /// * `a-z`
-        /// * `A-Z`
-        ///
-        /// # Panics
-        ///
-        /// This function panics if `radix` is not in the range from 2 to 36.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// assert_eq!(u32::from_str_radix("A", 16), Ok(10));
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        pub fn from_str_radix(src: &str, radix: u32) -> Result<Self, ParseIntError> {
-            from_str_radix(src, radix)
+Basic usage:
+
+```
+assert_eq!(", stringify!($SelfT), "::min_value(), 0);
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[inline]
+            pub const fn min_value() -> Self { 0 }
         }
 
-        /// Returns the number of ones in the binary representation of `self`.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// let n = 0b01001100u8;
-        ///
-        /// assert_eq!(n.count_ones(), 3);
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[inline]
-        pub fn count_ones(self) -> u32 {
-            unsafe { intrinsics::ctpop(self as $ActualT) as u32 }
+        doc_comment! {
+            concat!("Returns the largest value that can be represented by this integer type.
+
+# Examples
+
+Basic usage:
+
+```
+assert_eq!(", stringify!($SelfT), "::max_value(), ", stringify!($MaxV), ");
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[inline]
+            pub const fn max_value() -> Self { !0 }
         }
 
-        /// Returns the number of zeros in the binary representation of `self`.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// let n = 0b01001100u8;
-        ///
-        /// assert_eq!(n.count_zeros(), 5);
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[inline]
-        pub fn count_zeros(self) -> u32 {
-            (!self).count_ones()
+        doc_comment! {
+            concat!("Converts a string slice in a given base to an integer.
+
+The string is expected to be an optional `+` sign
+followed by digits.
+Leading and trailing whitespace represent an error.
+Digits are a subset of these characters, depending on `radix`:
+
+* `0-9`
+* `a-z`
+* `A-Z`
+
+# Panics
+
+This function panics if `radix` is not in the range from 2 to 36.
+
+# Examples
+
+Basic usage:
+
+```
+assert_eq!(", stringify!($SelfT), "::from_str_radix(\"A\", 16), Ok(10));
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            pub fn from_str_radix(src: &str, radix: u32) -> Result<Self, ParseIntError> {
+                from_str_radix(src, radix)
+            }
+        }
+
+        doc_comment! {
+            concat!("Returns the number of ones in the binary representation of `self`.
+
+# Examples
+
+Basic usage:
+
+```
+let n = 0b01001100", stringify!($SelfT), ";
+
+assert_eq!(n.count_ones(), 3);
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[inline]
+            pub fn count_ones(self) -> u32 {
+                unsafe { intrinsics::ctpop(self as $ActualT) as u32 }
+            }
+        }
+
+        doc_comment! {
+            concat!("Returns the number of zeros in the binary representation of `self`.
+
+# Examples
+
+Basic usage:
+
+```
+let n = 0b01001100", stringify!($SelfT), ";
+
+assert_eq!(n.count_zeros(), 5);
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[inline]
+            pub fn count_zeros(self) -> u32 {
+                (!self).count_ones()
+            }
         }
 
         /// Returns the number of leading zeros in the binary representation
@@ -1436,33 +1446,35 @@ macro_rules! uint_impl {
             unsafe { intrinsics::ctlz(self as $ActualT) as u32 }
         }
 
-        /// Returns the number of trailing zeros in the binary representation
-        /// of `self`.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// let n = 0b0101000u16;
-        ///
-        /// assert_eq!(n.trailing_zeros(), 3);
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[inline]
-        pub fn trailing_zeros(self) -> u32 {
-            // As of LLVM 3.6 the codegen for the zero-safe cttz8 intrinsic
-            // emits two conditional moves on x86_64. By promoting the value to
-            // u16 and setting bit 8, we get better code without any conditional
-            // operations.
-            // FIXME: There's a LLVM patch (http://reviews.llvm.org/D9284)
-            // pending, remove this workaround once LLVM generates better code
-            // for cttz8.
-            unsafe {
-                if $BITS == 8 {
-                    intrinsics::cttz(self as u16 | 0x100) as u32
-                } else {
-                    intrinsics::cttz(self) as u32
+        doc_comment! {
+            concat!("Returns the number of trailing zeros in the binary representation
+of `self`.
+
+# Examples
+
+Basic usage:
+
+```
+let n = 0b0101000", stringify!($SelfT), ";
+
+assert_eq!(n.trailing_zeros(), 3);
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[inline]
+            pub fn trailing_zeros(self) -> u32 {
+                // As of LLVM 3.6 the codegen for the zero-safe cttz8 intrinsic
+                // emits two conditional moves on x86_64. By promoting the value to
+                // u16 and setting bit 8, we get better code without any conditional
+                // operations.
+                // FIXME: There's a LLVM patch (http://reviews.llvm.org/D9284)
+                // pending, remove this workaround once LLVM generates better code
+                // for cttz8.
+                unsafe {
+                    if $BITS == 8 {
+                        intrinsics::cttz(self as u16 | 0x100) as u32
+                    } else {
+                        intrinsics::cttz(self) as u32
+                    }
                 }
             }
         }
@@ -1535,347 +1547,382 @@ macro_rules! uint_impl {
             unsafe { intrinsics::bswap(self as $ActualT) as Self }
         }
 
-        /// Converts an integer from big endian to the target's endianness.
-        ///
-        /// On big endian this is a no-op. On little endian the bytes are
-        /// swapped.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// let n = 0x0123456789ABCDEFu64;
-        ///
-        /// if cfg!(target_endian = "big") {
-        ///     assert_eq!(u64::from_be(n), n)
-        /// } else {
-        ///     assert_eq!(u64::from_be(n), n.swap_bytes())
-        /// }
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[inline]
-        pub fn from_be(x: Self) -> Self {
-            if cfg!(target_endian = "big") { x } else { x.swap_bytes() }
-        }
+        doc_comment! {
+            concat!("Converts an integer from big endian to the target's endianness.
 
-        /// Converts an integer from little endian to the target's endianness.
-        ///
-        /// On little endian this is a no-op. On big endian the bytes are
-        /// swapped.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// let n = 0x0123456789ABCDEFu64;
-        ///
-        /// if cfg!(target_endian = "little") {
-        ///     assert_eq!(u64::from_le(n), n)
-        /// } else {
-        ///     assert_eq!(u64::from_le(n), n.swap_bytes())
-        /// }
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[inline]
-        pub fn from_le(x: Self) -> Self {
-            if cfg!(target_endian = "little") { x } else { x.swap_bytes() }
-        }
+On big endian this is a no-op. On little endian the bytes are
+swapped.
 
-        /// Converts `self` to big endian from the target's endianness.
-        ///
-        /// On big endian this is a no-op. On little endian the bytes are
-        /// swapped.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// let n = 0x0123456789ABCDEFu64;
-        ///
-        /// if cfg!(target_endian = "big") {
-        ///     assert_eq!(n.to_be(), n)
-        /// } else {
-        ///     assert_eq!(n.to_be(), n.swap_bytes())
-        /// }
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[inline]
-        pub fn to_be(self) -> Self { // or not to be?
-            if cfg!(target_endian = "big") { self } else { self.swap_bytes() }
-        }
+# Examples
 
-        /// Converts `self` to little endian from the target's endianness.
-        ///
-        /// On little endian this is a no-op. On big endian the bytes are
-        /// swapped.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// let n = 0x0123456789ABCDEFu64;
-        ///
-        /// if cfg!(target_endian = "little") {
-        ///     assert_eq!(n.to_le(), n)
-        /// } else {
-        ///     assert_eq!(n.to_le(), n.swap_bytes())
-        /// }
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[inline]
-        pub fn to_le(self) -> Self {
-            if cfg!(target_endian = "little") { self } else { self.swap_bytes() }
-        }
+Basic usage:
 
-        /// Checked integer addition. Computes `self + rhs`, returning `None`
-        /// if overflow occurred.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// assert_eq!(5u16.checked_add(65530), Some(65535));
-        /// assert_eq!(6u16.checked_add(65530), None);
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[inline]
-        pub fn checked_add(self, rhs: Self) -> Option<Self> {
-            let (a, b) = self.overflowing_add(rhs);
-            if b {None} else {Some(a)}
-        }
+```
+let n = 0xA1", stringify!($SelfT), ";
 
-        /// Checked integer subtraction. Computes `self - rhs`, returning
-        /// `None` if overflow occurred.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// assert_eq!(1u8.checked_sub(1), Some(0));
-        /// assert_eq!(0u8.checked_sub(1), None);
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[inline]
-        pub fn checked_sub(self, rhs: Self) -> Option<Self> {
-            let (a, b) = self.overflowing_sub(rhs);
-            if b {None} else {Some(a)}
-        }
-
-        /// Checked integer multiplication. Computes `self * rhs`, returning
-        /// `None` if overflow occurred.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// assert_eq!(5u8.checked_mul(51), Some(255));
-        /// assert_eq!(5u8.checked_mul(52), None);
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[inline]
-        pub fn checked_mul(self, rhs: Self) -> Option<Self> {
-            let (a, b) = self.overflowing_mul(rhs);
-            if b {None} else {Some(a)}
-        }
-
-        /// Checked integer division. Computes `self / rhs`, returning `None`
-        /// if `rhs == 0`.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// assert_eq!(128u8.checked_div(2), Some(64));
-        /// assert_eq!(1u8.checked_div(0), None);
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[inline]
-        pub fn checked_div(self, rhs: Self) -> Option<Self> {
-            match rhs {
-                0 => None,
-                rhs => Some(unsafe { intrinsics::unchecked_div(self, rhs) }),
+if cfg!(target_endian = \"big\") {
+    assert_eq!(", stringify!($SelfT), "::from_be(n), n)
+} else {
+    assert_eq!(", stringify!($SelfT), "::from_be(n), n.swap_bytes())
+}
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[inline]
+            pub fn from_be(x: Self) -> Self {
+                if cfg!(target_endian = "big") { x } else { x.swap_bytes() }
             }
         }
 
-        /// Checked integer remainder. Computes `self % rhs`, returning `None`
-        /// if `rhs == 0`.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// assert_eq!(5u32.checked_rem(2), Some(1));
-        /// assert_eq!(5u32.checked_rem(0), None);
-        /// ```
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        #[inline]
-        pub fn checked_rem(self, rhs: Self) -> Option<Self> {
-            if rhs == 0 {
-                None
-            } else {
-                Some(unsafe { intrinsics::unchecked_rem(self, rhs) })
+        doc_comment! {
+            concat!("Converts an integer from little endian to the target's endianness.
+
+On little endian this is a no-op. On big endian the bytes are
+swapped.
+
+# Examples
+
+Basic usage:
+
+```
+let n = 0xA1", stringify!($SelfT), ";
+
+if cfg!(target_endian = \"little\") {
+    assert_eq!(u64::from_le(n), n)
+} else {
+    assert_eq!(u64::from_le(n), n.swap_bytes())
+}
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[inline]
+            pub fn from_le(x: Self) -> Self {
+                if cfg!(target_endian = "little") { x } else { x.swap_bytes() }
             }
         }
 
-        /// Checked negation. Computes `-self`, returning `None` unless `self ==
-        /// 0`.
-        ///
-        /// Note that negating any positive integer will overflow.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// assert_eq!(0u32.checked_neg(), Some(0));
-        /// assert_eq!(1u32.checked_neg(), None);
-        /// ```
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        #[inline]
-        pub fn checked_neg(self) -> Option<Self> {
-            let (a, b) = self.overflowing_neg();
-            if b {None} else {Some(a)}
-        }
+        doc_comment! {
+            concat!("Converts `self` to big endian from the target's endianness.
 
-        /// Checked shift left. Computes `self << rhs`, returning `None`
-        /// if `rhs` is larger than or equal to the number of bits in `self`.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// assert_eq!(0x10u32.checked_shl(4), Some(0x100));
-        /// assert_eq!(0x10u32.checked_shl(33), None);
-        /// ```
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        #[inline]
-        pub fn checked_shl(self, rhs: u32) -> Option<Self> {
-            let (a, b) = self.overflowing_shl(rhs);
-            if b {None} else {Some(a)}
-        }
+On big endian this is a no-op. On little endian the bytes are
+swapped.
 
-        /// Checked shift right. Computes `self >> rhs`, returning `None`
-        /// if `rhs` is larger than or equal to the number of bits in `self`.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// assert_eq!(0x10u32.checked_shr(4), Some(0x1));
-        /// assert_eq!(0x10u32.checked_shr(33), None);
-        /// ```
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        #[inline]
-        pub fn checked_shr(self, rhs: u32) -> Option<Self> {
-            let (a, b) = self.overflowing_shr(rhs);
-            if b {None} else {Some(a)}
-        }
+# Examples
 
-        /// Saturating integer addition. Computes `self + rhs`, saturating at
-        /// the numeric bounds instead of overflowing.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// assert_eq!(100u8.saturating_add(1), 101);
-        /// assert_eq!(200u8.saturating_add(127), 255);
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[inline]
-        pub fn saturating_add(self, rhs: Self) -> Self {
-            match self.checked_add(rhs) {
-                Some(x) => x,
-                None => Self::max_value(),
+Basic usage:
+
+```
+let n = 0xA1", stringify!($SelfT), ";
+
+if cfg!(target_endian = \"big\") {
+    assert_eq!(n.to_be(), n)
+} else {
+    assert_eq!(n.to_be(), n.swap_bytes())
+}
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[inline]
+            pub fn to_be(self) -> Self { // or not to be?
+                if cfg!(target_endian = "big") { self } else { self.swap_bytes() }
             }
         }
 
-        /// Saturating integer subtraction. Computes `self - rhs`, saturating
-        /// at the numeric bounds instead of overflowing.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// assert_eq!(100u8.saturating_sub(27), 73);
-        /// assert_eq!(13u8.saturating_sub(127), 0);
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[inline]
-        pub fn saturating_sub(self, rhs: Self) -> Self {
-            match self.checked_sub(rhs) {
-                Some(x) => x,
-                None => Self::min_value(),
+        doc_comment! {
+            concat!("Converts `self` to little endian from the target's endianness.
+
+On little endian this is a no-op. On big endian the bytes are
+swapped.
+
+# Examples
+
+Basic usage:
+
+```
+let n = 0xA1", stringify!($SelfT), ";
+
+if cfg!(target_endian = \"little\") {
+    assert_eq!(n.to_le(), n)
+} else {
+    assert_eq!(n.to_le(), n.swap_bytes())
+}
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[inline]
+            pub fn to_le(self) -> Self {
+                if cfg!(target_endian = "little") { self } else { self.swap_bytes() }
             }
         }
 
-        /// Saturating integer multiplication. Computes `self * rhs`,
-        /// saturating at the numeric bounds instead of overflowing.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// use std::u32;
-        ///
-        /// assert_eq!(100u32.saturating_mul(127), 12700);
-        /// assert_eq!((1u32 << 23).saturating_mul(1 << 23), u32::MAX);
-        /// ```
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        #[inline]
-        pub fn saturating_mul(self, rhs: Self) -> Self {
-            self.checked_mul(rhs).unwrap_or(Self::max_value())
-        }
+        doc_comment! {
+            concat!("Checked integer addition. Computes `self + rhs`, returning `None`
+if overflow occurred.
 
-        /// Wrapping (modular) addition. Computes `self + rhs`,
-        /// wrapping around at the boundary of the type.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// assert_eq!(200u8.wrapping_add(55), 255);
-        /// assert_eq!(200u8.wrapping_add(155), 99);
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[inline]
-        pub fn wrapping_add(self, rhs: Self) -> Self {
-            unsafe {
-                intrinsics::overflowing_add(self, rhs)
+# Examples
+
+Basic usage:
+
+```
+assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(1), ",
+"Some(", stringify!($SelfT), "::max_value() - 1));
+assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(3),None);
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[inline]
+            pub fn checked_add(self, rhs: Self) -> Option<Self> {
+                let (a, b) = self.overflowing_add(rhs);
+                if b {None} else {Some(a)}
             }
         }
 
-        /// Wrapping (modular) subtraction. Computes `self - rhs`,
-        /// wrapping around at the boundary of the type.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// assert_eq!(100u8.wrapping_sub(100), 0);
-        /// assert_eq!(100u8.wrapping_sub(155), 201);
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[inline]
-        pub fn wrapping_sub(self, rhs: Self) -> Self {
-            unsafe {
-                intrinsics::overflowing_sub(self, rhs)
+        doc_comment! {
+            concat!("Checked integer subtraction. Computes `self - rhs`, returning
+`None` if overflow occurred.
+
+# Examples
+
+Basic usage:
+
+```
+assert_eq!(1", stringify!($SelfT), ".checked_sub(1), Some(0));
+assert_eq!(0", stringify!($SelfT), ".checked_sub(1), None);
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[inline]
+            pub fn checked_sub(self, rhs: Self) -> Option<Self> {
+                let (a, b) = self.overflowing_sub(rhs);
+                if b {None} else {Some(a)}
+            }
+        }
+
+        doc_comment! {
+            concat!("Checked integer multiplication. Computes `self * rhs`, returning
+`None` if overflow occurred.
+
+# Examples
+
+Basic usage:
+
+```
+assert_eq!(5", stringify!($SelfT), ".checked_mul(1), Some(5));
+assert_eq!(5", stringify!($SelfT), ".checked_mul(2), None);
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[inline]
+            pub fn checked_mul(self, rhs: Self) -> Option<Self> {
+                let (a, b) = self.overflowing_mul(rhs);
+                if b {None} else {Some(a)}
+            }
+        }
+
+        doc_comment! {
+            concat!("Checked integer division. Computes `self / rhs`, returning `None`
+if `rhs == 0`.
+
+# Examples
+
+Basic usage:
+
+```
+assert_eq!(128", stringify!($SelfT), ".checked_div(2), Some(64));
+assert_eq!(1", stringify!($SelfT), ".checked_div(0), None);
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[inline]
+            pub fn checked_div(self, rhs: Self) -> Option<Self> {
+                match rhs {
+                    0 => None,
+                    rhs => Some(unsafe { intrinsics::unchecked_div(self, rhs) }),
+                }
+            }
+        }
+
+        doc_comment! {
+            concat!("Checked integer remainder. Computes `self % rhs`, returning `None`
+if `rhs == 0`.
+
+# Examples
+
+Basic usage:
+
+```
+assert_eq!(5", stringify!($SelfT), ".checked_rem(2), Some(1));
+assert_eq!(5", stringify!($SelfT), ".checked_rem(0), None);
+```"),
+            #[stable(feature = "wrapping", since = "1.7.0")]
+            #[inline]
+            pub fn checked_rem(self, rhs: Self) -> Option<Self> {
+                if rhs == 0 {
+                    None
+                } else {
+                    Some(unsafe { intrinsics::unchecked_rem(self, rhs) })
+                }
+            }
+        }
+
+        doc_comment! {
+            concat!("Checked negation. Computes `-self`, returning `None` unless `self ==
+0`.
+
+Note that negating any positive integer will overflow.
+
+# Examples
+
+Basic usage:
+
+```
+assert_eq!(0", stringify!($SelfT), ".checked_neg(), Some(0));
+assert_eq!(1", stringify!($SelfT), ".checked_neg(), None);
+```"),
+            #[stable(feature = "wrapping", since = "1.7.0")]
+            #[inline]
+            pub fn checked_neg(self) -> Option<Self> {
+                let (a, b) = self.overflowing_neg();
+                if b {None} else {Some(a)}
+            }
+        }
+
+        doc_comment! {
+            concat!("Checked shift left. Computes `self << rhs`, returning `None`
+if `rhs` is larger than or equal to the number of bits in `self`.
+
+# Examples
+
+Basic usage:
+
+```
+assert_eq!(0x10", stringify!($SelfT), ".checked_shl(4), Some(0x100));
+assert_eq!(0x10", stringify!($SelfT), ".checked_shl(129), None);
+```"),
+            #[stable(feature = "wrapping", since = "1.7.0")]
+            #[inline]
+            pub fn checked_shl(self, rhs: u32) -> Option<Self> {
+                let (a, b) = self.overflowing_shl(rhs);
+                if b {None} else {Some(a)}
+            }
+        }
+
+        doc_comment! {
+            concat!("Checked shift right. Computes `self >> rhs`, returning `None`
+if `rhs` is larger than or equal to the number of bits in `self`.
+
+# Examples
+
+Basic usage:
+
+```
+assert_eq!(0x10", stringify!($SelfT), ".checked_shr(4), Some(0x1));
+assert_eq!(0x10", stringify!($SelfT), ".checked_shr(129), None);
+```"),
+            #[stable(feature = "wrapping", since = "1.7.0")]
+            #[inline]
+            pub fn checked_shr(self, rhs: u32) -> Option<Self> {
+                let (a, b) = self.overflowing_shr(rhs);
+                if b {None} else {Some(a)}
+            }
+        }
+
+        doc_comment! {
+            concat!("Saturating integer addition. Computes `self + rhs`, saturating at
+the numeric bounds instead of overflowing.
+
+# Examples
+
+Basic usage:
+
+```
+assert_eq!(100", stringify!($SelfT), ".saturating_add(1), 101);
+assert_eq!(200", stringify!($SelfT), ".saturating_add(127), 255);
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[inline]
+            pub fn saturating_add(self, rhs: Self) -> Self {
+                match self.checked_add(rhs) {
+                    Some(x) => x,
+                    None => Self::max_value(),
+                }
+            }
+        }
+
+        doc_comment! {
+            concat!("Saturating integer subtraction. Computes `self - rhs`, saturating
+at the numeric bounds instead of overflowing.
+
+# Examples
+
+Basic usage:
+
+```
+assert_eq!(100", stringify!($SelfT), ".saturating_sub(27), 73);
+assert_eq!(13", stringify!($SelfT), ".saturating_sub(127), 0);
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[inline]
+            pub fn saturating_sub(self, rhs: Self) -> Self {
+                match self.checked_sub(rhs) {
+                    Some(x) => x,
+                    None => Self::min_value(),
+                }
+            }
+        }
+
+        doc_comment! {
+            concat!("Saturating integer multiplication. Computes `self * rhs`,
+saturating at the numeric bounds instead of overflowing.
+
+# Examples
+
+Basic usage:
+
+```
+use std::", stringify!($SelfT), ";
+
+assert_eq!(100", stringify!($SelfT), ".saturating_mul(127), 12700);
+assert_eq!((1", stringify!($SelfT), " << 23).saturating_mul(1 << 23), ", stringify!($SelfT), "::MAX);
+```"),
+            #[stable(feature = "wrapping", since = "1.7.0")]
+            #[inline]
+            pub fn saturating_mul(self, rhs: Self) -> Self {
+                self.checked_mul(rhs).unwrap_or(Self::max_value())
+            }
+        }
+
+        doc_comment! {
+            concat!("Wrapping (modular) addition. Computes `self + rhs`,
+wrapping around at the boundary of the type.
+
+# Examples
+
+Basic usage:
+
+```
+assert_eq!(200", stringify!($SelfT), ".wrapping_add(55), 255);
+assert_eq!(200", stringify!($SelfT), ".wrapping_add(", stringify!($SelfT), "::max_value()), 199);
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[inline]
+            pub fn wrapping_add(self, rhs: Self) -> Self {
+                unsafe {
+                    intrinsics::overflowing_add(self, rhs)
+                }
+            }
+        }
+
+        doc_comment! {
+            concat!("Wrapping (modular) subtraction. Computes `self - rhs`,
+wrapping around at the boundary of the type.
+
+# Examples
+
+Basic usage:
+
+```
+assert_eq!(100u8.wrapping_sub(100), 0);
+assert_eq!(100u8.wrapping_sub(", stringify!($SelfT), "::max_value()), 101);
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[inline]
+            pub fn wrapping_sub(self, rhs: Self) -> Self {
+                unsafe {
+                    intrinsics::overflowing_sub(self, rhs)
+                }
             }
         }
 
@@ -1898,175 +1945,190 @@ macro_rules! uint_impl {
             }
         }
 
-        /// Wrapping (modular) division. Computes `self / rhs`.
-        /// Wrapped division on unsigned types is just normal division.
-        /// There's no way wrapping could ever happen.
-        /// This function exists, so that all operations
-        /// are accounted for in the wrapping operations.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// assert_eq!(100u8.wrapping_div(10), 10);
-        /// ```
-        #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[inline]
-        pub fn wrapping_div(self, rhs: Self) -> Self {
-            self / rhs
-        }
+        doc_comment! {
+            concat!("Wrapping (modular) division. Computes `self / rhs`.
+Wrapped division on unsigned types is just normal division.
+There's no way wrapping could ever happen.
+This function exists, so that all operations
+are accounted for in the wrapping operations.
 
-        /// Wrapping (modular) remainder. Computes `self % rhs`.
-        /// Wrapped remainder calculation on unsigned types is
-        /// just the regular remainder calculation.
-        /// There's no way wrapping could ever happen.
-        /// This function exists, so that all operations
-        /// are accounted for in the wrapping operations.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// assert_eq!(100u8.wrapping_rem(10), 0);
-        /// ```
-        #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[inline]
-        pub fn wrapping_rem(self, rhs: Self) -> Self {
-            self % rhs
-        }
+# Examples
 
-        /// Wrapping (modular) negation. Computes `-self`,
-        /// wrapping around at the boundary of the type.
-        ///
-        /// Since unsigned types do not have negative equivalents
-        /// all applications of this function will wrap (except for `-0`).
-        /// For values smaller than the corresponding signed type's maximum
-        /// the result is the same as casting the corresponding signed value.
-        /// Any larger values are equivalent to `MAX + 1 - (val - MAX - 1)` where
-        /// `MAX` is the corresponding signed type's maximum.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// assert_eq!(100u8.wrapping_neg(), 156);
-        /// assert_eq!(0u8.wrapping_neg(), 0);
-        /// assert_eq!(180u8.wrapping_neg(), 76);
-        /// assert_eq!(180u8.wrapping_neg(), (127 + 1) - (180u8 - (127 + 1)));
-        /// ```
-        #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[inline]
-        pub fn wrapping_neg(self) -> Self {
-            self.overflowing_neg().0
-        }
+Basic usage:
 
-        /// Panic-free bitwise shift-left; yields `self << mask(rhs)`,
-        /// where `mask` removes any high-order bits of `rhs` that
-        /// would cause the shift to exceed the bitwidth of the type.
-        ///
-        /// Note that this is *not* the same as a rotate-left; the
-        /// RHS of a wrapping shift-left is restricted to the range
-        /// of the type, rather than the bits shifted out of the LHS
-        /// being returned to the other end. The primitive integer
-        /// types all implement a `rotate_left` function, which may
-        /// be what you want instead.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// assert_eq!(1u8.wrapping_shl(7), 128);
-        /// assert_eq!(1u8.wrapping_shl(8), 1);
-        /// ```
-        #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[inline]
-        pub fn wrapping_shl(self, rhs: u32) -> Self {
-            unsafe {
-                intrinsics::unchecked_shl(self, (rhs & ($BITS - 1)) as $SelfT)
+```
+assert_eq!(100", stringify!($SelfT), ".wrapping_div(10), 10);
+```"),
+            #[stable(feature = "num_wrapping", since = "1.2.0")]
+            #[inline]
+            pub fn wrapping_div(self, rhs: Self) -> Self {
+                self / rhs
             }
         }
 
-        /// Panic-free bitwise shift-right; yields `self >> mask(rhs)`,
-        /// where `mask` removes any high-order bits of `rhs` that
-        /// would cause the shift to exceed the bitwidth of the type.
-        ///
-        /// Note that this is *not* the same as a rotate-right; the
-        /// RHS of a wrapping shift-right is restricted to the range
-        /// of the type, rather than the bits shifted out of the LHS
-        /// being returned to the other end. The primitive integer
-        /// types all implement a `rotate_right` function, which may
-        /// be what you want instead.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// assert_eq!(128u8.wrapping_shr(7), 1);
-        /// assert_eq!(128u8.wrapping_shr(8), 128);
-        /// ```
-        #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[inline]
-        pub fn wrapping_shr(self, rhs: u32) -> Self {
-            unsafe {
-                intrinsics::unchecked_shr(self, (rhs & ($BITS - 1)) as $SelfT)
+        doc_comment! {
+            concat!("Wrapping (modular) remainder. Computes `self % rhs`.
+Wrapped remainder calculation on unsigned types is
+just the regular remainder calculation.
+There's no way wrapping could ever happen.
+This function exists, so that all operations
+are accounted for in the wrapping operations.
+
+# Examples
+
+Basic usage:
+
+```
+assert_eq!(100", stringify!($SelfT), ".wrapping_rem(10), 0);
+```"),
+            #[stable(feature = "num_wrapping", since = "1.2.0")]
+            #[inline]
+            pub fn wrapping_rem(self, rhs: Self) -> Self {
+                self % rhs
             }
         }
 
-        /// Calculates `self` + `rhs`
-        ///
-        /// Returns a tuple of the addition along with a boolean indicating
-        /// whether an arithmetic overflow would occur. If an overflow would
-        /// have occurred then the wrapped value is returned.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage
-        ///
-        /// ```
-        /// use std::u32;
-        ///
-        /// assert_eq!(5u32.overflowing_add(2), (7, false));
-        /// assert_eq!(u32::MAX.overflowing_add(1), (0, true));
-        /// ```
-        #[inline]
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        pub fn overflowing_add(self, rhs: Self) -> (Self, bool) {
-            let (a, b) = unsafe {
-                intrinsics::add_with_overflow(self as $ActualT,
-                                              rhs as $ActualT)
-            };
-            (a as Self, b)
+        doc_comment! {
+            concat!("Wrapping (modular) negation. Computes `-self`,
+wrapping around at the boundary of the type.
+
+Since unsigned types do not have negative equivalents
+all applications of this function will wrap (except for `-0`).
+For values smaller than the corresponding signed type's maximum
+the result is the same as casting the corresponding signed value.
+Any larger values are equivalent to `MAX + 1 - (val - MAX - 1)` where
+`MAX` is the corresponding signed type's maximum.
+
+# Examples
+
+Basic usage:
+
+```
+assert_eq!(100", stringify!($SelfT), ".wrapping_neg(), ", stringify!($SelfT), "::max_value() - 100 + 1);
+assert_eq!(0", stringify!($SelfT), ".wrapping_neg(), 0);
+assert_eq!(180", stringify!($SelfT), ".wrapping_neg(), ", stringify!($SelfT), "::max_value() - 180 + 1);
+assert_eq!(180", stringify!($SelfT), ".wrapping_neg(), (", stringify!($SelfT), "::max_value() / 2",
+"+ 1) - (180", stringify!($SelfT), " - (", stringify!($SelfT), "::max_value() / 2 + 1)));
+```"),
+            #[stable(feature = "num_wrapping", since = "1.2.0")]
+            #[inline]
+            pub fn wrapping_neg(self) -> Self {
+                self.overflowing_neg().0
+            }
         }
 
-        /// Calculates `self` - `rhs`
-        ///
-        /// Returns a tuple of the subtraction along with a boolean indicating
-        /// whether an arithmetic overflow would occur. If an overflow would
-        /// have occurred then the wrapped value is returned.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage
-        ///
-        /// ```
-        /// use std::u32;
-        ///
-        /// assert_eq!(5u32.overflowing_sub(2), (3, false));
-        /// assert_eq!(0u32.overflowing_sub(1), (u32::MAX, true));
-        /// ```
-        #[inline]
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        pub fn overflowing_sub(self, rhs: Self) -> (Self, bool) {
-            let (a, b) = unsafe {
-                intrinsics::sub_with_overflow(self as $ActualT,
-                                              rhs as $ActualT)
-            };
-            (a as Self, b)
+        doc_comment! {
+            concat!("Panic-free bitwise shift-left; yields `self << mask(rhs)`,
+where `mask` removes any high-order bits of `rhs` that
+would cause the shift to exceed the bitwidth of the type.
+
+Note that this is *not* the same as a rotate-left; the
+RHS of a wrapping shift-left is restricted to the range
+of the type, rather than the bits shifted out of the LHS
+being returned to the other end. The primitive integer
+types all implement a `rotate_left` function, which may
+be what you want instead.
+
+# Examples
+
+Basic usage:
+
+```
+assert_eq!(1", stringify!($SelfT), ".wrapping_shl(7), 128);
+assert_eq!(1", stringify!($SelfT), ".wrapping_shl(", stringify!($BITS), "), 1);
+```"),
+            #[stable(feature = "num_wrapping", since = "1.2.0")]
+            #[inline]
+            pub fn wrapping_shl(self, rhs: u32) -> Self {
+                unsafe {
+                    intrinsics::unchecked_shl(self, (rhs & ($BITS - 1)) as $SelfT)
+                }
+            }
+        }
+
+        doc_comment! {
+            concat!("Panic-free bitwise shift-right; yields `self >> mask(rhs)`,
+where `mask` removes any high-order bits of `rhs` that
+would cause the shift to exceed the bitwidth of the type.
+
+Note that this is *not* the same as a rotate-right; the
+RHS of a wrapping shift-right is restricted to the range
+of the type, rather than the bits shifted out of the LHS
+being returned to the other end. The primitive integer
+types all implement a `rotate_right` function, which may
+be what you want instead.
+
+# Examples
+
+Basic usage:
+
+```
+assert_eq!(128", stringify!($SelfT), ".wrapping_shr(7), 1);
+assert_eq!(128", stringify!($SelfT), ".wrapping_shr(", stringify!($BITS), "), 128);
+```"),
+            #[stable(feature = "num_wrapping", since = "1.2.0")]
+            #[inline]
+            pub fn wrapping_shr(self, rhs: u32) -> Self {
+                unsafe {
+                    intrinsics::unchecked_shr(self, (rhs & ($BITS - 1)) as $SelfT)
+                }
+            }
+        }
+
+        doc_comment! {
+            concat!("Calculates `self` + `rhs`
+
+Returns a tuple of the addition along with a boolean indicating
+whether an arithmetic overflow would occur. If an overflow would
+have occurred then the wrapped value is returned.
+
+# Examples
+
+Basic usage
+
+```
+use std::u32;
+
+assert_eq!(5", stringify!($SelfT), ".overflowing_add(2), (7, false));
+assert_eq!(", stringify!($SelfT), "::MAX.overflowing_add(1), (0, true));
+```"),
+            #[inline]
+            #[stable(feature = "wrapping", since = "1.7.0")]
+            pub fn overflowing_add(self, rhs: Self) -> (Self, bool) {
+                let (a, b) = unsafe {
+                    intrinsics::add_with_overflow(self as $ActualT,
+                                                  rhs as $ActualT)
+                };
+                (a as Self, b)
+            }
+        }
+
+        doc_comment! {
+            concat!("Calculates `self` - `rhs`
+
+Returns a tuple of the subtraction along with a boolean indicating
+whether an arithmetic overflow would occur. If an overflow would
+have occurred then the wrapped value is returned.
+
+# Examples
+
+Basic usage
+
+```
+use std::u32;
+
+assert_eq!(5", stringify!($SelfT), ".overflowing_sub(2), (3, false));
+assert_eq!(0", stringify!($SelfT), ".overflowing_sub(1), (", stringify!($SelfT), "::MAX, true));
+```"),
+            #[inline]
+            #[stable(feature = "wrapping", since = "1.7.0")]
+            pub fn overflowing_sub(self, rhs: Self) -> (Self, bool) {
+                let (a, b) = unsafe {
+                    intrinsics::sub_with_overflow(self as $ActualT,
+                                                  rhs as $ActualT)
+                };
+                (a as Self, b)
+            }
         }
 
         /// Calculates the multiplication of `self` and `rhs`.
@@ -2093,129 +2155,140 @@ macro_rules! uint_impl {
             (a as Self, b)
         }
 
-        /// Calculates the divisor when `self` is divided by `rhs`.
-        ///
-        /// Returns a tuple of the divisor along with a boolean indicating
-        /// whether an arithmetic overflow would occur. Note that for unsigned
-        /// integers overflow never occurs, so the second value is always
-        /// `false`.
-        ///
-        /// # Panics
-        ///
-        /// This function will panic if `rhs` is 0.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage
-        ///
-        /// ```
-        /// assert_eq!(5u32.overflowing_div(2), (2, false));
-        /// ```
-        #[inline]
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        pub fn overflowing_div(self, rhs: Self) -> (Self, bool) {
-            (self / rhs, false)
+        doc_comment! {
+            concat!("Calculates the divisor when `self` is divided by `rhs`.
+
+Returns a tuple of the divisor along with a boolean indicating
+whether an arithmetic overflow would occur. Note that for unsigned
+integers overflow never occurs, so the second value is always
+`false`.
+
+# Panics
+
+This function will panic if `rhs` is 0.
+
+# Examples
+
+Basic usage
+
+```
+assert_eq!(5", stringify!($SelfT), ".overflowing_div(2), (2, false));
+```"),
+            #[inline]
+            #[stable(feature = "wrapping", since = "1.7.0")]
+            pub fn overflowing_div(self, rhs: Self) -> (Self, bool) {
+                (self / rhs, false)
+            }
         }
 
-        /// Calculates the remainder when `self` is divided by `rhs`.
-        ///
-        /// Returns a tuple of the remainder after dividing along with a boolean
-        /// indicating whether an arithmetic overflow would occur. Note that for
-        /// unsigned integers overflow never occurs, so the second value is
-        /// always `false`.
-        ///
-        /// # Panics
-        ///
-        /// This function will panic if `rhs` is 0.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage
-        ///
-        /// ```
-        /// assert_eq!(5u32.overflowing_rem(2), (1, false));
-        /// ```
-        #[inline]
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        pub fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
-            (self % rhs, false)
+        doc_comment! {
+            concat!("Calculates the remainder when `self` is divided by `rhs`.
+
+Returns a tuple of the remainder after dividing along with a boolean
+indicating whether an arithmetic overflow would occur. Note that for
+unsigned integers overflow never occurs, so the second value is
+always `false`.
+
+# Panics
+
+This function will panic if `rhs` is 0.
+
+# Examples
+
+Basic usage
+
+```
+assert_eq!(5", stringify!($SelfT), ".overflowing_rem(2), (1, false));
+```"),
+            #[inline]
+            #[stable(feature = "wrapping", since = "1.7.0")]
+            pub fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
+                (self % rhs, false)
+            }
         }
 
-        /// Negates self in an overflowing fashion.
-        ///
-        /// Returns `!self + 1` using wrapping operations to return the value
-        /// that represents the negation of this unsigned value. Note that for
-        /// positive unsigned values overflow always occurs, but negating 0 does
-        /// not overflow.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage
-        ///
-        /// ```
-        /// assert_eq!(0u32.overflowing_neg(), (0, false));
-        /// assert_eq!(2u32.overflowing_neg(), (-2i32 as u32, true));
-        /// ```
-        #[inline]
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        pub fn overflowing_neg(self) -> (Self, bool) {
-            ((!self).wrapping_add(1), self != 0)
+        doc_comment! {
+            concat!("Negates self in an overflowing fashion.
+
+Returns `!self + 1` using wrapping operations to return the value
+that represents the negation of this unsigned value. Note that for
+positive unsigned values overflow always occurs, but negating 0 does
+not overflow.
+
+# Examples
+
+Basic usage
+
+```
+assert_eq!(0", stringify!($SelfT), ".overflowing_neg(), (0, false));
+assert_eq!(2", stringify!($SelfT), ".overflowing_neg(), (-2i32 as ", stringify!($SelfT), ", true));
+```"),
+            #[inline]
+            #[stable(feature = "wrapping", since = "1.7.0")]
+            pub fn overflowing_neg(self) -> (Self, bool) {
+                ((!self).wrapping_add(1), self != 0)
+            }
         }
 
-        /// Shifts self left by `rhs` bits.
-        ///
-        /// Returns a tuple of the shifted version of self along with a boolean
-        /// indicating whether the shift value was larger than or equal to the
-        /// number of bits. If the shift value is too large, then value is
-        /// masked (N-1) where N is the number of bits, and this value is then
-        /// used to perform the shift.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage
-        ///
-        /// ```
-        /// assert_eq!(0x10u32.overflowing_shl(4), (0x100, false));
-        /// assert_eq!(0x10u32.overflowing_shl(36), (0x100, true));
-        /// ```
-        #[inline]
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        pub fn overflowing_shl(self, rhs: u32) -> (Self, bool) {
-            (self.wrapping_shl(rhs), (rhs > ($BITS - 1)))
+        doc_comment! {
+            concat!("Shifts self left by `rhs` bits.
+
+Returns a tuple of the shifted version of self along with a boolean
+indicating whether the shift value was larger than or equal to the
+number of bits. If the shift value is too large, then value is
+masked (N-1) where N is the number of bits, and this value is then
+used to perform the shift.
+
+# Examples
+
+Basic usage
+
+```
+assert_eq!(0x10", stringify!($SelfT), ".overflowing_shl(4), (0x100, false));
+assert_eq!(0x10", stringify!($SelfT), ".overflowing_shl(132), (0x100, true));
+```"),
+            #[inline]
+            #[stable(feature = "wrapping", since = "1.7.0")]
+            pub fn overflowing_shl(self, rhs: u32) -> (Self, bool) {
+                (self.wrapping_shl(rhs), (rhs > ($BITS - 1)))
+            }
         }
 
-        /// Shifts self right by `rhs` bits.
-        ///
-        /// Returns a tuple of the shifted version of self along with a boolean
-        /// indicating whether the shift value was larger than or equal to the
-        /// number of bits. If the shift value is too large, then value is
-        /// masked (N-1) where N is the number of bits, and this value is then
-        /// used to perform the shift.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage
-        ///
-        /// ```
-        /// assert_eq!(0x10u32.overflowing_shr(4), (0x1, false));
-        /// assert_eq!(0x10u32.overflowing_shr(36), (0x1, true));
-        /// ```
-        #[inline]
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        pub fn overflowing_shr(self, rhs: u32) -> (Self, bool) {
-            (self.wrapping_shr(rhs), (rhs > ($BITS - 1)))
+        doc_comment! {
+            concat!("Shifts self right by `rhs` bits.
+
+Returns a tuple of the shifted version of self along with a boolean
+indicating whether the shift value was larger than or equal to the
+number of bits. If the shift value is too large, then value is
+masked (N-1) where N is the number of bits, and this value is then
+used to perform the shift.
+
+# Examples
+
+Basic usage
+
+```
+assert_eq!(0x10", stringify!($SelfT), ".overflowing_shr(4), (0x1, false));
+assert_eq!(0x10", stringify!($SelfT), ".overflowing_shr(132), (0x1, true));
+```"),
+            #[inline]
+            #[stable(feature = "wrapping", since = "1.7.0")]
+            pub fn overflowing_shr(self, rhs: u32) -> (Self, bool) {
+                (self.wrapping_shr(rhs), (rhs > ($BITS - 1)))
+            }
 
         }
 
-        /// Raises self to the power of `exp`, using exponentiation by squaring.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// assert_eq!(2u32.pow(4), 16);
-        /// ```
+        doc_comment! {
+            concat!("Raises self to the power of `exp`, using exponentiation by squaring.
+
+# Examples
+
+Basic usage:
+
+```
+assert_eq!(2", stringify!($SelfT), ".pow(4), 16);
+```"),
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
         #[rustc_inherit_overflow_checks]
@@ -2240,21 +2313,24 @@ macro_rules! uint_impl {
 
             acc
         }
+    }
 
-        /// Returns `true` if and only if `self == 2^k` for some `k`.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// assert!(16u8.is_power_of_two());
-        /// assert!(!10u8.is_power_of_two());
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[inline]
-        pub fn is_power_of_two(self) -> bool {
-            (self.wrapping_sub(1)) & self == 0 && !(self == 0)
+        doc_comment! {
+            concat!("Returns `true` if and only if `self == 2^k` for some `k`.
+
+# Examples
+
+Basic usage:
+
+```
+assert!(16", stringify!($SelfT), ".is_power_of_two());
+assert!(!10", stringify!($SelfT), ".is_power_of_two());
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[inline]
+            pub fn is_power_of_two(self) -> bool {
+                (self.wrapping_sub(1)) & self == 0 && !(self == 0)
+            }
         }
 
         // Returns one less than next power of two.
@@ -2279,50 +2355,54 @@ macro_rules! uint_impl {
             <$SelfT>::max_value() >> z
         }
 
-        /// Returns the smallest power of two greater than or equal to `self`.
-        ///
-        /// When return value overflows (i.e. `self > (1 << (N-1))` for type
-        /// `uN`), it panics in debug mode and return value is wrapped to 0 in
-        /// release mode (the only situation in which method can return 0).
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// assert_eq!(2u8.next_power_of_two(), 2);
-        /// assert_eq!(3u8.next_power_of_two(), 4);
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[inline]
-        pub fn next_power_of_two(self) -> Self {
-            // Call the trait to get overflow checks
-            ops::Add::add(self.one_less_than_next_power_of_two(), 1)
+        doc_comment! {
+            concat!("Returns the smallest power of two greater than or equal to `self`.
+
+When return value overflows (i.e. `self > (1 << (N-1))` for type
+`uN`), it panics in debug mode and return value is wrapped to 0 in
+release mode (the only situation in which method can return 0).
+
+# Examples
+
+Basic usage:
+
+```
+assert_eq!(2", stringify!($SelfT), ".next_power_of_two(), 2);
+assert_eq!(3", stringify!($SelfT), ".next_power_of_two(), 4);
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[inline]
+            pub fn next_power_of_two(self) -> Self {
+                // Call the trait to get overflow checks
+                ops::Add::add(self.one_less_than_next_power_of_two(), 1)
+            }
         }
 
-        /// Returns the smallest power of two greater than or equal to `n`. If
-        /// the next power of two is greater than the type's maximum value,
-        /// `None` is returned, otherwise the power of two is wrapped in `Some`.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// assert_eq!(2u8.checked_next_power_of_two(), Some(2));
-        /// assert_eq!(3u8.checked_next_power_of_two(), Some(4));
-        /// assert_eq!(200u8.checked_next_power_of_two(), None);
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        pub fn checked_next_power_of_two(self) -> Option<Self> {
-            self.one_less_than_next_power_of_two().checked_add(1)
+        doc_comment! {
+            concat!("Returns the smallest power of two greater than or equal to `n`. If
+the next power of two is greater than the type's maximum value,
+`None` is returned, otherwise the power of two is wrapped in `Some`.
+
+# Examples
+
+Basic usage:
+
+```
+assert_eq!(2", stringify!($SelfT), ".checked_next_power_of_two(), Some(2));
+assert_eq!(3", stringify!($SelfT), ".checked_next_power_of_two(), Some(4));
+assert_eq!(", stringify!($SelfT), "::max_value().checked_next_power_of_two(), None);
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            pub fn checked_next_power_of_two(self) -> Option<Self> {
+                self.one_less_than_next_power_of_two().checked_add(1)
+            }
         }
     }
 }
 
 #[lang = "u8"]
 impl u8 {
-    uint_impl! { u8, u8, 8 }
+    uint_impl! { u8, u8, 8, 255 }
 
 
     /// Checks if the value is within the ASCII range.
@@ -2868,39 +2948,39 @@ impl u8 {
 
 #[lang = "u16"]
 impl u16 {
-    uint_impl! { u16, u16, 16 }
+    uint_impl! { u16, u16, 16, 65535 }
 }
 
 #[lang = "u32"]
 impl u32 {
-    uint_impl! { u32, u32, 32 }
+    uint_impl! { u32, u32, 32, 4294967295 }
 }
 
 #[lang = "u64"]
 impl u64 {
-    uint_impl! { u64, u64, 64 }
+    uint_impl! { u64, u64, 64, 18446744073709551615 }
 }
 
 #[lang = "u128"]
 impl u128 {
-    uint_impl! { u128, u128, 128 }
+    uint_impl! { u128, u128, 128, 340282366920938463463374607431768211455 }
 }
 
 #[cfg(target_pointer_width = "16")]
 #[lang = "usize"]
 impl usize {
-    uint_impl! { usize, u16, 16 }
+    uint_impl! { usize, u16, 16, 65536 }
 }
 #[cfg(target_pointer_width = "32")]
 #[lang = "usize"]
 impl usize {
-    uint_impl! { usize, u32, 32 }
+    uint_impl! { usize, u32, 32, 4294967295 }
 }
 
 #[cfg(target_pointer_width = "64")]
 #[lang = "usize"]
 impl usize {
-    uint_impl! { usize, u64, 64 }
+    uint_impl! { usize, u64, 64, 18446744073709551615 }
 }
 
 /// A classification of floating point numbers.
