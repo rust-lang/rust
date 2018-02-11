@@ -63,21 +63,24 @@ fn main() {
 #### `"Block"` (default):
 
 ```rust
-if lorem_ipsum &&
-    dolor_sit &&
-    amet_consectetur
-{
-    // ...
+fn main() {
+    if lorem_ipsum && dolor_sit && amet_consectetur && lorem_sit && dolor_consectetur && amet_ipsum
+        && lorem_consectetur
+    {
+        // ...
+    }
 }
 ```
 
 #### `"Visual"`:
 
 ```rust
-if lorem_ipsum &&
-   dolor_sit &&
-   amet_consectetur {
-    // ...
+fn main() {
+    if lorem_ipsum && dolor_sit && amet_consectetur && lorem_sit && dolor_consectetur && amet_ipsum
+       && lorem_consectetur
+    {
+        // ...
+    }
 }
 ```
 
