@@ -11,40 +11,6 @@ git:
 matrix:
   fast_finish: true
   include:
-    # Images used in testing PR and try-build should be run first.
-    - env: IMAGE=x86_64-gnu-llvm-3.9 RUST_BACKTRACE=1
-      if: type = pull_request OR branch = auto
-
-    - env: IMAGE=dist-x86_64-linux DEPLOY=1
-      if: branch = try OR branch = auto
-
-    # "alternate" deployments, these are "nightlies" but have LLVM assertions
-    # turned on, they're deployed to a different location primarily for
-    # additional testing.
-    - env: IMAGE=dist-x86_64-linux DEPLOY_ALT=1
-      if: branch = try OR branch = auto
-
-    - env: >
-        RUST_CHECK_TARGET=dist
-        RUST_CONFIGURE_ARGS="--enable-extended --enable-profiler"
-        SRC=.
-        DEPLOY_ALT=1
-        RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
-        MACOSX_DEPLOYMENT_TARGET=10.7
-        NO_LLVM_ASSERTIONS=1
-        NO_DEBUG_ASSERTIONS=1
-      os: osx
-      osx_image: xcode7.3
-      if: branch = auto
-
-    # macOS builders. These are placed near the beginning because they are very
-    # slow to run.
-
-    # OSX builders running tests, these run the full test suite.
-    #
-    # Note that the compiler is compiled to target 10.8 here because the Xcode
-    # version that we're using, 8.2, cannot compile LLVM for OSX 10.7.
     - env: >
         RUST_CHECK_TARGET=check
         RUST_CONFIGURE_ARGS="--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler"
@@ -55,140 +21,16 @@ matrix:
         MACOSX_STD_DEPLOYMENT_TARGET=10.7
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
+        DEPLOY=1
       os: osx
       osx_image: xcode8.3
-      if: branch = auto
 
-    - env: >
-        RUST_CHECK_TARGET=check
-        RUST_CONFIGURE_ARGS=--build=i686-apple-darwin
-        SRC=.
-        RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
-        MACOSX_DEPLOYMENT_TARGET=10.8
-        MACOSX_STD_DEPLOYMENT_TARGET=10.7
-        NO_LLVM_ASSERTIONS=1
-        NO_DEBUG_ASSERTIONS=1
-      os: osx
-      osx_image: xcode8.3
-      if: branch = auto
-
-    # OSX builders producing releases. These do not run the full test suite and
-    # just produce a bunch of artifacts.
-    #
-    # Note that these are running in the `xcode7` image instead of the
-    # `xcode8.2` image as above. That's because we want to build releases for
-    # OSX 10.7 and `xcode7` is the latest Xcode able to compile LLVM for 10.7.
-    - env: >
-        RUST_CHECK_TARGET=dist
-        RUST_CONFIGURE_ARGS="--build=i686-apple-darwin --enable-extended --enable-profiler --enable-emscripten"
-        SRC=.
-        DEPLOY=1
-        RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
-        MACOSX_DEPLOYMENT_TARGET=10.7
-        NO_LLVM_ASSERTIONS=1
-        NO_DEBUG_ASSERTIONS=1
-      os: osx
-      osx_image: xcode7.3
-      if: branch = auto
-
-    - env: >
-        RUST_CHECK_TARGET=dist
-        RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-extended --enable-sanitizers --enable-profiler --enable-emscripten"
-        SRC=.
-        DEPLOY=1
-        RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
-        MACOSX_DEPLOYMENT_TARGET=10.7
-        NO_LLVM_ASSERTIONS=1
-        NO_DEBUG_ASSERTIONS=1
-      os: osx
-      osx_image: xcode7.3
-      if: branch = auto
-
-    # Linux builders, remaining docker images
-    - env: IMAGE=arm-android
-      if: branch = auto
-    - env: IMAGE=armhf-gnu
-      if: branch = auto
-    - env: IMAGE=dist-various-1 DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-various-2 DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-aarch64-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-android DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-arm-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-armhf-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-armv7-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-i586-gnu-i586-i686-musl DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-i686-freebsd DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-i686-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-mips-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-mips64-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-mips64el-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-mipsel-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-powerpc-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-powerpc64-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-powerpc64le-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-s390x-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-x86_64-freebsd DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-x86_64-musl DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-x86_64-netbsd DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=asmjs
-      if: branch = auto
-    - env: IMAGE=i686-gnu
-      if: branch = auto
-    - env: IMAGE=i686-gnu-nopt
-      if: branch = auto
-    - env: IMAGE=wasm32-unknown
-      if: branch = auto
-    - env: IMAGE=x86_64-gnu
-      if: branch = auto
-    - env: IMAGE=x86_64-gnu-full-bootstrap
-      if: branch = auto
-    - env: IMAGE=x86_64-gnu-aux
-      if: branch = auto
-    - env: IMAGE=x86_64-gnu-tools
-      if: branch = auto
-    - env: IMAGE=x86_64-gnu-debug
-      if: branch = auto
-    - env: IMAGE=x86_64-gnu-nopt
-      if: branch = auto
-    - env: IMAGE=x86_64-gnu-distcheck
-      if: branch = auto
-    - env: IMAGE=x86_64-gnu-incremental
-      if: branch = auto
-
-    - stage: publish toolstate
-      if: branch = master AND type = push
-      before_install: []
+    - before_install: []
       install: []
       cache: false
       sudo: false
       script:
-        MESSAGE_FILE=$(mktemp -t msg.XXXXXX);
-        . src/ci/docker/x86_64-gnu-tools/repo.sh;
-        commit_toolstate_change "$MESSAGE_FILE" "$TRAVIS_BUILD_DIR/src/tools/publish_toolstate.py" "$(git rev-parse HEAD)" "$(git log --format=%s -n1 HEAD)" "$MESSAGE_FILE"
+        "false"
 
 env:
   global:
@@ -201,54 +43,30 @@ env:
     - secure: "cFh8thThqEJLC98XKI5pfqflUzOlxsYPRW20AWRaYOOgYHPTiGWypTXiPbGSKaeAXTZoOA+DpQtEmefc0U6lt9dHc7a/MIaK6isFurjlnKYiLOeTruzyu1z7PWCeZ/jKXsU2RK/88DBtlNwfMdaMIeuKj14IVfpepPPL71ETbuk="
 
 before_install:
-  - zcat $HOME/docker/rust-ci.tar.gz | docker load || true
   - mkdir -p $HOME/rustsrc
-  # FIXME(#46924): these two commands are required to enable IPv6,
-  # they shouldn't exist, please revert once more official solutions appeared.
-  # see https://github.com/travis-ci/travis-ci/issues/8891#issuecomment-353403729
-  - if [ "$TRAVIS_OS_NAME" = linux ]; then
-      echo '{"ipv6":true,"fixed-cidr-v6":"fd9a:8454:6789:13f7::/64"}' | sudo tee /etc/docker/daemon.json;
-      sudo service docker restart;
-    fi
 
 install:
-  - case "$TRAVIS_OS_NAME" in
-        linux)
-          travis_retry curl -fo $HOME/stamp https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-03-17-stamp-x86_64-unknown-linux-musl &&
-            chmod +x $HOME/stamp &&
-            export PATH=$PATH:$HOME
-          ;;
-        osx)
-          if [[ "$RUST_CHECK_TARGET" == dist ]]; then
-            travis_retry brew update &&
-            travis_retry brew install xz;
-          fi &&
-          travis_retry curl -fo /usr/local/bin/sccache https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-05-12-sccache-x86_64-apple-darwin &&
-            chmod +x /usr/local/bin/sccache &&
-          travis_retry curl -fo /usr/local/bin/stamp https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-03-17-stamp-x86_64-apple-darwin &&
-            chmod +x /usr/local/bin/stamp
-          ;;
-    esac
+  - travis_retry brew update &&
+    travis_retry brew install xz &&
+    travis_retry curl -fo /usr/local/bin/sccache https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-05-12-sccache-x86_64-apple-darwin &&
+    chmod +x /usr/local/bin/sccache &&
+    travis_retry curl -fo /usr/local/bin/stamp https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-03-17-stamp-x86_64-apple-darwin &&
+    chmod +x /usr/local/bin/stamp
 
 before_script:
   - >
       echo "#### Disk usage before running script:";
       df -h;
       du . | sort -nr | head -n100
-  - >
-      RUN_SCRIPT="src/ci/init_repo.sh . $HOME/rustsrc";
-      if [ "$TRAVIS_OS_NAME" = "osx" ]; then
-          export RUN_SCRIPT="$RUN_SCRIPT && src/ci/run.sh";
-      else
-          export RUN_SCRIPT="$RUN_SCRIPT && src/ci/docker/run.sh $IMAGE";
-      fi
 
-# Log time information from this machine and an external machine for insight into possible
-# clock drift. Timezones don't matter since relative deltas give all the necessary info.
 script:
   - >
       date && (curl -fs --head https://google.com | grep ^Date: | sed 's/Date: //g' || true)
-  - stamp sh -x -c "$RUN_SCRIPT"
+  - src/ci/init_repo.sh . $HOME/rustsrc
+  - RUST_CHECK_TARGET="check" stamp src/ci/run.sh || true
+  - RUST_CHECK_TARGET="check" stamp src/ci/run.sh || true
+  - RUST_CHECK_TARGET="check" stamp src/ci/run.sh || true
+  - RUST_CHECK_TARGET="dist" stamp src/ci/run.sh
   - >
       date && (curl -fs --head https://google.com | grep ^Date: | sed 's/Date: //g' || true)
 
