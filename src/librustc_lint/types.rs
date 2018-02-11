@@ -26,7 +26,6 @@ use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 
 use syntax::ast;
 use syntax::abi::Abi;
-use syntax::attr;
 use syntax_pos::Span;
 use syntax::codemap;
 
@@ -402,17 +401,6 @@ fn is_repr_nullable_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     false
 }
 
-fn is_ffi_safe(ty: attr::IntType) -> bool {
-    match ty {
-        attr::SignedInt(ast::IntTy::I8) | attr::UnsignedInt(ast::UintTy::U8) |
-        attr::SignedInt(ast::IntTy::I16) | attr::UnsignedInt(ast::UintTy::U16) |
-        attr::SignedInt(ast::IntTy::I32) | attr::UnsignedInt(ast::UintTy::U32) |
-        attr::SignedInt(ast::IntTy::I64) | attr::UnsignedInt(ast::UintTy::U64) |
-        attr::SignedInt(ast::IntTy::I128) | attr::UnsignedInt(ast::UintTy::U128) => true,
-        attr::SignedInt(ast::IntTy::Isize) | attr::UnsignedInt(ast::UintTy::Usize) => false
-    }
-}
-
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     /// Check if the given type is "ffi-safe" (has a stable, well-defined
     /// representation which can be exported to C code).
@@ -544,23 +532,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                                 to the type"),
                                 });
                             }
-                        }
-
-                        if let Some(int_ty) = def.repr.int {
-                            if !is_ffi_safe(int_ty) {
-                                // FIXME: This shouldn't be reachable: we should check
-                                // this earlier.
-                                return FfiUnsafe(FfiError {
-                                    message: "enum has unexpected #[repr(...)] attribute",
-                                    help: None,
-                                });
-                            }
-
-                            // Enum with an explicitly sized discriminant; either
-                            // a C-style enum or a discriminated union.
-
-                            // The layout of enum variants is implicitly repr(C).
-                            // FIXME: Is that correct?
                         }
 
                         // Check the contained variants.
