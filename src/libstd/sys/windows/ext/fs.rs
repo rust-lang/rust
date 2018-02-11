@@ -445,6 +445,24 @@ impl MetadataExt for Metadata {
     fn file_size(&self) -> u64 { self.as_inner().size() }
 }
 
+/// Add support for the Windows specific fact that a symbolic link knows whether it is a file
+/// or directory.
+#[unstable(feature = "windows_file_type_ext", issue = "0")]
+pub trait FileTypeExt {
+    /// Returns whether this file type is a symbolic link that is also a directory.
+    #[unstable(feature = "windows_file_type_ext", issue = "0")]
+    fn is_symlink_dir(&self) -> bool;
+    /// Returns whether this file type is a symbolic link that is also a file.
+    #[unstable(feature = "windows_file_type_ext", issue = "0")]
+    fn is_symlink_file(&self) -> bool;
+}
+
+#[unstable(feature = "windows_file_type_ext", issue = "0")]
+impl FileTypeExt for fs::FileType {
+    fn is_symlink_dir(&self) -> bool { self.as_inner().is_symlink_dir() }
+    fn is_symlink_file(&self) -> bool { self.as_inner().is_symlink_file() }
+}
+
 /// Creates a new file symbolic link on the filesystem.
 ///
 /// The `dst` path will be a file symbolic link pointing to the `src`

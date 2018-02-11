@@ -534,6 +534,9 @@ impl FileType {
     pub fn is_symlink_dir(&self) -> bool {
         self.is_symlink() && self.is_directory()
     }
+    pub fn is_symlink_file(&self) -> bool {
+        self.is_symlink() && !self.is_directory()
+    }
     fn is_directory(&self) -> bool {
         self.attributes & c::FILE_ATTRIBUTE_DIRECTORY != 0
     }
