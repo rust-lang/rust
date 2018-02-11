@@ -74,4 +74,9 @@ intrinsics! {
     pub extern "C" fn  __extendsfdf2(a: f32) -> f64 {
         extend(a)
     }
+
+    #[cfg(target_arch = "arm")]
+    pub extern "C" fn  __extendsfdf2vfp(a: f32) -> f64 {
+        a as f64 // LLVM generate 'fcvtds'
+    }
 }

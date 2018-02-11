@@ -233,6 +233,77 @@ fn main() {
                 Some(c)
             },
             "compiler_builtins::float::cmp::__aeabi_dcmpgt(a, b)");
+
+        gen(|(a, b): (LargeF32, LargeF32)| {
+                if a.0.is_nan() || b.0.is_nan() {
+                    return None;
+                }
+                Some((a.0 >= b.0) as i32)
+            },
+            "compiler_builtins::float::cmp::__gesf2vfp(a, b)");
+        gen(|(a, b): (MyF64, MyF64)| {
+                if a.0.is_nan() || b.0.is_nan() {
+                    return None;
+                }
+                Some((a.0 >= b.0) as i32)
+            },
+            "compiler_builtins::float::cmp::__gedf2vfp(a, b)");
+        gen(|(a, b): (LargeF32, LargeF32)| {
+                if a.0.is_nan() || b.0.is_nan() {
+                    return None;
+                }
+                Some((a.0 > b.0) as i32)
+            },
+            "compiler_builtins::float::cmp::__gtsf2vfp(a, b)");
+        gen(|(a, b): (MyF64, MyF64)| {
+                if a.0.is_nan() || b.0.is_nan() {
+                    return None;
+                }
+                Some((a.0 > b.0) as i32)
+            },
+            "compiler_builtins::float::cmp::__gtdf2vfp(a, b)");
+        gen(|(a, b): (LargeF32, LargeF32)| {
+                if a.0.is_nan() || b.0.is_nan() {
+                    return None;
+                }
+                Some((a.0 < b.0) as i32)
+            },
+            "compiler_builtins::float::cmp::__ltsf2vfp(a, b)");
+        gen(|(a, b): (MyF64, MyF64)| {
+                if a.0.is_nan() || b.0.is_nan() {
+                    return None;
+                }
+                Some((a.0 < b.0) as i32)
+            },
+            "compiler_builtins::float::cmp::__ltdf2vfp(a, b)");
+        gen(|(a, b): (LargeF32, LargeF32)| {
+                if a.0.is_nan() || b.0.is_nan() {
+                    return None;
+                }
+                Some((a.0 != b.0) as i32)
+            },
+            "compiler_builtins::float::cmp::__nesf2vfp(a, b)");
+        gen(|(a, b): (MyF64, MyF64)| {
+                if a.0.is_nan() || b.0.is_nan() {
+                    return None;
+                }
+                Some((a.0 != b.0) as i32)
+            },
+            "compiler_builtins::float::cmp::__nedf2vfp(a, b)");
+        gen(|(a, b): (LargeF32, LargeF32)| {
+                if a.0.is_nan() || b.0.is_nan() {
+                    return None;
+                }
+                Some((a.0 == b.0) as i32)
+            },
+            "compiler_builtins::float::cmp::__eqsf2vfp(a, b)");
+        gen(|(a, b): (MyF64, MyF64)| {
+                if a.0.is_nan() || b.0.is_nan() {
+                    return None;
+                }
+                Some((a.0 == b.0) as i32)
+            },
+            "compiler_builtins::float::cmp::__eqdf2vfp(a, b)");
     }
 
     // float/extend.rs
@@ -243,6 +314,15 @@ fn main() {
             Some(f64(a.0))
         },
         "compiler_builtins::float::extend::__extendsfdf2(a)");
+    if target_arch_arm {
+        gen(|a: LargeF32| {
+            if a.0.is_nan() {
+                return None;
+            }
+            Some(f64(a.0))
+        },
+        "compiler_builtins::float::extend::__extendsfdf2vfp(a)");
+    }
 
     // float/conv.rs
     gen(|a: MyF64| i64(a.0).ok(),

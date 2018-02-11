@@ -100,9 +100,9 @@ features = ["c"]
 - [ ] arm/divmodsi4.S (generic version is done)
 - [x] arm/divsf3vfp.S
 - [ ] arm/divsi3.S (generic version is done)
-- [ ] arm/eqdf2vfp.S
-- [ ] arm/eqsf2vfp.S
-- [ ] arm/extendsfdf2vfp.S
+- [x] arm/eqdf2vfp.S
+- [x] arm/eqsf2vfp.S
+- [x] arm/extendsfdf2vfp.S
 - [ ] arm/fixdfsivfp.S
 - [ ] arm/fixsfsivfp.S
 - [ ] arm/fixunsdfsivfp.S
@@ -111,22 +111,22 @@ features = ["c"]
 - [ ] arm/floatsisfvfp.S
 - [ ] arm/floatunssidfvfp.S
 - [ ] arm/floatunssisfvfp.S
-- [ ] arm/gedf2vfp.S
-- [ ] arm/gesf2vfp.S
-- [ ] arm/gtdf2vfp.S
-- [ ] arm/gtsf2vfp.S
+- [x] arm/gedf2vfp.S
+- [x] arm/gesf2vfp.S
+- [x] arm/gtdf2vfp.S
+- [x] arm/gtsf2vfp.S
 - [ ] arm/ledf2vfp.S
 - [ ] arm/lesf2vfp.S
-- [ ] arm/ltdf2vfp.S
-- [ ] arm/ltsf2vfp.S
+- [x] arm/ltdf2vfp.S
+- [x] arm/ltsf2vfp.S
 - [ ] arm/modsi3.S (generic version is done)
 - [x] arm/muldf3vfp.S
 - [x] arm/mulsf3vfp.S
-- [ ] arm/nedf2vfp.S
+- [x] arm/nedf2vfp.S
 - [ ] arm/negdf2vfp.S
 - [ ] arm/negsf2vfp.S
-- [ ] arm/nesf2vfp.S
-- [ ] arm/softfloat-alias.list
+- [x] arm/nesf2vfp.S
+- [x] arm/softfloat-alias.list
 - [x] arm/subdf3vfp.S
 - [x] arm/subsf3vfp.S
 - [ ] arm/truncdfsf2vfp.S
