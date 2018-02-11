@@ -338,18 +338,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             .unwrap_or(trait_ref.def_id());
         let trait_ref = *trait_ref.skip_binder();
 
-        let desugaring;
-        let method;
         let mut flags = vec![];
-        let direct = match obligation.cause.code {
+        match obligation.cause.code {
             ObligationCauseCode::BuiltinDerivedObligation(..) |
-            ObligationCauseCode::ImplDerivedObligation(..) => false,
-            _ => true
-        };
-        if direct {
-            // this is a "direct", user-specified, rather than derived,
-            // obligation.
-            flags.push(("direct".to_string(), None));
+            ObligationCauseCode::ImplDerivedObligation(..) => {}
+            _ => {
+                // this is a "direct", user-specified, rather than derived,
+                // obligation.
+                flags.push(("direct".to_string(), None));
+            }
         }
 
         if let ObligationCauseCode::ItemObligation(item) = obligation.cause.code {
@@ -359,21 +356,27 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             //
             // Currently I'm leaving it for what I need for `try`.
             if self.tcx.trait_of_item(item) == Some(trait_ref.def_id) {
-                method = self.tcx.item_name(item);
+                let method = self.tcx.item_name(item);
                 flags.push(("from_method".to_string(), None));
                 flags.push(("from_method".to_string(), Some(method.to_string())));
             }
         }
 
         if let Some(k) = obligation.cause.span.compiler_desugaring_kind() {
-            desugaring = k.as_symbol().as_str();
+            let desugaring = k.as_symbol().as_str();
             flags.push(("from_desugaring".to_string(), None));
             flags.push(("from_desugaring".to_string(), Some(desugaring.to_string())));
         }
         let generics = self.tcx.generics_of(def_id);
         let self_ty = trait_ref.self_ty();
-        let self_ty_str = self_ty.to_string();
-        flags.push(("_Self".to_string(), Some(self_ty_str.clone())));
+        // This is also included through the generics list as `Self`,
+        // but the parser won't allow you to use it
+        flags.push(("_Self".to_string(), Some(self_ty.to_string())));
+        if let Some(def) = self_ty.ty_adt_def() {
+            // We also want to be able to select self's original
+            // signature with no type arguments resolved
+            flags.push(("_Self".to_string(), Some(self.tcx.type_of(def.did).to_string())));
+        }
 
         for param in generics.types.iter() {
             let name = param.name.as_str().to_string();
