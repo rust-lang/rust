@@ -1,4 +1,4 @@
-error: found struct without foreign-function-safe representation annotation in foreign module, consider adding a #[repr(C)] attribute to the type
+error: found struct without foreign-function-safe representation annotation in foreign module
   --> $DIR/lint-ctypes.rs:54:28
    |
 54 |     pub fn ptr_type1(size: *const Foo); //~ ERROR: found struct without
@@ -9,36 +9,47 @@ note: lint level defined here
    |
 11 | #![deny(improper_ctypes)]
    |         ^^^^^^^^^^^^^^^
+   = help: consider adding a #[repr(C)] attribute to the type
 
-error: found struct without foreign-function-safe representation annotation in foreign module, consider adding a #[repr(C)] attribute to the type
+error: found struct without foreign-function-safe representation annotation in foreign module
   --> $DIR/lint-ctypes.rs:55:28
    |
 55 |     pub fn ptr_type2(size: *const Foo); //~ ERROR: found struct without
    |                            ^^^^^^^^^^
+   |
+   = help: consider adding a #[repr(C)] attribute to the type
 
-error: found Rust slice type in foreign module, consider using a raw pointer instead
+error: found Rust slice type in foreign module
   --> $DIR/lint-ctypes.rs:56:26
    |
 56 |     pub fn slice_type(p: &[u32]); //~ ERROR: found Rust slice type
    |                          ^^^^^^
+   |
+   = help: consider using a raw pointer instead
 
-error: found Rust type `str` in foreign module; consider using a `*const libc::c_char`
+error: found Rust type `str` in foreign module
   --> $DIR/lint-ctypes.rs:57:24
    |
 57 |     pub fn str_type(p: &str); //~ ERROR: found Rust type
    |                        ^^^^
+   |
+   = help: consider using a `*const libc::c_char`
 
-error: found struct without foreign-function-safe representation annotation in foreign module, consider adding a #[repr(C)] attribute to the type
+error: found struct without foreign-function-safe representation annotation in foreign module
   --> $DIR/lint-ctypes.rs:58:24
    |
 58 |     pub fn box_type(p: Box<u32>); //~ ERROR found struct without
    |                        ^^^^^^^^
+   |
+   = help: consider adding a #[repr(C)] attribute to the type
 
-error: found Rust type `char` in foreign module, while `u32` or `libc::wchar_t` should be used
+error: found Rust type `char` in foreign module
   --> $DIR/lint-ctypes.rs:59:25
    |
 59 |     pub fn char_type(p: char); //~ ERROR found Rust type
    |                         ^^^^
+   |
+   = help: consider using `u32` or `libc::wchar_t`
 
 error: found Rust type `i128` in foreign module, but 128-bit integers don't currently have a known stable ABI
   --> $DIR/lint-ctypes.rs:60:25
@@ -52,29 +63,37 @@ error: found Rust type `u128` in foreign module, but 128-bit integers don't curr
 61 |     pub fn u128_type(p: u128); //~ ERROR found Rust type
    |                         ^^^^
 
-error: found Rust trait type in foreign module, consider using a raw pointer instead
+error: found Rust trait type in foreign module
   --> $DIR/lint-ctypes.rs:62:26
    |
 62 |     pub fn trait_type(p: &Clone); //~ ERROR found Rust trait type
    |                          ^^^^^^
+   |
+   = help: consider using a raw pointer instead
 
-error: found Rust tuple type in foreign module; consider using a struct instead
+error: found Rust tuple type in foreign module
   --> $DIR/lint-ctypes.rs:63:26
    |
 63 |     pub fn tuple_type(p: (i32, i32)); //~ ERROR found Rust tuple type
    |                          ^^^^^^^^^^
+   |
+   = help: consider using a struct instead
 
-error: found Rust tuple type in foreign module; consider using a struct instead
+error: found Rust tuple type in foreign module
   --> $DIR/lint-ctypes.rs:64:27
    |
 64 |     pub fn tuple_type2(p: I32Pair); //~ ERROR found Rust tuple type
    |                           ^^^^^^^
+   |
+   = help: consider using a struct instead
 
-error: found zero-size struct in foreign module, consider adding a member to this struct
+error: found zero-size struct in foreign module
   --> $DIR/lint-ctypes.rs:65:25
    |
 65 |     pub fn zero_size(p: ZeroSize); //~ ERROR found zero-size struct
    |                         ^^^^^^^^
+   |
+   = help: consider adding a member to this struct
 
 error: found zero-sized type composed only of phantom-data in a foreign-function.
   --> $DIR/lint-ctypes.rs:66:33
@@ -88,23 +107,29 @@ error: found zero-sized type composed only of phantom-data in a foreign-function
 68 |         -> ::std::marker::PhantomData<bool>; //~ ERROR: found zero-sized type
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: found function pointer with Rust calling convention in foreign module; consider using an `extern` function pointer
+error: found function pointer with Rust calling convention in foreign module
   --> $DIR/lint-ctypes.rs:69:23
    |
 69 |     pub fn fn_type(p: RustFn); //~ ERROR found function pointer with Rust
    |                       ^^^^^^
+   |
+   = help: consider using an `extern` function pointer
 
-error: found function pointer with Rust calling convention in foreign module; consider using an `extern` function pointer
+error: found function pointer with Rust calling convention in foreign module
   --> $DIR/lint-ctypes.rs:70:24
    |
 70 |     pub fn fn_type2(p: fn()); //~ ERROR found function pointer with Rust
    |                        ^^^^
+   |
+   = help: consider using an `extern` function pointer
 
-error: found struct without foreign-function-safe representation annotation in foreign module, consider adding a #[repr(C)] attribute to the type
+error: found struct without foreign-function-safe representation annotation in foreign module
   --> $DIR/lint-ctypes.rs:71:28
    |
 71 |     pub fn fn_contained(p: RustBadRet); //~ ERROR: found struct without
    |                            ^^^^^^^^^^
+   |
+   = help: consider adding a #[repr(C)] attribute to the type
 
 error: found non-foreign-function-safe member in struct marked #[repr(C)]: found Rust type `i128` in foreign module, but 128-bit integers don't currently have a known stable ABI
   --> $DIR/lint-ctypes.rs:72:32
@@ -112,17 +137,21 @@ error: found non-foreign-function-safe member in struct marked #[repr(C)]: found
 72 |     pub fn transparent_i128(p: TransparentI128); //~ ERROR: found Rust type `i128`
    |                                ^^^^^^^^^^^^^^^
 
-error: found non-foreign-function-safe member in struct marked #[repr(C)]: found Rust type `str` in foreign module; consider using a `*const libc::c_char`
+error: found non-foreign-function-safe member in struct marked #[repr(C)]: found Rust type `str` in foreign module
   --> $DIR/lint-ctypes.rs:73:31
    |
 73 |     pub fn transparent_str(p: TransparentStr); //~ ERROR: found Rust type `str`
    |                               ^^^^^^^^^^^^^^
+   |
+   = help: consider using a `*const libc::c_char`
 
-error: found non-foreign-function-safe member in struct marked #[repr(C)]: found struct without foreign-function-safe representation annotation in foreign module, consider adding a #[repr(C)] attribute to the type
+error: found non-foreign-function-safe member in struct marked #[repr(C)]: found struct without foreign-function-safe representation annotation in foreign module
   --> $DIR/lint-ctypes.rs:74:30
    |
 74 |     pub fn transparent_fn(p: TransparentBadFn); //~ ERROR: found struct without
    |                              ^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a #[repr(C)] attribute to the type
 
 error: aborting due to 20 previous errors
 
