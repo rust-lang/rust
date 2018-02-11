@@ -668,7 +668,9 @@ fn link_natively(sess: &Session,
         // is safe because if the linker doesn't support -no-pie then it should not
         // default to linking executables as pie. Different versions of gcc seem to
         // use different quotes in the error message so don't check for them.
-        if out.contains("unrecognized command line option") && out.contains("-no-pie") {
+        if out.contains("unrecognized command line option") &&
+           out.contains("-no-pie") &&
+           cmd.get_args().iter().any(|e| e.to_string_lossy() == "-no-pie") {
             info!("linker output: {:?}", out);
             warn!("Linker does not support -no-pie command line option. Retrying without.");
             for arg in cmd.take_args() {
