@@ -61,7 +61,7 @@ pub(crate) enum Event {
     },
 
     Error {
-        message: String,
+        msg: String,
     },
 }
 
@@ -140,8 +140,8 @@ pub(super) fn to_file(text: String, tokens: &[Token], events: Vec<Event>) -> Fil
                 }
                 builder.leaf(kind, len);
             }
-            &Event::Error { ref message } => builder.error(ErrorMsg {
-                message: message.clone(),
+            &Event::Error { ref msg } => builder.error(ErrorMsg {
+                msg: msg.clone(),
             }),
         }
     }

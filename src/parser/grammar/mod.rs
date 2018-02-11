@@ -1,4 +1,5 @@
-use super::parser::{Parser, TokenSet};
+use parser::parser::{Parser};
+use parser::token_set::TokenSet;
 use SyntaxKind;
 use syntax_kinds::*;
 

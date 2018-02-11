@@ -70,7 +70,7 @@ impl Sink for FileBuilder {
         let &(node, after_child) = self.in_progress.last().unwrap();
         self.errors.push(SyntaxErrorData {
             node,
-            message: err.message,
+            message: err.msg,
             after_child,
         })
     }
@@ -157,5 +157,5 @@ fn grow(left: &mut TextRange, right: TextRange) {
 
 #[derive(Default)]
 pub(crate) struct ErrorMsg {
-    pub(crate) message: String,
+    pub(crate) msg: String,
 }
