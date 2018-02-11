@@ -222,12 +222,6 @@ fn fn_item(p: &mut Parser) {
         p.expect(L_CURLY);
         p.expect(R_CURLY);
     }
-
-    fn fn_value_parameters(p: &mut Parser) {
-        assert!(p.at(L_PAREN));
-        p.bump();
-        p.expect(R_PAREN);
-    }
 }
 
 // test type_item
@@ -262,15 +256,4 @@ fn mod_item(p: &mut Parser) {
             p.expect(R_CURLY);
         }
     }
-}
-
-fn abi(p: &mut Parser) {
-    assert!(p.at(EXTERN_KW));
-    let abi = p.start();
-    p.bump();
-    match p.current() {
-        STRING | RAW_STRING => p.bump(),
-        _ => (),
-    }
-    abi.complete(p, ABI);
 }

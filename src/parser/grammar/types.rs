@@ -8,6 +8,7 @@ pub(super) fn type_(p: &mut Parser) {
         L_BRACK => array_or_slice_type(p),
         AMPERSAND => reference_type(p),
         UNDERSCORE => placeholder_type(p),
+        FN_KW | UNSAFE_KW | EXTERN_KW => fn_pointer_type(p),
         IDENT => path_type(p),
         _ => {
             p.error("expected type");
@@ -138,6 +139,31 @@ fn placeholder_type(p: &mut Parser) {
     let m = p.start();
     p.bump();
     m.complete(p, PLACEHOLDER_TYPE);
+}
+
+// test fn_pointer_type
+// type A = fn();
+// type B = unsafe fn();
+// type C = unsafe extern "C" fn();
+fn fn_pointer_type(p: &mut Parser) {
+    let m = p.start();
+    p.eat(UNSAFE_KW);
+    if p.at(EXTERN_KW) {
+        abi(p);
+    }
+    // test fn_pointer_type_missing_fn
+    // type F = unsafe ();
+    if !p.eat(FN_KW) {
+        m.abandon(p);
+        p.error("expected `fn`");
+        return;
+    }
+
+    fn_value_parameters(p);
+    // test fn_pointer_type_with_ret
+    // type F = fn() -> ();
+    fn_ret_type(p);
+    m.complete(p, FN_POINTER_TYPE);
 }
 
 fn path_type(p: &mut Parser) {
