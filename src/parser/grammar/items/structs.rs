@@ -89,7 +89,7 @@ fn named_fields(p: &mut Parser) {
         if p.at(IDENT) {
             name(p);
             p.expect(COLON);
-            types::ty(p);
+            types::type_(p);
             field.complete(p, NAMED_FIELD);
         } else {
             field.abandon(p);
@@ -105,7 +105,7 @@ fn pos_fields(p: &mut Parser) {
     while !p.at(R_PAREN) && !p.at(EOF) {
         let pos_field = p.start();
         visibility(p);
-        types::ty(p);
+        types::type_(p);
         pos_field.complete(p, POS_FIELD);
 
         if !p.at(R_PAREN) {

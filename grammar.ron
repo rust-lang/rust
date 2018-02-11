@@ -105,6 +105,12 @@ Grammar(
         "TUPLE_TYPE",
         "NEVER_TYPE",
         "PATH_TYPE",
+        "POINTER_TYPE",
+        "ARRAY_TYPE",
+        "SLICE_TYPE",
+        "REFERENCE_TYPE",
+        "PLACEHOLDER_TYPE",
+        "FN_POINTER_TYPE",
 
         "EXTERN_BLOCK",
         "ENUM_VARIANT",

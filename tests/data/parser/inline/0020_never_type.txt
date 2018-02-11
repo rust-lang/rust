@@ -1,0 +1,13 @@
+FILE@[0; 16)
+  TYPE_ITEM@[0; 16)
+    TYPE_KW@[0; 4)
+    NAME@[4; 11)
+      WHITESPACE@[4; 5)
+      IDENT@[5; 10) "Never"
+      WHITESPACE@[10; 11)
+    EQ@[11; 12)
+    NEVER_TYPE@[12; 14)
+      WHITESPACE@[12; 13)
+      EXCL@[13; 14)
+    SEMI@[14; 15)
+    WHITESPACE@[15; 16)

@@ -26,21 +26,20 @@ where
     F: Fn(&str) -> String,
 {
     for path in collect_tests(paths) {
-        let actual = {
-            let text = read_text(&path);
-            f(&text)
-        };
+        let input_code = read_text(&path);
+        let parse_tree = f(&input_code);
         let path = path.with_extension("txt");
         if !path.exists() {
             println!("\nfile: {}", path.display());
-            println!("No .txt file with expected result, creating...");
-            file::put_text(&path, actual).unwrap();
+            println!("No .txt file with expected result, creating...\n");
+            println!("{}\n{}", input_code, parse_tree);
+            file::put_text(&path, parse_tree).unwrap();
             panic!("No expected result")
         }
         let expected = read_text(&path);
         let expected = expected.as_str();
-        let actual = actual.as_str();
-        assert_equal_text(expected, actual, &path);
+        let parse_tree = parse_tree.as_str();
+        assert_equal_text(expected, parse_tree, &path);
     }
 }
 

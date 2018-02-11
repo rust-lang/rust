@@ -50,6 +50,30 @@ fn alias(p: &mut Parser) -> bool {
     true //FIXME: return false if three are errors
 }
 
+fn abi(p: &mut Parser) {
+    assert!(p.at(EXTERN_KW));
+    let abi = p.start();
+    p.bump();
+    match p.current() {
+        STRING | RAW_STRING => p.bump(),
+        _ => (),
+    }
+    abi.complete(p, ABI);
+}
+
+fn fn_value_parameters(p: &mut Parser) {
+    assert!(p.at(L_PAREN));
+    p.bump();
+    p.expect(R_PAREN);
+}
+
+fn fn_ret_type(p: &mut Parser) {
+    if p.at(THIN_ARROW) {
+        p.bump();
+        types::type_(p);
+    }
+}
+
 fn name(p: &mut Parser) {
     if p.at(IDENT) {
         let m = p.start();
