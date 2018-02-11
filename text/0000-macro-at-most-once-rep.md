@@ -47,8 +47,8 @@ Currently, the best way to make a rule tolerate trailing commas is to create ano
 
 ```rust
 macro_rules! foo {
-  ($(pat),*,) => { foo!( $(pat),* ) };
-  ($(pat),*) => {
+  ($(pat),+,) => { foo!( $(pat),+ ) };
+  ($(pat),+) => {
     // do stuff
   }
 }
@@ -58,7 +58,7 @@ or to allow multiple trailing commas:
 
 ```rust
 macro_rules! foo {
-  ($(pat),* $(,)*) => {
+  ($(pat),+ $(,)*) => {
     // do stuff
   }
 }
@@ -68,7 +68,7 @@ This is unergonomic and clutters up macro definitions needlessly. Under this RFC
 
 ```rust
 macro_rules! foo {
-  ($(pat),* $(,)?) => {
+  ($(pat),+ $(,)?) => {
     // do stuff
   }
 }
@@ -131,6 +131,8 @@ Introducing `?` into the grammar for macro repetition introduces an easily fixab
 Drawbacks
 ---------
 While there are grammar ambiguities, they can be easily fixed.
+
+Also, for patterns that use `*`, `?` is not a perfect solution: `$(pat),* $(,)?` still allows `,` which is a bit weird. However, this is still an improvement over `$(pat),* $(,)*` which allows `,,,,,`.
 
 Rationale and Alternatives
 --------------------------
