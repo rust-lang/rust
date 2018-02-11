@@ -1,0 +1,33 @@
+[package]
+name = "rustfmt-core"
+version = "0.4.0"
+authors = ["Nicholas Cameron <ncameron@mozilla.com>", "The Rustfmt developers"]
+description = "A core library of rustfmt"
+repository = "https://github.com/rust-lang-nursery/rustfmt"
+readme = "README.md"
+license = "Apache-2.0/MIT"
+categories = ["development-tools"]
+
+[lib]
+doctest = false
+
+[dependencies]
+derive-new = "0.5"
+diff = "0.1"
+log = "0.3"
+regex = "0.2"
+rustc-ap-syntax = "29.0.0"
+rustc-ap-rustc_errors = "29.0.0"
+rustfmt-config = { path = "../rustfmt-config" }
+term = "0.4"
+unicode-segmentation = "1.0.0"
+
+[dev-dependencies]
+lazy_static = "1.0.0"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2.11"
+
+[target.'cfg(windows)'.dependencies]
+kernel32-sys = "0.2.2"
+winapi = "0.2.7"
