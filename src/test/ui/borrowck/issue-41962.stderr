@@ -17,6 +17,23 @@ error[E0382]: use of moved value: `(maybe as std::prelude::v1::Some).0` (Ast)
    = note: move occurs because the value has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `maybe` (Mir)
+  --> $DIR/issue-41962.rs:17:9
+   |
+17 |           if let Some(thing) = maybe {
+   |           ^           ----- value moved here
+   |  _________|
+   | |
+18 | |         //~^ ERROR use of partially moved value: `maybe` (Ast) [E0382]
+19 | |         //~| ERROR use of moved value: `(maybe as std::prelude::v1::Some).0` (Ast) [E0382]
+20 | |         //~| ERROR use of moved value: `maybe` (Mir) [E0382]
+21 | |         //~| ERROR use of moved value: `maybe` (Mir) [E0382]
+22 | |         //~| ERROR use of moved value: `maybe.0` (Mir) [E0382]
+23 | |         }
+   | |_________^ value used here after move
+   |
+   = note: move occurs because `maybe` has type `std::option::Option<std::vec::Vec<bool>>`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `maybe` (Mir)
   --> $DIR/issue-41962.rs:17:16
    |
 17 |         if let Some(thing) = maybe {
@@ -35,5 +52,5 @@ error[E0382]: use of moved value: `maybe.0` (Mir)
    |
    = note: move occurs because `maybe.0` has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
