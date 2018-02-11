@@ -4,6 +4,9 @@ use parser::event::Event;
 use SyntaxKind;
 use syntax_kinds::{TOMBSTONE, EOF};
 
+/// Implementation details of `Parser`, extracted
+/// to a separate struct in order not to pollute
+/// the public API of the `Parser`.
 pub(crate) struct ParserImpl<'t> {
     inp: &'t ParserInput<'t>,
 

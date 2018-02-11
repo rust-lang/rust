@@ -42,7 +42,7 @@ pub(crate) enum Event {
     ///    |
     ///   'foo'
     ///
-    /// See also `CompleteMarker::precede`.
+    /// See also `CompletedMarker::precede`.
     Start {
         kind: SyntaxKind,
         forward_parent: Option<u32>,
