@@ -9,6 +9,7 @@ pub(super) fn type_(p: &mut Parser) {
         AMPERSAND => reference_type(p),
         UNDERSCORE => placeholder_type(p),
         FN_KW | UNSAFE_KW | EXTERN_KW => fn_pointer_type(p),
+        FOR_KW => for_type(p),
         IDENT => path_type(p),
         _ => {
             p.error("expected type");
@@ -164,6 +165,17 @@ fn fn_pointer_type(p: &mut Parser) {
     // type F = fn() -> ();
     fn_ret_type(p);
     m.complete(p, FN_POINTER_TYPE);
+}
+
+// test for_type
+// type A = for<'a> fn() -> ();
+fn for_type(p: &mut Parser) {
+    assert!(p.at(FOR_KW));
+    let m = p.start();
+    p.bump();
+    type_params::list(p);
+    type_(p);
+    m.complete(p, FOR_TYPE);
 }
 
 fn path_type(p: &mut Parser) {
