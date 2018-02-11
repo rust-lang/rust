@@ -511,7 +511,6 @@ impl Step for Tidy {
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
-    const ONLY_BUILD: bool = true;
 
     /// Runs the `tidy` tool as compiled in `stage` by the `host` compiler.
     ///
@@ -1555,7 +1554,6 @@ pub struct Distcheck;
 
 impl Step for Distcheck {
     type Output = ();
-    const ONLY_BUILD: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         run.path("distcheck")
@@ -1621,7 +1619,6 @@ impl Step for Bootstrap {
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
-    const ONLY_BUILD: bool = true;
 
     /// Test the build system itself
     fn run(self, builder: &Builder) {

@@ -226,9 +226,11 @@ install!((self, builder, _config),
         install_analysis(builder, self.stage, self.target);
     };
     Src, "src", Self::should_build(_config) , only_hosts: true, {
-        builder.ensure(dist::Src);
-        install_src(builder, self.stage);
-    }, ONLY_BUILD;
+        if self.target == builder.build.build {
+            builder.ensure(dist::Src);
+            install_src(builder, self.stage);
+        }
+    };
     Rustc, "src/librustc", true, only_hosts: true, {
         builder.ensure(dist::Rustc {
             compiler: builder.compiler(self.stage, self.target),
