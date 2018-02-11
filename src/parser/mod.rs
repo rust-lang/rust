@@ -26,3 +26,33 @@ fn is_insignificant(kind: SyntaxKind) -> bool {
         _ => false,
     }
 }
+
+impl<'p> parser::Parser<'p> {
+    fn at(&self, kind: SyntaxKind) -> bool {
+        self.current() == kind
+    }
+
+    fn err_and_bump(&mut self, message: &str) {
+        let err = self.start();
+        self.error(message);
+        self.bump();
+        err.complete(self, ERROR);
+    }
+
+    fn expect(&mut self, kind: SyntaxKind) -> bool {
+        if self.at(kind) {
+            self.bump();
+            true
+        } else {
+            self.error(format!("expected {:?}", kind));
+            false
+        }
+    }
+
+    fn eat(&mut self, kind: SyntaxKind) -> bool {
+        self.at(kind) && {
+            self.bump();
+            true
+        }
+    }
+}

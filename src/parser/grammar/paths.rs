@@ -1,7 +1,10 @@
 use super::*;
 
 pub(super) fn is_path_start(p: &Parser) -> bool {
-    AnyOf(&[IDENT, SELF_KW, SUPER_KW, COLONCOLON]).is_ahead(p)
+    match p.current() {
+        IDENT | SELF_KW | SUPER_KW | COLONCOLON => true,
+        _ => false,
+    }
 }
 
 pub(super) fn use_path(p: &mut Parser) {

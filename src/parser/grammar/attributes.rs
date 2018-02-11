@@ -1,7 +1,7 @@
 use super::*;
 
 pub(super) fn inner_attributes(p: &mut Parser) {
-    while p.at([POUND, EXCL]) {
+    while p.current() == POUND && p.nth(1) == EXCL {
         attribute(p, true)
     }
 }
