@@ -770,8 +770,12 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         impl_items: &'l [ast::ImplItem],
     ) {
         if let Some(impl_data) = self.save_ctxt.get_item_data(item) {
-            down_cast_data!(impl_data, RelationData, item.span);
-            self.dumper.dump_relation(impl_data);
+            if let super::Data::RelationData(rel, imp) = impl_data {
+                self.dumper.dump_relation(rel);
+                self.dumper.dump_impl(imp);
+            } else {
+                span_bug!(item.span, "unexpected data kind: {:?}", impl_data);
+            }
         }
         self.visit_ty(&typ);
         if let &Some(ref trait_ref) = trait_ref {
