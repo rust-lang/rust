@@ -7,6 +7,7 @@ pub(super) fn type_(p: &mut Parser) {
         STAR => pointer_type(p),
         L_BRACK => array_or_slice_type(p),
         AMPERSAND => reference_type(p),
+        UNDERSCORE => placeholder_type(p),
         IDENT => path_type(p),
         _ => {
             p.error("expected type");
@@ -128,6 +129,15 @@ fn reference_type(p: &mut Parser) {
     p.eat(MUT_KW);
     type_no_plus(p);
     m.complete(p, REFERENCE_TYPE);
+}
+
+// test placeholder_type
+// type Placeholder = _;
+fn placeholder_type(p: &mut Parser) {
+    assert!(p.at(UNDERSCORE));
+    let m = p.start();
+    p.bump();
+    m.complete(p, PLACEHOLDER_TYPE);
 }
 
 fn path_type(p: &mut Parser) {

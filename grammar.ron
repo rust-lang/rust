@@ -109,6 +109,7 @@ Grammar(
         "ARRAY_TYPE",
         "SLICE_TYPE",
         "REFERENCE_TYPE",
+        "PLACEHOLDER_TYPE",
 
         "EXTERN_BLOCK",
         "ENUM_VARIANT",

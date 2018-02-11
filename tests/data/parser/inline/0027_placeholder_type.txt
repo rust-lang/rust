@@ -1,0 +1,13 @@
+FILE@[0; 22)
+  TYPE_ITEM@[0; 22)
+    TYPE_KW@[0; 4)
+    NAME@[4; 17)
+      WHITESPACE@[4; 5)
+      IDENT@[5; 16) "Placeholder"
+      WHITESPACE@[16; 17)
+    EQ@[17; 18)
+    PLACEHOLDER_TYPE@[18; 20)
+      WHITESPACE@[18; 19)
+      UNDERSCORE@[19; 20)
+    SEMI@[20; 21)
+    WHITESPACE@[21; 22)
