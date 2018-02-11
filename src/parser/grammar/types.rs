@@ -77,7 +77,7 @@ fn pointer_type(p: &mut Parser) {
             // type T = *();
             p.error(
                 "expected mut or const in raw pointer type \
-                (use `*mut T` or `*const T` as appropriate)"
+                 (use `*mut T` or `*const T` as appropriate)",
             );
         }
     };
@@ -98,7 +98,7 @@ fn array_or_slice_type(p: &mut Parser) {
         R_BRACK => {
             p.bump();
             SLICE_TYPE
-        },
+        }
 
         // test array_type
         // type T = [(); 92];
