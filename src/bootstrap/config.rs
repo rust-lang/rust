@@ -347,7 +347,7 @@ impl Config {
         config.keep_stage = flags.keep_stage;
 
         // If --target was specified but --host wasn't specified, don't run any host-only tests.
-        config.run_host_only = flags.host.is_empty() && !flags.target.is_empty();
+        config.run_host_only = !(flags.host.is_empty() && !flags.target.is_empty());
 
         let toml = file.map(|file| {
             let mut f = t!(File::open(&file));

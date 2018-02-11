@@ -149,8 +149,8 @@ impl StepDescription {
 
         // Determine the targets participating in this rule.
         let targets = if self.only_hosts {
-            if build.config.run_host_only {
-                &[]
+            if !build.config.run_host_only {
+                return; // don't run anything
             } else {
                 &build.hosts
             }
