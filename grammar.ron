@@ -111,6 +111,7 @@ Grammar(
         "REFERENCE_TYPE",
         "PLACEHOLDER_TYPE",
         "FN_POINTER_TYPE",
+        "FOR_TYPE",
 
         "EXTERN_BLOCK",
         "ENUM_VARIANT",
