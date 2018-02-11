@@ -20,8 +20,6 @@ ENV DEP_Z_ROOT=/android/ndk/arm-14/sysroot/usr/
 ENV HOSTS=armv7-linux-androideabi
 
 ENV RUST_CONFIGURE_ARGS \
-      --host=$HOSTS \
-      --target=$HOSTS \
       --armv7-linux-androideabi-ndk=/android/ndk/arm \
       --disable-rpath \
       --enable-extended \
