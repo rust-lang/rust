@@ -1,9 +1,9 @@
 use rustc::lint::*;
 use rustc::hir::*;
-use utils::{span_lint_and_sugg};
+use utils::{span_lint_and_sugg, match_var};
 
-/// **What it does:** Checks for redundnat field names where shorthands
-/// can be used.
+/// **What it does:** Checks for fields in struct literals where shorthands
+/// could be used.
 /// 
 /// **Why is this bad?** If the field and variable names are the same,
 /// the field name is redundant.
@@ -23,7 +23,7 @@ use utils::{span_lint_and_sugg};
 declare_lint! {
     pub REDUNDANT_FIELD_NAMES,
     Warn,
-    "using same name for field and variable ,where shorthand can be used"
+    "checks for fields in struct literals where shorthands could be used"
 }
 
 pub struct RedundantFieldNames;
@@ -39,28 +39,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantFieldNames {
         if let ExprStruct(_, ref fields, _) = expr.node {
             for field in fields {
                 let name = field.name.node;
-                if let ExprPath(ref qpath) = field.expr.node {
-                    if let &QPath::Resolved(_, ref path) = qpath {
-                        let segments = &path.segments;
 
-                        if segments.len() == 1 {
-                            let expr_name = segments[0].name;
-
-                            if name == expr_name {
-                                span_lint_and_sugg(
-                                    cx,
-                                    REDUNDANT_FIELD_NAMES,
-                                    path.span,
-                                    "redundant field names in struct initialization",
-                                    &format!(
-                                        "replace '{0}: {0}' with '{0}'",
-                                        name,
-                                    ),
-                                    "".to_string()
-                                );
-                            }
-                        }
-                    }
+                if match_var(&field.expr, name) && !field.is_shorthand {
+                    span_lint_and_sugg (
+                        cx,
+                        REDUNDANT_FIELD_NAMES,
+                        field.span,
+                        "redundant field names in struct initialization",
+                        "replace it with",
+                        name.to_string()
+                    );
                 }
             }
         }
