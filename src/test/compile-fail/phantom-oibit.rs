@@ -28,11 +28,13 @@ struct Nested<T>(T);
 fn is_zen<T: Zen>(_: T) {}
 
 fn not_sync<T>(x: Guard<T>) {
-    is_zen(x)  //~ error: `T: std::marker::Sync` is not satisfied
+    is_zen(x)
+    //~^ ERROR `T` cannot be shared between threads safely [E0277]
 }
 
 fn nested_not_sync<T>(x: Nested<Guard<T>>) {
-    is_zen(x)  //~ error: `T: std::marker::Sync` is not satisfied
+    is_zen(x)
+    //~^ ERROR `T` cannot be shared between threads safely [E0277]
 }
 
 fn main() {}

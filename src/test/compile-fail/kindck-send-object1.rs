@@ -18,7 +18,7 @@ trait Dummy { }
 // careful with object types, who knows what they close over...
 fn test51<'a>() {
     assert_send::<&'a Dummy>();
-    //~^ ERROR : std::marker::Sync` is not satisfied
+    //~^ ERROR `Dummy + 'a` cannot be shared between threads safely [E0277]
 }
 fn test52<'a>() {
     assert_send::<&'a (Dummy+Sync)>();

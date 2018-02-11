@@ -20,5 +20,5 @@ fn bar<T: Sync>(_: T) {}
 fn main() {
     let x = Foo { a: 5 };
     bar(x);
-    //~^ ERROR `Foo: std::marker::Sync` is not satisfied
+    //~^ ERROR `Foo` cannot be shared between threads safely [E0277]
 }

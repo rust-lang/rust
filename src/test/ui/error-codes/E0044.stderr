@@ -1,14 +1,10 @@
 error[E0044]: foreign items may not have type parameters
-  --> $DIR/E0044.rs:11:10
+  --> $DIR/E0044.rs:12:5
    |
-LL | extern { fn some_func<T>(x: T); } //~ ERROR E0044
-   |          ^^^^^^^^^^^^^^^^^^^^^^
+LL |     fn sqrt<T>(f: T) -> T;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-help: consider using specialization instead of type parameters
-  --> $DIR/E0044.rs:11:10
-   |
-LL | extern { fn some_func<T>(x: T); } //~ ERROR E0044
-   |          ^^^^^^^^^^^^^^^^^^^^^^
+   = help: use specialization instead of type parameters by replacing them with concrete types like `u32`
 
 error: aborting due to previous error
 
