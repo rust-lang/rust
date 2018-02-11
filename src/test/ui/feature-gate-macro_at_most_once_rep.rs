@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unused_macros)]
+// Test that `?` macro Kleene operator can not be used when the `macro_at_most_once_rep` feature
+// gate is not used.
 
-macro_rules! assign {
-    (($($a:tt)*) = ($($b:tt))*) => { //~ ERROR expected one of: `*`, `+`, or `?`
-        $($a)* = $($b)*
-    }
+macro_rules! m { ($(a)?) => {} }
+//~^ ERROR Using the `?` macro Kleene operator for "at most one" repetition is unstable
+
+fn main() {
+    m!();
 }
-
-fn main() {}

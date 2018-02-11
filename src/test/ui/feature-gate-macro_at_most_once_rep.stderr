@@ -1,0 +1,10 @@
+error[E0658]: Using the `?` macro Kleene operator for "at most one" repetition is unstable (see issue #48075)
+  --> $DIR/feature-gate-macro_at_most_once_rep.rs:14:20
+   |
+14 | macro_rules! m { ($(a)?) => {} }
+   |                    ^^^
+   |
+   = help: add #![feature(macro_at_most_once_rep)] to the crate attributes to enable
+
+error: aborting due to previous error
+

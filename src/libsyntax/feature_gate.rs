@@ -446,6 +446,9 @@ declare_features! (
 
     // Allows `#[repr(transparent)]` attribute on newtype structs
     (active, repr_transparent, "1.25.0", Some(43036)),
+
+    // Use `?` as the Kleene "at most one" operator
+    (active, macro_at_most_once_rep, "1.25.0", Some(48075)),
 );
 
 declare_features! (
@@ -1257,6 +1260,9 @@ pub const EXPLAIN_PLACEMENT_IN: &'static str =
 
 pub const EXPLAIN_UNSIZED_TUPLE_COERCION: &'static str =
     "Unsized tuple coercion is not stable enough for use and is subject to change";
+
+pub const EXPLAIN_MACRO_AT_MOST_ONCE_REP: &'static str =
+    "Using the `?` macro Kleene operator for \"at most one\" repetition is unstable";
 
 struct PostExpansionVisitor<'a> {
     context: &'a Context<'a>,

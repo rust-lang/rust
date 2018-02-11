@@ -237,7 +237,8 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
             s.iter().map(|m| {
                 if let MatchedNonterminal(ref nt) = *m {
                     if let NtTT(ref tt) = **nt {
-                        let tt = quoted::parse(tt.clone().into(), true, sess).pop().unwrap();
+                        let tt = quoted::parse(tt.clone().into(), true, sess, features, &def.attrs)
+                            .pop().unwrap();
                         valid &= check_lhs_nt_follows(sess, features, &def.attrs, &tt);
                         return tt;
                     }
@@ -253,7 +254,8 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
             s.iter().map(|m| {
                 if let MatchedNonterminal(ref nt) = *m {
                     if let NtTT(ref tt) = **nt {
-                        return quoted::parse(tt.clone().into(), false, sess).pop().unwrap();
+                        return quoted::parse(tt.clone().into(), false, sess, features, &def.attrs)
+                            .pop().unwrap();
                     }
                 }
                 sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
