@@ -17,12 +17,12 @@ generics                |  the set of generic type parameters defined on a type 
 ICE                     |  internal compiler error. When the compiler crashes.
 ICH                     |  incremental compilation hash. ICHs are used as fingerprints for things such as HIR and crate metadata, to check if changes have been made. This is useful in incremental compilation to see if part of a crate has changed and should be recompiled.
 infcx                   |  the inference context (see `librustc/infer`)
-MIR                     |  the Mid-level IR that is created after type-checking for use by borrowck and trans ([see more](./mir.html))
-obligation              |  something that must be proven by the trait system ([see more](trait-resolution.html))
 local crate             |  the crate currently being compiled.
+MIR                     |  the Mid-level IR that is created after type-checking for use by borrowck and trans ([see more](./mir.html))
 node-id or NodeId       |  an index identifying a particular node in the AST or HIR; gradually being phased out and replaced with `HirId`.
-query                   |  perhaps some sub-computation during compilation ([see more](query.html))
+obligation              |  something that must be proven by the trait system ([see more](trait-resolution.html))
 provider                |  the function that executes a query ([see more](query.html))
+query                   |  perhaps some sub-computation during compilation ([see more](query.html))
 sess                    |  the compiler session, which stores global data used throughout compilation
 side tables             |  because the AST and HIR are immutable once created, we often carry extra information about them in the form of hashtables, indexed by the id of a particular node.
 span                    |  a location in the user's source code, used for error reporting primarily. These are like a file-name/line-number/column tuple on steroids: they carry a start/end point, and also track macro expansions and compiler desugaring. All while being packed into a few bytes (really, it's an index into a table). See the Span datatype for more.
