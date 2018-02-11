@@ -105,6 +105,7 @@ Grammar(
         "TUPLE_TYPE",
         "NEVER_TYPE",
         "PATH_TYPE",
+        "POINTER_TYPE",
 
         "EXTERN_BLOCK",
         "ENUM_VARIANT",

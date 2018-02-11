@@ -4,11 +4,16 @@ pub(super) fn type_(p: &mut Parser) {
     match p.current() {
         L_PAREN => paren_or_tuple_type(p),
         EXCL => never_type(p),
+        STAR => pointer_type(p),
         IDENT => path_type(p),
         _ => {
             p.error("expected type");
         }
     }
+}
+
+fn type_no_plus(p: &mut Parser) {
+    type_(p);
 }
 
 fn paren_or_tuple_type(p: &mut Parser) {
@@ -51,6 +56,30 @@ fn never_type(p: &mut Parser) {
     let m = p.start();
     p.bump();
     m.complete(p, NEVER_TYPE);
+}
+
+fn pointer_type(p: &mut Parser) {
+    assert!(p.at(STAR));
+    let m = p.start();
+    p.bump();
+
+    match p.current() {
+        // test pointer_type_mut
+        // type M = *mut ();
+        // type C = *mut ();
+        MUT_KW | CONST_KW => p.bump(),
+        _ => {
+            // test pointer_type_no_mutability
+            // type T = *();
+            p.error(
+                "expected mut or const in raw pointer type \
+                (use `*mut T` or `*const T` as appropriate)"
+            );
+        }
+    };
+
+    type_no_plus(p);
+    m.complete(p, POINTER_TYPE);
 }
 
 fn path_type(p: &mut Parser) {
