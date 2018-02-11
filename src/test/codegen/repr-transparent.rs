@@ -123,55 +123,13 @@ pub struct StructWithProjection(<f32 as Mirror>::It);
 pub extern fn test_Projection(_: StructWithProjection) -> StructWithProjection { loop {} }
 
 
-// The rest of this file tests newtypes around small aggregates on an ABI where small aggregates are
-// packed into one register. This is ABI-dependent, so instead we focus on one ABI and supply a
-// dummy definition for other ABIs to keep FileCheck happy.
+// All that remains to be tested are aggregates. They are tested in separate files called repr-
+// transparent-*.rs  with `only-*` or `ignore-*` directives, because the expected LLVM IR
+// function signatures vary so much that it's not reasonably possible to cover all of them with a
+// single CHECK line.
 //
-// Bigger aggregates are tested in separate files called repr-transparent-aggregate-*.rs because
-// there, the expected LLVM IR function signatures vary so much that it's not reasonably possible to
-// cover all of them with a single CHECK line. Instead we group ABIs by the general "shape" of the
-// signature and have a separate test file for each bin.
-//
-// PS: You may be wondering why we don't just compare the return types and argument types for
-// equality with FileCheck regex captures. Well, rustc doesn't perform newtype unwrapping on
-// newtypes containing aggregates. This is OK on all ABIs we support, but because LLVM has not
-// gotten rid of pointee types yet, the IR function signature will be syntactically different (%Foo*
-// vs %FooWrapper*).
-
-#[repr(C)]
-pub struct Rgb8 { r: u8, g: u8, b: u8 }
-
-#[repr(transparent)]
-pub struct Rgb8Wrap(Rgb8);
-
-// NB: closing parenthesis is missing because sometimes the argument has a name and sometimes not
-// CHECK: define i32 @test_Rgb8Wrap(i32
-#[no_mangle]
-#[cfg(all(target_arch="x86_64", target_os="linux"))]
-pub extern fn test_Rgb8Wrap(_: Rgb8Wrap) -> Rgb8Wrap { loop {} }
-
-#[cfg(not(all(target_arch="x86_64", target_os="linux")))]
-#[no_mangle]
-pub extern fn test_Rgb8Wrap(_: u32) -> u32 { loop {} }
-
-// Same as with the small struct above: ABI-dependent, we only test the interesting case
-// (ABIs that pack the aggregate into a scalar) and stub it out on other ABIs
-
-#[repr(C)]
-pub union FloatBits {
-    float: f32,
-    bits: u32,
-}
-
-#[repr(transparent)]
-pub struct SmallUnion(FloatBits);
-
-// NB: closing parenthesis is missing because sometimes the argument has a name and sometimes not
-// CHECK: define i32 @test_SmallUnion(i32
-#[no_mangle]
-#[cfg(all(target_arch="x86_64", target_os="linux"))]
-pub extern fn test_SmallUnion(_: SmallUnion) -> SmallUnion { loop {} }
-
-#[cfg(not(all(target_arch="x86_64", target_os="linux")))]
-#[no_mangle]
-pub extern fn test_SmallUnion(_: u32) -> u32 { loop {} }
+// You may be wondering why we don't just compare the return types and argument types for equality
+// with FileCheck regex captures. Well, rustc doesn't perform newtype unwrapping on newtypes
+// containing aggregates. This is OK on all ABIs we support, but because LLVM has not gotten rid of
+// pointee types yet, the IR function signature will be syntactically different (%Foo* vs
+// %FooWrapper*).
