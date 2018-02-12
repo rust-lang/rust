@@ -180,7 +180,7 @@ impl_stable_hash_for!(struct hir::PathSegment {
     parameters
 });
 
-impl_stable_hash_for!(enum hir::GenericPathParam {
+impl_stable_hash_for!(enum hir::PathParam {
     Lifetime(lt),
     Type(ty)
 });

@@ -168,7 +168,7 @@ impl PathParameters {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum GenericAngleBracketedParam {
+pub enum AngleBracketedParam {
     Lifetime(Lifetime),
     Type(P<Ty>),
 }
@@ -179,7 +179,7 @@ pub struct AngleBracketedParameterData {
     /// Overall span
     pub span: Span,
     /// The parameters for this path segment.
-    pub parameters: Vec<GenericAngleBracketedParam>,
+    pub parameters: Vec<AngleBracketedParam>,
     /// Bindings (equality constraints) on associated types, if present.
     ///
     /// E.g., `Foo<A=Bar>`.
@@ -189,7 +189,7 @@ pub struct AngleBracketedParameterData {
 impl AngleBracketedParameterData {
     pub fn lifetimes(&self) -> Vec<&Lifetime> {
         self.parameters.iter().filter_map(|p| {
-            if let GenericAngleBracketedParam::Lifetime(lt) = p {
+            if let AngleBracketedParam::Lifetime(lt) = p {
                 Some(lt)
             } else {
                 None
@@ -199,7 +199,7 @@ impl AngleBracketedParameterData {
 
     pub fn types(&self) -> Vec<&P<Ty>> {
         self.parameters.iter().filter_map(|p| {
-            if let GenericAngleBracketedParam::Type(ty) = p {
+            if let AngleBracketedParam::Type(ty) = p {
                 Some(ty)
             } else {
                 None

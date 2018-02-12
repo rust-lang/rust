@@ -46,7 +46,7 @@ use hir::HirVec;
 use hir::map::{DefKey, DefPathData, Definitions};
 use hir::def_id::{DefId, DefIndex, DefIndexAddressSpace, CRATE_DEF_INDEX};
 use hir::def::{Def, PathResolution, PerNS};
-use hir::GenericPathParam;
+use hir::PathParam;
 use lint::builtin::{self, PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES};
 use middle::cstore::CrateStore;
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -1038,16 +1038,16 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_param(&mut self,
-                   p: &GenericAngleBracketedParam,
-                   itctx: ImplTraitContext)
-                   -> GenericPathParam {
+    fn lower_path_param(&mut self,
+                        p: &AngleBracketedParam,
+                        itctx: ImplTraitContext)
+                        -> PathParam {
         match p {
-            GenericAngleBracketedParam::Lifetime(lt) => {
-                GenericPathParam::Lifetime(self.lower_lifetime(&lt))
+            AngleBracketedParam::Lifetime(lt) => {
+                PathParam::Lifetime(self.lower_lifetime(&lt))
             }
-            GenericAngleBracketedParam::Type(ty) => {
-                GenericPathParam::Type(self.lower_ty(&ty, itctx))
+            AngleBracketedParam::Type(ty) => {
+                PathParam::Type(self.lower_ty(&ty, itctx))
             }
         }
     }
@@ -1715,7 +1715,7 @@ impl<'a> LoweringContext<'a> {
 
         if !parameters.parenthesized && parameters.lifetimes.is_empty() {
             path_params.parameters = (0..expected_lifetimes).map(|_| {
-                GenericPathParam::Lifetime(self.elided_lifetime(path_span))
+                PathParam::Lifetime(self.elided_lifetime(path_span))
             }).chain(path_params.parameters.into_iter()).collect();
         }
 
@@ -1734,7 +1734,7 @@ impl<'a> LoweringContext<'a> {
     ) -> (hir::PathParameters, bool) {
         let &AngleBracketedParameterData { ref parameters, ref bindings, .. } = data;
         (hir::PathParameters {
-            parameters: parameters.iter().map(|p| self.lower_param(p, itctx)).collect(),
+            parameters: parameters.iter().map(|p| self.lower_path_param(p, itctx)).collect(),
             bindings: bindings.iter().map(|b| self.lower_ty_binding(b, itctx)).collect(),
             parenthesized: false,
         },
@@ -1775,7 +1775,7 @@ impl<'a> LoweringContext<'a> {
 
                 (
                     hir::PathParameters {
-                        parameters: hir_vec![GenericPathParam::Type(mk_tup(this, inputs, span))],
+                        parameters: hir_vec![PathParam::Type(mk_tup(this, inputs, span))],
                         bindings: hir_vec![
                             hir::TypeBinding {
                                 id: this.next_id().node_id,

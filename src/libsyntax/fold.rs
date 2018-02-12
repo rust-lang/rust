@@ -132,7 +132,7 @@ pub trait Folder : Sized {
         noop_fold_exprs(es, self)
     }
 
-    fn fold_param(&mut self, p: GenericAngleBracketedParam) -> GenericAngleBracketedParam {
+    fn fold_param(&mut self, p: AngleBracketedParam) -> AngleBracketedParam {
         noop_fold_param(p, self)
     }
 
@@ -357,15 +357,15 @@ pub fn noop_fold_ty_binding<T: Folder>(b: TypeBinding, fld: &mut T) -> TypeBindi
     }
 }
 
-pub fn noop_fold_param<T: Folder>(p: GenericAngleBracketedParam,
+pub fn noop_fold_param<T: Folder>(p: AngleBracketedParam,
                                   fld: &mut T)
-                                  -> GenericAngleBracketedParam {
+                                  -> AngleBracketedParam {
     match p {
-        GenericAngleBracketedParam::Lifetime(lt) => {
-            GenericAngleBracketedParam::Lifetime(noop_fold_lifetime(lt, fld))
+        AngleBracketedParam::Lifetime(lt) => {
+            AngleBracketedParam::Lifetime(noop_fold_lifetime(lt, fld))
         }
-        GenericAngleBracketedParam::Type(ty) => {
-            GenericAngleBracketedParam::Type(noop_fold_ty(ty, fld))
+        AngleBracketedParam::Type(ty) => {
+            AngleBracketedParam::Type(noop_fold_ty(ty, fld))
         }
     }
 }

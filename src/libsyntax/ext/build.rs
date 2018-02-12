@@ -31,7 +31,7 @@ pub trait AstBuilder {
     fn path_all(&self, sp: Span,
                 global: bool,
                 idents: Vec<ast::Ident>,
-                parameters: Vec<ast::GenericAngleBracketedParam>,
+                parameters: Vec<ast::AngleBracketedParam>,
                 bindings: Vec<ast::TypeBinding>)
         -> ast::Path;
 
@@ -42,7 +42,7 @@ pub trait AstBuilder {
     fn qpath_all(&self, self_type: P<ast::Ty>,
                 trait_path: ast::Path,
                 ident: ast::Ident,
-                parameters: Vec<ast::GenericAngleBracketedParam>,
+                parameters: Vec<ast::AngleBracketedParam>,
                 bindings: Vec<ast::TypeBinding>)
                 -> (ast::QSelf, ast::Path);
 
@@ -314,7 +314,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 span: Span,
                 global: bool,
                 mut idents: Vec<ast::Ident> ,
-                parameters: Vec<ast::GenericAngleBracketedParam>,
+                parameters: Vec<ast::AngleBracketedParam>,
                 bindings: Vec<ast::TypeBinding> )
                 -> ast::Path {
         let last_ident = idents.pop().unwrap();
@@ -356,7 +356,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                  self_type: P<ast::Ty>,
                  trait_path: ast::Path,
                  ident: ast::Ident,
-                 parameters: Vec<ast::GenericAngleBracketedParam>,
+                 parameters: Vec<ast::AngleBracketedParam>,
                  bindings: Vec<ast::TypeBinding>)
                  -> (ast::QSelf, ast::Path) {
         let mut path = trait_path;
@@ -424,7 +424,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             self.path_all(DUMMY_SP,
                           true,
                           self.std_path(&["option", "Option"]),
-                          vec![ ast::GenericAngleBracketedParam::Type(ty) ],
+                          vec![ ast::AngleBracketedParam::Type(ty) ],
                           Vec::new()))
     }
 

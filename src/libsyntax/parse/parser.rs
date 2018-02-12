@@ -22,7 +22,7 @@ use ast::{Expr, ExprKind, RangeLimits};
 use ast::{Field, FnDecl};
 use ast::{ForeignItem, ForeignItemKind, FunctionRetTy};
 use ast::GenericParam;
-use ast::GenericAngleBracketedParam;
+use ast::AngleBracketedParam;
 use ast::{Ident, ImplItem, IsAuto, Item, ItemKind};
 use ast::{Label, Lifetime, LifetimeDef, Lit, LitKind};
 use ast::Local;
@@ -4938,7 +4938,7 @@ impl<'a> Parser<'a> {
     /// Parses (possibly empty) list of lifetime and type arguments and associated type bindings,
     /// possibly including trailing comma.
     fn parse_generic_args(&mut self)
-                          -> PResult<'a, (Vec<GenericAngleBracketedParam>, Vec<TypeBinding>)> {
+                          -> PResult<'a, (Vec<AngleBracketedParam>, Vec<TypeBinding>)> {
         let mut parameters = Vec::new();
         let mut bindings = Vec::new();
         let mut seen_type = false;
@@ -4946,7 +4946,7 @@ impl<'a> Parser<'a> {
         loop {
             if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
                 // Parse lifetime argument.
-                parameters.push(GenericAngleBracketedParam::Lifetime(self.expect_lifetime()));
+                parameters.push(AngleBracketedParam::Lifetime(self.expect_lifetime()));
                 if seen_type || seen_binding {
                     self.span_err(self.prev_span,
                         "lifetime parameters must be declared prior to type parameters");
@@ -4971,7 +4971,7 @@ impl<'a> Parser<'a> {
                     self.span_err(ty_param.span,
                         "type parameters must be declared prior to associated type bindings");
                 }
-                parameters.push(GenericAngleBracketedParam::Type(ty_param));
+                parameters.push(AngleBracketedParam::Type(ty_param));
                 seen_type = true;
             } else {
                 break

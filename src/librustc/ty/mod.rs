@@ -886,16 +886,16 @@ pub struct GenericParamCount {
 }
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
-pub enum GenericParameterDef {
+pub enum GenericParam {
     Lifetime(RegionParameterDef),
     Type(TypeParameterDef),
 }
 
-impl GenericParameterDef {
+impl GenericParam {
     pub fn index(&self) -> u32 {
         match self {
-            GenericParameterDef::Lifetime(lt) => lt.index,
-            GenericParameterDef::Type(ty)     => ty.index,
+            GenericParam::Lifetime(lt) => lt.index,
+            GenericParam::Type(ty)     => ty.index,
         }
     }
 }
@@ -1011,7 +1011,7 @@ impl<'a, 'gcx, 'tcx> Generics {
 
     pub fn lifetimes(&self) -> Vec<&RegionParameterDef> {
         self.parameters.iter().filter_map(|p| {
-            if let GenericParameterDef::Lifetime(lt) = p {
+            if let GenericParam::Lifetime(lt) = p {
                 Some(lt)
             } else {
                 None
@@ -1021,7 +1021,7 @@ impl<'a, 'gcx, 'tcx> Generics {
 
     pub fn types(&self) -> Vec<&TypeParameterDef> {
         self.parameters.iter().filter_map(|p| {
-            if let GenericParameterDef::Type(ty) = p {
+            if let GenericParam::Type(ty) = p {
                 Some(ty)
             } else {
                 None
@@ -1030,11 +1030,11 @@ impl<'a, 'gcx, 'tcx> Generics {
     }
 
     pub fn parent_lifetimes(&self) -> u32 {
-        *self.parent_parameters.get(KindIndex::Lifetime)
+        *self.parent_params.get(KindIndex::Lifetime)
     }
 
     pub fn parent_types(&self) -> u32 {
-        *self.parent_parameters.get(KindIndex::Type)
+        *self.parent_params.get(KindIndex::Type)
     }
 
     pub fn region_param(&'tcx self,

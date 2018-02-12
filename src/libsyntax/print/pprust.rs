@@ -13,7 +13,7 @@ pub use self::AnnNode::*;
 use rustc_target::spec::abi::{self, Abi};
 use ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
 use ast::{SelfKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
-use ast::{Attribute, MacDelimiter, GenericAngleBracketedParam};
+use ast::{Attribute, MacDelimiter, AngleBracketedParam};
 use util::parser::{self, AssocOp, Fixity};
 use attr;
 use codemap::{self, CodeMap};
@@ -1017,10 +1017,10 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    pub fn print_param(&mut self, param: &GenericAngleBracketedParam) -> io::Result<()> {
+    pub fn print_param(&mut self, param: &AngleBracketedParam) -> io::Result<()> {
         match param {
-            GenericAngleBracketedParam::Lifetime(lt) => self.print_lifetime(lt),
-            GenericAngleBracketedParam::Type(ty) => self.print_type(ty),
+            AngleBracketedParam::Lifetime(lt) => self.print_lifetime(lt),
+            AngleBracketedParam::Type(ty) => self.print_type(ty),
         }
     }
 

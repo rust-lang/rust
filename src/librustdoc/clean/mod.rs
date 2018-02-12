@@ -3494,12 +3494,12 @@ impl Clean<PathParameters> for hir::PathParameters {
             }
         } else {
             PathParameters::AngleBracketed {
-                lifetimes: if self.lifetimes.iter().all(|lt| lt.is_elided()) {
+                lifetimes: if self.lifetimes().iter().all(|lt| lt.is_elided()) {
                     vec![]
                 } else {
-                    self.lifetimes.clean(cx)
+                    self.lifetimes().iter().map(|lp| lp.clean(cx)).collect()
                 },
-                types: self.types.clean(cx),
+                types: self.types().iter().map(|tp| tp.clean(cx)).collect(),
                 bindings: self.bindings.clean(cx),
             }
         }

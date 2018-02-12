@@ -973,13 +973,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             segment.with_parameters(|params| {
                 for p in &params.parameters {
                     let (mut span_err, span, kind) = match p {
-                        hir::GenericPathParam::Lifetime(lt) => {
+                        hir::PathParam::Lifetime(lt) => {
                             (struct_span_err!(self.tcx().sess, lt.span, E0110,
                                               "lifetime parameters are not allowed on this type"),
                              lt.span,
                              "lifetime")
                         }
-                        hir::GenericPathParam::Type(ty) => {
+                        hir::PathParam::Type(ty) => {
                             (struct_span_err!(self.tcx().sess, ty.span, E0109,
                                               "type parameters are not allowed on this type"),
                              ty.span,

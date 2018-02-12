@@ -373,7 +373,7 @@ impl PathSegment {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum GenericPathParam {
+pub enum PathParam {
     Lifetime(Lifetime),
     Type(P<Ty>),
 }
@@ -381,7 +381,7 @@ pub enum GenericPathParam {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct PathParameters {
     /// The generic parameters for this path segment.
-    pub parameters: HirVec<GenericPathParam>,
+    pub parameters: HirVec<PathParam>,
     /// Bindings (equality constraints) on associated types, if present.
     /// E.g., `Foo<A=Bar>`.
     pub bindings: HirVec<TypeBinding>,
@@ -417,7 +417,7 @@ impl PathParameters {
 
     pub fn lifetimes(&self) -> Vec<&Lifetime> {
         self.parameters.iter().filter_map(|p| {
-            if let GenericPathParam::Lifetime(lt) = p {
+            if let PathParam::Lifetime(lt) = p {
                 Some(lt)
             } else {
                 None
@@ -427,7 +427,7 @@ impl PathParameters {
 
     pub fn types(&self) -> Vec<&P<Ty>> {
         self.parameters.iter().filter_map(|p| {
-            if let GenericPathParam::Type(ty) = p {
+            if let PathParam::Type(ty) = p {
                 Some(ty)
             } else {
                 None

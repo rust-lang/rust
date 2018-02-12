@@ -25,7 +25,7 @@ use syntax_pos::{self, BytePos, FileName};
 
 use hir;
 use hir::{PatKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier, RangeEnd};
-use hir::GenericPathParam;
+use hir::PathParam;
 
 use std::cell::Cell;
 use std::io::{self, Write, Read};
@@ -1732,7 +1732,7 @@ impl<'a> State<'a> {
             };
 
             let elide_lifetimes = path_params.parameters.iter().all(|p| {
-                if let GenericPathParam::Lifetime(lt) = p {
+                if let PathParam::Lifetime(lt) = p {
                     if !lt.is_elided() {
                         return false;
                     }
@@ -1742,16 +1742,20 @@ impl<'a> State<'a> {
 
             self.commasep(Inconsistent, &path_params.parameters, |s, p| {
                 match p {
-                    GenericPathParam::Lifetime(lt) => {
+                    PathParam::Lifetime(lt) => {
                         if !elide_lifetimes {
                             s.print_lifetime(lt)
                         } else {
                             Ok(())
                         }
                     }
-                    GenericPathParam::Type(ty) => s.print_type(ty),
+                    PathParam::Type(ty) => s.print_type(ty),
                 }
             })?;
+
+            if !path_params.parameters.is_empty() {
+                empty.set(false);
+            }
 
             // FIXME(eddyb) This would leak into error messages, e.g.:
             // "non-exhaustive patterns: `Some::<..>(_)` not covered".
