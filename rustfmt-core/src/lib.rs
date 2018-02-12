@@ -75,6 +75,8 @@ mod types;
 mod vertical;
 pub mod visitor;
 
+const STDIN: &'static str = "<stdin>";
+
 // A map of the files of a crate, with their new content
 pub type FileMap = Vec<FileRecord>;
 
@@ -294,6 +296,15 @@ impl fmt::Display for FormatReport {
     }
 }
 
+fn should_emit_verbose<F>(path: &FileName, config: &Config, f: F)
+where
+    F: Fn(),
+{
+    if config.verbose() && path.to_string() != STDIN {
+        f();
+    }
+}
+
 // Formatting which depends on the AST.
 fn format_ast<F>(
     krate: &ast::Crate,
@@ -316,9 +327,7 @@ where
         if skip_children && path != *main_file {
             continue;
         }
-        if config.verbose() {
-            println!("Formatting {}", path);
-        }
+        should_emit_verbose(&path, config, || println!("Formatting {}", path));
         let filemap = parse_session
             .codemap()
             .lookup_char_pos(module.inner.lo())
@@ -676,7 +685,7 @@ pub fn format_input<T: Write>(
 
     summary.mark_format_time();
 
-    if config.verbose() {
+    should_emit_verbose(&main_file, config, || {
         fn duration_to_f32(d: Duration) -> f32 {
             d.as_secs() as f32 + d.subsec_nanos() as f32 / 1_000_000_000f32
         }
@@ -685,8 +694,8 @@ pub fn format_input<T: Write>(
             "Spent {0:.3} secs in the parsing phase, and {1:.3} secs in the formatting phase",
             duration_to_f32(summary.get_parse_time().unwrap()),
             duration_to_f32(summary.get_format_time().unwrap()),
-        );
-    }
+        )
+    });
 
     match format_result {
         Ok((file_map, has_diff)) => {
