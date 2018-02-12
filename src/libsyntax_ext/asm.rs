@@ -45,6 +45,17 @@ impl State {
     }
 }
 
+macro_rules! span_err_if_not_stage0 {
+    ($cx:expr, $sp:expr, $code:ident, $text:tt) => {
+        #[cfg(not(stage0))] {
+            span_err!($cx, $sp, $code, $text)
+        }
+        #[cfg(stage0)] {
+            $cx.span_err($sp, $text)
+        }
+    }
+}
+
 const OPTIONS: &'static [&'static str] = &["volatile", "alignstack", "intel"];
 
 pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
@@ -89,7 +100,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
                 if asm_str_style.is_some() {
                     // If we already have a string with instructions,
                     // ending up in Asm state again is an error.
-                    cx.span_err(sp, "malformed inline assembly");
+                    span_err_if_not_stage0!(cx, sp, E0660, "malformed inline assembly");
                     return DummyResult::expr(sp);
                 }
                 // Nested parser, stop before the first colon (see above).
@@ -142,7 +153,8 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
                             Some(Symbol::intern(&format!("={}", ch.as_str())))
                         }
                         _ => {
-                            cx.span_err(span, "output operand constraint lacks '=' or '+'");
+                            span_err_if_not_stage0!(cx, span, E0661,
+                                                    "output operand constraint lacks '=' or '+'");
                             None
                         }
                     };

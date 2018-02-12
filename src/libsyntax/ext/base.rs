@@ -14,7 +14,7 @@ use ast::{self, Attribute, Name, PatKind, MetaItem};
 use attr::HasAttrs;
 use codemap::{self, CodeMap, Spanned, respan};
 use syntax_pos::{Span, MultiSpan, DUMMY_SP};
-use errors::DiagnosticBuilder;
+use errors::{DiagnosticBuilder, DiagnosticId};
 use ext::expand::{self, Expansion, Invocation};
 use ext::hygiene::{Mark, SyntaxContext};
 use fold::{self, Folder};
@@ -840,6 +840,9 @@ impl<'a> ExtCtxt<'a> {
     /// the macro expansion phase).
     pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.parse_sess.span_diagnostic.span_err(sp, msg);
+    }
+    pub fn span_err_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: DiagnosticId) {
+        self.parse_sess.span_diagnostic.span_err_with_code(sp, msg, code);
     }
     pub fn mut_span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str)
                         -> DiagnosticBuilder<'a> {
