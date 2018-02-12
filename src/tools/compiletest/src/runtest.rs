@@ -1343,7 +1343,7 @@ impl<'test> TestCx<'test> {
     fn exec_compiled_test(&self) -> ProcRes {
         let env = &self.props.exec_env;
 
-        match &*self.config.target {
+        let proc_res = match &*self.config.target {
             // This is pretty similar to below, we're transforming:
             //
             //      program arg1 arg2
@@ -1398,7 +1398,15 @@ impl<'test> TestCx<'test> {
                     None,
                 )
             }
+        };
+
+        if proc_res.status.success() {
+            // delete the executable after running it to save space.
+            // it is ok if the deletion failed.
+            let _ = fs::remove_file(self.make_exe_name());
         }
+
+        proc_res
     }
 
     /// For each `aux-build: foo/bar` annotation, we check to find the
