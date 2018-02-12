@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use error::Error;
+use fmt::Debug;
 #[cfg(target_arch = "wasm32")]
 mod exit {
     pub const SUCCESS: i32 = 0;
@@ -45,24 +45,15 @@ impl Termination for () {
 }
 
 #[unstable(feature = "termination_trait", issue = "43301")]
-impl<T: Termination, E: Error> Termination for Result<T, E> {
+impl<T: Termination, E: Debug> Termination for Result<T, E> {
     fn report(self) -> i32 {
         match self {
             Ok(val) => val.report(),
             Err(err) => {
-                print_error(err);
+                eprintln!("Error: {:?}", err);
                 exit::FAILURE
             }
         }
-    }
-}
-
-#[unstable(feature = "termination_trait", issue = "43301")]
-fn print_error<E: Error>(err: E) {
-    eprintln!("Error: {}", err.description());
-
-    if let Some(ref err) = err.cause() {
-        eprintln!("Caused by: {}", err.description());
     }
 }
 
