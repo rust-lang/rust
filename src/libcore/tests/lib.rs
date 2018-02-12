@@ -29,6 +29,7 @@
 #![feature(iter_rfold)]
 #![feature(nonzero)]
 #![feature(pattern)]
+#![feature(range_is_empty)]
 #![feature(raw)]
 #![feature(refcell_replace_swap)]
 #![feature(sip_hash_13)]
