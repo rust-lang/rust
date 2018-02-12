@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::borrow::Cow;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::ffi::{CStr, CString, OSStr, OSString};
 
 #[test]
@@ -27,8 +27,8 @@ fn test_cow_from() {
     assert_eq!(Cow::from(v), Cow::Owned(VALUES.iter().collect::<Vec<_>>()));
 
     let p = PathBuf::new();
-    assert_eq!(Cow::from(&p), Cow::Borrowed(p.as_path()));
-    assert_eq!(Cow::from(v.as_path()), Cow::Borrowed(p.as_path()));
+    assert_eq!(Cow::from(&p), Cow::Borrowed(Path::new("")));
+    assert_eq!(Cow::from(p.as_path()), Cow::Borrowed(Path::new("")));
 
     let cstring = CString::new(MSG);
     let cstr = {
