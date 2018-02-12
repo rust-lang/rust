@@ -708,8 +708,8 @@ pub fn format_input<T: Write>(
 /// and a vector of 0 or more inserted lines.
 #[derive(Debug, PartialEq, Eq)]
 pub struct ModifiedChunk {
-    /// The first affected line before formatting.
-    pub line_number: u32,
+    /// The first to be removed from the original text
+    pub line_number_orig: u32,
     /// The number of lines which have been replaced
     pub lines_removed: u32,
     /// The new lines
@@ -756,16 +756,16 @@ pub fn get_modified_lines(
             .map(|s| s.parse::<u32>().unwrap())
             .collect();
         assert_eq!(values.len(), 3);
-        let line_number = values[0];
-        let num_removed = values[1];
+        let line_number_orig = values[0];
+        let lines_removed = values[1];
         let num_added = values[2];
         let mut added_lines = Vec::new();
         for _ in 0..num_added {
             added_lines.push(lines.next().unwrap().unwrap());
         }
         chunks.push(ModifiedChunk {
-            line_number: line_number,
-            lines_removed: num_removed,
+            line_number_orig,
+            lines_removed,
             lines: added_lines,
         });
     }
@@ -773,7 +773,7 @@ pub fn get_modified_lines(
         summary: summary,
         filemap: filemap,
         report: formatreport,
-        modified_lines: ModifiedLines { chunks: chunks },
+        modified_lines: ModifiedLines { chunks },
     })
 }
 

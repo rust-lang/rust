@@ -1915,7 +1915,7 @@ See also: [`match_block_trailing_comma`](#match_block_trailing_comma).
 What Write Mode to use when none is supplied: Replace, Overwrite, Display, Diff, Coverage
 
 - **Default value**: `"Overwrite"`
-- **Possible values**: `"Checkstyle"`, `"Coverage"`, `"Diff"`, `"Display"`, `"Overwrite"`, `"Plain"`, `"Replace"`, `"Modified"`
+- **Possible values**: `"Checkstyle"`, `"Coverage"`, `"Diff"`, `"Display"`, `"Overwrite"`, `"Plain"`, `"Replace"`
 - **Stable**: No
 
 ## `blank_lines_upper_bound`

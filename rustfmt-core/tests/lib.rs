@@ -153,12 +153,12 @@ fn modified_test() {
         ModifiedLines {
             chunks: vec![
                 ModifiedChunk {
-                    line_number: 4,
+                    line_number_orig: 4,
                     lines_removed: 4,
                     lines: vec!["fn blah() {}".into()],
                 },
                 ModifiedChunk {
-                    line_number: 9,
+                    line_number_orig: 9,
                     lines_removed: 6,
                     lines: vec!["#[cfg(a, b)]".into(), "fn main() {}".into()],
                 },
