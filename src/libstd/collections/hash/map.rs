@@ -397,17 +397,6 @@ pub struct HashMap<K, V, S = RandomState> {
     resize_policy: DefaultResizePolicy,
 }
 
-/// Search for a pre-hashed key when the hash map is known to be non-empty.
-#[inline]
-fn search_hashed_nonempty<K, V, M, F>(table: M, hash: SafeHash, is_match: F)
-    -> InternalEntry<K, V, M>
-    where M: Deref<Target = RawTable<K, V>>,
-          F: FnMut(&K) -> bool
-{
-    // Do not check the capacity as an extra branch could slow the lookup.
-    search_hashed_body(table, hash, is_match)
-}
-
 /// Search for a pre-hashed key.
 /// If you don't already know the hash, use search or search_mut instead
 #[inline]
@@ -422,16 +411,19 @@ fn search_hashed<K, V, M, F>(table: M, hash: SafeHash, is_match: F) -> InternalE
         return InternalEntry::TableIsEmpty;
     }
 
-    search_hashed_body(table, hash, is_match)
+    search_hashed_nonempty(table, hash, is_match)
 }
 
-/// The body of the search_hashed[_nonempty] functions
+
+/// Search for a pre-hashed key when the hash map is known to be non-empty.
 #[inline]
-fn search_hashed_body<K, V, M, F>(table: M, hash: SafeHash, mut is_match: F)
+fn search_hashed_nonempty<K, V, M, F>(table: M, hash: SafeHash, is_match: F)
     -> InternalEntry<K, V, M>
     where M: Deref<Target = RawTable<K, V>>,
           F: FnMut(&K) -> bool
 {
+    // Do not check the capacity as an extra branch could slow the lookup.
+
     let size = table.size();
     let mut probe = Bucket::new(table, hash);
     let mut displacement = 0;
