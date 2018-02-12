@@ -163,7 +163,7 @@ unsafe impl<A, F: FnMut() -> A> TrustedLen for RepeatWith<F> {}
 /// Basic usage:
 ///
 /// ```
-/// #![feature("iterator_repeat_with")]
+/// #![feature(iterator_repeat_with)]
 ///
 /// use std::iter;
 ///
@@ -185,7 +185,7 @@ unsafe impl<A, F: FnMut() -> A> TrustedLen for RepeatWith<F> {}
 /// Using mutation and going finite:
 ///
 /// ```rust
-/// #![feature("iterator_repeat_with")]
+/// #![feature(iterator_repeat_with)]
 ///
 /// use std::iter;
 ///
