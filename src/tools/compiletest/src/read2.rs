@@ -58,9 +58,12 @@ mod imp {
         fds[0].events = libc::POLLIN;
         fds[1].fd = err_pipe.as_raw_fd();
         fds[1].events = libc::POLLIN;
-        loop {
+        let mut nfds = 2;
+        let mut errfd = 1;
+
+        while nfds > 0 {
             // wait for either pipe to become readable using `select`
-            let r = unsafe { libc::poll(fds.as_mut_ptr(), 2, -1) };
+            let r = unsafe { libc::poll(fds.as_mut_ptr(), nfds, -1) };
             if r == -1 {
                 let err = io::Error::last_os_error();
                 if err.kind() == io::ErrorKind::Interrupted {
@@ -86,19 +89,20 @@ mod imp {
                     }
                 }
             };
-            if !out_done && fds[0].revents != 0 && handle(out_pipe.read_to_end(&mut out))? {
-                out_done = true;
-            }
-            data(true, &mut out, out_done);
-            if !err_done && fds[1].revents != 0 && handle(err_pipe.read_to_end(&mut err))? {
+            if !err_done && fds[errfd].revents != 0 && handle(err_pipe.read_to_end(&mut err))? {
                 err_done = true;
+                nfds -= 1;
             }
             data(false, &mut err, err_done);
-
-            if out_done && err_done {
-                return Ok(())
+            if !out_done && fds[0].revents != 0 && handle(out_pipe.read_to_end(&mut out))? {
+                out_done = true;
+                fds[0].fd = err_pipe.as_raw_fd();
+                errfd = 0;
+                nfds -= 1;
             }
+            data(true, &mut out, out_done);
         }
+        Ok(())
     }
 }
 
