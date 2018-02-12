@@ -296,7 +296,7 @@ impl<'a> Write for Cursor<&'a mut [u8]> {
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
 
-#[unstable(feature = "cursor_mut_vec", issue = "30132")]
+#[stable(feature = "cursor_mut_vec", since = "1.25.0")]
 impl<'a> Write for Cursor<&'a mut Vec<u8>> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         vec_write(&mut self.pos, self.inner, buf)
