@@ -417,7 +417,7 @@ fn search_hashed<K, V, M, F>(table: M, hash: SafeHash, is_match: F) -> InternalE
 
 /// Search for a pre-hashed key when the hash map is known to be non-empty.
 #[inline]
-fn search_hashed_nonempty<K, V, M, F>(table: M, hash: SafeHash, is_match: F)
+fn search_hashed_nonempty<K, V, M, F>(table: M, hash: SafeHash, mut is_match: F)
     -> InternalEntry<K, V, M>
     where M: Deref<Target = RawTable<K, V>>,
           F: FnMut(&K) -> bool
