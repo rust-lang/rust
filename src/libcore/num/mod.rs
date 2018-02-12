@@ -105,7 +105,8 @@ macro_rules! doc_comment {
 
 // `Int` + `SignedInt` implemented for signed integers
 macro_rules! int_impl {
-    ($SelfT:ty, $ActualT:ident, $UnsignedT:ty, $BITS:expr, $Min:expr, $Max:expr) => {
+    ($SelfT:ty, $ActualT:ident, $UnsignedT:ty, $BITS:expr, $Min:expr, $Max:expr, $Feature:expr,
+     $EndFeature:expr) => {
         doc_comment! {
             concat!("Returns the smallest value that can be represented by this integer type.
 
@@ -114,7 +115,8 @@ macro_rules! int_impl {
 Basic usage:
 
 ```
-assert_eq!(", stringify!($SelfT), "::min_value(), ", stringify!($Min), ");
+", $Feature, "assert_eq!(", stringify!($SelfT), "::min_value(), ", stringify!($Min), ");",
+$EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -131,7 +133,8 @@ assert_eq!(", stringify!($SelfT), "::min_value(), ", stringify!($Min), ");
 Basic usage:
 
 ```
-assert_eq!(", stringify!($SelfT), "::max_value(), ", stringify!($Max), ");
+", $Feature, "assert_eq!(", stringify!($SelfT), "::max_value(), ", stringify!($Max), ");",
+$EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -160,7 +163,8 @@ This function panics if `radix` is not in the range from 2 to 36.
 Basic usage:
 
 ```
-assert_eq!(", stringify!($SelfT), "::from_str_radix(\"A\", 16), Ok(10));
+", $Feature, "assert_eq!(", stringify!($SelfT), "::from_str_radix(\"A\", 16), Ok(10));",
+$EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             pub fn from_str_radix(src: &str, radix: u32) -> Result<Self, ParseIntError> {
@@ -176,9 +180,10 @@ assert_eq!(", stringify!($SelfT), "::from_str_radix(\"A\", 16), Ok(10));
 Basic usage:
 
 ```
-let n = -0b1000_0000", stringify!($SelfT), ";
+", $Feature, "let n = 0b100_0000", stringify!($SelfT), ";
 
-assert_eq!(n.count_ones(), 1);
+assert_eq!(n.count_ones(), 1);",
+$EndFeature, "
 ```
 "),
             #[stable(feature = "rust1", since = "1.0.0")]
@@ -194,9 +199,7 @@ assert_eq!(n.count_ones(), 1);
 Basic usage:
 
 ```
-let n = -0b1000_0000", stringify!($SelfT), ";
-
-assert_eq!(n.count_zeros(), 7);
+", $Feature, "assert_eq!(", stringify!($SelfT), "::max_value().count_zeros(), 1);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -213,9 +216,10 @@ assert_eq!(n.count_zeros(), 7);
 Basic usage:
 
 ```
-let n = -1", stringify!($SelfT), ";
+", $Feature, "let n = -1", stringify!($SelfT), ";
 
-assert_eq!(n.leading_zeros(), 0);
+assert_eq!(n.leading_zeros(), 0);",
+$EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -232,9 +236,10 @@ assert_eq!(n.leading_zeros(), 0);
 Basic usage:
 
 ```
-let n = -4", stringify!($SelfT), ";
+", $Feature, "let n = -4", stringify!($SelfT), ";
 
-assert_eq!(n.trailing_zeros(), 2);
+assert_eq!(n.trailing_zeros(), 2);",
+$EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -317,13 +322,14 @@ On big endian this is a no-op. On little endian the bytes are swapped.
 Basic usage:
 
 ```
-let n = 0xA1", stringify!($SelfT), ";
+", $Feature, "let n = 0x1A", stringify!($SelfT), ";
 
 if cfg!(target_endian = \"big\") {
     assert_eq!(", stringify!($SelfT), "::from_be(n), n)
 } else {
     assert_eq!(", stringify!($SelfT), "::from_be(n), n.swap_bytes())
-}
+}",
+$EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -342,13 +348,14 @@ On little endian this is a no-op. On big endian the bytes are swapped.
 Basic usage:
 
 ```
-let n = 0xA1", stringify!($SelfT), ";
+", $Feature, "let n = 0x1A", stringify!($SelfT), ";
 
 if cfg!(target_endian = \"little\") {
     assert_eq!(", stringify!($SelfT), "::from_le(n), n)
 } else {
     assert_eq!(", stringify!($SelfT), "::from_le(n), n.swap_bytes())
-}
+}",
+$EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -367,13 +374,14 @@ On big endian this is a no-op. On little endian the bytes are swapped.
 Basic usage:
 
 ```
-let n = 0xA1", stringify!($SelfT), ";
+", $Feature, "let n = 0x1A", stringify!($SelfT), ";
 
 if cfg!(target_endian = \"big\") {
     assert_eq!(n.to_be(), n)
 } else {
     assert_eq!(n.to_be(), n.swap_bytes())
-}
+}",
+$EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -392,13 +400,14 @@ On little endian this is a no-op. On big endian the bytes are swapped.
 Basic usage:
 
 ```
-let n = 0xA1", stringify!($SelfT), ";
+", $Feature, "let n = 0x1A", stringify!($SelfT), ";
 
 if cfg!(target_endian = \"little\") {
     assert_eq!(n.to_le(), n)
 } else {
     assert_eq!(n.to_le(), n.swap_bytes())
-}
+}",
+$EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -416,9 +425,10 @@ if overflow occurred.
 Basic usage:
 
 ```
-assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(1), Some(",
-stringify!($SelfT), "::max_value() - 1));
-assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(3), None);
+", $Feature, "assert_eq!((", stringify!($SelfT),
+"::max_value() - 2).checked_add(1), Some(", stringify!($SelfT), "::max_value() - 1));
+assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(3), None);",
+$EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -437,9 +447,10 @@ overflow occurred.
 Basic usage:
 
 ```
-assert_eq!((", stringify!($SelfT), "::min_value() + 2).checked_sub(1), Some(",
-stringify!($SelfT), "::min_value() + 1));
-assert_eq!((", stringify!($SelfT), "::min_value() + 2).checked_sub(3), None);
+", $Feature, "assert_eq!((", stringify!($SelfT),
+"::min_value() + 2).checked_sub(1), Some(", stringify!($SelfT), "::min_value() + 1));
+assert_eq!((", stringify!($SelfT), "::min_value() + 2).checked_sub(3), None);",
+$EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -458,9 +469,10 @@ overflow occurred.
 Basic usage:
 
 ```
-assert_eq!(", stringify!($SelfT), "::max_value().checked_mul(1), Some(", stringify!($SelfT),
-"::max_value()));
-assert_eq!(", stringify!($SelfT), "::max_value().checked_mul(2), None);
+", $Feature, "assert_eq!(", stringify!($SelfT),
+"::max_value().checked_mul(1), Some(", stringify!($SelfT), "::max_value()));
+assert_eq!(", stringify!($SelfT), "::max_value().checked_mul(2), None);",
+$EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -479,10 +491,11 @@ or the division results in overflow.
 Basic usage:
 
 ```
-assert_eq!((", stringify!($SelfT), "::min_value() + 1).checked_div(-1), Some(",
-stringify!($Max), "));
+", $Feature, "assert_eq!((", stringify!($SelfT),
+"::min_value() + 1).checked_div(-1), Some(", stringify!($Max), "));
 assert_eq!(", stringify!($SelfT), "::min_value().checked_div(-1), None);
-assert_eq!((1", stringify!($SelfT), ").checked_div(0), None);
+assert_eq!((1", stringify!($SelfT), ").checked_div(0), None);",
+$EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -504,11 +517,12 @@ assert_eq!((1", stringify!($SelfT), ").checked_div(0), None);
 Basic usage:
 
 ```
-use std::", stringify!($SelfT), ";
+", $Feature, "use std::", stringify!($SelfT), ";
 
 assert_eq!(5", stringify!($SelfT), ".checked_rem(2), Some(1));
 assert_eq!(5", stringify!($SelfT), ".checked_rem(0), None);
-assert_eq!(", stringify!($SelfT), "::MIN.checked_rem(-1), None);
+assert_eq!(", stringify!($SelfT), "::MIN.checked_rem(-1), None);",
+$EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[inline]
@@ -529,10 +543,11 @@ assert_eq!(", stringify!($SelfT), "::MIN.checked_rem(-1), None);
 Basic usage:
 
 ```
-use std::", stringify!($SelfT), ";
+", $Feature, "use std::", stringify!($SelfT), ";
 
 assert_eq!(5", stringify!($SelfT), ".checked_neg(), Some(-5));
-assert_eq!(", stringify!($SelfT), "::MIN.checked_neg(), None);
+assert_eq!(", stringify!($SelfT), "::MIN.checked_neg(), None);",
+$EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[inline]
@@ -551,8 +566,9 @@ than or equal to the number of bits in `self`.
 Basic usage:
 
 ```
-assert_eq!(0x1", stringify!($SelfT), ".checked_shl(4), Some(0x10));
-assert_eq!(0x1", stringify!($SelfT), ".checked_shl(70), None);
+", $Feature, "assert_eq!(0x1", stringify!($SelfT), ".checked_shl(4), Some(0x10));
+assert_eq!(0x1", stringify!($SelfT), ".checked_shl(129), None);",
+$EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[inline]
@@ -571,8 +587,9 @@ larger than or equal to the number of bits in `self`.
 Basic usage:
 
 ```
-assert_eq!(0x10", stringify!($SelfT), ".checked_shr(4), Some(0x1));
-assert_eq!(0x10", stringify!($SelfT), ".checked_shr(70), None);
+", $Feature, "assert_eq!(0x10", stringify!($SelfT), ".checked_shr(4), Some(0x1));
+assert_eq!(0x10", stringify!($SelfT), ".checked_shr(128), None);",
+$EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[inline]
@@ -591,10 +608,11 @@ assert_eq!(0x10", stringify!($SelfT), ".checked_shr(70), None);
 Basic usage:
 
 ```
-use std::", stringify!($SelfT), ";
+", $Feature, "use std::", stringify!($SelfT), ";
 
 assert_eq!((-5", stringify!($SelfT), ").checked_abs(), Some(5));
-assert_eq!(", stringify!($SelfT), "::MIN.checked_abs(), None);
+assert_eq!(", stringify!($SelfT), "::MIN.checked_abs(), None);",
+$EndFeature, "
 ```"),
             #[stable(feature = "no_panic_abs", since = "1.13.0")]
             #[inline]
@@ -616,9 +634,10 @@ bounds instead of overflowing.
 Basic usage:
 
 ```
-assert_eq!(100", stringify!($SelfT), ".saturating_add(1), 101);
+", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_add(1), 101);
 assert_eq!(", stringify!($SelfT), "::max_value().saturating_add(100), ", stringify!($SelfT),
-"::max_value());
+"::max_value());",
+$EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -640,9 +659,10 @@ numeric bounds instead of overflowing.
 Basic usage:
 
 ```
-assert_eq!(100", stringify!($SelfT), ".saturating_sub(127), -27);
+", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_sub(127), -27);
 assert_eq!(", stringify!($SelfT), "::min_value().saturating_sub(100), ", stringify!($SelfT),
-"::min_value());
+"::min_value());",
+$EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -664,11 +684,12 @@ numeric bounds instead of overflowing.
 Basic usage:
 
 ```
-use std::", stringify!($SelfT), ";
+", $Feature, "use std::", stringify!($SelfT), ";
 
 assert_eq!(10", stringify!($SelfT), ".saturating_mul(12), 120);
-assert_eq!(", stringify!($SelfT), "::MAX.saturating_mul(11 << 23), ", stringify!($SelfT), "::MAX);
-assert_eq!(", stringify!($SelfT), "::MIN.saturating_mul(1 << 23), ", stringify!($SelfT), "::MIN);
+assert_eq!(", stringify!($SelfT), "::MAX.saturating_mul(10), ", stringify!($SelfT), "::MAX);
+assert_eq!(", stringify!($SelfT), "::MIN.saturating_mul(10), ", stringify!($SelfT), "::MIN);",
+$EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[inline]
@@ -692,9 +713,10 @@ boundary of the type.
 Basic usage:
 
 ```
-assert_eq!(100", stringify!($SelfT), ".wrapping_add(27), 127);
+", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_add(27), 127);
 assert_eq!(", stringify!($SelfT), "::max_value().wrapping_add(2), ", stringify!($SelfT),
-"::min_value() + 1);
+"::min_value() + 1);",
+$EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -714,9 +736,10 @@ boundary of the type.
 Basic usage:
 
 ```
-assert_eq!(0", stringify!($SelfT), ".wrapping_sub(127), -127);
-assert_eq!((-2i8).wrapping_sub(", stringify!($SelfT), "::max_value()), ",
-stringify!($SelfT), "::max_value());
+", $Feature, "assert_eq!(0", stringify!($SelfT), ".wrapping_sub(127), -127);
+assert_eq!((-2", stringify!($SelfT), ").wrapping_sub(", stringify!($SelfT), "::max_value()), ",
+stringify!($SelfT), "::max_value());",
+$EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -736,8 +759,9 @@ the boundary of the type.
 Basic usage:
 
 ```
-assert_eq!(10", stringify!($SelfT), ".wrapping_mul(12), 120);
-assert_eq!(11i8.wrapping_mul(12), -124);
+", $Feature, "assert_eq!(10", stringify!($SelfT), ".wrapping_mul(12), 120);
+assert_eq!(11i8.wrapping_mul(12), -124);",
+$EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -765,8 +789,9 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-assert_eq!(100", stringify!($SelfT), ".wrapping_div(10), 10);
-assert_eq!((-128i8).wrapping_div(-1), -128);
+", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_div(10), 10);
+assert_eq!((-128i8).wrapping_div(-1), -128);",
+$EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
             #[inline]
@@ -792,8 +817,9 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-assert_eq!(100", stringify!($SelfT), ".wrapping_rem(10), 0);
-assert_eq!((-128i8).wrapping_rem(-1), 0);
+", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_rem(10), 0);
+assert_eq!((-128i8).wrapping_rem(-1), 0);",
+$EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
             #[inline]
@@ -815,9 +841,10 @@ in the type. In such a case, this function returns `MIN` itself.
 Basic usage:
 
 ```
-assert_eq!(100", stringify!($SelfT), ".wrapping_neg(), -100);
+", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_neg(), -100);
 assert_eq!(", stringify!($SelfT), "::min_value().wrapping_neg(), ", stringify!($SelfT),
-"::min_value());
+"::min_value());",
+$EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
             #[inline]
@@ -840,8 +867,9 @@ instead.
 Basic usage:
 
 ```
-assert_eq!((-1", stringify!($SelfT), ").wrapping_shl(7), -128);
-assert_eq!((-1", stringify!($SelfT), ").wrapping_shl(64), -1);
+", $Feature, "assert_eq!((-1", stringify!($SelfT), ").wrapping_shl(7), -128);
+assert_eq!((-1", stringify!($SelfT), ").wrapping_shl(128), -1);",
+$EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
             #[inline]
@@ -866,8 +894,9 @@ instead.
 Basic usage:
 
 ```
-assert_eq!((-128", stringify!($SelfT), ").wrapping_shr(7), -1);
-assert_eq!((-128", stringify!($SelfT), ").wrapping_shr(64), -128);
+", $Feature, "assert_eq!((-128", stringify!($SelfT), ").wrapping_shr(7), -1);
+assert_eq!((-128i16).wrapping_shr(64), -128);",
+$EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
             #[inline]
@@ -891,11 +920,12 @@ such a case, this function returns `MIN` itself.
 Basic usage:
 
 ```
-assert_eq!(100", stringify!($SelfT), ".wrapping_abs(), 100);
+", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_abs(), 100);
 assert_eq!((-100", stringify!($SelfT), ").wrapping_abs(), 100);
 assert_eq!(", stringify!($SelfT), "::min_value().wrapping_abs(), ", stringify!($SelfT),
 "::min_value());
-assert_eq!((-128i8).wrapping_abs() as u8, 128);
+assert_eq!((-128i8).wrapping_abs() as u8, 128);",
+$EndFeature, "
 ```"),
             #[stable(feature = "no_panic_abs", since = "1.13.0")]
             #[inline]
@@ -919,10 +949,11 @@ occur. If an overflow would have occurred then the wrapped value is returned.
 Basic usage:
 
 ```
-use std::", stringify!($SelfT), ";
+", $Feature, "use std::", stringify!($SelfT), ";
 
 assert_eq!(5", stringify!($SelfT), ".overflowing_add(2), (7, false));
-assert_eq!(", stringify!($SelfT), "::MAX.overflowing_add(1), (", stringify!($SelfT), "::MIN, true));
+assert_eq!(", stringify!($SelfT), "::MAX.overflowing_add(1), (", stringify!($SelfT),
+"::MIN, true));", $EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
@@ -946,10 +977,11 @@ would occur. If an overflow would have occurred then the wrapped value is return
 Basic usage:
 
 ```
-use std::", stringify!($SelfT), ";
+", $Feature, "use std::", stringify!($SelfT), ";
 
 assert_eq!(5", stringify!($SelfT), ".overflowing_sub(2), (3, false));
-assert_eq!(", stringify!($SelfT), "::MIN.overflowing_sub(1), (", stringify!($SelfT), "::MAX, true));
+assert_eq!(", stringify!($SelfT), "::MIN.overflowing_sub(1), (", stringify!($SelfT),
+"::MAX, true));", $EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
@@ -973,8 +1005,9 @@ would occur. If an overflow would have occurred then the wrapped value is return
 Basic usage:
 
 ```
-assert_eq!(5", stringify!($SelfT), ".overflowing_mul(2), (10, false));
-assert_eq!(1_000_000_000i32.overflowing_mul(10), (1410065408, true));
+", $Feature, "assert_eq!(5", stringify!($SelfT), ".overflowing_mul(2), (10, false));
+assert_eq!(1_000_000_000i32.overflowing_mul(10), (1410065408, true));",
+$EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
@@ -1002,11 +1035,12 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-use std::", stringify!($SelfT), ";
+", $Feature, "use std::", stringify!($SelfT), ";
 
 assert_eq!(5", stringify!($SelfT), ".overflowing_div(2), (2, false));
-assert_eq!(i", stringify!($SelfT), "::MIN.overflowing_div(-1), (", stringify!($SelfT),
-"::MIN, true));
+assert_eq!(", stringify!($SelfT), "::MIN.overflowing_div(-1), (", stringify!($SelfT),
+"::MIN, true));",
+$EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
@@ -1034,10 +1068,11 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-use std::", stringify!($SelfT), ";
+", $Feature, "use std::", stringify!($SelfT), ";
 
 assert_eq!(5", stringify!($SelfT), ".overflowing_rem(2), (1, false));
-assert_eq!(", stringify!($SelfT), "::MIN.overflowing_rem(-1), (0, true));
+assert_eq!(", stringify!($SelfT), "::MIN.overflowing_rem(-1), (0, true));",
+$EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
@@ -1062,10 +1097,11 @@ minimum value will be returned again and `true` will be returned for an overflow
 Basic usage:
 
 ```
-use std::", stringify!($SelfT), ";
+", $Feature, "use std::", stringify!($SelfT), ";
 
 assert_eq!(2", stringify!($SelfT), ".overflowing_neg(), (-2, false));
-assert_eq!(", stringify!($SelfT), "::MIN.overflowing_neg(), (", stringify!($SelfT), "::MIN, true));
+assert_eq!(", stringify!($SelfT), "::MIN.overflowing_neg(), (", stringify!($SelfT),
+"::MIN, true));", $EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
@@ -1090,8 +1126,9 @@ masked (N-1) where N is the number of bits, and this value is then used to perfo
 Basic usage:
 
 ```
-assert_eq!(0x10", stringify!($SelfT), ".overflowing_shl(4), (0x100, false));
-assert_eq!(0x10i32.overflowing_shl(36), (0x100, true));
+", $Feature, "assert_eq!(0x1", stringify!($SelfT),".overflowing_shl(4), (0x10, false));
+assert_eq!(0x1i32.overflowing_shl(36), (0x10, true));",
+$EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
@@ -1112,8 +1149,9 @@ masked (N-1) where N is the number of bits, and this value is then used to perfo
 Basic usage:
 
 ```
-assert_eq!(0x10", stringify!($SelfT), ".overflowing_shr(4), (0x1, false));
-assert_eq!(0x10i32.overflowing_shr(36), (0x1, true));
+", $Feature, "assert_eq!(0x10", stringify!($SelfT), ".overflowing_shr(4), (0x1, false));
+assert_eq!(0x10i32.overflowing_shr(36), (0x1, true));",
+$EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
@@ -1135,10 +1173,11 @@ for an overflow happening.
 Basic usage:
 
 ```
-assert_eq!(10", stringify!($SelfT), ".overflowing_abs(), (10, false));
+", $Feature, "assert_eq!(10", stringify!($SelfT), ".overflowing_abs(), (10, false));
 assert_eq!((-10", stringify!($SelfT), ").overflowing_abs(), (10, false));
-assert_eq!((", stringify!($SelfT), "::min_value()).overflowing_abs(), (-", stringify!($SelfT),
-"::min_value(), true));
+assert_eq!((", stringify!($SelfT), "::min_value()).overflowing_abs(), (", stringify!($SelfT),
+"::min_value(), true));",
+$EndFeature, "
 ```"),
             #[stable(feature = "no_panic_abs", since = "1.13.0")]
             #[inline]
@@ -1159,9 +1198,10 @@ assert_eq!((", stringify!($SelfT), "::min_value()).overflowing_abs(), (-", strin
 Basic usage:
 
 ```
-let x: ", stringify!($SelfT), " = 2; // or any other integer type
+", $Feature, "let x: ", stringify!($SelfT), " = 2; // or any other integer type
 
-assert_eq!(x.pow(4), 16);
+assert_eq!(x.pow(4), 16);",
+$EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -1204,8 +1244,9 @@ stringify!($SelfT), "::min_value()` without a panic.
 Basic usage:
 
 ```
-assert_eq!(10", stringify!($SelfT), ".abs(), 10);
-assert_eq!((-10", stringify!($SelfT), ").abs(), 10);
+", $Feature, "assert_eq!(10", stringify!($SelfT), ".abs(), 10);
+assert_eq!((-10", stringify!($SelfT), ").abs(), 10);",
+$EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -1234,9 +1275,10 @@ assert_eq!((-10", stringify!($SelfT), ").abs(), 10);
 Basic usage:
 
 ```
-assert_eq!(10", stringify!($SelfT), ".signum(), 1);
+", $Feature, "assert_eq!(10", stringify!($SelfT), ".signum(), 1);
 assert_eq!(0", stringify!($SelfT), ".signum(), 0);
-assert_eq!((-10", stringify!($SelfT), ").signum(), -1);
+assert_eq!((-10", stringify!($SelfT), ").signum(), -1);",
+$EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -1258,8 +1300,9 @@ negative.
 Basic usage:
 
 ```
-assert!(10", stringify!($SelfT), ".is_positive());
-assert!(!(-10", stringify!($SelfT), ").is_positive());
+", $Feature, "assert!(10", stringify!($SelfT), ".is_positive());
+assert!(!(-10", stringify!($SelfT), ").is_positive());",
+$EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -1275,8 +1318,9 @@ positive.
 Basic usage:
 
 ```
-assert!((-10", stringify!($SelfT), ").is_negative());
-assert!(!10", stringify!($SelfT), ".is_negative());
+", $Feature, "assert!((-10", stringify!($SelfT), ").is_negative());
+assert!(!10", stringify!($SelfT), ".is_negative());",
+$EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -1287,51 +1331,55 @@ assert!(!10", stringify!($SelfT), ".is_negative());
 
 #[lang = "i8"]
 impl i8 {
-    int_impl! { i8, i8, u8, 8, -128, 127 }
+    int_impl! { i8, i8, u8, 8, -128, 127, "", "" }
 }
 
 #[lang = "i16"]
 impl i16 {
-    int_impl! { i16, i16, u16, 16, -32768, 32767 }
+    int_impl! { i16, i16, u16, 16, -32768, 32767, "", "" }
 }
 
 #[lang = "i32"]
 impl i32 {
-    int_impl! { i32, i32, u32, 32, -2147483648, 2147483647 }
+    int_impl! { i32, i32, u32, 32, -2147483648, 2147483647, "", "" }
 }
 
 #[lang = "i64"]
 impl i64 {
-    int_impl! { i64, i64, u64, 64, -9223372036854775808, 9223372036854775807 }
+    int_impl! { i64, i64, u64, 64, -9223372036854775808, 9223372036854775807, "", "" }
 }
 
 #[lang = "i128"]
 impl i128 {
     int_impl! { i128, i128, u128, 128, -170141183460469231731687303715884105728,
-        170141183460469231731687303715884105727 }
+        170141183460469231731687303715884105727, "#![feature(i128_type)]
+#![feature(i128)]
+# fn main() {
+", "
+# }" }
 }
 
 #[cfg(target_pointer_width = "16")]
 #[lang = "isize"]
 impl isize {
-    int_impl! { isize, i16, u16, 16 }
+    int_impl! { isize, i16, u16, 16, "", "" }
 }
 
 #[cfg(target_pointer_width = "32")]
 #[lang = "isize"]
 impl isize {
-    int_impl! { isize, i32, u32, 32 }
+    int_impl! { isize, i32, u32, 32, "", "" }
 }
 
 #[cfg(target_pointer_width = "64")]
 #[lang = "isize"]
 impl isize {
-    int_impl! { isize, i64, u64, 64, -9223372036854775808, 9223372036854775807 }
+    int_impl! { isize, i64, u64, 64, -9223372036854775808, 9223372036854775807, "", "" }
 }
 
 // `Int` + `UnsignedInt` implemented for unsigned integers
 macro_rules! uint_impl {
-    ($SelfT:ty, $ActualT:ty, $BITS:expr, $MaxV:expr) => {
+    ($SelfT:ty, $ActualT:ty, $BITS:expr, $MaxV:expr, $Feature:expr, $EndFeature:expr) => {
         doc_comment! {
             concat!("Returns the smallest value that can be represented by this integer type.
 
@@ -1340,7 +1388,7 @@ macro_rules! uint_impl {
 Basic usage:
 
 ```
-assert_eq!(", stringify!($SelfT), "::min_value(), 0);
+", $Feature, "assert_eq!(", stringify!($SelfT), "::min_value(), 0);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -1355,7 +1403,8 @@ assert_eq!(", stringify!($SelfT), "::min_value(), 0);
 Basic usage:
 
 ```
-assert_eq!(", stringify!($SelfT), "::max_value(), ", stringify!($MaxV), ");
+", $Feature, "assert_eq!(", stringify!($SelfT), "::max_value(), ",
+stringify!($MaxV), ");", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -1383,7 +1432,8 @@ This function panics if `radix` is not in the range from 2 to 36.
 Basic usage:
 
 ```
-assert_eq!(", stringify!($SelfT), "::from_str_radix(\"A\", 16), Ok(10));
+", $Feature, "assert_eq!(", stringify!($SelfT), "::from_str_radix(\"A\", 16), Ok(10));",
+$EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             pub fn from_str_radix(src: &str, radix: u32) -> Result<Self, ParseIntError> {
@@ -1399,9 +1449,9 @@ assert_eq!(", stringify!($SelfT), "::from_str_radix(\"A\", 16), Ok(10));
 Basic usage:
 
 ```
-let n = 0b01001100", stringify!($SelfT), ";
+", $Feature, "let n = 0b01001100", stringify!($SelfT), ";
 
-assert_eq!(n.count_ones(), 3);
+assert_eq!(n.count_ones(), 3);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -1418,9 +1468,7 @@ assert_eq!(n.count_ones(), 3);
 Basic usage:
 
 ```
-let n = 0b01001100", stringify!($SelfT), ";
-
-assert_eq!(n.count_zeros(), 5);
+", $Feature, "assert_eq!(", stringify!($SelfT), "::max_value().count_zeros(), 0);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -1456,9 +1504,9 @@ of `self`.
 Basic usage:
 
 ```
-let n = 0b0101000", stringify!($SelfT), ";
+", $Feature, "let n = 0b0101000", stringify!($SelfT), ";
 
-assert_eq!(n.trailing_zeros(), 3);
+assert_eq!(n.trailing_zeros(), 3);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -1559,13 +1607,13 @@ swapped.
 Basic usage:
 
 ```
-let n = 0xA1", stringify!($SelfT), ";
+", $Feature, "let n = 0x1A", stringify!($SelfT), ";
 
 if cfg!(target_endian = \"big\") {
     assert_eq!(", stringify!($SelfT), "::from_be(n), n)
 } else {
     assert_eq!(", stringify!($SelfT), "::from_be(n), n.swap_bytes())
-}
+}", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -1585,13 +1633,13 @@ swapped.
 Basic usage:
 
 ```
-let n = 0xA1", stringify!($SelfT), ";
+", $Feature, "let n = 0x1A", stringify!($SelfT), ";
 
 if cfg!(target_endian = \"little\") {
-    assert_eq!(u64::from_le(n), n)
+    assert_eq!(", stringify!($SelfT), "::from_le(n), n)
 } else {
-    assert_eq!(u64::from_le(n), n.swap_bytes())
-}
+    assert_eq!(", stringify!($SelfT), "::from_le(n), n.swap_bytes())
+}", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -1611,13 +1659,13 @@ swapped.
 Basic usage:
 
 ```
-let n = 0xA1", stringify!($SelfT), ";
+", $Feature, "let n = 0x1A", stringify!($SelfT), ";
 
 if cfg!(target_endian = \"big\") {
     assert_eq!(n.to_be(), n)
 } else {
     assert_eq!(n.to_be(), n.swap_bytes())
-}
+}", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -1637,13 +1685,13 @@ swapped.
 Basic usage:
 
 ```
-let n = 0xA1", stringify!($SelfT), ";
+", $Feature, "let n = 0x1A", stringify!($SelfT), ";
 
 if cfg!(target_endian = \"little\") {
     assert_eq!(n.to_le(), n)
 } else {
     assert_eq!(n.to_le(), n.swap_bytes())
-}
+}", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -1661,9 +1709,9 @@ if overflow occurred.
 Basic usage:
 
 ```
-assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(1), ",
+", $Feature, "assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(1), ",
 "Some(", stringify!($SelfT), "::max_value() - 1));
-assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(3),None);
+assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(3),None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -1682,8 +1730,8 @@ assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(3),None);
 Basic usage:
 
 ```
-assert_eq!(1", stringify!($SelfT), ".checked_sub(1), Some(0));
-assert_eq!(0", stringify!($SelfT), ".checked_sub(1), None);
+", $Feature, "assert_eq!(1", stringify!($SelfT), ".checked_sub(1), Some(0));
+assert_eq!(0", stringify!($SelfT), ".checked_sub(1), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -1702,8 +1750,8 @@ assert_eq!(0", stringify!($SelfT), ".checked_sub(1), None);
 Basic usage:
 
 ```
-assert_eq!(5", stringify!($SelfT), ".checked_mul(1), Some(5));
-assert_eq!(5", stringify!($SelfT), ".checked_mul(2), None);
+", $Feature, "assert_eq!(5", stringify!($SelfT), ".checked_mul(1), Some(5));
+assert_eq!(", stringify!($SelfT), "::max_value().checked_mul(2), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -1722,8 +1770,8 @@ if `rhs == 0`.
 Basic usage:
 
 ```
-assert_eq!(128", stringify!($SelfT), ".checked_div(2), Some(64));
-assert_eq!(1", stringify!($SelfT), ".checked_div(0), None);
+", $Feature, "assert_eq!(128", stringify!($SelfT), ".checked_div(2), Some(64));
+assert_eq!(1", stringify!($SelfT), ".checked_div(0), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -1744,8 +1792,8 @@ if `rhs == 0`.
 Basic usage:
 
 ```
-assert_eq!(5", stringify!($SelfT), ".checked_rem(2), Some(1));
-assert_eq!(5", stringify!($SelfT), ".checked_rem(0), None);
+", $Feature, "assert_eq!(5", stringify!($SelfT), ".checked_rem(2), Some(1));
+assert_eq!(5", stringify!($SelfT), ".checked_rem(0), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[inline]
@@ -1769,8 +1817,8 @@ Note that negating any positive integer will overflow.
 Basic usage:
 
 ```
-assert_eq!(0", stringify!($SelfT), ".checked_neg(), Some(0));
-assert_eq!(1", stringify!($SelfT), ".checked_neg(), None);
+", $Feature, "assert_eq!(0", stringify!($SelfT), ".checked_neg(), Some(0));
+assert_eq!(1", stringify!($SelfT), ".checked_neg(), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[inline]
@@ -1789,8 +1837,8 @@ if `rhs` is larger than or equal to the number of bits in `self`.
 Basic usage:
 
 ```
-assert_eq!(0x10", stringify!($SelfT), ".checked_shl(4), Some(0x100));
-assert_eq!(0x10", stringify!($SelfT), ".checked_shl(129), None);
+", $Feature, "assert_eq!(0x1", stringify!($SelfT), ".checked_shl(4), Some(0x10));
+assert_eq!(0x10", stringify!($SelfT), ".checked_shl(129), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[inline]
@@ -1809,8 +1857,8 @@ if `rhs` is larger than or equal to the number of bits in `self`.
 Basic usage:
 
 ```
-assert_eq!(0x10", stringify!($SelfT), ".checked_shr(4), Some(0x1));
-assert_eq!(0x10", stringify!($SelfT), ".checked_shr(129), None);
+", $Feature, "assert_eq!(0x10", stringify!($SelfT), ".checked_shr(4), Some(0x1));
+assert_eq!(0x10", stringify!($SelfT), ".checked_shr(129), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[inline]
@@ -1829,8 +1877,8 @@ the numeric bounds instead of overflowing.
 Basic usage:
 
 ```
-assert_eq!(100", stringify!($SelfT), ".saturating_add(1), 101);
-assert_eq!(200", stringify!($SelfT), ".saturating_add(127), 255);
+", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_add(1), 101);
+assert_eq!(200u8.saturating_add(127), 255);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -1851,8 +1899,8 @@ at the numeric bounds instead of overflowing.
 Basic usage:
 
 ```
-assert_eq!(100", stringify!($SelfT), ".saturating_sub(27), 73);
-assert_eq!(13", stringify!($SelfT), ".saturating_sub(127), 0);
+", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_sub(27), 73);
+assert_eq!(13", stringify!($SelfT), ".saturating_sub(127), 0);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -1873,11 +1921,11 @@ saturating at the numeric bounds instead of overflowing.
 Basic usage:
 
 ```
-use std::", stringify!($SelfT), ";
+", $Feature, "use std::", stringify!($SelfT), ";
 
-assert_eq!(100", stringify!($SelfT), ".saturating_mul(127), 12700);
-assert_eq!((1", stringify!($SelfT), " << 23).saturating_mul(1 << 23), ", stringify!($SelfT),
-"::MAX);
+assert_eq!(2", stringify!($SelfT), ".saturating_mul(10), 20);
+assert_eq!((", stringify!($SelfT), "::MAX).saturating_mul(10), ", stringify!($SelfT),
+"::MAX);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[inline]
@@ -1895,8 +1943,9 @@ wrapping around at the boundary of the type.
 Basic usage:
 
 ```
-assert_eq!(200", stringify!($SelfT), ".wrapping_add(55), 255);
-assert_eq!(200", stringify!($SelfT), ".wrapping_add(", stringify!($SelfT), "::max_value()), 199);
+", $Feature, "assert_eq!(200", stringify!($SelfT), ".wrapping_add(55), 255);
+assert_eq!(200", stringify!($SelfT), ".wrapping_add(", stringify!($SelfT), "::max_value()), 199);",
+$EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -1916,8 +1965,9 @@ wrapping around at the boundary of the type.
 Basic usage:
 
 ```
-assert_eq!(100u8.wrapping_sub(100), 0);
-assert_eq!(100u8.wrapping_sub(", stringify!($SelfT), "::max_value()), 101);
+", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_sub(100), 0);
+assert_eq!(100", stringify!($SelfT), ".wrapping_sub(", stringify!($SelfT), "::max_value()), 101);",
+$EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -1959,7 +2009,7 @@ are accounted for in the wrapping operations.
 Basic usage:
 
 ```
-assert_eq!(100", stringify!($SelfT), ".wrapping_div(10), 10);
+", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_div(10), 10);", $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
             #[inline]
@@ -1981,7 +2031,7 @@ are accounted for in the wrapping operations.
 Basic usage:
 
 ```
-assert_eq!(100", stringify!($SelfT), ".wrapping_rem(10), 0);
+", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_rem(10), 0);", $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
             #[inline]
@@ -1990,35 +2040,28 @@ assert_eq!(100", stringify!($SelfT), ".wrapping_rem(10), 0);
             }
         }
 
-        doc_comment! {
-            concat!("Wrapping (modular) negation. Computes `-self`,
-wrapping around at the boundary of the type.
-
-Since unsigned types do not have negative equivalents
-all applications of this function will wrap (except for `-0`).
-For values smaller than the corresponding signed type's maximum
-the result is the same as casting the corresponding signed value.
-Any larger values are equivalent to `MAX + 1 - (val - MAX - 1)` where
-`MAX` is the corresponding signed type's maximum.
-
-# Examples
-
-Basic usage:
-
-```
-assert_eq!(100", stringify!($SelfT), ".wrapping_neg(), ", stringify!($SelfT),
-"::max_value() - 100 + 1);
-assert_eq!(0", stringify!($SelfT), ".wrapping_neg(), 0);
-assert_eq!(180", stringify!($SelfT), ".wrapping_neg(), ", stringify!($SelfT),
-"::max_value() - 180 + 1);
-assert_eq!(180", stringify!($SelfT), ".wrapping_neg(), (", stringify!($SelfT), "::max_value() / 2",
-"+ 1) - (180", stringify!($SelfT), " - (", stringify!($SelfT), "::max_value() / 2 + 1)));
-```"),
-            #[stable(feature = "num_wrapping", since = "1.2.0")]
-            #[inline]
-            pub fn wrapping_neg(self) -> Self {
-                self.overflowing_neg().0
-            }
+        /// Wrapping (modular) negation. Computes `-self`,
+        /// wrapping around at the boundary of the type.
+        ///
+        /// Since unsigned types do not have negative equivalents
+        /// all applications of this function will wrap (except for `-0`).
+        /// For values smaller than the corresponding signed type's maximum
+        /// the result is the same as casting the corresponding signed value.
+        /// Any larger values are equivalent to `MAX + 1 - (val - MAX - 1)` where
+        /// `MAX` is the corresponding signed type's maximum.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// assert_eq!(100i8.wrapping_neg(), -100);
+        /// assert_eq!((-128i8).wrapping_neg(), -128);
+        /// ```
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
+        #[inline]
+        pub fn wrapping_neg(self) -> Self {
+            self.overflowing_neg().0
         }
 
         doc_comment! {
@@ -2038,8 +2081,8 @@ be what you want instead.
 Basic usage:
 
 ```
-assert_eq!(1", stringify!($SelfT), ".wrapping_shl(7), 128);
-assert_eq!(1", stringify!($SelfT), ".wrapping_shl(", stringify!($BITS), "), 1);
+", $Feature, "assert_eq!(1", stringify!($SelfT), ".wrapping_shl(7), 128);
+assert_eq!(1", stringify!($SelfT), ".wrapping_shl(128), 1);", $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
             #[inline]
@@ -2067,8 +2110,8 @@ be what you want instead.
 Basic usage:
 
 ```
-assert_eq!(128", stringify!($SelfT), ".wrapping_shr(7), 1);
-assert_eq!(128", stringify!($SelfT), ".wrapping_shr(", stringify!($BITS), "), 128);
+", $Feature, "assert_eq!(128", stringify!($SelfT), ".wrapping_shr(7), 1);
+assert_eq!(128", stringify!($SelfT), ".wrapping_shr(128), 128);", $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
             #[inline]
@@ -2091,10 +2134,10 @@ have occurred then the wrapped value is returned.
 Basic usage
 
 ```
-use std::u32;
+", $Feature, "use std::", stringify!($SelfT), ";
 
 assert_eq!(5", stringify!($SelfT), ".overflowing_add(2), (7, false));
-assert_eq!(", stringify!($SelfT), "::MAX.overflowing_add(1), (0, true));
+assert_eq!(", stringify!($SelfT), "::MAX.overflowing_add(1), (0, true));", $EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
@@ -2119,10 +2162,11 @@ have occurred then the wrapped value is returned.
 Basic usage
 
 ```
-use std::u32;
+", $Feature, "use std::", stringify!($SelfT), ";
 
 assert_eq!(5", stringify!($SelfT), ".overflowing_sub(2), (3, false));
-assert_eq!(0", stringify!($SelfT), ".overflowing_sub(1), (", stringify!($SelfT), "::MAX, true));
+assert_eq!(0", stringify!($SelfT), ".overflowing_sub(1), (", stringify!($SelfT), "::MAX, true));",
+$EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
@@ -2176,7 +2220,7 @@ This function will panic if `rhs` is 0.
 Basic usage
 
 ```
-assert_eq!(5", stringify!($SelfT), ".overflowing_div(2), (2, false));
+", $Feature, "assert_eq!(5", stringify!($SelfT), ".overflowing_div(2), (2, false));", $EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
@@ -2202,7 +2246,7 @@ This function will panic if `rhs` is 0.
 Basic usage
 
 ```
-assert_eq!(5", stringify!($SelfT), ".overflowing_rem(2), (1, false));
+", $Feature, "assert_eq!(5", stringify!($SelfT), ".overflowing_rem(2), (1, false));", $EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
@@ -2224,8 +2268,9 @@ not overflow.
 Basic usage
 
 ```
-assert_eq!(0", stringify!($SelfT), ".overflowing_neg(), (0, false));
-assert_eq!(2", stringify!($SelfT), ".overflowing_neg(), (-2i32 as ", stringify!($SelfT), ", true));
+", $Feature, "assert_eq!(0", stringify!($SelfT), ".overflowing_neg(), (0, false));
+assert_eq!(2", stringify!($SelfT), ".overflowing_neg(), (-2i32 as ", stringify!($SelfT),
+", true));", $EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
@@ -2248,8 +2293,8 @@ used to perform the shift.
 Basic usage
 
 ```
-assert_eq!(0x10", stringify!($SelfT), ".overflowing_shl(4), (0x100, false));
-assert_eq!(0x10", stringify!($SelfT), ".overflowing_shl(132), (0x100, true));
+", $Feature, "assert_eq!(0x1", stringify!($SelfT), ".overflowing_shl(4), (0x10, false));
+assert_eq!(0x1", stringify!($SelfT), ".overflowing_shl(132), (0x10, true));", $EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
@@ -2272,8 +2317,8 @@ used to perform the shift.
 Basic usage
 
 ```
-assert_eq!(0x10", stringify!($SelfT), ".overflowing_shr(4), (0x1, false));
-assert_eq!(0x10", stringify!($SelfT), ".overflowing_shr(132), (0x1, true));
+", $Feature, "assert_eq!(0x10", stringify!($SelfT), ".overflowing_shr(4), (0x1, false));
+assert_eq!(0x10", stringify!($SelfT), ".overflowing_shr(132), (0x1, true));", $EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
@@ -2291,7 +2336,7 @@ assert_eq!(0x10", stringify!($SelfT), ".overflowing_shr(132), (0x1, true));
 Basic usage:
 
 ```
-assert_eq!(2", stringify!($SelfT), ".pow(4), 16);
+", $Feature, "assert_eq!(2", stringify!($SelfT), ".pow(4), 16);", $EndFeature, "
 ```"),
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
@@ -2327,8 +2372,8 @@ assert_eq!(2", stringify!($SelfT), ".pow(4), 16);
 Basic usage:
 
 ```
-assert!(16", stringify!($SelfT), ".is_power_of_two());
-assert!(!10", stringify!($SelfT), ".is_power_of_two());
+", $Feature, "assert!(16", stringify!($SelfT), ".is_power_of_two());
+assert!(!10", stringify!($SelfT), ".is_power_of_two());", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -2371,8 +2416,8 @@ release mode (the only situation in which method can return 0).
 Basic usage:
 
 ```
-assert_eq!(2", stringify!($SelfT), ".next_power_of_two(), 2);
-assert_eq!(3", stringify!($SelfT), ".next_power_of_two(), 4);
+", $Feature, "assert_eq!(2", stringify!($SelfT), ".next_power_of_two(), 2);
+assert_eq!(3", stringify!($SelfT), ".next_power_of_two(), 4);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
@@ -2392,9 +2437,11 @@ the next power of two is greater than the type's maximum value,
 Basic usage:
 
 ```
-assert_eq!(2", stringify!($SelfT), ".checked_next_power_of_two(), Some(2));
+", $Feature, "assert_eq!(2", stringify!($SelfT),
+".checked_next_power_of_two(), Some(2));
 assert_eq!(3", stringify!($SelfT), ".checked_next_power_of_two(), Some(4));
-assert_eq!(", stringify!($SelfT), "::max_value().checked_next_power_of_two(), None);
+assert_eq!(", stringify!($SelfT), "::max_value().checked_next_power_of_two(), None);",
+$EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             pub fn checked_next_power_of_two(self) -> Option<Self> {
@@ -2406,7 +2453,7 @@ assert_eq!(", stringify!($SelfT), "::max_value().checked_next_power_of_two(), No
 
 #[lang = "u8"]
 impl u8 {
-    uint_impl! { u8, u8, 8, 255 }
+    uint_impl! { u8, u8, 8, 255, "", "" }
 
 
     /// Checks if the value is within the ASCII range.
@@ -2952,39 +2999,44 @@ impl u8 {
 
 #[lang = "u16"]
 impl u16 {
-    uint_impl! { u16, u16, 16, 65535 }
+    uint_impl! { u16, u16, 16, 65535, "", "" }
 }
 
 #[lang = "u32"]
 impl u32 {
-    uint_impl! { u32, u32, 32, 4294967295 }
+    uint_impl! { u32, u32, 32, 4294967295, "", "" }
 }
 
 #[lang = "u64"]
 impl u64 {
-    uint_impl! { u64, u64, 64, 18446744073709551615 }
+    uint_impl! { u64, u64, 64, 18446744073709551615, "", "" }
 }
 
 #[lang = "u128"]
 impl u128 {
-    uint_impl! { u128, u128, 128, 340282366920938463463374607431768211455 }
+    uint_impl! { u128, u128, 128, 340282366920938463463374607431768211455, "#![feature(i128_type)]
+#![feature(i128)]
+
+# fn main() {
+", "
+# }" }
 }
 
 #[cfg(target_pointer_width = "16")]
 #[lang = "usize"]
 impl usize {
-    uint_impl! { usize, u16, 16, 65536 }
+    uint_impl! { usize, u16, 16, 65536, "", "" }
 }
 #[cfg(target_pointer_width = "32")]
 #[lang = "usize"]
 impl usize {
-    uint_impl! { usize, u32, 32, 4294967295 }
+    uint_impl! { usize, u32, 32, 4294967295, "", "" }
 }
 
 #[cfg(target_pointer_width = "64")]
 #[lang = "usize"]
 impl usize {
-    uint_impl! { usize, u64, 64, 18446744073709551615 }
+    uint_impl! { usize, u64, 64, 18446744073709551615, "", "" }
 }
 
 /// A classification of floating point numbers.
