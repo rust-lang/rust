@@ -112,6 +112,7 @@ pub fn repeat<T: Clone>(elt: T) -> Repeat<T> {
 /// See its documentation for more.
 ///
 /// [`repeat_with`]: fn.repeat_with.html
+#[derive(Copy, Clone, Debug)]
 #[unstable(feature = "iterator_repeat_with", issue = "0")]
 pub struct RepeatWith<F> {
     repeater: F
