@@ -212,4 +212,47 @@ intrinsics! {
     pub extern "aapcs" fn __aeabi_dcmpgt(a: f64, b: f64) -> i32 {
         (__gtdf2(a, b) > 0) as i32
     }
+
+    // On hard-float targets LLVM will use native instructions
+    // for all VFP intrinsics below
+
+    pub extern "C" fn __gesf2vfp(a: f32, b: f32) -> i32 {
+        (a >= b) as i32
+    }
+
+    pub extern "C" fn __gedf2vfp(a: f64, b: f64) -> i32 {
+        (a >= b) as i32
+    }
+
+    pub extern "C" fn __gtsf2vfp(a: f32, b: f32) -> i32 {
+        (a > b) as i32
+    }
+
+    pub extern "C" fn __gtdf2vfp(a: f64, b: f64) -> i32 {
+        (a > b) as i32
+    }
+
+    pub extern "C" fn __ltsf2vfp(a: f32, b: f32) -> i32 {
+        (a < b) as i32
+    }
+
+    pub extern "C" fn __ltdf2vfp(a: f64, b: f64) -> i32 {
+        (a < b) as i32
+    }
+
+    pub extern "C" fn __nesf2vfp(a: f32, b: f32) -> i32 {
+        (a != b) as i32
+    }
+
+    pub extern "C" fn __nedf2vfp(a: f64, b: f64) -> i32 {
+        (a != b) as i32
+    }
+
+    pub extern "C" fn __eqsf2vfp(a: f32, b: f32) -> i32 {
+        (a == b) as i32
+    }
+
+    pub extern "C" fn __eqdf2vfp(a: f64, b: f64) -> i32 {
+        (a == b) as i32
+    }
 }

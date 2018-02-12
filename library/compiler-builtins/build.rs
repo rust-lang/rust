@@ -103,7 +103,9 @@ mod c {
         let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
         let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
         let target_vendor = env::var("CARGO_CFG_TARGET_VENDOR").unwrap();
-
+        let target_arch_arm =
+            target_arch.contains("arm") ||
+            target_arch.contains("thumb");
         let cfg = &mut cc::Build::new();
 
         cfg.warnings(false);
@@ -137,10 +139,10 @@ mod c {
         // the implementation is not valid for the arch, then gcc will error when compiling it.
         if llvm_target[0].starts_with("thumb") {
             cfg.flag("-mthumb");
+        }
 
-            if llvm_target.last() == Some(&"eabihf") {
-                cfg.flag("-mfloat-abi=hard");
-            }
+        if target_arch_arm && llvm_target.last() == Some(&"eabihf") {
+            cfg.flag("-mfloat-abi=hard");
         }
 
         if llvm_target[0] == "thumbv6m" {
@@ -374,9 +376,6 @@ mod c {
             if !llvm_target[0].starts_with("thumbv7em") {
                 sources.extend(
                     &[
-                        "arm/eqdf2vfp.S",
-                        "arm/eqsf2vfp.S",
-                        "arm/extendsfdf2vfp.S",
                         "arm/fixdfsivfp.S",
                         "arm/fixsfsivfp.S",
                         "arm/fixunsdfsivfp.S",
@@ -385,16 +384,8 @@ mod c {
                         "arm/floatsisfvfp.S",
                         "arm/floatunssidfvfp.S",
                         "arm/floatunssisfvfp.S",
-                        "arm/gedf2vfp.S",
-                        "arm/gesf2vfp.S",
-                        "arm/gtdf2vfp.S",
-                        "arm/gtsf2vfp.S",
                         "arm/ledf2vfp.S",
                         "arm/lesf2vfp.S",
-                        "arm/ltdf2vfp.S",
-                        "arm/ltsf2vfp.S",
-                        "arm/nedf2vfp.S",
-                        "arm/nesf2vfp.S",
                         "arm/restore_vfp_d8_d15_regs.S",
                         "arm/save_vfp_d8_d15_regs.S",
                     ],
