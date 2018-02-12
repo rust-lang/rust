@@ -1,0 +1,8 @@
+error[E0622]: intrinsic must be a function
+  --> $DIR/E0622.rs:13:5
+   |
+13 |     pub static breakpoint : unsafe extern "rust-intrinsic" fn();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected a function
+
+error: aborting due to previous error
+

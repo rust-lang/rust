@@ -1,0 +1,8 @@
+error[E0611]: field `0` of tuple-struct `a::Foo` is private
+  --> $DIR/E0611.rs:21:4
+   |
+21 |    y.0; //~ ERROR E0611
+   |    ^^^
+
+error: aborting due to previous error
+

@@ -1,0 +1,11 @@
+error[E0060]: this function takes at least 1 parameter but 0 parameters were supplied
+  --> $DIR/E0060.rs:16:14
+   |
+12 |     fn printf(_: *const u8, ...) -> u32;
+   |     ------------------------------------ defined here
+...
+16 |     unsafe { printf(); }
+   |              ^^^^^^^^ expected at least 1 parameter
+
+error: aborting due to previous error
+

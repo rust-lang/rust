@@ -1,0 +1,11 @@
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/E0276.rs:16:5
+   |
+12 |     fn foo<T>(x: T);
+   |     ---------------- definition of `foo` from trait
+...
+16 |     fn foo<T>(x: T) where T: Copy {} //~ ERROR E0276
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: std::marker::Copy`
+
+error: aborting due to previous error
+

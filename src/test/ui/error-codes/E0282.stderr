@@ -1,0 +1,11 @@
+error[E0282]: type annotations needed
+  --> $DIR/E0282.rs:12:9
+   |
+12 |     let x = "hello".chars().rev().collect(); //~ ERROR E0282
+   |         ^
+   |         |
+   |         cannot infer type for `_`
+   |         consider giving `x` a type
+
+error: aborting due to previous error
+

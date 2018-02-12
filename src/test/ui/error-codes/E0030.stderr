@@ -1,0 +1,8 @@
+error[E0030]: lower range bound must be less than or equal to upper
+  --> $DIR/E0030.rs:14:9
+   |
+14 |         1000 ... 5 => {}
+   |         ^^^^ lower bound larger than upper bound
+
+error: aborting due to previous error
+

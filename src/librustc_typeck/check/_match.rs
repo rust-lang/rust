@@ -214,12 +214,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         end.span
                     };
 
-                    struct_span_err!(tcx.sess, span, E0029,
-                        "only char and numeric types are allowed in range patterns")
-                        .span_label(span, "ranges require char or numeric types")
-                        .note(&format!("start type: {}", self.ty_to_string(lhs_ty)))
-                        .note(&format!("end type: {}", self.ty_to_string(rhs_ty)))
-                        .emit();
+                    let mut err = struct_span_err!(
+                        tcx.sess,
+                        span,
+                        E0029,
+                        "only char and numeric types are allowed in range patterns"
+                    );
+                    err.span_label(span, "ranges require char or numeric types");
+                    err.note(&format!("start type: {}", self.ty_to_string(lhs_ty)));
+                    err.note(&format!("end type: {}", self.ty_to_string(rhs_ty)));
+                    if tcx.sess.teach(&err.get_code().unwrap()) {
+                        err.note(
+                            "In a match expression, only numbers and characters can be matched \
+                             against a range. This is because the compiler checks that the range \
+                             is non-empty at compile-time, and is unable to evaluate arbitrary \
+                             comparison functions. If you want to capture values of an orderable \
+                             type between two end-points, you can use a guard."
+                         );
+                    }
+                    err.emit();
                     return;
                 }
 
@@ -505,10 +518,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // This is "x = SomeTrait" being reduced from
                     // "let &x = &SomeTrait" or "let box x = Box<SomeTrait>", an error.
                     let type_str = self.ty_to_string(expected);
-                    struct_span_err!(self.tcx.sess, span, E0033,
-                              "type `{}` cannot be dereferenced", type_str)
-                        .span_label(span, format!("type `{}` cannot be dereferenced", type_str))
-                        .emit();
+                    let mut err = struct_span_err!(
+                        self.tcx.sess,
+                        span,
+                        E0033,
+                        "type `{}` cannot be dereferenced",
+                        type_str
+                    );
+                    err.span_label(span, format!("type `{}` cannot be dereferenced", type_str));
+                    if self.tcx.sess.teach(&err.get_code().unwrap()) {
+                        err.note("\
+This error indicates that a pointer to a trait type cannot be implicitly dereferenced by a \
+pattern. Every trait defines a type, but because the size of trait implementors isn't fixed, \
+this type has no compile-time size. Therefore, all accesses to trait types must be through \
+pointers. If you encounter this error you should try to avoid dereferencing the pointer.
+
+You can read more about trait objects in the Trait Objects section of the Reference: \
+https://doc.rust-lang.org/reference/types.html#trait-objects");
+                    }
+                    err.emit();
                     return false
                 }
             }
@@ -881,17 +909,33 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             self.field_ty(span, f, substs)
                         })
                         .unwrap_or_else(|| {
-                            struct_span_err!(tcx.sess, span, E0026,
-                                             "{} `{}` does not have a field named `{}`",
-                                             kind_name,
-                                             tcx.item_path_str(variant.did),
-                                             field.name)
-                                .span_label(span,
-                                            format!("{} `{}` does not have field `{}`",
-                                                     kind_name,
-                                                     tcx.item_path_str(variant.did),
-                                                     field.name))
-                                .emit();
+                            let mut err = struct_span_err!(
+                                tcx.sess,
+                                span,
+                                E0026,
+                                "{} `{}` does not have a field named `{}`",
+                                kind_name,
+                                tcx.item_path_str(variant.did),
+                                field.name
+                            );
+                            err.span_label(span,
+                                           format!("{} `{}` does not have field `{}`",
+                                                   kind_name,
+                                                   tcx.item_path_str(variant.did),
+                                                   field.name));
+                            if tcx.sess.teach(&err.get_code().unwrap()) {
+                                err.note(
+                                    "This error indicates that a struct pattern attempted to \
+                                     extract a non-existent field from a struct. Struct fields \
+                                     are identified by the name used before the colon : so struct \
+                                     patterns should resemble the declaration of the struct type \
+                                     being matched.\n\n\
+                                     If you are using shorthand field patterns but want to refer \
+                                     to the struct field by a different name, you should rename \
+                                     it explicitly."
+                                );
+                            }
+                            err.emit();
 
                             tcx.types.err
                         })
@@ -926,6 +970,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 diag.span_label(span, format!("missing field `{}`", field.name));
                 if variant.ctor_kind == CtorKind::Fn {
                     diag.note("trying to match a tuple variant with a struct variant pattern");
+                }
+                if tcx.sess.teach(&diag.get_code().unwrap()) {
+                    diag.note(
+                        "This error indicates that a pattern for a struct fails to specify a \
+                         sub-pattern for every one of the struct's fields. Ensure that each field \
+                         from the struct's definition is mentioned in the pattern, or use `..` to \
+                         ignore unwanted fields."
+                    );
                 }
                 diag.emit();
             }

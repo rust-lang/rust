@@ -1,0 +1,10 @@
+error[E0392]: parameter `T` is never used
+  --> $DIR/E0392.rs:11:10
+   |
+11 | enum Foo<T> { Bar } //~ ERROR E0392
+   |          ^ unused type parameter
+   |
+   = help: consider removing `T` or using a marker such as `std::marker::PhantomData`
+
+error: aborting due to previous error
+

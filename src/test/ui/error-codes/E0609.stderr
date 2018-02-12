@@ -1,0 +1,16 @@
+error[E0609]: no field `foo` on type `Foo`
+  --> $DIR/E0609.rs:18:15
+   |
+18 |     let _ = x.foo; //~ ERROR E0609
+   |               ^^^ unknown field
+   |
+   = note: available fields are: `x`
+
+error[E0609]: no field `1` on type `Bar`
+  --> $DIR/E0609.rs:21:5
+   |
+21 |     y.1; //~ ERROR E0609
+   |     ^^^
+
+error: aborting due to 2 previous errors
+

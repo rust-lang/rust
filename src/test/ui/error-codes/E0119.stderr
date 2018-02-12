@@ -1,0 +1,11 @@
+error[E0119]: conflicting implementations of trait `MyTrait` for type `Foo`:
+  --> $DIR/E0119.rs:23:1
+   |
+15 | impl<T> MyTrait for T {
+   | --------------------- first implementation here
+...
+23 | impl MyTrait for Foo { //~ ERROR E0119
+   | ^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Foo`
+
+error: aborting due to previous error
+

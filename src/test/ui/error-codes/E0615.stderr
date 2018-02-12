@@ -1,0 +1,10 @@
+error[E0615]: attempted to take value of method `method` on type `Foo`
+  --> $DIR/E0615.rs:21:7
+   |
+21 |     f.method; //~ ERROR E0615
+   |       ^^^^^^
+   |
+   = help: maybe a `()` to call it is missing?
+
+error: aborting due to previous error
+

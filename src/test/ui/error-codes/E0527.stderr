@@ -1,0 +1,8 @@
+error[E0527]: pattern requires 2 elements but array has 4
+  --> $DIR/E0527.rs:16:10
+   |
+16 |         &[a, b] => {
+   |          ^^^^^^ expected 4 elements
+
+error: aborting due to previous error
+

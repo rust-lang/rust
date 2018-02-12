@@ -1,0 +1,11 @@
+error[E0185]: method `foo` has a `&self` declaration in the impl, but not in the trait
+  --> $DIR/E0185.rs:19:5
+   |
+12 |     fn foo();
+   |     --------- trait method declared without `&self`
+...
+19 |     fn foo(&self) {}
+   |     ^^^^^^^^^^^^^ `&self` used in impl
+
+error: aborting due to previous error
+

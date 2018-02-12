@@ -1,0 +1,10 @@
+error[E0223]: ambiguous associated type
+  --> $DIR/E0223.rs:14:14
+   |
+14 |     let foo: MyTrait::X;
+   |              ^^^^^^^^^^ ambiguous associated type
+   |
+   = note: specify the type using the syntax `<Type as MyTrait>::X`
+
+error: aborting due to previous error
+

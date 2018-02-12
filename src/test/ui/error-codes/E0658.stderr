@@ -1,0 +1,10 @@
+error[E0658]: use of unstable library feature 'i128' (see issue #35118)
+  --> $DIR/E0658.rs:12:13
+   |
+12 |     let _ = ::std::u128::MAX; //~ ERROR E0658
+   |             ^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(i128)] to the crate attributes to enable
+
+error: aborting due to previous error
+

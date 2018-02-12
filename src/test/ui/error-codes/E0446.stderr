@@ -1,0 +1,10 @@
+error[E0446]: private type `Foo::Bar` in public interface
+  --> $DIR/E0446.rs:14:5
+   |
+14 | /     pub fn bar() -> Bar { //~ ERROR E0446
+15 | |         Bar(0)
+16 | |     }
+   | |_____^ can't leak private type
+
+error: aborting due to previous error
+

@@ -1,0 +1,8 @@
+error[E0069]: `return;` in a function whose return type is not `()`
+  --> $DIR/E0069.rs:12:5
+   |
+12 |     return;
+   |     ^^^^^^ return type is not ()
+
+error: aborting due to previous error
+

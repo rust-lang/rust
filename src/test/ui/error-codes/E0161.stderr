@@ -1,0 +1,14 @@
+error[E0161]: cannot move a value of type str: the size of str cannot be statically determined
+  --> $DIR/E0161.rs:14:28
+   |
+14 |     let _x: Box<str> = box *"hello"; //~ ERROR E0161
+   |                            ^^^^^^^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/E0161.rs:14:28
+   |
+14 |     let _x: Box<str> = box *"hello"; //~ ERROR E0161
+   |                            ^^^^^^^^ cannot move out of borrowed content
+
+error: aborting due to 2 previous errors
+
