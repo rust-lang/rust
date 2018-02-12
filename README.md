@@ -21,31 +21,29 @@ to be a bit out of date). Version 0.1 of rustfmt-nightly is forked from version
 
 ## Quick start
 
-You must be using the latest nightly compiler toolchain.
+Currently, you can use `rustfmt` on nightly and beta. Rust 1.24 stable will work,
+but we're not quite there yet!
 
 To install:
 
 ```
-cargo install rustfmt-nightly
+rustup component add rustfmt-preview --toolchain=nightly
 ```
+
+If `nightly` is your default toolchain, you can leave the `--toolchain` off.
 
 to run on a cargo project in the current working directory:
 
 ```
-cargo fmt
+cargo +nightly fmt
 ```
+
+If `nightly` is your default toolchain, you can leave off the `+nightly`.
 
 ## Installation
 
 ```
-cargo install rustfmt-nightly
-```
-
-or if you're using [Rustup](https://www.rustup.rs/)
-
-```
-rustup update
-rustup run nightly cargo install rustfmt-nightly
+rustup component add rustfmt-preview --toolchain=nightly
 ```
 
 If you don't have a nightly toolchain, you can add it using rustup:
@@ -63,12 +61,6 @@ rustup default nightly
 If you choose not to do that you'll have to run rustfmt using `rustup run ...`
 or by adding `+nightly` to the cargo invocation.
 
-Usually cargo-fmt, which enables usage of Cargo subcommand `cargo fmt`, is
-installed alongside rustfmt. To only install rustfmt run
-
-```
-cargo install --no-default-features rustfmt-nightly
-```
 ## Installing from source
 
 To install from source, first checkout to the tag or branch you want to install, then issue
@@ -151,24 +143,19 @@ when a pull request contains unformatted code. Using `--write-mode=diff` instruc
 rustfmt to exit with an error code if the input is not formatted correctly.
 It will also print any found differences.
 
-(These instructions use the nightly version of Rustfmt. If you want to use the
-Syntex version replace `install rustfmt-nightly` with `install rustfmt`).
-
 A minimal Travis setup could look like this:
 
 ```yaml
 language: rust
-cache: cargo
 before_script:
-- export PATH="$PATH:$HOME/.cargo/bin"
-- which rustfmt || cargo install rustfmt-nightly
+- rustup toolchain install nightly
+- rustup component add --toolchain nightly rustfmt-preview
+- which rustfmt || cargo install --force rustfmt-nightly
 script:
-- cargo fmt -- --write-mode=diff
+- cargo +nightly fmt --all -- --write-mode=diff
 - cargo build
 - cargo test
 ```
-
-Note that using `cache: cargo` is optional but highly recommended to speed up the installation.
 
 ## How to build and test
 
