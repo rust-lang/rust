@@ -162,6 +162,8 @@ unsafe impl<A, F: FnMut() -> A> TrustedLen for RepeatWith<F> {}
 /// Basic usage:
 ///
 /// ```
+/// #![feature("iterator_repeat_with")]
+///
 /// use std::iter;
 ///
 /// // let's assume we have some value of a type that is not `Clone`
@@ -182,6 +184,8 @@ unsafe impl<A, F: FnMut() -> A> TrustedLen for RepeatWith<F> {}
 /// Using mutation and going finite:
 ///
 /// ```rust
+/// #![feature("iterator_repeat_with")]
+///
 /// use std::iter;
 ///
 /// // From the zeroth to the third power of two:
