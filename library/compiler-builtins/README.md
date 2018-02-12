@@ -87,8 +87,8 @@ features = ["c"]
 - [x] addsf3.c
 - [x] arm/adddf3vfp.S
 - [x] arm/addsf3vfp.S
-- [ ] arm/aeabi_dcmp.S
-- [ ] arm/aeabi_fcmp.S
+- [x] arm/aeabi_dcmp.S
+- [x] arm/aeabi_fcmp.S
 - [x] arm/aeabi_idivmod.S
 - [x] arm/aeabi_ldivmod.S
 - [x] arm/aeabi_memcpy.S
@@ -183,8 +183,8 @@ features = ["c"]
 - [x] mulsf3.c
 - [x] powidf2.c
 - [x] powisf2.c
-- [ ] subdf3.c
-- [ ] subsf3.c
+- [x] subdf3.c
+- [x] subsf3.c
 - [ ] truncdfhf2.c
 - [ ] truncdfsf2.c
 - [ ] truncsfhf2.c
