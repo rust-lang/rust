@@ -113,12 +113,12 @@ pub fn repeat<T: Clone>(elt: T) -> Repeat<T> {
 ///
 /// [`repeat_with`]: fn.repeat_with.html
 #[derive(Copy, Clone, Debug)]
-#[unstable(feature = "iterator_repeat_with", issue = "0")]
+#[unstable(feature = "iterator_repeat_with", issue = "48169")]
 pub struct RepeatWith<F> {
     repeater: F
 }
 
-#[unstable(feature = "iterator_repeat_with", issue = "0")]
+#[unstable(feature = "iterator_repeat_with", issue = "48169")]
 impl<A, F: FnMut() -> A> Iterator for RepeatWith<F> {
     type Item = A;
 
@@ -129,7 +129,7 @@ impl<A, F: FnMut() -> A> Iterator for RepeatWith<F> {
     fn size_hint(&self) -> (usize, Option<usize>) { (usize::MAX, None) }
 }
 
-#[unstable(feature = "iterator_repeat_with", issue = "0")]
+#[unstable(feature = "iterator_repeat_with", issue = "48169")]
 impl<A, F: FnMut() -> A> DoubleEndedIterator for RepeatWith<F> {
     #[inline]
     fn next_back(&mut self) -> Option<A> { self.next() }
@@ -209,7 +209,7 @@ unsafe impl<A, F: FnMut() -> A> TrustedLen for RepeatWith<F> {}
 /// assert_eq!(None, pow2.next());
 /// ```
 #[inline]
-#[unstable(feature = "iterator_repeat_with", issue = "0")]
+#[unstable(feature = "iterator_repeat_with", issue = "48169")]
 pub fn repeat_with<A, F: FnMut() -> A>(repeater: F) -> RepeatWith<F> {
     RepeatWith { repeater }
 }
