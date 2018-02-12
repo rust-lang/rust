@@ -182,9 +182,8 @@ impl<'tcx> Rvalue<'tcx> {
                 if let ty::TyAdt(adt_def, _) = ty.sty {
                     adt_def.repr.discr_type().to_ty(tcx)
                 } else {
-                    // Undefined behaviour, bug for now; may want to return something for
-                    // the `discriminant` intrinsic later.
-                    bug!("Rvalue::Discriminant on Place of type {:?}", ty);
+                    // This can only be `0`, for now, so `u8` will suffice.
+                    tcx.types.u8
                 }
             }
             Rvalue::NullaryOp(NullOp::Box, t) => tcx.mk_box(t),
