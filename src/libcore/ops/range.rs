@@ -68,11 +68,11 @@ impl fmt::Debug for RangeFull {
 /// assert_eq!((3..5), std::ops::Range { start: 3, end: 5 });
 /// assert_eq!(3 + 4 + 5, (3..6).sum());
 ///
-/// let arr = [0, 1, 2, 3];
-/// assert_eq!(arr[ .. ], [0,1,2,3]);
-/// assert_eq!(arr[ ..3], [0,1,2  ]);
-/// assert_eq!(arr[1.. ], [  1,2,3]);
-/// assert_eq!(arr[1..3], [  1,2  ]);  // Range
+/// let arr = ['a', 'b', 'c', 'd'];
+/// assert_eq!(arr[ .. ], ['a', 'b', 'c', 'd']);
+/// assert_eq!(arr[ ..3], ['a', 'b', 'c',    ]);
+/// assert_eq!(arr[1.. ], [     'b', 'c', 'd']);
+/// assert_eq!(arr[1..3], [     'b', 'c'     ]);  // Range
 /// ```
 #[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
 #[stable(feature = "rust1", since = "1.0.0")]
