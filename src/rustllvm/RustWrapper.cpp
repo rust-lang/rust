@@ -916,46 +916,6 @@ extern "C" void LLVMRustWriteValueToString(LLVMValueRef V,
   }
 }
 
-extern "C" bool LLVMRustLinkInExternalBitcode(LLVMModuleRef DstRef, char *BC,
-                                              size_t Len) {
-  Module *Dst = unwrap(DstRef);
-
-  std::unique_ptr<MemoryBuffer> Buf =
-      MemoryBuffer::getMemBufferCopy(StringRef(BC, Len));
-
-#if LLVM_VERSION_GE(4, 0)
-  Expected<std::unique_ptr<Module>> SrcOrError =
-      llvm::getLazyBitcodeModule(Buf->getMemBufferRef(), Dst->getContext());
-  if (!SrcOrError) {
-    LLVMRustSetLastError(toString(SrcOrError.takeError()).c_str());
-    return false;
-  }
-
-  auto Src = std::move(*SrcOrError);
-#else
-  ErrorOr<std::unique_ptr<Module>> Src =
-      llvm::getLazyBitcodeModule(std::move(Buf), Dst->getContext());
-  if (!Src) {
-    LLVMRustSetLastError(Src.getError().message().c_str());
-    return false;
-  }
-#endif
-
-  std::string Err;
-
-  raw_string_ostream Stream(Err);
-  DiagnosticPrinterRawOStream DP(Stream);
-#if LLVM_VERSION_GE(4, 0)
-  if (Linker::linkModules(*Dst, std::move(Src))) {
-#else
-  if (Linker::linkModules(*Dst, std::move(Src.get()))) {
-#endif
-    LLVMRustSetLastError(Err.c_str());
-    return false;
-  }
-  return true;
-}
-
 // Note that the two following functions look quite similar to the
 // LLVMGetSectionName function. Sadly, it appears that this function only
 // returns a char* pointer, which isn't guaranteed to be null-terminated. The
