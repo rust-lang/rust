@@ -2129,14 +2129,6 @@ impl<'a> From<Cow<'a, str>> for String {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> From<&'a str> for Cow<'a, str> {
-    #[inline]
-    fn from(s: &'a str) -> Cow<'a, str> {
-        Cow::Borrowed(s)
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> From<String> for Cow<'a, str> {
     #[inline]
     fn from(s: String) -> Cow<'a, str> {
