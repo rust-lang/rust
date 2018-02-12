@@ -1,4 +1,4 @@
-- Feature Name: in_other_programming_languages
+- Feature Name: prior_art
 - Start Date: 2018-02-12
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
