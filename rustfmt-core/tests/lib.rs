@@ -792,7 +792,7 @@ fn configuration_snippet_tests() {
     // entry for each Rust code block found.
     fn get_code_blocks() -> Vec<ConfigCodeBlock> {
         let mut file_iter = BufReader::new(
-            fs::File::open(CONFIGURATIONS_FILE_NAME)
+            fs::File::open(Path::new("..").join(CONFIGURATIONS_FILE_NAME))
                 .expect(&format!("Couldn't read file {}", CONFIGURATIONS_FILE_NAME)),
         ).lines()
             .map(|l| l.unwrap())
