@@ -10,7 +10,6 @@
 
 #![allow(non_snake_case)]
 
-use rustc::hir::def_id::DefId;
 use rustc::hir::map as hir_map;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, AdtKind, Ty, TyCtxt};
@@ -352,18 +351,14 @@ struct ImproperCTypesVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
 }
 
-struct FfiError {
-    message: &'static str,
-    help: Option<&'static str>,
-}
-
-enum FfiResult {
+enum FfiResult<'tcx> {
     FfiSafe,
-    FfiPhantom,
-    FfiUnsafe(FfiError),
-    FfiBadStruct(DefId, FfiError),
-    FfiBadUnion(DefId, FfiError),
-    FfiBadEnum(DefId, FfiError),
+    FfiPhantom(Ty<'tcx>),
+    FfiUnsafe {
+        ty: Ty<'tcx>,
+        reason: &'static str,
+        help: Option<&'static str>,
+    },
 }
 
 /// Check if this enum can be safely exported based on the
@@ -406,7 +401,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     /// representation which can be exported to C code).
     fn check_type_for_ffi(&self,
                           cache: &mut FxHashSet<Ty<'tcx>>,
-                          ty: Ty<'tcx>) -> FfiResult {
+                          ty: Ty<'tcx>) -> FfiResult<'tcx> {
         use self::FfiResult::*;
 
         let cx = self.cx.tcx;
@@ -422,23 +417,24 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         match ty.sty {
             ty::TyAdt(def, substs) => {
                 if def.is_phantom_data() {
-                    return FfiPhantom;
+                    return FfiPhantom(ty);
                 }
                 match def.adt_kind() {
                     AdtKind::Struct => {
                         if !def.repr.c() && !def.repr.transparent() {
-                            return FfiUnsafe(FfiError {
-                                message: "found struct without foreign-function-safe \
-                                          representation annotation in foreign module",
-                                help: Some("consider adding a #[repr(C)] attribute to the type"),
-                            });
+                            return FfiUnsafe {
+                                ty: ty,
+                                reason: "this struct has unspecified layout",
+                                help: Some("consider adding a #[repr(C)] attribute to this struct"),
+                            };
                         }
 
                         if def.non_enum_variant().fields.is_empty() {
-                            return FfiUnsafe(FfiError {
-                                message: "found zero-size struct in foreign module",
+                            return FfiUnsafe {
+                                ty: ty,
+                                reason: "this struct has no fields",
                                 help: Some("consider adding a member to this struct"),
-                            });
+                            };
                         }
 
                         // We can't completely trust repr(C) and repr(transparent) markings;
@@ -464,32 +460,30 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                 FfiSafe => {
                                     all_phantom = false;
                                 }
-                                FfiPhantom => {}
-                                FfiBadStruct(..) | FfiBadUnion(..) | FfiBadEnum(..) => {
+                                FfiPhantom(..) => {}
+                                FfiUnsafe { .. } => {
                                     return r;
-                                }
-                                FfiUnsafe(err) => {
-                                    return FfiBadStruct(def.did, err);
                                 }
                             }
                         }
 
-                        if all_phantom { FfiPhantom } else { FfiSafe }
+                        if all_phantom { FfiPhantom(ty) } else { FfiSafe }
                     }
                     AdtKind::Union => {
                         if !def.repr.c() {
-                            return FfiUnsafe(FfiError {
-                                message: "found union without foreign-function-safe \
-                                          representation annotation in foreign module",
-                                help: Some("consider adding a #[repr(C)] attribute to the type"),
-                            });
+                            return FfiUnsafe {
+                                ty: ty,
+                                reason: "this union has unspecified layout",
+                                help: Some("consider adding a #[repr(C)] attribute to this union"),
+                            };
                         }
 
                         if def.non_enum_variant().fields.is_empty() {
-                            return FfiUnsafe(FfiError {
-                                message: "found zero-size union in foreign module",
-                                help: Some("consider adding a member to this union"),
-                            });
+                            return FfiUnsafe {
+                                ty: ty,
+                                reason: "this union has no fields",
+                                help: Some("consider adding a field to this union"),
+                            };
                         }
 
                         let mut all_phantom = true;
@@ -502,17 +496,14 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                 FfiSafe => {
                                     all_phantom = false;
                                 }
-                                FfiPhantom => {}
-                                FfiBadStruct(..) | FfiBadUnion(..) | FfiBadEnum(..) => {
+                                FfiPhantom(..) => {}
+                                FfiUnsafe { .. } => {
                                     return r;
-                                }
-                                FfiUnsafe(err) => {
-                                    return FfiBadUnion(def.did, err);
                                 }
                             }
                         }
 
-                        if all_phantom { FfiPhantom } else { FfiSafe }
+                        if all_phantom { FfiPhantom(ty) } else { FfiSafe }
                     }
                     AdtKind::Enum => {
                         if def.variants.is_empty() {
@@ -525,12 +516,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         if !def.repr.c() && def.repr.int.is_none() {
                             // Special-case types like `Option<extern fn()>`.
                             if !is_repr_nullable_ptr(cx, def, substs) {
-                                return FfiUnsafe(FfiError {
-                                    message: "found enum without foreign-function-safe \
-                                              representation annotation in foreign module",
+                                return FfiUnsafe {
+                                    ty: ty,
+                                    reason: "enum has no representation hint",
                                     help: Some("consider adding a #[repr(...)] attribute \
-                                                to the type"),
-                                });
+                                                to this enum"),
+                                };
                             }
                         }
 
@@ -543,17 +534,15 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                 let r = self.check_type_for_ffi(cache, arg);
                                 match r {
                                     FfiSafe => {}
-                                    FfiBadStruct(..) | FfiBadUnion(..) | FfiBadEnum(..) => {
+                                    FfiUnsafe { .. } => {
                                         return r;
                                     }
-                                    FfiPhantom => {
-                                        return FfiBadEnum(def.did, FfiError {
-                                            message: "Found phantom data in enum variant",
+                                    FfiPhantom(..) => {
+                                        return FfiUnsafe {
+                                            ty: ty,
+                                            reason: "this enum contains a PhantomData field",
                                             help: None,
-                                        });
-                                    }
-                                    FfiUnsafe(err) => {
-                                        return FfiBadEnum(def.did, err);
+                                        };
                                     }
                                 }
                             }
@@ -563,59 +552,44 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
             }
 
-            ty::TyChar => {
-                FfiUnsafe(FfiError {
-                    message: "found Rust type `char` in foreign module",
-                    help: Some("consider using `u32` or `libc::wchar_t`"),
-                })
-            }
+            ty::TyChar => FfiUnsafe {
+                ty: ty,
+                reason: "the `char` type has no C equivalent",
+                help: Some("consider using `u32` or `libc::wchar_t` instead"),
+            },
 
-            ty::TyInt(ast::IntTy::I128) => {
-                FfiUnsafe(FfiError {
-                    message: "found Rust type `i128` in foreign module, but 128-bit \
-                              integers don't currently have a known stable ABI",
-                    help: None,
-                })
-            }
-
-            ty::TyUint(ast::UintTy::U128) => {
-                FfiUnsafe(FfiError {
-                    message: "found Rust type `u128` in foreign module, but 128-bit \
-                              integers don't currently have a known stable ABI",
-                    help: None,
-                })
-            }
+            ty::TyInt(ast::IntTy::I128) | ty::TyUint(ast::UintTy::U128) => FfiUnsafe {
+                ty: ty,
+                reason: "128-bit integers don't currently have a known stable ABI",
+                help: None,
+            },
 
             // Primitive types with a stable representation.
             ty::TyBool | ty::TyInt(..) | ty::TyUint(..) | ty::TyFloat(..) | ty::TyNever => FfiSafe,
 
-            ty::TySlice(_) => {
-                FfiUnsafe(FfiError {
-                    message: "found Rust slice type in foreign module",
-                    help: Some("consider using a raw pointer instead"),
-                })
-            }
+            ty::TySlice(_) => FfiUnsafe {
+                ty: ty,
+                reason: "slices have no C equivalent",
+                help: Some("consider using a raw pointer instead"),
+            },
 
-            ty::TyDynamic(..) => {
-                FfiUnsafe(FfiError {
-                    message: "found Rust trait type in foreign module",
-                    help: Some("consider using a raw pointer instead"),
-                })
-            }
+            ty::TyDynamic(..) => FfiUnsafe {
+                ty: ty,
+                reason: "trait objects have no C equivalent",
+                help: Some("consider using a raw pointer instead"),
+            },
 
-            ty::TyStr => {
-                FfiUnsafe(FfiError {
-                    message: "found Rust type `str` in foreign module",
-                    help: Some("consider using a `*const libc::c_char`"),
-                })
-            }
+            ty::TyStr => FfiUnsafe {
+                ty: ty,
+                reason: "string slices have no C equivalent",
+                help: Some("consider using `*const u8` and a length instead"),
+            },
 
-            ty::TyTuple(..) => {
-                FfiUnsafe(FfiError {
-                    message: "found Rust tuple type in foreign module",
-                    help: Some("consider using a struct instead"),
-                })
-            }
+            ty::TyTuple(..) => FfiUnsafe {
+                ty: ty,
+                reason: "tuples have unspecified layout",
+                help: Some("consider using a struct instead"),
+            },
 
             ty::TyRawPtr(ref m) |
             ty::TyRef(_, ref m) => self.check_type_for_ffi(cache, m.ty),
@@ -625,11 +599,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             ty::TyFnPtr(sig) => {
                 match sig.abi() {
                     Abi::Rust | Abi::RustIntrinsic | Abi::PlatformIntrinsic | Abi::RustCall => {
-                        return FfiUnsafe(FfiError {
-                            message: "found function pointer with Rust calling convention in \
-                                      foreign module",
-                            help: Some("consider using an `extern` function pointer"),
-                        })
+                        return FfiUnsafe {
+                            ty: ty,
+                            reason: "this function pointer has Rust-specific calling convention",
+                            help: Some("consider using an `fn \"extern\"(...) -> ...` \
+                                        function pointer instead"),
+                        }
                     }
                     _ => {}
                 }
@@ -677,48 +652,17 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
         match self.check_type_for_ffi(&mut FxHashSet(), ty) {
             FfiResult::FfiSafe => {}
-            FfiResult::FfiPhantom => {
+            FfiResult::FfiPhantom(ty) => {
                 self.cx.span_lint(IMPROPER_CTYPES,
                                   sp,
-                                  &format!("found zero-sized type composed only \
-                                            of phantom-data in a foreign-function."));
+                                  &format!("`extern` block uses type `{}` which is not FFI-safe: \
+                                            composed only of PhantomData", ty));
             }
-            FfiResult::FfiUnsafe(err) => {
-                let mut diag = self.cx.struct_span_lint(IMPROPER_CTYPES, sp, err.message);
-                if let Some(s) = err.help {
-                    diag.help(s);
-                }
-                diag.emit();
-            }
-            FfiResult::FfiBadStruct(_, err) => {
-                // FIXME: This diagnostic is difficult to read, and doesn't
-                // point at the relevant field.
-                let msg = format!("found non-foreign-function-safe member in struct \
-                                   marked #[repr(C)]: {}", err.message);
+            FfiResult::FfiUnsafe { ty: unsafe_ty, reason, help } => {
+                let msg = format!("`extern` block uses type `{}` which is not FFI-safe: {}",
+                                  unsafe_ty, reason);
                 let mut diag = self.cx.struct_span_lint(IMPROPER_CTYPES, sp, &msg);
-                if let Some(s) = err.help {
-                    diag.help(s);
-                }
-                diag.emit();
-            }
-            FfiResult::FfiBadUnion(_, err) => {
-                // FIXME: This diagnostic is difficult to read, and doesn't
-                // point at the relevant field.
-                let msg = format!("found non-foreign-function-safe member in union \
-                                   marked #[repr(C)]: {}", err.message);
-                let mut diag = self.cx.struct_span_lint(IMPROPER_CTYPES, sp, &msg);
-                if let Some(s) = err.help {
-                    diag.help(s);
-                }
-                diag.emit();
-            }
-            FfiResult::FfiBadEnum(_, err) => {
-                // FIXME: This diagnostic is difficult to read, and doesn't
-                // point at the relevant variant.
-                let msg = format!("found non-foreign-function-safe member in enum: {}",
-                                  err.message);
-                let mut diag = self.cx.struct_span_lint(IMPROPER_CTYPES, sp, &msg);
-                if let Some(s) = err.help {
+                if let Some(s) = help {
                     diag.help(s);
                 }
                 diag.emit();

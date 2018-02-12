@@ -27,9 +27,9 @@ enum Isize { A, B, C }
 
 extern {
    fn zf(x: Z);
-   fn uf(x: U); //~ ERROR found enum without foreign-function-safe
-   fn bf(x: B); //~ ERROR found enum without foreign-function-safe
-   fn tf(x: T); //~ ERROR found enum without foreign-function-safe
+   fn uf(x: U); //~ ERROR enum has no representation hint
+   fn bf(x: B); //~ ERROR enum has no representation hint
+   fn tf(x: T); //~ ERROR enum has no representation hint
    fn reprc(x: ReprC);
    fn u8(x: U8);
    fn isize(x: Isize);
