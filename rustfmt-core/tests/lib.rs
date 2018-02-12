@@ -27,7 +27,6 @@ use std::str::Chars;
 use rustfmt::*;
 use config::{Color, Config, ReportTactic};
 use config::summary::Summary;
-use config::file_lines::FileLines;
 use rustfmt::filemap::write_system_newlines;
 use rustfmt::rustfmt_diff::*;
 
