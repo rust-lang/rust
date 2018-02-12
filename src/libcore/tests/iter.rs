@@ -1551,6 +1551,7 @@ fn test_repeat_take_collect() {
 
 #[test]
 fn test_repeat_with() {
+    #[derive(PartialEq, Debug)]
     struct NotClone(usize);
     let mut it = repeat_with(|| NotClone(42));
     assert_eq!(it.next(), Some(NotClone(42)));
@@ -1586,7 +1587,7 @@ fn test_repeat_with_take() {
 }
 
 #[test]
-fn test_repeat_take_collect() {
+fn test_repeat_with_take_collect() {
     let mut curr = 1;
     let v: Vec<_> = repeat_with(|| { let tmp = curr; curr *= 2; tmp })
                       .take(5).collect();
