@@ -75,6 +75,9 @@ pub trait Sized { }
 #[lang = "copy"]
 pub trait Copy { }
 
+impl Copy for f32 {}
+impl Copy for i32 {}
+
 pub mod marker {
     pub use Copy;
 }

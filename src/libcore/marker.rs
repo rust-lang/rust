@@ -593,3 +593,43 @@ unsafe impl<'a, T: ?Sized> Freeze for &'a mut T {}
 /// This trait is automatically implemented for almost every type.
 #[unstable(feature = "pin", issue = "49150")]
 pub unsafe auto trait Unpin {}
+
+/// Implementations of `Copy` for primitive types.
+///
+/// Implementations that cannot be described in Rust
+/// are implemented in `SelectionContext::copy_clone_conditions()` in librustc.
+#[cfg(not(stage0))]
+mod copy_impls {
+
+    use super::Copy;
+
+    macro_rules! impl_copy {
+        ($($t:ty)*) => {
+            $(
+                #[stable(feature = "rust1", since = "1.0.0")]
+                impl Copy for $t {}
+            )*
+        }
+    }
+
+    impl_copy! {
+        usize u8 u16 u32 u64 u128
+        isize i8 i16 i32 i64 i128
+        f32 f64
+        bool char
+    }
+
+    #[stable(feature = "never_type", since = "1.26.0")]
+    impl Copy for ! {}
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<T: ?Sized> Copy for *const T {}
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<T: ?Sized> Copy for *mut T {}
+
+    // Shared references can be copied, but mutable references *cannot*!
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<'a, T: ?Sized> Copy for &'a T {}
+
+}

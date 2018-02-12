@@ -135,3 +135,63 @@ pub struct AssertParamIsClone<T: Clone + ?Sized> { _field: ::marker::PhantomData
            reason = "deriving hack, should not be public",
            issue = "0")]
 pub struct AssertParamIsCopy<T: Copy + ?Sized> { _field: ::marker::PhantomData<T> }
+
+/// Implementations of `Clone` for primitive types.
+///
+/// Implementations that cannot be described in Rust
+/// are implemented in `SelectionContext::copy_clone_conditions()` in librustc.
+#[cfg(not(stage0))]
+mod impls {
+
+    use super::Clone;
+
+    macro_rules! impl_clone {
+        ($($t:ty)*) => {
+            $(
+                #[stable(feature = "rust1", since = "1.0.0")]
+                impl Clone for $t {
+                    fn clone(&self) -> Self {
+                        *self
+                    }
+                }
+            )*
+        }
+    }
+
+    impl_clone! {
+        usize u8 u16 u32 u64 u128
+        isize i8 i16 i32 i64 i128
+        f32 f64
+        bool char
+    }
+
+    #[stable(feature = "never_type", since = "1.26.0")]
+    impl Clone for ! {
+        fn clone(&self) -> Self {
+            *self
+        }
+    }
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<T: ?Sized> Clone for *const T {
+        fn clone(&self) -> Self {
+            *self
+        }
+    }
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<T: ?Sized> Clone for *mut T {
+        fn clone(&self) -> Self {
+            *self
+        }
+    }
+
+    // Shared references can be cloned, but mutable references *cannot*!
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<'a, T: ?Sized> Clone for &'a T {
+        fn clone(&self) -> Self {
+            *self
+        }
+    }
+
+}

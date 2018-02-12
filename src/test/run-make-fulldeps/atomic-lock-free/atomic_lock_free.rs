@@ -23,6 +23,8 @@ trait Copy {}
 #[lang = "freeze"]
 trait Freeze {}
 
+impl<T: ?Sized> Copy for *mut T {}
+
 #[cfg(target_has_atomic = "8")]
 pub unsafe fn atomic_u8(x: *mut u8) {
     atomic_xadd(x, 1);
