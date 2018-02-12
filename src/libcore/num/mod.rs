@@ -1126,8 +1126,8 @@ assert_eq!(0x10i32.overflowing_shr(36), (0x1, true));
             concat!("Computes the absolute value of `self`.
 
 Returns a tuple of the absolute version of self along with a boolean indicating whether an overflow
-happened. If self is the minimum value (e.g. ", stringify!($SelfT), "::MIN for values of type 
-", stringify!($SelfT), "), then the minimum value will be returned again and true will be returned
+happened. If self is the minimum value (e.g. ", stringify!($SelfT), "::MIN for values of type
+ ", stringify!($SelfT), "), then the minimum value will be returned again and true will be returned
 for an overflow happening.
 
 # Examples
@@ -1307,7 +1307,8 @@ impl i64 {
 
 #[lang = "i128"]
 impl i128 {
-    int_impl! { i128, i128, u128, 128, -170141183460469231731687303715884105728, 170141183460469231731687303715884105727 }
+    int_impl! { i128, i128, u128, 128, -170141183460469231731687303715884105728,
+        170141183460469231731687303715884105727 }
 }
 
 #[cfg(target_pointer_width = "16")]
@@ -1875,7 +1876,8 @@ Basic usage:
 use std::", stringify!($SelfT), ";
 
 assert_eq!(100", stringify!($SelfT), ".saturating_mul(127), 12700);
-assert_eq!((1", stringify!($SelfT), " << 23).saturating_mul(1 << 23), ", stringify!($SelfT), "::MAX);
+assert_eq!((1", stringify!($SelfT), " << 23).saturating_mul(1 << 23), ", stringify!($SelfT),
+"::MAX);
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[inline]
@@ -2004,9 +2006,11 @@ Any larger values are equivalent to `MAX + 1 - (val - MAX - 1)` where
 Basic usage:
 
 ```
-assert_eq!(100", stringify!($SelfT), ".wrapping_neg(), ", stringify!($SelfT), "::max_value() - 100 + 1);
+assert_eq!(100", stringify!($SelfT), ".wrapping_neg(), ", stringify!($SelfT),
+"::max_value() - 100 + 1);
 assert_eq!(0", stringify!($SelfT), ".wrapping_neg(), 0);
-assert_eq!(180", stringify!($SelfT), ".wrapping_neg(), ", stringify!($SelfT), "::max_value() - 180 + 1);
+assert_eq!(180", stringify!($SelfT), ".wrapping_neg(), ", stringify!($SelfT),
+"::max_value() - 180 + 1);
 assert_eq!(180", stringify!($SelfT), ".wrapping_neg(), (", stringify!($SelfT), "::max_value() / 2",
 "+ 1) - (180", stringify!($SelfT), " - (", stringify!($SelfT), "::max_value() / 2 + 1)));
 ```"),
