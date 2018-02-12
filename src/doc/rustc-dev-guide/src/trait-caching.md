@@ -51,4 +51,3 @@ and draw finer-grained distinctions, but that led to a serious of
 annoying and weird bugs like #22019 and #18290. This simple rule seems
 to be pretty clearly safe and also still retains a very high hit rate
 (~95% when compiling rustc).
-
