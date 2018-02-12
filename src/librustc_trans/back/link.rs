@@ -664,11 +664,13 @@ fn link_natively(sess: &Session,
         let out = String::from_utf8_lossy(&out);
 
         // Check to see if the link failed with "unrecognized command line option:
-        // '-no-pie'". If so, reperform the link step without the -no-pie option. This
-        // is safe because if the linker doesn't support -no-pie then it should not
-        // default to linking executables as pie. Different versions of gcc seem to
-        // use different quotes in the error message so don't check for them.
-        if out.contains("unrecognized command line option") &&
+        // '-no-pie'" for gcc or "unknown argument: '-no-pie'" for clang. If so,
+        // reperform the link step without the -no-pie option. This is safe because
+        // if the linker doesn't support -no-pie then it should not default to
+        // linking executables as pie. Different versions of gcc seem to use
+        // different quotes in the error message so don't check for them.
+        if (out.contains("unrecognized command line option") ||
+            out.contains("unknown argument")) &&
            out.contains("-no-pie") &&
            cmd.get_args().iter().any(|e| e.to_string_lossy() == "-no-pie") {
             info!("linker output: {:?}", out);
