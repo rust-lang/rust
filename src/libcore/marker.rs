@@ -166,11 +166,6 @@ pub trait Unsize<T: ?Sized> {
 /// are allowed to access `x` after the assignment. Under the hood, both a copy and a move
 /// can result in bits being copied in memory, although this is sometimes optimized away.
 ///
-/// ## Closures
-///
-/// Closure types automatically implement `Copy` if they capture no value from the environment
-/// or if all such captured values implement `Copy` themselves.
-///
 /// ## How can I implement `Copy`?
 ///
 /// There are two ways to implement `Copy` on your type. The simplest is to use `derive`:
@@ -265,6 +260,21 @@ pub trait Unsize<T: ?Sized> {
 /// non-`Copy` in the future, it could be prudent to omit the `Copy` implementation now, to
 /// avoid a breaking API change.
 ///
+/// ## Additional implementors
+///
+/// In addition to the [implementors listed below][impls],
+/// the following types also implement `Copy`:
+///
+/// * Function item types (i.e. the distinct types defined for each function)
+/// * Function pointer types (e.g. `fn() -> i32`)
+/// * Array types, for all sizes, if the item type also implements `Copy` (e.g. `[i32; 123456]`)
+/// * Tuple types, if each component also implements `Copy` (e.g. `()`, `(i32, bool)`)
+/// * Closure types, if they capture no value from the environment
+///   or if all such captured values implement `Copy` themselves.
+///   Note that variables captured by shared reference always implement `Copy`
+///   (even if the referent doesn't),
+///   while variables captured by mutable reference never implement `Copy`.
+///
 /// [`Vec<T>`]: ../../std/vec/struct.Vec.html
 /// [`String`]: ../../std/string/struct.String.html
 /// [`Drop`]: ../../std/ops/trait.Drop.html
@@ -272,6 +282,7 @@ pub trait Unsize<T: ?Sized> {
 /// [`Clone`]: ../clone/trait.Clone.html
 /// [`String`]: ../../std/string/struct.String.html
 /// [`i32`]: ../../std/primitive.i32.html
+/// [impls]: #implementors
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "copy"]
 pub trait Copy : Clone {

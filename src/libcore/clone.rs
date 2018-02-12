@@ -63,11 +63,6 @@
 /// This trait can be used with `#[derive]` if all fields are `Clone`. The `derive`d
 /// implementation of [`clone`] calls [`clone`] on each field.
 ///
-/// ## Closures
-///
-/// Closure types automatically implement `Clone` if they capture no value from the environment
-/// or if all such captured values implement `Clone` themselves.
-///
 /// ## How can I implement `Clone`?
 ///
 /// Types that are [`Copy`] should have a trivial implementation of `Clone`. More formally:
@@ -92,6 +87,23 @@
 ///     fn clone(&self) -> Stats { *self }
 /// }
 /// ```
+///
+/// ## Additional implementors
+///
+/// In addition to the [implementors listed below][impls],
+/// the following types also implement `Clone`:
+///
+/// * Function item types (i.e. the distinct types defined for each function)
+/// * Function pointer types (e.g. `fn() -> i32`)
+/// * Array types, for all sizes, if the item type also implements `Clone` (e.g. `[i32; 123456]`)
+/// * Tuple types, if each component also implements `Clone` (e.g. `()`, `(i32, bool)`)
+/// * Closure types, if they capture no value from the environment
+///   or if all such captured values implement `Clone` themselves.
+///   Note that variables captured by shared reference always implement `Clone`
+///   (even if the referent doesn't),
+///   while variables captured by mutable reference never implement `Clone`.
+///
+/// [impls]: #implementors
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "clone"]
 pub trait Clone : Sized {
