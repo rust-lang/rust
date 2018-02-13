@@ -1,0 +1,18 @@
+error: Suspicious use of binary operator in `Add` impl
+  --> $DIR/suspicious_arithmetic_impl.rs:14:20
+   |
+14 |         Foo(self.0 - other.0)
+   |                    ^
+   |
+   = note: `-D suspicious-arithmetic-impl` implied by `-D warnings`
+
+error: Suspicious use of binary operator in `AddAssign` impl
+  --> $DIR/suspicious_arithmetic_impl.rs:20:23
+   |
+20 |         *self = *self - other;
+   |                       ^
+   |
+   = note: `-D suspicious-op-assign-impl` implied by `-D warnings`
+
+error: aborting due to 2 previous errors
+
