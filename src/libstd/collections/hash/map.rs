@@ -564,7 +564,7 @@ impl<K, V, S> HashMap<K, V, S>
         where K: Borrow<Q>,
               Q: Eq + Hash
     {
-        if !self.is_empty() {
+        if self.is_empty() {
             return None;
         }
 
