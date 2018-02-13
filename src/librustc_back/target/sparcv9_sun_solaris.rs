@@ -18,6 +18,10 @@ pub fn target() -> TargetResult {
     base.cpu = "v9".to_string();
     base.max_atomic_width = Some(64);
     base.exe_allocation_crate = None;
+    // Global-Dynamic and Local-Dynamic are currently broken when using LLVM's
+    // integrated assembler, as it doesn't emit a symbol table entry for
+    // __tls_get_addr (https://sourceware.org/bugzilla/show_bug.cgi?id=22832).
+    base.no_integrated_as = true;
 
     Ok(Target {
         llvm_target: "sparcv9-sun-solaris".to_string(),
