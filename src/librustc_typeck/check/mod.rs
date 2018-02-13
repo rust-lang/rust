@@ -4800,8 +4800,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // to add defaults. If the user provided *too many* types, that's
         // a problem.
         let supress_mismatch = self.check_impl_trait(span, fn_segment);
-        self.check_path_parameter_count(span, &mut type_segment, false, supress_mismatch);
-        self.check_path_parameter_count(span, &mut fn_segment, false, supress_mismatch);
+        self.check_generic_arg_count(span, &mut type_segment, false, supress_mismatch);
+        self.check_generic_arg_count(span, &mut fn_segment, false, supress_mismatch);
 
         let (fn_start, has_self) = match (type_segment, fn_segment) {
             (_, Some((_, generics))) => {
@@ -4955,7 +4955,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Report errors if the provided parameters are too few or too many.
-    fn check_path_parameter_count(&self,
+    fn check_generic_arg_count(&self,
                                   span: Span,
                                   segment: &mut Option<(&hir::PathSegment, &ty::Generics)>,
                                   is_method_call: bool,
@@ -4964,7 +4964,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             (vec![], vec![], true, &[][..]),
             |(s, _)| s.parameters.as_ref().map_or(
                 (vec![], vec![], s.infer_types, &[][..]),
-                |p| (p.lifetimes(), p.types(),
+                |p| (p.lifetimes().collect(), p.types().collect(),
                      s.infer_types, &p.bindings[..])));
         let infer_lifetimes = lifetimes.len() == 0;
 

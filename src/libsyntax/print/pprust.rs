@@ -1992,7 +1992,7 @@ impl<'a> State<'a> {
         self.s.word(".")?;
         self.print_ident(segment.ident)?;
         if let Some(ref parameters) = segment.parameters {
-            self.print_path_parameters(parameters, true)?;
+            self.print_generic_args(parameters, true)?;
         }
         self.print_call_post(base_args)
     }
@@ -2436,7 +2436,7 @@ impl<'a> State<'a> {
            segment.ident.name != keywords::DollarCrate.name() {
             self.print_ident(segment.ident)?;
             if let Some(ref parameters) = segment.parameters {
-                self.print_path_parameters(parameters, colons_before_params)?;
+                self.print_generic_args(parameters, colons_before_params)?;
             }
         } else if segment.ident.name == keywords::DollarCrate.name() {
             self.print_dollar_crate(segment.ident.span.ctxt())?;
@@ -2463,13 +2463,13 @@ impl<'a> State<'a> {
         let item_segment = path.segments.last().unwrap();
         self.print_ident(item_segment.ident)?;
         match item_segment.parameters {
-            Some(ref parameters) => self.print_path_parameters(parameters, colons_before_params),
+            Some(ref parameters) => self.print_generic_args(parameters, colons_before_params),
             None => Ok(()),
         }
     }
 
-    fn print_path_parameters(&mut self,
-                             parameters: &ast::PathParameters,
+    fn print_generic_args(&mut self,
+                             parameters: &ast::GenericArgs,
                              colons_before_params: bool)
                              -> io::Result<()>
     {
@@ -2478,7 +2478,7 @@ impl<'a> State<'a> {
         }
 
         match *parameters {
-            ast::PathParameters::AngleBracketed(ref data) => {
+            ast::GenericArgs::AngleBracketed(ref data) => {
                 self.s.word("<")?;
 
                 self.commasep(Inconsistent, &data.parameters, |s, p| s.print_param(p))?;
@@ -2499,7 +2499,7 @@ impl<'a> State<'a> {
                 self.s.word(">")?
             }
 
-            ast::PathParameters::Parenthesized(ref data) => {
+            ast::GenericArgs::Parenthesized(ref data) => {
                 self.s.word("(")?;
                 self.commasep(
                     Inconsistent,

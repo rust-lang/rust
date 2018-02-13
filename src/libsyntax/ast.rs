@@ -12,7 +12,7 @@
 
 pub use self::TyParamBound::*;
 pub use self::UnsafeSource::*;
-pub use self::PathParameters::*;
+pub use self::GenericArgs::*;
 pub use symbol::{Ident, Symbol as Name};
 pub use util::ThinVec;
 pub use util::parser::ExprPrecedence;
@@ -135,7 +135,7 @@ pub struct PathSegment {
     /// `Some` means that parameter list is supplied (`Path<X, Y>`)
     /// but it can be empty (`Path<>`).
     /// `P` is used as a size optimization for the common case with no parameters.
-    pub parameters: Option<P<PathParameters>>,
+    pub parameters: Option<P<GenericArgs>>,
 }
 
 impl PathSegment {
@@ -151,14 +151,14 @@ impl PathSegment {
 ///
 /// E.g. `<A, B>` as in `Foo<A, B>` or `(A, B)` as in `Foo(A, B)`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum PathParameters {
+pub enum GenericArgs {
     /// The `<'a, A,B,C>` in `foo::bar::baz::<'a, A,B,C>`
     AngleBracketed(AngleBracketedParameterData),
     /// The `(A,B)` and `C` in `Foo(A,B) -> C`
     Parenthesized(ParenthesizedParameterData),
 }
 
-impl PathParameters {
+impl GenericArgs {
     pub fn span(&self) -> Span {
         match *self {
             AngleBracketed(ref data) => data.span,
@@ -187,36 +187,36 @@ pub struct AngleBracketedParameterData {
 }
 
 impl AngleBracketedParameterData {
-    pub fn lifetimes(&self) -> Vec<&Lifetime> {
+    pub fn lifetimes(&self) -> impl DoubleEndedIterator<Item = &Lifetime> {
         self.parameters.iter().filter_map(|p| {
             if let AngleBracketedParam::Lifetime(lt) = p {
                 Some(lt)
             } else {
                 None
             }
-        }).collect()
+        })
     }
 
-    pub fn types(&self) -> Vec<&P<Ty>> {
+    pub fn types(&self) -> impl DoubleEndedIterator<Item = &P<Ty>> {
         self.parameters.iter().filter_map(|p| {
             if let AngleBracketedParam::Type(ty) = p {
                 Some(ty)
             } else {
                 None
             }
-        }).collect()
+        })
     }
 }
 
-impl Into<Option<P<PathParameters>>> for AngleBracketedParameterData {
-    fn into(self) -> Option<P<PathParameters>> {
-        Some(P(PathParameters::AngleBracketed(self)))
+impl Into<Option<P<GenericArgs>>> for AngleBracketedParameterData {
+    fn into(self) -> Option<P<GenericArgs>> {
+        Some(P(GenericArgs::AngleBracketed(self)))
     }
 }
 
-impl Into<Option<P<PathParameters>>> for ParenthesizedParameterData {
-    fn into(self) -> Option<P<PathParameters>> {
-        Some(P(PathParameters::Parenthesized(self)))
+impl Into<Option<P<GenericArgs>>> for ParenthesizedParameterData {
+    fn into(self) -> Option<P<GenericArgs>> {
+        Some(P(GenericArgs::Parenthesized(self)))
     }
 }
 

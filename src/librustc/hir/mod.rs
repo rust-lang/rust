@@ -327,7 +327,7 @@ pub struct PathSegment {
     /// this is more than just simple syntactic sugar; the use of
     /// parens affects the region binding rules, so we preserve the
     /// distinction.
-    pub parameters: Option<P<PathParameters>>,
+    pub parameters: Option<P<GenericArgs>>,
 
     /// Whether to infer remaining type parameters, if any.
     /// This only applies to expression and pattern paths, and
@@ -346,7 +346,7 @@ impl PathSegment {
         }
     }
 
-    pub fn new(name: Name, parameters: PathParameters, infer_types: bool) -> Self {
+    pub fn new(name: Name, parameters: GenericArgs, infer_types: bool) -> Self {
         PathSegment {
             name,
             infer_types,
@@ -359,11 +359,11 @@ impl PathSegment {
     }
 
     // FIXME: hack required because you can't create a static
-    // PathParameters, so you can't just return a &PathParameters.
+    // GenericArgs, so you can't just return a &GenericArgs.
     pub fn with_parameters<F, R>(&self, f: F) -> R
-        where F: FnOnce(&PathParameters) -> R
+        where F: FnOnce(&GenericArgs) -> R
     {
-        let dummy = PathParameters::none();
+        let dummy = GenericArgs::none();
         f(if let Some(ref params) = self.parameters {
             &params
         } else {
@@ -373,15 +373,15 @@ impl PathSegment {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum PathParam {
+pub enum GenericArg {
     Lifetime(Lifetime),
     Type(P<Ty>),
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct PathParameters {
+pub struct GenericArgs {
     /// The generic parameters for this path segment.
-    pub parameters: HirVec<PathParam>,
+    pub parameters: HirVec<GenericArg>,
     /// Bindings (equality constraints) on associated types, if present.
     /// E.g., `Foo<A=Bar>`.
     pub bindings: HirVec<TypeBinding>,
@@ -391,7 +391,7 @@ pub struct PathParameters {
     pub parenthesized: bool,
 }
 
-impl PathParameters {
+impl GenericArgs {
     pub fn none() -> Self {
         Self {
             parameters: HirVec::new(),
@@ -406,33 +406,33 @@ impl PathParameters {
 
     pub fn inputs(&self) -> &[P<Ty>] {
         if self.parenthesized {
-            if let Some(ref ty) = self.types().get(0) {
+            if let Some(ref ty) = self.types().next() {
                 if let TyTup(ref tys) = ty.node {
                     return tys;
                 }
             }
         }
-        bug!("PathParameters::inputs: not a `Fn(T) -> U`");
+        bug!("GenericArgs::inputs: not a `Fn(T) -> U`");
     }
 
-    pub fn lifetimes(&self) -> Vec<&Lifetime> {
+    pub fn lifetimes(&self) -> impl DoubleEndedIterator<Item = &Lifetime> {
         self.parameters.iter().filter_map(|p| {
-            if let PathParam::Lifetime(lt) = p {
+            if let GenericArg::Lifetime(lt) = p {
                 Some(lt)
             } else {
                 None
             }
-        }).collect()
+        })
     }
 
-    pub fn types(&self) -> Vec<&P<Ty>> {
+    pub fn types(&self) -> impl DoubleEndedIterator<Item = &P<Ty>> {
         self.parameters.iter().filter_map(|p| {
-            if let PathParam::Type(ty) = p {
+            if let GenericArg::Type(ty) = p {
                 Some(ty)
             } else {
                 None
             }
-        }).collect()
+        })
     }
 }
 
@@ -562,11 +562,11 @@ impl Generics {
         self.params.iter().any(|param| param.is_type_param())
     }
 
-    pub fn lifetimes<'a>(&'a self) -> impl Iterator<Item = &'a LifetimeDef> {
+    pub fn lifetimes<'a>(&'a self) -> impl DoubleEndedIterator<Item = &'a LifetimeDef> {
         self.params.lifetimes()
     }
 
-    pub fn ty_params<'a>(&'a self) -> impl Iterator<Item = &'a TyParam> {
+    pub fn ty_params<'a>(&'a self) -> impl DoubleEndedIterator<Item = &'a TyParam> {
         self.params.ty_params()
     }
 }

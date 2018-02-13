@@ -133,7 +133,11 @@ pub trait Folder : Sized {
     }
 
     fn fold_param(&mut self, p: AngleBracketedParam) -> AngleBracketedParam {
-        noop_fold_param(p, self)
+        match p {
+            AngleBracketedParam::Lifetime(lt) =>
+                AngleBracketedParam::Lifetime(self.fold_lifetime(lt)),
+            AngleBracketedParam::Type(ty) => AngleBracketedParam::Type(self.fold_ty(ty)),
+        }
     }
 
     fn fold_ty(&mut self, t: P<Ty>) -> P<Ty> {
@@ -176,8 +180,8 @@ pub trait Folder : Sized {
         noop_fold_qpath(qs, p, self)
     }
 
-    fn fold_path_parameters(&mut self, p: PathParameters) -> PathParameters {
-        noop_fold_path_parameters(p, self)
+    fn fold_generic_args(&mut self, p: GenericArgs) -> GenericArgs {
+        noop_fold_generic_args(p, self)
     }
 
     fn fold_angle_bracketed_parameter_data(&mut self, p: AngleBracketedParameterData)
@@ -357,19 +361,6 @@ pub fn noop_fold_ty_binding<T: Folder>(b: TypeBinding, fld: &mut T) -> TypeBindi
     }
 }
 
-pub fn noop_fold_param<T: Folder>(p: AngleBracketedParam,
-                                  fld: &mut T)
-                                  -> AngleBracketedParam {
-    match p {
-        AngleBracketedParam::Lifetime(lt) => {
-            AngleBracketedParam::Lifetime(noop_fold_lifetime(lt, fld))
-        }
-        AngleBracketedParam::Type(ty) => {
-            AngleBracketedParam::Type(noop_fold_ty(ty, fld))
-        }
-    }
-}
-
 pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
     t.map(|Ty {id, node, span}| Ty {
         id: fld.new_id(id),
@@ -452,7 +443,7 @@ pub fn noop_fold_path<T: Folder>(Path { segments, span }: Path, fld: &mut T) -> 
     Path {
         segments: segments.move_map(|PathSegment {ident, parameters}| PathSegment {
             ident: fld.fold_ident(ident),
-            parameters: parameters.map(|ps| ps.map(|ps| fld.fold_path_parameters(ps))),
+            parameters: parameters.map(|ps| ps.map(|ps| fld.fold_generic_args(ps))),
         }),
         span: fld.new_span(span)
     }
@@ -471,14 +462,14 @@ pub fn noop_fold_qpath<T: Folder>(qself: Option<QSelf>,
     (qself, fld.fold_path(path))
 }
 
-pub fn noop_fold_path_parameters<T: Folder>(path_parameters: PathParameters, fld: &mut T)
-                                            -> PathParameters
+pub fn noop_fold_generic_args<T: Folder>(generic_args: GenericArgs, fld: &mut T)
+                                         -> GenericArgs
 {
-    match path_parameters {
-        PathParameters::AngleBracketed(data) =>
-            PathParameters::AngleBracketed(fld.fold_angle_bracketed_parameter_data(data)),
-        PathParameters::Parenthesized(data) =>
-            PathParameters::Parenthesized(fld.fold_parenthesized_parameter_data(data)),
+    match generic_args {
+        GenericArgs::AngleBracketed(data) =>
+            GenericArgs::AngleBracketed(fld.fold_angle_bracketed_parameter_data(data)),
+        GenericArgs::Parenthesized(data) =>
+            GenericArgs::Parenthesized(fld.fold_parenthesized_parameter_data(data)),
     }
 }
 
@@ -1201,7 +1192,7 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                     PathSegment {
                         ident: folder.fold_ident(seg.ident),
                         parameters: seg.parameters.map(|ps| {
-                            ps.map(|ps| folder.fold_path_parameters(ps))
+                            ps.map(|ps| folder.fold_generic_args(ps))
                         }),
                     },
                     folder.fold_exprs(args))

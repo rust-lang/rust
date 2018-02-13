@@ -137,9 +137,9 @@ impl<'ast> Visitor<'ast> for NodeCounter {
         self.count += 1;
         walk_use_tree(self, use_tree, id)
     }
-    fn visit_path_parameters(&mut self, path_span: Span, path_parameters: &PathParameters) {
+    fn visit_generic_args(&mut self, path_span: Span, generic_args: &GenericArgs) {
         self.count += 1;
-        walk_path_parameters(self, path_span, path_parameters)
+        walk_generic_args(self, path_span, generic_args)
     }
     fn visit_assoc_type_binding(&mut self, type_binding: &TypeBinding) {
         self.count += 1;

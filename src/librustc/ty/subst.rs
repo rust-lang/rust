@@ -105,6 +105,10 @@ impl<'tcx> From<Ty<'tcx>> for Kind<'tcx> {
     }
 }
 
+impl<'tcx> Into<Kind<'tcx>> for ty::Region<'tcx> {}
+
+impl<'tcx> Into<Kind<'tcx>> for Ty<'tcx> {}
+
 impl<'tcx> Kind<'tcx> {
     #[inline]
     pub fn unpack(self) -> UnpackedKind<'tcx> {

@@ -1603,7 +1603,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         &mut self,
         def: Def,
         depth: usize,
-        params: &'tcx hir::PathParameters,
+        params: &'tcx hir::GenericArgs,
     ) {
         if params.parenthesized {
             let was_in_fn_syntax = self.is_in_fn_syntax;
@@ -1613,10 +1613,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             return;
         }
 
-        if params.lifetimes().iter().all(|l| l.is_elided()) {
-            self.resolve_elided_lifetimes(params.lifetimes(), true);
+        if params.lifetimes().all(|l| l.is_elided()) {
+            self.resolve_elided_lifetimes(params.lifetimes().collect(), true);
         } else {
-            for l in &params.lifetimes() {
+            for l in params.lifetimes() {
                 self.visit_lifetime(l);
             }
         }
@@ -1688,13 +1688,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     } else {
                         Some(Region::Static)
                     },
-                    Set1::One(r) => r.subst(params.lifetimes(), map),
+                    Set1::One(r) => r.subst(params.lifetimes().collect(), map),
                     Set1::Many => None,
                 })
                 .collect()
         });
 
-        for (i, ty) in params.types().iter().enumerate() {
+        for (i, ty) in params.types().enumerate() {
             if let Some(&lt) = object_lifetime_defaults.get(i) {
                 let scope = Scope::ObjectLifetimeDefault {
                     lifetime: lt,

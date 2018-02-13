@@ -27,7 +27,7 @@ use std::collections::BTreeMap;
 use rustc::hir::def_id::DefId;
 use rustc::ty;
 
-use clean::PathParameters as PP;
+use clean::GenericArgs as PP;
 use clean::WherePredicate as WP;
 use clean;
 use core::DocContext;

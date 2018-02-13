@@ -288,10 +288,10 @@ impl fmt::Display for clean::TyParamBound {
     }
 }
 
-impl fmt::Display for clean::PathParameters {
+impl fmt::Display for clean::GenericArgs {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            clean::PathParameters::AngleBracketed {
+            clean::GenericArgs::AngleBracketed {
                 ref lifetimes, ref types, ref bindings
             } => {
                 if !lifetimes.is_empty() || !types.is_empty() || !bindings.is_empty() {
@@ -337,7 +337,7 @@ impl fmt::Display for clean::PathParameters {
                     }
                 }
             }
-            clean::PathParameters::Parenthesized { ref inputs, ref output } => {
+            clean::GenericArgs::Parenthesized { ref inputs, ref output } => {
                 f.write_str("(")?;
                 let mut comma = false;
                 for ty in inputs {

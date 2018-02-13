@@ -316,7 +316,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         let method_generics = self.tcx.generics_of(pick.item.def_id);
         let mut fn_segment = Some((segment, method_generics));
         let supress_mismatch = self.fcx.check_impl_trait(self.span, fn_segment);
-        self.fcx.check_path_parameter_count(self.span, &mut fn_segment, true, supress_mismatch);
+        self.fcx.check_generic_arg_count(self.span, &mut fn_segment, true, supress_mismatch);
 
         // Create subst for early-bound lifetime parameters, combining
         // parameters from the type and those from the method.

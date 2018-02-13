@@ -199,7 +199,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     fn create_substs_for_ast_path(&self,
         span: Span,
         def_id: DefId,
-        parameters: &hir::PathParameters,
+        parameters: &hir::GenericArgs,
         infer_types: bool,
         self_ty: Option<Ty<'tcx>>)
         -> (&'tcx Substs<'tcx>, Vec<ConvertedBinding<'tcx>>)
@@ -973,13 +973,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             segment.with_parameters(|params| {
                 for p in &params.parameters {
                     let (mut span_err, span, kind) = match p {
-                        hir::PathParam::Lifetime(lt) => {
+                        hir::GenericArg::Lifetime(lt) => {
                             (struct_span_err!(self.tcx().sess, lt.span, E0110,
                                               "lifetime parameters are not allowed on this type"),
                              lt.span,
                              "lifetime")
                         }
-                        hir::PathParam::Type(ty) => {
+                        hir::GenericArg::Type(ty) => {
                             (struct_span_err!(self.tcx().sess, ty.span, E0109,
                                               "type parameters are not allowed on this type"),
                              ty.span,

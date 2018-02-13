@@ -1558,8 +1558,8 @@ impl Clean<TyParamBound> for hir::TyParamBound {
     }
 }
 
-fn external_path_params(cx: &DocContext, trait_did: Option<DefId>, has_self: bool,
-                        bindings: Vec<TypeBinding>, substs: &Substs) -> PathParameters {
+fn external_generic_args(cx: &DocContext, trait_did: Option<DefId>, has_self: bool,
+                        bindings: Vec<TypeBinding>, substs: &Substs) -> GenericArgs {
     let lifetimes = substs.regions().filter_map(|v| v.clean(cx)).collect();
     let types = substs.types().skip(has_self as usize).collect::<Vec<_>>();
 
@@ -1570,7 +1570,7 @@ fn external_path_params(cx: &DocContext, trait_did: Option<DefId>, has_self: boo
             let inputs = match types[0].sty {
                 ty::TyTuple(ref tys) => tys.iter().map(|t| t.clean(cx)).collect(),
                 _ => {
-                    return PathParameters::AngleBracketed {
+                    return GenericArgs::AngleBracketed {
                         lifetimes,
                         types: types.clean(cx),
                         bindings,
@@ -1583,13 +1583,13 @@ fn external_path_params(cx: &DocContext, trait_did: Option<DefId>, has_self: boo
             //     ty::TyTuple(ref v) if v.is_empty() => None, // -> ()
             //     _ => Some(types[1].clean(cx))
             // };
-            PathParameters::Parenthesized {
+            GenericArgs::Parenthesized {
                 inputs,
                 output,
             }
         },
         _ => {
-            PathParameters::AngleBracketed {
+            GenericArgs::AngleBracketed {
                 lifetimes,
                 types: types.clean(cx),
                 bindings,
@@ -1607,7 +1607,7 @@ fn external_path(cx: &DocContext, name: &str, trait_did: Option<DefId>, has_self
         def: Def::Err,
         segments: vec![PathSegment {
             name: name.to_string(),
-            params: external_path_params(cx, trait_did, has_self, bindings, substs)
+            params: external_generic_args(cx, trait_did, has_self, bindings, substs)
         }],
     }
 }
@@ -2656,7 +2656,7 @@ impl Type {
         match *self {
             ResolvedPath { ref path, .. } => {
                 path.segments.last().and_then(|seg| {
-                    if let PathParameters::AngleBracketed { ref types, .. } = seg.params {
+                    if let GenericArgs::AngleBracketed { ref types, .. } = seg.params {
                         Some(&**types)
                     } else {
                         None
@@ -3447,7 +3447,7 @@ impl Path {
             def: Def::Err,
             segments: vec![PathSegment {
                 name,
-                params: PathParameters::AngleBracketed {
+                params: GenericArgs::AngleBracketed {
                     lifetimes: Vec::new(),
                     types: Vec::new(),
                     bindings: Vec::new(),
@@ -3471,8 +3471,8 @@ impl Clean<Path> for hir::Path {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
-pub enum PathParameters {
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eg, Debug, Hash)]
+pub enum GenericArgs {
     AngleBracketed {
         lifetimes: Vec<Lifetime>,
         types: Vec<Type>,
@@ -3484,22 +3484,22 @@ pub enum PathParameters {
     }
 }
 
-impl Clean<PathParameters> for hir::PathParameters {
-    fn clean(&self, cx: &DocContext) -> PathParameters {
+impl Clean<GenericArgs> for hir::GenericArgs {
+    fn clean(&self, cx: &DocContext) -> GenericArgs {
         if self.parenthesized {
             let output = self.bindings[0].ty.clean(cx);
-            PathParameters::Parenthesized {
+            GenericArgs::Parenthesized {
                 inputs: self.inputs().clean(cx),
                 output: if output != Type::Tuple(Vec::new()) { Some(output) } else { None }
             }
         } else {
-            PathParameters::AngleBracketed {
-                lifetimes: if self.lifetimes().iter().all(|lt| lt.is_elided()) {
+            GenericArgs::AngleBracketed {
+                lifetimes: if self.lifetimes().all(|lt| lt.is_elided()) {
                     vec![]
                 } else {
-                    self.lifetimes().iter().map(|lp| lp.clean(cx)).collect()
+                    self.lifetimes().map(|lp| lp.clean(cx)).collect()
                 },
-                types: self.types().iter().map(|tp| tp.clean(cx)).collect(),
+                types: self.types().map(|tp| tp.clean(cx)).collect(),
                 bindings: self.bindings.clean(cx),
             }
         }
@@ -3509,7 +3509,7 @@ impl Clean<PathParameters> for hir::PathParameters {
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub struct PathSegment {
     pub name: String,
-    pub params: PathParameters,
+    pub params: GenericArgs,
 }
 
 impl Clean<PathSegment> for hir::PathSegment {

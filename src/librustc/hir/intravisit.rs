@@ -344,10 +344,10 @@ pub trait Visitor<'v> : Sized {
     fn visit_label(&mut self, label: &'v Label) {
         walk_label(self, label)
     }
-    fn visit_path_param(&mut self, path_param: &'v PathParam) {
-        match path_param {
-            PathParam::Lifetime(lt) => self.visit_lifetime(lt),
-            PathParam::Type(ty) => self.visit_ty(ty),
+    fn visit_generic_arg(&mut self, generic_arg: &'v GenericArg) {
+        match generic_arg {
+            GenericArg::Lifetime(lt) => self.visit_lifetime(lt),
+            GenericArg::Type(ty) => self.visit_ty(ty),
         }
     }
     fn visit_lifetime(&mut self, lifetime: &'v Lifetime) {
@@ -362,8 +362,8 @@ pub trait Visitor<'v> : Sized {
     fn visit_path_segment(&mut self, path_span: Span, path_segment: &'v PathSegment) {
         walk_path_segment(self, path_span, path_segment)
     }
-    fn visit_path_parameters(&mut self, path_span: Span, path_parameters: &'v PathParameters) {
-        walk_path_parameters(self, path_span, path_parameters)
+    fn visit_generic_args(&mut self, path_span: Span, generic_args: &'v GenericArgs) {
+        walk_generic_args(self, path_span, generic_args)
     }
     fn visit_assoc_type_binding(&mut self, type_binding: &'v TypeBinding) {
         walk_assoc_type_binding(self, type_binding)
@@ -649,15 +649,15 @@ pub fn walk_path_segment<'v, V: Visitor<'v>>(visitor: &mut V,
                                              segment: &'v PathSegment) {
     visitor.visit_name(path_span, segment.name);
     if let Some(ref parameters) = segment.parameters {
-        visitor.visit_path_parameters(path_span, parameters);
+        visitor.visit_generic_args(path_span, parameters);
     }
 }
 
-pub fn walk_path_parameters<'v, V: Visitor<'v>>(visitor: &mut V,
+pub fn walk_generic_args<'v, V: Visitor<'v>>(visitor: &mut V,
                                                 _path_span: Span,
-                                                path_parameters: &'v PathParameters) {
-    walk_list!(visitor, visit_path_param, &path_parameters.parameters);
-    walk_list!(visitor, visit_assoc_type_binding, &path_parameters.bindings);
+                                                generic_args: &'v GenericArgs) {
+    walk_list!(visitor, visit_generic_arg, &generic_args.parameters);
+    walk_list!(visitor, visit_assoc_type_binding, &generic_args.bindings);
 }
 
 pub fn walk_assoc_type_binding<'v, V: Visitor<'v>>(visitor: &mut V,
