@@ -2881,7 +2881,7 @@ pub enum FpCategory {
            issue = "32110")]
 pub trait Float: Sized {
     /// Type used by `to_bits` and `from_bits`.
-    #[stable(feature = "core_float_bits", since = "1.24.0")]
+    #[stable(feature = "core_float_bits", since = "1.25.0")]
     type Bits;
 
     /// Returns `true` if this value is NaN and false otherwise.
@@ -2947,10 +2947,10 @@ pub trait Float: Sized {
     fn min(self, other: Self) -> Self;
 
     /// Raw transmutation to integer.
-    #[stable(feature = "core_float_bits", since="1.24.0")]
+    #[stable(feature = "core_float_bits", since="1.25.0")]
     fn to_bits(self) -> Self::Bits;
     /// Raw transmutation from integer.
-    #[stable(feature = "core_float_bits", since="1.24.0")]
+    #[stable(feature = "core_float_bits", since="1.25.0")]
     fn from_bits(v: Self::Bits) -> Self;
 }
 

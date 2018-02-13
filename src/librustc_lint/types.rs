@@ -11,6 +11,7 @@
 #![allow(non_snake_case)]
 
 use rustc::hir::def_id::DefId;
+use rustc::hir::map as hir_map;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, AdtKind, Ty, TyCtxt};
 use rustc::ty::layout::{self, LayoutOf};
@@ -176,6 +177,22 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                             _ => bug!(),
                         };
                         if lit_val < min || lit_val > max {
+                            let parent_id = cx.tcx.hir.get_parent_node(e.id);
+                            if let hir_map::NodeExpr(parent_expr) = cx.tcx.hir.get(parent_id) {
+                                if let hir::ExprCast(..) = parent_expr.node {
+                                    if let ty::TyChar = cx.tables.expr_ty(parent_expr).sty {
+                                        let mut err = cx.struct_span_lint(
+                                                             OVERFLOWING_LITERALS,
+                                                             parent_expr.span,
+                                                             "only u8 can be casted into char");
+                                        err.span_suggestion(parent_expr.span,
+                                                            &"use a char literal instead",
+                                                            format!("'\\u{{{:X}}}'", lit_val));
+                                        err.emit();
+                                        return
+                                    }
+                                }
+                            }
                             cx.span_lint(OVERFLOWING_LITERALS,
                                          e.span,
                                          &format!("literal out of range for {:?}", t));
