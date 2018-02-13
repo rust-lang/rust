@@ -9,6 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    let x = panic!();
-    x.clone(); //~ ERROR the type of this value must be known in this context
+    let x = panic!(); //~ ERROR type annotations needed [E0282]
+    x.clone();
 }
