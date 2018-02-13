@@ -12,7 +12,8 @@ use cmp::Ordering;
 use ops::Try;
 
 use super::{AlwaysOk, LoopState};
-use super::{Chain, Cycle, Cloned, Enumerate, Filter, FilterMap, Flatten, FlatMap, Fuse};
+use super::{Chain, Cycle, Cloned, Enumerate, Filter, FilterMap, Fuse};
+use super::{Flatten, FlatMap, flatten_compat};
 use super::{Inspect, Map, Peekable, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile, Rev};
 use super::{Zip, Sum, Product};
 use super::{ChainState, FromIterator, ZipImpl};
@@ -997,8 +998,8 @@ pub trait Iterator {
     /// an extra layer of indirection. `flat_map()` will remove this extra layer
     /// on its own.
     ///
-    /// You can think of [`flat_map(f)`][flat_map] as the equivalent of
-    /// [`map`]ping, and then [`flatten`]ing as in `map(f).flatten()`.
+    /// You can think of [`flat_map(f)`][flat_map] as the semantic equivalent
+    /// of [`map`]ping, and then [`flatten`]ing as in `map(f).flatten()`.
     ///
     /// Another way of thinking about `flat_map()`: [`map`]'s closure returns
     /// one item for each element, and `flat_map()`'s closure returns an
@@ -1025,7 +1026,7 @@ pub trait Iterator {
     fn flat_map<U, F>(self, f: F) -> FlatMap<Self, U, F>
         where Self: Sized, U: IntoIterator, F: FnMut(Self::Item) -> U,
     {
-        self.map(f).flatten()
+        FlatMap { inner: flatten_compat(self.map(f)) }
     }
 
     /// Creates an iterator that flattens nested structure.
@@ -1060,11 +1061,24 @@ pub trait Iterator {
     ///                           .collect();
     /// assert_eq!(merged, "alphabetagamma");
     /// ```
+    ///
+    /// You can also rewrite this in terms of [`flat_map()`] which is preferable
+    /// in this case since that conveys intent clearer:
+    ///
+    /// ```
+    /// let words = ["alpha", "beta", "gamma"];
+    ///
+    /// // chars() returns an iterator
+    /// let merged: String = words.iter()
+    ///                           .flat_map(|s| s.chars())
+    ///                           .collect();
+    /// assert_eq!(merged, "alphabetagamma");
+    /// ```
     #[inline]
     #[unstable(feature = "iterator_flatten", issue = "0")]
-    fn flatten(self) -> Flatten<Self, <Self::Item as IntoIterator>::IntoIter>
+    fn flatten(self) -> Flatten<Self>
     where Self: Sized, Self::Item: IntoIterator {
-        Flatten { iter: self, frontiter: None, backiter: None }
+        Flatten { inner: flatten_compat(self) }
     }
 
     /// Creates an iterator which ends after the first [`None`].

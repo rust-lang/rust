@@ -2403,14 +2403,87 @@ impl<B, I, St, F> Iterator for Scan<I, St, F> where
 /// An iterator that maps each element to an iterator, and yields the elements
 /// of the produced iterators.
 ///
-/// This `type` is created by the [`flat_map`] method on [`Iterator`]. See its
+/// This `struct` is created by the [`flat_map`] method on [`Iterator`]. See its
 /// documentation for more.
 ///
 /// [`flat_map`]: trait.Iterator.html#method.flat_map
 /// [`Iterator`]: trait.Iterator.html
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
-type FlatMap<I, U, F> = Flatten<Map<I, F>, <U as IntoIterator>::IntoIter>;
+pub struct FlatMap<I, U: IntoIterator, F> {
+    inner: FlattenCompat<Map<I, F>, <U as IntoIterator>::IntoIter>
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<I: Clone, U: Clone + IntoIterator, F: Clone> Clone for FlatMap<I, U, F>
+    where <U as IntoIterator>::IntoIter: Clone
+{
+    fn clone(&self) -> Self { FlatMap { inner: self.inner.clone() } }
+}
+
+#[stable(feature = "core_impl_debug", since = "1.9.0")]
+impl<I: fmt::Debug, U: IntoIterator, F> fmt::Debug for FlatMap<I, U, F>
+    where U::IntoIter: fmt::Debug
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("FlatMap").field("inner", &self.inner).finish()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<I: Iterator, U: IntoIterator, F> Iterator for FlatMap<I, U, F>
+    where F: FnMut(I::Item) -> U,
+{
+    type Item = U::Item;
+
+    #[inline]
+    fn next(&mut self) -> Option<U::Item> { self.inner.next() }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+
+    #[inline]
+    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R where
+        Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
+    {
+        self.inner.try_fold(init, fold)
+    }
+
+    #[inline]
+    fn fold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
+        where Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        self.inner.fold(init, fold)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<I: DoubleEndedIterator, U, F> DoubleEndedIterator for FlatMap<I, U, F>
+    where F: FnMut(I::Item) -> U,
+          U: IntoIterator,
+          U::IntoIter: DoubleEndedIterator
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<U::Item> { self.inner.next_back() }
+
+    #[inline]
+    fn try_rfold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R where
+        Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
+    {
+        self.inner.try_rfold(init, fold)
+    }
+
+    #[inline]
+    fn rfold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
+        where Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        self.inner.rfold(init, fold)
+    }
+}
+
+#[unstable(feature = "fused", issue = "35602")]
+impl<I, U, F> FusedIterator for FlatMap<I, U, F>
+    where I: FusedIterator, U: IntoIterator, F: FnMut(I::Item) -> U {}
 
 /// An iterator that flattens one level of nesting in an iterator of things
 /// that can be turned into iterators.
@@ -2422,16 +2495,102 @@ type FlatMap<I, U, F> = Flatten<Map<I, F>, <U as IntoIterator>::IntoIter>;
 /// [`Iterator`]: trait.Iterator.html
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[unstable(feature = "iterator_flatten", issue = "0")]
+pub struct Flatten<I: Iterator>
+where I::Item: IntoIterator {
+    inner: FlattenCompat<I, <I::Item as IntoIterator>::IntoIter>,
+}
+
+#[unstable(feature = "iterator_flatten", issue = "0")]
+impl<I, U> fmt::Debug for Flatten<I>
+    where I: Iterator + fmt::Debug, U: Iterator + fmt::Debug,
+          I::Item: IntoIterator<IntoIter = U, Item = U::Item>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Flatten").field("inner", &self.inner).finish()
+    }
+}
+
+#[unstable(feature = "iterator_flatten", issue = "0")]
+impl<I, U> Clone for Flatten<I>
+    where I: Iterator + Clone, U: Iterator + Clone,
+          I::Item: IntoIterator<IntoIter = U, Item = U::Item>,
+{
+    fn clone(&self) -> Self { Flatten { inner: self.inner.clone() } }
+}
+
+#[unstable(feature = "iterator_flatten", issue = "0")]
+impl<I, U> Iterator for Flatten<I>
+    where I: Iterator, U: Iterator,
+          I::Item: IntoIterator<IntoIter = U, Item = U::Item>
+{
+    type Item = U::Item;
+
+    #[inline]
+    fn next(&mut self) -> Option<U::Item> { self.inner.next() }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+
+    #[inline]
+    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R where
+        Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
+    {
+        self.inner.try_fold(init, fold)
+    }
+
+    #[inline]
+    fn fold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
+        where Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        self.inner.fold(init, fold)
+    }
+}
+
+#[unstable(feature = "iterator_flatten", issue = "0")]
+impl<I, U> DoubleEndedIterator for Flatten<I>
+    where I: DoubleEndedIterator, U: DoubleEndedIterator,
+          I::Item: IntoIterator<IntoIter = U, Item = U::Item>
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<U::Item> { self.inner.next_back() }
+
+    #[inline]
+    fn try_rfold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R where
+        Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
+    {
+        self.inner.try_rfold(init, fold)
+    }
+
+    #[inline]
+    fn rfold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
+        where Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        self.inner.rfold(init, fold)
+    }
+}
+
+#[unstable(feature = "fused", issue = "35602")]
+impl<I, U> FusedIterator for Flatten<I>
+    where I: FusedIterator, U: Iterator,
+          I::Item: IntoIterator<IntoIter = U, Item = U::Item> {}
+
+/// Adapts an iterator by flattening it, for use in `flatten()` and `flat_map()`.
+fn flatten_compat<I, U>(iter: I) -> FlattenCompat<I, U> {
+    FlattenCompat { iter, frontiter: None, backiter: None }
+}
+
+/// Real logic of both `Flatten` and `FlatMap` which simply delegate to
+/// this type.
 #[derive(Clone, Debug)]
-pub struct Flatten<I, U> {
+struct FlattenCompat<I, U> {
     iter: I,
     frontiter: Option<U>,
     backiter: Option<U>,
 }
 
-#[unstable(feature = "iterator_flatten", issue = "0")]
-impl<I: Iterator, U: Iterator> Iterator for Flatten<I, U>
-    where I::Item: IntoIterator<IntoIter = U, Item = U::Item>
+impl<I, U> Iterator for FlattenCompat<I, U>
+    where I: Iterator, U: Iterator,
+          I::Item: IntoIterator<IntoIter = U, Item = U::Item>
 {
     type Item = U::Item;
 
@@ -2498,8 +2657,7 @@ impl<I: Iterator, U: Iterator> Iterator for Flatten<I, U>
     }
 }
 
-#[unstable(feature = "iterator_flatten", issue = "0")]
-impl<I, U> DoubleEndedIterator for Flatten<I, U>
+impl<I, U> DoubleEndedIterator for FlattenCompat<I, U>
     where I: DoubleEndedIterator, U: DoubleEndedIterator,
           I::Item: IntoIterator<IntoIter = U, Item = U::Item>
 {
@@ -2554,10 +2712,6 @@ impl<I, U> DoubleEndedIterator for Flatten<I, U>
             .rfold(init, |acc, iter| iter.rfold(acc, &mut fold))
     }
 }
-
-#[unstable(feature = "fused", issue = "35602")]
-impl<I: FusedIterator, U: Iterator> FusedIterator for Flatten<I, U>
-    where I::Item: IntoIterator<IntoIter = U, Item = U::Item> {}
 
 /// An iterator that yields `None` forever after the underlying iterator
 /// yields `None` once.
