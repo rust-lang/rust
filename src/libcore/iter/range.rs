@@ -268,6 +268,31 @@ impl<A: Step> Iterator for ops::Range<A> {
     }
 }
 
+macro_rules! impl_range_count {
+    ($t:ty) => {
+        #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+        impl Iterator for ops::Range<$t> {
+            #[inline]
+            fn count(self) -> usize {
+                self.end.wrapping_sub(self.start) as usize
+            }
+        }
+    };
+}
+
+impl_range_count!(u8);
+impl_range_count!(u16);
+impl_range_count!(u32);
+impl_range_count!(u64);
+impl_range_count!(usize);
+
+impl_range_count!(i8);
+impl_range_count!(i16);
+impl_range_count!(i32);
+impl_range_count!(i64);
+impl_range_count!(isize);
+
+
 // These macros generate `ExactSizeIterator` impls for various range types.
 // Range<{u,i}64> and RangeInclusive<{u,i}{32,64,size}> are excluded
 // because they cannot guarantee having a length <= usize::MAX, which is
@@ -419,6 +444,12 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
             }
         }
         Try::from_ok(accum)
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        <A as Step>::steps_between(&self.start, &self.end)
+            .expect("Overflow on `RangeInclusive::count()`") + 1
     }
 }
 

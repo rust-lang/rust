@@ -1434,6 +1434,13 @@ fn test_range_inclusive_nth() {
 }
 
 #[test]
+fn test_range_inclusive_count() {
+    assert_eq!((1..=1).count(), 1);
+    assert_eq!((0..=10).count(), 11);
+    assert_eq!((5..=7).count(), 3);
+}
+
+#[test]
 fn test_range_step() {
     #![allow(deprecated)]
 
