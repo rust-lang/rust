@@ -28,3 +28,4 @@
 - [Parameter Environments](./param_env.md)
 - [Generating LLVM IR](./trans.md)
 - [Glossary](./glossary.md)
+- [Code Index](./code-index.md)
