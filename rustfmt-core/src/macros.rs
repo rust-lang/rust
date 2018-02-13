@@ -431,7 +431,8 @@ fn replace_names(input: &str) -> Option<(String, HashMap<String, String>)> {
 // and `(`/`)` have special meaning.
 //
 // We always try and format on one line.
-fn format_macro_args(toks: ThinTokenStream) -> Option<String> {
+// FIXME: Use multi-line when every thing does not fit on one line.
+fn format_macro_args(toks: ThinTokenStream, shape: Shape) -> Option<String> {
     let mut result = String::with_capacity(128);
     let mut insert_space = SpaceState::Never;
 
@@ -459,7 +460,7 @@ fn format_macro_args(toks: ThinTokenStream) -> Option<String> {
                 if let SpaceState::Always = insert_space {
                     result.push(' ');
                 }
-                let formatted = format_macro_args(d.tts)?;
+                let formatted = format_macro_args(d.tts, shape)?;
                 match d.delim {
                     DelimToken::Paren => {
                         result.push_str(&format!("({})", formatted));
@@ -482,7 +483,11 @@ fn format_macro_args(toks: ThinTokenStream) -> Option<String> {
         }
     }
 
-    Some(result)
+    if result.len() <= shape.width {
+        Some(result)
+    } else {
+        None
+    }
 }
 
 // We should insert a space if the next token is a:
@@ -617,7 +622,7 @@ fn macro_style(mac: &ast::Mac, context: &RewriteContext) -> MacroStyle {
 ///         a,
 ///         b,
 ///         c,
-//      ),
+///     ),
 /// }
 /// ```
 fn indent_macro_snippet(
@@ -757,7 +762,8 @@ impl MacroBranch {
             return None;
         }
 
-        let mut result = format_macro_args(self.args.clone())?;
+        // 5 = " => {"
+        let mut result = format_macro_args(self.args.clone(), shape.sub_width(5)?)?;
 
         if multi_branch_style {
             result += " =>";
@@ -847,7 +853,12 @@ mod test {
             &ParseSess::new(FilePathMapping::empty()),
             None,
         );
-        format_macro_args(input.into()).unwrap()
+        let shape = Shape {
+            width: 100,
+            indent: Indent::empty(),
+            offset: 0,
+        };
+        format_macro_args(input.into(), shape).unwrap()
     }
 
     #[test]

@@ -49,3 +49,13 @@ macro m2 {
 	mod macro_item    {  struct $item ; }
 }
 }
+
+// #2439
+macro_rules! m {
+    (
+        $line0_xxxxxxxxxxxxxxxxx: expr,
+        $line1_xxxxxxxxxxxxxxxxx: expr,
+        $line2_xxxxxxxxxxxxxxxxx: expr,
+        $line3_xxxxxxxxxxxxxxxxx: expr,
+    ) => {};
+}
