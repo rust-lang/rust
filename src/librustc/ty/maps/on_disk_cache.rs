@@ -347,22 +347,21 @@ impl<'sess> OnDiskCache<'sess> {
             return None
         };
 
-        let mut cnum_map = self.cnum_map.borrow_mut();
-        if cnum_map.is_none() {
+        // Initialize the cnum_map if it is not initialized yet.
+        if self.cnum_map.borrow().is_none() {
+            let mut cnum_map = self.cnum_map.borrow_mut();
             *cnum_map = Some(Self::compute_cnum_map(tcx, &self.prev_cnums[..]));
         }
-
-        let mut synthetic_expansion_infos = self.synthetic_expansion_infos.borrow_mut();
-        let mut file_index_to_file = self.file_index_to_file.borrow_mut();
+        let cnum_map = self.cnum_map.borrow();
 
         let mut decoder = CacheDecoder {
             tcx,
             opaque: opaque::Decoder::new(&self.serialized_data[..], pos.to_usize()),
             codemap: self.codemap,
             cnum_map: cnum_map.as_ref().unwrap(),
-            file_index_to_file: &mut file_index_to_file,
+            file_index_to_file: &self.file_index_to_file,
             file_index_to_stable_id: &self.file_index_to_stable_id,
-            synthetic_expansion_infos: &mut synthetic_expansion_infos,
+            synthetic_expansion_infos: &self.synthetic_expansion_infos,
         };
 
         match decode_tagged(&mut decoder, dep_node_index) {
@@ -421,21 +420,21 @@ struct CacheDecoder<'a, 'tcx: 'a, 'x> {
     opaque: opaque::Decoder<'x>,
     codemap: &'x CodeMap,
     cnum_map: &'x IndexVec<CrateNum, Option<CrateNum>>,
-    synthetic_expansion_infos: &'x mut FxHashMap<AbsoluteBytePos, SyntaxContext>,
-    file_index_to_file: &'x mut FxHashMap<FileMapIndex, Rc<FileMap>>,
+    synthetic_expansion_infos: &'x RefCell<FxHashMap<AbsoluteBytePos, SyntaxContext>>,
+    file_index_to_file: &'x RefCell<FxHashMap<FileMapIndex, Rc<FileMap>>>,
     file_index_to_stable_id: &'x FxHashMap<FileMapIndex, StableFilemapId>,
 }
 
 impl<'a, 'tcx, 'x> CacheDecoder<'a, 'tcx, 'x> {
-    fn file_index_to_file(&mut self, index: FileMapIndex) -> Rc<FileMap> {
+    fn file_index_to_file(&self, index: FileMapIndex) -> Rc<FileMap> {
         let CacheDecoder {
-            ref mut file_index_to_file,
+            ref file_index_to_file,
             ref file_index_to_stable_id,
             ref codemap,
             ..
         } = *self;
 
-        file_index_to_file.entry(index).or_insert_with(|| {
+        file_index_to_file.borrow_mut().entry(index).or_insert_with(|| {
             let stable_id = file_index_to_stable_id[&index];
             codemap.filemap_by_stable_id(stable_id)
                    .expect("Failed to lookup FileMap in new context.")
@@ -572,19 +571,24 @@ impl<'a, 'tcx, 'x> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx, 'x> {
                 let pos = AbsoluteBytePos::new(self.opaque.position());
                 let expn_info: ExpnInfo = Decodable::decode(self)?;
                 let ctxt = SyntaxContext::allocate_directly(expn_info);
-                self.synthetic_expansion_infos.insert(pos, ctxt);
+                self.synthetic_expansion_infos.borrow_mut().insert(pos, ctxt);
                 ctxt
             }
             TAG_EXPANSION_INFO_SHORTHAND => {
                 let pos = AbsoluteBytePos::decode(self)?;
-                if let Some(ctxt) = self.synthetic_expansion_infos.get(&pos).cloned() {
+                let cached_ctxt = self.synthetic_expansion_infos
+                                      .borrow()
+                                      .get(&pos)
+                                      .cloned();
+
+                if let Some(ctxt) = cached_ctxt {
                     ctxt
                 } else {
                     let expn_info = self.with_position(pos.to_usize(), |this| {
                          ExpnInfo::decode(this)
                     })?;
                     let ctxt = SyntaxContext::allocate_directly(expn_info);
-                    self.synthetic_expansion_infos.insert(pos, ctxt);
+                    self.synthetic_expansion_infos.borrow_mut().insert(pos, ctxt);
                     ctxt
                 }
             }
