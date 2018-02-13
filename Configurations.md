@@ -11,7 +11,7 @@ reorder_imported_names = true
 
 Each configuration option is either stable or unstable.
 Stable options can be used directly, while unstable options are opt-in.
-To enable unstable options, set `unstable_features = true` in `rustfmt.toml` or pass `--unstable-options` to rustfmt.
+To enable unstable options, set `unstable_features = true` in `rustfmt.toml` or pass `--unstable-features` to rustfmt.
 
 # Configuration Options
 
