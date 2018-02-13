@@ -32,7 +32,7 @@ use syntax::ast;
 ///
 /// To compare the two well-typed crates, first find the aptly named crates `new` and `old`,
 /// find their root modules and then proceed to walk their module trees.
-fn callback(state: &driver::CompileState, version: &str) {
+fn callback(state: &driver::CompileState, version: &str, verbose: bool) {
     let tcx = state.tcx.unwrap();
 
     let cnums = tcx
@@ -66,8 +66,7 @@ fn callback(state: &driver::CompileState, version: &str) {
     debug!("running semver analysis");
     let changes = run_analysis(tcx, old_def_id, new_def_id);
 
-    // TODO: arm the verbosity switch
-    changes.output(tcx.sess, version, false);
+    changes.output(tcx.sess, version, verbose);
 }
 
 /// A wrapper to control compilation.
@@ -137,9 +136,13 @@ impl<'a> CompilerCalls<'a> for SemVerVerCompilerCalls {
             std::mem::replace(&mut controller.after_analysis.callback, box |_| {});
         let version = self.version.clone();
 
+        let verbose = std::env::var("RUST_SEMVER_VERBOSE")
+            .ok()
+            .map_or(false, |s| s == "true");
+
         controller.after_analysis.callback = box move |state| {
             debug!("running rust-semverver after_analysis callback");
-            callback(state, &version);
+            callback(state, &version, verbose);
             debug!("running other after_analysis callback");
             old_callback(state);
         };
