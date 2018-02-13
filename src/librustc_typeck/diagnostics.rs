@@ -4374,7 +4374,7 @@ yet been inferred.
 
 Erroneous code example:
 
-```compile_fail,E0619
+```compile_fail
 let mut x = vec![];
 match x.pop() {
     Some(v) => {
