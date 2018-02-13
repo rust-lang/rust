@@ -141,7 +141,7 @@ impl<A, F: FnMut() -> A> FusedIterator for RepeatWith<F> {}
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<A, F: FnMut() -> A> TrustedLen for RepeatWith<F> {}
 
-/// Creates a new that repeats elements of type `A` endlessly by
+/// Creates a new iterator that repeats elements of type `A` endlessly by
 /// applying the provided closure, the repeater, `F: FnMut() -> A`.
 ///
 /// The `repeat_with()` function calls the repeater over and over and over and
