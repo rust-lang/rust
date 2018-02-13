@@ -494,6 +494,15 @@ pub fn recover_missing_comment_in_span(
     }
 }
 
+/// Trim trailing whitespaces unless they consist of two whitespaces.
+fn trim_right_unless_two_whitespaces(s: &str) -> &str {
+    if s.ends_with("  ") && !s.chars().rev().nth(2).map_or(true, char::is_whitespace) {
+        s
+    } else {
+        s.trim_right()
+    }
+}
+
 /// Trims whitespace and aligns to indent, but otherwise does not change comments.
 fn light_rewrite_comment(orig: &str, offset: Indent, config: &Config) -> Option<String> {
     let lines: Vec<&str> = orig.lines()
@@ -502,7 +511,7 @@ fn light_rewrite_comment(orig: &str, offset: Indent, config: &Config) -> Option<
             // with `*` we want to leave one space before it, so it aligns with the
             // `*` in `/*`.
             let first_non_whitespace = l.find(|c| !char::is_whitespace(c));
-            if let Some(fnw) = first_non_whitespace {
+            let left_trimmed = if let Some(fnw) = first_non_whitespace {
                 if l.as_bytes()[fnw] == b'*' && fnw > 0 {
                     &l[fnw - 1..]
                 } else {
@@ -510,7 +519,9 @@ fn light_rewrite_comment(orig: &str, offset: Indent, config: &Config) -> Option<
                 }
             } else {
                 ""
-            }.trim_right()
+            };
+            // Preserve markdown's double-space line break syntax.
+            trim_right_unless_two_whitespaces(left_trimmed)
         })
         .collect();
     Some(lines.join(&format!("\n{}", offset.to_string(config))))
