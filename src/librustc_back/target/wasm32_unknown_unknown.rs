@@ -83,9 +83,6 @@ pub fn target() -> Result<Target, String> {
         // performing LTO with compiler-builtins.
         no_builtins: true,
 
-        // no dynamic linking, no need for default visibility!
-        default_hidden_visibility: true,
-
         .. Default::default()
     };
     Ok(Target {

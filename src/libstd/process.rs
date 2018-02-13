@@ -1843,10 +1843,4 @@ mod tests {
         }
         assert!(events > 0);
     }
-
-    #[test]
-    fn test_command_implements_send() {
-        fn take_send_type<T: Send>(_: T) {}
-        take_send_type(Command::new(""))
-    }
 }

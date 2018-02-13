@@ -258,7 +258,7 @@ impl<'a> Builder<'a> {
                 test::HostCompiletest, test::Crate, test::CrateLibrustc, test::Rustdoc,
                 test::Linkcheck, test::Cargotest, test::Cargo, test::Rls, test::Docs,
                 test::ErrorIndex, test::Distcheck, test::Rustfmt, test::Miri, test::Clippy,
-                test::RustdocJS, test::RustdocTheme),
+                test::RustdocJS),
             Kind::Bench => describe!(test::Crate, test::CrateLibrustc),
             Kind::Doc => describe!(doc::UnstableBook, doc::UnstableBookGen, doc::TheBook,
                 doc::Standalone, doc::Std, doc::Test, doc::Rustc, doc::ErrorIndex, doc::Nomicon,
@@ -377,11 +377,6 @@ impl<'a> Builder<'a> {
         self.ensure(Libdir { compiler, target })
     }
 
-    pub fn sysroot_codegen_backends(&self, compiler: Compiler) -> PathBuf {
-        self.sysroot_libdir(compiler, compiler.host)
-            .with_file_name("codegen-backends")
-    }
-
     /// Returns the compiler's libdir where it stores the dynamic libraries that
     /// it itself links against.
     ///
@@ -474,18 +469,6 @@ impl<'a> Builder<'a> {
             stage = compiler.stage;
         }
 
-        let mut extra_args = env::var(&format!("RUSTFLAGS_STAGE_{}", stage)).unwrap_or_default();
-        if stage != 0 {
-            let s = env::var("RUSTFLAGS_STAGE_NOT_0").unwrap_or_default();
-            extra_args.push_str(" ");
-            extra_args.push_str(&s);
-        }
-
-        if !extra_args.is_empty() {
-            cargo.env("RUSTFLAGS",
-                format!("{} {}", env::var("RUSTFLAGS").unwrap_or_default(), extra_args));
-        }
-
         // Customize the compiler we're running. Specify the compiler to cargo
         // as our shim and then pass it some various options used to configure
         // how the actual compiler itself is called.
@@ -509,6 +492,10 @@ impl<'a> Builder<'a> {
              })
              .env("TEST_MIRI", self.config.test_miri.to_string())
              .env("RUSTC_ERROR_METADATA_DST", self.extended_error_dir());
+        if let Some(n) = self.config.rust_codegen_units {
+            cargo.env("RUSTC_CODEGEN_UNITS", n.to_string());
+        }
+
 
         if let Some(host_linker) = self.build.linker(compiler.host) {
             cargo.env("RUSTC_HOST_LINKER", host_linker);
@@ -570,7 +557,7 @@ impl<'a> Builder<'a> {
         // build scripts in that situation.
         //
         // If LLVM support is disabled we need to use the snapshot compiler to compile
-        // build scripts, as the new compiler doesn't support executables.
+        // build scripts, as the new compiler doesnt support executables.
         if mode == Mode::Libstd || !self.build.config.llvm_enabled {
             cargo.env("RUSTC_SNAPSHOT", &self.initial_rustc)
                  .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_snapshot_libdir());
@@ -600,25 +587,9 @@ impl<'a> Builder<'a> {
         //
         // FIXME: the guard against msvc shouldn't need to be here
         if !target.contains("msvc") {
-            let ccache = self.config.ccache.as_ref();
-            let ccacheify = |s: &Path| {
-                let ccache = match ccache {
-                    Some(ref s) => s,
-                    None => return s.display().to_string(),
-                };
-                // FIXME: the cc-rs crate only recognizes the literal strings
-                // `ccache` and `sccache` when doing caching compilations, so we
-                // mirror that here. It should probably be fixed upstream to
-                // accept a new env var or otherwise work with custom ccache
-                // vars.
-                match &ccache[..] {
-                    "ccache" | "sccache" => format!("{} {}", ccache, s.display()),
-                    _ => s.display().to_string(),
-                }
-            };
-            let cc = ccacheify(&self.cc(target));
-            cargo.env(format!("CC_{}", target), &cc)
-                 .env("CC", &cc);
+            let cc = self.cc(target);
+            cargo.env(format!("CC_{}", target), cc)
+                 .env("CC", cc);
 
             let cflags = self.cflags(target).join(" ");
             cargo.env(format!("CFLAGS_{}", target), cflags.clone())
@@ -633,9 +604,8 @@ impl<'a> Builder<'a> {
             }
 
             if let Ok(cxx) = self.cxx(target) {
-                let cxx = ccacheify(&cxx);
-                cargo.env(format!("CXX_{}", target), &cxx)
-                     .env("CXX", &cxx)
+                cargo.env(format!("CXX_{}", target), cxx)
+                     .env("CXX", cxx)
                      .env(format!("CXXFLAGS_{}", target), cflags.clone())
                      .env("CXXFLAGS", cflags);
             }
@@ -692,13 +662,6 @@ impl<'a> Builder<'a> {
         if self.is_very_verbose() {
             cargo.arg("-v");
         }
-
-        // This must be kept before the thinlto check, as we set codegen units
-        // to 1 forcibly there.
-        if let Some(n) = self.config.rust_codegen_units {
-            cargo.env("RUSTC_CODEGEN_UNITS", n.to_string());
-        }
-
         if self.config.rust_optimize {
             // FIXME: cargo bench does not accept `--release`
             if cmd != "bench" {
@@ -706,17 +669,11 @@ impl<'a> Builder<'a> {
             }
 
             if self.config.rust_codegen_units.is_none() &&
-               self.build.is_rust_llvm(compiler.host) &&
-               self.config.rust_thinlto {
+               self.build.is_rust_llvm(compiler.host)
+            {
                 cargo.env("RUSTC_THINLTO", "1");
-            } else if self.config.rust_codegen_units.is_none() {
-                // Generally, if ThinLTO has been disabled for some reason, we
-                // want to set the codegen units to 1. However, we shouldn't do
-                // this if the option was specifically set by the user.
-                cargo.env("RUSTC_CODEGEN_UNITS", "1");
             }
         }
-
         if self.config.locked_deps {
             cargo.arg("--locked");
         }

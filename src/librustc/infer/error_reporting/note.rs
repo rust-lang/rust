@@ -23,10 +23,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 if let Some((expected, found)) = self.values_str(&trace.values) {
                     let expected = expected.content();
                     let found = found.content();
-                    err.note(&format!("...so that the {}:\nexpected {}\n   found {}",
-                                      trace.cause.as_requirement_str(),
-                                      expected,
-                                      found));
+                    // FIXME: do we want a "the" here?
+                    err.span_note(trace.cause.span,
+                                  &format!("...so that {} (expected {}, found {})",
+                                           trace.cause.as_requirement_str(),
+                                           expected,
+                                           found));
                 } else {
                     // FIXME: this really should be handled at some earlier stage. Our
                     // handling of region checking when type errors are present is

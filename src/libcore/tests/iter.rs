@@ -162,68 +162,6 @@ fn test_iterator_step_by() {
 }
 
 #[test]
-fn test_iterator_step_by_nth() {
-    let mut it = (0..16).step_by(5);
-    assert_eq!(it.nth(0), Some(0));
-    assert_eq!(it.nth(0), Some(5));
-    assert_eq!(it.nth(0), Some(10));
-    assert_eq!(it.nth(0), Some(15));
-    assert_eq!(it.nth(0), None);
-
-    let it = (0..18).step_by(5);
-    assert_eq!(it.clone().nth(0), Some(0));
-    assert_eq!(it.clone().nth(1), Some(5));
-    assert_eq!(it.clone().nth(2), Some(10));
-    assert_eq!(it.clone().nth(3), Some(15));
-    assert_eq!(it.clone().nth(4), None);
-    assert_eq!(it.clone().nth(42), None);
-}
-
-#[test]
-fn test_iterator_step_by_nth_overflow() {
-    #[cfg(target_pointer_width = "8")]
-    type Bigger = u16;
-    #[cfg(target_pointer_width = "16")]
-    type Bigger = u32;
-    #[cfg(target_pointer_width = "32")]
-    type Bigger = u64;
-    #[cfg(target_pointer_width = "64")]
-    type Bigger = u128;
-
-    #[derive(Clone)]
-    struct Test(Bigger);
-    impl<'a> Iterator for &'a mut Test {
-        type Item = i32;
-        fn next(&mut self) -> Option<Self::Item> { Some(21) }
-        fn nth(&mut self, n: usize) -> Option<Self::Item> {
-            self.0 += n as Bigger + 1;
-            Some(42)
-        }
-    }
-
-    let mut it = Test(0);
-    let root = usize::MAX >> (::std::mem::size_of::<usize>() * 8 / 2);
-    let n = root + 20;
-    (&mut it).step_by(n).nth(n);
-    assert_eq!(it.0, n as Bigger * n as Bigger);
-
-    // large step
-    let mut it = Test(0);
-    (&mut it).step_by(usize::MAX).nth(5);
-    assert_eq!(it.0, (usize::MAX as Bigger) * 5);
-
-    // n + 1 overflows
-    let mut it = Test(0);
-    (&mut it).step_by(2).nth(usize::MAX);
-    assert_eq!(it.0, (usize::MAX as Bigger) * 2);
-
-    // n + 1 overflows
-    let mut it = Test(0);
-    (&mut it).step_by(1).nth(usize::MAX);
-    assert_eq!(it.0, (usize::MAX as Bigger) * 1);
-}
-
-#[test]
 #[should_panic]
 fn test_iterator_step_by_zero() {
     let mut it = (0..).step_by(0);
@@ -1333,18 +1271,6 @@ fn test_range_inclusive_exhaustion() {
     assert_eq!(r, 1..=0);
 
     let mut r = 10..=12;
-    assert_eq!(r.next(), Some(10));
-    assert_eq!(r.next(), Some(11));
-    assert_eq!(r.next(), Some(12));
-    assert_eq!(r, 1..=0);
-
-    let mut r = 10..=12;
-    assert_eq!(r.next_back(), Some(12));
-    assert_eq!(r.next_back(), Some(11));
-    assert_eq!(r.next_back(), Some(10));
-    assert_eq!(r, 1..=0);
-
-    let mut r = 10..=12;
     assert_eq!(r.nth(2), Some(12));
     assert_eq!(r, 1..=0);
 
@@ -1352,13 +1278,6 @@ fn test_range_inclusive_exhaustion() {
     assert_eq!(r.nth(5), None);
     assert_eq!(r, 1..=0);
 
-    let mut r = 100..=10;
-    assert_eq!(r.next(), None);
-    assert_eq!(r, 100..=10);
-
-    let mut r = 100..=10;
-    assert_eq!(r.next_back(), None);
-    assert_eq!(r, 100..=10);
 }
 
 #[test]
@@ -1390,29 +1309,6 @@ fn test_range_from_nth() {
     assert_eq!(r, 16..);
     assert_eq!(r.nth(10), Some(26));
     assert_eq!(r, 27..);
-
-    assert_eq!((0..).size_hint(), (usize::MAX, None));
-}
-
-fn is_trusted_len<I: TrustedLen>(_: I) {}
-
-#[test]
-fn test_range_from_take() {
-    let mut it = (0..).take(3);
-    assert_eq!(it.next(), Some(0));
-    assert_eq!(it.next(), Some(1));
-    assert_eq!(it.next(), Some(2));
-    assert_eq!(it.next(), None);
-    is_trusted_len((0..).take(3));
-    assert_eq!((0..).take(3).size_hint(), (3, Some(3)));
-    assert_eq!((0..).take(0).size_hint(), (0, Some(0)));
-    assert_eq!((0..).take(usize::MAX).size_hint(), (usize::MAX, Some(usize::MAX)));
-}
-
-#[test]
-fn test_range_from_take_collect() {
-    let v: Vec<_> = (0..).take(3).collect();
-    assert_eq!(v, vec![0, 1, 2]);
 }
 
 #[test]
@@ -1502,51 +1398,11 @@ fn test_range_inclusive_min() {
 }
 
 #[test]
-fn test_range_inclusive_folds() {
-    assert_eq!((1..=10).sum::<i32>(), 55);
-    assert_eq!((1..=10).rev().sum::<i32>(), 55);
-
-    let mut it = 40..=50;
-    assert_eq!(it.try_fold(0, i8::checked_add), None);
-    assert_eq!(it, 44..=50);
-    assert_eq!(it.try_rfold(0, i8::checked_add), None);
-    assert_eq!(it, 44..=47);
-
-    let mut it = 10..=20;
-    assert_eq!(it.try_fold(0, |a,b| Some(a+b)), Some(165));
-    assert_eq!(it, 1..=0);
-
-    let mut it = 10..=20;
-    assert_eq!(it.try_rfold(0, |a,b| Some(a+b)), Some(165));
-    assert_eq!(it, 1..=0);
-}
-
-#[test]
 fn test_repeat() {
     let mut it = repeat(42);
     assert_eq!(it.next(), Some(42));
     assert_eq!(it.next(), Some(42));
     assert_eq!(it.next(), Some(42));
-    assert_eq!(repeat(42).size_hint(), (usize::MAX, None));
-}
-
-#[test]
-fn test_repeat_take() {
-    let mut it = repeat(42).take(3);
-    assert_eq!(it.next(), Some(42));
-    assert_eq!(it.next(), Some(42));
-    assert_eq!(it.next(), Some(42));
-    assert_eq!(it.next(), None);
-    is_trusted_len(repeat(42).take(3));
-    assert_eq!(repeat(42).take(3).size_hint(), (3, Some(3)));
-    assert_eq!(repeat(42).take(0).size_hint(), (0, Some(0)));
-    assert_eq!(repeat(42).take(usize::MAX).size_hint(), (usize::MAX, Some(usize::MAX)));
-}
-
-#[test]
-fn test_repeat_take_collect() {
-    let v: Vec<_> = repeat(42).take(3).collect();
-    assert_eq!(v, vec![42, 42, 42]);
 }
 
 #[test]

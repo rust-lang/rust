@@ -79,7 +79,7 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
     let mut results = Vec::new();
     let mut mismatch = Mismatch::new(0);
 
-    for result in diff::lines(expected, actual) {
+    for result in diff::lines(actual, expected) {
         match result {
             diff::Result::Left(str) => {
                 if lines_since_mismatch >= context_size && lines_since_mismatch > 0 {
@@ -91,8 +91,7 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
                     mismatch.lines.push(DiffLine::Context(line.to_owned()));
                 }
 
-                mismatch.lines.push(DiffLine::Expected(str.to_owned()));
-                line_number += 1;
+                mismatch.lines.push(DiffLine::Resulting(str.to_owned()));
                 lines_since_mismatch = 0;
             }
             diff::Result::Right(str) => {
@@ -105,7 +104,8 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
                     mismatch.lines.push(DiffLine::Context(line.to_owned()));
                 }
 
-                mismatch.lines.push(DiffLine::Resulting(str.to_owned()));
+                mismatch.lines.push(DiffLine::Expected(str.to_owned()));
+                line_number += 1;
                 lines_since_mismatch = 0;
             }
             diff::Result::Both(str, _) => {
@@ -1343,7 +1343,7 @@ impl<'test> TestCx<'test> {
     fn exec_compiled_test(&self) -> ProcRes {
         let env = &self.props.exec_env;
 
-        let proc_res = match &*self.config.target {
+        match &*self.config.target {
             // This is pretty similar to below, we're transforming:
             //
             //      program arg1 arg2
@@ -1398,19 +1398,11 @@ impl<'test> TestCx<'test> {
                     None,
                 )
             }
-        };
-
-        if proc_res.status.success() {
-            // delete the executable after running it to save space.
-            // it is ok if the deletion failed.
-            let _ = fs::remove_file(self.make_exe_name());
         }
-
-        proc_res
     }
 
     /// For each `aux-build: foo/bar` annotation, we check to find the
-    /// file in a `auxiliary` directory relative to the test itself.
+    /// file in a `aux` directory relative to the test itself.
     fn compute_aux_test_paths(&self, rel_ab: &str) -> TestPaths {
         let test_ab = self.testpaths
             .file

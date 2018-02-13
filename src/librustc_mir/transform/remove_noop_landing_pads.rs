@@ -75,8 +75,7 @@ impl RemoveNoopLandingPads {
             TerminatorKind::Goto { .. } |
             TerminatorKind::Resume |
             TerminatorKind::SwitchInt { .. } |
-            TerminatorKind::FalseEdges { .. } |
-            TerminatorKind::FalseUnwind { .. } => {
+            TerminatorKind::FalseEdges { .. } => {
                 terminator.successors().iter().all(|succ| {
                     nop_landing_pads.contains(succ.index())
                 })

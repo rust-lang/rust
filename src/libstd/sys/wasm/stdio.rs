@@ -9,19 +9,19 @@
 // except according to those terms.
 
 use io;
-use sys::{ReadSysCall, WriteSysCall};
+use sys::{Void, unsupported};
 
-pub struct Stdin;
+pub struct Stdin(Void);
 pub struct Stdout;
 pub struct Stderr;
 
 impl Stdin {
     pub fn new() -> io::Result<Stdin> {
-        Ok(Stdin)
+        unsupported()
     }
 
-    pub fn read(&self, data: &mut [u8]) -> io::Result<usize> {
-        Ok(ReadSysCall::perform(0, data))
+    pub fn read(&self, _data: &mut [u8]) -> io::Result<usize> {
+        match self.0 {}
     }
 }
 
@@ -31,7 +31,19 @@ impl Stdout {
     }
 
     pub fn write(&self, data: &[u8]) -> io::Result<usize> {
-        WriteSysCall::perform(1, data);
+        // If runtime debugging is enabled at compile time we'll invoke some
+        // runtime functions that are defined in our src/etc/wasm32-shim.js
+        // debugging script. Note that this ffi function call is intended
+        // *purely* for debugging only and should not be relied upon.
+        if !super::DEBUG {
+            return unsupported()
+        }
+        extern {
+            fn rust_wasm_write_stdout(data: *const u8, len: usize);
+        }
+        unsafe {
+            rust_wasm_write_stdout(data.as_ptr(), data.len())
+        }
         Ok(data.len())
     }
 
@@ -46,7 +58,16 @@ impl Stderr {
     }
 
     pub fn write(&self, data: &[u8]) -> io::Result<usize> {
-        WriteSysCall::perform(2, data);
+        // See comments in stdout for what's going on here.
+        if !super::DEBUG {
+            return unsupported()
+        }
+        extern {
+            fn rust_wasm_write_stderr(data: *const u8, len: usize);
+        }
+        unsafe {
+            rust_wasm_write_stderr(data.as_ptr(), data.len())
+        }
         Ok(data.len())
     }
 

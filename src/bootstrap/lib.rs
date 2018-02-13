@@ -130,7 +130,6 @@ extern crate cc;
 extern crate getopts;
 extern crate num_cpus;
 extern crate toml;
-extern crate time;
 
 #[cfg(unix)]
 extern crate libc;
@@ -424,9 +423,6 @@ impl Build {
         if self.config.profiler {
             features.push_str(" profiler");
         }
-        if self.config.wasm_syscall {
-            features.push_str(" wasm_syscall");
-        }
         features
     }
 
@@ -666,7 +662,7 @@ impl Build {
         }
     }
 
-    /// Returns the path to the linker for the given target if it needs to be overridden.
+    /// Returns the path to the linker for the given target if it needs to be overriden.
     fn linker(&self, target: Interned<String>) -> Option<&Path> {
         if let Some(linker) = self.config.target_config.get(&target)
                                                        .and_then(|c| c.linker.as_ref()) {

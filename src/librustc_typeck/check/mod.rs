@@ -96,10 +96,11 @@ use rustc::middle::region;
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::{self, FulfillmentContext, ObligationCause, ObligationCauseCode};
 use rustc::ty::{self, Ty, TyCtxt, Visibility, ToPredicate};
-use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
+use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::maps::Providers;
 use rustc::ty::util::{Representability, IntTypeExt};
+use rustc::ty::layout::LayoutOf;
 use errors::{DiagnosticBuilder, DiagnosticId};
 
 use require_c_abi_if_variadic;
@@ -1014,9 +1015,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     let span = body.value.span;
 
     if body.is_generator && can_be_generator.is_some() {
-        let yield_ty = fcx.next_ty_var(TypeVariableOrigin::TypeInference(span));
-        fcx.require_type_is_sized(yield_ty, span, traits::SizedYieldType);
-        fcx.yield_ty = Some(yield_ty);
+        fcx.yield_ty = Some(fcx.next_ty_var(TypeVariableOrigin::TypeInference(span)));
     }
 
     GatherLocalsVisitor { fcx: &fcx, }.visit_body(body);
@@ -1552,7 +1551,7 @@ fn check_transparent<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, def_id: De
     let field_infos: Vec<_> = adt.non_enum_variant().fields.iter().map(|field| {
         let ty = field.ty(tcx, Substs::identity_for_item(tcx, field.did));
         let param_env = tcx.param_env(field.did);
-        let layout = tcx.layout_of(param_env.and(ty));
+        let layout = (tcx, param_env).layout_of(ty);
         // We are currently checking the type this field came from, so it must be local
         let span = tcx.hir.span_if_local(field.did).unwrap();
         let zst = layout.map(|layout| layout.is_zst()).unwrap_or(false);
@@ -2357,19 +2356,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 let mut adjustments = autoderef.adjust_steps(needs);
                 if let ty::TyRef(region, mt) = method.sig.inputs()[0].sty {
-                    let mutbl = match mt.mutbl {
-                        hir::MutImmutable => AutoBorrowMutability::Immutable,
-                        hir::MutMutable => AutoBorrowMutability::Mutable {
-                            // FIXME (#46747): arguably indexing is
-                            // "just another kind of call"; perhaps it
-                            // would be more consistent to allow
-                            // two-phase borrows for .index()
-                            // receivers here.
-                            allow_two_phase_borrow: false,
-                        }
-                    };
                     adjustments.push(Adjustment {
-                        kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
+                        kind: Adjust::Borrow(AutoBorrow::Ref(region, mt.mutbl)),
                         target: self.tcx.mk_ref(region, ty::TypeAndMut {
                             mutbl: mt.mutbl,
                             ty: adjusted_ty
@@ -2936,7 +2924,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let rcvr = &args[0];
         let rcvr_t = self.check_expr_with_needs(&rcvr, needs);
         // no need to check for bot/err -- callee does that
-        let rcvr_t = self.structurally_resolved_type(args[0].span, rcvr_t);
+        let rcvr_t = self.structurally_resolved_type(expr.span, rcvr_t);
 
         let method = match self.lookup_method(rcvr_t,
                                               segment,
@@ -3657,17 +3645,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 expr.span, oprnd_t, needs) {
                             let method = self.register_infer_ok_obligations(ok);
                             if let ty::TyRef(region, mt) = method.sig.inputs()[0].sty {
-                                let mutbl = match mt.mutbl {
-                                    hir::MutImmutable => AutoBorrowMutability::Immutable,
-                                    hir::MutMutable => AutoBorrowMutability::Mutable {
-                                        // (It shouldn't actually matter for unary ops whether
-                                        // we enable two-phase borrows or not, since a unary
-                                        // op has no additional operands.)
-                                        allow_two_phase_borrow: false,
-                                    }
-                                };
                                 self.apply_adjustments(oprnd, vec![Adjustment {
-                                    kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
+                                    kind: Adjust::Borrow(AutoBorrow::Ref(region, mt.mutbl)),
                                     target: method.sig.inputs()[0]
                                 }]);
                             }
@@ -4897,43 +4876,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
-        self.check_rustc_args_require_const(def.def_id(), node_id, span);
-
         debug!("instantiate_value_path: type of {:?} is {:?}",
                node_id,
                ty_substituted);
         self.write_substs(self.tcx.hir.node_to_hir_id(node_id), substs);
         ty_substituted
-    }
-
-    fn check_rustc_args_require_const(&self,
-                                      def_id: DefId,
-                                      node_id: ast::NodeId,
-                                      span: Span) {
-        // We're only interested in functions tagged with
-        // #[rustc_args_required_const], so ignore anything that's not.
-        if !self.tcx.has_attr(def_id, "rustc_args_required_const") {
-            return
-        }
-
-        // If our calling expression is indeed the function itself, we're good!
-        // If not, generate an error that this can only be called directly.
-        match self.tcx.hir.get(self.tcx.hir.get_parent_node(node_id)) {
-            Node::NodeExpr(expr) => {
-                match expr.node {
-                    hir::ExprCall(ref callee, ..) => {
-                        if callee.id == node_id {
-                            return
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            _ => {}
-        }
-
-        self.tcx.sess.span_err(span, "this function can only be invoked \
-                                      directly, not through a function pointer");
     }
 
     /// Report errors if the provided parameters are too few or too many.

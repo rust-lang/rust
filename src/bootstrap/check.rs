@@ -160,3 +160,4 @@ pub fn libtest_stamp(build: &Build, compiler: Compiler, target: Interned<String>
 pub fn librustc_stamp(build: &Build, compiler: Compiler, target: Interned<String>) -> PathBuf {
     build.cargo_out(compiler, Mode::Librustc, target).join(".librustc-check.stamp")
 }
+

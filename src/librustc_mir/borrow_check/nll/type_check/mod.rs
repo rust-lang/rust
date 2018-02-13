@@ -374,20 +374,13 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             }
         };
         if let PlaceContext::Copy = context {
-            let tcx = self.tcx();
-            let trait_ref = ty::TraitRef {
-                def_id: tcx.lang_items().copy_trait().unwrap(),
-                substs: tcx.mk_substs_trait(place_ty.to_ty(tcx), &[]),
-            };
-
-            // In order to have a Copy operand, the type T of the value must be Copy. Note that we
-            // prove that T: Copy, rather than using the type_moves_by_default test. This is
-            // important because type_moves_by_default ignores the resulting region obligations and
-            // assumes they pass. This can result in bounds from Copy impls being unsoundly ignored
-            // (e.g., #29149). Note that we decide to use Copy before knowing whether the bounds
-            // fully apply: in effect, the rule is that if a value of some type could implement
-            // Copy, then it must.
-            self.cx.prove_trait_ref(trait_ref, location);
+            let ty = place_ty.to_ty(self.tcx());
+            if self.cx
+                .infcx
+                .type_moves_by_default(self.cx.param_env, ty, DUMMY_SP)
+            {
+                span_mirbug!(self, place, "attempted copy of non-Copy type ({:?})", ty);
+            }
         }
         place_ty
     }
@@ -540,17 +533,15 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                     }
                 }
                 ty::TyGenerator(def_id, substs, _) => {
-                    // Try pre-transform fields first (upvars and current state)
-                    if let Some(ty) = substs.pre_transforms_tys(def_id, tcx).nth(field.index()) {
+                    // Try upvars first. `field_tys` requires final optimized MIR.
+                    if let Some(ty) = substs.upvar_tys(def_id, tcx).nth(field.index()) {
                         return Ok(ty);
                     }
 
-                    // Then try `field_tys` which contains all the fields, but it
-                    // requires the final optimized MIR.
                     return match substs.field_tys(def_id, tcx).nth(field.index()) {
                         Some(ty) => Ok(ty),
                         None => Err(FieldAccessError::OutOfRange {
-                            field_count: substs.field_tys(def_id, tcx).count(),
+                            field_count: substs.field_tys(def_id, tcx).count() + 1,
                         }),
                     };
                 }
@@ -796,8 +787,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Unreachable
             | TerminatorKind::Drop { .. }
-            | TerminatorKind::FalseEdges { .. }
-            | TerminatorKind::FalseUnwind { .. } => {
+            | TerminatorKind::FalseEdges { .. } => {
                 // no checks needed for these
             }
 
@@ -1153,18 +1143,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     self.assert_iscleanup(mir, block_data, *target, is_cleanup);
                 }
             }
-            TerminatorKind::FalseUnwind {
-                real_target,
-                unwind
-            } => {
-                self.assert_iscleanup(mir, block_data, real_target, is_cleanup);
-                if let Some(unwind) = unwind {
-                    if is_cleanup {
-                        span_mirbug!(self, block_data, "cleanup in cleanup block via false unwind");
-                    }
-                    self.assert_iscleanup(mir, block_data, unwind, true);
-                }
-            }
         }
     }
 
@@ -1255,16 +1233,13 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 }
             }
             AggregateKind::Generator(def_id, substs, _) => {
-                // Try pre-transform fields first (upvars and current state)
-                if let Some(ty) = substs.pre_transforms_tys(def_id, tcx).nth(field_index) {
+                if let Some(ty) = substs.upvar_tys(def_id, tcx).nth(field_index) {
                     Ok(ty)
                 } else {
-                    // Then try `field_tys` which contains all the fields, but it
-                    // requires the final optimized MIR.
                     match substs.field_tys(def_id, tcx).nth(field_index) {
                         Some(ty) => Ok(ty),
                         None => Err(FieldAccessError::OutOfRange {
-                            field_count: substs.field_tys(def_id, tcx).count(),
+                            field_count: substs.field_tys(def_id, tcx).count() + 1,
                         }),
                     }
                 }

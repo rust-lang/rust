@@ -1,3 +1,12 @@
+error[E0626]: borrow may still be in use when generator yields (Mir)
+  --> $DIR/generator-with-nll.rs:20:17
+   |
+20 |         let b = &mut true; //~ ERROR borrow may still be in use when generator yields (Ast)
+   |                 ^^^^^^^^^
+21 |         //~^ borrow may still be in use when generator yields (Mir)
+22 |         yield ();
+   |         -------- possible yield occurs here
+
 error[E0626]: borrow may still be in use when generator yields (Ast)
   --> $DIR/generator-with-nll.rs:19:23
    |
@@ -12,15 +21,6 @@ error[E0626]: borrow may still be in use when generator yields (Ast)
    |
 20 |         let b = &mut true; //~ ERROR borrow may still be in use when generator yields (Ast)
    |                      ^^^^
-21 |         //~^ borrow may still be in use when generator yields (Mir)
-22 |         yield ();
-   |         -------- possible yield occurs here
-
-error[E0626]: borrow may still be in use when generator yields (Mir)
-  --> $DIR/generator-with-nll.rs:20:17
-   |
-20 |         let b = &mut true; //~ ERROR borrow may still be in use when generator yields (Ast)
-   |                 ^^^^^^^^^
 21 |         //~^ borrow may still be in use when generator yields (Mir)
 22 |         yield ();
    |         -------- possible yield occurs here

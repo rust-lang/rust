@@ -106,7 +106,6 @@ pub struct EmitterWriter {
     dst: Destination,
     cm: Option<Rc<CodeMapper>>,
     short_message: bool,
-    teach: bool,
 }
 
 struct FileWithAnnotatedLines {
@@ -118,37 +117,32 @@ struct FileWithAnnotatedLines {
 impl EmitterWriter {
     pub fn stderr(color_config: ColorConfig,
                   code_map: Option<Rc<CodeMapper>>,
-                  short_message: bool,
-                  teach: bool)
+                  short_message: bool)
                   -> EmitterWriter {
         if color_config.use_color() {
             let dst = Destination::from_stderr();
             EmitterWriter {
                 dst,
                 cm: code_map,
-                short_message,
-                teach,
+                short_message: short_message,
             }
         } else {
             EmitterWriter {
                 dst: Raw(Box::new(io::stderr())),
                 cm: code_map,
-                short_message,
-                teach,
+                short_message: short_message,
             }
         }
     }
 
     pub fn new(dst: Box<Write + Send>,
                code_map: Option<Rc<CodeMapper>>,
-               short_message: bool,
-               teach: bool)
+               short_message: bool)
                -> EmitterWriter {
         EmitterWriter {
             dst: Raw(dst),
             cm: code_map,
-            short_message,
-            teach,
+            short_message: short_message,
         }
     }
 
@@ -290,10 +284,6 @@ impl EmitterWriter {
                           line: &Line,
                           width_offset: usize,
                           code_offset: usize) -> Vec<(usize, Style)> {
-        if line.line_index == 0 {
-            return Vec::new();
-        }
-
         let source_string = match file.get_line(line.line_index - 1) {
             Some(s) => s,
             None => return Vec::new(),
@@ -561,14 +551,7 @@ impl EmitterWriter {
                                code_offset + annotation.start_col,
                                style);
                 }
-                _ if self.teach => {
-                    buffer.set_style_range(line_offset,
-                                           code_offset + annotation.start_col,
-                                           code_offset + annotation.end_col,
-                                           style,
-                                           annotation.is_primary);
-                }
-                _ => {}
+                _ => (),
             }
         }
 
@@ -1031,21 +1014,8 @@ impl EmitterWriter {
 
                 // Then, the secondary file indicator
                 buffer.prepend(buffer_msg_line_offset + 1, "::: ", Style::LineNumber);
-                let loc = if let Some(first_line) = annotated_file.lines.first() {
-                    let col = if let Some(first_annotation) = first_line.annotations.first() {
-                        format!(":{}", first_annotation.start_col + 1)
-                    } else {
-                        "".to_string()
-                    };
-                    format!("{}:{}{}",
-                            annotated_file.file.name,
-                            cm.doctest_offset_line(first_line.line_index),
-                            col)
-                } else {
-                    annotated_file.file.name.to_string()
-                };
                 buffer.append(buffer_msg_line_offset + 1,
-                              &loc,
+                              &annotated_file.file.name.to_string(),
                               Style::LineAndColumn);
                 for _ in 0..max_line_num_len {
                     buffer.prepend(buffer_msg_line_offset + 1, " ", Style::NoStyle);

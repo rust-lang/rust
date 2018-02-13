@@ -759,10 +759,7 @@ unsafe fn codegen(cgcx: &CodegenContext,
 
         if asm2wasm && config.emit_obj {
             let assembly = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
-            let suffix = ".wasm.map"; // FIXME use target suffix
-            let map = cgcx.output_filenames.path(OutputType::Exe)
-                .with_extension(&suffix[1..]);
-            binaryen_assemble(cgcx, diag_handler, &assembly, &obj_out, &map);
+            binaryen_assemble(cgcx, diag_handler, &assembly, &obj_out);
             timeline.record("binaryen");
 
             if !config.emit_asm {
@@ -817,8 +814,7 @@ unsafe fn codegen(cgcx: &CodegenContext,
 fn binaryen_assemble(cgcx: &CodegenContext,
                      handler: &Handler,
                      assembly: &Path,
-                     object: &Path,
-                     map: &Path) {
+                     object: &Path) {
     use rustc_binaryen::{Module, ModuleOptions};
 
     let input = fs::read(&assembly).and_then(|contents| {
@@ -827,10 +823,10 @@ fn binaryen_assemble(cgcx: &CodegenContext,
     let mut options = ModuleOptions::new();
     if cgcx.debuginfo != config::NoDebugInfo {
         options.debuginfo(true);
-        let map_file_name = map.file_name().unwrap();
-        options.source_map_url(map_file_name.to_str().unwrap());
     }
-
+    if cgcx.crate_types.contains(&config::CrateTypeExecutable) {
+        options.start("main");
+    }
     options.stack(1024 * 1024);
     options.import_memory(cgcx.wasm_import_memory);
     let assembled = input.and_then(|input| {
@@ -838,13 +834,7 @@ fn binaryen_assemble(cgcx: &CodegenContext,
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
     });
     let err = assembled.and_then(|binary| {
-        fs::write(&object, binary.data()).and_then(|()| {
-            if cgcx.debuginfo != config::NoDebugInfo {
-                fs::write(map, binary.source_map())
-            } else {
-                Ok(())
-            }
-        })
+        fs::write(&object, binary.data())
     });
     if let Err(e) = err {
         handler.err(&format!("failed to run binaryen assembler: {}", e));
@@ -1462,7 +1452,7 @@ fn start_executing_work(tcx: TyCtxt,
         target_pointer_width: tcx.sess.target.target.target_pointer_width.clone(),
         binaryen_linker: tcx.sess.linker_flavor() == LinkerFlavor::Binaryen,
         debuginfo: tcx.sess.opts.debuginfo,
-        wasm_import_memory,
+        wasm_import_memory: wasm_import_memory,
         assembler_cmd,
     };
 

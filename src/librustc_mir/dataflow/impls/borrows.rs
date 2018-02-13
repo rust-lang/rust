@@ -122,7 +122,7 @@ impl<'tcx> fmt::Display for BorrowData<'tcx> {
         let kind = match self.kind {
             mir::BorrowKind::Shared => "",
             mir::BorrowKind::Unique => "uniq ",
-            mir::BorrowKind::Mut { .. } => "mut ",
+            mir::BorrowKind::Mut => "mut ",
         };
         let region = format!("{}", self.region);
         let region = if region.len() > 0 { format!("{} ", region) } else { region };
@@ -396,7 +396,8 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                         // Issue #46746: Two-phase borrows handles
                         // stmts of form `Tmp = &mut Borrow` ...
                         match lhs {
-                            Place::Local(..) | Place::Static(..) => {} // okay
+                            Place::Local(..) => {} // okay
+                            Place::Static(..) => unreachable!(), // (filtered by is_unsafe_place)
                             Place::Projection(..) => {
                                 // ... can assign into projections,
                                 // e.g. `box (&mut _)`. Current
@@ -517,7 +518,6 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             mir::TerminatorKind::Yield {..} |
             mir::TerminatorKind::Goto {..} |
             mir::TerminatorKind::FalseEdges {..} |
-            mir::TerminatorKind::FalseUnwind {..} |
             mir::TerminatorKind::Unreachable => {}
         }
     }

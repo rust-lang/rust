@@ -15,7 +15,7 @@
 // ignore-emscripten no processes
 // ignore-musl FIXME #31506
 // ignore-pretty
-// min-system-llvm-version 5.0
+// no-system-llvm
 // compile-flags: -C lto
 // no-prefer-dynamic
 

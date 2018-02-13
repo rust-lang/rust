@@ -31,10 +31,8 @@ use channel;
 use util::{cp_r, libdir, is_dylib, cp_filtered, copy, replace_in_file};
 use builder::{Builder, RunConfig, ShouldRun, Step};
 use compile;
-use native;
 use tool::{self, Tool};
 use cache::{INTERNER, Interned};
-use time;
 
 pub fn pkgname(build: &Build, component: &str) -> String {
     if component == "cargo" {
@@ -437,9 +435,11 @@ impl Step for Rustc {
             }
 
             // Copy over the codegen backends
-            let backends_src = builder.sysroot_codegen_backends(compiler);
-            let backends_rel = backends_src.strip_prefix(&src).unwrap();
-            let backends_dst = image.join(&backends_rel);
+            let backends_src = builder.sysroot_libdir(compiler, host)
+                .join("codegen-backends");
+            let backends_dst = image.join("lib/rustlib")
+                .join(&*host)
+                .join("lib/codegen-backends");
             t!(fs::create_dir_all(&backends_dst));
             cp_r(&backends_src, &backends_dst);
 
@@ -447,7 +447,8 @@ impl Step for Rustc {
             t!(fs::create_dir_all(image.join("share/man/man1")));
             let man_src = build.src.join("src/doc/man");
             let man_dst = image.join("share/man/man1");
-            let month_year = t!(time::strftime("%B %Y", &time::now()));
+            let date_output = output(Command::new("date").arg("+%B %Y"));
+            let month_year = date_output.trim();
             // don't use our `bootstrap::util::{copy, cp_r}`, because those try
             // to hardlink, and we don't want to edit the source templates
             for entry_result in t!(fs::read_dir(man_src)) {
@@ -457,7 +458,7 @@ impl Step for Rustc {
                 t!(fs::copy(&page_src, &page_dst));
                 // template in month/year and version number
                 replace_in_file(&page_dst,
-                                &[("<INSERT DATE HERE>", &month_year),
+                                &[("<INSERT DATE HERE>", month_year),
                                   ("<INSERT VERSION HERE>", channel::CFG_RELEASE_NUM)]);
             }
 
@@ -899,12 +900,6 @@ impl Step for PlainSourceTarball {
                    .arg("--vers").arg(CARGO_VENDOR_VERSION)
                    .arg("cargo-vendor")
                    .env("RUSTC", &build.initial_rustc);
-                if let Some(dir) = build.openssl_install_dir(build.config.build) {
-                    builder.ensure(native::Openssl {
-                        target: build.config.build,
-                    });
-                    cmd.env("OPENSSL_DIR", dir);
-                }
                 build.run(&mut cmd);
             }
 

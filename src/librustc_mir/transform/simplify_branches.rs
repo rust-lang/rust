@@ -64,9 +64,6 @@ impl MirPass for SimplifyBranches {
                 TerminatorKind::FalseEdges { real_target, .. } => {
                     TerminatorKind::Goto { target: real_target }
                 },
-                TerminatorKind::FalseUnwind { real_target, .. } => {
-                    TerminatorKind::Goto { target: real_target }
-                },
                 _ => continue
             };
         }

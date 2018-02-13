@@ -186,7 +186,7 @@ impl Step for Llvm {
         }
 
         // http://llvm.org/docs/HowToCrossCompileLLVM.html
-        if target != build.build && !emscripten {
+        if target != build.build {
             builder.ensure(Llvm {
                 target: build.build,
                 emscripten: false,

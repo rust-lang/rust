@@ -8,13 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::intrinsics;
+
 use error::Error as StdError;
 use ffi::{OsString, OsStr};
 use fmt;
 use io;
+use mem;
 use path::{self, PathBuf};
 use str;
-use sys::{unsupported, Void, ExitSysCall, GetEnvSysCall, SetEnvSysCall};
+use sys::{unsupported, Void};
 
 pub fn errno() -> i32 {
     0
@@ -84,15 +87,36 @@ pub fn env() -> Env {
 }
 
 pub fn getenv(k: &OsStr) -> io::Result<Option<OsString>> {
-    Ok(GetEnvSysCall::perform(k))
+    // If we're debugging the runtime then we actually probe node.js to ask for
+    // the value of environment variables to help provide inputs to programs.
+    // The `extern` shims here are defined in `src/etc/wasm32-shim.js` and are
+    // intended for debugging only, you should not rely on them.
+    if !super::DEBUG {
+        return Ok(None)
+    }
+
+    extern {
+        fn rust_wasm_getenv_len(k: *const u8, kl: usize) -> isize;
+        fn rust_wasm_getenv_data(k: *const u8, kl: usize, v: *mut u8);
+    }
+    unsafe {
+        let k: &[u8] = mem::transmute(k);
+        let n = rust_wasm_getenv_len(k.as_ptr(), k.len());
+        if n == -1 {
+            return Ok(None)
+        }
+        let mut data = vec![0; n as usize];
+        rust_wasm_getenv_data(k.as_ptr(), k.len(), data.as_mut_ptr());
+        Ok(Some(mem::transmute(data)))
+    }
 }
 
-pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
-    Ok(SetEnvSysCall::perform(k, Some(v)))
+pub fn setenv(_k: &OsStr, _v: &OsStr) -> io::Result<()> {
+    unsupported()
 }
 
-pub fn unsetenv(k: &OsStr) -> io::Result<()> {
-    Ok(SetEnvSysCall::perform(k, None))
+pub fn unsetenv(_n: &OsStr) -> io::Result<()> {
+    unsupported()
 }
 
 pub fn temp_dir() -> PathBuf {
@@ -104,7 +128,7 @@ pub fn home_dir() -> Option<PathBuf> {
 }
 
 pub fn exit(_code: i32) -> ! {
-    ExitSysCall::perform(_code as isize as usize)
+    unsafe { intrinsics::abort() }
 }
 
 pub fn getpid() -> u32 {

@@ -30,7 +30,6 @@ pub use self::impls::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 pub use self::impls::{DefinitelyInitializedPlaces, MovingOutStatements};
 pub use self::impls::EverInitializedPlaces;
 pub use self::impls::borrows::{Borrows, BorrowData};
-pub use self::impls::HaveBeenBorrowedLocals;
 pub(crate) use self::impls::borrows::{ActiveBorrows, Reservations, ReserveOrActivateIndex};
 pub use self::at_location::{FlowAtLocation, FlowsAtLocation};
 pub(crate) use self::drop_flag_effects::*;
@@ -862,14 +861,6 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
                 self.propagate_bits_into_entry_set_for(in_out, changed, real_target);
                 for target in imaginary_targets {
                     self.propagate_bits_into_entry_set_for(in_out, changed, target);
-                }
-            }
-            mir::TerminatorKind::FalseUnwind { ref real_target, unwind } => {
-                self.propagate_bits_into_entry_set_for(in_out, changed, real_target);
-                if let Some(ref unwind) = unwind {
-                    if !self.dead_unwinds.contains(&bb) {
-                        self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
-                    }
                 }
             }
         }

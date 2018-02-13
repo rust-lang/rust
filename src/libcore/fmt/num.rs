@@ -157,7 +157,6 @@ macro_rules! debug {
     ($T:ident) => {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl fmt::Debug for $T {
-            #[inline]
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 fmt::Display::fmt(self, f)
             }

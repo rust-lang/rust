@@ -181,19 +181,15 @@ nav.sub {
 	overflow: auto;
 }
 
-.sidebar .block > ul > li {
+.sidebar .current {
 	margin-right: -20px;
 }
 
-.content, nav {
-	max-width: 960px;
-}
+.content, nav { max-width: 960px; }
 
 /* Everything else */
 
-.js-only, .hidden {
-	display: none !important;
-}
+.js-only, .hidden { display: none !important; }
 
 .sidebar img {
 	margin: 20px auto;
@@ -222,9 +218,7 @@ nav.sub {
 	border: none;
 }
 
-.location a:first-child {
-	font-weight: 500;
-}
+.location a:first-child { font-weight: 500; }
 
 .block {
 	padding: 0;
@@ -305,9 +299,7 @@ nav.sub {
 	-ms-user-select: none;
 	user-select: none;
 }
-.line-numbers span {
-	cursor: pointer;
-}
+.line-numbers span { cursor: pointer; }
 
 .docblock-short p {
 	display: inline;
@@ -325,9 +317,7 @@ nav.sub {
 	text-overflow: ellipsis;
 	margin: 0;
 }
-.docblock-short code {
-	white-space: nowrap;
-}
+.docblock-short code { white-space: nowrap; }
 
 .docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
 	border-bottom: 1px solid;
@@ -394,9 +384,7 @@ h4 > code, h3 > code, .invisible > code {
 	display: inline-block;
 }
 
-#main {
-	position: relative;
-}
+#main { position: relative; }
 #main > .since {
 	top: inherit;
 	font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -440,9 +428,7 @@ h4 > code, h3 > code, .invisible > code {
 	padding: 0;
 }
 
-.content .item-list li {
-	margin-bottom: 1em;
-}
+.content .item-list li { margin-bottom: 1em; }
 
 .content .multi-column {
 	-moz-column-count: 5;
@@ -870,7 +856,6 @@ span.since {
 		display: block;
 		border-bottom: 1px solid;
 		border-right: 1px solid;
-		height: 45px;
 	}
 
 	.sidebar-elems {
@@ -890,17 +875,11 @@ span.since {
 	}
 
 	nav.sub {
-		width: calc(100% - 32px);
-		float: right;
+		margin: 0 auto;
 	}
 
 	.content {
 		margin-left: 0px;
-	}
-
-	#main {
-		margin-top: 45px;
-		padding: 0;
 	}
 
 	.content .in-band {
@@ -1049,24 +1028,6 @@ h4 > .important-traits {
 
 	.show-it {
 		display: block;
-		width: 246px;
-	}
-
-	.show-it > .block.items {
-		margin: 8px 0;
-	}
-
-	.show-it > .block.items > ul {
-		margin: 0;
-	}
-
-	.show-it > .block.items > ul > li {
-		text-align: center;
-		margin: 2px 0;
-	}
-
-	.show-it > .block.items > ul > li > a {
-		font-size: 21px;
 	}
 
 	/* Because of ios, we need to actually have a full height sidebar title so the
@@ -1223,8 +1184,8 @@ kbd {
 
 @media (max-width: 700px) {
 	.theme-picker {
-		left: 10px;
-		top: 54px;
+		left: 109px;
+		top: 7px;
 		z-index: 1;
 	}
 }

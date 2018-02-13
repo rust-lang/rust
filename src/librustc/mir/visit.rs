@@ -495,19 +495,13 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(value, source_location);
                         self.visit_branch(block, resume);
                         drop.map(|t| self.visit_branch(block, t));
+
                     }
 
-                    TerminatorKind::FalseEdges { real_target, ref imaginary_targets} => {
+                    TerminatorKind::FalseEdges { real_target, ref imaginary_targets } => {
                         self.visit_branch(block, real_target);
                         for target in imaginary_targets {
                             self.visit_branch(block, *target);
-                        }
-                    }
-
-                    TerminatorKind::FalseUnwind { real_target, unwind } => {
-                        self.visit_branch(block, real_target);
-                        if let Some(unwind) = unwind {
-                            self.visit_branch(block, unwind);
                         }
                     }
                 }
@@ -957,10 +951,9 @@ impl<'tcx> PlaceContext<'tcx> {
     pub fn is_mutating_use(&self) -> bool {
         match *self {
             PlaceContext::Store | PlaceContext::AsmOutput | PlaceContext::Call |
-            PlaceContext::Borrow { kind: BorrowKind::Mut { .. }, .. } |
+            PlaceContext::Borrow { kind: BorrowKind::Mut, .. } |
             PlaceContext::Projection(Mutability::Mut) |
             PlaceContext::Drop => true,
-
             PlaceContext::Inspect |
             PlaceContext::Borrow { kind: BorrowKind::Shared, .. } |
             PlaceContext::Borrow { kind: BorrowKind::Unique, .. } |
@@ -978,8 +971,7 @@ impl<'tcx> PlaceContext<'tcx> {
             PlaceContext::Borrow { kind: BorrowKind::Unique, .. } |
             PlaceContext::Projection(Mutability::Not) |
             PlaceContext::Copy | PlaceContext::Move => true,
-
-            PlaceContext::Borrow { kind: BorrowKind::Mut { .. }, .. } | PlaceContext::Store |
+            PlaceContext::Borrow { kind: BorrowKind::Mut, .. } | PlaceContext::Store |
             PlaceContext::AsmOutput |
             PlaceContext::Call | PlaceContext::Projection(Mutability::Mut) |
             PlaceContext::Drop | PlaceContext::StorageLive | PlaceContext::StorageDead |

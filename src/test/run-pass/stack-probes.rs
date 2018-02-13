@@ -14,7 +14,7 @@
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
 // ignore-musl FIXME #31506
-// min-system-llvm-version 5.0
+// no-system-llvm
 
 use std::mem;
 use std::process::Command;

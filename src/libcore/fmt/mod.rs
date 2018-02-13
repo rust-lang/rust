@@ -530,12 +530,9 @@ impl<'a> Display for Arguments<'a> {
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented(
-    on(crate_local, label="`{Self}` cannot be formatted using `:?`; \
-                            add `#[derive(Debug)]` or manually implement `{Debug}`"),
-    message="`{Self}` doesn't implement `{Debug}`",
-    label="`{Self}` cannot be formatted using `:?` because it doesn't implement `{Debug}`",
-)]
+#[rustc_on_unimplemented = "`{Self}` cannot be formatted using `:?`; if it is \
+                            defined in your crate, add `#[derive(Debug)]` or \
+                            manually implement it"]
 #[lang = "debug_trait"]
 pub trait Debug {
     /// Formats the value using the given formatter.
@@ -596,11 +593,9 @@ pub trait Debug {
 ///
 /// println!("The origin is: {}", origin);
 /// ```
-#[rustc_on_unimplemented(
-    message="`{Self}` doesn't implement `{Display}`",
-    label="`{Self}` cannot be formatted with the default formatter; \
-           try using `:?` instead if you are using a format string",
-)]
+#[rustc_on_unimplemented = "`{Self}` cannot be formatted with the default \
+                            formatter; try using `:?` instead if you are using \
+                            a format string"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Display {
     /// Formats the value using the given formatter.
@@ -1591,7 +1586,6 @@ impl Display for ! {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for bool {
-    #[inline]
     fn fmt(&self, f: &mut Formatter) -> Result {
         Display::fmt(self, f)
     }
@@ -1754,7 +1748,6 @@ impl<T: Debug> Debug for [T] {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for () {
-    #[inline]
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.pad("()")
     }

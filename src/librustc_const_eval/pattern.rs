@@ -27,7 +27,6 @@ use syntax_pos::Span;
 
 #[derive(Clone, Debug)]
 pub enum PatternError<'tcx> {
-    AssociatedConstInPattern(Span),
     StaticInPattern(Span),
     ConstEval(ConstEvalErr<'tcx>),
 }
@@ -134,7 +133,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                     BindingMode::ByValue => mutability == Mutability::Mut,
                     BindingMode::ByRef(_, bk) => {
                         write!(f, "ref ")?;
-                        match bk { BorrowKind::Mut { .. } => true, _ => false }
+                        bk == BorrowKind::Mut
                     }
                 };
                 if is_mut {
@@ -429,7 +428,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         (Mutability::Not, BindingMode::ByValue),
                     ty::BindByReference(hir::MutMutable) =>
                         (Mutability::Not, BindingMode::ByRef(
-                            region.unwrap(), BorrowKind::Mut { allow_two_phase_borrow: false })),
+                            region.unwrap(), BorrowKind::Mut)),
                     ty::BindByReference(hir::MutImmutable) =>
                         (Mutability::Not, BindingMode::ByRef(
                             region.unwrap(), BorrowKind::Shared)),
@@ -636,10 +635,6 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                   -> Pattern<'tcx> {
         let ty = self.tables.node_id_to_type(id);
         let def = self.tables.qpath_def(qpath, id);
-        let is_associated_const = match def {
-            Def::AssociatedConst(_) => true,
-            _ => false,
-        };
         let kind = match def {
             Def::Const(def_id) | Def::AssociatedConst(def_id) => {
                 let substs = self.tables.node_substs(id);
@@ -661,11 +656,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         return pat;
                     }
                     None => {
-                        self.errors.push(if is_associated_const {
-                            PatternError::AssociatedConstInPattern(span)
-                        } else {
-                            PatternError::StaticInPattern(span)
-                        });
+                        self.errors.push(PatternError::StaticInPattern(span));
                         PatternKind::Wild
                     }
                 }

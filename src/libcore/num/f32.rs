@@ -239,9 +239,7 @@ impl Float for f32 {
     /// Converts to degrees, assuming the number is in radians.
     #[inline]
     fn to_degrees(self) -> f32 {
-        // Use a constant for better precision.
-        const PIS_IN_180: f32 = 57.2957795130823208767981548141051703_f32;
-        self * PIS_IN_180
+        self * (180.0f32 / consts::PI)
     }
 
     /// Converts to radians, assuming the number is in degrees.

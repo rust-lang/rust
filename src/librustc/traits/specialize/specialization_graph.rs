@@ -133,12 +133,12 @@ impl<'a, 'gcx, 'tcx> Children {
             };
 
             let tcx = tcx.global_tcx();
-            let (le, ge) = traits::overlapping_impls(
-                tcx,
-                possible_sibling,
-                impl_def_id,
-                traits::IntercrateMode::Issue43355,
-                |overlap| {
+            let (le, ge) = tcx.infer_ctxt().enter(|infcx| {
+                let overlap = traits::overlapping_impls(&infcx,
+                                                        possible_sibling,
+                                                        impl_def_id,
+                                                        traits::IntercrateMode::Issue43355);
+                if let Some(overlap) = overlap {
                     if tcx.impls_are_allowed_to_overlap(impl_def_id, possible_sibling) {
                         return Ok((false, false));
                     }
@@ -151,9 +151,10 @@ impl<'a, 'gcx, 'tcx> Children {
                     } else {
                         Ok((le, ge))
                     }
-                },
-                || Ok((false, false)),
-            )?;
+                } else {
+                    Ok((false, false))
+                }
+            })?;
 
             if le && !ge {
                 debug!("descending as child of TraitRef {:?}",
@@ -170,14 +171,16 @@ impl<'a, 'gcx, 'tcx> Children {
                 return Ok(Inserted::Replaced(possible_sibling));
             } else {
                 if !tcx.impls_are_allowed_to_overlap(impl_def_id, possible_sibling) {
-                    traits::overlapping_impls(
-                        tcx,
-                        possible_sibling,
-                        impl_def_id,
-                        traits::IntercrateMode::Fixed,
-                        |overlap| last_lint = Some(overlap_error(overlap)),
-                        || (),
-                    );
+                    tcx.infer_ctxt().enter(|infcx| {
+                        if let Some(overlap) = traits::overlapping_impls(
+                            &infcx,
+                            possible_sibling,
+                            impl_def_id,
+                            traits::IntercrateMode::Fixed)
+                        {
+                            last_lint = Some(overlap_error(overlap));
+                        }
+                    });
                 }
 
                 // no overlap (error bailed already via ?)

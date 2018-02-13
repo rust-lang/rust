@@ -182,8 +182,9 @@ impl<'tcx> Rvalue<'tcx> {
                 if let ty::TyAdt(adt_def, _) = ty.sty {
                     adt_def.repr.discr_type().to_ty(tcx)
                 } else {
-                    // This can only be `0`, for now, so `u8` will suffice.
-                    tcx.types.u8
+                    // Undefined behaviour, bug for now; may want to return something for
+                    // the `discriminant` intrinsic later.
+                    bug!("Rvalue::Discriminant on Place of type {:?}", ty);
                 }
             }
             Rvalue::NullaryOp(NullOp::Box, t) => tcx.mk_box(t),
@@ -263,7 +264,7 @@ impl<'tcx> BinOp {
 impl BorrowKind {
     pub fn to_mutbl_lossy(self) -> hir::Mutability {
         match self {
-            BorrowKind::Mut { .. } => hir::MutMutable,
+            BorrowKind::Mut => hir::MutMutable,
             BorrowKind::Shared => hir::MutImmutable,
 
             // We have no type corresponding to a unique imm borrow, so

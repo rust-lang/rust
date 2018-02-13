@@ -298,21 +298,7 @@
 //!
 //! This will print the numbers `0` through `4`, each on their own line.
 //!
-//! Bear in mind that methods on infinite iterators, even those for which a
-//! result can be determined mathematically in finite time, may not terminate.
-//! Specifically, methods such as [`min`], which in the general case require
-//! traversing every element in the iterator, are likely not to return
-//! successfully for any infinite iterators.
-//!
-//! ```no_run
-//! let ones = std::iter::repeat(1);
-//! let least = ones.min().unwrap(); // Oh no! An infinite loop!
-//! // `ones.min()` causes an infinite loop, so we won't reach this point!
-//! println!("The smallest number one is {}.", least);
-//! ```
-//!
 //! [`take`]: trait.Iterator.html#method.take
-//! [`min`]: trait.Iterator.html#method.min
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -321,7 +307,6 @@ use fmt;
 use iter_private::TrustedRandomAccess;
 use ops::Try;
 use usize;
-use intrinsics;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::iterator::Iterator;
@@ -707,49 +692,6 @@ impl<I> Iterator for StepBy<I> where I: Iterator {
         } else {
             let f = |n| n / (self.step+1);
             (f(inner_hint.0), inner_hint.1.map(f))
-        }
-    }
-
-    #[inline]
-    fn nth(&mut self, mut n: usize) -> Option<Self::Item> {
-        if self.first_take {
-            self.first_take = false;
-            let first = self.iter.next();
-            if n == 0 {
-                return first;
-            }
-            n -= 1;
-        }
-        // n and self.step are indices, we need to add 1 to get the amount of elements
-        // When calling `.nth`, we need to subtract 1 again to convert back to an index
-        // step + 1 can't overflow because `.step_by` sets `self.step` to `step - 1`
-        let mut step = self.step + 1;
-        // n + 1 could overflow
-        // thus, if n is usize::MAX, instead of adding one, we call .nth(step)
-        if n == usize::MAX {
-            self.iter.nth(step - 1);
-        } else {
-            n += 1;
-        }
-
-        // overflow handling
-        loop {
-            let mul = n.checked_mul(step);
-            if unsafe { intrinsics::likely(mul.is_some()) } {
-                return self.iter.nth(mul.unwrap() - 1);
-            }
-            let div_n = usize::MAX / n;
-            let div_step = usize::MAX / step;
-            let nth_n = div_n * n;
-            let nth_step = div_step * step;
-            let nth = if nth_n > nth_step {
-                step -= div_n;
-                nth_n
-            } else {
-                n -= div_step;
-                nth_step
-            };
-            self.iter.nth(nth - 1);
         }
     }
 }
@@ -2335,9 +2277,6 @@ impl<I> ExactSizeIterator for Take<I> where I: ExactSizeIterator {}
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<I> FusedIterator for Take<I> where I: FusedIterator {}
-
-#[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<I: TrustedLen> TrustedLen for Take<I> {}
 
 /// An iterator to maintain state while iterating another iterator.
 ///

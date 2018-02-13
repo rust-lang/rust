@@ -72,7 +72,6 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Instant, Duration};
 use std::borrow::Cow;
-use std::process;
 
 const TEST_WARN_TIMEOUT_S: u64 = 60;
 const QUIET_MODE_MAX_COLUMN: usize = 100; // insert a '\n' after 100 tests in quiet mode
@@ -267,27 +266,19 @@ impl Options {
 pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Options) {
     let mut opts = match parse_opts(args) {
         Some(Ok(o)) => o,
-        Some(Err(msg)) => {
-            eprintln!("error: {}", msg);
-            process::exit(101);
-        },
+        Some(Err(msg)) => panic!("{:?}", msg),
         None => return,
     };
-
     opts.options = options;
     if opts.list {
         if let Err(e) = list_tests_console(&opts, tests) {
-            eprintln!("error: io error when listing tests: {:?}", e);
-            process::exit(101);
+            panic!("io error when listing tests: {:?}", e);
         }
     } else {
         match run_tests_console(&opts, tests) {
             Ok(true) => {}
-            Ok(false) => process::exit(101),
-            Err(e) => {
-                eprintln!("error: io error when listing tests: {:?}", e);
-                process::exit(101);
-            },
+            Ok(false) => std::process::exit(101),
+            Err(e) => panic!("io error when running tests: {:?}", e),
         }
     }
 }

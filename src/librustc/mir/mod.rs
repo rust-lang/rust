@@ -413,20 +413,7 @@ pub enum BorrowKind {
     Unique,
 
     /// Data is mutable and not aliasable.
-    Mut {
-        /// True if this borrow arose from method-call auto-ref
-        /// (i.e. `adjustment::Adjust::Borrow`)
-        allow_two_phase_borrow: bool
-    }
-}
-
-impl BorrowKind {
-    pub fn allows_two_phase_borrow(&self) -> bool {
-        match *self {
-            BorrowKind::Shared | BorrowKind::Unique => false,
-            BorrowKind::Mut { allow_two_phase_borrow } => allow_two_phase_borrow,
-        }
-    }
+    Mut,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -816,28 +803,9 @@ pub enum TerminatorKind<'tcx> {
     /// Indicates the end of the dropping of a generator
     GeneratorDrop,
 
-    /// A block where control flow only ever takes one real path, but borrowck
-    /// needs to be more conservative.
     FalseEdges {
-        /// The target normal control flow will take
         real_target: BasicBlock,
-        /// The list of blocks control flow could conceptually take, but won't
-        /// in practice
-        imaginary_targets: Vec<BasicBlock>,
-    },
-    /// A terminator for blocks that only take one path in reality, but where we
-    /// reserve the right to unwind in borrowck, even if it won't happen in practice.
-    /// This can arise in infinite loops with no function calls for example.
-    FalseUnwind {
-        /// The target normal control flow will take
-        real_target: BasicBlock,
-        /// The imaginary cleanup block link. This particular path will never be taken
-        /// in practice, but in order to avoid fragility we want to always
-        /// consider it in borrowck. We don't want to accept programs which
-        /// pass borrowck only when panic=abort or some assertions are disabled
-        /// due to release vs. debug mode builds. This needs to be an Option because
-        /// of the remove_noop_landing_pads and no_landing_pads passes
-        unwind: Option<BasicBlock>,
+        imaginary_targets: Vec<BasicBlock>
     },
 }
 
@@ -897,8 +865,6 @@ impl<'tcx> TerminatorKind<'tcx> {
                 s.extend_from_slice(imaginary_targets);
                 s.into_cow()
             }
-            FalseUnwind { real_target: t, unwind: Some(u) } => vec![t, u].into_cow(),
-            FalseUnwind { real_target: ref t, unwind: None } => slice::from_ref(t).into_cow(),
         }
     }
 
@@ -931,8 +897,6 @@ impl<'tcx> TerminatorKind<'tcx> {
                 s.extend(imaginary_targets.iter_mut());
                 s
             }
-            FalseUnwind { real_target: ref mut t, unwind: Some(ref mut u) } => vec![t, u],
-            FalseUnwind { ref mut real_target, unwind: None } => vec![real_target],
         }
     }
 
@@ -952,8 +916,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             TerminatorKind::Call { cleanup: ref mut unwind, .. } |
             TerminatorKind::Assert { cleanup: ref mut unwind, .. } |
             TerminatorKind::DropAndReplace { ref mut unwind, .. } |
-            TerminatorKind::Drop { ref mut unwind, .. } |
-            TerminatorKind::FalseUnwind { ref mut unwind, .. } => {
+            TerminatorKind::Drop { ref mut unwind, .. } => {
                 Some(unwind)
             }
         }
@@ -1082,8 +1045,7 @@ impl<'tcx> TerminatorKind<'tcx> {
 
                 write!(fmt, ")")
             },
-            FalseEdges { .. } => write!(fmt, "falseEdges"),
-            FalseUnwind { .. } => write!(fmt, "falseUnwind"),
+            FalseEdges { .. } => write!(fmt, "falseEdges")
         }
     }
 
@@ -1125,8 +1087,6 @@ impl<'tcx> TerminatorKind<'tcx> {
                 l.resize(imaginary_targets.len() + 1, "imaginary".into());
                 l
             }
-            FalseUnwind { unwind: Some(_), .. } => vec!["real".into(), "cleanup".into()],
-            FalseUnwind { unwind: None, .. } => vec!["real".into()],
         }
     }
 }
@@ -1555,8 +1515,8 @@ pub enum AggregateKind<'tcx> {
     Array(Ty<'tcx>),
     Tuple,
 
-    /// The second field is the variant index. It's equal to 0 for struct
-    /// and union expressions. The fourth field is
+    /// The second field is variant number (discriminant), it's equal
+    /// to 0 for struct and union expressions. The fourth field is
     /// active field number and is present only for union expressions
     /// -- e.g. for a union expression `SomeUnion { c: .. }`, the
     /// active field index would identity the field `c`
@@ -1651,7 +1611,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             Ref(region, borrow_kind, ref place) => {
                 let kind_str = match borrow_kind {
                     BorrowKind::Shared => "",
-                    BorrowKind::Mut { .. } | BorrowKind::Unique => "mut ",
+                    BorrowKind::Mut | BorrowKind::Unique => "mut ",
                 };
 
                 // When printing regions, add trailing space if necessary.
@@ -1865,7 +1825,7 @@ pub struct Location {
     /// the location is within this block
     pub block: BasicBlock,
 
-    /// the location is the start of the statement; or, if `statement_index`
+    /// the location is the start of the this statement; or, if `statement_index`
     /// == num-statements, then the start of the terminator.
     pub statement_index: usize,
 }
@@ -2229,8 +2189,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             Return => Return,
             Unreachable => Unreachable,
             FalseEdges { real_target, ref imaginary_targets } =>
-                FalseEdges { real_target, imaginary_targets: imaginary_targets.clone() },
-            FalseUnwind { real_target, unwind } => FalseUnwind { real_target, unwind },
+                FalseEdges { real_target, imaginary_targets: imaginary_targets.clone() }
         };
         Terminator {
             source_info: self.source_info,
@@ -2272,8 +2231,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             Return |
             GeneratorDrop |
             Unreachable |
-            FalseEdges { .. } |
-            FalseUnwind { .. } => false
+            FalseEdges { .. } => false
         }
     }
 }

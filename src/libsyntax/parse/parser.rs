@@ -761,18 +761,6 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn expected_ident_found(&self) -> DiagnosticBuilder<'a> {
-        let mut err = self.struct_span_err(self.span,
-                                           &format!("expected identifier, found {}",
-                                                    self.this_token_descr()));
-        if let Some(token_descr) = self.token_descr() {
-            err.span_label(self.span, format!("expected identifier, found {}", token_descr));
-        } else {
-            err.span_label(self.span, "expected identifier");
-        }
-        err
-    }
-
     pub fn parse_ident(&mut self) -> PResult<'a, ast::Ident> {
         self.parse_ident_common(true)
     }
@@ -781,7 +769,15 @@ impl<'a> Parser<'a> {
         match self.token {
             token::Ident(i) => {
                 if self.token.is_reserved_ident() {
-                    let mut err = self.expected_ident_found();
+                    let mut err = self.struct_span_err(self.span,
+                                                       &format!("expected identifier, found {}",
+                                                                self.this_token_descr()));
+                    if let Some(token_descr) = self.token_descr() {
+                        err.span_label(self.span, format!("expected identifier, found {}",
+                                                          token_descr));
+                    } else {
+                        err.span_label(self.span, "expected identifier");
+                    }
                     if recover {
                         err.emit();
                     } else {
@@ -795,7 +791,14 @@ impl<'a> Parser<'a> {
                 Err(if self.prev_token_kind == PrevTokenKind::DocComment {
                         self.span_fatal_err(self.prev_span, Error::UselessDocComment)
                     } else {
-                        let mut err = self.expected_ident_found();
+                        let mut err = self.fatal(&format!("expected identifier, found `{}`",
+                                                          self.this_token_to_string()));
+                        if let Some(token_descr) = self.token_descr() {
+                            err.span_label(self.span, format!("expected identifier, found {}",
+                                                              token_descr));
+                        } else {
+                            err.span_label(self.span, "expected identifier");
+                        }
                         if self.token == token::Underscore {
                             err.note("`_` is a wildcard pattern, not an identifier");
                         }
@@ -3395,7 +3398,11 @@ impl<'a> Parser<'a> {
 
         let attrs = self.parse_outer_attributes()?;
         // Allow a '|' before the pats (RFC 1925)
-        self.eat(&token::BinOp(token::Or));
+        let beginning_vert = if self.eat(&token::BinOp(token::Or)) {
+            Some(self.prev_span)
+        } else {
+            None
+        };
         let pats = self.parse_pats()?;
         let guard = if self.eat_keyword(keywords::If) {
             Some(self.parse_expr()?)
@@ -3419,6 +3426,7 @@ impl<'a> Parser<'a> {
             pats,
             guard,
             body: expr,
+            beginning_vert,
         })
     }
 

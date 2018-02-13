@@ -76,8 +76,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             TerminatorKind::Abort |
             TerminatorKind::Return |
             TerminatorKind::Unreachable |
-            TerminatorKind::FalseEdges { .. } |
-            TerminatorKind::FalseUnwind { .. } => {
+            TerminatorKind::FalseEdges { .. } => {
                 // safe (at least as emitted during MIR construction)
             }
 

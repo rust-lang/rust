@@ -57,24 +57,16 @@ fn main() {
 //        _1 = const false;
 //        StorageLive(_2);
 //        _2 = const 3i32;
-//        falseUnwind -> [real: bb2, cleanup: bb1];
-//    }
-//    bb1: {
-//        ...
-//    }
-//    bb2: {
 //        StorageLive(_4);
-//        goto -> bb3;
+//        goto -> bb1;
 //    }
-//    bb3: {
-//        falseUnwind -> [real: bb4, cleanup: bb1];
-//    }
-//    bb4: {
+//
+//    bb1: {
 //        StorageLive(_7);
 //        _7 = _1;
-//        switchInt(move _7) -> [0u8: bb6, otherwise: bb5];
+//        switchInt(move _7) -> [0u8: bb3, otherwise: bb2];
 //    }
-//    bb5: {
+//    bb2: {
 //        _0 = ();
 //        StorageDead(_7);
 //        EndRegion('33_0rs);
@@ -83,13 +75,13 @@ fn main() {
 //        StorageDead(_1);
 //        return;
 //    }
-//    bb6: {
+//    bb3: {
 //        _4 = &'33_0rs _2;
 //        _6 = ();
 //        StorageDead(_7);
 //        _1 = const true;
 //        _3 = ();
-//        goto -> bb3;
+//        goto -> bb1;
 //    }
 // }
 // END rustc.main.SimplifyCfg-qualify-consts.after.mir

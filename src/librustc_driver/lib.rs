@@ -167,8 +167,7 @@ pub fn run<F>(run_compiler: F) -> isize
                     let emitter =
                         errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto,
                                                                None,
-                                                               true,
-                                                               false);
+                                                               true);
                     let handler = errors::Handler::with_emitter(true, false, Box::new(emitter));
                     handler.emit(&MultiSpan::new(),
                                  "aborting due to previous error(s)",
@@ -290,7 +289,7 @@ fn get_trans_sysroot(backend_name: &str) -> fn() -> Box<TransCrate> {
     let sysroot = sysroot_candidates.iter()
         .map(|sysroot| {
             let libdir = filesearch::relative_target_lib_path(&sysroot, &target);
-            sysroot.join(libdir).with_file_name("codegen-backends")
+            sysroot.join(&libdir).join("codegen-backends")
         })
         .filter(|f| {
             info!("codegen backend candidate: {}", f.display());
@@ -457,13 +456,10 @@ pub fn run_compiler<'a>(args: &[String],
                                            None);
 
     let (odir, ofile) = make_output(&matches);
-    let (input, input_file_path, input_err) = match make_input(&matches.free) {
-        Some((input, input_file_path, input_err)) => {
-            let (input, input_file_path) = callbacks.some_input(input, input_file_path);
-            (input, input_file_path, input_err)
-        },
+    let (input, input_file_path) = match make_input(&matches.free) {
+        Some((input, input_file_path)) => callbacks.some_input(input, input_file_path),
         None => match callbacks.no_input(&matches, &sopts, &cfg, &odir, &ofile, &descriptions) {
-            Some((input, input_file_path)) => (input, input_file_path, None),
+            Some((input, input_file_path)) => (input, input_file_path),
             None => return (Ok(()), None),
         },
     };
@@ -473,13 +469,6 @@ pub fn run_compiler<'a>(args: &[String],
     let mut sess = session::build_session_with_codemap(
         sopts, input_file_path.clone(), descriptions, codemap, emitter_dest,
     );
-
-    if let Some(err) = input_err {
-        // Immediately stop compilation if there was an issue reading
-        // the input (for example if the input stream is not UTF-8).
-        sess.err(&format!("{}", err));
-        return (Err(CompileIncomplete::Stopped), Some(sess));
-    }
 
     let trans = get_trans(&sess);
 
@@ -523,22 +512,17 @@ fn make_output(matches: &getopts::Matches) -> (Option<PathBuf>, Option<PathBuf>)
 }
 
 // Extract input (string or file and optional path) from matches.
-fn make_input(free_matches: &[String]) -> Option<(Input, Option<PathBuf>, Option<io::Error>)> {
+fn make_input(free_matches: &[String]) -> Option<(Input, Option<PathBuf>)> {
     if free_matches.len() == 1 {
         let ifile = &free_matches[0];
         if ifile == "-" {
             let mut src = String::new();
-            let err = if io::stdin().read_to_string(&mut src).is_err() {
-                Some(io::Error::new(io::ErrorKind::InvalidData,
-                                    "couldn't read from stdin, as it did not contain valid UTF-8"))
-            } else {
-                None
-            };
+            io::stdin().read_to_string(&mut src).unwrap();
             Some((Input::Str { name: FileName::Anon, input: src },
-                  None, err))
+                  None))
         } else {
             Some((Input::File(PathBuf::from(ifile)),
-                  Some(PathBuf::from(ifile)), None))
+                  Some(PathBuf::from(ifile))))
         }
     } else {
         None
@@ -1450,7 +1434,6 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
             let emitter =
                 Box::new(errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto,
                                                                 None,
-                                                                false,
                                                                 false));
             let handler = errors::Handler::with_emitter(true, false, emitter);
 

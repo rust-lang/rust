@@ -13,6 +13,7 @@ extern crate mdbook;
 extern crate clap;
 
 use std::env;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 use clap::{App, ArgMatches, SubCommand, AppSettings};
@@ -44,19 +45,14 @@ fn main() {
     };
 
     if let Err(e) = res {
-        eprintln!("Error: {}", e);
-
-        for cause in e.iter().skip(1) {
-            eprintln!("\tCaused By: {}", cause);
-        }
-
+        writeln!(&mut io::stderr(), "An error occured:\n{}", e).ok();
         ::std::process::exit(101);
     }
 }
 // Build command implementation
 pub fn build(args: &ArgMatches) -> Result<()> {
     let book_dir = get_book_dir(args);
-    let mut book = MDBook::load(&book_dir)?;
+    let mut book = MDBook::new(&book_dir).read_config()?;
 
     // Set this to allow us to catch bugs in advance.
     book.config.build.create_missing = false;

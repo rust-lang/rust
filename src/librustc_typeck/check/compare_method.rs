@@ -40,8 +40,6 @@ pub fn compare_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("compare_impl_method(impl_trait_ref={:?})",
            impl_trait_ref);
 
-    let impl_m_span = tcx.sess.codemap().def_span(impl_m_span);
-
     if let Err(ErrorReported) = compare_self_type(tcx,
                                                   impl_m,
                                                   impl_m_span,
@@ -188,7 +186,6 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     check_region_bounds_on_impl_method(tcx,
                                        impl_m_span,
                                        impl_m,
-                                       trait_m,
                                        &trait_m_generics,
                                        &impl_m_generics,
                                        trait_to_skol_substs)?;
@@ -313,7 +310,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             };
 
             let mut diag = struct_span_err!(tcx.sess,
-                                            cause.span(&tcx),
+                                            cause.span,
                                             E0053,
                                             "method `{}` has an incompatible type for trait",
                                             trait_m.name);
@@ -349,12 +346,10 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn check_region_bounds_on_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 span: Span,
                                                 impl_m: &ty::AssociatedItem,
-                                                trait_m: &ty::AssociatedItem,
                                                 trait_generics: &ty::Generics,
                                                 impl_generics: &ty::Generics,
                                                 trait_to_skol_substs: &Substs<'tcx>)
                                                 -> Result<(), ErrorReported> {
-    let span = tcx.sess.codemap().def_span(span);
     let trait_params = &trait_generics.regions[..];
     let impl_params = &impl_generics.regions[..];
 
@@ -376,18 +371,14 @@ fn check_region_bounds_on_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // are zero. Since I don't quite know how to phrase things at
     // the moment, give a kind of vague error message.
     if trait_params.len() != impl_params.len() {
-        let mut err = struct_span_err!(tcx.sess,
-                                       span,
-                                       E0195,
-                                       "lifetime parameters or bounds on method `{}` do not match \
-                                        the trait declaration",
-                                       impl_m.name);
-        err.span_label(span, "lifetimes do not match method in trait");
-        if let Some(sp) = tcx.hir.span_if_local(trait_m.def_id) {
-            err.span_label(tcx.sess.codemap().def_span(sp),
-                           "lifetimes in impl do not match this method in trait");
-        }
-        err.emit();
+        struct_span_err!(tcx.sess,
+                         span,
+                         E0195,
+                         "lifetime parameters or bounds on method `{}` do not match the \
+                          trait declaration",
+                         impl_m.name)
+            .span_label(span, "lifetimes do not match trait")
+            .emit();
         return Err(ErrorReported);
     }
 
@@ -433,9 +424,9 @@ fn extract_spans_for_error_reporting<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a
                 }).map(|(ref impl_arg, ref trait_arg)| {
                     (impl_arg.span, Some(trait_arg.span))
                 })
-                .unwrap_or_else(|| (cause.span(&tcx), tcx.hir.span_if_local(trait_m.def_id)))
+                .unwrap_or_else(|| (cause.span, tcx.hir.span_if_local(trait_m.def_id)))
             } else {
-                (cause.span(&tcx), tcx.hir.span_if_local(trait_m.def_id))
+                (cause.span, tcx.hir.span_if_local(trait_m.def_id))
             }
         }
         TypeError::Sorts(ExpectedFound { .. }) => {
@@ -468,14 +459,14 @@ fn extract_spans_for_error_reporting<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a
                              {
                                  (impl_m_output.span(), Some(trait_m_output.span()))
                              } else {
-                                 (cause.span(&tcx), tcx.hir.span_if_local(trait_m.def_id))
+                                 (cause.span, tcx.hir.span_if_local(trait_m.def_id))
                              }
                          })
             } else {
-                (cause.span(&tcx), tcx.hir.span_if_local(trait_m.def_id))
+                (cause.span, tcx.hir.span_if_local(trait_m.def_id))
             }
         }
-        _ => (cause.span(&tcx), tcx.hir.span_if_local(trait_m.def_id)),
+        _ => (cause.span, tcx.hir.span_if_local(trait_m.def_id)),
     }
 }
 

@@ -355,26 +355,31 @@ fn is_param<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn ensure_no_param_bounds(tcx: TyCtxt,
-                          span: Span,
-                          generics: &hir::Generics,
-                          thing: &'static str) {
+fn ensure_no_ty_param_bounds(tcx: TyCtxt,
+                             span: Span,
+                             generics: &hir::Generics,
+                             thing: &'static str) {
     let mut warn = false;
 
     for ty_param in generics.ty_params() {
-        if !ty_param.bounds.is_empty() {
-            warn = true;
+        for bound in ty_param.bounds.iter() {
+            match *bound {
+                hir::TraitTyParamBound(..) => {
+                    warn = true;
+                }
+                hir::RegionTyParamBound(..) => { }
+            }
         }
     }
 
-    for lft_param in generics.lifetimes() {
-        if !lft_param.bounds.is_empty() {
-            warn = true;
+    for predicate in generics.where_clause.predicates.iter() {
+        match *predicate {
+            hir::WherePredicate::BoundPredicate(..) => {
+                warn = true;
+            }
+            hir::WherePredicate::RegionPredicate(..) => { }
+            hir::WherePredicate::EqPredicate(..) => { }
         }
-    }
-
-    if !generics.where_clause.predicates.is_empty() {
-        warn = true;
     }
 
     if warn {
@@ -383,7 +388,8 @@ fn ensure_no_param_bounds(tcx: TyCtxt,
         // part of this PR. Still, convert to warning to
         // make bootstrapping easier.
         span_warn!(tcx.sess, span, E0122,
-                   "generic bounds are ignored in {}",
+                   "trait bounds are not (yet) enforced \
+                   in {} definitions",
                    thing);
     }
 }
@@ -449,7 +455,7 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
             }
         },
         hir::ItemTy(_, ref generics) => {
-            ensure_no_param_bounds(tcx, it.span, generics, "type aliases");
+            ensure_no_ty_param_bounds(tcx, it.span, generics, "type");
             tcx.generics_of(def_id);
             tcx.type_of(def_id);
             tcx.predicates_of(def_id);

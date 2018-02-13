@@ -109,7 +109,7 @@ use self::VarKind::*;
 use hir::def::*;
 use ty::{self, TyCtxt};
 use lint;
-use util::nodemap::{NodeMap, NodeSet};
+use util::nodemap::NodeMap;
 
 use std::{fmt, usize};
 use std::io::prelude::*;
@@ -244,8 +244,7 @@ struct CaptureInfo {
 #[derive(Copy, Clone, Debug)]
 struct LocalInfo {
     id: NodeId,
-    name: ast::Name,
-    is_shorthand: bool,
+    name: ast::Name
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -334,13 +333,6 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
         }
     }
 
-    fn variable_is_shorthand(&self, var: Variable) -> bool {
-        match self.var_kinds[var.get()] {
-            Local(LocalInfo { is_shorthand, .. }) => is_shorthand,
-            Arg(..) | CleanExit => false
-        }
-    }
-
     fn set_captures(&mut self, node_id: NodeId, cs: Vec<CaptureInfo>) {
         self.capture_info_map.insert(node_id, Rc::new(cs));
     }
@@ -392,9 +384,8 @@ fn visit_local<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, local: &'tcx hir::Local) {
         let name = path1.node;
         ir.add_live_node_for_node(p_id, VarDefNode(sp));
         ir.add_variable(Local(LocalInfo {
-            id: p_id,
-            name,
-            is_shorthand: false,
+          id: p_id,
+          name,
         }));
     });
     intravisit::walk_local(ir, local);
@@ -402,22 +393,6 @@ fn visit_local<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, local: &'tcx hir::Local) {
 
 fn visit_arm<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, arm: &'tcx hir::Arm) {
     for pat in &arm.pats {
-        // for struct patterns, take note of which fields used shorthand (`x`
-        // rather than `x: x`)
-        //
-        // FIXME: according to the rust-lang-nursery/rustc-guide book and
-        // librustc/README.md, `NodeId`s are to be phased out in favor of
-        // `HirId`s; however, we need to match the signature of `each_binding`,
-        // which uses `NodeIds`.
-        let mut shorthand_field_ids = NodeSet();
-        if let hir::PatKind::Struct(_, ref fields, _) = pat.node {
-            for field in fields {
-                if field.node.is_shorthand {
-                    shorthand_field_ids.insert(field.node.pat.id);
-                }
-            }
-        }
-
         pat.each_binding(|bm, p_id, sp, path1| {
             debug!("adding local variable {} from match with bm {:?}",
                    p_id, bm);
@@ -425,8 +400,7 @@ fn visit_arm<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, arm: &'tcx hir::Arm) {
             ir.add_live_node_for_node(p_id, VarDefNode(sp));
             ir.add_variable(Local(LocalInfo {
                 id: p_id,
-                name: name,
-                is_shorthand: shorthand_field_ids.contains(&p_id)
+                name,
             }));
         })
     }
@@ -1509,26 +1483,17 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     self.assigned_on_exit(ln, var).is_some()
                 };
 
-                let suggest_underscore_msg = format!("consider using `_{}` instead",
-                                                     name);
                 if is_assigned {
-                    self.ir.tcx
-                        .lint_node_note(lint::builtin::UNUSED_VARIABLES, id, sp,
-                                        &format!("variable `{}` is assigned to, but never used",
-                                                 name),
-                                        &suggest_underscore_msg);
+                    self.ir.tcx.lint_node_note(lint::builtin::UNUSED_VARIABLES, id, sp,
+                        &format!("variable `{}` is assigned to, but never used",
+                                 name),
+                        &format!("to avoid this warning, consider using `_{}` instead",
+                                 name));
                 } else if name != "self" {
-                    let msg = format!("unused variable: `{}`", name);
-                    let mut err = self.ir.tcx
-                        .struct_span_lint_node(lint::builtin::UNUSED_VARIABLES, id, sp, &msg);
-                    if self.ir.variable_is_shorthand(var) {
-                        err.span_suggestion(sp, "try ignoring the field",
-                                            format!("{}: _", name));
-                    } else {
-                        err.span_suggestion_short(sp, &suggest_underscore_msg,
-                                                  format!("_{}", name));
-                    }
-                    err.emit()
+                    self.ir.tcx.lint_node_note(lint::builtin::UNUSED_VARIABLES, id, sp,
+                        &format!("unused variable: `{}`", name),
+                        &format!("to avoid this warning, consider using `_{}` instead",
+                                 name));
                 }
             }
             true

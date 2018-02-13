@@ -464,7 +464,8 @@ impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for &'a CodegenCx<'a, 'tcx> {
     type TyLayout = TyLayout<'tcx>;
 
     fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
-        self.tcx.layout_of(ty::ParamEnv::empty(traits::Reveal::All).and(ty))
+        (self.tcx, ty::ParamEnv::empty(traits::Reveal::All))
+            .layout_of(ty)
             .unwrap_or_else(|e| match e {
                 LayoutError::SizeOverflow(_) => self.sess().fatal(&e.to_string()),
                 _ => bug!("failed to get layout for `{}`: {}", ty, e)

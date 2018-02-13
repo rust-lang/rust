@@ -71,12 +71,9 @@ pub enum Candidate {
     /// Borrow of a constant temporary.
     Ref(Location),
 
-    /// Currently applied to function calls where the callee has the unstable
-    /// `#[rustc_args_required_const]` attribute as well as the SIMD shuffle
-    /// intrinsic. The intrinsic requires the arguments are indeed constant and
-    /// the attribute currently provides the semantic requirement that arguments
-    /// must be constant.
-    Argument { bb: BasicBlock, index: usize },
+    /// Array of indices found in the third argument of
+    /// a call to one of the simd_shuffleN intrinsics.
+    ShuffleIndices(BasicBlock)
 }
 
 struct TempCollector<'tcx> {
@@ -306,10 +303,10 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     _ => bug!()
                 }
             }
-            Candidate::Argument { bb, index } => {
+            Candidate::ShuffleIndices(bb) => {
                 match self.source[bb].terminator_mut().kind {
                     TerminatorKind::Call { ref mut args, .. } => {
-                        Rvalue::Use(mem::replace(&mut args[index], new_operand))
+                        Rvalue::Use(mem::replace(&mut args[2], new_operand))
                     }
                     _ => bug!()
                 }
@@ -362,15 +359,15 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
                 }
                 (statement.source_info.span, dest.ty(mir, tcx).to_ty(tcx))
             }
-            Candidate::Argument { bb, index } => {
+            Candidate::ShuffleIndices(bb) => {
                 let terminator = mir[bb].terminator();
                 let ty = match terminator.kind {
                     TerminatorKind::Call { ref args, .. } => {
-                        args[index].ty(mir, tcx)
+                        args[2].ty(mir, tcx)
                     }
                     _ => {
                         span_bug!(terminator.source_info.span,
-                                  "expected call argument to promote");
+                                  "expected simd_shuffleN call to promote");
                     }
                 };
                 (terminator.source_info.span, ty)

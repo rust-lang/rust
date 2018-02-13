@@ -17,7 +17,6 @@
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
-use rustc_data_structures::fx::FxHashSet;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::middle::const_val::ConstVal;
@@ -31,7 +30,6 @@ use rustc::mir::visit::{PlaceContext, Visitor};
 use rustc::middle::lang_items;
 use syntax::abi::Abi;
 use syntax::attr;
-use syntax::ast::LitKind;
 use syntax::feature_gate::UnstableFeatures;
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -170,20 +168,8 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     fn not_const(&mut self) {
         self.add(Qualif::NOT_CONST);
         if self.mode != Mode::Fn {
-            let mut err = struct_span_err!(
-                self.tcx.sess,
-                self.span,
-                E0019,
-                "{} contains unimplemented expression type",
-                self.mode
-            );
-            if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                err.note("A function call isn't allowed in the const's initialization expression \
-                          because the expression's value must be known at compile-time.");
-                err.note("Remember: you can't use a function call inside a const's initialization \
-                          expression! However, you can use it anywhere else.");
-            }
-            err.emit();
+            span_err!(self.tcx.sess, self.span, E0019,
+                      "{} contains unimplemented expression type", self.mode);
         }
     }
 
@@ -191,19 +177,9 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     fn statement_like(&mut self) {
         self.add(Qualif::NOT_CONST);
         if self.mode != Mode::Fn {
-            let mut err = struct_span_err!(
-                self.tcx.sess,
-                self.span,
-                E0016,
-                "blocks in {}s are limited to items and tail expressions",
-                self.mode
-            );
-            if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                err.note("Blocks in constants may only contain items (such as constant, function \
-                          definition, etc...) and a tail expression.");
-                err.help("To avoid it, you have to replace the non-item object.");
-            }
-            err.emit();
+            span_err!(self.tcx.sess, self.span, E0016,
+                      "blocks in {}s are limited to items and tail expressions",
+                      self.mode);
         }
     }
 
@@ -351,8 +327,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 TerminatorKind::GeneratorDrop |
                 TerminatorKind::Yield { .. } |
                 TerminatorKind::Unreachable |
-                TerminatorKind::FalseEdges { .. } |
-                TerminatorKind::FalseUnwind { .. } => None,
+                TerminatorKind::FalseEdges { .. } => None,
 
                 TerminatorKind::Return => {
                     // Check for unused values. This usually means
@@ -432,7 +407,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                         _ => {}
                     }
                 }
-                Candidate::Argument { .. } => {}
+                Candidate::ShuffleIndices(_) => {}
             }
         }
 
@@ -497,19 +472,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 }
 
                 if self.mode == Mode::Const || self.mode == Mode::ConstFn {
-                    let mut err = struct_span_err!(self.tcx.sess, self.span, E0013,
-                                                   "{}s cannot refer to statics, use \
-                                                    a constant instead", self.mode);
-                    if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                        err.note(
-                            "Static and const variables can refer to other const variables. But a \
-                             const variable cannot refer to a static variable."
-                        );
-                        err.help(
-                            "To fix this, the value can be extracted as a const and then used."
-                        );
-                    }
-                    err.emit()
+                    span_err!(self.tcx.sess, self.span, E0013,
+                              "{}s cannot refer to statics, use \
+                               a constant instead", self.mode);
                 }
             }
             Place::Projection(ref proj) => {
@@ -530,25 +495,13 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             if let ty::TyRawPtr(_) = base_ty.sty {
                                 this.add(Qualif::NOT_CONST);
                                 if this.mode != Mode::Fn {
-                                    let mut err = struct_span_err!(
-                                        this.tcx.sess,
-                                        this.span,
-                                        E0396,
+                                    struct_span_err!(this.tcx.sess,
+                                        this.span, E0396,
                                         "raw pointers cannot be dereferenced in {}s",
-                                        this.mode
-                                    );
-                                    err.span_label(this.span,
-                                                   "dereference of raw pointer in constant");
-                                    if this.tcx.sess.teach(&err.get_code().unwrap()) {
-                                        err.note(
-                                            "The value behind a raw pointer can't be determined \
-                                             at compile-time (or even link-time), which means it \
-                                             can't be used in a constant expression."
-                                        );
-                                        err.help("A possible fix is to dereference your pointer \
-                                                  at some point in run-time.");
-                                    }
-                                    err.emit();
+                                        this.mode)
+                                    .span_label(this.span,
+                                        "dereference of raw pointer in constant")
+                                    .emit();
                                 }
                             }
                         }
@@ -647,7 +600,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 }
 
                 let ty = place.ty(self.mir, self.tcx).to_ty(self.tcx);
-                if let BorrowKind::Mut { .. } = kind {
+                if kind == BorrowKind::Mut {
                     // In theory, any zero-sized value could be borrowed
                     // mutably without consequences. However, only &mut []
                     // is allowed right now, and only in functions.
@@ -667,22 +620,12 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     if !allow {
                         self.add(Qualif::NOT_CONST);
                         if self.mode != Mode::Fn {
-                            let mut err = struct_span_err!(self.tcx.sess,  self.span, E0017,
-                                                           "references in {}s may only refer \
-                                                            to immutable values", self.mode);
-                            err.span_label(self.span, format!("{}s require immutable values",
-                                                                self.mode));
-                            if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                                err.note("References in statics and constants may only refer to \
-                                          immutable values.\n\n\
-                                          Statics are shared everywhere, and if they refer to \
-                                          mutable data one might violate memory safety since \
-                                          holding multiple mutable references to shared data is \
-                                          not allowed.\n\n\
-                                          If you really want global mutable state, try using \
-                                          static mut or a global UnsafeCell.");
-                            }
-                            err.emit();
+                            struct_span_err!(self.tcx.sess,  self.span, E0017,
+                                             "references in {}s may only refer \
+                                              to immutable values", self.mode)
+                                .span_label(self.span, format!("{}s require immutable values",
+                                                                self.mode))
+                                .emit();
                         }
                     }
                 } else {
@@ -723,42 +666,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     (CastTy::FnPtr, CastTy::Int(_)) => {
                         self.add(Qualif::NOT_CONST);
                         if self.mode != Mode::Fn {
-                            let mut err = struct_span_err!(
-                                self.tcx.sess,
-                                self.span,
-                                E0018,
-                                "raw pointers cannot be cast to integers in {}s",
-                                self.mode
-                            );
-                            if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                                err.note("\
-The value of static and constant integers must be known at compile time. You can't cast a pointer \
-to an integer because the address of a pointer can vary.
-
-For example, if you write:
-
-```
-static MY_STATIC: u32 = 42;
-static MY_STATIC_ADDR: usize = &MY_STATIC as *const _ as usize;
-static WHAT: usize = (MY_STATIC_ADDR^17) + MY_STATIC_ADDR;
-```
-
-Then `MY_STATIC_ADDR` would contain the address of `MY_STATIC`. However, the address can change \
-when the program is linked, as well as change between different executions due to ASLR, and many \
-linkers would not be able to calculate the value of `WHAT`.
-
-On the other hand, static and constant pointers can point either to a known numeric address or to \
-the address of a symbol.
-
-```
-static MY_STATIC: u32 = 42;
-static MY_STATIC_ADDR: &'static u32 = &MY_STATIC;
-const CONST_ADDR: *const u8 = 0x5f3759df as *const u8;
-```
-
-This does not pose a problem by itself because they can't be accessed directly.");
-                            }
-                            err.emit();
+                            span_err!(self.tcx.sess, self.span, E0018,
+                                      "raw pointers cannot be cast to integers in {}s",
+                                      self.mode);
                         }
                     }
                     _ => {}
@@ -789,18 +699,10 @@ This does not pose a problem by itself because they can't be accessed directly."
             Rvalue::NullaryOp(NullOp::Box, _) => {
                 self.add(Qualif::NOT_CONST);
                 if self.mode != Mode::Fn {
-                    let mut err = struct_span_err!(self.tcx.sess, self.span, E0010,
-                                                   "allocations are not allowed in {}s", self.mode);
-                    err.span_label(self.span, format!("allocation not allowed in {}s", self.mode));
-                    if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                        err.note(
-                            "The value of statics and constants must be known at compile time, \
-                             and they live for the entire lifetime of a program. Creating a boxed \
-                             value allocates memory on the heap at runtime, and therefore cannot \
-                             be done at compile time."
-                        );
-                    }
-                    err.emit();
+                    struct_span_err!(self.tcx.sess, self.span, E0010,
+                                     "allocations are not allowed in {}s", self.mode)
+                        .span_label(self.span, format!("allocation not allowed in {}s", self.mode))
+                        .emit();
                 }
             }
 
@@ -828,16 +730,14 @@ This does not pose a problem by itself because they can't be accessed directly."
             self.visit_operand(func, location);
 
             let fn_ty = func.ty(self.mir, self.tcx);
-            let mut callee_def_id = None;
             let (mut is_shuffle, mut is_const_fn) = (false, None);
             if let ty::TyFnDef(def_id, _) = fn_ty.sty {
-                callee_def_id = Some(def_id);
                 match self.tcx.fn_sig(def_id).abi() {
                     Abi::RustIntrinsic |
                     Abi::PlatformIntrinsic => {
                         assert!(!self.tcx.is_const_fn(def_id));
                         match &self.tcx.item_name(def_id)[..] {
-                            "size_of" | "min_align_of" | "type_id" => is_const_fn = Some(def_id),
+                            "size_of" | "min_align_of" => is_const_fn = Some(def_id),
 
                             name if name.starts_with("simd_shuffle") => {
                                 is_shuffle = true;
@@ -854,39 +754,17 @@ This does not pose a problem by itself because they can't be accessed directly."
                 }
             }
 
-            let constant_arguments = callee_def_id.and_then(|id| {
-                args_required_const(self.tcx, id)
-            });
             for (i, arg) in args.iter().enumerate() {
                 self.nest(|this| {
                     this.visit_operand(arg, location);
-                    if this.mode != Mode::Fn {
-                        return
-                    }
-                    let candidate = Candidate::Argument { bb, index: i };
-                    if is_shuffle && i == 2 {
+                    if is_shuffle && i == 2 && this.mode == Mode::Fn {
+                        let candidate = Candidate::ShuffleIndices(bb);
                         if this.can_promote() {
                             this.promotion_candidates.push(candidate);
                         } else {
                             span_err!(this.tcx.sess, this.span, E0526,
                                       "shuffle indices are not constant");
                         }
-                        return
-                    }
-
-                    let constant_arguments = match constant_arguments.as_ref() {
-                        Some(s) => s,
-                        None => return,
-                    };
-                    if !constant_arguments.contains(&i) {
-                        return
-                    }
-                    if this.can_promote() {
-                        this.promotion_candidates.push(candidate);
-                    } else {
-                        this.tcx.sess.span_err(this.span,
-                            &format!("argument {} is required to be a constant",
-                                     i + 1));
                     }
                 });
             }
@@ -1026,22 +904,9 @@ This does not pose a problem by itself because they can't be accessed directly."
                 // Avoid a generic error for other uses of arguments.
                 if self.qualif.intersects(Qualif::FN_ARGUMENT) {
                     let decl = &self.mir.local_decls[index];
-                    let mut err = struct_span_err!(
-                        self.tcx.sess,
-                        decl.source_info.span,
-                        E0022,
-                        "arguments of constant functions can only be immutable by-value bindings"
-                    );
-                    if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                        err.note("Constant functions are not allowed to mutate anything. Thus, \
-                                  binding to an argument with a mutable pattern is not allowed.");
-                        err.note("Remove any mutable bindings from the argument list to fix this \
-                                  error. In case you need to mutate the argument, try lazily \
-                                  initializing a global variable instead of using a const fn, or \
-                                  refactoring the code to a functional style to avoid mutation if \
-                                  possible.");
-                    }
-                    err.emit();
+                    span_err!(self.tcx.sess, decl.source_info.span, E0022,
+                              "arguments of constant functions can only \
+                               be immutable by-value bindings");
                     return;
                 }
             }
@@ -1219,17 +1084,4 @@ impl MirPass for QualifyAndPromoteConstants {
             });
         }
     }
-}
-
-fn args_required_const(tcx: TyCtxt, def_id: DefId) -> Option<FxHashSet<usize>> {
-    let attrs = tcx.get_attrs(def_id);
-    let attr = attrs.iter().find(|a| a.check_name("rustc_args_required_const"))?;
-    let mut ret = FxHashSet();
-    for meta in attr.meta_item_list()? {
-        match meta.literal()?.node {
-            LitKind::Int(a, _) => { ret.insert(a as usize); }
-            _ => return None,
-        }
-    }
-    Some(ret)
 }

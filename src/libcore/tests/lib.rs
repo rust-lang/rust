@@ -42,7 +42,6 @@
 #![feature(try_from)]
 #![feature(try_trait)]
 #![feature(exact_chunks)]
-#![feature(atomic_nand)]
 
 extern crate core;
 extern crate test;

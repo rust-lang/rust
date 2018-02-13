@@ -45,11 +45,10 @@ impl<'gcx, 'tcx> RegionInferenceContext<'tcx> {
                     &substs[..]
                 ));
             }
-            DefiningTy::Const(def_id, substs) => {
+            DefiningTy::Const(ty) => {
                 err.note(&format!(
-                    "defining constant type: {:?} with substs {:#?}",
-                    def_id,
-                    &substs[..]
+                    "defining type: {:?}",
+                    ty
                 ));
             }
         }

@@ -17,6 +17,7 @@ use rustc::hir::map::blocks::FnLikeNode;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::layout::LayoutOf;
 use rustc::ty::util::IntTypeExt;
 use rustc::ty::subst::{Substs, Subst};
 use rustc::util::common::ErrorReported;
@@ -312,7 +313,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
           if tcx.fn_sig(def_id).abi() == Abi::RustIntrinsic {
             let layout_of = |ty: Ty<'tcx>| {
                 let ty = tcx.erase_regions(&ty);
-                tcx.at(e.span).layout_of(cx.param_env.and(ty)).map_err(|err| {
+                (tcx.at(e.span), cx.param_env).layout_of(ty).map_err(|err| {
                     ConstEvalErr { span: e.span, kind: LayoutError(err) }
                 })
             };
@@ -326,10 +327,6 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
                     let align = layout_of(substs.type_at(0))?.align.abi();
                     return Ok(mk_const(Integral(Usize(ConstUsize::new(align,
                         tcx.sess.target.usize_ty).unwrap()))));
-                }
-                "type_id" => {
-                    let type_id = tcx.type_id_hash(substs.type_at(0));
-                    return Ok(mk_const(Integral(U64(type_id))));
                 }
                 _ => signal!(e, TypeckError)
             }

@@ -151,10 +151,6 @@
 # default.
 #extended = false
 
-# Installs choosen set of extended tools if enables. By default builds all.
-# If choosen tool failed to build the installation fails.
-#tools = ["cargo", "rls", "rustfmt", "analysis", "src"]
-
 # Verbosity level: 0 == not verbose, 1 == verbose, 2 == very verbose
 #verbose = 0
 
@@ -239,11 +235,6 @@
 # compiler.
 #codegen-units = 1
 
-# Whether to enable ThinLTO (and increase the codegen units to either a default
-# or the configured value). On by default. If we want the fastest possible
-# compiler, we should disable this.
-#thinlto = true
-
 # Whether or not debug assertions are enabled for the compiler and standard
 # library. Also enables compilation of debug! and trace! logging macros.
 #debug-assertions = false
@@ -299,7 +290,7 @@
 
 # Flag indicating whether git info will be retrieved from .git automatically.
 # Having the git information can cause a lot of rebuilds during development.
-# Note: If this attribute is not explicitly set (e.g. if left commented out) it
+# Note: If this attribute is not explicity set (e.g. if left commented out) it
 # will default to true if channel = "dev", but will default to false otherwise.
 #ignore-git = true
 
@@ -320,11 +311,6 @@
 # make this an empty array (but that probably won't get too far in the
 # bootstrap)
 #codegen-backends = ["llvm"]
-
-# Flag indicating whether `libstd` calls an imported function to handle basic IO
-# when targeting WebAssembly. Enable this to debug tests for the `wasm32-unknown-unknown`
-# target, as without this option the test output will not be captured.
-#wasm-syscall = false
 
 # =============================================================================
 # Options for specific targets
@@ -353,7 +339,7 @@
 #linker = "cc"
 
 # Path to the `llvm-config` binary of the installation of a custom LLVM to link
-# against. Note that if this is specified we don't compile LLVM at all for this
+# against. Note that if this is specifed we don't compile LLVM at all for this
 # target.
 #llvm-config = "../path/to/llvm/root/bin/llvm-config"
 

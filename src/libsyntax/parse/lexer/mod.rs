@@ -246,27 +246,14 @@ impl<'a> StringReader<'a> {
         self.err_span(self.mk_sp(from_pos, to_pos), m)
     }
 
-    /// Pushes a character to a message string for error reporting
-    fn push_escaped_char_for_msg(m: &mut String, c: char) {
-        match c {
-            '\u{20}'...'\u{7e}' => {
-                // Don't escape \, ' or " for user-facing messages
-                m.push(c);
-            }
-            _ => {
-                for c in c.escape_default() {
-                    m.push(c);
-                }
-            }
-        }
-    }
-
     /// Report a lexical error spanning [`from_pos`, `to_pos`), appending an
     /// escaped character to the error message
     fn fatal_span_char(&self, from_pos: BytePos, to_pos: BytePos, m: &str, c: char) -> FatalError {
         let mut m = m.to_string();
         m.push_str(": ");
-        Self::push_escaped_char_for_msg(&mut m, c);
+        for c in c.escape_default() {
+            m.push(c)
+        }
         self.fatal_span_(from_pos, to_pos, &m[..])
     }
     fn struct_fatal_span_char(&self,
@@ -277,7 +264,9 @@ impl<'a> StringReader<'a> {
                               -> DiagnosticBuilder<'a> {
         let mut m = m.to_string();
         m.push_str(": ");
-        Self::push_escaped_char_for_msg(&mut m, c);
+        for c in c.escape_default() {
+            m.push(c)
+        }
         self.sess.span_diagnostic.struct_span_fatal(self.mk_sp(from_pos, to_pos), &m[..])
     }
 
@@ -286,7 +275,9 @@ impl<'a> StringReader<'a> {
     fn err_span_char(&self, from_pos: BytePos, to_pos: BytePos, m: &str, c: char) {
         let mut m = m.to_string();
         m.push_str(": ");
-        Self::push_escaped_char_for_msg(&mut m, c);
+        for c in c.escape_default() {
+            m.push(c)
+        }
         self.err_span_(from_pos, to_pos, &m[..]);
     }
     fn struct_err_span_char(&self,
@@ -297,7 +288,9 @@ impl<'a> StringReader<'a> {
                             -> DiagnosticBuilder<'a> {
         let mut m = m.to_string();
         m.push_str(": ");
-        Self::push_escaped_char_for_msg(&mut m, c);
+        for c in c.escape_default() {
+            m.push(c)
+        }
         self.sess.span_diagnostic.struct_span_err(self.mk_sp(from_pos, to_pos), &m[..])
     }
 
@@ -1752,7 +1745,6 @@ mod tests {
     fn mk_sess(cm: Rc<CodeMap>) -> ParseSess {
         let emitter = errors::emitter::EmitterWriter::new(Box::new(io::sink()),
                                                           Some(cm.clone()),
-                                                          false,
                                                           false);
         ParseSess {
             span_diagnostic: errors::Handler::with_emitter(true, false, Box::new(emitter)),

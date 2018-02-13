@@ -112,31 +112,6 @@ pub enum OutputType {
     DepInfo,
 }
 
-/// The epoch of the compiler (RFC 2052)
-#[derive(Clone, Copy, Hash, PartialOrd, Ord, Eq, PartialEq)]
-#[non_exhaustive]
-pub enum Epoch {
-    // epochs must be kept in order, newest to oldest
-
-    /// The 2015 epoch
-    Epoch2015,
-    /// The 2018 epoch
-    Epoch2018,
-
-    // when adding new epochs, be sure to update:
-    //
-    // - the list in the `parse_epoch` static
-    // - the match in the `parse_epoch` function
-    // - add a `rust_####()` function to the session
-    // - update the enum in Cargo's sources as well
-    //
-    // When -Zepoch becomes --epoch, there will
-    // also be a check for the epoch being nightly-only
-    // somewhere. That will need to be updated
-    // whenever we're stabilizing/introducing a new epoch
-    // as well as changing the default Cargo template.
-}
-
 impl_stable_hash_for!(enum self::OutputType {
     Bitcode,
     Assembly,
@@ -573,6 +548,25 @@ impl OutputFilenames {
     pub fn filestem(&self) -> String {
         format!("{}{}", self.out_filestem, self.extra)
     }
+
+    pub fn contains_path(&self, input_path: &PathBuf) -> bool {
+        let input_path = input_path.canonicalize().ok();
+        if input_path.is_none() {
+            return false
+        }
+        match self.single_output_file {
+            Some(ref output_path) => output_path.canonicalize().ok() == input_path,
+            None => {
+                for k in self.outputs.keys() {
+                    let output_path = self.path(k.to_owned());
+                    if output_path.canonicalize().ok() == input_path {
+                        return true;
+                    }
+                }
+                false
+            }
+        }
+    }
 }
 
 pub fn host_triple() -> &'static str {
@@ -808,13 +802,11 @@ macro_rules! options {
             Some("`string` or `string=string`");
         pub const parse_lto: Option<&'static str> =
             Some("one of `thin`, `fat`, or omitted");
-        pub const parse_epoch: Option<&'static str> =
-            Some("one of: `2015`, `2018`");
     }
 
     #[allow(dead_code)]
     mod $mod_set {
-        use super::{$struct_name, Passes, SomePasses, AllPasses, Sanitizer, Lto, Epoch};
+        use super::{$struct_name, Passes, SomePasses, AllPasses, Sanitizer, Lto};
         use rustc_back::{LinkerFlavor, PanicStrategy, RelroLevel};
         use std::path::PathBuf;
 
@@ -1018,15 +1010,6 @@ macro_rules! options {
             };
             true
         }
-
-        fn parse_epoch(slot: &mut Epoch, v: Option<&str>) -> bool {
-            match v {
-                Some("2015") => *slot = Epoch::Epoch2015,
-                Some("2018") => *slot = Epoch::Epoch2018,
-                _ => return false,
-            }
-            true
-        }
     }
 ) }
 
@@ -1121,8 +1104,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "select which borrowck is used (`ast`, `mir`, or `compare`)"),
     two_phase_borrows: bool = (false, parse_bool, [UNTRACKED],
         "use two-phase reserved/active distinction for `&mut` borrows in MIR borrowck"),
-    two_phase_beyond_autoref: bool = (false, parse_bool, [UNTRACKED],
-        "when using two-phase-borrows, allow two phases even for non-autoref `&mut` borrows"),
     time_passes: bool = (false, parse_bool, [UNTRACKED],
         "measure time of each rustc pass"),
     count_llvm_insns: bool = (false, parse_bool,
@@ -1307,8 +1288,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     dep_info_omit_d_target: bool = (false, parse_bool, [TRACKED],
         "in dep-info output, omit targets for tracking dependencies of the dep-info files \
          themselves"),
-    approximate_suggestions: bool = (false, parse_bool, [UNTRACKED],
-        "include machine-applicability of suggestions in JSON output"),
     unpretty: Option<String> = (None, parse_unpretty, [UNTRACKED],
         "Present the input source, unstable (and less-pretty) variants;
         valid types are any of the types for `--pretty`, as well as:
@@ -1316,10 +1295,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         `everybody_loops` (all function bodies replaced with `loop {}`),
         `hir` (the HIR), `hir,identified`, or
         `hir,typed` (HIR with types for each node)."),
-    epoch: Epoch = (Epoch::Epoch2015, parse_epoch, [TRACKED],
-        "The epoch to build Rust with. Newer epochs may include features
-         that require breaking changes. The default epoch is 2015 (the first
-         epoch). Crates compiled with different epochs can be linked together."),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -2111,7 +2086,7 @@ mod dep_tracking {
     use std::path::PathBuf;
     use std::collections::hash_map::DefaultHasher;
     use super::{Passes, CrateType, OptLevel, DebugInfoLevel, Lto,
-                OutputTypes, Externs, ErrorOutputType, Sanitizer, Epoch};
+                OutputTypes, Externs, ErrorOutputType, Sanitizer};
     use syntax::feature_gate::UnstableFeatures;
     use rustc_back::{PanicStrategy, RelroLevel};
 
@@ -2173,7 +2148,6 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(cstore::NativeLibraryKind);
     impl_dep_tracking_hash_via_hash!(Sanitizer);
     impl_dep_tracking_hash_via_hash!(Option<Sanitizer>);
-    impl_dep_tracking_hash_via_hash!(Epoch);
 
     impl_dep_tracking_hash_for_sortable_vec_of!(String);
     impl_dep_tracking_hash_for_sortable_vec_of!(PathBuf);

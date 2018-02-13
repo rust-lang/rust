@@ -760,7 +760,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                                      expr.span,
                                      cmt_base,
                                      r,
-                                     ty::BorrowKind::from_mutbl(m.into()),
+                                     ty::BorrowKind::from_mutbl(m),
                                      AutoRef);
             }
 

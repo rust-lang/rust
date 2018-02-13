@@ -165,7 +165,6 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             Resume => unimplemented!(),
             Abort => unimplemented!(),
             FalseEdges { .. } => bug!("should have been eliminated by `simplify_branches` mir pass"),
-            FalseUnwind { .. } => bug!("should have been eliminated by `simplify_branches` mir pass"),
             Unreachable => return err!(Unreachable),
         }
 

@@ -8,50 +8,56 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use fmt;
 use time::Duration;
-use sys::{TimeSysCall, TimeClock};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub struct Instant(Duration);
+pub struct Instant;
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub struct SystemTime(Duration);
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SystemTime;
 
-pub const UNIX_EPOCH: SystemTime = SystemTime(Duration::from_secs(0));
+pub const UNIX_EPOCH: SystemTime = SystemTime;
 
 impl Instant {
     pub fn now() -> Instant {
-        Instant(TimeSysCall::perform(TimeClock::Monotonic))
+        panic!("not supported on web assembly");
     }
 
-    pub fn sub_instant(&self, other: &Instant) -> Duration {
-        self.0 - other.0
+    pub fn sub_instant(&self, _other: &Instant) -> Duration {
+        panic!("can't sub yet");
     }
 
-    pub fn add_duration(&self, other: &Duration) -> Instant {
-        Instant(self.0 + *other)
+    pub fn add_duration(&self, _other: &Duration) -> Instant {
+        panic!("can't add yet");
     }
 
-    pub fn sub_duration(&self, other: &Duration) -> Instant {
-        Instant(self.0 - *other)
+    pub fn sub_duration(&self, _other: &Duration) -> Instant {
+        panic!("can't sub yet");
     }
 }
 
 impl SystemTime {
     pub fn now() -> SystemTime {
-        SystemTime(TimeSysCall::perform(TimeClock::System))
+        panic!("not supported on web assembly");
     }
 
-    pub fn sub_time(&self, other: &SystemTime)
+    pub fn sub_time(&self, _other: &SystemTime)
                     -> Result<Duration, Duration> {
-        self.0.checked_sub(other.0).ok_or_else(|| other.0 - self.0)
+        panic!()
     }
 
-    pub fn add_duration(&self, other: &Duration) -> SystemTime {
-        SystemTime(self.0 + *other)
+    pub fn add_duration(&self, _other: &Duration) -> SystemTime {
+        panic!()
     }
 
-    pub fn sub_duration(&self, other: &Duration) -> SystemTime {
-        SystemTime(self.0 - *other)
+    pub fn sub_duration(&self, _other: &Duration) -> SystemTime {
+        panic!()
+    }
+}
+
+impl fmt::Debug for SystemTime {
+    fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
+        panic!()
     }
 }

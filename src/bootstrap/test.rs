@@ -113,7 +113,7 @@ impl Step for Linkcheck {
 
         let _time = util::timeit();
         try_run(build, builder.tool_cmd(Tool::Linkchecker)
-                              .arg(build.out.join(host).join("doc")));
+                            .arg(build.out.join(host).join("doc")));
     }
 
     fn should_run(run: ShouldRun) -> ShouldRun {
@@ -425,47 +425,6 @@ fn path_for_cargo(builder: &Builder, compiler: Compiler) -> OsString {
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct RustdocTheme {
-    pub compiler: Compiler,
-}
-
-impl Step for RustdocTheme {
-    type Output = ();
-    const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
-
-    fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/tools/rustdoc-themes")
-    }
-
-    fn make_run(run: RunConfig) {
-        let compiler = run.builder.compiler(run.builder.top_stage, run.host);
-
-        run.builder.ensure(RustdocTheme {
-            compiler: compiler,
-        });
-    }
-
-    fn run(self, builder: &Builder) {
-        let rustdoc = builder.rustdoc(self.compiler.host);
-        let mut cmd = builder.tool_cmd(Tool::RustdocTheme);
-        cmd.arg(rustdoc.to_str().unwrap())
-           .arg(builder.src.join("src/librustdoc/html/static/themes").to_str().unwrap())
-           .env("RUSTC_STAGE", self.compiler.stage.to_string())
-           .env("RUSTC_SYSROOT", builder.sysroot(self.compiler))
-           .env("RUSTDOC_LIBDIR", builder.sysroot_libdir(self.compiler, self.compiler.host))
-           .env("CFG_RELEASE_CHANNEL", &builder.build.config.channel)
-           .env("RUSTDOC_REAL", builder.rustdoc(self.compiler.host))
-           .env("RUSTDOC_CRATE_VERSION", builder.build.rust_version())
-           .env("RUSTC_BOOTSTRAP", "1");
-        if let Some(linker) = builder.build.linker(self.compiler.host) {
-            cmd.env("RUSTC_TARGET_LINKER", linker);
-        }
-        try_run(builder.build, &mut cmd);
-    }
-}
-
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct RustdocJS {
     pub host: Interned<String>,
     pub target: Interned<String>,
@@ -651,6 +610,7 @@ static HOST_COMPILETESTS: &[Test] = &[
         mode: "incremental",
         suite: "incremental-fulldeps",
     },
+    Test { path: "src/test/run-make", mode: "run-make", suite: "run-make" },
     Test { path: "src/test/rustdoc", mode: "rustdoc", suite: "rustdoc" },
 
     Test { path: "src/test/pretty", mode: "pretty", suite: "pretty" },
@@ -659,7 +619,6 @@ static HOST_COMPILETESTS: &[Test] = &[
     Test { path: "src/test/run-pass-valgrind/pretty", mode: "pretty", suite: "run-pass-valgrind" },
     Test { path: "src/test/run-pass-fulldeps/pretty", mode: "pretty", suite: "run-pass-fulldeps" },
     Test { path: "src/test/run-fail-fulldeps/pretty", mode: "pretty", suite: "run-fail-fulldeps" },
-    Test { path: "src/test/run-make", mode: "run-make", suite: "run-make" },
 ];
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -902,7 +861,7 @@ impl Step for Compiletest {
             }
         }
         if suite == "run-make" && !build.config.llvm_enabled {
-            println!("Ignoring run-make test suite as they generally don't work without LLVM");
+            println!("Ignoring run-make test suite as they generally dont work without LLVM");
             return;
         }
 
@@ -1327,14 +1286,6 @@ impl Step for Crate {
             cargo.env(format!("CARGO_TARGET_{}_RUNNER", envify(&target)),
                       build.config.nodejs.as_ref().expect("nodejs not configured"));
         } else if target.starts_with("wasm32") {
-            // Warn about running tests without the `wasm_syscall` feature enabled.
-            // The javascript shim implements the syscall interface so that test
-            // output can be correctly reported.
-            if !build.config.wasm_syscall {
-                println!("Libstd was built without `wasm_syscall` feature enabled: \
-                          test output may not be visible.");
-            }
-
             // On the wasm32-unknown-unknown target we're using LTO which is
             // incompatible with `-C prefer-dynamic`, so disable that here
             cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");

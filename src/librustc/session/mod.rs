@@ -19,7 +19,7 @@ use lint;
 use middle::allocator::AllocatorKind;
 use middle::dependency_format;
 use session::search_paths::PathKind;
-use session::config::{BorrowckMode, DebugInfoLevel, OutputType, Epoch};
+use session::config::{BorrowckMode, DebugInfoLevel, OutputType};
 use ty::tls;
 use util::nodemap::{FxHashMap, FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
@@ -864,11 +864,6 @@ impl Session {
     pub fn teach(&self, code: &DiagnosticId) -> bool {
         self.opts.debugging_opts.teach && !self.parse_sess.span_diagnostic.code_emitted(code)
     }
-
-    /// Are we allowed to use features from the Rust 2018 epoch?
-    pub fn rust_2018(&self) -> bool {
-        self.opts.debugging_opts.epoch >= Epoch::Epoch2018
-    }
 }
 
 pub fn build_session(sopts: config::Options,
@@ -909,27 +904,22 @@ pub fn build_session_with_codemap(sopts: config::Options,
 
     let emitter: Box<Emitter> = match (sopts.error_format, emitter_dest) {
         (config::ErrorOutputType::HumanReadable(color_config), None) => {
-            Box::new(EmitterWriter::stderr(color_config,
-                                           Some(codemap.clone()),
-                                           false,
-                                           sopts.debugging_opts.teach))
+            Box::new(EmitterWriter::stderr(color_config, Some(codemap.clone()), false))
         }
         (config::ErrorOutputType::HumanReadable(_), Some(dst)) => {
-            Box::new(EmitterWriter::new(dst, Some(codemap.clone()), false, false))
+            Box::new(EmitterWriter::new(dst, Some(codemap.clone()), false))
         }
         (config::ErrorOutputType::Json(pretty), None) => {
-            Box::new(JsonEmitter::stderr(Some(registry), codemap.clone(),
-                     pretty, sopts.debugging_opts.approximate_suggestions))
+            Box::new(JsonEmitter::stderr(Some(registry), codemap.clone(), pretty))
         }
         (config::ErrorOutputType::Json(pretty), Some(dst)) => {
-            Box::new(JsonEmitter::new(dst, Some(registry), codemap.clone(),
-                     pretty, sopts.debugging_opts.approximate_suggestions))
+            Box::new(JsonEmitter::new(dst, Some(registry), codemap.clone(), pretty))
         }
         (config::ErrorOutputType::Short(color_config), None) => {
-            Box::new(EmitterWriter::stderr(color_config, Some(codemap.clone()), true, false))
+            Box::new(EmitterWriter::stderr(color_config, Some(codemap.clone()), true))
         }
         (config::ErrorOutputType::Short(_), Some(dst)) => {
-            Box::new(EmitterWriter::new(dst, Some(codemap.clone()), true, false))
+            Box::new(EmitterWriter::new(dst, Some(codemap.clone()), true))
         }
     };
 
@@ -1105,11 +1095,11 @@ pub enum IncrCompSession {
 pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
     let emitter: Box<Emitter> = match output {
         config::ErrorOutputType::HumanReadable(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config, None, false, false))
+            Box::new(EmitterWriter::stderr(color_config, None, false))
         }
         config::ErrorOutputType::Json(pretty) => Box::new(JsonEmitter::basic(pretty)),
         config::ErrorOutputType::Short(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config, None, true, false))
+            Box::new(EmitterWriter::stderr(color_config, None, true))
         }
     };
     let handler = errors::Handler::with_emitter(true, false, emitter);
@@ -1120,11 +1110,11 @@ pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
 pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
     let emitter: Box<Emitter> = match output {
         config::ErrorOutputType::HumanReadable(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config, None, false, false))
+            Box::new(EmitterWriter::stderr(color_config, None, false))
         }
         config::ErrorOutputType::Json(pretty) => Box::new(JsonEmitter::basic(pretty)),
         config::ErrorOutputType::Short(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config, None, true, false))
+            Box::new(EmitterWriter::stderr(color_config, None, true))
         }
     };
     let handler = errors::Handler::with_emitter(true, false, emitter);

@@ -19,6 +19,7 @@ use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::mir::*;
 use rustc::mir::visit::*;
 use rustc::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::layout::LayoutOf;
 use rustc::ty::subst::{Subst,Substs};
 
 use std::collections::VecDeque;
@@ -426,7 +427,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     debug!("Creating temp for return destination");
                     let dest = Rvalue::Ref(
                         self.tcx.types.re_erased,
-                        BorrowKind::Mut { allow_two_phase_borrow: false },
+                        BorrowKind::Mut,
                         destination.0);
 
                     let ty = dest.ty(caller_mir, self.tcx);
@@ -511,7 +512,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                          callsite: &CallSite<'tcx>, caller_mir: &mut Mir<'tcx>) -> Local {
         let arg = Rvalue::Ref(
             self.tcx.types.re_erased,
-            BorrowKind::Mut { allow_two_phase_borrow: false },
+            BorrowKind::Mut,
             arg.deref());
 
         let ty = arg.ty(caller_mir, self.tcx);
@@ -654,7 +655,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           param_env: ty::ParamEnv<'tcx>,
                           ty: Ty<'tcx>) -> Option<u64> {
-    tcx.layout_of(param_env.and(ty)).ok().map(|layout| layout.size.bytes())
+    (tcx, param_env).layout_of(ty).ok().map(|layout| layout.size.bytes())
 }
 
 fn subst_and_normalize<'a, 'tcx: 'a>(
@@ -813,9 +814,6 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                     *target = self.update_target(*target);
                 }
             }
-            TerminatorKind::FalseUnwind { real_target: _ , unwind: _ } =>
-                // see the ordering of passes in the optimized_mir query.
-                bug!("False unwinds should have been removed before inlining")
         }
     }
 
