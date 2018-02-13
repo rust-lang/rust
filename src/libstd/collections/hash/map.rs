@@ -1290,10 +1290,6 @@ impl<K, V, S> HashMap<K, V, S>
         where K: Borrow<Q>,
               Q: Hash + Eq
     {
-        if self.table.size() == 0 {
-            return None;
-        }
-
         self.search_mut(k)
             .map(|bucket| {
                 let (k, v, _) = pop_internal(bucket);
