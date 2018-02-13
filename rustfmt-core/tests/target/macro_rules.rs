@@ -42,6 +42,14 @@ macro m2 {
     }
 }
 
+// #2438
+macro_rules! m {
+    () => {
+        this_line_is_99_characters_long_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx(
+        ); // this line is drifting
+    };
+}
+
 // #2439
 macro_rules! m {
     (
