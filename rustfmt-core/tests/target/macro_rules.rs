@@ -41,3 +41,13 @@ macro m2 {
         }
     }
 }
+
+// #2439
+macro_rules! m {
+    (
+        $line0_xxxxxxxxxxxxxxxxx: expr,
+        $line1_xxxxxxxxxxxxxxxxx: expr,
+        $line2_xxxxxxxxxxxxxxxxx: expr,
+        $line3_xxxxxxxxxxxxxxxxx: expr,
+    ) => {};
+}
