@@ -11,13 +11,13 @@ direct `compiletest` on if or how to run the test, what behavior to expect, and 
 The tests themselves are typically (but not always) organized into "suites"--for example, `run-pass`, a folder
 representing tests that should succeed, `run-fail`, a folder holding tests that should compile successfully, but return
 a failure (non-zero status), `compile-fail`, a folder holding tests that should fail to compile, and many more.  The various
-suites are defined in `src/tools/compiletest/src/common.rs` in the `pub struct Config` declaration.  And a very good 
+suites are defined in [src/tools/compiletest/src/common.rs](https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/common.rs) in the `pub struct Config` declaration.  And a very good 
 introduction to the different suites of compiler tests along with details about them can be found
 [here, at Brian Anderson's blog](https://brson.github.io/2017/07/10/how-rust-is-tested#s-ct).
 
 ## Adding a new test file
-Simply create your new test in the appropriate location under `/src/test`.  No registration of test files is necessary as 
-`compiletest` will scan the `src/test` subfolder recursively, and will execute any Rust source files it finds as tests.
+Simply create your new test in the appropriate location under [src/test](https://github.com/rust-lang/rust/tree/master/src/test).  No registration of test files is necessary as 
+`compiletest` will scan the [src/test](https://github.com/rust-lang/rust/tree/master/src/test) subfolder recursively, and will execute any Rust source files it finds as tests.
 
 ## Header Commands
 Source file annotations which appear in comments near the top of the source file *before* any test code are known as header
@@ -27,7 +27,7 @@ Error Info commands) are described more fully
 [here](https://github.com/rust-lang/rust/blob/master/src/test/COMPILER_TESTS.md).
 
 ### Adding a new header command
-Header commands are defined in `src/tools/compiletest/src/header.rs`.  At a high level, dozens of test properties are defined
+Header commands are defined in [src/tools/compiletest/src/header.rs](https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/header.rs).  At a high level, dozens of test properties are defined
 in the `TestProps` struct.  These are all set to default values in the struct's `impl` block and any test can override this
 default value by specifying the property as header command as a comment (`//`) in the test source file, before any source 
 code.
@@ -66,15 +66,15 @@ basis.  A header command property serves as the header command's backing store (
 runtime.
 
 To add a new header command property:
-    1. Look for the `pub struct TestProps` declaration in `src/tools/compiletest/src/header.rs` and add
+    1. Look for the `pub struct TestProps` declaration in [src/tools/compiletest/src/header.rs](https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/header.rs) and add
 the new public property to the end of the declaration.
     2. Look for the `impl TestProps` implementation block immediately following the struct declaration and initialize the new
 property to its default value.
 
 #### Adding a new header command parser
 When `compiletest` encounters a test file, it parses the file a line at a time by calling every parsers defined in the
-`Config` struct's implementation block, also in `src/tools/compiletest/src/header.rs` (note the `Config` struct's declaration
-block is found in `src/tools/compiletest/src/common.rs`).  `TestProps`'s `load_from()` method will try passing the current
+`Config` struct's implementation block, also in [src/tools/compiletest/src/header.rs](https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/header.rs) (note the `Config` struct's declaration
+block is found in [src/tools/compiletest/src/common.rs](https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/common.rs).  `TestProps`'s `load_from()` method will try passing the current
 line of text to each parser, which, in turn typically checks to see if the line begins with a particular commented (`//`)
 header command such as `// must-compile-successfully` or `// failure-status`.  Whitespace after the comment marker is
 optional.
@@ -90,7 +90,7 @@ many more.  The low-level parsers are found near the end of the `impl Config` bl
 associated parsers immediately above to see how they are used to avoid writing additional parsing code unneccessarily.
 
 As a concrete example, here is the implementation for the `parse_failure_status()` parser, in
-`src/tools/compiletest/src/header.rs`:
+[src/tools/compiletest/src/header.rs](https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/header.rs):
 ```diff
 @@ -232,6 +232,7 @@ pub struct TestProps {
      // customized normalization rules
@@ -140,7 +140,7 @@ value.
 Although specific to `failure-status` (as every header ommand will have a different implementation in order to invoke
 behavior change) perhaps it is helpful to see the behavior hange implementation of one case, simply as an example.  To
 implement `failure-status`, the `check_correct_failure_status()` function found in the `TestCx` implementation block, located
-in `src/tools/compiletest/src/runtest.rs`, was modified as per below:
+in [src/tools/compiletest/src/runtest.rs](https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/runtest.rs), was modified as per below:
 ```diff
 @@ -295,11 +295,14 @@ impl<'test> TestCx<'test> {
      }
