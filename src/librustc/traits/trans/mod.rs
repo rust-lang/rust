@@ -17,6 +17,8 @@ use dep_graph::{DepKind, DepTrackingMapConfig};
 use std::marker::PhantomData;
 use syntax_pos::DUMMY_SP;
 use hir::def_id::DefId;
+use infer::InferCtxt;
+use syntax_pos::Span;
 use traits::{FulfillmentContext, Obligation, ObligationCause, SelectionContext, Vtable};
 use ty::{self, Ty, TyCtxt};
 use ty::subst::{Subst, Substs};
@@ -149,5 +151,47 @@ impl<'gcx> DepTrackingMapConfig for ProjectionCache<'gcx> {
     type Value = Ty<'gcx>;
     fn to_dep_kind() -> DepKind {
         DepKind::TraitSelect
+    }
+}
+
+impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
+    /// Finishes processes any obligations that remain in the
+    /// fulfillment context, and then returns the result with all type
+    /// variables removed and regions erased. Because this is intended
+    /// for use after type-check has completed, if any errors occur,
+    /// it will panic. It is used during normalization and other cases
+    /// where processing the obligations in `fulfill_cx` may cause
+    /// type inference variables that appear in `result` to be
+    /// unified, and hence we need to process those obligations to get
+    /// the complete picture of the type.
+    fn drain_fulfillment_cx_or_panic<T>(&self,
+                                        span: Span,
+                                        fulfill_cx: &mut FulfillmentContext<'tcx>,
+                                        result: &T)
+                                        -> T::Lifted
+        where T: TypeFoldable<'tcx> + ty::Lift<'gcx>
+    {
+        debug!("drain_fulfillment_cx_or_panic()");
+
+        // In principle, we only need to do this so long as `result`
+        // contains unbound type parameters. It could be a slight
+        // optimization to stop iterating early.
+        match fulfill_cx.select_all_or_error(self) {
+            Ok(()) => { }
+            Err(errors) => {
+                span_bug!(span, "Encountered errors `{:?}` resolving bounds after type-checking",
+                          errors);
+            }
+        }
+
+        let result = self.resolve_type_vars_if_possible(result);
+        let result = self.tcx.erase_regions(&result);
+
+        match self.tcx.lift_to_global(&result) {
+            Some(result) => result,
+            None => {
+                span_bug!(span, "Uninferred types/regions in `{:?}`", result);
+            }
+        }
     }
 }
