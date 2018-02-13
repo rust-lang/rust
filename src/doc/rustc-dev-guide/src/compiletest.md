@@ -72,7 +72,7 @@ the new public property to the end of the declaration.
 property to its default value.
 
 #### Adding a new header command parser
-When `compiletest` encounters a test file, it parses the file a line at a time by calling every parsers defined in the
+When `compiletest` encounters a test file, it parses the file a line at a time by calling every parser defined in the
 `Config` struct's implementation block, also in [src/tools/compiletest/src/header.rs](https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/header.rs) (note the `Config` struct's declaration
 block is found in [src/tools/compiletest/src/common.rs](https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/common.rs).  `TestProps`'s `load_from()` method will try passing the current
 line of text to each parser, which, in turn typically checks to see if the line begins with a particular commented (`//`)
@@ -86,7 +86,7 @@ Parsers defined in `impl Config` are typically named `parse_<header_command>` (n
 to snake-case `<header_command>`).  `impl Config` also defines several 'low-level' parsers which make it simple to parse
 common patterns like simple presence or not (`parse_name_directive()`), header-command:parameter(s)
 (`parse_name_value_directive()`), optional parsing only if a particular `cfg` attribute is defined (`has_cfg_prefix()`) and
-many more.  The low-level parsers are found near the end of the `impl Config` block--be sure to look through them and their
+many more.  The low-level parsers are found near the end of the `impl Config` block; be sure to look through them and their
 associated parsers immediately above to see how they are used to avoid writing additional parsing code unneccessarily.
 
 As a concrete example, here is the implementation for the `parse_failure_status()` parser, in
@@ -137,10 +137,9 @@ obviously, will depend on the purpose of the header command.  In the case of `fa
 is that `compiletest` expects the failure code defined by the header command invoked in the test, rather than the default
 value.
 
-Although specific to `failure-status` (as every header ommand will have a different implementation in order to invoke
-behavior change) perhaps it is helpful to see the behavior hange implementation of one case, simply as an example.  To
-implement `failure-status`, the `check_correct_failure_status()` function found in the `TestCx` implementation block, located
-in [src/tools/compiletest/src/runtest.rs](https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/runtest.rs), was modified as per below:
+Although specific to `failure-status` (as every header command will have a different implementation in order to invoke
+behavior change) perhaps it is helpful to see the behavior hange implementation of one case, simply as an example.  To implement `failure-status`, the `check_correct_failure_status()` function found in the `TestCx` implementation block,
+located in [src/tools/compiletest/src/runtest.rs](https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/runtest.rs), was modified as per below:
 ```diff
 @@ -295,11 +295,14 @@ impl<'test> TestCx<'test> {
      }
