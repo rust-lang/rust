@@ -690,14 +690,16 @@ impl CodeMap {
             return 1;
         }
 
+        let src = local_begin.fm.external_src.borrow();
+
         // We need to extend the snippet to the end of the src rather than to end_index so when
         // searching forwards for boundaries we've got somewhere to search.
         let snippet = if let Some(ref src) = local_begin.fm.src {
             let len = src.len();
-            (&src[start_index..len]).to_string()
-        } else if let Some(src) = local_begin.fm.external_src.borrow().get_source() {
+            (&src[start_index..len])
+        } else if let Some(src) = src.get_source() {
             let len = src.len();
-            (&src[start_index..len]).to_string()
+            (&src[start_index..len])
         } else {
             return 1;
         };

@@ -541,7 +541,7 @@ declare_features! (
     // instead of just the platforms on which it is the C ABI
     (accepted, abi_sysv64, "1.24.0", Some(36167)),
     // Allows `repr(align(16))` struct attribute (RFC 1358)
-    (accepted, repr_align, "1.24.0", Some(33626)),
+    (accepted, repr_align, "1.25.0", Some(33626)),
     // allow '|' at beginning of match arms (RFC 1925)
     (accepted, match_beginning_vert, "1.25.0", Some(44101)),
     // Nested groups in `use` (RFC 2128)

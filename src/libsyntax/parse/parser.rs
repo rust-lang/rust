@@ -2630,8 +2630,7 @@ impl<'a> Parser<'a> {
                     // A tuple index may not have a suffix
                     self.expect_no_suffix(sp, "tuple index", suf);
 
-                    let dot_span = self.prev_span;
-                    hi = self.span;
+                    let idx_span = self.span;
                     self.bump();
 
                     let invalid_msg = "invalid tuple or struct index";
@@ -2646,9 +2645,8 @@ impl<'a> Parser<'a> {
                                                     n.to_string());
                                 err.emit();
                             }
-                            let id = respan(dot_span.to(hi), n);
-                            let field = self.mk_tup_field(e, id);
-                            e = self.mk_expr(lo.to(hi), field, ThinVec::new());
+                            let field = self.mk_tup_field(e, respan(idx_span, n));
+                            e = self.mk_expr(lo.to(idx_span), field, ThinVec::new());
                         }
                         None => {
                             let prev_span = self.prev_span;
@@ -4859,19 +4857,30 @@ impl<'a> Parser<'a> {
                 |p| {
                     if p.token == token::DotDotDot {
                         p.bump();
+                        variadic = true;
                         if allow_variadic {
                             if p.token != token::CloseDelim(token::Paren) {
                                 let span = p.span;
                                 p.span_err(span,
                                     "`...` must be last in argument list for variadic function");
                             }
+                            Ok(None)
                         } else {
-                            let span = p.span;
-                            p.span_err(span,
-                                       "only foreign functions are allowed to be variadic");
+                            let span = p.prev_span;
+                            if p.token == token::CloseDelim(token::Paren) {
+                                // continue parsing to present any further errors
+                                p.struct_span_err(
+                                    span,
+                                    "only foreign functions are allowed to be variadic"
+                                ).emit();
+                                Ok(Some(dummy_arg(span)))
+                           } else {
+                               // this function definition looks beyond recovery, stop parsing
+                                p.span_err(span,
+                                           "only foreign functions are allowed to be variadic");
+                                Ok(None)
+                            }
                         }
-                        variadic = true;
-                        Ok(None)
                     } else {
                         match p.parse_arg_general(named_args) {
                             Ok(arg) => Ok(Some(arg)),

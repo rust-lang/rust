@@ -1320,6 +1320,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "The epoch to build Rust with. Newer epochs may include features
          that require breaking changes. The default epoch is 2015 (the first
          epoch). Crates compiled with different epochs can be linked together."),
+    run_dsymutil: Option<bool> = (None, parse_opt_bool, [TRACKED],
+          "run `dsymutil` and delete intermediate object files"),
 }
 
 pub fn default_lib_output() -> CrateType {
