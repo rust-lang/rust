@@ -361,7 +361,7 @@ impl<'a, T: ?Sized + ToOwned> AsRef<T> for Cow<'a, T> {
     }
 }
 
-#[unstable(feature = "generic_cow_from", reason = "recently added", issue = "0000")]
+#[stable(feature = "generic_cow_from", since = "1.24.0")]
 impl<'a, B, T> From<&'a B> for Cow<'a, T>
 where
     B: ?Sized + Borrow<T>,
