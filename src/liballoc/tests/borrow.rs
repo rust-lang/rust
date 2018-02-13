@@ -65,7 +65,7 @@ fn test_generic_cow_from() {
             VecWrapper {
                 _inner: val.into().into_owned(),
             }
-        } 
+        }
     }
 
     let ints = vec![0i32, 1, 2, 3, 4, 5];
