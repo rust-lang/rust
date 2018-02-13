@@ -11,6 +11,8 @@
 // Check that imports with nakes super and self don't fail during parsing
 // FIXME: this shouldn't fail during name resolution either
 
+// rustc-env:RUST_LOG=info
+
 mod a {
     mod b {
         use self as A;
@@ -25,3 +27,4 @@ mod a {
 }
 
 fn main() {}
+//~^ ERROR should fail kthxbye

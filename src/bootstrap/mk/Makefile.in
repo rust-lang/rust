@@ -49,7 +49,7 @@ book:
 standalone-docs:
 	$(Q)$(BOOTSTRAP) doc src/doc $(BOOTSTRAP_ARGS)
 check:
-	$(Q)$(BOOTSTRAP) test $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) test $(BOOTSTRAP_ARGS) src/test/compile-fail --test-args --verbose
 check-aux:
 	$(Q)$(BOOTSTRAP) test \
 		src/tools/cargo \

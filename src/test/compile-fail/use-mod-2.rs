@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// rustc-env:RUST_LOG=info
+
 mod foo {
     use self::{self};
     //~^ ERROR unresolved import `self` [E0432]
@@ -19,3 +21,4 @@ mod foo {
 }
 
 fn main() {}
+//~^ ERROR should fail kthxbye

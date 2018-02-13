@@ -499,6 +499,11 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 // resolution for it so that later resolve stages won't complain.
                 self.import_dummy_binding(import);
                 if !seen_spans.contains(&span) {
+                    info!(
+                        "preparing to import_path_to_string(import={:?}, span={:?})",
+                        import,
+                        span
+                    );
                     let path = import_path_to_string(&import.module_path[..],
                                                      &import.subclass,
                                                      span);
@@ -1015,6 +1020,14 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 fn import_path_to_string(names: &[SpannedIdent],
                          subclass: &ImportDirectiveSubclass,
                          span: Span) -> String {
+    info!(
+        "import_path_to_string(names={:?} ({:p}/{}), subclass={:?}, span={:?})",
+        names,
+        names.as_ptr(),
+        names.len(),
+        subclass,
+        span,
+    );
     let pos = names.iter()
         .position(|p| span == p.span && p.node.name != keywords::CrateRoot.name());
     let global = !names.is_empty() && names[0].node.name == keywords::CrateRoot.name();
@@ -1026,6 +1039,8 @@ fn import_path_to_string(names: &[SpannedIdent],
         if names.is_empty() {
             import_directive_subclass_to_string(subclass)
         } else {
+            // FIXME: Remove this entire logic after #48116 is fixed.
+            //
             // Note that this code looks a little wonky, it's currently here to
             // hopefully help debug #48116, but otherwise isn't intended to
             // cause any problems.
@@ -1034,8 +1049,18 @@ fn import_path_to_string(names: &[SpannedIdent],
                 names_to_string(names),
                 import_directive_subclass_to_string(subclass),
             );
-            assert!(!names.is_empty());
-            assert!(!x.starts_with("::"));
+            if names.is_empty() || x.starts_with("::") {
+                span_bug!(
+                    span,
+                    "invalid name `{}` at {:?}; global = {}, names = {:p}/{}, subclass = {:?}",
+                    x,
+                    span,
+                    global,
+                    names.as_ptr(),
+                    names.len(),
+                    subclass
+                );
+            }
             return x
         }
     }
