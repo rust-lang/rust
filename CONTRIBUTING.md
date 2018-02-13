@@ -74,6 +74,18 @@ Therefore you can simply run `tests/ui/update-all-references.sh` (after running
 `cargo test`) and check whether the output looks as you expect with `git diff`. Commit all
 `*.stderr` files, too.
 
+If you don't want to wait for all tests to finish, you can also execute a single test file by using `TESTNAME` to specify the test to run:
+
+```bash
+TESTNAME=ui/empty_line_after_outer_attr cargo test --test compile-test
+```
+
+And you can also combine this with `CARGO_INCREMENTAL`:
+
+```bash
+CARGO_INCREMENTAL=1 TESTNAME=ui/doc cargo test --test compile-test
+```
+
 ### Testing manually
 
 Manually testing against an example file is useful if you have added some
