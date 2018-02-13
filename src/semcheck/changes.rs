@@ -318,7 +318,112 @@ impl<'tcx> ChangeType<'tcx> {
     /// Get a detailed explanation of a change, and why it is categorized as-is.
     fn explanation(&self) -> &'static str {
         // TODO: meaningful explanations
-        "test"
+        match *self {
+            ItemMadePublic =>
+"Items being added to a module's public interface is generally a non-breaking
+change, except in the special case of wildcard imports in user code, where
+they can cause nameclashes.",
+            ItemMadePrivate =>
+"Items being removed from a module's public interface are a breaking change.",
+            KindDifference =>
+"Items changing their \"kind\" of item between versions are a breaking change.",
+            StaticMutabilityChanged { now_mut: true } =>
+"Static items newly made mutable don't break any user code, which is guaranteed
+to use them in a read-only fashion.",
+            StaticMutabilityChanged { now_mut: false } =>
+"Static items newly made immutable can break user code that tries to mutate them.",
+            VarianceLoosened =>
+"The variance of a type or region parameter in an item loosens iff <TODO>.",
+            VarianceTightened =>
+"The variance of a type or region parameter in an item tightens iff <TODO>.",
+            VarianceChanged { .. } =>
+"Switching the variance of a type or region parameter is breaking. <TODO>",
+            RegionParameterAdded =>
+"Adding a new region parameter is a breaking change. <TODO>.",
+            RegionParameterRemoved =>
+"Removing a region parameter is a breaking change. <TODO>.",
+            TypeParameterAdded { defaulted: true } =>
+"Adding a new defaulted type parameter is a non-breaking change, because all old
+references to the item are still valid, provided that no type difference arises.",
+            TypeParameterAdded { defaulted: false } =>
+"Adding a new non-defaulted type parameter is a breaking change, because old
+references to the item become invalid, if the type parameter can't be inferred.",
+            TypeParameterRemoved { .. } =>
+"Removing any type parameter, defaulted or not, is a breaking change, because old
+references to the item are become invalid if the type parameter is instantiated in
+a manner not compatible with the new type of the item.",
+            VariantAdded =>
+"Adding a new enum variant is a breaking change, because a match expression on
+said enum can become non-exhaustive.",
+            VariantRemoved =>
+"Removing an enum variant is a braking change, because every old reference to it
+is rendered invalid.",
+            VariantFieldAdded { public: _, total_public: _ } =>
+"Adding a field from a variant: <TODO>.",
+            VariantFieldRemoved { public: _, total_public: _ } =>
+"Removing a field from a variant: <TODO>.",
+            VariantStyleChanged { .. } =>
+"Changing the style of a variant is a breaking change, since every old reference
+to it is rendered invalid.",
+            FnConstChanged { now_const: true } =>
+"Making a function const is a non-breaking change, because a const-function can
+appear everywhere a regular function is expected.",
+            FnConstChanged { now_const: false } =>
+"Making a const function non-const is a breaking change, because some situations
+require a const function, and don't accept a regular one.",
+            MethodSelfChanged { now_self: true } =>
+"Adding a self parameter to a method is a breaking change in some specific
+situations: When user code implements it's own trait on the type the method
+is implemented on, the new method could cause a nameclash with a trait method,
+thus breaking user code.",
+            MethodSelfChanged { now_self: false } =>
+"Removing a self parameter from a method is a breaking change, because all
+method invocations using the method syntax become invalid.",
+            TraitItemAdded { defaulted: true } =>
+"Adding a new defaulted trait item is a breaking change in some specific
+situations: The new trait item could cause a name clash with traits defined in
+user code.",
+            TraitItemAdded { defaulted: false } =>
+"Adding a new non-defaulted trait item is a breaking change, because all
+implementations of the trait in user code become invalid.",
+            TraitItemRemoved { .. } =>
+"Removing a trait item is a breaking change, because all old references to the
+item become invalid.",
+            TraitUnsafetyChanged { .. } =>
+"Changing the unsafety of a trait is a breaking change, because all
+implementations become invalid.",
+            TypeChanged { .. } =>
+"Changing the type of an item is a breaking change, because user code using the
+item becomes type-incorrect.",
+            BoundsTightened { .. } =>
+"Tightening the bounds of a lifetime or type parameter is a breaking change,
+because all old references instantiating the parameter with a type or lifetime
+not fulfilling the bound are rendered invalid.",
+            BoundsLoosened { trait_def: true, .. } =>
+"Loosening the bounds of a lifetime or type parameter in a trait definition
+is a breaking change, because the assumption in user code that the bound in
+question hold is violated, potentially invalidating trait implementation or
+usage.",
+            BoundsLoosened { trait_def: false, .. } =>
+"Loosening the bounds of a lieftime or type parameter in a non-trait definition
+is a non-breaking change, because all old references to the item would remain
+valid.",
+            TraitImplTightened =>
+"Effectively removing a trait implementation for a (possibly parametrized)
+type is a breaking change, as all old references to trait methods on the type
+become invalid.",
+            TraitImplLoosened =>
+"Effectively adding a trait implementation for a (possibly parametrized)
+type is a breaking change in some specific situations, as name clashes with
+other trait implementations in user code can be caused.",
+            AssociatedItemAdded =>
+"Adding a new associated item is a breaking change in some specific situations,
+<TODO>.",
+            AssociatedItemRemoved =>
+"Removing an associated item is a breaking change, as all old references to it
+become invalid.",
+            Unknown => "No explanation for unknown changes.",
+        }
     }
 }
 
