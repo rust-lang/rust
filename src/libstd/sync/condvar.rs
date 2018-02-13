@@ -484,7 +484,7 @@ impl Condvar {
                 Some(timeout) => timeout,
                 None => return Ok((guard, WaitTimeoutResult(true))),
             }
-            guard = self.wait_timeout(guard, dur)?.0;
+            guard = self.wait_timeout(guard, timeout)?.0;
         }
     }
 
