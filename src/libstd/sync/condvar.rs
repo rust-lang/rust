@@ -263,7 +263,7 @@ impl Condvar {
     /// // As long as the value inside the `Mutex` is false, we wait.
     /// cvar.wait_until(lock.lock().unwrap(), |started| { started });
     /// ```
-    #[stable(feature = "wait_until", since = "1.24")]
+    #[unstable(feature = "wait_until", issue = "47960")]
     pub fn wait_until<'a, T, F>(&self, mut guard: MutexGuard<'a, T>,
                                 mut condition: F)
                                 -> LockResult<MutexGuard<'a, T>>
@@ -470,9 +470,9 @@ impl Condvar {
     /// }
     /// // access the locked mutex via result.0
     /// ```
-    #[stable(feature = "wait_timeout_until", since = "1.24")]
+    #[unstable(feature = "wait_timeout_until", issue = "47960")]
     pub fn wait_timeout_until<'a, T, F>(&self, mut guard: MutexGuard<'a, T>,
-                                        mut dur: Duration, mut condition: F)
+                                        dur: Duration, mut condition: F)
                                         -> LockResult<(MutexGuard<'a, T>, WaitTimeoutResult)>
                                         where F: FnMut(&mut T) -> bool {
         let start = Instant::now();
@@ -483,7 +483,7 @@ impl Condvar {
             let timeout = match dur.checked_sub(start.elapsed()) {
                 Some(timeout) => timeout,
                 None => return Ok((guard, WaitTimeoutResult(true))),
-            }
+            };
             guard = self.wait_timeout(guard, timeout)?.0;
         }
     }
