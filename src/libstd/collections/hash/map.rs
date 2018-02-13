@@ -414,7 +414,6 @@ fn search_hashed<K, V, M, F>(table: M, hash: SafeHash, is_match: F) -> InternalE
     search_hashed_nonempty(table, hash, is_match)
 }
 
-
 /// Search for a pre-hashed key when the hash map is known to be non-empty.
 #[inline]
 fn search_hashed_nonempty<K, V, M, F>(table: M, hash: SafeHash, mut is_match: F)
@@ -557,32 +556,36 @@ impl<K, V, S> HashMap<K, V, S>
     }
 
     /// Search for a key, yielding the index if it's found in the hashtable.
-    /// If you already have the hash for the key lying around, use
-    /// search_hashed.
+    /// If you already have the hash for the key lying around, or if you need an
+    /// InternalEntry, use search_hashed or search_hashed_nonempty.
     #[inline]
-    fn search<'a, Q: ?Sized>(&'a self, q: &Q) -> InternalEntry<K, V, &'a RawTable<K, V>>
+    fn search<'a, Q: ?Sized>(&'a self, q: &Q)
+        -> Option<FullBucket<K, V, &'a RawTable<K, V>>>
         where K: Borrow<Q>,
               Q: Eq + Hash
     {
-        if self.table.capacity() != 0 {
-            let hash = self.make_hash(q);
-            search_hashed_nonempty(&self.table, hash, |k| q.eq(k.borrow()))
-        } else {
-            InternalEntry::TableIsEmpty
+        if !self.is_empty() {
+            return None;
         }
+
+        let hash = self.make_hash(q);
+        search_hashed_nonempty(&self.table, hash, |k| q.eq(k.borrow()))
+            .into_occupied_bucket()
     }
 
     #[inline]
-    fn search_mut<'a, Q: ?Sized>(&'a mut self, q: &Q) -> InternalEntry<K, V, &'a mut RawTable<K, V>>
+    fn search_mut<'a, Q: ?Sized>(&'a mut self, q: &Q)
+        -> Option<FullBucket<K, V, &'a mut RawTable<K, V>>>
         where K: Borrow<Q>,
               Q: Eq + Hash
     {
-        if self.table.capacity() != 0 {
-            let hash = self.make_hash(q);
-            search_hashed_nonempty(&mut self.table, hash, |k| q.eq(k.borrow()))
-        } else {
-            InternalEntry::TableIsEmpty
+        if self.is_empty() {
+            return None;
         }
+
+        let hash = self.make_hash(q);
+        search_hashed_nonempty(&mut self.table, hash, |k| q.eq(k.borrow()))
+            .into_occupied_bucket()
     }
 
     // The caller should ensure that invariants by Robin Hood Hashing hold
@@ -1140,7 +1143,7 @@ impl<K, V, S> HashMap<K, V, S>
         where K: Borrow<Q>,
               Q: Hash + Eq
     {
-        self.search(k).into_occupied_bucket().map(|bucket| bucket.into_refs().1)
+        self.search(k).map(|bucket| bucket.into_refs().1)
     }
 
     /// Returns true if the map contains a value for the specified key.
@@ -1167,7 +1170,7 @@ impl<K, V, S> HashMap<K, V, S>
         where K: Borrow<Q>,
               Q: Hash + Eq
     {
-        self.search(k).into_occupied_bucket().is_some()
+        self.search(k).is_some()
     }
 
     /// Returns a mutable reference to the value corresponding to the key.
@@ -1196,7 +1199,7 @@ impl<K, V, S> HashMap<K, V, S>
         where K: Borrow<Q>,
               Q: Hash + Eq
     {
-        self.search_mut(k).into_occupied_bucket().map(|bucket| bucket.into_mut_refs().1)
+        self.search_mut(k).map(|bucket| bucket.into_mut_refs().1)
     }
 
     /// Inserts a key-value pair into the map.
@@ -1256,11 +1259,7 @@ impl<K, V, S> HashMap<K, V, S>
         where K: Borrow<Q>,
               Q: Hash + Eq
     {
-        if self.table.size() == 0 {
-            return None;
-        }
-
-        self.search_mut(k).into_occupied_bucket().map(|bucket| pop_internal(bucket).1)
+        self.search_mut(k).map(|bucket| pop_internal(bucket).1)
     }
 
     /// Removes a key from the map, returning the stored key and value if the
@@ -1296,7 +1295,6 @@ impl<K, V, S> HashMap<K, V, S>
         }
 
         self.search_mut(k)
-            .into_occupied_bucket()
             .map(|bucket| {
                 let (k, v, _) = pop_internal(bucket);
                 (k, v)
@@ -2654,15 +2652,11 @@ impl<K, S, Q: ?Sized> super::Recover<Q> for HashMap<K, (), S>
 
     #[inline]
     fn get(&self, key: &Q) -> Option<&K> {
-        self.search(key).into_occupied_bucket().map(|bucket| bucket.into_refs().0)
+        self.search(key).map(|bucket| bucket.into_refs().0)
     }
 
     fn take(&mut self, key: &Q) -> Option<K> {
-        if self.table.size() == 0 {
-            return None;
-        }
-
-        self.search_mut(key).into_occupied_bucket().map(|bucket| pop_internal(bucket).0)
+        self.search_mut(key).map(|bucket| pop_internal(bucket).0)
     }
 
     #[inline]
