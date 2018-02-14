@@ -660,6 +660,15 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
         disambiguator,
     );
 
+    if sess.opts.incremental.is_some() {
+        time(time_passes, "garbage collect incremental cache directory", || {
+            if let Err(e) = rustc_incremental::garbage_collect_session_directories(sess) {
+                warn!("Error while trying to garbage collect incremental \
+                       compilation cache directory: {}", e);
+            }
+        });
+    }
+
     // If necessary, compute the dependency graph (in the background).
     let future_dep_graph = if sess.opts.build_dep_graph() {
         Some(rustc_incremental::load_dep_graph(sess, time_passes))
