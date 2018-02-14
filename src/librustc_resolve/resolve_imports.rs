@@ -1026,6 +1026,8 @@ fn import_path_to_string(names: &[SpannedIdent],
         if names.is_empty() {
             import_directive_subclass_to_string(subclass)
         } else {
+            // FIXME: Remove this entire logic after #48116 is fixed.
+            //
             // Note that this code looks a little wonky, it's currently here to
             // hopefully help debug #48116, but otherwise isn't intended to
             // cause any problems.
@@ -1034,8 +1036,17 @@ fn import_path_to_string(names: &[SpannedIdent],
                 names_to_string(names),
                 import_directive_subclass_to_string(subclass),
             );
-            assert!(!names.is_empty());
-            assert!(!x.starts_with("::"));
+            if names.is_empty() || x.starts_with("::") {
+                span_bug!(
+                    span,
+                    "invalid name `{}` at {:?}; global = {}, names = {:?}, subclass = {:?}",
+                    x,
+                    span,
+                    global,
+                    names,
+                    subclass
+                );
+            }
             return x
         }
     }
