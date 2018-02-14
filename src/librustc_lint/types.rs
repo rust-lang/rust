@@ -666,6 +666,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 if let Some(s) = help {
                     diag.help(s);
                 }
+                if let ty::TyAdt(def, _) = unsafe_ty.sty {
+                    if let Some(sp) = self.cx.tcx.hir.span_if_local(def.did) {
+                        diag.span_note(sp, "type defined here");
+                    }
+                }
                 diag.emit();
             }
         }
