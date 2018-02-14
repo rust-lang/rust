@@ -1164,11 +1164,12 @@ impl<'a, T: ?Sized + fmt::Display> fmt::Display for RefMut<'a, T> {
 /// The compiler makes optimizations based on the knowledge that `&T` is not mutably aliased or
 /// mutated, and that `&mut T` is unique. When building abstractions like `Cell`, `RefCell`,
 /// `Mutex`, etc, you need to turn these optimizations off. `UnsafeCell` is the only legal way
-/// to do this. When `UnsafeCell<T>` is immutably aliased, it is still safe to obtain a mutable
-/// reference to its interior and/or to mutate it. However, it is up to the abstraction designer
-/// to ensure that no two mutable references obtained this way are active at the same time, and
-/// that there are no active mutable references or mutations when an immutable reference is obtained
-/// from the cell. This is often done via runtime checks.
+/// to do this. When `UnsafeCell<T>` _itself_ is immutably aliased, it is still safe to obtain
+/// a mutable reference to its _interior_ and/or to mutate the interior. However, it is up to 
+/// the abstraction designer to ensure that no two mutable references obtained this way are active
+/// at the same time, there are no active immutable reference when a mutable reference is obtained
+/// from the cell, and that there are no active mutable references or mutations when an immutable
+/// reference is obtained. This is often done via runtime checks.
 ///
 /// Note that while mutating or mutably aliasing the contents of an `& UnsafeCell<T>` is
 /// okay (provided you enforce the invariants some other way); it is still undefined behavior
@@ -1240,9 +1241,9 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// Gets a mutable pointer to the wrapped value.
     ///
     /// This can be cast to a pointer of any kind.
-    /// Ensure that the access is unique when casting to
-    /// `&mut T`, and ensure that there are no mutations or mutable
-    /// aliases going on when casting to `&T`
+    /// Ensure that the access is unique (no active references, mutable or not)
+    /// when casting to `&mut T`, and ensure that there are no mutations
+	/// or mutable aliases going on when casting to `&T`
     ///
     /// # Examples
     ///
