@@ -1,7 +1,7 @@
 - Feature Name: impl-only-use
 - Start Date: 2017-10-01
-- RFC PR:
-- Rust Issue:
+- RFC PR: https://github.com/rust-lang/rfcs/pull/2166
+- Rust Issue: https://github.com/rust-lang/rust/issues/48216
 
 # Summary
 [summary]: #summary
