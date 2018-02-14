@@ -261,10 +261,6 @@ struct Crate {
     version: String,
     deps: Vec<Interned<String>>,
     path: PathBuf,
-    doc_step: String,
-    build_step: String,
-    test_step: String,
-    bench_step: String,
 }
 
 impl Crate {

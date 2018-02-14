@@ -51,12 +51,6 @@ pub fn build(build: &mut Build) {
 }
 
 fn build_krate(build: &mut Build, krate: &str) {
-    // Run `cargo metadata` to figure out what crates we're testing.
-    //
-    // Down below we're going to call `cargo test`, but to test the right set
-    // of packages we're going to have to know what `-p` arguments to pass it
-    // to know what crates to test. Here we run `cargo metadata` to learn about
-    // the dependency graph and what `-p` arguments there are.
     let mut cargo = Command::new(&build.initial_cargo);
     cargo.arg("metadata")
          .arg("--format-version").arg("1")
@@ -71,10 +65,6 @@ fn build_krate(build: &mut Build, krate: &str) {
             let mut path = PathBuf::from(package.manifest_path);
             path.pop();
             build.crates.insert(name, Crate {
-                build_step: format!("build-crate-{}", name),
-                doc_step: format!("doc-crate-{}", name),
-                test_step: format!("test-crate-{}", name),
-                bench_step: format!("bench-crate-{}", name),
                 name,
                 version: package.version,
                 deps: Vec::new(),
