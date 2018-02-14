@@ -130,7 +130,7 @@ pre {
 .content .highlighted.primitive { background-color: #00708a; }
 
 .content span.enum, .content a.enum, .block a.current.enum { color: #82b089; }
-.content span.struct, .content a.struct, .block a.current.struct { color: #ff794d; }
+.content span.struct, .content a.struct, .block a.current.struct { color: #2dbfb8; }
 .content span.type, .content a.type, .block a.current.type { color: #ff7f00; }
 .content span.foreigntype, .content a.foreigntype, .block a.current.foreigntype { color: #dd7de8; }
 .content span.macro, .content a.macro, .block a.current.macro { color: #09bd00; }
