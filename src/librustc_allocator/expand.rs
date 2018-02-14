@@ -97,7 +97,11 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
         ]);
         let mut items = vec![
             f.cx.item_extern_crate(f.span, f.alloc),
-            f.cx.item_use_simple(f.span, respan(f.span.empty(), VisibilityKind::Inherited), super_path),
+            f.cx.item_use_simple(
+                f.span,
+                respan(f.span.empty(), VisibilityKind::Inherited),
+                super_path,
+            ),
         ];
         for method in ALLOCATOR_METHODS {
             items.push(f.allocator_fn(method));
