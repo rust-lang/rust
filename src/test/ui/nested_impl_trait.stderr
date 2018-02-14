@@ -4,7 +4,7 @@ error[E0666]: nested `impl Trait` is not allowed
 16 | fn bad_in_ret_position(x: impl Into<u32>) -> impl Into<impl Debug> { x }
    |                                              ----------^^^^^^^^^^-
    |                                              |         |
-   |                                              |         devilishly nested `impl Trait` here
+   |                                              |         nested `impl Trait` here
    |                                              outer `impl Trait`
 
 error[E0666]: nested `impl Trait` is not allowed
@@ -13,7 +13,7 @@ error[E0666]: nested `impl Trait` is not allowed
 19 | fn bad_in_fn_syntax(x: fn() -> impl Into<impl Debug>) {}
    |                                ----------^^^^^^^^^^-
    |                                |         |
-   |                                |         devilishly nested `impl Trait` here
+   |                                |         nested `impl Trait` here
    |                                outer `impl Trait`
 
 error[E0666]: nested `impl Trait` is not allowed
@@ -22,7 +22,7 @@ error[E0666]: nested `impl Trait` is not allowed
 23 | fn bad_in_arg_position(_: impl Into<impl Debug>) { }
    |                           ----------^^^^^^^^^^-
    |                           |         |
-   |                           |         devilishly nested `impl Trait` here
+   |                           |         nested `impl Trait` here
    |                           outer `impl Trait`
 
 error[E0666]: nested `impl Trait` is not allowed
@@ -31,7 +31,7 @@ error[E0666]: nested `impl Trait` is not allowed
 28 |     fn bad(x: impl Into<u32>) -> impl Into<impl Debug> { x }
    |                                  ----------^^^^^^^^^^-
    |                                  |         |
-   |                                  |         devilishly nested `impl Trait` here
+   |                                  |         nested `impl Trait` here
    |                                  outer `impl Trait`
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
