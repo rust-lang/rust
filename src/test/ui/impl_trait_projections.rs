@@ -7,7 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(conservative_impl_trait, universal_impl_trait)]
+#![feature(dyn_trait, conservative_impl_trait, universal_impl_trait)]
 
 use std::fmt::Debug;
 use std::option;
@@ -38,6 +38,13 @@ fn projection_with_named_trait_inside_path_is_disallowed()
 //~^ ERROR `impl Trait` is not allowed in path parameters
 {
     (1i32..100).next().unwrap()
+}
+
+fn projection_from_impl_trait_inside_dyn_trait_is_disallowed()
+    -> <dyn Iterator<Item = impl Debug> as Iterator>::Item
+//~^ ERROR `impl Trait` is not allowed in path parameters
+{
+    panic!()
 }
 
 fn main() {}

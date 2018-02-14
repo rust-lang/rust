@@ -16,6 +16,12 @@ error[E0667]: `impl Trait` is not allowed in path parameters
 37 |     -> <::std::ops::Range<impl Debug> as Iterator>::Item
    |                           ^^^^^^^^^^
 
+error[E0667]: `impl Trait` is not allowed in path parameters
+  --> $DIR/impl_trait_projections.rs:44:29
+   |
+44 |     -> <dyn Iterator<Item = impl Debug> as Iterator>::Item
+   |                             ^^^^^^^^^^
+
 error[E0223]: ambiguous associated type
   --> $DIR/impl_trait_projections.rs:23:50
    |
@@ -24,5 +30,5 @@ error[E0223]: ambiguous associated type
    |
    = note: specify the type using the syntax `<impl std::iter::Iterator as Trait>::Item`
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
