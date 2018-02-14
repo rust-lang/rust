@@ -27,6 +27,7 @@
 #![feature(iterator_try_fold)]
 #![feature(iter_rfind)]
 #![feature(iter_rfold)]
+#![feature(iterator_repeat_with)]
 #![feature(nonzero)]
 #![feature(pattern)]
 #![feature(range_is_empty)]

@@ -333,6 +333,8 @@ pub use self::range::Step;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::sources::{Repeat, repeat};
+#[unstable(feature = "iterator_repeat_with", issue = "48169")]
+pub use self::sources::{RepeatWith, repeat_with};
 #[stable(feature = "iter_empty", since = "1.2.0")]
 pub use self::sources::{Empty, empty};
 #[stable(feature = "iter_once", since = "1.2.0")]
