@@ -2573,7 +2573,7 @@ impl<T: ?Sized> Clone for NonNull<T> {
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> Copy for NonNull<T> { }
 
-#[stable(feature = "nonnull", since = "1.25.0")]
+#[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized, U: ?Sized> CoerceUnsized<NonNull<U>> for NonNull<T> where T: Unsize<U> { }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
@@ -2621,7 +2621,7 @@ impl<T: ?Sized> hash::Hash for NonNull<T> {
     }
 }
 
-#[stable(feature = "nonnull", since = "1.25.0")]
+#[unstable(feature = "ptr_internals", issue = "0")]
 impl<T: ?Sized> From<Unique<T>> for NonNull<T> {
     fn from(unique: Unique<T>) -> Self {
         NonNull { pointer: unique.pointer }
