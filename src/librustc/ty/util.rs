@@ -16,7 +16,7 @@ use hir::map::{DefPathData, Node};
 use hir;
 use ich::NodeIdHashingMode;
 use middle::const_val::ConstVal;
-use traits::{self, Reveal};
+use traits;
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 use ty::fold::TypeVisitor;
 use ty::subst::{Subst, UnpackedKind};
@@ -182,48 +182,6 @@ pub enum Representability {
 }
 
 impl<'tcx> ty::ParamEnv<'tcx> {
-    /// Construct a trait environment suitable for contexts where
-    /// there are no where clauses in scope. Hidden types (like `impl
-    /// Trait`) are left hidden, so this is suitable for ordinary
-    /// type-checking.
-    pub fn empty() -> Self {
-        Self::new(ty::Slice::empty(), Reveal::UserFacing, ty::UniverseIndex::ROOT)
-    }
-
-    /// Construct a trait environment with no where clauses in scope
-    /// where the values of all `impl Trait` and other hidden types
-    /// are revealed. This is suitable for monomorphized, post-typeck
-    /// environments like trans or doing optimizations.
-    ///
-    /// NB. If you want to have predicates in scope, use `ParamEnv::new`,
-    /// or invoke `param_env.with_reveal_all()`.
-    pub fn reveal_all() -> Self {
-        Self::new(ty::Slice::empty(), Reveal::All, ty::UniverseIndex::ROOT)
-    }
-
-    /// Construct a trait environment with the given set of predicates.
-    pub fn new(caller_bounds: &'tcx ty::Slice<ty::Predicate<'tcx>>,
-               reveal: Reveal,
-               universe: ty::UniverseIndex)
-               -> Self {
-        ty::ParamEnv { caller_bounds, reveal, universe }
-    }
-
-    /// Returns a new parameter environment with the same clauses, but
-    /// which "reveals" the true results of projections in all cases
-    /// (even for associated types that are specializable).  This is
-    /// the desired behavior during trans and certain other special
-    /// contexts; normally though we want to use `Reveal::UserFacing`,
-    /// which is the default.
-    pub fn with_reveal_all(self) -> Self {
-        ty::ParamEnv { reveal: Reveal::All, ..self }
-    }
-
-    /// Returns this same environment but with no caller bounds.
-    pub fn without_caller_bounds(self) -> Self {
-        ty::ParamEnv { caller_bounds: ty::Slice::empty(), ..self }
-    }
-
     pub fn can_type_implement_copy<'a>(self,
                                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        self_type: Ty<'tcx>, span: Span)
