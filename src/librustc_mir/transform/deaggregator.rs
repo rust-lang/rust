@@ -41,7 +41,11 @@ impl MirPass for Deaggregator {
 
         let can_deaggregate = |statement: &Statement| {
             if let StatementKind::Assign(_, ref rhs) = statement.kind {
-                if let Rvalue::Aggregate(..) = *rhs {
+                if let Rvalue::Aggregate(ref kind, _) = *rhs {
+                    // FIXME(#48193) Deaggregate arrays when it's cheaper to do so.
+                    if let AggregateKind::Array(_) = **kind {
+                        return false;
+                    }
                     return true;
                 }
             }
