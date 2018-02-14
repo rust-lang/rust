@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Tests that a default impl still has to have a WF trait ref.
+
 #![feature(specialization)]
 
 trait Foo<'a, T: Eq + 'a> { }

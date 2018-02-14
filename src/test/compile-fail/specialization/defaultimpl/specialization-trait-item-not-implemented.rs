@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Tests that default impls do not have to supply all items but regular impls do.
+
 #![feature(specialization)]
 
 trait Foo {

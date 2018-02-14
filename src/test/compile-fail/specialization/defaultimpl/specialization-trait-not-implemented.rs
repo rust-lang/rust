@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Tests that:
+// - default impls do not have to supply all items and
+// - a default impl does not count as an impl (in this case, an incomplete default impl).
+
 #![feature(specialization)]
 
 trait Foo {
