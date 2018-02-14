@@ -78,8 +78,6 @@ error: `extern` block uses type `std::clone::Clone` which is not FFI-safe: trait
    |
 62 |     pub fn trait_type(p: &Clone); //~ ERROR uses type `std::clone::Clone`
    |                          ^^^^^^
-   |
-   = help: consider using a raw pointer instead
 
 error: `extern` block uses type `(i32, i32)` which is not FFI-safe: tuples have unspecified layout
   --> $DIR/lint-ctypes.rs:63:26

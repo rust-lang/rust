@@ -577,7 +577,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             ty::TyDynamic(..) => FfiUnsafe {
                 ty: ty,
                 reason: "trait objects have no C equivalent",
-                help: Some("consider using a raw pointer instead"),
+                help: None,
             },
 
             ty::TyStr => FfiUnsafe {
