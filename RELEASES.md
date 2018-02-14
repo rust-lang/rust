@@ -78,6 +78,7 @@ Compatibility Notes
 - [`column!()` macro is one-based instead of zero-based][46977]
 - [`fmt::Arguments` can no longer be shared across threads][45198]
 - [Access to `#[repr(packed)]` struct fields is now unsafe][44884]
+- [Cargo sets a different working directory for the compiler][cargo/4788]
 
 [44884]: https://github.com/rust-lang/rust/pull/44884
 [45198]: https://github.com/rust-lang/rust/pull/45198
@@ -106,6 +107,7 @@ Compatibility Notes
 [47080]: https://github.com/rust-lang/rust/pull/47080
 [47084]: https://github.com/rust-lang/rust/pull/47084
 [cargo/4743]: https://github.com/rust-lang/cargo/pull/4743
+[cargo/4788]: https://github.com/rust-lang/cargo/pull/4788
 [cargo/4817]: https://github.com/rust-lang/cargo/pull/4817
 [`RefCell::replace`]: https://doc.rust-lang.org/std/cell/struct.RefCell.html#method.replace
 [`RefCell::swap`]: https://doc.rust-lang.org/std/cell/struct.RefCell.html#method.swap
