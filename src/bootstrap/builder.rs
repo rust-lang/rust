@@ -600,25 +600,9 @@ impl<'a> Builder<'a> {
         //
         // FIXME: the guard against msvc shouldn't need to be here
         if !target.contains("msvc") {
-            let ccache = self.config.ccache.as_ref();
-            let ccacheify = |s: &Path| {
-                let ccache = match ccache {
-                    Some(ref s) => s,
-                    None => return s.display().to_string(),
-                };
-                // FIXME: the cc-rs crate only recognizes the literal strings
-                // `ccache` and `sccache` when doing caching compilations, so we
-                // mirror that here. It should probably be fixed upstream to
-                // accept a new env var or otherwise work with custom ccache
-                // vars.
-                match &ccache[..] {
-                    "ccache" | "sccache" => format!("{} {}", ccache, s.display()),
-                    _ => s.display().to_string(),
-                }
-            };
-            let cc = ccacheify(&self.cc(target));
-            cargo.env(format!("CC_{}", target), &cc)
-                 .env("CC", &cc);
+            let cc = self.cc(target);
+            cargo.env(format!("CC_{}", target), cc)
+                 .env("CC", cc);
 
             let cflags = self.cflags(target).join(" ");
             cargo.env(format!("CFLAGS_{}", target), cflags.clone())
@@ -633,9 +617,8 @@ impl<'a> Builder<'a> {
             }
 
             if let Ok(cxx) = self.cxx(target) {
-                let cxx = ccacheify(&cxx);
-                cargo.env(format!("CXX_{}", target), &cxx)
-                     .env("CXX", &cxx)
+                cargo.env(format!("CXX_{}", target), cxx)
+                     .env("CXX", cxx)
                      .env(format!("CXXFLAGS_{}", target), cflags.clone())
                      .env("CXXFLAGS", cflags);
             }
