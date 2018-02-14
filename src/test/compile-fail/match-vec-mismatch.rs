@@ -43,6 +43,6 @@ fn main() {
 fn another_fn_to_avoid_suppression() {
     match Default::default()
     {
-        [] => {}  //~ ERROR the type of this value
+        [] => {}  //~ ERROR type annotations needed
     };
 }
