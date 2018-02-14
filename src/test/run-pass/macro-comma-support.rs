@@ -8,15 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// This is a comprehensive test of invocations with and without
+// This is meant to be a comprehensive test of invocations with/without
 // trailing commas (or other, similar optionally-trailing separators).
 // Every macro is accounted for, even those not tested in this file.
 // (There will be a note indicating why).
-//
-// The expectation is for this to be updated as new macros are added,
-// or as functionality is added to existing macros.
-//
-// (FIXME: (please discuss in PR) is the above expectation reasonable?)
 
 // std and core are both tested because they may contain separate
 // implementations for some macro_rules! macros as an implementation
@@ -245,16 +240,7 @@ fn println() {
     println!("hello {}", "world",);
 }
 
-// FIXME: select! (please discuss in PR)
-//
-// Test cases for select! are obnoxiously large, see here:
-//
-//     https://github.com/ExpHP/rust-macro-comma-test/blob/0062e75e01ab/src/main.rs#L190-L250
-//
-// and due to other usability issues described there, it is unclear to me that it is
-// going anywhere in its current state. This is a job far too big for a macro_rules! macro,
-// and for as long as it exists in this form it will have many many problems far worse than
-// just lack of trailing comma support.
+// select! is too troublesome and unlikely to be stabilized
 
 // stringify! is N/A
 

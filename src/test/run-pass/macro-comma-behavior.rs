@@ -44,12 +44,12 @@ fn debug_assert_1arg() {
 // make sure we don't accidentally forward to `write!("text")`
 #[cfg(std)]
 #[test]
-fn writeln_2arg() {
+fn writeln_1arg() {
     use fmt::Write;
 
     let mut s = String::new();
-    writeln!(&mut s, "hi",).unwrap();
-    assert_eq!(&s, "hi\n");
+    writeln!(&mut s,).unwrap();
+    assert_eq!(&s, "\n");
 }
 
 // A number of format_args-like macros have special-case treatment
