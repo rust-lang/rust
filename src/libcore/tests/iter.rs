@@ -1323,40 +1323,82 @@ fn test_range() {
 }
 
 #[test]
+fn test_range_exhaustion() {
+    let mut r = 10..10;
+    assert!(r.is_empty());
+    assert_eq!(r.next(), None);
+    assert_eq!(r.next_back(), None);
+    assert_eq!(r, 10..10);
+
+    let mut r = 10..12;
+    assert_eq!(r.next(), Some(10));
+    assert_eq!(r.next(), Some(11));
+    assert!(r.is_empty());
+    assert_eq!(r, 12..12);
+    assert_eq!(r.next(), None);
+
+    let mut r = 10..12;
+    assert_eq!(r.next_back(), Some(11));
+    assert_eq!(r.next_back(), Some(10));
+    assert!(r.is_empty());
+    assert_eq!(r, 10..10);
+    assert_eq!(r.next_back(), None);
+
+    let mut r = 100..10;
+    assert!(r.is_empty());
+    assert_eq!(r.next(), None);
+    assert_eq!(r.next_back(), None);
+    assert_eq!(r, 100..10);
+}
+
+#[test]
 fn test_range_inclusive_exhaustion() {
     let mut r = 10..=10;
     assert_eq!(r.next(), Some(10));
-    assert_eq!(r, 1..=0);
+    assert!(r.is_empty());
+    assert_eq!(r.next(), None);
+    assert_eq!(r.next(), None);
 
     let mut r = 10..=10;
     assert_eq!(r.next_back(), Some(10));
-    assert_eq!(r, 1..=0);
+    assert!(r.is_empty());
+    assert_eq!(r.next_back(), None);
 
     let mut r = 10..=12;
     assert_eq!(r.next(), Some(10));
     assert_eq!(r.next(), Some(11));
     assert_eq!(r.next(), Some(12));
-    assert_eq!(r, 1..=0);
+    assert!(r.is_empty());
+    assert_eq!(r.next(), None);
 
     let mut r = 10..=12;
     assert_eq!(r.next_back(), Some(12));
     assert_eq!(r.next_back(), Some(11));
     assert_eq!(r.next_back(), Some(10));
-    assert_eq!(r, 1..=0);
+    assert!(r.is_empty());
+    assert_eq!(r.next_back(), None);
 
     let mut r = 10..=12;
     assert_eq!(r.nth(2), Some(12));
-    assert_eq!(r, 1..=0);
+    assert!(r.is_empty());
+    assert_eq!(r.next(), None);
 
     let mut r = 10..=12;
     assert_eq!(r.nth(5), None);
-    assert_eq!(r, 1..=0);
+    assert!(r.is_empty());
+    assert_eq!(r.next(), None);
 
     let mut r = 100..=10;
+    assert_eq!(r.next(), None);
+    assert!(r.is_empty());
+    assert_eq!(r.next(), None);
     assert_eq!(r.next(), None);
     assert_eq!(r, 100..=10);
 
     let mut r = 100..=10;
+    assert_eq!(r.next_back(), None);
+    assert!(r.is_empty());
+    assert_eq!(r.next_back(), None);
     assert_eq!(r.next_back(), None);
     assert_eq!(r, 100..=10);
 }
@@ -1428,9 +1470,10 @@ fn test_range_inclusive_nth() {
     assert_eq!(r.nth(2), Some(15));
     assert_eq!(r, 16..=20);
     assert_eq!(r.is_empty(), false);
+    assert_eq!(ExactSizeIterator::is_empty(&r), false);
     assert_eq!(r.nth(10), None);
     assert_eq!(r.is_empty(), true);
-    assert_eq!(r, 1..=0);  // We may not want to document/promise this detail
+    assert_eq!(ExactSizeIterator::is_empty(&r), true);
 }
 
 #[test]
@@ -1514,11 +1557,11 @@ fn test_range_inclusive_folds() {
 
     let mut it = 10..=20;
     assert_eq!(it.try_fold(0, |a,b| Some(a+b)), Some(165));
-    assert_eq!(it, 1..=0);
+    assert!(it.is_empty());
 
     let mut it = 10..=20;
     assert_eq!(it.try_rfold(0, |a,b| Some(a+b)), Some(165));
-    assert_eq!(it, 1..=0);
+    assert!(it.is_empty());
 }
 
 #[test]
