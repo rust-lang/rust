@@ -1075,7 +1075,7 @@ pub trait Iterator {
     /// assert_eq!(merged, "alphabetagamma");
     /// ```
     #[inline]
-    #[unstable(feature = "iterator_flatten", issue = "0")]
+    #[unstable(feature = "iterator_flatten", issue = "48213")]
     fn flatten(self) -> Flatten<Self>
     where Self: Sized, Self::Item: IntoIterator {
         Flatten { inner: flatten_compat(self) }
