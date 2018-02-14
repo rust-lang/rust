@@ -1551,11 +1551,45 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 self.is_mutable(place, is_local_mutation_allowed)
             {
                 error_reported = true;
-
                 let item_msg = match self.describe_place(place) {
                     Some(name) => format!("immutable item `{}`", name),
                     None => "immutable item".to_owned(),
                 };
+
+            // let item_msg = match place{
+            //     Place::Projection(ref proj) => {
+            //         let Projection { ref base, ref elem } = **proj;
+            //         match *elem {
+            //             ProjectionElem::Deref => {
+            //                 if let Err(place_err) = self.is_mutable(place, is_local_mutation_allowed) {
+            //                     debug!("place_err = {:?} and base={:?}", place_err, base);
+            //                     format!("`&`-reference {:?}", place_err)
+
+
+            //                 }else{
+            //                     match self.describe_place(place) {
+            //                         Some(name) => format!("immutable item `{}`", name),
+            //                         None => "immutable item".to_owned(),
+            //                     }
+            //                 }
+            //             }
+            //             _ => {
+            //                     match self.describe_place(place) {
+            //                     Some(name) => format!("immutable item `{}`", name),
+            //                     None => "immutable item".to_owned(),
+            //                     }   
+
+            //                  }
+            //             }
+            //         },
+                
+            //     _=> {
+            //     match self.describe_place(place) {
+            //         Some(name) => format!("immutable item `{}`", name),
+            //         None => "immutable item".to_owned(),
+            //     }
+            //     }
+            // };
 
                 let mut err = self.tcx
                     .cannot_borrow_path_as_mutable(span, &item_msg, Origin::Mir);
@@ -1573,20 +1607,27 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 if let Err(place_err) = self.is_mutable(place, is_local_mutation_allowed) {
                     error_reported = true;
 
-                    let item_msg = match self.describe_place(place) {
-                        Some(name) => format!("immutable item `{}`", name),
-                        None => "immutable item".to_owned(),
+                    let item_msg = if error_reported{
+                        if let Some(name) = self.describe_place(place_err) {
+                            format!("`&`-reference {}", name)
+                        }else{
+                        match self.describe_place(place) {
+                            Some(name) => {format!("immutable item `{}`", name)}
+                            None => {"immutable item".to_owned()}
+                        } 
+                      }
+                    }else{
+                        match self.describe_place(place) {
+                            Some(name) => {format!("immutable item `{}`", name)}
+                            None => {"immutable item".to_owned()}
+                        }
                     };
 
                     let mut err = self.tcx.cannot_assign(span, &item_msg, Origin::Mir);
-                    err.span_label(span, "cannot mutate");
 
                     if place != place_err {
-                        if let Some(name) = self.describe_place(place_err) {
-                            err.note(&format!("Value not mutable causing this error: `{}`", name));
-                        }
+                        err.span_label(span, "cannot assign through `&`-reference");                        
                     }
-
                     err.emit();
                 }
             }
