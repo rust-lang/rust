@@ -73,7 +73,7 @@ fn classify_ret_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, ret: &mut ArgType<'tcx>) 
             } else if ret.layout.fields.count() == 2 {
                 if let Some(reg0) = float_reg(cx, ret, 0) {
                     if let Some(reg1) = float_reg(cx, ret, 1) {
-                        ret.cast_to(CastTarget::Pair(reg0, reg1));
+                        ret.cast_to(CastTarget::pair(reg0, reg1));
                         return;
                     }
                 }
@@ -98,7 +98,7 @@ fn classify_arg_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &mut ArgType<'tcx>) 
 
     let dl = &cx.tcx.data_layout;
     let size = arg.layout.size;
-    let mut prefix = [RegKind::Integer; 8];
+    let mut prefix = [None; 8];
     let mut prefix_index = 0;
 
     match arg.layout.fields {
@@ -123,15 +123,20 @@ fn classify_arg_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &mut ArgType<'tcx>) 
                 if let layout::Abi::Scalar(ref scalar) = field.abi {
                     if let layout::F64 = scalar.value {
                         if offset.is_abi_aligned(dl.f64_align) {
-                            // Skip over enough integers to cover [last_offset, offset)
+                            // Insert enough integers to cover [last_offset, offset)
                             assert!(last_offset.is_abi_aligned(dl.f64_align));
-                            prefix_index += ((offset - last_offset).bits() / 64) as usize;
+                            for _ in 0..((offset - last_offset).bits() / 64)
+                                .min((prefix.len() - prefix_index) as u64) {
 
-                            if prefix_index >= prefix.len() {
+                                prefix[prefix_index] = Some(RegKind::Integer);
+                                prefix_index += 1;
+                            }
+
+                            if prefix_index == prefix.len() {
                                 break;
                             }
 
-                            prefix[prefix_index] = RegKind::Float;
+                            prefix[prefix_index] = Some(RegKind::Float);
                             prefix_index += 1;
                             last_offset = offset + Reg::f64().size;
                         }
@@ -142,10 +147,11 @@ fn classify_arg_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &mut ArgType<'tcx>) 
     };
 
     // Extract first 8 chunks as the prefix
-    arg.cast_to(CastTarget::ChunkedPrefix {
+    let rest_size = size - Size::from_bytes(8) * prefix_index as u64;
+    arg.cast_to(CastTarget {
         prefix: prefix,
-        chunk: Size::from_bytes(8),
-        total: size
+        prefix_chunk: Size::from_bytes(8),
+        rest: Uniform { unit: Reg::i64(), total: rest_size }
     });
 }
 
