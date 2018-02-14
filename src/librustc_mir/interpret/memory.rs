@@ -238,7 +238,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         self.tcx.data_layout.pointer_size.bytes()
     }
 
-    pub fn endianess(&self) -> layout::Endian {
+    pub fn endianness(&self) -> layout::Endian {
         self.tcx.data_layout.endian
     }
 
@@ -722,7 +722,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
 
     pub fn read_primval(&self, ptr: MemoryPointer, ptr_align: Align, size: u64, signed: bool) -> EvalResult<'tcx, PrimVal> {
         self.check_relocation_edges(ptr, size)?; // Make sure we don't read part of a pointer as a pointer
-        let endianess = self.endianess();
+        let endianness = self.endianness();
         let bytes = self.get_bytes_unchecked(ptr, size, ptr_align.min(self.int_align(size)))?;
         // Undef check happens *after* we established that the alignment is correct.
         // We must not return Ok() for unaligned pointers!
@@ -731,9 +731,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         }
         // Now we do the actual reading
         let bytes = if signed {
-            read_target_int(endianess, bytes).unwrap() as u128
+            read_target_int(endianness, bytes).unwrap() as u128
         } else {
-            read_target_uint(endianess, bytes).unwrap()
+            read_target_uint(endianness, bytes).unwrap()
         };
         // See if we got a pointer
         if size != self.pointer_size() {
@@ -756,7 +756,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     }
 
     pub fn write_primval(&mut self, ptr: MemoryPointer, ptr_align: Align, val: PrimVal, size: u64, signed: bool) -> EvalResult<'tcx> {
-        let endianess = self.endianess();
+        let endianness = self.endianness();
 
         let bytes = match val {
             PrimVal::Ptr(val) => {
@@ -788,9 +788,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
             let align = self.int_align(size);
             let dst = self.get_bytes_mut(ptr, size, ptr_align.min(align))?;
             if signed {
-                write_target_int(endianess, dst, bytes as i128).unwrap();
+                write_target_int(endianness, dst, bytes as i128).unwrap();
             } else {
-                write_target_uint(endianess, dst, bytes).unwrap();
+                write_target_uint(endianness, dst, bytes).unwrap();
             }
         }
 
@@ -941,41 +941,41 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Methods to access integers in the target endianess
+// Methods to access integers in the target endianness
 ////////////////////////////////////////////////////////////////////////////////
 
 fn write_target_uint(
-    endianess: layout::Endian,
+    endianness: layout::Endian,
     mut target: &mut [u8],
     data: u128,
 ) -> Result<(), io::Error> {
     let len = target.len();
-    match endianess {
+    match endianness {
         layout::Endian::Little => target.write_uint128::<LittleEndian>(data, len),
         layout::Endian::Big => target.write_uint128::<BigEndian>(data, len),
     }
 }
 fn write_target_int(
-    endianess: layout::Endian,
+    endianness: layout::Endian,
     mut target: &mut [u8],
     data: i128,
 ) -> Result<(), io::Error> {
     let len = target.len();
-    match endianess {
+    match endianness {
         layout::Endian::Little => target.write_int128::<LittleEndian>(data, len),
         layout::Endian::Big => target.write_int128::<BigEndian>(data, len),
     }
 }
 
-fn read_target_uint(endianess: layout::Endian, mut source: &[u8]) -> Result<u128, io::Error> {
-    match endianess {
+fn read_target_uint(endianness: layout::Endian, mut source: &[u8]) -> Result<u128, io::Error> {
+    match endianness {
         layout::Endian::Little => source.read_uint128::<LittleEndian>(source.len()),
         layout::Endian::Big => source.read_uint128::<BigEndian>(source.len()),
     }
 }
 
-fn read_target_int(endianess: layout::Endian, mut source: &[u8]) -> Result<i128, io::Error> {
-    match endianess {
+fn read_target_int(endianness: layout::Endian, mut source: &[u8]) -> Result<i128, io::Error> {
+    match endianness {
         layout::Endian::Little => source.read_int128::<LittleEndian>(source.len()),
         layout::Endian::Big => source.read_int128::<BigEndian>(source.len()),
     }
