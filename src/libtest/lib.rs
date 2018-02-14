@@ -40,6 +40,7 @@
 #![feature(set_stdio)]
 #![feature(panic_unwind)]
 #![feature(staged_api)]
+#![feature(termination_trait_lib)]
 
 extern crate getopts;
 extern crate term;
@@ -69,6 +70,7 @@ use std::iter::repeat;
 use std::path::PathBuf;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
+use std::termination::Termination;
 use std::thread;
 use std::time::{Instant, Duration};
 use std::borrow::Cow;
@@ -320,6 +322,13 @@ pub fn test_main_static(tests: &[TestDescAndFn]) {
         })
         .collect();
     test_main(&args, owned_tests, Options::new())
+}
+
+/// Invoked when unit tests terminate. Should panic if the unit
+/// test is considered a failure. By default, invokes `report()`
+/// and checks for a `0` result.
+pub fn assert_test_result<T: Termination>(result: T) {
+    assert_eq!(result.report(), 0);
 }
 
 #[derive(Copy, Clone, Debug)]

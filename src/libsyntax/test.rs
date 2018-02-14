@@ -746,48 +746,36 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
     };
     visible_path.extend(path);
 
-    // If termination feature is enabled, create a wrapper that invokes the fn
-    // like this:
+    // Rather than directly give the test function to the test
+    // harness, we create a wrapper like this:
     //
-    //     fn wrapper() {
-    //         assert_eq!(0, real_function().report());
-    //     }
+    //     || test::assert_test_result(real_function())
     //
-    // and then put a reference to `wrapper` into the test descriptor. Otherwise,
-    // just put a direct reference to `real_function`.
+    // this will coerce into a fn pointer that is specialized to the
+    // actual return type of `real_function` (Typically `()`, but not always).
     let fn_expr = {
-        let base_fn_expr = ecx.expr_path(ecx.path_global(span, visible_path));
-        if cx.features.termination_trait {
-            // ::std::Termination::assert_unit_test_successful
-            let assert_unit_test_successful = ecx.path_global(
+        // construct `real_function()` (this will be inserted into the overall expr)
+        let real_function_expr = ecx.expr_path(ecx.path_global(span, visible_path));
+        // construct path `test::assert_test_result`
+        let assert_test_result = test_path("assert_test_result");
+        // construct `|| {..}`
+        ecx.lambda(
+            span,
+            vec![],
+            // construct `assert_test_result(..)`
+            ecx.expr_call(
                 span,
+                ecx.expr_path(assert_test_result),
                 vec![
-                    ecx.ident_of("std"),
-                    ecx.ident_of("Termination"),
-                    ecx.ident_of("assert_unit_test_successful"),
+                    // construct `real_function()`
+                    ecx.expr_call(
+                        span,
+                        real_function_expr,
+                        vec![],
+                    )
                 ],
-            );
-            // || {..}
-            ecx.lambda(
-                span,
-                vec![],
-                // ::std::Termination::assert_unit_test_successful(..)
-                ecx.expr_call(
-                    span,
-                    ecx.expr_path(assert_unit_test_successful),
-                    vec![
-                        // $base_fn_expr()
-                        ecx.expr_call(
-                            span,
-                            base_fn_expr,
-                            vec![],
-                        )
-                    ],
-                ),
-            )
-        } else {
-            base_fn_expr
-        }
+            ),
+        )
     };
 
     let variant_name = if test.bench { "StaticBenchFn" } else { "StaticTestFn" };

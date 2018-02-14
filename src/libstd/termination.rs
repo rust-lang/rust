@@ -8,7 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Defines the meaning of the return value from `main`, and hence
+//! controls what happens in a Rust program after `main` returns.
+
 use fmt::Debug;
+
 #[cfg(target_arch = "wasm32")]
 mod exit {
     pub const SUCCESS: i32 = 0;
@@ -30,28 +34,21 @@ mod exit {
 /// The default implementations are returning `libc::EXIT_SUCCESS` to indicate
 /// a successful execution. In case of a failure, `libc::EXIT_FAILURE` is returned.
 #[cfg_attr(not(test), lang = "termination")]
-#[unstable(feature = "termination_trait", issue = "43301")]
+#[unstable(feature = "termination_trait_lib", issue = "43301")]
 #[rustc_on_unimplemented =
   "`main` can only return types that implement {Termination}, not `{Self}`"]
 pub trait Termination {
     /// Is called to get the representation of the value as status code.
     /// This status code is returned to the operating system.
     fn report(self) -> i32;
-
-    /// Invoked when unit tests terminate. Should panic if the unit
-    /// test is considered a failure. By default, invokes `report()`
-    /// and checks for a `0` result.
-    fn assert_unit_test_successful(self) where Self: Sized {
-        assert_eq!(self.report(), 0);
-    }
 }
 
-#[unstable(feature = "termination_trait", issue = "43301")]
+#[unstable(feature = "termination_trait_lib", issue = "43301")]
 impl Termination for () {
     fn report(self) -> i32 { exit::SUCCESS }
 }
 
-#[unstable(feature = "termination_trait", issue = "43301")]
+#[unstable(feature = "termination_trait_lib", issue = "43301")]
 impl<T: Termination, E: Debug> Termination for Result<T, E> {
     fn report(self) -> i32 {
         match self {
@@ -64,19 +61,19 @@ impl<T: Termination, E: Debug> Termination for Result<T, E> {
     }
 }
 
-#[unstable(feature = "termination_trait", issue = "43301")]
+#[unstable(feature = "termination_trait_lib", issue = "43301")]
 impl Termination for ! {
     fn report(self) -> i32 { unreachable!(); }
 }
 
-#[unstable(feature = "termination_trait", issue = "43301")]
+#[unstable(feature = "termination_trait_lib", issue = "43301")]
 impl Termination for bool {
     fn report(self) -> i32 {
         if self { exit::SUCCESS } else { exit::FAILURE }
     }
 }
 
-#[unstable(feature = "termination_trait", issue = "43301")]
+#[unstable(feature = "termination_trait_lib", issue = "43301")]
 impl Termination for i32 {
     fn report(self) -> i32 {
         self
