@@ -1,7 +1,7 @@
 - Feature Name: if_while_or_patterns
 - Start Date: 2017-10-16
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/2175
+- Rust Issue: https://github.com/rust-lang/rust/issues/48215
 
 # Summary
 [summary]: #summary
