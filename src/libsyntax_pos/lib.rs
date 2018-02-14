@@ -219,7 +219,7 @@ impl Span {
     /// Returns a new span representing an empty span at the beginning of this span
     #[inline]
     pub fn empty(self) -> Span {
-        span.with_hi(self.lo())
+        self.with_hi(self.lo())
     }
 
     /// Returns `self` if `self` is not the dummy span, and `other` otherwise.
