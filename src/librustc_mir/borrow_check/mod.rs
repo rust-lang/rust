@@ -463,7 +463,20 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 target: _,
                 unwind: _,
             } => {
-                self.visit_terminator_drop(loc, term, flow_state, drop_place, span);
+                let gcx = self.tcx.global_tcx();
+
+                // Compute the type with accurate region information.
+                let drop_place_ty = drop_place.ty(self.mir, self.tcx);
+
+                // Erase the regions.
+                let drop_place_ty = self.tcx.erase_regions(&drop_place_ty).to_ty(self.tcx);
+
+                // "Lift" into the gcx -- once regions are erased, this type should be in the
+                // global arenas; this "lift" operation basically just asserts that is true, but
+                // that is useful later.
+                let drop_place_ty = gcx.lift(&drop_place_ty).unwrap();
+
+                self.visit_terminator_drop(loc, term, flow_state, drop_place, drop_place_ty, span);
             }
             TerminatorKind::DropAndReplace {
                 location: ref drop_place,
@@ -723,10 +736,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         term: &Terminator<'tcx>,
         flow_state: &Flows<'cx, 'gcx, 'tcx>,
         drop_place: &Place<'tcx>,
+        erased_drop_place_ty: ty::Ty<'gcx>,
         span: Span,
     ) {
-        let ty = drop_place.ty(self.mir, self.tcx).to_ty(self.tcx);
-        match ty.sty {
+        match erased_drop_place_ty.sty {
             // When a struct is being dropped, we need to check
             // whether it has a destructor, if it does, then we can
             // call it, if it does not then we need to check the
@@ -735,14 +748,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             // borrows of `x.foo` and not `x.bar`. See #47703.
             ty::TyAdt(def, substs) if def.is_struct() && !def.has_dtor(self.tcx) => {
                 for (index, field) in def.all_fields().enumerate() {
-                    let place = drop_place.clone();
-                    let place = place.field(Field::new(index), field.ty(self.tcx, substs));
+                    let gcx = self.tcx.global_tcx();
+                    let field_ty = field.ty(gcx, substs);
+                    let field_ty = gcx.normalize_associated_type_in_env(&field_ty, self.param_env);
+                    let place = drop_place.clone().field(Field::new(index), field_ty);
 
                     self.visit_terminator_drop(
                         loc,
                         term,
                         flow_state,
                         &place,
+                        field_ty,
                         span,
                     );
                 }
@@ -754,8 +770,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 // "needs drop". If so, we assume that the destructor
                 // may access any data it likes (i.e., a Deep Write).
                 let gcx = self.tcx.global_tcx();
-                let erased_ty = gcx.lift(&self.tcx.erase_regions(&ty)).unwrap();
-                if erased_ty.needs_drop(gcx, self.param_env) {
+                if erased_drop_place_ty.needs_drop(gcx, self.param_env) {
                     self.access_place(
                         ContextKind::Drop.new(loc),
                         (drop_place, span),
@@ -2144,7 +2159,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         while let Some(i) = elems_incoming.next() {
             let borrowed = &data[i.borrow_index()];
 
-            if self.places_conflict(&borrowed.borrowed_place, &place, access) {
+            if self.places_conflict(&borrowed.borrowed_place, place, access) {
                 debug!("each_borrow_involving_path: {:?} @ {:?} vs. {:?}/{:?}",
                        i, borrowed, place, access);
                 let ctrl = op(self, i, borrowed);
