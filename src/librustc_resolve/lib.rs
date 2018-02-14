@@ -1524,7 +1524,7 @@ impl<'a> Resolver<'a> {
         invocations.insert(Mark::root(),
                            arenas.alloc_invocation_data(InvocationData::root(graph_root)));
 
-        let features = session.features.borrow();
+        let features = session.features_untracked();
 
         let mut macro_defs = FxHashMap();
         macro_defs.insert(Mark::root(), root_def_id);
@@ -2998,7 +2998,7 @@ impl<'a> Resolver<'a> {
                 let prim = self.primitive_type_table.primitive_types[&path[0].node.name];
                 match prim {
                     TyUint(UintTy::U128) | TyInt(IntTy::I128) => {
-                        if !self.session.features.borrow().i128_type {
+                        if !self.session.features_untracked().i128_type {
                             emit_feature_err(&self.session.parse_sess,
                                                 "i128_type", span, GateIssue::Language,
                                                 "128-bit type is unstable");
@@ -3089,7 +3089,7 @@ impl<'a> Resolver<'a> {
                     let prev_name = path[0].node.name;
                     if prev_name == keywords::Extern.name() ||
                        prev_name == keywords::CrateRoot.name() &&
-                       self.session.features.borrow().extern_absolute_paths {
+                       self.session.features_untracked().extern_absolute_paths {
                         // `::extern_crate::a::b`
                         let crate_id = self.crate_loader.resolve_crate_from_path(name, ident.span);
                         let crate_root =

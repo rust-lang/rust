@@ -289,11 +289,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ) {
         debug!("report_region_errors(): {} errors to start", errors.len());
 
-        if will_later_be_reported_by_nll && self.tcx.sess.nll() {
+        if will_later_be_reported_by_nll && self.tcx.nll() {
             // With `#![feature(nll)]`, we want to present a nice user
             // experience, so don't even mention the errors from the
             // AST checker.
-            if self.tcx.sess.features.borrow().nll {
+            if self.tcx.features().nll {
                 return;
             }
 

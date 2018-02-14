@@ -535,7 +535,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         err.span_label(borrow_span, "borrowed value does not live long enough");
         err.span_label(drop_span, "borrowed value only lives until here");
 
-        if !self.tcx.sess.nll() {
+        if !self.tcx.nll() {
             self.tcx.note_and_explain_region(
                 scope_tree,
                 &mut err,
@@ -572,7 +572,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         err.span_label(proper_span, "temporary value does not live long enough");
         err.span_label(drop_span, "temporary value only lives until here");
 
-        if !self.tcx.sess.nll() {
+        if !self.tcx.nll() {
             self.tcx.note_and_explain_region(
                 scope_tree,
                 &mut err,

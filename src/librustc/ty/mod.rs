@@ -2335,7 +2335,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Returns true if the impls are the same polarity and are implementing
     /// a trait which contains no items
     pub fn impls_are_allowed_to_overlap(self, def_id1: DefId, def_id2: DefId) -> bool {
-        if !self.sess.features.borrow().overlapping_marker_traits {
+        if !self.features().overlapping_marker_traits {
             return false;
         }
         let trait1_is_empty = self.impl_trait_ref(def_id1)

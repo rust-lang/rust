@@ -14,7 +14,7 @@ use dep_graph::DepGraph;
 use dep_graph::{DepNode, DepConstructor};
 use errors::DiagnosticBuilder;
 use session::Session;
-use session::config::OutputFilenames;
+use session::config::{BorrowckMode, OutputFilenames};
 use middle;
 use hir::{TraitCandidate, HirId, ItemLocalId};
 use hir::def::{Def, Export};
@@ -71,6 +71,7 @@ use syntax::abi;
 use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
 use syntax::codemap::MultiSpan;
+use syntax::feature_gate;
 use syntax::symbol::{Symbol, keywords};
 use syntax_pos::Span;
 
@@ -1255,6 +1256,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.all_crate_nums(LOCAL_CRATE)
     }
 
+    pub fn features(self) -> Lrc<feature_gate::Features> {
+        self.features_query(LOCAL_CRATE)
+    }
+
     pub fn def_key(self, id: DefId) -> hir_map::DefKey {
         if id.is_local() {
             self.hir.def_key(id)
@@ -1362,6 +1367,53 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.on_disk_query_result_cache.serialize(self.global_tcx(), encoder)
     }
 
+    /// If true, we should use NLL-style region checking instead of
+    /// lexical style.
+    pub fn nll(self) -> bool {
+        self.features().nll || self.sess.opts.debugging_opts.nll
+    }
+
+    /// If true, we should use the MIR-based borrowck (we may *also* use
+    /// the AST-based borrowck).
+    pub fn use_mir(self) -> bool {
+        self.borrowck_mode().use_mir()
+    }
+
+    /// If true, we should enable two-phase borrows checks. This is
+    /// done with either `-Ztwo-phase-borrows` or with
+    /// `#![feature(nll)]`.
+    pub fn two_phase_borrows(self) -> bool {
+        self.features().nll || self.sess.opts.debugging_opts.two_phase_borrows
+    }
+
+    /// What mode(s) of borrowck should we run? AST? MIR? both?
+    /// (Also considers the `#![feature(nll)]` setting.)
+    pub fn borrowck_mode(&self) -> BorrowckMode {
+        match self.sess.opts.borrowck_mode {
+            mode @ BorrowckMode::Mir |
+            mode @ BorrowckMode::Compare => mode,
+
+            mode @ BorrowckMode::Ast => {
+                if self.nll() {
+                    BorrowckMode::Mir
+                } else {
+                    mode
+                }
+            }
+
+        }
+    }
+
+    /// Should we emit EndRegion MIR statements? These are consumed by
+    /// MIR borrowck, but not when NLL is used. They are also consumed
+    /// by the validation stuff.
+    pub fn emit_end_regions(self) -> bool {
+        // FIXME(#46875) -- we should not emit end regions when NLL is enabled,
+        // but for now we can't stop doing so because it causes false positives
+        self.sess.opts.debugging_opts.emit_end_regions ||
+            self.sess.opts.debugging_opts.mir_emit_validate > 0 ||
+            self.use_mir()
+    }
 }
 
 impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
@@ -2020,7 +2072,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_diverging_default(self) -> Ty<'tcx> {
-        if self.sess.features.borrow().never_type {
+        if self.features().never_type {
             self.types.never
         } else {
             self.intern_tup(&[], true)
@@ -2395,13 +2447,17 @@ pub fn provide(providers: &mut ty::maps::Providers) {
     };
     providers.has_copy_closures = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
-        tcx.sess.features.borrow().copy_closures
+        tcx.features().copy_closures
     };
     providers.has_clone_closures = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
-        tcx.sess.features.borrow().clone_closures
+        tcx.features().clone_closures
     };
     providers.fully_normalize_monormophic_ty = |tcx, ty| {
         tcx.fully_normalize_associated_types_in(&ty)
+    };
+    providers.features_query = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        Lrc::new(tcx.sess.features_untracked().clone())
     };
 }

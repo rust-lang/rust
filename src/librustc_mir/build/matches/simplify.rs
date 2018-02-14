@@ -113,7 +113,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             PatternKind::Variant { adt_def, substs, variant_index, ref subpatterns } => {
                 let irrefutable = adt_def.variants.iter().enumerate().all(|(i, v)| {
                     i == variant_index || {
-                        self.hir.tcx().sess.features.borrow().never_type &&
+                        self.hir.tcx().features().never_type &&
                         self.hir.tcx().is_variant_uninhabited_from_all_modules(v, substs)
                     }
                 });
