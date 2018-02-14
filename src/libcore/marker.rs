@@ -65,11 +65,11 @@ impl<T: ?Sized> !Send for *mut T { }
 ///
 /// The one exception is the implicit `Self` type of a trait. A trait does not
 /// have an implicit `Sized` bound as this is incompatible with [trait object]s
-/// where, by definition, one cannot know the size of all possible
-/// implementations of the trait.
+/// where, by definition, the trait needs to work with all possible implementors,
+/// and thus could be any size.
 ///
 /// Although Rust will let you bind `Sized` to a trait, you won't
-/// be able to use it as a trait object later:
+/// be able to use it to form a trait object later:
 ///
 /// ```
 /// # #![allow(unused_variables)]
