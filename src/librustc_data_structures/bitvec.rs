@@ -10,16 +10,19 @@
 
 use std::iter::FromIterator;
 
+type Word = u128;
+const WORD_BITS: usize = 128;
+
 /// A very simple BitVector type.
 #[derive(Clone, Debug, PartialEq)]
 pub struct BitVector {
-    data: Vec<u64>,
+    data: Vec<Word>,
 }
 
 impl BitVector {
     #[inline]
     pub fn new(num_bits: usize) -> BitVector {
-        let num_words = u64s(num_bits);
+        let num_words = words(num_bits);
         BitVector { data: vec![0; num_words] }
     }
 
@@ -78,7 +81,7 @@ impl BitVector {
 
     #[inline]
     pub fn grow(&mut self, num_bits: usize) {
-        let num_words = u64s(num_bits);
+        let num_words = words(num_bits);
         if self.data.len() < num_words {
             self.data.resize(num_words, 0)
         }
@@ -96,8 +99,8 @@ impl BitVector {
 }
 
 pub struct BitVectorIter<'a> {
-    iter: ::std::slice::Iter<'a, u64>,
-    current: u64,
+    iter: ::std::slice::Iter<'a, Word>,
+    current: Word,
     idx: usize,
 }
 
@@ -107,10 +110,10 @@ impl<'a> Iterator for BitVectorIter<'a> {
         while self.current == 0 {
             self.current = if let Some(&i) = self.iter.next() {
                 if i == 0 {
-                    self.idx += 64;
+                    self.idx += WORD_BITS;
                     continue;
                 } else {
-                    self.idx = u64s(self.idx) * 64;
+                    self.idx = words(self.idx) * WORD_BITS;
                     i
                 }
             } else {
@@ -129,9 +132,9 @@ impl FromIterator<bool> for BitVector {
     fn from_iter<I>(iter: I) -> BitVector where I: IntoIterator<Item=bool> {
         let iter = iter.into_iter();
         let (len, _) = iter.size_hint();
-        // Make the minimum length for the bitvector 64 bits since that's
+        // Make the minimum length for the bitvector WORD_BITS bits since that's
         // the smallest non-zero size anyway.
-        let len = if len < 64 { 64 } else { len };
+        let len = if len < WORD_BITS { WORD_BITS } else { len };
         let mut bv = BitVector::new(len);
         for (idx, val) in iter.enumerate() {
             if idx > len {
@@ -152,26 +155,26 @@ impl FromIterator<bool> for BitVector {
 #[derive(Clone, Debug)]
 pub struct BitMatrix {
     columns: usize,
-    vector: Vec<u64>,
+    vector: Vec<Word>,
 }
 
 impl BitMatrix {
     /// Create a new `rows x columns` matrix, initially empty.
     pub fn new(rows: usize, columns: usize) -> BitMatrix {
         // For every element, we need one bit for every other
-        // element. Round up to an even number of u64s.
-        let u64s_per_row = u64s(columns);
+        // element. Round up to an even number of words.
+        let words_per_row = words(columns);
         BitMatrix {
             columns,
-            vector: vec![0; rows * u64s_per_row],
+            vector: vec![0; rows * words_per_row],
         }
     }
 
     /// The range of bits for a given row.
     fn range(&self, row: usize) -> (usize, usize) {
-        let u64s_per_row = u64s(self.columns);
-        let start = row * u64s_per_row;
-        (start, start + u64s_per_row)
+        let words_per_row = words(self.columns);
+        let start = row * words_per_row;
+        (start, start + words_per_row)
     }
 
     /// Sets the cell at `(row, column)` to true. Put another way, add
@@ -208,12 +211,12 @@ impl BitMatrix {
         let mut result = Vec::with_capacity(self.columns);
         for (base, (i, j)) in (a_start..a_end).zip(b_start..b_end).enumerate() {
             let mut v = self.vector[i] & self.vector[j];
-            for bit in 0..64 {
+            for bit in 0..WORD_BITS {
                 if v == 0 {
                     break;
                 }
                 if v & 0x1 != 0 {
-                    result.push(base * 64 + bit);
+                    result.push(base * WORD_BITS + bit);
                 }
                 v >>= 1;
             }
@@ -255,14 +258,14 @@ impl BitMatrix {
 }
 
 #[inline]
-fn u64s(elements: usize) -> usize {
-    (elements + 63) / 64
+fn words(elements: usize) -> usize {
+    (elements + WORD_BITS - 1) / WORD_BITS
 }
 
 #[inline]
-fn word_mask(index: usize) -> (usize, u64) {
-    let word = index / 64;
-    let mask = 1 << (index % 64);
+fn word_mask(index: usize) -> (usize, Word) {
+    let word = index / WORD_BITS;
+    let mask = 1 << (index % WORD_BITS);
     (word, mask)
 }
 
