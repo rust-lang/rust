@@ -1508,7 +1508,7 @@ impl<'gcx: 'tcx, 'tcx> GlobalCtxt<'gcx> {
 /// pointer differs. The latter case is possible if a primitive type,
 /// e.g. `()` or `u8`, was interned in a different context.
 pub trait Lift<'tcx> {
-    type Lifted;
+    type Lifted: 'tcx;
     fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted>;
 }
 
