@@ -436,6 +436,9 @@ impl DepKind {
 }
 
 define_dep_nodes!( <'tcx>
+    // We use this for most things when incr. comp. is turned off.
+    [] Null,
+
     // Represents the `Krate` as a whole (the `hir::Krate` value) (as
     // distinct from the krate module). This is basically a hash of
     // the entire krate, so if you read from `Krate` (e.g., by calling
@@ -605,8 +608,8 @@ define_dep_nodes!( <'tcx>
     [input] MissingExternCrateItem(CrateNum),
     [input] UsedCrateSource(CrateNum),
     [input] PostorderCnums,
-    [input] HasCloneClosures(CrateNum),
-    [input] HasCopyClosures(CrateNum),
+    [] HasCloneClosures(CrateNum),
+    [] HasCopyClosures(CrateNum),
 
     // This query is not expected to have inputs -- as a result, it's
     // not a good candidate for "replay" because it's essentially a
@@ -630,8 +633,6 @@ define_dep_nodes!( <'tcx>
     [] CompileCodegenUnit(InternedString),
     [input] OutputFilenames,
     [anon] NormalizeTy,
-    // We use this for most things when incr. comp. is turned off.
-    [] Null,
 
     [] SubstituteNormalizeAndTestPredicates { key: (DefId, &'tcx Substs<'tcx>) },
 
@@ -642,6 +643,7 @@ define_dep_nodes!( <'tcx>
 
     [] GetSymbolExportLevel(DefId),
 
+    [input] Features,
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {

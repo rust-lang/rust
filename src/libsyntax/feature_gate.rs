@@ -62,6 +62,7 @@ macro_rules! declare_features {
             &[$((stringify!($feature), $ver, $issue, set!($feature))),+];
 
         /// A set of features to be used by later passes.
+        #[derive(Clone)]
         pub struct Features {
             /// `#![feature]` attrs for stable language features, for error reporting
             pub declared_stable_lang_features: Vec<(Symbol, Span)>,
@@ -77,6 +78,12 @@ macro_rules! declare_features {
                     declared_lib_features: Vec::new(),
                     $($feature: false),+
                 }
+            }
+
+            pub fn walk_feature_fields<F>(&self, mut f: F)
+                where F: FnMut(&str, bool)
+            {
+                $(f(stringify!($feature), self.$feature);)+
             }
         }
     };
