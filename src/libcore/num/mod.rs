@@ -255,6 +255,9 @@ $EndFeature, "
         ///
         /// # Examples
         ///
+        /// Please note that this example is shared between integer types.
+        /// Which explains why `i64` is used here.
+        ///
         /// Basic usage:
         ///
         /// ```
@@ -277,6 +280,9 @@ $EndFeature, "
         ///
         /// # Examples
         ///
+        /// Please note that this example is shared between integer types.
+        /// Which explains why `i64` is used here.
+        ///
         /// Basic usage:
         ///
         /// ```
@@ -294,6 +300,9 @@ $EndFeature, "
         /// Reverses the byte order of the integer.
         ///
         /// # Examples
+        ///
+        /// Please note that this example is shared between integer types.
+        /// Which explains why `i16` is used here.
         ///
         /// Basic usage:
         ///
@@ -1362,13 +1371,13 @@ impl i128 {
 #[cfg(target_pointer_width = "16")]
 #[lang = "isize"]
 impl isize {
-    int_impl! { isize, i16, u16, 16, "", "" }
+    int_impl! { isize, i16, u16, 16, -32768, 32767, "", "" }
 }
 
 #[cfg(target_pointer_width = "32")]
 #[lang = "isize"]
 impl isize {
-    int_impl! { isize, i32, u32, 32, "", "" }
+    int_impl! { isize, i32, u32, 32, -2147483648, 2147483647, "", "" }
 }
 
 #[cfg(target_pointer_width = "64")]
@@ -1477,22 +1486,23 @@ Basic usage:
             }
         }
 
-        /// Returns the number of leading zeros in the binary representation
-        /// of `self`.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// let n = 0b0101000u16;
-        ///
-        /// assert_eq!(n.leading_zeros(), 10);
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[inline]
-        pub fn leading_zeros(self) -> u32 {
-            unsafe { intrinsics::ctlz(self as $ActualT) as u32 }
+        doc_comment! {
+            concat!("Returns the number of leading zeros in the binary representation of `self`.
+
+# Examples
+
+Basic usage:
+
+```
+", $Feature, "let n = ", stringify!($SelfT), "::max_value() >> 2;
+
+assert_eq!(n.leading_zeros(), 2);", $EndFeature, "
+```"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[inline]
+            pub fn leading_zeros(self) -> u32 {
+                unsafe { intrinsics::ctlz(self as $ActualT) as u32 }
+            }
         }
 
         doc_comment! {
@@ -1537,6 +1547,9 @@ assert_eq!(n.trailing_zeros(), 3);", $EndFeature, "
         ///
         /// Basic usage:
         ///
+        /// Please note that this example is shared between integer types.
+        /// Which explains why `u64` is used here.
+        ///
         /// ```
         /// let n = 0x0123456789ABCDEFu64;
         /// let m = 0x3456789ABCDEF012u64;
@@ -1561,6 +1574,9 @@ assert_eq!(n.trailing_zeros(), 3);", $EndFeature, "
         ///
         /// Basic usage:
         ///
+        /// Please note that this example is shared between integer types.
+        /// Which explains why `u64` is used here.
+        ///
         /// ```
         /// let n = 0x0123456789ABCDEFu64;
         /// let m = 0xDEF0123456789ABCu64;
@@ -1580,6 +1596,9 @@ assert_eq!(n.trailing_zeros(), 3);", $EndFeature, "
         /// # Examples
         ///
         /// Basic usage:
+        ///
+        /// Please note that this example is shared between integer types.
+        /// Which explains why `u16` is used here.
         ///
         /// ```
         /// let n: u16 = 0b0000000_01010101;
@@ -1985,6 +2004,9 @@ $EndFeature, "
         ///
         /// Basic usage:
         ///
+        /// Please note that this example is shared between integer types.
+        /// Which explains why `u8` is used here.
+        ///
         /// ```
         /// assert_eq!(10u8.wrapping_mul(12), 120);
         /// assert_eq!(25u8.wrapping_mul(12), 44);
@@ -2053,6 +2075,9 @@ Basic usage:
         /// # Examples
         ///
         /// Basic usage:
+        ///
+        /// Please note that this example is shared between integer types.
+        /// Which explains why `i8` is used here.
         ///
         /// ```
         /// assert_eq!(100i8.wrapping_neg(), -100);
@@ -2187,7 +2212,10 @@ $EndFeature, "
         ///
         /// # Examples
         ///
-        /// Basic usage
+        /// Basic usage:
+        ///
+        /// Please note that this example is shared between integer types.
+        /// Which explains why `u32` is used here.
         ///
         /// ```
         /// assert_eq!(5u32.overflowing_mul(2), (10, false));
