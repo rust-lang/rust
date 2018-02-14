@@ -9,7 +9,7 @@ note: lint level defined here
    |
 11 | #![deny(improper_ctypes)]
    |         ^^^^^^^^^^^^^^^
-   = help: consider adding a #[repr(C)] attribute to this struct
+   = help: consider adding a #[repr(C)] or #[repr(transparent)] attribute to this struct
 
 error: `extern` block uses type `Foo` which is not FFI-safe: this struct has unspecified layout
   --> $DIR/lint-ctypes.rs:55:28
@@ -17,7 +17,7 @@ error: `extern` block uses type `Foo` which is not FFI-safe: this struct has uns
 55 |     pub fn ptr_type2(size: *const Foo); //~ ERROR: uses type `Foo`
    |                            ^^^^^^^^^^
    |
-   = help: consider adding a #[repr(C)] attribute to this struct
+   = help: consider adding a #[repr(C)] or #[repr(transparent)] attribute to this struct
 
 error: `extern` block uses type `[u32]` which is not FFI-safe: slices have no C equivalent
   --> $DIR/lint-ctypes.rs:56:26
@@ -41,7 +41,7 @@ error: `extern` block uses type `std::boxed::Box<u32>` which is not FFI-safe: th
 58 |     pub fn box_type(p: Box<u32>); //~ ERROR uses type `std::boxed::Box<u32>`
    |                        ^^^^^^^^
    |
-   = help: consider adding a #[repr(C)] attribute to this struct
+   = help: consider adding a #[repr(C)] or #[repr(transparent)] attribute to this struct
 
 error: `extern` block uses type `char` which is not FFI-safe: the `char` type has no C equivalent
   --> $DIR/lint-ctypes.rs:59:25
@@ -129,7 +129,7 @@ error: `extern` block uses type `std::boxed::Box<u32>` which is not FFI-safe: th
 71 |     pub fn fn_contained(p: RustBadRet); //~ ERROR: uses type `std::boxed::Box<u32>`
    |                            ^^^^^^^^^^
    |
-   = help: consider adding a #[repr(C)] attribute to this struct
+   = help: consider adding a #[repr(C)] or #[repr(transparent)] attribute to this struct
 
 error: `extern` block uses type `i128` which is not FFI-safe: 128-bit integers don't currently have a known stable ABI
   --> $DIR/lint-ctypes.rs:72:32
@@ -151,7 +151,7 @@ error: `extern` block uses type `std::boxed::Box<u32>` which is not FFI-safe: th
 74 |     pub fn transparent_fn(p: TransparentBadFn); //~ ERROR: uses type `std::boxed::Box<u32>`
    |                              ^^^^^^^^^^^^^^^^
    |
-   = help: consider adding a #[repr(C)] attribute to this struct
+   = help: consider adding a #[repr(C)] or #[repr(transparent)] attribute to this struct
 
 error: aborting due to 20 previous errors
 

@@ -425,7 +425,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             return FfiUnsafe {
                                 ty: ty,
                                 reason: "this struct has unspecified layout",
-                                help: Some("consider adding a #[repr(C)] attribute to this struct"),
+                                help: Some("consider adding a #[repr(C)] or #[repr(transparent)] \
+                                            attribute to this struct"),
                             };
                         }
 
