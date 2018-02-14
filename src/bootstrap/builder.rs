@@ -95,7 +95,7 @@ pub struct RunConfig<'a> {
     pub builder: &'a Builder<'a>,
     pub host: Interned<String>,
     pub target: Interned<String>,
-    pub path: &'a Path,
+    pub path: PathBuf,
 }
 
 struct StepDescription {
@@ -114,6 +114,10 @@ struct PathSet {
 }
 
 impl PathSet {
+    fn empty() -> PathSet {
+        PathSet { set: BTreeSet::new() }
+    }
+
     fn one<P: Into<PathBuf>>(path: P) -> PathSet {
         let mut set = BTreeSet::new();
         set.insert(path.into());
@@ -124,8 +128,8 @@ impl PathSet {
         self.set.iter().any(|p| p.ends_with(needle))
     }
 
-    fn path(&self) -> &Path {
-        self.set.iter().next().unwrap()
+    fn path(&self, builder: &Builder) -> PathBuf {
+        self.set.iter().next().unwrap_or(&builder.build.src).to_path_buf()
     }
 }
 
@@ -174,7 +178,7 @@ impl StepDescription {
             for target in targets {
                 let run = RunConfig {
                     builder,
-                    path: pathset.path(),
+                    path: pathset.path(builder),
                     host: *host,
                     target: *target,
                 };
@@ -278,7 +282,8 @@ impl<'a> ShouldRun<'a> {
     }
 
     // allows being more explicit about why should_run in Step returns the value passed to it
-    pub fn never(self) -> ShouldRun<'a> {
+    pub fn never(mut self) -> ShouldRun<'a> {
+        self.paths.insert(PathSet::empty());
         self
     }
 
