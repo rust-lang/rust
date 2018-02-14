@@ -18,9 +18,6 @@ struct WellFormed<Z = Foo<i32, i32>>(Z);
 struct WellFormedNoBounds<Z:?Sized = Foo<i32, i32>>(Z);
 //~^ error: the trait bound `i32: std::iter::FromIterator<i32>` is not satisfied [E0277]
 
-struct WellFormedProjection<A, T=<A as Iterator>::Item>(A, T);
-//~^ error: the trait bound `A: std::iter::Iterator` is not satisfied [E0277]
-
 struct Bounds<T:Copy=String>(T);
 //~^ error: the trait bound `std::string::String: std::marker::Copy` is not satisfied [E0277]
 

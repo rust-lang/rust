@@ -363,13 +363,16 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
         let generics = self.tcx.generics_of(def_id);
         let is_our_default = |def: &ty::TypeParameterDef|
                                 def.has_default && def.index >= generics.parent_count() as u32;
-        let defaulted_params = generics.types.iter().cloned().filter(&is_our_default);
-        // Check that defaults are well-formed. See test `type-check-defaults.rs`.
+
+        // Check that concrete defaults are well-formed. See test `type-check-defaults.rs`.
         // For example this forbids the declaration:
         // struct Foo<T = Vec<[u32]>> { .. }
         // Here the default `Vec<[u32]>` is not WF because `[u32]: Sized` does not hold.
-        for d in defaulted_params.map(|p| p.def_id) {
-            fcx.register_wf_obligation(fcx.tcx.type_of(d), fcx.tcx.def_span(d), self.code.clone());
+        for d in generics.types.iter().cloned().filter(is_our_default).map(|p| p.def_id) {
+            let ty = fcx.tcx.type_of(d);
+            if !ty.needs_subst() {
+                fcx.register_wf_obligation(ty, fcx.tcx.def_span(d), self.code.clone());
+            }
         }
 
         // Check that trait predicates are WF when params are substituted by their defaults.
