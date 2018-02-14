@@ -616,6 +616,7 @@ where
     }
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
 // Creates an iterator over a list's items with associated comments.
 pub fn itemize_list<'a, T, I, F1, F2, F3>(
     codemap: &'a CodeMap,

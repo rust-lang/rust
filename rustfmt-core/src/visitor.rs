@@ -200,7 +200,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
                 let snippet = self.snippet(mk_sp(
                     self.last_pos,
-                    attr_lo.unwrap_or(first_stmt.span.lo()),
+                    attr_lo.unwrap_or_else(|| first_stmt.span.lo()),
                 ));
                 let len = CommentCodeSlices::new(snippet)
                     .nth(0)
@@ -568,6 +568,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         self.buffer.push_str(s);
     }
 
+    #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
     fn push_rewrite_inner(&mut self, span: Span, rewrite: Option<String>) {
         if let Some(ref s) = rewrite {
             self.push_str(s);
