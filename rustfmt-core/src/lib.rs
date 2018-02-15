@@ -564,35 +564,45 @@ pub fn format_code_block(code_snippet: &str, config: &Config) -> Option<String> 
     // Wrap the given code block with `fn main()` if it does not have one.
     let fn_main_prefix = "fn main() {\n";
     let snippet = fn_main_prefix.to_owned() + code_snippet + "\n}";
+    let mut result = String::with_capacity(snippet.len());
+    let mut is_first = true;
 
     // Trim "fn main() {" on the first line and "}" on the last line,
     // then unindent the whole code block.
-    format_snippet(&snippet, config).map(|s| {
-        // 2 = "}\n"
-        s[fn_main_prefix.len()..s.len().checked_sub(2).unwrap_or(0)]
-            .lines()
-            .map(|line| {
-                if line.len() > config.tab_spaces() {
-                    // Make sure that the line has leading whitespaces.
-                    let indent_str =
-                        Indent::from_width(config, config.tab_spaces()).to_string(config);
-                    if line.starts_with(indent_str.as_ref()) {
-                        let offset = if config.hard_tabs() {
-                            1
-                        } else {
-                            config.tab_spaces()
-                        };
-                        &line[offset..]
-                    } else {
-                        line
-                    }
+    let formatted = format_snippet(&snippet, config)?;
+    // 2 = "}\n"
+    let block_len = formatted.len().checked_sub(2).unwrap_or(0);
+    for line in formatted[fn_main_prefix.len()..block_len].lines() {
+        if !is_first {
+            result.push('\n');
+        } else {
+            is_first = false;
+        }
+        let trimmed_line = if line.len() > config.max_width() {
+            // If there are lines that are larger than max width, we cannot tell
+            // whether we have succeeded but have some comments or strings that
+            // are too long, or we have failed to format code block. We will be
+            // conservative and just return `None` in this case.
+            return None;
+        } else if line.len() > config.tab_spaces() {
+            // Make sure that the line has leading whitespaces.
+            let indent_str = Indent::from_width(config, config.tab_spaces()).to_string(config);
+            if line.starts_with(indent_str.as_ref()) {
+                let offset = if config.hard_tabs() {
+                    1
                 } else {
-                    line
-                }
-            })
-            .collect::<Vec<_>>()
-            .join("\n")
-    })
+                    config.tab_spaces()
+                };
+                &line[offset..]
+            } else {
+                line
+            }
+        } else {
+            line
+        };
+        result.push_str(trimmed_line);
+    }
+    Some(result)
 }
 
 pub fn format_input<T: Write>(
@@ -779,6 +789,12 @@ mod test {
                         println!(\"hello, world\");\n\
                         }\n";
         assert!(test_format_inner(format_snippet, snippet, expected));
+    }
+
+    #[test]
+    fn test_format_code_block_fail() {
+        let code_block = "this_line_is_100_characters_long_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx(x, y, z);";
+        assert!(format_code_block(code_block, &Config::default()).is_none());
     }
 
     #[test]
