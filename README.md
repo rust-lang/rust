@@ -1,4 +1,4 @@
-# rustfmt [![Build Status](https://travis-ci.org/rust-lang-nursery/rustfmt.svg)](https://travis-ci.org/rust-lang-nursery/rustfmt) [![Build Status](https://ci.appveyor.com/api/projects/status/github/rust-lang-nursery/rustfmt?svg=true)](https://ci.appveyor.com/project/nrc/rustfmt) [![crates.io](https://img.shields.io/crates/v/rustfmt-nightly.svg)](https://crates.io/crates/rustfmt-nightly)
+# rustfmt [![Build Status](https://travis-ci.org/rust-lang-nursery/rustfmt.svg)](https://travis-ci.org/rust-lang-nursery/rustfmt) [![Build Status](https://ci.appveyor.com/api/projects/status/github/rust-lang-nursery/rustfmt?svg=true)](https://ci.appveyor.com/project/nrc/rustfmt) [![crates.io](https://img.shields.io/crates/v/rustfmt-nightly.svg)](https://crates.io/crates/rustfmt-nightly) [![Travis Configuration Status](https://img.shields.io/travis/davidalber/rustfmt-travis.svg?label=travis%20example)](https://travis-ci.org/davidalber/rustfmt-travis)
 
 A tool for formatting Rust code according to style guidelines.
 
@@ -17,6 +17,11 @@ the `master` branch, however, this only supports nightly toolchains. If you use
 stable or beta Rust toolchains, you must use the Syntex version (which is likely
 to be a bit out of date). Version 0.1 of rustfmt-nightly is forked from version
 0.9 of the syntex branch.
+
+You can use rustfmt in Travis CI builds. We provide a minimal Travis CI
+configuration (see [here](#checking-style-on-a-ci-server)) and verify its status
+using another repository. The status of that repository's build is reported by
+the "travis example" badge above.
 
 
 ## Quick start
