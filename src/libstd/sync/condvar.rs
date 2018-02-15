@@ -244,6 +244,8 @@ impl Condvar {
     /// # Examples
     ///
     /// ```
+    /// #![feature(wait_until)]
+    ///
     /// use std::sync::{Arc, Mutex, Condvar};
     /// use std::thread;
     ///
@@ -261,7 +263,7 @@ impl Condvar {
     /// // Wait for the thread to start up.
     /// let &(ref lock, ref cvar) = &*pair;
     /// // As long as the value inside the `Mutex` is false, we wait.
-    /// cvar.wait_until(lock.lock().unwrap(), |started| { started });
+    /// let _guard = cvar.wait_until(lock.lock().unwrap(), |started| { *started }).unwrap();
     /// ```
     #[unstable(feature = "wait_until", issue = "47960")]
     pub fn wait_until<'a, T, F>(&self, mut guard: MutexGuard<'a, T>,
@@ -445,6 +447,8 @@ impl Condvar {
     /// # Examples
     ///
     /// ```
+    /// #![feature(wait_timeout_until)]
+    ///
     /// use std::sync::{Arc, Mutex, Condvar};
     /// use std::thread;
     /// use std::time::Duration;
@@ -462,8 +466,8 @@ impl Condvar {
     ///
     /// // wait for the thread to start up
     /// let &(ref lock, ref cvar) = &*pair;
-    /// let result = cvar.wait_timeout_until(lock, Duration::from_millis(100), |started| {
-    ///     started
+    /// let result = cvar.wait_timeout_until(lock.lock().unwrap(), Duration::from_millis(100), |started| {
+    ///     *started
     /// }).unwrap();
     /// if result.1.timed_out() {
     ///     // timed-out without the condition ever evaluating to true.
@@ -613,6 +617,7 @@ impl Drop for Condvar {
 
 #[cfg(test)]
 mod tests {
+    /// #![feature(wait_until)]
     use sync::mpsc::channel;
     use sync::{Condvar, Mutex, Arc};
     use sync::atomic::{AtomicBool, Ordering};
@@ -699,9 +704,9 @@ mod tests {
         // Wait for the thread to start up.
         let &(ref lock, ref cvar) = &*pair;
         let guard = cvar.wait_until(lock.lock().unwrap(), |started| {
-            started
+            *started
         });
-        assert!(*guard);
+        assert!(*guard.unwrap());
     }
 
     #[test]
@@ -730,7 +735,7 @@ mod tests {
         let c = Arc::new(Condvar::new());
 
         let g = m.lock().unwrap();
-        let (_g, wait) = c.wait_timeout_until(g, Duration::from_millis(1), || { false }).unwrap();
+        let (_g, wait) = c.wait_timeout_until(g, Duration::from_millis(1), |_| { false }).unwrap();
         // no spurious wakeups. ensure it timed-out
         assert!(wait.timed_out());
     }
@@ -742,7 +747,7 @@ mod tests {
         let c = Arc::new(Condvar::new());
 
         let g = m.lock().unwrap();
-        let (_g, wait) = c.wait_timeout_until(g, Duration::from_millis(0), || { true }).unwrap();
+        let (_g, wait) = c.wait_timeout_until(g, Duration::from_millis(0), |_| { true }).unwrap();
         // ensure it didn't time-out even if we were not given any time.
         assert!(!wait.timed_out());
     }
@@ -753,15 +758,16 @@ mod tests {
         let pair = Arc::new((Mutex::new(false), Condvar::new()));
         let pair_copy = pair.clone();
 
+        let &(ref m, ref c) = &*pair;
         let g = m.lock().unwrap();
-        let t = thread::spawn(move || {
-            let &(ref lock, ref cvar) = &*pair2;
+        let _t = thread::spawn(move || {
+            let &(ref lock, ref cvar) = &*pair_copy;
             let mut started = lock.lock().unwrap();
             thread::sleep(Duration::from_millis(1));
-            started = true;
+            *started = true;
             cvar.notify_one();
         });
-        let (g2, wait) = c.wait_timeout_until(g, Duration::from_millis(u64::MAX), |&notified| {
+        let (g2, wait) = c.wait_timeout_until(g, Duration::from_millis(u64::MAX), |&mut notified| {
             notified
         }).unwrap();
         // ensure it didn't time-out even if we were not given any time.
