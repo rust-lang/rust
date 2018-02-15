@@ -332,6 +332,10 @@ impl Step for Rustdoc {
             builder.compiler(target_compiler.stage - 1, builder.build.build)
         };
 
+        // we need the full rustc compiler for both the build compiler and the target. proc macro
+        // libraries are required for the build compiler, whereas we need the target compiler to be
+        // built because rustdoc links to it
+        builder.ensure(compile::Rustc { compiler: build_compiler, target: build_compiler.host });
         builder.ensure(compile::Rustc { compiler: build_compiler, target });
 
         let _folder = build.fold_output(|| format!("stage{}-rustdoc", target_compiler.stage));

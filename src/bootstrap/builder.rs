@@ -645,6 +645,7 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_SNAPSHOT", &self.initial_rustc)
                  .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_snapshot_libdir());
         } else {
+            self.ensure(compile::Std { compiler, target: compiler.host });
             cargo.env("RUSTC_SNAPSHOT", self.rustc(compiler))
                  .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_libdir(compiler));
         }
