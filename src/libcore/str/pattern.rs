@@ -324,7 +324,7 @@ unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
                 // the second byte when searching for the third.
                 //
                 // However, this is totally okay. While we have the invariant that
-                // self.finger is on a UTF8 boundary, this invariant is not relid upon
+                // self.finger is on a UTF8 boundary, this invariant is not relied upon
                 // within this method (it is relied upon in CharSearcher::next()).
                 //
                 // We only exit this method when we reach the end of the string, or if we
