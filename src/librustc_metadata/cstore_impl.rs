@@ -175,7 +175,10 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     is_sanitizer_runtime => { cdata.is_sanitizer_runtime(tcx.sess) }
     is_profiler_runtime => { cdata.is_profiler_runtime(tcx.sess) }
     panic_strategy => { cdata.panic_strategy() }
-    extern_crate => { Lrc::new(cdata.extern_crate.get()) }
+    extern_crate => {
+        let r = Lrc::new(*cdata.extern_crate.lock());
+        r
+    }
     is_no_builtins => { cdata.is_no_builtins(tcx.sess) }
     impl_defaultness => { cdata.get_impl_defaultness(def_id.index) }
     reachable_non_generics => {
@@ -225,7 +228,10 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         cdata.is_dllimport_foreign_item(def_id.index)
     }
     visibility => { cdata.get_visibility(def_id.index) }
-    dep_kind => { cdata.dep_kind.get() }
+    dep_kind => {
+        let r = *cdata.dep_kind.lock();
+        r
+    }
     crate_name => { cdata.name }
     item_children => {
         let mut result = vec![];
@@ -241,10 +247,11 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
 
     missing_extern_crate_item => {
-        match cdata.extern_crate.get() {
+        let r = match *cdata.extern_crate.borrow() {
             Some(extern_crate) if !extern_crate.direct => true,
             _ => false,
-        }
+        };
+        r
     }
 
     used_crate_source => { Lrc::new(cdata.source.clone()) }
@@ -419,13 +426,16 @@ impl CrateStore for cstore::CStore {
 
     fn dep_kind_untracked(&self, cnum: CrateNum) -> DepKind
     {
-        self.get_crate_data(cnum).dep_kind.get()
+        let data = self.get_crate_data(cnum);
+        let r = *data.dep_kind.lock();
+        r
     }
 
     fn export_macros_untracked(&self, cnum: CrateNum) {
         let data = self.get_crate_data(cnum);
-        if data.dep_kind.get() == DepKind::UnexportedMacrosOnly {
-            data.dep_kind.set(DepKind::MacrosOnly)
+        let mut dep_kind = data.dep_kind.lock();
+        if *dep_kind == DepKind::UnexportedMacrosOnly {
+            *dep_kind = DepKind::MacrosOnly;
         }
     }
 
