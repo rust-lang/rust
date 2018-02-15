@@ -26,7 +26,7 @@ extern crate unicode_segmentation;
 
 use std::collections::HashMap;
 use std::fmt;
-use std::io::{self, stdout, Write};
+use std::io::{self, stdout, BufRead, Write};
 use std::iter::repeat;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -721,6 +721,79 @@ pub fn format_input<T: Write>(
         }
         Err(e) => Err((e, summary)),
     }
+}
+
+/// A single span of changed lines, with 0 or more removed lines
+/// and a vector of 0 or more inserted lines.
+#[derive(Debug, PartialEq, Eq)]
+pub struct ModifiedChunk {
+    /// The first to be removed from the original text
+    pub line_number_orig: u32,
+    /// The number of lines which have been replaced
+    pub lines_removed: u32,
+    /// The new lines
+    pub lines: Vec<String>,
+}
+
+/// Set of changed sections of a file.
+#[derive(Debug, PartialEq, Eq)]
+pub struct ModifiedLines {
+    /// The set of changed chunks.
+    pub chunks: Vec<ModifiedChunk>,
+}
+
+/// The successful result of formatting via get_modified_lines().
+pub struct ModifiedLinesResult {
+    /// The high level summary details
+    pub summary: Summary,
+    /// The result Filemap
+    pub filemap: FileMap,
+    /// Map of formatting errors
+    pub report: FormatReport,
+    /// The sets of updated lines.
+    pub modified_lines: ModifiedLines,
+}
+
+/// Format a file and return a `ModifiedLines` data structure describing
+/// the changed ranges of lines.
+pub fn get_modified_lines(
+    input: Input,
+    config: &Config,
+) -> Result<ModifiedLinesResult, (io::Error, Summary)> {
+    let mut data = Vec::new();
+
+    let mut config = config.clone();
+    config.set().write_mode(config::WriteMode::Modified);
+    let (summary, filemap, formatreport) = format_input(input, &config, Some(&mut data))?;
+
+    let mut lines = data.lines();
+    let mut chunks = Vec::new();
+    while let Some(Ok(header)) = lines.next() {
+        // Parse the header line
+        let values: Vec<_> = header
+            .split(' ')
+            .map(|s| s.parse::<u32>().unwrap())
+            .collect();
+        assert_eq!(values.len(), 3);
+        let line_number_orig = values[0];
+        let lines_removed = values[1];
+        let num_added = values[2];
+        let mut added_lines = Vec::new();
+        for _ in 0..num_added {
+            added_lines.push(lines.next().unwrap().unwrap());
+        }
+        chunks.push(ModifiedChunk {
+            line_number_orig,
+            lines_removed,
+            lines: added_lines,
+        });
+    }
+    Ok(ModifiedLinesResult {
+        summary: summary,
+        filemap: filemap,
+        report: formatreport,
+        modified_lines: ModifiedLines { chunks },
+    })
 }
 
 #[derive(Debug)]

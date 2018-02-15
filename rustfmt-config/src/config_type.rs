@@ -107,7 +107,7 @@ macro_rules! create_config {
 
         // Macro hygiene won't allow us to make `set_$i()` methods on Config
         // for each item, so this struct is used to give the API to set values:
-        // `config.get().option(false)`. It's pretty ugly. Consider replacing
+        // `config.set().option(false)`. It's pretty ugly. Consider replacing
         // with `config.set_option(false)` if we ever get a stable/usable
         // `concat_idents!()`.
         pub struct ConfigSetter<'a>(&'a mut Config);

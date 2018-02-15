@@ -16,7 +16,7 @@ use std::path::Path;
 
 use checkstyle::{output_checkstyle_file, output_footer, output_header};
 use config::{Config, NewlineStyle, WriteMode};
-use rustfmt_diff::{make_diff, print_diff, Mismatch};
+use rustfmt_diff::{make_diff, output_modified, print_diff, Mismatch};
 use syntax::codemap::FileName;
 
 use FileRecord;
@@ -161,6 +161,15 @@ where
                     |line_num| format!("Diff in {} at line {}:", filename.display(), line_num),
                     config.color(),
                 );
+                return Ok(has_diff);
+            }
+        }
+        WriteMode::Modified => {
+            let filename = filename_to_path();
+            if let Ok((ori, fmt)) = source_and_formatted_text(text, filename, config) {
+                let mismatch = make_diff(&ori, &fmt, 0);
+                let has_diff = !mismatch.is_empty();
+                output_modified(out, mismatch);
                 return Ok(has_diff);
             }
         }

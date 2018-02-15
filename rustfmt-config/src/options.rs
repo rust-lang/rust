@@ -176,6 +176,8 @@ configuration_option_enum! { WriteMode:
     Plain,
     // Outputs a checkstyle XML file.
     Checkstyle,
+    // Output the changed lines (for internal value only)
+    Modified,
 }
 
 configuration_option_enum! { Color:
