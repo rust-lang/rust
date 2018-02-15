@@ -507,14 +507,18 @@ fn format_lines(
     report.file_error_map.insert(name.clone(), errors);
 }
 
-fn parse_input(
+fn parse_input<'sess>(
     input: Input,
-    parse_session: &ParseSess,
-) -> Result<ast::Crate, Option<DiagnosticBuilder>> {
+    parse_session: &'sess ParseSess,
+    config: &Config,
+) -> Result<ast::Crate, Option<DiagnosticBuilder<'sess>>> {
     let result = match input {
         Input::File(file) => {
             let mut parser = parse::new_parser_from_file(parse_session, &file);
             parser.cfg_mods = false;
+            if config.skip_children() {
+                parser.recurse_into_file_modules = false;
+            }
             parser.parse_crate_mod()
         }
         Input::Text(text) => {
@@ -524,6 +528,9 @@ fn parse_input(
                 text,
             );
             parser.cfg_mods = false;
+            if config.skip_children() {
+                parser.recurse_into_file_modules = false;
+            }
             parser.parse_crate_mod()
         }
     };
@@ -647,7 +654,7 @@ pub fn format_input<T: Write>(
         Input::Text(..) => FileName::Custom("stdin".to_owned()),
     };
 
-    let krate = match parse_input(input, &parse_session) {
+    let krate = match parse_input(input, &parse_session, config) {
         Ok(krate) => krate,
         Err(diagnostic) => {
             if let Some(mut diagnostic) = diagnostic {
