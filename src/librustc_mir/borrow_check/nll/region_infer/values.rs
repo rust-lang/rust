@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::rc::Rc;
-use rustc_data_structures::bitvec::BitMatrix;
+use rustc_data_structures::bitvec::SparseBitMatrix;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -132,7 +132,7 @@ impl RegionValueElements {
 }
 
 /// A newtype for the integers that represent one of the possible
-/// elements in a region. These are the rows in the `BitMatrix` that
+/// elements in a region. These are the rows in the `SparseBitMatrix` that
 /// is used to store the values of all regions. They have the following
 /// convention:
 ///
@@ -184,18 +184,18 @@ impl ToElementIndex for RegionElementIndex {
 }
 
 /// Stores the values for a set of regions. These are stored in a
-/// compact `BitMatrix` representation, with one row per region
+/// compact `SparseBitMatrix` representation, with one row per region
 /// variable. The columns consist of either universal regions or
 /// points in the CFG.
 #[derive(Clone)]
 pub(super) struct RegionValues {
     elements: Rc<RegionValueElements>,
-    matrix: BitMatrix,
+    matrix: SparseBitMatrix<RegionVid, RegionElementIndex>,
 
     /// If cause tracking is enabled, maps from a pair (r, e)
     /// consisting of a region `r` that contains some element `e` to
     /// the reason that the element is contained. There should be an
-    /// entry for every bit set to 1 in `BitMatrix`.
+    /// entry for every bit set to 1 in `SparseBitMatrix`.
     causes: Option<CauseMap>,
 }
 
@@ -214,7 +214,8 @@ impl RegionValues {
 
         Self {
             elements: elements.clone(),
-            matrix: BitMatrix::new(num_region_variables, elements.num_elements()),
+            matrix: SparseBitMatrix::new(RegionVid::new(num_region_variables),
+                                         RegionElementIndex::new(elements.num_elements())),
             causes: if track_causes.0 {
                 Some(CauseMap::default())
             } else {
@@ -238,7 +239,7 @@ impl RegionValues {
     where
         F: FnOnce(&CauseMap) -> Cause,
     {
-        if self.matrix.add(r.index(), i.index()) {
+        if self.matrix.add(r, i) {
             debug!("add(r={:?}, i={:?})", r, self.elements.to_element(i));
 
             if let Some(causes) = &mut self.causes {
@@ -289,7 +290,7 @@ impl RegionValues {
         constraint_location: Location,
         constraint_span: Span,
     ) -> bool {
-        // We could optimize this by improving `BitMatrix::merge` so
+        // We could optimize this by improving `SparseBitMatrix::merge` so
         // it does not always merge an entire row. That would
         // complicate causal tracking though.
         debug!(
@@ -315,7 +316,7 @@ impl RegionValues {
     /// True if the region `r` contains the given element.
     pub(super) fn contains<E: ToElementIndex>(&self, r: RegionVid, elem: E) -> bool {
         let i = self.elements.index(elem);
-        self.matrix.contains(r.index(), i.index())
+        self.matrix.contains(r, i)
     }
 
     /// Iterate over the value of the region `r`, yielding up element
@@ -326,8 +327,8 @@ impl RegionValues {
         r: RegionVid,
     ) -> impl Iterator<Item = RegionElementIndex> + 'a {
         self.matrix
-            .iter(r.index())
-            .map(move |i| RegionElementIndex::new(i))
+            .iter(r)
+            .map(move |i| i)
     }
 
     /// Returns just the universal regions that are contained in a given region's value.

@@ -8,7 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::collections::BTreeMap;
+use std::collections::btree_map::Entry;
+use std::marker::PhantomData;
 use std::iter::FromIterator;
+use indexed_vec::{Idx, IndexVec};
 
 type Word = u128;
 const WORD_BITS: usize = 128;
@@ -254,6 +258,199 @@ impl BitMatrix {
             current: 0,
             idx: 0,
         }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct SparseBitMatrix<R, C> where R: Idx, C: Idx {
+    vector: IndexVec<R, SparseBitSet<C>>,
+}
+
+impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
+    /// Create a new `rows x columns` matrix, initially empty.
+    pub fn new(rows: R, _columns: C) -> SparseBitMatrix<R, C> {
+        SparseBitMatrix {
+            vector: IndexVec::from_elem_n(SparseBitSet::new(), rows.index()),
+        }
+    }
+
+    /// Sets the cell at `(row, column)` to true. Put another way, insert
+    /// `column` to the bitset for `row`.
+    ///
+    /// Returns true if this changed the matrix, and false otherwise.
+    pub fn add(&mut self, row: R, column: C) -> bool {
+        self.vector[row].insert(column)
+    }
+
+    /// Do the bits from `row` contain `column`? Put another way, is
+    /// the matrix cell at `(row, column)` true?  Put yet another way,
+    /// if the matrix represents (transitive) reachability, can
+    /// `row` reach `column`?
+    pub fn contains(&self, row: R, column: C) -> bool {
+        self.vector[row].contains(column)
+    }
+
+    /// Add the bits from row `read` to the bits from row `write`,
+    /// return true if anything changed.
+    ///
+    /// This is used when computing transitive reachability because if
+    /// you have an edge `write -> read`, because in that case
+    /// `write` can reach everything that `read` can (and
+    /// potentially more).
+    pub fn merge(&mut self, read: R, write: R) -> bool {
+        let mut changed = false;
+
+        if read != write {
+            let (bit_set_read, bit_set_write) = self.vector.pick2_mut(read, write);
+
+            for read_val in bit_set_read.iter() {
+                changed = changed | bit_set_write.insert(read_val);
+            }
+        }
+
+        changed
+    }
+
+    /// Iterates through all the columns set to true in a given row of
+    /// the matrix.
+    pub fn iter<'a>(&'a self, row: R) -> impl Iterator<Item = C> + 'a {
+        self.vector[row].iter()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct SparseBitSet<I: Idx> {
+    chunk_bits: BTreeMap<u32, Word>,
+    _marker: PhantomData<I>,
+}
+
+#[derive(Copy, Clone)]
+pub struct SparseChunk<I> {
+    key: u32,
+    bits: Word,
+    _marker: PhantomData<I>,
+}
+
+impl<I: Idx> SparseChunk<I> {
+    pub fn one(index: I) -> Self {
+        let index = index.index();
+        let key_usize = index / 128;
+        let key = key_usize as u32;
+        assert_eq!(key as usize, key_usize);
+        SparseChunk {
+            key,
+            bits: 1 << (index % 128),
+            _marker: PhantomData
+        }
+    }
+
+    pub fn any(&self) -> bool {
+        self.bits != 0
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = I> {
+        let base = self.key as usize * 128;
+        let mut bits = self.bits;
+        (0..128).map(move |i| {
+            let current_bits = bits;
+            bits >>= 1;
+            (i, current_bits)
+        }).take_while(|&(_, bits)| bits != 0)
+          .filter_map(move |(i, bits)| {
+            if (bits & 1) != 0 {
+                Some(I::new(base + i))
+            } else {
+                None
+            }
+        })
+    }
+}
+
+impl<I: Idx> SparseBitSet<I> {
+    pub fn new() -> Self {
+        SparseBitSet {
+            chunk_bits: BTreeMap::new(),
+            _marker: PhantomData
+        }
+    }
+
+    pub fn capacity(&self) -> usize {
+        self.chunk_bits.len() * 128
+    }
+
+    pub fn contains_chunk(&self, chunk: SparseChunk<I>) -> SparseChunk<I> {
+        SparseChunk {
+            bits: self.chunk_bits.get(&chunk.key).map_or(0, |bits| bits & chunk.bits),
+            ..chunk
+        }
+    }
+
+    pub fn insert_chunk(&mut self, chunk: SparseChunk<I>) -> SparseChunk<I> {
+        if chunk.bits == 0 {
+            return chunk;
+        }
+        let bits = self.chunk_bits.entry(chunk.key).or_insert(0);
+        let old_bits = *bits;
+        let new_bits = old_bits | chunk.bits;
+        *bits = new_bits;
+        let changed = new_bits ^ old_bits;
+        SparseChunk {
+            bits: changed,
+            ..chunk
+        }
+    }
+
+    pub fn remove_chunk(&mut self, chunk: SparseChunk<I>) -> SparseChunk<I> {
+        if chunk.bits == 0 {
+            return chunk;
+        }
+        let changed = match self.chunk_bits.entry(chunk.key) {
+            Entry::Occupied(mut bits) => {
+                let old_bits = *bits.get();
+                let new_bits = old_bits & !chunk.bits;
+                if new_bits == 0 {
+                    bits.remove();
+                } else {
+                    bits.insert(new_bits);
+                }
+                new_bits ^ old_bits
+            }
+            Entry::Vacant(_) => 0
+        };
+        SparseChunk {
+            bits: changed,
+            ..chunk
+        }
+    }
+
+    pub fn clear(&mut self) {
+        self.chunk_bits.clear();
+    }
+
+    pub fn chunks<'a>(&'a self) -> impl Iterator<Item = SparseChunk<I>> + 'a {
+        self.chunk_bits.iter().map(|(&key, &bits)| {
+            SparseChunk {
+                key,
+                bits,
+                _marker: PhantomData
+            }
+        })
+    }
+
+    pub fn contains(&self, index: I) -> bool {
+        self.contains_chunk(SparseChunk::one(index)).any()
+    }
+
+    pub fn insert(&mut self, index: I) -> bool {
+        self.insert_chunk(SparseChunk::one(index)).any()
+    }
+
+    pub fn remove(&mut self, index: I) -> bool {
+        self.remove_chunk(SparseChunk::one(index)).any()
+    }
+
+    pub fn iter<'a>(&'a self) -> impl Iterator<Item = I> + 'a {
+        self.chunks().flat_map(|chunk| chunk.iter())
     }
 }
 
