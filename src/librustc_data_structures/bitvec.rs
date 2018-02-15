@@ -184,7 +184,7 @@ impl BitMatrix {
     /// Sets the cell at `(row, column)` to true. Put another way, add
     /// `column` to the bitset for `row`.
     ///
-    /// Returns true if this changed the matrix, and false otherwies.
+    /// Returns true if this changed the matrix, and false otherwise.
     pub fn add(&mut self, row: usize, column: usize) -> bool {
         let (start, _) = self.range(row);
         let (word, mask) = word_mask(column);
