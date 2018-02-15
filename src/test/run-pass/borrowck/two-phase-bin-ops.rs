@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // revisions: lxl nll
-//[lxl]compile-flags: -Z borrowck=mir -Z two-phase-borrows
 
 #![cfg_attr(nll, feature(nll))]
 
