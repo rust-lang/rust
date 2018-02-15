@@ -2,9 +2,9 @@
 
 There are many ways to contribute to Rustfmt. This document lays out what they
 are and has information for how to get started. If you have any questions about
-contributing or need help with anything, please ping nrc on irc, #rust-tools is
-probably the best channel. Feel free to also ask questions on issues, or file
-new issues specifically to get help.
+contributing or need help with anything, please ping nrc on irc, #rust-dev-tools
+on irc.mozilla.org is probably the best channel. Feel free to also ask questions
+on issues, or file new issues specifically to get help.
 
 
 ## Test and file issues
