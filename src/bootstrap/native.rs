@@ -157,6 +157,14 @@ impl Step for Llvm {
            .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
            .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
 
+        // By default, LLVM will automatically find OCaml and, if it finds it,
+        // install the LLVM bindings in LLVM_OCAML_INSTALL_PATH, which defaults
+        // to /usr/bin/ocaml.
+        // This causes problem for non-root builds of Rust. Side-step the issue
+        // by setting LLVM_OCAML_INSTALL_PATH to a relative path, so it installs
+        // in the prefix.
+        cfg.define("LLVM_OCAML_INSTALL_PATH",
+            env::var_os("LLVM_OCAML_INSTALL_PATH").unwrap_or_else(|| "usr/lib/ocaml".into()));
 
         // This setting makes the LLVM tools link to the dynamic LLVM library,
         // which saves both memory during parallel links and overall disk space

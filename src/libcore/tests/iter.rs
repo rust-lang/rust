@@ -1323,40 +1323,82 @@ fn test_range() {
 }
 
 #[test]
+fn test_range_exhaustion() {
+    let mut r = 10..10;
+    assert!(r.is_empty());
+    assert_eq!(r.next(), None);
+    assert_eq!(r.next_back(), None);
+    assert_eq!(r, 10..10);
+
+    let mut r = 10..12;
+    assert_eq!(r.next(), Some(10));
+    assert_eq!(r.next(), Some(11));
+    assert!(r.is_empty());
+    assert_eq!(r, 12..12);
+    assert_eq!(r.next(), None);
+
+    let mut r = 10..12;
+    assert_eq!(r.next_back(), Some(11));
+    assert_eq!(r.next_back(), Some(10));
+    assert!(r.is_empty());
+    assert_eq!(r, 10..10);
+    assert_eq!(r.next_back(), None);
+
+    let mut r = 100..10;
+    assert!(r.is_empty());
+    assert_eq!(r.next(), None);
+    assert_eq!(r.next_back(), None);
+    assert_eq!(r, 100..10);
+}
+
+#[test]
 fn test_range_inclusive_exhaustion() {
     let mut r = 10..=10;
     assert_eq!(r.next(), Some(10));
-    assert_eq!(r, 1..=0);
+    assert!(r.is_empty());
+    assert_eq!(r.next(), None);
+    assert_eq!(r.next(), None);
 
     let mut r = 10..=10;
     assert_eq!(r.next_back(), Some(10));
-    assert_eq!(r, 1..=0);
+    assert!(r.is_empty());
+    assert_eq!(r.next_back(), None);
 
     let mut r = 10..=12;
     assert_eq!(r.next(), Some(10));
     assert_eq!(r.next(), Some(11));
     assert_eq!(r.next(), Some(12));
-    assert_eq!(r, 1..=0);
+    assert!(r.is_empty());
+    assert_eq!(r.next(), None);
 
     let mut r = 10..=12;
     assert_eq!(r.next_back(), Some(12));
     assert_eq!(r.next_back(), Some(11));
     assert_eq!(r.next_back(), Some(10));
-    assert_eq!(r, 1..=0);
+    assert!(r.is_empty());
+    assert_eq!(r.next_back(), None);
 
     let mut r = 10..=12;
     assert_eq!(r.nth(2), Some(12));
-    assert_eq!(r, 1..=0);
+    assert!(r.is_empty());
+    assert_eq!(r.next(), None);
 
     let mut r = 10..=12;
     assert_eq!(r.nth(5), None);
-    assert_eq!(r, 1..=0);
+    assert!(r.is_empty());
+    assert_eq!(r.next(), None);
 
     let mut r = 100..=10;
+    assert_eq!(r.next(), None);
+    assert!(r.is_empty());
+    assert_eq!(r.next(), None);
     assert_eq!(r.next(), None);
     assert_eq!(r, 100..=10);
 
     let mut r = 100..=10;
+    assert_eq!(r.next_back(), None);
+    assert!(r.is_empty());
+    assert_eq!(r.next_back(), None);
     assert_eq!(r.next_back(), None);
     assert_eq!(r, 100..=10);
 }
@@ -1428,9 +1470,10 @@ fn test_range_inclusive_nth() {
     assert_eq!(r.nth(2), Some(15));
     assert_eq!(r, 16..=20);
     assert_eq!(r.is_empty(), false);
+    assert_eq!(ExactSizeIterator::is_empty(&r), false);
     assert_eq!(r.nth(10), None);
     assert_eq!(r.is_empty(), true);
-    assert_eq!(r, 1..=0);  // We may not want to document/promise this detail
+    assert_eq!(ExactSizeIterator::is_empty(&r), true);
 }
 
 #[test]
@@ -1514,11 +1557,11 @@ fn test_range_inclusive_folds() {
 
     let mut it = 10..=20;
     assert_eq!(it.try_fold(0, |a,b| Some(a+b)), Some(165));
-    assert_eq!(it, 1..=0);
+    assert!(it.is_empty());
 
     let mut it = 10..=20;
     assert_eq!(it.try_rfold(0, |a,b| Some(a+b)), Some(165));
-    assert_eq!(it, 1..=0);
+    assert!(it.is_empty());
 }
 
 #[test]
@@ -1547,6 +1590,51 @@ fn test_repeat_take() {
 fn test_repeat_take_collect() {
     let v: Vec<_> = repeat(42).take(3).collect();
     assert_eq!(v, vec![42, 42, 42]);
+}
+
+#[test]
+fn test_repeat_with() {
+    #[derive(PartialEq, Debug)]
+    struct NotClone(usize);
+    let mut it = repeat_with(|| NotClone(42));
+    assert_eq!(it.next(), Some(NotClone(42)));
+    assert_eq!(it.next(), Some(NotClone(42)));
+    assert_eq!(it.next(), Some(NotClone(42)));
+    assert_eq!(repeat_with(|| NotClone(42)).size_hint(), (usize::MAX, None));
+}
+
+#[test]
+fn test_repeat_with_rev() {
+    let mut curr = 1;
+    let mut pow2 = repeat_with(|| { let tmp = curr; curr *= 2; tmp })
+                    .rev().take(4);
+    assert_eq!(pow2.next(), Some(1));
+    assert_eq!(pow2.next(), Some(2));
+    assert_eq!(pow2.next(), Some(4));
+    assert_eq!(pow2.next(), Some(8));
+    assert_eq!(pow2.next(), None);
+}
+
+#[test]
+fn test_repeat_with_take() {
+    let mut it = repeat_with(|| 42).take(3);
+    assert_eq!(it.next(), Some(42));
+    assert_eq!(it.next(), Some(42));
+    assert_eq!(it.next(), Some(42));
+    assert_eq!(it.next(), None);
+    is_trusted_len(repeat_with(|| 42).take(3));
+    assert_eq!(repeat_with(|| 42).take(3).size_hint(), (3, Some(3)));
+    assert_eq!(repeat_with(|| 42).take(0).size_hint(), (0, Some(0)));
+    assert_eq!(repeat_with(|| 42).take(usize::MAX).size_hint(),
+               (usize::MAX, Some(usize::MAX)));
+}
+
+#[test]
+fn test_repeat_with_take_collect() {
+    let mut curr = 1;
+    let v: Vec<_> = repeat_with(|| { let tmp = curr; curr *= 2; tmp })
+                      .take(5).collect();
+    assert_eq!(v, vec![1, 2, 4, 8, 16]);
 }
 
 #[test]

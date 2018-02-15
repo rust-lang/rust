@@ -9,14 +9,15 @@
 // except according to those terms.
 
 use super::*;
-
 use dep_graph::{DepGraph, DepKind, DepNodeIndex};
+use hir::def_id::{LOCAL_CRATE, CrateNum};
 use hir::intravisit::{Visitor, NestedVisitorMap};
 use hir::svh::Svh;
 use middle::cstore::CrateStore;
 use session::CrateDisambiguator;
 use std::iter::repeat;
 use syntax::ast::{NodeId, CRATE_NODE_ID};
+use syntax::codemap::CodeMap;
 use syntax_pos::Span;
 
 use ich::StableHashingContext;
@@ -123,6 +124,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
     pub(super) fn finalize_and_compute_crate_hash(self,
                                                   crate_disambiguator: CrateDisambiguator,
                                                   cstore: &CrateStore,
+                                                  codemap: &CodeMap,
                                                   commandline_args_hash: u64)
                                                   -> (Vec<MapEntry<'hir>>, Svh) {
         let mut node_hashes: Vec<_> = self
@@ -147,11 +149,25 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             (name1, dis1).cmp(&(name2, dis2))
         });
 
+        // We hash the final, remapped names of all local source files so we
+        // don't have to include the path prefix remapping commandline args.
+        // If we included the full mapping in the SVH, we could only have
+        // reproducible builds by compiling from the same directory. So we just
+        // hash the result of the mapping instead of the mapping itself.
+        let mut source_file_names: Vec<_> = codemap
+            .files()
+            .iter()
+            .filter(|filemap| CrateNum::from_u32(filemap.crate_of_origin) == LOCAL_CRATE)
+            .map(|filemap| filemap.name_hash)
+            .collect();
+
+        source_file_names.sort_unstable();
+
         let (_, crate_dep_node_index) = self
             .dep_graph
             .with_task(DepNode::new_no_params(DepKind::Krate),
                        &self.hcx,
-                       ((node_hashes, upstream_crates),
+                       (((node_hashes, upstream_crates), source_file_names),
                         (commandline_args_hash,
                          crate_disambiguator.to_fingerprint())),
                        identity_fn);

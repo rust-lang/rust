@@ -7,7 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![stable(feature = "duration_core", since = "1.24.0")]
+#![stable(feature = "duration_core", since = "1.25.0")]
 
 //! Temporal quantification.
 //!
@@ -58,7 +58,7 @@ const MICROS_PER_SEC: u64 = 1_000_000;
 ///
 /// let ten_millis = Duration::from_millis(10);
 /// ```
-#[stable(feature = "duration_core", since = "1.24.0")]
+#[stable(feature = "duration", since = "1.3.0")]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash, Default)]
 pub struct Duration {
     secs: u64,
