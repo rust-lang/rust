@@ -150,7 +150,7 @@ create_config! {
     file_lines: FileLines, FileLines::all(), false,
         "Lines to format; this is not supported in rustfmt.toml, and can only be specified \
          via the --file-lines option";
-    width_heuristics: WidthHeuristics, WidthHeuristics::default(), false,
+    width_heuristics: WidthHeuristics, WidthHeuristics::scaled(100), false,
         "'small' heuristic values";
 }
 

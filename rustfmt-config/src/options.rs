@@ -220,17 +220,17 @@ impl WidthHeuristics {
             single_line_if_else_max_width: 0,
         }
     }
-}
-
-impl Default for WidthHeuristics {
-    fn default() -> WidthHeuristics {
+    // scale the default WidthHeuristics according to max_width
+    pub fn scaled(max_width: usize) -> WidthHeuristics {
+        let mut max_width_ratio: f32 = max_width as f32 / 100.0; // 100 is the default width -> default ratio is 1
+        max_width_ratio = (max_width_ratio * 10.0).round() / 10.0; // round to the closest 0.1
         WidthHeuristics {
-            fn_call_width: 60,
-            struct_lit_width: 18,
-            struct_variant_width: 35,
-            array_width: 60,
-            chain_width: 60,
-            single_line_if_else_max_width: 50,
+            fn_call_width: (60.0 * max_width_ratio).round() as usize,
+            struct_lit_width: (18.0 * max_width_ratio).round() as usize,
+            struct_variant_width: (35.0 * max_width_ratio).round() as usize,
+            array_width: (60.0 * max_width_ratio).round() as usize,
+            chain_width: (60.0 * max_width_ratio).round() as usize,
+            single_line_if_else_max_width: (50.0 * max_width_ratio).round() as usize,
         }
     }
 }
