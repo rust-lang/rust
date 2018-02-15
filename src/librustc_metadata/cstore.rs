@@ -89,21 +89,23 @@ pub struct CrateMetadata {
 }
 
 pub struct CStore {
-    metas: RefCell<IndexVec<CrateNum, Option<Lrc<CrateMetadata>>>>,
+    metas: RwLock<IndexVec<CrateNum, Option<Lrc<CrateMetadata>>>>,
     /// Map from NodeId's of local extern crate statements to crate numbers
-    extern_mod_crate_map: RefCell<NodeMap<CrateNum>>,
+    extern_mod_crate_map: Lock<NodeMap<CrateNum>>,
     pub metadata_loader: Box<MetadataLoader + Sync>,
 }
 
 impl CStore {
     pub fn new(metadata_loader: Box<MetadataLoader + Sync>) -> CStore {
         CStore {
-            metas: RefCell::new(IndexVec::new()),
-            extern_mod_crate_map: RefCell::new(FxHashMap()),
+            metas: RwLock::new(IndexVec::new()),
+            extern_mod_crate_map: Lock::new(FxHashMap()),
             metadata_loader,
         }
     }
 
+    /// You cannot use this function to allocate a CrateNum in a thread-safe manner.
+    /// It is currently only used in CrateLoader which is single-threaded code.
     pub fn next_crate_num(&self) -> CrateNum {
         CrateNum::new(self.metas.borrow().len() + 1)
     }
