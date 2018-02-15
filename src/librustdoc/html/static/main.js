@@ -1565,6 +1565,7 @@
     window.register_implementors = function(imp) {
         var implementors = document.getElementById('implementors-list');
         var synthetic_implementors = document.getElementById('synthetic-implementors-list');
+
         var libs = Object.getOwnPropertyNames(imp);
         for (var i = 0; i < libs.length; ++i) {
             if (libs[i] === currentCrate) { continue; }
@@ -1573,11 +1574,15 @@
             struct_loop:
             for (var j = 0; j < structs.length; ++j) {
                 var struct = structs[j];
+
                 var list = struct.synthetic ? synthetic_implementors : implementors;
 
-                for (var k = 0; k < struct.types.length; k++) {
-                    if (window.inlined_types.has(struct.types[k])) {
-                        continue struct_loop;
+                if (struct.synthetic) {
+                    for (var k = 0; k < struct.types.length; k++) {
+                        if (window.inlined_types.has(struct.types[k])) {
+                            continue struct_loop;
+                        }
+                        window.inlined_types.add(struct.types[k]);
                     }
                 }
 

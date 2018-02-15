@@ -2451,6 +2451,8 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         <ul class='item-list' id='synthetic-implementors-list'>
     ";
 
+    let mut synthetic_types = Vec::new();
+
     if let Some(implementors) = cache.implementors.get(&it.def_id) {
         // The DefId is for the first Type found with that name. The bool is
         // if any Types with the same name but different DefId have been found.
@@ -2506,6 +2508,9 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         if t.auto {
             write!(w, "{}", synthetic_impl_header)?;
             for implementor in synthetic {
+                synthetic_types.extend(
+                    collect_paths_for_type(implementor.inner_impl().for_.clone())
+                );
                 render_implementor(cx, implementor, w, &implementor_dups)?;
             }
             write!(w, "</ul>")?;
@@ -2516,13 +2521,13 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         write!(w, "{}", impl_header)?;
         write!(w, "</ul>")?;
 
-        write!(w, r#"<script type="text/javascript">window.inlined_types=new Set();</script>"#)?;
-
         if t.auto {
             write!(w, "{}", synthetic_impl_header)?;
             write!(w, "</ul>")?;
         }
     }
+    write!(w, r#"<script type="text/javascript">window.inlined_types=new Set({});</script>"#,
+            as_json(&synthetic_types))?;
 
     write!(w, r#"<script type="text/javascript" async
                          src="{root_path}/implementors/{path}/{ty}.{name}.js">
