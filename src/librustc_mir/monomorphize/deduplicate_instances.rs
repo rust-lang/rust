@@ -16,29 +16,42 @@ use rustc::middle::const_val::ConstVal;
 use rustc::mir::{Mir, Rvalue, Promoted, Location};
 use rustc::mir::visit::{Visitor, TyContext};
 
-/// Replace substs which arent used by the function with TyError,
-/// so that it doesnt end up in the binary multiple times
+/// Replace substs which aren't used by the function with TyError,
+/// so that it doesn't end up in the binary multiple times
+/// For example in the code
+///
+/// ```rust
+/// fn foo<T>() { } // here, T is clearly unused =)
+///
+/// fn main() {
+///     foo::<u32>();
+///     foo::<u64>(); 
+/// }
+/// ```
+///
+/// `foo::<u32>` and `foo::<u64>` are collapsed to `foo::<{some dummy}>`,
+/// because codegen for `foo` doesn't depend on the Subst for T.
 pub(crate) fn collapse_interchangable_instances<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mut inst: Instance<'tcx>
+    mut instance: Instance<'tcx>
 ) -> Instance<'tcx> {
-    info!("replace_unused_substs_with_ty_error({:?})", inst);
+    info!("replace_unused_substs_with_ty_error({:?})", instance);
 
-    if inst.substs.is_noop() || !tcx.is_mir_available(inst.def_id()) {
-        return inst;
+    if instance.substs.is_noop() || !tcx.is_mir_available(instance.def_id()) {
+        return instance;
     }
-    match inst.ty(tcx).sty {
+    match instance.ty(tcx).sty {
         ty::TyFnDef(def_id, _) => {
             //let attrs = tcx.item_attrs(def_id);
             if tcx.lang_items().items().iter().find(|l|**l == Some(def_id)).is_some() {
-                return inst; // Lang items dont work otherwise
+                return instance; // Lang items dont work otherwise
             }
         }
-        _ => return inst, // Closures dont work otherwise
+        _ => return instance, // Closures dont work otherwise
     }
 
-    let used_substs = used_substs_for_instance(tcx, inst);
-    inst.substs = tcx._intern_substs(&inst.substs.into_iter().enumerate().map(|(i, subst)| {
+    let used_substs = used_substs_for_instance(tcx, instance);
+    instance.substs = tcx._intern_substs(&instance.substs.into_iter().enumerate().map(|(i, subst)| {
         if let Some(ty) = subst.as_type() {
             let ty = if used_substs.substs.iter().find(|p|p.idx == i as u32).is_some() {
                 ty.into()
@@ -47,12 +60,12 @@ pub(crate) fn collapse_interchangable_instances<'a, 'tcx>(
                 if false /*param.name.as_str().starts_with("<")*/ {
                     ty.into()
                 } else {
-                    tcx.sess.warn(&format!("Unused subst for {:?}", inst));
+                    tcx.sess.warn(&format!("Unused subst for {:?}", instance));
                     tcx.mk_ty(ty::TyNever)
                 }
             } else {
                 // Can't use TyError as it gives some ICE in rustc_trans::callee::get_fn
-                tcx.sess.warn(&format!("Unused subst for {:?}", inst));
+                tcx.sess.warn(&format!("Unused subst for {:?}", instance));
                 tcx.mk_ty(ty::TyNever)
             };
             Kind::from(ty)
@@ -60,22 +73,22 @@ pub(crate) fn collapse_interchangable_instances<'a, 'tcx>(
             (*subst).clone()
         }
     }).collect::<Vec<_>>());
-    info!("replace_unused_substs_with_ty_error(_) -> {:?}", inst);
-    inst
+    info!("replace_unused_substs_with_ty_error(_) -> {:?}", instance);
+    instance
 }
 
 #[derive(Debug, Default, Clone)]
-pub struct UsedSubsts {
-    pub substs: Vec<ParamTy>,
-    pub promoted: IndexVec<Promoted, UsedSubsts>,
+pub struct UsedParameters {
+    pub parameters: Vec<ParamTy>,
+    pub promoted: IndexVec<Promoted, UsedParameters>,
 }
 
-impl_stable_hash_for! { struct UsedSubsts { substs, promoted } }
+impl_stable_hash_for! { struct UsedParameters { substs, promoted } }
 
 struct SubstsVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a>(
     TyCtxt<'a, 'gcx, 'tcx>,
     &'tcx Mir<'tcx>,
-    UsedSubsts
+    UsedParameters,
 );
 
 impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> Visitor<'tcx> for SubstsVisitor<'a, 'gcx, 'tcx> {
@@ -116,7 +129,7 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> TypeFolder<'gcx, 'tcx> for SubstsVisitor<'a,
         }
         match ty.sty {
             ty::TyParam(param) => {
-                self.2.substs.push(param);
+                self.2.parameters.push(param);
                 ty
             }
             ty::TyFnDef(_, substs) => {
@@ -143,19 +156,19 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> TypeFolder<'gcx, 'tcx> for SubstsVisitor<'a,
 fn used_substs_for_instance<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a ,'tcx, 'tcx>,
     instance: Instance<'tcx>,
-) -> UsedSubsts {
+) -> UsedParameters {
     let mir = tcx.instance_mir(instance.def);
     let sig = ::rustc::ty::ty_fn_sig(tcx, instance.ty(tcx));
     let sig = tcx.erase_late_bound_regions_and_normalize(&sig);
-    let mut substs_visitor = SubstsVisitor(tcx, mir, UsedSubsts::default());
+    let mut substs_visitor = SubstsVisitor(tcx, mir, UsedParameters::default());
     substs_visitor.visit_mir(mir);
     for ty in sig.inputs().iter() {
         ty.fold_with(&mut substs_visitor);
     }
     sig.output().fold_with(&mut substs_visitor);
     let mut used_substs = substs_visitor.2;
-    used_substs.substs.sort_by_key(|s|s.idx);
-    used_substs.substs.dedup_by_key(|s|s.idx);
+    used_substs.parameters.sort_by_key(|s|s.idx);
+    used_substs.parameters.dedup_by_key(|s|s.idx);
     used_substs.promoted = mir.promoted.iter().map(|mir| used_substs_for_mir(tcx, mir)).collect();
     used_substs
 }
@@ -163,12 +176,12 @@ fn used_substs_for_instance<'a, 'tcx: 'a>(
 fn used_substs_for_mir<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a ,'tcx, 'tcx>,
     mir: &'tcx Mir<'tcx>,
-) -> UsedSubsts {
-    let mut substs_visitor = SubstsVisitor(tcx, mir, UsedSubsts::default());
+) -> UsedParameters {
+    let mut substs_visitor = SubstsVisitor(tcx, mir, UsedParameters::default());
     substs_visitor.visit_mir(mir);
     let mut used_substs = substs_visitor.2;
-    used_substs.substs.sort_by_key(|s|s.idx);
-    used_substs.substs.dedup_by_key(|s|s.idx);
+    used_substs.parameters.sort_by_key(|s|s.idx);
+    used_substs.parameters.dedup_by_key(|s|s.idx);
     used_substs.promoted = mir.promoted.iter().map(|mir| used_substs_for_mir(tcx, mir)).collect();
     used_substs
 }
