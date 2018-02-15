@@ -50,7 +50,7 @@ pub struct RustdocVisitor<'a, 'tcx: 'a, 'rcx: 'a> {
     /// Is the current module and all of its parents public?
     inside_public_path: bool,
     reexported_macros: FxHashSet<DefId>,
-    exact_paths: Option<FxHashMap<DefId, Vec<String>>>
+    exact_paths: Option<FxHashMap<DefId, Vec<String>>>,
 }
 
 impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {

@@ -3850,7 +3850,7 @@ fn sidebar_trait(fmt: &mut fmt::Formatter, it: &clean::Item,
     sidebar.push_str("<a class=\"sidebar-title\" href=\"#implementors\">Implementors</a>");
     if t.auto {
         sidebar.push_str("<a class=\"sidebar-title\" \
-                         href=\"#synthetic-implementors\">Auto Implementors</a>");
+                          href=\"#synthetic-implementors\">Auto Implementors</a>");
     }
 
     sidebar.push_str(&sidebar_assoc_items(it));
