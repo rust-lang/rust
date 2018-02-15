@@ -130,6 +130,16 @@ review of prior art. Furthermore, this the changes to the template proposed
 in this RFC are by no means irreversible. If we find out after some time that
 this was a bad idea, we can always revert back to the way it was before.
 
+Finally, a longer template risks making it harder to contribute to the
+RFC process as an author as you are expected to fill in more sections.
+Some people who don't know a lot of other langauges may be intimidated into
+thinking that they are expected to know a wide variety of langauges and that
+their contribution is not welcome otherwise. This drawback can be mitigated
+by more clearly communicating that the RFC process is a collaborative effort.
+If an author does not have prior art to offer up right away, other participants
+in the RFC discussion may be able to provide such information which can then
+be amended into the RFC.
+
 # Rationale and alternatives
 [alternatives]: #alternatives
 
