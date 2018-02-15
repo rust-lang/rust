@@ -25,7 +25,7 @@ use rustc::mir::visit::{Visitor, TyContext};
 ///
 /// fn main() {
 ///     foo::<u32>();
-///     foo::<u64>(); 
+///     foo::<u64>();
 /// }
 /// ```
 ///
