@@ -48,7 +48,7 @@ impl Step for Std {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/libstd").krate("std")
+        run.all_krates("std")
     }
 
     fn make_run(run: RunConfig) {
@@ -320,7 +320,7 @@ impl Step for Test {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/libtest").krate("test")
+        run.all_krates("test")
     }
 
     fn make_run(run: RunConfig) {
@@ -436,7 +436,7 @@ impl Step for Rustc {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/librustc").krate("rustc-main")
+        run.all_krates("rustc-main")
     }
 
     fn make_run(run: RunConfig) {
@@ -593,7 +593,7 @@ impl Step for CodegenBackend {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/librustc_trans")
+        run.all_krates("rustc_trans")
     }
 
     fn make_run(run: RunConfig) {
@@ -828,7 +828,7 @@ impl Step for Assemble {
     type Output = Compiler;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/rustc")
+        run.all_krates("rustc-main")
     }
 
     /// Prepare a new compiler from the artifacts in `stage`

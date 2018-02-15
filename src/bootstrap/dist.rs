@@ -1233,31 +1233,6 @@ impl Step for Rustfmt {
     }
 }
 
-
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct DontDistWithMiriEnabled;
-
-impl Step for DontDistWithMiriEnabled {
-    type Output = PathBuf;
-    const DEFAULT: bool = true;
-
-    fn should_run(run: ShouldRun) -> ShouldRun {
-        let build_miri = run.builder.build.config.test_miri;
-        run.default_condition(build_miri)
-    }
-
-    fn make_run(run: RunConfig) {
-        run.builder.ensure(DontDistWithMiriEnabled);
-    }
-
-    fn run(self, _: &Builder) -> PathBuf {
-        panic!("Do not distribute with miri enabled.\n\
-                The distributed libraries would include all MIR (increasing binary size).
-                The distributed MIR would include validation statements.");
-    }
-}
-
-
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Extended {
     stage: u32,
