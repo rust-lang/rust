@@ -1,7 +1,7 @@
 - Feature Name: `track_caller`
 - Start Date: 2017-07-31
-- RFC PR: https://github.com/rust-lang/rfcs/pull/2091
-- Rust Issue: https://github.com/rust-lang/rust/issues/47809
+- RFC PR: [rust-lang/rfcs#2091](https://github.com/rust-lang/rfcs/pull/2091)
+- Rust Issue: [rust-lang/rust#47809](https://github.com/rust-lang/rust/issues/47809)
 
 ----
 

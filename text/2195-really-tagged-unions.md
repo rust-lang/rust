@@ -1,6 +1,6 @@
 - Feature Name: really_tagged_unions
 - Start Date: 2017-10-30
-- RFC PR: https://github.com/rust-lang/rfcs/pull/2195/
+- RFC PR: [rust-lang/rfcs#2195](https://github.com/rust-lang/rfcs/pull/2195)
 - Rust Issue: N/A
 
 # Summary

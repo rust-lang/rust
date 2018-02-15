@@ -1,7 +1,7 @@
 - Feature Name: `allow_trivial_constraints`
 - Start Date: 2017-07-05
-- RFC PR: https://github.com/rust-lang/rfcs/pull/2056
-- Rust Issue: https://github.com/rust-lang/rust/issues/48214
+- RFC PR: [rust-lang/rfcs#2056](https://github.com/rust-lang/rfcs/pull/2056)
+- Rust Issue: [rust-lang/rust#48214](https://github.com/rust-lang/rust/issues/48214)
 
 # Summary
 [summary]: #summary
