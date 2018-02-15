@@ -26,45 +26,25 @@ the "travis example" badge above.
 
 ## Quick start
 
-Currently, you can use `rustfmt` on nightly and beta. Rust 1.24 stable will work,
-but we're not quite there yet!
+You can use `rustfmt` on Rust 1.24 and above.
 
 To install:
 
 ```
-rustup component add rustfmt-preview --toolchain=nightly
+rustup component add rustfmt-preview
 ```
-
-If `nightly` is your default toolchain, you can leave the `--toolchain` off.
 
 to run on a cargo project in the current working directory:
 
 ```
-cargo +nightly fmt
+cargo fmt
 ```
-
-If `nightly` is your default toolchain, you can leave off the `+nightly`.
 
 ## Installation
 
 ```
-rustup component add rustfmt-preview --toolchain=nightly
+rustup component add rustfmt-preview
 ```
-
-If you don't have a nightly toolchain, you can add it using rustup:
-
-```
-rustup install nightly
-```
-
-You can make the nightly toolchain the default by running:
-
-```
-rustup default nightly
-```
-
-If you choose not to do that you'll have to run rustfmt using `rustup run ...`
-or by adding `+nightly` to the cargo invocation.
 
 ## Installing from source
 
