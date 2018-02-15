@@ -51,7 +51,9 @@ impl Step for Llvm {
     }
 
     fn make_run(run: RunConfig) {
-        let emscripten = run.path.ends_with("llvm-emscripten");
+        let emscripten = run.path.map(|p| {
+            p.ends_with("llvm-emscripten")
+        }).unwrap_or(false);
         run.builder.ensure(Llvm {
             target: run.target,
             emscripten,

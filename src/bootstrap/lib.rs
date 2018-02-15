@@ -113,8 +113,9 @@
 //! More documentation can be found in each respective module below, and you can
 //! also check out the `src/bootstrap/README.md` file for more information.
 
-//#![deny(warnings)]
-#![feature(core_intrinsics)]
+#![deny(warnings)]
+#![allow(stable_features)]
+#![feature(associated_consts)]
 
 #[macro_use]
 extern crate build_helper;
@@ -264,18 +265,6 @@ struct Crate {
     build_step: String,
     test_step: String,
     bench_step: String,
-}
-
-impl Crate {
-    fn is_local(&self, build: &Build) -> bool {
-        self.path.starts_with(&build.config.src) &&
-        !self.path.to_string_lossy().ends_with("_shim")
-    }
-
-    fn local_path(&self, build: &Build) -> PathBuf {
-        assert!(self.is_local(build));
-        self.path.strip_prefix(&build.config.src).unwrap().into()
-    }
 }
 
 /// The various "modes" of invoking Cargo.
@@ -960,18 +949,22 @@ impl Build {
         }
     }
 
-    fn in_tree_crates(&self, root: &str) -> Vec<&Crate> {
+    /// Get a list of crates from a root crate.
+    ///
+    /// Returns Vec<(crate, path to crate, is_root_crate)>
+    fn crates(&self, root: &str) -> Vec<(Interned<String>, &Path)> {
+        let interned = INTERNER.intern_string(root.to_owned());
         let mut ret = Vec::new();
-        let mut list = vec![INTERNER.intern_str(root)];
+        let mut list = vec![interned];
         let mut visited = HashSet::new();
         while let Some(krate) = list.pop() {
             let krate = &self.crates[&krate];
-            if krate.is_local(self) {
-                ret.push(krate);
-                for dep in &krate.deps {
-                    if visited.insert(dep) && dep != "build_helper" {
-                        list.push(*dep);
-                    }
+            // If we can't strip prefix, then out-of-tree path
+            let path = krate.path.strip_prefix(&self.src).unwrap_or(&krate.path);
+            ret.push((krate.name, path));
+            for dep in &krate.deps {
+                if visited.insert(dep) && dep != "build_helper" {
+                    list.push(*dep);
                 }
             }
         }
