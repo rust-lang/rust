@@ -9,11 +9,11 @@
 // except according to those terms.
 
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc::ty::{self, TyCtxt, Ty, TypeFoldable, Instance, ParamTy};
+use rustc::ty::{self, TyCtxt, Ty, TypeFoldable, Instance};
 use rustc::ty::fold::TypeFolder;
 use rustc::ty::subst::{Kind, UnpackedKind};
 use rustc::middle::const_val::ConstVal;
-use rustc::mir::{Mir, Rvalue, Promoted, Location};
+use rustc::mir::{Mir, Rvalue, Location};
 use rustc::mir::visit::{Visitor, TyContext};
 
 /// Replace substs which aren't used by the function with TyError,
@@ -53,7 +53,26 @@ pub(crate) fn collapse_interchangable_instances<'a, 'tcx>(
     let used_substs = used_substs_for_instance(tcx, instance);
     instance.substs = tcx._intern_substs(&instance.substs.into_iter().enumerate().map(|(i, subst)| {
         if let UnpackedKind::Type(ty) = subst.unpack() {
-            let ty = if used_substs.parameters.iter().find(|p|p.idx == i as u32).is_some() {
+            /*let ty = if let ty::TyParam(ref _param) = ty.sty {
+                match used_substs.parameters[ParamIdx(i as u32)] {
+                    ParamUsage::Unused => ty.into(),
+                    ParamUsage::LayoutUsed | ParamUsage::Used => {
+                        //^ Dont replace <closure_kind> and other internal params
+                        if false /*param.name.as_str().starts_with("<")*/ {
+                            ty.into()
+                        } else {
+                            tcx.sess.warn(&format!("Unused subst for {:?}", instance));
+                            tcx.mk_ty(ty::TyNever)
+                        }
+                    }
+                }
+            } else {
+                tcx.sess.fatal("efjiofefio");
+                // Can't use TyError as it gives some ICE in rustc_trans::callee::get_fn
+                tcx.sess.warn(&format!("Unused subst for {:?}", instance));
+                tcx.mk_ty(ty::TyNever)
+            };*/
+            let ty = if used_substs.parameters[ParamIdx(i as u32)] != ParamUsage::Unused {
                 ty.into()
             } else if let ty::TyParam(ref _param) = ty.sty {
                 //^ Dont replace <closure_kind> and other internal params
@@ -77,21 +96,59 @@ pub(crate) fn collapse_interchangable_instances<'a, 'tcx>(
     instance
 }
 
-#[derive(Debug, Default, Clone)]
-pub struct UsedParameters {
-    pub parameters: Vec<ParamTy>,
-    pub promoted: IndexVec<Promoted, UsedParameters>,
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+struct ParamIdx(u32);
+
+impl ::rustc_data_structures::indexed_vec::Idx for ParamIdx {
+    fn new(idx: usize) -> Self {
+        assert!(idx < ::std::u32::MAX as usize);
+        ParamIdx(idx as u32)
+    }
+
+    fn index(self) -> usize {
+        self.0 as usize
+    }
 }
 
-impl_stable_hash_for! { struct UsedParameters { parameters, promoted } }
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+enum ParamUsage {
+    Unused = 0,
+    #[allow(dead_code)]
+    LayoutUsed = 1,
+    Used = 2,
+}
+
+impl_stable_hash_for! { enum self::ParamUsage { Unused, LayoutUsed, Used} }
+
+#[derive(Debug, Default, Clone)]
+pub struct ParamsUsage {
+    parameters: IndexVec<ParamIdx, ParamUsage>,
+}
+
+impl_stable_hash_for! { struct ParamsUsage { parameters } }
+
+impl ParamsUsage {
+    fn new(len: usize) -> ParamsUsage {
+        ParamsUsage {
+            parameters: IndexVec::from_elem_n(ParamUsage::Unused, len),
+        }
+    }
+}
 
 struct SubstsVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a>(
     TyCtxt<'a, 'gcx, 'tcx>,
     &'tcx Mir<'tcx>,
-    UsedParameters,
+    ParamsUsage,
 );
 
 impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> Visitor<'tcx> for SubstsVisitor<'a, 'gcx, 'tcx> {
+    fn visit_mir(&mut self, mir: &Mir<'tcx>) {
+        for promoted in &mir.promoted {
+            self.visit_mir(promoted);
+        }
+        self.super_mir(mir);
+    }
+
     fn visit_ty(&mut self, ty: &Ty<'tcx>, _: TyContext) {
         self.fold_ty(ty);
     }
@@ -129,7 +186,7 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> TypeFolder<'gcx, 'tcx> for SubstsVisitor<'a,
         }
         match ty.sty {
             ty::TyParam(param) => {
-                self.2.parameters.push(param);
+                self.2.parameters[ParamIdx(param.idx)] = ParamUsage::Used;
                 ty
             }
             ty::TyFnDef(_, substs) => {
@@ -156,32 +213,15 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> TypeFolder<'gcx, 'tcx> for SubstsVisitor<'a,
 fn used_substs_for_instance<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a ,'tcx, 'tcx>,
     instance: Instance<'tcx>,
-) -> UsedParameters {
+) -> ParamsUsage {
     let mir = tcx.instance_mir(instance.def);
     let sig = ::rustc::ty::ty_fn_sig(tcx, instance.ty(tcx));
     let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
-    let mut substs_visitor = SubstsVisitor(tcx, mir, UsedParameters::default());
+    let mut substs_visitor = SubstsVisitor(tcx, mir, ParamsUsage::new(instance.substs.len()));
     substs_visitor.visit_mir(mir);
     for ty in sig.inputs().iter() {
         ty.fold_with(&mut substs_visitor);
     }
     sig.output().fold_with(&mut substs_visitor);
-    let mut used_substs = substs_visitor.2;
-    used_substs.parameters.sort_by_key(|s|s.idx);
-    used_substs.parameters.dedup_by_key(|s|s.idx);
-    used_substs.promoted = mir.promoted.iter().map(|mir| used_substs_for_mir(tcx, mir)).collect();
-    used_substs
-}
-
-fn used_substs_for_mir<'a, 'tcx: 'a>(
-    tcx: TyCtxt<'a ,'tcx, 'tcx>,
-    mir: &'tcx Mir<'tcx>,
-) -> UsedParameters {
-    let mut substs_visitor = SubstsVisitor(tcx, mir, UsedParameters::default());
-    substs_visitor.visit_mir(mir);
-    let mut used_substs = substs_visitor.2;
-    used_substs.parameters.sort_by_key(|s|s.idx);
-    used_substs.parameters.dedup_by_key(|s|s.idx);
-    used_substs.promoted = mir.promoted.iter().map(|mir| used_substs_for_mir(tcx, mir)).collect();
-    used_substs
+    substs_visitor.2
 }
