@@ -214,11 +214,25 @@ pub fn combine_strs_with_missing_comments(
     ))
 }
 
+pub fn rewrite_doc_comment(orig: &str, shape: Shape, config: &Config) -> Option<String> {
+    _rewrite_comment(orig, false, shape, config, true)
+}
+
 pub fn rewrite_comment(
     orig: &str,
     block_style: bool,
     shape: Shape,
     config: &Config,
+) -> Option<String> {
+    _rewrite_comment(orig, block_style, shape, config, false)
+}
+
+fn _rewrite_comment(
+    orig: &str,
+    block_style: bool,
+    shape: Shape,
+    config: &Config,
+    is_doc_comment: bool,
 ) -> Option<String> {
     // If there are lines without a starting sigil, we won't format them correctly
     // so in that case we won't even re-align (if !config.normalize_comments()) and
@@ -231,7 +245,7 @@ pub fn rewrite_comment(
         return Some(orig.to_owned());
     }
     if !config.normalize_comments() && !config.wrap_comments() {
-        return light_rewrite_comment(orig, shape.indent, config);
+        return light_rewrite_comment(orig, shape.indent, config, is_doc_comment);
     }
 
     identify_comment(orig, block_style, shape, config)
@@ -495,8 +509,10 @@ pub fn recover_missing_comment_in_span(
 }
 
 /// Trim trailing whitespaces unless they consist of two whitespaces.
-fn trim_right_unless_two_whitespaces(s: &str) -> &str {
-    if s.ends_with("  ") && !s.chars().rev().nth(2).map_or(true, char::is_whitespace) {
+fn trim_right_unless_two_whitespaces(s: &str, is_doc_comment: bool) -> &str {
+    if is_doc_comment && s.ends_with("  ")
+        && !s.chars().rev().nth(2).map_or(true, char::is_whitespace)
+    {
         s
     } else {
         s.trim_right()
@@ -504,7 +520,12 @@ fn trim_right_unless_two_whitespaces(s: &str) -> &str {
 }
 
 /// Trims whitespace and aligns to indent, but otherwise does not change comments.
-fn light_rewrite_comment(orig: &str, offset: Indent, config: &Config) -> Option<String> {
+fn light_rewrite_comment(
+    orig: &str,
+    offset: Indent,
+    config: &Config,
+    is_doc_comment: bool,
+) -> Option<String> {
     let lines: Vec<&str> = orig.lines()
         .map(|l| {
             // This is basically just l.trim(), but in the case that a line starts
@@ -521,7 +542,7 @@ fn light_rewrite_comment(orig: &str, offset: Indent, config: &Config) -> Option<
                 ""
             };
             // Preserve markdown's double-space line break syntax.
-            trim_right_unless_two_whitespaces(left_trimmed)
+            trim_right_unless_two_whitespaces(left_trimmed, is_doc_comment)
         })
         .collect();
     Some(lines.join(&format!("\n{}", offset.to_string(config))))
