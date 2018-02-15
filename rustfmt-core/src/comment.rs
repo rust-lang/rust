@@ -508,11 +508,9 @@ pub fn recover_missing_comment_in_span(
     }
 }
 
-/// Trim trailing whitespaces unless they consist of two whitespaces.
+/// Trim trailing whitespaces unless they consist of two or more whitespaces.
 fn trim_right_unless_two_whitespaces(s: &str, is_doc_comment: bool) -> &str {
-    if is_doc_comment && s.ends_with("  ")
-        && !s.chars().rev().nth(2).map_or(true, char::is_whitespace)
-    {
+    if is_doc_comment && s.ends_with("  ") {
         s
     } else {
         s.trim_right()
@@ -541,7 +539,7 @@ fn light_rewrite_comment(
             } else {
                 ""
             };
-            // Preserve markdown's double-space line break syntax.
+            // Preserve markdown's double-space line break syntax in doc comment.
             trim_right_unless_two_whitespaces(left_trimmed, is_doc_comment)
         })
         .collect();

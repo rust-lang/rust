@@ -4,7 +4,7 @@
 //! hello world  
 //! hello world
 
-/// hello world  
+/// hello world    
 /// hello world
 /// hello world  
 fn foo() {
