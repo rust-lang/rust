@@ -350,10 +350,10 @@ error: unnecessary structure name repetition
     |                     ^^^ help: use the applicable keyword: `Self`
 
 error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:307:5
+   --> $DIR/methods.rs:307:21
     |
 307 |     with_constructor.unwrap_or(make());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_constructor.unwrap_or_else(make)`
+    |                     ^^^^^^^^^^^^^^^^^^ help: try this: `.unwrap_or_else(make)`
     |
     = note: `-D or-fun-call` implied by `-D warnings`
 
@@ -364,22 +364,22 @@ error: use of `unwrap_or` followed by a call to `new`
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_new.unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:313:5
+   --> $DIR/methods.rs:313:20
     |
 313 |     with_const_args.unwrap_or(Vec::with_capacity(12));
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_const_args.unwrap_or_else(|| Vec::with_capacity(12))`
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `.unwrap_or_else(|| Vec::with_capacity(12))`
 
 error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:316:5
+   --> $DIR/methods.rs:316:13
     |
 316 |     with_err.unwrap_or(make());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_err.unwrap_or_else(|_| make())`
+    |             ^^^^^^^^^^^^^^^^^^ help: try this: `.unwrap_or_else(|_| make())`
 
 error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:319:5
+   --> $DIR/methods.rs:319:18
     |
 319 |     with_err_args.unwrap_or(Vec::with_capacity(12));
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_err_args.unwrap_or_else(|_| Vec::with_capacity(12))`
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `.unwrap_or_else(|_| Vec::with_capacity(12))`
 
 error: use of `unwrap_or` followed by a call to `default`
    --> $DIR/methods.rs:322:5
@@ -394,34 +394,34 @@ error: use of `unwrap_or` followed by a call to `default`
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_default_type.unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:328:5
+   --> $DIR/methods.rs:328:13
     |
 328 |     with_vec.unwrap_or(vec![]);
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_vec.unwrap_or_else(|| < [ _ ] > :: into_vec ( box [ $ ( $ x ) , * ] ))`
+    |             ^^^^^^^^^^^^^^^^^^ help: try this: `.unwrap_or_else(|| < [ _ ] > :: into_vec ( box [ $ ( $ x ) , * ] ))`
 
 error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:333:5
+   --> $DIR/methods.rs:333:20
     |
 333 |     without_default.unwrap_or(Foo::new());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `without_default.unwrap_or_else(Foo::new)`
+    |                    ^^^^^^^^^^^^^^^^^^^^^^ help: try this: `.unwrap_or_else(Foo::new)`
 
 error: use of `or_insert` followed by a function call
-   --> $DIR/methods.rs:336:5
+   --> $DIR/methods.rs:336:18
     |
 336 |     map.entry(42).or_insert(String::new());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `map.entry(42).or_insert_with(String::new)`
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `.or_insert_with(String::new)`
 
 error: use of `or_insert` followed by a function call
-   --> $DIR/methods.rs:339:5
+   --> $DIR/methods.rs:339:20
     |
 339 |     btree.entry(42).or_insert(String::new());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `btree.entry(42).or_insert_with(String::new)`
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `.or_insert_with(String::new)`
 
 error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:342:13
+   --> $DIR/methods.rs:342:20
     |
 342 |     let _ = stringy.unwrap_or("".to_owned());
-    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `stringy.unwrap_or_else(|| "".to_owned())`
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `.unwrap_or_else(|| "".to_owned())`
 
 error: called `.iter().nth()` on a Vec. Calling `.get()` is both faster and more readable
    --> $DIR/methods.rs:353:23
