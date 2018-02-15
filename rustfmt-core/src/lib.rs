@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(custom_attribute)]
 #![feature(decl_macro)]
 #![feature(match_default_bindings)]
 #![feature(type_ascription)]
@@ -866,6 +867,7 @@ mod test {
 
     #[test]
     fn test_format_code_block_fail() {
+        #[rustfmt_skip]
         let code_block = "this_line_is_100_characters_long_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx(x, y, z);";
         assert!(format_code_block(code_block, &Config::default()).is_none());
     }
