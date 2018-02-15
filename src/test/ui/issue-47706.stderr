@@ -1,5 +1,3 @@
-error[E0601]: main function not found
-
 error[E0593]: function is expected to take 1 argument, but it takes 2 arguments
   --> $DIR/issue-47706.rs:21:18
    |
@@ -8,6 +6,25 @@ error[E0593]: function is expected to take 1 argument, but it takes 2 arguments
 ...
 21 |         self.foo.map(Foo::new)
    |                  ^^^ expected function that takes 1 argument
+
+error[E0593]: function is expected to take 0 arguments, but it takes 1 argument
+  --> $DIR/issue-47706.rs:37:5
+   |
+27 |     Bar(i32),
+   |     -------- takes 1 argument
+...
+37 |     foo(Qux::Bar);
+   |     ^^^ expected function that takes 0 arguments
+   |
+note: required by `foo`
+  --> $DIR/issue-47706.rs:30:1
+   |
+30 | / fn foo<F>(f: F)
+31 | | where
+32 | |     F: Fn(),
+33 | | {
+34 | | }
+   | |_^
 
 error: aborting due to 2 previous errors
 
