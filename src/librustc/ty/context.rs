@@ -61,7 +61,7 @@ use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::{Lrc, Lock};
 use std::any::Any;
 use std::borrow::Borrow;
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::cmp::Ordering;
 use std::collections::hash_map::{self, Entry};
 use std::hash::{Hash, Hasher};
@@ -867,7 +867,7 @@ pub struct GlobalCtxt<'tcx> {
     maybe_unused_extern_crates: Vec<(DefId, Span)>,
 
     // Internal cache for metadata decoding. No need to track deps on this.
-    pub rcache: RefCell<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
+    pub rcache: Lock<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
 
     /// Caches the results of trait selection. This cache is used
     /// for things that do not have to do with the parameters in scope.
@@ -1263,7 +1263,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             hir,
             def_path_hash_to_def_id,
             maps: maps::Maps::new(providers),
-            rcache: RefCell::new(FxHashMap()),
+            rcache: Lock::new(FxHashMap()),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
             crate_name: Symbol::intern(crate_name),
