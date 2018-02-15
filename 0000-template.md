@@ -64,6 +64,7 @@ This section is intended to encourage you as an author to think about the lesson
 If there is no prior art, that is fine - your ideas are interesting to us whether they are brand new or if it is an adaptation from other languages.
 
 Note that while precedent set by other languages is some motivation, it does not on its own motivate an RFC.
+Please also take into consideration that rust sometimes intentionally diverges from common language features.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions

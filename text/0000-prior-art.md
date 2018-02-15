@@ -111,8 +111,9 @@ text to the RFC template before the section *Unresolved questions*:
 > interesting to us whether they are brand new or if it is an adaptation
 > from other languages.
 >
-> Note that while precedent set by other languages is some motivation,
-> it does not on its own motivate an RFC.
+> Note that while precedent set by other languages is some motivation, it does
+> not on its own motivate an RFC. Please also take into consideration that rust
+> sometimes intentionally diverges from common language features.
 
 # Drawbacks
 [drawbacks]: #drawbacks
