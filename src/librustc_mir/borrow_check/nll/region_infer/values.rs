@@ -150,7 +150,7 @@ pub(super) enum RegionElement {
     /// A point in the control-flow graph.
     Location(Location),
 
-    /// An in-scope, universally quantified region (e.g., a liftime parameter).
+    /// An in-scope, universally quantified region (e.g., a lifetime parameter).
     UniversalRegion(RegionVid),
 }
 

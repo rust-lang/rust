@@ -84,7 +84,7 @@ pub struct Frame<'tcx> {
     /// return).
     pub block: mir::BasicBlock,
 
-    /// The index of the currently evaluated statment.
+    /// The index of the currently evaluated statement.
     pub stmt: usize,
 }
 

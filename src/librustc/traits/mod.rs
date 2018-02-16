@@ -621,7 +621,7 @@ pub fn fully_normalize<'a, 'gcx, 'tcx, T>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     // FIXME (@jroesch) ISSUE 26721
     // I'm not sure if this is a bug or not, needs further investigation.
     // It appears that by reusing the fulfillment_cx here we incur more
-    // obligations and later trip an asssertion on regionck.rs line 337.
+    // obligations and later trip an assertion on regionck.rs line 337.
     //
     // The two possibilities I see is:
     //      - normalization is not actually fully happening and we

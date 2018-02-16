@@ -964,7 +964,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     debug!("check_universal_region: fr_minus={:?}", fr_minus);
 
                     // Grow `shorter_fr` until we find a non-local
-                    // regon. (We always will.)  We'll call that
+                    // region. (We always will.)  We'll call that
                     // `shorter_fr+` -- it's ever so slightly larger than
                     // `fr`.
                     let shorter_fr_plus = self.universal_regions.non_local_upper_bound(shorter_fr);

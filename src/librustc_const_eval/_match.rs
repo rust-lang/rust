@@ -607,7 +607,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         // be able to observe whether the types of the struct's fields are
         // inhabited.
         //
-        // If the field is truely inaccessible, then all the patterns
+        // If the field is truly inaccessible, then all the patterns
         // matching against it must be wildcard patterns, so its type
         // does not matter.
         //

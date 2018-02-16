@@ -844,7 +844,7 @@ fn cast_float_to_int(bx: &Builder,
     // They are exactly equal to int_ty::{MIN,MAX} if float_ty has enough significand bits.
     // Otherwise, int_ty::MAX must be rounded towards zero, as it is one less than a power of two.
     // int_ty::MIN, however, is either zero or a negative power of two and is thus exactly
-    // representable. Note that this only works if float_ty's exponent range is sufficently large.
+    // representable. Note that this only works if float_ty's exponent range is sufficiently large.
     // f16 or 256 bit integers would break this property. Right now the smallest float type is f32
     // with exponents ranging up to 127, which is barely enough for i128::MIN = -2^127.
     // On the other hand, f_max works even if int_ty::MAX is greater than float_ty::MAX. Because

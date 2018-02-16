@@ -1111,7 +1111,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
     /// Given a type, if it is an immutable reference, return a suggestion to make it mutable
     fn suggest_mut_for_immutable(&self, pty: &hir::Ty, is_implicit_self: bool) -> Option<String> {
-        // Check wether the argument is an immutable reference
+        // Check whether the argument is an immutable reference
         debug!("suggest_mut_for_immutable({:?}, {:?})", pty, is_implicit_self);
         if let hir::TyRptr(lifetime, hir::MutTy {
             mutbl: hir::Mutability::MutImmutable,
