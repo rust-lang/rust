@@ -24,7 +24,7 @@ use std::path::PathBuf;
 
 use syntax::diagnostics::metadata::{get_metadata_dir, ErrorMetadataMap, ErrorMetadata};
 
-use rustdoc::html::markdown::{Markdown, PLAYGROUND, RenderType};
+use rustdoc::html::markdown::{Markdown, PLAYGROUND};
 use rustc_serialize::json;
 
 enum OutputFormat {
@@ -100,7 +100,7 @@ impl Formatter for HTMLFormatter {
 
         // Description rendered as markdown.
         match info.description {
-            Some(ref desc) => write!(output, "{}", Markdown(desc, &[], RenderType::Hoedown))?,
+            Some(ref desc) => write!(output, "{}", Markdown(desc, &[]))?,
             None => write!(output, "<p>No description.</p>\n")?,
         }
 

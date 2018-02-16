@@ -25,8 +25,7 @@ use rustc::hir;
 use clean::{self, PrimitiveType};
 use core::DocAccessLevels;
 use html::item_type::ItemType;
-use html::render;
-use html::render::{cache, CURRENT_LOCATION_KEY};
+use html::render::{self, cache, CURRENT_LOCATION_KEY};
 
 /// Helper to render an optional visibility with a space after it (if the
 /// visibility is preset)

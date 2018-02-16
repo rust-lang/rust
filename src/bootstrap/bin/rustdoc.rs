@@ -62,12 +62,9 @@ fn main() {
     // it up so we can make rustdoc print this into the docs
     if let Some(version) = env::var_os("RUSTDOC_CRATE_VERSION") {
         // This "unstable-options" can be removed when `--crate-version` is stabilized
-        cmd.arg("-Z").arg("unstable-options")
+        cmd.arg("-Z")
+           .arg("unstable-options")
            .arg("--crate-version").arg(version);
-
-        // While we can assume that `-Z unstable-options` is set, let's also force rustdoc to panic
-        // if pulldown rendering differences are found
-        cmd.arg("--deny-render-differences");
     }
 
     if verbose > 1 {
