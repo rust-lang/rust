@@ -358,14 +358,14 @@ impl<'a> Builder<'a> {
     }
 
     pub fn run(build: &Build) {
-        let (kind, paths) = match build.config.cmd {
-            Subcommand::Build { ref paths } => (Kind::Build, &paths[..]),
-            Subcommand::Check { ref paths } => (Kind::Check, &paths[..]),
-            Subcommand::Doc { ref paths } => (Kind::Doc, &paths[..]),
-            Subcommand::Test { ref paths, .. } => (Kind::Test, &paths[..]),
-            Subcommand::Bench { ref paths, .. } => (Kind::Bench, &paths[..]),
-            Subcommand::Dist { ref paths } => (Kind::Dist, &paths[..]),
-            Subcommand::Install { ref paths } => (Kind::Install, &paths[..]),
+        let kind = match build.config.cmd {
+            Subcommand::Build => Kind::Build,
+            Subcommand::Check => Kind::Check,
+            Subcommand::Doc { .. } => Kind::Doc,
+            Subcommand::Test { .. } => Kind::Test,
+            Subcommand::Bench { .. } => Kind::Bench,
+            Subcommand::Dist => Kind::Dist,
+            Subcommand::Install { .. } => Kind::Install,
             Subcommand::Clean { .. } => panic!(),
         };
 
@@ -389,7 +389,11 @@ impl<'a> Builder<'a> {
                 The distributed MIR would include validation statements.");
         }
 
-        StepDescription::run(&Builder::get_step_descriptions(builder.kind), &builder, paths);
+        StepDescription::run(
+            &Builder::get_step_descriptions(builder.kind),
+            &builder,
+            &builder.config.paths
+        );
     }
 
     pub fn default_doc(&self, paths: Option<&[PathBuf]>) {

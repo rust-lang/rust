@@ -67,6 +67,7 @@ pub struct Config {
     pub src: PathBuf,
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
+    pub paths: Vec<PathBuf>,
     pub incremental: bool,
 
     // llvm codegen options
@@ -314,6 +315,7 @@ impl Config {
         let file = flags.config.clone();
         let mut config = Config::default();
         config.exclude = flags.exclude;
+        config.paths = flags.paths;
         config.llvm_enabled = true;
         config.llvm_optimize = true;
         config.llvm_version_check = true;

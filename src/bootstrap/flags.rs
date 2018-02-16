@@ -44,45 +44,32 @@ pub struct Flags {
     pub incremental: bool,
     pub exclude: Vec<PathBuf>,
     pub rustc_error_format: Option<String>,
+    pub paths: Vec<PathBuf>,
 }
 
 pub enum Subcommand {
-    Build {
-        paths: Vec<PathBuf>,
-    },
-    Check {
-        paths: Vec<PathBuf>,
-    },
-    Doc {
-        paths: Vec<PathBuf>,
-    },
+    Build,
+    Check,
+    Doc,
     Test {
-        paths: Vec<PathBuf>,
         test_args: Vec<String>,
         rustc_args: Vec<String>,
         fail_fast: bool,
         doc_tests: bool,
     },
     Bench {
-        paths: Vec<PathBuf>,
         test_args: Vec<String>,
     },
     Clean {
         all: bool,
     },
-    Dist {
-        paths: Vec<PathBuf>,
-    },
-    Install {
-        paths: Vec<PathBuf>,
-    },
+    Dist,
+    Install,
 }
 
 impl Default for Subcommand {
     fn default() -> Subcommand {
-        Subcommand::Build {
-            paths: vec![PathBuf::from("nowhere")],
-        }
+        Subcommand::Build
     }
 }
 
@@ -313,14 +300,13 @@ Arguments:
 
         let cmd = match subcommand.as_str() {
             "build" => {
-                Subcommand::Build { paths: paths }
+                Subcommand::Build
             }
             "check" => {
-                Subcommand::Check { paths: paths }
+                Subcommand::Check
             }
             "test" => {
                 Subcommand::Test {
-                    paths,
                     test_args: matches.opt_strs("test-args"),
                     rustc_args: matches.opt_strs("rustc-args"),
                     fail_fast: !matches.opt_present("no-fail-fast"),
@@ -329,12 +315,11 @@ Arguments:
             }
             "bench" => {
                 Subcommand::Bench {
-                    paths,
                     test_args: matches.opt_strs("test-args"),
                 }
             }
             "doc" => {
-                Subcommand::Doc { paths: paths }
+                Subcommand::Doc
             }
             "clean" => {
                 if paths.len() > 0 {
@@ -347,14 +332,10 @@ Arguments:
                 }
             }
             "dist" => {
-                Subcommand::Dist {
-                    paths,
-                }
+                Subcommand::Dist
             }
             "install" => {
-                Subcommand::Install {
-                    paths,
-                }
+                Subcommand::Install
             }
             _ => {
                 usage(1, &opts, &subcommand_help, &extra_help);
@@ -386,6 +367,7 @@ Arguments:
             exclude: split(matches.opt_strs("exclude"))
                 .into_iter().map(|p| p.into()).collect::<Vec<_>>(),
             src,
+            paths,
         }
     }
 }
