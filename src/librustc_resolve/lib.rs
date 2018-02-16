@@ -3796,13 +3796,15 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_visibility(&mut self, vis: &ast::Visibility) -> ty::Visibility {
-        match *vis {
-            ast::Visibility::Public => ty::Visibility::Public,
-            ast::Visibility::Crate(..) => ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX)),
-            ast::Visibility::Inherited => {
+        match vis.node {
+            ast::VisibilityKind::Public => ty::Visibility::Public,
+            ast::VisibilityKind::Crate(..) => {
+                ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))
+            }
+            ast::VisibilityKind::Inherited => {
                 ty::Visibility::Restricted(self.current_module.normal_ancestor_id)
             }
-            ast::Visibility::Restricted { ref path, id } => {
+            ast::VisibilityKind::Restricted { ref path, id, .. } => {
                 let def = self.smart_resolve_path(id, None, path,
                                                   PathSource::Visibility).base_def();
                 if def == Def::Err {

@@ -216,6 +216,12 @@ impl Span {
         self.data().with_ctxt(ctxt)
     }
 
+    /// Returns a new span representing an empty span at the beginning of this span
+    #[inline]
+    pub fn empty(self) -> Span {
+        self.with_hi(self.lo())
+    }
+
     /// Returns `self` if `self` is not the dummy span, and `other` otherwise.
     pub fn substitute_dummy(self, other: Span) -> Span {
         if self.source_equal(&DUMMY_SP) { other } else { self }

@@ -377,7 +377,7 @@ pub fn fun_to_string(decl: &ast::FnDecl,
     to_string(|s| {
         s.head("")?;
         s.print_fn(decl, unsafety, constness, Abi::Rust, Some(name),
-                   generics, &ast::Visibility::Inherited)?;
+                   generics, &codemap::dummy_spanned(ast::VisibilityKind::Inherited))?;
         s.end()?; // Close the head box
         s.end() // Close the outer box
     })
@@ -1458,13 +1458,13 @@ impl<'a> State<'a> {
     }
 
     pub fn print_visibility(&mut self, vis: &ast::Visibility) -> io::Result<()> {
-        match *vis {
-            ast::Visibility::Public => self.word_nbsp("pub"),
-            ast::Visibility::Crate(_, sugar) => match sugar {
+        match vis.node {
+            ast::VisibilityKind::Public => self.word_nbsp("pub"),
+            ast::VisibilityKind::Crate(sugar) => match sugar {
                 ast::CrateSugar::PubCrate => self.word_nbsp("pub(crate)"),
                 ast::CrateSugar::JustCrate => self.word_nbsp("crate")
             }
-            ast::Visibility::Restricted { ref path, .. } => {
+            ast::VisibilityKind::Restricted { ref path, .. } => {
                 let path = to_string(|s| s.print_path(path, false, 0, true));
                 if path == "self" || path == "super" {
                     self.word_nbsp(&format!("pub({})", path))
@@ -1472,7 +1472,7 @@ impl<'a> State<'a> {
                     self.word_nbsp(&format!("pub(in {})", path))
                 }
             }
-            ast::Visibility::Inherited => Ok(())
+            ast::VisibilityKind::Inherited => Ok(())
         }
     }
 
@@ -1569,15 +1569,23 @@ impl<'a> State<'a> {
         self.print_outer_attributes(&ti.attrs)?;
         match ti.node {
             ast::TraitItemKind::Const(ref ty, ref default) => {
-                self.print_associated_const(ti.ident, ty,
-                                            default.as_ref().map(|expr| &**expr),
-                                            &ast::Visibility::Inherited)?;
+                self.print_associated_const(
+                    ti.ident,
+                    ty,
+                    default.as_ref().map(|expr| &**expr),
+                    &codemap::respan(ti.span.empty(), ast::VisibilityKind::Inherited),
+                )?;
             }
             ast::TraitItemKind::Method(ref sig, ref body) => {
                 if body.is_some() {
                     self.head("")?;
                 }
-                self.print_method_sig(ti.ident, &ti.generics, sig, &ast::Visibility::Inherited)?;
+                self.print_method_sig(
+                    ti.ident,
+                    &ti.generics,
+                    sig,
+                    &codemap::respan(ti.span.empty(), ast::VisibilityKind::Inherited),
+                )?;
                 if let Some(ref body) = *body {
                     self.nbsp()?;
                     self.print_block_with_attrs(body, &ti.attrs)?;
@@ -3055,7 +3063,7 @@ impl<'a> State<'a> {
                       abi,
                       name,
                       &generics,
-                      &ast::Visibility::Inherited)?;
+                      &codemap::dummy_spanned(ast::VisibilityKind::Inherited))?;
         self.end()
     }
 
