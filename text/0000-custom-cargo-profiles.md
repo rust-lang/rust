@@ -48,11 +48,6 @@ debug = true
 [profile.dev.overrides.image]
 opt-level = 3
 
-# Dependencies semver-matching any entry in the space separated list
-# will be compiled without debuginfo
-[profile.dev.overrides."image=0.2 piston>5.0"]
-debug=false
-
 # All dependencies (but not this crate itself) will be compiled
 # with -Copt-level=2 . This includes build dependencies.
 [profile.dev.overrides."*"]
