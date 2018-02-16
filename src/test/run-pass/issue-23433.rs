@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Don't fail if we encounter a NonZero<*T> where T is an unsized type
+// Don't fail if we encounter a NonNull<T> where T is an unsized type
 
 use std::ptr::NonNull;
 
