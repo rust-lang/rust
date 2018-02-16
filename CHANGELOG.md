@@ -30,7 +30,7 @@
 
 ### Added
 
-- Add `--version` flag to `cargo-fmt`, allow `carfo fmt --version`.
+- Add `--version` flag to `cargo-fmt`, allow `cargo fmt --version`.
 
 ### Fixed
 
