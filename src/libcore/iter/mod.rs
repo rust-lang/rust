@@ -595,15 +595,15 @@ impl<'a, I, T: 'a> FusedIterator for Cloned<I>
 {}
 
 #[doc(hidden)]
-default unsafe impl<'a, I, T: 'a> TrustedRandomAccess for Cloned<I>
+unsafe impl<'a, I, T: 'a> TrustedRandomAccess for Cloned<I>
     where I: TrustedRandomAccess<Item=&'a T>, T: Clone
 {
-    unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
+    default unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
         self.it.get_unchecked(i).clone()
     }
 
     #[inline]
-    fn may_have_side_effect() -> bool { true }
+    default fn may_have_side_effect() -> bool { true }
 }
 
 #[doc(hidden)]

@@ -1395,7 +1395,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             .map(|node_item| !node_item.node.is_from_trait())
             .unwrap_or(false);
 
-        if !is_implemented {
+        if !is_implemented && !tcx.impl_is_default(impl_id) {
             if !trait_item.defaultness.has_value() {
                 missing_items.push(trait_item);
             } else if associated_type_overridden {

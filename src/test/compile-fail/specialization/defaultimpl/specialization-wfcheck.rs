@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,25 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Tests that a default impl still has to have a WF trait ref.
+
 #![feature(specialization)]
 
-// Regression test for ICE when combining specialized associated types and type
-// aliases
+trait Foo<'a, T: Eq + 'a> { }
 
-trait Id_ {
-    type Out;
-}
+default impl<U> Foo<'static, U> for () {}
+//~^ ERROR the trait bound `U: std::cmp::Eq` is not satisfied
 
-type Id<T> = <T as Id_>::Out;
-
-default impl<T> Id_ for T {
-    type Out = T;
-}
-
-fn test_proection() {
-    let x: Id<bool> = panic!();
-}
-
-fn main() {
-
-}
+fn main(){}
