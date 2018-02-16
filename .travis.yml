@@ -2,15 +2,11 @@ language: rust
 
 matrix:
   include:
-
-    - rust: nightly-2018-01-26
+    - rust: stable
       before_script:
         - rustup component add rustfmt-preview
       script:
-        - cargo fmt -- --write-mode=diff
-
-    - rust: stable
-      script:
+        - cargo fmt --all -- --write-mode=diff
         - cargo test
 
 branches:
