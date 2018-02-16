@@ -104,7 +104,8 @@ struct AnnotatedItem
 
 `items` here contains an `AnnotatedItem` for every item in the
 target crate that has one of the attributes declared in `attributes`
-along with attributes sharing the name of the framework (`test`, here).
+along with attributes sharing the name of the framework (`test`, here --
+the function must be named either `test` or `bench`).
 
 The annotated function _must_ be named "test" for a test framework and
 "bench" for a bench framework. We currently do not support
@@ -184,12 +185,10 @@ under a new `[[testing.frameworks]]` section in their
 
 ```toml
 [[testing.frameworks]]
-provider = { rust-fuzz = "1.0" }
+provider = { quickcheck = "1.0" }
 ```
 
-This pulls in the framework named "fuzz", which uses the
-implementation provided by the `rust-fuzz` crate. When run, it will be
-applied to all files in the `fuzz` directory. By default, the following
+This pulls in the framework  from the "quickcheck" crate.  By default, the following
 framework is defined:
 
 ```toml
