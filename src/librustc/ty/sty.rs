@@ -1297,6 +1297,13 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    pub fn is_ty_infer(&self) -> bool {
+        match self.sty {
+            TyInfer(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn is_phantom_data(&self) -> bool {
         if let TyAdt(def, _) = self.sty {
             def.is_phantom_data()
