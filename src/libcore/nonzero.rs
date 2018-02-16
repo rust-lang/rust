@@ -62,7 +62,7 @@ impl_zeroable_for_integer_types! {
 /// NULL or 0 that might allow certain optimizations.
 #[lang = "non_zero"]
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
-pub struct NonZero<T: Zeroable>(T);
+pub struct NonZero<T: Zeroable>(pub(crate) T);
 
 impl<T: Zeroable> NonZero<T> {
     /// Creates an instance of NonZero with the provided value.
