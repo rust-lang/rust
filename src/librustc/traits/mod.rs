@@ -49,7 +49,7 @@ pub use self::util::SupertraitDefIds;
 pub use self::util::transitive_bounds;
 
 mod coherence;
-mod error_reporting;
+pub mod error_reporting;
 mod fulfill;
 mod project;
 mod object_safety;

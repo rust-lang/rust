@@ -1,0 +1,14 @@
+error[E0593]: closure is expected to take a single 2-tuple as argument, but it takes 2 distinct arguments
+  --> $DIR/closure-arg-count-expected-type-issue-47244.rs:24:14
+   |
+24 |     m.iter().map( |_, b| {
+   |              ^^^  ------ takes 2 distinct arguments
+   |              |
+   |              expected closure that takes a single 2-tuple as argument
+help: change the closure to accept a tuple instead of individual arguments
+   |
+24 |     m.iter().map( |(_, b)| {
+   |                   ^^^^^^^^
+
+error: aborting due to previous error
+
