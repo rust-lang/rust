@@ -50,6 +50,7 @@ create_config! {
     comment_width: usize, 80, false,
         "Maximum length of comments. No effect unless wrap_comments = true";
     normalize_comments: bool, false, true, "Convert /* */ comments to // comments where possible";
+    license_template: String, String::default(), false, "Check for license";
 
     // Single line expressions and items.
     empty_item_single_line: bool, true, false,
