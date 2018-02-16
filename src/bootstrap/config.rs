@@ -56,7 +56,6 @@ pub struct Config {
     pub sanitizers: bool,
     pub profiler: bool,
     pub ignore_git: bool,
-    pub exclude: Vec<PathBuf>,
 
     pub run_host_only: bool,
 
@@ -312,7 +311,6 @@ impl Config {
         let flags = Flags::parse(&args);
         let file = flags.config.clone();
         let mut config = Config::default();
-        config.exclude = flags.exclude;
         config.llvm_enabled = true;
         config.llvm_optimize = true;
         config.llvm_version_check = true;
