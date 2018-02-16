@@ -209,7 +209,9 @@ intrinsics! {
         (q << 1) | carry
     }
 
-    #[use_c_shim_if(all(target_arch = "arm", not(target_os = "ios")))]
+    #[use_c_shim_if(all(target_arch = "arm",
+                        not(target_os = "ios"),
+                        not(thumbv6m)))]
     /// Returns `n % d`
     pub extern "C" fn __umodsi3(n: u32, d: u32) -> u32 {
         let q = __udivsi3(n, d);

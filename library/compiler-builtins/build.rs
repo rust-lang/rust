@@ -423,13 +423,8 @@ mod c {
         if llvm_target[0] == "thumbv6m" {
             sources.remove(
                 &[
-                    "aeabi_cdcmp",
-                    "aeabi_cfcmp",
-                    "aeabi_dcmp",
-                    "aeabi_fcmp",
                     "clzdi2",
                     "clzsi2",
-                    "comparesf2",
                     "divmodsi4",
                     "modsi3",
                     "switch16",
