@@ -720,10 +720,6 @@ mod prim_f64 { }
 /// The 8-bit signed integer type.
 ///
 /// *[See also the `std::i8` module](i8/index.html).*
-///
-/// However, please note that examples are shared between primitive integer
-/// types. So it's normal if you see usage of types like `i64` in there.
-///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i8 { }
 
@@ -732,10 +728,6 @@ mod prim_i8 { }
 /// The 16-bit signed integer type.
 ///
 /// *[See also the `std::i16` module](i16/index.html).*
-///
-/// However, please note that examples are shared between primitive integer
-/// types. So it's normal if you see usage of types like `i32` in there.
-///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i16 { }
 
@@ -744,10 +736,6 @@ mod prim_i16 { }
 /// The 32-bit signed integer type.
 ///
 /// *[See also the `std::i32` module](i32/index.html).*
-///
-/// However, please note that examples are shared between primitive integer
-/// types. So it's normal if you see usage of types like `i16` in there.
-///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i32 { }
 
@@ -756,10 +744,6 @@ mod prim_i32 { }
 /// The 64-bit signed integer type.
 ///
 /// *[See also the `std::i64` module](i64/index.html).*
-///
-/// However, please note that examples are shared between primitive integer
-/// types. So it's normal if you see usage of types like `i8` in there.
-///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i64 { }
 
@@ -768,10 +752,6 @@ mod prim_i64 { }
 /// The 128-bit signed integer type.
 ///
 /// *[See also the `std::i128` module](i128/index.html).*
-///
-/// However, please note that examples are shared between primitive integer
-/// types. So it's normal if you see usage of types like `i8` in there.
-///
 #[unstable(feature = "i128", issue="35118")]
 mod prim_i128 { }
 
@@ -780,10 +760,6 @@ mod prim_i128 { }
 /// The 8-bit unsigned integer type.
 ///
 /// *[See also the `std::u8` module](u8/index.html).*
-///
-/// However, please note that examples are shared between primitive integer
-/// types. So it's normal if you see usage of types like `u64` in there.
-///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_u8 { }
 
@@ -792,10 +768,6 @@ mod prim_u8 { }
 /// The 16-bit unsigned integer type.
 ///
 /// *[See also the `std::u16` module](u16/index.html).*
-///
-/// However, please note that examples are shared between primitive integer
-/// types. So it's normal if you see usage of types like `u32` in there.
-///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_u16 { }
 
@@ -804,10 +776,6 @@ mod prim_u16 { }
 /// The 32-bit unsigned integer type.
 ///
 /// *[See also the `std::u32` module](u32/index.html).*
-///
-/// However, please note that examples are shared between primitive integer
-/// types. So it's normal if you see usage of types like `u16` in there.
-///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_u32 { }
 
@@ -816,10 +784,6 @@ mod prim_u32 { }
 /// The 64-bit unsigned integer type.
 ///
 /// *[See also the `std::u64` module](u64/index.html).*
-///
-/// However, please note that examples are shared between primitive integer
-/// types. So it's normal if you see usage of types like `u8` in there.
-///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_u64 { }
 
@@ -828,10 +792,6 @@ mod prim_u64 { }
 /// The 128-bit unsigned integer type.
 ///
 /// *[See also the `std::u128` module](u128/index.html).*
-///
-/// However, please note that examples are shared between primitive integer
-/// types. So it's normal if you see usage of types like `u8` in there.
-///
 #[unstable(feature = "i128", issue="35118")]
 mod prim_u128 { }
 
@@ -844,10 +804,6 @@ mod prim_u128 { }
 /// and on a 64 bit target, this is 8 bytes.
 ///
 /// *[See also the `std::isize` module](isize/index.html).*
-///
-/// However, please note that examples are shared between primitive integer
-/// types. So it's normal if you see usage of types like `usize` in there.
-///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_isize { }
 
@@ -860,10 +816,6 @@ mod prim_isize { }
 /// and on a 64 bit target, this is 8 bytes.
 ///
 /// *[See also the `std::usize` module](usize/index.html).*
-///
-/// However, please note that examples are shared between primitive integer
-/// types. So it's normal if you see usage of types like `isize` in there.
-///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_usize { }
 
