@@ -389,8 +389,8 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
     }
 
     pub fn check(mut self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) {
-        self.expr_ty = fcx.structurally_resolved_type(self.span, self.expr_ty);
-        self.cast_ty = fcx.structurally_resolved_type(self.span, self.cast_ty);
+        self.expr_ty = fcx.resolve_type_vars_if_possible(&self.expr_ty);
+        self.cast_ty = fcx.resolve_type_vars_if_possible(&self.cast_ty);
 
         debug!("check_cast({}, {:?} as {:?})",
                self.expr.id,
@@ -484,11 +484,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                     ty::TypeVariants::TyInfer(t) => {
                         match t {
                             ty::InferTy::IntVar(_) |
-                            ty::InferTy::FloatVar(_) |
-                            ty::InferTy::FreshIntTy(_) |
-                            ty::InferTy::FreshFloatTy(_) => {
-                                Err(CastError::NeedDeref)
-                            }
+                            ty::InferTy::FloatVar(_) => Err(CastError::NeedDeref),
                             _ => Err(CastError::NeedViaPtr),
                         }
                     }
