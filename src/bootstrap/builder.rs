@@ -170,42 +170,6 @@ impl StepDescription {
             }
         }
     }
-
-    fn run(v: &[StepDescription], builder: &Builder, paths: &[PathBuf]) {
-        let should_runs = v.iter().map(|desc| {
-            (desc.should_run)(ShouldRun::new(builder))
-        }).collect::<Vec<_>>();
-
-        // sanity checks on rules
-        for (desc, should_run) in v.iter().zip(&should_runs) {
-            assert!(!should_run.paths.is_empty(),
-                "{:?} should have at least one pathset", desc.name);
-        }
-
-        if paths.is_empty() {
-            for (desc, should_run) in v.iter().zip(should_runs) {
-                if desc.default && should_run.is_really_default {
-                    for pathset in &should_run.paths {
-                        desc.maybe_run(builder, pathset);
-                    }
-                }
-            }
-        } else {
-            for path in paths {
-                let mut attempted_run = false;
-                for (desc, should_run) in v.iter().zip(&should_runs) {
-                    if let Some(pathset) = should_run.pathset_for_path(path) {
-                        attempted_run = true;
-                        desc.maybe_run(builder, pathset);
-                    }
-                }
-
-                if !attempted_run {
-                    panic!("Error: no rules matched {}.", path.display());
-                }
-            }
-        }
-    }
 }
 
 #[derive(Clone)]
@@ -288,6 +252,79 @@ pub enum Kind {
 }
 
 impl<'a> Builder<'a> {
+    pub fn run(build: &Build) {
+        let kind = match build.config.cmd {
+            Subcommand::Build => Kind::Build,
+            Subcommand::Check => Kind::Check,
+            Subcommand::Doc { .. } => Kind::Doc,
+            Subcommand::Test { .. } => Kind::Test,
+            Subcommand::Bench { .. } => Kind::Bench,
+            Subcommand::Dist => Kind::Dist,
+            Subcommand::Install { .. } => Kind::Install,
+            Subcommand::Clean { .. } => panic!(),
+        };
+
+        if let Some(path) = build.config.paths.get(0) {
+            if path == Path::new("nonexistent/path/to/trigger/cargo/metadata") {
+                return;
+            }
+        }
+
+        let builder = Builder {
+            build,
+            top_stage: build.config.stage.unwrap_or(2),
+            kind,
+            cache: Cache::new(),
+            stack: RefCell::new(Vec::new()),
+        };
+
+        if kind == Kind::Dist {
+            assert!(!build.config.test_miri, "Do not distribute with miri enabled.\n\
+                The distributed libraries would include all MIR (increasing binary size).
+                The distributed MIR would include validation statements.");
+        }
+        builder.run_step_descriptions(&Builder::get_step_descriptions(kind), &builder.config.paths);
+    }
+
+    fn run_step_descriptions(&self, v: &[StepDescription], paths: &[PathBuf]) {
+        let should_runs = v.iter().map(|desc| {
+            (desc.should_run)(ShouldRun::new(self))
+        }).collect::<Vec<_>>();
+
+        // sanity checks on rules
+        for (desc, should_run) in v.iter().zip(&should_runs) {
+            assert!(!should_run.paths.is_empty(),
+                "{:?} should have at least one pathset", desc.name);
+        }
+
+        if paths.is_empty() {
+            for (desc, should_run) in v.iter().zip(should_runs) {
+                if desc.default && should_run.is_really_default {
+                    for pathset in &should_run.paths {
+                        desc.maybe_run(&self, pathset);
+                    }
+                }
+            }
+        } else {
+            for path in paths {
+                let mut attempted_run = false;
+                if path == Path::new("nonexistent/path/to/trigger/cargo/metadata") {
+                    continue;
+                }
+                for (desc, should_run) in v.iter().zip(&should_runs) {
+                    if let Some(pathset) = should_run.pathset_for_path(path) {
+                        attempted_run = true;
+                        desc.maybe_run(&self, pathset);
+                    }
+                }
+
+                if !attempted_run {
+                    panic!("Error: no rules matched {}.", path.display());
+                }
+            }
+        }
+    }
+
     fn get_step_descriptions(kind: Kind) -> Vec<StepDescription> {
         macro_rules! describe {
             ($($rule:ty),+ $(,)*) => {{
@@ -357,48 +394,9 @@ impl<'a> Builder<'a> {
         Some(help)
     }
 
-    pub fn run(build: &Build) {
-        let kind = match build.config.cmd {
-            Subcommand::Build => Kind::Build,
-            Subcommand::Check => Kind::Check,
-            Subcommand::Doc { .. } => Kind::Doc,
-            Subcommand::Test { .. } => Kind::Test,
-            Subcommand::Bench { .. } => Kind::Bench,
-            Subcommand::Dist => Kind::Dist,
-            Subcommand::Install { .. } => Kind::Install,
-            Subcommand::Clean { .. } => panic!(),
-        };
-
-        if let Some(path) = paths.get(0) {
-            if path == Path::new("nonexistent/path/to/trigger/cargo/metadata") {
-                return;
-            }
-        }
-
-        let builder = Builder {
-            build,
-            top_stage: build.config.stage.unwrap_or(2),
-            kind,
-            cache: Cache::new(),
-            stack: RefCell::new(Vec::new()),
-        };
-
-        if kind == Kind::Dist {
-            assert!(!build.config.test_miri, "Do not distribute with miri enabled.\n\
-                The distributed libraries would include all MIR (increasing binary size).
-                The distributed MIR would include validation statements.");
-        }
-
-        StepDescription::run(
-            &Builder::get_step_descriptions(builder.kind),
-            &builder,
-            &builder.config.paths
-        );
-    }
-
     pub fn default_doc(&self, paths: Option<&[PathBuf]>) {
         let paths = paths.unwrap_or(&[]);
-        StepDescription::run(&Builder::get_step_descriptions(Kind::Doc), self, paths);
+        self.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), paths);
     }
 
     /// Obtain a compiler at a given stage and for a given host. Explicitly does
