@@ -385,6 +385,10 @@ impl<'a> Builder<'a> {
             Subcommand::Clean { .. } => panic!(),
         };
 
+        if paths[0] == Path::new("nonexistent/path/to/trigger/cargo/metadata") {
+            return;
+        }
+
         let builder = Builder {
             build,
             top_stage: build.config.stage.unwrap_or(2),
