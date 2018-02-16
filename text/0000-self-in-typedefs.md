@@ -439,17 +439,84 @@ it removes exceptional cases especially in the users mental model.
 # Rationale and alternatives
 [alternatives]: #alternatives
 
-No other designs have been considered. The design choice and rational for
-this particular design is straightforward as it would be uneconomic to use
-other keywords and also confusing and inconsistent.
+The rationale for this particular design is straightforward as it would be
+uneconomic, confusing, and inconsistent to use other keywords.
 
-The only known alternative to the changes proposed in this RFC is to
-simply not implement those changes. However, this has the downsides of not
-increasing the ergonomics and keeping the language less consistent than what
-it could be. Not improving the ergonomics here may be especially problematic
-when dealing with recursive types that have long names and/or many generic
-parameters and may encourage developers to use type names which are less
-descriptive and keep their code less generic than what is appropriate.
+## Doing nothing
+
+One alternative to the changes proposed in this RFC is to simply not implement
+those changes. However, this has the downsides of not increasing the ergonomics
+and keeping the language less consistent than what it could be. Not improving
+the ergonomics here may be especially problematic when dealing with "recursive"
+types that have long names and/or many generic parameters and may encourage
+developers to use type names which are less descriptive and keep their code
+less generic than what is appropriate.
+
+## Internal scoped type aliases
+
+Another alternative is to allow users to specify type aliases inside type
+definitions and use any generic parameters specified in that definition.
+An example is:
+
+```rust
+enum Tree<T> {
+    type S = Box<Tree<T>>;
+
+    Nil,
+    Node(T, S, S),
+}
+```
+
+instead of:
+
+```rust
+enum Tree<T> {
+    Nil,
+    Node(T, Box<Self>, Box<Self>),
+}
+```
+
+[generic associated types]: https://github.com/rust-lang/rfcs/blob/master/text/1598-generic_associated_types.md
+
+When dealing with *[generic associated types] (GATs)*, we can then write:
+
+```rust
+enum Tree<T, P: PointerFamily> {
+    type S = P::Pointer<Tree<T>>;
+
+    Nil,
+    Node(T, S, S),
+}
+```
+
+instead of:
+
+```rust
+enum Tree<T, P: PointerFamily> {
+    Nil,
+    Node(T, P::Pointer<Tree<T>>, P::Pointer<Tree<T>>),
+}
+```
+
+As we can see, this approach and alternative is more flexible compared to
+what is proposed in this RFC, particularly in the case of GATs. However,
+this alternative requires introducing and teaching more concepts compared
+to this RFC, which comparatively builds more on what users already know.
+Mixing `;` and `,` has also proven to be controversial in the past. The
+alternative also opens up questions such as if the type alias should be
+permitted before the variants, or after the variants.
+
+For simpler cases such as the first tree-example, using `Self` is also more
+readable as it is a special construct that you can easily syntax-highlight
+for in a more noticeable way. Further, while there is an expectation from
+some users that `Self` already works, as discussed in the [motivation],
+the expectation that this alternative already works has not been brought
+forth by anyone as far as this RFC's author is aware.
+
+Strictly speaking, this particular alternative is not in conflict with this
+RFC in that both can be supported technically. The alternative should be
+considered interesting future work, but for now, a more conservative approach
+is preferred.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
