@@ -50,6 +50,13 @@ fn custom_opener(s: &str) -> &str {
 }
 
 impl<'a> CommentStyle<'a> {
+    pub fn is_doc_comment(&self) -> bool {
+        match *self {
+            CommentStyle::TripleSlash | CommentStyle::Doc => true,
+            _ => false,
+        }
+    }
+
     pub fn opener(&self) -> &'a str {
         match *self {
             CommentStyle::DoubleSlash => "// ",
@@ -248,7 +255,7 @@ fn _rewrite_comment(
         return light_rewrite_comment(orig, shape.indent, config, is_doc_comment);
     }
 
-    identify_comment(orig, block_style, shape, config)
+    identify_comment(orig, block_style, shape, config, is_doc_comment)
 }
 
 fn identify_comment(
@@ -256,6 +263,7 @@ fn identify_comment(
     block_style: bool,
     shape: Shape,
     config: &Config,
+    is_doc_comment: bool,
 ) -> Option<String> {
     let style = comment_style(orig, false);
     let first_group = orig.lines()
@@ -267,11 +275,18 @@ fn identify_comment(
         .collect::<Vec<_>>()
         .join("\n");
 
-    let first_group_str = rewrite_comment_inner(&first_group, block_style, style, shape, config)?;
+    let first_group_str = rewrite_comment_inner(
+        &first_group,
+        block_style,
+        style,
+        shape,
+        config,
+        is_doc_comment || style.is_doc_comment(),
+    )?;
     if rest.is_empty() {
         Some(first_group_str)
     } else {
-        identify_comment(&rest, block_style, shape, config).map(|rest_str| {
+        identify_comment(&rest, block_style, shape, config, is_doc_comment).map(|rest_str| {
             format!(
                 "{}\n{}{}",
                 first_group_str,
@@ -288,6 +303,7 @@ fn rewrite_comment_inner(
     style: CommentStyle,
     shape: Shape,
     config: &Config,
+    is_doc_comment: bool,
 ) -> Option<String> {
     let (opener, closer, line_start) = if block_style {
         CommentStyle::SingleBullet.to_str_tuplet()
@@ -315,7 +331,7 @@ fn rewrite_comment_inner(
     let lines = orig.lines()
         .enumerate()
         .map(|(i, mut line)| {
-            line = line.trim();
+            line = trim_right_unless_two_whitespaces(line.trim_left(), is_doc_comment);
             // Drop old closer.
             if i == line_breaks && line.ends_with("*/") && !line.starts_with("//") {
                 line = line[..(line.len() - 2)].trim_right();
