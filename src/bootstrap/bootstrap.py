@@ -720,7 +720,7 @@ def bootstrap():
                 registry = 'https://example.com'
 
                 [source.vendored-sources]
-                directory = '{}/src/vendor'
+                directory = '{}/vendor'
             """.format(build.rust_root))
     else:
         if os.path.exists('.cargo'):
