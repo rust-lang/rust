@@ -1,4 +1,4 @@
-- Feature Name: custom_cargo_profiles
+- Feature Name: profile_dependencies
 - Start Date: 2018-01-08
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
@@ -7,7 +7,7 @@
 # Summary
 [summary]: #summary
 
-Add the ability to create custom profiles in Cargo.toml, to provide further control over how the project is built. Allow overriding profile keys for certain dependency trees. 
+Allow overriding profile keys for certain dependencies, as well as providing
 
 # Motivation
 [motivation]: #motivation
@@ -16,16 +16,15 @@ Currently the "stable" way to tweak build parameters like "debug symbols", "debu
 
 This file is typically checked in tree, so for many projects overriding things involves making
 temporary changes to this, which feels hacky. On top of this, if Cargo is being called by an
-encompassing build system as what happens in Firefox, these changes can seem surprising. There are
-currently two main profiles in Cargo ("dev" and "release"), and we're forced to fit everything we
-need into these two categories. This isn't really enough.
+encompassing build system as what happens in Firefox, these changes can seem surprising.
 
-Furthermore, this doesn't allow for much customization. For example, when trying to optimize for
+This also doesn't allow for much customization. For example, when trying to optimize for
 compilation speed by building in debug mode, build scripts will get built in debug mode as well. In
 case of complex build-time dependencies like bindgen, this can end up significantly slowing down
 compilation. It would be nice to be able to say "build in debug mode, but build build dependencies
 in release". Also, your program may have large dependencies that it doesn't use in critical paths,
 being able to ask for just these dependencies to be run in debug mode would be nice.
+
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
@@ -33,11 +32,7 @@ being able to ask for just these dependencies to be run in debug mode would be n
 
 Currently, the [Cargo guide has a section on this](http://doc.crates.io/manifest.html#the-profile-sections).
 
-We amend this to add that you can define custom profiles with the `profile.foo` key syntax. These can be invoked via
-`cargo build --profile foo`. The `dev`/`doc`/`bench`/etc profiles remain special. Each custom profile, aside from the
-"special" ones, gets a folder in `target/`, named after the profile. "dev" and "debug" are considered to be aliases
-
-Profile keys can be "overridden":
+We amend this to add that you can override dependency configurations via `profile.foo.overrides`:
 
 ```toml
 [profile.dev]
@@ -59,8 +54,8 @@ opt-level = 2
 opt-level = 3
 ```
 
-Custom profiles _can_ be listed in a `.cargo/config`. When building cargo will calculate
-the current profile, and if it has changed, it will do a fresh/clean build.
+Additionally, profiles may be listed in `.cargo/config`. When building, cargo will calculate the
+current profile, and if it has changed, it will do a fresh/clean build.
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
