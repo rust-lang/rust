@@ -217,7 +217,7 @@ impl StepDescription {
                 }
 
                 if !attempted_run {
-                    eprintln!("Warning: no rules matched {}.", path.display());
+                    panic!("Error: no rules matched {}.", path.display());
                 }
             }
         }
