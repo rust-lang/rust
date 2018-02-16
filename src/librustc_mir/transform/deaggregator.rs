@@ -39,32 +39,27 @@ impl MirPass for Deaggregator {
             }
         }
 
-        let can_deaggregate = |statement: &Statement| {
-            if let StatementKind::Assign(_, ref rhs) = statement.kind {
-                if let Rvalue::Aggregate(ref kind, _) = *rhs {
-                    // FIXME(#48193) Deaggregate arrays when it's cheaper to do so.
-                    if let AggregateKind::Array(_) = **kind {
-                        return false;
-                    }
-                    return true;
-                }
-            }
-
-            false
-        };
-
         let (basic_blocks, local_decls) = mir.basic_blocks_and_local_decls_mut();
+        let local_decls = &*local_decls;
         for bb in basic_blocks {
-            let mut start = 0;
-            while let Some(i) = bb.statements[start..].iter().position(&can_deaggregate) {
-                let i = start + i;
+            bb.expand_statements(|stmt| {
+                // FIXME(eddyb) don't match twice on `stmt.kind` (post-NLL).
+                if let StatementKind::Assign(_, ref rhs) = stmt.kind {
+                    if let Rvalue::Aggregate(ref kind, _) = *rhs {
+                        // FIXME(#48193) Deaggregate arrays when it's cheaper to do so.
+                        if let AggregateKind::Array(_) = **kind {
+                            return None;
+                        }
+                    } else {
+                        return None;
+                    }
+                } else {
+                    return None;
+                }
 
-                // FIXME(eddyb) this is probably more expensive than it should be.
-                // Ideally we'd move the block's statements all at once.
-                let suffix_stmts = bb.statements.split_off(i + 1);
-                let orig_stmt = bb.statements.pop().unwrap();
-                let source_info = orig_stmt.source_info;
-                let (mut lhs, kind, operands) = match orig_stmt.kind {
+                let stmt = stmt.replace_nop();
+                let source_info = stmt.source_info;
+                let (mut lhs, kind, operands) = match stmt.kind {
                     StatementKind::Assign(lhs, Rvalue::Aggregate(kind, operands))
                         => (lhs, kind, operands),
                     _ => bug!()
@@ -88,17 +83,11 @@ impl MirPass for Deaggregator {
                     _ => None
                 };
 
-                let new_total_count = bb.statements.len() +
-                    operands.len() +
-                    (set_discriminant.is_some() as usize) +
-                    suffix_stmts.len();
-                bb.statements.reserve(new_total_count);
-
-                for (j, op) in operands.into_iter().enumerate() {
+                Some(operands.into_iter().enumerate().map(move |(i, op)| {
                     let lhs_field = if let AggregateKind::Array(_) = *kind {
                         // FIXME(eddyb) `offset` should be u64.
-                        let offset = j as u32;
-                        assert_eq!(offset as usize, j);
+                        let offset = i as u32;
+                        assert_eq!(offset as usize, i);
                         lhs.clone().elem(ProjectionElem::ConstantIndex {
                             offset,
                             // FIXME(eddyb) `min_length` doesn't appear to be used.
@@ -107,21 +96,15 @@ impl MirPass for Deaggregator {
                         })
                     } else {
                         let ty = op.ty(local_decls, tcx);
-                        let field = Field::new(active_field_index.unwrap_or(j));
+                        let field = Field::new(active_field_index.unwrap_or(i));
                         lhs.clone().field(field, ty)
                     };
-                    bb.statements.push(Statement {
+                    Statement {
                         source_info,
                         kind: StatementKind::Assign(lhs_field, Rvalue::Use(op)),
-                    });
-                }
-
-                // If the aggregate was an enum, we need to set the discriminant.
-                bb.statements.extend(set_discriminant);
-
-                start = bb.statements.len();
-                bb.statements.extend(suffix_stmts);
-            }
+                    }
+                }).chain(set_discriminant))
+            });
         }
     }
 }
