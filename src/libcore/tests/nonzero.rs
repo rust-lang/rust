@@ -98,3 +98,26 @@ fn test_match_option_string() {
         None => panic!("unexpected None while matching on Some(String { ... })")
     }
 }
+
+mod atom {
+    use core::num::NonZeroU32;
+
+    #[derive(PartialEq, Eq)]
+    pub struct Atom {
+        index: NonZeroU32, // private
+    }
+    pub const FOO_ATOM: Atom = Atom { index: unsafe { NonZeroU32::new_unchecked(7) } };
+}
+
+macro_rules! atom {
+    ("foo") => { atom::FOO_ATOM }
+}
+
+#[test]
+fn test_match_nonzero_const_pattern() {
+    match atom!("foo") {
+        // Using as a pattern is supported by the compiler:
+        atom!("foo") => {}
+        _ => panic!("Expected the const item as a pattern to match.")
+    }
+}
