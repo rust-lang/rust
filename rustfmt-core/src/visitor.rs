@@ -19,7 +19,7 @@ use syntax::parse::ParseSess;
 use codemap::{LineRangeUtils, SpanUtils};
 use comment::{combine_strs_with_missing_comments, contains_comment, CodeCharKind,
               CommentCodeSlices, FindUncommented};
-use comment::rewrite_comment;
+use comment::rewrite_doc_comment;
 use config::{BraceStyle, Config};
 use expr::rewrite_literal;
 use items::{format_impl, format_trait, format_trait_alias, rewrite_associated_impl_type,
@@ -892,7 +892,7 @@ impl Rewrite for ast::Attribute {
                     .unwrap_or(0),
                 ..shape
             };
-            rewrite_comment(snippet, false, doc_shape, context.config)
+            rewrite_doc_comment(snippet, doc_shape, context.config)
         } else {
             if contains_comment(snippet) {
                 return Some(snippet.to_owned());
@@ -957,7 +957,7 @@ fn rewrite_first_group_attrs(
             .join("\n");
         return Some((
             sugared_docs.len(),
-            rewrite_comment(&snippet, false, shape, context.config)?,
+            rewrite_doc_comment(&snippet, shape, context.config)?,
         ));
     }
     // Rewrite `#[derive(..)]`s.
