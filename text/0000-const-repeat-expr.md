@@ -7,8 +7,8 @@
 [summary]: #summary
 
 Relaxes the rules for repeat expressions, `[x; N]` such that `x` may also be
-`const`, in addition to `typeof(x): Copy`. The result of `[x; N]` where `x` is
-`const` is itself also `const`.
+`const` *(strictly speaking rvalue promotable)*, in addition to `typeof(x): Copy`.
+The result of `[x; N]` where `x` is `const` is itself also `const`.
 
 # Motivation
 [motivation]: #motivation
@@ -107,34 +107,51 @@ fn main() {
 internally as:
 
 ```rust
-// This is the value to be repeated and typeof(X) the type it has.
-// If a `VALUE` panics, it happens during compile time at this point
-// and not later.
-const X: typeof(X) = VALUE;
+fn main() {
+    type T = Option<Box<u32>>;
 
-// N is the size of the array and how many times to repeat X.
-const N: usize = SIZE;
+    // This is the value to be repeated.
+    // In this case, a panic won't happen, but if it did, that panic
+    // would happen during compile time at this point and not later.
+    const X: T = None;
 
-{
-    let mut data: [typeof(X); N];
+    let mut arr = {
+        let mut data: [T; 2];
 
-    unsafe {
-        data = mem::uninitialized();
-    
-        let mut iter = (&mut data[..]).into_iter();
-        while let Some(elem) = iter.next() {
-            // ptr::write does not run destructor of elem already in array.
-            // Since X is const, it can not panic at this point.
-            ptr::write(elem, X);
+        unsafe {
+            data = mem::uninitialized();
+
+            let mut iter = (&mut data[..]).into_iter();
+            while let Some(elem) = iter.next() {
+                // ptr::write does not run destructor of elem already in array.
+                // Since X is const, it can not panic at this point.
+                ptr::write(elem, X);
+            }
         }
-    }
 
-    data
+        data
+    };
+
+    arr[0] = Some(Box::new(1));
 }
 ```
 
-Additionally, the pass that checks `const`ness must treat `[X; N]` as a `const`
-value.
+Additionally, the pass that checks `const`ness must treat `[expr; N]` as a
+`const` value such that `[expr; N]` is assignable to a `const` item as well
+as permitted inside a `const fn`.
+
+Strictly speaking, the set of values permitted in the expression `[expr; N]`
+are those where `is_rvalue_promotable(expr)` or `typeof(expr): Copy`.
+Specifically, in `[expr; N]` the expression `expr` is evaluated:
++ never, if `N == 0`,
++ one time, if `N == 1`,
++ `N` times, otherwise.
+
+For values that are not freely duplicatable, evaluating `expr` will result in
+a move, which results in an error if `expr` is moved more than once (including
+moves outside of the repeat expression). These semantics are intentionally
+conservative and intended to be forward-compatible with a more expansive
+`is_const(expr)` check.
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -153,8 +170,16 @@ other constructs such as [`mem::uninitialized()`], for loops over iterators,
 this RFC is therefore the simplest and most non-intrusive design. It is also
 the most consistent.
 
+Another alternative is to allow a more expansive set of values `is_const(expr)`
+rather than `is_rvalue_promotable(expr)`. A consequence of this is that checking
+constness would be done earlier on the HIR. Instead, checking if `expr` is
+rvalue promotable can be done on the MIR and does not require significant
+changes to the compiler. If we decide to expand to `is_const(expr)` in the
+future, we may still do so as the changes proposed in this RFC are
+compatible with such future changes.
+
 The impact of not doing this change is to not enable generically sized arrays to
-be `const`.
+be `const` as well as encouraging the use of `mem::uninitialized`.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
