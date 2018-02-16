@@ -193,6 +193,11 @@ This adds to the ever-expanding API surface of the standard library.
   and the latter might lead to code that looks ambiguous if the type itself is imported
   instead of importing the module and using a qualified `u32::NonZero` path.
 
+* We could drop the `NonZeroI*` wrappers for signed integers.
+  They’re included in this RFC because it’s easy,
+  but every use of non-zero integers the author has seen so far has been with unsigned ones.
+  This would cut the number of new types from 12 to 6.
+
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
