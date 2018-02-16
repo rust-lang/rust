@@ -75,7 +75,7 @@ impl Step for Llvm {
             }
         }
 
-        let rebuild_trigger = build.src.join("src/rustllvm/llvm-rebuild-trigger");
+        let rebuild_trigger = build.config.src.join("src/rustllvm/llvm-rebuild-trigger");
         let mut rebuild_trigger_contents = String::new();
         t!(t!(File::open(&rebuild_trigger)).read_to_string(&mut rebuild_trigger_contents));
 
@@ -109,7 +109,7 @@ impl Step for Llvm {
 
         // http://llvm.org/docs/CMake.html
         let root = if self.emscripten { "src/llvm-emscripten" } else { "src/llvm" };
-        let mut cfg = cmake::Config::new(build.src.join(root));
+        let mut cfg = cmake::Config::new(build.config.src.join(root));
         if build.config.ninja {
             cfg.generator("Ninja");
         }
@@ -326,7 +326,7 @@ impl Step for TestHelpers {
         let build = builder.build;
         let target = self.target;
         let dst = build.test_helpers_out(target);
-        let src = build.src.join("src/test/auxiliary/rust_test_helpers.c");
+        let src = build.config.src.join("src/test/auxiliary/rust_test_helpers.c");
         if up_to_date(&src, &dst.join("librust_test_helpers.a")) {
             return
         }
@@ -353,7 +353,7 @@ impl Step for TestHelpers {
            .opt_level(0)
            .warnings(false)
            .debug(false)
-           .file(build.src.join("src/test/auxiliary/rust_test_helpers.c"))
+           .file(build.config.src.join("src/test/auxiliary/rust_test_helpers.c"))
            .compile("rust_test_helpers");
     }
 }

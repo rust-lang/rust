@@ -121,7 +121,7 @@ impl PathSet {
     }
 
     fn path(&self, builder: &Builder) -> PathBuf {
-        self.set.iter().next().unwrap_or(&builder.build.src).to_path_buf()
+        self.set.iter().next().unwrap_or(&builder.config.src).to_path_buf()
     }
 }
 

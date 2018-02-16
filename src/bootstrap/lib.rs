@@ -218,7 +218,6 @@ pub struct Build {
     config: Config,
 
     // Derived properties from the above two configurations
-    src: PathBuf,
     out: PathBuf,
     rust_info: channel::GitInfo,
     cargo_info: channel::GitInfo,
@@ -301,7 +300,6 @@ impl Build {
     /// By default all build output will be placed in the current directory.
     pub fn new(config: Config) -> Build {
         let cwd = t!(env::current_dir());
-        let src = config.src.clone();
         let out = cwd.join("build");
 
         let is_sudo = match env::var_os("SUDO_USER") {
@@ -313,10 +311,10 @@ impl Build {
             }
             None => false,
         };
-        let rust_info = channel::GitInfo::new(&config, &src);
-        let cargo_info = channel::GitInfo::new(&config, &src.join("src/tools/cargo"));
-        let rls_info = channel::GitInfo::new(&config, &src.join("src/tools/rls"));
-        let rustfmt_info = channel::GitInfo::new(&config, &src.join("src/tools/rustfmt"));
+        let rust_info = channel::GitInfo::new(&config, &config.src);
+        let cargo_info = channel::GitInfo::new(&config, &config.src.join("src/tools/cargo"));
+        let rls_info = channel::GitInfo::new(&config, &config.src.join("src/tools/rls"));
+        let rustfmt_info = channel::GitInfo::new(&config, &config.src.join("src/tools/rustfmt"));
 
         Build {
             initial_rustc: config.initial_rustc.clone(),
@@ -331,7 +329,6 @@ impl Build {
             targets: config.targets.clone(),
 
             config,
-            src,
             out,
 
             rust_info,
@@ -805,7 +802,7 @@ impl Build {
                 .arg("ls-remote")
                 .arg("origin")
                 .arg("beta")
-                .current_dir(&self.src)
+                .current_dir(&self.config.src)
         );
         let beta = beta.trim().split_whitespace().next().unwrap();
         let master = output(
@@ -813,7 +810,7 @@ impl Build {
                 .arg("ls-remote")
                 .arg("origin")
                 .arg("master")
-                .current_dir(&self.src)
+                .current_dir(&self.config.src)
         );
         let master = master.trim().split_whitespace().next().unwrap();
 
@@ -823,7 +820,7 @@ impl Build {
                 .arg("merge-base")
                 .arg(beta)
                 .arg(master)
-                .current_dir(&self.src),
+                .current_dir(&self.config.src),
         );
         let base = base.trim();
 
@@ -835,7 +832,7 @@ impl Build {
                 .arg("--count")
                 .arg("--merges")
                 .arg(format!("{}...HEAD", base))
-                .current_dir(&self.src),
+                .current_dir(&self.config.src),
         );
         let n = count.trim().parse().unwrap();
         self.prerelease_version.set(Some(n));
@@ -899,7 +896,7 @@ impl Build {
     /// Returns the `a.b.c` version that the given package is at.
     fn release_num(&self, package: &str) -> String {
         let mut toml = String::new();
-        let toml_file_name = self.src.join(&format!("src/tools/{}/Cargo.toml", package));
+        let toml_file_name = self.config.src.join(&format!("src/tools/{}/Cargo.toml", package));
         t!(t!(File::open(toml_file_name)).read_to_string(&mut toml));
         for line in toml.lines() {
             let prefix = "version = \"";

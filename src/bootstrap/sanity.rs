@@ -238,7 +238,7 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
 
     if build.config.channel == "stable" {
         let mut stage0 = String::new();
-        t!(t!(File::open(build.src.join("src/stage0.txt")))
+        t!(t!(File::open(build.config.src.join("src/stage0.txt")))
             .read_to_string(&mut stage0));
         if stage0.contains("\ndev:") {
             panic!("bootstrapping from a dev compiler in a stable release, but \

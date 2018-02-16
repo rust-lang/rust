@@ -146,7 +146,7 @@ pub fn prepare_tool_cargo(
 ) -> Command {
     let build = builder.build;
     let mut cargo = builder.cargo(compiler, Mode::Tool, target, command);
-    let dir = build.src.join(path);
+    let dir = build.config.src.join(path);
     cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
 
     // We don't want to build tools dynamically as they'll be running across

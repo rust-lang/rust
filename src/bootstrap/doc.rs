@@ -92,7 +92,7 @@ impl Step for Rustbook {
     /// This will not actually generate any documentation if the documentation has
     /// already been generated.
     fn run(self, builder: &Builder) {
-        let src = builder.build.src.join("src/doc");
+        let src = builder.build.config.src.join("src/doc");
         builder.ensure(RustbookSrc {
             target: self.target,
             name: self.name,
@@ -160,7 +160,7 @@ impl Step for CargoBook {
 
         let target = self.target;
         let name = self.name;
-        let src = build.src.join("src/tools/cargo/src/doc");
+        let src = build.config.src.join("src/tools/cargo/src/doc");
 
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
@@ -285,7 +285,7 @@ impl Step for TheBook {
 
         // build the redirect pages
         println!("Documenting book redirect pages ({})", target);
-        for file in t!(fs::read_dir(build.src.join("src/doc/book/redirects"))) {
+        for file in t!(fs::read_dir(build.config.src.join("src/doc/book/redirects"))) {
             let file = t!(file);
             let path = file.path();
             let path = path.to_str().unwrap();
@@ -299,10 +299,10 @@ fn invoke_rustdoc(builder: &Builder, compiler: Compiler, target: Interned<String
     let build = builder.build;
     let out = build.doc_out(target);
 
-    let path = build.src.join("src/doc").join(markdown);
+    let path = build.config.src.join("src/doc").join(markdown);
 
-    let favicon = build.src.join("src/doc/favicon.inc");
-    let footer = build.src.join("src/doc/footer.inc");
+    let favicon = build.config.src.join("src/doc/favicon.inc");
+    let footer = build.config.src.join("src/doc/footer.inc");
     let version_info = out.join("version_info.html");
 
     let mut cmd = builder.rustdoc_cmd(compiler.host);
@@ -360,12 +360,12 @@ impl Step for Standalone {
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
 
-        let favicon = build.src.join("src/doc/favicon.inc");
-        let footer = build.src.join("src/doc/footer.inc");
-        let full_toc = build.src.join("src/doc/full-toc.inc");
-        t!(fs::copy(build.src.join("src/doc/rust.css"), out.join("rust.css")));
+        let favicon = build.config.src.join("src/doc/favicon.inc");
+        let footer = build.config.src.join("src/doc/footer.inc");
+        let full_toc = build.config.src.join("src/doc/full-toc.inc");
+        t!(fs::copy(build.config.src.join("src/doc/rust.css"), out.join("rust.css")));
 
-        let version_input = build.src.join("src/doc/version_info.html.template");
+        let version_input = build.config.src.join("src/doc/version_info.html.template");
         let version_info = out.join("version_info.html");
 
         if !up_to_date(&version_input, &version_info) {
@@ -377,7 +377,7 @@ impl Step for Standalone {
             t!(t!(File::create(&version_info)).write_all(info.as_bytes()));
         }
 
-        for file in t!(fs::read_dir(build.src.join("src/doc"))) {
+        for file in t!(fs::read_dir(build.config.src.join("src/doc"))) {
             let file = t!(file);
             let path = file.path();
             let filename = path.file_name().unwrap().to_str().unwrap();
@@ -714,7 +714,7 @@ impl Step for UnstableBookGen {
         t!(fs::create_dir_all(&out));
         t!(fs::remove_dir_all(&out));
         let mut cmd = builder.tool_cmd(Tool::UnstableBookGen);
-        cmd.arg(build.src.join("src"));
+        cmd.arg(build.config.src.join("src"));
         cmd.arg(out);
 
         build.run(&mut cmd);

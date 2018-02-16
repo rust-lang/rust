@@ -167,7 +167,7 @@ pub fn std_cargo(build: &Build,
 
     cargo.arg("--features").arg(features)
         .arg("--manifest-path")
-        .arg(build.src.join("src/libstd/Cargo.toml"));
+        .arg(build.config.src.join("src/libstd/Cargo.toml"));
 
     if let Some(target) = build.config.target_config.get(&target) {
         if let Some(ref jemalloc) = target.jemalloc {
@@ -278,7 +278,7 @@ impl Step for StartupObjects {
             return
         }
 
-        let src_dir = &build.src.join("src/rtstartup");
+        let src_dir = &build.config.src.join("src/rtstartup");
         let dst_dir = &build.native_dir(target).join("rtstartup");
         let sysroot_dir = &builder.sysroot_libdir(for_compiler, target);
         t!(fs::create_dir_all(dst_dir));
@@ -385,7 +385,7 @@ pub fn test_cargo(build: &Build,
         cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
     }
     cargo.arg("--manifest-path")
-        .arg(build.src.join("src/libtest/Cargo.toml"));
+        .arg(build.config.src.join("src/libtest/Cargo.toml"));
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -504,7 +504,7 @@ impl Step for Rustc {
 pub fn rustc_cargo(build: &Build, cargo: &mut Command) {
     cargo.arg("--features").arg(build.rustc_features())
          .arg("--manifest-path")
-         .arg(build.src.join("src/rustc/Cargo.toml"));
+         .arg(build.config.src.join("src/rustc/Cargo.toml"));
     rustc_cargo_env(build, cargo);
 }
 
@@ -626,7 +626,7 @@ impl Step for CodegenBackend {
         let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "build");
         let mut features = build.rustc_features().to_string();
         cargo.arg("--manifest-path")
-            .arg(build.src.join("src/librustc_trans/Cargo.toml"));
+            .arg(build.config.src.join("src/librustc_trans/Cargo.toml"));
         rustc_cargo_env(build, &mut cargo);
 
         match &*self.backend {

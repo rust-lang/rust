@@ -54,7 +54,7 @@ fn build_krate(build: &mut Build, krate: &str) {
     let mut cargo = Command::new(&build.initial_cargo);
     cargo.arg("metadata")
          .arg("--format-version").arg("1")
-         .arg("--manifest-path").arg(build.src.join(krate).join("Cargo.toml"));
+         .arg("--manifest-path").arg(build.config.src.join(krate).join("Cargo.toml"));
     let output = output(&mut cargo);
     let output: Output = serde_json::from_str(&output).unwrap();
     let mut id2name = HashMap::new();

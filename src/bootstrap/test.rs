@@ -199,7 +199,7 @@ impl Step for Cargo {
 
         builder.ensure(tool::Cargo { compiler, target: self.host });
         let mut cargo = builder.cargo(compiler, Mode::Tool, self.host, "test");
-        cargo.arg("--manifest-path").arg(build.src.join("src/tools/cargo/Cargo.toml"));
+        cargo.arg("--manifest-path").arg(build.config.src.join("src/tools/cargo/Cargo.toml"));
         if !build.fail_fast {
             cargo.arg("--no-fail-fast");
         }
@@ -339,7 +339,7 @@ impl Step for Miri {
 
         if let Some(miri) = builder.ensure(tool::Miri { compiler, target: self.host }) {
             let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
-            cargo.arg("--manifest-path").arg(build.src.join("src/tools/miri/Cargo.toml"));
+            cargo.arg("--manifest-path").arg(build.config.src.join("src/tools/miri/Cargo.toml"));
 
             // Don't build tests dynamically, just a pain to work with
             cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
@@ -391,7 +391,7 @@ impl Step for Clippy {
 
         if let Some(clippy) = builder.ensure(tool::Clippy { compiler, target: self.host }) {
             let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
-            cargo.arg("--manifest-path").arg(build.src.join("src/tools/clippy/Cargo.toml"));
+            cargo.arg("--manifest-path").arg(build.config.src.join("src/tools/clippy/Cargo.toml"));
 
             // Don't build tests dynamically, just a pain to work with
             cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
@@ -450,7 +450,7 @@ impl Step for RustdocTheme {
         let rustdoc = builder.rustdoc(self.compiler.host);
         let mut cmd = builder.tool_cmd(Tool::RustdocTheme);
         cmd.arg(rustdoc.to_str().unwrap())
-           .arg(builder.src.join("src/librustdoc/html/static/themes").to_str().unwrap())
+           .arg(builder.config.src.join("src/librustdoc/html/static/themes").to_str().unwrap())
            .env("RUSTC_STAGE", self.compiler.stage.to_string())
            .env("RUSTC_SYSROOT", builder.sysroot(self.compiler))
            .env("RUSTDOC_LIBDIR", builder.sysroot_libdir(self.compiler, self.compiler.host))
@@ -524,7 +524,7 @@ impl Step for Tidy {
         let _folder = build.fold_output(|| "tidy");
         println!("tidy check ({})", host);
         let mut cmd = builder.tool_cmd(Tool::Tidy);
-        cmd.arg(build.src.join("src"));
+        cmd.arg(build.config.src.join("src"));
         if !build.config.vendor {
             cmd.arg("--no-vendor");
         }
@@ -845,7 +845,7 @@ impl Step for Compiletest {
             cmd.arg("--rustdoc-path").arg(builder.rustdoc(compiler.host));
         }
 
-        cmd.arg("--src-base").arg(build.src.join("src/test").join(suite));
+        cmd.arg("--src-base").arg(build.config.src.join("src/test").join(suite));
         cmd.arg("--build-base").arg(testdir(build, compiler.host).join(suite));
         cmd.arg("--stage-id").arg(format!("stage{}-{}", compiler.stage, target));
         cmd.arg("--mode").arg(mode);
@@ -1025,7 +1025,7 @@ impl Step for Docs {
 
         // Do a breadth-first traversal of the `src/doc` directory and just run
         // tests for all files that end in `*.md`
-        let mut stack = vec![build.src.join("src/doc")];
+        let mut stack = vec![build.config.src.join("src/doc")];
         let _time = util::timeit();
         let _folder = build.fold_output(|| "test_docs");
 
@@ -1398,7 +1398,7 @@ impl Step for Crate {
                 .expect("nodejs not configured");
             let runner = format!("{} {}/src/etc/wasm32-shim.js",
                                  node.display(),
-                                 build.src.display());
+                                 build.config.src.display());
             cargo.env(format!("CARGO_TARGET_{}_RUNNER", envify(&target)), &runner);
         } else if build.remote_tested(target) {
             cargo.env(format!("CARGO_TARGET_{}_RUNNER", envify(&target)),
@@ -1625,7 +1625,7 @@ impl Step for Bootstrap {
         let build = builder.build;
         let mut cmd = Command::new(&build.initial_cargo);
         cmd.arg("test")
-           .current_dir(build.src.join("src/bootstrap"))
+           .current_dir(build.config.src.join("src/bootstrap"))
            .env("CARGO_TARGET_DIR", build.out.join("bootstrap-test"))
            .env("RUSTC_BOOTSTRAP", "1")
            .env("RUSTC", &build.initial_rustc);

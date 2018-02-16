@@ -359,7 +359,7 @@ impl Step for Rustc {
         // Prepare the overlay which is part of the tarball but won't actually be
         // installed
         let cp = |file: &str| {
-            install(&build.src.join(file), &overlay, 0o644);
+            install(&build.config.src.join(file), &overlay, 0o644);
         };
         cp("COPYRIGHT");
         cp("LICENSE-APACHE");
@@ -387,7 +387,7 @@ impl Step for Rustc {
 
             let dst = image.join("share/doc");
             t!(fs::create_dir_all(&dst));
-            cp_r(&build.src.join("src/etc/third-party"), &dst);
+            cp_r(&build.config.src.join("src/etc/third-party"), &dst);
         }
 
         // Finally, wrap everything up in a nice tarball!
@@ -442,7 +442,7 @@ impl Step for Rustc {
 
             // Man pages
             t!(fs::create_dir_all(image.join("share/man/man1")));
-            let man_src = build.src.join("src/doc/man");
+            let man_src = build.config.src.join("src/doc/man");
             let man_dst = image.join("share/man/man1");
             let month_year = t!(time::strftime("%B %Y", &time::now()));
             // don't use our `bootstrap::util::{copy, cp_r}`, because those try
@@ -466,7 +466,7 @@ impl Step for Rustc {
 
             // Misc license info
             let cp = |file: &str| {
-                install(&build.src.join(file), &image.join("share/doc/rust"), 0o644);
+                install(&build.config.src.join(file), &image.join("share/doc/rust"), 0o644);
             };
             cp("COPYRIGHT");
             cp("LICENSE-APACHE");
@@ -504,11 +504,11 @@ impl Step for DebuggerScripts {
         let dst = sysroot.join("lib/rustlib/etc");
         t!(fs::create_dir_all(&dst));
         let cp_debugger_script = |file: &str| {
-            install(&build.src.join("src/etc/").join(file), &dst, 0o644);
+            install(&build.config.src.join("src/etc/").join(file), &dst, 0o644);
         };
         if host.contains("windows-msvc") {
             // windbg debugger scripts
-            install(&build.src.join("src/etc/rust-windbg.cmd"), &sysroot.join("bin"),
+            install(&build.config.src.join("src/etc/rust-windbg.cmd"), &sysroot.join("bin"),
                 0o755);
 
             cp_debugger_script("natvis/intrinsic.natvis");
@@ -518,14 +518,14 @@ impl Step for DebuggerScripts {
             cp_debugger_script("debugger_pretty_printers_common.py");
 
             // gdb debugger scripts
-            install(&build.src.join("src/etc/rust-gdb"), &sysroot.join("bin"),
+            install(&build.config.src.join("src/etc/rust-gdb"), &sysroot.join("bin"),
                     0o755);
 
             cp_debugger_script("gdb_load_rust_pretty_printers.py");
             cp_debugger_script("gdb_rust_pretty_printing.py");
 
             // lldb debugger scripts
-            install(&build.src.join("src/etc/rust-lldb"), &sysroot.join("bin"),
+            install(&build.config.src.join("src/etc/rust-lldb"), &sysroot.join("bin"),
                     0o755);
 
             cp_debugger_script("lldb_rust_formatters.py");
@@ -719,7 +719,7 @@ fn copy_src_dirs(build: &Build, src_dirs: &[&str], exclude_dirs: &[&str], dst_di
     for item in src_dirs {
         let dst = &dst_dir.join(item);
         t!(fs::create_dir_all(dst));
-        cp_filtered(&build.src.join(item), dst, &|path| filter_fn(exclude_dirs, item, path));
+        cp_filtered(&build.config.src.join(item), dst, &|path| filter_fn(exclude_dirs, item, path));
     }
 }
 
@@ -792,7 +792,7 @@ impl Step for Src {
 
         copy_src_dirs(build, &std_src_dirs[..], &std_src_dirs_exclude[..], &dst_src);
         for file in src_files.iter() {
-            copy(&build.src.join(file), &dst_src.join(file));
+            copy(&build.config.src.join(file), &dst_src.join(file));
         }
 
         // Create source tarball in rust-installer format
@@ -865,7 +865,7 @@ impl Step for PlainSourceTarball {
 
         // Copy the files normally
         for item in &src_files {
-            copy(&build.src.join(item), &plain_dst_src.join(item));
+            copy(&build.config.src.join(item), &plain_dst_src.join(item));
         }
 
         // Create the version file
@@ -997,7 +997,7 @@ impl Step for Cargo {
         let target = self.target;
 
         println!("Dist cargo stage{} ({})", stage, target);
-        let src = build.src.join("src/tools/cargo");
+        let src = build.config.src.join("src/tools/cargo");
         let etc = src.join("src/etc");
         let release_num = build.release_num("cargo");
         let name = pkgname(build, "cargo");
@@ -1085,7 +1085,7 @@ impl Step for Rls {
         assert!(build.config.extended);
 
         println!("Dist RLS stage{} ({})", stage, target);
-        let src = build.src.join("src/tools/rls");
+        let src = build.config.src.join("src/tools/rls");
         let release_num = build.release_num("rls");
         let name = pkgname(build, "rls");
         let version = build.rls_info.version(build, &release_num);
@@ -1166,7 +1166,7 @@ impl Step for Rustfmt {
         assert!(build.config.extended);
 
         println!("Dist Rustfmt stage{} ({})", stage, target);
-        let src = build.src.join("src/tools/rustfmt");
+        let src = build.config.src.join("src/tools/rustfmt");
         let release_num = build.release_num("rustfmt");
         let name = pkgname(build, "rustfmt");
         let version = build.rustfmt_info.version(build, &release_num);
@@ -1274,13 +1274,13 @@ impl Step for Extended {
 
         let tmp = tmpdir(build);
         let overlay = tmp.join("extended-overlay");
-        let etc = build.src.join("src/etc/installer");
+        let etc = build.config.src.join("src/etc/installer");
         let work = tmp.join("work");
 
         let _ = fs::remove_dir_all(&overlay);
-        install(&build.src.join("COPYRIGHT"), &overlay, 0o644);
-        install(&build.src.join("LICENSE-APACHE"), &overlay, 0o644);
-        install(&build.src.join("LICENSE-MIT"), &overlay, 0o644);
+        install(&build.config.src.join("COPYRIGHT"), &overlay, 0o644);
+        install(&build.config.src.join("LICENSE-APACHE"), &overlay, 0o644);
+        install(&build.config.src.join("LICENSE-MIT"), &overlay, 0o644);
         let version = build.rust_version();
         t!(t!(File::create(overlay.join("version"))).write_all(version.as_bytes()));
         if let Some(sha) = build.rust_sha() {
@@ -1325,11 +1325,11 @@ impl Step for Extended {
         build.run(&mut cmd);
 
         let mut license = String::new();
-        t!(t!(File::open(build.src.join("COPYRIGHT"))).read_to_string(&mut license));
+        t!(t!(File::open(build.config.src.join("COPYRIGHT"))).read_to_string(&mut license));
         license.push_str("\n");
-        t!(t!(File::open(build.src.join("LICENSE-APACHE"))).read_to_string(&mut license));
+        t!(t!(File::open(build.config.src.join("LICENSE-APACHE"))).read_to_string(&mut license));
         license.push_str("\n");
-        t!(t!(File::open(build.src.join("LICENSE-MIT"))).read_to_string(&mut license));
+        t!(t!(File::open(build.config.src.join("LICENSE-MIT"))).read_to_string(&mut license));
 
         let rtf = r"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Arial;}}\nowwrap\fs18";
         let mut rtf = rtf.to_string();
