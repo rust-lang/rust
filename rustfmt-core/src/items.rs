@@ -1204,7 +1204,7 @@ pub fn format_struct_struct(
     )?;
 
     if !items_str.contains('\n') && !result.contains('\n') && items_str.len() <= one_line_budget
-        && !items_str.contains("//")
+        && !contains_comment(&items_str)
     {
         Some(format!("{} {} }}", result, items_str))
     } else {
