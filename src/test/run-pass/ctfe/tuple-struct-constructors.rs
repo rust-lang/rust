@@ -10,11 +10,10 @@
 
 // https://github.com/rust-lang/rust/issues/41898
 
-#![feature(nonzero, const_fn)]
-extern crate core;
-use core::nonzero::NonZero;
+#![feature(nonzero)]
+use std::num::NonZeroU64;
 
 fn main() {
-    const FOO: NonZero<u64> = unsafe { NonZero::new_unchecked(2) };
+    const FOO: NonZeroU64 = unsafe { NonZeroU64::new_unchecked(2) };
     if let FOO = FOO {}
 }

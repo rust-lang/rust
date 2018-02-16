@@ -16,7 +16,7 @@ use convert::TryFrom;
 use fmt;
 use intrinsics;
 use mem;
-#[allow(deprecated)] use nonzero::NonZero;
+use nonzero::NonZero;
 use ops;
 use str::FromStr;
 
@@ -49,11 +49,9 @@ macro_rules! nonzero_integers {
             /// ```
             #[$stability]
             #[$deprecation]
-            #[allow(deprecated)]
             #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
             pub struct $Ty(NonZero<$Int>);
 
-            #[allow(deprecated)]
             impl $Ty {
                 /// Create a non-zero without checking the value.
                 ///

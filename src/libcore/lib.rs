@@ -171,7 +171,6 @@ pub mod prelude;
 
 pub mod intrinsics;
 pub mod mem;
-pub mod nonzero;
 pub mod ptr;
 pub mod hint;
 
@@ -221,6 +220,7 @@ pub mod heap {
 
 // note: does not need to be public
 mod iter_private;
+mod nonzero;
 mod tuple;
 mod unit;
 
