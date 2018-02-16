@@ -80,8 +80,8 @@ extern crate proc_macro;
 use proc_macro::{TestFrameworkContext, TokenStream};
 
 // attributes() is optional
-#[test_framework(attributes(foo, bar))]
-pub fn mytest(context: &TestFrameworkContext) -> TokenStream {
+#[test_framework]
+pub fn test(context: &TestFrameworkContext) -> TokenStream {
     // ...
 }
 ```
@@ -104,28 +104,22 @@ struct AnnotatedItem
 
 `items` here contains an `AnnotatedItem` for every item in the
 target crate that has one of the attributes declared in `attributes`
-along with attributes sharing the name of the framework (`mytest`, here).
+along with attributes sharing the name of the framework (`test`, here).
 
-A test framework could declare that it reacts to multiple different
-attributes, in which case it would get all items with any of the
-listed attributes. These items be modules, functions, structs,
-statics, or whatever else the test framework wants to support. Note
-that the test framework function can only see all the annotated
-items, not modify them; modification would have to happen with regular
-procedural macros. The returned `TokenStream` must declare the `main()`
-that is to become the entry-point for the binary produced when this
-test framework is used.
+The annotated function _must_ be named "test" for a test framework and
+"bench" for a bench framework. We currently do not support
+any other kind of framework, but we may in the future.
 
 So an example transformation would be to take something like this:
 
 ```rust
-#[quickcheck]
+#[test]
 fn foo(x: u8) {
     // ...
 }
 
 mod bar {
-    #[quickcheck]
+    #[test]
     fn bar(x: String, y: u8) {
         // ...
     }
@@ -173,9 +167,7 @@ This section works like this:
 
 ```rust
 [testing.framework]
-folders = ["bench"]
-lib = true              # true by default
-single-target = true    # false by default
+kind = "test" # or bench
 ```
 
 `lib` specifies if the `--lib` mode exists for this framework by default,
@@ -193,59 +185,26 @@ under a new `[[testing.frameworks]]` section in their
 ```toml
 [[testing.frameworks]]
 provider = { rust-fuzz = "1.0" }
-name = "fuzz"           # optional, overrides the crate name
-folders = ["fuzz"]     # optional, overrides `folders` on framework crate
-lib = false             # optional, overrides `lib` on framework crate
 ```
 
 This pulls in the framework named "fuzz", which uses the
 implementation provided by the `rust-fuzz` crate. When run, it will be
 applied to all files in the `fuzz` directory. By default, the following
-frameworks are defined:
+framework is defined:
 
 ```toml
 [[testing.frameworks]]
-name = "test"
 provider = { test = "1.0" }
-folders = ["tests"]
-lib = true
-
-[[testing.frameworks]]
-name = "bench"
-provider = { ?? = "1.0" }
-folders = ["benches"]
-lib = true # could also be split into two
-
-[[testing.frameworks]]
-name = "example"
-provider = { ?? = "1.0" }
-folders = ["examples"]
-lib = false
 ```
 
-Whereas having two frameworks of the same name is an error, if you define
-a framework named "test", "bench", or "example", it will override the implicitly
-defined builtin frameworks.
+(We may define a default framework for bench in the future)
 
-To invoke a particular framework, a user invokes `cargo test --framework
-<name>`. `cargo bench` is an alias for `cargo
-test --framework bench`. Any additional
-arguments are passed to the testing binary. By convention, the
-first position argument should allow filtering which targets
-(tests/benchmarks/etc.) are run.
+Declaring a test framework will replace the existing default one. You cannot declare
+more than one test or bench framework.
 
-You can also add targets to a framework a la `[[test]]` and `[[example]]` via `[[testing.target]]`
-
-```toml
-[[testing.target]]
-framework = fuzz
-path = "foo.rs"
-name = "foo"
-```
-
-`[[test]]` and `[[example]]` in a crate's `Cargo.toml` are aliases of
-`[[testing.target]] framework = test` and `[[testing.target]] framework = example`
-respectively. This also goes for `[[bench]]` if we decide to keep that around.
+To invoke a particular framework, a user invokes `cargo test` or `cargo bench`. Any additional
+arguments are passed to the testing binary. By convention, the first position argument should allow
+filtering which targets (tests/benchmarks/etc.) are run.
 
 ## To be designed
 
@@ -411,6 +370,14 @@ Should we be shipping a bencher by default at all (i.e., in libtest)? Could we i
 If this RFC lands and [RFC 2287] is rejected, we should probably try to stabilize
 `test::black_box` in some form (maybe `mem::black_box` and `mem::clobber` as detailed
 in [this amendment]).
+
+## Cargo integration
+
+A previous iteration of this RFC allowed for test frameworks to declare new attributes
+and folders, so you would have `cargo test --kind quickcheck` look for tests in the
+`quickcheck/` folder that were annotated with `#[quickcheck]`.
+
+This is no longer the case, but we may wish to add this again.
 
  [RFC 2287]: https://github.com/rust-lang/rfcs/pull/2287
  [this amendment]: https://github.com/Manishearth/rfcs/pull/1
