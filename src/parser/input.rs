@@ -5,9 +5,7 @@ use super::is_insignificant;
 use std::ops::{Add, AddAssign};
 
 pub(crate) struct ParserInput<'t> {
-    #[allow(unused)]
     text: &'t str,
-    #[allow(unused)]
     start_offsets: Vec<TextUnit>,
     tokens: Vec<Token>, // non-whitespace tokens
 }
