@@ -15,7 +15,7 @@
 use convert::{Infallible, TryFrom};
 use fmt;
 use intrinsics;
-use nonzero::NonZero;
+#[allow(deprecated)] use nonzero::NonZero;
 use ops;
 use str::FromStr;
 
@@ -46,9 +46,11 @@ macro_rules! nonzero_integers {
             /// assert_eq!(size_of::<Option<std::num::NonZeroU32>>(), size_of::<u32>());
             /// ```
             #[$stability]
+            #[allow(deprecated)]
             #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
             pub struct $Ty(NonZero<$Int>);
 
+            #[allow(deprecated)]
             impl $Ty {
                 /// Create a non-zero without checking the value.
                 ///

@@ -10,8 +10,11 @@
 
 //! Exposes the NonZero lang item which provides optimization hints.
 #![unstable(feature = "nonzero",
-            reason = "needs an RFC to flesh out the design",
+            reason = "deprecated",
             issue = "27730")]
+#![rustc_deprecated(reason = "use `std::ptr::NonNull` or `std::num::NonZero*` instead",
+                    since = "1.26.0")]
+#![allow(deprecated)]
 
 use ops::CoerceUnsized;
 
