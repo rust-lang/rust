@@ -260,7 +260,10 @@ fn get_trans_sysroot(backend_name: &str) -> fn() -> Box<TransCrate> {
     }
 
     let target = session::config::host_triple();
-    let mut sysroot_candidates = vec![filesearch::get_or_default_sysroot()];
+    let mut sysroot_candidates = vec![
+        filesearch::get_or_default_sysroot(),
+        env!("CFG_PREFIX").into()
+    ];
     let path = current_dll_path()
         .and_then(|s| s.canonicalize().ok());
     if let Some(dll) = path {
