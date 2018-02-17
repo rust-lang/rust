@@ -149,7 +149,7 @@ fn compare_items(a: &ast::Item, b: &ast::Item) -> Ordering {
 /// the same `ast::ItemKind`.
 // TODO (some day) remove unused imports, expand globs, compress many single
 // imports into a list import.
-pub fn rewrite_reorderable_items(
+fn rewrite_reorderable_items(
     context: &RewriteContext,
     reorderable_items: &[&ast::Item],
     shape: Shape,
@@ -259,8 +259,12 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             .iter()
             .any(|item| !out_of_file_lines_range!(self, item.span));
 
-        if at_least_one_in_file_lines {
-            self.format_imports(items);
+        if at_least_one_in_file_lines && !items.is_empty() {
+            let lo = items.first().unwrap().span().lo();
+            let hi = items.last().unwrap().span().hi();
+            let span = mk_sp(lo, hi);
+            let rw = rewrite_reorderable_items(&self.get_context(), items, self.shape(), span);
+            self.push_rewrite(span, rw);
         } else {
             for item in items {
                 self.push_rewrite(item.span, None);
@@ -284,7 +288,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         while !items_left.is_empty() {
             // If the next item is a `use`, `extern crate` or `mod`, then extract it and any
             // subsequent items that have the same item kind to be reordered within
-            // `format_imports`. Otherwise, just format the next item for output.
+            // `reorder_items`. Otherwise, just format the next item for output.
             {
                 try_reorder_items_with!(
                     reorder_imports,

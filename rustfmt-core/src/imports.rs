@@ -17,10 +17,8 @@ use syntax::codemap::{BytePos, Span};
 use codemap::SpanUtils;
 use config::IndentStyle;
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
-use reorder::rewrite_reorderable_items;
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
-use spanned::Spanned;
 use types::{rewrite_path, PathContext};
 use utils::{format_visibility, mk_sp};
 use visitor::FmtVisitor;
@@ -125,18 +123,6 @@ pub fn rewrite_import(
 }
 
 impl<'a> FmtVisitor<'a> {
-    pub fn format_imports(&mut self, use_items: &[&ast::Item]) {
-        if use_items.is_empty() {
-            return;
-        }
-
-        let lo = use_items.first().unwrap().span().lo();
-        let hi = use_items.last().unwrap().span().hi();
-        let span = mk_sp(lo, hi);
-        let rw = rewrite_reorderable_items(&self.get_context(), use_items, self.shape(), span);
-        self.push_rewrite(span, rw);
-    }
-
     pub fn format_import(&mut self, item: &ast::Item, tree: &ast::UseTree) {
         let span = item.span;
         let shape = self.shape();
