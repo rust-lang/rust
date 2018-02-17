@@ -310,6 +310,7 @@ error[E0072]: recursive type `List` has infinite size
 ```
 
 ## Migration advice
+[migration advice]: #migration-advice
 
 Since the new introduced syntax is often clearer and shorter, especially when
 dealing with long type names with many generic parameters, tools like `clippy`
@@ -627,4 +628,37 @@ is preferred.
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-There are no unresolved questions.
+## Should the migration advice be to use `Self` instead of the concrete type?
+
+In the [migration advice] we suggest that `clippy` should encourage users to
+move towards using `Self` instead of the concrete type. This RFC currently
+argues that this should be best practice.
+
+However, there is some concern that the reading code that pervasively uses
+`Self` across the board adds a level of indirection since readers are often
+interested in the concrete type instead of just knowing that it is the `Self`
+type. To mitigate this indirection, it is possible to improve `rustdoc` such
+that you can hover `Self` and its associated types (if there are any) to see
+what the concrete type is. Hovering can reduce the degree to which you have
+to jump to see what the concrete type is.
+
+Furthermore, the level of indirection introduced by using `Self` is not much.
+Only one level of indirection is introduced.
+
+With respect to type definitions specifically, there usually are few enough
+variants that you can keep the header `enum Foo {` in visual scope in your editor.
+Therefore, you can quickly see what the concrete type is.
+
+When you are dealing with complex types, `Self` can also be easier to read
+as you can syntax-highlight for it easily and provide a distinct color for it.
+
+Using `Self` or an associated type of `Self` such as in `-> Option<Self::Item>`
+also provides information about the context we are dealing with in the case of
+traits. Writing out the concrete type can therefore make patterns harder to see.
+
+However, the standard library currently writes out the associated type. This
+can be seen in the case of `Iterator`, where instead of writing
+`fn next(&mut self) -> Option<Self::Item>` the standard library will use
+`fn next(&mut self) -> Option<SomeConcreteType>`.
+
+There are no other unresolved questions.
