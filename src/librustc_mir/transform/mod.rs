@@ -24,6 +24,7 @@ pub mod deaggregator;
 pub mod dump_mir;
 pub mod elaborate_drops;
 pub mod erase_regions;
+pub mod fragment_locals;
 pub mod generator;
 pub mod inline;
 pub mod instcombine;
@@ -311,6 +312,14 @@ fn run_optimization_passes<'tcx>(
             &const_prop::ConstProp,
             &simplify_branches::SimplifyBranches::new("after-const-prop"),
             &deaggregator::Deaggregator,
+            // FIXME(eddyb) move this (and `Deaggregator` above) to happen
+            // before `ConstProp`, to maximize its effectiveness.
+            // NB: it's not known yet if `ConstProp` can create new
+            // opportunities for this optimization, or any others.
+            // Perhaps we should do a crater run erroring if any optimizations
+            // performed better with `ConstProp` running right before them
+            // (this would require a lot of MIR cloning, but seems doable).
+            &fragment_locals::FragmentLocals,
             &copy_prop::CopyPropagation,
             &simplify_branches::SimplifyBranches::new("after-copy-prop"),
             &remove_noop_landing_pads::RemoveNoopLandingPads,

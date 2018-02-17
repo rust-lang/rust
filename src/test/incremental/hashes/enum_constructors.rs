@@ -96,7 +96,7 @@ pub fn change_constructor_path_struct_like() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody,optimized_mir,mir_built,typeck_tables_of")]
+#[rustc_clean(cfg="cfail2", except="HirBody,mir_built,typeck_tables_of")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_constructor_path_struct_like() {
     let _ = Enum2::Struct {
@@ -119,7 +119,7 @@ pub fn change_constructor_variant_struct_like() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody,optimized_mir,mir_built")]
+#[rustc_clean(cfg="cfail2", except="HirBody,mir_built")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_constructor_variant_struct_like() {
     let _ = Enum2::Struct2 {
@@ -197,7 +197,7 @@ pub fn change_constructor_path_tuple_like() {
 #[cfg(not(cfail1))]
 #[rustc_clean(
     cfg="cfail2",
-    except="HirBody,optimized_mir,mir_built,typeck_tables_of"
+    except="HirBody,mir_built,typeck_tables_of"
 )]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_constructor_path_tuple_like() {
@@ -215,7 +215,7 @@ pub fn change_constructor_variant_tuple_like() {
 #[cfg(not(cfail1))]
 #[rustc_clean(
     cfg="cfail2",
-    except="HirBody,optimized_mir,mir_built,typeck_tables_of"
+    except="HirBody,mir_built,typeck_tables_of"
 )]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_constructor_variant_tuple_like() {
@@ -278,7 +278,7 @@ pub fn change_constructor_path_c_like() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody,optimized_mir,mir_built,typeck_tables_of")]
+#[rustc_clean(cfg="cfail2", except="HirBody,mir_built,typeck_tables_of")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_constructor_path_c_like() {
     let _ = Clike2::B;
@@ -293,7 +293,7 @@ pub fn change_constructor_variant_c_like() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody,optimized_mir,mir_built")]
+#[rustc_clean(cfg="cfail2", except="HirBody,mir_built")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_constructor_variant_c_like() {
     let _ = Clike::C;

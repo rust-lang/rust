@@ -28,20 +28,21 @@ fn main() {
 //         StorageLive(_1);
 //         ((_1 as Foo).0: u8) = const 0u8;
 //         discriminant(_1) = 0;
-//         StorageLive(_2);
+//         StorageLive(_6);
+//         StorageLive(_7);
 //         _3 = discriminant(_1);
 //         switchInt(move _3) -> [0isize: bb3, 1isize: bb1, otherwise: bb2];
 //     }
 //     bb1: {
-//         ((_2 as Foo).0: u8) = const 0u8;
-//         discriminant(_2) = 0;
+//         _7 = const 0u8;
+//         _6 = const 0isize;
 //         goto -> bb4;
 //     }
 //     ...
 //     bb3: {
 //         _4 = ((_1 as Foo).0: u8);
-//         ((_2 as Foo).0: u8) = move _4;
-//         discriminant(_2) = 0;
+//         _7 = move _4;
+//         _6 = const 0isize;
 //         goto -> bb4;
 //     }
 //     ...
@@ -54,20 +55,21 @@ fn main() {
 //         StorageLive(_1);
 //         ((_1 as Foo).0: u8) = const 0u8;
 //         discriminant(_1) = 0;
-//         StorageLive(_2);
+//         StorageLive(_6);
+//         StorageLive(_7);
 //         _3 = discriminant(_1);
 //         switchInt(move _3) -> [0isize: bb3, 1isize: bb1, otherwise: bb2];
 //     }
 //     bb1: {
-//         ((_2 as Foo).0: u8) = const 0u8;
-//         discriminant(_2) = 0;
+//         _7 = const 0u8;
+//         _6 = const 0isize;
 //         goto -> bb4;
 //     }
 //     ...
 //     bb3: {
 //         _4 = ((_1 as Foo).0: u8);
-//         ((_2 as Foo).0: u8) = move _4;
-//         discriminant(_2) = 0;
+//         _7 = move _4;
+//         _6 = const 0isize;
 //         goto -> bb4;
 //     }
 //     ...
