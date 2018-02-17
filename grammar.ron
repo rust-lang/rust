@@ -27,6 +27,8 @@ Grammar(
         "mut",
         "unsafe",
         "type",
+        "ref",
+        "let",
     ],
     contextual_keywords: [
         "auto",
@@ -113,6 +115,12 @@ Grammar(
         "FN_POINTER_TYPE",
         "FOR_TYPE",
 
+        "REF_PAT",
+        "BIND_PAT",
+        "PLACEHOLDER_PAT",
+
+        "TUPLE_EXPR",
+
         "EXTERN_BLOCK",
         "ENUM_VARIANT",
         "NAMED_FIELD",
@@ -132,5 +140,8 @@ Grammar(
         "ABI",
         "NAME",
         "NAME_REF",
+        "VALUE_PARAMETER",
+        "BLOCK",
+        "LET_STMT",
     ]
 )

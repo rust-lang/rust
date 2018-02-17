@@ -21,9 +21,10 @@ FILE@[0; 31)
       IDENT@[20; 23) "foo"
     L_PAREN@[23; 24)
     R_PAREN@[24; 25)
-    L_CURLY@[25; 26)
-    R_CURLY@[26; 27)
-    WHITESPACE@[27; 29)
+    BLOCK@[25; 29)
+      L_CURLY@[25; 26)
+      R_CURLY@[26; 27)
+      WHITESPACE@[27; 29)
   ERROR@[29; 31)
   err: `expected item`
     R_CURLY@[29; 30)
