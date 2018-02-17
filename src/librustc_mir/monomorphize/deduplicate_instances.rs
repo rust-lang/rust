@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc::ty::{self, TyCtxt, Ty, TypeFoldable, Instance};
+use rustc::ty::{self, TyCtxt, Ty, ParamTy, TypeFoldable, Instance};
 use rustc::ty::fold::TypeFolder;
 use rustc::ty::subst::Kind;
 use rustc::middle::const_val::ConstVal;
@@ -53,39 +53,31 @@ pub(crate) fn collapse_interchangable_instances<'a, 'tcx>(
     let used_substs = used_substs_for_instance(tcx, instance);
     instance.substs = tcx._intern_substs(&instance.substs.into_iter().enumerate().map(|(i, subst)| {
         if let Some(ty) = subst.as_type() {
-            /*let ty = if let ty::TyParam(ref _param) = ty.sty {
-                match used_substs.parameters[ParamIdx(i as u32)] {
-                    ParamUsage::Unused => ty.into(),
-                    ParamUsage::LayoutUsed | ParamUsage::Used => {
-                        //^ Dont replace <closure_kind> and other internal params
-                        if false /*param.name.as_str().starts_with("<")*/ {
-                            ty.into()
-                        } else {
-                            tcx.sess.warn(&format!("Unused subst for {:?}", instance));
-                            tcx.mk_ty(ty::TyNever)
+            let ty = match used_substs.parameters[ParamIdx(i as u32)] {
+                ParamUsage::Unused => {
+                    if false /*param.name.as_str().starts_with("<")*/ {
+                        ty.into()
+                    } else {
+                        #[allow(unused_mut)]
+                        let mut mir = Vec::new();
+                        ::util::write_mir_pretty(tcx, Some(instance.def_id()), &mut mir).unwrap();
+                        let mut generics = Some(tcx.generics_of(instance.def_id()));
+                        let mut pretty_generics = String::new();
+                        loop {
+                            if let Some(ref gen) = generics {
+                                for ty in &gen.types {
+                                    pretty_generics.push_str(&format!("{}:{} at {:?}, ", ty.index, ty.name, tcx.def_span(ty.def_id)));
+                                }
+                            } else {
+                                break;
+                            }
+                            generics = generics.and_then(|gen|gen.parent).map(|def_id|tcx.generics_of(def_id));
                         }
+                        tcx.sess.warn(&format!("Unused subst {} for {:?}<{}>\n with mir: {}", i, instance, pretty_generics, String::from_utf8_lossy(&mir)));
+                        tcx.mk_ty(ty::TyNever)
                     }
                 }
-            } else {
-                tcx.sess.fatal("efjiofefio");
-                // Can't use TyError as it gives some ICE in rustc_trans::callee::get_fn
-                tcx.sess.warn(&format!("Unused subst for {:?}", instance));
-                tcx.mk_ty(ty::TyNever)
-            };*/
-            let ty = if used_substs.parameters[ParamIdx(i as u32)] != ParamUsage::Unused {
-                ty.into()
-            } else if let ty::TyParam(ref _param) = ty.sty {
-                //^ Dont replace <closure_kind> and other internal params
-                if false /*param.name.as_str().starts_with("<")*/ {
-                    ty.into()
-                } else {
-                    tcx.sess.warn(&format!("Unused subst for {:?}", instance));
-                    tcx.mk_ty(ty::TyNever)
-                }
-            } else {
-                // Can't use TyError as it gives some ICE in rustc_trans::callee::get_fn
-                tcx.sess.warn(&format!("Unused subst for {:?}", instance));
-                tcx.mk_ty(ty::TyNever)
+                ParamUsage::LayoutUsed | ParamUsage::Used => ty.into(),
             };
             Kind::from(ty)
         } else {
@@ -185,9 +177,18 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> TypeFolder<'gcx, 'tcx> for SubstsVisitor<'a,
             return ty;
         }
         match ty.sty {
-            ty::TyParam(param) => {
-                self.2.parameters[ParamIdx(param.idx)] = ParamUsage::Used;
-                ty
+            /*ty::TyAdt(_, substs) => {
+                for subst in substs {
+                    if let Some(ty) = subst.as_type() {
+                        ty.fold_with(self);
+                    }
+                }
+            }
+            ty::TyArray(ty, _) |
+            ty::TySlice(ty) |
+            ty::TyRawPtr(TypeAndMut { ty, .. }) |
+            ty::TyRef(_, TypeAndMut { ty, .. }) => {
+                ty.fold_with(self);
             }
             ty::TyFnDef(_, substs) => {
                 for subst in substs {
@@ -195,7 +196,11 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> TypeFolder<'gcx, 'tcx> for SubstsVisitor<'a,
                         ty.fold_with(self);
                     }
                 }
-                ty.super_fold_with(self)
+            }
+            ty::TyFnPtr(poly_fn_sig) => {
+                for ty in poly_fn_sig.skip_binder().inputs_and_outputs {
+                    ty.fold_with(self);
+                }
             }
             ty::TyClosure(_, closure_substs) => {
                 for subst in closure_substs.substs {
@@ -203,10 +208,33 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> TypeFolder<'gcx, 'tcx> for SubstsVisitor<'a,
                         ty.fold_with(self);
                     }
                 }
-                ty.super_fold_with(self)
             }
-            _ => ty.super_fold_with(self)
+            ty::TyGenerator(_, closure_substs, generator_interior) => {
+                for subst in closure_substs.substs {
+                    if let Some(ty) = subst.as_type() {
+                        ty.fold_with(self);
+                    }
+                }
+                generator_interior.witness.fold_with(self);
+            }
+            ty::TyTuple(types, _) => {
+                for ty in types {
+                    ty.fold_with(self);
+                }
+            }
+            ty::TyProjection(projection_ty) => {
+                for subst in projection_ty.substs {
+                    if let Some(ty) = subst.as_type() {
+                        ty.fold_with(self);
+                    }
+                }
+            }*/
+            ty::TyParam(param) => {
+                self.2.parameters[ParamIdx(param.idx)] = ParamUsage::Used;
+            }
+            _ => {}
         }
+        ty.super_fold_with(self)
     }
 }
 
@@ -215,12 +243,20 @@ fn used_substs_for_instance<'a, 'tcx: 'a>(
     instance: Instance<'tcx>,
 ) -> ParamsUsage {
     let mir = tcx.instance_mir(instance.def);
+    let generics = tcx.generics_of(instance.def_id());
     let sig = ::rustc::ty::ty_fn_sig(tcx, instance.ty(tcx));
     let sig = tcx.erase_late_bound_regions_and_normalize(&sig);
     let mut substs_visitor = SubstsVisitor(tcx, mir, ParamsUsage::new(instance.substs.len()));
-    substs_visitor.visit_mir(mir);
+    //substs_visitor.visit_mir(mir);
+    mir.fold_with(&mut substs_visitor);
     for ty in sig.inputs().iter() {
         ty.fold_with(&mut substs_visitor);
+    }
+    for ty_param_def in &generics.types {
+        if ParamTy::for_def(ty_param_def).is_self() {
+            // The self parameter is important for trait selection
+            (substs_visitor.2).parameters[ParamIdx(ty_param_def.index)] = ParamUsage::Used;
+        }
     }
     sig.output().fold_with(&mut substs_visitor);
     substs_visitor.2

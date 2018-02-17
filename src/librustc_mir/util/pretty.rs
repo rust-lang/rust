@@ -517,7 +517,11 @@ pub fn write_mir_intro<'a, 'gcx, 'tcx>(
     mir: &Mir,
     w: &mut dyn Write,
 ) -> io::Result<()> {
-    write_mir_sig(tcx, src, mir, w)?;
+    if tcx.hir.as_local_node_id(src.def_id).is_some() {
+        write_mir_sig(tcx, src, mir, w)?;
+    } else {
+        write!(w, "fn <non_local>() ")?;
+    }
     writeln!(w, "{{")?;
 
     // construct a scope tree and write it out
