@@ -1269,9 +1269,9 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "set the optimization fuel quota for a crate"),
     print_fuel: Option<String> = (None, parse_opt_string, [TRACKED],
         "make Rustc print the total optimization fuel used by a crate"),
-    remap_path_prefix_from: Vec<PathBuf> = (vec![], parse_pathbuf_push, [TRACKED],
+    remap_path_prefix_from: Vec<PathBuf> = (vec![], parse_pathbuf_push, [UNTRACKED],
         "add a source pattern to the file path remapping config"),
-    remap_path_prefix_to: Vec<PathBuf> = (vec![], parse_pathbuf_push, [TRACKED],
+    remap_path_prefix_to: Vec<PathBuf> = (vec![], parse_pathbuf_push, [UNTRACKED],
         "add a mapping target to the file path remapping config"),
     force_unstable_if_unmarked: bool = (false, parse_bool, [TRACKED],
         "force all crates to be `rustc_private` unstable"),
@@ -1320,6 +1320,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "The epoch to build Rust with. Newer epochs may include features
          that require breaking changes. The default epoch is 2015 (the first
          epoch). Crates compiled with different epochs can be linked together."),
+    run_dsymutil: Option<bool> = (None, parse_opt_bool, [TRACKED],
+          "run `dsymutil` and delete intermediate object files"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -1717,7 +1719,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
     }
 
     let remap_path_prefix_sources = debugging_opts.remap_path_prefix_from.len();
-    let remap_path_prefix_targets = debugging_opts.remap_path_prefix_from.len();
+    let remap_path_prefix_targets = debugging_opts.remap_path_prefix_to.len();
 
     if remap_path_prefix_targets < remap_path_prefix_sources {
         for source in &debugging_opts.remap_path_prefix_from[remap_path_prefix_targets..] {

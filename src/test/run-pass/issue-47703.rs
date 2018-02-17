@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,25 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(specialization)]
+#![feature(nll)]
 
-// Regression test for ICE when combining specialized associated types and type
-// aliases
-
-trait Id_ {
-    type Out;
+struct MyStruct<'a> {
+    field: &'a mut (),
+    field2: WithDrop
 }
 
-type Id<T> = <T as Id_>::Out;
+struct WithDrop;
 
-default impl<T> Id_ for T {
-    type Out = T;
+impl Drop for WithDrop {
+    fn drop(&mut self) {}
 }
 
-fn test_proection() {
-    let x: Id<bool> = panic!();
+impl<'a> MyStruct<'a> {
+    fn consume(self) -> &'a mut () { self.field }
 }
 
-fn main() {
-
-}
+fn main() {}

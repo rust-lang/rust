@@ -603,7 +603,7 @@ fn timestamp_to_string(timestamp: SystemTime) -> String {
 }
 
 fn string_to_timestamp(s: &str) -> Result<SystemTime, ()> {
-    let micros_since_unix_epoch = u64::from_str_radix(s, 36);
+    let micros_since_unix_epoch = u64::from_str_radix(s, INT_ENCODE_BASE as u32);
 
     if micros_since_unix_epoch.is_err() {
         return Err(())
@@ -733,6 +733,20 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
                                 })
                                 .collect();
 
+    // Delete all session directories that don't have a lock file.
+    for directory_name in session_directories {
+        if !lock_file_to_session_dir.values().any(|dir| *dir == directory_name) {
+            let path = crate_directory.join(directory_name);
+            if let Err(err) = safe_remove_dir_all(&path) {
+                sess.warn(&format!("Failed to garbage collect invalid incremental \
+                                    compilation session directory `{}`: {}",
+                                    path.display(),
+                                    err));
+            }
+        }
+    }
+
+    // Now garbage collect the valid session directories.
     let mut deletion_candidates = vec![];
     let mut definitely_delete = vec![];
 

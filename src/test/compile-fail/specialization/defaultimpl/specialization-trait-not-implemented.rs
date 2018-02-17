@@ -8,30 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that non-method associated functions can be specialized
+// Tests that:
+// - default impls do not have to supply all items and
+// - a default impl does not count as an impl (in this case, an incomplete default impl).
 
 #![feature(specialization)]
 
 trait Foo {
-    fn mk() -> Self;
+    fn foo_one(&self) -> &'static str;
+    fn foo_two(&self) -> &'static str;
 }
 
-default impl<T: Default> Foo for T {
-    fn mk() -> T {
-        T::default()
+struct MyStruct;
+
+default impl<T> Foo for T {
+    fn foo_one(&self) -> &'static str {
+        "generic"
     }
 }
 
-impl Foo for Vec<u8> {
-    fn mk() -> Vec<u8> {
-        vec![0]
-    }
-}
 
 fn main() {
-    let v1: Vec<i32> = Foo::mk();
-    let v2: Vec<u8> = Foo::mk();
-
-    assert!(v1.len() == 0);
-    assert!(v2.len() == 1);
+    println!("{}", MyStruct.foo_one());
+    //~^ ERROR no method named `foo_one` found for type `MyStruct` in the current scope
 }

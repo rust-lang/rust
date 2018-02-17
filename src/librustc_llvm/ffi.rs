@@ -444,6 +444,9 @@ pub type RustArchiveMemberRef = *mut RustArchiveMember_opaque;
 #[allow(missing_copy_implementations)]
 pub enum OperandBundleDef_opaque {}
 pub type OperandBundleDefRef = *mut OperandBundleDef_opaque;
+#[allow(missing_copy_implementations)]
+pub enum Linker_opaque {}
+pub type LinkerRef = *mut Linker_opaque;
 
 pub type DiagnosticHandler = unsafe extern "C" fn(DiagnosticInfoRef, *mut c_void);
 pub type InlineAsmDiagHandler = unsafe extern "C" fn(SMDiagnosticRef, *const c_void, c_uint);
@@ -1608,7 +1611,6 @@ extern "C" {
     pub fn LLVMRustPrintPasses();
     pub fn LLVMRustSetNormalizedTarget(M: ModuleRef, triple: *const c_char);
     pub fn LLVMRustAddAlwaysInlinePass(P: PassManagerBuilderRef, AddLifetimes: bool);
-    pub fn LLVMRustLinkInExternalBitcode(M: ModuleRef, bc: *const c_char, len: size_t) -> bool;
     pub fn LLVMRustRunRestrictionPass(M: ModuleRef, syms: *const *const c_char, len: size_t);
     pub fn LLVMRustMarkAllFunctionsNounwind(M: ModuleRef);
 
@@ -1724,4 +1726,10 @@ extern "C" {
                                            CU2: *mut *mut c_void);
     pub fn LLVMRustThinLTOPatchDICompileUnit(M: ModuleRef, CU: *mut c_void);
     pub fn LLVMRustThinLTORemoveAvailableExternally(M: ModuleRef);
+
+    pub fn LLVMRustLinkerNew(M: ModuleRef) -> LinkerRef;
+    pub fn LLVMRustLinkerAdd(linker: LinkerRef,
+                             bytecode: *const c_char,
+                             bytecode_len: usize) -> bool;
+    pub fn LLVMRustLinkerFree(linker: LinkerRef);
 }

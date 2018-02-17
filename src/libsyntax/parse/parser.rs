@@ -4859,19 +4859,30 @@ impl<'a> Parser<'a> {
                 |p| {
                     if p.token == token::DotDotDot {
                         p.bump();
+                        variadic = true;
                         if allow_variadic {
                             if p.token != token::CloseDelim(token::Paren) {
                                 let span = p.span;
                                 p.span_err(span,
                                     "`...` must be last in argument list for variadic function");
                             }
+                            Ok(None)
                         } else {
-                            let span = p.span;
-                            p.span_err(span,
-                                       "only foreign functions are allowed to be variadic");
+                            let span = p.prev_span;
+                            if p.token == token::CloseDelim(token::Paren) {
+                                // continue parsing to present any further errors
+                                p.struct_span_err(
+                                    span,
+                                    "only foreign functions are allowed to be variadic"
+                                ).emit();
+                                Ok(Some(dummy_arg(span)))
+                           } else {
+                               // this function definition looks beyond recovery, stop parsing
+                                p.span_err(span,
+                                           "only foreign functions are allowed to be variadic");
+                                Ok(None)
+                            }
                         }
-                        variadic = true;
-                        Ok(None)
                     } else {
                         match p.parse_arg_general(named_args) {
                             Ok(arg) => Ok(Some(arg)),

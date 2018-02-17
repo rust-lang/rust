@@ -463,13 +463,20 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 target: _,
                 unwind: _,
             } => {
-                self.access_place(
-                    ContextKind::Drop.new(loc),
-                    (drop_place, span),
-                    (Deep, Write(WriteKind::StorageDeadOrDrop)),
-                    LocalMutationIsAllowed::Yes,
-                    flow_state,
-                );
+                let gcx = self.tcx.global_tcx();
+
+                // Compute the type with accurate region information.
+                let drop_place_ty = drop_place.ty(self.mir, self.tcx);
+
+                // Erase the regions.
+                let drop_place_ty = self.tcx.erase_regions(&drop_place_ty).to_ty(self.tcx);
+
+                // "Lift" into the gcx -- once regions are erased, this type should be in the
+                // global arenas; this "lift" operation basically just asserts that is true, but
+                // that is useful later.
+                let drop_place_ty = gcx.lift(&drop_place_ty).unwrap();
+
+                self.visit_terminator_drop(loc, term, flow_state, drop_place, drop_place_ty, span);
             }
             TerminatorKind::DropAndReplace {
                 location: ref drop_place,
@@ -715,6 +722,65 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         self.tcx.sess.two_phase_borrows() &&
             (kind.allows_two_phase_borrow() ||
              self.tcx.sess.opts.debugging_opts.two_phase_beyond_autoref)
+    }
+
+    /// Invokes `access_place` as appropriate for dropping the value
+    /// at `drop_place`. Note that the *actual* `Drop` in the MIR is
+    /// always for a variable (e.g., `Drop(x)`) -- but we recursively
+    /// break this variable down into subpaths (e.g., `Drop(x.foo)`)
+    /// to indicate more precisely which fields might actually be
+    /// accessed by a destructor.
+    fn visit_terminator_drop(
+        &mut self,
+        loc: Location,
+        term: &Terminator<'tcx>,
+        flow_state: &Flows<'cx, 'gcx, 'tcx>,
+        drop_place: &Place<'tcx>,
+        erased_drop_place_ty: ty::Ty<'gcx>,
+        span: Span,
+    ) {
+        match erased_drop_place_ty.sty {
+            // When a struct is being dropped, we need to check
+            // whether it has a destructor, if it does, then we can
+            // call it, if it does not then we need to check the
+            // individual fields instead. This way if `foo` has a
+            // destructor but `bar` does not, we will only check for
+            // borrows of `x.foo` and not `x.bar`. See #47703.
+            ty::TyAdt(def, substs) if def.is_struct() && !def.has_dtor(self.tcx) => {
+                for (index, field) in def.all_fields().enumerate() {
+                    let gcx = self.tcx.global_tcx();
+                    let field_ty = field.ty(gcx, substs);
+                    let field_ty = gcx.normalize_associated_type_in_env(&field_ty, self.param_env);
+                    let place = drop_place.clone().field(Field::new(index), field_ty);
+
+                    self.visit_terminator_drop(
+                        loc,
+                        term,
+                        flow_state,
+                        &place,
+                        field_ty,
+                        span,
+                    );
+                }
+            },
+            _ => {
+                // We have now refined the type of the value being
+                // dropped (potentially) to just the type of a
+                // subfield; so check whether that field's type still
+                // "needs drop". If so, we assume that the destructor
+                // may access any data it likes (i.e., a Deep Write).
+                let gcx = self.tcx.global_tcx();
+                if erased_drop_place_ty.needs_drop(gcx, self.param_env) {
+                    self.access_place(
+                        ContextKind::Drop.new(loc),
+                        (drop_place, span),
+                        (Deep, Write(WriteKind::StorageDeadOrDrop)),
+                        LocalMutationIsAllowed::Yes,
+                        flow_state,
+                    );
+                }
+            },
+        }
     }
 
     /// Checks an access to the given place to see if it is allowed. Examines the set of borrows

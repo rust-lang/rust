@@ -46,3 +46,4 @@ pub use persist::in_incr_comp_dir;
 pub use persist::prepare_session_directory;
 pub use persist::finalize_session_directory;
 pub use persist::delete_workproduct_files;
+pub use persist::garbage_collect_session_directories;

@@ -155,6 +155,7 @@ fn main() {
     cfg.file("../rustllvm/PassWrapper.cpp")
        .file("../rustllvm/RustWrapper.cpp")
        .file("../rustllvm/ArchiveWrapper.cpp")
+       .file("../rustllvm/Linker.cpp")
        .cpp(true)
        .cpp_link_stdlib(None) // we handle this below
        .compile("rustllvm");

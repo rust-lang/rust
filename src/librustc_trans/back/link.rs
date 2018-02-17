@@ -166,7 +166,9 @@ pub(crate) fn link_binary(sess: &Session,
 
     // Remove the temporary object file and metadata if we aren't saving temps
     if !sess.opts.cg.save_temps {
-        if sess.opts.output_types.should_trans() {
+        if sess.opts.output_types.should_trans() &&
+            !preserve_objects_for_their_debuginfo(sess)
+        {
             for obj in trans.modules.iter().filter_map(|m| m.object.as_ref()) {
                 remove(sess, obj);
             }
@@ -188,6 +190,52 @@ pub(crate) fn link_binary(sess: &Session,
     }
 
     out_filenames
+}
+
+/// Returns a boolean indicating whether we should preserve the object files on
+/// the filesystem for their debug information. This is often useful with
+/// split-dwarf like schemes.
+fn preserve_objects_for_their_debuginfo(sess: &Session) -> bool {
+    // If the objects don't have debuginfo there's nothing to preserve.
+    if sess.opts.debuginfo == NoDebugInfo {
+        return false
+    }
+
+    // If we're only producing artifacts that are archives, no need to preserve
+    // the objects as they're losslessly contained inside the archives.
+    let output_linked = sess.crate_types.borrow()
+        .iter()
+        .any(|x| *x != config::CrateTypeRlib && *x != config::CrateTypeStaticlib);
+    if !output_linked {
+        return false
+    }
+
+    // If we're on OSX then the equivalent of split dwarf is turned on by
+    // default. The final executable won't actually have any debug information
+    // except it'll have pointers to elsewhere. Historically we've always run
+    // `dsymutil` to "link all the dwarf together" but this is actually sort of
+    // a bummer for incremental compilation! (the whole point of split dwarf is
+    // that you don't do this sort of dwarf link).
+    //
+    // Basically as a result this just means that if we're on OSX and we're
+    // *not* running dsymutil then the object files are the only source of truth
+    // for debug information, so we must preserve them.
+    if sess.target.target.options.is_like_osx {
+        match sess.opts.debugging_opts.run_dsymutil {
+            // dsymutil is not being run, preserve objects
+            Some(false) => return true,
+
+            // dsymutil is being run, no need to preserve the objects
+            Some(true) => return false,
+
+            // The default historical behavior was to always run dsymutil, so
+            // we're preserving that temporarily, but we're likely to switch the
+            // default soon.
+            None => return false,
+        }
+    }
+
+    false
 }
 
 fn filename_for_metadata(sess: &Session, crate_name: &str, outputs: &OutputFilenames) -> PathBuf {
@@ -736,8 +784,12 @@ fn link_natively(sess: &Session,
 
 
     // On macOS, debuggers need this utility to get run to do some munging of
-    // the symbols
-    if sess.target.target.options.is_like_osx && sess.opts.debuginfo != NoDebugInfo {
+    // the symbols. Note, though, that if the object files are being preserved
+    // for their debug information there's no need for us to run dsymutil.
+    if sess.target.target.options.is_like_osx &&
+        sess.opts.debuginfo != NoDebugInfo &&
+        !preserve_objects_for_their_debuginfo(sess)
+    {
         match Command::new("dsymutil").arg(out_filename).output() {
             Ok(..) => {}
             Err(e) => sess.fatal(&format!("failed to run dsymutil: {}", e)),

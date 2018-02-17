@@ -1364,6 +1364,7 @@ fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let node = tcx.hir.get(node_id);
 
     let mut is_trait = None;
+    let mut is_default_impl_trait = None;
 
     let icx = ItemCtxt::new(tcx, def_id);
     let no_generics = hir::Generics::empty();
@@ -1373,8 +1374,13 @@ fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         NodeItem(item) => {
             match item.node {
+                ItemImpl(_, _, defaultness, ref generics, ..) => {
+                    if defaultness.is_default() {
+                        is_default_impl_trait = tcx.impl_trait_ref(def_id);
+                    }
+                    generics
+                }
                 ItemFn(.., ref generics, _) |
-                ItemImpl(_, _, _, ref generics, ..) |
                 ItemTy(_, ref generics) |
                 ItemEnum(_, ref generics) |
                 ItemStruct(_, ref generics) |
@@ -1443,6 +1449,18 @@ fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         // Add in a predicate that `Self:Trait` (where `Trait` is the
         // current trait).  This is needed for builtin bounds.
+        predicates.push(trait_ref.to_poly_trait_ref().to_predicate());
+    }
+
+    // In default impls, we can assume that the self type implements
+    // the trait. So in:
+    //
+    //     default impl Foo for Bar { .. }
+    //
+    // we add a default where clause `Foo: Bar`. We do a similar thing for traits
+    // (see below). Recall that a default impl is not itself an impl, but rather a
+    // set of defaults that can be incorporated into another impl.
+    if let Some(trait_ref) = is_default_impl_trait {
         predicates.push(trait_ref.to_poly_trait_ref().to_predicate());
     }
 

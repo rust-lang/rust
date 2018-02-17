@@ -92,6 +92,7 @@
 #![feature(unwind_attributes)]
 #![feature(doc_spotlight)]
 #![feature(rustc_const_unstable)]
+#![feature(iterator_repeat_with)]
 
 #[prelude_import]
 #[allow(unused)]
