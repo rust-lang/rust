@@ -149,9 +149,9 @@ fn main() {
     assert_inorder(buf, compare_foo);
 
     // check ordering for structs containing arrays
-    let ss: (S<[u8; 2]>,
-             S<[u8; 3]>,
-             S<[u8; 2]>) = (
+    let ref ss: (S<[u8; 2]>,
+                 S<[u8; 3]>,
+                 S<[u8; 2]>) = (
         S(7, [8, 9]),
         S(10, [11, 12, 13]),
         S(4, [5, 6])

@@ -16,7 +16,7 @@
 
 #[start]
 fn start(_: isize, _: *const *const u8) -> isize {
-    let _x: Option<!> = None;
-    let _y: Result<u32, !> = Ok(42);
+    let ref _x: Option<!> = None;
+    let ref _y: Result<u32, !> = Ok(42);
     0
 }

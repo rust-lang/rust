@@ -86,8 +86,8 @@ fn start(_: isize, _: *const *const u8) -> isize {
     let _b: MyOption<char> = Default::default();
     let _c: MyOption<std::cmp::Ordering> = Default::default();
     let _b: MyOption<MyOption<u8>> = Default::default();
-    let _e: Enum4<(), char, (), ()> = Enum4::One(());
-    let _f: Enum4<(), (), bool, ()> = Enum4::One(());
-    let _g: Enum4<(), (), (), MyOption<u8>> = Enum4::One(());
+    let ref _e: Enum4<(), char, (), ()> = Enum4::One(());
+    let ref _f: Enum4<(), (), bool, ()> = Enum4::One(());
+    let ref _g: Enum4<(), (), (), MyOption<u8>> = Enum4::One(());
     0
 }

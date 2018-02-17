@@ -20,11 +20,11 @@
 pub struct SevenBytes([u8; 7]);
 
 pub fn f1() {
-    let _s: SevenBytes = SevenBytes([0; 7]);
+    let ref _s: SevenBytes = SevenBytes([0; 7]);
 }
 
 #[start]
 fn start(_: isize, _: *const *const u8) -> isize {
-    let _s: SevenBytes = SevenBytes([0; 7]);
+    let ref _s: SevenBytes = SevenBytes([0; 7]);
     0
 }
