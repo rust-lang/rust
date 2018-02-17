@@ -231,9 +231,9 @@ use Bound::{Excluded, Included, Unbounded};
 ///
 /// If a `Vec` *has* allocated memory, then the memory it points to is on the heap
 /// (as defined by the allocator Rust is configured to use by default), and its
-/// pointer points to [`len`] initialized elements in order (what you would see
-/// if you coerced it to a slice), followed by [`capacity`]` - `[`len`]
-/// logically uninitialized elements.
+/// pointer points to [`len`] initialized, contiguous elements in order (what
+/// you would see if you coerced it to a slice), followed by [`capacity`]` -
+/// `[`len`] logically uninitialized, contiguous elements.
 ///
 /// `Vec` will never perform a "small optimization" where elements are actually
 /// stored on the stack for two reasons:
@@ -281,8 +281,8 @@ use Bound::{Excluded, Included, Unbounded};
 /// not break, however: using `unsafe` code to write to the excess capacity,
 /// and then increasing the length to match, is always valid.
 ///
-/// `Vec` does not currently guarantee the order in which elements are dropped
-/// (the order has changed in the past, and may change again).
+/// `Vec` does not currently guarantee the order in which elements are dropped.
+/// The order has changed in the past and may change again.
 ///
 /// [`vec!`]: ../../std/macro.vec.html
 /// [`Index`]: ../../std/ops/trait.Index.html
