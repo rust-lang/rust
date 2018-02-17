@@ -47,3 +47,11 @@ that give more details.
   the expected documentation.
 - `*-fulldeps` -- same as above, but indicates that the test depends on things other
   than `libstd` (and hence those things must be built)
+
+## Further reading
+
+The following blog posts may also be of interest:
+
+- brson's classic ["How Rust is tested"][howtest]
+
+[howtest]: https://brson.github.io/2017/07/10/how-rust-is-tested
