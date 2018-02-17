@@ -47,11 +47,13 @@ impl WaitTimeoutResult {
     ///
     /// thread::spawn(move|| {
     ///     let &(ref lock, ref cvar) = &*pair2;
+    ///
+    ///     // Let's wait 20 milliseconds before notifying the condvar.
+    ///     thread::sleep(Duration::from_millis(20));
+    ///
     ///     let mut started = lock.lock().unwrap();
     ///     // We update the boolean value.
     ///     *started = true;
-    ///     // Let's wait 20 milliseconds before notifying the condvar.
-    ///     thread::sleep(Duration::from_millis(20));
     ///     cvar.notify_one();
     /// });
     ///

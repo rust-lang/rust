@@ -97,9 +97,10 @@ use fmt;
 /// Save power or switch hyperthreads in a busy-wait spin-loop.
 ///
 /// This function is deliberately more primitive than
-/// `std::thread::yield_now` and does not directly yield to the
-/// system's scheduler.  In some cases it might be useful to use a
-/// combination of both functions.  Careful benchmarking is advised.
+/// [`std::thread::yield_now`](../../../std/thread/fn.yield_now.html) and
+/// does not directly yield to the system's scheduler.
+/// In some cases it might be useful to use a combination of both functions.
+/// Careful benchmarking is advised.
 ///
 /// On some platforms this function may not do anything at all.
 #[inline]
