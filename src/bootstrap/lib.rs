@@ -226,9 +226,6 @@ pub struct Build {
     doc_tests: bool,
     verbosity: usize,
 
-    // Targets for which to build.
-    build: Interned<String>,
-
     // Probed tools at runtime
     lldb_version: Option<String>,
     lldb_python_dir: Option<String>,
@@ -300,8 +297,6 @@ impl Build {
             doc_tests: config.cmd.doc_tests(),
             verbosity: config.verbose,
 
-            build: config.build,
-
             config,
 
             rust_info,
@@ -322,7 +317,7 @@ impl Build {
 
     pub fn build_triple(&self) -> &[Interned<String>] {
         unsafe {
-            slice::from_raw_parts(&self.build, 1)
+            slice::from_raw_parts(&self.config.build, 1)
         }
     }
 
@@ -714,7 +709,7 @@ impl Build {
     fn force_use_stage1(&self, compiler: Compiler, target: Interned<String>) -> bool {
         !self.config.full_bootstrap &&
             compiler.stage >= 2 &&
-            (self.config.hosts.iter().any(|h| *h == target) || target == self.build)
+            (self.config.hosts.iter().any(|h| *h == target) || target == self.config.build)
     }
 
     /// Returns the directory that OpenSSL artifacts are compiled into if
@@ -944,7 +939,7 @@ impl<'a> Compiler {
 
     /// Returns whether this is a snapshot compiler for `build`'s configuration
     pub fn is_snapshot(&self, build: &Build) -> bool {
-        self.stage == 0 && self.host == build.build
+        self.stage == 0 && self.host == build.config.build
     }
 
     /// Returns if this compiler should be treated as a final stage one in the

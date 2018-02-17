@@ -194,8 +194,8 @@ macro_rules! tool {
                 match tool {
                     $(Tool::$name =>
                         self.ensure($name {
-                            compiler: self.compiler(stage, self.build.build),
-                            target: self.build.build,
+                            compiler: self.compiler(stage, self.build.config.build),
+                            target: self.build.config.build,
                         }),
                     )+
                 }
@@ -229,7 +229,7 @@ macro_rules! tool {
 
             fn make_run(run: RunConfig) {
                 run.builder.ensure($name {
-                    compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.build),
+                    compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.config.build),
                     target: run.target,
                 });
             }
@@ -278,7 +278,7 @@ impl Step for RemoteTestServer {
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(RemoteTestServer {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.build),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.config.build),
             target: run.target,
         });
     }
@@ -320,16 +320,16 @@ impl Step for Rustdoc {
         let target_compiler = builder.compiler(builder.top_stage, self.host);
         let target = target_compiler.host;
         let build_compiler = if target_compiler.stage == 0 {
-            builder.compiler(0, builder.build.build)
+            builder.compiler(0, builder.build.config.build)
         } else if target_compiler.stage >= 2 {
             // Past stage 2, we consider the compiler to be ABI-compatible and hence capable of
             // building rustdoc itself.
-            builder.compiler(target_compiler.stage, builder.build.build)
+            builder.compiler(target_compiler.stage, builder.build.config.build)
         } else {
             // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
             // we'd have stageN/bin/rustc and stageN/bin/rustdoc be effectively different stage
             // compilers, which isn't what we want.
-            builder.compiler(target_compiler.stage - 1, builder.build.build)
+            builder.compiler(target_compiler.stage - 1, builder.build.config.build)
         };
 
         // we need the full rustc compiler for both the build compiler and the target. proc macro
@@ -391,7 +391,7 @@ impl Step for Cargo {
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(Cargo {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.build),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.config.build),
             target: run.target,
         });
     }
@@ -404,7 +404,7 @@ impl Step for Cargo {
         // compiler to be available, so we need to depend on that.
         builder.ensure(compile::Rustc {
             compiler: self.compiler,
-            target: builder.build.build,
+            target: builder.build.config.build,
         });
         builder.ensure(ToolBuild {
             compiler: self.compiler,
@@ -443,7 +443,7 @@ macro_rules! tool_extended {
 
             fn make_run(run: RunConfig) {
                 run.builder.ensure($name {
-                    compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.build),
+                    compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.config.build),
                     target: run.target,
                 });
             }
@@ -471,7 +471,7 @@ tool_extended!((self, builder),
         // compiler to be available, so we need to depend on that.
         builder.ensure(compile::Rustc {
             compiler: self.compiler,
-            target: builder.build.build,
+            target: builder.build.config.build,
         });
     };
     Miri, miri, "src/tools/miri", "miri", {};
@@ -483,7 +483,7 @@ tool_extended!((self, builder),
         // compiler to be available, so we need to depend on that.
         builder.ensure(compile::Rustc {
             compiler: self.compiler,
-            target: builder.build.build,
+            target: builder.build.config.build,
         });
     };
     Rustfmt, rustfmt, "src/tools/rustfmt", "rustfmt", {};
@@ -494,7 +494,7 @@ impl<'a> Builder<'a> {
     /// `host`.
     pub fn tool_cmd(&self, tool: Tool) -> Command {
         let mut cmd = Command::new(self.tool_exe(tool));
-        let compiler = self.compiler(self.tool_default_stage(tool), self.build.build);
+        let compiler = self.compiler(self.tool_default_stage(tool), self.build.config.build);
         self.prepare_tool_cmd(compiler, &mut cmd);
         cmd
     }

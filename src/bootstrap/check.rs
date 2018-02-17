@@ -38,7 +38,7 @@ impl Step for Std {
     fn run(self, builder: &Builder) {
         let build = builder.build;
         let target = self.target;
-        let compiler = builder.compiler(0, build.build);
+        let compiler = builder.compiler(0, build.config.build);
 
         let _folder = build.fold_output(|| format!("stage{}-std", compiler.stage));
         println!("Checking std artifacts ({} -> {})", &compiler.host, target);
@@ -83,7 +83,7 @@ impl Step for Rustc {
     /// created will also be linked into the sysroot directory.
     fn run(self, builder: &Builder) {
         let build = builder.build;
-        let compiler = builder.compiler(0, build.build);
+        let compiler = builder.compiler(0, build.config.build);
         let target = self.target;
 
         let _folder = build.fold_output(|| format!("stage{}-rustc", compiler.stage));
@@ -126,7 +126,7 @@ impl Step for Test {
     fn run(self, builder: &Builder) {
         let build = builder.build;
         let target = self.target;
-        let compiler = builder.compiler(0, build.build);
+        let compiler = builder.compiler(0, build.config.build);
 
         let _folder = build.fold_output(|| format!("stage{}-test", compiler.stage));
         println!("Checking test artifacts ({} -> {})", &compiler.host, target);

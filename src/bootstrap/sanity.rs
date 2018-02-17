@@ -157,7 +157,7 @@ pub fn check(build: &mut Build) {
     }
 
     // Externally configured LLVM requires FileCheck to exist
-    let filecheck = build.llvm_filecheck(build.build);
+    let filecheck = build.llvm_filecheck(build.config.build);
     if !filecheck.starts_with(&build.config.out) && !filecheck.exists() &&
         build.config.codegen_tests {
         panic!("FileCheck executable {:?} does not exist", filecheck);
@@ -166,7 +166,7 @@ pub fn check(build: &mut Build) {
     for target in &build.config.targets {
         // Can't compile for iOS unless we're on macOS
         if target.contains("apple-ios") &&
-           !build.build.contains("apple-darwin") {
+           !build.config.build.contains("apple-darwin") {
             panic!("the iOS target is only supported on macOS");
         }
 

@@ -140,7 +140,7 @@ impl Step for Llvm {
         let assertions = if build.config.llvm_assertions {"ON"} else {"OFF"};
 
         cfg.target(&target)
-           .host(&build.build)
+           .host(&build.config.build)
            .out_dir(&out_dir)
            .profile(profile)
            .define("LLVM_ENABLE_ASSERTIONS", assertions)
@@ -192,15 +192,15 @@ impl Step for Llvm {
         }
 
         // http://llvm.org/docs/HowToCrossCompileLLVM.html
-        if target != build.build && !emscripten {
+        if target != build.config.build && !emscripten {
             builder.ensure(Llvm {
-                target: build.build,
+                target: build.config.build,
                 emscripten: false,
             });
             // FIXME: if the llvm root for the build triple is overridden then we
             //        should use llvm-tblgen from there, also should verify that it
             //        actually exists most of the time in normal installs of LLVM.
-            let host = build.llvm_out(build.build).join("bin/llvm-tblgen");
+            let host = build.llvm_out(build.config.build).join("bin/llvm-tblgen");
             cfg.define("CMAKE_CROSSCOMPILING", "True")
                .define("LLVM_TABLEGEN", &host);
 
@@ -210,7 +210,7 @@ impl Step for Llvm {
                cfg.define("CMAKE_SYSTEM_NAME", "FreeBSD");
             }
 
-            cfg.define("LLVM_NATIVE_BUILD", build.llvm_out(build.build).join("build"));
+            cfg.define("LLVM_NATIVE_BUILD", build.llvm_out(build.config.build).join("build"));
         }
 
         let sanitize_cc = |cc: &Path| {
@@ -349,7 +349,7 @@ impl Step for TestHelpers {
         cfg.cargo_metadata(false)
            .out_dir(&dst)
            .target(&target)
-           .host(&build.build)
+           .host(&build.config.build)
            .opt_level(0)
            .warnings(false)
            .debug(false)
@@ -413,7 +413,7 @@ impl Step for Openssl {
                 }
 
                 // Ensure the hash is correct.
-                let mut shasum = if target.contains("apple") || build.build.contains("netbsd") {
+                let mut shasum = if target.contains("apple") || build.config.build.contains("netbsd") {
                     let mut cmd = Command::new("shasum");
                     cmd.arg("-a").arg("256");
                     cmd
@@ -511,7 +511,7 @@ impl Step for Openssl {
         if target == "sparc64-unknown-netbsd" {
             // Need -m64 to get assembly generated correctly for sparc64.
             configure.arg("-m64");
-            if build.build.contains("netbsd") {
+            if build.config.build.contains("netbsd") {
                 // Disable sparc64 asm on NetBSD builders, it uses
                 // m4(1)'s -B flag, which NetBSD m4 does not support.
                 configure.arg("no-asm");
