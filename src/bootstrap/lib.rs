@@ -218,7 +218,6 @@ pub struct Build {
     config: Config,
 
     // Derived properties from the above two configurations
-    out: PathBuf,
     rust_info: channel::GitInfo,
     cargo_info: channel::GitInfo,
     rls_info: channel::GitInfo,
@@ -299,9 +298,6 @@ impl Build {
     ///
     /// By default all build output will be placed in the current directory.
     pub fn new(config: Config) -> Build {
-        let cwd = t!(env::current_dir());
-        let out = cwd.join("build");
-
         let is_sudo = match env::var_os("SUDO_USER") {
             Some(sudo_user) => {
                 match env::var_os("USER") {
@@ -329,7 +325,6 @@ impl Build {
             targets: config.targets.clone(),
 
             config,
-            out,
 
             rust_info,
             cargo_info,
@@ -452,7 +447,8 @@ impl Build {
     }
 
     fn tools_dir(&self, compiler: Compiler) -> PathBuf {
-        let out = self.out.join(&*compiler.host).join(format!("stage{}-tools-bin", compiler.stage));
+        let out = self.config.out.join(&*compiler.host)
+            .join(format!("stage{}-tools-bin", compiler.stage));
         t!(fs::create_dir_all(&out));
         out
     }
@@ -468,7 +464,7 @@ impl Build {
             Mode::Tool => "-tools",
             Mode::Librustc => "-rustc",
         };
-        self.out.join(&*compiler.host)
+        self.config.out.join(&*compiler.host)
                 .join(format!("stage{}{}", compiler.stage, suffix))
     }
 
@@ -487,28 +483,28 @@ impl Build {
     /// Note that if LLVM is configured externally then the directory returned
     /// will likely be empty.
     fn llvm_out(&self, target: Interned<String>) -> PathBuf {
-        self.out.join(&*target).join("llvm")
+        self.config.out.join(&*target).join("llvm")
     }
 
     fn emscripten_llvm_out(&self, target: Interned<String>) -> PathBuf {
-        self.out.join(&*target).join("llvm-emscripten")
+        self.config.out.join(&*target).join("llvm-emscripten")
     }
 
     /// Output directory for all documentation for a target
     fn doc_out(&self, target: Interned<String>) -> PathBuf {
-        self.out.join(&*target).join("doc")
+        self.config.out.join(&*target).join("doc")
     }
 
     /// Output directory for some generated md crate documentation for a target (temporary)
     fn md_doc_out(&self, target: Interned<String>) -> Interned<PathBuf> {
-        INTERNER.intern_path(self.out.join(&*target).join("md-doc"))
+        INTERNER.intern_path(self.config.out.join(&*target).join("md-doc"))
     }
 
     /// Output directory for all crate documentation for a target (temporary)
     ///
     /// The artifacts here are then copied into `doc_out` above.
     fn crate_doc_out(&self, target: Interned<String>) -> PathBuf {
-        self.out.join(&*target).join("crate-docs")
+        self.config.out.join(&*target).join("crate-docs")
     }
 
     /// Returns true if no custom `llvm-config` is set for the specified target.
@@ -554,7 +550,7 @@ impl Build {
 
     /// Directory for libraries built from C/C++ code and shared between stages.
     fn native_dir(&self, target: Interned<String>) -> PathBuf {
-        self.out.join(&*target).join("native")
+        self.config.out.join(&*target).join("native")
     }
 
     /// Root output directory for rust_test_helpers library compiled for
@@ -728,7 +724,7 @@ impl Build {
 
     /// Temporary directory that extended error information is emitted to.
     fn extended_error_dir(&self) -> PathBuf {
-        self.out.join("tmp/extended-error-metadata")
+        self.config.out.join("tmp/extended-error-metadata")
     }
 
     /// Tests whether the `compiler` compiling for `target` should be forced to
@@ -762,7 +758,7 @@ impl Build {
         if target.contains("windows") {
             None
         } else if self.config.openssl_static {
-            Some(self.out.join(&*target).join("openssl"))
+            Some(self.config.out.join(&*target).join("openssl"))
         } else {
             None
         }

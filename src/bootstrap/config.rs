@@ -65,6 +65,7 @@ pub struct Config {
     pub stage: Option<u32>,
     pub keep_stage: Option<u32>,
     pub src: PathBuf,
+    pub out: PathBuf,
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
     pub paths: Vec<PathBuf>,
@@ -531,6 +532,7 @@ impl Config {
 
         let cwd = t!(env::current_dir());
         let out = cwd.join("build");
+        config.out = out.clone();
 
         let stage0_root = out.join(&config.build).join("stage0/bin");
         config.initial_rustc = match build.rustc {

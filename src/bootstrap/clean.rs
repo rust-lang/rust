@@ -25,13 +25,13 @@ pub fn clean(build: &Build, all: bool) {
     rm_rf("tmp".as_ref());
 
     if all {
-        rm_rf(&build.out);
+        rm_rf(&build.config.out);
     } else {
-        rm_rf(&build.out.join("tmp"));
-        rm_rf(&build.out.join("dist"));
+        rm_rf(&build.config.out.join("tmp"));
+        rm_rf(&build.config.out.join("dist"));
 
         for host in &build.hosts {
-            let entries = match build.out.join(host).read_dir() {
+            let entries = match build.config.out.join(host).read_dir() {
                 Ok(iter) => iter,
                 Err(_) => continue,
             };
