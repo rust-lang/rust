@@ -4,8 +4,8 @@ The compiler has an extensive testing framework, masterminded by the
 compiletest tool (sources in the [`src/tools/compiletest`]). This
 section gives a brief overview of how the testing framework is setup,
 and then gets into some of the details on
-[how to run tests](running.html) as well as
-[how to add new tests](adding.html).
+[how to run tests](./tests/running.html#ui) as well as
+[how to add new tests](./tests/adding.html).
 
 [`src/tools/compiletest`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest
 
@@ -23,7 +23,7 @@ Here is a brief summary of the test suites as of this writing and what
 they mean. In some cases, the test suites are linked to parts of the manual
 that give more details.
 
-- [`ui`](adding.html#) -- tests that check the exact stdout/stderr from compilation
+- [`ui`](./tests/adding.html#ui) -- tests that check the exact stdout/stderr from compilation
   and/or running the test
 - `run-pass` -- tests that are expected to compile and execute successfully (no panics)
   - `run-pass-valgrind` -- tests that ought to run with valrind

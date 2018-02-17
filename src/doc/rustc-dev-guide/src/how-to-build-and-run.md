@@ -132,6 +132,6 @@ Here are a few other useful x.py commands. We'll cover some of them in detail in
   - `./x.py clean` – clean up the build directory (`rm -rf build` works too, but then you have to rebuild LLVM)
   - `./x.py build --stage 1` – builds everything using the stage 1 compiler, not just up to libstd
   - `./x.py build` – builds the stage2 compiler
-- Running tests (see the section [running tests](./running-tests.html) for more details):
+- Running tests (see the [section on running tests](./tests/running.html) for more details):
   - `./x.py test --stage 1 src/libstd` – runs the `#[test]` tests from libstd
   - `./x.py test --stage 1 src/test/run-pass` – runs the `run-pass` test suite

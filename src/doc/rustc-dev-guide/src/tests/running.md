@@ -18,7 +18,7 @@ think is done, but rarely otherwise. -nmatsakis)
 When you run the full suite of tests via `./x.py test`, the first
 thing that executes is a "tidy suite" that checks for long lines and
 other formatting conventions. There is more information in the
-[section on coding conventions](../conventions.html#formatting).
+[section on coding conventions](./conventions.html#formatting).
 
 ## Running a subset of the test suites
 
