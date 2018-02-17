@@ -386,11 +386,12 @@ enum StackList<'a, T: 'a + InterestingTrait> {
 
 [RFC 2102]: https://github.com/rust-lang/rfcs/pull/2102
 
-## In relation to [RFC 2102]
+## In relation to [RFC 2102] and what `Self` refers to.
 
-It should be noted that `Self` always refers to the top level type and not the
-inner unnamed `struct` or `union`. In other words:
-*Self always applies to the top level inside type definitions*.
+It should be noted that `Self` always refers to the top level type and not
+the inner unnamed `struct` or `union` because those are unnamed. Specifically,
+*Self always applies to the innermost nameable type*. In type definitions in
+particular, this is equivalent: *Self always applies to the top level type*.
 
 ## Error messages
 
@@ -441,6 +442,111 @@ it removes exceptional cases especially in the users mental model.
 
 The rationale for this particular design is straightforward as it would be
 uneconomic, confusing, and inconsistent to use other keywords.
+
+## The consistency of what `Self` refers to
+
+As explained in the [reference-level explanation], we said that:
+> *Self always applies to the innermost nameable type*.
+
+We arrive at this conclusion by examining a few different cases and what
+they have in common.
+
+### Current Rust - Shadowing in `impl`s
+
+First, let's take a look at shadowing in `impl`s.
+
+```rust
+fn main() { Foo {}.foo(); }
+
+#[derive(Debug)]
+struct Foo;
+
+impl Foo {
+    fn foo(&self) {
+        // Prints "Foo", which is the innermost type.
+        println!("{:?}", Self {});
+
+        #[derive(Debug)]
+        struct Bar;
+
+        impl Bar {
+            fn bar(&self) {
+                // Prints "Bar", also the innermost type in this context.
+                println!("{:?}", Self {});
+            }
+        }
+        Bar {}.bar();
+    }
+}
+```
+
+Let's also consider trait impls instead of inherent impls:
+
+```rust
+impl Trait for Foo {
+    fn foo(&self) {
+        impl Trait for Bar {
+            // Self is shadowed here...
+        }
+    }
+}
+```
+
+We see that the conclusion holds for both examples.
+
+### In relation to [RFC 2102]
+
+Let's consider a modified example from [RFC 2102]:
+
+```rust
+#[repr(C)]
+struct S {
+    a: u32,
+    _: union {
+        b: Box<Self>,
+        c: f32,
+    },
+    d: u64,
+}
+```
+
+In this example, the inner union is not nameable, and so `Self` refers to the
+only nameable introduced type `S`. Therefore, the conclusion holds.
+
+### Type definitions inside `impl`s
+
+If in the future we decide to permit type definitions inside `impl`s as in:
+
+```rust
+impl Trait for Foo {
+    struct Bar {
+        head: u8,
+        tail: Option<Box<Self>>,
+    }
+}
+```
+
+as sugar for:
+
+```rust
+enum _Bar {
+    head: u8,
+    tail: Option<Box<Self>>,
+}
+impl Trait for Foo {
+    type Bar = _Bar;
+}
+```
+
+In the desugared example, we see that the only possible meaning of `Self` is
+that it refers to `_Bar` and not `Foo`. To be consistent with the desugared
+form, the sugared variant should have the same meaning and so `Self` refers
+to `Bar` there.
+
+### Conclusion
+
+We've now examined a few cases and seen that indeed, the meaning of `Self` is
+consistent in all of them as well as with what the meaning in in today's Rust.
 
 ## Doing nothing
 
