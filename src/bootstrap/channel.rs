@@ -26,6 +26,7 @@ use config::Config;
 // The version number
 pub const CFG_RELEASE_NUM: &str = "1.26.0";
 
+#[derive(Default)]
 pub struct GitInfo {
     inner: Option<Info>,
 }

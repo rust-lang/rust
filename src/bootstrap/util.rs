@@ -424,6 +424,12 @@ pub enum CiEnv {
     AppVeyor,
 }
 
+impl Default for CiEnv {
+    fn default() -> CiEnv {
+        CiEnv::None
+    }
+}
+
 impl CiEnv {
     /// Obtains the current CI environment.
     pub fn current() -> CiEnv {

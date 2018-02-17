@@ -213,6 +213,7 @@ pub struct Compiler {
 /// although most functions are implemented as free functions rather than
 /// methods specifically on this structure itself (to make it easier to
 /// organize).
+#[derive(Default)]
 pub struct Build {
     // User-specified configuration via config.toml
     config: Config,
