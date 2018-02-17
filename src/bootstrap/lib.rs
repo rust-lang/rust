@@ -228,7 +228,6 @@ pub struct Build {
 
     // Targets for which to build.
     build: Interned<String>,
-    targets: Vec<Interned<String>>,
 
     // Probed tools at runtime
     lldb_version: Option<String>,
@@ -302,7 +301,6 @@ impl Build {
             verbosity: config.verbose,
 
             build: config.build,
-            targets: config.targets.clone(),
 
             config,
 

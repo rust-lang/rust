@@ -132,7 +132,7 @@ pub fn check(build: &mut Build) {
 
     // We're gonna build some custom C code here and there, host triples
     // also build some C++ shims for LLVM so we need a C++ compiler.
-    for target in &build.targets {
+    for target in &build.config.targets {
         // On emscripten we don't actually need the C compiler to just
         // build the target artifacts, only for testing. For the sake
         // of easier bot configuration, just skip detection.
@@ -163,7 +163,7 @@ pub fn check(build: &mut Build) {
         panic!("FileCheck executable {:?} does not exist", filecheck);
     }
 
-    for target in &build.targets {
+    for target in &build.config.targets {
         // Can't compile for iOS unless we're on macOS
         if target.contains("apple-ios") &&
            !build.build.contains("apple-darwin") {
