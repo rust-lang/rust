@@ -47,7 +47,6 @@ use pulldown_cmark::{Options, OPTION_ENABLE_FOOTNOTES, OPTION_ENABLE_TABLES};
 /// formatted, this struct will emit the HTML corresponding to the rendered
 /// version of the contained markdown string.
 /// The second parameter is a list of link replacements
-// The third parameter is whether we need a shorter version or not.
 pub struct Markdown<'a>(pub &'a str, pub &'a [(String, String)]);
 /// A unit struct like `Markdown`, that renders the markdown with a
 /// table of contents.
