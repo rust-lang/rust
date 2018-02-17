@@ -30,6 +30,7 @@ mod items;
 mod attributes;
 mod expressions;
 mod types;
+mod patterns;
 mod paths;
 mod type_params;
 
@@ -85,10 +86,29 @@ fn abi(p: &mut Parser) {
     abi.complete(p, ABI);
 }
 
+// test fn_value_parameters
+// fn a() {}
+// fn b(x: i32) {}
+// fn c(x: i32, ) {}
+// fn d(x: i32, y: ()) {}
 fn fn_value_parameters(p: &mut Parser) {
     assert!(p.at(L_PAREN));
     p.bump();
+    while !p.at(EOF) && !p.at(R_PAREN) {
+        value_parameter(p);
+        if !p.at(R_PAREN) {
+            p.expect(COMMA);
+        }
+    }
     p.expect(R_PAREN);
+
+    fn value_parameter(p: &mut Parser) {
+        let m = p.start();
+        patterns::pattern(p);
+        p.expect(COLON);
+        types::type_(p);
+        m.complete(p, VALUE_PARAMETER);
+    }
 }
 
 fn fn_ret_type(p: &mut Parser) {

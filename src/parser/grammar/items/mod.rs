@@ -218,9 +218,33 @@ fn fn_item(p: &mut Parser) {
         p.error("expected function arguments");
     }
 
-    if p.at(L_CURLY) {
-        p.expect(L_CURLY);
+    block(p);
+
+    fn block(p: &mut Parser) {
+        if !p.at(L_CURLY) {
+            p.error("expected block");
+        }
+        let m = p.start();
+        p.bump();
+        while !p.at(EOF) && !p.at(R_CURLY) {
+            match p.current() {
+                LET_KW => let_stmt(p),
+                _ => p.err_and_bump("expected statement"),
+            }
+        }
         p.expect(R_CURLY);
+        m.complete(p, BLOCK);
+    }
+
+    fn let_stmt(p: &mut Parser) {
+        assert!(p.at(LET_KW));
+        let m = p.start();
+        p.bump();
+        patterns::pattern(p);
+        p.expect(EQ);
+        expressions::expr(p);
+        p.expect(SEMI);
+        m.complete(p, LET_STMT);
     }
 }
 

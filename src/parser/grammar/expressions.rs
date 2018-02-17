@@ -14,7 +14,20 @@ pub(super) fn literal(p: &mut Parser) -> bool {
 }
 
 pub(super) fn expr(p: &mut Parser) {
-    if !literal(p) {
-        p.error("expected expression");
+    if literal(p) {
+        return;
     }
+
+    match p.current() {
+        L_PAREN => tuple_expr(p),
+        _ => p.error("expected expression"),
+    }
+}
+
+fn tuple_expr(p: &mut Parser) {
+    assert!(p.at(L_PAREN));
+    let m = p.start();
+    p.expect(L_PAREN);
+    p.expect(R_PAREN);
+    m.complete(p, TUPLE_EXPR);
 }
