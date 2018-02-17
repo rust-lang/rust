@@ -62,6 +62,7 @@ pub struct Config {
     pub rustc_error_format: Option<String>,
 
     pub run_host_only: bool,
+    pub is_sudo: bool,
 
     pub on_fail: Option<String>,
     pub stage: Option<u32>,
@@ -347,6 +348,16 @@ impl Config {
 
         // If --target was specified but --host wasn't specified, don't run any host-only tests.
         config.run_host_only = !(flags.host.is_empty() && !flags.target.is_empty());
+
+        config.is_sudo = match env::var_os("SUDO_USER") {
+            Some(sudo_user) => {
+                match env::var_os("USER") {
+                    Some(user) => user != sudo_user,
+                    None => false,
+                }
+            }
+            None => false,
+        };
 
         let toml = file.map(|file| {
             let mut f = t!(File::open(&file));

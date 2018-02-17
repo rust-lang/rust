@@ -776,7 +776,7 @@ impl<'a> Builder<'a> {
         if self.config.locked_deps {
             cargo.arg("--locked");
         }
-        if self.config.vendor || self.is_sudo {
+        if self.config.vendor || self.config.is_sudo {
             cargo.arg("--frozen");
         }
 

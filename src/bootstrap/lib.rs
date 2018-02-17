@@ -242,7 +242,6 @@ pub struct Build {
     ar: HashMap<Interned<String>, PathBuf>,
     // Misc
     crates: HashMap<Interned<String>, Crate>,
-    is_sudo: bool,
     ci_env: CiEnv,
     delayed_failures: RefCell<Vec<String>>,
     prerelease_version: Cell<Option<u32>>,
@@ -293,15 +292,6 @@ impl Build {
     ///
     /// By default all build output will be placed in the current directory.
     pub fn new(config: Config) -> Build {
-        let is_sudo = match env::var_os("SUDO_USER") {
-            Some(sudo_user) => {
-                match env::var_os("USER") {
-                    Some(user) => user != sudo_user,
-                    None => false,
-                }
-            }
-            None => false,
-        };
         let rust_info = channel::GitInfo::new(&config, &config.src);
         let cargo_info = channel::GitInfo::new(&config, &config.src.join("src/tools/cargo"));
         let rls_info = channel::GitInfo::new(&config, &config.src.join("src/tools/rls"));
@@ -328,7 +318,6 @@ impl Build {
             crates: HashMap::new(),
             lldb_version: None,
             lldb_python_dir: None,
-            is_sudo,
             ci_env: CiEnv::current(),
             delayed_failures: RefCell::new(Vec::new()),
             prerelease_version: Cell::new(None),
