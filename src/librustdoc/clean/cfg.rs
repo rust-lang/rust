@@ -25,7 +25,7 @@ use syntax_pos::Span;
 
 use html::escape::Escape;
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug, PartialEq)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, PartialEq, Eq, Hash)]
 pub enum Cfg {
     /// Accepts all configurations.
     True,
