@@ -15,131 +15,21 @@ use syntax::ast;
 use syntax::codemap::{BytePos, Span};
 
 use codemap::SpanUtils;
-use comment::combine_strs_with_missing_comments;
 use config::IndentStyle;
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
+use reorder::rewrite_reorderable_items;
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use spanned::Spanned;
 use types::{rewrite_path, PathContext};
 use utils::{format_visibility, mk_sp};
-use visitor::{rewrite_extern_crate, FmtVisitor};
+use visitor::FmtVisitor;
 
-fn compare_path_segments(a: &ast::PathSegment, b: &ast::PathSegment) -> Ordering {
-    a.identifier.name.as_str().cmp(&b.identifier.name.as_str())
+/// Returns a name imported by a `use` declaration. e.g. returns `Ordering`
+/// for `std::cmp::Ordering` and `self` for `std::cmp::self`.
+pub fn path_to_imported_ident(path: &ast::Path) -> ast::Ident {
+    path.segments.last().unwrap().identifier
 }
-
-fn compare_paths(a: &ast::Path, b: &ast::Path) -> Ordering {
-    for segment in a.segments.iter().zip(b.segments.iter()) {
-        let ord = compare_path_segments(segment.0, segment.1);
-        if ord != Ordering::Equal {
-            return ord;
-        }
-    }
-    a.segments.len().cmp(&b.segments.len())
-}
-
-fn compare_use_trees(a: &ast::UseTree, b: &ast::UseTree, nested: bool) -> Ordering {
-    use ast::UseTreeKind::*;
-
-    // `use_nested_groups` is not yet supported, remove the `if !nested` when support will be
-    // fully added
-    if !nested {
-        let paths_cmp = compare_paths(&a.prefix, &b.prefix);
-        if paths_cmp != Ordering::Equal {
-            return paths_cmp;
-        }
-    }
-
-    match (&a.kind, &b.kind) {
-        (&Simple(ident_a), &Simple(ident_b)) => {
-            let name_a = &*path_to_imported_ident(&a.prefix).name.as_str();
-            let name_b = &*path_to_imported_ident(&b.prefix).name.as_str();
-            let name_ordering = if name_a == "self" {
-                if name_b == "self" {
-                    Ordering::Equal
-                } else {
-                    Ordering::Less
-                }
-            } else if name_b == "self" {
-                Ordering::Greater
-            } else {
-                name_a.cmp(name_b)
-            };
-            if name_ordering == Ordering::Equal {
-                if ident_a.name.as_str() != name_a {
-                    if ident_b.name.as_str() != name_b {
-                        ident_a.name.as_str().cmp(&ident_b.name.as_str())
-                    } else {
-                        Ordering::Greater
-                    }
-                } else {
-                    Ordering::Less
-                }
-            } else {
-                name_ordering
-            }
-        }
-        (&Glob, &Glob) => Ordering::Equal,
-        (&Simple(_), _) | (&Glob, &Nested(_)) => Ordering::Less,
-        (&Nested(ref a_items), &Nested(ref b_items)) => {
-            let mut a = a_items
-                .iter()
-                .map(|&(ref tree, _)| tree.clone())
-                .collect::<Vec<_>>();
-            let mut b = b_items
-                .iter()
-                .map(|&(ref tree, _)| tree.clone())
-                .collect::<Vec<_>>();
-            a.sort_by(|a, b| compare_use_trees(a, b, true));
-            b.sort_by(|a, b| compare_use_trees(a, b, true));
-            for comparison_pair in a.iter().zip(b.iter()) {
-                let ord = compare_use_trees(comparison_pair.0, comparison_pair.1, true);
-                if ord != Ordering::Equal {
-                    return ord;
-                }
-            }
-            a.len().cmp(&b.len())
-        }
-        (&Glob, &Simple(_)) | (&Nested(_), _) => Ordering::Greater,
-    }
-}
-
-fn compare_use_items(a: &ast::Item, b: &ast::Item) -> Ordering {
-    match (&a.node, &b.node) {
-        (&ast::ItemKind::Mod(..), &ast::ItemKind::Mod(..)) => {
-            a.ident.name.as_str().cmp(&b.ident.name.as_str())
-        }
-        (&ast::ItemKind::Use(ref a_tree), &ast::ItemKind::Use(ref b_tree)) => {
-            compare_use_trees(a_tree, b_tree, false)
-        }
-        (&ast::ItemKind::ExternCrate(ref a_name), &ast::ItemKind::ExternCrate(ref b_name)) => {
-            // `extern crate foo as bar;`
-            //               ^^^ Comparing this.
-            let a_orig_name =
-                a_name.map_or_else(|| a.ident.name.as_str(), |symbol| symbol.as_str());
-            let b_orig_name =
-                b_name.map_or_else(|| b.ident.name.as_str(), |symbol| symbol.as_str());
-            let result = a_orig_name.cmp(&b_orig_name);
-            if result != Ordering::Equal {
-                return result;
-            }
-
-            // `extern crate foo as bar;`
-            //                      ^^^ Comparing this.
-            match (a_name, b_name) {
-                (Some(..), None) => Ordering::Greater,
-                (None, Some(..)) => Ordering::Less,
-                (None, None) => Ordering::Equal,
-                (Some(..), Some(..)) => a.ident.name.as_str().cmp(&b.ident.name.as_str()),
-            }
-        }
-        _ => unreachable!(),
-    }
-}
-
-// TODO (some day) remove unused imports, expand globs, compress many single
-// imports into a list import.
 
 fn rewrite_prefix(path: &ast::Path, context: &RewriteContext, shape: Shape) -> Option<String> {
     if path.segments.len() > 1 && path_to_imported_ident(path).to_string() == "self" {
@@ -208,7 +98,7 @@ fn is_unused_import_inner(tree: &ast::UseTree) -> bool {
 }
 
 // Rewrite `use foo;` WITHOUT attributes.
-fn rewrite_import(
+pub fn rewrite_import(
     context: &RewriteContext,
     vis: &ast::Visibility,
     tree: &ast::UseTree,
@@ -235,76 +125,13 @@ fn rewrite_import(
 }
 
 /// Rewrite an inline mod.
-fn rewrite_mod(item: &ast::Item) -> String {
+pub fn rewrite_mod(item: &ast::Item) -> String {
     let mut result = String::with_capacity(32);
     result.push_str(&*format_visibility(&item.vis));
     result.push_str("mod ");
     result.push_str(&item.ident.to_string());
     result.push(';');
     result
-}
-
-fn rewrite_imports(
-    context: &RewriteContext,
-    use_items: &[&ast::Item],
-    shape: Shape,
-    span: Span,
-) -> Option<String> {
-    let items = itemize_list(
-        context.codemap,
-        use_items.iter(),
-        "",
-        ";",
-        |item| item.span().lo(),
-        |item| item.span().hi(),
-        |item| {
-            let attrs = ::visitor::filter_inline_attrs(&item.attrs, item.span());
-            let attrs_str = attrs.rewrite(context, shape)?;
-
-            let missed_span = if attrs.is_empty() {
-                mk_sp(item.span.lo(), item.span.lo())
-            } else {
-                mk_sp(attrs.last().unwrap().span.hi(), item.span.lo())
-            };
-
-            let item_str = match item.node {
-                ast::ItemKind::Use(ref tree) => {
-                    rewrite_import(context, &item.vis, tree, &item.attrs, shape)?
-                }
-                ast::ItemKind::ExternCrate(..) => rewrite_extern_crate(context, item)?,
-                ast::ItemKind::Mod(..) => rewrite_mod(item),
-                _ => return None,
-            };
-
-            combine_strs_with_missing_comments(
-                context,
-                &attrs_str,
-                &item_str,
-                missed_span,
-                shape,
-                false,
-            )
-        },
-        span.lo(),
-        span.hi(),
-        false,
-    );
-    let mut item_pair_vec: Vec<_> = items.zip(use_items.iter()).collect();
-    item_pair_vec.sort_by(|a, b| compare_use_items(a.1, b.1));
-    let item_vec: Vec<_> = item_pair_vec.into_iter().map(|pair| pair.0).collect();
-
-    let fmt = ListFormatting {
-        tactic: DefinitiveListTactic::Vertical,
-        separator: "",
-        trailing_separator: SeparatorTactic::Never,
-        separator_place: SeparatorPlace::Back,
-        shape,
-        ends_with_newline: true,
-        preserve_newline: false,
-        config: context.config,
-    };
-
-    write_list(&item_vec, &fmt)
 }
 
 impl<'a> FmtVisitor<'a> {
@@ -316,7 +143,7 @@ impl<'a> FmtVisitor<'a> {
         let lo = use_items.first().unwrap().span().lo();
         let hi = use_items.last().unwrap().span().hi();
         let span = mk_sp(lo, hi);
-        let rw = rewrite_imports(&self.get_context(), use_items, self.shape(), span);
+        let rw = rewrite_reorderable_items(&self.get_context(), use_items, self.shape(), span);
         self.push_rewrite(span, rw);
     }
 
@@ -593,8 +420,4 @@ fn move_self_to_front(items: &mut Vec<ListItem>) -> bool {
         }
         None => false,
     }
-}
-
-fn path_to_imported_ident(path: &ast::Path) -> ast::Ident {
-    path.segments.last().unwrap().identifier
 }

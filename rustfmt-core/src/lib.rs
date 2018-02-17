@@ -52,6 +52,7 @@ pub use config::summary::Summary;
 
 #[macro_use]
 mod utils;
+
 mod chains;
 mod checkstyle;
 mod closures;
@@ -67,6 +68,7 @@ mod macros;
 mod missed_spans;
 pub mod modules;
 mod patterns;
+mod reorder;
 mod rewrite;
 pub mod rustfmt_diff;
 mod shape;
