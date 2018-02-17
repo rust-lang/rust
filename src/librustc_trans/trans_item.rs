@@ -69,6 +69,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
                 }
             }
             MonoItem::Fn(instance) => {
+                cx.tcx.sess.warn(&format!("trans_instance({:?})", instance));
                 base::trans_instance(&cx, instance);
             }
         }

@@ -164,6 +164,9 @@ pub enum TypeVariants<'tcx> {
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}
     TyParam(ParamTy),
 
+    /// Substitution for a unused type parameter; see rustc_mir::monomorphize::deduplicate_instances
+    TyUnusedParam,
+
     /// A type variable used during type-checking.
     TyInfer(InferTy),
 
