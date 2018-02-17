@@ -159,7 +159,7 @@ unsafe impl<A, F: FnMut() -> A> TrustedLen for RepeatWith<F> {}
 /// [`repeat`]: fn.repeat.html
 ///
 /// An iterator produced by `repeat_with()` is a `DoubleEndedIterator`.
-/// It is important to not that reversing `repeat_with(f)` will produce
+/// It is important to note that reversing `repeat_with(f)` will produce
 /// the exact same sequence as the non-reversed iterator. In other words,
 /// `repeat_with(f).rev().collect::<Vec<_>>()` is equivalent to
 /// `repeat_with(f).collect::<Vec<_>>()`.
