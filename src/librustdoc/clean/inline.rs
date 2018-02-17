@@ -69,7 +69,7 @@ pub fn try_inline(cx: &DocContext, def: Def, name: ast::Name)
         }
         Def::TyAlias(did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Typedef);
-            ret.extend(build_impls(cx, did, true));
+            ret.extend(build_impls(cx, did, false));
             clean::TypedefItem(build_type_alias(cx, did), false)
         }
         Def::Enum(did) => {
