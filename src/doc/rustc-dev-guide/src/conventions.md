@@ -1,9 +1,9 @@
 This file offers some tips on the coding conventions for rustc.  This
-chapter covers [formatting](#f), [coding for correctness](#cc),
+chapter covers [formatting](#formatting), [coding for correctness](#cc),
 [using crates from crates.io](#cio), and some tips on
 [structuring your PR for easy review](#er).
 
-<a name=f>
+<a name=formatting>
 
 # Formatting and the tidy script
 
