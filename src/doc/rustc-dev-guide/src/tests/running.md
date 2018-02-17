@@ -35,8 +35,8 @@ on debuginfo, you may be better off with the debuginfo test suite:
 
 **Warning:** Note that bors only runs the tests with the full stage 2
 build; therefore, while the tests **usually** work fine with stage 1,
-there are some limitations. In particular, `./x.py test --stage 1`
-(ie.,
+there are some limitations. In particular, the stage1 compiler doesn't
+work well with procedural macros or custom derive tests.
 
 ## Running an individual test
 
