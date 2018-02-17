@@ -23,7 +23,7 @@ Here is a brief summary of the test suites as of this writing and what
 they mean. In some cases, the test suites are linked to parts of the manual
 that give more details.
 
-- [`ui`](ui.html) -- tests that check the exact stdout/stderr from compilation
+- [`ui`](adding.html#) -- tests that check the exact stdout/stderr from compilation
   and/or running the test
 - `run-pass` -- tests that are expected to compile and execute successfully (no panics)
   - `run-pass-valgrind` -- tests that ought to run with valrind
@@ -34,15 +34,16 @@ that give more details.
   generates valid Rust code from the AST
 - `debuginfo` -- tests that run in gdb or lldb and query the debug info
 - `codegen` -- tests that compile and then test the generated LLVM
-  code to make sure that optimizing we want are kicking in etc
-- `mir-opt` -- tests that check parts of the generated MIR to make sure we are optimizing
-  etc.
+  code to make sure that the optimizations we want are taking effect.
+- `mir-opt` -- tests that check parts of the generated MIR to make
+  sure we are building things correctly or doing the optimizations we
+  expect.
 - `incremental` -- tests for incremental compilation, checking that
   when certain modifications are performed, we are able to reuse the
   results from previous compilations.
-- `run-make` -- tests that basically just execute a `Makefile`; the ultimate in flexibility
-  but annoying as all get out to write.
+- `run-make` -- tests that basically just execute a `Makefile`; the
+  ultimate in flexibility but quite annoying to write.
 - `rustdoc` -- tests for rustdoc, making sure that the generated files contain
-  documentation for various entities etc
+  the expected documentation.
 - `*-fulldeps` -- same as above, but indicates that the test depends on things other
   than `libstd` (and hence those things must be built)

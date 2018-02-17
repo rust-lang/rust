@@ -1,9 +1,9 @@
 # Adding new tests
 
 **In general, we expect every PR that fixes a bug in rustc to come
-accompanied with a regression test of some kind.** This test should
-fail in master but pass after the PR. These tests are really useful
-for preventing us from repeating the mistakes of the past.
+accompanied by a regression test of some kind.** This test should fail
+in master but pass after the PR. These tests are really useful for
+preventing us from repeating the mistakes of the past.
 
 To add a new test, the first thing you generally do is to create a
 file, typically a Rust source file. Test files have a particular
@@ -20,18 +20,36 @@ structure:
 
 Depending on the test suite, there may be some other details to be aware of:
   - For [the `ui` test suite](#ui), you need to generate reference output files.
-  
+
+## What kind of test should I add?
+
+It can be difficult to know what kind of test to use. Here are some
+rough heuristics:
+
+- Some tests have specialized needs:
+  - need to run gdb or lldb? use the `debuginfo` test suite
+  - need to inspect LLVM IR or MIR IR? use the `codegen` or `mir-opt` test suites
+  - need to run rustdoc? Prefer a `rustdoc` test
+  - need to inspect the resulting binary in some way? Then use `run-make`
+- For most other things, [a `ui` (or `ui-fulldeps`) test](#ui) is to be preferred:
+  - `ui` tests subsume both run-pass, compile-fail, and parse-fail tests
+  - in the case of warnings or errors, `ui` tests capture the full output,
+    which makes it easier to review but also helps prevent "hidden" regressions
+    in the output
+
 ## Naming your test
 
 We have not traditionally had a lot of structure in the names of
 tests.  Moreover, for a long time, the rustc test runner did not
 support subdirectories (it now does), so test suites like
-`src/test/run-pass` have a huge mess of files in them. This is not
+[`src/test/run-pass`] have a huge mess of files in them. This is not
 considered an ideal setup.
+
+[`src/test/run-pass`]: https://github.com/rust-lang/rust/tree/master/src/test/run-pass/
 
 For regression tests -- basically, some random snippet of code that
 came in from the internet -- we often just name the test after the
-issue. For example, `src/test/run-pass/issue-1234.rs`. If possible,
+issue. For example, `src/test/run-pass/issue-12345.rs`. If possible,
 though, it is better if you can put the test into a directory that
 helps identify what piece of code is being tested here (e.g.,
 `borrowck/issue-12345.rs` is much better), or perhaps give it a more
@@ -204,21 +222,31 @@ customized to a revision are error patterns and compiler flags.
 
 The UI tests are intended to capture the compiler's complete output,
 so that we can test all aspects of the presentation. They work by
-compiling a file (e.g., `ui/hello_world/main.rs`), capturing the output,
-and then applying some normalization (see below). This normalized
-result is then compared against reference files named
-`ui/hello_world/main.stderr` and `ui/hello_world/main.stdout`. If either of
-those files doesn't exist, the output must be empty. If the test run
-fails, we will print out the current output, but it is also saved in
+compiling a file (e.g., [`ui/hello_world/main.rs`][hw-main]),
+capturing the output, and then applying some normalization (see
+below). This normalized result is then compared against reference
+files named `ui/hello_world/main.stderr` and
+`ui/hello_world/main.stdout`. If either of those files doesn't exist,
+the output must be empty (that is actually the case for
+[this particular test][hw]). If the test run fails, we will print out
+the current output, but it is also saved in
 `build/<target-triple>/test/ui/hello_world/main.stdout` (this path is
-printed as part of the test failure message), so you can run `diff` and
-so forth.
+printed as part of the test failure message), so you can run `diff`
+and so forth.
 
-Normally, the test-runner checks that UI tests fail compilation. If you want
-to do a UI test for code that *compiles* (e.g. to test warnings, or if you
-have a collection of tests, only some of which error out), you can use the
-`// must-compile-successfully` header command to have the test runner instead
-check that the test compiles successfully.
+[hw-main]: https://github.com/rust-lang/rust/blob/master/src/test/ui/hello_world/main.rs
+[hw]: https://github.com/rust-lang/rust/blob/master/src/test/ui/hello_world/
+
+### Tests that do not result in compile errors
+
+By default, a UI test is expected **not to compile** (in which case,
+it should contain at least one `//~ ERROR` annotation). However, you
+can also make UI tests where compilation is expected to succeed, and
+you can even run the resulting program. Just add one of the following
+[header commands](#header_commands):
+
+- `// must-compile-successfully` -- compilation should succeed but do not run the resulting binary
+- `// run-pass` -- compilation should succeed and we should run the resulting binary
 
 ### Editing and updating the reference files
 
@@ -265,7 +293,10 @@ The corresponding reference file will use the normalized output to test both
 ...
 ```
 
-Please see `ui/transmute/main.rs` and `.stderr` for a concrete usage example.
+Please see [`ui/transmute/main.rs`][mrs] and [`main.stderr`][] for a concrete usage example.
+
+[mrs]: https://github.com/rust-lang/rust/blob/master/src/test/ui/transmute/main.rs
+[`main.stderr`]: https://github.com/rust-lang/rust/blob/master/src/test/ui/transmute/main.stderr
 
 Besides `normalize-stderr-32bit` and `-64bit`, one may use any target
 information or stage supported by `ignore-X` here as well (e.g.
