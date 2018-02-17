@@ -43,6 +43,7 @@ use std::collections::HashSet;
 
 use syntax::ast;
 use syntax::attr;
+use syntax::edition::Edition;
 use syntax::feature_gate::{AttributeGate, AttributeType, Stability, deprecated_attributes};
 use syntax_pos::{BytePos, Span, SyntaxContext};
 use syntax::symbol::keywords;
@@ -616,7 +617,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
 declare_lint! {
     pub ANONYMOUS_PARAMETERS,
     Allow,
-    "detects anonymous parameters"
+    "detects anonymous parameters",
+    Edition::Edition2018 => Warn,
 }
 
 /// Checks for use of anonymous parameters (RFC 1685)
@@ -637,9 +639,29 @@ impl EarlyLintPass for AnonymousParameters {
                     match arg.pat.node {
                         ast::PatKind::Ident(_, ident, None) => {
                             if ident.name == keywords::Invalid.name() {
-                                cx.span_lint(ANONYMOUS_PARAMETERS,
-                                             arg.pat.span,
-                                             "use of deprecated anonymous parameter");
+                                let ty_snip = cx
+                                    .sess
+                                    .codemap()
+                                    .span_to_snippet(arg.ty.span);
+
+                                let (ty_snip, appl) = if let Ok(snip) = ty_snip {
+                                    (snip, Applicability::MachineApplicable)
+                                } else {
+                                    ("<type>".to_owned(), Applicability::HasPlaceholders)
+                                };
+
+                                cx.struct_span_lint(
+                                    ANONYMOUS_PARAMETERS,
+                                    arg.pat.span,
+                                    "anonymous parameters are deprecated and will be \
+                                     removed in the next edition."
+                                ).span_suggestion_with_applicability(
+                                    arg.pat.span,
+                                    "Try naming the parameter or explicitly \
+                                    ignoring it",
+                                    format!("_: {}", ty_snip),
+                                    appl
+                                ).emit();
                             }
                         }
                         _ => (),
