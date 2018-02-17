@@ -317,10 +317,10 @@ impl CodeMap {
 
     pub fn mk_substr_filename(&self, sp: Span) -> String {
         let pos = self.lookup_char_pos(sp.lo());
-        (format!("<{}:{}:{}>",
+        format!("<{}:{}:{}>",
                  pos.file.name,
                  pos.line,
-                 pos.col.to_usize() + 1)).to_string()
+                 pos.col.to_usize() + 1)
     }
 
     // If there is a doctest_offset, apply it to the line
@@ -462,12 +462,12 @@ impl CodeMap {
 
         let lo = self.lookup_char_pos_adj(sp.lo());
         let hi = self.lookup_char_pos_adj(sp.hi());
-        return (format!("{}:{}:{}: {}:{}",
+        format!("{}:{}:{}: {}:{}",
                         lo.filename,
                         lo.line,
                         lo.col.to_usize() + 1,
                         hi.line,
-                        hi.col.to_usize() + 1)).to_string()
+                        hi.col.to_usize() + 1)
     }
 
     pub fn span_to_filename(&self, sp: Span) -> FileName {
