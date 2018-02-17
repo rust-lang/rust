@@ -30,7 +30,7 @@ pub fn clean(build: &Build, all: bool) {
         rm_rf(&build.config.out.join("tmp"));
         rm_rf(&build.config.out.join("dist"));
 
-        for host in &build.hosts {
+        for host in &build.config.hosts {
             let entries = match build.config.out.join(host).read_dir() {
                 Ok(iter) => iter,
                 Err(_) => continue,

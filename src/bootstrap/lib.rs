@@ -228,7 +228,6 @@ pub struct Build {
 
     // Targets for which to build.
     build: Interned<String>,
-    hosts: Vec<Interned<String>>,
     targets: Vec<Interned<String>>,
 
     // Probed tools at runtime
@@ -303,7 +302,6 @@ impl Build {
             verbosity: config.verbose,
 
             build: config.build,
-            hosts: config.hosts.clone(),
             targets: config.targets.clone(),
 
             config,
@@ -718,7 +716,7 @@ impl Build {
     fn force_use_stage1(&self, compiler: Compiler, target: Interned<String>) -> bool {
         !self.config.full_bootstrap &&
             compiler.stage >= 2 &&
-            (self.hosts.iter().any(|h| *h == target) || target == self.build)
+            (self.config.hosts.iter().any(|h| *h == target) || target == self.build)
     }
 
     /// Returns the directory that OpenSSL artifacts are compiled into if

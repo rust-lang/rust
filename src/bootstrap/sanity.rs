@@ -86,7 +86,7 @@ pub fn check(build: &mut Build) {
     }
 
     // We need cmake, but only if we're actually building LLVM or sanitizers.
-    let building_llvm = build.hosts.iter()
+    let building_llvm = build.config.hosts.iter()
         .filter_map(|host| build.config.target_config.get(host))
         .any(|config| config.llvm_config.is_none());
     if building_llvm || build.config.sanitizers {
@@ -146,7 +146,7 @@ pub fn check(build: &mut Build) {
         }
     }
 
-    for host in &build.hosts {
+    for host in &build.config.hosts {
         cmd_finder.must_have(build.cxx(*host).unwrap());
 
         // The msvc hosts don't use jemalloc, turn it off globally to
