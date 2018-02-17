@@ -66,7 +66,7 @@ impl fmt::Display for TestKind {
 }
 
 fn try_run(build: &Build, cmd: &mut Command) -> bool {
-    if !build.fail_fast {
+    if !build.config.cmd.fail_fast() {
         if !build.try_run(cmd) {
             let mut failures = build.delayed_failures.borrow_mut();
             failures.push(format!("{:?}", cmd));
@@ -79,7 +79,7 @@ fn try_run(build: &Build, cmd: &mut Command) -> bool {
 }
 
 fn try_run_quiet(build: &Build, cmd: &mut Command) {
-    if !build.fail_fast {
+    if !build.config.cmd.fail_fast() {
         if !build.try_run_quiet(cmd) {
             let mut failures = build.delayed_failures.borrow_mut();
             failures.push(format!("{:?}", cmd));
@@ -200,7 +200,7 @@ impl Step for Cargo {
         builder.ensure(tool::Cargo { compiler, target: self.host });
         let mut cargo = builder.cargo(compiler, Mode::Tool, self.host, "test");
         cargo.arg("--manifest-path").arg(build.config.src.join("src/tools/cargo/Cargo.toml"));
-        if !build.fail_fast {
+        if !build.config.cmd.fail_fast() {
             cargo.arg("--no-fail-fast");
         }
 
@@ -1351,7 +1351,7 @@ impl Step for Crate {
         // Pass in some standard flags then iterate over the graph we've discovered
         // in `cargo metadata` with the maps above and figure out what `-p`
         // arguments need to get passed.
-        if test_kind.subcommand() == "test" && !build.fail_fast {
+        if test_kind.subcommand() == "test" && !build.config.cmd.fail_fast() {
             cargo.arg("--no-fail-fast");
         }
         if build.doc_tests {
@@ -1459,7 +1459,7 @@ impl Step for CrateRustdoc {
         println!("{} rustdoc stage{} ({} -> {})", test_kind, compiler.stage,
                 &compiler.host, target);
 
-        if test_kind.subcommand() == "test" && !build.fail_fast {
+        if test_kind.subcommand() == "test" && !build.config.cmd.fail_fast() {
             cargo.arg("--no-fail-fast");
         }
 
@@ -1629,7 +1629,7 @@ impl Step for Bootstrap {
            .env("CARGO_TARGET_DIR", build.config.out.join("bootstrap-test"))
            .env("RUSTC_BOOTSTRAP", "1")
            .env("RUSTC", &build.config.initial_rustc);
-        if !build.fail_fast {
+        if !build.config.cmd.fail_fast() {
             cmd.arg("--no-fail-fast");
         }
         cmd.arg("--").args(&build.config.cmd.test_args());
