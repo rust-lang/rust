@@ -81,9 +81,18 @@ use time::SystemTime;
 /// # }
 /// ```
 ///
+/// Note that, although read and write methods require a `&mut File`, because
+/// of the interfaces for [`Read`] and [`Write`], the holder of a `&File` can
+/// still modify the file, either through methods that take `&File` or by
+/// retrieving the underlying OS object and modifying the file that way.
+/// Additionally, many operating systems allow concurrent modification of files
+/// by different processes. Avoid assuming that holding a `&File` means that the
+/// file will not change.
+///
 /// [`Seek`]: ../io/trait.Seek.html
 /// [`String`]: ../string/struct.String.html
 /// [`Read`]: ../io/trait.Read.html
+/// [`Write`]: ../io/trait.Write.html
 /// [`BufReader<R>`]: ../io/struct.BufReader.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct File {
@@ -459,6 +468,9 @@ impl File {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// Note that this method alters the content of the underlying file, even
+    /// though it takes `&self` rather than `&mut self`.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn set_len(&self, size: u64) -> io::Result<()> {
         self.inner.truncate(size)
@@ -557,6 +569,9 @@ impl File {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// Note that this method alters the permissions of the underlying file,
+    /// even though it takes `&self` rather than `&mut self`.
     #[stable(feature = "set_permissions_atomic", since = "1.16.0")]
     pub fn set_permissions(&self, perm: Permissions) -> io::Result<()> {
         self.inner.set_permissions(perm.0)
