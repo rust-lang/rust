@@ -12,6 +12,7 @@
 //! which do not.
 
 use rustc_data_structures::bitvec::BitVector;
+use rustc_data_structures::control_flow_graph::dominators::Dominators;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::mir::{self, Location, TerminatorKind};
 use rustc::mir::visit::{Visitor, PlaceContext};
@@ -21,7 +22,7 @@ use rustc::ty::layout::LayoutOf;
 use type_of::LayoutLlvmExt;
 use super::FunctionCx;
 
-pub fn memory_locals<'a, 'tcx>(fx: &FunctionCx<'a, 'tcx>) -> BitVector {
+pub fn non_ssa_locals<'a, 'tcx>(fx: &FunctionCx<'a, 'tcx>) -> BitVector {
     let mir = fx.mir;
     let mut analyzer = LocalAnalyzer::new(fx);
 
@@ -43,43 +44,60 @@ pub fn memory_locals<'a, 'tcx>(fx: &FunctionCx<'a, 'tcx>) -> BitVector {
             // (e.g. structs) into an alloca unconditionally, just so
             // that we don't have to deal with having two pathways
             // (gep vs extractvalue etc).
-            analyzer.mark_as_memory(mir::Local::new(index));
+            analyzer.not_ssa(mir::Local::new(index));
         }
     }
 
-    analyzer.memory_locals
+    analyzer.non_ssa_locals
 }
 
 struct LocalAnalyzer<'mir, 'a: 'mir, 'tcx: 'a> {
     fx: &'mir FunctionCx<'a, 'tcx>,
-    memory_locals: BitVector,
-    seen_assigned: BitVector
+    dominators: Dominators<mir::BasicBlock>,
+    non_ssa_locals: BitVector,
+    // The location of the first visited direct assignment to each
+    // local, or an invalid location (out of bounds `block` index).
+    first_assignment: IndexVec<mir::Local, Location>
 }
 
 impl<'mir, 'a, 'tcx> LocalAnalyzer<'mir, 'a, 'tcx> {
     fn new(fx: &'mir FunctionCx<'a, 'tcx>) -> LocalAnalyzer<'mir, 'a, 'tcx> {
+        let invalid_location =
+            mir::BasicBlock::new(fx.mir.basic_blocks().len()).start_location();
         let mut analyzer = LocalAnalyzer {
             fx,
-            memory_locals: BitVector::new(fx.mir.local_decls.len()),
-            seen_assigned: BitVector::new(fx.mir.local_decls.len())
+            dominators: fx.mir.dominators(),
+            non_ssa_locals: BitVector::new(fx.mir.local_decls.len()),
+            first_assignment: IndexVec::from_elem(invalid_location, &fx.mir.local_decls)
         };
 
         // Arguments get assigned to by means of the function being called
-        for idx in 0..fx.mir.arg_count {
-            analyzer.seen_assigned.insert(idx + 1);
+        for arg in fx.mir.args_iter() {
+            analyzer.first_assignment[arg] = mir::START_BLOCK.start_location();
         }
 
         analyzer
     }
 
-    fn mark_as_memory(&mut self, local: mir::Local) {
-        debug!("marking {:?} as memory", local);
-        self.memory_locals.insert(local.index());
+    fn first_assignment(&self, local: mir::Local) -> Option<Location> {
+        let location = self.first_assignment[local];
+        if location.block.index() < self.fx.mir.basic_blocks().len() {
+            Some(location)
+        } else {
+            None
+        }
     }
 
-    fn mark_assigned(&mut self, local: mir::Local) {
-        if !self.seen_assigned.insert(local.index()) {
-            self.mark_as_memory(local);
+    fn not_ssa(&mut self, local: mir::Local) {
+        debug!("marking {:?} as non-SSA", local);
+        self.non_ssa_locals.insert(local.index());
+    }
+
+    fn assign(&mut self, local: mir::Local, location: Location) {
+        if self.first_assignment(local).is_some() {
+            self.not_ssa(local);
+        } else {
+            self.first_assignment[local] = location;
         }
     }
 }
@@ -93,9 +111,9 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
         debug!("visit_assign(block={:?}, place={:?}, rvalue={:?})", block, place, rvalue);
 
         if let mir::Place::Local(index) = *place {
-            self.mark_assigned(index);
+            self.assign(index, location);
             if !self.fx.rvalue_creates_operand(rvalue) {
-                self.mark_as_memory(index);
+                self.not_ssa(index);
             }
         } else {
             self.visit_place(place, PlaceContext::Store, location);
@@ -161,7 +179,7 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
                     if layout.is_llvm_immediate() || layout.is_llvm_scalar_pair() {
                         // Recurse with the same context, instead of `Projection`,
                         // potentially stopping at non-operand projections,
-                        // which would trigger `mark_as_memory` on locals.
+                        // which would trigger `not_ssa` on locals.
                         self.visit_place(&proj.base, context, location);
                         return;
                     }
@@ -178,35 +196,50 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
     }
 
     fn visit_local(&mut self,
-                   &index: &mir::Local,
+                   &local: &mir::Local,
                    context: PlaceContext<'tcx>,
-                   _: Location) {
+                   location: Location) {
         match context {
             PlaceContext::Call => {
-                self.mark_assigned(index);
+                self.assign(local, location);
             }
 
             PlaceContext::StorageLive |
             PlaceContext::StorageDead |
-            PlaceContext::Validate |
+            PlaceContext::Validate => {}
+
             PlaceContext::Copy |
-            PlaceContext::Move => {}
+            PlaceContext::Move => {
+                // Reads from uninitialized variables (e.g. in dead code, after
+                // optimizations) require locals to be in (uninitialized) memory.
+                // NB: there can be uninitialized reads of a local visited after
+                // an assignment to that local, if they happen on disjoint paths.
+                let ssa_read = match self.first_assignment(local) {
+                    Some(assignment_location) => {
+                        assignment_location.dominates(location, &self.dominators)
+                    }
+                    None => false
+                };
+                if !ssa_read {
+                    self.not_ssa(local);
+                }
+            }
 
             PlaceContext::Inspect |
             PlaceContext::Store |
             PlaceContext::AsmOutput |
             PlaceContext::Borrow { .. } |
             PlaceContext::Projection(..) => {
-                self.mark_as_memory(index);
+                self.not_ssa(local);
             }
 
             PlaceContext::Drop => {
-                let ty = mir::Place::Local(index).ty(self.fx.mir, self.fx.cx.tcx);
+                let ty = mir::Place::Local(local).ty(self.fx.mir, self.fx.cx.tcx);
                 let ty = self.fx.monomorphize(&ty.to_ty(self.fx.cx.tcx));
 
                 // Only need the place if we're actually dropping it.
                 if self.fx.cx.type_needs_drop(ty) {
-                    self.mark_as_memory(index);
+                    self.not_ssa(local);
                 }
             }
         }

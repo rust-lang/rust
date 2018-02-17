@@ -252,7 +252,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
         },
     };
 
-    let memory_locals = analyze::memory_locals(&fx);
+    let memory_locals = analyze::non_ssa_locals(&fx);
 
     // Allocate variable and temp allocas
     fx.locals = {
