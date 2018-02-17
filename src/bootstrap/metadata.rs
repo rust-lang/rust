@@ -51,7 +51,7 @@ pub fn build(build: &mut Build) {
 }
 
 fn build_krate(build: &mut Build, krate: &str) {
-    let mut cargo = Command::new(&build.initial_cargo);
+    let mut cargo = Command::new(&build.config.initial_cargo);
     cargo.arg("metadata")
          .arg("--format-version").arg("1")
          .arg("--manifest-path").arg(build.config.src.join(krate).join("Cargo.toml"));

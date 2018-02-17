@@ -232,10 +232,6 @@ pub struct Build {
     hosts: Vec<Interned<String>>,
     targets: Vec<Interned<String>>,
 
-    // Stage 0 (downloaded) compiler and cargo or their local rust equivalents.
-    initial_rustc: PathBuf,
-    initial_cargo: PathBuf,
-
     // Probed tools at runtime
     lldb_version: Option<String>,
     lldb_python_dir: Option<String>,
@@ -313,8 +309,6 @@ impl Build {
         let rustfmt_info = channel::GitInfo::new(&config, &config.src.join("src/tools/rustfmt"));
 
         Build {
-            initial_rustc: config.initial_rustc.clone(),
-            initial_cargo: config.initial_cargo.clone(),
             local_rebuild: config.local_rebuild,
             fail_fast: config.cmd.fail_fast(),
             doc_tests: config.cmd.doc_tests(),
@@ -365,7 +359,7 @@ impl Build {
         sanity::check(self);
         // If local-rust is the same major.minor as the current version, then force a local-rebuild
         let local_version_verbose = output(
-            Command::new(&self.initial_rustc).arg("--version").arg("--verbose"));
+            Command::new(&self.config.initial_rustc).arg("--version").arg("--verbose"));
         let local_release = local_version_verbose
             .lines().filter(|x| x.starts_with("release:"))
             .next().unwrap().trim_left_matches("release:").trim();
@@ -568,7 +562,7 @@ impl Build {
 
     /// Returns the libdir of the snapshot compiler.
     fn rustc_snapshot_libdir(&self) -> PathBuf {
-        self.initial_rustc.parent().unwrap().parent().unwrap()
+        self.config.initial_rustc.parent().unwrap().parent().unwrap()
             .join(libdir(&self.config.build))
     }
 

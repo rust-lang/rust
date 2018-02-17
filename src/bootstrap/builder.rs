@@ -480,7 +480,7 @@ impl<'a> Builder<'a> {
     /// Get a path to the compiler specified.
     pub fn rustc(&self, compiler: Compiler) -> PathBuf {
         if compiler.is_snapshot(self) {
-            self.initial_rustc.clone()
+            self.config.initial_rustc.clone()
         } else {
             self.sysroot(compiler).join("bin").join(exe("rustc", &compiler.host))
         }
@@ -518,7 +518,7 @@ impl<'a> Builder<'a> {
              mode: Mode,
              target: Interned<String>,
              cmd: &str) -> Command {
-        let mut cargo = Command::new(&self.initial_cargo);
+        let mut cargo = Command::new(&self.config.initial_cargo);
         let out_dir = self.stage_out(compiler, mode);
         cargo.env("CARGO_TARGET_DIR", out_dir)
              .arg(cmd)
@@ -644,7 +644,7 @@ impl<'a> Builder<'a> {
         // If LLVM support is disabled we need to use the snapshot compiler to compile
         // build scripts, as the new compiler doesn't support executables.
         if mode == Mode::Libstd || !self.build.config.llvm_enabled {
-            cargo.env("RUSTC_SNAPSHOT", &self.initial_rustc)
+            cargo.env("RUSTC_SNAPSHOT", &self.config.initial_rustc)
                  .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_snapshot_libdir());
         } else {
             self.ensure(compile::Std { compiler, target: compiler.host });

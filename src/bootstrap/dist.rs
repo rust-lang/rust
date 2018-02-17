@@ -878,18 +878,18 @@ impl Step for PlainSourceTarball {
         if build.rust_info.is_git() {
             // Get cargo-vendor installed, if it isn't already.
             let mut has_cargo_vendor = false;
-            let mut cmd = Command::new(&build.initial_cargo);
+            let mut cmd = Command::new(&build.config.initial_cargo);
             for line in output(cmd.arg("install").arg("--list")).lines() {
                 has_cargo_vendor |= line.starts_with("cargo-vendor ");
             }
             if !has_cargo_vendor {
-                let mut cmd = Command::new(&build.initial_cargo);
+                let mut cmd = Command::new(&build.config.initial_cargo);
                 cmd.arg("install")
                    .arg("--force")
                    .arg("--debug")
                    .arg("--vers").arg(CARGO_VENDOR_VERSION)
                    .arg("cargo-vendor")
-                   .env("RUSTC", &build.initial_rustc);
+                   .env("RUSTC", &build.config.initial_rustc);
                 if let Some(dir) = build.openssl_install_dir(build.config.build) {
                     builder.ensure(native::Openssl {
                         target: build.config.build,
@@ -900,7 +900,7 @@ impl Step for PlainSourceTarball {
             }
 
             // Vendor all Cargo dependencies
-            let mut cmd = Command::new(&build.initial_cargo);
+            let mut cmd = Command::new(&build.config.initial_cargo);
             cmd.arg("vendor")
                .current_dir(&plain_dst_src.join("src"));
             build.run(&mut cmd);
