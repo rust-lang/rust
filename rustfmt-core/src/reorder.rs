@@ -18,7 +18,8 @@ use config::lists::*;
 use syntax::{ast, codemap::Span};
 
 use comment::combine_strs_with_missing_comments;
-use imports::{path_to_imported_ident, rewrite_import, rewrite_mod};
+use imports::{path_to_imported_ident, rewrite_import};
+use items::rewrite_mod;
 use lists::{itemize_list, write_list, ListFormatting};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
