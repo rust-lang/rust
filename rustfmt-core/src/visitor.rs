@@ -42,21 +42,21 @@ pub fn filter_inline_attrs(attrs: &[ast::Attribute], outer_span: Span) -> Vec<as
 }
 
 /// Returns true for `mod foo;`, false for `mod foo { .. }`.
-pub fn is_mod_decl(item: &ast::Item) -> bool {
+fn is_mod_decl(item: &ast::Item) -> bool {
     match item.node {
         ast::ItemKind::Mod(ref m) => m.inner.hi() != item.span.hi(),
         _ => false,
     }
 }
 
-pub fn is_use_item(item: &ast::Item) -> bool {
+fn is_use_item(item: &ast::Item) -> bool {
     match item.node {
         ast::ItemKind::Use(_) => true,
         _ => false,
     }
 }
 
-pub fn is_extern_crate(item: &ast::Item) -> bool {
+fn is_extern_crate(item: &ast::Item) -> bool {
     match item.node {
         ast::ItemKind::ExternCrate(..) => true,
         _ => false,

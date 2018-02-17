@@ -14,7 +14,7 @@
 //! order. Trait items are reordered in pre-determined order (associated types
 //! and constatns comes before methods).
 
-use config::lists::*;
+use config::{Config, lists::*};
 use syntax::{ast, attr, codemap::Span};
 
 use codemap::LineRangeUtils;
@@ -26,8 +26,7 @@ use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use spanned::Spanned;
 use utils::mk_sp;
-use visitor::{filter_inline_attrs, is_extern_crate, is_mod_decl, is_use_item,
-              rewrite_extern_crate, FmtVisitor};
+use visitor::{filter_inline_attrs, rewrite_extern_crate, FmtVisitor};
 
 use std::cmp::Ordering;
 
@@ -212,43 +211,70 @@ fn rewrite_reorderable_items(
     write_list(&item_vec, &fmt)
 }
 
-fn contains_macro_use_attr(attrs: &[ast::Attribute], span: Span) -> bool {
-    attr::contains_name(&filter_inline_attrs(attrs, span), "macro_use")
+fn contains_macro_use_attr(item: &ast::Item) -> bool {
+    attr::contains_name(&filter_inline_attrs(&item.attrs, item.span()), "macro_use")
 }
 
-/// Returns true for `mod foo;` without any inline attributes.
-/// We cannot reorder modules with attributes because doing so can break the code.
-/// e.g. `#[macro_use]`.
-fn is_mod_decl_without_attr(item: &ast::Item) -> bool {
-    is_mod_decl(item) && !contains_macro_use_attr(&item.attrs, item.span())
+/// A simplified version of `ast::ItemKind`.
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+enum ReorderableItemKind {
+    ExternCrate,
+    Mod,
+    Use,
+    /// An item that cannot be reordered. Either has an unreorderable item kind
+    /// or an `macro_use` attribute.
+    Other,
 }
 
-fn is_use_item_without_attr(item: &ast::Item) -> bool {
-    is_use_item(item) && !contains_macro_use_attr(&item.attrs, item.span())
-}
+impl ReorderableItemKind {
+    pub fn from(item: &ast::Item) -> Self {
+        match item.node {
+            _ if contains_macro_use_attr(item) => ReorderableItemKind::Other,
+            ast::ItemKind::ExternCrate(..) => ReorderableItemKind::ExternCrate,
+            ast::ItemKind::Mod(..) => ReorderableItemKind::Mod,
+            ast::ItemKind::Use(..) => ReorderableItemKind::Use,
+            _ => ReorderableItemKind::Other,
+        }
+    }
 
-fn is_extern_crate_without_attr(item: &ast::Item) -> bool {
-    is_extern_crate(item) && !contains_macro_use_attr(&item.attrs, item.span())
+    pub fn is_same_item_kind(&self, item: &ast::Item) -> bool {
+        ReorderableItemKind::from(item) == *self
+    }
+
+    pub fn is_reorderable(&self, config: &Config) -> bool {
+        match *self {
+            ReorderableItemKind::ExternCrate => config.reorder_extern_crates(),
+            ReorderableItemKind::Mod => config.reorder_modules(),
+            ReorderableItemKind::Use => config.reorder_imports(),
+            ReorderableItemKind::Other => false,
+        }
+    }
+
+    pub fn in_group(&self, config: &Config) -> bool {
+        match *self {
+            ReorderableItemKind::ExternCrate => config.reorder_extern_crates_in_group(),
+            ReorderableItemKind::Mod => config.reorder_modules(),
+            ReorderableItemKind::Use => config.reorder_imports_in_group(),
+            ReorderableItemKind::Other => false,
+        }
+    }
 }
 
 impl<'b, 'a: 'b> FmtVisitor<'a> {
     /// Format items with the same item kind and reorder them. If `in_group` is
     /// `true`, then the items separated by an empty line will not be reordered
     /// together.
-    fn walk_items_with_reordering<F>(
+    fn walk_reorderable_items(
         &mut self,
         items: &[&ast::Item],
-        is_item: &F,
+        item_kind: ReorderableItemKind,
         in_group: bool,
-    ) -> usize
-    where
-        F: Fn(&ast::Item) -> bool,
-    {
+    ) -> usize {
         let mut last = self.codemap.lookup_line_range(items[0].span());
         let item_length = items
             .iter()
             .take_while(|ppi| {
-                is_item(&***ppi) && (!in_group || {
+                item_kind.is_same_item_kind(&***ppi) && (!in_group || {
                     let current = self.codemap.lookup_line_range(ppi.span());
                     let in_same_group = current.lo < last.hi + 2;
                     last = current;
@@ -280,38 +306,23 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     /// Visit and format the given items. Items are reordered If they are
     /// consecutive and reorderable.
     pub fn visit_items_with_reordering(&mut self, mut items: &[&ast::Item]) {
-        macro try_reorder_items_with($reorder: ident, $in_group: ident, $pred: ident) {
-            if self.config.$reorder() && $pred(&*items[0]) {
-                let used_items_len =
-                    self.walk_items_with_reordering(items, &$pred, self.config.$in_group());
-                let (_, rest) = items.split_at(used_items_len);
-                items = rest;
-                continue;
-            }
-        }
-
         while !items.is_empty() {
             // If the next item is a `use`, `extern crate` or `mod`, then extract it and any
             // subsequent items that have the same item kind to be reordered within
-            // `walk_items_with_reordering`. Otherwise, just format the next item for output.
-            {
-                try_reorder_items_with!(
-                    reorder_imports,
-                    reorder_imports_in_group,
-                    is_use_item_without_attr
-                );
-                try_reorder_items_with!(
-                    reorder_extern_crates,
-                    reorder_extern_crates_in_group,
-                    is_extern_crate_without_attr
-                );
-                try_reorder_items_with!(reorder_modules, reorder_modules, is_mod_decl_without_attr);
+            // `walk_reorderable_items`. Otherwise, just format the next item for output.
+            let item_kind = ReorderableItemKind::from(items[0]);
+            if item_kind.is_reorderable(self.config) {
+                let visited_items_num =
+                    self.walk_reorderable_items(items, item_kind, item_kind.in_group(self.config));
+                let (_, rest) = items.split_at(visited_items_num);
+                items = rest;
+            } else {
+                // Reaching here means items were not reordered. There must be at least
+                // one item left in `items`, so calling `unwrap()` here is safe.
+                let (item, rest) = items.split_first().unwrap();
+                self.visit_item(item);
+                items = rest;
             }
-            // Reaching here means items were not reordered. There must be at least
-            // one item left in `items`, so calling `unwrap()` here is safe.
-            let (item, rest) = items.split_first().unwrap();
-            self.visit_item(item);
-            items = rest;
         }
     }
 }
