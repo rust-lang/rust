@@ -13,9 +13,9 @@ use rustc_errors;
 use syntax::abi::Abi;
 use syntax::ast::{Crate, Attribute, LitKind, StrStyle, ExprKind};
 use syntax::ast::{Unsafety, Constness, Generics, Mutability, Ty, Mac, Arg};
-use syntax::ast::{self, Ident, Item, ItemKind, TyKind, Visibility, Expr};
+use syntax::ast::{self, Ident, Item, ItemKind, TyKind, VisibilityKind, Expr};
 use syntax::attr;
-use syntax::codemap::dummy_spanned;
+use syntax::codemap::{dummy_spanned, respan};
 use syntax::codemap::{ExpnInfo, NameAndSpan, MacroAttribute};
 use syntax::ext::base::ExtCtxt;
 use syntax::ext::base::Resolver;
@@ -97,7 +97,11 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
         ]);
         let mut items = vec![
             f.cx.item_extern_crate(f.span, f.alloc),
-            f.cx.item_use_simple(f.span, Visibility::Inherited, super_path),
+            f.cx.item_use_simple(
+                f.span,
+                respan(f.span.empty(), VisibilityKind::Inherited),
+                super_path,
+            ),
         ];
         for method in ALLOCATOR_METHODS {
             items.push(f.allocator_fn(method));
