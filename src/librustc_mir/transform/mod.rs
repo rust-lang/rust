@@ -44,6 +44,7 @@ pub mod copy_prop;
 pub mod generator;
 pub mod inline;
 pub mod lower_128bit;
+pub mod uniform_array_move_out;
 
 pub(crate) fn provide(providers: &mut Providers) {
     self::qualify_consts::provide(providers);
@@ -197,6 +198,7 @@ fn mir_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Stea
         simplify::SimplifyCfg::new("initial"),
         type_check::TypeckMir,
         rustc_peek::SanityCheck,
+        uniform_array_move_out::UniformArrayMoveOut,
     ];
     tcx.alloc_steal_mir(mir)
 }
@@ -252,6 +254,7 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
         erase_regions::EraseRegions,
 
         lower_128bit::Lower128Bit,
+
 
         // Optimizations begin.
         inline::Inline,

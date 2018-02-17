@@ -225,6 +225,43 @@ fn slice_pattern_one_of(a: &Allocator, i: usize) {
     };
 }
 
+fn subslice_pattern_from_end(a: &Allocator, arg: bool) {
+    let a = [a.alloc(), a.alloc(), a.alloc()];
+    if arg {
+        let[.., _x, _] = a;
+    } else {
+        let[_, _y..] = a;
+    }
+}
+
+fn subslice_pattern_from_end_with_drop(a: &Allocator, arg: bool, arg2: bool) {
+    let a = [a.alloc(), a.alloc(), a.alloc(), a.alloc(), a.alloc()];
+    if arg2 {
+        drop(a);
+        return;
+    }
+
+    if arg {
+        let[.., _x, _] = a;
+    } else {
+        let[_, _y..] = a;
+    }
+}
+
+fn slice_pattern_reassign(a: &Allocator) {
+    let mut ar = [a.alloc(), a.alloc()];
+    let[_, _x] = ar;
+    ar = [a.alloc(), a.alloc()];
+    let[.., _y] = ar;
+}
+
+fn subslice_pattern_reassign(a: &Allocator) {
+    let mut ar = [a.alloc(), a.alloc(), a.alloc()];
+    let[_, _, _x] = ar;
+    ar = [a.alloc(), a.alloc(), a.alloc()];
+    let[_, _y..] = ar;
+}
+
 fn run_test<F>(mut f: F)
     where F: FnMut(&Allocator)
 {
@@ -302,6 +339,15 @@ fn main() {
     run_test(|a| slice_pattern_one_of(a, 1));
     run_test(|a| slice_pattern_one_of(a, 2));
     run_test(|a| slice_pattern_one_of(a, 3));
+
+    run_test(|a| subslice_pattern_from_end(a, true));
+    run_test(|a| subslice_pattern_from_end(a, false));
+    run_test(|a| subslice_pattern_from_end_with_drop(a, true, true));
+    run_test(|a| subslice_pattern_from_end_with_drop(a, true, false));
+    run_test(|a| subslice_pattern_from_end_with_drop(a, false, true));
+    run_test(|a| subslice_pattern_from_end_with_drop(a, false, false));
+    run_test(|a| slice_pattern_reassign(a));
+    run_test(|a| subslice_pattern_reassign(a));
 
     run_test_nopanic(|a| union1(a));
 }
