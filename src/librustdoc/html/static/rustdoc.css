@@ -110,6 +110,7 @@ h3.impl, h3.method, h4.method, h3.type, h4.type, h4.associatedconstant {
 }
 h3.impl, h3.method, h3.type {
 	margin-top: 15px;
+	padding-left: 15px;
 }
 
 h1, h2, h3, h4,
@@ -508,10 +509,10 @@ a {
 .anchor {
 	display: none;
 	position: absolute;
-	left: -25px;
+	left: -5px;
 }
 .anchor.field {
-	left: -20px;
+	left: -5px;
 }
 .anchor:before {
 	content: '\2002\00a7\2002';
