@@ -1,0 +1,19 @@
+error[E0244]: wrong number of type arguments: expected 1, found 2
+  --> $DIR/type-argument-instead-of-item.rs:16:25
+   |
+16 | pub struct Foo { i: Box<T<usize, usize, OtherItem=usize>> }
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected 1 type argument
+   |
+help: if you meant to set an associated type, include the name
+   |
+16 | pub struct Foo { i: Box<T<usize, AssociatedType="usize", OtherItem=usize>> }
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0191]: the value of the associated type `Item` (from the trait `T`) must be specified
+  --> $DIR/type-argument-instead-of-item.rs:16:25
+   |
+16 | pub struct Foo { i: Box<T<usize, usize, OtherItem=usize>> }
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing associated type `Item` value
+
+error: aborting due to 2 previous errors
+

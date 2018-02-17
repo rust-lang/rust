@@ -200,8 +200,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     {
         let tcx = self.tcx();
 
-        debug!("create_substs_for_ast_path(def_id={:?}, self_ty={:?}, \
-               parameters={:?})",
+        debug!("create_substs_for_ast_path(def_id={:?}, self_ty={:?}, parameters={:?})",
                def_id, self_ty, parameters);
 
         // If the type is parameterized by this region, then replace this
@@ -221,10 +220,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         assert_eq!(decl_generics.has_self, self_ty.is_some());
 
         // Check the number of type parameters supplied by the user.
-        let ty_param_defs = &decl_generics.types[self_ty.is_some() as usize..];
-        if !infer_types || num_types_provided > ty_param_defs.len() {
-            check_type_argument_count(tcx, span, num_types_provided, ty_param_defs);
-        }
+        check_type_argument_count(tcx,
+                                  def_id,
+                                  span,
+                                  infer_types,
+                                  self_ty.is_some(),
+                                  &parameters,
+                                  &decl_generics);
 
         let is_object = self_ty.map_or(false, |ty| ty.sty == TRAIT_OBJECT_DUMMY_SELF);
         let default_needs_object_self = |p: &ty::TypeParameterDef| {
@@ -599,7 +601,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         if !trait_bounds.is_empty() {
             let b = &trait_bounds[0];
             let span = b.trait_ref.path.span;
-            struct_span_err!(self.tcx().sess, span, E0225,
+            struct_span_err!(tcx.sess, span, E0225,
                 "only auto traits can be used as additional traits in a trait object")
                 .span_label(span, "non-auto additional trait")
                 .emit();
@@ -1303,45 +1305,68 @@ fn split_auto_traits<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     (auto_traits, trait_bounds)
 }
 
-fn check_type_argument_count(tcx: TyCtxt, span: Span, supplied: usize,
-                             ty_param_defs: &[ty::TypeParameterDef]) {
+fn check_type_argument_count(tcx: TyCtxt,
+                             _def_id: DefId,
+                             span: Span,
+                             infer_types: bool,
+                             has_self_ty: bool,
+                             parameters: &hir::PathParameters,
+                             generics: &ty::Generics) {
+    let supplied = parameters.types.len();
+    let ty_param_defs = &generics.types[has_self_ty as usize..];
     let accepted = ty_param_defs.len();
     let required = ty_param_defs.iter().take_while(|x| !x.has_default).count();
-    if supplied < required {
-        let expected = if required < accepted {
-            "expected at least"
-        } else {
-            "expected"
-        };
-        let arguments_plural = if required == 1 { "" } else { "s" };
+    //let total_expected = parameters.types.len() + parameters.bindings.len();
+    //let total_found = generics.types.len();// + tcx.associated_items(def_id)
+    //     .filter(|item| item.kind == ty::AssociatedKind::Type)
+    //     .count();
+    if !infer_types || supplied > accepted {
+        if supplied < required {
+            let expected = if required < accepted {
+                "expected at least"
+            } else {
+                "expected"
+            };
+            let arguments_plural = if required == 1 { "" } else { "s" };
 
-        struct_span_err!(tcx.sess, span, E0243,
-                "wrong number of type arguments: {} {}, found {}",
-                expected, required, supplied)
-            .span_label(span,
-                format!("{} {} type argument{}",
-                    expected,
-                    required,
-                    arguments_plural))
-            .emit();
-    } else if supplied > accepted {
-        let expected = if required < accepted {
-            format!("expected at most {}", accepted)
-        } else {
-            format!("expected {}", accepted)
-        };
-        let arguments_plural = if accepted == 1 { "" } else { "s" };
+            let mut err = struct_span_err!(tcx.sess, span, E0243,
+                    "wrong number of type arguments: {} {}, found {}",
+                    expected, required, supplied);
+            err.span_label(span, format!("{} {} type argument{}",
+                                         expected,
+                                         required,
+                                         arguments_plural));
+            err.emit();
+        } else if supplied > accepted {
+            let expected = if required < accepted {
+                format!("expected at most {}", accepted)
+            } else {
+                format!("expected {}", accepted)
+            };
+            let arguments_plural = if accepted == 1 { "" } else { "s" };
 
-        struct_span_err!(tcx.sess, span, E0244,
-                "wrong number of type arguments: {}, found {}",
-                expected, supplied)
-            .span_label(
-                span,
-                format!("{} type argument{}",
-                    if accepted == 0 { "expected no" } else { &expected },
-                    arguments_plural)
-            )
-            .emit();
+            let mut err = struct_span_err!(tcx.sess, span, E0244,
+                    "wrong number of type arguments: {}, found {}",
+                    expected, supplied);
+            err.span_label(
+                    span,
+                    format!("{} type argument{}",
+                        if accepted == 0 { "expected no" } else { &expected },
+                        arguments_plural)
+                );
+            for generic in &parameters.types[accepted..] {
+                if let Ok(snippet) = tcx.sess.codemap().span_to_snippet(generic.span) {
+                    err.span_suggestion(generic.span,
+                                        "if you meant to set an associated type, include the name",
+                                        format!("AssociatedType={}", snippet));
+                } else {
+                    err.help("if you meant to set an associated type, include the name: \
+                              `Trait<AssociatedType=Type>`, not `Trait<Type>`");
+                    break;
+                }
+            }
+            err.emit();
+        }
     }
 }
 
