@@ -10,7 +10,7 @@ pub(super) fn type_(p: &mut Parser) {
         UNDERSCORE => placeholder_type(p),
         FN_KW | UNSAFE_KW | EXTERN_KW => fn_pointer_type(p),
         FOR_KW => for_type(p),
-        IDENT => path_type(p),
+        _ if paths::is_path_start(p) => path_type(p),
         _ => {
             p.error("expected type");
         }
@@ -178,8 +178,13 @@ fn for_type(p: &mut Parser) {
     m.complete(p, FOR_TYPE);
 }
 
+// test path_type
+// type A = Foo;
+// type B = ::Foo;
+// type C = self::Foo;
+// type D = super::Foo;
 fn path_type(p: &mut Parser) {
-    assert!(p.at(IDENT));
+    assert!(paths::is_path_start(p));
     let m = p.start();
     paths::type_path(p);
     m.complete(p, PATH_TYPE);
