@@ -18,14 +18,16 @@ use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
-use std::process;
+use std::process::{self, Command};
 use std::cmp;
 
 use num_cpus;
+use channel;
 use toml;
 use util::exe;
 use cache::{INTERNER, Interned};
 use flags::Flags;
+use build_helper::output;
 pub use flags::Subcommand;
 
 /// Global configuration for the entire build and/or bootstrap.
@@ -539,6 +541,17 @@ impl Config {
             Some(s) => PathBuf::from(s),
             None => stage0_root.join(exe("rustc", &config.build)),
         };
+        // If local-rust is the same major.minor as the current version, then force a local-rebuild
+        let local_version_verbose = output(
+            Command::new(&config.initial_rustc).arg("--version").arg("--verbose"));
+        let local_release = local_version_verbose
+            .lines().filter(|x| x.starts_with("release:"))
+            .next().unwrap().trim_left_matches("release:").trim();
+        let my_version = channel::CFG_RELEASE_NUM;
+        if local_release.split('.').take(2).eq(my_version.split('.').take(2)) {
+            eprintln!("auto-detected local rebuild");
+            config.local_rebuild = true;
+        }
         config.initial_cargo = match build.cargo {
             Some(s) => PathBuf::from(s),
             None => stage0_root.join(exe("cargo", &config.build)),

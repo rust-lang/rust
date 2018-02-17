@@ -222,7 +222,6 @@ pub struct Build {
     cargo_info: channel::GitInfo,
     rls_info: channel::GitInfo,
     rustfmt_info: channel::GitInfo,
-    local_rebuild: bool,
     fail_fast: bool,
     doc_tests: bool,
     verbosity: usize,
@@ -309,7 +308,6 @@ impl Build {
         let rustfmt_info = channel::GitInfo::new(&config, &config.src.join("src/tools/rustfmt"));
 
         Build {
-            local_rebuild: config.local_rebuild,
             fail_fast: config.cmd.fail_fast(),
             doc_tests: config.cmd.doc_tests(),
             verbosity: config.verbose,
@@ -357,17 +355,6 @@ impl Build {
         cc_detect::find(self);
         self.verbose("running sanity check");
         sanity::check(self);
-        // If local-rust is the same major.minor as the current version, then force a local-rebuild
-        let local_version_verbose = output(
-            Command::new(&self.config.initial_rustc).arg("--version").arg("--verbose"));
-        let local_release = local_version_verbose
-            .lines().filter(|x| x.starts_with("release:"))
-            .next().unwrap().trim_left_matches("release:").trim();
-        let my_version = channel::CFG_RELEASE_NUM;
-        if local_release.split('.').take(2).eq(my_version.split('.').take(2)) {
-            self.verbose(&format!("auto-detected local-rebuild {}", local_release));
-            self.local_rebuild = true;
-        }
         self.verbose("learning about cargo");
         metadata::build(self);
 

@@ -536,7 +536,7 @@ impl<'a> Builder<'a> {
         cargo.env("__CARGO_DEFAULT_LIB_METADATA", &self.config.channel);
 
         let stage;
-        if compiler.stage == 0 && self.local_rebuild {
+        if compiler.stage == 0 && self.config.local_rebuild {
             // Assume the local-rebuild rustc already has stage1 features.
             stage = 1;
         } else {

@@ -150,7 +150,7 @@ pub fn std_cargo(build: &Build,
     // same view of what the default allocator is, but fails otherwise. Since
     // we don't have a way to express an allocator preference yet, work
     // around the issue in the case of a local rebuild with jemalloc disabled.
-    if compiler.stage == 0 && build.local_rebuild && !build.config.use_jemalloc {
+    if compiler.stage == 0 && build.config.local_rebuild && !build.config.use_jemalloc {
         features.push_str(" force_alloc_system");
     }
 
