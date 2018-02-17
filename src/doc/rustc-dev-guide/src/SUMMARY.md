@@ -2,6 +2,7 @@
 
 - [About this guide](./about-this-guide.md)
 - [How to build the compiler and run what you built](./how-to-build-and-run.md)
+- [Coding conventions](./conventions.md)
 - [The compiler testing framework](./tests/intro.md)
     - [Running tests](./tests/running.md)
     - [Adding new tests](./tests/adding.md)
