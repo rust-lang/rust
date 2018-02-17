@@ -663,7 +663,7 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_ON_FAIL", on_fail);
         }
 
-        cargo.env("RUSTC_VERBOSE", format!("{}", self.verbosity));
+        cargo.env("RUSTC_VERBOSE", format!("{}", self.config.verbose));
 
         // Throughout the build Cargo can execute a number of build scripts
         // compiling C/C++ code and we need to pass compilers, archivers, flags, etc

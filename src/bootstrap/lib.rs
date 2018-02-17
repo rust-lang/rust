@@ -224,7 +224,6 @@ pub struct Build {
     rustfmt_info: channel::GitInfo,
     fail_fast: bool,
     doc_tests: bool,
-    verbosity: usize,
 
     // Probed tools at runtime
     lldb_version: Option<String>,
@@ -295,7 +294,6 @@ impl Build {
         Build {
             fail_fast: config.cmd.fail_fast(),
             doc_tests: config.cmd.doc_tests(),
-            verbosity: config.verbose,
 
             config,
 
@@ -562,11 +560,11 @@ impl Build {
     }
 
     pub fn is_verbose(&self) -> bool {
-        self.verbosity > 0
+        self.config.verbose > 0
     }
 
     pub fn is_very_verbose(&self) -> bool {
-        self.verbosity > 1
+        self.config.verbose > 1
     }
 
     /// Prints a message if this build is configured in verbose mode.
