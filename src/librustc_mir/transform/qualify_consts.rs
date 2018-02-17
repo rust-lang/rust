@@ -526,9 +526,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                 this.add(Qualif::STATIC);
                             }
 
+                            this.add(Qualif::NOT_CONST);
+
                             let base_ty = proj.base.ty(this.mir, this.tcx).to_ty(this.tcx);
                             if let ty::TyRawPtr(_) = base_ty.sty {
-                                this.add(Qualif::NOT_CONST);
                                 if this.mode != Mode::Fn {
                                     let mut err = struct_span_err!(
                                         this.tcx.sess,
@@ -617,7 +618,38 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         // Recurse through operands and places.
-        self.super_rvalue(rvalue, location);
+        if let Rvalue::Ref(region, kind, ref place) = *rvalue {
+            let mut is_reborrow = false;
+            if let Place::Projection(ref proj) = *place {
+                if let ProjectionElem::Deref = proj.elem {
+                    let base_ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
+                    if let ty::TyRef(..) = base_ty.sty {
+                        is_reborrow = true;
+                    }
+                }
+            }
+
+            if is_reborrow {
+                self.nest(|this| {
+                    this.super_place(place, PlaceContext::Borrow {
+                        region,
+                        kind
+                    }, location);
+                    if !this.try_consume() {
+                        return;
+                    }
+
+                    if this.qualif.intersects(Qualif::STATIC_REF) {
+                        this.qualif = this.qualif - Qualif::STATIC_REF;
+                        this.add(Qualif::STATIC);
+                    }
+                });
+            } else {
+                self.super_rvalue(rvalue, location);
+            }
+        } else {
+            self.super_rvalue(rvalue, location);
+        }
 
         match *rvalue {
             Rvalue::Use(_) |
