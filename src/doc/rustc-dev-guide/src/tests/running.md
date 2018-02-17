@@ -52,7 +52,7 @@ Under the hood, the test runner invokes the standard rust test runner
 (the same one you get with `#[test]`), so this command would wind up
 filtering for tests that include "issue-1234" in the name.
 
-Often, though, it's easier to just run the test by hand. More tests are 
+Often, though, it's easier to just run the test by hand. Most tests are
 just `rs` files, so you can do something like
 
 ```
