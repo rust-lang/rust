@@ -82,12 +82,12 @@ use time::SystemTime;
 /// ```
 ///
 /// Note that, although read and write methods require a `&mut File`, because
-/// of the interfaces for [`Read`] and [`Write`], it is still possible to
-/// modify a file through a `&File`, either through methods that take `&File`
-/// or by retrieving a raw OS filehandle and modifying the file that way.
+/// of the interfaces for [`Read`] and [`Write`], the holder of a `&File` can
+/// still modify the file, either through methods that take `&File` or by
+/// retrieving the underlying OS object and modifying the file that way.
 /// Additionally, many operating systems allow concurrent modification of files
-/// by different processes. Care should be taken not to assume that holding a
-/// `&File` means that the file will not change.
+/// by different processes. Avoid assuming that holding a `&File` means that the
+/// file will not change.
 ///
 /// [`Seek`]: ../io/trait.Seek.html
 /// [`String`]: ../string/struct.String.html
