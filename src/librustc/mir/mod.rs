@@ -1950,7 +1950,7 @@ pub struct GeneratorLayout<'tcx> {
 /// ```
 ///
 /// here, there is one unique free region (`'a`) but it appears
-/// twice. We would "renumber" each occurence to a unique vid, as follows:
+/// twice. We would "renumber" each occurrence to a unique vid, as follows:
 ///
 /// ```text
 /// ClosureSubsts = [

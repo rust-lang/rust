@@ -918,7 +918,7 @@ pub struct Expr {
 }
 
 impl Expr {
-    /// Wether this expression would be valid somewhere that expects a value, for example, an `if`
+    /// Whether this expression would be valid somewhere that expects a value, for example, an `if`
     /// condition.
     pub fn returns(&self) -> bool {
         if let ExprKind::Block(ref block) = self.node {

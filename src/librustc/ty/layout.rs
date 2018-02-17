@@ -2059,7 +2059,7 @@ impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
         // can however trigger recursive invocations of `layout_of`.
         // Therefore, we execute it *after* the main query has
         // completed, to avoid problems around recursive structures
-        // and the like. (Admitedly, I wasn't able to reproduce a problem
+        // and the like. (Admittedly, I wasn't able to reproduce a problem
         // here, but it seems like the right thing to do. -nmatsakis)
         self.record_layout_for_printing(layout);
 
@@ -2085,7 +2085,7 @@ impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for LayoutCx<'tcx, ty::maps::TyCtxtAt<'a, 'tcx
         // can however trigger recursive invocations of `layout_of`.
         // Therefore, we execute it *after* the main query has
         // completed, to avoid problems around recursive structures
-        // and the like. (Admitedly, I wasn't able to reproduce a problem
+        // and the like. (Admittedly, I wasn't able to reproduce a problem
         // here, but it seems like the right thing to do. -nmatsakis)
         let cx = LayoutCx {
             tcx: *self.tcx,

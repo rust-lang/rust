@@ -151,7 +151,7 @@ impl MetadataLoader for NoLlvmMetadataLoader {
             }
         }
 
-        Err("Couldnt find metadata section".to_string())
+        Err("Couldn't find metadata section".to_string())
     }
 
     fn get_dylib_metadata(

@@ -17,7 +17,7 @@
 // `use` directives.
 //
 // Unused trait imports can't be checked until the method resolution. We save
-// candidates here, and do the acutal check in librustc_typeck/check_unused.rs.
+// candidates here, and do the actual check in librustc_typeck/check_unused.rs.
 
 use std::ops::{Deref, DerefMut};
 

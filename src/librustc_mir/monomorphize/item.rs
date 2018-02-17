@@ -68,7 +68,7 @@ pub enum InstantiationMode {
         /// however, our local copy may conflict with other crates also
         /// inlining the same function.
         ///
-        /// This flag indicates that this situation is occuring, and informs
+        /// This flag indicates that this situation is occurring, and informs
         /// symbol name calculation that some extra mangling is needed to
         /// avoid conflicts. Note that this may eventually go away entirely if
         /// ThinLTO enables us to *always* have a globally shared instance of a
