@@ -623,7 +623,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     }
 
     fn walk_mod_items(&mut self, m: &ast::Mod) {
-        self.walk_items(&ptr_vec_to_ref_vec(&m.items));
+        self.visit_items_with_reordering(&ptr_vec_to_ref_vec(&m.items));
     }
 
     fn walk_stmts(&mut self, stmts: &[ast::Stmt]) {
@@ -649,7 +649,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             self.visit_stmt(&stmts[0]);
             self.walk_stmts(&stmts[1..]);
         } else {
-            self.walk_items(&items);
+            self.visit_items_with_reordering(&items);
             self.walk_stmts(&stmts[items.len()..]);
         }
     }

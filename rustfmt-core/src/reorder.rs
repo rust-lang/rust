@@ -232,17 +232,20 @@ fn is_extern_crate_without_attr(item: &ast::Item) -> bool {
 }
 
 impl<'b, 'a: 'b> FmtVisitor<'a> {
-    pub fn reorder_items<F>(
+    /// Format items with the same item kind and reorder them. If `in_group` is
+    /// `true`, then the items separated by an empty line will not be reordered
+    /// together.
+    fn walk_items_with_reordering<F>(
         &mut self,
-        items_left: &[&ast::Item],
+        items: &[&ast::Item],
         is_item: &F,
         in_group: bool,
     ) -> usize
     where
         F: Fn(&ast::Item) -> bool,
     {
-        let mut last = self.codemap.lookup_line_range(items_left[0].span());
-        let item_length = items_left
+        let mut last = self.codemap.lookup_line_range(items[0].span());
+        let item_length = items
             .iter()
             .take_while(|ppi| {
                 is_item(&***ppi) && (!in_group || {
@@ -253,7 +256,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 })
             })
             .count();
-        let items = &items_left[..item_length];
+        let items = &items[..item_length];
 
         let at_least_one_in_file_lines = items
             .iter()
@@ -274,21 +277,23 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         item_length
     }
 
-    pub fn walk_items(&mut self, mut items_left: &[&ast::Item]) {
+    /// Visit and format the given items. Items are reordered If they are
+    /// consecutive and reorderable.
+    pub fn visit_items_with_reordering(&mut self, mut items: &[&ast::Item]) {
         macro try_reorder_items_with($reorder: ident, $in_group: ident, $pred: ident) {
-            if self.config.$reorder() && $pred(&*items_left[0]) {
+            if self.config.$reorder() && $pred(&*items[0]) {
                 let used_items_len =
-                    self.reorder_items(items_left, &$pred, self.config.$in_group());
-                let (_, rest) = items_left.split_at(used_items_len);
-                items_left = rest;
+                    self.walk_items_with_reordering(items, &$pred, self.config.$in_group());
+                let (_, rest) = items.split_at(used_items_len);
+                items = rest;
                 continue;
             }
         }
 
-        while !items_left.is_empty() {
+        while !items.is_empty() {
             // If the next item is a `use`, `extern crate` or `mod`, then extract it and any
             // subsequent items that have the same item kind to be reordered within
-            // `reorder_items`. Otherwise, just format the next item for output.
+            // `walk_items_with_reordering`. Otherwise, just format the next item for output.
             {
                 try_reorder_items_with!(
                     reorder_imports,
@@ -303,10 +308,10 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 try_reorder_items_with!(reorder_modules, reorder_modules, is_mod_decl_without_attr);
             }
             // Reaching here means items were not reordered. There must be at least
-            // one item left in `items_left`, so calling `unwrap()` here is safe.
-            let (item, rest) = items_left.split_first().unwrap();
+            // one item left in `items`, so calling `unwrap()` here is safe.
+            let (item, rest) = items.split_first().unwrap();
             self.visit_item(item);
-            items_left = rest;
+            items = rest;
         }
     }
 }
