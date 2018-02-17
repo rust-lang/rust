@@ -10,10 +10,9 @@ chapter covers [formatting](#formatting), [coding for correctness](#cc),
 rustc is slowly moving towards the [Rust standard coding style][fmt];
 at the moment, however, it follows a rather more *chaotic* style.  We
 do have some mandatory formatting conventions, which are automatically
-enforced by a script we affectionately[^not_true] call the "tidy"
-script.  The tidy script runs automatically when you do `./x.py test`.
+enforced by a script we affectionately call the "tidy" script.  The
+tidy script runs automatically when you do `./x.py test`.
 
-[^not_true]: Secretly, I hate tidy. -nmatsakis
 [fmt]: https://github.com/rust-lang-nursery/fmt-rfcs
 
 <a name=copyright>
