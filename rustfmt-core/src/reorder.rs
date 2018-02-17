@@ -14,6 +14,8 @@
 //! order. Trait items are reordered in pre-determined order (associated types
 //! and constatns comes before methods).
 
+// TODO(#2455): Reorder trait items.
+
 use config::{Config, lists::*};
 use syntax::{ast, attr, codemap::Span};
 
