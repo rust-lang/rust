@@ -323,7 +323,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 // paths because any relative paths are potentially relative to
                 // a wrong directory.
                 // However, if a path has been modified via
-                // `-Zremap-path-prefix` we assume the user has already set
+                // `--remap-path-prefix` we assume the user has already set
                 // things up the way they want and don't touch the path values
                 // anymore.
                 match filemap.name {
