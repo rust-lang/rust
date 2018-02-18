@@ -3,7 +3,12 @@
 The name resolution is a separate pass in the compiler. Its input is the syntax
 tree, produced by parsing input files. It produces links from all the names in
 the source to relevant places where the name was introduced. It also generates
-helpful error messages, like typo suggestions or traits to import.
+helpful error messages, like typo suggestions, traits to import or lints about
+unused items.
+
+A successful run of the name resolution (`Resolver::resolve_crate`) creates kind
+of an index the rest of the compilation may use to ask about the present names
+(through the `hir::lowering::Resolver` interface).
 
 The name resolution lives in the `librustc_resolve` crate, with the meat in
 `lib.rs` and some helpers or symbol-type specific logic in the other modules.
@@ -72,6 +77,8 @@ fn do_something<T: Default>(val: T) { // <- New rib in both types and values (1)
 
 Because the rules for different namespaces are a bit different, each namespace
 has its own independent rib stack that is constructed in parallel to the others.
+In addition, there's also a rib stack for local labels (eg. names of loops or
+blocks), which isn't a full namespace in its own right.
 
 ## Overall strategy
 
