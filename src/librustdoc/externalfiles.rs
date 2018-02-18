@@ -11,7 +11,7 @@
 use std::fs;
 use std::path::Path;
 use std::str;
-use html::markdown::{Markdown, RenderType};
+use html::markdown::Markdown;
 
 #[derive(Clone)]
 pub struct ExternalHtml {
@@ -28,7 +28,7 @@ pub struct ExternalHtml {
 
 impl ExternalHtml {
     pub fn load(in_header: &[String], before_content: &[String], after_content: &[String],
-                md_before_content: &[String], md_after_content: &[String], render: RenderType)
+                md_before_content: &[String], md_after_content: &[String])
             -> Option<ExternalHtml> {
         load_external_files(in_header)
             .and_then(|ih|
@@ -37,7 +37,7 @@ impl ExternalHtml {
             )
             .and_then(|(ih, bc)|
                 load_external_files(md_before_content)
-                    .map(|m_bc| (ih, format!("{}{}", bc, Markdown(&m_bc, &[], render))))
+                    .map(|m_bc| (ih, format!("{}{}", bc, Markdown(&m_bc, &[]))))
             )
             .and_then(|(ih, bc)|
                 load_external_files(after_content)
@@ -45,7 +45,7 @@ impl ExternalHtml {
             )
             .and_then(|(ih, bc, ac)|
                 load_external_files(md_after_content)
-                    .map(|m_ac| (ih, bc, format!("{}{}", ac, Markdown(&m_ac, &[], render))))
+                    .map(|m_ac| (ih, bc, format!("{}{}", ac, Markdown(&m_ac, &[]))))
             )
             .map(|(ih, bc, ac)|
                 ExternalHtml {

@@ -19,7 +19,6 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(fs_read_write)]
-#![feature(libc)]
 #![feature(set_stdio)]
 #![feature(slice_patterns)]
 #![feature(test)]
@@ -29,8 +28,6 @@
 extern crate arena;
 extern crate getopts;
 extern crate env_logger;
-extern crate html_diff;
-extern crate libc;
 extern crate rustc;
 extern crate rustc_data_structures;
 extern crate rustc_const_math;
@@ -65,8 +62,7 @@ use std::sync::mpsc::channel;
 
 use externalfiles::ExternalHtml;
 use rustc::session::search_paths::SearchPaths;
-use rustc::session::config::{ErrorOutputType, RustcOptGroup, nightly_options,
-                             Externs};
+use rustc::session::config::{ErrorOutputType, RustcOptGroup, nightly_options, Externs};
 
 #[macro_use]
 pub mod externalfiles;
@@ -94,8 +90,6 @@ pub mod test;
 pub mod theme;
 
 use clean::AttributesExt;
-
-use html::markdown::RenderType;
 
 struct Output {
     krate: clean::Crate,
@@ -243,9 +237,6 @@ pub fn opts() -> Vec<RustcOptGroup> {
                       or `#![doc(html_playground_url=...)]`",
                      "URL")
         }),
-        unstable("disable-commonmark", |o| {
-            o.optflag("", "disable-commonmark", "to disable commonmark doc rendering/testing")
-        }),
         unstable("display-warnings", |o| {
             o.optflag("", "display-warnings", "to print code warnings when testing doc")
         }),
@@ -258,10 +249,6 @@ pub fn opts() -> Vec<RustcOptGroup> {
         unstable("sort-modules-by-appearance", |o| {
             o.optflag("", "sort-modules-by-appearance", "sort modules by where they appear in the \
                                                          program, rather than alphabetically")
-        }),
-        unstable("deny-render-differences", |o| {
-            o.optflag("", "deny-render-differences", "abort doc runs when markdown rendering \
-                                                      differences are found")
         }),
         unstable("themes", |o| {
             o.optmulti("", "themes",
@@ -383,12 +370,6 @@ pub fn main_args(args: &[String]) -> isize {
     let css_file_extension = matches.opt_str("e").map(|s| PathBuf::from(&s));
     let cfgs = matches.opt_strs("cfg");
 
-    let render_type = if matches.opt_present("disable-commonmark") {
-        RenderType::Hoedown
-    } else {
-        RenderType::Pulldown
-    };
-
     if let Some(ref p) = css_file_extension {
         if !p.is_file() {
             writeln!(
@@ -425,8 +406,7 @@ pub fn main_args(args: &[String]) -> isize {
             &matches.opt_strs("html-before-content"),
             &matches.opt_strs("html-after-content"),
             &matches.opt_strs("markdown-before-content"),
-            &matches.opt_strs("markdown-after-content"),
-            render_type) {
+            &matches.opt_strs("markdown-after-content")) {
         Some(eh) => eh,
         None => return 3,
     };
@@ -440,22 +420,20 @@ pub fn main_args(args: &[String]) -> isize {
     match (should_test, markdown_input) {
         (true, true) => {
             return markdown::test(input, cfgs, libs, externs, test_args, maybe_sysroot,
-                                  render_type, display_warnings, linker)
+                                  display_warnings, linker)
         }
         (true, false) => {
             return test::run(Path::new(input), cfgs, libs, externs, test_args, crate_name,
-                             maybe_sysroot, render_type, display_warnings, linker)
+                             maybe_sysroot, display_warnings, linker)
         }
         (false, true) => return markdown::render(Path::new(input),
                                                  output.unwrap_or(PathBuf::from("doc")),
                                                  &matches, &external_html,
-                                                 !matches.opt_present("markdown-no-toc"),
-                                                 render_type),
+                                                 !matches.opt_present("markdown-no-toc")),
         (false, false) => {}
     }
 
     let output_format = matches.opt_str("w");
-    let deny_render_differences = matches.opt_present("deny-render-differences");
     let res = acquire_input(PathBuf::from(input), externs, &matches, move |out| {
         let Output { krate, passes, renderinfo } = out;
         info!("going to format");
@@ -466,9 +444,7 @@ pub fn main_args(args: &[String]) -> isize {
                                   passes.into_iter().collect(),
                                   css_file_extension,
                                   renderinfo,
-                                  render_type,
                                   sort_modules_alphabetically,
-                                  deny_render_differences,
                                   themes)
                     .expect("failed to generate documentation");
                 0
@@ -559,11 +535,6 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
     let crate_name = matches.opt_str("crate-name");
     let crate_version = matches.opt_str("crate-version");
     let plugin_path = matches.opt_str("plugin-path");
-    let render_type = if matches.opt_present("disable-commonmark") {
-        RenderType::Hoedown
-    } else {
-        RenderType::Pulldown
-    };
 
     info!("starting to run rustc");
     let display_warnings = matches.opt_present("display-warnings");
@@ -578,7 +549,7 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
 
         let (mut krate, renderinfo) =
             core::run_core(paths, cfgs, externs, Input::File(cratefile), triple, maybe_sysroot,
-                           display_warnings, force_unstable_if_unmarked, render_type);
+                           display_warnings, force_unstable_if_unmarked);
 
         info!("finished with rustc");
 

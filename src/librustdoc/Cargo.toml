@@ -2,7 +2,6 @@
 authors = ["The Rust Project Developers"]
 name = "rustdoc"
 version = "0.0.0"
-build = "build.rs"
 
 [lib]
 name = "rustdoc"
@@ -12,9 +11,4 @@ doctest = false
 
 [dependencies]
 pulldown-cmark = { version = "0.1.0", default-features = false }
-html-diff = "0.0.6"
 tempdir = "0.3"
-
-[build-dependencies]
-build_helper = { path = "../build_helper" }
-cc = "1.0.1"
