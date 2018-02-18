@@ -30,6 +30,9 @@ macro_rules! is_target_feature_detected {
     ("aes") => {
         $crate::arch::detect::check_for(
             $crate::arch::detect::Feature::aes)  };
+    ("pclmulqdq") => {
+        $crate::arch::detect::check_for(
+            $crate::arch::detect::Feature::pclmulqdq)  };
     ("tsc") => {
         $crate::arch::detect::check_for(
             $crate::arch::detect::Feature::tsc)  };
@@ -174,6 +177,8 @@ macro_rules! is_target_feature_detected {
 pub enum Feature {
     /// AES (Advanced Encryption Standard New Instructions AES-NI)
     aes,
+    /// CLMUL (Carry-less Multiplication)
+    pclmulqdq,
     /// TSC (Time Stamp Counter)
     tsc,
     /// MMX
@@ -345,6 +350,7 @@ pub fn detect_features() -> cache::Initializer {
         enable(proc_info_ecx, 20, Feature::sse4_2);
         enable(proc_info_ecx, 23, Feature::popcnt);
         enable(proc_info_ecx, 25, Feature::aes);
+        enable(proc_info_ecx, 1, Feature::pclmulqdq);
         enable(proc_info_edx, 4, Feature::tsc);
         enable(proc_info_edx, 23, Feature::mmx);
         enable(proc_info_edx, 24, Feature::fxsr);
@@ -457,6 +463,7 @@ mod tests {
     #[test]
     fn dump() {
         println!("aes: {:?}", is_target_feature_detected!("aes"));
+        println!("pclmulqdq: {:?}", is_target_feature_detected!("pclmulqdq"));
         println!("tsc: {:?}", is_target_feature_detected!("tsc"));
         println!("sse: {:?}", is_target_feature_detected!("sse"));
         println!("sse2: {:?}", is_target_feature_detected!("sse2"));
@@ -498,6 +505,7 @@ mod tests {
     fn compare_with_cupid() {
         let information = cupid::master().unwrap();
         assert_eq!(is_target_feature_detected!("aes"), information.aesni());
+        assert_eq!(is_target_feature_detected!("pclmulqdq"), information.pclmulqdq());
         assert_eq!(is_target_feature_detected!("tsc"), information.tsc());
         assert_eq!(is_target_feature_detected!("sse"), information.sse());
         assert_eq!(is_target_feature_detected!("sse2"), information.sse2());
