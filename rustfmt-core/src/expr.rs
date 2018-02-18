@@ -1406,17 +1406,22 @@ fn rewrite_match_arm(
     } else {
         (mk_sp(arm.span().lo(), arm.span().lo()), String::new())
     };
-    let pats_str =
-        rewrite_match_pattern(context, &arm.pats, &arm.guard, shape).and_then(|pats_str| {
-            combine_strs_with_missing_comments(
-                context,
-                &attrs_str,
-                &pats_str,
-                missing_span,
-                shape,
-                false,
-            )
-        })?;
+    let pats_str = rewrite_match_pattern(
+        context,
+        &arm.pats,
+        &arm.guard,
+        arm.beginning_vert.is_some(),
+        shape,
+    ).and_then(|pats_str| {
+        combine_strs_with_missing_comments(
+            context,
+            &attrs_str,
+            &pats_str,
+            missing_span,
+            shape,
+            false,
+        )
+    })?;
     rewrite_match_body(
         context,
         &arm.body,
@@ -1463,11 +1468,15 @@ fn rewrite_match_pattern(
     context: &RewriteContext,
     pats: &[ptr::P<ast::Pat>],
     guard: &Option<ptr::P<ast::Expr>>,
+    has_beginning_vert: bool,
     shape: Shape,
 ) -> Option<String> {
     // Patterns
     // 5 = ` => {`
-    let pat_shape = shape.sub_width(5)?;
+    // 2 = `| `
+    let pat_shape = shape
+        .sub_width(5)?
+        .offset_left(if has_beginning_vert { 2 } else { 0 })?;
 
     let pat_strs = pats.iter()
         .map(|p| p.rewrite(context, pat_shape))
@@ -1498,11 +1507,12 @@ fn rewrite_match_pattern(
         config: context.config,
     };
     let pats_str = write_list(&items, &fmt)?;
+    let beginning_vert = if has_beginning_vert { "| " } else { "" };
 
     // Guard
     let guard_str = rewrite_guard(context, guard, shape, trimmed_last_line_width(&pats_str))?;
 
-    Some(format!("{}{}", pats_str, guard_str))
+    Some(format!("{}{}{}", beginning_vert, pats_str, guard_str))
 }
 
 // (extend, body)

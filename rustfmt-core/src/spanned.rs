@@ -89,7 +89,12 @@ impl Spanned for ast::Ty {
 
 impl Spanned for ast::Arm {
     fn span(&self) -> Span {
-        span_with_attrs_lo_hi!(self, self.pats[0].span.lo(), self.body.span.hi())
+        let lo = if let Some(sp) = self.beginning_vert {
+            sp.lo()
+        } else {
+            self.pats[0].span.lo()
+        };
+        span_with_attrs_lo_hi!(self, lo, self.body.span.hi())
     }
 }
 
