@@ -14,12 +14,15 @@ rand = { version = "0.4", features = ["i128_support"] }
 [dependencies.compiler_builtins]
 path = ".."
 default-features = false
-features = ["mangled-names", "no-lang-items"]
+features = ["no-lang-items"]
 
 [target.'cfg(all(target_arch = "arm", not(any(target_env = "gnu", target_env = "musl")), target_os = "linux"))'.dev-dependencies]
-test = { git = "https://github.com/japaric/utest" }
-utest-cortex-m-qemu = { default-features = false, git = "https://github.com/japaric/utest" }
-utest-macros = { git = "https://github.com/japaric/utest" }
+test = { git = "https://github.com/paoloteti/utest", branch = "ci" }
+utest-cortex-m-qemu = { default-features = false, git = "https://github.com/paoloteti/utest", branch = "ci" }
+utest-macros = { git = "https://github.com/paoloteti/utest", branch = "ci" }
 
 [features]
 c = ["compiler_builtins/c"]
+mem = ["compiler_builtins/mem"]
+mangled-names = ["compiler_builtins/mangled-names"]
+no_std = []

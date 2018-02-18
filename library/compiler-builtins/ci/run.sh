@@ -24,29 +24,30 @@ fi
 # Test our implementation
 case $1 in
     thumb*)
-        for t in $(ls tests); do
+        run="xargo test --manifest-path testcrate/Cargo.toml --target $1"
+        for t in $(ls testcrate/tests); do
             t=${t%.rs}
 
-            # TODO(#154) enable these tests when aeabi_*mul are implemented
-            case $t in
-                powi*f2)
-                    continue
-                    ;;
-            esac
-
-            xargo test --test $t --target $1 --features 'mem gen-tests' --no-run
+            RUSTFLAGS="-C debug-assertions=no -C lto" \
+            CARGO_INCREMENTAL=0 \
+              $run --test $t --features 'no_std mem c' --no-run
             qemu-arm-static target/${1}/debug/$t-*
+	done
 
-            xargo test --test $t --target $1 --features 'mem gen-tests' --no-run --release
+	for t in $(ls testcrate/tests); do
+            t=${t%.rs}
+            RUSTFLAGS="-C lto" \
+            CARGO_INCREMENTAL=0 \
+              $run --test $t --features 'no_std mem c' --no-run --release
             qemu-arm-static target/${1}/release/$t-*
         done
         ;;
     *)
         run="cargo test --manifest-path testcrate/Cargo.toml --target $1"
-        $run
-        $run --release
-        $run --features c
-        $run --features c --release
+        $run --features mangled-names
+        $run --features mangled-names --release
+        $run --features 'mangled-names c'
+        $run --features 'mangled-names c' --release
         ;;
 esac
 
