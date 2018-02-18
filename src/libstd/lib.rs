@@ -289,6 +289,7 @@
 #![feature(on_unimplemented)]
 #![feature(oom)]
 #![feature(optin_builtin_traits)]
+#![feature(panic_internals)]
 #![feature(panic_unwind)]
 #![feature(peek)]
 #![feature(placement_in_syntax)]

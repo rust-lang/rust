@@ -160,6 +160,7 @@ pub mod array;
 pub mod sync;
 pub mod cell;
 pub mod char;
+pub mod panic;
 pub mod panicking;
 pub mod iter;
 pub mod option;
