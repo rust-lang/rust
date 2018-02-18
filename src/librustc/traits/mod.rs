@@ -304,7 +304,7 @@ pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 /// ### The type parameter `N`
 ///
 /// See explanation on `VtableImplData`.
-#[derive(Clone, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum Vtable<'tcx, N> {
     /// Vtable identifying a particular impl.
     VtableImpl(VtableImplData<'tcx, N>),
@@ -374,13 +374,13 @@ pub struct VtableClosureData<'tcx, N> {
     pub nested: Vec<N>
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct VtableAutoImplData<N> {
     pub trait_def_id: DefId,
     pub nested: Vec<N>
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct VtableBuiltinData<N> {
     pub nested: Vec<N>
 }
