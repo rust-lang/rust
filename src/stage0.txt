@@ -12,9 +12,9 @@
 # source tarball for a stable release you'll likely see `1.x.0` for rustc and
 # `0.x.0` for Cargo where they were released on `date`.
 
-date: 2018-01-02
-rustc: beta
-cargo: beta
+date: 2018-02-15
+rustc: 1.24.0
+cargo: 0.25.0
 
 # When making a stable release the process currently looks like:
 #
