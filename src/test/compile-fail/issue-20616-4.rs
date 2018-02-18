@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // We need all these 9 issue-20616-N.rs files
-// becase we can only catch one parsing error at a time
+// because we can only catch one parsing error at a time
 
 
 

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::HashMap;
 use std::env;
 use std::ffi::OsString;
 use std::io::prelude::*;
@@ -41,7 +40,7 @@ use errors;
 use errors::emitter::ColorConfig;
 
 use clean::Attributes;
-use html::markdown::{self, RenderType};
+use html::markdown;
 
 #[derive(Clone, Default)]
 pub struct TestOptions {
@@ -56,7 +55,6 @@ pub fn run(input_path: &Path,
            mut test_args: Vec<String>,
            crate_name: Option<String>,
            maybe_sysroot: Option<PathBuf>,
-           render_type: RenderType,
            display_warnings: bool,
            linker: Option<PathBuf>)
            -> isize {
@@ -118,7 +116,6 @@ pub fn run(input_path: &Path,
                                        maybe_sysroot,
                                        Some(codemap),
                                        None,
-                                       render_type,
                                        linker);
 
     {
@@ -433,8 +430,6 @@ fn partition_source(s: &str) -> (String, String) {
 
 pub struct Collector {
     pub tests: Vec<testing::TestDescAndFn>,
-    // to be removed when hoedown will be definitely gone
-    pub old_tests: HashMap<String, Vec<String>>,
 
     // The name of the test displayed to the user, separated by `::`.
     //
@@ -468,8 +463,6 @@ pub struct Collector {
     position: Span,
     codemap: Option<Rc<CodeMap>>,
     filename: Option<PathBuf>,
-    // to be removed when hoedown will be removed as well
-    pub render_type: RenderType,
     linker: Option<PathBuf>,
 }
 
@@ -477,10 +470,9 @@ impl Collector {
     pub fn new(cratename: String, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
                use_headers: bool, opts: TestOptions, maybe_sysroot: Option<PathBuf>,
                codemap: Option<Rc<CodeMap>>, filename: Option<PathBuf>,
-               render_type: RenderType, linker: Option<PathBuf>) -> Collector {
+               linker: Option<PathBuf>) -> Collector {
         Collector {
             tests: Vec::new(),
-            old_tests: HashMap::new(),
             names: Vec::new(),
             cfgs,
             libs,
@@ -492,7 +484,6 @@ impl Collector {
             position: DUMMY_SP,
             codemap,
             filename,
-            render_type,
             linker,
         }
     }
@@ -501,39 +492,11 @@ impl Collector {
         format!("{} - {} (line {})", filename, self.names.join("::"), line)
     }
 
-    // to be removed once hoedown is gone
-    fn generate_name_beginning(&self, filename: &FileName) -> String {
-        format!("{} - {} (line", filename, self.names.join("::"))
-    }
-
-    pub fn add_old_test(&mut self, test: String, filename: FileName) {
-        let name_beg = self.generate_name_beginning(&filename);
-        let entry = self.old_tests.entry(name_beg)
-                                  .or_insert(Vec::new());
-        entry.push(test.trim().to_owned());
-    }
-
     pub fn add_test(&mut self, test: String,
                     should_panic: bool, no_run: bool, should_ignore: bool,
                     as_test_harness: bool, compile_fail: bool, error_codes: Vec<String>,
                     line: usize, filename: FileName, allow_fail: bool) {
         let name = self.generate_name(line, &filename);
-        // to be removed when hoedown is removed
-        if self.render_type == RenderType::Pulldown {
-            let name_beg = self.generate_name_beginning(&filename);
-            let mut found = false;
-            let test = test.trim().to_owned();
-            if let Some(entry) = self.old_tests.get_mut(&name_beg) {
-                found = entry.remove_item(&test).is_some();
-            }
-            if !found {
-                eprintln!("WARNING: {} Code block is not currently run as a test, but will \
-                           in future versions of rustdoc. Please ensure this code block is \
-                           a runnable test, or use the `ignore` directive.",
-                          name);
-                return
-            }
-        }
         let cfgs = self.cfgs.clone();
         let libs = self.libs.clone();
         let externs = self.externs.clone();
@@ -680,15 +643,8 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
         // the collapse-docs pass won't combine sugared/raw doc attributes, or included files with
         // anything else, this will combine them for us
         if let Some(doc) = attrs.collapsed_doc_value() {
-            if self.collector.render_type == RenderType::Pulldown {
-                markdown::old_find_testable_code(&doc, self.collector,
-                                                 attrs.span.unwrap_or(DUMMY_SP));
-                markdown::find_testable_code(&doc, self.collector,
-                                             attrs.span.unwrap_or(DUMMY_SP));
-            } else {
-                markdown::old_find_testable_code(&doc, self.collector,
-                                                 attrs.span.unwrap_or(DUMMY_SP));
-            }
+            markdown::find_testable_code(&doc, self.collector,
+                                         attrs.span.unwrap_or(DUMMY_SP));
         }
 
         nested(self);

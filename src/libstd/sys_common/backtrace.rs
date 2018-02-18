@@ -136,7 +136,7 @@ pub fn __rust_begin_short_backtrace<F, T>(f: F) -> T
     f()
 }
 
-/// Controls how the backtrace should be formated.
+/// Controls how the backtrace should be formatted.
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum PrintFormat {
     /// Show all the frames with absolute path for files.

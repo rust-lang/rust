@@ -3912,7 +3912,7 @@ impl<'a> Parser<'a> {
                                           "use `=` if you meant to assign",
                                           "=".to_string());
                 err.emit();
-                // As this was parsed successfuly, continue as if the code has been fixed for the
+                // As this was parsed successfully, continue as if the code has been fixed for the
                 // rest of the file. It will still fail due to the emitted error, but we avoid
                 // extra noise.
                 init
@@ -6571,7 +6571,7 @@ impl<'a> Parser<'a> {
             return Ok(Some(macro_def));
         }
 
-        // Verify wether we have encountered a struct or method definition where the user forgot to
+        // Verify whether we have encountered a struct or method definition where the user forgot to
         // add the `struct` or `fn` keyword after writing `pub`: `pub S {}`
         if visibility == Visibility::Public &&
             self.check_ident() &&

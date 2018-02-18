@@ -62,7 +62,7 @@ use rustc::hir;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::flock;
 
-use clean::{self, AttributesExt, GetDefId, SelfTy, Mutability, Span};
+use clean::{self, AttributesExt, GetDefId, SelfTy, Mutability};
 use doctree;
 use fold::DocFolder;
 use html::escape::Escape;
@@ -71,10 +71,8 @@ use html::format::{TyParamBounds, WhereClause, href, AbiSpace};
 use html::format::{VisSpace, Method, UnsafetySpace, MutableSpace};
 use html::format::fmt_impl_for_trait_page;
 use html::item_type::ItemType;
-use html::markdown::{self, Markdown, MarkdownHtml, MarkdownSummaryLine, RenderType};
+use html::markdown::{self, Markdown, MarkdownHtml, MarkdownSummaryLine};
 use html::{highlight, layout};
-
-use html_diff;
 
 /// A pair of name and its optional document.
 pub type NameDoc = (String, Option<String>);
@@ -99,7 +97,6 @@ pub struct Context {
     /// publicly reused items to redirect to the right location.
     pub render_redirect_pages: bool,
     pub shared: Arc<SharedContext>,
-    pub render_type: RenderType,
 }
 
 pub struct SharedContext {
@@ -123,9 +120,6 @@ pub struct SharedContext {
     /// The given user css file which allow to customize the generated
     /// documentation theme.
     pub css_file_extension: Option<PathBuf>,
-    /// Warnings for the user if rendering would differ using different markdown
-    /// parsers.
-    pub markdown_warnings: RefCell<Vec<(Span, String, Vec<html_diff::Difference>)>>,
     /// The directories that have already been created in this doc run. Used to reduce the number
     /// of spurious `create_dir_all` calls.
     pub created_dirs: RefCell<FxHashSet<PathBuf>>,
@@ -426,23 +420,9 @@ impl ToJson for IndexItemFunctionType {
     }
 }
 
-// TLS keys used to carry information around during rendering.
-
 thread_local!(static CACHE_KEY: RefCell<Arc<Cache>> = Default::default());
-thread_local!(pub static CURRENT_LOCATION_KEY: RefCell<Vec<String>> =
-                    RefCell::new(Vec::new()));
-thread_local!(pub static USED_ID_MAP: RefCell<FxHashMap<String, usize>> =
-                    RefCell::new(init_ids()));
-
-pub fn render_text<T, F: FnMut(RenderType) -> T>(mut render: F) -> (T, T) {
-    // Save the state of USED_ID_MAP so it only gets updated once even
-    // though we're rendering twice.
-    let orig_used_id_map = USED_ID_MAP.with(|map| map.borrow().clone());
-    let hoedown_output = render(RenderType::Hoedown);
-    USED_ID_MAP.with(|map| *map.borrow_mut() = orig_used_id_map);
-    let pulldown_output = render(RenderType::Pulldown);
-    (hoedown_output, pulldown_output)
-}
+thread_local!(pub static CURRENT_LOCATION_KEY: RefCell<Vec<String>> = RefCell::new(Vec::new()));
+thread_local!(pub static USED_ID_MAP: RefCell<FxHashMap<String, usize>> = RefCell::new(init_ids()));
 
 fn init_ids() -> FxHashMap<String, usize> {
     [
@@ -500,9 +480,7 @@ pub fn run(mut krate: clean::Crate,
            passes: FxHashSet<String>,
            css_file_extension: Option<PathBuf>,
            renderinfo: RenderInfo,
-           render_type: RenderType,
            sort_modules_alphabetically: bool,
-           deny_render_differences: bool,
            themes: Vec<PathBuf>) -> Result<(), Error> {
     let src_root = match krate.src {
         FileName::Real(ref p) => match p.parent() {
@@ -524,7 +502,6 @@ pub fn run(mut krate: clean::Crate,
             krate: krate.name.clone(),
         },
         css_file_extension: css_file_extension.clone(),
-        markdown_warnings: RefCell::new(vec![]),
         created_dirs: RefCell::new(FxHashSet()),
         sort_modules_alphabetically,
         themes,
@@ -572,7 +549,6 @@ pub fn run(mut krate: clean::Crate,
         dst,
         render_redirect_pages: false,
         shared: Arc::new(scx),
-        render_type,
     };
 
     // Crawl the crate to build various caches used for the output
@@ -655,141 +631,8 @@ pub fn run(mut krate: clean::Crate,
 
     write_shared(&cx, &krate, &*cache, index)?;
 
-    let scx = cx.shared.clone();
-
     // And finally render the whole crate's documentation
-    let result = cx.krate(krate);
-
-    let markdown_warnings = scx.markdown_warnings.borrow();
-    if !markdown_warnings.is_empty() {
-        let mut intro_msg = false;
-        for &(ref span, ref text, ref diffs) in &*markdown_warnings {
-            for d in diffs {
-                render_difference(d, &mut intro_msg, span, text);
-            }
-        }
-
-        if deny_render_differences {
-            println!("Aborting with {} rendering differences", markdown_warnings.len());
-            ::std::process::exit(1);
-        }
-    }
-
-    result
-}
-
-// A short, single-line view of `s`.
-fn concise_str(mut s: &str) -> String {
-    if s.contains('\n') {
-        s = s.lines().next().expect("Impossible! We just found a newline");
-    }
-    if s.len() > 70 {
-        let mut lo = 50;
-        let mut hi = s.len() - 20;
-        while !s.is_char_boundary(lo) {
-            lo -= 1;
-        }
-        while !s.is_char_boundary(hi) {
-            hi += 1;
-        }
-        return format!("{} ... {}", &s[..lo], &s[hi..]);
-    }
-    s.to_owned()
-}
-
-// Returns short versions of s1 and s2, starting from where the strings differ.
-fn concise_compared_strs(s1: &str, s2: &str) -> (String, String) {
-    let s1 = s1.trim();
-    let s2 = s2.trim();
-    if !s1.contains('\n') && !s2.contains('\n') && s1.len() <= 70 && s2.len() <= 70 {
-        return (s1.to_owned(), s2.to_owned());
-    }
-
-    let mut start_byte = 0;
-    for (c1, c2) in s1.chars().zip(s2.chars()) {
-        if c1 != c2 {
-            break;
-        }
-
-        start_byte += c1.len_utf8();
-    }
-
-    if start_byte == 0 {
-        return (concise_str(s1), concise_str(s2));
-    }
-
-    let s1 = &s1[start_byte..];
-    let s2 = &s2[start_byte..];
-    (format!("...{}", concise_str(s1)), format!("...{}", concise_str(s2)))
-}
-
-fn print_message(msg: &str, intro_msg: &mut bool, span: &Span, text: &str) {
-    if !*intro_msg {
-        println!("WARNING: documentation for this crate may be rendered \
-                  differently using the new Pulldown renderer.");
-        println!("    See https://github.com/rust-lang/rust/issues/44229 for details.");
-        *intro_msg = true;
-    }
-    println!("WARNING: rendering difference in `{}`", concise_str(text));
-    println!("   --> {}:{}:{}", span.filename, span.loline, span.locol);
-    println!("{}", msg);
-}
-
-pub fn render_difference(diff: &html_diff::Difference,
-                         intro_msg: &mut bool,
-                         span: &Span,
-                         text: &str) {
-    match *diff {
-        html_diff::Difference::NodeType { ref elem, ref opposite_elem } => {
-            print_message(&format!("    {} Types differ: expected: `{}`, found: `{}`",
-                                   elem.path, elem.element_name, opposite_elem.element_name),
-                          intro_msg, span, text);
-        }
-        html_diff::Difference::NodeName { ref elem, ref opposite_elem } => {
-            print_message(&format!("    {} Tags differ: expected: `{}`, found: `{}`",
-                                   elem.path, elem.element_name, opposite_elem.element_name),
-                          intro_msg, span, text);
-        }
-        html_diff::Difference::NodeAttributes { ref elem,
-                                                ref elem_attributes,
-                                                ref opposite_elem_attributes,
-                                                .. } => {
-            print_message(&format!("    {} Attributes differ in `{}`: expected: `{:?}`, \
-                                    found: `{:?}`",
-                                   elem.path, elem.element_name, elem_attributes,
-                                   opposite_elem_attributes),
-                          intro_msg, span, text);
-        }
-        html_diff::Difference::NodeText { ref elem, ref elem_text, ref opposite_elem_text, .. } => {
-            if elem_text.split("\n")
-                        .zip(opposite_elem_text.split("\n"))
-                        .any(|(a, b)| a.trim() != b.trim()) {
-                let (s1, s2) = concise_compared_strs(elem_text, opposite_elem_text);
-                print_message(&format!("    {} Text differs:\n        expected: `{}`\n        \
-                                        found:    `{}`",
-                                       elem.path, s1, s2),
-                              intro_msg, span, text);
-            }
-        }
-        html_diff::Difference::NotPresent { ref elem, ref opposite_elem } => {
-            if let Some(ref elem) = *elem {
-                print_message(&format!("    {} One element is missing: expected: `{}`",
-                                       elem.path, elem.element_name),
-                              intro_msg, span, text);
-            } else if let Some(ref elem) = *opposite_elem {
-                if elem.element_name.is_empty() {
-                    print_message(&format!("    {} One element is missing: expected: `{}`",
-                                           elem.path, concise_str(&elem.element_content)),
-                                  intro_msg, span, text);
-                } else {
-                    print_message(&format!("    {} Unexpected element `{}`: found: `{}`",
-                                           elem.path, elem.element_name,
-                                           concise_str(&elem.element_content)),
-                                  intro_msg, span, text);
-                }
-            }
-        }
-    }
+    cx.krate(krate)
 }
 
 /// Build the search index from the collected metadata
@@ -1929,42 +1772,17 @@ fn document(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Re
     Ok(())
 }
 
-/// Render md_text as markdown. Warns the user if there are difference in
-/// rendering between Pulldown and Hoedown.
+/// Render md_text as markdown.
 fn render_markdown(w: &mut fmt::Formatter,
                    md_text: &str,
                    links: Vec<(String, String)>,
-                   span: Span,
-                   render_type: RenderType,
-                   prefix: &str,
-                   scx: &SharedContext)
+                   prefix: &str,)
                    -> fmt::Result {
-    let (hoedown_output, pulldown_output) =
-        render_text(|ty| format!("{}", Markdown(md_text, &links, ty)));
-    let mut differences = html_diff::get_differences(&pulldown_output, &hoedown_output);
-    differences.retain(|s| {
-        match *s {
-            html_diff::Difference::NodeText { ref elem_text,
-                                              ref opposite_elem_text,
-                                              .. }
-                if elem_text.split_whitespace().eq(opposite_elem_text.split_whitespace()) => {
-                    false
-            }
-            _ => true,
-        }
-    });
-
-    if !differences.is_empty() {
-        scx.markdown_warnings.borrow_mut().push((span, md_text.to_owned(), differences));
-    }
-
-    write!(w, "<div class='docblock'>{}{}</div>",
-           prefix,
-           if render_type == RenderType::Pulldown { pulldown_output } else { hoedown_output })
+    write!(w, "<div class='docblock'>{}{}</div>", prefix, Markdown(md_text, &links))
 }
 
 fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLink,
-                  cx: &Context, prefix: &str) -> fmt::Result {
+                  prefix: &str) -> fmt::Result {
     if let Some(s) = item.doc_value() {
         let markdown = if s.contains('\n') {
             format!("{} [Read more]({})",
@@ -1972,13 +1790,7 @@ fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLin
         } else {
             format!("{}", &plain_summary_line(Some(s)))
         };
-        render_markdown(w,
-                        &markdown,
-                        item.links(),
-                        item.source.clone(),
-                        cx.render_type,
-                        prefix,
-                        &cx.shared)?;
+        render_markdown(w, &markdown, item.links(), prefix)?;
     } else if !prefix.is_empty() {
         write!(w, "<div class='docblock'>{}</div>", prefix)?;
     }
@@ -2004,13 +1816,7 @@ fn document_full(w: &mut fmt::Formatter, item: &clean::Item,
                  cx: &Context, prefix: &str) -> fmt::Result {
     if let Some(s) = cx.shared.maybe_collapsed_doc_value(item) {
         debug!("Doc block: =====\n{}\n=====", s);
-        render_markdown(w,
-                        &*s,
-                        item.links(),
-                        item.source.clone(),
-                        cx.render_type,
-                        prefix,
-                        &cx.shared)?;
+        render_markdown(w, &*s, item.links(), prefix)?;
     } else if !prefix.is_empty() {
         write!(w, "<div class='docblock'>{}</div>", prefix)?;
     }
@@ -2230,13 +2036,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                        </tr>",
                        name = *myitem.name.as_ref().unwrap(),
                        stab_docs = stab_docs,
-                       docs = if cx.render_type == RenderType::Hoedown {
-                           format!("{}",
-                                   shorter(Some(&Markdown(doc_value, &myitem.links(),
-                                                          RenderType::Hoedown).to_string())))
-                       } else {
-                           format!("{}", MarkdownSummaryLine(doc_value, &myitem.links()))
-                       },
+                       docs = MarkdownSummaryLine(doc_value, &myitem.links()),
                        class = myitem.type_(),
                        stab = myitem.stability_class().unwrap_or("".to_string()),
                        unsafety_flag = unsafety_flag,
@@ -2270,7 +2070,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
             };
             let text = format!("Deprecated{}{}",
                                since,
-                               MarkdownHtml(&deprecated_reason, cx.render_type));
+                               MarkdownHtml(&deprecated_reason));
             stability.push(format!("<div class='stab deprecated'>{}</div>", text))
         };
 
@@ -2300,7 +2100,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
                                         This is a nightly-only experimental API. {}\
                                         </summary>{}",
                                        unstable_extra,
-                                       MarkdownHtml(&stab.unstable_reason, cx.render_type));
+                                       MarkdownHtml(&stab.unstable_reason));
                     stability.push(format!("<div class='stab unstable'><details>{}</details></div>",
                                    text));
                 }
@@ -2320,7 +2120,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
             String::new()
         };
 
-        let text = format!("Deprecated{}{}", since, MarkdownHtml(&note, cx.render_type));
+        let text = format!("Deprecated{}{}", since, MarkdownHtml(&note));
         stability.push(format!("<div class='stab deprecated'>{}</div>", text))
     }
 
@@ -3426,7 +3226,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
         write!(w, "</h3>\n")?;
         if let Some(ref dox) = cx.shared.maybe_collapsed_doc_value(&i.impl_item) {
             write!(w, "<div class='docblock'>{}</div>",
-                   Markdown(&*dox, &i.impl_item.links(), cx.render_type))?;
+                   Markdown(&*dox, &i.impl_item.links()))?;
         }
     }
 
@@ -3511,7 +3311,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                         } else if show_def_docs {
                             // In case the item isn't documented,
                             // provide short documentation from the trait.
-                            document_short(w, it, link, cx, &prefix)?;
+                            document_short(w, it, link, &prefix)?;
                         }
                     }
                 } else {
@@ -3523,7 +3323,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             } else {
                 document_stability(w, cx, item)?;
                 if show_def_docs {
-                    document_short(w, item, link, cx, &prefix)?;
+                    document_short(w, item, link, &prefix)?;
                 }
             }
         }

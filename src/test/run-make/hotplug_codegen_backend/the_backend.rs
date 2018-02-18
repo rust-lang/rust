@@ -69,7 +69,7 @@ impl TransCrate for TheBackend {
             let output_name =
                 out_filename(sess, crate_type, &outputs, &*crate_name.as_str());
             let mut out_file = ::std::fs::File::create(output_name).unwrap();
-            write!(out_file, "This has been \"compiled\" succesfully.").unwrap();
+            write!(out_file, "This has been \"compiled\" successfully.").unwrap();
         }
         Ok(())
     }

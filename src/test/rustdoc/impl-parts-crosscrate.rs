@@ -17,7 +17,7 @@ extern crate rustdoc_impl_parts_crosscrate;
 
 pub struct Bar<T> { t: T }
 
-// The output file is html embeded in javascript, so the html tags
+// The output file is html embedded in javascript, so the html tags
 // aren't stripped by the processing script and we can't check for the
 // full impl string.  Instead, just make sure something from each part
 // is mentioned.

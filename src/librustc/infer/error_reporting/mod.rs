@@ -734,7 +734,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
-            // When finding T != &T, hightlight only the borrow
+            // When finding T != &T, highlight only the borrow
             (&ty::TyRef(r1, ref tnm1), _) if equals(&tnm1.ty, &t2) => {
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
                 push_ty_ref(&r1, tnm1, &mut values.0);
@@ -946,7 +946,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         let type_param = generics.type_param(param, self.tcx);
                         let hir = &self.tcx.hir;
                         hir.as_local_node_id(type_param.def_id).map(|id| {
-                            // Get the `hir::TyParam` to verify wether it already has any bounds.
+                            // Get the `hir::TyParam` to verify whether it already has any bounds.
                             // We do this to avoid suggesting code that ends up as `T: 'a'b`,
                             // instead we suggest `T: 'a + 'b` in that case.
                             let has_lifetimes = if let hir_map::NodeTyParam(ref p) = hir.get(id) {

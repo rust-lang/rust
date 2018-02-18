@@ -19,7 +19,7 @@ The constraints are always of one of three possible forms:
   a subregion of Rj
 - `ConstrainRegSubVar(R, Ri)` states that the concrete region R (which
   must not be a variable) must be a subregion of the variable Ri
-- `ConstrainVarSubReg(Ri, R)` states the variable Ri shoudl be less
+- `ConstrainVarSubReg(Ri, R)` states the variable Ri should be less
   than the concrete region R. This is kind of deprecated and ought to
   be replaced with a verify (they essentially play the same role).
 

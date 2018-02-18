@@ -262,7 +262,7 @@ impl TcpStream {
     /// indefinitely. It is an error to pass the zero `Duration` to this
     /// method.
     ///
-    /// # Note
+    /// # Platform-specific behavior
     ///
     /// Platforms may return a different error code whenever a read times out as
     /// a result of setting this option. For example Unix typically returns an
@@ -293,7 +293,7 @@ impl TcpStream {
     /// indefinitely. It is an error to pass the zero [`Duration`] to this
     /// method.
     ///
-    /// # Note
+    /// # Platform-specific behavior
     ///
     /// Platforms may return a different error code whenever a write times out
     /// as a result of setting this option. For example Unix typically returns
@@ -323,7 +323,7 @@ impl TcpStream {
     ///
     /// If the timeout is [`None`], then [`read`] calls will block indefinitely.
     ///
-    /// # Note
+    /// # Platform-specific behavior
     ///
     /// Some platforms do not provide access to the current timeout.
     ///
@@ -349,7 +349,7 @@ impl TcpStream {
     ///
     /// If the timeout is [`None`], then [`write`] calls will block indefinitely.
     ///
-    /// # Note
+    /// # Platform-specific behavior
     ///
     /// Some platforms do not provide access to the current timeout.
     ///

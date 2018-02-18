@@ -935,7 +935,7 @@ impl Step for Compiletest {
             }
         }
         if suite == "run-make" && !build.config.llvm_enabled {
-            println!("Ignoring run-make test suite as they generally dont work without LLVM");
+            println!("Ignoring run-make test suite as they generally don't work without LLVM");
             return;
         }
 
@@ -1354,6 +1354,9 @@ impl Step for Crate {
         // arguments need to get passed.
         if test_kind.subcommand() == "test" && !build.fail_fast {
             cargo.arg("--no-fail-fast");
+        }
+        if build.doc_tests {
+            cargo.arg("--doc");
         }
 
         cargo.arg("-p").arg(krate);
