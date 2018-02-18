@@ -24,8 +24,8 @@ use sys_common::rwlock as sys;
 /// typically allows for read-only access (shared access).
 ///
 /// In comparison, a [`Mutex`] does not distinguish between readers or writers
-/// that aquire the lock, therefore blocking any threads waiting for the lock to
-/// become available. An `RwLock` will allow any number of readers to aquire the
+/// that acquire the lock, therefore blocking any threads waiting for the lock to
+/// become available. An `RwLock` will allow any number of readers to acquire the
 /// lock as long as a writer is not holding the lock.
 ///
 /// The priority policy of the lock is dependent on the underlying operating

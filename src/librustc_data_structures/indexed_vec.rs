@@ -204,7 +204,7 @@ macro_rules! newtype_index {
                           $($tokens)*);
     );
 
-    // The case where no derives are added, but encodable is overriden. Don't
+    // The case where no derives are added, but encodable is overridden. Don't
     // derive serialization traits
     (@pub          [$($pub:tt)*]
      @type         [$type:ident]

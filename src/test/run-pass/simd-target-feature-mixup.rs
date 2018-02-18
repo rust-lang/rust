@@ -30,7 +30,7 @@ fn main() {
 
         // We don't actually know if our computer has the requisite target features
         // for the test below. Testing for that will get added to libstd later so
-        // for now just asume sigill means this is a machine that can't run this test.
+        // for now just assume sigill means this is a machine that can't run this test.
         if is_sigill(status) {
             println!("sigill with {}, assuming spurious", level);
             continue

@@ -278,7 +278,7 @@ fn for_each_region_constraint(
 
 /// Right now, we piggy back on the `ReVar` to store our NLL inference
 /// regions. These are indexed with `RegionVid`. This method will
-/// assert that the region is a `ReVar` and extract its interal index.
+/// assert that the region is a `ReVar` and extract its internal index.
 /// This is reasonable because in our MIR we replace all universal regions
 /// with inference variables.
 pub trait ToRegionVid {

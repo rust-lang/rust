@@ -84,7 +84,7 @@ impl LtoModuleTranslation {
         }
     }
 
-    /// A "guage" of how costly it is to optimize this module, used to sort
+    /// A "gauge" of how costly it is to optimize this module, used to sort
     /// biggest modules first.
     pub fn cost(&self) -> u64 {
         match *self {
@@ -726,7 +726,7 @@ impl ThinModule {
         // which was basically a resurgence of #45511 after LLVM's bug 35212 was
         // fixed.
         //
-        // This function below is a huge hack around tihs problem. The function
+        // This function below is a huge hack around this problem. The function
         // below is defined in `PassWrapper.cpp` and will basically "merge"
         // all `DICompileUnit` instances in a module. Basically it'll take all
         // the objects, rewrite all pointers of `DISubprogram` to point to the

@@ -186,7 +186,7 @@ impl<'a> Resolver<'a> {
         }
 
         let check_usable = |this: &mut Self, binding: &'a NameBinding<'a>| {
-            // `extern crate` are always usable for backwards compatability, see issue #37020.
+            // `extern crate` are always usable for backwards compatibility, see issue #37020.
             let usable = this.is_accessible(binding.vis) || binding.is_extern_crate();
             if usable { Ok(binding) } else { Err(Determined) }
         };
