@@ -113,12 +113,8 @@ pub struct Config {
 
     // Fallback musl-root for all targets
     pub musl_root: Option<PathBuf>,
-    pub prefix: Option<PathBuf>,
-    pub sysconfdir: Option<PathBuf>,
-    pub docdir: Option<PathBuf>,
-    pub bindir: Option<PathBuf>,
-    pub libdir: Option<PathBuf>,
-    pub mandir: Option<PathBuf>,
+
+    pub install: Install,
     pub codegen_tests: bool,
     pub nodejs: Option<PathBuf>,
     pub gdb: Option<PathBuf>,
@@ -223,20 +219,37 @@ impl Default for Build {
 }
 
 /// TOML representation of various global install decisions.
-#[derive(Deserialize, Default, Clone)]
-#[serde(deny_unknown_fields, rename_all = "kebab-case")]
-struct Install {
-    prefix: Option<PathBuf>,
-    sysconfdir: Option<PathBuf>,
-    docdir: Option<PathBuf>,
-    bindir: Option<PathBuf>,
-    libdir: Option<PathBuf>,
-    mandir: Option<PathBuf>,
+#[derive(Deserialize, Clone)]
+#[serde(default, deny_unknown_fields, rename_all = "kebab-case")]
+pub struct Install {
+    pub prefix: PathBuf,
+    pub sysconfdir: PathBuf,
+    pub docdir: PathBuf,
+    pub bindir: PathBuf,
+    pub libdir: PathBuf,
+    pub mandir: PathBuf,
 
     // standard paths, currently unused
     datadir: Option<PathBuf>,
     infodir: Option<PathBuf>,
     localstatedir: Option<PathBuf>,
+}
+
+impl Default for Install {
+    fn default() -> Install {
+        Install {
+            prefix: PathBuf::from("/usr/local"),
+            sysconfdir: PathBuf::from("/etc"),
+            docdir: PathBuf::from("share/doc/rust"),
+            bindir: PathBuf::from("bin"),
+            libdir: PathBuf::from("lib"),
+            mandir: PathBuf::from("share/man"),
+
+            datadir: None,
+            infodir: None,
+            localstatedir: None,
+        }
+    }
 }
 
 /// TOML representation of how the LLVM build is configured.
@@ -477,7 +490,6 @@ impl Config {
             config.targets
         };
 
-
         config.nodejs = build.nodejs;
         config.gdb = build.gdb;
         config.python = build.python;
@@ -498,13 +510,7 @@ impl Config {
         // will get auto-detected later
         config.local_rebuild = build.local_rebuild;
 
-        config.prefix = toml.install.prefix;
-        config.sysconfdir = toml.install.sysconfdir;
-        config.docdir = toml.install.docdir;
-        config.bindir = toml.install.bindir;
-        config.libdir = toml.install.libdir;
-        config.mandir = toml.install.mandir;
-
+        config.install = toml.install;
         config.llvm = toml.llvm;
 
         // Store off these values as options because if they're not
@@ -613,7 +619,7 @@ impl Config {
 
     /// Try to find the relative path of `libdir`.
     pub fn libdir_relative(&self) -> Option<&Path> {
-        let libdir = self.libdir.as_ref()?;
+        let libdir = self.install.libdir.as_ref()?;
         if libdir.is_relative() {
             Some(libdir)
         } else {

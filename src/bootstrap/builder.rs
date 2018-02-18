@@ -432,7 +432,7 @@ impl<'a> Builder<'a> {
                 let compiler = self.compiler;
                 let config = &builder.build.config;
                 let lib = if compiler.stage >= 1 && config.libdir_relative().is_some() {
-                    builder.build.config.libdir_relative().unwrap()
+                    config.libdir_relative().unwrap()
                 } else {
                     Path::new("lib")
                 };

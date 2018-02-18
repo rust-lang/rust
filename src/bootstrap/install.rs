@@ -65,18 +65,12 @@ fn install_sh(
     let build = builder.build;
     println!("Install {} stage{} ({:?})", package, stage, host);
 
-    let prefix_default = PathBuf::from("/usr/local");
-    let sysconfdir_default = PathBuf::from("/etc");
-    let docdir_default = PathBuf::from("share/doc/rust");
-    let bindir_default = PathBuf::from("bin");
-    let libdir_default = PathBuf::from("lib");
-    let mandir_default = PathBuf::from("share/man");
-    let prefix = build.config.prefix.as_ref().unwrap_or(&prefix_default);
-    let sysconfdir = build.config.sysconfdir.as_ref().unwrap_or(&sysconfdir_default);
-    let docdir = build.config.docdir.as_ref().unwrap_or(&docdir_default);
-    let bindir = build.config.bindir.as_ref().unwrap_or(&bindir_default);
-    let libdir = build.config.libdir.as_ref().unwrap_or(&libdir_default);
-    let mandir = build.config.mandir.as_ref().unwrap_or(&mandir_default);
+    let prefix = &build.config.install.prefix;
+    let sysconfdir = &build.config.install.sysconfdir;
+    let docdir = &build.config.install.docdir;
+    let bindir = &build.config.install.bindir;
+    let libdir = &build.config.install.libdir;
+    let mandir = &build.config.install.mandir;
 
     let sysconfdir = prefix.join(sysconfdir);
     let docdir = prefix.join(docdir);
