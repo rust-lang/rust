@@ -71,6 +71,7 @@ fn filter_dirs(path: &Path) -> bool {
         "src/librustc/mir/interpret",
         "src/librustc_mir/interpret",
         "src/target",
+        "src/stdsimd",
     ];
     skip.iter().any(|p| path.ends_with(p))
 }
