@@ -2845,3 +2845,13 @@ impl Rewrite for ast::GenericParam {
         }
     }
 }
+
+/// Rewrite an inline mod.
+pub fn rewrite_mod(item: &ast::Item) -> String {
+    let mut result = String::with_capacity(32);
+    result.push_str(&*format_visibility(&item.vis));
+    result.push_str("mod ");
+    result.push_str(&item.ident.to_string());
+    result.push(';');
+    result
+}

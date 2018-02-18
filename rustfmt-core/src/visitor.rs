@@ -12,7 +12,7 @@ use std::cmp;
 
 use config::lists::*;
 use syntax::{ast, visit};
-use syntax::attr::{self, HasAttrs};
+use syntax::attr::HasAttrs;
 use syntax::codemap::{self, BytePos, CodeMap, Pos, Span};
 use syntax::parse::ParseSess;
 
@@ -49,17 +49,6 @@ fn is_mod_decl(item: &ast::Item) -> bool {
     }
 }
 
-fn contains_macro_use_attr(attrs: &[ast::Attribute], span: Span) -> bool {
-    attr::contains_name(&filter_inline_attrs(attrs, span), "macro_use")
-}
-
-/// Returns true for `mod foo;` without any inline attributes.
-/// We cannot reorder modules with attributes because doing so can break the code.
-/// e.g. `#[macro_use]`.
-fn is_mod_decl_without_attr(item: &ast::Item) -> bool {
-    is_mod_decl(item) && !contains_macro_use_attr(&item.attrs, item.span())
-}
-
 fn is_use_item(item: &ast::Item) -> bool {
     match item.node {
         ast::ItemKind::Use(_) => true,
@@ -67,19 +56,11 @@ fn is_use_item(item: &ast::Item) -> bool {
     }
 }
 
-fn is_use_item_without_attr(item: &ast::Item) -> bool {
-    is_use_item(item) && !contains_macro_use_attr(&item.attrs, item.span())
-}
-
 fn is_extern_crate(item: &ast::Item) -> bool {
     match item.node {
         ast::ItemKind::ExternCrate(..) => true,
         _ => false,
     }
-}
-
-fn is_extern_crate_without_attr(item: &ast::Item) -> bool {
-    is_extern_crate(item) && !contains_macro_use_attr(&item.attrs, item.span())
 }
 
 /// Creates a string slice corresponding to the specified span.
@@ -641,77 +622,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         false
     }
 
-    fn reorder_items<F>(&mut self, items_left: &[&ast::Item], is_item: &F, in_group: bool) -> usize
-    where
-        F: Fn(&ast::Item) -> bool,
-    {
-        let mut last = self.codemap.lookup_line_range(items_left[0].span());
-        let item_length = items_left
-            .iter()
-            .take_while(|ppi| {
-                is_item(&***ppi) && (!in_group || {
-                    let current = self.codemap.lookup_line_range(ppi.span());
-                    let in_same_group = current.lo < last.hi + 2;
-                    last = current;
-                    in_same_group
-                })
-            })
-            .count();
-        let items = &items_left[..item_length];
-
-        let at_least_one_in_file_lines = items
-            .iter()
-            .any(|item| !out_of_file_lines_range!(self, item.span));
-
-        if at_least_one_in_file_lines {
-            self.format_imports(items);
-        } else {
-            for item in items {
-                self.push_rewrite(item.span, None);
-            }
-        }
-
-        item_length
-    }
-
-    fn walk_items(&mut self, mut items_left: &[&ast::Item]) {
-        macro try_reorder_items_with($reorder: ident, $in_group: ident, $pred: ident) {
-            if self.config.$reorder() && $pred(&*items_left[0]) {
-                let used_items_len =
-                    self.reorder_items(items_left, &$pred, self.config.$in_group());
-                let (_, rest) = items_left.split_at(used_items_len);
-                items_left = rest;
-                continue;
-            }
-        }
-
-        while !items_left.is_empty() {
-            // If the next item is a `use`, `extern crate` or `mod`, then extract it and any
-            // subsequent items that have the same item kind to be reordered within
-            // `format_imports`. Otherwise, just format the next item for output.
-            {
-                try_reorder_items_with!(
-                    reorder_imports,
-                    reorder_imports_in_group,
-                    is_use_item_without_attr
-                );
-                try_reorder_items_with!(
-                    reorder_extern_crates,
-                    reorder_extern_crates_in_group,
-                    is_extern_crate_without_attr
-                );
-                try_reorder_items_with!(reorder_modules, reorder_modules, is_mod_decl_without_attr);
-            }
-            // Reaching here means items were not reordered. There must be at least
-            // one item left in `items_left`, so calling `unwrap()` here is safe.
-            let (item, rest) = items_left.split_first().unwrap();
-            self.visit_item(item);
-            items_left = rest;
-        }
-    }
-
     fn walk_mod_items(&mut self, m: &ast::Mod) {
-        self.walk_items(&ptr_vec_to_ref_vec(&m.items));
+        self.visit_items_with_reordering(&ptr_vec_to_ref_vec(&m.items));
     }
 
     fn walk_stmts(&mut self, stmts: &[ast::Stmt]) {
@@ -737,7 +649,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             self.visit_stmt(&stmts[0]);
             self.walk_stmts(&stmts[1..]);
         } else {
-            self.walk_items(&items);
+            self.visit_items_with_reordering(&items);
             self.walk_stmts(&stmts[items.len()..]);
         }
     }
