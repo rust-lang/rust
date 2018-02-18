@@ -32,10 +32,7 @@ pub use flags::Subcommand;
 
 /// Global configuration for the entire build and/or bootstrap.
 ///
-/// This structure is derived from a combination of both `config.toml` and
-/// `config.mk`. As of the time of this writing it's unlikely that `config.toml`
-/// is used all that much, so this is primarily filled out by `config.mk` which
-/// is generated from `./configure`.
+/// This structure is derived from `config.toml`.
 ///
 /// Note that this structure is not decoded directly into, but rather it is
 /// filled out from the decoded forms of the structs below. For documentation
@@ -258,7 +255,7 @@ struct Install {
 #[serde(default, deny_unknown_fields, rename_all = "kebab-case")]
 struct Llvm {
     enabled: bool,
-    ccache: Option<StringOrBool>,
+    ccache: StringOrBool,
     ninja: bool,
     assertions: bool,
     optimize: bool,
@@ -269,6 +266,20 @@ struct Llvm {
     experimental_targets: String,
     link_jobs: Option<u32>,
     link_shared: bool,
+}
+
+impl Llvm {
+    fn ccache(&self) -> Option<String> {
+        match self.ccache {
+            StringOrBool::String(ref s) => {
+                Some(s.to_string())
+            }
+            StringOrBool::Bool(true) => {
+                Some("ccache".to_string())
+            }
+            StringOrBool::Bool(false) => None,
+        }
+    }
 }
 
 impl Default for Llvm {
@@ -446,12 +457,11 @@ impl Config {
         }).unwrap_or_else(|| TomlConfig::default());
 
         let build = toml.build;
-        set(&mut config.build, build.build.clone().map(|x| INTERNER.intern_string(x)));
-        set(&mut config.build, flags.build);
-        if config.build.is_empty() {
-            // set by bootstrap.py
-            config.build = INTERNER.intern_str(&env::var("BUILD").unwrap());
-        }
+        config.build = flags.build
+            .or_else(|| build.build.clone().map(|b| INTERNER.intern_string(b)))
+            .unwrap_or_else(|| {
+                INTERNER.intern_str(&env::var("BUILD").unwrap())
+            });
         config.hosts.push(config.build.clone());
         for host in build.host.iter() {
             let host = INTERNER.intern_str(host);
@@ -506,15 +516,7 @@ impl Config {
         config.mandir = toml.install.mandir;
 
         let llvm = &toml.llvm;
-        match llvm.ccache {
-            Some(StringOrBool::String(ref s)) => {
-                config.ccache = Some(s.to_string())
-            }
-            Some(StringOrBool::Bool(true)) => {
-                config.ccache = Some("ccache".to_string());
-            }
-            Some(StringOrBool::Bool(false)) | None => {}
-        }
+        config.ccache = llvm.ccache();
         config.ninja = llvm.ninja;
         config.llvm_enabled = llvm.enabled;
         config.llvm_assertions = llvm.assertions;
@@ -655,11 +657,5 @@ impl Config {
 
     pub fn very_verbose(&self) -> bool {
         self.verbose > 1
-    }
-}
-
-fn set<T>(field: &mut T, val: Option<T>) {
-    if let Some(v) = val {
-        *field = v;
     }
 }
