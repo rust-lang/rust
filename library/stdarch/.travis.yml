@@ -24,7 +24,7 @@ matrix:
     - env: DOCUMENTATION
       install: true
       script: ci/dox.sh
-    - script: cargo test --manifest-path stdsimd-verify/Cargo.toml
+    - script: cargo test --manifest-path crates/stdsimd-verify/Cargo.toml
       install: true
     - env: RUSTFMT=On TARGET=x86_64-unknown-linux-gnu NO_ADD=1
       script: |

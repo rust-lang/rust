@@ -47,10 +47,10 @@ fn hex_encode<'a>(src: &[u8], dst: &'a mut [u8]) -> Result<&'a str, usize> {
 
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     {
-        if cfg_feature_enabled!("avx2") {
+        if is_target_feature_detected!("avx2") {
             return unsafe { hex_encode_avx2(src, dst) };
         }
-        if cfg_feature_enabled!("sse4.1") {
+        if is_target_feature_detected!("sse4.1") {
             return unsafe { hex_encode_sse41(src, dst) };
         }
     }
@@ -190,13 +190,13 @@ mod tests {
 
         #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
         unsafe {
-            if cfg_feature_enabled!("avx2") {
+            if is_target_feature_detected!("avx2") {
                 assert_eq!(
                     hex_encode_avx2(input, &mut tmp()).unwrap(),
                     output
                 );
             }
-            if cfg_feature_enabled!("sse4.1") {
+            if is_target_feature_detected!("sse4.1") {
                 assert_eq!(
                     hex_encode_sse41(input, &mut tmp()).unwrap(),
                     output
@@ -257,7 +257,7 @@ mod tests {
 
         #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
         fn avx_equals_fallback(input: Vec<u8>) -> bool {
-            if !cfg_feature_enabled!("avx2") {
+            if !is_target_feature_detected!("avx2") {
                 return true
             }
             let mut space1 = vec![0; input.len() * 2];
@@ -269,7 +269,7 @@ mod tests {
 
         #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
         fn sse41_equals_fallback(input: Vec<u8>) -> bool {
-            if !cfg_feature_enabled!("avx2") {
+            if !is_target_feature_detected!("avx2") {
                 return true
             }
             let mut space1 = vec![0; input.len() * 2];
@@ -336,28 +336,28 @@ mod benches {
 
         #[bench]
         fn small_avx2(b: &mut test::Bencher) {
-            if cfg_feature_enabled!("avx2") {
+            if is_target_feature_detected!("avx2") {
                 doit(b, SMALL_LEN, hex_encode_avx2);
             }
         }
 
         #[bench]
         fn small_sse41(b: &mut test::Bencher) {
-            if cfg_feature_enabled!("sse4.1") {
+            if is_target_feature_detected!("sse4.1") {
                 doit(b, SMALL_LEN, hex_encode_sse41);
             }
         }
 
         #[bench]
         fn large_avx2(b: &mut test::Bencher) {
-            if cfg_feature_enabled!("avx2") {
+            if is_target_feature_detected!("avx2") {
                 doit(b, LARGE_LEN, hex_encode_avx2);
             }
         }
 
         #[bench]
         fn large_sse41(b: &mut test::Bencher) {
-            if cfg_feature_enabled!("sse4.1") {
+            if is_target_feature_detected!("sse4.1") {
                 doit(b, LARGE_LEN, hex_encode_sse41);
             }
         }

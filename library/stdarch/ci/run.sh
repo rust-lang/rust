@@ -23,7 +23,7 @@ echo "OBJDUMP=${OBJDUMP}"
 
 cargo_test() {
     cmd="cargo test --target=$TARGET --features $FEATURES $1"
-    cmd="$cmd -p coresimd -p stdsimd"
+    cmd="$cmd -p coresimd -p stdsimd --manifest-path crates/stdsimd/Cargo.toml"
     cmd="$cmd -- $2"
     $cmd
 }

@@ -1,33 +1,8 @@
-[package]
-name = "stdsimd"
-version = "0.0.3"
-authors = ["Andrew Gallant <jamslam@gmail.com>"]
-description = "SIMD support in Rust's standard library."
-documentation = "https://docs.rs/stdsimd"
-homepage = "https://github.com/rust-lang-nursery/stdsimd"
-repository = "https://github.com/rust-lang-nursery/stdsimd"
-readme = "README.md"
-keywords = ["std", "simd", "intrinsics"]
-categories = ["hardware-support"]
-license = "MIT/Apache-2.0"
-
 [workspace]
-members = ["stdsimd-verify"]
-
-[badges]
-travis-ci = { repository = "rust-lang-nursery/stdsimd" }
-appveyor = { repository = "rust-lang-nursery/stdsimd"  }
-is-it-maintained-issue-resolution = { repository = "rust-lang-nursery/stdsimd" }
-is-it-maintained-open-issues = { repository = "rust-lang-nursery/stdsimd" }
-maintenance = { status = "experimental" }
-
-[dependencies]
-coresimd = { version = "0.0.3", path = "coresimd/" }
-
-[dev-dependencies]
-auxv = "0.3.3"
-quickcheck = "0.6"
-rand = "0.4"
+members = [
+  "crates/stdsimd-verify",
+  "crates/stdsimd",
+]
 
 [profile.release]
 debug = true
@@ -36,10 +11,3 @@ opt-level = 3
 [profile.bench]
 debug = 1
 opt-level = 3
-
-[features]
-# Internal-usage only: denies all warnings.
-strict = [ "coresimd/strict" ]
-# Internal-usage only: enables only those intrinsics supported by Intel's
-# Software Development Environment (SDE).
-intel_sde = [ "coresimd/intel_sde" ]
