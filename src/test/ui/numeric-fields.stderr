@@ -2,7 +2,7 @@ error[E0560]: struct `S` has no field named `0b1`
   --> $DIR/numeric-fields.rs:14:15
    |
 14 |     let s = S{0b1: 10, 0: 11};
-   |               ^^^^ `S` does not have this field
+   |               ^^^ `S` does not have this field
    |
    = note: available fields are: `0`, `1`
 
