@@ -1008,7 +1008,7 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option
 
 /// Resolve a string as a macro
 fn macro_resolve(cx: &DocContext, path_str: &str) -> Option<Def> {
-    use syntax::ext::base::MacroKind;
+    use syntax::ext::base::{MacroKind, SyntaxExtension};
     use syntax::ext::hygiene::Mark;
     let segment = ast::PathSegment {
         identifier: ast::Ident::from_str(path_str),
@@ -1025,7 +1025,11 @@ fn macro_resolve(cx: &DocContext, path_str: &str) -> Option<Def> {
     let res = resolver
         .resolve_macro_to_def_inner(mark, &path, MacroKind::Bang, false);
     if let Ok(def) = res {
-        Some(def)
+        if let SyntaxExtension::DeclMacro(..) = *resolver.get_macro(def) {
+            Some(def)
+        } else {
+            None
+        }
     } else if let Some(def) = resolver.all_macros.get(&path_str.into()) {
         Some(*def)
     } else {
