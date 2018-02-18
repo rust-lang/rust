@@ -2,7 +2,7 @@ error[E0560]: struct `Simba` has no field named `father`
   --> $DIR/E0560.rs:16:32
    |
 16 |     let s = Simba { mother: 1, father: 0 };
-   |                                ^^^^^^^ `Simba` does not have this field
+   |                                ^^^^^^ `Simba` does not have this field
    |
    = note: available fields are: `mother`
 

@@ -2,13 +2,13 @@ error[E0560]: struct `submodule::Demo` has no field named `inocently_mispellable
   --> $DIR/issue-42599_available_fields_note.rs:26:39
    |
 26 |             Self { secret_integer: 2, inocently_mispellable: () }
-   |                                       ^^^^^^^^^^^^^^^^^^^^^^ field does not exist - did you mean `innocently_misspellable`?
+   |                                       ^^^^^^^^^^^^^^^^^^^^^ field does not exist - did you mean `innocently_misspellable`?
 
 error[E0560]: struct `submodule::Demo` has no field named `egregiously_nonexistent_field`
   --> $DIR/issue-42599_available_fields_note.rs:31:39
    |
 31 |             Self { secret_integer: 3, egregiously_nonexistent_field: () }
-   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `submodule::Demo` does not have this field
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `submodule::Demo` does not have this field
    |
    = note: available fields are: `favorite_integer`, `secret_integer`, `innocently_misspellable`, `another_field`, `yet_another_field` ... and 2 others
 
