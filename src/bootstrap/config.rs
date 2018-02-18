@@ -545,26 +545,19 @@ impl Config {
         }
 
         for (triple, cfg) in toml.target {
-            let mut target = Target::default();
-
-            if let Some(ref s) = cfg.llvm_config {
-                target.llvm_config = Some(env::current_dir().unwrap().join(s));
-            }
-            if let Some(ref s) = cfg.jemalloc {
-                target.jemalloc = Some(env::current_dir().unwrap().join(s));
-            }
-            if let Some(ref s) = cfg.android_ndk {
-                target.ndk = Some(env::current_dir().unwrap().join(s));
-            }
-            target.cc = cfg.cc.clone();
-            target.cxx = cfg.cxx.clone();
-            target.ar = cfg.ar.clone();
-            target.linker = cfg.linker.clone();
-            target.crt_static = cfg.crt_static.clone();
-            target.musl_root = cfg.musl_root.clone();
-            target.qemu_rootfs = cfg.qemu_rootfs.clone();
-
-            config.target_config.insert(INTERNER.intern_string(triple.clone()), target);
+            let cwd = t!(env::current_dir());
+            config.target_config.insert(INTERNER.intern_string(triple.clone()), Target {
+                llvm_config: cfg.llvm_config.map(|p| cwd.join(p)),
+                jemalloc: cfg.jemalloc.map(|p| cwd.join(p)),
+                ndk: cfg.android_ndk.map(|p| cwd.join(p)),
+                cc: cfg.cc,
+                cxx: cfg.cxx,
+                ar: cfg.ar,
+                linker: cfg.linker,
+                crt_static: cfg.crt_static,
+                musl_root: cfg.musl_root,
+                qemu_rootfs: cfg.qemu_rootfs,
+            });
         }
 
         config.dist_sign_folder = toml.dist.sign_folder.clone();
