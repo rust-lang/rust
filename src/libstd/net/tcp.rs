@@ -1545,6 +1545,26 @@ mod tests {
         drop(listener);
     }
 
+    // Ensure the `set_read_timeout` and `set_write_timeout` calls return errors
+    // when passed zero Durations
+    #[test]
+    fn test_timeout_zero_duration() {
+        let addr = next_test_ip4();
+
+        let listener = t!(TcpListener::bind(&addr));
+        let stream = t!(TcpStream::connect(&addr));
+
+        let result = stream.set_write_timeout(Some(Duration::new(0, 0)));
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::InvalidInput);
+
+        let result = stream.set_read_timeout(Some(Duration::new(0, 0)));
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::InvalidInput);
+
+        drop(listener);
+    }
+
     #[test]
     fn nodelay() {
         let addr = next_test_ip4();

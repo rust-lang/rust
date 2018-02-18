@@ -1410,7 +1410,7 @@ impl IntoRawFd for UnixDatagram {
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod test {
     use thread;
-    use io;
+    use io::{self, ErrorKind};
     use io::prelude::*;
     use time::Duration;
     use sys_common::io::test::tmpdir;
@@ -1613,6 +1613,27 @@ mod test {
         assert!(kind == io::ErrorKind::WouldBlock || kind == io::ErrorKind::TimedOut);
     }
 
+    // Ensure the `set_read_timeout` and `set_write_timeout` calls return errors
+    // when passed zero Durations
+    #[test]
+    fn test_unix_stream_timeout_zero_duration() {
+        let dir = tmpdir();
+        let socket_path = dir.path().join("sock");
+
+        let listener = or_panic!(UnixListener::bind(&socket_path));
+        let stream = or_panic!(UnixStream::connect(&socket_path));
+
+        let result = stream.set_write_timeout(Some(Duration::new(0, 0)));
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::InvalidInput);
+
+        let result = stream.set_read_timeout(Some(Duration::new(0, 0)));
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::InvalidInput);
+
+        drop(listener);
+    }
+
     #[test]
     fn test_unix_datagram() {
         let dir = tmpdir();
@@ -1710,6 +1731,24 @@ mod test {
         drop(s2);
 
         thread.join().unwrap();
+    }
+
+    // Ensure the `set_read_timeout` and `set_write_timeout` calls return errors
+    // when passed zero Durations
+    #[test]
+    fn test_unix_datagram_timeout_zero_duration() {
+        let dir = tmpdir();
+        let path = dir.path().join("sock");
+
+        let datagram = or_panic!(UnixDatagram::bind(&path));
+
+        let result = datagram.set_write_timeout(Some(Duration::new(0, 0)));
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::InvalidInput);
+
+        let result = datagram.set_read_timeout(Some(Duration::new(0, 0)));
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::InvalidInput);
     }
 
     #[test]
