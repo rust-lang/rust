@@ -16,6 +16,6 @@ deploy:
   provider: pages
   skip-cleanup: true
   github-token: $GITHUB_TOKEN
-  local-dir: book
+  local-dir: book/html
   on:
     branch: master
