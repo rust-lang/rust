@@ -652,7 +652,7 @@ pub fn panicking() -> bool {
 /// The thread may sleep longer than the duration specified due to scheduling
 /// specifics or platform-dependent functionality.
 ///
-/// # Platform behavior
+/// # Platform-specific behavior
 ///
 /// On Unix platforms this function will not return early due to a
 /// signal being received or a spurious wakeup.
@@ -676,7 +676,7 @@ pub fn sleep_ms(ms: u32) {
 /// The thread may sleep longer than the duration specified due to scheduling
 /// specifics or platform-dependent functionality.
 ///
-/// # Platform behavior
+/// # Platform-specific behavior
 ///
 /// On Unix platforms this function will not return early due to a
 /// signal being received or a spurious wakeup. Platforms which do not support
@@ -837,7 +837,7 @@ pub fn park_timeout_ms(ms: u32) {
 ///
 /// See the [park documentation][park] for more details.
 ///
-/// # Platform behavior
+/// # Platform-specific behavior
 ///
 /// Platforms which do not support nanosecond precision for sleeping will have
 /// `dur` rounded up to the nearest granularity of time they can sleep for.
