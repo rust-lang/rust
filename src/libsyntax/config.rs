@@ -114,7 +114,7 @@ impl<'a> StripUnconfigured<'a> {
         }
     }
 
-    // Determine if a node with the given attributes should be included in this configuation.
+    // Determine if a node with the given attributes should be included in this configuration.
     pub fn in_cfg(&mut self, attrs: &[ast::Attribute]) -> bool {
         attrs.iter().all(|attr| {
             // When not compiling with --test we should not compile the #[test] functions

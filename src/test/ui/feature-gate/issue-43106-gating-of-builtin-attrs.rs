@@ -509,7 +509,7 @@ mod reexport_test_harness_main {
     //~^ WARN unused attribute
 }
 
-// Cannnot feed "2700" to `#[macro_escape]` without signaling an error.
+// Cannot feed "2700" to `#[macro_escape]` without signaling an error.
 #[macro_escape]
 //~^ WARN macro_escape is a deprecated synonym for macro_use
 mod macro_escape {

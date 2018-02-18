@@ -226,6 +226,7 @@ pub struct Build {
     rustfmt_info: channel::GitInfo,
     local_rebuild: bool,
     fail_fast: bool,
+    doc_tests: bool,
     verbosity: usize,
 
     // Targets for which to build.
@@ -326,6 +327,7 @@ impl Build {
             initial_cargo: config.initial_cargo.clone(),
             local_rebuild: config.local_rebuild,
             fail_fast: config.cmd.fail_fast(),
+            doc_tests: config.cmd.doc_tests(),
             verbosity: config.verbose,
 
             build: config.build,

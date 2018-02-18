@@ -60,6 +60,7 @@ pub enum Subcommand {
         test_args: Vec<String>,
         rustc_args: Vec<String>,
         fail_fast: bool,
+        doc_tests: bool,
     },
     Bench {
         paths: Vec<PathBuf>,
@@ -164,6 +165,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
                     "extra options to pass the compiler when running tests",
                     "ARGS",
                 );
+                opts.optflag("", "doc", "run doc tests");
             },
             "bench" => { opts.optmulti("", "test-args", "extra arguments", "ARGS"); },
             "clean" => { opts.optflag("", "all", "clean all build artifacts"); },
@@ -320,6 +322,7 @@ Arguments:
                     test_args: matches.opt_strs("test-args"),
                     rustc_args: matches.opt_strs("rustc-args"),
                     fail_fast: !matches.opt_present("no-fail-fast"),
+                    doc_tests: matches.opt_present("doc"),
                 }
             }
             "bench" => {
@@ -407,6 +410,13 @@ impl Subcommand {
     pub fn fail_fast(&self) -> bool {
         match *self {
             Subcommand::Test { fail_fast, .. } => fail_fast,
+            _ => false,
+        }
+    }
+
+    pub fn doc_tests(&self) -> bool {
+        match *self {
+            Subcommand::Test { doc_tests, .. } => doc_tests,
             _ => false,
         }
     }

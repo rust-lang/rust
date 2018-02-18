@@ -12,8 +12,8 @@
 
 use std::collections::BTreeMap;
 use std::io;
-use std::iter::once;
 use std::rc::Rc;
+use std::iter::once;
 
 use syntax::ast;
 use rustc::hir;
@@ -25,7 +25,7 @@ use rustc::util::nodemap::FxHashSet;
 
 use core::{DocContext, DocAccessLevels};
 use doctree;
-use clean::{self, GetDefId};
+use clean::{self, GetDefId, get_auto_traits_with_def_id};
 
 use super::Clean;
 
@@ -50,7 +50,7 @@ pub fn try_inline(cx: &DocContext, def: Def, name: ast::Name)
     let inner = match def {
         Def::Trait(did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Trait);
-            ret.extend(build_impls(cx, did));
+            ret.extend(build_impls(cx, did, false));
             clean::TraitItem(build_external_trait(cx, did))
         }
         Def::Fn(did) => {
@@ -59,27 +59,27 @@ pub fn try_inline(cx: &DocContext, def: Def, name: ast::Name)
         }
         Def::Struct(did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Struct);
-            ret.extend(build_impls(cx, did));
+            ret.extend(build_impls(cx, did, true));
             clean::StructItem(build_struct(cx, did))
         }
         Def::Union(did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Union);
-            ret.extend(build_impls(cx, did));
+            ret.extend(build_impls(cx, did, true));
             clean::UnionItem(build_union(cx, did))
         }
         Def::TyAlias(did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Typedef);
-            ret.extend(build_impls(cx, did));
+            ret.extend(build_impls(cx, did, false));
             clean::TypedefItem(build_type_alias(cx, did), false)
         }
         Def::Enum(did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Enum);
-            ret.extend(build_impls(cx, did));
+            ret.extend(build_impls(cx, did, true));
             clean::EnumItem(build_enum(cx, did))
         }
         Def::TyForeign(did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Foreign);
-            ret.extend(build_impls(cx, did));
+            ret.extend(build_impls(cx, did, false));
             clean::ForeignTypeItem
         }
         // Never inline enum variants but leave them shown as re-exports.
@@ -125,6 +125,11 @@ pub fn load_attrs(cx: &DocContext, did: DefId) -> clean::Attributes {
 /// These names are used later on by HTML rendering to generate things like
 /// source links back to the original item.
 pub fn record_extern_fqn(cx: &DocContext, did: DefId, kind: clean::TypeKind) {
+    if did.is_local() {
+        debug!("record_extern_fqn(did={:?}, kind+{:?}): def_id is local, aborting", did, kind);
+        return;
+    }
+
     let crate_name = cx.tcx.crate_name(did.krate).to_string();
     let relative = cx.tcx.def_path(did).data.into_iter().filter_map(|elem| {
         // extern blocks have an empty name
@@ -144,6 +149,7 @@ pub fn record_extern_fqn(cx: &DocContext, did: DefId, kind: clean::TypeKind) {
 }
 
 pub fn build_external_trait(cx: &DocContext, did: DefId) -> clean::Trait {
+    let auto_trait = cx.tcx.trait_def(did).has_auto_impl;
     let trait_items = cx.tcx.associated_items(did).map(|item| item.clean(cx)).collect();
     let predicates = cx.tcx.predicates_of(did);
     let generics = (cx.tcx.generics_of(did), &predicates).clean(cx);
@@ -152,6 +158,7 @@ pub fn build_external_trait(cx: &DocContext, did: DefId) -> clean::Trait {
     let is_spotlight = load_attrs(cx, did).has_doc_flag("spotlight");
     let is_auto = cx.tcx.trait_is_auto(did);
     clean::Trait {
+        auto: auto_trait,
         unsafety: cx.tcx.trait_def(did).unsafety,
         generics,
         items: trait_items,
@@ -227,12 +234,22 @@ fn build_type_alias(cx: &DocContext, did: DefId) -> clean::Typedef {
     }
 }
 
-pub fn build_impls(cx: &DocContext, did: DefId) -> Vec<clean::Item> {
+pub fn build_impls(cx: &DocContext, did: DefId, auto_traits: bool) -> Vec<clean::Item> {
     let tcx = cx.tcx;
     let mut impls = Vec::new();
 
     for &did in tcx.inherent_impls(did).iter() {
         build_impl(cx, did, &mut impls);
+    }
+
+    if auto_traits {
+        let auto_impls = get_auto_traits_with_def_id(cx, did);
+        let mut renderinfo = cx.renderinfo.borrow_mut();
+
+        let new_impls: Vec<clean::Item> = auto_impls.into_iter()
+            .filter(|i| renderinfo.inlined.insert(i.def_id)).collect();
+
+        impls.extend(new_impls);
     }
 
     // If this is the first time we've inlined something from another crate, then
@@ -347,13 +364,14 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
 
     ret.push(clean::Item {
         inner: clean::ImplItem(clean::Impl {
-            unsafety: hir::Unsafety::Normal, // FIXME: this should be decoded
+            unsafety: hir::Unsafety::Normal,
+            generics: (tcx.generics_of(did), &predicates).clean(cx),
             provided_trait_methods: provided,
             trait_,
             for_,
-            generics: (tcx.generics_of(did), &predicates).clean(cx),
             items: trait_items,
             polarity: Some(polarity.clean(cx)),
+            synthetic: false,
         }),
         source: tcx.def_span(did).clean(cx),
         name: None,

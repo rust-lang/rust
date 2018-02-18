@@ -56,7 +56,7 @@ pub struct GlobalId<'tcx> {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub trait PointerArithmetic: layout::HasDataLayout {
-    // These are not supposed to be overriden.
+    // These are not supposed to be overridden.
 
     //// Trunace the given value to the pointer size; also return whether there was an overflow
     fn truncate_to_ptr(self, val: u128) -> (u64, bool) {

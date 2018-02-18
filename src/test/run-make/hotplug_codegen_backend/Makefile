@@ -6,4 +6,4 @@ all:
 		-o $(TMPDIR)/the_backend.dylib
 	$(RUSTC) some_crate.rs --crate-name some_crate --crate-type bin -o $(TMPDIR)/some_crate \
 		-Z codegen-backend=$(TMPDIR)/the_backend.dylib -Z unstable-options
-	grep -x "This has been \"compiled\" succesfully." $(TMPDIR)/some_crate
+	grep -x "This has been \"compiled\" successfully." $(TMPDIR)/some_crate

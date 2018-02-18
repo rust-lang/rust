@@ -14,7 +14,7 @@
 fn foo(x: usize, y: !, z: usize) { }
 
 fn call_foo_a() {
-    // FIXME(#40800) -- accepted beacuse divergence happens **before**
+    // FIXME(#40800) -- accepted because divergence happens **before**
     // the coercion to `!`, but within same expression. Not clear that
     // these are the rules we want.
     foo(return, 22, 44);

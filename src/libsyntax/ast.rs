@@ -918,7 +918,7 @@ pub struct Expr {
 }
 
 impl Expr {
-    /// Wether this expression would be valid somewhere that expects a value, for example, an `if`
+    /// Whether this expression would be valid somewhere that expects a value, for example, an `if`
     /// condition.
     pub fn returns(&self) -> bool {
         if let ExprKind::Block(ref block) = self.node {
@@ -1937,10 +1937,12 @@ pub enum CrateSugar {
     JustCrate,
 }
 
+pub type Visibility = Spanned<VisibilityKind>;
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum Visibility {
+pub enum VisibilityKind {
     Public,
-    Crate(Span, CrateSugar),
+    Crate(CrateSugar),
     Restricted { path: P<Path>, id: NodeId },
     Inherited,
 }

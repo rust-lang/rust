@@ -117,7 +117,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
             for move_error in move_errors {
                 let (span, kind): (Span, IllegalMoveOriginKind) = match move_error {
                     MoveError::UnionMove { .. } => {
-                        unimplemented!("dont know how to report union move errors yet.")
+                        unimplemented!("don't know how to report union move errors yet.")
                     }
                     MoveError::IllegalMove {
                         cannot_move_out_of: o,
@@ -1424,7 +1424,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// tracked in the MoveData.
     ///
     /// An Err result includes a tag indicated why the search failed.
-    /// Currenly this can only occur if the place is built off of a
+    /// Currently this can only occur if the place is built off of a
     /// static variable, as we do not track those in the MoveData.
     fn move_path_closest_to(
         &mut self,
@@ -1439,7 +1439,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
         match *last_prefix {
             Place::Local(_) => panic!("should have move path for every Local"),
-            Place::Projection(_) => panic!("PrefixSet::All meant dont stop for Projection"),
+            Place::Projection(_) => panic!("PrefixSet::All meant don't stop for Projection"),
             Place::Static(_) => return Err(NoMovePathFound::ReachedStatic),
         }
     }
@@ -1484,7 +1484,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         { }
 
                         ProjectionElem::Subslice { .. } => {
-                            panic!("we dont allow assignments to subslices, context: {:?}",
+                            panic!("we don't allow assignments to subslices, context: {:?}",
                                    context);
                         }
 

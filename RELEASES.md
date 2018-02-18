@@ -29,7 +29,7 @@ Libraries
 - [Copied `AsciiExt` methods onto `char`][46077]
 - [Remove `T: Sized` requirement on `ptr::is_null()`][46094]
 - [impl `From<RecvError>` for `{TryRecvError, RecvTimeoutError}`][45506]
-- [Optimised `f32::{min, max}` to generate more efficent x86 assembly][47080]
+- [Optimised `f32::{min, max}` to generate more efficient x86 assembly][47080]
 - [`[u8]::contains` now uses memchr which provides a 3x speed improvement][46713]
 
 Stabilized APIs

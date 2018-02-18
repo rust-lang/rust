@@ -180,7 +180,7 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // for each body-id in this map, which will process the
     // obligations within. This is expected to be done 'late enough'
     // that all type inference variables have been bound and so forth.
-    region_obligations: RefCell<Vec<(ast::NodeId, RegionObligation<'tcx>)>>,
+    pub region_obligations: RefCell<Vec<(ast::NodeId, RegionObligation<'tcx>)>>,
 }
 
 /// A map returned by `skolemize_late_bound_regions()` indicating the skolemized
@@ -1555,10 +1555,19 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         InferOk { value, obligations }
     }
 
-    fn borrow_region_constraints(&self) -> RefMut<'_, RegionConstraintCollector<'tcx>> {
+    pub fn borrow_region_constraints(&self) -> RefMut<'_, RegionConstraintCollector<'tcx>> {
         RefMut::map(
             self.region_constraints.borrow_mut(),
             |c| c.as_mut().expect("region constraints already solved"))
+    }
+
+    /// Clears the selection, evaluation, and projection cachesThis is useful when
+    /// repeatedly attemping to select an Obligation while changing only
+    /// its ParamEnv, since FulfillmentContext doesn't use 'probe'
+    pub fn clear_caches(&self) {
+        self.selection_cache.clear();
+        self.evaluation_cache.clear();
+        self.projection_cache.borrow_mut().clear();
     }
 }
 

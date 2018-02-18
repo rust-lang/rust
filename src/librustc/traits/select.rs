@@ -93,6 +93,11 @@ pub struct SelectionContext<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
     inferred_obligations: SnapshotVec<InferredObligationsSnapshotVecDelegate<'tcx>>,
 
     intercrate_ambiguity_causes: Option<Vec<IntercrateAmbiguityCause>>,
+
+    /// Controls whether or not to filter out negative impls when selecting.
+    /// This is used in librustdoc to distinguish between the lack of an impl
+    /// and a negative impl
+    allow_negative_impls: bool
 }
 
 #[derive(Clone, Debug)]
@@ -424,6 +429,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             intercrate: None,
             inferred_obligations: SnapshotVec::new(),
             intercrate_ambiguity_causes: None,
+            allow_negative_impls: false,
         }
     }
 
@@ -436,6 +442,20 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             intercrate: Some(mode),
             inferred_obligations: SnapshotVec::new(),
             intercrate_ambiguity_causes: None,
+            allow_negative_impls: false,
+        }
+    }
+
+    pub fn with_negative(infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
+                         allow_negative_impls: bool) -> SelectionContext<'cx, 'gcx, 'tcx> {
+        debug!("with_negative({:?})", allow_negative_impls);
+        SelectionContext {
+            infcx,
+            freshener: infcx.freshener(),
+            intercrate: None,
+            inferred_obligations: SnapshotVec::new(),
+            intercrate_ambiguity_causes: None,
+            allow_negative_impls,
         }
     }
 
@@ -1086,7 +1106,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn filter_negative_impls(&self, candidate: SelectionCandidate<'tcx>)
                              -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
         if let ImplCandidate(def_id) = candidate {
-            if self.tcx().impl_polarity(def_id) == hir::ImplPolarity::Negative {
+            if !self.allow_negative_impls &&
+                self.tcx().impl_polarity(def_id) == hir::ImplPolarity::Negative {
                 return Err(Unimplemented)
             }
         }
@@ -3337,6 +3358,10 @@ impl<'tcx> SelectionCache<'tcx> {
             hashmap: RefCell::new(FxHashMap())
         }
     }
+
+    pub fn clear(&self) {
+        *self.hashmap.borrow_mut() = FxHashMap()
+    }
 }
 
 impl<'tcx> EvaluationCache<'tcx> {
@@ -3344,6 +3369,10 @@ impl<'tcx> EvaluationCache<'tcx> {
         EvaluationCache {
             hashmap: RefCell::new(FxHashMap())
         }
+    }
+
+    pub fn clear(&self) {
+        *self.hashmap.borrow_mut() = FxHashMap()
     }
 }
 

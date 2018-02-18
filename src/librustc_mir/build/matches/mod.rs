@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Code related to match expresions. These are sufficiently complex
+//! Code related to match expressions. These are sufficiently complex
 //! to warrant their own module and submodules. :) This main module
 //! includes the high-level algorithm, the submodules contain the
 //! details.

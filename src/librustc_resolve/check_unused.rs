@@ -17,7 +17,7 @@
 // `use` directives.
 //
 // Unused trait imports can't be checked until the method resolution. We save
-// candidates here, and do the acutal check in librustc_typeck/check_unused.rs.
+// candidates here, and do the actual check in librustc_typeck/check_unused.rs.
 
 use std::ops::{Deref, DerefMut};
 
@@ -86,7 +86,7 @@ impl<'a, 'b> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b> {
         // because this means that they were generated in some fashion by the
         // compiler and we don't need to consider them.
         if let ast::ItemKind::Use(..) = item.node {
-            if item.vis == ast::Visibility::Public || item.span.source_equal(&DUMMY_SP) {
+            if item.vis.node == ast::VisibilityKind::Public || item.span.source_equal(&DUMMY_SP) {
                 return;
             }
         }

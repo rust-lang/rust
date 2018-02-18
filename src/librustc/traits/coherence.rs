@@ -277,7 +277,7 @@ pub fn orphan_check<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 ///     is bad, because the only local type with `T` as a subtree is
 ///     `LocalType<T>`, and `Vec<->` is between it and the type parameter.
 ///     - similarly, `FundamentalPair<LocalType<T>, T>` is bad, because
-///     the second occurence of `T` is not a subtree of *any* local type.
+///     the second occurrence of `T` is not a subtree of *any* local type.
 ///     - however, `LocalType<Vec<T>>` is OK, because `T` is a subtree of
 ///     `LocalType<Vec<T>>`, which is local and has no types between it and
 ///     the type parameter.

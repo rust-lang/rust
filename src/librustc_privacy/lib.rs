@@ -781,7 +781,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
     // Additionally, until better reachability analysis for macros 2.0 is available,
     // we prohibit access to private statics from other crates, this allows to give
     // more code internal visibility at link time. (Access to private functions
-    // is already prohibited by type privacy for funciton types.)
+    // is already prohibited by type privacy for function types.)
     fn visit_qpath(&mut self, qpath: &'tcx hir::QPath, id: ast::NodeId, span: Span) {
         let def = match *qpath {
             hir::QPath::Resolved(_, ref path) => match path.def {

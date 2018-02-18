@@ -233,11 +233,11 @@ fn mk_reexport_mod(cx: &mut TestCtxt,
     let super_ = Ident::from_str("super");
 
     let items = tests.into_iter().map(|r| {
-        cx.ext_cx.item_use_simple(DUMMY_SP, ast::Visibility::Public,
+        cx.ext_cx.item_use_simple(DUMMY_SP, dummy_spanned(ast::VisibilityKind::Public),
                                   cx.ext_cx.path(DUMMY_SP, vec![super_, r]))
     }).chain(tested_submods.into_iter().map(|(r, sym)| {
         let path = cx.ext_cx.path(DUMMY_SP, vec![super_, r, sym]);
-        cx.ext_cx.item_use_simple_(DUMMY_SP, ast::Visibility::Public, r, path)
+        cx.ext_cx.item_use_simple_(DUMMY_SP, dummy_spanned(ast::VisibilityKind::Public), r, path)
     })).collect();
 
     let reexport_mod = ast::Mod {
@@ -253,7 +253,7 @@ fn mk_reexport_mod(cx: &mut TestCtxt,
         attrs: Vec::new(),
         id: ast::DUMMY_NODE_ID,
         node: ast::ItemKind::Mod(reexport_mod),
-        vis: ast::Visibility::Public,
+        vis: dummy_spanned(ast::VisibilityKind::Public),
         span: DUMMY_SP,
         tokens: None,
     })).pop().unwrap();
@@ -462,16 +462,16 @@ fn mk_std(cx: &TestCtxt) -> P<ast::Item> {
             prefix: path_node(vec![id_test]),
             kind: ast::UseTreeKind::Simple(id_test),
         })),
-         ast::Visibility::Public, keywords::Invalid.ident())
+         ast::VisibilityKind::Public, keywords::Invalid.ident())
     } else {
-        (ast::ItemKind::ExternCrate(None), ast::Visibility::Inherited, id_test)
+        (ast::ItemKind::ExternCrate(None), ast::VisibilityKind::Inherited, id_test)
     };
     P(ast::Item {
         id: ast::DUMMY_NODE_ID,
         ident,
         node: vi,
         attrs: vec![],
-        vis,
+        vis: dummy_spanned(vis),
         span: sp,
         tokens: None,
     })
@@ -513,7 +513,7 @@ fn mk_main(cx: &mut TestCtxt) -> P<ast::Item> {
         attrs: vec![main_attr],
         id: ast::DUMMY_NODE_ID,
         node: main,
-        vis: ast::Visibility::Public,
+        vis: dummy_spanned(ast::VisibilityKind::Public),
         span: sp,
         tokens: None,
     })
@@ -543,7 +543,7 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<P<ast::Item>>) {
         ident: mod_ident,
         attrs: vec![],
         node: item_,
-        vis: ast::Visibility::Public,
+        vis: dummy_spanned(ast::VisibilityKind::Public),
         span: DUMMY_SP,
         tokens: None,
     })).pop().unwrap();
@@ -562,7 +562,7 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<P<ast::Item>>) {
             ident: keywords::Invalid.ident(),
             attrs: vec![],
             node: ast::ItemKind::Use(P(use_path)),
-            vis: ast::Visibility::Inherited,
+            vis: dummy_spanned(ast::VisibilityKind::Inherited),
             span: DUMMY_SP,
             tokens: None,
         })).pop().unwrap()
