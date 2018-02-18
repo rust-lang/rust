@@ -259,8 +259,8 @@ impl TcpStream {
     /// Sets the read timeout to the timeout specified.
     ///
     /// If the value specified is [`None`], then [`read`] calls will block
-    /// indefinitely. It is an error to pass the zero `Duration` to this
-    /// method.
+    /// indefinitely. An [`Err`] is returned if the zero [`Duration`] is
+    /// passed to this method.
     ///
     /// # Platform-specific behavior
     ///
@@ -269,9 +269,11 @@ impl TcpStream {
     /// error of the kind [`WouldBlock`], but Windows may return [`TimedOut`].
     ///
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
     /// [`read`]: ../../std/io/trait.Read.html#tymethod.read
     /// [`WouldBlock`]: ../../std/io/enum.ErrorKind.html#variant.WouldBlock
     /// [`TimedOut`]: ../../std/io/enum.ErrorKind.html#variant.TimedOut
+    /// [`Duration`]: ../../std/time/struct.Duration.html
     ///
     /// # Examples
     ///
@@ -282,6 +284,20 @@ impl TcpStream {
     ///                        .expect("Couldn't connect to the server...");
     /// stream.set_read_timeout(None).expect("set_read_timeout call failed");
     /// ```
+    ///
+    /// An [`Err`] is returned if the zero [`Duration`] is passed to this
+    /// method:
+    ///
+    /// ```no_run
+    /// use std::io;
+    /// use std::net::TcpStream;
+    /// use std::time::Duration;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8080").unwrap();
+    /// let result = stream.set_read_timeout(Some(Duration::new(0, 0)));
+    /// let err = result.unwrap_err();
+    /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
+    /// ```
     #[stable(feature = "socket_timeout", since = "1.4.0")]
     pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         self.0.set_read_timeout(dur)
@@ -290,8 +306,8 @@ impl TcpStream {
     /// Sets the write timeout to the timeout specified.
     ///
     /// If the value specified is [`None`], then [`write`] calls will block
-    /// indefinitely. It is an error to pass the zero [`Duration`] to this
-    /// method.
+    /// indefinitely. An [`Err`] is returned if the zero [`Duration`] is
+    /// passed to this method.
     ///
     /// # Platform-specific behavior
     ///
@@ -300,6 +316,7 @@ impl TcpStream {
     /// an error of the kind [`WouldBlock`], but Windows may return [`TimedOut`].
     ///
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
     /// [`write`]: ../../std/io/trait.Write.html#tymethod.write
     /// [`Duration`]: ../../std/time/struct.Duration.html
     /// [`WouldBlock`]: ../../std/io/enum.ErrorKind.html#variant.WouldBlock
@@ -313,6 +330,20 @@ impl TcpStream {
     /// let stream = TcpStream::connect("127.0.0.1:8080")
     ///                        .expect("Couldn't connect to the server...");
     /// stream.set_write_timeout(None).expect("set_write_timeout call failed");
+    /// ```
+    ///
+    /// An [`Err`] is returned if the zero [`Duration`] is passed to this
+    /// method:
+    ///
+    /// ```no_run
+    /// use std::io;
+    /// use std::net::TcpStream;
+    /// use std::time::Duration;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8080").unwrap();
+    /// let result = stream.set_write_timeout(Some(Duration::new(0, 0)));
+    /// let err = result.unwrap_err();
+    /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
     /// ```
     #[stable(feature = "socket_timeout", since = "1.4.0")]
     pub fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
