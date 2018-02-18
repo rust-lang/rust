@@ -146,7 +146,6 @@ declare_features! (
     (active, rustc_diagnostic_macros, "1.0.0", None, None),
     (active, rustc_const_unstable, "1.0.0", None, None),
     (active, box_syntax, "1.0.0", Some(27779), None),
-    (active, placement_in_syntax, "1.0.0", Some(27779), None),
     (active, unboxed_closures, "1.0.0", Some(29625), None),
 
     (active, fundamental, "1.0.0", Some(29635), None),
@@ -1287,9 +1286,6 @@ pub const EXPLAIN_VIS_MATCHER: &'static str =
 pub const EXPLAIN_LIFETIME_MATCHER: &'static str =
     ":lifetime fragment specifier is experimental and subject to change";
 
-pub const EXPLAIN_PLACEMENT_IN: &'static str =
-    "placement-in expression syntax is experimental and subject to change.";
-
 pub const EXPLAIN_UNSIZED_TUPLE_COERCION: &'static str =
     "Unsized tuple coercion is not stable enough for use and is subject to change";
 
@@ -1635,9 +1631,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ExprKind::Type(..) => {
                 gate_feature_post!(&self, type_ascription, e.span,
                                   "type ascription is experimental");
-            }
-            ast::ExprKind::InPlace(..) => {
-                gate_feature_post!(&self, placement_in_syntax, e.span, EXPLAIN_PLACEMENT_IN);
             }
             ast::ExprKind::Yield(..) => {
                 gate_feature_post!(&self, generators,

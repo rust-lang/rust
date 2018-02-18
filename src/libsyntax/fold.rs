@@ -1167,9 +1167,6 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
             ExprKind::Box(e) => {
                 ExprKind::Box(folder.fold_expr(e))
             }
-            ExprKind::InPlace(p, e) => {
-                ExprKind::InPlace(folder.fold_expr(p), folder.fold_expr(e))
-            }
             ExprKind::Array(exprs) => {
                 ExprKind::Array(folder.fold_exprs(exprs))
             }

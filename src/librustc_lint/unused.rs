@@ -301,7 +301,6 @@ impl EarlyLintPass for UnusedParens {
             Ret(Some(ref value)) => (value, "`return` value", false),
             Assign(_, ref value) => (value, "assigned value", false),
             AssignOp(.., ref value) => (value, "assigned value", false),
-            InPlace(_, ref value) => (value, "emplacement value", false),
             // either function/method call, or something this lint doesn't care about
             ref call_or_other => {
                 let args_to_check;

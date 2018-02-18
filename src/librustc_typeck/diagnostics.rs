@@ -721,16 +721,6 @@ fn main() {
 ```
 "##,
 
-E0066: r##"
-Box placement expressions (like C++'s "placement new") do not yet support any
-place expression except the exchange heap (i.e. `std::boxed::HEAP`).
-Furthermore, the syntax is changing to use `in` instead of `box`. See [RFC 470]
-and [RFC 809] for more details.
-
-[RFC 470]: https://github.com/rust-lang/rfcs/pull/470
-[RFC 809]: https://github.com/rust-lang/rfcs/blob/master/text/0809-box-and-in-for-stdlib.md
-"##,
-
 E0067: r##"
 The left-hand side of a compound assignment expression must be a place
 expression. A place expression represents a memory location and includes
