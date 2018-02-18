@@ -660,7 +660,7 @@ impl Step for CodegenBackend {
                 }
                 // Building with a static libstdc++ is only supported on linux right now,
                 // not for MSVC or macOS
-                if build.config.llvm_static_stdcpp &&
+                if build.config.llvm.static_libstdcpp &&
                    !target.contains("freebsd") &&
                    !target.contains("windows") &&
                    !target.contains("apple") {
@@ -670,7 +670,7 @@ impl Step for CodegenBackend {
                                              "libstdc++.a");
                     cargo.env("LLVM_STATIC_STDCPP", file);
                 }
-                if build.config.llvm_link_shared {
+                if build.config.llvm.link_shared {
                     cargo.env("LLVM_LINK_SHARED", "1");
                 }
             }

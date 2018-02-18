@@ -40,8 +40,6 @@ pub use flags::Subcommand;
 /// `config.toml.example`.
 #[derive(Default)]
 pub struct Config {
-    pub ccache: Option<String>,
-    pub ninja: bool,
     pub verbose: usize,
     pub submodules: bool,
     pub compiler_docs: bool,
@@ -72,16 +70,7 @@ pub struct Config {
     pub incremental: bool,
 
     // llvm codegen options
-    pub llvm_enabled: bool,
-    pub llvm_assertions: bool,
-    pub llvm_optimize: bool,
-    pub llvm_release_debuginfo: bool,
-    pub llvm_version_check: bool,
-    pub llvm_static_stdcpp: bool,
-    pub llvm_link_shared: bool,
-    pub llvm_targets: Option<String>,
-    pub llvm_experimental_targets: String,
-    pub llvm_link_jobs: Option<u32>,
+    pub llvm: Llvm,
 
     // rust codegen options
     pub rust_optimize: bool,
@@ -253,23 +242,23 @@ struct Install {
 /// TOML representation of how the LLVM build is configured.
 #[derive(Deserialize)]
 #[serde(default, deny_unknown_fields, rename_all = "kebab-case")]
-struct Llvm {
-    enabled: bool,
+pub struct Llvm {
+    pub enabled: bool,
     ccache: StringOrBool,
-    ninja: bool,
-    assertions: bool,
-    optimize: bool,
-    release_debuginfo: bool,
-    version_check: bool,
-    static_libstdcpp: bool,
-    targets: Option<String>,
-    experimental_targets: String,
-    link_jobs: Option<u32>,
-    link_shared: bool,
+    pub ninja: bool,
+    pub assertions: bool,
+    pub optimize: bool,
+    pub release_debuginfo: bool,
+    pub version_check: bool,
+    pub static_libstdcpp: bool,
+    pub targets: String,
+    pub experimental_targets: String,
+    pub link_jobs: u32,
+    pub link_shared: bool,
 }
 
 impl Llvm {
-    fn ccache(&self) -> Option<String> {
+    pub fn ccache(&self) -> Option<String> {
         match self.ccache {
             StringOrBool::String(ref s) => {
                 Some(s.to_string())
@@ -286,15 +275,16 @@ impl Default for Llvm {
     fn default() -> Llvm {
         Llvm {
             enabled: true,
-            ccache: None,
+            ccache: StringOrBool::Bool(false),
             ninja: false,
             assertions: false,
             optimize: true,
             release_debuginfo: false,
             version_check: true,
-            targets: None,
+            targets:
+                String::from("X86;ARM;AArch64;Mips;PowerPC;SystemZ;MSP430;Sparc;NVPTX;Hexagon"),
             experimental_targets: String::from("WebAssembly"),
-            link_jobs: None,
+            link_jobs: 0,
             static_libstdcpp: false,
             link_shared: false,
         }
@@ -515,19 +505,7 @@ impl Config {
         config.libdir = toml.install.libdir;
         config.mandir = toml.install.mandir;
 
-        let llvm = &toml.llvm;
-        config.ccache = llvm.ccache();
-        config.ninja = llvm.ninja;
-        config.llvm_enabled = llvm.enabled;
-        config.llvm_assertions = llvm.assertions;
-        config.llvm_optimize = llvm.optimize;
-        config.llvm_release_debuginfo = llvm.release_debuginfo;
-        config.llvm_version_check = llvm.version_check;
-        config.llvm_static_stdcpp = llvm.static_libstdcpp;
-        config.llvm_link_shared = llvm.link_shared;
-        config.llvm_targets = llvm.targets.clone();
-        config.llvm_experimental_targets = llvm.experimental_targets.clone();
-        config.llvm_link_jobs = llvm.link_jobs;
+        config.llvm = toml.llvm;
 
         // Store off these values as options because if they're not
         // provided we'll infer default values for them later

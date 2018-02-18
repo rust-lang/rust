@@ -910,7 +910,7 @@ impl Step for Compiletest {
             cmd.arg("--quiet");
         }
 
-        if build.config.llvm_enabled {
+        if build.config.llvm.enabled {
             let llvm_config = build.llvm_config(target);
             let llvm_version = output(Command::new(&llvm_config).arg("--version"));
             cmd.arg("--llvm-version").arg(llvm_version);
@@ -933,7 +933,7 @@ impl Step for Compiletest {
                 }
             }
         }
-        if suite == "run-make" && !build.config.llvm_enabled {
+        if suite == "run-make" && !build.config.llvm.enabled {
             println!("Ignoring run-make test suite as they generally don't work without LLVM");
             return;
         }

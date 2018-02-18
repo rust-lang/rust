@@ -110,11 +110,11 @@ impl Step for Llvm {
         // http://llvm.org/docs/CMake.html
         let root = if self.emscripten { "src/llvm-emscripten" } else { "src/llvm" };
         let mut cfg = cmake::Config::new(build.config.src.join(root));
-        if build.config.ninja {
+        if build.config.llvm.ninja {
             cfg.generator("Ninja");
         }
 
-        let profile = match (build.config.llvm_optimize, build.config.llvm_release_debuginfo) {
+        let profile = match (build.config.llvm.optimize, build.config.llvm.release_debuginfo) {
             (false, _) => "Debug",
             (true, false) => "Release",
             (true, true) => "RelWithDebInfo",
@@ -125,19 +125,16 @@ impl Step for Llvm {
         let llvm_targets = if self.emscripten {
             "JSBackend"
         } else {
-            match build.config.llvm_targets {
-                Some(ref s) => s,
-                None => "X86;ARM;AArch64;Mips;PowerPC;SystemZ;MSP430;Sparc;NVPTX;Hexagon",
-            }
+            build.config.llvm.targets.as_str()
         };
 
         let llvm_exp_targets = if self.emscripten {
             ""
         } else {
-            &build.config.llvm_experimental_targets[..]
+            &build.config.llvm.experimental_targets[..]
         };
 
-        let assertions = if build.config.llvm_assertions {"ON"} else {"OFF"};
+        let assertions = if build.config.llvm.assertions {"ON"} else {"OFF"};
 
         cfg.target(&target)
            .host(&build.config.build)
@@ -185,10 +182,8 @@ impl Step for Llvm {
             cfg.define("LLVM_BUILD_32_BITS", "ON");
         }
 
-        if let Some(num_linkers) = build.config.llvm_link_jobs {
-            if num_linkers > 0 {
-                cfg.define("LLVM_PARALLEL_LINK_JOBS", num_linkers.to_string());
-            }
+        if build.config.llvm.link_jobs > 0 {
+            cfg.define("LLVM_PARALLEL_LINK_JOBS", build.config.llvm.link_jobs.to_string());
         }
 
         // http://llvm.org/docs/HowToCrossCompileLLVM.html
@@ -225,7 +220,7 @@ impl Step for Llvm {
             // MSVC with CMake uses msbuild by default which doesn't respect these
             // vars that we'd otherwise configure. In that case we just skip this
             // entirely.
-            if target.contains("msvc") && !build.config.ninja {
+            if target.contains("msvc") && !build.config.llvm.ninja {
                 return
             }
 
@@ -234,20 +229,20 @@ impl Step for Llvm {
 
             // Handle msvc + ninja + ccache specially (this is what the bots use)
             if target.contains("msvc") &&
-               build.config.ninja &&
-               build.config.ccache.is_some() {
+               build.config.llvm.ninja &&
+               build.config.llvm.ccache().is_some() {
                 let mut cc = env::current_exe().expect("failed to get cwd");
                 cc.set_file_name("sccache-plus-cl.exe");
 
                cfg.define("CMAKE_C_COMPILER", sanitize_cc(&cc))
                   .define("CMAKE_CXX_COMPILER", sanitize_cc(&cc));
                cfg.env("SCCACHE_PATH",
-                       build.config.ccache.as_ref().unwrap())
+                       build.config.llvm.ccache().as_ref().unwrap())
                   .env("SCCACHE_TARGET", target);
 
             // If ccache is configured we inform the build a little differently hwo
             // to invoke ccache while also invoking our compilers.
-            } else if let Some(ref ccache) = build.config.ccache {
+            } else if let Some(ref ccache) = build.config.llvm.ccache() {
                cfg.define("CMAKE_C_COMPILER", ccache)
                   .define("CMAKE_C_COMPILER_ARG1", sanitize_cc(cc))
                   .define("CMAKE_CXX_COMPILER", ccache)
@@ -288,7 +283,7 @@ impl Step for Llvm {
 }
 
 fn check_llvm_version(build: &Build, llvm_config: &Path) {
-    if !build.config.llvm_version_check {
+    if !build.config.llvm.version_check {
         return
     }
 

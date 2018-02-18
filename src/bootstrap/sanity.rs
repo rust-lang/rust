@@ -95,7 +95,7 @@ pub fn check(build: &mut Build) {
 
     // Ninja is currently only used for LLVM itself.
     if building_llvm {
-        if build.config.ninja {
+        if build.config.llvm.ninja {
             // Some Linux distros rename `ninja` to `ninja-build`.
             // CMake can work with either binary name.
             if cmd_finder.maybe_have("ninja-build").is_none() {
@@ -110,9 +110,9 @@ pub fn check(build: &mut Build) {
         //
         // In these cases we automatically enable Ninja if we find it in the
         // environment.
-        if !build.config.ninja && build.config.build.contains("msvc") {
+        if !build.config.llvm.ninja && build.config.build.contains("msvc") {
             if cmd_finder.maybe_have("ninja").is_some() {
-                build.config.ninja = true;
+                build.config.llvm.ninja = true;
             }
         }
     }
@@ -233,7 +233,7 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
         build.lldb_python_dir = run(Command::new("lldb").arg("-P")).ok();
     }
 
-    if let Some(ref s) = build.config.ccache {
+    if let Some(ref s) = build.config.llvm.ccache() {
         cmd_finder.must_have(s);
     }
 
