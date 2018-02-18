@@ -85,7 +85,6 @@ pub struct Config {
     pub rustc_default_linker: Option<String>,
     pub rust_optimize_tests: bool,
     pub rust_debuginfo_tests: bool,
-    pub rust_dist_src: bool,
     pub rust_codegen_backends: Vec<Interned<String>>,
 
     pub build: Interned<String>,
@@ -94,9 +93,7 @@ pub struct Config {
     pub local_rebuild: bool,
 
     // dist misc
-    pub dist_sign_folder: Option<PathBuf>,
-    pub dist_upload_addr: Option<String>,
-    pub dist_gpg_password_file: Option<PathBuf>,
+    pub dist: Dist,
 
     // libstd features
     pub debug_jemalloc: bool,
@@ -306,11 +303,11 @@ impl Default for Llvm {
 
 #[derive(Deserialize, Clone)]
 #[serde(default, deny_unknown_fields, rename_all = "kebab-case")]
-struct Dist {
-    sign_folder: Option<PathBuf>,
-    gpg_password_file: Option<PathBuf>,
-    upload_addr: Option<String>,
-    src_tarball: bool,
+pub struct Dist {
+    pub sign_folder: Option<PathBuf>,
+    pub gpg_password_file: Option<PathBuf>,
+    pub upload_addr: Option<String>,
+    pub src_tarball: bool,
 }
 
 impl Default for Dist {
@@ -348,6 +345,7 @@ struct Rust {
     debuginfo: Option<bool>,
     debuginfo_lines: Option<bool>,
     debuginfo_only_std: Option<bool>,
+    rpath: bool,
     experimental_parallel_queries: bool,
     debug_jemalloc: Option<bool>,
     use_jemalloc: bool,
@@ -355,7 +353,6 @@ struct Rust {
     default_linker: Option<String>,
     channel: String,
     musl_root: Option<PathBuf>,
-    rpath: bool,
     optimize_tests: bool,
     debuginfo_tests: bool,
     codegen_tests: bool,
@@ -566,10 +563,7 @@ impl Config {
             });
         }
 
-        config.dist_sign_folder = toml.dist.sign_folder.clone();
-        config.dist_gpg_password_file = toml.dist.gpg_password_file.clone();
-        config.dist_upload_addr = toml.dist.upload_addr.clone();
-        config.rust_dist_src = toml.dist.src_tarball;
+        config.dist = toml.dist;
 
         let cwd = t!(env::current_dir());
         let out = cwd.join("build");

@@ -827,7 +827,7 @@ impl Step for PlainSourceTarball {
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         let builder = run.builder;
-        run.path("src").default_condition(builder.config.rust_dist_src)
+        run.path("src").default_condition(builder.config.dist.src_tarball)
     }
 
     fn make_run(run: RunConfig) {
@@ -1672,13 +1672,13 @@ impl Step for HashSign {
     fn run(self, builder: &Builder) {
         let build = builder.build;
         let mut cmd = builder.tool_cmd(Tool::BuildManifest);
-        let sign = build.config.dist_sign_folder.as_ref().unwrap_or_else(|| {
+        let sign = build.config.dist.sign_folder.as_ref().unwrap_or_else(|| {
             panic!("\n\nfailed to specify `dist.sign-folder` in `config.toml`\n\n")
         });
-        let addr = build.config.dist_upload_addr.as_ref().unwrap_or_else(|| {
+        let addr = build.config.dist.upload_addr.as_ref().unwrap_or_else(|| {
             panic!("\n\nfailed to specify `dist.upload-addr` in `config.toml`\n\n")
         });
-        let file = build.config.dist_gpg_password_file.as_ref().unwrap_or_else(|| {
+        let file = build.config.dist.gpg_password_file.as_ref().unwrap_or_else(|| {
             panic!("\n\nfailed to specify `dist.gpg-password-file` in `config.toml`\n\n")
         });
         let mut pass = String::new();
