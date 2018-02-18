@@ -68,19 +68,20 @@ impl SpanUtils for CodeMap {
 
 impl LineRangeUtils for CodeMap {
     fn lookup_line_range(&self, span: Span) -> LineRange {
-        let lo = self.lookup_char_pos(span.lo());
-        let hi = self.lookup_char_pos(span.hi());
+        let lo = self.lookup_line(span.lo()).unwrap();
+        let hi = self.lookup_line(span.hi()).unwrap();
 
         assert_eq!(
-            lo.file.name, hi.file.name,
+            lo.fm.name, hi.fm.name,
             "span crossed file boundary: lo: {:?}, hi: {:?}",
             lo, hi
         );
 
+        // Line numbers start at 1
         LineRange {
-            file: lo.file.clone(),
-            lo: lo.line,
-            hi: hi.line,
+            file: lo.fm.clone(),
+            lo: lo.line + 1,
+            hi: hi.line + 1,
         }
     }
 }
