@@ -466,7 +466,7 @@ fn rewrite_comment_inner(
     }
 
     result.push_str(closer);
-    if result == opener && result.ends_with(' ') {
+    if result.ends_with(opener) && opener.ends_with(' ') {
         // Trailing space.
         result.pop();
     }
