@@ -166,90 +166,148 @@ pub struct Target {
 /// This structure uses `Decodable` to automatically decode a TOML configuration
 /// file into this format, and then this is traversed and written into the above
 /// `Config` structure.
-#[derive(Deserialize, Default)]
-#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+#[derive(Default, Deserialize)]
+#[serde(default, deny_unknown_fields, rename_all = "kebab-case")]
 struct TomlConfig {
-    build: Option<Build>,
-    install: Option<Install>,
-    llvm: Option<Llvm>,
-    rust: Option<Rust>,
-    target: Option<HashMap<String, TomlTarget>>,
-    dist: Option<Dist>,
+    build: Build,
+    install: Install,
+    llvm: Llvm,
+    rust: Rust,
+    target: HashMap<String, TomlTarget>,
+    dist: Dist,
 }
 
 /// TOML representation of various global build decisions.
-#[derive(Deserialize, Default, Clone)]
-#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+#[derive(Deserialize, Clone)]
+#[serde(default, deny_unknown_fields, rename_all = "kebab-case")]
 struct Build {
     build: Option<String>,
-    #[serde(default)]
     host: Vec<String>,
-    #[serde(default)]
     target: Vec<String>,
     cargo: Option<String>,
     rustc: Option<String>,
-    low_priority: Option<bool>,
-    compiler_docs: Option<bool>,
-    docs: Option<bool>,
-    submodules: Option<bool>,
-    gdb: Option<String>,
-    locked_deps: Option<bool>,
-    vendor: Option<bool>,
-    nodejs: Option<String>,
-    python: Option<String>,
-    full_bootstrap: Option<bool>,
-    extended: Option<bool>,
+    low_priority: bool,
+    compiler_docs: bool,
+    docs: bool,
+    submodules: bool,
+    gdb: Option<PathBuf>,
+    locked_deps: bool,
+    vendor: bool,
+    nodejs: Option<PathBuf>,
+    python: Option<PathBuf>,
+    full_bootstrap: bool,
+    extended: bool,
     tools: Option<HashSet<String>>,
-    verbose: Option<usize>,
-    sanitizers: Option<bool>,
-    profiler: Option<bool>,
-    openssl_static: Option<bool>,
-    configure_args: Option<Vec<String>>,
-    local_rebuild: Option<bool>,
+    verbose: usize,
+    sanitizers: bool,
+    profiler: bool,
+    openssl_static: bool,
+    configure_args: Vec<String>,
+    local_rebuild: bool,
+}
+
+impl Default for Build {
+    fn default() -> Build {
+        Build {
+            build: None,
+            host: Vec::new(),
+            target: Vec::new(),
+            cargo: None,
+            rustc: None,
+            low_priority: false,
+            compiler_docs: false,
+            docs: true,
+            submodules: true,
+            gdb: None,
+            locked_deps: false,
+            vendor: false,
+            nodejs: None,
+            python: None,
+            full_bootstrap: false,
+            extended: false,
+            tools: None,
+            verbose: 0,
+            sanitizers: false,
+            profiler: false,
+            openssl_static: false,
+            configure_args: Vec::new(),
+            local_rebuild: false,
+        }
+    }
 }
 
 /// TOML representation of various global install decisions.
 #[derive(Deserialize, Default, Clone)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct Install {
-    prefix: Option<String>,
-    sysconfdir: Option<String>,
-    docdir: Option<String>,
-    bindir: Option<String>,
-    libdir: Option<String>,
-    mandir: Option<String>,
+    prefix: Option<PathBuf>,
+    sysconfdir: Option<PathBuf>,
+    docdir: Option<PathBuf>,
+    bindir: Option<PathBuf>,
+    libdir: Option<PathBuf>,
+    mandir: Option<PathBuf>,
 
     // standard paths, currently unused
-    datadir: Option<String>,
-    infodir: Option<String>,
-    localstatedir: Option<String>,
+    datadir: Option<PathBuf>,
+    infodir: Option<PathBuf>,
+    localstatedir: Option<PathBuf>,
 }
 
 /// TOML representation of how the LLVM build is configured.
-#[derive(Deserialize, Default)]
-#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+#[derive(Deserialize)]
+#[serde(default, deny_unknown_fields, rename_all = "kebab-case")]
 struct Llvm {
-    enabled: Option<bool>,
+    enabled: bool,
     ccache: Option<StringOrBool>,
-    ninja: Option<bool>,
-    assertions: Option<bool>,
-    optimize: Option<bool>,
-    release_debuginfo: Option<bool>,
-    version_check: Option<bool>,
-    static_libstdcpp: Option<bool>,
+    ninja: bool,
+    assertions: bool,
+    optimize: bool,
+    release_debuginfo: bool,
+    version_check: bool,
+    static_libstdcpp: bool,
     targets: Option<String>,
-    experimental_targets: Option<String>,
+    experimental_targets: String,
     link_jobs: Option<u32>,
-    link_shared: Option<bool>,
+    link_shared: bool,
 }
 
-#[derive(Deserialize, Default, Clone)]
-#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+impl Default for Llvm {
+    fn default() -> Llvm {
+        Llvm {
+            enabled: true,
+            ccache: None,
+            ninja: false,
+            assertions: false,
+            optimize: true,
+            release_debuginfo: false,
+            version_check: true,
+            targets: None,
+            experimental_targets: String::from("WebAssembly"),
+            link_jobs: None,
+            static_libstdcpp: false,
+            link_shared: false,
+        }
+    }
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(default, deny_unknown_fields, rename_all = "kebab-case")]
 struct Dist {
-    sign_folder: Option<String>,
-    gpg_password_file: Option<String>,
+    sign_folder: Option<PathBuf>,
+    gpg_password_file: Option<PathBuf>,
     upload_addr: Option<String>,
-    src_tarball: Option<bool>,
+    src_tarball: bool,
+}
+
+impl Default for Dist {
+    fn default() -> Dist {
+        Dist {
+            sign_folder: None,
+            gpg_password_file: None,
+            upload_addr: None,
+            src_tarball: true,
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -266,51 +324,82 @@ impl Default for StringOrBool {
 }
 
 /// TOML representation of how the Rust build is configured.
-#[derive(Deserialize, Default)]
-#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+#[derive(Deserialize)]
+#[serde(default, deny_unknown_fields, rename_all = "kebab-case")]
 struct Rust {
     optimize: Option<bool>,
     codegen_units: Option<u32>,
-    thinlto: Option<bool>,
+    thinlto: bool,
     debug_assertions: Option<bool>,
     debuginfo: Option<bool>,
     debuginfo_lines: Option<bool>,
     debuginfo_only_std: Option<bool>,
-    experimental_parallel_queries: Option<bool>,
+    experimental_parallel_queries: bool,
     debug_jemalloc: Option<bool>,
-    use_jemalloc: Option<bool>,
-    backtrace: Option<bool>,
+    use_jemalloc: bool,
+    backtrace: bool,
     default_linker: Option<String>,
-    channel: Option<String>,
-    musl_root: Option<String>,
-    rpath: Option<bool>,
-    optimize_tests: Option<bool>,
-    debuginfo_tests: Option<bool>,
-    codegen_tests: Option<bool>,
+    channel: String,
+    musl_root: Option<PathBuf>,
+    rpath: bool,
+    optimize_tests: bool,
+    debuginfo_tests: bool,
+    codegen_tests: bool,
     ignore_git: Option<bool>,
     debug: Option<bool>,
-    dist_src: Option<bool>,
-    quiet_tests: Option<bool>,
-    test_miri: Option<bool>,
-    save_toolstates: Option<String>,
-    codegen_backends: Option<Vec<String>>,
-    wasm_syscall: Option<bool>,
+    quiet_tests: bool,
+    test_miri: bool,
+    save_toolstates: Option<PathBuf>,
+    codegen_backends: Vec<String>,
+    wasm_syscall: bool,
+}
+
+impl Default for Rust {
+    fn default() -> Rust {
+        Rust {
+            debug: None,
+            debug_assertions: None,
+            debuginfo: None,
+            debuginfo_lines: None,
+            debuginfo_only_std: None,
+            optimize: None,
+            ignore_git: None,
+            debug_jemalloc: None,
+            thinlto: true,
+            optimize_tests: true,
+            debuginfo_tests: false,
+            codegen_tests: true,
+            rpath: true,
+            use_jemalloc: true,
+            backtrace: true,
+            channel: String::from("dev"),
+            quiet_tests: false,
+            test_miri: false,
+            wasm_syscall: false,
+            codegen_backends: vec![String::from("llvm")],
+            codegen_units: None,
+            default_linker: None,
+            experimental_parallel_queries: false,
+            musl_root: None,
+            save_toolstates: None,
+        }
+    }
 }
 
 /// TOML representation of how each build target is configured.
 #[derive(Deserialize, Default)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct TomlTarget {
-    llvm_config: Option<String>,
-    jemalloc: Option<String>,
-    cc: Option<String>,
-    cxx: Option<String>,
-    ar: Option<String>,
-    linker: Option<String>,
-    android_ndk: Option<String>,
+    llvm_config: Option<PathBuf>,
+    jemalloc: Option<PathBuf>,
+    cc: Option<PathBuf>,
+    cxx: Option<PathBuf>,
+    ar: Option<PathBuf>,
+    linker: Option<PathBuf>,
+    android_ndk: Option<PathBuf>,
     crt_static: Option<bool>,
-    musl_root: Option<String>,
-    qemu_rootfs: Option<String>,
+    musl_root: Option<PathBuf>,
+    qemu_rootfs: Option<PathBuf>,
 }
 
 impl Config {
@@ -320,23 +409,6 @@ impl Config {
         let mut config = Config::default();
         config.exclude = flags.exclude;
         config.paths = flags.paths;
-        config.llvm_enabled = true;
-        config.llvm_optimize = true;
-        config.llvm_version_check = true;
-        config.use_jemalloc = true;
-        config.backtrace = true;
-        config.rust_optimize = true;
-        config.rust_optimize_tests = true;
-        config.submodules = true;
-        config.docs = true;
-        config.rust_rpath = true;
-        config.channel = "dev".to_string();
-        config.codegen_tests = true;
-        config.ignore_git = false;
-        config.rust_dist_src = true;
-        config.test_miri = false;
-        config.rust_codegen_backends = vec![INTERNER.intern_str("llvm")];
-
         config.rustc_error_format = flags.rustc_error_format;
         config.on_fail = flags.on_fail;
         config.stage = flags.stage;
@@ -373,7 +445,7 @@ impl Config {
             }
         }).unwrap_or_else(|| TomlConfig::default());
 
-        let build = toml.build.clone().unwrap_or(Build::default());
+        let build = toml.build;
         set(&mut config.build, build.build.clone().map(|x| INTERNER.intern_string(x)));
         set(&mut config.build, flags.build);
         if config.build.is_empty() {
@@ -406,142 +478,119 @@ impl Config {
         };
 
 
-        config.nodejs = build.nodejs.map(PathBuf::from);
-        config.gdb = build.gdb.map(PathBuf::from);
-        config.python = build.python.map(PathBuf::from);
-        set(&mut config.low_priority, build.low_priority);
-        set(&mut config.compiler_docs, build.compiler_docs);
-        set(&mut config.docs, build.docs);
-        set(&mut config.submodules, build.submodules);
-        set(&mut config.locked_deps, build.locked_deps);
-        set(&mut config.vendor, build.vendor);
-        set(&mut config.full_bootstrap, build.full_bootstrap);
-        set(&mut config.extended, build.extended);
+        config.nodejs = build.nodejs;
+        config.gdb = build.gdb;
+        config.python = build.python;
+        config.low_priority = build.low_priority;
+        config.compiler_docs = build.compiler_docs;
+        config.docs = build.docs;
+        config.submodules = build.submodules;
+        config.locked_deps = build.locked_deps;
+        config.vendor = build.vendor;
+        config.full_bootstrap = build.full_bootstrap;
+        config.extended = build.extended;
         config.tools = build.tools;
-        set(&mut config.verbose, build.verbose);
-        set(&mut config.sanitizers, build.sanitizers);
-        set(&mut config.profiler, build.profiler);
-        set(&mut config.openssl_static, build.openssl_static);
-        set(&mut config.configure_args, build.configure_args);
-        set(&mut config.local_rebuild, build.local_rebuild);
-        config.verbose = cmp::max(config.verbose, flags.verbose);
+        config.verbose = cmp::max(build.verbose, flags.verbose);
+        config.sanitizers = build.sanitizers;
+        config.profiler = build.profiler;
+        config.openssl_static = build.openssl_static;
+        config.configure_args = build.configure_args;
+        // will get auto-detected later
+        config.local_rebuild = build.local_rebuild;
 
-        if let Some(ref install) = toml.install {
-            config.prefix = install.prefix.clone().map(PathBuf::from);
-            config.sysconfdir = install.sysconfdir.clone().map(PathBuf::from);
-            config.docdir = install.docdir.clone().map(PathBuf::from);
-            config.bindir = install.bindir.clone().map(PathBuf::from);
-            config.libdir = install.libdir.clone().map(PathBuf::from);
-            config.mandir = install.mandir.clone().map(PathBuf::from);
-        }
+        config.prefix = toml.install.prefix;
+        config.sysconfdir = toml.install.sysconfdir;
+        config.docdir = toml.install.docdir;
+        config.bindir = toml.install.bindir;
+        config.libdir = toml.install.libdir;
+        config.mandir = toml.install.mandir;
 
-        // Store off these values as options because if they're not provided
-        // we'll infer default values for them later
-        let mut thinlto = None;
-        let mut llvm_assertions = None;
-        let mut debuginfo_lines = None;
-        let mut debuginfo_only_std = None;
-        let mut debug = None;
-        let mut debug_jemalloc = None;
-        let mut debuginfo = None;
-        let mut debug_assertions = None;
-        let mut optimize = None;
-        let mut ignore_git = None;
-
-        if let Some(ref llvm) = toml.llvm {
-            match llvm.ccache {
-                Some(StringOrBool::String(ref s)) => {
-                    config.ccache = Some(s.to_string())
-                }
-                Some(StringOrBool::Bool(true)) => {
-                    config.ccache = Some("ccache".to_string());
-                }
-                Some(StringOrBool::Bool(false)) | None => {}
+        let llvm = &toml.llvm;
+        match llvm.ccache {
+            Some(StringOrBool::String(ref s)) => {
+                config.ccache = Some(s.to_string())
             }
-            set(&mut config.ninja, llvm.ninja);
-            set(&mut config.llvm_enabled, llvm.enabled);
-            llvm_assertions = llvm.assertions;
-            set(&mut config.llvm_optimize, llvm.optimize);
-            set(&mut config.llvm_release_debuginfo, llvm.release_debuginfo);
-            set(&mut config.llvm_version_check, llvm.version_check);
-            set(&mut config.llvm_static_stdcpp, llvm.static_libstdcpp);
-            set(&mut config.llvm_link_shared, llvm.link_shared);
-            config.llvm_targets = llvm.targets.clone();
-            config.llvm_experimental_targets = llvm.experimental_targets.clone()
-                .unwrap_or("WebAssembly".to_string());
-            config.llvm_link_jobs = llvm.link_jobs;
-        }
-
-        if let Some(ref rust) = toml.rust {
-            debug = rust.debug;
-            debug_assertions = rust.debug_assertions;
-            debuginfo = rust.debuginfo;
-            debuginfo_lines = rust.debuginfo_lines;
-            debuginfo_only_std = rust.debuginfo_only_std;
-            optimize = rust.optimize;
-            ignore_git = rust.ignore_git;
-            debug_jemalloc = rust.debug_jemalloc;
-            thinlto = rust.thinlto;
-            set(&mut config.rust_optimize_tests, rust.optimize_tests);
-            set(&mut config.rust_debuginfo_tests, rust.debuginfo_tests);
-            set(&mut config.codegen_tests, rust.codegen_tests);
-            set(&mut config.rust_rpath, rust.rpath);
-            set(&mut config.use_jemalloc, rust.use_jemalloc);
-            set(&mut config.backtrace, rust.backtrace);
-            set(&mut config.channel, rust.channel.clone());
-            set(&mut config.rust_dist_src, rust.dist_src);
-            set(&mut config.quiet_tests, rust.quiet_tests);
-            set(&mut config.test_miri, rust.test_miri);
-            set(&mut config.wasm_syscall, rust.wasm_syscall);
-            config.rustc_parallel_queries = rust.experimental_parallel_queries.unwrap_or(false);
-            config.rustc_default_linker = rust.default_linker.clone();
-            config.musl_root = rust.musl_root.clone().map(PathBuf::from);
-            config.save_toolstates = rust.save_toolstates.clone().map(PathBuf::from);
-
-            if let Some(ref backends) = rust.codegen_backends {
-                config.rust_codegen_backends = backends.iter()
-                    .map(|s| INTERNER.intern_str(s))
-                    .collect();
+            Some(StringOrBool::Bool(true)) => {
+                config.ccache = Some("ccache".to_string());
             }
+            Some(StringOrBool::Bool(false)) | None => {}
+        }
+        config.ninja = llvm.ninja;
+        config.llvm_enabled = llvm.enabled;
+        config.llvm_assertions = llvm.assertions;
+        config.llvm_optimize = llvm.optimize;
+        config.llvm_release_debuginfo = llvm.release_debuginfo;
+        config.llvm_version_check = llvm.version_check;
+        config.llvm_static_stdcpp = llvm.static_libstdcpp;
+        config.llvm_link_shared = llvm.link_shared;
+        config.llvm_targets = llvm.targets.clone();
+        config.llvm_experimental_targets = llvm.experimental_targets.clone();
+        config.llvm_link_jobs = llvm.link_jobs;
 
-            match rust.codegen_units {
-                Some(0) => config.rust_codegen_units = Some(num_cpus::get() as u32),
-                Some(n) => config.rust_codegen_units = Some(n),
-                None => {}
+        // Store off these values as options because if they're not
+        // provided we'll infer default values for them later
+        let debuginfo_lines = toml.rust.debuginfo_lines;
+        let debuginfo_only_std = toml.rust.debuginfo_only_std;
+        let debug = toml.rust.debug;
+        let debug_jemalloc = toml.rust.debug_jemalloc;
+        let debuginfo = toml.rust.debuginfo;
+        let debug_assertions = toml.rust.debug_assertions;
+        let optimize = toml.rust.optimize;
+        let ignore_git = toml.rust.ignore_git;
+
+        config.rust_optimize_tests = toml.rust.optimize_tests;
+        config.rust_debuginfo_tests = toml.rust.debuginfo_tests;
+        config.codegen_tests = toml.rust.codegen_tests;
+        config.rust_rpath = toml.rust.rpath;
+        config.use_jemalloc = toml.rust.use_jemalloc;
+        config.backtrace = toml.rust.backtrace;
+        config.channel = toml.rust.channel.clone();
+        config.quiet_tests = toml.rust.quiet_tests;
+        config.test_miri = toml.rust.test_miri;
+        config.wasm_syscall = toml.rust.wasm_syscall;
+        config.rustc_parallel_queries = toml.rust.experimental_parallel_queries;
+        config.rustc_default_linker = toml.rust.default_linker.clone();
+        config.musl_root = toml.rust.musl_root.clone();
+        config.save_toolstates = toml.rust.save_toolstates.clone();
+        config.rust_thinlto = toml.rust.thinlto;
+
+        config.rust_codegen_backends = toml.rust.codegen_backends.iter()
+            .map(|s| INTERNER.intern_str(s))
+            .collect();
+
+        match toml.rust.codegen_units {
+            Some(0) => config.rust_codegen_units = Some(num_cpus::get() as u32),
+            Some(n) => config.rust_codegen_units = Some(n),
+            None => {}
+        }
+
+        for (triple, cfg) in toml.target {
+            let mut target = Target::default();
+
+            if let Some(ref s) = cfg.llvm_config {
+                target.llvm_config = Some(env::current_dir().unwrap().join(s));
             }
-        }
-
-        if let Some(ref t) = toml.target {
-            for (triple, cfg) in t {
-                let mut target = Target::default();
-
-                if let Some(ref s) = cfg.llvm_config {
-                    target.llvm_config = Some(env::current_dir().unwrap().join(s));
-                }
-                if let Some(ref s) = cfg.jemalloc {
-                    target.jemalloc = Some(env::current_dir().unwrap().join(s));
-                }
-                if let Some(ref s) = cfg.android_ndk {
-                    target.ndk = Some(env::current_dir().unwrap().join(s));
-                }
-                target.cc = cfg.cc.clone().map(PathBuf::from);
-                target.cxx = cfg.cxx.clone().map(PathBuf::from);
-                target.ar = cfg.ar.clone().map(PathBuf::from);
-                target.linker = cfg.linker.clone().map(PathBuf::from);
-                target.crt_static = cfg.crt_static.clone();
-                target.musl_root = cfg.musl_root.clone().map(PathBuf::from);
-                target.qemu_rootfs = cfg.qemu_rootfs.clone().map(PathBuf::from);
-
-                config.target_config.insert(INTERNER.intern_string(triple.clone()), target);
+            if let Some(ref s) = cfg.jemalloc {
+                target.jemalloc = Some(env::current_dir().unwrap().join(s));
             }
+            if let Some(ref s) = cfg.android_ndk {
+                target.ndk = Some(env::current_dir().unwrap().join(s));
+            }
+            target.cc = cfg.cc.clone();
+            target.cxx = cfg.cxx.clone();
+            target.ar = cfg.ar.clone();
+            target.linker = cfg.linker.clone();
+            target.crt_static = cfg.crt_static.clone();
+            target.musl_root = cfg.musl_root.clone();
+            target.qemu_rootfs = cfg.qemu_rootfs.clone();
+
+            config.target_config.insert(INTERNER.intern_string(triple.clone()), target);
         }
 
-        if let Some(ref t) = toml.dist {
-            config.dist_sign_folder = t.sign_folder.clone().map(PathBuf::from);
-            config.dist_gpg_password_file = t.gpg_password_file.clone().map(PathBuf::from);
-            config.dist_upload_addr = t.upload_addr.clone();
-            set(&mut config.rust_dist_src, t.src_tarball);
-        }
+        config.dist_sign_folder = toml.dist.sign_folder.clone();
+        config.dist_gpg_password_file = toml.dist.gpg_password_file.clone();
+        config.dist_upload_addr = toml.dist.upload_addr.clone();
+        config.rust_dist_src = toml.dist.src_tarball;
 
         let cwd = t!(env::current_dir());
         let out = cwd.join("build");
@@ -570,15 +619,10 @@ impl Config {
 
         // Now that we've reached the end of our configuration, infer the
         // default values for all options that we haven't otherwise stored yet.
-
-        let default = false;
-        config.llvm_assertions = llvm_assertions.unwrap_or(default);
-
         let default = match &config.channel[..] {
             "stable" | "beta" | "nightly" => true,
             _ => false,
         };
-        config.rust_thinlto = thinlto.unwrap_or(true);
         config.rust_debuginfo_lines = debuginfo_lines.unwrap_or(default);
         config.rust_debuginfo_only_std = debuginfo_only_std.unwrap_or(default);
 
