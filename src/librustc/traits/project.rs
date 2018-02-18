@@ -101,7 +101,7 @@ pub struct MismatchedProjectionTypes<'tcx> {
     pub err: ty::error::TypeError<'tcx>
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(PartialEq, Eq, Debug)]
 enum ProjectionTyCandidate<'tcx> {
     // from a where-clause in the env or object type
     ParamEnv(ty::PolyProjectionPredicate<'tcx>),
@@ -834,16 +834,6 @@ fn project_type<'cx, 'gcx, 'tcx>(
     if candidates.ambiguous {
         return Err(ProjectionTyError::TooManyCandidates);
     }
-
-    // Drop duplicates.
-    //
-    // Note: `candidates.vec` seems to be on the critical path of the
-    // compiler. Replacing it with an HashSet was also tried, which would
-    // render the following dedup unnecessary. The original comment indicated
-    // that it was 9% slower, but that data is now obsolete and a new
-    // benchmark should be performed.
-    candidates.vec.sort_unstable();
-    candidates.vec.dedup();
 
     // Prefer where-clauses. As in select, if there are multiple
     // candidates, we prefer where-clause candidates over impls.  This
