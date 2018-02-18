@@ -24,7 +24,6 @@ set +e
 python2.7 "$X_PY" test --no-fail-fast \
     src/tools/rls \
     src/tools/rustfmt \
-    src/tools/miri \
     src/tools/clippy
 set -e
 
