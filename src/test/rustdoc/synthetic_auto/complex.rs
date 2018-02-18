@@ -32,7 +32,7 @@ mod foo {
 // @has complex/struct.NotOuter.html
 // @has - '//*[@id="synthetic-implementations-list"]/*[@class="impl"]/*/code' "impl<'a, T, K: \
 // ?Sized> Send for NotOuter<'a, T, K> where 'a: 'static, K: for<'b> Fn((&'b bool, &'a u8)) \
-// -> &'b i8, <T as MyTrait<'a>>::MyItem: Copy,  T: MyTrait<'a>"
+// -> &'b i8, <T as MyTrait<'a>>::MyItem: Copy, T: MyTrait<'a>"
 
 pub use foo::{Foo, Inner as NotInner, MyTrait as NotMyTrait, Outer as NotOuter};
 
@@ -46,7 +46,7 @@ unsafe impl<'a, Q, R: ?Sized> Send for NotInner<'a, Q, R>
 where
     Q: NotMyTrait<'a>,
     <Q as NotMyTrait<'a>>::MyItem: Copy,
-    /* for<'b> */ R: for<'b> Fn((&'b bool, &'a u8)) -> &'b i8,
+    R: for<'b> Fn((&'b bool, &'a u8)) -> &'b i8,
     Foo<Q>: Send,
 {
 }
