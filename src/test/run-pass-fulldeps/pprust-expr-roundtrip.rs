@@ -84,18 +84,11 @@ fn iter_exprs(depth: usize, f: &mut FnMut(P<Expr>)) {
 
     let mut g = |e| f(expr(e));
 
-    for kind in 0 .. 17 {
+    for kind in 0 .. 16 {
         match kind {
             0 => iter_exprs(depth - 1, &mut |e| g(ExprKind::Box(e))),
-            1 => {
-                // Note that for binary expressions, we explore each side separately.  The
-                // parenthesization decisions for the LHS and RHS should be independent, and this
-                // way produces `O(n)` results instead of `O(n^2)`.
-                iter_exprs(depth - 1, &mut |e| g(ExprKind::InPlace(e, make_x())));
-                iter_exprs(depth - 1, &mut |e| g(ExprKind::InPlace(make_x(), e)));
-            },
-            2 => iter_exprs(depth - 1, &mut |e| g(ExprKind::Call(e, vec![]))),
-            3 => {
+            1 => iter_exprs(depth - 1, &mut |e| g(ExprKind::Call(e, vec![]))),
+            2 => {
                 let seg = PathSegment {
                     identifier: Ident::from_str("x"),
                     span: DUMMY_SP,
@@ -107,25 +100,25 @@ fn iter_exprs(depth: usize, f: &mut FnMut(P<Expr>)) {
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::MethodCall(
                             seg.clone(), vec![make_x(), e])));
             },
-            4 => {
+            3 => {
                 let op = Spanned { span: DUMMY_SP, node: BinOpKind::Add };
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Binary(op, e, make_x())));
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Binary(op, make_x(), e)));
             },
-            5 => {
+            4 => {
                 let op = Spanned { span: DUMMY_SP, node: BinOpKind::Mul };
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Binary(op, e, make_x())));
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Binary(op, make_x(), e)));
             },
-            6 => {
+            5 => {
                 let op = Spanned { span: DUMMY_SP, node: BinOpKind::Shl };
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Binary(op, e, make_x())));
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Binary(op, make_x(), e)));
             },
-            7 => {
+            6 => {
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Unary(UnOp::Deref, e)));
             },
-            8 => {
+            7 => {
                 let block = P(Block {
                     stmts: Vec::new(),
                     id: DUMMY_NODE_ID,
@@ -135,7 +128,7 @@ fn iter_exprs(depth: usize, f: &mut FnMut(P<Expr>)) {
                 });
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::If(e, block.clone(), None)));
             },
-            9 => {
+            8 => {
                 let decl = P(FnDecl {
                     inputs: vec![],
                     output: FunctionRetTy::Default(DUMMY_SP),
@@ -148,28 +141,28 @@ fn iter_exprs(depth: usize, f: &mut FnMut(P<Expr>)) {
                                           e,
                                           DUMMY_SP)));
             },
-            10 => {
+            9 => {
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Assign(e, make_x())));
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Assign(make_x(), e)));
             },
-            11 => {
+            10 => {
                 let ident = Spanned { span: DUMMY_SP, node: Ident::from_str("f") };
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Field(e, ident)));
             },
-            12 => {
+            11 => {
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Range(
                             Some(e), Some(make_x()), RangeLimits::HalfOpen)));
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Range(
                             Some(make_x()), Some(e), RangeLimits::HalfOpen)));
             },
-            13 => {
+            12 => {
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::AddrOf(Mutability::Immutable, e)));
             },
-            14 => {
+            13 => {
                 g(ExprKind::Ret(None));
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Ret(Some(e))));
             },
-            15 => {
+            14 => {
                 let seg = PathSegment {
                     identifier: Ident::from_str("S"),
                     span: DUMMY_SP,
@@ -181,7 +174,7 @@ fn iter_exprs(depth: usize, f: &mut FnMut(P<Expr>)) {
                 };
                 g(ExprKind::Struct(path, vec![], Some(make_x())));
             },
-            16 => {
+            15 => {
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Try(e)));
             },
             _ => panic!("bad counter value in iter_exprs"),

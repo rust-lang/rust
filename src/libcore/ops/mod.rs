@@ -161,7 +161,6 @@ mod drop;
 mod function;
 mod generator;
 mod index;
-mod place;
 mod range;
 mod try;
 mod unsize;
@@ -199,9 +198,6 @@ pub use self::try::Try;
 
 #[unstable(feature = "generator_trait", issue = "43122")]
 pub use self::generator::{Generator, GeneratorState};
-
-#[unstable(feature = "placement_new_protocol", issue = "27779")]
-pub use self::place::{Place, Placer, InPlace, Boxed, BoxPlace};
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 pub use self::unsize::CoerceUnsized;

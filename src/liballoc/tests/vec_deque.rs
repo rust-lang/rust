@@ -1005,28 +1005,6 @@ fn test_is_empty() {
 }
 
 #[test]
-fn test_placement_in() {
-    let mut buf: VecDeque<isize> = VecDeque::new();
-    buf.place_back() <- 1;
-    buf.place_back() <- 2;
-    assert_eq!(buf, [1,2]);
-
-    buf.place_front() <- 3;
-    buf.place_front() <- 4;
-    assert_eq!(buf, [4,3,1,2]);
-
-    {
-        let ptr_head = buf.place_front() <- 5;
-        assert_eq!(*ptr_head, 5);
-    }
-    {
-        let ptr_tail = buf.place_back() <- 6;
-        assert_eq!(*ptr_tail, 6);
-    }
-    assert_eq!(buf, [5,4,3,1,2,6]);
-}
-
-#[test]
 fn test_reserve_exact_2() {
     // This is all the same as test_reserve
 
