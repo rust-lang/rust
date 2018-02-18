@@ -3639,7 +3639,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                                                needs);
 
             if !oprnd_t.references_error() {
-                oprnd_t = self.structurally_resolved_type(expr.span, oprnd_t);
+                oprnd_t = self.resolve_type_vars_with_obligations(&oprnd_t);
                 match unop {
                     hir::UnDeref => {
                         if let Some(mt) = oprnd_t.builtin_deref(true) {
