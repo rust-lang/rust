@@ -114,6 +114,20 @@ fn parse_macro_arg(parser: &mut Parser) -> Option<MacroArg> {
     None
 }
 
+/// Rewrite macro name without using pretty-printer if possible.
+fn rewrite_macro_name(path: &ast::Path, extra_ident: Option<ast::Ident>) -> String {
+    let name = if path.segments.len() == 1 {
+        // Avoid using pretty-printer in the common case.
+        format!("{}!", path.segments[0].identifier)
+    } else {
+        format!("{}!", path)
+    };
+    match extra_ident {
+        Some(ident) if ident != symbol::keywords::Invalid.ident() => format!("{} {}", name, ident),
+        _ => name,
+    }
+}
+
 pub fn rewrite_macro(
     mac: &ast::Mac,
     extra_ident: Option<ast::Ident>,
@@ -132,16 +146,7 @@ pub fn rewrite_macro(
 
     let original_style = macro_style(mac, context);
 
-    let macro_name = match extra_ident {
-        None => format!("{}!", mac.node.path),
-        Some(ident) => {
-            if ident == symbol::keywords::Invalid.ident() {
-                format!("{}!", mac.node.path)
-            } else {
-                format!("{}! {}", mac.node.path, ident)
-            }
-        }
-    };
+    let macro_name = rewrite_macro_name(&mac.node.path, extra_ident);
 
     let style = if FORCED_BRACKET_MACROS.contains(&&macro_name[..]) {
         MacroStyle::Brackets

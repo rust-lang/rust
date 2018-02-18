@@ -14,7 +14,6 @@ use std::ops::Deref;
 use config::lists::*;
 use syntax::ast::{self, FunctionRetTy, Mutability};
 use syntax::codemap::{self, BytePos, Span};
-use syntax::print::pprust;
 use syntax::symbol::keywords;
 
 use codemap::SpanUtils;
@@ -539,7 +538,7 @@ impl Rewrite for ast::TyParamBound {
 
 impl Rewrite for ast::Lifetime {
     fn rewrite(&self, _: &RewriteContext, _: Shape) -> Option<String> {
-        Some(pprust::lifetime_to_string(self))
+        Some(self.ident.to_string())
     }
 }
 
