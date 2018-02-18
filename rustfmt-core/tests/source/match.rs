@@ -451,3 +451,14 @@ fn issue_2152() {
         "bind" | "writev" | "readv" | "sendmsg" | "recvmsg" if android && (aarch64 || x86_64) => true,
     }
 }
+
+// #2462
+// Preserve a `|` at the beginning of a match arm.
+fn match_with_beginning_vert() {
+    let x = Foo::A;
+    match x {
+        | Foo::A
+        | Foo::B => println!("AB"),
+        | Foo::C => println!("C"),
+    }
+}
