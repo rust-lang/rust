@@ -10,5 +10,5 @@ path = "lib.rs"
 doctest = false
 
 [dependencies]
-pulldown-cmark = { version = "0.1.0", default-features = false }
+pulldown-cmark = { version = "0.1.2", default-features = false }
 tempdir = "0.3"
