@@ -324,7 +324,6 @@
 #![feature(doc_spotlight)]
 #![cfg_attr(test, feature(update_panic_count))]
 #![cfg_attr(windows, feature(used))]
-#![cfg_attr(stage0, feature(repr_align))]
 
 #![default_lib_allocator]
 

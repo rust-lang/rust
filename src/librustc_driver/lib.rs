@@ -1478,14 +1478,6 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
     }
 }
 
-#[cfg(stage0)]
-pub fn diagnostics_registry() -> errors::registry::Registry {
-    use errors::registry::Registry;
-
-    Registry::new(&[])
-}
-
-#[cfg(not(stage0))]
 pub fn diagnostics_registry() -> errors::registry::Registry {
     use errors::registry::Registry;
 
