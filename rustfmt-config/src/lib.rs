@@ -48,7 +48,7 @@ create_config! {
     tab_spaces: usize, 4, true, "Number of spaces per tab";
     newline_style: NewlineStyle, NewlineStyle::Unix, true, "Unix or Windows line endings";
     indent_style: IndentStyle, IndentStyle::Block, false, "How do we indent expressions or items.";
-    use_small_heuristics: bool, true, false, "Whether to use different formatting for items and\
+    use_small_heuristics: bool, true, false, "Whether to use different formatting for items and \
         expressions if they satisfy a heuristic notion of 'small'.";
 
     // strings and comments
