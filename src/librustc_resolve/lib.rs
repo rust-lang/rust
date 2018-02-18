@@ -162,6 +162,10 @@ enum ResolutionError<'a> {
     ForwardDeclaredTyParam,
 }
 
+/// Combines an error with provided span and emits it
+///
+/// This takes the error provided, combines it with the span and any additional spans inside the
+/// error and emits it.
 fn resolve_error<'sess, 'a>(resolver: &'sess Resolver,
                             span: Span,
                             resolution_error: ResolutionError<'a>) {
@@ -364,7 +368,7 @@ struct BindingInfo {
     binding_mode: BindingMode,
 }
 
-// Map from the name in a pattern to its binding mode.
+/// Map from the name in a pattern to its binding mode.
 type BindingMap = FxHashMap<Ident, BindingInfo>;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -559,6 +563,9 @@ impl<'a> PathSource<'a> {
     }
 }
 
+/// Different kinds of symbols don't influence each other.
+///
+/// Therefore, they have a separate universe (namespace).
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub enum Namespace {
     TypeNS,
@@ -566,6 +573,7 @@ pub enum Namespace {
     MacroNS,
 }
 
+/// Just a helper ‒ separate structure for each namespace.
 #[derive(Clone, Default, Debug)]
 pub struct PerNS<T> {
     value_ns: T,
@@ -662,6 +670,7 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
     }
 }
 
+/// This thing walks the whole crate in DFS manner, visiting each item, resolving names as it goes.
 impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
     fn visit_item(&mut self, item: &'tcx Item) {
         self.resolve_item(item);
@@ -788,7 +797,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
     fn visit_generics(&mut self, generics: &'tcx Generics) {
         // For type parameter defaults, we have to ban access
         // to following type parameters, as the Substs can only
-        // provide previous type parameters as they're built.
+        // provide previous type parameters as they're built. We
+        // put all the parameters on the ban list and then remove
+        // them one by one as they are processed and become available.
         let mut default_ban_rib = Rib::new(ForwardTyParamBanRibKind);
         default_ban_rib.bindings.extend(generics.params.iter()
             .filter_map(|p| if let GenericParam::Type(ref tp) = *p { Some(tp) } else { None })
@@ -864,6 +875,16 @@ enum RibKind<'a> {
 }
 
 /// One local scope.
+///
+/// A rib represents a scope names can live in. Note that these appear in many places, not just
+/// around braces. At any place where the list of accessible names (of the given namespace)
+/// changes, a new rib is put onto a stack. This may be, for example, a `let` statement (because it
+/// introduces variables), a macro, etc.
+///
+/// Different [rib kinds](enum.RibKind) are transparent for different names.
+///
+/// The resolution keeps a separate stack of ribs as it traverses the AST for each namespace. When
+/// resolving, the name is looked up from inside out.
 #[derive(Debug)]
 struct Rib<'a> {
     bindings: FxHashMap<Ident, Def>,
@@ -879,6 +900,11 @@ impl<'a> Rib<'a> {
     }
 }
 
+/// An intermediate resolution result.
+///
+/// This refers to the thing referred by a name. The difference between `Def` and `Item` is that
+/// items are visible in their whole block, while defs only from the place they are defined
+/// forward.
 enum LexicalScopeBinding<'a> {
     Item(&'a NameBinding<'a>),
     Def(Def),
@@ -909,7 +935,11 @@ enum PathResult<'a> {
 }
 
 enum ModuleKind {
+    /// Inline `mod something { ... }`.
     Block(NodeId),
+    /// Module from another file.
+    ///
+    /// Also called a normal module in the following code.
     Def(Def, Name),
 }
 
@@ -1194,6 +1224,9 @@ impl<'a> NameBinding<'a> {
 }
 
 /// Interns the names of the primitive types.
+///
+/// All other types are defined somewhere and possibly imported, but the primitive ones need
+/// special handling, since they have no place of origin.
 struct PrimitiveTypeTable {
     primitive_types: FxHashMap<Name, PrimTy>,
 }
@@ -1228,6 +1261,8 @@ impl PrimitiveTypeTable {
 }
 
 /// The main resolver class.
+///
+/// This is the visitor that walks the whole crate.
 pub struct Resolver<'a> {
     session: &'a Session,
     cstore: &'a CrateStore,
@@ -1359,6 +1394,7 @@ pub struct Resolver<'a> {
     injected_crate: Option<Module<'a>>,
 }
 
+/// Nothing really interesting here, it just provides memory for the rest of the crate.
 pub struct ResolverArenas<'a> {
     modules: arena::TypedArena<ModuleData<'a>>,
     local_modules: RefCell<Vec<Module<'a>>>,
@@ -1404,10 +1440,12 @@ impl<'a, 'b: 'a> ty::DefIdTree for &'a Resolver<'b> {
         match id.krate {
             LOCAL_CRATE => self.definitions.def_key(id.index).parent,
             _ => self.cstore.def_key(id).parent,
-        }.map(|index| DefId { index: index, ..id })
+        }.map(|index| DefId { index, ..id })
     }
 }
 
+/// This is the interface through which the rest of the compiler asks about name resolution after
+/// the whole AST has been indexed.
 impl<'a> hir::lowering::Resolver for Resolver<'a> {
     fn resolve_hir_path(&mut self, path: &mut hir::Path, is_value: bool) {
         self.resolve_hir_path_cb(path, is_value,
@@ -1630,6 +1668,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
+    /// Runs the function on each namespace.
     fn per_ns<T, F: FnMut(&mut Self, Namespace) -> T>(&mut self, mut f: F) -> PerNS<T> {
         PerNS {
             type_ns: f(self, TypeNS),
