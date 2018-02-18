@@ -223,7 +223,6 @@ pub struct Build {
     cargo_info: channel::GitInfo,
     rls_info: channel::GitInfo,
     rustfmt_info: channel::GitInfo,
-    doc_tests: bool,
 
     // Probed tools at runtime
     lldb_version: Option<String>,
@@ -292,8 +291,6 @@ impl Build {
         let rustfmt_info = channel::GitInfo::new(&config, &config.src.join("src/tools/rustfmt"));
 
         Build {
-            doc_tests: config.cmd.doc_tests(),
-
             config,
 
             rust_info,

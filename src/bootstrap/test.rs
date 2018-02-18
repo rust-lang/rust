@@ -1354,7 +1354,7 @@ impl Step for Crate {
         if test_kind.subcommand() == "test" && !build.config.cmd.fail_fast() {
             cargo.arg("--no-fail-fast");
         }
-        if build.doc_tests {
+        if builder.config.cmd.doc_tests() {
             cargo.arg("--doc");
         }
 
