@@ -25,7 +25,7 @@ pub struct Indent {
 // INDENT_BUFFER.len() = 80
 const INDENT_BUFFER_LEN: usize = 80;
 const INDENT_BUFFER: &str =
-    "                                                                                ";
+    "\n                                                                               ";
 impl Indent {
     pub fn new(block_indent: usize, alignment: usize) -> Indent {
         Indent {
@@ -74,16 +74,27 @@ impl Indent {
     }
 
     pub fn to_string(&self, config: &Config) -> Cow<'static, str> {
+        self.to_string_inner(config, 1)
+    }
+
+    pub fn to_string_with_newline(&self, config: &Config) -> Cow<'static, str> {
+        self.to_string_inner(config, 0)
+    }
+
+    pub fn to_string_inner(&self, config: &Config, offset: usize) -> Cow<'static, str> {
         let (num_tabs, num_spaces) = if config.hard_tabs() {
             (self.block_indent / config.tab_spaces(), self.alignment)
         } else {
             (0, self.width())
         };
         let num_chars = num_tabs + num_spaces;
-        if num_tabs == 0 && num_chars <= INDENT_BUFFER_LEN {
-            Cow::from(&INDENT_BUFFER[0..num_chars])
+        if num_tabs == 0 && num_chars + offset <= INDENT_BUFFER_LEN {
+            Cow::from(&INDENT_BUFFER[offset..num_chars + 1])
         } else {
-            let mut indent = String::with_capacity(num_chars);
+            let mut indent = String::with_capacity(num_chars + if offset == 0 { 1 } else { 0 });
+            if offset == 0 {
+                indent.push('\n');
+            }
             for _ in 0..num_tabs {
                 indent.push('\t')
             }
