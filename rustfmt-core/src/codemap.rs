@@ -71,7 +71,7 @@ impl LineRangeUtils for CodeMap {
         let lo = self.lookup_line(span.lo()).unwrap();
         let hi = self.lookup_line(span.hi()).unwrap();
 
-        assert_eq!(
+        debug_assert_eq!(
             lo.fm.name, hi.fm.name,
             "span crossed file boundary: lo: {:?}, hi: {:?}",
             lo, hi
