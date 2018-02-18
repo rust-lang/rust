@@ -1355,6 +1355,9 @@ impl Step for Crate {
         if test_kind.subcommand() == "test" && !build.fail_fast {
             cargo.arg("--no-fail-fast");
         }
+        if build.doc_tests {
+            cargo.arg("--doc");
+        }
 
         cargo.arg("-p").arg(krate);
 
