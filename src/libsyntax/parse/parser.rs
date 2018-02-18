@@ -3404,14 +3404,48 @@ impl<'a> Parser<'a> {
         } else {
             None
         };
+        let arrow_span = self.span;
         self.expect(&token::FatArrow)?;
-        let expr = self.parse_expr_res(Restrictions::STMT_EXPR, None)?;
+        let arm_start_span = self.span;
+
+        let expr = self.parse_expr_res(Restrictions::STMT_EXPR, None)
+            .map_err(|mut err| {
+                err.span_label(arrow_span, "while parsing the match arm starting here");
+                err
+            })?;
 
         let require_comma = classify::expr_requires_semi_to_be_stmt(&expr)
             && self.token != token::CloseDelim(token::Brace);
 
         if require_comma {
-            self.expect_one_of(&[token::Comma], &[token::CloseDelim(token::Brace)])?;
+            let cm = self.sess.codemap();
+            self.expect_one_of(&[token::Comma], &[token::CloseDelim(token::Brace)])
+                .map_err(|mut err| {
+                    err.span_label(arrow_span, "while parsing the match arm starting here");
+                    match (cm.span_to_lines(expr.span), cm.span_to_lines(arm_start_span)) {
+                        (Ok(ref expr_lines), Ok(ref arm_start_lines))
+                        if arm_start_lines.lines[0].end_col == expr_lines.lines[0].end_col
+                            && expr_lines.lines.len() == 2
+                            && self.token == token::FatArrow => {
+                            // We check wether there's any trailing code in the parse span, if there
+                            // isn't, we very likely have the following:
+                            //
+                            // X |     &Y => "y"
+                            //   |        --    - missing comma
+                            //   |        |
+                            //   |        arrow_span
+                            // X |     &X => "x"
+                            //   |      - ^^ self.span
+                            //   |      |
+                            //   |      parsed until here as `"y" & X`
+                            err.span_suggestion_short(cm.next_point(arm_start_span),
+                                                      "missing a comma here to end this match arm",
+                                                      ",".to_owned());
+                        }
+                        _ => {}
+                    }
+                    err
+                })?;
         } else {
             self.eat(&token::Comma);
         }
