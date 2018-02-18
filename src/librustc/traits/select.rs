@@ -53,7 +53,7 @@ use std::rc::Rc;
 use syntax::abi::Abi;
 use hir;
 use lint;
-use util::nodemap::FxHashMap;
+use util::nodemap::{FxHashMap, FxHashSet};
 
 struct InferredObligationsSnapshotVecDelegate<'tcx> {
     phantom: PhantomData<&'tcx i32>,
@@ -3282,7 +3282,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // that order.
         let predicates = tcx.predicates_of(def_id);
         assert_eq!(predicates.parent, None);
-        let predicates = predicates.predicates.iter().flat_map(|predicate| {
+        let mut predicates: Vec<_> = predicates.predicates.iter().flat_map(|predicate| {
             let predicate = normalize_with_depth(self, param_env, cause.clone(), recursion_depth,
                                                  &predicate.subst(tcx, substs));
             predicate.obligations.into_iter().chain(
@@ -3293,6 +3293,13 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     predicate: predicate.value
                 }))
         }).collect();
+        // We are performing deduplication here to avoid exponential blowups
+        // (#38528) from happening, but the real cause of the duplication is
+        // unknown. What we know is that the deduplication avoids exponential
+        // amount of predicates being propogated when processing deeply nested
+        // types.
+        let mut seen = FxHashSet();
+        predicates.retain(|i| seen.insert(i.clone()));
         self.infcx().plug_leaks(skol_map, snapshot, predicates)
     }
 }
