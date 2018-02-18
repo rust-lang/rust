@@ -93,9 +93,17 @@ impl BadIssueSeeker {
         }
     }
 
+    fn is_disabled(&self) -> bool {
+        !is_enabled(self.report_todo) && !is_enabled(self.report_fixme)
+    }
+
     // Check whether or not the current char is conclusive evidence for an
     // unnumbered TO-DO or FIX-ME.
     pub fn inspect(&mut self, c: char) -> Option<Issue> {
+        if self.is_disabled() {
+            return None;
+        }
+
         match self.state {
             Seeking::Issue {
                 todo_idx,
