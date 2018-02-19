@@ -132,6 +132,11 @@ impl FileLines {
         FileLines(None)
     }
 
+    /// Returns true if this `FileLines` contains all lines in all files.
+    pub fn is_all(&self) -> bool {
+        self.0.is_none()
+    }
+
     pub fn from_ranges(mut ranges: HashMap<FileName, Vec<Range>>) -> FileLines {
         normalize_ranges(&mut ranges);
         FileLines(Some(ranges))
