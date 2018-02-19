@@ -89,7 +89,7 @@ pub fn check(build: &mut Build) {
     let building_llvm = build.config.hosts.iter()
         .filter_map(|host| build.config.target_config.get(host))
         .any(|config| config.llvm_config.is_none());
-    if building_llvm || build.config.sanitizers {
+    if building_llvm || build.config.general.sanitizers {
         cmd_finder.must_have("cmake");
     }
 
@@ -117,17 +117,17 @@ pub fn check(build: &mut Build) {
         }
     }
 
-    build.config.python = build.config.python.take().map(|p| cmd_finder.must_have(p))
+    build.config.general.python = build.config.general.python.take().map(|p| cmd_finder.must_have(p))
         .or_else(|| env::var_os("BOOTSTRAP_PYTHON").map(PathBuf::from)) // set by bootstrap.py
         .or_else(|| cmd_finder.maybe_have("python2.7"))
         .or_else(|| cmd_finder.maybe_have("python2"))
         .or_else(|| Some(cmd_finder.must_have("python")));
 
-    build.config.nodejs = build.config.nodejs.take().map(|p| cmd_finder.must_have(p))
+    build.config.general.nodejs = build.config.general.nodejs.take().map(|p| cmd_finder.must_have(p))
         .or_else(|| cmd_finder.maybe_have("node"))
         .or_else(|| cmd_finder.maybe_have("nodejs"));
 
-    build.config.gdb = build.config.gdb.take().map(|p| cmd_finder.must_have(p))
+    build.config.general.gdb = build.config.general.gdb.take().map(|p| cmd_finder.must_have(p))
         .or_else(|| cmd_finder.maybe_have("gdb"));
 
     // We're gonna build some custom C code here and there, host triples

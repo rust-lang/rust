@@ -142,13 +142,13 @@ macro_rules! install {
         impl $name {
             #[allow(dead_code)]
             fn should_build(config: &Config) -> bool {
-                config.extended && config.tools.as_ref()
+                config.general.extended && config.general.tools.as_ref()
                     .map_or(true, |t| t.contains($path))
             }
 
             #[allow(dead_code)]
             fn should_install(builder: &Builder) -> bool {
-                builder.config.tools.as_ref().map_or(false, |t| t.contains($path))
+                builder.config.general.tools.as_ref().map_or(false, |t| t.contains($path))
             }
         }
 
@@ -179,7 +179,7 @@ macro_rules! install {
 }
 
 install!((self, builder, _config),
-    Docs, "src/doc", _config.docs, only_hosts: false, {
+    Docs, "src/doc", _config.general.docs, only_hosts: false, {
         builder.ensure(dist::Docs { stage: self.stage, host: self.target });
         install_docs(builder, self.stage, self.target);
     };

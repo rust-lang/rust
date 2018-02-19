@@ -150,11 +150,11 @@ pub fn std_cargo(build: &Build,
     // same view of what the default allocator is, but fails otherwise. Since
     // we don't have a way to express an allocator preference yet, work
     // around the issue in the case of a local rebuild with jemalloc disabled.
-    if compiler.stage == 0 && build.config.local_rebuild && !build.config.rust.use_jemalloc {
+    if compiler.stage == 0 && build.config.general.local_rebuild && !build.config.rust.use_jemalloc {
         features.push_str(" force_alloc_system");
     }
 
-    if compiler.stage != 0 && build.config.sanitizers {
+    if compiler.stage != 0 && build.config.general.sanitizers {
         // This variable is used by the sanitizer runtime crates, e.g.
         // rustc_lsan, to build the sanitizer runtime from C code
         // When this variable is missing, those crates won't compile the C code,
@@ -217,7 +217,7 @@ impl Step for StdLink {
         let libdir = builder.sysroot_libdir(target_compiler, target);
         add_to_sysroot(&libdir, &libstd_stamp(build, compiler, target));
 
-        if build.config.sanitizers && compiler.stage != 0 && target == "x86_64-apple-darwin" {
+        if build.config.general.sanitizers && compiler.stage != 0 && target == "x86_64-apple-darwin" {
             // The sanitizers are only built in stage1 or above, so the dylibs will
             // be missing in stage0 and causes panic. See the `std()` function above
             // for reason why the sanitizers are not built in stage0.

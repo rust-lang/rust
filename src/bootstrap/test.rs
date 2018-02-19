@@ -118,7 +118,7 @@ impl Step for Linkcheck {
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         let builder = run.builder;
-        run.path("src/tools/linkchecker").default_condition(builder.build.config.docs)
+        run.path("src/tools/linkchecker").default_condition(builder.build.config.general.docs)
     }
 
     fn make_run(run: RunConfig) {
@@ -488,7 +488,7 @@ impl Step for RustdocJS {
     }
 
     fn run(self, builder: &Builder) {
-        if let Some(ref nodejs) = builder.config.nodejs {
+        if let Some(ref nodejs) = builder.config.general.nodejs {
             let mut command = Command::new(nodejs);
             command.args(&["src/tools/rustdoc-js/tester.js", &*self.host]);
             builder.ensure(::doc::Std {
@@ -525,7 +525,7 @@ impl Step for Tidy {
         println!("tidy check ({})", host);
         let mut cmd = builder.tool_cmd(Tool::Tidy);
         cmd.arg(build.config.src.join("src"));
-        if !build.config.vendor {
+        if !build.config.general.vendor {
             cmd.arg("--no-vendor");
         }
         if build.config.rust.quiet_tests {
@@ -853,7 +853,7 @@ impl Step for Compiletest {
         cmd.arg("--host").arg(&*compiler.host);
         cmd.arg("--llvm-filecheck").arg(build.llvm_filecheck(build.config.build));
 
-        if let Some(ref nodejs) = build.config.nodejs {
+        if let Some(ref nodejs) = build.config.general.nodejs {
             cmd.arg("--nodejs").arg(nodejs);
         }
 
@@ -890,7 +890,7 @@ impl Step for Compiletest {
             cmd.arg("--lldb-python").arg(build.python());
         }
 
-        if let Some(ref gdb) = build.config.gdb {
+        if let Some(ref gdb) = build.config.general.gdb {
             cmd.arg("--gdb").arg(gdb);
         }
         if let Some(ref vers) = build.lldb_version {
@@ -965,11 +965,11 @@ impl Step for Compiletest {
         cmd.env("RUSTC_BOOTSTRAP", "1");
         build.add_rust_test_threads(&mut cmd);
 
-        if build.config.sanitizers {
+        if build.config.general.sanitizers {
             cmd.env("SANITIZER_SUPPORT", "1");
         }
 
-        if build.config.profiler {
+        if build.config.general.profiler {
             cmd.env("PROFILER_SUPPORT", "1");
         }
 
@@ -1380,7 +1380,7 @@ impl Step for Crate {
 
         if target.contains("emscripten") {
             cargo.env(format!("CARGO_TARGET_{}_RUNNER", envify(&target)),
-                      build.config.nodejs.as_ref().expect("nodejs not configured"));
+                      build.config.general.nodejs.as_ref().expect("nodejs not configured"));
         } else if target.starts_with("wasm32") {
             // Warn about running tests without the `wasm_syscall` feature enabled.
             // The javascript shim implements the syscall interface so that test
@@ -1394,7 +1394,7 @@ impl Step for Crate {
             // incompatible with `-C prefer-dynamic`, so disable that here
             cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
 
-            let node = build.config.nodejs.as_ref()
+            let node = build.config.general.nodejs.as_ref()
                 .expect("nodejs not configured");
             let runner = format!("{} {}/src/etc/wasm32-shim.js",
                                  node.display(),
@@ -1583,7 +1583,7 @@ impl Step for Distcheck {
            .current_dir(&dir);
         build.run(&mut cmd);
         build.run(Command::new("./configure")
-                         .args(&build.config.configure_args)
+                         .args(&build.config.general.configure_args)
                          .arg("--enable-vendor")
                          .current_dir(&dir));
         build.run(Command::new(build_helper::make(&build.config.build))

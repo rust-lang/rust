@@ -386,7 +386,7 @@ impl Step for Cargo {
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         let builder = run.builder;
-        run.path("src/tools/cargo").default_condition(builder.build.config.extended)
+        run.path("src/tools/cargo").default_condition(builder.build.config.general.extended)
     }
 
     fn make_run(run: RunConfig) {
@@ -438,7 +438,7 @@ macro_rules! tool_extended {
 
             fn should_run(run: ShouldRun) -> ShouldRun {
                 let builder = run.builder;
-                run.path($path).default_condition(builder.build.config.extended)
+                run.path($path).default_condition(builder.build.config.general.extended)
             }
 
             fn make_run(run: RunConfig) {

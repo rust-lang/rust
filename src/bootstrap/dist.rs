@@ -90,7 +90,7 @@ impl Step for Docs {
         let name = pkgname(build, "rust-docs");
 
         println!("Dist docs ({})", host);
-        if !build.config.docs {
+        if !build.config.general.docs {
             println!("\tskipping - docs disabled");
             return distdir(build).join(format!("{}-{}.tar.gz", name, host));
         }
@@ -618,7 +618,7 @@ impl Step for Analysis {
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         let builder = run.builder;
-        run.path("analysis").default_condition(builder.build.config.extended)
+        run.path("analysis").default_condition(builder.build.config.general.extended)
     }
 
     fn make_run(run: RunConfig) {
@@ -633,7 +633,7 @@ impl Step for Analysis {
         let build = builder.build;
         let compiler = self.compiler;
         let target = self.target;
-        assert!(build.config.extended);
+        assert!(build.config.general.extended);
         println!("Dist analysis");
         let name = pkgname(build, "rust-analysis");
 
@@ -1082,7 +1082,7 @@ impl Step for Rls {
         let build = builder.build;
         let stage = self.stage;
         let target = self.target;
-        assert!(build.config.extended);
+        assert!(build.config.general.extended);
 
         println!("Dist RLS stage{} ({})", stage, target);
         let src = build.config.src.join("src/tools/rls");
@@ -1163,7 +1163,7 @@ impl Step for Rustfmt {
         let build = builder.build;
         let stage = self.stage;
         let target = self.target;
-        assert!(build.config.extended);
+        assert!(build.config.general.extended);
 
         println!("Dist Rustfmt stage{} ({})", stage, target);
         let src = build.config.src.join("src/tools/rustfmt");
@@ -1235,7 +1235,7 @@ impl Step for Extended {
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         let builder = run.builder;
-        run.path("extended").default_condition(builder.config.extended)
+        run.path("extended").default_condition(builder.config.general.extended)
     }
 
     fn make_run(run: RunConfig) {
@@ -1299,7 +1299,7 @@ impl Step for Extended {
         tarballs.extend(rustfmt_installer.clone());
         tarballs.push(analysis_installer);
         tarballs.push(std_installer);
-        if build.config.docs {
+        if build.config.general.docs {
             tarballs.push(docs_installer);
         }
         if target.contains("pc-windows-gnu") {

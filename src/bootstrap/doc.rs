@@ -45,7 +45,7 @@ macro_rules! book {
 
             fn should_run(run: ShouldRun) -> ShouldRun {
                 let builder = run.builder;
-                run.path($path).default_condition(builder.build.config.docs)
+                run.path($path).default_condition(builder.build.config.general.docs)
             }
 
             fn make_run(run: RunConfig) {
@@ -112,7 +112,7 @@ impl Step for UnstableBook {
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         let builder = run.builder;
-        run.path("src/doc/unstable-book").default_condition(builder.build.config.docs)
+        run.path("src/doc/unstable-book").default_condition(builder.build.config.general.docs)
     }
 
     fn make_run(run: RunConfig) {
@@ -145,7 +145,7 @@ impl Step for CargoBook {
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         let builder = run.builder;
-        run.path("src/tools/cargo/src/doc/book").default_condition(builder.build.config.docs)
+        run.path("src/tools/cargo/src/doc/book").default_condition(builder.build.config.general.docs)
     }
 
     fn make_run(run: RunConfig) {
@@ -235,7 +235,7 @@ impl Step for TheBook {
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         let builder = run.builder;
-        run.path("src/doc/book").default_condition(builder.build.config.docs)
+        run.path("src/doc/book").default_condition(builder.build.config.general.docs)
     }
 
     fn make_run(run: RunConfig) {
@@ -334,7 +334,7 @@ impl Step for Standalone {
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         let builder = run.builder;
-        run.path("src/doc").default_condition(builder.build.config.docs)
+        run.path("src/doc").default_condition(builder.build.config.general.docs)
     }
 
     fn make_run(run: RunConfig) {
@@ -429,7 +429,7 @@ impl Step for Std {
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         let builder = run.builder;
-        run.all_krates("std").default_condition(builder.build.config.docs)
+        run.all_krates("std").default_condition(builder.build.config.general.docs)
     }
 
     fn make_run(run: RunConfig) {
@@ -485,7 +485,7 @@ impl Step for Std {
         // We don't want to build docs for internal std dependencies unless
         // in compiler-docs mode. When not in that mode, we whitelist the crates
         // for which docs must be built.
-        if !build.config.compiler_docs {
+        if !build.config.general.compiler_docs {
             cargo.arg("--no-deps");
             for krate in &["alloc", "core", "std", "std_unicode"] {
                 cargo.arg("-p").arg(krate);
@@ -514,7 +514,7 @@ impl Step for Test {
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         let builder = run.builder;
-        run.krate("test").default_condition(builder.config.compiler_docs)
+        run.krate("test").default_condition(builder.config.general.compiler_docs)
     }
 
     fn make_run(run: RunConfig) {
@@ -575,7 +575,7 @@ impl Step for Rustc {
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         let builder = run.builder;
-        run.krate("rustc-main").default_condition(builder.build.config.docs)
+        run.krate("rustc-main").default_condition(builder.build.config.general.docs)
     }
 
     fn make_run(run: RunConfig) {
@@ -619,7 +619,7 @@ impl Step for Rustc {
         let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "doc");
         compile::rustc_cargo(build, &mut cargo);
 
-        if build.config.compiler_docs {
+        if build.config.general.compiler_docs {
             // src/rustc/Cargo.toml contains a bin crate called rustc which
             // would otherwise overwrite the docs for the real rustc lib crate.
             cargo.arg("-p").arg("rustc_driver");
@@ -649,7 +649,7 @@ impl Step for ErrorIndex {
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         let builder = run.builder;
-        run.path("src/tools/error_index_generator").default_condition(builder.build.config.docs)
+        run.path("src/tools/error_index_generator").default_condition(builder.build.config.general.docs)
     }
 
     fn make_run(run: RunConfig) {
@@ -691,7 +691,7 @@ impl Step for UnstableBookGen {
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         let builder = run.builder;
-        run.path("src/tools/unstable-book-gen").default_condition(builder.build.config.docs)
+        run.path("src/tools/unstable-book-gen").default_condition(builder.build.config.general.docs)
     }
 
     fn make_run(run: RunConfig) {

@@ -536,7 +536,7 @@ impl<'a> Builder<'a> {
         cargo.env("__CARGO_DEFAULT_LIB_METADATA", &self.config.rust.channel);
 
         let stage;
-        if compiler.stage == 0 && self.config.local_rebuild {
+        if compiler.stage == 0 && self.config.general.local_rebuild {
             // Assume the local-rebuild rustc already has stage1 features.
             stage = 1;
         } else {
@@ -663,7 +663,7 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_ON_FAIL", on_fail);
         }
 
-        cargo.env("RUSTC_VERBOSE", format!("{}", self.config.verbose));
+        cargo.env("RUSTC_VERBOSE", format!("{}", self.config.general.verbose));
 
         // Throughout the build Cargo can execute a number of build scripts
         // compiling C/C++ code and we need to pass compilers, archivers, flags, etc
@@ -697,7 +697,7 @@ impl<'a> Builder<'a> {
             }
         }
 
-        if mode == Mode::Libstd && self.config.extended && compiler.is_final_stage(self) {
+        if mode == Mode::Libstd && self.config.general.extended && compiler.is_final_stage(self) {
             cargo.env("RUSTC_SAVE_ANALYSIS", "api".to_string());
         }
 
@@ -773,10 +773,10 @@ impl<'a> Builder<'a> {
             }
         }
 
-        if self.config.locked_deps {
+        if self.config.general.locked_deps {
             cargo.arg("--locked");
         }
-        if self.config.vendor || self.config.is_sudo {
+        if self.config.general.vendor || self.config.is_sudo {
             cargo.arg("--frozen");
         }
 

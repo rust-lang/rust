@@ -40,29 +40,14 @@ pub use flags::Subcommand;
 /// `config.toml.example`.
 #[derive(Default)]
 pub struct Config {
-    pub target_config: HashMap<Interned<String>, Target>,
-    pub verbose: usize,
-    pub submodules: bool,
-    pub compiler_docs: bool,
-    pub docs: bool,
-    pub locked_deps: bool,
-    pub vendor: bool,
-    pub full_bootstrap: bool,
-    pub extended: bool,
-    pub tools: Option<HashSet<String>>,
-    pub sanitizers: bool,
-    pub profiler: bool,
     pub rustc_error_format: Option<String>,
-    pub local_rebuild: bool,
-    pub low_priority: bool,
-    pub nodejs: Option<PathBuf>,
-    pub gdb: Option<PathBuf>,
-    pub python: Option<PathBuf>,
-    pub openssl_static: bool,
-
     pub build: Interned<String>,
     pub hosts: Vec<Interned<String>>,
     pub targets: Vec<Interned<String>>,
+
+    // These are either the stage0 downloaded binaries or the locally installed ones.
+    pub initial_cargo: PathBuf,
+    pub initial_rustc: PathBuf,
 
     pub run_host_only: bool,
     pub is_sudo: bool,
@@ -82,12 +67,9 @@ pub struct Config {
     pub rust: Rust,
     pub dist: Dist,
 
+    pub target_config: HashMap<Interned<String>, Target>,
     pub install: Install,
-    pub configure_args: Vec<String>,
-
-    // These are either the stage0 downloaded binaries or the locally installed ones.
-    pub initial_cargo: PathBuf,
-    pub initial_rustc: PathBuf,
+    pub general: Build,
 }
 
 /// Per-target configuration stored in the global configuration structure.
@@ -125,30 +107,31 @@ struct TomlConfig {
 /// TOML representation of various global build decisions.
 #[derive(Deserialize, Clone)]
 #[serde(default, deny_unknown_fields, rename_all = "kebab-case")]
-struct Build {
+pub struct Build {
     build: Option<String>,
     host: Vec<String>,
     target: Vec<String>,
     cargo: Option<String>,
     rustc: Option<String>,
-    low_priority: bool,
-    compiler_docs: bool,
-    docs: bool,
-    submodules: bool,
-    gdb: Option<PathBuf>,
-    locked_deps: bool,
-    vendor: bool,
-    nodejs: Option<PathBuf>,
-    python: Option<PathBuf>,
-    full_bootstrap: bool,
-    extended: bool,
-    tools: Option<HashSet<String>>,
-    verbose: usize,
-    sanitizers: bool,
-    profiler: bool,
-    openssl_static: bool,
-    configure_args: Vec<String>,
-    local_rebuild: bool,
+
+    pub low_priority: bool,
+    pub compiler_docs: bool,
+    pub docs: bool,
+    pub submodules: bool,
+    pub gdb: Option<PathBuf>,
+    pub locked_deps: bool,
+    pub vendor: bool,
+    pub nodejs: Option<PathBuf>,
+    pub python: Option<PathBuf>,
+    pub full_bootstrap: bool,
+    pub extended: bool,
+    pub tools: Option<HashSet<String>>,
+    pub verbose: usize,
+    pub sanitizers: bool,
+    pub profiler: bool,
+    pub openssl_static: bool,
+    pub configure_args: Vec<String>,
+    pub local_rebuild: bool,
 }
 
 impl Default for Build {
@@ -472,21 +455,21 @@ impl Config {
             }
         }).unwrap_or_else(|| TomlConfig::default());
 
-        let build = toml.build;
+        config.general = toml.build.clone();
         config.build = flags.build
-            .or_else(|| build.build.clone().map(|b| INTERNER.intern_string(b)))
+            .or_else(|| toml.build.build.clone().map(|b| INTERNER.intern_string(b)))
             .unwrap_or_else(|| {
                 INTERNER.intern_str(&env::var("BUILD").unwrap())
             });
         config.hosts.push(config.build.clone());
-        for host in build.host.iter() {
+        for host in toml.build.host.iter() {
             let host = INTERNER.intern_str(host);
             if !config.hosts.contains(&host) {
                 config.hosts.push(host);
             }
         }
         for target in config.hosts.iter().cloned()
-            .chain(build.target.iter().map(|s| INTERNER.intern_str(s)))
+            .chain(toml.build.target.iter().map(|s| INTERNER.intern_str(s)))
         {
             if !config.targets.contains(&target) {
                 config.targets.push(target);
@@ -503,25 +486,7 @@ impl Config {
             config.targets
         };
 
-        config.nodejs = build.nodejs;
-        config.gdb = build.gdb;
-        config.python = build.python;
-        config.low_priority = build.low_priority;
-        config.compiler_docs = build.compiler_docs;
-        config.docs = build.docs;
-        config.submodules = build.submodules;
-        config.locked_deps = build.locked_deps;
-        config.vendor = build.vendor;
-        config.full_bootstrap = build.full_bootstrap;
-        config.extended = build.extended;
-        config.tools = build.tools;
-        config.verbose = cmp::max(build.verbose, flags.verbose);
-        config.sanitizers = build.sanitizers;
-        config.profiler = build.profiler;
-        config.openssl_static = build.openssl_static;
-        config.configure_args = build.configure_args;
-        // will get auto-detected later
-        config.local_rebuild = build.local_rebuild;
+        config.general.verbose = cmp::max(toml.build.verbose, flags.verbose);
 
         config.install = toml.install;
         config.llvm = toml.llvm;
@@ -547,7 +512,7 @@ impl Config {
         config.dist = toml.dist;
 
         let stage0_root = out.join(&config.build).join("stage0/bin");
-        config.initial_rustc = match build.rustc {
+        config.initial_rustc = match toml.build.rustc {
             Some(s) => PathBuf::from(s),
             None => stage0_root.join(exe("rustc", &config.build)),
         };
@@ -560,9 +525,9 @@ impl Config {
         let my_version = channel::CFG_RELEASE_NUM;
         if local_release.split('.').take(2).eq(my_version.split('.').take(2)) {
             eprintln!("auto-detected local rebuild");
-            config.local_rebuild = true;
+            config.general.local_rebuild = true;
         }
-        config.initial_cargo = match build.cargo {
+        config.initial_cargo = match toml.build.cargo {
             Some(s) => PathBuf::from(s),
             None => stage0_root.join(exe("cargo", &config.build)),
         };
@@ -588,10 +553,10 @@ impl Config {
     }
 
     pub fn verbose(&self) -> bool {
-        self.verbose > 0
+        self.general.verbose > 0
     }
 
     pub fn very_verbose(&self) -> bool {
-        self.verbose > 1
+        self.general.verbose > 1
     }
 }

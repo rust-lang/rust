@@ -175,7 +175,7 @@ mod job {
     use libc;
 
     pub unsafe fn setup(build: &mut ::Build) {
-        if build.config.low_priority {
+        if build.config.general.low_priority {
             libc::setpriority(libc::PRIO_PGRP as _, 0, 10);
         }
     }
@@ -377,7 +377,7 @@ impl Build {
         if self.config.rust.backtrace {
             features.push_str(" backtrace");
         }
-        if self.config.profiler {
+        if self.config.general.profiler {
             features.push_str(" profiler");
         }
         if self.config.rust.wasm_syscall {
@@ -556,11 +556,11 @@ impl Build {
     }
 
     pub fn is_verbose(&self) -> bool {
-        self.config.verbose > 0
+        self.config.verbose()
     }
 
     pub fn is_very_verbose(&self) -> bool {
-        self.config.verbose > 1
+        self.config.very_verbose()
     }
 
     /// Prints a message if this build is configured in verbose mode.
@@ -674,7 +674,7 @@ impl Build {
 
     /// Path to the python interpreter to use
     fn python(&self) -> &Path {
-        self.config.python.as_ref().unwrap()
+        self.config.general.python.as_ref().unwrap()
     }
 
     /// Temporary directory that extended error information is emitted to.
@@ -701,7 +701,7 @@ impl Build {
     /// When all of these conditions are met the build will lift artifacts from
     /// the previous stage forward.
     fn force_use_stage1(&self, compiler: Compiler, target: Interned<String>) -> bool {
-        !self.config.full_bootstrap &&
+        !self.config.general.full_bootstrap &&
             compiler.stage >= 2 &&
             (self.config.hosts.iter().any(|h| *h == target) || target == self.config.build)
     }
@@ -712,7 +712,7 @@ impl Build {
         // OpenSSL not used on Windows
         if target.contains("windows") {
             None
-        } else if self.config.openssl_static {
+        } else if self.config.general.openssl_static {
             Some(self.config.out.join(&*target).join("openssl"))
         } else {
             None
@@ -941,7 +941,7 @@ impl<'a> Compiler {
     /// This takes into account whether we're performing a full bootstrap or
     /// not; don't directly compare the stage with `2`!
     pub fn is_final_stage(&self, build: &Build) -> bool {
-        let final_stage = if build.config.full_bootstrap { 2 } else { 1 };
+        let final_stage = if build.config.general.full_bootstrap { 2 } else { 1 };
         self.stage >= final_stage
     }
 }
