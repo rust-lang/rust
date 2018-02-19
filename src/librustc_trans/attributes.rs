@@ -92,6 +92,11 @@ pub fn set_probestack(cx: &CodegenCx, llfn: ValueRef) {
         _ => {}
     }
 
+    // probestack doesn't play nice either with pgo-gen.
+    if cx.sess().opts.cg.pgo_gen.is_some() {
+        return;
+    }
+
     // Flag our internal `__rust_probestack` function as the stack probe symbol.
     // This is defined in the `compiler-builtins` crate for each architecture.
     llvm::AddFunctionAttrStringValue(
