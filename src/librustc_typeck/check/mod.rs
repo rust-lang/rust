@@ -5052,9 +5052,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ty
         } else {
             if !self.is_tainted_by_errors() {
-                type_error_struct!(self.tcx.sess, sp, ty, E0619,
-                                    "the type of this value must be known in this context")
-                .emit();
+                self.need_type_info((**self).body_id, sp, ty);
             }
             self.demand_suptype(sp, self.tcx.types.err, ty);
             self.tcx.types.err

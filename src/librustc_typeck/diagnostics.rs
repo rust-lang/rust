@@ -4368,12 +4368,13 @@ i_am_a_function();
 "##,
 
 E0619: r##"
+#### Note: this error code is no longer emitted by the compiler.
 The type-checker needed to know the type of an expression, but that type had not
 yet been inferred.
 
 Erroneous code example:
 
-```compile_fail,E0619
+```compile_fail
 let mut x = vec![];
 match x.pop() {
     Some(v) => {
