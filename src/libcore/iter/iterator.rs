@@ -168,7 +168,7 @@ pub trait Iterator {
     /// This function might panic if the iterator has more than [`usize::MAX`]
     /// elements.
     ///
-    /// [`usize::MAX`]: ../../std/isize/constant.MAX.html
+    /// [`usize::MAX`]: ../../std/usize/constant.MAX.html
     ///
     /// # Examples
     ///
