@@ -157,7 +157,7 @@ fn rewrite_reorderable_items(
     span: Span,
 ) -> Option<String> {
     let items = itemize_list(
-        context.codemap,
+        context.snippet_provider,
         reorderable_items.iter(),
         "",
         ";",

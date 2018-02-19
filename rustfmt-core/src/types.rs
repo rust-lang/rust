@@ -217,7 +217,9 @@ fn rewrite_segment(
                     .collect::<Vec<_>>();
 
                 let next_span_lo = param_list.last().unwrap().get_span().hi() + BytePos(1);
-                let list_lo = context.codemap.span_after(mk_sp(*span_lo, span_hi), "<");
+                let list_lo = context
+                    .snippet_provider
+                    .span_after(mk_sp(*span_lo, span_hi), "<");
                 let separator = if path_context == PathContext::Expr {
                     "::"
                 } else {
@@ -228,7 +230,7 @@ fn rewrite_segment(
                     generics_shape_from_config(context.config, shape, separator.len())?;
                 let one_line_width = shape.width.checked_sub(separator.len() + 2)?;
                 let items = itemize_list(
-                    context.codemap,
+                    context.snippet_provider,
                     param_list.into_iter(),
                     ">",
                     ",",
@@ -295,7 +297,7 @@ where
     }
 
     let variadic_arg = if variadic {
-        let variadic_start = context.codemap.span_before(span, "...");
+        let variadic_start = context.snippet_provider.span_before(span, "...");
         Some(ArgumentKind::Variadic(variadic_start))
     } else {
         None
@@ -314,9 +316,9 @@ where
         IndentStyle::Visual => shape.indent + 1,
     };
     let list_shape = Shape::legacy(budget, offset);
-    let list_lo = context.codemap.span_after(span, "(");
+    let list_lo = context.snippet_provider.span_after(span, "(");
     let items = itemize_list(
-        context.codemap,
+        context.snippet_provider,
         // FIXME Would be nice to avoid this allocation,
         // but I couldn't get the types to work out.
         inputs

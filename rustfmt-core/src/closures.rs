@@ -225,14 +225,14 @@ fn rewrite_closure_fn_decl(
     let ret_str = fn_decl.output.rewrite(context, arg_shape)?;
 
     let arg_items = itemize_list(
-        context.codemap,
+        context.snippet_provider,
         fn_decl.inputs.iter(),
         "|",
         ",",
         |arg| span_lo_for_arg(arg),
         |arg| span_hi_for_arg(context, arg),
         |arg| arg.rewrite(context, arg_shape),
-        context.codemap.span_after(span, "|"),
+        context.snippet_provider.span_after(span, "|"),
         body.span.lo(),
         false,
     );

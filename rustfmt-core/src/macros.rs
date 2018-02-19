@@ -272,7 +272,7 @@ pub fn rewrite_macro(
                 // Convert `MacroArg` into `ast::Expr`, as `rewrite_array` only accepts the latter.
                 let sp = mk_sp(
                     context
-                        .codemap
+                        .snippet_provider
                         .span_after(mac.span, original_style.opener()),
                     mac.span.hi() - BytePos(1),
                 );
@@ -326,14 +326,14 @@ pub fn rewrite_macro_def(
     };
 
     let branch_items = itemize_list(
-        context.codemap,
+        context.snippet_provider,
         parsed_def.branches.iter(),
         "}",
         ";",
         |branch| branch.span.lo(),
         |branch| branch.span.hi(),
         |branch| branch.rewrite(context, arm_shape, multi_branch_style),
-        context.codemap.span_after(span, "{"),
+        context.snippet_provider.span_after(span, "{"),
         span.hi(),
         false,
     ).collect::<Vec<_>>();

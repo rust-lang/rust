@@ -14,13 +14,14 @@ use std::cmp;
 use std::iter::Peekable;
 
 use config::lists::*;
-use syntax::codemap::{BytePos, CodeMap};
+use syntax::codemap::BytePos;
 
 use comment::{find_comment_end, rewrite_comment, FindUncommented};
 use config::{Config, IndentStyle};
 use rewrite::RewriteContext;
 use shape::{Indent, Shape};
 use utils::{count_newlines, first_line_width, last_line_width, mk_sp, starts_with_newline};
+use visitor::SnippetProvider;
 
 pub struct ListFormatting<'a> {
     pub tactic: DefinitiveListTactic,
@@ -446,7 +447,7 @@ pub struct ListItems<'a, I, F1, F2, F3>
 where
     I: Iterator,
 {
-    codemap: &'a CodeMap,
+    snippet_provider: &'a SnippetProvider<'a>,
     inner: Peekable<I>,
     get_lo: F1,
     get_hi: F2,
@@ -473,7 +474,7 @@ where
         self.inner.next().map(|item| {
             let mut new_lines = false;
             // Pre-comment
-            let pre_snippet = self.codemap
+            let pre_snippet = self.snippet_provider
                 .span_to_snippet(mk_sp(self.prev_span_end, (self.get_lo)(&item)))
                 .unwrap();
             let trimmed_pre_snippet = pre_snippet.trim();
@@ -511,7 +512,7 @@ where
                 Some(next_item) => (self.get_lo)(next_item),
                 None => self.next_span_start,
             };
-            let post_snippet = self.codemap
+            let post_snippet = self.snippet_provider
                 .span_to_snippet(mk_sp((self.get_hi)(&item), next_start))
                 .unwrap();
 
@@ -619,7 +620,7 @@ where
 #[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
 // Creates an iterator over a list's items with associated comments.
 pub fn itemize_list<'a, T, I, F1, F2, F3>(
-    codemap: &'a CodeMap,
+    snippet_provider: &'a SnippetProvider,
     inner: I,
     terminator: &'a str,
     separator: &'a str,
@@ -637,7 +638,7 @@ where
     F3: Fn(&T) -> Option<String>,
 {
     ListItems {
-        codemap,
+        snippet_provider,
         inner: inner.peekable(),
         get_lo,
         get_hi,

@@ -477,7 +477,7 @@ impl<'a> FmtVisitor<'a> {
 
         let itemize_list_with = |one_line_width: usize| {
             itemize_list(
-                self.codemap,
+                self.snippet_provider,
                 enum_def.variants.iter(),
                 "}",
                 ",",
@@ -722,7 +722,7 @@ fn format_impl_ref_and_type(
         result.push_str(format_unsafety(unsafety));
         result.push_str("impl");
 
-        let lo = context.codemap.span_after(item.span, "impl");
+        let lo = context.snippet_provider.span_after(item.span, "impl");
         let hi = match *trait_ref {
             Some(ref tr) => tr.path.span.lo(),
             None => self_ty.span.lo(),
@@ -929,7 +929,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
 
         result.push_str(&header);
 
-        let body_lo = context.codemap.span_after(item.span, "{");
+        let body_lo = context.snippet_provider.span_after(item.span, "{");
 
         let shape = Shape::indented(offset, context.config).offset_left(result.len())?;
         let generics_str =
@@ -939,7 +939,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         // FIXME(#2055): rustfmt fails to format when there are comments between trait bounds.
         if !type_param_bounds.is_empty() {
             let ident_hi = context
-                .codemap
+                .snippet_provider
                 .span_after(item.span, &format!("{}", item.ident));
             let bound_hi = type_param_bounds.last().unwrap().span().hi();
             let snippet = context.snippet(mk_sp(ident_hi, bound_hi));
@@ -1133,7 +1133,7 @@ pub fn format_struct_struct(
     result.push_str(&header_str);
 
     let header_hi = span.lo() + BytePos(header_str.len() as u32);
-    let body_lo = context.codemap.span_after(span, "{");
+    let body_lo = context.snippet_provider.span_after(span, "{");
 
     let generics_str = match struct_parts.generics {
         Some(g) => format_generics(
@@ -1231,7 +1231,7 @@ fn get_bytepos_after_visibility(
 ) -> BytePos {
     match *vis {
         ast::Visibility::Crate(s, CrateSugar::PubCrate) => context
-            .codemap
+            .snippet_provider
             .span_after(mk_sp(s.hi(), default_span.hi()), terminator),
         ast::Visibility::Crate(s, CrateSugar::JustCrate) => s.hi(),
         ast::Visibility::Restricted { ref path, .. } => path.span.hi(),
@@ -1253,12 +1253,16 @@ fn format_tuple_struct(
 
     let body_lo = if fields.is_empty() {
         let lo = get_bytepos_after_visibility(context, struct_parts.vis, span, ")");
-        context.codemap.span_after(mk_sp(lo, span.hi()), "(")
+        context
+            .snippet_provider
+            .span_after(mk_sp(lo, span.hi()), "(")
     } else {
         fields[0].span.lo()
     };
     let body_hi = if fields.is_empty() {
-        context.codemap.span_after(mk_sp(body_lo, span.hi()), ")")
+        context
+            .snippet_provider
+            .span_after(mk_sp(body_lo, span.hi()), ")")
     } else {
         // This is a dirty hack to work around a missing `)` from the span of the last field.
         let last_arg_span = fields[fields.len() - 1].span;
@@ -1266,7 +1270,7 @@ fn format_tuple_struct(
             last_arg_span.hi()
         } else {
             context
-                .codemap
+                .snippet_provider
                 .span_after(mk_sp(last_arg_span.hi(), span.hi()), ")")
         }
     };
@@ -1309,7 +1313,9 @@ fn format_tuple_struct(
         result.push('(');
         let snippet = context.snippet(mk_sp(
             body_lo,
-            context.codemap.span_before(mk_sp(body_lo, span.hi()), ")"),
+            context
+                .snippet_provider
+                .span_before(mk_sp(body_lo, span.hi()), ")"),
         ));
         if snippet.is_empty() {
             // `struct S ()`
@@ -1364,7 +1370,10 @@ pub fn rewrite_type_alias(
     let g_shape = Shape::indented(indent, context.config)
         .offset_left(result.len())?
         .sub_width(2)?;
-    let g_span = mk_sp(context.codemap.span_after(span, "type"), ty.span.lo());
+    let g_span = mk_sp(
+        context.snippet_provider.span_after(span, "type"),
+        ty.span.lo(),
+    );
     let generics_str = rewrite_generics(context, generics, g_shape, g_span)?;
     result.push_str(&generics_str);
 
@@ -1881,15 +1890,15 @@ fn rewrite_fn_base(
         .map_or(lo_after_visibility, |param| param.span().hi());
     let args_end = if fd.inputs.is_empty() {
         context
-            .codemap
+            .snippet_provider
             .span_after(mk_sp(args_start, span.hi()), ")")
     } else {
         let last_span = mk_sp(fd.inputs[fd.inputs.len() - 1].span().hi(), span.hi());
-        context.codemap.span_after(last_span, ")")
+        context.snippet_provider.span_after(last_span, ")")
     };
     let args_span = mk_sp(
         context
-            .codemap
+            .snippet_provider
             .span_after(mk_sp(args_start, span.hi()), "("),
         args_end,
     );
@@ -2140,7 +2149,7 @@ fn rewrite_args(
             };
             let reduced_span = mk_sp(span.lo(), second_arg_start);
 
-            context.codemap.span_after_last(reduced_span, ",")
+            context.snippet_provider.span_after_last(reduced_span, ",")
         } else {
             span.lo()
         };
@@ -2152,14 +2161,15 @@ fn rewrite_args(
 
         let variadic_arg = if variadic {
             let variadic_span = mk_sp(args.last().unwrap().ty.span.hi(), span.hi());
-            let variadic_start = context.codemap.span_after(variadic_span, "...") - BytePos(3);
+            let variadic_start =
+                context.snippet_provider.span_after(variadic_span, "...") - BytePos(3);
             Some(ArgumentKind::Variadic(variadic_start))
         } else {
             None
         };
 
         let more_items = itemize_list(
-            context.codemap,
+            context.snippet_provider,
             args[min_args - 1..]
                 .iter()
                 .map(ArgumentKind::Regular)
@@ -2353,14 +2363,14 @@ fn rewrite_generics_inner(
     }
 
     let items = itemize_list(
-        context.codemap,
+        context.snippet_provider,
         generics.params.iter(),
         ">",
         ",",
         |arg| arg.span().lo(),
         |arg| arg.span().hi(),
         |arg| arg.rewrite(context, shape),
-        context.codemap.span_after(span, "<"),
+        context.snippet_provider.span_after(span, "<"),
         span.hi(),
         false,
     );
@@ -2494,7 +2504,7 @@ fn rewrite_where_clause_rfc_style(
     let end_of_preds = where_clause.predicates[len - 1].span().hi();
     let span_end = span_end.unwrap_or(end_of_preds);
     let items = itemize_list(
-        context.codemap,
+        context.snippet_provider,
         where_clause.predicates.iter(),
         terminator,
         ",",
@@ -2610,7 +2620,7 @@ fn rewrite_where_clause(
     let end_of_preds = where_clause.predicates[len - 1].span().hi();
     let span_end = span_end.unwrap_or(end_of_preds);
     let items = itemize_list(
-        context.codemap,
+        context.snippet_provider,
         where_clause.predicates.iter(),
         terminator,
         ",",

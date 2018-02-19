@@ -65,7 +65,10 @@ pub fn format_expr(
     let expr_rw = match expr.node {
         ast::ExprKind::Array(ref expr_vec) => rewrite_array(
             &ptr_vec_to_ref_vec(expr_vec),
-            mk_sp(context.codemap.span_after(expr.span, "["), expr.span.hi()),
+            mk_sp(
+                context.snippet_provider.span_after(expr.span, "["),
+                expr.span.hi(),
+            ),
             context,
             shape,
             false,
@@ -425,7 +428,7 @@ pub fn rewrite_array<T: Rewrite + Spanned + ToExpr>(
     };
 
     let items = itemize_list(
-        context.codemap,
+        context.snippet_provider,
         exprs.iter(),
         "]",
         ",",
@@ -1002,13 +1005,15 @@ impl<'a> ControlFlow<'a> {
         let lo = self.label.map_or(self.span.lo(), |label| label.span.hi());
         let between_kwd_cond = mk_sp(
             context
-                .codemap
+                .snippet_provider
                 .span_after(mk_sp(lo, self.span.hi()), self.keyword.trim()),
             self.pat.map_or(cond_span.lo(), |p| {
                 if self.matcher.is_empty() {
                     p.span.lo()
                 } else {
-                    context.codemap.span_before(self.span, self.matcher.trim())
+                    context
+                        .snippet_provider
+                        .span_before(self.span, self.matcher.trim())
                 }
             }),
         );
@@ -1131,7 +1136,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
             let between_kwd_else_block = mk_sp(
                 self.block.span.hi(),
                 context
-                    .codemap
+                    .snippet_provider
                     .span_before(mk_sp(self.block.span.hi(), else_block.span.lo()), "else"),
             );
             let between_kwd_else_block_comment =
@@ -1139,7 +1144,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
 
             let after_else = mk_sp(
                 context
-                    .codemap
+                    .snippet_provider
                     .span_after(mk_sp(self.block.span.hi(), else_block.span.lo()), "else"),
                 else_block.span.lo(),
             );
@@ -1295,7 +1300,9 @@ fn rewrite_match(
         } else {
             arms[0].span().lo()
         };
-        context.codemap.span_after(mk_sp(cond.span.hi(), hi), "{")
+        context
+            .snippet_provider
+            .span_after(mk_sp(cond.span.hi(), hi), "{")
     } else {
         inner_attrs[inner_attrs.len() - 1].span().hi()
     };
@@ -1353,7 +1360,7 @@ fn rewrite_match_arms(
         .take(arm_len.checked_sub(1).unwrap_or(0))
         .chain(repeat(true));
     let items = itemize_list(
-        context.codemap,
+        context.snippet_provider,
         arms.iter()
             .zip(is_last_iter)
             .map(|(arm, is_last)| ArmWrapper::new(arm, is_last)),
@@ -1915,7 +1922,7 @@ where
         used_width + paren_overhead,
     )?;
 
-    let span_lo = context.codemap.span_after(span, "(");
+    let span_lo = context.snippet_provider.span_after(span, "(");
     let args_span = mk_sp(span_lo, span.hi());
 
     let (extendable, list_str) = rewrite_call_args(
@@ -1974,7 +1981,7 @@ where
     T: Rewrite + Spanned + ToExpr + 'a,
 {
     let items = itemize_list(
-        context.codemap,
+        context.snippet_provider,
         args.iter(),
         ")",
         ",",
@@ -2473,7 +2480,7 @@ fn rewrite_struct_lit<'a>(
     let (h_shape, v_shape) = struct_lit_shape(shape, context, path_str.len() + 3, 2)?;
 
     let one_line_width = h_shape.map_or(0, |shape| shape.width);
-    let body_lo = context.codemap.span_after(span, "{");
+    let body_lo = context.snippet_provider.span_after(span, "{");
     let fields_str = if struct_lit_can_be_aligned(fields, &base)
         && context.config.struct_field_align_threshold() > 0
     {
@@ -2516,7 +2523,7 @@ fn rewrite_struct_lit<'a>(
         };
 
         let items = itemize_list(
-            context.codemap,
+            context.snippet_provider,
             field_iter,
             "}",
             ",",
@@ -2665,10 +2672,10 @@ where
             });
     }
 
-    let list_lo = context.codemap.span_after(span, "(");
+    let list_lo = context.snippet_provider.span_after(span, "(");
     let nested_shape = shape.sub_width(2)?.visual_indent(1);
     let items = itemize_list(
-        context.codemap,
+        context.snippet_provider,
         items,
         ")",
         ",",

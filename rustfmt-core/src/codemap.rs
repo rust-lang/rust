@@ -12,6 +12,7 @@
 //! This includes extension traits and methods for looking up spans and line ranges for AST nodes.
 
 use config::file_lines::LineRange;
+use visitor::SnippetProvider;
 use syntax::codemap::{BytePos, CodeMap, Span};
 
 use comment::FindUncommented;
@@ -32,7 +33,7 @@ pub trait LineRangeUtils {
     fn lookup_line_range(&self, span: Span) -> LineRange;
 }
 
-impl SpanUtils for CodeMap {
+impl<'a> SpanUtils for SnippetProvider<'a> {
     fn span_after(&self, original: Span, needle: &str) -> BytePos {
         let snippet = self.span_to_snippet(original).expect("Bad snippet");
         let offset = snippet.find_uncommented(needle).expect("Bad offset") + needle.len();
@@ -59,7 +60,7 @@ impl SpanUtils for CodeMap {
     }
 
     fn opt_span_after(&self, original: Span, needle: &str) -> Option<BytePos> {
-        let snippet = self.span_to_snippet(original).ok()?;
+        let snippet = self.span_to_snippet(original)?;
         let offset = snippet.find_uncommented(needle)? + needle.len();
 
         Some(original.lo() + BytePos(offset as u32))
