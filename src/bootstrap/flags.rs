@@ -278,9 +278,7 @@ Arguments:
         let src = matches.opt_str("src").map(PathBuf::from)
             .or_else(|| env::var_os("SRC").map(PathBuf::from))
             .unwrap_or(cwd.clone());
-        let paths = matches.free[1..].iter().map(|p| {
-            cwd.join(p).strip_prefix(&src).expect("paths passed to be inside checkout").into()
-        }).collect::<Vec<PathBuf>>();
+        let paths = matches.free[1..].iter().map(|p| p.into()).collect::<Vec<PathBuf>>();
 
         let cfg_file = matches.opt_str("config").map(PathBuf::from).or_else(|| {
             if fs::metadata("config.toml").is_ok() {
@@ -380,9 +378,7 @@ Arguments:
             cmd,
             incremental: matches.opt_present("incremental"),
             exclude: split(matches.opt_strs("exclude"))
-                .into_iter().map(|p| {
-                    cwd.join(p).strip_prefix(&src).expect("paths to be inside checkout").into()
-                }).collect::<Vec<_>>(),
+                .into_iter().map(|p| p.into()).collect::<Vec<_>>(),
             src,
         }
     }

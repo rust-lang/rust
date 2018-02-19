@@ -217,7 +217,7 @@ impl StepDescription {
                 }
 
                 if !attempted_run {
-                    eprintln!("Warning: no rules matched {}.", path.display());
+                    panic!("Error: no rules matched {}.", path.display());
                 }
             }
         }
@@ -384,6 +384,12 @@ impl<'a> Builder<'a> {
             Subcommand::Install { ref paths } => (Kind::Install, &paths[..]),
             Subcommand::Clean { .. } => panic!(),
         };
+
+        if let Some(path) = paths.get(0) {
+            if path == Path::new("nonexistent/path/to/trigger/cargo/metadata") {
+                return;
+            }
+        }
 
         let builder = Builder {
             build,
