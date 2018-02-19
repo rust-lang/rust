@@ -414,7 +414,8 @@ fn partition_source(s: &str) -> (String, String) {
     for line in s.lines() {
         let trimline = line.trim();
         let header = trimline.is_whitespace() ||
-            trimline.starts_with("#![");
+            trimline.starts_with("#![") ||
+            trimline.starts_with("extern crate");
         if !header || after_header {
             after_header = true;
             after.push_str(line);
@@ -628,7 +629,7 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
                                             nested: F) {
         let mut attrs = Attributes::from_ast(self.sess.diagnostic(), attrs);
         if let Some(ref cfg) = attrs.cfg {
-            if !cfg.matches(&self.sess.parse_sess, Some(&self.sess.features.borrow())) {
+            if !cfg.matches(&self.sess.parse_sess, Some(&self.sess.features_untracked())) {
                 return;
             }
         }
@@ -814,8 +815,8 @@ use asdf::qwop;
 assert_eq!(2+2, 4);";
         let expected =
 "#![allow(unused)]
-fn main() {
 extern crate asdf;
+fn main() {
 use asdf::qwop;
 assert_eq!(2+2, 4);
 }".to_string();

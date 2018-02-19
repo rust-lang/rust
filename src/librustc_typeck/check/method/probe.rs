@@ -324,7 +324,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // possible that there will be multiple applicable methods.
                 if !is_suggestion.0 {
                     if reached_raw_pointer
-                    && !self.tcx.sess.features.borrow().arbitrary_self_types {
+                    && !self.tcx.features().arbitrary_self_types {
                         // this case used to be allowed by the compiler,
                         // so we do a future-compat lint here for the 2015 epoch
                         // (see https://github.com/rust-lang/rust/issues/46906)
@@ -337,7 +337,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 lint::builtin::TYVAR_BEHIND_RAW_POINTER,
                                 scope_expr_id,
                                 span,
-                                &format!("the type of this value must be known in this context"));
+                                &format!("type annotations needed"));
                         }
                     } else {
                         let t = self.structurally_resolved_type(span, final_ty);

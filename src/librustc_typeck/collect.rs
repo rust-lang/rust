@@ -711,7 +711,7 @@ fn trait_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
 
     let paren_sugar = tcx.has_attr(def_id, "rustc_paren_sugar");
-    if paren_sugar && !tcx.sess.features.borrow().unboxed_closures {
+    if paren_sugar && !tcx.features().unboxed_closures {
         let mut err = tcx.sess.struct_span_err(
             item.span,
             "the `#[rustc_paren_sugar]` attribute is a temporary means of controlling \
@@ -953,7 +953,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         if !allow_defaults && p.default.is_some() {
-            if !tcx.sess.features.borrow().default_type_parameter_fallback {
+            if !tcx.features().default_type_parameter_fallback {
                 tcx.lint_node(
                     lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
                     p.id,
@@ -1692,7 +1692,7 @@ fn compute_sig_of_foreign_fn_decl<'a, 'tcx>(
     // feature gate SIMD types in FFI, since I (huonw) am not sure the
     // ABIs are handled at all correctly.
     if abi != abi::Abi::RustIntrinsic && abi != abi::Abi::PlatformIntrinsic
-            && !tcx.sess.features.borrow().simd_ffi {
+            && !tcx.features().simd_ffi {
         let check = |ast_ty: &hir::Ty, ty: Ty| {
             if ty.is_simd() {
                 tcx.sess.struct_span_err(ast_ty.span,

@@ -1100,7 +1100,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     }
     fcx.demand_suptype(span, ret_ty, actual_return_ty);
 
-    if fcx.tcx.sess.features.borrow().termination_trait {
+    if fcx.tcx.features().termination_trait {
         // If the termination trait language item is activated, check that the main return type
         // implements the termination trait.
         if let Some(term_id) = fcx.tcx.lang_items().termination() {
@@ -1611,7 +1611,7 @@ pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let repr_type_ty = def.repr.discr_type().to_ty(tcx);
     if repr_type_ty == tcx.types.i128 || repr_type_ty == tcx.types.u128 {
-        if !tcx.sess.features.borrow().repr128 {
+        if !tcx.features().repr128 {
             emit_feature_err(&tcx.sess.parse_sess,
                              "repr128",
                              sp,
@@ -5052,9 +5052,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ty
         } else {
             if !self.is_tainted_by_errors() {
-                type_error_struct!(self.tcx.sess, sp, ty, E0619,
-                                    "the type of this value must be known in this context")
-                .emit();
+                self.need_type_info((**self).body_id, sp, ty);
             }
             self.demand_suptype(sp, self.tcx.types.err, ty);
             self.tcx.types.err

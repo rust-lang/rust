@@ -936,7 +936,7 @@ This does not pose a problem by itself because they can't be accessed directly."
                     if self.mode != Mode::Fn &&
 
                         // feature-gate is not enabled,
-                        !self.tcx.sess.features.borrow()
+                        !self.tcx.features()
                             .declared_lib_features
                             .iter()
                             .any(|&(ref sym, _)| sym == feature_name) &&

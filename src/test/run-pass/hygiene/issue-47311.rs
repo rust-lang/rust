@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    let x;
+#![feature(decl_macro)]
+#![allow(unused)]
 
-    match x {
-        (..) => {} //~ ERROR E0619
-        _ => {}
-    }
+macro m($S:ident, $x:ident) {
+    $S { $x: 0 }
 }
 
+mod foo {
+    struct S { x: i32 }
+
+    fn f() { ::m!(S, x); }
+}
+
+fn main() {}

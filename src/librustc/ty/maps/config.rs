@@ -593,6 +593,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::fully_normalize_monormophic_ty<'t
     }
 }
 
+impl<'tcx> QueryDescription<'tcx> for queries::features_query<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("looking up enabled feature gates")
+    }
+}
+
 impl<'tcx> QueryDescription<'tcx> for queries::typeck_tables_of<'tcx> {
     #[inline]
     fn cache_on_disk(def_id: Self::Key) -> bool {

@@ -129,9 +129,6 @@ CALL "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\amd64\vcvars64.
 python x.py build
 ```
 
-If you are seeing build failure when compiling `rustc_binaryen`, make sure the path
-length of the rust folder is not longer than 22 characters.
-
 #### Specifying an ABI
 [specifying-an-abi]: #specifying-an-abi
 

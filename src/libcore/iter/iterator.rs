@@ -1366,9 +1366,9 @@ pub trait Iterator {
     ///
     /// In particular, try to have this call `try_fold()` on the internal parts
     /// from which this iterator is composed.  If multiple calls are needed,
-    /// the `?` operator be convenient for chaining the accumulator value along,
-    /// but beware any invariants that need to be upheld before those early
-    /// returns.  This is a `&mut self` method, so iteration needs to be
+    /// the `?` operator may be convenient for chaining the accumulator value
+    /// along, but beware any invariants that need to be upheld before those
+    /// early returns.  This is a `&mut self` method, so iteration needs to be
     /// resumable after hitting an error here.
     ///
     /// # Examples
@@ -1412,6 +1412,42 @@ pub trait Iterator {
             accum = f(accum, x)?;
         }
         Try::from_ok(accum)
+    }
+
+    /// An iterator method that applies a fallible function to each item in the
+    /// iterator, stopping at the first error and returning that error.
+    ///
+    /// This can also be thought of as the fallible form of [`for_each()`]
+    /// or as the stateless version of [`try_fold()`].
+    ///
+    /// [`for_each()`]: #method.for_each
+    /// [`try_fold()`]: #method.try_fold
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(iterator_try_fold)]
+    /// use std::fs::rename;
+    /// use std::io::{stdout, Write};
+    /// use std::path::Path;
+    ///
+    /// let data = ["no_tea.txt", "stale_bread.json", "torrential_rain.png"];
+    ///
+    /// let res = data.iter().try_for_each(|x| writeln!(stdout(), "{}", x));
+    /// assert!(res.is_ok());
+    ///
+    /// let mut it = data.iter().cloned();
+    /// let res = it.try_for_each(|x| rename(x, Path::new(x).with_extension("old")));
+    /// assert!(res.is_err());
+    /// // It short-circuited, so the remaining items are still in the iterator:
+    /// assert_eq!(it.next(), Some("stale_bread.json"));
+    /// ```
+    #[inline]
+    #[unstable(feature = "iterator_try_fold", issue = "45594")]
+    fn try_for_each<F, R>(&mut self, mut f: F) -> R where
+        Self: Sized, F: FnMut(Self::Item) -> R, R: Try<Ok=()>
+    {
+        self.try_fold((), move |(), x| f(x))
     }
 
     /// An iterator method that applies a function, producing a single, final value.
@@ -1532,7 +1568,7 @@ pub trait Iterator {
     fn all<F>(&mut self, mut f: F) -> bool where
         Self: Sized, F: FnMut(Self::Item) -> bool
     {
-        self.try_fold((), move |(), x| {
+        self.try_for_each(move |x| {
             if f(x) { LoopState::Continue(()) }
             else { LoopState::Break(()) }
         }) == LoopState::Continue(())
@@ -1581,7 +1617,7 @@ pub trait Iterator {
         Self: Sized,
         F: FnMut(Self::Item) -> bool
     {
-        self.try_fold((), move |(), x| {
+        self.try_for_each(move |x| {
             if f(x) { LoopState::Break(()) }
             else { LoopState::Continue(()) }
         }) == LoopState::Break(())
@@ -1635,7 +1671,7 @@ pub trait Iterator {
         Self: Sized,
         P: FnMut(&Self::Item) -> bool,
     {
-        self.try_fold((), move |(), x| {
+        self.try_for_each(move |x| {
             if predicate(&x) { LoopState::Break(x) }
             else { LoopState::Continue(()) }
         }).break_value()

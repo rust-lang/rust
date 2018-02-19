@@ -747,7 +747,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     ty::TyTuple(ref tys, _) => tys.iter()
                         .map(|t| match t.sty {
                             ty::TypeVariants::TyTuple(ref tys, _) => ArgKind::Tuple(
-                                span,
+                                Some(span),
                                 tys.iter()
                                     .map(|ty| ("_".to_owned(), format!("{}", ty.sty)))
                                     .collect::<Vec<_>>()
@@ -815,7 +815,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn get_fn_like_arguments(&self, node: hir::map::Node) -> (Span, Vec<ArgKind>) {
+    /// Given some node representing a fn-like thing in the HIR map,
+    /// returns a span and `ArgKind` information that describes the
+    /// arguments it expects. This can be supplied to
+    /// `report_arg_count_mismatch`.
+    pub fn get_fn_like_arguments(&self, node: hir::map::Node) -> (Span, Vec<ArgKind>) {
         match node {
             hir::map::NodeExpr(&hir::Expr {
                 node: hir::ExprClosure(_, ref _decl, id, span, _),
@@ -829,7 +833,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             ..
                         } = arg.pat.clone().into_inner() {
                             ArgKind::Tuple(
-                                span,
+                                Some(span),
                                 args.iter().map(|pat| {
                                     let snippet = self.tcx.sess.codemap()
                                         .span_to_snippet(pat.span).unwrap();
@@ -862,7 +866,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 (self.tcx.sess.codemap().def_span(span), decl.inputs.iter()
                         .map(|arg| match arg.clone().into_inner().node {
                     hir::TyTup(ref tys) => ArgKind::Tuple(
-                        arg.span,
+                        Some(arg.span),
                         tys.iter()
                             .map(|_| ("_".to_owned(), "_".to_owned()))
                             .collect::<Vec<_>>(),
@@ -874,7 +878,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn report_arg_count_mismatch(
+    /// Reports an error when the number of arguments needed by a
+    /// trait match doesn't match the number that the expression
+    /// provides.
+    pub fn report_arg_count_mismatch(
         &self,
         span: Span,
         found_span: Option<Span>,
@@ -1385,13 +1392,34 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-enum ArgKind {
+/// Summarizes information
+pub enum ArgKind {
+    /// An argument of non-tuple type. Parameters are (name, ty)
     Arg(String, String),
-    Tuple(Span, Vec<(String, String)>),
+
+    /// An argument of tuple type. For a "found" argument, the span is
+    /// the locationo in the source of the pattern. For a "expected"
+    /// argument, it will be None. The vector is a list of (name, ty)
+    /// strings for the components of the tuple.
+    Tuple(Option<Span>, Vec<(String, String)>),
 }
 
 impl ArgKind {
     fn empty() -> ArgKind {
         ArgKind::Arg("_".to_owned(), "_".to_owned())
+    }
+
+    /// Creates an `ArgKind` from the expected type of an
+    /// argument. This has no name (`_`) and no source spans..
+    pub fn from_expected_ty(t: Ty<'_>) -> ArgKind {
+        match t.sty {
+            ty::TyTuple(ref tys, _) => ArgKind::Tuple(
+                None,
+                tys.iter()
+                   .map(|ty| ("_".to_owned(), format!("{}", ty.sty)))
+                   .collect::<Vec<_>>()
+            ),
+            _ => ArgKind::Arg("_".to_owned(), format!("{}", t.sty)),
+        }
     }
 }
