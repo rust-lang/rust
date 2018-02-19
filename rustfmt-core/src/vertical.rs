@@ -136,7 +136,7 @@ pub fn rewrite_with_alignment<T: AlignedItem>(
         let rest_lo = rest[0].get_span().lo();
         let missing_span = mk_sp(init_hi, rest_lo);
         let missing_span = mk_sp(
-            context.codemap.span_after(missing_span, ","),
+            context.snippet_provider.span_after(missing_span, ","),
             missing_span.hi(),
         );
 
@@ -227,7 +227,7 @@ fn rewrite_aligned_items_inner<T: AlignedItem>(
     }
 
     let items = itemize_list(
-        context.codemap,
+        context.snippet_provider,
         fields.iter(),
         "}",
         ",",

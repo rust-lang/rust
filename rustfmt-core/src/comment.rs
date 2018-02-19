@@ -10,7 +10,7 @@
 
 // Formatting and tools for comments.
 
-use std::{self, iter};
+use std::{self, iter, borrow::Cow};
 
 use syntax::codemap::Span;
 
@@ -154,6 +154,9 @@ pub fn combine_strs_with_missing_comments(
     shape: Shape,
     allow_extend: bool,
 ) -> Option<String> {
+    let mut result =
+        String::with_capacity(prev_str.len() + next_str.len() + shape.indent.width() + 128);
+    result.push_str(prev_str);
     let mut allow_one_line = !prev_str.contains('\n') && !next_str.contains('\n');
     let first_sep = if prev_str.is_empty() || next_str.is_empty() {
         ""
@@ -163,20 +166,18 @@ pub fn combine_strs_with_missing_comments(
     let mut one_line_width =
         last_line_width(prev_str) + first_line_width(next_str) + first_sep.len();
 
-    let indent_str = shape.indent.to_string(context.config);
+    let config = context.config;
+    let indent = shape.indent;
     let missing_comment = rewrite_missing_comment(span, shape, context)?;
 
     if missing_comment.is_empty() {
         if allow_extend && prev_str.len() + first_sep.len() + next_str.len() <= shape.width {
-            return Some(format!("{}{}{}", prev_str, first_sep, next_str));
-        } else {
-            let sep = if prev_str.is_empty() {
-                String::new()
-            } else {
-                String::from("\n") + &indent_str
-            };
-            return Some(format!("{}{}{}", prev_str, sep, next_str));
+            result.push_str(first_sep);
+        } else if !prev_str.is_empty() {
+            result.push_str(&indent.to_string_with_newline(config))
         }
+        result.push_str(next_str);
+        return Some(result);
     }
 
     // We have a missing comment between the first expression and the second expression.
@@ -193,32 +194,35 @@ pub fn combine_strs_with_missing_comments(
 
     one_line_width -= first_sep.len();
     let first_sep = if prev_str.is_empty() || missing_comment.is_empty() {
-        String::new()
+        Cow::from("")
     } else {
         let one_line_width = last_line_width(prev_str) + first_line_width(&missing_comment) + 1;
         if prefer_same_line && one_line_width <= shape.width {
-            String::from(" ")
+            Cow::from(" ")
         } else {
-            format!("\n{}", indent_str)
+            indent.to_string_with_newline(config)
         }
     };
+    result.push_str(&first_sep);
+    result.push_str(&missing_comment);
+
     let second_sep = if missing_comment.is_empty() || next_str.is_empty() {
-        String::new()
+        Cow::from("")
     } else if missing_comment.starts_with("//") {
-        format!("\n{}", indent_str)
+        indent.to_string_with_newline(config)
     } else {
         one_line_width += missing_comment.len() + first_sep.len() + 1;
         allow_one_line &= !missing_comment.starts_with("//") && !missing_comment.contains('\n');
         if prefer_same_line && allow_one_line && one_line_width <= shape.width {
-            String::from(" ")
+            Cow::from(" ")
         } else {
-            format!("\n{}", indent_str)
+            indent.to_string_with_newline(config)
         }
     };
-    Some(format!(
-        "{}{}{}{}{}",
-        prev_str, first_sep, missing_comment, second_sep, next_str,
-    ))
+    result.push_str(&second_sep);
+    result.push_str(next_str);
+
+    Some(result)
 }
 
 pub fn rewrite_doc_comment(orig: &str, shape: Shape, config: &Config) -> Option<String> {
@@ -315,7 +319,7 @@ fn rewrite_comment_inner(
         .width
         .checked_sub(closer.len() + opener.len())
         .unwrap_or(1);
-    let indent_str = shape.indent.to_string(config);
+    let indent_str = shape.indent.to_string_with_newline(config);
     let fmt_indent = shape.indent + (opener.len() - line_start.len());
     let mut fmt = StringFormat {
         opener: "",
@@ -356,7 +360,7 @@ fn rewrite_comment_inner(
     let mut code_block_buffer = String::with_capacity(128);
     let mut is_prev_line_multi_line = false;
     let mut inside_code_block = false;
-    let comment_line_separator = format!("\n{}{}", indent_str, line_start);
+    let comment_line_separator = format!("{}{}", indent_str, line_start);
     let join_code_block_with_comment_line_separator = |s: &str| {
         let mut result = String::with_capacity(s.len() + 128);
         let mut iter = s.lines().peekable();
@@ -404,7 +408,6 @@ fn rewrite_comment_inner(
             } else if is_prev_line_multi_line && !line.is_empty() {
                 result.push(' ')
             } else if is_last && !closer.is_empty() && line.is_empty() {
-                result.push('\n');
                 result.push_str(&indent_str);
             } else {
                 result.push_str(&comment_line_separator);
@@ -516,9 +519,9 @@ pub fn recover_missing_comment_in_span(
         let force_new_line_before_comment =
             missing_snippet[..pos].contains('\n') || total_width > context.config.max_width();
         let sep = if force_new_line_before_comment {
-            format!("\n{}", shape.indent.to_string(context.config))
+            shape.indent.to_string_with_newline(context.config)
         } else {
-            String::from(" ")
+            Cow::from(" ")
         };
         Some(format!("{}{}", sep, missing_comment))
     }
@@ -698,12 +701,6 @@ impl RichChar for char {
 impl RichChar for (usize, char) {
     fn get_char(&self) -> char {
         self.1
-    }
-}
-
-impl RichChar for (char, usize) {
-    fn get_char(&self) -> char {
-        self.0
     }
 }
 

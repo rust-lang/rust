@@ -318,8 +318,7 @@ impl<'a> FmtVisitor<'a> {
         // start of the body, but we need more spans from the compiler to solve
         // this.
         if newline_brace {
-            result.push('\n');
-            result.push_str(&indent.to_string(self.config));
+            result.push_str(&indent.to_string_with_newline(self.config));
         } else {
             result.push(' ');
         }
@@ -471,13 +470,12 @@ impl<'a> FmtVisitor<'a> {
             return None;
         }
         let mut result = String::with_capacity(1024);
-        result.push('\n');
-        let indentation = self.block_indent.to_string(self.config);
+        let indentation = self.block_indent.to_string_with_newline(self.config);
         result.push_str(&indentation);
 
         let itemize_list_with = |one_line_width: usize| {
             itemize_list(
-                self.codemap,
+                self.snippet_provider,
                 enum_def.variants.iter(),
                 "}",
                 ",",
@@ -571,8 +569,7 @@ pub fn format_impl(
     if let ast::ItemKind::Impl(_, _, _, ref generics, _, ref self_ty, ref items) = item.node {
         let mut result = String::with_capacity(128);
         let ref_and_type = format_impl_ref_and_type(context, item, offset)?;
-        let indent_str = offset.to_string(context.config);
-        let sep = format!("\n{}", &indent_str);
+        let sep = offset.to_string_with_newline(context.config);
         result.push_str(&ref_and_type);
 
         let where_budget = if result.contains('\n') {
@@ -623,10 +620,9 @@ pub fn format_impl(
         }
 
         if !where_clause_str.is_empty() && !where_clause_str.contains('\n') {
-            result.push('\n');
             let width = offset.block_indent + context.config.tab_spaces() - 1;
             let where_indent = Indent::new(0, width);
-            result.push_str(&where_indent.to_string(context.config));
+            result.push_str(&where_indent.to_string_with_newline(context.config));
         }
         result.push_str(&where_clause_str);
 
@@ -662,13 +658,11 @@ pub fn format_impl(
 
             visitor.format_missing(item.span.hi() - BytePos(1));
 
-            let inner_indent_str = visitor.block_indent.to_string(context.config);
-            let outer_indent_str = offset.block_only().to_string(context.config);
+            let inner_indent_str = visitor.block_indent.to_string_with_newline(context.config);
+            let outer_indent_str = offset.block_only().to_string_with_newline(context.config);
 
-            result.push('\n');
             result.push_str(&inner_indent_str);
             result.push_str(visitor.buffer.to_string().trim());
-            result.push('\n');
             result.push_str(&outer_indent_str);
         }
 
@@ -722,7 +716,7 @@ fn format_impl_ref_and_type(
         result.push_str(format_unsafety(unsafety));
         result.push_str("impl");
 
-        let lo = context.codemap.span_after(item.span, "impl");
+        let lo = context.snippet_provider.span_after(item.span, "impl");
         let hi = match *trait_ref {
             Some(ref tr) => tr.path.span.lo(),
             None => self_ty.span.lo(),
@@ -929,7 +923,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
 
         result.push_str(&header);
 
-        let body_lo = context.codemap.span_after(item.span, "{");
+        let body_lo = context.snippet_provider.span_after(item.span, "{");
 
         let shape = Shape::indented(offset, context.config).offset_left(result.len())?;
         let generics_str =
@@ -939,7 +933,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         // FIXME(#2055): rustfmt fails to format when there are comments between trait bounds.
         if !type_param_bounds.is_empty() {
             let ident_hi = context
-                .codemap
+                .snippet_provider
                 .span_after(item.span, &format!("{}", item.ident));
             let bound_hi = type_param_bounds.last().unwrap().span().hi();
             let snippet = context.snippet(mk_sp(ident_hi, bound_hi));
@@ -957,9 +951,8 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         if offset.width() + last_line_width(&result) + trait_bound_str.len()
             > context.config.comment_width()
         {
-            result.push('\n');
             let trait_indent = offset.block_only().block_indent(context.config);
-            result.push_str(&trait_indent.to_string(context.config));
+            result.push_str(&trait_indent.to_string_with_newline(context.config));
         }
         result.push_str(&trait_bound_str);
 
@@ -995,10 +988,9 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
             && last_line_width(&result) + where_clause_str.len() + offset.width()
                 > context.config.comment_width()
         {
-            result.push('\n');
             let width = offset.block_indent + context.config.tab_spaces() - 1;
             let where_indent = Indent::new(0, width);
-            result.push_str(&where_indent.to_string(context.config));
+            result.push_str(&where_indent.to_string_with_newline(context.config));
         }
         result.push_str(&where_clause_str);
 
@@ -1026,20 +1018,17 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
 
         match context.config.brace_style() {
             _ if last_line_contains_single_line_comment(&result) => {
-                result.push('\n');
-                result.push_str(&offset.to_string(context.config));
+                result.push_str(&offset.to_string_with_newline(context.config));
             }
             BraceStyle::AlwaysNextLine => {
-                result.push('\n');
-                result.push_str(&offset.to_string(context.config));
+                result.push_str(&offset.to_string_with_newline(context.config));
             }
             BraceStyle::PreferSameLine => result.push(' '),
             BraceStyle::SameLineWhere => {
                 if !where_clause_str.is_empty()
                     && (!trait_items.is_empty() || result.contains('\n'))
                 {
-                    result.push('\n');
-                    result.push_str(&offset.to_string(context.config));
+                    result.push_str(&offset.to_string_with_newline(context.config));
                 } else {
                     result.push(' ');
                 }
@@ -1061,13 +1050,11 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
 
             visitor.format_missing(item.span.hi() - BytePos(1));
 
-            let inner_indent_str = visitor.block_indent.to_string(context.config);
-            let outer_indent_str = offset.block_only().to_string(context.config);
+            let inner_indent_str = visitor.block_indent.to_string_with_newline(context.config);
+            let outer_indent_str = offset.block_only().to_string_with_newline(context.config);
 
-            result.push('\n');
             result.push_str(&inner_indent_str);
             result.push_str(visitor.buffer.to_string().trim());
-            result.push('\n');
             result.push_str(&outer_indent_str);
         } else if result.contains('\n') {
             result.push('\n');
@@ -1133,7 +1120,7 @@ pub fn format_struct_struct(
     result.push_str(&header_str);
 
     let header_hi = span.lo() + BytePos(header_str.len() as u32);
-    let body_lo = context.codemap.span_after(span, "{");
+    let body_lo = context.snippet_provider.span_after(span, "{");
 
     let generics_str = match struct_parts.generics {
         Some(g) => format_generics(
@@ -1231,7 +1218,7 @@ fn get_bytepos_after_visibility(
 ) -> BytePos {
     match *vis {
         ast::Visibility::Crate(s, CrateSugar::PubCrate) => context
-            .codemap
+            .snippet_provider
             .span_after(mk_sp(s.hi(), default_span.hi()), terminator),
         ast::Visibility::Crate(s, CrateSugar::JustCrate) => s.hi(),
         ast::Visibility::Restricted { ref path, .. } => path.span.hi(),
@@ -1253,12 +1240,16 @@ fn format_tuple_struct(
 
     let body_lo = if fields.is_empty() {
         let lo = get_bytepos_after_visibility(context, struct_parts.vis, span, ")");
-        context.codemap.span_after(mk_sp(lo, span.hi()), "(")
+        context
+            .snippet_provider
+            .span_after(mk_sp(lo, span.hi()), "(")
     } else {
         fields[0].span.lo()
     };
     let body_hi = if fields.is_empty() {
-        context.codemap.span_after(mk_sp(body_lo, span.hi()), ")")
+        context
+            .snippet_provider
+            .span_after(mk_sp(body_lo, span.hi()), ")")
     } else {
         // This is a dirty hack to work around a missing `)` from the span of the last field.
         let last_arg_span = fields[fields.len() - 1].span;
@@ -1266,7 +1257,7 @@ fn format_tuple_struct(
             last_arg_span.hi()
         } else {
             context
-                .codemap
+                .snippet_provider
                 .span_after(mk_sp(last_arg_span.hi(), span.hi()), ")")
         }
     };
@@ -1309,7 +1300,9 @@ fn format_tuple_struct(
         result.push('(');
         let snippet = context.snippet(mk_sp(
             body_lo,
-            context.codemap.span_before(mk_sp(body_lo, span.hi()), ")"),
+            context
+                .snippet_provider
+                .span_before(mk_sp(body_lo, span.hi()), ")"),
         ));
         if snippet.is_empty() {
             // `struct S ()`
@@ -1364,7 +1357,10 @@ pub fn rewrite_type_alias(
     let g_shape = Shape::indented(indent, context.config)
         .offset_left(result.len())?
         .sub_width(2)?;
-    let g_span = mk_sp(context.codemap.span_after(span, "type"), ty.span.lo());
+    let g_span = mk_sp(
+        context.snippet_provider.span_after(span, "type"),
+        ty.span.lo(),
+    );
     let generics_str = rewrite_generics(context, generics, g_shape, g_span)?;
     result.push_str(&generics_str);
 
@@ -1386,7 +1382,10 @@ pub fn rewrite_type_alias(
     if where_clause_str.is_empty() {
         result.push_str(" =");
     } else {
-        result.push_str(&format!("\n{}=", indent.to_string(context.config)));
+        result.push_str(&format!(
+            "{}=",
+            indent.to_string_with_newline(context.config)
+        ));
     }
 
     // 1 = ";"
@@ -1580,7 +1579,11 @@ fn rewrite_static(
             let nested_indent = offset.block_indent(context.config);
             let nested_shape = Shape::indented(nested_indent, context.config);
             let ty_str = static_parts.ty.rewrite(context, nested_shape)?;
-            format!("\n{}{}", nested_indent.to_string(context.config), ty_str)
+            format!(
+                "{}{}",
+                nested_indent.to_string_with_newline(context.config),
+                ty_str
+            )
         }
     };
 
@@ -1857,8 +1860,7 @@ fn rewrite_fn_base(
         } else {
             result.push_str("(");
             if context.config.indent_style() == IndentStyle::Visual {
-                result.push('\n');
-                result.push_str(&arg_indent.to_string(context.config));
+                result.push_str(&arg_indent.to_string_with_newline(context.config));
             }
         }
     } else {
@@ -1881,15 +1883,15 @@ fn rewrite_fn_base(
         .map_or(lo_after_visibility, |param| param.span().hi());
     let args_end = if fd.inputs.is_empty() {
         context
-            .codemap
+            .snippet_provider
             .span_after(mk_sp(args_start, span.hi()), ")")
     } else {
         let last_span = mk_sp(fd.inputs[fd.inputs.len() - 1].span().hi(), span.hi());
-        context.codemap.span_after(last_span, ")")
+        context.snippet_provider.span_after(last_span, ")")
     };
     let args_span = mk_sp(
         context
-            .codemap
+            .snippet_provider
             .span_after(mk_sp(args_start, span.hi()), "("),
         args_end,
     );
@@ -1914,11 +1916,9 @@ fn rewrite_fn_base(
     let mut args_last_line_contains_comment = false;
     if put_args_in_block {
         arg_indent = indent.block_indent(context.config);
-        result.push('\n');
-        result.push_str(&arg_indent.to_string(context.config));
+        result.push_str(&arg_indent.to_string_with_newline(context.config));
         result.push_str(&arg_str);
-        result.push('\n');
-        result.push_str(&indent.to_string(context.config));
+        result.push_str(&indent.to_string_with_newline(context.config));
         result.push(')');
     } else {
         result.push_str(&arg_str);
@@ -1939,8 +1939,7 @@ fn rewrite_fn_base(
             .map_or(false, |last_line| last_line.contains("//"))
         {
             args_last_line_contains_comment = true;
-            result.push('\n');
-            result.push_str(&arg_indent.to_string(context.config));
+            result.push_str(&arg_indent.to_string_with_newline(context.config));
         }
         result.push(')');
     }
@@ -1979,8 +1978,7 @@ fn rewrite_fn_base(
                 arg_indent
             };
 
-            result.push('\n');
-            result.push_str(&indent.to_string(context.config));
+            result.push_str(&indent.to_string_with_newline(context.config));
             indent
         } else {
             result.push(' ');
@@ -2140,7 +2138,7 @@ fn rewrite_args(
             };
             let reduced_span = mk_sp(span.lo(), second_arg_start);
 
-            context.codemap.span_after_last(reduced_span, ",")
+            context.snippet_provider.span_after_last(reduced_span, ",")
         } else {
             span.lo()
         };
@@ -2152,14 +2150,15 @@ fn rewrite_args(
 
         let variadic_arg = if variadic {
             let variadic_span = mk_sp(args.last().unwrap().ty.span.hi(), span.hi());
-            let variadic_start = context.codemap.span_after(variadic_span, "...") - BytePos(3);
+            let variadic_start =
+                context.snippet_provider.span_after(variadic_span, "...") - BytePos(3);
             Some(ArgumentKind::Variadic(variadic_start))
         } else {
             None
         };
 
         let more_items = itemize_list(
-            context.codemap,
+            context.snippet_provider,
             args[min_args - 1..]
                 .iter()
                 .map(ArgumentKind::Regular)
@@ -2353,14 +2352,14 @@ fn rewrite_generics_inner(
     }
 
     let items = itemize_list(
-        context.codemap,
+        context.snippet_provider,
         generics.params.iter(),
         ">",
         ",",
         |arg| arg.span().lo(),
         |arg| arg.span().hi(),
         |arg| arg.rewrite(context, shape),
-        context.codemap.span_after(span, "<"),
+        context.snippet_provider.span_after(span, "<"),
         span.hi(),
         false,
     );
@@ -2478,9 +2477,9 @@ fn rewrite_where_clause_rfc_style(
         rewrite_comments_before_after_where(context, span_before, span_after, shape)?;
 
     let starting_newline = if where_clause_option.snuggle && comment_before.is_empty() {
-        " ".to_owned()
+        Cow::from(" ")
     } else {
-        "\n".to_owned() + &block_shape.indent.to_string(context.config)
+        block_shape.indent.to_string_with_newline(context.config)
     };
 
     let clause_shape = block_shape.block_left(context.config.tab_spaces())?;
@@ -2494,7 +2493,7 @@ fn rewrite_where_clause_rfc_style(
     let end_of_preds = where_clause.predicates[len - 1].span().hi();
     let span_end = span_end.unwrap_or(end_of_preds);
     let items = itemize_list(
-        context.codemap,
+        context.snippet_provider,
         where_clause.predicates.iter(),
         terminator,
         ",",
@@ -2534,9 +2533,9 @@ fn rewrite_where_clause_rfc_style(
 
     let comment_separator = |comment: &str, shape: Shape| {
         if comment.is_empty() {
-            String::new()
+            Cow::from("")
         } else {
-            format!("\n{}", shape.indent.to_string(context.config))
+            shape.indent.to_string_with_newline(context.config)
         }
     };
     let newline_before_where = comment_separator(&comment_before, shape);
@@ -2547,9 +2546,9 @@ fn rewrite_where_clause_rfc_style(
         && comment_after.is_empty() && !preds_str.contains('\n')
         && 6 + preds_str.len() <= shape.width || where_single_line
     {
-        String::from(" ")
+        Cow::from(" ")
     } else {
-        format!("\n{}", clause_shape.indent.to_string(context.config))
+        clause_shape.indent.to_string_with_newline(context.config)
     };
     Some(format!(
         "{}{}{}where{}{}{}{}",
@@ -2610,7 +2609,7 @@ fn rewrite_where_clause(
     let end_of_preds = where_clause.predicates[len - 1].span().hi();
     let span_end = span_end.unwrap_or(end_of_preds);
     let items = itemize_list(
-        context.codemap,
+        context.snippet_provider,
         where_clause.predicates.iter(),
         terminator,
         ",",
@@ -2807,10 +2806,10 @@ impl Rewrite for ast::ForeignItem {
                 ty.rewrite(context, shape).map(|ty_str| {
                     // 1 = space between prefix and type.
                     let sep = if prefix.len() + ty_str.len() + 1 <= shape.width {
-                        String::from(" ")
+                        Cow::from(" ")
                     } else {
                         let nested_indent = shape.indent.block_indent(context.config);
-                        format!("\n{}", nested_indent.to_string(context.config))
+                        nested_indent.to_string_with_newline(context.config)
                     };
                     format!("{}{}{};", prefix, sep, ty_str)
                 })

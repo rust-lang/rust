@@ -114,6 +114,20 @@ fn parse_macro_arg(parser: &mut Parser) -> Option<MacroArg> {
     None
 }
 
+/// Rewrite macro name without using pretty-printer if possible.
+fn rewrite_macro_name(path: &ast::Path, extra_ident: Option<ast::Ident>) -> String {
+    let name = if path.segments.len() == 1 {
+        // Avoid using pretty-printer in the common case.
+        format!("{}!", path.segments[0].identifier)
+    } else {
+        format!("{}!", path)
+    };
+    match extra_ident {
+        Some(ident) if ident != symbol::keywords::Invalid.ident() => format!("{} {}", name, ident),
+        _ => name,
+    }
+}
+
 pub fn rewrite_macro(
     mac: &ast::Mac,
     extra_ident: Option<ast::Ident>,
@@ -132,16 +146,7 @@ pub fn rewrite_macro(
 
     let original_style = macro_style(mac, context);
 
-    let macro_name = match extra_ident {
-        None => format!("{}!", mac.node.path),
-        Some(ident) => {
-            if ident == symbol::keywords::Invalid.ident() {
-                format!("{}!", mac.node.path)
-            } else {
-                format!("{}! {}", mac.node.path, ident)
-            }
-        }
-    };
+    let macro_name = rewrite_macro_name(&mac.node.path, extra_ident);
 
     let style = if FORCED_BRACKET_MACROS.contains(&&macro_name[..]) {
         MacroStyle::Brackets
@@ -245,14 +250,14 @@ pub fn rewrite_macro(
                     Some(format!("{}{}{}; {}{}", macro_name, lbr, lhs, rhs, rbr))
                 } else {
                     Some(format!(
-                        "{}{}\n{}{};\n{}{}\n{}{}",
+                        "{}{}{}{};{}{}{}{}",
                         macro_name,
                         lbr,
-                        nested_shape.indent.to_string(context.config),
+                        nested_shape.indent.to_string_with_newline(context.config),
                         lhs,
-                        nested_shape.indent.to_string(context.config),
+                        nested_shape.indent.to_string_with_newline(context.config),
                         rhs,
-                        shape.indent.to_string(context.config),
+                        shape.indent.to_string_with_newline(context.config),
                         rbr
                     ))
                 }
@@ -267,7 +272,7 @@ pub fn rewrite_macro(
                 // Convert `MacroArg` into `ast::Expr`, as `rewrite_array` only accepts the latter.
                 let sp = mk_sp(
                     context
-                        .codemap
+                        .snippet_provider
                         .span_after(mac.span, original_style.opener()),
                     mac.span.hi() - BytePos(1),
                 );
@@ -324,14 +329,14 @@ pub fn rewrite_macro_def(
     };
 
     let branch_items = itemize_list(
-        context.codemap,
+        context.snippet_provider,
         parsed_def.branches.iter(),
         "}",
         ";",
         |branch| branch.span.lo(),
         |branch| branch.span.hi(),
         |branch| branch.rewrite(context, arm_shape, multi_branch_style),
-        context.codemap.span_after(span, "{"),
+        context.snippet_provider.span_after(span, "{"),
         span.hi(),
         false,
     ).collect::<Vec<_>>();
@@ -348,15 +353,14 @@ pub fn rewrite_macro_def(
     };
 
     if multi_branch_style {
-        result += " {\n";
-        result += &arm_shape.indent.to_string(context.config);
+        result += " {";
+        result += &arm_shape.indent.to_string_with_newline(context.config);
     }
 
     result += write_list(&branch_items, &fmt)?.as_str();
 
     if multi_branch_style {
-        result += "\n";
-        result += &indent.to_string(context.config);
+        result += &indent.to_string_with_newline(context.config);
         result += "}";
     }
 

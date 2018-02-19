@@ -352,7 +352,7 @@ where
             visitor.format_separate_mod(module, &*filemap);
         };
 
-        assert_eq!(
+        debug_assert_eq!(
             visitor.line_number,
             ::utils::count_newlines(&format!("{}", visitor.buffer))
         );
@@ -420,13 +420,14 @@ fn format_lines(
     let mut line_buffer = String::with_capacity(config.max_width() * 2);
     let mut is_string = false; // true if the current line contains a string literal.
     let mut format_line = config.file_lines().contains_line(name, cur_line);
+    let allow_issue_seek = !issue_seeker.is_disabled();
 
     for (kind, (b, c)) in CharClasses::new(text.chars().enumerate()) {
         if c == '\r' {
             continue;
         }
 
-        if format_line {
+        if allow_issue_seek && format_line {
             // Add warnings for bad todos/ fixmes
             if let Some(issue) = issue_seeker.inspect(c) {
                 errors.push(FormattingError {

@@ -156,14 +156,14 @@ fn rewrite_struct_pat(
         struct_lit_shape(shape, context, path_str.len() + 3, ellipsis_str.len() + 2)?;
 
     let items = itemize_list(
-        context.codemap,
+        context.snippet_provider,
         fields.iter(),
         terminator,
         ",",
         |f| f.span.lo(),
         |f| f.span.hi(),
         |f| f.node.rewrite(context, v_shape),
-        context.codemap.span_after(span, "{"),
+        context.snippet_provider.span_after(span, "{"),
         span.hi(),
         false,
     );
@@ -353,14 +353,14 @@ fn count_wildcard_suffix_len(
     let mut suffix_len = 0;
 
     let items: Vec<_> = itemize_list(
-        context.codemap,
+        context.snippet_provider,
         patterns.iter(),
         ")",
         ",",
         |item| item.span().lo(),
         |item| item.span().hi(),
         |item| item.rewrite(context, shape),
-        context.codemap.span_after(span, "("),
+        context.snippet_provider.span_after(span, "("),
         span.hi() - BytePos(1),
         false,
     ).collect();

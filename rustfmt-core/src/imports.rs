@@ -314,14 +314,14 @@ fn rewrite_nested_use_tree(
         // Dummy value, see explanation below.
         let mut items = vec![ListItem::from_str("")];
         let iter = itemize_list(
-            context.codemap,
+            context.snippet_provider,
             trees.iter().map(|tree| &tree.0),
             "}",
             ",",
             |tree| tree.span.lo(),
             |tree| tree.span.hi(),
             |tree| tree.rewrite(context, nested_shape),
-            context.codemap.span_after(span, "{"),
+            context.snippet_provider.span_after(span, "{"),
             span.hi(),
             false,
         );

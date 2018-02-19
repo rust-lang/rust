@@ -14,7 +14,6 @@ use std::ops::Deref;
 use config::lists::*;
 use syntax::ast::{self, FunctionRetTy, Mutability};
 use syntax::codemap::{self, BytePos, Span};
-use syntax::print::pprust;
 use syntax::symbol::keywords;
 
 use codemap::SpanUtils;
@@ -201,10 +200,13 @@ fn rewrite_segment(
     context: &RewriteContext,
     shape: Shape,
 ) -> Option<String> {
-    let ident_len = segment.identifier.to_string().len();
+    let mut result = String::with_capacity(128);
+    result.push_str(&segment.identifier.name.as_str());
+
+    let ident_len = result.len();
     let shape = shape.shrink_left(ident_len)?;
 
-    let params = if let Some(ref params) = segment.parameters {
+    if let Some(ref params) = segment.parameters {
         match **params {
             ast::PathParameters::AngleBracketed(ref data)
                 if !data.lifetimes.is_empty() || !data.types.is_empty()
@@ -218,18 +220,21 @@ fn rewrite_segment(
                     .collect::<Vec<_>>();
 
                 let next_span_lo = param_list.last().unwrap().get_span().hi() + BytePos(1);
-                let list_lo = context.codemap.span_after(mk_sp(*span_lo, span_hi), "<");
+                let list_lo = context
+                    .snippet_provider
+                    .span_after(mk_sp(*span_lo, span_hi), "<");
                 let separator = if path_context == PathContext::Expr {
                     "::"
                 } else {
                     ""
                 };
+                result.push_str(separator);
 
                 let generics_shape =
                     generics_shape_from_config(context.config, shape, separator.len())?;
                 let one_line_width = shape.width.checked_sub(separator.len() + 2)?;
                 let items = itemize_list(
-                    context.codemap,
+                    context.snippet_provider,
                     param_list.into_iter(),
                     ">",
                     ",",
@@ -246,29 +251,27 @@ fn rewrite_segment(
                 // Update position of last bracket.
                 *span_lo = next_span_lo;
 
-                format!("{}{}", separator, generics_str)
+                result.push_str(&generics_str)
             }
             ast::PathParameters::Parenthesized(ref data) => {
                 let output = match data.output {
                     Some(ref ty) => FunctionRetTy::Ty(ty.clone()),
                     None => FunctionRetTy::Default(codemap::DUMMY_SP),
                 };
-                format_function_type(
+                result.push_str(&format_function_type(
                     data.inputs.iter().map(|x| &**x),
                     &output,
                     false,
                     data.span,
                     context,
                     shape,
-                )?
+                )?);
             }
-            _ => String::new(),
+            _ => (),
         }
-    } else {
-        String::new()
-    };
+    }
 
-    Some(format!("{}{}", segment.identifier, params))
+    Some(result)
 }
 
 fn format_function_type<'a, I>(
@@ -296,7 +299,7 @@ where
     }
 
     let variadic_arg = if variadic {
-        let variadic_start = context.codemap.span_before(span, "...");
+        let variadic_start = context.snippet_provider.span_before(span, "...");
         Some(ArgumentKind::Variadic(variadic_start))
     } else {
         None
@@ -315,9 +318,9 @@ where
         IndentStyle::Visual => shape.indent + 1,
     };
     let list_shape = Shape::legacy(budget, offset);
-    let list_lo = context.codemap.span_after(span, "(");
+    let list_lo = context.snippet_provider.span_after(span, "(");
     let items = itemize_list(
-        context.codemap,
+        context.snippet_provider,
         // FIXME Would be nice to avoid this allocation,
         // but I couldn't get the types to work out.
         inputs
@@ -539,7 +542,7 @@ impl Rewrite for ast::TyParamBound {
 
 impl Rewrite for ast::Lifetime {
     fn rewrite(&self, _: &RewriteContext, _: Shape) -> Option<String> {
-        Some(pprust::lifetime_to_string(self))
+        Some(self.ident.to_string())
     }
 }
 
@@ -783,7 +786,7 @@ pub fn join_bounds(context: &RewriteContext, shape: Shape, type_strs: &[String])
     let result = type_strs.join(joiner);
     if result.contains('\n') || result.len() > shape.width {
         let joiner_indent = shape.indent.block_indent(context.config);
-        let joiner = format!("\n{}+ ", joiner_indent.to_string(context.config));
+        let joiner = format!("{}+ ", joiner_indent.to_string_with_newline(context.config));
         type_strs.join(&joiner)
     } else {
         result

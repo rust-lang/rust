@@ -55,7 +55,7 @@ pub fn rewrite_string<'a>(
 
     let graphemes = UnicodeSegmentation::graphemes(&*stripped_str, false).collect::<Vec<&str>>();
     let shape = fmt.shape;
-    let indent = shape.indent.to_string(fmt.config);
+    let indent = shape.indent.to_string_with_newline(fmt.config);
     let punctuation = ":,;.";
 
     // `cur_start` is the position in `orig` of the start of the current line.
@@ -133,7 +133,6 @@ pub fn rewrite_string<'a>(
 
         result.push_str(line);
         result.push_str(fmt.line_end);
-        result.push('\n');
         result.push_str(&indent);
         result.push_str(fmt.line_start);
 

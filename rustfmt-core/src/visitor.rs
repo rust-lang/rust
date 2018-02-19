@@ -674,13 +674,14 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         if is_internal {
             match self.config.brace_style() {
                 BraceStyle::AlwaysNextLine => {
-                    let sep_str = format!("\n{}{{", self.block_indent.to_string(self.config));
-                    self.push_str(&sep_str);
+                    let indent_str = self.block_indent.to_string_with_newline(self.config);
+                    self.push_str(&indent_str);
+                    self.push_str("{");
                 }
                 _ => self.push_str(" {"),
             }
             // Hackery to account for the closing }.
-            let mod_lo = self.codemap.span_after(source!(self, s), "{");
+            let mod_lo = self.snippet_provider.span_after(source!(self, s), "{");
             let body_snippet =
                 self.snippet(mk_sp(mod_lo, source!(self, m.inner).hi() - BytePos(1)));
             let body_snippet = body_snippet.trim();
@@ -708,7 +709,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     }
 
     pub fn skip_empty_lines(&mut self, end_pos: BytePos) {
-        while let Some(pos) = self.codemap
+        while let Some(pos) = self.snippet_provider
             .opt_span_after(mk_sp(self.last_pos, end_pos), "\n")
         {
             if let Some(snippet) = self.opt_snippet(mk_sp(self.last_pos, pos)) {
@@ -756,7 +757,7 @@ impl Rewrite for ast::MetaItem {
                     .shrink_left(name.len() + 1)
                     .and_then(|s| s.sub_width(2))?;
                 let items = itemize_list(
-                    context.codemap,
+                    context.snippet_provider,
                     list.iter(),
                     ")",
                     ",",
