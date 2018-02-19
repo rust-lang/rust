@@ -40,56 +40,49 @@ pub use flags::Subcommand;
 /// `config.toml.example`.
 #[derive(Default)]
 pub struct Config {
+    pub target_config: HashMap<Interned<String>, Target>,
     pub verbose: usize,
     pub submodules: bool,
     pub compiler_docs: bool,
     pub docs: bool,
     pub locked_deps: bool,
     pub vendor: bool,
-    pub target_config: HashMap<Interned<String>, Target>,
     pub full_bootstrap: bool,
     pub extended: bool,
     pub tools: Option<HashSet<String>>,
     pub sanitizers: bool,
     pub profiler: bool,
-    pub exclude: Vec<PathBuf>,
     pub rustc_error_format: Option<String>,
+    pub local_rebuild: bool,
+    pub low_priority: bool,
+    pub nodejs: Option<PathBuf>,
+    pub gdb: Option<PathBuf>,
+    pub python: Option<PathBuf>,
+    pub openssl_static: bool,
+
+    pub build: Interned<String>,
+    pub hosts: Vec<Interned<String>>,
+    pub targets: Vec<Interned<String>>,
 
     pub run_host_only: bool,
     pub is_sudo: bool,
+    pub out: PathBuf,
 
+    pub exclude: Vec<PathBuf>,
     pub on_fail: Option<String>,
     pub stage: Option<u32>,
     pub keep_stage: Option<u32>,
     pub src: PathBuf,
-    pub out: PathBuf,
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
     pub paths: Vec<PathBuf>,
     pub incremental: bool,
 
-    // llvm codegen options
     pub llvm: Llvm,
-
-    // rust codegen options
     pub rust: Rust,
-
-    pub build: Interned<String>,
-    pub hosts: Vec<Interned<String>>,
-    pub targets: Vec<Interned<String>>,
-    pub local_rebuild: bool,
-
-    // dist misc
     pub dist: Dist,
 
-    // misc
-    pub low_priority: bool,
-
     pub install: Install,
-    pub nodejs: Option<PathBuf>,
-    pub gdb: Option<PathBuf>,
-    pub python: Option<PathBuf>,
-    pub openssl_static: bool,
     pub configure_args: Vec<String>,
 
     // These are either the stage0 downloaded binaries or the locally installed ones.
@@ -448,6 +441,10 @@ impl Config {
         config.incremental = flags.incremental;
         config.keep_stage = flags.keep_stage;
 
+        let cwd = t!(env::current_dir());
+        let out = cwd.join("build");
+        config.out = out.clone();
+
         // If --target was specified but --host wasn't specified, don't run any host-only tests.
         config.run_host_only = !(flags.host.is_empty() && !flags.target.is_empty());
 
@@ -548,10 +545,6 @@ impl Config {
         }
 
         config.dist = toml.dist;
-
-        let cwd = t!(env::current_dir());
-        let out = cwd.join("build");
-        config.out = out.clone();
 
         let stage0_root = out.join(&config.build).join("stage0/bin");
         config.initial_rustc = match build.rustc {
