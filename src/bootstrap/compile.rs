@@ -150,7 +150,7 @@ pub fn std_cargo(build: &Build,
     // same view of what the default allocator is, but fails otherwise. Since
     // we don't have a way to express an allocator preference yet, work
     // around the issue in the case of a local rebuild with jemalloc disabled.
-    if compiler.stage == 0 && build.config.local_rebuild && !build.config.use_jemalloc {
+    if compiler.stage == 0 && build.config.local_rebuild && !build.config.rust.use_jemalloc {
         features.push_str(" force_alloc_system");
     }
 
@@ -512,7 +512,7 @@ fn rustc_cargo_env(build: &Build, cargo: &mut Command) {
     // Set some configuration variables picked up by build scripts and
     // the compiler alike
     cargo.env("CFG_RELEASE", build.rust_release())
-         .env("CFG_RELEASE_CHANNEL", &build.config.channel)
+         .env("CFG_RELEASE_CHANNEL", &build.config.rust.channel)
          .env("CFG_VERSION", build.rust_version())
          .env("CFG_PREFIX", &build.config.install.prefix);
 
@@ -521,7 +521,7 @@ fn rustc_cargo_env(build: &Build, cargo: &mut Command) {
 
     // If we're not building a compiler with debugging information then remove
     // these two env vars which would be set otherwise.
-    if build.config.rust_debuginfo_only_std {
+    if build.config.rust.debuginfo_only_std() {
         cargo.env_remove("RUSTC_DEBUGINFO");
         cargo.env_remove("RUSTC_DEBUGINFO_LINES");
     }
@@ -535,10 +535,10 @@ fn rustc_cargo_env(build: &Build, cargo: &mut Command) {
     if !build.unstable_features() {
         cargo.env("CFG_DISABLE_UNSTABLE_FEATURES", "1");
     }
-    if let Some(ref s) = build.config.rustc_default_linker {
+    if let Some(ref s) = build.config.rust.default_linker {
         cargo.env("CFG_DEFAULT_LINKER", s);
     }
-    if build.config.rustc_parallel_queries {
+    if build.config.rust.experimental_parallel_queries {
         cargo.env("RUSTC_PARALLEL_QUERIES", "1");
     }
 }
@@ -596,10 +596,11 @@ impl Step for CodegenBackend {
     }
 
     fn make_run(run: RunConfig) {
-        let backend = run.builder.config.rust_codegen_backends.get(0);
+        let backend = run.builder.config.rust.codegen_backends.get(0);
         let backend = backend.cloned().unwrap_or_else(|| {
-            INTERNER.intern_str("llvm")
+            String::from("llvm")
         });
+        let backend = INTERNER.intern_string(backend);
         run.builder.ensure(CodegenBackend {
             compiler: run.builder.compiler(run.builder.top_stage, run.host),
             target: run.target,
@@ -697,7 +698,7 @@ impl Step for CodegenBackend {
                    codegen_backend.display(),
                    f.display());
         }
-        let stamp = codegen_backend_stamp(build, compiler, target, self.backend);
+        let stamp = codegen_backend_stamp(build, compiler, target, &*self.backend);
         let codegen_backend = codegen_backend.to_str().unwrap();
         t!(t!(File::create(&stamp)).write_all(codegen_backend.as_bytes()));
     }
@@ -726,8 +727,8 @@ fn copy_codegen_backends_to_sysroot(builder: &Builder,
     let dst = builder.sysroot_codegen_backends(target_compiler);
     t!(fs::create_dir_all(&dst));
 
-    for backend in builder.config.rust_codegen_backends.iter() {
-        let stamp = codegen_backend_stamp(build, compiler, target, *backend);
+    for backend in builder.config.rust.codegen_backends.iter() {
+        let stamp = codegen_backend_stamp(build, compiler, target, &backend);
         let mut dylib = String::new();
         t!(t!(File::open(&stamp)).read_to_string(&mut dylib));
         let file = Path::new(&dylib);
@@ -766,7 +767,7 @@ pub fn librustc_stamp(build: &Build, compiler: Compiler, target: Interned<String
 fn codegen_backend_stamp(build: &Build,
                          compiler: Compiler,
                          target: Interned<String>,
-                         backend: Interned<String>) -> PathBuf {
+                         backend: &str) -> PathBuf {
     build.cargo_out(compiler, Mode::Librustc, target)
         .join(format!(".librustc_trans-{}.stamp", backend))
 }
@@ -885,11 +886,11 @@ impl Step for Assemble {
                 compiler: build_compiler,
                 target: target_compiler.host,
             });
-            for &backend in build.config.rust_codegen_backends.iter() {
+            for backend in build.config.rust.codegen_backends.iter() {
                 builder.ensure(CodegenBackend {
                     compiler: build_compiler,
                     target: target_compiler.host,
-                    backend,
+                    backend: INTERNER.intern_str(backend),
                 });
             }
         }

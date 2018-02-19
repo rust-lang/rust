@@ -163,7 +163,7 @@ pub fn prepare_tool_cargo(
     // own copy
     cargo.env("LZMA_API_STATIC", "1");
 
-    cargo.env("CFG_RELEASE_CHANNEL", &build.config.channel);
+    cargo.env("CFG_RELEASE_CHANNEL", &build.config.rust.channel);
     cargo.env("CFG_VERSION", build.rust_version());
 
     let info = GitInfo::new(&build.config, &dir);
@@ -348,8 +348,8 @@ impl Step for Rustdoc {
                                            "src/tools/rustdoc");
 
         // Most tools don't get debuginfo, but rustdoc should.
-        cargo.env("RUSTC_DEBUGINFO", builder.config.rust_debuginfo.to_string())
-             .env("RUSTC_DEBUGINFO_LINES", builder.config.rust_debuginfo_lines.to_string());
+        cargo.env("RUSTC_DEBUGINFO", builder.config.rust.debuginfo().to_string())
+             .env("RUSTC_DEBUGINFO_LINES", builder.config.rust.debuginfo_lines().to_string());
 
         build.run(&mut cargo);
         // Cargo adds a number of paths to the dylib search path on windows, which results in

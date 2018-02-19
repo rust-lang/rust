@@ -319,7 +319,7 @@ impl Step for Miri {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        let test_miri = run.builder.build.config.test_miri;
+        let test_miri = run.builder.build.config.rust.test_miri;
         run.path("src/tools/miri").default_condition(test_miri)
     }
 
@@ -454,7 +454,7 @@ impl Step for RustdocTheme {
            .env("RUSTC_STAGE", self.compiler.stage.to_string())
            .env("RUSTC_SYSROOT", builder.sysroot(self.compiler))
            .env("RUSTDOC_LIBDIR", builder.sysroot_libdir(self.compiler, self.compiler.host))
-           .env("CFG_RELEASE_CHANNEL", &builder.build.config.channel)
+           .env("CFG_RELEASE_CHANNEL", &builder.build.config.rust.channel)
            .env("RUSTDOC_REAL", builder.rustdoc(self.compiler.host))
            .env("RUSTDOC_CRATE_VERSION", builder.build.rust_version())
            .env("RUSTC_BOOTSTRAP", "1");
@@ -528,7 +528,7 @@ impl Step for Tidy {
         if !build.config.vendor {
             cmd.arg("--no-vendor");
         }
-        if build.config.quiet_tests {
+        if build.config.rust.quiet_tests {
             cmd.arg("--quiet");
         }
         try_run(build, &mut cmd);
@@ -785,7 +785,7 @@ impl Step for Compiletest {
         let suite = self.suite;
 
         // Skip codegen tests if they aren't enabled in configuration.
-        if !build.config.codegen_tests && suite == "codegen" {
+        if !build.config.rust.codegen_tests && suite == "codegen" {
             return;
         }
 
@@ -858,10 +858,10 @@ impl Step for Compiletest {
         }
 
         let mut flags = vec!["-Crpath".to_string()];
-        if build.config.rust_optimize_tests {
+        if build.config.rust.optimize_tests {
             flags.push("-O".to_string());
         }
-        if build.config.rust_debuginfo_tests {
+        if build.config.rust.debuginfo_tests {
             flags.push("-g".to_string());
         }
         flags.push("-Zmiri -Zunstable-options".to_string());
@@ -906,7 +906,7 @@ impl Step for Compiletest {
             cmd.arg("--verbose");
         }
 
-        if build.config.quiet_tests {
+        if build.config.rust.quiet_tests {
             cmd.arg("--quiet");
         }
 
@@ -1119,7 +1119,7 @@ fn markdown_test(builder: &Builder, compiler: Compiler, markdown: &Path) {
     let test_args = build.config.cmd.test_args().join(" ");
     cmd.arg("--test-args").arg(test_args);
 
-    if build.config.quiet_tests {
+    if build.config.rust.quiet_tests {
         try_run_quiet(build, &mut cmd);
     } else {
         try_run(build, &mut cmd);
@@ -1372,7 +1372,7 @@ impl Step for Crate {
         cargo.arg("--");
         cargo.args(&build.config.cmd.test_args());
 
-        if build.config.quiet_tests {
+        if build.config.rust.quiet_tests {
             cargo.arg("--quiet");
         }
 
@@ -1385,7 +1385,7 @@ impl Step for Crate {
             // Warn about running tests without the `wasm_syscall` feature enabled.
             // The javascript shim implements the syscall interface so that test
             // output can be correctly reported.
-            if !build.config.wasm_syscall {
+            if !build.config.rust.wasm_syscall {
                 println!("Libstd was built without `wasm_syscall` feature enabled: \
                           test output may not be visible.");
             }
@@ -1468,7 +1468,7 @@ impl Step for CrateRustdoc {
         cargo.arg("--");
         cargo.args(&build.config.cmd.test_args());
 
-        if build.config.quiet_tests {
+        if build.config.rust.quiet_tests {
             cargo.arg("--quiet");
         }
 

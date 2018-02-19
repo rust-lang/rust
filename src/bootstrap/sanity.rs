@@ -148,18 +148,12 @@ pub fn check(build: &mut Build) {
 
     for host in &build.config.hosts {
         cmd_finder.must_have(build.cxx(*host).unwrap());
-
-        // The msvc hosts don't use jemalloc, turn it off globally to
-        // avoid packaging the dummy liballoc_jemalloc on that platform.
-        if host.contains("msvc") {
-            build.config.use_jemalloc = false;
-        }
     }
 
     // Externally configured LLVM requires FileCheck to exist
     let filecheck = build.llvm_filecheck(build.config.build);
     if !filecheck.starts_with(&build.config.out) && !filecheck.exists() &&
-        build.config.codegen_tests {
+        build.config.rust.codegen_tests {
         panic!("FileCheck executable {:?} does not exist", filecheck);
     }
 
@@ -237,7 +231,7 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
         cmd_finder.must_have(s);
     }
 
-    if build.config.channel == "stable" {
+    if build.config.rust.channel == "stable" {
         let mut stage0 = String::new();
         t!(t!(File::open(build.config.src.join("src/stage0.txt")))
             .read_to_string(&mut stage0));

@@ -52,7 +52,6 @@ pub struct Config {
     pub tools: Option<HashSet<String>>,
     pub sanitizers: bool,
     pub profiler: bool,
-    pub ignore_git: bool,
     pub exclude: Vec<PathBuf>,
     pub rustc_error_format: Option<String>,
 
@@ -73,19 +72,7 @@ pub struct Config {
     pub llvm: Llvm,
 
     // rust codegen options
-    pub rust_optimize: bool,
-    pub rust_codegen_units: Option<u32>,
-    pub rust_thinlto: bool,
-    pub rust_debug_assertions: bool,
-    pub rust_debuginfo: bool,
-    pub rust_debuginfo_lines: bool,
-    pub rust_debuginfo_only_std: bool,
-    pub rust_rpath: bool,
-    pub rustc_parallel_queries: bool,
-    pub rustc_default_linker: Option<String>,
-    pub rust_optimize_tests: bool,
-    pub rust_debuginfo_tests: bool,
-    pub rust_codegen_backends: Vec<Interned<String>>,
+    pub rust: Rust,
 
     pub build: Interned<String>,
     pub hosts: Vec<Interned<String>>,
@@ -95,24 +82,10 @@ pub struct Config {
     // dist misc
     pub dist: Dist,
 
-    // libstd features
-    pub debug_jemalloc: bool,
-    pub use_jemalloc: bool,
-    pub backtrace: bool, // support for RUST_BACKTRACE
-    pub wasm_syscall: bool,
-
     // misc
     pub low_priority: bool,
-    pub channel: String,
-    pub quiet_tests: bool,
-    pub test_miri: bool,
-    pub save_toolstates: Option<PathBuf>,
-
-    // Fallback musl-root for all targets
-    pub musl_root: Option<PathBuf>,
 
     pub install: Install,
-    pub codegen_tests: bool,
     pub nodejs: Option<PathBuf>,
     pub gdb: Option<PathBuf>,
     pub python: Option<PathBuf>,
@@ -335,40 +308,86 @@ impl Default for StringOrBool {
 }
 
 /// TOML representation of how the Rust build is configured.
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 #[serde(default, deny_unknown_fields, rename_all = "kebab-case")]
-struct Rust {
+pub struct Rust {
+    pub thinlto: bool,
+    pub rpath: bool,
+    pub experimental_parallel_queries: bool,
+    pub use_jemalloc: bool,
+    pub backtrace: bool, // RUST_BACKTRACE support
+    pub default_linker: Option<String>,
+    pub channel: String,
+    // Fallback musl-root for all targets
+    pub musl_root: Option<PathBuf>,
+    pub optimize_tests: bool,
+    pub debuginfo_tests: bool,
+    pub codegen_tests: bool,
+    pub quiet_tests: bool,
+    pub test_miri: bool,
+    pub save_toolstates: Option<PathBuf>,
+    pub codegen_backends: Vec<String>,
+    pub wasm_syscall: bool,
     optimize: Option<bool>,
     codegen_units: Option<u32>,
-    thinlto: bool,
     debug_assertions: Option<bool>,
     debuginfo: Option<bool>,
     debuginfo_lines: Option<bool>,
     debuginfo_only_std: Option<bool>,
-    rpath: bool,
-    experimental_parallel_queries: bool,
     debug_jemalloc: Option<bool>,
-    use_jemalloc: bool,
-    backtrace: bool,
-    default_linker: Option<String>,
-    channel: String,
-    musl_root: Option<PathBuf>,
-    optimize_tests: bool,
-    debuginfo_tests: bool,
-    codegen_tests: bool,
     ignore_git: Option<bool>,
-    debug: Option<bool>,
-    quiet_tests: bool,
-    test_miri: bool,
-    save_toolstates: Option<PathBuf>,
-    codegen_backends: Vec<String>,
-    wasm_syscall: bool,
+    debug: bool,
+}
+
+impl Rust {
+    pub fn debug_jemalloc(&self) -> bool {
+        self.debug_jemalloc.unwrap_or(self.debug)
+    }
+
+    pub fn debuginfo(&self) -> bool {
+        self.debuginfo.unwrap_or(self.debug)
+    }
+
+    fn is_dist_channel(&self) -> bool {
+        match &self.channel[..] {
+            "stable" | "beta" | "nightly" => true,
+            _ => false,
+        }
+    }
+
+    pub fn debuginfo_lines(&self) -> bool {
+        self.debuginfo_lines.unwrap_or(self.is_dist_channel())
+    }
+
+    pub fn debuginfo_only_std(&self) -> bool {
+        self.debuginfo_only_std.unwrap_or(self.is_dist_channel())
+    }
+
+    pub fn ignore_git(&self) -> bool {
+        self.ignore_git.unwrap_or(!self.is_dist_channel())
+    }
+
+    pub fn debug_assertions(&self) -> bool {
+        self.debug_assertions.unwrap_or(self.debug)
+    }
+
+    pub fn optimize(&self) -> bool {
+        self.optimize.unwrap_or(!self.debug)
+    }
+
+    pub fn codegen_units(&self) -> Option<u32> {
+        match self.codegen_units {
+            Some(0) => Some(num_cpus::get() as u32),
+            Some(n) => Some(n),
+            None => None,
+        }
+    }
 }
 
 impl Default for Rust {
     fn default() -> Rust {
         Rust {
-            debug: None,
+            debug: false,
             debug_assertions: None,
             debuginfo: None,
             debuginfo_lines: None,
@@ -510,42 +529,7 @@ impl Config {
         config.install = toml.install;
         config.llvm = toml.llvm;
 
-        // Store off these values as options because if they're not
-        // provided we'll infer default values for them later
-        let debuginfo_lines = toml.rust.debuginfo_lines;
-        let debuginfo_only_std = toml.rust.debuginfo_only_std;
-        let debug = toml.rust.debug;
-        let debug_jemalloc = toml.rust.debug_jemalloc;
-        let debuginfo = toml.rust.debuginfo;
-        let debug_assertions = toml.rust.debug_assertions;
-        let optimize = toml.rust.optimize;
-        let ignore_git = toml.rust.ignore_git;
-
-        config.rust_optimize_tests = toml.rust.optimize_tests;
-        config.rust_debuginfo_tests = toml.rust.debuginfo_tests;
-        config.codegen_tests = toml.rust.codegen_tests;
-        config.rust_rpath = toml.rust.rpath;
-        config.use_jemalloc = toml.rust.use_jemalloc;
-        config.backtrace = toml.rust.backtrace;
-        config.channel = toml.rust.channel.clone();
-        config.quiet_tests = toml.rust.quiet_tests;
-        config.test_miri = toml.rust.test_miri;
-        config.wasm_syscall = toml.rust.wasm_syscall;
-        config.rustc_parallel_queries = toml.rust.experimental_parallel_queries;
-        config.rustc_default_linker = toml.rust.default_linker.clone();
-        config.musl_root = toml.rust.musl_root.clone();
-        config.save_toolstates = toml.rust.save_toolstates.clone();
-        config.rust_thinlto = toml.rust.thinlto;
-
-        config.rust_codegen_backends = toml.rust.codegen_backends.iter()
-            .map(|s| INTERNER.intern_str(s))
-            .collect();
-
-        match toml.rust.codegen_units {
-            Some(0) => config.rust_codegen_units = Some(num_cpus::get() as u32),
-            Some(n) => config.rust_codegen_units = Some(n),
-            None => {}
-        }
+        config.rust = toml.rust.clone();
 
         for (triple, cfg) in toml.target {
             let cwd = t!(env::current_dir());
@@ -590,23 +574,11 @@ impl Config {
             None => stage0_root.join(exe("cargo", &config.build)),
         };
 
-        // Now that we've reached the end of our configuration, infer the
-        // default values for all options that we haven't otherwise stored yet.
-        let default = match &config.channel[..] {
-            "stable" | "beta" | "nightly" => true,
-            _ => false,
-        };
-        config.rust_debuginfo_lines = debuginfo_lines.unwrap_or(default);
-        config.rust_debuginfo_only_std = debuginfo_only_std.unwrap_or(default);
-
-        let default = debug == Some(true);
-        config.debug_jemalloc = debug_jemalloc.unwrap_or(default);
-        config.rust_debuginfo = debuginfo.unwrap_or(default);
-        config.rust_debug_assertions = debug_assertions.unwrap_or(default);
-        config.rust_optimize = optimize.unwrap_or(!default);
-
-        let default = config.channel == "dev";
-        config.ignore_git = ignore_git.unwrap_or(default);
+        // The msvc hosts don't use jemalloc, turn it off globally to
+        // avoid packaging the dummy liballoc_jemalloc on that platform.
+        if config.hosts.iter().any(|host| host.contains("msvc")) {
+            config.rust.use_jemalloc = false;
+        }
 
         config
     }

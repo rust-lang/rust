@@ -279,7 +279,7 @@ impl<'a> Builder<'a> {
         };
 
         if kind == Kind::Dist {
-            assert!(!build.config.test_miri, "Do not distribute with miri enabled.\n\
+            assert!(!build.config.rust.test_miri, "Do not distribute with miri enabled.\n\
                 The distributed libraries would include all MIR (increasing binary size).
                 The distributed MIR would include validation statements.");
         }
@@ -496,7 +496,7 @@ impl<'a> Builder<'a> {
         cmd.env("RUSTC_STAGE", compiler.stage.to_string())
            .env("RUSTC_SYSROOT", self.sysroot(compiler))
            .env("RUSTDOC_LIBDIR", self.sysroot_libdir(compiler, self.build.config.build))
-           .env("CFG_RELEASE_CHANNEL", &self.build.config.channel)
+           .env("CFG_RELEASE_CHANNEL", &self.build.config.rust.channel)
            .env("RUSTDOC_REAL", self.rustdoc(host))
            .env("RUSTDOC_CRATE_VERSION", self.build.rust_version())
            .env("RUSTC_BOOTSTRAP", "1");
@@ -533,7 +533,7 @@ impl<'a> Builder<'a> {
 
         // FIXME: Temporary fix for https://github.com/rust-lang/cargo/issues/3005
         // Force cargo to output binaries with disambiguating hashes in the name
-        cargo.env("__CARGO_DEFAULT_LIB_METADATA", &self.config.channel);
+        cargo.env("__CARGO_DEFAULT_LIB_METADATA", &self.config.rust.channel);
 
         let stage;
         if compiler.stage == 0 && self.config.local_rebuild {
@@ -566,17 +566,17 @@ impl<'a> Builder<'a> {
              .env("RUSTC_REAL", self.rustc(compiler))
              .env("RUSTC_STAGE", stage.to_string())
              .env("RUSTC_DEBUG_ASSERTIONS",
-                  self.config.rust_debug_assertions.to_string())
+                  self.config.rust.debug_assertions().to_string())
              .env("RUSTC_SYSROOT", self.sysroot(compiler))
              .env("RUSTC_LIBDIR", self.rustc_libdir(compiler))
-             .env("RUSTC_RPATH", self.config.rust_rpath.to_string())
+             .env("RUSTC_RPATH", self.config.rust.rpath.to_string())
              .env("RUSTDOC", self.config.out.join("bootstrap/debug/rustdoc"))
              .env("RUSTDOC_REAL", if cmd == "doc" || cmd == "test" {
                  self.rustdoc(compiler.host)
              } else {
                  PathBuf::from("/path/to/nowhere/rustdoc/not/required")
              })
-             .env("TEST_MIRI", self.config.test_miri.to_string())
+             .env("TEST_MIRI", self.config.rust.test_miri.to_string())
              .env("RUSTC_ERROR_METADATA_DST", self.extended_error_dir());
 
         if let Some(host_linker) = self.build.linker(compiler.host) {
@@ -596,8 +596,8 @@ impl<'a> Builder<'a> {
             // Tools don't get debuginfo right now, e.g. cargo and rls don't
             // get compiled with debuginfo.
             // Adding debuginfo increases their sizes by a factor of 3-4.
-            cargo.env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string());
-            cargo.env("RUSTC_DEBUGINFO_LINES", self.config.rust_debuginfo_lines.to_string());
+            cargo.env("RUSTC_DEBUGINFO", self.config.rust.debuginfo().to_string());
+            cargo.env("RUSTC_DEBUGINFO_LINES", self.config.rust.debuginfo_lines().to_string());
             cargo.env("RUSTC_FORCE_UNSTABLE", "1");
 
             // Currently the compiler depends on crates from crates.io, and
@@ -710,7 +710,7 @@ impl<'a> Builder<'a> {
         cargo.env("CFG_COMPILER_HOST_TRIPLE", target);
 
         // Set this for all builds to make sure doc builds also get it.
-        cargo.env("CFG_RELEASE_CHANNEL", &self.build.config.channel);
+        cargo.env("CFG_RELEASE_CHANNEL", &self.build.config.rust.channel);
 
         // This one's a bit tricky. As of the time of this writing the compiler
         // links to the `winapi` crate on crates.io. This crate provides raw
@@ -751,21 +751,21 @@ impl<'a> Builder<'a> {
 
         // This must be kept before the thinlto check, as we set codegen units
         // to 1 forcibly there.
-        if let Some(n) = self.config.rust_codegen_units {
+        if let Some(n) = self.config.rust.codegen_units() {
             cargo.env("RUSTC_CODEGEN_UNITS", n.to_string());
         }
 
-        if self.config.rust_optimize {
+        if self.config.rust.optimize() {
             // FIXME: cargo bench does not accept `--release`
             if cmd != "bench" {
                 cargo.arg("--release");
             }
 
-            if self.config.rust_codegen_units.is_none() &&
+            if self.config.rust.codegen_units().is_none() &&
                self.build.is_rust_llvm(compiler.host) &&
-               self.config.rust_thinlto {
+               self.config.rust.thinlto {
                 cargo.env("RUSTC_THINLTO", "1");
-            } else if self.config.rust_codegen_units.is_none() {
+            } else if self.config.rust.codegen_units().is_none() {
                 // Generally, if ThinLTO has been disabled for some reason, we
                 // want to set the codegen units to 1. However, we shouldn't do
                 // this if the option was specifically set by the user.

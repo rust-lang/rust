@@ -40,7 +40,7 @@ struct Info {
 impl GitInfo {
     pub fn new(config: &Config, dir: &Path) -> GitInfo {
         // See if this even begins to look like a git dir
-        if config.ignore_git || !dir.join(".git").exists() {
+        if config.rust.ignore_git() || !dir.join(".git").exists() {
             return GitInfo { inner: None }
         }
 

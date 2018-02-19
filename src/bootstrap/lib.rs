@@ -368,19 +368,19 @@ impl Build {
     fn std_features(&self) -> String {
         let mut features = "panic-unwind".to_string();
 
-        if self.config.debug_jemalloc {
+        if self.config.rust.debug_jemalloc() {
             features.push_str(" debug-jemalloc");
         }
-        if self.config.use_jemalloc {
+        if self.config.rust.use_jemalloc {
             features.push_str(" jemalloc");
         }
-        if self.config.backtrace {
+        if self.config.rust.backtrace {
             features.push_str(" backtrace");
         }
         if self.config.profiler {
             features.push_str(" profiler");
         }
-        if self.config.wasm_syscall {
+        if self.config.rust.wasm_syscall {
             features.push_str(" wasm_syscall");
         }
         features
@@ -389,7 +389,7 @@ impl Build {
     /// Get the space-separated set of activated features for the compiler.
     fn rustc_features(&self) -> String {
         let mut features = String::new();
-        if self.config.use_jemalloc {
+        if self.config.rust.use_jemalloc {
             features.push_str(" jemalloc");
         }
         features
@@ -398,7 +398,7 @@ impl Build {
     /// Component directory that Cargo will produce output into (e.g.
     /// release/debug)
     fn cargo_dir(&self) -> &'static str {
-        if self.config.rust_optimize {"release"} else {"debug"}
+        if self.config.rust.optimize() {"release"} else {"debug"}
     }
 
     fn tools_dir(&self, compiler: Compiler) -> PathBuf {
@@ -650,7 +650,7 @@ impl Build {
     fn musl_root(&self, target: Interned<String>) -> Option<&Path> {
         self.config.target_config.get(&target)
             .and_then(|t| t.musl_root.as_ref())
-            .or(self.config.musl_root.as_ref())
+            .or(self.config.rust.musl_root.as_ref())
             .map(|p| &**p)
     }
 
@@ -731,7 +731,7 @@ impl Build {
     /// For example on nightly this returns "a.b.c-nightly", on beta it returns
     /// "a.b.c-beta.1" and on stable it just returns "a.b.c".
     fn release(&self, num: &str) -> String {
-        match &self.config.channel[..] {
+        match &self.config.rust.channel[..] {
             "stable" => num.to_string(),
             "beta" => if self.rust_info.is_git() {
                 format!("{}-beta.{}", num, self.beta_prerelease_version())
@@ -802,7 +802,7 @@ impl Build {
     /// For channels like beta/nightly it's just the channel name, otherwise
     /// it's the `num` provided.
     fn package_vers(&self, num: &str) -> String {
-        match &self.config.channel[..] {
+        match &self.config.rust.channel[..] {
             "stable" => num.to_string(),
             "beta" => "beta".to_string(),
             "nightly" => "nightly".to_string(),
@@ -863,7 +863,7 @@ impl Build {
     /// Returns whether unstable features should be enabled for the compiler
     /// we're building.
     fn unstable_features(&self) -> bool {
-        match &self.config.channel[..] {
+        match &self.config.rust.channel[..] {
             "stable" | "beta" => false,
             "nightly" | _ => true,
         }
@@ -890,7 +890,7 @@ impl Build {
     pub fn save_toolstate(&self, tool: &str, state: ToolState) {
         use std::io::{Seek, SeekFrom};
 
-        if let Some(ref path) = self.config.save_toolstates {
+        if let Some(ref path) = self.config.rust.save_toolstates {
             let mut file = t!(fs::OpenOptions::new()
                 .create(true)
                 .read(true)

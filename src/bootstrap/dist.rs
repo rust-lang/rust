@@ -1637,7 +1637,7 @@ fn add_env(build: &Build, cmd: &mut Command, target: Interned<String>) {
        .env("CFG_PACKAGE_VERS", build.rust_package_vers())
        .env("CFG_PACKAGE_NAME", pkgname(build, "rust"))
        .env("CFG_BUILD", target)
-       .env("CFG_CHANNEL", &build.config.channel);
+       .env("CFG_CHANNEL", &build.config.rust.channel);
 
     if target.contains("windows-gnu") {
        cmd.env("CFG_MINGW", "1")
