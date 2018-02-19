@@ -83,10 +83,9 @@ ENV HOSTS=i686-unknown-linux-gnu
 
 ENV RUST_CONFIGURE_ARGS \
       --host=$HOSTS \
-      --enable-extended \
+      --enable-full-tools \
       --enable-sanitizers \
       --enable-profiler \
-      --enable-emscripten \
       --build=i686-unknown-linux-gnu
 ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS
 

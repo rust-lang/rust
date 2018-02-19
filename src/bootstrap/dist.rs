@@ -28,7 +28,7 @@ use build_helper::output;
 
 use {Build, Compiler, Mode};
 use channel;
-use util::{cp_r, libdir, is_dylib, cp_filtered, copy, replace_in_file};
+use util::{cp_r, libdir, is_dylib, cp_filtered, copy, replace_in_file, exe};
 use builder::{Builder, RunConfig, ShouldRun, Step};
 use compile;
 use native;
@@ -442,6 +442,22 @@ impl Step for Rustc {
             let backends_dst = image.join(&backends_rel);
             t!(fs::create_dir_all(&backends_dst));
             cp_r(&backends_src, &backends_dst);
+
+            // Copy over lld if it's there
+            if builder.config.lld_enabled {
+                let exe = exe("lld", &compiler.host);
+                let src = builder.sysroot_libdir(compiler, host)
+                    .parent()
+                    .unwrap()
+                    .join("bin")
+                    .join(&exe);
+                let dst = image.join("lib/rustlib")
+                    .join(&*host)
+                    .join("bin")
+                    .join(&exe);
+                t!(fs::create_dir_all(&dst.parent().unwrap()));
+                copy(&src, &dst);
+            }
 
             // Man pages
             t!(fs::create_dir_all(image.join("share/man/man1")));

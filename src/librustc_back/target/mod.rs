@@ -58,7 +58,6 @@ mod arm_base;
 mod bitrig_base;
 mod cloudabi_base;
 mod dragonfly_base;
-mod emscripten_base;
 mod freebsd_base;
 mod haiku_base;
 mod linux_base;
@@ -276,8 +275,8 @@ pub struct TargetOptions {
     /// Whether the target is built-in or loaded from a custom target specification.
     pub is_builtin: bool,
 
-    /// Linker to invoke. Defaults to "cc".
-    pub linker: String,
+    /// Linker to invoke
+    pub linker: Option<String>,
 
     /// Linker arguments that are unconditionally passed *before* any
     /// user-defined libraries.
@@ -480,7 +479,7 @@ impl Default for TargetOptions {
     fn default() -> TargetOptions {
         TargetOptions {
             is_builtin: false,
-            linker: option_env!("CFG_DEFAULT_LINKER").unwrap_or("cc").to_string(),
+            linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.to_string()),
             pre_link_args: LinkArgs::new(),
             post_link_args: LinkArgs::new(),
             asm_args: Vec::new(),
@@ -730,7 +729,7 @@ impl Target {
         }
 
         key!(is_builtin, bool);
-        key!(linker);
+        key!(linker, optional);
         key!(pre_link_args, link_args);
         key!(pre_link_objects_exe, list);
         key!(pre_link_objects_dll, list);

@@ -501,6 +501,10 @@ impl Build {
         self.out.join(&*target).join("llvm-emscripten")
     }
 
+    fn lld_out(&self, target: Interned<String>) -> PathBuf {
+        self.out.join(&*target).join("lld")
+    }
+
     /// Output directory for all documentation for a target
     fn doc_out(&self, target: Interned<String>) -> PathBuf {
         self.out.join(&*target).join("doc")
@@ -685,7 +689,9 @@ impl Build {
                                                        .and_then(|c| c.linker.as_ref()) {
             Some(linker)
         } else if target != self.config.build &&
-                  !target.contains("msvc") && !target.contains("emscripten") {
+                  !target.contains("msvc") &&
+                  !target.contains("emscripten") &&
+                  !target.contains("wasm32") {
             Some(self.cc(target))
         } else {
             None
