@@ -1004,6 +1004,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
     let translation_items: DefIdSet = items.iter().filter_map(|trans_item| {
         match *trans_item {
             MonoItem::Fn(ref instance) => Some(instance.def_id()),
+            MonoItem::Static(def_id) => Some(def_id),
             _ => None,
         }
     }).collect();
@@ -1107,7 +1108,7 @@ impl CrateInfo {
     }
 }
 
-fn is_translated_function(tcx: TyCtxt, id: DefId) -> bool {
+fn is_translated_item(tcx: TyCtxt, id: DefId) -> bool {
     let (all_trans_items, _) =
         tcx.collect_and_partition_translation_items(LOCAL_CRATE);
     all_trans_items.contains(&id)
@@ -1222,7 +1223,7 @@ pub fn provide(providers: &mut Providers) {
     providers.collect_and_partition_translation_items =
         collect_and_partition_translation_items;
 
-    providers.is_translated_function = is_translated_function;
+    providers.is_translated_item = is_translated_item;
 
     providers.codegen_unit = |tcx, name| {
         let (_, all) = tcx.collect_and_partition_translation_items(LOCAL_CRATE);

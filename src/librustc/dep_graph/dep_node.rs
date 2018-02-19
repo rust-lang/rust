@@ -625,7 +625,7 @@ define_dep_nodes!( <'tcx>
     [eval_always] CollectAndPartitionTranslationItems,
     [] ExportName(DefId),
     [] ContainsExternIndicator(DefId),
-    [] IsTranslatedFunction(DefId),
+    [] IsTranslatedItem(DefId),
     [] CodegenUnit(InternedString),
     [] CompileCodegenUnit(InternedString),
     [input] OutputFilenames,
