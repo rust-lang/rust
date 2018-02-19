@@ -43,6 +43,7 @@ use syntax::tokenstream::TokenStream;
 use syntax::util::ThinVec;
 use syntax::util::parser::ExprPrecedence;
 use ty::AdtKind;
+use ty::maps::Providers;
 
 use rustc_data_structures::indexed_vec;
 
@@ -2204,3 +2205,8 @@ pub type TraitMap = NodeMap<Vec<TraitCandidate>>;
 // Map from the NodeId of a glob import to a list of items which are actually
 // imported.
 pub type GlobMap = NodeMap<FxHashSet<Name>>;
+
+
+pub fn provide(providers: &mut Providers) {
+    providers.describe_def = map::describe_def;
+}
