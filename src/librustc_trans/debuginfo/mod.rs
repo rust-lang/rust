@@ -254,14 +254,14 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     let linkage_name = mangled_name_of_instance(cx, instance);
 
     let scope_line = span_start(cx, span).line;
-
-    let local_id = cx.tcx.hir.as_local_node_id(instance.def_id());
-    let is_local_to_unit = local_id.map_or(false, |id| is_node_local_to_unit(cx, id));
+    let is_local_to_unit = is_node_local_to_unit(cx, def_id);
 
     let function_name = CString::new(name).unwrap();
     let linkage_name = CString::new(linkage_name.to_string()).unwrap();
 
     let mut flags = DIFlags::FlagPrototyped;
+
+    let local_id = cx.tcx.hir.as_local_node_id(def_id);
     match *cx.sess().entry_fn.borrow() {
         Some((id, _)) => {
             if local_id == Some(id) {

@@ -304,7 +304,7 @@ pub fn trans_static<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             }
         }
 
-        debuginfo::create_global_var_metadata(cx, id, g);
+        debuginfo::create_global_var_metadata(cx, def_id, g);
 
         if attr::contains_name(attrs, "thread_local") {
             llvm::set_thread_local_mode(g, cx.tls_model);

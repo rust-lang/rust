@@ -14,7 +14,7 @@ use self::EnumDiscriminantInfo::*;
 
 use super::utils::{debug_context, DIB, span_start,
                    get_namespace_for_item, create_DIArray, is_node_local_to_unit};
-use super::namespace::mangled_name_of_item;
+use super::namespace::mangled_name_of_instance;
 use super::type_names::compute_debuginfo_type_name;
 use super::{CrateDebugContext};
 use abi;
@@ -1634,19 +1634,18 @@ fn create_union_stub<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
 pub fn create_global_var_metadata(cx: &CodegenCx,
-                                  node_id: ast::NodeId,
+                                  def_id: DefId,
                                   global: ValueRef) {
     if cx.dbg_cx.is_none() {
         return;
     }
 
     let tcx = cx.tcx;
-    let node_def_id = tcx.hir.local_def_id(node_id);
-    let no_mangle = attr::contains_name(&tcx.get_attrs(node_def_id), "no_mangle");
+    let no_mangle = attr::contains_name(&tcx.get_attrs(def_id), "no_mangle");
     // We may want to remove the namespace scope if we're in an extern block, see:
     // https://github.com/rust-lang/rust/pull/46457#issuecomment-351750952
-    let var_scope = get_namespace_for_item(cx, node_def_id);
-    let span = cx.tcx.def_span(node_def_id);
+    let var_scope = get_namespace_for_item(cx, def_id);
+    let span = cx.tcx.def_span(def_id);
 
     let (file_metadata, line_number) = if span != syntax_pos::DUMMY_SP {
         let loc = span_start(cx, span);
@@ -1655,15 +1654,15 @@ pub fn create_global_var_metadata(cx: &CodegenCx,
         (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
     };
 
-    let is_local_to_unit = is_node_local_to_unit(cx, node_id);
-    let variable_type = Instance::mono(cx.tcx, node_def_id).ty(cx.tcx);
+    let is_local_to_unit = is_node_local_to_unit(cx, def_id);
+    let variable_type = Instance::mono(cx.tcx, def_id).ty(cx.tcx);
     let type_metadata = type_metadata(cx, variable_type, span);
-    let var_name = tcx.item_name(node_def_id).to_string();
+    let var_name = tcx.item_name(def_id).to_string();
     let var_name = CString::new(var_name).unwrap();
     let linkage_name = if no_mangle {
         None
     } else {
-        let linkage_name = mangled_name_of_item(cx, node_id);
+        let linkage_name = mangled_name_of_instance(cx, Instance::mono(tcx, def_id));
         Some(CString::new(linkage_name.to_string()).unwrap())
     };
 
