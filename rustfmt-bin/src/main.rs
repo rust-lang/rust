@@ -387,10 +387,13 @@ fn print_usage_to_stdout(opts: &Options, reason: &str) {
 
 fn print_version() {
     println!(
-        "{}-nightly{}",
-        option_env!("CARGO_PKG_VERSION").unwrap_or("unknown"),
-        include_str!(concat!(env!("OUT_DIR"), "/commit-info.txt"))
-    )
+        "rustfmt {}",
+        concat!(
+            env!("CARGO_PKG_VERSION"),
+            "-",
+            include_str!(concat!(env!("OUT_DIR"), "/commit-info.txt"))
+        )
+    );
 }
 
 fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
