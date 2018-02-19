@@ -509,7 +509,7 @@ a {
 .anchor {
 	display: none;
 	position: absolute;
-	left: -5px;
+	left: -7px;
 }
 .anchor.field {
 	left: -5px;
@@ -905,6 +905,10 @@ span.since {
 
 	.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant {
 		display: flex;
+	}
+
+	.anchor {
+		left: -5px;
 	}
 }
 
