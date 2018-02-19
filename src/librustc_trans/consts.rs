@@ -226,8 +226,15 @@ pub fn get_static(cx: &CodegenCx, def_id: DefId) -> ValueRef {
             // statically in the final application, we always mark such symbols as 'dllimport'.
             // If final linkage happens to be static, we rely on compiler-emitted __imp_ stubs to
             // make things work.
-            unsafe {
-                llvm::LLVMSetDLLStorageClass(g, llvm::DLLStorageClass::DllImport);
+            //
+            // However, in some scenarios we defer emission of statics to downstream
+            // crates, so there are cases where a static with an upstream DefId
+            // is actually present in the current crate. We can find out via the
+            // is_translated_item query.
+            if !cx.tcx.is_translated_item(def_id) {
+                unsafe {
+                    llvm::LLVMSetDLLStorageClass(g, llvm::DLLStorageClass::DllImport);
+                }
             }
         }
         g
@@ -246,8 +253,8 @@ pub fn get_static(cx: &CodegenCx, def_id: DefId) -> ValueRef {
 }
 
 pub fn trans_static<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
-                              m: hir::Mutability,
                               def_id: DefId,
+                              is_mutable: bool,
                               attrs: &[ast::Attribute])
                               -> Result<ValueRef, ConstEvalErr<'tcx>> {
     unsafe {
@@ -298,7 +305,7 @@ pub fn trans_static<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
         // As an optimization, all shared statics which do not have interior
         // mutability are placed into read-only memory.
-        if m != hir::MutMutable {
+        if !is_mutable {
             if cx.type_is_freeze(ty) {
                 llvm::LLVMSetGlobalConstant(g, llvm::True);
             }

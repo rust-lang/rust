@@ -24,6 +24,7 @@ use llvm;
 use monomorphize::Instance;
 use type_of::LayoutLlvmExt;
 use rustc::hir;
+use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::mir::mono::{Linkage, Visibility};
 use rustc::ty::TypeFoldable;
@@ -46,24 +47,23 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
         match *self.as_mono_item() {
             MonoItem::Static(def_id) => {
                 let tcx = cx.tcx;
-                let node_id = match tcx.hir.as_local_node_id(def_id) {
-                    Some(node_id) => node_id,
+                let is_mutable = match tcx.describe_def(def_id) {
+                    Some(Def::Static(_, is_mutable)) => is_mutable,
+                    Some(other) => {
+                        bug!("Expected Def::Static, found {:?}", other)
+                    }
                     None => {
-                        bug!("MonoItemExt::define() called for non-local \
-                              static `{:?}`.", def_id)
+                        bug!("Expected Def::Static for {:?}, found nothing", def_id)
                     }
                 };
-                let item = tcx.hir.expect_item(node_id);
-                if let hir::ItemStatic(_, m, _) = item.node {
-                    match consts::trans_static(&cx, m, def_id, &item.attrs) {
-                        Ok(_) => { /* Cool, everything's alright. */ },
-                        Err(err) => {
-                            err.report(tcx, item.span, "static");
-                        }
-                    };
-                } else {
-                    span_bug!(item.span, "Mismatch between hir::Item type and TransItem type")
-                }
+                let attrs = tcx.get_attrs(def_id);
+
+                match consts::trans_static(&cx, def_id, is_mutable, &attrs) {
+                    Ok(_) => { /* Cool, everything's alright. */ },
+                    Err(err) => {
+                        err.report(tcx, tcx.def_span(def_id), "static");
+                    }
+                };
             }
             MonoItem::GlobalAsm(node_id) => {
                 let item = cx.tcx.hir.expect_item(node_id);
@@ -137,20 +137,12 @@ fn predefine_static<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                               linkage: Linkage,
                               visibility: Visibility,
                               symbol_name: &str) {
-    let node_id = match cx.tcx.hir.as_local_node_id(def_id) {
-        Some(node_id) => node_id,
-        None => {
-            bug!("MonoItemExt::predefine() called for non-local static `{:?}`.",
-                 def_id)
-        }
-    };
-
     let instance = Instance::mono(cx.tcx, def_id);
     let ty = instance.ty(cx.tcx);
     let llty = cx.layout_of(ty).llvm_type(cx);
 
     let g = declare::define_global(cx, symbol_name, llty).unwrap_or_else(|| {
-        cx.sess().span_fatal(cx.tcx.hir.span(node_id),
+        cx.sess().span_fatal(cx.tcx.def_span(def_id),
             &format!("symbol `{}` is already defined", symbol_name))
     });
 
