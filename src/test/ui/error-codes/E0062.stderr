@@ -4,7 +4,7 @@ error[E0062]: field `x` specified more than once
 17 |         x: 0,
    |         ---- first use of `x`
 18 |         x: 0,
-   |         ^^ used more than once
+   |         ^ used more than once
 
 error: aborting due to previous error
 
