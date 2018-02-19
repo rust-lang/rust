@@ -201,10 +201,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         let mutbl = match mt.mutbl {
                             hir::MutImmutable => AutoBorrowMutability::Immutable,
                             hir::MutMutable => AutoBorrowMutability::Mutable {
-                                // For initial two-phase borrow
-                                // deployment, conservatively omit
-                                // overloaded binary ops.
-                                allow_two_phase_borrow: false,
+                                // Allow two-phase borrows for binops in initial deployment
+                                // since they desugar to methods
+                                allow_two_phase_borrow: true,
                             }
                         };
                         let autoref = Adjustment {
@@ -219,10 +218,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         let mutbl = match mt.mutbl {
                             hir::MutImmutable => AutoBorrowMutability::Immutable,
                             hir::MutMutable => AutoBorrowMutability::Mutable {
-                                // For initial two-phase borrow
-                                // deployment, conservatively omit
-                                // overloaded binary ops.
-                                allow_two_phase_borrow: false,
+                                // Allow two-phase borrows for binops in initial deployment
+                                // since they desugar to methods
+                                allow_two_phase_borrow: true,
                             }
                         };
                         let autoref = Adjustment {
