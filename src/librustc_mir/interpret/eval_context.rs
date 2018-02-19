@@ -41,7 +41,7 @@ pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     /// The maximum number of stack frames allowed
     pub(crate) stack_limit: usize,
 
-    /// The maximum number of operations that may be executed.
+    /// The maximum number of terminators that may be evaluated.
     /// This prevents infinite loops and huge computations from freezing up const eval.
     /// Remove once halting problem is solved.
     pub(crate) steps_remaining: usize,

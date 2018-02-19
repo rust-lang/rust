@@ -196,7 +196,7 @@ impl<'tcx> Error for EvalError<'tcx> {
             OutOfMemory{..} =>
                 "could not allocate more memory",
             ExecutionTimeLimitReached =>
-                "reached the configured maximum execution time",
+                "the expression was too complex to be evaluated or resulted in an infinite loop",
             StackFrameLimitReached =>
                 "reached the configured maximum number of stack frames",
             OutOfTls =>

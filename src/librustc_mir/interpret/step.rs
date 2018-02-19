@@ -19,7 +19,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
     /// Returns true as long as there are more things to do.
     pub fn step(&mut self) -> EvalResult<'tcx, bool> {
-        self.inc_step_counter_and_check_limit(1)?;
         if self.stack.is_empty() {
             return Ok(false);
         }
@@ -36,6 +35,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             self.statement(stmt)?;
             return Ok(true);
         }
+
+        self.inc_step_counter_and_check_limit(1)?;
 
         let terminator = basic_block.terminator();
         assert_eq!(old_frames, self.cur_frame());
