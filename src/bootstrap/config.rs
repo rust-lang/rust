@@ -126,6 +126,7 @@ pub struct Config {
     pub docdir: Option<PathBuf>,
     pub bindir: Option<PathBuf>,
     pub libdir: Option<PathBuf>,
+    pub libdir_relative: Option<PathBuf>,
     pub mandir: Option<PathBuf>,
     pub codegen_tests: bool,
     pub nodejs: Option<PathBuf>,
@@ -415,6 +416,22 @@ impl Config {
             config.bindir = install.bindir.clone().map(PathBuf::from);
             config.libdir = install.libdir.clone().map(PathBuf::from);
             config.mandir = install.mandir.clone().map(PathBuf::from);
+        }
+
+        // Try to infer `libdir_relative` from `libdir`.
+        if let Some(ref libdir) = config.libdir {
+            let mut libdir = libdir.as_path();
+            if !libdir.is_relative() {
+                // Try to make it relative to the prefix.
+                if let Some(ref prefix) = config.prefix {
+                    if let Ok(suffix) = libdir.strip_prefix(prefix) {
+                        libdir = suffix;
+                    }
+                }
+            }
+            if libdir.is_relative() {
+                config.libdir_relative = Some(libdir.to_path_buf());
+            }
         }
 
         // Store off these values as options because if they're not provided
