@@ -29,3 +29,4 @@ error[E0308]: match arms have incompatible types
 
 error: aborting due to 2 previous errors
 
+If you want more information on this error, try using "rustc --explain E0308"

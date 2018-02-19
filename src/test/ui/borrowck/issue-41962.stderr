@@ -54,3 +54,4 @@ error[E0382]: use of moved value: `maybe.0` (Mir)
 
 error: aborting due to 5 previous errors
 
+If you want more information on this error, try using "rustc --explain E0382"

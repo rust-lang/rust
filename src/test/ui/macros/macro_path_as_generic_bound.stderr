@@ -6,3 +6,4 @@ error[E0433]: failed to resolve. Use of undeclared type or module `m`
 
 error: cannot continue compilation due to previous error
 
+If you want more information on this error, try using "rustc --explain E0433"

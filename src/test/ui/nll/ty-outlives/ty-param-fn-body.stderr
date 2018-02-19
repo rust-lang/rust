@@ -14,3 +14,4 @@ error[E0309]: the parameter type `T` may not live long enough
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0309"

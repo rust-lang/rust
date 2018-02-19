@@ -13,3 +13,4 @@ note: the cycle begins when processing `<impl at $DIR/issue-23305.rs:15:1: 15:20
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0391"

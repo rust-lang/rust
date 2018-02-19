@@ -8,3 +8,4 @@ error[E0658]: kind="static-nobundle" is feature gated (see issue #37403)
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0658"

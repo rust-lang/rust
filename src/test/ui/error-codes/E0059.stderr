@@ -6,3 +6,4 @@ error[E0059]: cannot use call notation; the first type parameter for the functio
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0059"

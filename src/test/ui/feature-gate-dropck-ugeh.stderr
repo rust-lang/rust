@@ -8,3 +8,4 @@ error[E0658]: unsafe_destructor_blind_to_params has been replaced by may_dangle 
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0658"

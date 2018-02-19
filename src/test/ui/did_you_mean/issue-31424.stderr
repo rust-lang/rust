@@ -17,3 +17,4 @@ error[E0596]: cannot borrow immutable argument `self` as mutable
 
 error: aborting due to 2 previous errors
 
+If you want more information on this error, try using "rustc --explain E0596"

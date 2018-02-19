@@ -17,3 +17,4 @@ note: but lifetime parameter must outlive the lifetime 'kiss as defined on the s
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0478"

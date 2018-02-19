@@ -12,3 +12,4 @@ error[E0088]: too many lifetime parameters provided: expected at most 1 lifetime
 
 error: aborting due to 2 previous errors
 
+If you want more information on this error, try using "rustc --explain E0088"

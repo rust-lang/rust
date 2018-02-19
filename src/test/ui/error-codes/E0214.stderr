@@ -6,3 +6,4 @@ error[E0214]: parenthesized parameters may only be used with a trait
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0214"

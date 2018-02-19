@@ -33,3 +33,5 @@ note: required by `assert_foo`
 
 error: aborting due to 2 previous errors
 
+You've got a few errors: E0277, E0279
+If you want more information on an error, try using "rustc --explain E0277"

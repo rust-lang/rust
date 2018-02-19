@@ -35,3 +35,5 @@ error[E0529]: expected an array or slice, found `u32`
 
 error: aborting due to 4 previous errors
 
+You've got a few errors: E0308, E0529
+If you want more information on an error, try using "rustc --explain E0308"

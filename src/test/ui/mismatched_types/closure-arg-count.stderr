@@ -118,3 +118,4 @@ error[E0593]: function is expected to take 1 argument, but it takes 2 arguments
 
 error: aborting due to 12 previous errors
 
+If you want more information on this error, try using "rustc --explain E0593"

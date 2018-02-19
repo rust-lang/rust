@@ -21,3 +21,5 @@ error[E0057]: this function takes 1 parameter but 2 parameters were supplied
 
 error: aborting due to 3 previous errors
 
+You've got a few errors: E0057, E0308
+If you want more information on an error, try using "rustc --explain E0057"

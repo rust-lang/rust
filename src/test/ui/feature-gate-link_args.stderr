@@ -24,3 +24,4 @@ error[E0658]: the `link_args` attribute is experimental and not portable across 
 
 error: aborting due to 3 previous errors
 
+If you want more information on this error, try using "rustc --explain E0658"

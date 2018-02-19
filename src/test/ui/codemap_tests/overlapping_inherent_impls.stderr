@@ -29,3 +29,4 @@ error[E0592]: duplicate definitions with name `baz`
 
 error: aborting due to 3 previous errors
 
+If you want more information on this error, try using "rustc --explain E0592"

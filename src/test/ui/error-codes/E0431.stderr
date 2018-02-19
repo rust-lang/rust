@@ -6,3 +6,4 @@ error[E0431]: `self` import can only appear in an import list with a non-empty p
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0431"

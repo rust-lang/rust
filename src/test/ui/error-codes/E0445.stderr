@@ -18,3 +18,4 @@ error[E0445]: private trait `Foo` in public interface
 
 error: aborting due to 3 previous errors
 
+If you want more information on this error, try using "rustc --explain E0445"

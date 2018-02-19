@@ -19,3 +19,4 @@ error[E0271]: type mismatch resolving `<std::collections::hash_map::Iter<'_, _, 
 
 error: aborting due to 2 previous errors
 
+If you want more information on this error, try using "rustc --explain E0271"

@@ -384,6 +384,7 @@ help: possible candidates are found in other modules, you can import them into s
    |
 and 8 other candidates
 
+If you want more information on this error, try using /"rustc --explain E0412/"
 "
 }
 {

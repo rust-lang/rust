@@ -1,3 +1,5 @@
+thread 'rustc' panicked at 'nope!', $DIR/auxiliary/derive-panic.rs:22:5
+note: Run with `RUST_BACKTRACE=1` for a backtrace.
 error: proc-macro derive panicked
   --> $DIR/load-panic.rs:17:10
    |

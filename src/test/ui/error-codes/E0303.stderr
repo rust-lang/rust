@@ -15,3 +15,5 @@ error[E0303]: pattern bindings are not allowed after an `@`
 
 error: aborting due to 2 previous errors
 
+You've got a few errors: E0009, E0303
+If you want more information on an error, try using "rustc --explain E0009"

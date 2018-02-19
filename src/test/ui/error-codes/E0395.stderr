@@ -6,3 +6,4 @@ error[E0395]: raw pointers cannot be compared in statics
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0395"

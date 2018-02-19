@@ -6,3 +6,4 @@ error[E0089]: too few type parameters provided: expected 2 type parameters, foun
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0089"

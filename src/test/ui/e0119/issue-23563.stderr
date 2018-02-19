@@ -10,3 +10,4 @@ error[E0119]: conflicting implementations of trait `a::LolFrom<&[_]>` for type `
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0119"

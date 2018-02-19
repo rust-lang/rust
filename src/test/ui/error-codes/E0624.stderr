@@ -6,3 +6,4 @@ error[E0624]: method `method` is private
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0624"

@@ -6,3 +6,4 @@ error[E0076]: SIMD vector should be homogeneous
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0076"

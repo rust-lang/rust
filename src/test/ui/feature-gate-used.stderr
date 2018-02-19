@@ -8,3 +8,4 @@ error[E0658]: the `#[used]` attribute is an experimental feature (see issue #402
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0658"

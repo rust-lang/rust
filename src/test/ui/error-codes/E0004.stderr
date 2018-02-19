@@ -6,3 +6,4 @@ error[E0004]: non-exhaustive patterns: `HastaLaVistaBaby` not covered
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0004"

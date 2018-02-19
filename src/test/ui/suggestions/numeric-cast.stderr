@@ -904,3 +904,4 @@ help: you can cast an `i8` to `i32`, which will sign-extend the source value
 
 error: aborting due to 134 previous errors
 
+If you want more information on this error, try using "rustc --explain E0308"

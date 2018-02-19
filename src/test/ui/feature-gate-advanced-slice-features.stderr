@@ -16,3 +16,4 @@ error[E0658]: multiple-element slice matches anywhere but at the end of a slice 
 
 error: aborting due to 2 previous errors
 
+If you want more information on this error, try using "rustc --explain E0658"

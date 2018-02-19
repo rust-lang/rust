@@ -6,3 +6,4 @@ error[E0268]: `break` outside of loop
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0268"

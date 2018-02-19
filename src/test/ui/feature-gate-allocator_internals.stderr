@@ -8,3 +8,4 @@ error[E0658]: the `#[default_lib_allocator]` attribute is an experimental featur
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0658"

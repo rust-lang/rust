@@ -84,3 +84,4 @@ error: borrowed data cannot be stored outside of its closure
 
 error: aborting due to 5 previous errors
 
+If you want more information on this error, try using "rustc --explain E0308"

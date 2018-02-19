@@ -13,3 +13,4 @@ help: to force the closure to take ownership of `y` (and any other referenced va
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0373"

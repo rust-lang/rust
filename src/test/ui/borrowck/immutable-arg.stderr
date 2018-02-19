@@ -16,3 +16,4 @@ error[E0384]: cannot assign to immutable argument `_x` (Mir)
 
 error: aborting due to 2 previous errors
 
+If you want more information on this error, try using "rustc --explain E0384"

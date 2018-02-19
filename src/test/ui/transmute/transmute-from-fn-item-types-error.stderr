@@ -88,3 +88,5 @@ error[E0591]: can't transmute zero-sized type
 
 error: aborting due to 9 previous errors
 
+You've got a few errors: E0512, E0591
+If you want more information on an error, try using "rustc --explain E0512"

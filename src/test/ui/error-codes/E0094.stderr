@@ -6,3 +6,4 @@ error[E0094]: intrinsic has wrong number of type parameters: found 2, expected 1
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0094"

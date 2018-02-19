@@ -8,3 +8,4 @@ error[E0609]: no field `zz` on type `Foo`
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0609"

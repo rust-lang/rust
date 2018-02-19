@@ -8,3 +8,4 @@ error[E0658]: type ascription is experimental (see issue #23416)
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0658"

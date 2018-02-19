@@ -6,3 +6,4 @@ error[E0494]: cannot refer to the interior of another static, use a constant ins
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0494"

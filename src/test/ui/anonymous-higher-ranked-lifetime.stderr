@@ -154,3 +154,4 @@ note: required by `h2`
 
 error: aborting due to 11 previous errors
 
+If you want more information on this error, try using "rustc --explain E0631"

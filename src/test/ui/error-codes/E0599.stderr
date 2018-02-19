@@ -9,3 +9,4 @@ error[E0599]: no associated item named `NotEvenReal` found for type `Foo` in the
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0599"

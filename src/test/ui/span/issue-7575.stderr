@@ -67,3 +67,4 @@ note: candidate #1 is defined in the trait `ManyImplTrait`
 
 error: aborting due to 3 previous errors
 
+If you want more information on this error, try using "rustc --explain E0599"

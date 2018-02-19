@@ -8,3 +8,4 @@ error[E0583]: file not found for module `baz`
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0583"

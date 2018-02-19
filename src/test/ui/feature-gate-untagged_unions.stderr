@@ -30,3 +30,4 @@ error[E0658]: unions with `Drop` implementations are unstable (see issue #32836)
 
 error: aborting due to 3 previous errors
 
+If you want more information on this error, try using "rustc --explain E0658"

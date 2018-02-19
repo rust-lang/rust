@@ -18,3 +18,5 @@ error[E0621]: explicit lifetime required in the type of `s`
 
 error: aborting due to 2 previous errors
 
+You've got a few errors: E0506, E0621
+If you want more information on an error, try using "rustc --explain E0506"

@@ -1,3 +1,5 @@
+thread 'rustc' panicked at 'lolnope', $DIR/auxiliary/plugin.rs:27:5
+note: Run with `RUST_BACKTRACE=1` for a backtrace.
 error: proc-macro derive panicked
   --> $DIR/issue-36935.rs:18:15
    |

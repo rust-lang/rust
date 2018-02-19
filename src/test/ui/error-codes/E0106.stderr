@@ -30,3 +30,4 @@ error[E0106]: missing lifetime specifiers
 
 error: aborting due to 5 previous errors
 
+If you want more information on this error, try using "rustc --explain E0106"

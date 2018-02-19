@@ -136,3 +136,4 @@ error[E0658]: attributes on lifetime bindings are experimental (see issue #34761
 
 error: aborting due to 17 previous errors
 
+If you want more information on this error, try using "rustc --explain E0658"

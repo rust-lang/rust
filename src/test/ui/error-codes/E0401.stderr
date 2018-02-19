@@ -6,3 +6,4 @@ error[E0401]: can't use type parameters from outer function; try using a local t
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0401"

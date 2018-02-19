@@ -9,3 +9,4 @@ error[E0061]: this function takes 4 parameters but 3 parameters were supplied
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0061"

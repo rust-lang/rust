@@ -9,3 +9,4 @@ error[E0599]: no method named `dog_age` found for type `animal::Dog` in the curr
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0599"

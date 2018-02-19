@@ -30,3 +30,4 @@ error[E0641]: cannot cast to a pointer of an unknown kind
 
 error: aborting due to 3 previous errors
 
+If you want more information on this error, try using "rustc --explain E0641"

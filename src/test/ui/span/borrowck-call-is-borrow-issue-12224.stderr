@@ -46,3 +46,5 @@ error[E0507]: cannot move out of captured outer variable in an `FnMut` closure
 
 error: aborting due to 5 previous errors
 
+You've got a few errors: E0499, E0504, E0507, E0596
+If you want more information on an error, try using "rustc --explain E0499"

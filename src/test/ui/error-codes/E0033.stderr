@@ -20,3 +20,5 @@ error[E0033]: type `&SomeTrait` cannot be dereferenced
 
 error: aborting due to 3 previous errors
 
+You've got a few errors: E0033, E0038, E0423
+If you want more information on an error, try using "rustc --explain E0033"

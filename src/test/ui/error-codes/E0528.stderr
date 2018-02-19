@@ -6,3 +6,4 @@ error[E0528]: pattern requires at least 3 elements but array has 2
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0528"

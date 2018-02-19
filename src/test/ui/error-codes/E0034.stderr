@@ -17,3 +17,4 @@ note: candidate #2 is defined in an impl of the trait `Trait2` for the type `Tes
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0034"

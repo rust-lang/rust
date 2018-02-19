@@ -24,3 +24,4 @@ error[E0178]: expected a path on the left-hand side of `+`, not `fn() -> Foo`
 
 error: aborting due to 4 previous errors
 
+If you want more information on this error, try using "rustc --explain E0178"

@@ -120,3 +120,4 @@ error[E0369]: binary operation `>=` cannot be applied to type `A`
 
 error: aborting due to 15 previous errors
 
+If you want more information on this error, try using "rustc --explain E0369"

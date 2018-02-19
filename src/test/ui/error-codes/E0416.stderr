@@ -6,3 +6,4 @@ error[E0416]: identifier `x` is bound more than once in the same pattern
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0416"

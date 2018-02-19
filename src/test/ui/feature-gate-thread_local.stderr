@@ -8,3 +8,4 @@ error[E0658]: `#[thread_local]` is an experimental feature, and does not current
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0658"

@@ -6,3 +6,4 @@ error[E0133]: dereference of raw pointer requires unsafe function or block
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0133"

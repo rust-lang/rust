@@ -18,3 +18,4 @@ error[E0023]: this pattern has 2 fields, but the corresponding tuple variant has
 
 error: aborting due to 3 previous errors
 
+If you want more information on this error, try using "rustc --explain E0023"

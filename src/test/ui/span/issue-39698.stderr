@@ -40,3 +40,4 @@ error[E0408]: variable `c` is not bound in all patterns
 
 error: aborting due to 4 previous errors
 
+If you want more information on this error, try using "rustc --explain E0408"

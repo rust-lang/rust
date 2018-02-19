@@ -136,3 +136,4 @@ error[E0658]: The attribute `lt_hof` is currently unknown to the compiler and ma
 
 error: aborting due to 17 previous errors
 
+If you want more information on this error, try using "rustc --explain E0658"

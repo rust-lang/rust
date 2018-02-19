@@ -48,3 +48,4 @@ error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as imm
 
 error: aborting due to 4 previous errors
 
+If you want more information on this error, try using "rustc --explain E0502"

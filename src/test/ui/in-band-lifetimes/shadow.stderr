@@ -17,3 +17,4 @@ error[E0496]: lifetime name `'s` shadows a lifetime name that is already in scop
 
 error: aborting due to 2 previous errors
 
+If you want more information on this error, try using "rustc --explain E0496"

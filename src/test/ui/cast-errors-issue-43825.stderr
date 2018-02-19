@@ -6,3 +6,4 @@ error[E0425]: cannot find value `error` in this scope
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0425"

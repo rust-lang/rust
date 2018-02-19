@@ -8,3 +8,4 @@ error[E0394]: cannot refer to other statics by value, use the address-of operato
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0394"

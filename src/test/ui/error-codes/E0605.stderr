@@ -16,3 +16,4 @@ error[E0605]: non-primitive cast: `*const u8` as `&u8`
 
 error: aborting due to 2 previous errors
 
+If you want more information on this error, try using "rustc --explain E0605"

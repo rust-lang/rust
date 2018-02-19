@@ -44,3 +44,5 @@ error[E0658]: repr with 128-bit type is unstable (see issue #35118)
 
 error: aborting due to 6 previous errors
 
+You've got a few errors: E0601, E0658
+If you want more information on an error, try using "rustc --explain E0601"

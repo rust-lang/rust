@@ -9,3 +9,4 @@ error[E0599]: no variant named `hsl` found for type `color` in the current scope
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0599"

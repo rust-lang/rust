@@ -36,3 +36,4 @@ error[E0599]: no associated item named `Assoc` found for type `Struct` in the cu
 
 error: aborting due to 4 previous errors
 
+If you want more information on this error, try using "rustc --explain E0599"

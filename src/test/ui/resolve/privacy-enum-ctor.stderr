@@ -223,3 +223,5 @@ help: `E::Unit` is a unit variant, you need to write it without the parenthesis
 
 error: aborting due to 23 previous errors
 
+You've got a few errors: E0308, E0412, E0423, E0603, E0618
+If you want more information on an error, try using "rustc --explain E0308"

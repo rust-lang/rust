@@ -8,3 +8,4 @@ error[E0658]: #[doc(spotlight)] is experimental (see issue #45040)
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0658"

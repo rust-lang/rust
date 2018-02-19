@@ -15,3 +15,4 @@ error[E0061]: this function takes 1 parameter but 2 parameters were supplied
 
 error: aborting due to 2 previous errors
 
+If you want more information on this error, try using "rustc --explain E0061"

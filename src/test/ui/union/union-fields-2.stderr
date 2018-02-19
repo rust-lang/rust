@@ -80,3 +80,5 @@ error: `..` cannot be used in union patterns
 
 error: aborting due to 13 previous errors
 
+You've got a few errors: E0026, E0436, E0560
+If you want more information on an error, try using "rustc --explain E0026"

@@ -16,3 +16,4 @@ error[E0620]: cast to unsized type: `std::boxed::Box<{integer}>` as `std::marker
 
 error: aborting due to 2 previous errors
 
+If you want more information on this error, try using "rustc --explain E0620"
