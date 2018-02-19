@@ -78,6 +78,9 @@ macro_rules! create_config {
 
         #[derive(Clone)]
         pub struct Config {
+            // if a license_template_path has been specified, successfully read, parsed and compiled
+            // into a regex, it will be stored here
+            pub license_template: Option<Regex>,
             // For each config item, we store a bool indicating whether it has
             // been accessed and the value, and a bool whether the option was
             // manually initialised, or taken from the default,
@@ -118,8 +121,10 @@ macro_rules! create_config {
             $(
             pub fn $i(&mut self, value: $ty) {
                 (self.0).$i.2 = value;
-                if stringify!($i) == "use_small_heuristics" {
-                    self.0.set_heuristics();
+                match stringify!($i) {
+                    "use_small_heuristics" => self.0.set_heuristics(),
+                    "license_template_path" => self.0.set_license_template(),
+                    &_ => (),
                 }
             }
             )+
@@ -189,6 +194,7 @@ macro_rules! create_config {
                 }
             )+
                 self.set_heuristics();
+                self.set_license_template();
                 self
             }
 
@@ -276,8 +282,10 @@ macro_rules! create_config {
                     _ => panic!("Unknown config key in override: {}", key)
                 }
 
-                if key == "use_small_heuristics" {
-                    self.set_heuristics();
+                match key {
+                    "use_small_heuristics" => self.set_heuristics(),
+                    "license_template_path" => self.set_license_template(),
+                    &_ => (),
                 }
             }
 
@@ -382,12 +390,50 @@ macro_rules! create_config {
                     self.set().width_heuristics(WidthHeuristics::null());
                 }
             }
+
+            fn set_license_template(&mut self) {
+                let license_template_path = self.license_template_path();
+                let mut license_template_file = match File::open(&license_template_path) {
+                    Ok(file) => file,
+                    Err(e) => {
+                        eprintln!("Warning: unable to open license template file {:?}: {}",
+                                  license_template_path, e);
+                        return;
+                    }
+                };
+                let mut license_template_str = String::new();
+                match license_template_file.read_to_string(&mut license_template_str) {
+                    Ok(_) => (),
+                    Err(e) => {
+                        eprintln!("Warning: unable to read from license template file {:?}: {}",
+                                  license_template_path, e);
+                        return;
+                    }
+                }
+                let license_template_parsed = match parse_license_template(&license_template_str) {
+                    Ok(string) => string,
+                    Err(e) => {
+                        eprintln!("Warning: unable to parse license template file {:?}: {}",
+                                  license_template_path, e);
+                        return;
+                    }
+                };
+                self.license_template = match Regex::new(&license_template_parsed) {
+                    Ok(re) => Some(re),
+                    Err(e) => {
+                        eprintln!("Warning: regex syntax error in placeholder, unable to compile \
+                                   license template from file {:?}: {}", license_template_path, e);
+                        return;
+                    }
+                }
+            }
         }
 
         // Template for the default configuration
         impl Default for Config {
             fn default() -> Config {
                 Config {
+                    license_template: None,
                     $(
                         $i: (Cell::new(false), false, $def, $stb),
                     )+

@@ -43,7 +43,6 @@ use syntax::ast;
 use syntax::codemap::{CodeMap, FilePathMapping};
 pub use syntax::codemap::FileName;
 use syntax::parse::{self, ParseSess};
-use regex::Regex;
 
 use checkstyle::{output_footer, output_header};
 use comment::{CharClasses, FullCodeCharKind};
@@ -102,8 +101,6 @@ pub enum ErrorKind {
     BadIssue(Issue),
     // License check has failed
     LicenseCheck,
-    // License template could not be parsed
-    ParsingLicense,
 }
 
 impl fmt::Display for ErrorKind {
@@ -117,7 +114,6 @@ impl fmt::Display for ErrorKind {
             ErrorKind::TrailingWhitespace => write!(fmt, "left behind trailing whitespace"),
             ErrorKind::BadIssue(issue) => write!(fmt, "found {}", issue),
             ErrorKind::LicenseCheck => write!(fmt, "license check failed"),
-            ErrorKind::ParsingLicense => write!(fmt, "parsing regex in license template failed"),
         }
     }
 }
@@ -136,8 +132,7 @@ impl FormattingError {
         match self.kind {
             ErrorKind::LineOverflow(..)
             | ErrorKind::TrailingWhitespace
-            | ErrorKind::LicenseCheck
-            | ErrorKind::ParsingLicense => "error:",
+            | ErrorKind::LicenseCheck => "error:",
             ErrorKind::BadIssue(_) => "WARNING:",
         }
     }
@@ -415,82 +410,6 @@ fn should_report_error(
     }
 }
 
-fn check_license(text: &str, license_template: &str) -> Result<bool, regex::Error> {
-    // the template is parsed using a state machine
-    enum State {
-        Lit,
-        LitEsc,
-        // the u32 keeps track of brace nesting
-        Re(u32),
-        ReEsc(u32),
-    }
-
-    let mut template_re = String::from("^");
-    let mut buffer = String::new();
-    let mut state = State::Lit;
-    for chr in license_template.chars() {
-        state = match state {
-            State::Lit => match chr {
-                '{' => {
-                    template_re.push_str(&regex::escape(&buffer));
-                    buffer.clear();
-                    State::Re(1)
-                }
-                '}' => panic!("license template syntax error"),
-                '\\' => State::LitEsc,
-                _ => {
-                    buffer.push(chr);
-                    State::Lit
-                }
-            },
-            State::LitEsc => {
-                buffer.push(chr);
-                State::Lit
-            }
-            State::Re(brace_nesting) => {
-                match chr {
-                    '{' => {
-                        buffer.push(chr);
-                        State::Re(brace_nesting + 1)
-                    }
-                    '}' => {
-                        match brace_nesting {
-                            1 => {
-                                // default regex for empty placeholder {}
-                                if buffer.is_empty() {
-                                    buffer = ".*?".to_string();
-                                }
-                                template_re.push_str(&buffer);
-                                buffer.clear();
-                                State::Lit
-                            }
-                            _ => {
-                                buffer.push(chr);
-                                State::Re(brace_nesting - 1)
-                            }
-                        }
-                    }
-                    '\\' => {
-                        buffer.push(chr);
-                        State::ReEsc(brace_nesting)
-                    }
-                    _ => {
-                        buffer.push(chr);
-                        State::Re(brace_nesting)
-                    }
-                }
-            }
-            State::ReEsc(brace_nesting) => {
-                buffer.push(chr);
-                State::Re(brace_nesting)
-            }
-        }
-    }
-    template_re.push_str(&regex::escape(&buffer));
-    let template_re = Regex::new(&template_re)?;
-    Ok(template_re.is_match(text))
-}
-
 // Formatting done on a char by char or line by line basis.
 // FIXME(#20) other stuff for parity with make tidy
 fn format_lines(
@@ -513,28 +432,15 @@ fn format_lines(
     let allow_issue_seek = !issue_seeker.is_disabled();
 
     // Check license.
-    if config.was_set().license_template() {
-        match check_license(text, &config.license_template()) {
-            Ok(check) => {
-                if !check {
-                    errors.push(FormattingError {
-                        line: cur_line,
-                        kind: ErrorKind::LicenseCheck,
-                        is_comment: false,
-                        is_string: false,
-                        line_buffer: String::new(),
-                    });
-                }
-            }
-            Err(_) => {
-                errors.push(FormattingError {
-                    line: cur_line,
-                    kind: ErrorKind::ParsingLicense,
-                    is_comment: false,
-                    is_string: false,
-                    line_buffer: String::new(),
-                });
-            }
+    if let Some(ref license_template) = config.license_template {
+        if !license_template.is_match(text) {
+            errors.push(FormattingError {
+                line: cur_line,
+                kind: ErrorKind::LicenseCheck,
+                is_comment: false,
+                is_string: false,
+                line_buffer: String::new(),
+            });
         }
     }
 
@@ -964,7 +870,7 @@ pub fn run(input: Input, config: &Config) -> Summary {
 
 #[cfg(test)]
 mod test {
-    use super::{check_license, format_code_block, format_snippet, Config};
+    use super::{format_code_block, format_snippet, Config};
 
     #[test]
     fn test_no_panic_on_format_snippet_and_format_code_block() {
@@ -1049,40 +955,5 @@ false,
     )
 };";
         assert!(test_format_inner(format_code_block, code_block, expected));
-    }
-
-    #[test]
-    fn test_check_license() {
-        assert!(check_license("literal matching", "literal matching").unwrap());
-        assert!(!check_license("literal no match", "literal matching").unwrap());
-        assert!(
-            check_license(
-                "Regex start and end: 2018",
-                r"{[Rr]egex} start {} end: {\d+}"
-            ).unwrap()
-        );
-        assert!(!check_license(
-            "Regex start and end no match: 2018",
-            r"{[Rr]egex} start {} end: {\d+}"
-        ).unwrap());
-        assert!(
-            check_license(
-                "Regex in the middle: 2018 (tm)",
-                r"Regex {} middle: {\d+} (tm)"
-            ).unwrap()
-        );
-        assert!(!check_license(
-            "Regex in the middle no match: 2018 (tm)",
-            r"Regex {} middle: {\d+} (tm)"
-        ).unwrap());
-        assert!(!check_license("default doesn't match\nacross lines", "default {} lines").unwrap());
-        assert!(check_license("", "this is not a valid {[regex}").is_err());
-        assert!(
-            check_license(
-                "parse unbalanced nested delimiters{{{",
-                r"parse unbalanced nested delimiters{\{{3}}"
-            ).unwrap()
-        );
-        assert!(check_license("escaping }", r"escaping \}").unwrap());
     }
 }
