@@ -1,0 +1,38 @@
+error: static variable `foo` should have an upper case name such as `FOO`
+  --> $DIR/non-upper-case-globals.rs:14:8
+   |
+14 | static foo: isize = 1;
+   |        ^^^
+   |
+note: lint level defined here
+  --> $DIR/non-upper-case-globals.rs:12:9
+   |
+12 | #![deny(non_upper_case_globals)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: static variable `bar` should have an upper case name such as `BAR`
+  --> $DIR/non-upper-case-globals.rs:17:12
+   |
+17 | static mut bar: isize = 1;
+   |            ^^^
+
+error: constant `b` should have an upper case name such as `B`
+  --> $DIR/non-upper-case-globals.rs:21:11
+   |
+21 |     const b: usize = 1;
+   |           ^
+
+error: associated constant `camelCase` should have an upper case name such as `CAMEL_CASE`
+  --> $DIR/non-upper-case-globals.rs:26:11
+   |
+26 |     const camelCase: usize;
+   |           ^^^^^^^^^
+
+error: associated constant `camelCase` should have an upper case name such as `CAMEL_CASE`
+  --> $DIR/non-upper-case-globals.rs:31:11
+   |
+31 |     const camelCase: usize = 2;
+   |           ^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
