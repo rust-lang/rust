@@ -1360,9 +1360,9 @@ Reorder `extern crate` statements in group
 - **Possible values**: `true`, `false`
 - **Stable**: No
 
-**Note:** This option takes effect only when [`reorder_imports`](#reorder_imports) is set to `true`.
-
 #### `true` (default):
+
+**Note:** This only takes effect when [`reorder_extern_crates`](#reorder_extern_crates) is set to `true`.
 
 ```rust
 extern crate a;
@@ -1376,17 +1376,7 @@ extern crate sit;
 
 #### `false`:
 
-```rust
-extern crate b;
-extern crate a;
-
-extern crate lorem;
-extern crate ipsum;
-extern crate dolor;
-extern crate sit;
-```
-
-See also [`reorder_extern_crates`](#reorder_extern_crates).
+This value has no influence beyond the effect of the [`reorder_extern_crates`](#reorder_extern_crates) option. Set [`reorder_extern_crates`](#reorder_extern_crates) to `false` if you do not want `extern crate` groups to be collapsed and ordered.
 
 ## `report_todo`
 
