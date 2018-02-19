@@ -319,7 +319,7 @@ fn rewrite_comment_inner(
         .width
         .checked_sub(closer.len() + opener.len())
         .unwrap_or(1);
-    let indent_str = shape.indent.to_string(config);
+    let indent_str = shape.indent.to_string_with_newline(config);
     let fmt_indent = shape.indent + (opener.len() - line_start.len());
     let mut fmt = StringFormat {
         opener: "",
@@ -360,7 +360,7 @@ fn rewrite_comment_inner(
     let mut code_block_buffer = String::with_capacity(128);
     let mut is_prev_line_multi_line = false;
     let mut inside_code_block = false;
-    let comment_line_separator = format!("\n{}{}", indent_str, line_start);
+    let comment_line_separator = format!("{}{}", indent_str, line_start);
     let join_code_block_with_comment_line_separator = |s: &str| {
         let mut result = String::with_capacity(s.len() + 128);
         let mut iter = s.lines().peekable();
@@ -408,7 +408,6 @@ fn rewrite_comment_inner(
             } else if is_prev_line_multi_line && !line.is_empty() {
                 result.push(' ')
             } else if is_last && !closer.is_empty() && line.is_empty() {
-                result.push('\n');
                 result.push_str(&indent_str);
             } else {
                 result.push_str(&comment_line_separator);
@@ -520,9 +519,9 @@ pub fn recover_missing_comment_in_span(
         let force_new_line_before_comment =
             missing_snippet[..pos].contains('\n') || total_width > context.config.max_width();
         let sep = if force_new_line_before_comment {
-            format!("\n{}", shape.indent.to_string(context.config))
+            shape.indent.to_string_with_newline(context.config)
         } else {
-            String::from(" ")
+            Cow::from(" ")
         };
         Some(format!("{}{}", sep, missing_comment))
     }
@@ -702,12 +701,6 @@ impl RichChar for char {
 impl RichChar for (usize, char) {
     fn get_char(&self) -> char {
         self.1
-    }
-}
-
-impl RichChar for (char, usize) {
-    fn get_char(&self) -> char {
-        self.0
     }
 }
 

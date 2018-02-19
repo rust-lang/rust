@@ -67,8 +67,10 @@ use shape::Shape;
 use utils::{first_line_width, last_line_extendable, last_line_width, mk_sp,
             trimmed_last_line_width, wrap_str};
 
+use std::borrow::Cow;
 use std::cmp::min;
 use std::iter;
+
 use syntax::{ast, ptr};
 use syntax::codemap::Span;
 
@@ -246,13 +248,13 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
 
     let connector = if fits_single_line && !parent_rewrite_contains_newline {
         // Yay, we can put everything on one line.
-        String::new()
+        Cow::from("")
     } else {
         // Use new lines.
         if context.force_one_line_chain {
             return None;
         }
-        format!("\n{}", nested_shape.indent.to_string(context.config))
+        nested_shape.indent.to_string_with_newline(context.config)
     };
 
     let first_connector = if is_small_parent || fits_single_line
@@ -261,7 +263,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     {
         ""
     } else {
-        connector.as_str()
+        &connector
     };
 
     let result = if is_small_parent && rewrites.len() > 1 {

@@ -250,14 +250,14 @@ pub fn rewrite_macro(
                     Some(format!("{}{}{}; {}{}", macro_name, lbr, lhs, rhs, rbr))
                 } else {
                     Some(format!(
-                        "{}{}\n{}{};\n{}{}\n{}{}",
+                        "{}{}{}{};{}{}{}{}",
                         macro_name,
                         lbr,
-                        nested_shape.indent.to_string(context.config),
+                        nested_shape.indent.to_string_with_newline(context.config),
                         lhs,
-                        nested_shape.indent.to_string(context.config),
+                        nested_shape.indent.to_string_with_newline(context.config),
                         rhs,
-                        shape.indent.to_string(context.config),
+                        shape.indent.to_string_with_newline(context.config),
                         rbr
                     ))
                 }
@@ -350,15 +350,14 @@ pub fn rewrite_macro_def(
     };
 
     if multi_branch_style {
-        result += " {\n";
-        result += &arm_shape.indent.to_string(context.config);
+        result += " {";
+        result += &arm_shape.indent.to_string_with_newline(context.config);
     }
 
     result += write_list(&branch_items, &fmt)?.as_str();
 
     if multi_branch_style {
-        result += "\n";
-        result += &indent.to_string(context.config);
+        result += &indent.to_string_with_newline(context.config);
         result += "}";
     }
 

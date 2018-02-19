@@ -392,10 +392,10 @@ where
         rhs_shape = rhs_shape.offset_left(infix.len())?;
     }
     let rhs_result = rhs.rewrite(context, rhs_shape)?;
-    let indent_str = rhs_shape.indent.to_string(context.config);
+    let indent_str = rhs_shape.indent.to_string_with_newline(context.config);
     let infix_with_sep = match separator_place {
-        SeparatorPlace::Back => format!("{}\n{}", infix, indent_str),
-        SeparatorPlace::Front => format!("\n{}{}", indent_str, infix),
+        SeparatorPlace::Back => format!("{}{}", infix, indent_str),
+        SeparatorPlace::Front => format!("{}{}", indent_str, infix),
     };
     Some(format!(
         "{}{}{}{}",
@@ -489,10 +489,10 @@ pub fn rewrite_array<T: Rewrite + Spanned + ToExpr>(
         }
     } else {
         format!(
-            "[\n{}{}\n{}]",
-            nested_shape.indent.to_string(context.config),
+            "[{}{}{}]",
+            nested_shape.indent.to_string_with_newline(context.config),
             list_str,
-            shape.block().indent.to_string(context.config)
+            shape.block().indent.to_string_with_newline(context.config)
         )
     };
 
@@ -1065,7 +1065,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         debug!("ControlFlow::rewrite {:?} {:?}", self, shape);
 
-        let alt_block_sep = String::from("\n") + &shape.indent.to_string(context.config);
+        let alt_block_sep = &shape.indent.to_string_with_newline(context.config);
         let (cond_str, used_width) = self.rewrite_cond(context, shape, &alt_block_sep)?;
         // If `used_width` is 0, it indicates that whole control flow is written in a single line.
         if used_width == 0 {
@@ -1185,9 +1185,9 @@ fn rewrite_label(opt_label: Option<ast::Label>) -> Cow<'static, str> {
 fn extract_comment(span: Span, context: &RewriteContext, shape: Shape) -> Option<String> {
     match rewrite_missing_comment(span, shape, context) {
         Some(ref comment) if !comment.is_empty() => Some(format!(
-            "\n{indent}{}\n{indent}",
+            "{indent}{}{indent}",
             comment,
-            indent = shape.indent.to_string(context.config)
+            indent = shape.indent.to_string_with_newline(context.config)
         )),
         _ => None,
     }
@@ -1271,7 +1271,7 @@ fn rewrite_match(
         IndentStyle::Block => cond_shape.offset_left(6)?,
     };
     let cond_str = cond.rewrite(context, cond_shape)?;
-    let alt_block_sep = String::from("\n") + &shape.indent.to_string(context.config);
+    let alt_block_sep = &shape.indent.to_string_with_newline(context.config);
     let block_sep = match context.config.control_brace_style() {
         ControlBraceStyle::AlwaysNextLine => &alt_block_sep,
         _ if last_line_extendable(&cond_str) => " ",
@@ -1562,8 +1562,7 @@ fn rewrite_match_body(
     };
 
     let comma = arm_comma(context.config, body, is_last);
-    let alt_block_sep = String::from("\n") + &shape.indent.to_string(context.config);
-    let alt_block_sep = alt_block_sep.as_str();
+    let alt_block_sep = &shape.indent.to_string_with_newline(context.config);
 
     let combine_orig_body = |body_str: &str| {
         let block_sep = match context.config.control_brace_style() {
@@ -1583,31 +1582,31 @@ fn rewrite_match_body(
     let combine_next_line_body = |body_str: &str| {
         if is_block {
             return Some(format!(
-                "{} =>\n{}{}",
+                "{} =>{}{}",
                 pats_str,
-                next_line_indent.to_string(context.config),
+                next_line_indent.to_string_with_newline(context.config),
                 body_str
             ));
         }
 
-        let indent_str = shape.indent.to_string(context.config);
-        let nested_indent_str = next_line_indent.to_string(context.config);
+        let indent_str = shape.indent.to_string_with_newline(context.config);
+        let nested_indent_str = next_line_indent.to_string_with_newline(context.config);
         let (body_prefix, body_suffix) = if context.config.match_arm_blocks() {
             let comma = if context.config.match_block_trailing_comma() {
                 ","
             } else {
                 ""
             };
-            ("{", format!("\n{}}}{}", indent_str, comma))
+            ("{", format!("{}}}{}", indent_str, comma))
         } else {
             ("", String::from(","))
         };
 
         let block_sep = match context.config.control_brace_style() {
-            ControlBraceStyle::AlwaysNextLine => format!("{}{}\n", alt_block_sep, body_prefix),
-            _ if body_prefix.is_empty() => "\n".to_owned(),
-            _ if forbid_same_line => format!("{}{}\n", alt_block_sep, body_prefix),
-            _ => format!(" {}\n", body_prefix),
+            ControlBraceStyle::AlwaysNextLine => format!("{}{}", alt_block_sep, body_prefix),
+            _ if body_prefix.is_empty() => "".to_owned(),
+            _ if forbid_same_line => format!("{}{}", alt_block_sep, body_prefix),
+            _ => format!(" {}", body_prefix),
         } + &nested_indent_str;
 
         Some(format!(
@@ -1697,8 +1696,8 @@ fn rewrite_guard(
         if let Some(cond_shape) = cond_shape {
             if let Some(cond_str) = guard.rewrite(context, cond_shape) {
                 return Some(format!(
-                    "\n{}if {}",
-                    cond_shape.indent.to_string(context.config),
+                    "{}if {}",
+                    cond_shape.indent.to_string_with_newline(context.config),
                     cond_str
                 ));
             }
@@ -1749,9 +1748,9 @@ fn rewrite_pat_expr(
     let nested_shape = shape
         .block_indent(context.config.tab_spaces())
         .with_max_width(context.config);
-    let nested_indent_str = nested_shape.indent.to_string(context.config);
+    let nested_indent_str = nested_shape.indent.to_string_with_newline(context.config);
     expr.rewrite(context, nested_shape)
-        .map(|expr_rw| format!("\n{}{}", nested_indent_str, expr_rw))
+        .map(|expr_rw| format!("{}{}", nested_indent_str, expr_rw))
 }
 
 fn can_extend_match_arm_body(body: &ast::Expr) -> bool {
@@ -2322,18 +2321,28 @@ pub fn wrap_args_with_parens(
         || (context.inside_macro && !args_str.contains('\n')
             && args_str.len() + paren_overhead(context) <= shape.width) || is_extendable
     {
+        let mut result = String::with_capacity(args_str.len() + 4);
         if context.config.spaces_within_parens_and_brackets() && !args_str.is_empty() {
-            format!("( {} )", args_str)
+            result.push_str("( ");
+            result.push_str(args_str);
+            result.push_str(" )");
         } else {
-            format!("({})", args_str)
+            result.push_str("(");
+            result.push_str(args_str);
+            result.push_str(")");
         }
+        result
     } else {
-        format!(
-            "(\n{}{}\n{})",
-            nested_shape.indent.to_string(context.config),
-            args_str,
-            shape.block().indent.to_string(context.config)
-        )
+        let nested_indent_str = nested_shape.indent.to_string_with_newline(context.config);
+        let indent_str = shape.block().indent.to_string_with_newline(context.config);
+        let mut result =
+            String::with_capacity(args_str.len() + 2 + indent_str.len() + nested_indent_str.len());
+        result.push_str("(");
+        result.push_str(&nested_indent_str);
+        result.push_str(args_str);
+        result.push_str(&indent_str);
+        result.push_str(")");
+        result
     }
 }
 
@@ -2425,17 +2434,17 @@ fn rewrite_index(
     let new_index_rw = index.rewrite(context, index_shape);
     match (orig_index_rw, new_index_rw) {
         (_, Some(ref new_index_str)) if !new_index_str.contains('\n') => Some(format!(
-            "{}\n{}{}{}{}",
+            "{}{}{}{}{}",
             expr_str,
-            indent.to_string(context.config),
+            indent.to_string_with_newline(context.config),
             lbr,
             new_index_str,
             rbr
         )),
         (None, Some(ref new_index_str)) => Some(format!(
-            "{}\n{}{}{}{}",
+            "{}{}{}{}{}",
             expr_str,
-            indent.to_string(context.config),
+            indent.to_string_with_newline(context.config),
             lbr,
             new_index_str,
             rbr
@@ -2562,10 +2571,10 @@ pub fn wrap_struct_field(
             || fields_str.len() > one_line_width)
     {
         format!(
-            "\n{}{}\n{}",
-            nested_shape.indent.to_string(context.config),
+            "{}{}{}",
+            nested_shape.indent.to_string_with_newline(context.config),
             fields_str,
-            shape.indent.to_string(context.config)
+            shape.indent.to_string_with_newline(context.config)
         )
     } else {
         // One liner or visual indent.
@@ -2588,7 +2597,7 @@ pub fn rewrite_field(
     }
     let mut attrs_str = field.attrs.rewrite(context, shape)?;
     if !attrs_str.is_empty() {
-        attrs_str.push_str(&format!("\n{}", shape.indent.to_string(context.config)));
+        attrs_str.push_str(&shape.indent.to_string_with_newline(context.config));
     };
     let name = field.ident.node.to_string();
     if field.is_shorthand {
@@ -2847,7 +2856,7 @@ pub fn choose_rhs<R: Rewrite>(
                 Shape::indented(shape.indent.block_indent(context.config), context.config)
                     .sub_width(shape.rhs_overhead(context.config))?;
             let new_rhs = expr.rewrite(context, new_shape);
-            let new_indent_str = &new_shape.indent.to_string(context.config);
+            let new_indent_str = &new_shape.indent.to_string_with_newline(context.config);
 
             match (orig_rhs, new_rhs) {
                 (Some(ref orig_rhs), Some(ref new_rhs))
@@ -2857,9 +2866,9 @@ pub fn choose_rhs<R: Rewrite>(
                     Some(format!(" {}", orig_rhs))
                 }
                 (Some(ref orig_rhs), Some(ref new_rhs)) if prefer_next_line(orig_rhs, new_rhs) => {
-                    Some(format!("\n{}{}", new_indent_str, new_rhs))
+                    Some(format!("{}{}", new_indent_str, new_rhs))
                 }
-                (None, Some(ref new_rhs)) => Some(format!("\n{}{}", new_indent_str, new_rhs)),
+                (None, Some(ref new_rhs)) => Some(format!("{}{}", new_indent_str, new_rhs)),
                 (None, None) => None,
                 (Some(ref orig_rhs), _) => Some(format!(" {}", orig_rhs)),
             }

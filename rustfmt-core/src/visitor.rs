@@ -674,8 +674,9 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         if is_internal {
             match self.config.brace_style() {
                 BraceStyle::AlwaysNextLine => {
-                    let sep_str = format!("\n{}{{", self.block_indent.to_string(self.config));
-                    self.push_str(&sep_str);
+                    let indent_str = self.block_indent.to_string_with_newline(self.config);
+                    self.push_str(&indent_str);
+                    self.push_str("{");
                 }
                 _ => self.push_str(" {"),
             }

@@ -784,7 +784,7 @@ pub fn join_bounds(context: &RewriteContext, shape: Shape, type_strs: &[String])
     let result = type_strs.join(joiner);
     if result.contains('\n') || result.len() > shape.width {
         let joiner_indent = shape.indent.block_indent(context.config);
-        let joiner = format!("\n{}+ ", joiner_indent.to_string(context.config));
+        let joiner = format!("{}+ ", joiner_indent.to_string_with_newline(context.config));
         type_strs.join(&joiner)
     } else {
         result
