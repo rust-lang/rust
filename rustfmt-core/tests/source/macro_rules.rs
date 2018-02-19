@@ -68,3 +68,12 @@ macro_rules! m {
         $line3_xxxxxxxxxxxxxxxxx: expr,
     ) => {};
 }
+
+// #2466
+// Skip formatting `macro_rules!` that are not using `{}`.
+macro_rules! m (
+    () => ()
+);
+macro_rules! m [
+    () => ()
+];
