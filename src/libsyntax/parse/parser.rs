@@ -652,9 +652,11 @@ impl<'a> Parser<'a> {
             } else {
                 let token_str = Parser::token_to_string(t);
                 let this_token_str = self.this_token_to_string();
-                Err(self.fatal(&format!("expected `{}`, found `{}`",
-                                   token_str,
-                                   this_token_str)))
+                let mut err = self.fatal(&format!("expected `{}`, found `{}`",
+                                                  token_str,
+                                                  this_token_str));
+                err.span_label(self.span, format!("expected `{}`", token_str));
+                Err(err)
             }
         } else {
             self.expect_one_of(unsafe { slice::from_raw_parts(t, 1) }, &[])
@@ -1172,7 +1174,7 @@ impl<'a> Parser<'a> {
                                      sep: SeqSep,
                                      f: F)
                                      -> PResult<'a, Vec<T>> where
-        F: FnMut(&mut Parser<'a>) -> PResult<'a,  T>,
+        F: FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     {
         self.expect(bra)?;
         let result = self.parse_seq_to_before_end(ket, sep, f)?;
@@ -1190,7 +1192,7 @@ impl<'a> Parser<'a> {
                            sep: SeqSep,
                            f: F)
                            -> PResult<'a, Spanned<Vec<T>>> where
-        F: FnMut(&mut Parser<'a>) -> PResult<'a,  T>,
+        F: FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     {
         let lo = self.span;
         self.expect(bra)?;
@@ -3212,7 +3214,23 @@ impl<'a> Parser<'a> {
             err.span_label(sp, "expected if condition here");
             return Err(err)
         }
-        let thn = self.parse_block()?;
+        let not_block = self.token != token::OpenDelim(token::Brace);
+        let fat_arrow_sp = if self.token == token::FatArrow {
+            Some(self.span)
+        } else {
+            None
+        };
+        let thn = self.parse_block().map_err(|mut err| {
+            if let Some(sp) = fat_arrow_sp {
+                // if cond => expr
+                err.span_suggestion(sp,
+                                    "only necessary in match arms, not before if blocks",
+                                    "".to_string());
+            } else if not_block {
+                err.span_label(lo, "this `if` statement has a condition, but no block");
+            }
+            err
+        })?;
         let mut els: Option<P<Expr>> = None;
         let mut hi = thn.span;
         if self.eat_keyword(keywords::Else) {
@@ -3629,8 +3647,9 @@ impl<'a> Parser<'a> {
                 self.bump();
                 if self.token != token::CloseDelim(token::Brace) {
                     let token_str = self.this_token_to_string();
-                    return Err(self.fatal(&format!("expected `{}`, found `{}`", "}",
-                                       token_str)))
+                    let mut err = self.fatal(&format!("expected `{}`, found `{}`", "}", token_str));
+                    err.span_label(self.span, "expected `}`");
+                    return Err(err);
                 }
                 etc = true;
                 break;
