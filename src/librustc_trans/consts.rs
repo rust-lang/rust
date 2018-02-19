@@ -16,7 +16,7 @@ use rustc::hir::map as hir_map;
 use rustc::middle::const_val::ConstEvalErr;
 use debuginfo;
 use base;
-use monomorphize::{MonoItem, MonoItemExt};
+use monomorphize::MonoItem;
 use common::{CodegenCx, val_ty};
 use declare;
 use monomorphize::Instance;
@@ -110,7 +110,17 @@ pub fn get_static(cx: &CodegenCx, def_id: DefId) -> ValueRef {
         return g;
     }
 
+    let defined_in_current_codegen_unit = cx.codegen_unit
+                                            .items()
+                                            .contains_key(&MonoItem::Static(def_id));
+    assert!(!defined_in_current_codegen_unit,
+            "consts::get_static() should always hit the cache for \
+             statics defined in the same CGU, but did not for `{:?}`",
+             def_id);
+
     let ty = instance.ty(cx.tcx);
+    let sym = cx.tcx.symbol_name(instance);
+
     let g = if let Some(id) = cx.tcx.hir.as_local_node_id(def_id) {
 
         let llty = cx.layout_of(ty).llvm_type(cx);
@@ -118,13 +128,6 @@ pub fn get_static(cx: &CodegenCx, def_id: DefId) -> ValueRef {
             hir_map::NodeItem(&hir::Item {
                 ref attrs, span, node: hir::ItemStatic(..), ..
             }) => {
-                let sym = MonoItem::Static(id).symbol_name(cx.tcx);
-
-                let defined_in_current_codegen_unit = cx.codegen_unit
-                                                         .items()
-                                                         .contains_key(&MonoItem::Static(id));
-                assert!(!defined_in_current_codegen_unit);
-
                 if declare::get_declared_value(cx, &sym[..]).is_some() {
                     span_bug!(span, "trans: Conflicting symbol names for static?");
                 }
@@ -143,7 +146,7 @@ pub fn get_static(cx: &CodegenCx, def_id: DefId) -> ValueRef {
             hir_map::NodeForeignItem(&hir::ForeignItem {
                 ref attrs, span, node: hir::ForeignItemStatic(..), ..
             }) => {
-                let sym = cx.tcx.symbol_name(instance);
+
                 let g = if let Some(name) =
                         attr::first_attr_value_str_by_name(&attrs, "linkage") {
                     // If this is a static with a linkage specified, then we need to handle
@@ -203,8 +206,6 @@ pub fn get_static(cx: &CodegenCx, def_id: DefId) -> ValueRef {
 
         g
     } else {
-        let sym = cx.tcx.symbol_name(instance);
-
         // FIXME(nagisa): perhaps the map of externs could be offloaded to llvm somehow?
         // FIXME(nagisa): investigate whether it can be changed into define_global
         let g = declare::declare_global(cx, &sym, cx.layout_of(ty).llvm_type(cx));
@@ -246,11 +247,10 @@ pub fn get_static(cx: &CodegenCx, def_id: DefId) -> ValueRef {
 
 pub fn trans_static<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                               m: hir::Mutability,
-                              id: ast::NodeId,
+                              def_id: DefId,
                               attrs: &[ast::Attribute])
                               -> Result<ValueRef, ConstEvalErr<'tcx>> {
     unsafe {
-        let def_id = cx.tcx.hir.local_def_id(id);
         let g = get_static(cx, def_id);
 
         let v = ::mir::trans_static_initializer(cx, def_id)?;

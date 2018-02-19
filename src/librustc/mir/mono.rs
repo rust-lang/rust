@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use hir::def_id::DefId;
 use syntax::ast::NodeId;
 use syntax::symbol::InternedString;
 use ty::{Instance, TyCtxt};
@@ -21,7 +22,7 @@ use std::hash::Hash;
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
 pub enum MonoItem<'tcx> {
     Fn(Instance<'tcx>),
-    Static(NodeId),
+    Static(DefId),
     GlobalAsm(NodeId),
 }
 
@@ -50,7 +51,9 @@ impl<'tcx> HashStable<StableHashingContext<'tcx>> for MonoItem<'tcx> {
             MonoItem::Fn(ref instance) => {
                 instance.hash_stable(hcx, hasher);
             }
-            MonoItem::Static(node_id)    |
+            MonoItem::Static(def_id) => {
+                def_id.hash_stable(hcx, hasher);
+            }
             MonoItem::GlobalAsm(node_id) => {
                 hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
                     node_id.hash_stable(hcx, hasher);
