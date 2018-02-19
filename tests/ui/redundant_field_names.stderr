@@ -1,0 +1,16 @@
+error: redundant field names in struct initialization
+  --> $DIR/redundant_field_names.rs:23:9
+   |
+23 |         gender: gender,
+   |         ^^^^^^^^^^^^^^ help: replace it with: `gender`
+   |
+   = note: `-D redundant-field-names` implied by `-D warnings`
+
+error: redundant field names in struct initialization
+  --> $DIR/redundant_field_names.rs:24:9
+   |
+24 |         age: age,
+   |         ^^^^^^^^ help: replace it with: `age`
+
+error: aborting due to 2 previous errors
+

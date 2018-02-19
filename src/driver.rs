@@ -29,7 +29,7 @@ impl ClippyCompilerCalls {
     fn new(run_lints: bool) -> Self {
         Self {
             default: RustcDefaultCalls,
-            run_lints: run_lints,
+            run_lints,
         }
     }
 }
