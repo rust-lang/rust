@@ -43,7 +43,7 @@ use syntax::ast;
 use syntax::codemap::{CodeMap, FilePathMapping};
 pub use syntax::codemap::FileName;
 use syntax::parse::{self, ParseSess};
-use regex::{Regex, RegexBuilder};
+use regex::Regex;
 
 use checkstyle::{output_footer, output_header};
 use comment::{CharClasses, FullCodeCharKind};
@@ -416,33 +416,77 @@ fn should_report_error(
 }
 
 fn check_license(text: &str, license_template: &str) -> Result<bool, regex::Error> {
+    // the template is parsed using a state machine
+    enum State {
+        Lit,
+        LitEsc,
+        // the u32 keeps track of brace nesting
+        Re(u32),
+        ReEsc(u32),
+    }
+
     let mut template_re = String::from("^");
-    // the template is parsed as a series of pairs of capture groups of (1) lazy whatever, which
-    // will be matched literally, followed by (2) a {}-delimited block, which will be matched as a
-    // regex
-    let template_parser = RegexBuilder::new(r"(.*?)\{(.*?)\}")
-        .dot_matches_new_line(true)
-        .build()
-        .unwrap();
-    // keep track of the last matched offset and ultimately append the tail of the template (if any)
-    // after the last {} block
-    let mut last_matched_offset = 0;
-    for caps in template_parser.captures_iter(license_template) {
-        if let Some(mat) = caps.get(0) {
-            last_matched_offset = mat.end()
-        }
-        if let Some(mat) = caps.get(1) {
-            template_re.push_str(&regex::escape(mat.as_str()))
-        }
-        if let Some(mat) = caps.get(2) {
-            let mut re = mat.as_str();
-            if re.is_empty() {
-                re = ".*?";
+    let mut buffer = String::new();
+    let mut state = State::Lit;
+    for chr in license_template.chars() {
+        state = match state {
+            State::Lit => match chr {
+                '{' => {
+                    template_re.push_str(&regex::escape(&buffer));
+                    buffer.clear();
+                    State::Re(1)
+                }
+                '}' => panic!("license template syntax error"),
+                '\\' => State::LitEsc,
+                _ => {
+                    buffer.push(chr);
+                    State::Lit
+                }
+            },
+            State::LitEsc => {
+                buffer.push(chr);
+                State::Lit
             }
-            template_re.push_str(re)
+            State::Re(brace_nesting) => {
+                match chr {
+                    '{' => {
+                        buffer.push(chr);
+                        State::Re(brace_nesting + 1)
+                    }
+                    '}' => {
+                        match brace_nesting {
+                            1 => {
+                                // default regex for empty placeholder {}
+                                if buffer.is_empty() {
+                                    buffer = ".*?".to_string();
+                                }
+                                template_re.push_str(&buffer);
+                                buffer.clear();
+                                State::Lit
+                            }
+                            _ => {
+                                buffer.push(chr);
+                                State::Re(brace_nesting - 1)
+                            }
+                        }
+                    }
+                    '\\' => {
+                        buffer.push(chr);
+                        State::ReEsc(brace_nesting)
+                    }
+                    _ => {
+                        buffer.push(chr);
+                        State::Re(brace_nesting)
+                    }
+                }
+            }
+            State::ReEsc(brace_nesting) => {
+                buffer.push(chr);
+                State::Re(brace_nesting)
+            }
         }
     }
-    template_re.push_str(&regex::escape(&license_template[last_matched_offset..]));
+    template_re.push_str(&regex::escape(&buffer));
     let template_re = Regex::new(&template_re)?;
     Ok(template_re.is_match(text))
 }
@@ -1035,9 +1079,10 @@ false,
         assert!(check_license("", "this is not a valid {[regex}").is_err());
         assert!(
             check_license(
-                "can't parse nested delimiters with regex",
-                r"can't parse nested delimiters with regex{\.{3}}"
-            ).is_err()
+                "parse unbalanced nested delimiters{{{",
+                r"parse unbalanced nested delimiters{\{{3}}"
+            ).unwrap()
         );
+        assert!(check_license("escaping }", r"escaping \}").unwrap());
     }
 }
