@@ -1641,7 +1641,9 @@ extern "C" {
                                                OptLevel: CodeGenOptLevel,
                                                MergeFunctions: bool,
                                                SLPVectorize: bool,
-                                               LoopVectorize: bool);
+                                               LoopVectorize: bool,
+                                               PGOGenPath: *const c_char,
+                                               PGOUsePath: *const c_char);
     pub fn LLVMRustAddLibraryInfo(PM: PassManagerRef,
                                   M: ModuleRef,
                                   DisableSimplifyLibCalls: bool);
