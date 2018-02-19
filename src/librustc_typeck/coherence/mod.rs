@@ -74,7 +74,7 @@ fn enforce_trait_manually_implementable(tcx: TyCtxt, impl_def_id: DefId, trait_d
         return;
     }
 
-    if tcx.sess.features.borrow().unboxed_closures {
+    if tcx.features().unboxed_closures {
         // the feature gate allows all Fn traits
         return;
     }

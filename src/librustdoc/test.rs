@@ -629,7 +629,7 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
                                             nested: F) {
         let mut attrs = Attributes::from_ast(self.sess.diagnostic(), attrs);
         if let Some(ref cfg) = attrs.cfg {
-            if !cfg.matches(&self.sess.parse_sess, Some(&self.sess.features.borrow())) {
+            if !cfg.matches(&self.sess.parse_sess, Some(&self.sess.features_untracked())) {
                 return;
             }
         }

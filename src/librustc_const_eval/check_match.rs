@@ -212,7 +212,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             let pat_ty = self.tables.node_id_to_type(scrut.hir_id);
             let module = self.tcx.hir.get_module_parent(scrut.id);
             if inlined_arms.is_empty() {
-                let scrutinee_is_uninhabited = if self.tcx.sess.features.borrow().never_type {
+                let scrutinee_is_uninhabited = if self.tcx.features().never_type {
                     self.tcx.is_ty_uninhabited_from(module, pat_ty)
                 } else {
                     self.conservative_is_uninhabited(pat_ty)

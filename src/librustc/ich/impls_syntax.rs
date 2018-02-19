@@ -17,6 +17,7 @@ use std::hash as std_hash;
 use std::mem;
 
 use syntax::ast;
+use syntax::feature_gate;
 use syntax::parse::token;
 use syntax::symbol::InternedString;
 use syntax::tokenstream;
@@ -459,4 +460,22 @@ fn stable_non_narrow_char(swc: ::syntax_pos::NonNarrowChar,
     let width = swc.width();
 
     (pos.0 - filemap_start.0, width as u32)
+}
+
+
+
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for feature_gate::Features {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        // Unfortunately we cannot exhaustively list fields here, since the
+        // struct is macro generated.
+        self.declared_stable_lang_features.hash_stable(hcx, hasher);
+        self.declared_lib_features.hash_stable(hcx, hasher);
+
+        self.walk_feature_fields(|feature_name, value| {
+            feature_name.hash_stable(hcx, hasher);
+            value.hash_stable(hcx, hasher);
+        });
+    }
 }
