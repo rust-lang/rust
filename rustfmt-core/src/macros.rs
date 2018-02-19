@@ -294,6 +294,9 @@ pub fn rewrite_macro_def(
     span: Span,
 ) -> Option<String> {
     let snippet = Some(remove_trailing_white_spaces(context.snippet(span)));
+    if snippet.as_ref().map_or(true, |s| s.ends_with(";")) {
+        return snippet;
+    }
 
     let mut parser = MacroParser::new(def.stream().into_trees());
     let parsed_def = match parser.parse() {
