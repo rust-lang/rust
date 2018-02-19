@@ -34,15 +34,15 @@
 //  and mir statement _11 = move _2[-1 of 1]; replaced by:
 //  _11 = move _2[2 of 3];
 //
-// FIXME: convert to Subslice back for performance reason
 // FIXME: integrate this transformation to the mir build
 
 use rustc::ty;
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
-use rustc::mir::visit::Visitor;
+use rustc::mir::visit::{Visitor, PlaceContext};
 use transform::{MirPass, MirSource};
 use util::patch::MirPatch;
+use rustc_data_structures::indexed_vec::{IndexVec};
 
 pub struct UniformArrayMoveOut;
 
@@ -67,12 +67,12 @@ struct UniformArrayMoveOutVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for UniformArrayMoveOutVisitor<'a, 'tcx> {
-    fn visit_statement(&mut self,
-                       block: BasicBlock,
-                       statement: &Statement<'tcx>,
-                       location: Location) {
-        if let StatementKind::Assign(ref dst_place,
-                                     Rvalue::Use(Operand::Move(ref src_place))) = statement.kind {
+    fn visit_assign(&mut self,
+                    block: BasicBlock,
+                    dst_place: &Place<'tcx>,
+                    rvalue: &Rvalue<'tcx>,
+                    location: Location) {
+        if let Rvalue::Use(Operand::Move(ref src_place)) = rvalue {
             if let Place::Projection(ref proj) = *src_place {
                 if let ProjectionElem::ConstantIndex{offset: _,
                                                      min_length: _,
@@ -92,7 +92,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UniformArrayMoveOutVisitor<'a, 'tcx> {
                 }
             }
         }
-        return self.super_statement(block, statement, location);
+        self.super_assign(block, dst_place, rvalue, location)
     }
 }
 
@@ -104,7 +104,7 @@ impl<'a, 'tcx> UniformArrayMoveOutVisitor<'a, 'tcx> {
                item_ty: &'tcx ty::TyS<'tcx>,
                size: u32) {
         match proj.elem {
-            // uniform _10 = move _2[:-1];
+            // uniforms statements like_10 = move _2[:-1];
             ProjectionElem::Subslice{from, to} => {
                 self.patch.make_nop(location);
                 let temps : Vec<_> = (from..(size-to)).map(|i| {
@@ -133,7 +133,7 @@ impl<'a, 'tcx> UniformArrayMoveOutVisitor<'a, 'tcx> {
                     self.patch.add_statement(location, StatementKind::StorageDead(temp));
                 }
             }
-            // _11 = move _2[-1 of 1];
+            // uniforms statements like _11 = move _2[-1 of 1];
             ProjectionElem::ConstantIndex{offset, min_length: _, from_end: true} => {
                 self.patch.make_nop(location);
                 self.patch.add_assign(location,
@@ -148,6 +148,182 @@ impl<'a, 'tcx> UniformArrayMoveOutVisitor<'a, 'tcx> {
                                                       from_end: false }}))));
             }
             _ => {}
+        }
+    }
+}
+
+// Restore Subslice move out after analysis
+// Example:
+//
+//  next statements:
+//   StorageLive(_12);
+//   _12 = move _2[0 of 3];
+//   StorageLive(_13);
+//   _13 = move _2[1 of 3];
+//   _10 = [move _12, move _13]
+//   StorageDead(_12);
+//   StorageDead(_13);
+//
+// replaced by _10 = move _2[:-1];
+
+pub struct RestoreSubsliceArrayMoveOut;
+
+impl MirPass for RestoreSubsliceArrayMoveOut {
+    fn run_pass<'a, 'tcx>(&self,
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          _src: MirSource,
+                          mir: &mut Mir<'tcx>) {
+        let mut patch = MirPatch::new(mir);
+        {
+            let mut visitor = RestoreDataCollector {
+                locals_use: IndexVec::from_elem(LocalUse::new(), &mir.local_decls),
+                candidates: vec![],
+            };
+            visitor.visit_mir(mir);
+
+            for candidate in &visitor.candidates {
+                let statement = &mir[candidate.block].statements[candidate.statement_index];
+                if let StatementKind::Assign(ref dst_place, ref rval) = statement.kind {
+                    if let Rvalue::Aggregate(box AggregateKind::Array(_), ref items) = *rval {
+                        let items : Vec<_> = items.iter().map(|item| {
+                            if let Operand::Move(Place::Local(local)) = item {
+                                let local_use = &visitor.locals_use[*local];
+                                let opt_index_and_place = Self::try_get_item_source(local_use, mir);
+                                // each local should be used twice:
+                                //  in assign and in aggregate statments
+                                if local_use.use_count == 2 && opt_index_and_place.is_some() {
+                                    let (index, src_place) = opt_index_and_place.unwrap();
+                                    return Some((local_use, index, src_place));
+                                }
+                            }
+                            None
+                        }).collect();
+
+                        let opt_src_place = items.first().and_then(|x| *x).map(|x| x.2);
+                        let opt_size = opt_src_place.and_then(|src_place| {
+                            let src_ty = src_place.ty(mir, tcx).to_ty(tcx);
+                            if let ty::TyArray(_, ref size_o) = src_ty.sty {
+                                size_o.val.to_const_int().and_then(|v| v.to_u64())
+                            } else {
+                                None
+                            }
+                        });
+                        Self::check_and_patch(*candidate, &items, opt_size, &mut patch, dst_place);
+                    }
+                }
+            }
+        }
+        patch.apply(mir);
+    }
+}
+
+impl RestoreSubsliceArrayMoveOut {
+    // Checks that source has size, all locals are inited from same source place and
+    // indices is an integer interval. If all checks pass do the replacent.
+    // items are Vec<Option<LocalUse, index in source array, source place for init local>>
+    fn check_and_patch<'tcx>(candidate: Location,
+                             items: &Vec<Option<(&LocalUse, u32, &Place<'tcx>)>>,
+                             opt_size: Option<u64>,
+                             patch: &mut MirPatch<'tcx>,
+                             dst_place: &Place<'tcx>) {
+        let opt_src_place = items.first().and_then(|x| *x).map(|x| x.2);
+
+        if opt_size.is_some() && items.iter().all(
+            |l| l.is_some() && l.unwrap().2 == opt_src_place.unwrap()) {
+
+            let indicies: Vec<_> = items.iter().map(|x| x.unwrap().1).collect();
+            for i in 1..indicies.len() {
+                if indicies[i - 1] + 1 != indicies[i] {
+                    return;
+                }
+            }
+
+            let min = *indicies.first().unwrap();
+            let max = *indicies.last().unwrap();
+
+            for item in items {
+                let locals_use = item.unwrap().0;
+                patch.make_nop(locals_use.alive.unwrap());
+                patch.make_nop(locals_use.dead.unwrap());
+                patch.make_nop(locals_use.first_use.unwrap());
+            }
+            patch.make_nop(candidate);
+            let size = opt_size.unwrap() as u32;
+            patch.add_assign(candidate,
+                             dst_place.clone(),
+                             Rvalue::Use(
+                                 Operand::Move(
+                                     Place::Projection(box PlaceProjection{
+                                         base: opt_src_place.unwrap().clone(),
+                                         elem: ProjectionElem::Subslice{
+                                             from: min, to: size - max - 1}}))));
+        }
+    }
+
+    fn try_get_item_source<'a, 'tcx>(local_use: &LocalUse,
+                                     mir: &'a Mir<'tcx>) -> Option<(u32, &'a Place<'tcx>)> {
+        if let Some(location) = local_use.first_use {
+            let block = &mir[location.block];
+            if block.statements.len() > location.statement_index {
+                let statement = &block.statements[location.statement_index];
+                if let StatementKind::Assign(
+                    Place::Local(_),
+                    Rvalue::Use(Operand::Move(Place::Projection(box PlaceProjection{
+                        ref base, elem: ProjectionElem::ConstantIndex{
+                            offset, min_length: _, from_end: false}})))) = statement.kind {
+                    return Some((offset, base))
+                }
+            }
+        }
+        None
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+struct LocalUse {
+    alive: Option<Location>,
+    dead: Option<Location>,
+    use_count: u32,
+    first_use: Option<Location>,
+}
+
+impl LocalUse {
+    pub fn new() -> Self {
+        LocalUse{alive: None, dead: None, use_count: 0, first_use: None}
+    }
+}
+
+struct RestoreDataCollector {
+    locals_use: IndexVec<Local, LocalUse>,
+    candidates: Vec<Location>,
+}
+
+impl<'tcx> Visitor<'tcx> for RestoreDataCollector {
+    fn visit_assign(&mut self,
+                    block: BasicBlock,
+                    place: &Place<'tcx>,
+                    rvalue: &Rvalue<'tcx>,
+                    location: Location) {
+        if let Rvalue::Aggregate(box AggregateKind::Array(_), _) = *rvalue {
+            self.candidates.push(location);
+        }
+        self.super_assign(block, place, rvalue, location)
+    }
+
+    fn visit_local(&mut self,
+                   local: &Local,
+                   context: PlaceContext<'tcx>,
+                   location: Location) {
+        let local_use = &mut self.locals_use[*local];
+        match context {
+            PlaceContext::StorageLive => local_use.alive = Some(location),
+            PlaceContext::StorageDead => local_use.dead = Some(location),
+            _ => {
+                local_use.use_count += 1;
+                if local_use.first_use.is_none() {
+                    local_use.first_use = Some(location);
+                }
+            }
         }
     }
 }
