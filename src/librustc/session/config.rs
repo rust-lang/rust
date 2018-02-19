@@ -1027,6 +1027,11 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "`-C save-temps` might not produce all requested temporary products \
          when incremental compilation is enabled.")],
         "save all temporary output files during compilation"),
+    pgo_gen: Option<String> = (None, parse_opt_string, [TRACKED],
+        "Generate PGO profile data, to a given file, or to the default \
+         location if it's empty."),
+    pgo_use: String = (String::new(), parse_string, [TRACKED],
+        "Use PGO profile data from the given profile file."),
     rpath: bool = (false, parse_bool, [UNTRACKED],
         "set rpath values in libs/exes"),
     overflow_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -1800,6 +1805,13 @@ pub fn build_session_options_and_crate_config(
     let mut cg = build_codegen_options(matches, error_format);
     let mut codegen_units = cg.codegen_units;
     let mut disable_thinlto = false;
+
+    if cg.pgo_gen.is_some() && !cg.pgo_use.is_empty() {
+        early_error(
+            error_format,
+            "options `-C pgo-gen` and `-C pgo-use` are exclussive",
+        );
+    }
 
     // Issue #30063: if user requests llvm-related output to one
     // particular path, disable codegen-units.
@@ -2823,6 +2835,14 @@ mod tests {
         opts = reference.clone();
         opts.cg.lto = Lto::Fat;
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+        opts = reference.clone();
+        opts.cg.pgo_gen = Some(String::from("abc"));
+        assert_ne!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+        opts = reference.clone();
+        opts.cg.pgo_use = String::from("abc");
+        assert_ne!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
         opts = reference.clone();
         opts.cg.target_cpu = Some(String::from("abc"));
