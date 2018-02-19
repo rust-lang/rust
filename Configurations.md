@@ -1630,7 +1630,9 @@ Put small struct literals on a single line
 #### `true` (default):
 
 ```rust
-let lorem = Lorem { ipsum: dolor, sit: amet };
+fn main() {
+    let lorem = Lorem { foo: bar, baz: ofo };
+}
 ```
 
 #### `false`:
@@ -1638,8 +1640,8 @@ let lorem = Lorem { ipsum: dolor, sit: amet };
 ```rust
 fn main() {
     let lorem = Lorem {
-        ipsum: dolor,
-        sit: amet,
+        foo: bar,
+        baz: ofo,
     };
 }
 ```
