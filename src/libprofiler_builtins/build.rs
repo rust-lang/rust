@@ -50,6 +50,7 @@ fn main() {
         cfg.flag("-fomit-frame-pointer");
         cfg.flag("-ffreestanding");
         cfg.define("VISIBILITY_HIDDEN", None);
+        cfg.define("COMPILER_RT_HAS_UNAME", Some("1"));
     }
 
     for src in profile_sources {
