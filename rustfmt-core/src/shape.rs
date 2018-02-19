@@ -81,7 +81,7 @@ impl Indent {
         self.to_string_inner(config, 0)
     }
 
-    pub fn to_string_inner(&self, config: &Config, offset: usize) -> Cow<'static, str> {
+    fn to_string_inner(&self, config: &Config, offset: usize) -> Cow<'static, str> {
         let (num_tabs, num_spaces) = if config.hard_tabs() {
             (self.block_indent / config.tab_spaces(), self.alignment)
         } else {
