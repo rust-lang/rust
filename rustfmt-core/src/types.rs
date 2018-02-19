@@ -200,10 +200,13 @@ fn rewrite_segment(
     context: &RewriteContext,
     shape: Shape,
 ) -> Option<String> {
-    let ident_len = segment.identifier.to_string().len();
+    let mut result = String::with_capacity(128);
+    result.push_str(&segment.identifier.name.as_str());
+
+    let ident_len = result.len();
     let shape = shape.shrink_left(ident_len)?;
 
-    let params = if let Some(ref params) = segment.parameters {
+    if let Some(ref params) = segment.parameters {
         match **params {
             ast::PathParameters::AngleBracketed(ref data)
                 if !data.lifetimes.is_empty() || !data.types.is_empty()
@@ -225,6 +228,7 @@ fn rewrite_segment(
                 } else {
                     ""
                 };
+                result.push_str(separator);
 
                 let generics_shape =
                     generics_shape_from_config(context.config, shape, separator.len())?;
@@ -247,29 +251,27 @@ fn rewrite_segment(
                 // Update position of last bracket.
                 *span_lo = next_span_lo;
 
-                format!("{}{}", separator, generics_str)
+                result.push_str(&generics_str)
             }
             ast::PathParameters::Parenthesized(ref data) => {
                 let output = match data.output {
                     Some(ref ty) => FunctionRetTy::Ty(ty.clone()),
                     None => FunctionRetTy::Default(codemap::DUMMY_SP),
                 };
-                format_function_type(
+                result.push_str(&format_function_type(
                     data.inputs.iter().map(|x| &**x),
                     &output,
                     false,
                     data.span,
                     context,
                     shape,
-                )?
+                )?);
             }
-            _ => String::new(),
+            _ => (),
         }
-    } else {
-        String::new()
-    };
+    }
 
-    Some(format!("{}{}", segment.identifier, params))
+    Some(result)
 }
 
 fn format_function_type<'a, I>(
