@@ -1487,7 +1487,10 @@ impl<'a> Parser<'a> {
                 }
                 _ => {
                     let token_str = self.this_token_to_string();
-                    return Err(self.fatal(&format!("expected `;` or `{{`, found `{}`", token_str)));
+                    let mut err = self.fatal(&format!("expected `;` or `{{`, found `{}`",
+                                                      token_str));
+                    err.span_label(self.span, "expected `;` or `{`");
+                    return Err(err);
                 }
             };
             (ident, ast::TraitItemKind::Method(sig, body), generics)
@@ -2218,7 +2221,12 @@ impl<'a> Parser<'a> {
                 TokenTree::Delimited(_, delimited) => Ok((delim, delimited.stream().into())),
                 _ => unreachable!(),
             },
-            _ => Err(self.fatal("expected open delimiter")),
+            _ => {
+                let msg = "expected open delimiter";
+                let mut err = self.fatal(msg);
+                err.span_label(self.span, msg);
+                Err(err)
+            }
         }
     }
 
@@ -2351,7 +2359,10 @@ impl<'a> Parser<'a> {
                     if self.eat_keyword(keywords::Loop) {
                         return self.parse_loop_expr(Some(label), lo, attrs)
                     }
-                    return Err(self.fatal("expected `while`, `for`, or `loop` after a label"))
+                    let msg = "expected `while`, `for`, or `loop` after a label";
+                    let mut err = self.fatal(msg);
+                    err.span_label(self.span, msg);
+                    return Err(err);
                 }
                 if self.eat_keyword(keywords::Loop) {
                     let lo = self.prev_span;
@@ -2410,6 +2421,7 @@ impl<'a> Parser<'a> {
                     // Catch this syntax error here, instead of in `parse_ident`, so
                     // that we can explicitly mention that let is not to be used as an expression
                     let mut db = self.fatal("expected expression, found statement (`let`)");
+                    db.span_label(self.span, "expected expression");
                     db.note("variable declaration using `let` is a statement");
                     return Err(db);
                 } else if self.token.is_path_start() {
@@ -2445,7 +2457,9 @@ impl<'a> Parser<'a> {
                             self.cancel(&mut err);
                             let msg = format!("expected expression, found {}",
                                               self.this_token_descr());
-                            return Err(self.fatal(&msg));
+                            let mut err = self.fatal(&msg);
+                            err.span_label(self.span, "expected expression");
+                            return Err(err);
                         }
                     }
                 }
@@ -2735,7 +2749,9 @@ impl<'a> Parser<'a> {
                              self.look_ahead(1, |t| t.is_ident()) => {
                 self.bump();
                 let name = match self.token { token::Ident(ident) => ident, _ => unreachable!() };
-                self.fatal(&format!("unknown macro variable `{}`", name)).emit();
+                let mut err = self.fatal(&format!("unknown macro variable `{}`", name));
+                err.span_label(self.span, "unknown macro variable");
+                err.emit();
                 return
             }
             token::Interpolated(ref nt) => {
@@ -3760,7 +3776,10 @@ impl<'a> Parser<'a> {
                 self.expect_and()?;
                 let mutbl = self.parse_mutability();
                 if let token::Lifetime(ident) = self.token {
-                    return Err(self.fatal(&format!("unexpected lifetime `{}` in pattern", ident)));
+                    let mut err = self.fatal(&format!("unexpected lifetime `{}` in pattern",
+                                                      ident));
+                    err.span_label(self.span, "unexpected lifetime");
+                    return Err(err);
                 }
                 let subpat = self.parse_pat()?;
                 pat = PatKind::Ref(subpat, mutbl);
@@ -3843,7 +3862,10 @@ impl<'a> Parser<'a> {
                     }
                     token::OpenDelim(token::Brace) => {
                         if qself.is_some() {
-                            return Err(self.fatal("unexpected `{` after qualified path"));
+                            let msg = "unexpected `{` after qualified path";
+                            let mut err = self.fatal(msg);
+                            err.span_label(self.span, msg);
+                            return Err(err);
                         }
                         // Parse struct pattern
                         self.bump();
@@ -3857,7 +3879,10 @@ impl<'a> Parser<'a> {
                     }
                     token::OpenDelim(token::Paren) => {
                         if qself.is_some() {
-                            return Err(self.fatal("unexpected `(` after qualified path"));
+                            let msg = "unexpected `(` after qualified path";
+                            let mut err = self.fatal(msg);
+                            err.span_label(self.span, msg);
+                            return Err(err);
                         }
                         // Parse tuple struct or enum pattern
                         self.bump();
@@ -3889,7 +3914,9 @@ impl<'a> Parser<'a> {
                     Err(mut err) => {
                         self.cancel(&mut err);
                         let msg = format!("expected pattern, found {}", self.this_token_descr());
-                        return Err(self.fatal(&msg));
+                        let mut err = self.fatal(&msg);
+                        err.span_label(self.span, "expected pattern");
+                        return Err(err);
                     }
                 }
             }
@@ -4289,9 +4316,11 @@ impl<'a> Parser<'a> {
                         ""
                     };
                     let tok_str = self.this_token_to_string();
-                    return Err(self.fatal(&format!("expected {}`(` or `{{`, found `{}`",
-                                       ident_str,
-                                       tok_str)))
+                    let mut err = self.fatal(&format!("expected {}`(` or `{{`, found `{}`",
+                                                      ident_str,
+                                                      tok_str));
+                    err.span_label(self.span, format!("expected {}`(` or `{{`", ident_str));
+                    return Err(err)
                 },
             };
 
@@ -5598,8 +5627,12 @@ impl<'a> Parser<'a> {
             body
         } else {
             let token_str = self.this_token_to_string();
-            return Err(self.fatal(&format!("expected `where`, `{{`, `(`, or `;` after struct \
-                                            name, found `{}`", token_str)))
+            let mut err = self.fatal(&format!(
+                "expected `where`, `{{`, `(`, or `;` after struct name, found `{}`",
+                token_str
+            ));
+            err.span_label(self.span, "expected `where`, `{`, `(`, or `;` after struct name");
+            return Err(err);
         };
 
         Ok((class_name, ItemKind::Struct(vdata, generics), None))
@@ -5618,8 +5651,10 @@ impl<'a> Parser<'a> {
             VariantData::Struct(self.parse_record_struct_body()?, ast::DUMMY_NODE_ID)
         } else {
             let token_str = self.this_token_to_string();
-            return Err(self.fatal(&format!("expected `where` or `{{` after union \
-                                            name, found `{}`", token_str)))
+            let mut err = self.fatal(&format!(
+                "expected `where` or `{{` after union name, found `{}`", token_str));
+            err.span_label(self.span, "expected `where` or `{` after union name");
+            return Err(err);
         };
 
         Ok((class_name, ItemKind::Union(vdata, generics), None))
@@ -5666,9 +5701,10 @@ impl<'a> Parser<'a> {
             self.eat(&token::CloseDelim(token::Brace));
         } else {
             let token_str = self.this_token_to_string();
-            return Err(self.fatal(&format!("expected `where`, or `{{` after struct \
-                                name, found `{}`",
-                                token_str)));
+            let mut err = self.fatal(&format!(
+                    "expected `where`, or `{{` after struct name, found `{}`", token_str));
+            err.span_label(self.span, "expected `where`, or `{` after struct name");
+            return Err(err);
         }
 
         Ok(fields)
@@ -5841,9 +5877,11 @@ impl<'a> Parser<'a> {
         if !self.eat(term) {
             let token_str = self.this_token_to_string();
             let mut err = self.fatal(&format!("expected item, found `{}`", token_str));
-            let msg = "consider removing this semicolon";
             if token_str == ";" {
+                let msg = "consider removing this semicolon";
                 err.span_suggestion_short(self.span, msg, "".to_string());
+            } else {
+                err.span_label(self.span, "expected item");
             }
             return Err(err);
         }
@@ -7000,7 +7038,12 @@ impl<'a> Parser<'a> {
                 self.expect_no_suffix(sp, "string literal", suf);
                 Ok((s, style))
             }
-            _ =>  Err(self.fatal("expected string literal"))
+            _ => {
+                let msg = "expected string literal";
+                let mut err = self.fatal(msg);
+                err.span_label(self.span, msg);
+                Err(err)
+            }
         }
     }
 }
