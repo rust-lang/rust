@@ -346,11 +346,11 @@ pub trait Copy : Clone {
 #[rustc_on_unimplemented(
     on(
         _Self="std::sync::mpsc::Receiver<T>",
-        label="`{Self}` cannot be shared safely, if using a closure consider marking it `move`"
+        label="`{Self}` cannot be shared safely, consider marking the closure `move`"
     ),
     on(
         _Self="std::sync::mpsc::Sender<T>",
-        label="`{Self}` cannot be shared safely, if using a closure consider marking it `move`"
+        label="`{Self}` cannot be shared safely, consider marking the closure `move`"
     ),
     message="`{Self}` cannot be shared between threads safely",
     label="`{Self}` cannot be shared between threads safely"
