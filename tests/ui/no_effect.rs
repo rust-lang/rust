@@ -5,6 +5,7 @@
 #![allow(dead_code)]
 #![allow(path_statements)]
 #![allow(deref_addrof)]
+#![allow(redundant_field_names)]
 #![feature(untagged_unions)]
 
 struct Unit;

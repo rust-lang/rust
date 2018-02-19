@@ -152,6 +152,7 @@ pub mod ptr;
 pub mod question_mark;
 pub mod ranges;
 pub mod reference;
+pub mod redundant_field_names;
 pub mod regex;
 pub mod replace_consts;
 pub mod returns;
@@ -375,6 +376,8 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box double_comparison::DoubleComparisonPass);
     reg.register_late_lint_pass(box question_mark::QuestionMarkPass);
     reg.register_late_lint_pass(box suspicious_trait_impl::SuspiciousImpl);
+    reg.register_late_lint_pass(box redundant_field_names::RedundantFieldNames);
+
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -593,6 +596,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         ranges::ITERATOR_STEP_BY_ZERO,
         ranges::RANGE_MINUS_ONE,
         ranges::RANGE_ZIP_WITH_LEN,
+        redundant_field_names::REDUNDANT_FIELD_NAMES,
         reference::DEREF_ADDROF,
         regex::INVALID_REGEX,
         regex::REGEX_MACRO,
