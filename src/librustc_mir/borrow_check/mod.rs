@@ -72,7 +72,7 @@ fn mir_borrowck<'a, 'tcx>(
     let input_mir = tcx.mir_validated(def_id);
     debug!("run query mir_borrowck: {}", tcx.item_path_str(def_id));
 
-    if !tcx.has_attr(def_id, "rustc_mir_borrowck") && !tcx.sess.use_mir() {
+    if !tcx.has_attr(def_id, "rustc_mir_borrowck") && !tcx.use_mir() {
         return None;
     }
 
@@ -101,7 +101,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     // contain non-lexical lifetimes. It will have a lifetime tied
     // to the inference context.
     let mut mir: Mir<'tcx> = input_mir.clone();
-    let free_regions = if !tcx.sess.nll() {
+    let free_regions = if !tcx.nll() {
         None
     } else {
         let mir = &mut mir;
@@ -204,7 +204,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         );
         (Some(Rc::new(regioncx)), opt_closure_req)
     } else {
-        assert!(!tcx.sess.nll());
+        assert!(!tcx.nll());
         (None, None)
     };
     let flow_inits = flow_inits; // remove mut
@@ -719,7 +719,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// allowed to be split into separate Reservation and
     /// Activation phases.
     fn allow_two_phase_borrow(&self, kind: BorrowKind) -> bool {
-        self.tcx.sess.two_phase_borrows() &&
+        self.tcx.two_phase_borrows() &&
             (kind.allows_two_phase_borrow() ||
              self.tcx.sess.opts.debugging_opts.two_phase_beyond_autoref)
     }
@@ -1253,7 +1253,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         span: Span,
         flow_state: &Flows<'cx, 'gcx, 'tcx>,
     ) {
-        if !self.tcx.sess.two_phase_borrows() {
+        if !self.tcx.two_phase_borrows() {
             return;
         }
 
