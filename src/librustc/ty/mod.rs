@@ -1439,31 +1439,38 @@ impl<'tcx> ParamEnv<'tcx> {
     }
 
     /// Creates a suitable environment in which to perform trait
-    /// queries on the given value. This will either be `self` *or*
-    /// the empty environment, depending on whether `value` references
-    /// type parameters that are in scope. (If it doesn't, then any
-    /// judgements should be completely independent of the context,
-    /// and hence we can safely use the empty environment so as to
-    /// enable more sharing across functions.)
+    /// queries on the given value. When type-checking, this is simply
+    /// the pair of the environment plus value. But when reveal is set to
+    /// All, then if `value` does not reference any type parameters, we will
+    /// pair it with the empty environment. This improves caching and is generally
+    /// invisible.
     ///
-    /// NB: This is a mildly dubious thing to do, in that a function
-    /// (or other environment) might have wacky where-clauses like
+    /// NB: We preserve the environment when type-checking because it
+    /// is possible for the user to have wacky where-clauses like
     /// `where Box<u32>: Copy`, which are clearly never
-    /// satisfiable. The code will at present ignore these,
-    /// effectively, when type-checking the body of said
-    /// function. This preserves existing behavior in any
-    /// case. --nmatsakis
+    /// satisfiable. We generally want to behave as if they were true,
+    /// although the surrounding function is never reachable.
     pub fn and<T: TypeFoldable<'tcx>>(self, value: T) -> ParamEnvAnd<'tcx, T> {
-        assert!(!value.needs_infer());
-        if value.has_param_types() || value.has_self_ty() {
-            ParamEnvAnd {
-                param_env: self,
-                value,
+        match self.reveal {
+            Reveal::UserFacing => {
+                ParamEnvAnd {
+                    param_env: self,
+                    value,
+                }
             }
-        } else {
-            ParamEnvAnd {
-                param_env: self.without_caller_bounds(),
-                value,
+
+            Reveal::All => {
+                if value.needs_infer() || value.has_param_types() || value.has_self_ty() {
+                    ParamEnvAnd {
+                        param_env: self,
+                        value,
+                    }
+                } else {
+                    ParamEnvAnd {
+                        param_env: self.without_caller_bounds(),
+                        value,
+                    }
+                }
             }
         }
     }
