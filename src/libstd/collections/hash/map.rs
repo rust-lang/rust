@@ -1378,13 +1378,14 @@ impl<K, V, S> Hash for HashMap<K, V, S>
 {
     fn hash<H: Hasher>(&self, hasher: &mut H) {
         // We must preserve:  x == y -> hash(x) == hash(y).
-        // HashMaps have no order, so we must use a commutative operation
-        // (.wrapping_add) so that the order does not matter.
+        // HashMaps have no order, so we must combine the elements with an
+        // associative and commutative operation • so that the order does not
+        // matter. In other words, (u64, •, 0) must form a commutative monoid.
+        // This is satisfied by • = u64::wrapping_add.
         //
-        // For this to hold, we must also ensure that the hashing of
-        // individual elements does not depend on the state of the given Hasher.
-        // So we ensure that hashing each individual element starts with the
-        // same state.
+        // We must further ensure that the hashing of individual elements does
+        // not depend on the state of the given Hasher. So we ensure that
+        // hashing each individual element starts with the same state.
         //
         // Unfortunately, we can't .clone() the hasher since we can't add more
         // constraints than H being a Hasher. With some sort of ConstraintKinds
