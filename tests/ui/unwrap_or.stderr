@@ -6,5 +6,13 @@ error: use of `unwrap_or` followed by a function call
   |
   = note: `-D or-fun-call` implied by `-D warnings`
 
-error: aborting due to previous error
+error: use of `unwrap_or` followed by a function call
+ --> $DIR/unwrap_or.rs:8:46
+  |
+8 |       let s = Some(String::from("test string"))
+  |  ______________________________________________^
+9 | |         .unwrap_or("Fail".to_string())
+  | |______________________________________^ help: try this: `.unwrap_or_else(|| "Fail".to_string())`
+
+error: aborting due to 2 previous errors
 
