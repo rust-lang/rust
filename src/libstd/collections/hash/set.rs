@@ -10,7 +10,7 @@
 
 use borrow::Borrow;
 use fmt;
-use hash::{Hash, BuildHasher};
+use hash::{Hash, Hasher, BuildHasher};
 use iter::{Chain, FromIterator, FusedIterator};
 use ops::{BitOr, BitAnd, BitXor, Sub};
 
