@@ -20,6 +20,7 @@ use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 use std::cmp;
+use std::iter;
 
 use num_cpus;
 use channel;
@@ -464,20 +465,20 @@ impl Config {
             .unwrap_or_else(|| {
                 INTERNER.intern_str(&env::var("BUILD").unwrap())
             });
-        config.hosts.push(config.build.clone());
-        for host in toml.build.host.iter() {
-            let host = INTERNER.intern_str(host);
-            if !config.hosts.contains(&host) {
-                config.hosts.push(host);
-            }
-        }
-        for target in config.hosts.iter().cloned()
-            .chain(toml.build.target.iter().map(|s| INTERNER.intern_str(s)))
-        {
-            if !config.targets.contains(&target) {
-                config.targets.push(target);
-            }
-        }
+        let mut hosts = toml.build.host.into_iter()
+            .map(|h| INTERNER.intern_string(h))
+            .chain(iter::once(config.build.clone()))
+            .collect::<Vec<_>>();
+        hosts.sort_by(|a, b| a.cmp(&b));
+        hosts.dedup_by(|a, b| a == b);
+        config.hosts = hosts;
+        let mut targets = toml.build.target.into_iter()
+            .map(|t| INTERNER.intern_string(t))
+            .chain(config.hosts.clone())
+            .collect::<Vec<_>>();
+        targets.sort_by(|a, b| a.cmp(&b));
+        targets.dedup_by(|a, b| a == b);
+        config.targets = targets;
         config.hosts = if !flags.host.is_empty() {
             flags.host
         } else {
