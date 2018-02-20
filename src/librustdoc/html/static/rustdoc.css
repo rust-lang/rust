@@ -908,7 +908,7 @@ span.since {
 	}
 
 	.anchor {
-		left: -5px;
+		display: none !important;
 	}
 }
 
@@ -1051,7 +1051,11 @@ h4 > .important-traits {
 	}
 
 	.collapse-toggle {
-		left: -17px;
+		left: -20px;
+	}
+
+	.impl > .collapse-toggle {
+		left: -10px;
 	}
 }
 
