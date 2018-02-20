@@ -36,7 +36,7 @@ use ast::StrStyle;
 use ast::SelfKind;
 use ast::{TraitItem, TraitRef, TraitObjectSyntax};
 use ast::{Ty, TyKind, TypeBinding, TyParam, TyParamBounds};
-use ast::{Visibility, WhereClause, CrateSugar};
+use ast::{Visibility, VisibilityKind, WhereClause, CrateSugar};
 use ast::{UseTree, UseTreeKind};
 use ast::{BinOpKind, UnOp};
 use ast::{RangeEnd, RangeSyntax};
@@ -4132,7 +4132,7 @@ impl<'a> Parser<'a> {
             token::Ident(ident) if ident.name == "macro_rules" &&
                                    self.look_ahead(1, |t| *t == token::Not) => {
                 let prev_span = self.prev_span;
-                self.complain_if_pub_macro(vis, prev_span);
+                self.complain_if_pub_macro(&vis.node, prev_span);
                 self.bump();
                 self.bump();
 
@@ -4169,7 +4169,11 @@ impl<'a> Parser<'a> {
                 node: StmtKind::Local(self.parse_local(attrs.into())?),
                 span: lo.to(self.prev_span),
             }
-        } else if let Some(macro_def) = self.eat_macro_def(&attrs, &Visibility::Inherited, lo)? {
+        } else if let Some(macro_def) = self.eat_macro_def(
+            &attrs,
+            &codemap::respan(lo, VisibilityKind::Inherited),
+            lo,
+        )? {
             Stmt {
                 id: ast::DUMMY_NODE_ID,
                 node: StmtKind::Item(macro_def),
@@ -4296,7 +4300,7 @@ impl<'a> Parser<'a> {
                         self.mk_item(
                             span, id /*id is good here*/,
                             ItemKind::Mac(respan(span, Mac_ { path: pth, tts: tts })),
-                            Visibility::Inherited,
+                            respan(lo, VisibilityKind::Inherited),
                             attrs)
                     }),
                 }
@@ -5213,15 +5217,15 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn complain_if_pub_macro(&mut self, vis: &Visibility, sp: Span) {
+    fn complain_if_pub_macro(&mut self, vis: &VisibilityKind, sp: Span) {
         if let Err(mut err) = self.complain_if_pub_macro_diag(vis, sp) {
             err.emit();
         }
     }
 
-    fn complain_if_pub_macro_diag(&mut self, vis: &Visibility, sp: Span) -> PResult<'a, ()> {
+    fn complain_if_pub_macro_diag(&mut self, vis: &VisibilityKind, sp: Span) -> PResult<'a, ()> {
         match *vis {
-            Visibility::Inherited => Ok(()),
+            VisibilityKind::Inherited => Ok(()),
             _ => {
                 let is_macro_rules: bool = match self.token {
                     token::Ident(sid) => sid.name == Symbol::intern("macro_rules"),
@@ -5283,7 +5287,7 @@ impl<'a> Parser<'a> {
                 self.expect(&token::Not)?;
             }
 
-            self.complain_if_pub_macro(vis, prev_span);
+            self.complain_if_pub_macro(&vis.node, prev_span);
 
             // eat a matched-delimiter token tree:
             *at_end = true;
@@ -5686,12 +5690,13 @@ impl<'a> Parser<'a> {
         self.expected_tokens.push(TokenType::Keyword(keywords::Crate));
         if self.is_crate_vis() {
             self.bump(); // `crate`
-            return Ok(Visibility::Crate(self.prev_span, CrateSugar::JustCrate));
+            return Ok(respan(self.prev_span, VisibilityKind::Crate(CrateSugar::JustCrate)));
         }
 
         if !self.eat_keyword(keywords::Pub) {
-            return Ok(Visibility::Inherited)
+            return Ok(respan(self.prev_span, VisibilityKind::Inherited))
         }
+        let lo = self.prev_span;
 
         if self.check(&token::OpenDelim(token::Paren)) {
             // We don't `self.bump()` the `(` yet because this might be a struct definition where
@@ -5702,25 +5707,35 @@ impl<'a> Parser<'a> {
                 // `pub(crate)`
                 self.bump(); // `(`
                 self.bump(); // `crate`
-                let vis = Visibility::Crate(self.prev_span, CrateSugar::PubCrate);
                 self.expect(&token::CloseDelim(token::Paren))?; // `)`
+                let vis = respan(
+                    lo.to(self.prev_span),
+                    VisibilityKind::Crate(CrateSugar::PubCrate),
+                );
                 return Ok(vis)
             } else if self.look_ahead(1, |t| t.is_keyword(keywords::In)) {
                 // `pub(in path)`
                 self.bump(); // `(`
                 self.bump(); // `in`
                 let path = self.parse_path(PathStyle::Mod)?.default_to_global(); // `path`
-                let vis = Visibility::Restricted { path: P(path), id: ast::DUMMY_NODE_ID };
                 self.expect(&token::CloseDelim(token::Paren))?; // `)`
+                let vis = respan(lo.to(self.prev_span), VisibilityKind::Restricted {
+                    path: P(path),
+                    id: ast::DUMMY_NODE_ID,
+                });
                 return Ok(vis)
             } else if self.look_ahead(2, |t| t == &token::CloseDelim(token::Paren)) &&
                       self.look_ahead(1, |t| t.is_keyword(keywords::Super) ||
-                                             t.is_keyword(keywords::SelfValue)) {
+                                             t.is_keyword(keywords::SelfValue))
+            {
                 // `pub(self)` or `pub(super)`
                 self.bump(); // `(`
                 let path = self.parse_path(PathStyle::Mod)?.default_to_global(); // `super`/`self`
-                let vis = Visibility::Restricted { path: P(path), id: ast::DUMMY_NODE_ID };
                 self.expect(&token::CloseDelim(token::Paren))?; // `)`
+                let vis = respan(lo.to(self.prev_span), VisibilityKind::Restricted {
+                    path: P(path),
+                    id: ast::DUMMY_NODE_ID,
+                });
                 return Ok(vis)
             } else if !can_take_tuple {  // Provide this diagnostic if this is not a tuple struct
                 // `pub(something) fn ...` or `struct X { pub(something) y: Z }`
@@ -5740,7 +5755,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Ok(Visibility::Public)
+        Ok(respan(lo, VisibilityKind::Public))
     }
 
     /// Parse defaultness: `default` or nothing.
@@ -6573,7 +6588,7 @@ impl<'a> Parser<'a> {
 
         // Verify whether we have encountered a struct or method definition where the user forgot to
         // add the `struct` or `fn` keyword after writing `pub`: `pub S {}`
-        if visibility == Visibility::Public &&
+        if visibility.node == VisibilityKind::Public &&
             self.check_ident() &&
             self.look_ahead(1, |t| *t != token::Not)
         {
@@ -6681,7 +6696,7 @@ impl<'a> Parser<'a> {
             // MACRO INVOCATION ITEM
 
             let prev_span = self.prev_span;
-            self.complain_if_pub_macro(&visibility, prev_span);
+            self.complain_if_pub_macro(&visibility.node, prev_span);
 
             let mac_lo = self.span;
 
@@ -6715,8 +6730,8 @@ impl<'a> Parser<'a> {
         }
 
         // FAILURE TO PARSE ITEM
-        match visibility {
-            Visibility::Inherited => {}
+        match visibility.node {
+            VisibilityKind::Inherited => {}
             _ => {
                 return Err(self.span_fatal(self.prev_span, "unmatched visibility `pub`"));
             }

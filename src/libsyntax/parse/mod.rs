@@ -664,7 +664,7 @@ pub fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler
 mod tests {
     use super::*;
     use syntax_pos::{self, Span, BytePos, Pos, NO_EXPANSION};
-    use codemap::Spanned;
+    use codemap::{respan, Spanned};
     use ast::{self, Ident, PatKind};
     use abi::Abi;
     use attr::first_attr_value_str_by_name;
@@ -932,7 +932,7 @@ mod tests {
                                         span: sp(15,21),
                                         recovered: false,
                                     })),
-                            vis: ast::Visibility::Inherited,
+                            vis: respan(sp(0, 0), ast::VisibilityKind::Inherited),
                             span: sp(0,21)})));
     }
 

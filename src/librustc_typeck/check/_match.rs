@@ -114,7 +114,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             };
             if pat_adjustments.len() > 0 {
-                if tcx.sess.features.borrow().match_default_bindings {
+                if tcx.features().match_default_bindings {
                     debug!("default binding mode is now {:?}", def_bm);
                     self.inh.tables.borrow_mut()
                         .pat_adjustments_mut()

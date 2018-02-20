@@ -398,7 +398,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
         }).collect::<Result<Vec<_>, _>>()?))))
       }
       hir::ExprIndex(ref arr, ref idx) => {
-        if !tcx.sess.features.borrow().const_indexing {
+        if !tcx.features().const_indexing {
             signal!(e, IndexOpFeatureGated);
         }
         let arr = cx.eval(arr)?;

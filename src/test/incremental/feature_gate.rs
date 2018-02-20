@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// This test makes sure that we detect changed feature gates.
+
+// revisions:rpass1 cfail2
+// compile-flags: -Z query-dep-graph
+
+#![feature(rustc_attrs)]
+#![cfg_attr(rpass1, feature(nll))]
+
 fn main() {
-    let x;
-
-    match x {
-        (..) => {} //~ ERROR E0619
-        _ => {}
-    }
+    let mut v = vec![1];
+    v.push(v[0]);
+    //[cfail2]~^ ERROR cannot borrow
 }
-

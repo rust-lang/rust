@@ -34,6 +34,7 @@ use std::rc::Rc;
 
 use syntax::ast;
 use syntax::attr;
+use syntax::codemap;
 use syntax::ext::base::SyntaxExtension;
 use syntax::parse::filemap_to_stream;
 use syntax::symbol::Symbol;
@@ -496,7 +497,7 @@ impl CrateStore for cstore::CStore {
                 tokens: body.into(),
                 legacy: def.legacy,
             }),
-            vis: ast::Visibility::Inherited,
+            vis: codemap::respan(local_span.empty(), ast::VisibilityKind::Inherited),
             tokens: None,
         })
     }
