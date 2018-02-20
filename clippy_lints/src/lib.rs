@@ -159,6 +159,7 @@ pub mod returns;
 pub mod serde_api;
 pub mod shadow;
 pub mod strings;
+pub mod suspicious_trait_impl;
 pub mod swap;
 pub mod temporary_assignment;
 pub mod transmute;
@@ -374,7 +375,9 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box types::UnitArg);
     reg.register_late_lint_pass(box double_comparison::DoubleComparisonPass);
     reg.register_late_lint_pass(box question_mark::QuestionMarkPass);
+    reg.register_late_lint_pass(box suspicious_trait_impl::SuspiciousImpl);
     reg.register_late_lint_pass(box redundant_field_names::RedundantFieldNames);
+
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -602,6 +605,8 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         returns::NEEDLESS_RETURN,
         serde_api::SERDE_API_MISUSE,
         strings::STRING_LIT_AS_BYTES,
+        suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL,
+        suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL,
         swap::ALMOST_SWAPPED,
         swap::MANUAL_SWAP,
         temporary_assignment::TEMPORARY_ASSIGNMENT,
