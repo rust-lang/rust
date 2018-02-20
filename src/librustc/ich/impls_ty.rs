@@ -562,15 +562,6 @@ for ::mir::interpret::EvalError<'gcx> {
             },
             Intrinsic(ref s) => s.hash_stable(hcx, hasher),
             InvalidChar(c) => c.hash_stable(hcx, hasher),
-            OutOfMemory {
-                allocation_size,
-                memory_size,
-                memory_usage,
-            } => {
-                allocation_size.hash_stable(hcx, hasher);
-                memory_size.hash_stable(hcx, hasher);
-                memory_usage.hash_stable(hcx, hasher)
-            },
             AbiViolation(ref s) => s.hash_stable(hcx, hasher),
             AlignmentCheckFailed {
                 required,

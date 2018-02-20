@@ -625,11 +625,6 @@ impl<'a, 'tcx> Lift<'tcx> for interpret::EvalError<'a> {
             Intrinsic(ref s) => Intrinsic(s.clone()),
             OverflowingMath => OverflowingMath,
             InvalidChar(c) => InvalidChar(c),
-            OutOfMemory {
-                allocation_size,
-                memory_size,
-                memory_usage,
-            } => OutOfMemory { allocation_size, memory_size, memory_usage },
             ExecutionTimeLimitReached => ExecutionTimeLimitReached,
             StackFrameLimitReached => StackFrameLimitReached,
             OutOfTls => OutOfTls,

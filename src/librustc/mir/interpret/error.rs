@@ -65,11 +65,6 @@ pub enum EvalErrorKind<'tcx> {
     Intrinsic(String),
     OverflowingMath,
     InvalidChar(u128),
-    OutOfMemory {
-        allocation_size: u64,
-        memory_size: u64,
-        memory_usage: u64,
-    },
     ExecutionTimeLimitReached,
     StackFrameLimitReached,
     OutOfTls,
@@ -193,8 +188,6 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "mir not found",
             InvalidChar(..) =>
                 "tried to interpret an invalid 32-bit value as a char",
-            OutOfMemory{..} =>
-                "could not allocate more memory",
             ExecutionTimeLimitReached =>
                 "the expression was too complex to be evaluated or resulted in an infinite loop",
             StackFrameLimitReached =>
@@ -297,9 +290,6 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
                 write!(f, "{}", err),
             InvalidChar(c) =>
                 write!(f, "tried to interpret an invalid 32-bit value as a char: {}", c),
-            OutOfMemory { allocation_size, memory_size, memory_usage } =>
-                write!(f, "tried to allocate {} more bytes, but only {} bytes are free of the {} byte memory",
-                       allocation_size, memory_size - memory_usage, memory_size),
             AlignmentCheckFailed { required, has } =>
                write!(f, "tried to access memory with alignment {}, but alignment {} is required",
                       has, required),

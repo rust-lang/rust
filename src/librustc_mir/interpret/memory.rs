@@ -43,12 +43,6 @@ pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     /// Stores statics while they are being processed, before they are interned and thus frozen
     uninitialized_statics: HashMap<AllocId, Allocation>,
 
-    /// Number of virtual bytes allocated.
-    memory_usage: u64,
-
-    /// Maximum number of virtual bytes that may be allocated.
-    memory_size: u64,
-
     /// The current stack frame.  Used to check accesses against locks.
     pub cur_frame: usize,
 
@@ -63,8 +57,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             alloc_map: HashMap::new(),
             uninitialized_statics: HashMap::new(),
             tcx,
-            memory_size: tcx.sess.const_eval_memory_limit.get(),
-            memory_usage: 0,
             cur_frame: usize::max_value(),
         }
     }
@@ -92,14 +84,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         align: Align,
         kind: Option<MemoryKind<M::MemoryKinds>>,
     ) -> EvalResult<'tcx, MemoryPointer> {
-        if self.memory_size - self.memory_usage < size {
-            return err!(OutOfMemory {
-                allocation_size: size,
-                memory_size: self.memory_size,
-                memory_usage: self.memory_usage,
-            });
-        }
-        self.memory_usage += size;
         assert_eq!(size as usize as u64, size);
         let alloc = Allocation {
             bytes: vec![0; size as usize],
@@ -223,7 +207,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             }
         }
 
-        self.memory_usage -= alloc.bytes.len() as u64;
         debug!("deallocated : {}", ptr.alloc_id);
 
         Ok(())
