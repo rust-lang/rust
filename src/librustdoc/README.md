@@ -28,8 +28,8 @@ that's the high-level overview.
     CSS/JS and landing page are.
 * Most of the HTML printing code is in `html/format.rs` and `html/render.rs`. It's in a bunch of
   `fmt::Display` implementations and supplementary functions.
-* The types that operates on are defined in `clean/mod.rs`, right next to the custom `Clean` trait
-  used to process them out of the rustc HIR.
+* The types that got `Display` impls above are defined in `clean/mod.rs`, right next to the custom
+  `Clean` trait used to process them out of the rustc HIR.
 * The bits specific to using rustdoc as a test harness are in `test.rs`.
 * The Markdown renderer is loaded up in `html/markdown.rs`, including functions for extracting
   doctests from a given block of Markdown.
@@ -68,10 +68,12 @@ and inlining. This is where `#[doc(inline)]`, `#[doc(no_inline)]`, and `#[doc(hi
 processed, as well as the logic for whether a `pub use` should get the full page or a "Reexport"
 line in the module page.
 
-Back in `clean/mod.rs`, the other major thing that happens here is the special collection of doc
-comments (and basic `#[doc=""]` attributes) into a separate field in the `Attributes` struct from
-the other attributes. The primary output of this process is a `clean::Crate` with a tree of `Item`s
-which describe the publicly-documentable items in the target crate.
+The other major thing that happens in `clean/mod.rs` is the collection of doc comments and
+`#[doc=""]` attributes into a separate field of the Attributes struct, present on anything that gets
+hand-written documentation. This makes it easier to collect this documentation later in the process.
+
+The primary output of this process is a clean::Crate with a tree of Items which describe the
+publicly-documentable items in the target crate.
 
 ### Hot potato
 
