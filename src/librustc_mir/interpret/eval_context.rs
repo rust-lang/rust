@@ -246,7 +246,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     }
 
     pub(super) fn resolve(&self, def_id: DefId, substs: &'tcx Substs<'tcx>) -> EvalResult<'tcx, ty::Instance<'tcx>> {
-        let substs = self.tcx.trans_apply_param_substs(self.substs(), &substs);
+        trace!("resolve: {:?}, {:#?}", def_id, substs);
+        trace!("substs: {:#?}", self.substs());
+        trace!("param_env: {:#?}", self.param_env);
+        let substs = self.tcx.trans_apply_param_substs_env(self.substs(), self.param_env, &substs);
         ty::Instance::resolve(
             *self.tcx,
             self.param_env,
@@ -690,8 +693,13 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                                     bug!("reifying a fn ptr that requires \
                                           const arguments");
                                 }
-                                let instance = self.resolve(def_id, substs)?;
-                                let fn_ptr = self.memory.create_fn_alloc(instance);
+                                let instance: EvalResult<'tcx, _> = ty::Instance::resolve(
+                                    *self.tcx,
+                                    self.param_env,
+                                    def_id,
+                                    substs,
+                                ).ok_or(EvalErrorKind::TypeckError.into());
+                                let fn_ptr = self.memory.create_fn_alloc(instance?);
                                 let valty = ValTy {
                                     value: Value::ByVal(PrimVal::Ptr(fn_ptr)),
                                     ty: dest_ty,
