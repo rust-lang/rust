@@ -19,7 +19,7 @@ where
 
 // @has lifetimes/struct.Foo.html
 // @has - '//*[@id="synthetic-implementations-list"]/*[@class="impl"]/*/code' "impl<'c, K> Send \
-// for Foo<'c, K> where 'c: 'static, K: for<'b> Fn(&'b bool) -> &'c u8"
+// for Foo<'c, K> where K: for<'b> Fn(&'b bool) -> &'c u8, 'c: 'static"
 //
 // @has - '//*[@id="synthetic-implementations-list"]/*[@class="impl"]/*/code' "impl<'c, K> Sync \
 // for Foo<'c, K> where K: Sync"

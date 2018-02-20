@@ -1354,10 +1354,55 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
             }
         }
 
+        self.sort_where_predicates(&mut existing_predicates);
+
         Generics {
             params: generic_params,
             where_predicates: existing_predicates,
         }
+    }
+
+    // Ensure that the predicates are in a consistent order. The precise
+    // ordering doesn't actually matter, but it's important that
+    // a given set of predicates always appears in the same order -
+    // both for visual consistency between 'rustdoc' runs, and to
+    // make writing tests much easier
+    fn sort_where_predicates(&self, predicates: &mut Vec<WherePredicate>) {
+        // We should never have identical bounds - and if we do,
+        // they're visually identical as well. Therefore, using
+        // an unstable sort is fine.
+        predicates.sort_unstable_by(|first, second| {
+            // This might look horrendously hacky, but it's actually not that bad.
+            //
+            // For performance reasons, we use several different FxHashMaps
+            // in the process of computing the final set of where predicates.
+            // However, the iteration order of a HashMap is completely unspecified.
+            // In fact, the iteration of an FxHashMap can even vary between platforms,
+            // since FxHasher has different behavior for 32-bit and 64-bit platforms.
+            //
+            // Obviously, it's extremely undesireable for documentation rendering
+            // to be depndent on the platform it's run on. Apart from being confusing
+            // to end users, it makes writing tests much more difficult, as predicates
+            // can appear in any order in the final result.
+            //
+            // To solve this problem, we sort WherePredicates by their Debug
+            // string. The thing to keep in mind is that we don't really
+            // care what the final order is - we're synthesizing an impl
+            // ourselves, so any order can be considered equally valid.
+            // By sorting the predicates, however, we ensure that for
+            // a given codebase, all auto-trait impls always render
+            // in exactly the same way.
+            //
+            // Using the Debug impementation for sorting prevents
+            // us from needing to write quite a bit of almost
+            // entirely useless code (e.g. how should two
+            // Types be sorted relative to each other).
+            // This approach is probably somewhat slower, but
+            // the small number of items involved (impls
+            // rarely have more than a few bounds) means
+            // that it shouldn't matter in practice.
+            format!("{:?}", first).cmp(&format!("{:?}", second))
+        });
     }
 
     fn is_fn_ty(&self, tcx: &TyCtxt, ty: &Type) -> bool {
