@@ -813,9 +813,11 @@ impl Rewrite for ast::Attribute {
             }
             // 1 = `[`
             let shape = shape.offset_left(prefix.len() + 1)?;
-            self.meta()?
-                .rewrite(context, shape)
-                .map(|rw| format!("{}[{}]", prefix, rw))
+            Some(
+                self.meta()
+                    .and_then(|meta| meta.rewrite(context, shape))
+                    .map_or_else(|| snippet.to_owned(), |rw| format!("{}[{}]", prefix, rw)),
+            )
         }
     }
 }
