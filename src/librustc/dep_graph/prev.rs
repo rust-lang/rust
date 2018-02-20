@@ -50,6 +50,11 @@ impl PreviousDepGraph {
     }
 
     #[inline]
+    pub fn node_to_index_opt(&self, dep_node: &DepNode) -> Option<SerializedDepNodeIndex> {
+        self.index.get(dep_node).cloned()
+    }
+
+    #[inline]
     pub fn fingerprint_of(&self, dep_node: &DepNode) -> Option<Fingerprint> {
         self.index
             .get(dep_node)
