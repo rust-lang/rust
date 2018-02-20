@@ -85,10 +85,17 @@ const FOO: SomeType = if X > Y {
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-Currently interpreting `switch` and `switchInt` terminators is not allowed
-during mir interpretation. This RFC proposes to allow them and ignore the
-branches not taken, even if they contain errors. This removes another difference
-between constant evaluation and runtime execution.
+`match` on enums whose variants have no fields or `if` is translated during HIR
+-> MIR lowering to a `switchInt` terminator. Mir interpretation will now have to
+evaluate those terminators (which it already can).
+
+`match` on enums with variants which have fields is translated to `switch`,
+which will check either the discriminant or compute the discriminant in the case
+of packed enums like `Option<&T>` (which has no special memory location for the
+discriminant, but encodes `None` as all zeros and treats everything else as a
+`Some`). When entering a `match` arm's branch, the matched on value is
+essentially transmuted to the enum variant's type, allowing further code to
+access its fields.
 
 # Drawbacks
 [drawbacks]: #drawbacks
