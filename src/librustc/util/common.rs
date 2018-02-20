@@ -373,3 +373,13 @@ fn test_to_readable_str() {
     assert_eq!("1_000_000", to_readable_str(1_000_000));
     assert_eq!("1_234_567", to_readable_str(1_234_567));
 }
+
+pub trait CellUsizeExt {
+    fn increment(&self);
+}
+
+impl CellUsizeExt for Cell<usize> {
+    fn increment(&self) {
+        self.set(self.get() + 1);
+    }
+}
