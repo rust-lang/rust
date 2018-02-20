@@ -30,7 +30,7 @@ function getCurrentValue(name) {
 
 function switchTheme(styleElem, mainStyleElem, newTheme) {
     styleElem.href = mainStyleElem.href.replace("rustdoc.css", newTheme + ".css");
-    updateLocalStorage('theme', newTheme);
+    updateLocalStorage('rustdoc-theme', newTheme);
 }
 
 switchTheme(currentTheme, mainTheme, getCurrentValue('theme') || 'main');
