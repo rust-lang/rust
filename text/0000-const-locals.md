@@ -24,6 +24,11 @@ exists but is still disallowed.
 everywhere else. Historically these did not exist in constants and const fn
 because it would have been very hard to support them in the old const evaluator.
 
+This means that you can only move out of any let binding once, even though in a
+const environment obtaining a copy of the object could be done by executing the
+code twice, side effect free. All invariants held by runtime code are also
+upheld by constant evaluation.
+
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
