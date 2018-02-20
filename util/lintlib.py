@@ -77,7 +77,7 @@ def parse_configs(path):
     confvars = re.findall(confvar_re, match.group(1))
 
     for (lint, doc, name, default, ty) in confvars:
-        configs[lint.lower()] = Config(name, ty, doc, default)
+        configs[lint.lower()] = Config(name.replace("_", "-"), ty, doc, default)
 
     return configs
 
