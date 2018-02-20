@@ -9,5 +9,5 @@ path = "lib.rs"
 crate-type = ["dylib", "rlib"]
 
 [dependencies]
-getopts = "0.2"
+getopts = "0.2.17"
 term = { path = "../libterm" }
