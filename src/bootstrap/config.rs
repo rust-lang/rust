@@ -17,7 +17,7 @@ use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process;
 use std::cmp;
 
@@ -126,7 +126,6 @@ pub struct Config {
     pub docdir: Option<PathBuf>,
     pub bindir: Option<PathBuf>,
     pub libdir: Option<PathBuf>,
-    pub libdir_relative: Option<PathBuf>,
     pub mandir: Option<PathBuf>,
     pub codegen_tests: bool,
     pub nodejs: Option<PathBuf>,
@@ -418,22 +417,6 @@ impl Config {
             config.mandir = install.mandir.clone().map(PathBuf::from);
         }
 
-        // Try to infer `libdir_relative` from `libdir`.
-        if let Some(ref libdir) = config.libdir {
-            let mut libdir = libdir.as_path();
-            if !libdir.is_relative() {
-                // Try to make it relative to the prefix.
-                if let Some(ref prefix) = config.prefix {
-                    if let Ok(suffix) = libdir.strip_prefix(prefix) {
-                        libdir = suffix;
-                    }
-                }
-            }
-            if libdir.is_relative() {
-                config.libdir_relative = Some(libdir.to_path_buf());
-            }
-        }
-
         // Store off these values as options because if they're not provided
         // we'll infer default values for them later
         let mut thinlto = None;
@@ -579,6 +562,17 @@ impl Config {
         config.ignore_git = ignore_git.unwrap_or(default);
 
         config
+    }
+
+    /// Try to find the relative path of `libdir`.
+    pub fn libdir_relative(&self) -> Option<&Path> {
+        let libdir = self.libdir.as_ref()?;
+        if libdir.is_relative() {
+            Some(libdir)
+        } else {
+            // Try to make it relative to the prefix.
+            libdir.strip_prefix(self.prefix.as_ref()?).ok()
+        }
     }
 
     pub fn verbose(&self) -> bool {
