@@ -50,6 +50,13 @@ impl<'tcx, M: QueryConfig<Key=DefId>> QueryDescription<'tcx> for M {
     }
 }
 
+
+impl<'tcx> QueryDescription<'tcx> for queries::is_mir_only_rlib<'tcx> {
+    fn describe(_tcx: TyCtxt, cnum: CrateNum) -> String {
+        format!("computing whether `{}` is a MIR-only RLIB", cnum)
+    }
+}
+
 impl<'tcx> QueryDescription<'tcx> for queries::is_copy_raw<'tcx> {
     fn describe(_tcx: TyCtxt, env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> String {
         format!("computing whether `{}` is `Copy`", env.value)

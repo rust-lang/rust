@@ -42,30 +42,41 @@ pub fn assert_symbols_are_distinct<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>, tra
             let trans_item1 = pair[0].0;
             let trans_item2 = pair[1].0;
 
-            let span1 = trans_item1.local_span(tcx);
-            let span2 = trans_item2.local_span(tcx);
+            bug!("encountered two distinct MonoItems with the same symbol name:\n\
+                  symbol name: {}\n\
+                  item 1: {:?}\n\
+                  item 2: {:?}",
+                  sym1,
+                  trans_item1,
+                  trans_item2)
 
-            // Deterministically select one of the spans for error reporting
-            let span = match (span1, span2) {
-                (Some(span1), Some(span2)) => {
-                    Some(if span1.lo().0 > span2.lo().0 {
-                        span1
-                    } else {
-                        span2
-                    })
-                }
-                (Some(span), None) |
-                (None, Some(span)) => Some(span),
-                _ => None
-            };
+            // let span1 = trans_item1.local_span(tcx);
+            // let span2 = trans_item2.local_span(tcx);
 
-            let error_message = format!("symbol `{}` is already defined", sym1);
+            // // Deterministically select one of the spans for error reporting
+            // let span = match (span1, span2) {
+            //     (Some(span1), Some(span2)) => {
+            //         Some(if span1.lo().0 > span2.lo().0 {
+            //             span1
+            //         } else {
+            //             span2
+            //         })
+            //     }
+            //     (Some(span), None) |
+            //     (None, Some(span)) => Some(span),
+            //     _ => None
+            // };
 
-            if let Some(span) = span {
-                tcx.sess.span_fatal(span, &error_message)
-            } else {
-                tcx.sess.fatal(&error_message)
-            }
+
+            // let error_message = format!("assert_symbols_are_distinct: symbol `{}` is already defined", sym1);
+
+            // if let Some(span) = span {
+            //     tcx.sess.span_fatal(span, &error_message)
+            //     span_bug!(span, "{}", )
+
+            // } else {
+            //     tcx.sess.fatal(&error_message)
+            // }
         }
     }
 }

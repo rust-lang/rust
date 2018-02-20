@@ -374,6 +374,8 @@ define_maps! { <'tcx>
     // Get an estimate of the size of an InstanceDef based on its MIR for CGU partitioning.
     [] fn instance_def_size_estimate: instance_def_size_estimate_dep_node(ty::InstanceDef<'tcx>)
         -> usize,
+
+    [] fn is_mir_only_rlib: IsMirOnlyRlib(CrateNum) -> bool,
 }
 
 //////////////////////////////////////////////////////////////////////

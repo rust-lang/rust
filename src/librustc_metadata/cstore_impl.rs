@@ -237,6 +237,8 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
     has_copy_closures => { cdata.has_copy_closures(tcx.sess) }
     has_clone_closures => { cdata.has_clone_closures(tcx.sess) }
+
+    is_mir_only_rlib => { cdata.root.is_mir_only_rlib }
 }
 
 pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
