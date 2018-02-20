@@ -233,7 +233,7 @@ declare_features! (
     // allow `extern "platform-intrinsic" { ... }`
     (active, platform_intrinsics, "1.4.0", Some(27731)),
 
-    // allow `#[unwind]`
+    // allow `#[unwind(..)]`
     // rust runtime internal
     (active, unwind_attributes, "1.4.0", None),
 

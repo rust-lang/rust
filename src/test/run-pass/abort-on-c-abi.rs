@@ -19,6 +19,7 @@ use std::io::prelude::*;
 use std::io;
 use std::process::{Command, Stdio};
 
+#[unwind(aborts)]
 extern "C" fn panic_in_ffi() {
     panic!("Test");
 }
