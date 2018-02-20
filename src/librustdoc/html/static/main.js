@@ -96,14 +96,6 @@
         }
     }
 
-    function onEach(arr, func) {
-        if (arr && arr.length > 0 && func) {
-            for (var i = 0; i < arr.length; i++) {
-                func(arr[i]);
-            }
-        }
-    }
-
     function isHidden(elem) {
         return (elem.offsetParent === null)
     }
