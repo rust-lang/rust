@@ -1,0 +1,34 @@
+error[E0667]: `impl Trait` is not allowed in path parameters
+  --> $DIR/impl_trait_projections.rs:23:51
+   |
+23 | fn projection_is_disallowed(x: impl Iterator) -> <impl Iterator>::Item {
+   |                                                   ^^^^^^^^^^^^^
+
+error[E0667]: `impl Trait` is not allowed in path parameters
+  --> $DIR/impl_trait_projections.rs:30:9
+   |
+30 |     -> <impl Iterator as Iterator>::Item
+   |         ^^^^^^^^^^^^^
+
+error[E0667]: `impl Trait` is not allowed in path parameters
+  --> $DIR/impl_trait_projections.rs:37:27
+   |
+37 |     -> <::std::ops::Range<impl Debug> as Iterator>::Item
+   |                           ^^^^^^^^^^
+
+error[E0667]: `impl Trait` is not allowed in path parameters
+  --> $DIR/impl_trait_projections.rs:44:29
+   |
+44 |     -> <dyn Iterator<Item = impl Debug> as Iterator>::Item
+   |                             ^^^^^^^^^^
+
+error[E0223]: ambiguous associated type
+  --> $DIR/impl_trait_projections.rs:23:50
+   |
+23 | fn projection_is_disallowed(x: impl Iterator) -> <impl Iterator>::Item {
+   |                                                  ^^^^^^^^^^^^^^^^^^^^^ ambiguous associated type
+   |
+   = note: specify the type using the syntax `<impl std::iter::Iterator as Trait>::Item`
+
+error: aborting due to 5 previous errors
+
