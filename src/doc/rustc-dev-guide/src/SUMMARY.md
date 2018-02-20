@@ -2,9 +2,11 @@
 
 - [About this guide](./about-this-guide.md)
 - [How to build the compiler and run what you built](./how-to-build-and-run.md)
+- [Coding conventions](./conventions.md)
+- [The compiler testing framework](./tests/intro.md)
+    - [Running tests](./tests/running.md)
+    - [Adding new tests](./tests/adding.md)
     - [Using `compiletest` + commands to control test execution](./compiletest.md)
-- [Using the compiler testing framework](./running-tests.md)
-- [How to add new header commands to `compiletest`](./compiletest.md)
 - [Walkthrough: a typical contribution](./walkthrough.md)
 - [High-level overview of the compiler source](./high-level-overview.md)
 - [Queries: demand-driven compilation](./query.md)
