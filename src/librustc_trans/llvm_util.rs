@@ -83,18 +83,17 @@ const ARM_WHITELIST: &'static [&'static str] = &["neon", "v7", "vfp2", "vfp3", "
 
 const AARCH64_WHITELIST: &'static [&'static str] = &["neon", "v7"];
 
-const X86_WHITELIST: &'static [&'static str] = &["avx", "avx2", "bmi", "bmi2", "sse",
-                                                 "sse2", "sse3", "sse4.1", "sse4.2",
-                                                 "ssse3", "tbm", "lzcnt", "popcnt",
-                                                 "sse4a","fma", "rdrand", "rdseed",
-                                                 "xsave", "xsaveopt", "xsavec",
-                                                 "xsaves", "aes", "pclmulqdq",
-                                                 "avx512bw", "avx512cd",
-                                                 "avx512dq", "avx512er",
-                                                 "avx512f", "avx512ifma",
-                                                 "avx512pf", "avx512vbmi",
-                                                 "avx512vl", "avx512vpopcntdq",
-                                                 "mmx", "fxsr"];
+const X86_WHITELIST: &'static [&'static str] = &["aes", "avx", "avx2", "avx512bw",
+                                                 "avx512cd", "avx512dq", "avx512er",
+                                                 "avx512f", "avx512ifma", "avx512pf",
+                                                 "avx512vbmi", "avx512vl", "avx512vpopcntdq",
+                                                 "bmi", "bmi2", "fma", "fxsr",
+                                                 "lzcnt", "mmx", "pclmulqdq",
+                                                 "popcnt", "rdrand", "rdseed",
+                                                 "sse", "sse2", "sse3", "sse4.1",
+                                                 "sse4.2", "sse4a", "ssse3",
+                                                 "tbm", "xsave", "xsavec",
+                                                 "xsaveopt", "xsaves"];
 
 const HEXAGON_WHITELIST: &'static [&'static str] = &["hvx", "hvx-double"];
 
