@@ -469,7 +469,7 @@ impl Condvar {
     /// let result = cvar.wait_timeout_until(
     ///     lock.lock().unwrap(),
     ///     Duration::from_millis(100),
-    ///     |started| started,
+    ///     |&mut started| started,
     /// ).unwrap();
     /// if result.1.timed_out() {
     ///     // timed-out without the condition ever evaluating to true.
