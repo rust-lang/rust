@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(ignored_generic_bounds)]
+
 pub enum Expr<'var, VAR> {
     Let(Box<Expr<'var, VAR>>,
         Box<for<'v: 'var> Fn(Expr<'v, VAR>) -> Expr<'v, VAR> + 'var>)
