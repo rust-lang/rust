@@ -2403,37 +2403,35 @@ impl<B, I, St, F> Iterator for Scan<I, St, F> where
 /// An iterator that maps each element to an iterator, and yields the elements
 /// of the produced iterators.
 ///
-/// This `struct` is created by the [`flat_map`] method on [`Iterator`]. See its
+/// This `type` is created by the [`flat_map`] method on [`Iterator`]. See its
 /// documentation for more.
 ///
 /// [`flat_map`]: trait.Iterator.html#method.flat_map
 /// [`Iterator`]: trait.Iterator.html
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Clone)]
-pub struct FlatMap<I, U: IntoIterator, F> {
+type FlatMap<I, U, F> = Flatten<Map<I, F>, <U as IntoIterator>::IntoIter>;
+
+/// An iterator that flattens one level of nesting in an iterator of things
+/// that can be turned into iterators.
+///
+/// This `struct` is created by the [`flatten`] method on [`Iterator`]. See its
+/// documentation for more.
+///
+/// [`flatten`]: trait.Iterator.html#method.flatten
+/// [`Iterator`]: trait.Iterator.html
+#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+#[unstable(feature = "iterator_flatten", issue = "0")]
+#[derive(Clone, Debug)]
+pub struct Flatten<I, U> {
     iter: I,
-    f: F,
-    frontiter: Option<U::IntoIter>,
-    backiter: Option<U::IntoIter>,
+    frontiter: Option<U>,
+    backiter: Option<U>,
 }
 
-#[stable(feature = "core_impl_debug", since = "1.9.0")]
-impl<I: fmt::Debug, U: IntoIterator, F> fmt::Debug for FlatMap<I, U, F>
-    where U::IntoIter: fmt::Debug
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("FlatMap")
-            .field("iter", &self.iter)
-            .field("frontiter", &self.frontiter)
-            .field("backiter", &self.backiter)
-            .finish()
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<I: Iterator, U: IntoIterator, F> Iterator for FlatMap<I, U, F>
-    where F: FnMut(I::Item) -> U,
+#[unstable(feature = "iterator_flatten", issue = "0")]
+impl<I: Iterator, U: Iterator> Iterator for Flatten<I, U>
+    where I::Item: IntoIterator<IntoIter = U, Item = U::Item>
 {
     type Item = U::Item;
 
@@ -2441,13 +2439,11 @@ impl<I: Iterator, U: IntoIterator, F> Iterator for FlatMap<I, U, F>
     fn next(&mut self) -> Option<U::Item> {
         loop {
             if let Some(ref mut inner) = self.frontiter {
-                if let Some(x) = inner.by_ref().next() {
-                    return Some(x)
-                }
+                if let elt@Some(_) = inner.next() { return elt }
             }
-            match self.iter.next().map(&mut self.f) {
+            match self.iter.next() {
                 None => return self.backiter.as_mut().and_then(|it| it.next()),
-                next => self.frontiter = next.map(IntoIterator::into_iter),
+                Some(inner) => self.frontiter = Some(inner.into_iter()),
             }
         }
     }
@@ -2473,10 +2469,9 @@ impl<I: Iterator, U: IntoIterator, F> Iterator for FlatMap<I, U, F>
         self.frontiter = None;
 
         {
-            let f = &mut self.f;
             let frontiter = &mut self.frontiter;
             init = self.iter.try_fold(init, |acc, x| {
-                let mut mid = f(x).into_iter();
+                let mut mid = x.into_iter();
                 let r = mid.try_fold(acc, &mut fold);
                 *frontiter = Some(mid);
                 r
@@ -2497,27 +2492,24 @@ impl<I: Iterator, U: IntoIterator, F> Iterator for FlatMap<I, U, F>
         where Fold: FnMut(Acc, Self::Item) -> Acc,
     {
         self.frontiter.into_iter()
-            .chain(self.iter.map(self.f).map(U::into_iter))
+            .chain(self.iter.map(IntoIterator::into_iter))
             .chain(self.backiter)
             .fold(init, |acc, iter| iter.fold(acc, &mut fold))
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<I: DoubleEndedIterator, U, F> DoubleEndedIterator for FlatMap<I, U, F> where
-    F: FnMut(I::Item) -> U,
-    U: IntoIterator,
-    U::IntoIter: DoubleEndedIterator
+#[unstable(feature = "iterator_flatten", issue = "0")]
+impl<I, U> DoubleEndedIterator for Flatten<I, U>
+    where I: DoubleEndedIterator, U: DoubleEndedIterator,
+          I::Item: IntoIterator<IntoIter = U, Item = U::Item>
 {
     #[inline]
     fn next_back(&mut self) -> Option<U::Item> {
         loop {
             if let Some(ref mut inner) = self.backiter {
-                if let Some(y) = inner.next_back() {
-                    return Some(y)
-                }
+                if let elt@Some(_) = inner.next_back() { return elt }
             }
-            match self.iter.next_back().map(&mut self.f) {
+            match self.iter.next_back() {
                 None => return self.frontiter.as_mut().and_then(|it| it.next_back()),
                 next => self.backiter = next.map(IntoIterator::into_iter),
             }
@@ -2534,10 +2526,9 @@ impl<I: DoubleEndedIterator, U, F> DoubleEndedIterator for FlatMap<I, U, F> wher
         self.backiter = None;
 
         {
-            let f = &mut self.f;
             let backiter = &mut self.backiter;
             init = self.iter.try_rfold(init, |acc, x| {
-                let mut mid = f(x).into_iter();
+                let mut mid = x.into_iter();
                 let r = mid.try_rfold(acc, &mut fold);
                 *backiter = Some(mid);
                 r
@@ -2558,15 +2549,15 @@ impl<I: DoubleEndedIterator, U, F> DoubleEndedIterator for FlatMap<I, U, F> wher
         where Fold: FnMut(Acc, Self::Item) -> Acc,
     {
         self.frontiter.into_iter()
-            .chain(self.iter.map(self.f).map(U::into_iter))
+            .chain(self.iter.map(IntoIterator::into_iter))
             .chain(self.backiter)
             .rfold(init, |acc, iter| iter.rfold(acc, &mut fold))
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
-impl<I, U, F> FusedIterator for FlatMap<I, U, F>
-    where I: FusedIterator, U: IntoIterator, F: FnMut(I::Item) -> U {}
+#[unstable(feature = "fused", issue = "0")]
+impl<I: FusedIterator, U: Iterator> FusedIterator for Flatten<I, U>
+    where I::Item: IntoIterator<IntoIter = U, Item = U::Item> {}
 
 /// An iterator that yields `None` forever after the underlying iterator
 /// yields `None` once.

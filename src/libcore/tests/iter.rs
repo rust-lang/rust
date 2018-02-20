@@ -836,6 +836,8 @@ fn test_iterator_scan() {
     assert_eq!(i, ys.len());
 }
 
+// Note: We test flatten() by testing flat_map().
+
 #[test]
 fn test_iterator_flat_map() {
     let xs = [0, 3, 6];

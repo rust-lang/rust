@@ -12,7 +12,7 @@ use cmp::Ordering;
 use ops::Try;
 
 use super::{AlwaysOk, LoopState};
-use super::{Chain, Cycle, Cloned, Enumerate, Filter, FilterMap, FlatMap, Fuse};
+use super::{Chain, Cycle, Cloned, Enumerate, Filter, FilterMap, Flatten, FlatMap, Fuse};
 use super::{Inspect, Map, Peekable, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile, Rev};
 use super::{Zip, Sum, Product};
 use super::{ChainState, FromIterator, ZipImpl};
@@ -997,11 +997,15 @@ pub trait Iterator {
     /// an extra layer of indirection. `flat_map()` will remove this extra layer
     /// on its own.
     ///
+    /// You can think of [`flat_map(f)`][flat_map] as the equivalent of
+    /// [`map`]ping, and then [`flatten`]ing as in `map(f).flatten()`.
+    ///
     /// Another way of thinking about `flat_map()`: [`map`]'s closure returns
     /// one item for each element, and `flat_map()`'s closure returns an
     /// iterator for each element.
     ///
     /// [`map`]: #method.map
+    /// [`flatten`]: #method.flatten
     ///
     /// # Examples
     ///
@@ -1021,7 +1025,46 @@ pub trait Iterator {
     fn flat_map<U, F>(self, f: F) -> FlatMap<Self, U, F>
         where Self: Sized, U: IntoIterator, F: FnMut(Self::Item) -> U,
     {
-        FlatMap{iter: self, f: f, frontiter: None, backiter: None }
+        self.map(f).flatten()
+    }
+
+    /// Creates an iterator that flattens nested structure.
+    ///
+    /// This is useful when you have an iterator of iterators or an iterator of
+    /// things that can be turned into iterators and you want to remove one
+    /// level of indirection.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iterator_flatten)]
+    ///
+    /// let data = vec![vec![1, 2, 3, 4], vec![5, 6]];
+    /// let flattened = data.into_iter().flatten().collect::<Vec<u8>>();
+    /// assert_eq!(flattened, &[1, 2, 3, 4, 5, 6]);
+    /// ```
+    ///
+    /// Mapping and then flattening:
+    ///
+    /// ```
+    /// #![feature(iterator_flatten)]
+    ///
+    /// let words = ["alpha", "beta", "gamma"];
+    ///
+    /// // chars() returns an iterator
+    /// let merged: String = words.iter()
+    ///                           .map(|s| s.chars())
+    ///                           .flatten()
+    ///                           .collect();
+    /// assert_eq!(merged, "alphabetagamma");
+    /// ```
+    #[inline]
+    #[unstable(feature = "iterator_flatten", issue = "0")]
+    fn flatten(self) -> Flatten<Self, <Self::Item as IntoIterator>::IntoIter>
+    where Self: Sized, Self::Item: IntoIterator {
+        Flatten { iter: self, frontiter: None, backiter: None }
     }
 
     /// Creates an iterator which ends after the first [`None`].
