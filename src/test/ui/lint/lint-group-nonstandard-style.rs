@@ -13,11 +13,11 @@
 
 fn CamelCase() {} //~ ERROR should have a snake
 
-#[allow(bad_style)]
+#[allow(nonstandard_style)]
 mod test {
     fn CamelCase() {}
 
-    #[forbid(bad_style)]
+    #[forbid(nonstandard_style)]
     mod bad {
         fn CamelCase() {} //~ ERROR should have a snake
 
@@ -25,7 +25,7 @@ mod test {
     }
 
     mod warn {
-        #![warn(bad_style)]
+        #![warn(nonstandard_style)]
 
         fn CamelCase() {} //~ WARN should have a snake
 
