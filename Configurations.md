@@ -1346,6 +1346,7 @@ extern crate sit;
 ```rust
 extern crate lorem;
 extern crate ipsum;
+
 extern crate dolor;
 extern crate sit;
 ```
