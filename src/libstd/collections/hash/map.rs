@@ -1391,9 +1391,9 @@ impl<K, V, S> Hash for HashMap<K, V, S>
         // we might be able do so in the future.
         hasher.write_u64(
             self.iter()
-                .map(|(k, v)| {
+                .map(|kv| {
                     let mut h = DefaultHasher::new();
-                    (k, v).hash(&mut h);
+                    kv.hash(&mut h);
                     h.finish()
                 })
                 .fold(0, u64::wrapping_add)
