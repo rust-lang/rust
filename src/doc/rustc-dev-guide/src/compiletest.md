@@ -6,7 +6,8 @@ configure behavior and expected results of both individual and groups of tests.
 
 `compiletest` tests may check test code for success, for failure or in some cases, even failure to compile.  Tests are
 typically organized as a Rust source file with annotations in comments before and/or within the test code, which serve to
-direct `compiletest` on if or how to run the test, what behavior to expect, and more.
+direct `compiletest` on if or how to run the test, what behavior to expect, and more.  If you are unfamiliar with the compiler
+testing framework, see [`this chapter`](https://github.com/rust-lang-nursery/rustc-guide/blob/master/src/tests/intro.md) for additional background.
 
 The tests themselves are typically (but not always) organized into "suites"--for example, `run-pass`, a folder
 representing tests that should succeed, `run-fail`, a folder holding tests that should compile successfully, but return
@@ -16,8 +17,9 @@ introduction to the different suites of compiler tests along with details about 
 [here, at Brian Anderson's blog](https://brson.github.io/2017/07/10/how-rust-is-tested#s-ct).
 
 ## Adding a new test file
-Simply create your new test in the appropriate location under [src/test](https://github.com/rust-lang/rust/tree/master/src/test).  No registration of test files is necessary as 
+Briefly, simply create your new test in the appropriate location under [src/test](https://github.com/rust-lang/rust/tree/master/src/test).  No registration of test files is necessary as 
 `compiletest` will scan the [src/test](https://github.com/rust-lang/rust/tree/master/src/test) subfolder recursively, and will execute any Rust source files it finds as tests.
+See [`Adding new tests`](https://github.com/rust-lang-nursery/rustc-guide/blob/master/src/tests/adding.md) for a complete guide on how to adding new tests. 
 
 ## Header Commands
 Source file annotations which appear in comments near the top of the source file *before* any test code are known as header

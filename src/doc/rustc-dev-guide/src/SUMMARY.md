@@ -2,6 +2,7 @@
 
 - [About this guide](./about-this-guide.md)
 - [How to build the compiler and run what you built](./how-to-build-and-run.md)
+    - [Using `compiletest` + commands to control test execution](./compiletest.md)
 - [Using the compiler testing framework](./running-tests.md)
 - [How to add new header commands to `compiletest`](./compiletest.md)
 - [Walkthrough: a typical contribution](./walkthrough.md)
