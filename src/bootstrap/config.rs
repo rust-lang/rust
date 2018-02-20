@@ -111,8 +111,11 @@ pub struct Build {
     build: Option<String>,
     host: Vec<String>,
     target: Vec<String>,
-    cargo: Option<String>,
-    rustc: Option<String>,
+
+    #[serde(rename = "cargo")]
+    pub initial_cargo: Option<PathBuf>,
+    #[serde(rename = "rustc")]
+    pub initial_rustc: Option<PathBuf>,
 
     pub low_priority: bool,
     pub compiler_docs: bool,
@@ -140,8 +143,8 @@ impl Default for Build {
             build: None,
             host: Vec::new(),
             target: Vec::new(),
-            cargo: None,
-            rustc: None,
+            initial_cargo: None,
+            initial_rustc: None,
             low_priority: false,
             compiler_docs: false,
             docs: true,
@@ -512,10 +515,15 @@ impl Config {
         config.dist = toml.dist;
 
         let stage0_root = out.join(&config.build).join("stage0/bin");
-        config.initial_rustc = match toml.build.rustc {
+        config.initial_rustc = match toml.build.initial_rustc {
             Some(s) => PathBuf::from(s),
             None => stage0_root.join(exe("rustc", &config.build)),
         };
+        config.initial_cargo = match toml.build.initial_cargo {
+            Some(s) => PathBuf::from(s),
+            None => stage0_root.join(exe("cargo", &config.build)),
+        };
+
         // If local-rust is the same major.minor as the current version, then force a local-rebuild
         let local_version_verbose = output(
             Command::new(&config.initial_rustc).arg("--version").arg("--verbose"));
@@ -527,10 +535,6 @@ impl Config {
             eprintln!("auto-detected local rebuild");
             config.general.local_rebuild = true;
         }
-        config.initial_cargo = match toml.build.cargo {
-            Some(s) => PathBuf::from(s),
-            None => stage0_root.join(exe("cargo", &config.build)),
-        };
 
         // The msvc hosts don't use jemalloc, turn it off globally to
         // avoid packaging the dummy liballoc_jemalloc on that platform.
