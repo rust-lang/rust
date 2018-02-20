@@ -913,9 +913,7 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
             return;
         }
 
-        let start_point = self_expr.span.hi();
-        let end_point = span.hi();
-        let span_replace_word = Span::new(start_point, end_point, span.ctxt());
+        let span_replace_word = self_expr.span.with_lo(span.hi());
 
         // don't lint for constant values
         let owner_def = cx.tcx.hir.get_parent_did(arg.id);
@@ -946,7 +944,7 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
         span_lint_and_sugg(
             cx,
             OR_FUN_CALL,
-            span_replace_word ,
+            span_replace_word,
             &format!("use of `{}` followed by a function call", name),
             "try this",
             format!(".{}_{}({})", name, suffix, sugg),
