@@ -109,7 +109,9 @@ struct TomlConfig {
 #[derive(Deserialize, Clone)]
 #[serde(default, deny_unknown_fields, rename_all = "kebab-case")]
 pub struct Build {
-    build: Option<String>,
+    #[serde(skip)]
+    // We get build from the BUILD env-var, provided by bootstrap.py
+    build: String,
     host: Vec<String>,
     target: Vec<String>,
 
@@ -141,7 +143,7 @@ pub struct Build {
 impl Default for Build {
     fn default() -> Build {
         Build {
-            build: None,
+            build: env::var("BUILD").unwrap(),
             host: Vec::new(),
             target: Vec::new(),
             initial_cargo: None,
@@ -460,11 +462,8 @@ impl Config {
         }).unwrap_or_else(|| TomlConfig::default());
 
         config.general = toml.build.clone();
-        config.build = flags.build
-            .or_else(|| toml.build.build.clone().map(|b| INTERNER.intern_string(b)))
-            .unwrap_or_else(|| {
-                INTERNER.intern_str(&env::var("BUILD").unwrap())
-            });
+        // bootstrap.py already handles this fully -- checks flags, toml, and default-generates
+        config.build = INTERNER.intern_str(&toml.build.build);
         let mut hosts = toml.build.host.into_iter()
             .map(|h| INTERNER.intern_string(h))
             .chain(iter::once(config.build.clone()))
