@@ -260,6 +260,10 @@ pub fn opts() -> Vec<RustcOptGroup> {
                        "check if given theme is valid",
                        "FILES")
         }),
+        unstable("root-path", |o| {
+            o.optopt("", "root-path", "Change default folder to store non-HTML resources",
+                     "PATH")
+        }),
     ]
 }
 
@@ -366,7 +370,7 @@ pub fn main_args(args: &[String]) -> isize {
     let markdown_input = Path::new(input).extension()
         .map_or(false, |e| e == "md" || e == "markdown");
 
-    let output = matches.opt_str("o").map(|s| PathBuf::from(&s));
+    let mut output = matches.opt_str("o").map(|s| PathBuf::from(&s));
     let css_file_extension = matches.opt_str("e").map(|s| PathBuf::from(&s));
     let cfgs = matches.opt_strs("cfg");
 
@@ -434,18 +438,29 @@ pub fn main_args(args: &[String]) -> isize {
     }
 
     let output_format = matches.opt_str("w");
+    let option_root_path = matches.opt_str("root-path").unwrap_or(String::new());
+    let mut root_path = format!("../../{}", option_root_path);
+    if !root_path.ends_with("/") {
+        root_path.push('/');
+    }
     let res = acquire_input(PathBuf::from(input), externs, &matches, move |out| {
         let Output { krate, passes, renderinfo } = out;
         info!("going to format");
         match output_format.as_ref().map(|s| &**s) {
             Some("html") | None => {
+                if let Some(ref mut output) = output {
+                    output.push(&option_root_path);
+                }
                 html::render::run(krate, &external_html, playground_url,
-                                  output.unwrap_or(PathBuf::from("doc")),
+                                  output.clone().unwrap_or(PathBuf::from("doc")),
+                                  output.unwrap_or(PathBuf::from(&format!("doc/{}",
+                                                                          &option_root_path))),
                                   passes.into_iter().collect(),
                                   css_file_extension,
                                   renderinfo,
                                   sort_modules_alphabetically,
-                                  themes)
+                                  themes,
+                                  root_path)
                     .expect("failed to generate documentation");
                 0
             }

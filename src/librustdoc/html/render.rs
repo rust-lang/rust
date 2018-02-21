@@ -92,6 +92,8 @@ pub struct Context {
     /// The current destination folder of where HTML artifacts should be placed.
     /// This changes as the context descends into the module hierarchy.
     pub dst: PathBuf,
+    /// The configurable destination folder for static resources (css, js, etc...).
+    pub resources_dst: PathBuf,
     /// A flag, which when `true`, will render pages which redirect to the
     /// real location of an item. This is used to allow external links to
     /// publicly reused items to redirect to the right location.
@@ -128,6 +130,8 @@ pub struct SharedContext {
     pub sort_modules_alphabetically: bool,
     /// Additional themes to be added to the generated docs.
     pub themes: Vec<PathBuf>,
+    /// The path where all non-HTML resources will be stored.
+    pub root_path: String,
 }
 
 impl SharedContext {
@@ -476,12 +480,14 @@ pub fn derive_id(candidate: String) -> String {
 pub fn run(mut krate: clean::Crate,
            external_html: &ExternalHtml,
            playground_url: Option<String>,
+           html_dst: PathBuf,
            dst: PathBuf,
            passes: FxHashSet<String>,
            css_file_extension: Option<PathBuf>,
            renderinfo: RenderInfo,
            sort_modules_alphabetically: bool,
-           themes: Vec<PathBuf>) -> Result<(), Error> {
+           themes: Vec<PathBuf>,
+           root_path: String) -> Result<(), Error> {
     let src_root = match krate.src {
         FileName::Real(ref p) => match p.parent() {
             Some(p) => p.to_path_buf(),
@@ -505,6 +511,7 @@ pub fn run(mut krate: clean::Crate,
         created_dirs: RefCell::new(FxHashSet()),
         sort_modules_alphabetically,
         themes,
+        root_path,
     };
 
     // If user passed in `--playground-url` arg, we fill in crate name here
@@ -543,10 +550,12 @@ pub fn run(mut krate: clean::Crate,
         }
     }
     try_err!(fs::create_dir_all(&dst), &dst);
-    krate = render_sources(&dst, &mut scx, krate)?;
+    try_err!(fs::create_dir_all(&html_dst), &html_dst);
+    krate = render_sources(&html_dst, &mut scx, krate)?;
     let cx = Context {
         current: Vec::new(),
-        dst,
+        dst: html_dst,
+        resources_dst: dst,
         render_redirect_pages: false,
         shared: Arc::new(scx),
     };
@@ -717,7 +726,7 @@ fn write_shared(cx: &Context,
     // Add all the static files. These may already exist, but we just
     // overwrite them anyway to make sure that they're fresh and up-to-date.
 
-    write(cx.dst.join("rustdoc.css"),
+    write(cx.resources_dst.join("rustdoc.css"),
           include_bytes!("static/rustdoc.css"))?;
 
     // To avoid "main.css" to be overwritten, we'll first run over the received themes and only
@@ -729,16 +738,16 @@ fn write_shared(cx: &Context,
 
         let mut f = try_err!(File::open(&entry), &entry);
         try_err!(f.read_to_end(&mut content), &entry);
-        write(cx.dst.join(try_none!(entry.file_name(), &entry)), content.as_slice())?;
+        write(cx.resources_dst.join(try_none!(entry.file_name(), &entry)), content.as_slice())?;
         themes.insert(try_none!(try_none!(entry.file_stem(), &entry).to_str(), &entry).to_owned());
     }
 
-    write(cx.dst.join("brush.svg"),
+    write(cx.resources_dst.join("brush.svg"),
           include_bytes!("static/brush.svg"))?;
-    write(cx.dst.join("main.css"),
+    write(cx.resources_dst.join("main.css"),
           include_bytes!("static/themes/main.css"))?;
     themes.insert("main".to_owned());
-    write(cx.dst.join("dark.css"),
+    write(cx.resources_dst.join("dark.css"),
           include_bytes!("static/themes/dark.css"))?;
     themes.insert("dark".to_owned());
 
@@ -746,7 +755,7 @@ fn write_shared(cx: &Context,
     themes.sort();
     // To avoid theme switch latencies as much as possible, we put everything theme related
     // at the beginning of the html files into another js file.
-    write(cx.dst.join("theme.js"), format!(
+    write(cx.resources_dst.join("theme.js"), format!(
 r#"var themes = document.getElementById("theme-choices");
 var themePicker = document.getElementById("theme-picker");
 themePicker.onclick = function() {{
@@ -773,42 +782,42 @@ themePicker.onclick = function() {{
           .collect::<Vec<String>>()
           .join(",")).as_bytes())?;
 
-    write(cx.dst.join("main.js"), include_bytes!("static/main.js"))?;
-    write(cx.dst.join("storage.js"), include_bytes!("static/storage.js"))?;
+    write(cx.resources_dst.join("main.js"), include_bytes!("static/main.js"))?;
+    write(cx.resources_dst.join("storage.js"), include_bytes!("static/storage.js"))?;
 
     if let Some(ref css) = cx.shared.css_file_extension {
-        let out = cx.dst.join("theme.css");
+        let out = cx.resources_dst.join("theme.css");
         try_err!(fs::copy(css, out), css);
     }
-    write(cx.dst.join("normalize.css"),
+    write(cx.resources_dst.join("normalize.css"),
           include_bytes!("static/normalize.css"))?;
-    write(cx.dst.join("FiraSans-Regular.woff"),
+    write(cx.resources_dst.join("FiraSans-Regular.woff"),
           include_bytes!("static/FiraSans-Regular.woff"))?;
-    write(cx.dst.join("FiraSans-Medium.woff"),
+    write(cx.resources_dst.join("FiraSans-Medium.woff"),
           include_bytes!("static/FiraSans-Medium.woff"))?;
-    write(cx.dst.join("FiraSans-LICENSE.txt"),
+    write(cx.resources_dst.join("FiraSans-LICENSE.txt"),
           include_bytes!("static/FiraSans-LICENSE.txt"))?;
-    write(cx.dst.join("Heuristica-Italic.woff"),
+    write(cx.resources_dst.join("Heuristica-Italic.woff"),
           include_bytes!("static/Heuristica-Italic.woff"))?;
-    write(cx.dst.join("Heuristica-LICENSE.txt"),
+    write(cx.resources_dst.join("Heuristica-LICENSE.txt"),
           include_bytes!("static/Heuristica-LICENSE.txt"))?;
-    write(cx.dst.join("SourceSerifPro-Regular.woff"),
+    write(cx.resources_dst.join("SourceSerifPro-Regular.woff"),
           include_bytes!("static/SourceSerifPro-Regular.woff"))?;
-    write(cx.dst.join("SourceSerifPro-Bold.woff"),
+    write(cx.resources_dst.join("SourceSerifPro-Bold.woff"),
           include_bytes!("static/SourceSerifPro-Bold.woff"))?;
-    write(cx.dst.join("SourceSerifPro-LICENSE.txt"),
+    write(cx.resources_dst.join("SourceSerifPro-LICENSE.txt"),
           include_bytes!("static/SourceSerifPro-LICENSE.txt"))?;
-    write(cx.dst.join("SourceCodePro-Regular.woff"),
+    write(cx.resources_dst.join("SourceCodePro-Regular.woff"),
           include_bytes!("static/SourceCodePro-Regular.woff"))?;
-    write(cx.dst.join("SourceCodePro-Semibold.woff"),
+    write(cx.resources_dst.join("SourceCodePro-Semibold.woff"),
           include_bytes!("static/SourceCodePro-Semibold.woff"))?;
-    write(cx.dst.join("SourceCodePro-LICENSE.txt"),
+    write(cx.resources_dst.join("SourceCodePro-LICENSE.txt"),
           include_bytes!("static/SourceCodePro-LICENSE.txt"))?;
-    write(cx.dst.join("LICENSE-MIT.txt"),
+    write(cx.resources_dst.join("LICENSE-MIT.txt"),
           include_bytes!("static/LICENSE-MIT.txt"))?;
-    write(cx.dst.join("LICENSE-APACHE.txt"),
+    write(cx.resources_dst.join("LICENSE-APACHE.txt"),
           include_bytes!("static/LICENSE-APACHE.txt"))?;
-    write(cx.dst.join("COPYRIGHT.txt"),
+    write(cx.resources_dst.join("COPYRIGHT.txt"),
           include_bytes!("static/COPYRIGHT.txt"))?;
 
     fn collect(path: &Path, krate: &str,
@@ -830,7 +839,7 @@ themePicker.onclick = function() {{
     }
 
     // Update the search index
-    let dst = cx.dst.join("search-index.js");
+    let dst = cx.resources_dst.join("search-index.js");
     let mut all_indexes = try_err!(collect(&dst, &krate.name, "searchIndex"), &dst);
     all_indexes.push(search_index);
     // Sort the indexes by crate so the file will be generated identically even
@@ -1039,12 +1048,11 @@ impl<'a> SourceCollector<'a> {
 
         // Create the intermediate directories
         let mut cur = self.dst.clone();
-        let mut root_path = String::from("../../");
+        let root_path = self.scx.root_path.clone();
         let mut href = String::new();
         clean_srcpath(&self.scx.src_root, &p, false, |component| {
             cur.push(component);
             fs::create_dir_all(&cur).unwrap();
-            root_path.push_str("../");
             href.push_str(component);
             href.push('/');
         });
@@ -1340,6 +1348,14 @@ impl Context {
         repeat("../").take(self.current.len()).collect::<String>()
     }
 
+    /// String representation of how to get back to the root path of the
+    /// resources folder in terms of a relative URL.
+    fn resources_root_path(&self) -> String {
+        let mut s = repeat("../").take(self.current.len()).collect::<String>();
+        s.push_str(&self.shared.root_path.replace("../../", ""));
+        s
+    }
+
     /// Recurse in the directory structure and change the "root path" to make
     /// sure it always points to the top (relatively).
     fn recurse<T, F>(&mut self, s: String, f: F) -> T where
@@ -1422,7 +1438,7 @@ impl Context {
         let keywords = make_item_keywords(it);
         let page = layout::Page {
             css_class: tyname,
-            root_path: &self.root_path(),
+            root_path: &self.resources_root_path(),
             title: &title,
             description: &desc,
             keywords: &keywords,
