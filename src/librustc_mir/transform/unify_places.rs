@@ -24,9 +24,17 @@ use transform::{MirPass, MirSource};
 
 struct Finder<I: Idx> {
     parent: IndexVec<I, I>,
+    children: IndexVec<I, SparseBitSet<I>>
 }
 
 impl<I: Idx> Finder<I> {
+    fn new<T>(universe: &IndexVec<I, T>) -> Self {
+        Finder {
+            parent: universe.indices().collect(),
+            children: IndexVec::from_elem(SparseBitSet::new(), universe)
+        }
+    }
+
     fn find(&mut self, i: I) -> I {
         let parent = self.parent[i];
         if i == parent {
@@ -37,6 +45,16 @@ impl<I: Idx> Finder<I> {
             self.parent[i] = root;
         }
         root
+    }
+
+    fn reparent(&mut self, child: I, root: I) {
+        assert_eq!(self.parent[child], child);
+        assert_eq!(self.parent[root], root);
+        self.parent[child] = root;
+
+        let child_children = mem::replace(&mut self.children[child], SparseBitSet::new());
+        self.children[root].extend(child_children.chunks());
+        self.children[root].insert(child);
     }
 }
 
@@ -60,19 +78,12 @@ impl<I: Idx> UnionFindSymRel<I> {
         } else {
             (b, a)
         };
-        self.finder.parent[child] = root;
+        self.finder.reparent(child, root);
 
-        // Have to juggle the `self.relation` elements as we have
-        // no way to borrow two disjoint elements at the same time.
+        // Union the child's `relation` edges into those of its new parent.
+        // See `relates` for how the resulting `relation` sets are used
         let child_relation = mem::replace(&mut self.relation[child], SparseBitSet::new());
-        // FIXME(eddyb) This could use per-"word" bitwise operations.
-        for i in child_relation.iter() {
-            // HACK(eddyb) this is really expensive, but used to propagate the relation.
-            let i = self.finder.find(i);
-            self.relation[root].insert(i);
-            self.relation[i].insert(root);
-        }
-        self.relation[child] = child_relation;
+        self.relation[root].extend(child_relation.chunks());
 
         root
     }
@@ -80,7 +91,15 @@ impl<I: Idx> UnionFindSymRel<I> {
     fn relates(&mut self, a: I, b: I) -> bool {
         let a = self.finder.find(a);
         let b = self.finder.find(b);
-        self.relation[a].contains(b) || self.relation[b].contains(a)
+
+        // `self.relation[a]` is the union of all `self.relation[x]` where
+        // `find(x) == a`, however, the elements themselves have not been
+        // passed through `find` (for performance reasons), so we need to
+        // check not just `b`, but also all `y` where `find(y) == b`.
+        let relation_a = &self.relation[a];
+        relation_a.contains(b) || self.finder.children[b].chunks().any(|b| {
+            relation_a.contains_chunk(b).any()
+        })
     }
 }
 
@@ -201,10 +220,8 @@ impl MirPass for UnifyPlaces {
         }
 
         let mut replacement_place = IndexVec::from_elem(None, &mir.local_decls);
-        let mut replacement_finder = Finder {
-            parent: mir.local_decls.indices().collect(),
-        };
-        {
+        let mut replacement_finder = Finder::new(&mir.local_decls);
+        let conflicts = {
             let can_rename = &mut IdxSetBuf::new_empty(mir.local_decls.len());
 
             // We need to keep user variables intact for debuginfo.
@@ -234,17 +251,11 @@ impl MirPass for UnifyPlaces {
             let mut conflicts = IndexVec::from_elem(SparseBitSet::new(), &mir.local_decls);
             let mut candidates = vec![];
             for (block, data) in mir.basic_blocks().iter_enumerated() {
-                let mut add_conflicts_at = |past: &IdxSet<_>, future: &IdxSet<_>| {
+                let mut add_conflicts_at = |past: &SparseBitSet<_>, future: &SparseBitSet<_>| {
                     // FIXME(eddyb) use `diff_at_location` (how?) as an optimization.
-                    for i in past.iter() {
-                        if future.contains(&i) {
-                            // FIXME(eddyb) Reduce the cost of this already Q_Q.
-                            for j in past.iter() {
-                                if i != j && future.contains(&j) {
-                                    conflicts[i].insert(j);
-                                }
-                            }
-                        }
+                    let live = || past.chunks().map(|chunk| future.contains_chunk(chunk));
+                    for i in live().flat_map(|chunk| chunk.iter()) {
+                        conflicts[i].extend(live());
                     }
                 };
                 let mut checked_after_last_statement = false;
@@ -286,10 +297,13 @@ impl MirPass for UnifyPlaces {
                     observers.future.seek(Before(location)));
             }
 
+            // HACK(eddyb) remove problematic "self-conflicts".
+            for (i, conflicts) in conflicts.iter_enumerated_mut() {
+                conflicts.remove(i);
+            }
+
             let mut conflicts = UnionFindSymRel {
-                finder: Finder {
-                    parent: mir.local_decls.indices().collect(),
-                },
+                finder: Finder::new(&mir.local_decls),
                 relation: conflicts
             };
 
@@ -305,6 +319,11 @@ impl MirPass for UnifyPlaces {
                     if conflicts.relates(from, to.base) {
                         continue;
                     }
+
+                    // FIXME(eddyb) We have both `conflicts` and `replacement_finder` -
+                    // do we need to, though? We could always union the base variables
+                    // and keep a side-table (like `replacement_place`) for interior
+                    // projections needed for a given local on top of what it unified to.
                     conflicts.union(from, to.base);
 
                     if let Some(to_place) = to.subplace {
@@ -313,16 +332,19 @@ impl MirPass for UnifyPlaces {
                         can_rename.remove(&from);
                     } else {
                         debug!("unify_places: {:?} -> {:?}", from, to.base);
-                        replacement_finder.parent[from] = to.base;
+                        replacement_finder.reparent(from, to.base);
                     }
                 }
             }
-        }
+
+            conflicts
+        };
 
         // Apply the replacements we computed previously.
         let mut replacer = Replacer {
             replacement_place,
-            replacement_finder
+            replacement_finder,
+            conflicts
         };
         replacer.visit_mir(mir);
     }
@@ -348,7 +370,9 @@ impl<'a, 'tcx> Visitor<'tcx> for CanRenameCollector<'a> {
 
 struct Replacer<'tcx> {
     replacement_place: IndexVec<Local, Option<Place<'tcx>>>,
-    replacement_finder: Finder<Local>
+    replacement_finder: Finder<Local>,
+    // FIXME(eddyb) this needs a better name than `conflicts` (everywhere).
+    conflicts: UnionFindSymRel<Local>
 }
 
 impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
@@ -376,12 +400,15 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
                        block: BasicBlock,
                        statement: &mut Statement<'tcx>,
                        location: Location) {
-        // FIXME(eddyb) fuse storage liveness ranges instead of removing them.
         match statement.kind {
-            StatementKind::StorageLive(_local) |
-            StatementKind::StorageDead(_local) => {
-                // FIXME(eddyb) figure out how to even detect relevancy.
-                statement.make_nop();
+            StatementKind::StorageLive(local) |
+            StatementKind::StorageDead(local) => {
+                let intact = self.conflicts.finder.find(local) == local &&
+                    self.conflicts.finder.children[local].iter().next().is_none();
+                // FIXME(eddyb) fuse storage liveness ranges instead of removing them.
+                if !intact {
+                    statement.make_nop();
+                }
             }
             _ => {}
         }

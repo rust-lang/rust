@@ -10,11 +10,12 @@
 
 pub use self::SeekLocation::*;
 
-use rustc_data_structures::indexed_set::{IdxSet, IdxSetBuf};
+use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::bitvec::BitMatrix;
 use rustc::mir::*;
 use std::collections::{BTreeMap, VecDeque};
+use std::collections::btree_map::Entry;
 use std::iter;
 use std::marker::PhantomData;
 use analysis::locations::{FlatLocation, FlatLocations};
@@ -22,68 +23,146 @@ use analysis::locations::{FlatLocation, FlatLocations};
 // FIXME(eddyb) move to rustc_data_structures.
 #[derive(Clone)]
 pub struct SparseBitSet<I: Idx> {
-    map: BTreeMap<u32, u128>,
+    chunk_bits: BTreeMap<u32, u128>,
     _marker: PhantomData<I>,
 }
 
-fn key_and_mask<I: Idx>(index: I) -> (u32, u128) {
-    let index = index.index();
-    let key = index / 128;
-    let key_u32 = key as u32;
-    assert_eq!(key_u32 as usize, key);
-    (key_u32, 1 << (index % 128))
+#[derive(Copy, Clone)]
+pub struct SparseChunk<I> {
+    key: u32,
+    bits: u128,
+    _marker: PhantomData<I>,
+}
+
+impl<I: Idx> SparseChunk<I> {
+    pub fn one(index: I) -> Self {
+        let index = index.index();
+        let key_usize = index / 128;
+        let key = key_usize as u32;
+        assert_eq!(key as usize, key_usize);
+        SparseChunk {
+            key,
+            bits: 1 << (index % 128),
+            _marker: PhantomData
+        }
+    }
+
+    pub fn any(&self) -> bool {
+        self.bits != 0
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = I> {
+        let base = self.key as usize * 128;
+        let mut bits = self.bits;
+        (0..128).map(move |i| {
+            let current_bits = bits;
+            bits >>= 1;
+            (i, current_bits)
+        }).take_while(|&(_, bits)| bits != 0)
+          .filter_map(move |(i, bits)| {
+            if (bits & 1) != 0 {
+                Some(I::new(base + i))
+            } else {
+                None
+            }
+        })
+    }
 }
 
 impl<I: Idx> SparseBitSet<I> {
     pub fn new() -> Self {
         SparseBitSet {
-            map: BTreeMap::new(),
+            chunk_bits: BTreeMap::new(),
             _marker: PhantomData
         }
     }
 
     pub fn capacity(&self) -> usize {
-        self.map.len() * 128
+        self.chunk_bits.len() * 128
     }
 
-    pub fn contains(&self, index: I) -> bool {
-        let (key, mask) = key_and_mask(index);
-        self.map.get(&key).map_or(false, |bits| (bits & mask) != 0)
-    }
-
-    pub fn insert(&mut self, index: I) -> bool {
-        let (key, mask) = key_and_mask(index);
-        let bits = self.map.entry(key).or_insert(0);
-        let old_bits = *bits;
-        let new_bits = old_bits | mask;
-        *bits = new_bits;
-        new_bits != old_bits
-    }
-
-    pub fn remove(&mut self, index: I) -> bool {
-        let (key, mask) = key_and_mask(index);
-        if let Some(bits) = self.map.get_mut(&key) {
-            let old_bits = *bits;
-            let new_bits = old_bits & !mask;
-            *bits = new_bits;
-            // FIXME(eddyb) maybe remove entry if now `0`.
-            new_bits != old_bits
-        } else {
-            false
+    pub fn contains_chunk(&self, chunk: SparseChunk<I>) -> SparseChunk<I> {
+        SparseChunk {
+            bits: self.chunk_bits.get(&chunk.key).map_or(0, |bits| bits & chunk.bits),
+            ..chunk
         }
     }
 
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = I> + 'a {
-        self.map.iter().flat_map(|(&key, &bits)| {
-            let base = key as usize * 128;
-            (0..128).filter_map(move |i| {
-                if (bits & (1 << i)) != 0 {
-                    Some(I::new(base + i))
+    pub fn insert_chunk(&mut self, chunk: SparseChunk<I>) -> SparseChunk<I> {
+        if chunk.bits == 0 {
+            return chunk;
+        }
+        let bits = self.chunk_bits.entry(chunk.key).or_insert(0);
+        let old_bits = *bits;
+        let new_bits = old_bits | chunk.bits;
+        *bits = new_bits;
+        let changed = new_bits ^ old_bits;
+        SparseChunk {
+            bits: changed,
+            ..chunk
+        }
+    }
+
+    pub fn remove_chunk(&mut self, chunk: SparseChunk<I>) -> SparseChunk<I> {
+        if chunk.bits == 0 {
+            return chunk;
+        }
+        let changed = match self.chunk_bits.entry(chunk.key) {
+            Entry::Occupied(mut bits) => {
+                let old_bits = *bits.get();
+                let new_bits = old_bits & !chunk.bits;
+                if new_bits == 0 {
+                    bits.remove();
                 } else {
-                    None
+                    bits.insert(new_bits);
                 }
-            })
+                new_bits ^ old_bits
+            }
+            Entry::Vacant(_) => 0
+        };
+        SparseChunk {
+            bits: changed,
+            ..chunk
+        }
+    }
+
+    pub fn clear(&mut self) {
+        self.chunk_bits.clear();
+    }
+
+    pub fn chunks<'a>(&'a self) -> impl Iterator<Item = SparseChunk<I>> + 'a {
+        self.chunk_bits.iter().map(|(&key, &bits)| {
+            SparseChunk {
+                key,
+                bits,
+                _marker: PhantomData
+            }
         })
+    }
+
+    pub fn contains(&self, index: I) -> bool {
+        self.contains_chunk(SparseChunk::one(index)).any()
+    }
+
+    pub fn insert(&mut self, index: I) -> bool {
+        self.insert_chunk(SparseChunk::one(index)).any()
+    }
+
+    pub fn remove(&mut self, index: I) -> bool {
+        self.remove_chunk(SparseChunk::one(index)).any()
+    }
+
+    pub fn iter<'a>(&'a self) -> impl Iterator<Item = I> + 'a {
+        self.chunks().flat_map(|chunk| chunk.iter())
+    }
+}
+
+impl<I: Idx> Extend<SparseChunk<I>> for SparseBitSet<I> {
+    fn extend<T: IntoIterator<Item = SparseChunk<I>>>(&mut self, chunks: T) {
+        // FIXME(eddyb) Maybe this could be implemented more efficiently?
+        for chunk in chunks {
+            self.insert_chunk(chunk);
+        }
     }
 }
 
@@ -287,7 +366,7 @@ impl<'a, D: Direction, I: Idx> EventFlowResults<'a, D, I> {
                 block: START_BLOCK,
                 statement_index: !0
             },
-            state_before: IdxSetBuf::new_empty(self.count),
+            state_before: SparseBitSet::new(),
         }
     }
 }
@@ -306,7 +385,7 @@ impl<'a, I: Idx> PastAndFuture<EventFlowResults<'a, Forward, I>,
 pub struct Observer<'a, D: Direction, I: Idx> {
     results: &'a EventFlowResults<'a, D, I>,
     location: Location,
-    state_before: IdxSetBuf<I>,
+    state_before: SparseBitSet<I>,
 }
 
 #[derive(Copy, Clone)]
@@ -316,7 +395,7 @@ pub enum SeekLocation {
 }
 
 impl<'a, D: Direction, I: Idx> Observer<'a, D, I> {
-    pub fn seek(&mut self, to: SeekLocation) -> &IdxSet<I> {
+    pub fn seek(&mut self, to: SeekLocation) -> &SparseBitSet<I> {
         // Ensure the location is valid for a statement/terminator.
         match to {
             Before(location) | After(location) => {
@@ -339,12 +418,12 @@ impl<'a, D: Direction, I: Idx> Observer<'a, D, I> {
             // FIXME(eddyb) These could use copies of whole rows.
             if to.statement_index < locations_in_block / 2 {
                 for i in self.results.block_entry.iter(to.block.index()) {
-                    self.state_before.add(&I::new(i));
+                    self.state_before.insert(I::new(i));
                 }
                 self.location.statement_index = 0;
             } else {
                 for i in self.results.block_exit.iter(to.block.index()) {
-                    self.state_before.add(&I::new(i));
+                    self.state_before.insert(I::new(i));
                 }
                 self.location.statement_index = locations_in_block;
             }
@@ -354,11 +433,11 @@ impl<'a, D: Direction, I: Idx> Observer<'a, D, I> {
         while self.location.statement_index < to.statement_index {
             let flat_location = self.results.flat_locations.get(self.location);
             // FIXME(eddyb) These could use per-"word" bitwise operations.
-            for i in self.results.diff_at_location[flat_location].iter() {
+            for i in self.results.diff_at_location[flat_location].chunks() {
                 if D::FORWARD {
-                    self.state_before.add(&i);
+                    self.state_before.insert_chunk(i);
                 } else {
-                    self.state_before.remove(&i);
+                    self.state_before.remove_chunk(i);
                 }
             }
             self.location.statement_index += 1;
@@ -368,11 +447,11 @@ impl<'a, D: Direction, I: Idx> Observer<'a, D, I> {
             self.location.statement_index -= 1;
             let flat_location = self.results.flat_locations.get(self.location);
             // FIXME(eddyb) These could use per-"word" bitwise operations.
-            for i in self.results.diff_at_location[flat_location].iter() {
+            for i in self.results.diff_at_location[flat_location].chunks() {
                 if D::FORWARD {
-                    self.state_before.remove(&i);
+                    self.state_before.remove_chunk(i);
                 } else {
-                    self.state_before.add(&i);
+                    self.state_before.insert_chunk(i);
                 }
             }
         }
@@ -384,7 +463,7 @@ impl<'a, D: Direction, I: Idx> Observer<'a, D, I> {
 impl<'a, I: Idx> PastAndFuture<Observer<'a, Forward, I>,
                                Observer<'a, Backward, I>> {
     pub fn seek(&mut self, to: SeekLocation)
-                -> PastAndFuture<&IdxSet<I>, &IdxSet<I>> {
+                -> PastAndFuture<&SparseBitSet<I>, &SparseBitSet<I>> {
         PastAndFuture {
             past: self.past.seek(to),
             future: self.future.seek(to)
