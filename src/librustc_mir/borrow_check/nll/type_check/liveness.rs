@@ -105,8 +105,7 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
             for live_local in live_locals {
                 debug!(
                     "add_liveness_constraints: location={:?} live_local={:?}",
-                    location,
-                    live_local
+                    location, live_local
                 );
 
                 self.flow_inits.each_state_bit(|mpi_init| {
@@ -157,8 +156,7 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
     {
         debug!(
             "push_type_live_constraint(live_ty={:?}, location={:?})",
-            value,
-            location
+            value, location
         );
 
         self.tcx.for_each_free_region(&value, |live_region| {
@@ -182,9 +180,7 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
     ) {
         debug!(
             "add_drop_live_constraint(dropped_local={:?}, dropped_ty={:?}, location={:?})",
-            dropped_local,
-            dropped_ty,
-            location
+            dropped_local, dropped_ty, location
         );
 
         // If we end visiting the same type twice (usually due to a cycle involving

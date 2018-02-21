@@ -243,8 +243,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
     fn sanitize_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
         debug!(
             "sanitize_constant(constant={:?}, location={:?})",
-            constant,
-            location
+            constant, location
         );
 
         let expected_ty = match constant.literal {
@@ -678,8 +677,10 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
         let data = self.infcx.take_and_reset_region_constraints();
         if !data.is_empty() {
-            debug!("fully_perform_op: constraints generated at {:?} are {:#?}",
-                   locations, data);
+            debug!(
+                "fully_perform_op: constraints generated at {:?} are {:#?}",
+                locations, data
+            );
             self.constraints
                 .outlives_sets
                 .push(OutlivesSet { locations, data });
@@ -1137,12 +1138,16 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             }
             TerminatorKind::FalseUnwind {
                 real_target,
-                unwind
+                unwind,
             } => {
                 self.assert_iscleanup(mir, block_data, real_target, is_cleanup);
                 if let Some(unwind) = unwind {
                     if is_cleanup {
-                        span_mirbug!(self, block_data, "cleanup in cleanup block via false unwind");
+                        span_mirbug!(
+                            self,
+                            block_data,
+                            "cleanup in cleanup block via false unwind"
+                        );
                     }
                     self.assert_iscleanup(mir, block_data, unwind, true);
                 }
@@ -1435,8 +1440,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
         debug!(
             "prove_aggregate_predicates(aggregate_kind={:?}, location={:?})",
-            aggregate_kind,
-            location
+            aggregate_kind, location
         );
 
         let instantiated_predicates = match aggregate_kind {
@@ -1502,8 +1506,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn prove_predicates(&mut self, predicates: &[ty::Predicate<'tcx>], location: Location) {
         debug!(
             "prove_predicates(predicates={:?}, location={:?})",
-            predicates,
-            location
+            predicates, location
         );
         self.fully_perform_op(location.at_self(), |this| {
             let cause = this.misc(this.last_span);
