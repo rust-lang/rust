@@ -34,7 +34,8 @@ use mir::interpret::{GlobalId};
 use session::{CompileResult, CrateDisambiguator};
 use session::config::OutputFilenames;
 use traits::Vtable;
-use traits::query::{CanonicalProjectionGoal, NoSolution};
+use traits::query::{CanonicalProjectionGoal, CanonicalTyGoal, NoSolution};
+use traits::query::dropck_outlives::{DtorckConstraint, DropckOutlivesResult};
 use traits::query::normalize::NormalizationResult;
 use traits::specialization_graph;
 use ty::{self, CrateInherentImpls, Ty, TyCtxt};
@@ -114,7 +115,9 @@ define_maps! { <'tcx>
     [] fn adt_def: AdtDefOfItem(DefId) -> &'tcx ty::AdtDef,
     [] fn adt_destructor: AdtDestructor(DefId) -> Option<ty::Destructor>,
     [] fn adt_sized_constraint: SizedConstraint(DefId) -> &'tcx [Ty<'tcx>],
-    [] fn adt_dtorck_constraint: DtorckConstraint(DefId) -> ty::DtorckConstraint<'tcx>,
+    [] fn adt_dtorck_constraint: DtorckConstraint(
+        DefId
+    ) -> Result<DtorckConstraint<'tcx>, NoSolution>,
 
     /// True if this is a const fn
     [] fn is_const_fn: IsConstFn(DefId) -> bool,
@@ -388,6 +391,14 @@ define_maps! { <'tcx>
         CanonicalProjectionGoal<'tcx>
     ) -> Result<
         Lrc<Canonical<'tcx, QueryResult<'tcx, NormalizationResult<'tcx>>>>,
+        NoSolution,
+    >,
+
+    /// Do not call this query directly: invoke `infcx.at().dropck_outlives()` instead.
+    [] fn dropck_outlives: DropckOutlives(
+        CanonicalTyGoal<'tcx>
+    ) -> Result<
+        Lrc<Canonical<'tcx, QueryResult<'tcx, DropckOutlivesResult<'tcx>>>>,
         NoSolution,
     >,
 

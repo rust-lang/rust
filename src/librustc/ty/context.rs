@@ -106,7 +106,6 @@ pub struct GlobalArenas<'tcx> {
     tables: TypedArena<ty::TypeckTables<'tcx>>,
     /// miri allocations
     const_allocs: TypedArena<interpret::Allocation>,
-
 }
 
 impl<'tcx> GlobalArenas<'tcx> {

@@ -24,6 +24,7 @@ extern crate rustc_data_structures;
 extern crate syntax;
 extern crate syntax_pos;
 
+mod dropck_outlives;
 mod normalize_projection_ty;
 mod util;
 
@@ -31,6 +32,8 @@ use rustc::ty::maps::Providers;
 
 pub fn provide(p: &mut Providers) {
     *p = Providers {
+        dropck_outlives: dropck_outlives::dropck_outlives,
+        adt_dtorck_constraint: dropck_outlives::adt_dtorck_constraint,
         normalize_projection_ty: normalize_projection_ty::normalize_projection_ty,
         ..*p
     };

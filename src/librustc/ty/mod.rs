@@ -34,15 +34,13 @@ use ty;
 use ty::subst::{Subst, Substs};
 use ty::util::{IntTypeExt, Discr};
 use ty::walk::TypeWalker;
-use util::common::ErrorReported;
-use util::nodemap::{NodeSet, DefIdMap, FxHashMap, FxHashSet};
+use util::nodemap::{NodeSet, DefIdMap, FxHashMap};
 
 use serialize::{self, Encodable, Encoder};
 use std::cell::RefCell;
 use std::cmp;
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::iter::FromIterator;
 use std::ops::Deref;
 use rustc_data_structures::sync::Lrc;
 use std::slice;
@@ -2661,38 +2659,6 @@ fn adt_sized_constraint<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     result
 }
 
-/// Calculates the dtorck constraint for a type.
-fn adt_dtorck_constraint<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                   def_id: DefId)
-                                   -> DtorckConstraint<'tcx> {
-    let def = tcx.adt_def(def_id);
-    let span = tcx.def_span(def_id);
-    debug!("dtorck_constraint: {:?}", def);
-
-    if def.is_phantom_data() {
-        let result = DtorckConstraint {
-            outlives: vec![],
-            dtorck_types: vec![
-                tcx.mk_param_from_def(&tcx.generics_of(def_id).types[0])
-           ]
-        };
-        debug!("dtorck_constraint: {:?} => {:?}", def, result);
-        return result;
-    }
-
-    let mut result = def.all_fields()
-        .map(|field| tcx.type_of(field.did))
-        .map(|fty| tcx.dtorck_constraint_for_ty(span, fty, 0, fty))
-        .collect::<Result<DtorckConstraint, ErrorReported>>()
-        .unwrap_or(DtorckConstraint::empty());
-    result.outlives.extend(tcx.destructor_constraints(def));
-    result.dedup();
-
-    debug!("dtorck_constraint: {:?} => {:?}", def, result);
-
-    result
-}
-
 fn associated_item_def_ids<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      def_id: DefId)
                                      -> Lrc<Vec<DefId>> {
@@ -2808,7 +2774,6 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         associated_item,
         associated_item_def_ids,
         adt_sized_constraint,
-        adt_dtorck_constraint,
         def_span,
         param_env,
         trait_of_item,
@@ -2829,49 +2794,6 @@ pub fn provide(providers: &mut ty::maps::Providers) {
 #[derive(Clone, Debug)]
 pub struct CrateInherentImpls {
     pub inherent_impls: DefIdMap<Lrc<Vec<DefId>>>,
-}
-
-/// A set of constraints that need to be satisfied in order for
-/// a type to be valid for destruction.
-#[derive(Clone, Debug)]
-pub struct DtorckConstraint<'tcx> {
-    /// Types that are required to be alive in order for this
-    /// type to be valid for destruction.
-    pub outlives: Vec<ty::subst::Kind<'tcx>>,
-    /// Types that could not be resolved: projections and params.
-    pub dtorck_types: Vec<Ty<'tcx>>,
-}
-
-impl<'tcx> FromIterator<DtorckConstraint<'tcx>> for DtorckConstraint<'tcx>
-{
-    fn from_iter<I: IntoIterator<Item=DtorckConstraint<'tcx>>>(iter: I) -> Self {
-        let mut result = Self::empty();
-
-        for constraint in iter {
-            result.outlives.extend(constraint.outlives);
-            result.dtorck_types.extend(constraint.dtorck_types);
-        }
-
-        result
-    }
-}
-
-
-impl<'tcx> DtorckConstraint<'tcx> {
-    fn empty() -> DtorckConstraint<'tcx> {
-        DtorckConstraint {
-            outlives: vec![],
-            dtorck_types: vec![]
-        }
-    }
-
-    fn dedup<'a>(&mut self) {
-        let mut outlives = FxHashSet();
-        let mut dtorck_types = FxHashSet();
-
-        self.outlives.retain(|&val| outlives.replace(val).is_none());
-        self.dtorck_types.retain(|&val| dtorck_types.replace(val).is_none());
-    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable)]

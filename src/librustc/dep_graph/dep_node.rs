@@ -70,7 +70,7 @@ use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 use std::fmt;
 use std::hash::Hash;
 use syntax_pos::symbol::InternedString;
-use traits::query::CanonicalProjectionGoal;
+use traits::query::{CanonicalProjectionGoal, CanonicalTyGoal};
 use ty::{TyCtxt, Instance, InstanceDef, ParamEnv, ParamEnvAnd, PolyTraitRef, Ty};
 use ty::subst::Substs;
 
@@ -637,6 +637,8 @@ define_dep_nodes!( <'tcx>
     [input] OutputFilenames,
     [anon] NormalizeTy,
     [] NormalizeProjectionTy(CanonicalProjectionGoal<'tcx>),
+    [] NormalizeTyAfterErasingRegions(ParamEnvAnd<'tcx, Ty<'tcx>>),
+    [] DropckOutlives(CanonicalTyGoal<'tcx>),
 
     [] SubstituteNormalizeAndTestPredicates { key: (DefId, &'tcx Substs<'tcx>) },
 

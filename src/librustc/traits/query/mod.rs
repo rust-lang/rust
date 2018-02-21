@@ -16,12 +16,15 @@
 //! `librustc_traits`.
 
 use infer::canonical::Canonical;
-use ty;
+use ty::{self, Ty};
 
+pub mod dropck_outlives;
 pub mod normalize;
 
 pub type CanonicalProjectionGoal<'tcx> =
     Canonical<'tcx, ty::ParamEnvAnd<'tcx, ty::ProjectionTy<'tcx>>>;
+
+pub type CanonicalTyGoal<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, Ty<'tcx>>>;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct NoSolution;
