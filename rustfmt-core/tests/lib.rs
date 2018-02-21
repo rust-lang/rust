@@ -820,7 +820,6 @@ impl ConfigCodeBlock {
 }
 
 #[test]
-#[ignore]
 fn configuration_snippet_tests() {
     // Read Configurations.md and build a `Vec` of `ConfigCodeBlock` structs with one
     // entry for each Rust code block found.
