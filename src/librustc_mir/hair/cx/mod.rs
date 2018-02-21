@@ -149,6 +149,26 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         }
     }
 
+    pub fn type_bit_size(
+        &self,
+        ty: Ty<'tcx>,
+    ) -> u64 {
+        let tcx = self.tcx.global_tcx();
+        let (ty, param_env) = self
+            .tcx
+            .lift_to_global(&(ty, self.param_env))
+            .unwrap_or_else(|| {
+            bug!("MIR: Cx::const_eval_literal({:?}, {:?}) got \
+                type with inference types/regions",
+                ty, self.param_env);
+        });
+        tcx
+            .layout_of(param_env.and(ty))
+            .expect("int layout")
+            .size
+            .bits()
+    }
+
     pub fn const_eval_literal(
         &mut self,
         lit: &'tcx ast::LitKind,
@@ -156,6 +176,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         sp: Span,
         neg: bool,
     ) -> Literal<'tcx> {
+        trace!("const_eval_literal: {:#?}, {:?}, {:?}, {:?}", lit, ty, sp, neg);
         let tcx = self.tcx.global_tcx();
 
         let parse_float = |num: &str, fty| -> ConstFloat {
@@ -163,6 +184,15 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                 // FIXME(#31407) this is only necessary because float parsing is buggy
                 tcx.sess.span_fatal(sp, "could not evaluate float literal (see issue #31407)");
             })
+        };
+
+        let clamp = |n| {
+            let size = self.type_bit_size(ty);
+            trace!("clamp {} with size {} and amt {}", n, size, 128 - size);
+            let amt = 128 - size;
+            let result = (n << amt) >> amt;
+            trace!("clamp result: {}", result);
+            result
         };
 
         use rustc::mir::interpret::*;
@@ -185,9 +215,10 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             LitKind::Int(n, _) if neg => {
                 let n = n as i128;
                 let n = n.overflowing_neg().0;
-                Value::ByVal(PrimVal::Bytes(n as u128))
+                let n = clamp(n as u128);
+                Value::ByVal(PrimVal::Bytes(n))
             },
-            LitKind::Int(n, _) => Value::ByVal(PrimVal::Bytes(n)),
+            LitKind::Int(n, _) => Value::ByVal(PrimVal::Bytes(clamp(n))),
             LitKind::Float(n, fty) => {
                 let n = n.as_str();
                 let mut f = parse_float(&n, fty);

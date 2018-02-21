@@ -20,7 +20,7 @@ use rustc::mir::visit::{Visitor, PlaceContext};
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{TyCtxt, self, Instance};
 use rustc::mir::interpret::{Value, PrimVal, GlobalId};
-use interpret::{eval_body_with_mir, mk_borrowck_eval_cx, unary_op, ValTy};
+use interpret::{eval_body_with_mir, mk_borrowck_eval_cx, ValTy};
 use transform::{MirPass, MirSource};
 use syntax::codemap::Span;
 use rustc::ty::subst::Substs;
@@ -205,8 +205,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
 
                 let val = self.eval_operand(arg)?;
                 let prim = ecx.value_to_primval(ValTy { value: val.0, ty: val.1 }).ok()?;
-                let kind = ecx.ty_to_primval_kind(val.1).ok()?;
-                match unary_op(op, prim, kind) {
+                match ecx.unary_op(op, prim, val.1) {
                     Ok(val) => Some((Value::ByVal(val), place_ty, span)),
                     Err(mut err) => {
                         ecx.report(&mut err, false, Some(span));

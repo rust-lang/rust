@@ -4,22 +4,6 @@ use ty::layout::{Align, HasDataLayout};
 use ty;
 
 use super::{EvalResult, MemoryPointer, PointerArithmetic};
-use syntax::ast::FloatTy;
-use rustc_const_math::ConstFloat;
-
-pub fn bytes_to_f32(bits: u128) -> ConstFloat {
-    ConstFloat {
-        bits,
-        ty: FloatTy::F32,
-    }
-}
-
-pub fn bytes_to_f64(bits: u128) -> ConstFloat {
-    ConstFloat {
-        bits,
-        ty: FloatTy::F64,
-    }
-}
 
 /// A `Value` represents a single self-contained Rust value.
 ///
@@ -182,10 +166,6 @@ impl<'tcx> PrimVal {
         PrimVal::Bytes(n as u128)
     }
 
-    pub fn from_float(f: ConstFloat) -> Self {
-        PrimVal::Bytes(f.bits)
-    }
-
     pub fn from_bool(b: bool) -> Self {
         PrimVal::Bytes(b as u128)
     }
@@ -258,14 +238,6 @@ impl<'tcx> PrimVal {
             assert_eq!(b as i64 as u128, b);
             b as i64
         })
-    }
-
-    pub fn to_f32(self) -> EvalResult<'tcx, ConstFloat> {
-        self.to_bytes().map(bytes_to_f32)
-    }
-
-    pub fn to_f64(self) -> EvalResult<'tcx, ConstFloat> {
-        self.to_bytes().map(bytes_to_f64)
     }
 
     pub fn to_bool(self) -> EvalResult<'tcx, bool> {

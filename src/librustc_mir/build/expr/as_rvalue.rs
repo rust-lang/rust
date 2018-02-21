@@ -22,7 +22,6 @@ use rustc::middle::region;
 use rustc::ty::{self, Ty};
 use rustc::mir::*;
 use rustc::mir::interpret::{Value, PrimVal};
-use syntax::ast;
 use syntax_pos::Span;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
@@ -382,9 +381,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     // Helper to get a `-1` value of the appropriate type
     fn neg_1_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
+        let bits = self.hir.type_bit_size(ty);
+        let n = (!0u128) >> (128 - bits);
         let literal = Literal::Value {
             value: self.hir.tcx().mk_const(ty::Const {
-                val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(-1i128 as u128))),
+                val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(n))),
                 ty
             })
         };
@@ -394,31 +395,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     // Helper to get the minimum value of the appropriate type
     fn minval_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
-        let literal = match ty.sty {
-            ty::TyInt(ity) => {
-                let ity = match ity {
-                    ast::IntTy::Isize => self.hir.tcx().sess.target.isize_ty,
-                    other => other,
-                };
-                let val = match ity {
-                    ast::IntTy::I8  => i8::min_value() as i128,
-                    ast::IntTy::I16 => i16::min_value() as i128,
-                    ast::IntTy::I32 => i32::min_value() as i128,
-                    ast::IntTy::I64 => i64::min_value() as i128,
-                    ast::IntTy::I128 => i128::min_value() as i128,
-                    ast::IntTy::Isize => unreachable!(),
-                };
-
-                Literal::Value {
-                    value: self.hir.tcx().mk_const(ty::Const {
-                        val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(val as u128))),
-                        ty
-                    })
-                }
-            }
-            _ => {
-                span_bug!(span, "Invalid type for minval_literal: `{:?}`", ty)
-            }
+        assert!(ty.is_signed());
+        let bits = self.hir.type_bit_size(ty);
+        let n = 1 << (bits - 1);
+        let literal = Literal::Value {
+            value: self.hir.tcx().mk_const(ty::Const {
+                val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(n))),
+                ty
+            })
         };
 
         self.literal_operand(span, ty, literal)

@@ -1845,10 +1845,34 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                         ..
                     }) => {
                         trace!("discriminants: {} ({:?})", b, repr_type);
-                        discr = Discr {
-                            val: b,
-                            ty: repr_type.to_ty(tcx),
-                        };
+                        let ty = repr_type.to_ty(tcx);
+                        if ty.is_signed() {
+                            let (ty, param_env) = tcx
+                                .lift_to_global(&(ty, param_env))
+                                .unwrap_or_else(|| {
+                                bug!("MIR: discriminants({:?}, {:?}) got \
+                                    type with inference types/regions",
+                                    ty, param_env);
+                            });
+                            let size = tcx.global_tcx()
+                                .layout_of(param_env.and(ty))
+                                .expect("int layout")
+                                .size
+                                .bits();
+                            let val = b as i128;
+                            // sign extend to i128
+                            let amt = 128 - size;
+                            let val = (val << amt) >> amt;
+                            discr = Discr {
+                                val: val as u128,
+                                ty,
+                            };
+                        } else {
+                            discr = Discr {
+                                val: b,
+                                ty,
+                            };
+                        }
                     }
                     _ => {
                         if !expr_did.is_local() {

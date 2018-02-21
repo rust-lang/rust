@@ -666,7 +666,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
         // Now we do the actual reading
         let bytes = if signed {
-            read_target_int(endianness, bytes).unwrap() as u128
+            let bytes = read_target_int(endianness, bytes).unwrap() as u128;
+            let amt = 128 - (size * 8);
+            // truncate (shift left to drop out leftover values, shift right to fill with zeroes)
+            (bytes << amt) >> amt
         } else {
             read_target_uint(endianness, bytes).unwrap()
         };

@@ -10,7 +10,7 @@ mod value;
 
 pub use self::error::{EvalError, EvalResult, EvalErrorKind};
 
-pub use self::value::{PrimVal, PrimValKind, Value, Pointer, bytes_to_f32, bytes_to_f64};
+pub use self::value::{PrimVal, PrimValKind, Value, Pointer};
 
 use std::collections::BTreeMap;
 use std::fmt;

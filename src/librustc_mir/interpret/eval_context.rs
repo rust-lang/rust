@@ -19,7 +19,7 @@ use rustc::mir::interpret::{
 };
 
 use super::{Place, PlaceExtra, Memory,
-            HasMemory, MemoryKind, operator,
+            HasMemory, MemoryKind,
             Machine};
 
 pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
@@ -536,10 +536,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
             UnaryOp(un_op, ref operand) => {
                 let val = self.eval_operand_to_primval(operand)?;
-                let kind = self.ty_to_primval_kind(dest_ty)?;
+                let val = self.unary_op(un_op, val, dest_ty)?;
                 self.write_primval(
                     dest,
-                    operator::unary_op(un_op, val, kind)?,
+                    val,
                     dest_ty,
                 )?;
             }
@@ -1676,6 +1676,22 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         } else {
             self.tcx.sess.err(&e.to_string());
         }
+    }
+
+    pub fn sign_extend(&self, value: u128, ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
+        let size = self.layout_of(ty)?.size.bits();
+        // sign extend
+        let amt = 128 - size;
+        // shift the unsigned value to the left
+        // and back to the right as signed (essentially fills with FF on the left)
+        Ok((((value << amt) as i128) >> amt) as u128)
+    }
+
+    pub fn truncate(&self, value: u128, ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
+        let size = self.layout_of(ty)?.size.bits();
+        let amt = 128 - size;
+        // truncate (shift left to drop out leftover values, shift right to fill with zeroes)
+        Ok((value << amt) >> amt)
     }
 }
 
