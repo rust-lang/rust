@@ -184,7 +184,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                         let mut err = cx.struct_span_lint(
                                                              OVERFLOWING_LITERALS,
                                                              parent_expr.span,
-                                                             "only u8 can be casted into char");
+                                                             "only u8 can be cast into char");
                                         err.span_suggestion(parent_expr.span,
                                                             &"use a char literal instead",
                                                             format!("'\\u{{{:X}}}'", lit_val));

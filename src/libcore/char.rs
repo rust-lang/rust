@@ -79,7 +79,7 @@ pub const MAX: char = '\u{10ffff}';
 
 /// Converts a `u32` to a `char`.
 ///
-/// Note that all [`char`]s are valid [`u32`]s, and can be casted to one with
+/// Note that all [`char`]s are valid [`u32`]s, and can be cast to one with
 /// [`as`]:
 ///
 /// ```
@@ -131,7 +131,7 @@ pub fn from_u32(i: u32) -> Option<char> {
 
 /// Converts a `u32` to a `char`, ignoring validity.
 ///
-/// Note that all [`char`]s are valid [`u32`]s, and can be casted to one with
+/// Note that all [`char`]s are valid [`u32`]s, and can be cast to one with
 /// [`as`]:
 ///
 /// ```

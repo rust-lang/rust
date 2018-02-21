@@ -5,7 +5,7 @@ error: `<` is interpreted as a start of generic arguments for `usize`, not a com
    |                    ---------- ^ --------- interpreted as generic arguments
    |                    |          |
    |                    |          not interpreted as comparison
-   |                    help: try comparing the casted value: `(a as usize)`
+   |                    help: try comparing the cast value: `(a as usize)`
 
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
   --> $DIR/issue-22644.rs:17:33
@@ -14,7 +14,7 @@ error: `<` is interpreted as a start of generic arguments for `usize`, not a com
    |                      ---------- ^ -------------------- interpreted as generic arguments
    |                      |          |
    |                      |          not interpreted as comparison
-   |                      help: try comparing the casted value: `(a as usize)`
+   |                      help: try comparing the cast value: `(a as usize)`
 
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
   --> $DIR/issue-22644.rs:19:31
@@ -23,7 +23,7 @@ error: `<` is interpreted as a start of generic arguments for `usize`, not a com
    |                    ---------- ^ - interpreted as generic arguments
    |                    |          |
    |                    |          not interpreted as comparison
-   |                    help: try comparing the casted value: `(a as usize)`
+   |                    help: try comparing the cast value: `(a as usize)`
 
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
   --> $DIR/issue-22644.rs:21:31
@@ -32,7 +32,7 @@ error: `<` is interpreted as a start of generic arguments for `usize`, not a com
    |                      -------- ^ -------------------- interpreted as generic arguments
    |                      |        |
    |                      |        not interpreted as comparison
-   |                      help: try comparing the casted value: `(a: usize)`
+   |                      help: try comparing the cast value: `(a: usize)`
 
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
   --> $DIR/issue-22644.rs:23:29
@@ -41,7 +41,7 @@ error: `<` is interpreted as a start of generic arguments for `usize`, not a com
    |                    -------- ^ - interpreted as generic arguments
    |                    |        |
    |                    |        not interpreted as comparison
-   |                    help: try comparing the casted value: `(a: usize)`
+   |                    help: try comparing the cast value: `(a: usize)`
 
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
   --> $DIR/issue-22644.rs:28:20
@@ -50,7 +50,7 @@ error: `<` is interpreted as a start of generic arguments for `usize`, not a com
    |                    ^ not interpreted as comparison
 29 |                    4);
    |                    - interpreted as generic arguments
-help: try comparing the casted value
+help: try comparing the cast value
    |
 25 |     println!("{}", (a
 26 |                    as
@@ -64,7 +64,7 @@ error: `<` is interpreted as a start of generic arguments for `usize`, not a com
    |                    ^ not interpreted as comparison
 38 |                    5);
    |                    - interpreted as generic arguments
-help: try comparing the casted value
+help: try comparing the cast value
    |
 30 |     println!("{}", (a
 31 | 
@@ -81,7 +81,7 @@ error: `<` is interpreted as a start of generic arguments for `usize`, not a shi
    |                    ---------- ^^ --------- interpreted as generic arguments
    |                    |          |
    |                    |          not interpreted as shift
-   |                    help: try shifting the casted value: `(a as usize)`
+   |                    help: try shifting the cast value: `(a as usize)`
 
 error: expected type, found `4`
   --> $DIR/issue-22644.rs:42:28
