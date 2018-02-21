@@ -19,6 +19,7 @@ use std::mem;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Mutex;
+use std::cmp::{PartialOrd, Ord, Ordering};
 
 use builder::Step;
 
@@ -80,6 +81,22 @@ impl<B> Eq for Interned<B>
 where
     Interned<B>: PartialEq<Interned<B>>,
 {}
+
+impl<A, B> PartialOrd<Interned<A>> for Interned<B>
+where
+    Interned<B>: PartialEq<Interned<A>>,
+    B: PartialOrd<A>,
+{
+    fn partial_cmp(&self, other: &Interned<A>) -> Option<Ordering> {
+        PartialOrd::partial_cmp(self.as_static(), other.as_static())
+    }
+}
+
+impl<T: Ord + PartialOrd<T>> Ord for Interned<T> {
+    fn cmp(&self, other: &Interned<T>) -> Ordering {
+        Ord::cmp(self.as_static(), other.as_static())
+    }
+}
 
 impl<'a, T> PartialEq<Interned<T>> for &'a Interned<T> {
     fn eq(&self, other: &Interned<T>) -> bool {
