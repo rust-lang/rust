@@ -630,6 +630,8 @@ impl Step for CodegenBackend {
             .arg(build.src.join("src/librustc_trans/Cargo.toml"));
         rustc_cargo_env(build, &mut cargo);
 
+        let _folder = build.fold_output(|| format!("stage{}-rustc_trans", compiler.stage));
+
         match &*self.backend {
             "llvm" | "emscripten" => {
                 // Build LLVM for our target. This will implicitly build the
@@ -643,7 +645,6 @@ impl Step for CodegenBackend {
                     features.push_str(" emscripten");
                 }
 
-                let _folder = build.fold_output(|| format!("stage{}-rustc_trans", compiler.stage));
                 println!("Building stage{} codegen artifacts ({} -> {}, {})",
                          compiler.stage, &compiler.host, target, self.backend);
 
