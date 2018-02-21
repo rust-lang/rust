@@ -91,7 +91,7 @@ use sys;
 ///
 /// # Examples
 ///
-/// ```no_run
+/// ```ignore (extern-declaration)
 /// # fn main() {
 /// use std::ffi::CString;
 /// use std::os::raw::c_char;
@@ -150,7 +150,7 @@ pub struct CString {
 ///
 /// Inspecting a foreign C string:
 ///
-/// ```no_run
+/// ```ignore (extern-declaration)
 /// use std::ffi::CStr;
 /// use std::os::raw::c_char;
 ///
@@ -164,7 +164,7 @@ pub struct CString {
 ///
 /// Passing a Rust-originating C string:
 ///
-/// ```no_run
+/// ```ignore (extern-declaration)
 /// use std::ffi::{CString, CStr};
 /// use std::os::raw::c_char;
 ///
@@ -180,7 +180,7 @@ pub struct CString {
 ///
 /// Converting a foreign C string into a Rust [`String`]:
 ///
-/// ```no_run
+/// ```ignore (extern-declaration)
 /// use std::ffi::CStr;
 /// use std::os::raw::c_char;
 ///
@@ -307,7 +307,7 @@ impl CString {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```ignore (extern-declaration)
     /// use std::ffi::CString;
     /// use std::os::raw::c_char;
     ///
@@ -389,7 +389,7 @@ impl CString {
     /// Create a `CString`, pass ownership to an `extern` function (via raw pointer), then retake
     /// ownership with `from_raw`:
     ///
-    /// ```no_run
+    /// ```ignore (extern-declaration)
     /// use std::ffi::CString;
     /// use std::os::raw::c_char;
     ///
@@ -882,7 +882,7 @@ impl CStr {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```ignore (extern-declaration)
     /// # fn main() {
     /// use std::ffi::CStr;
     /// use std::os::raw::c_char;
