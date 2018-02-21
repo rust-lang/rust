@@ -1209,7 +1209,7 @@ Basic usage:
 ```
 ", $Feature, "let x: ", stringify!($SelfT), " = 2; // or any other integer type
 
-assert_eq!(x.pow(4), 16);",
+assert_eq!(x.pow(5), 32);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
@@ -2364,7 +2364,7 @@ assert_eq!(0x10", stringify!($SelfT), ".overflowing_shr(132), (0x1, true));", $E
 Basic usage:
 
 ```
-", $Feature, "assert_eq!(2", stringify!($SelfT), ".pow(4), 16);", $EndFeature, "
+", $Feature, "assert_eq!(2", stringify!($SelfT), ".pow(5), 32);", $EndFeature, "
 ```"),
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
