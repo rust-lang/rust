@@ -994,23 +994,19 @@ impl Step for Compiletest {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Docs {
+struct DocTest {
     compiler: Compiler,
+    path: &'static str,
+    name: &'static str,
+    is_ext_doc: bool,
 }
 
-impl Step for Docs {
+impl Step for DocTest {
     type Output = ();
-    const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/doc")
-    }
-
-    fn make_run(run: RunConfig) {
-        run.builder.ensure(Docs {
-            compiler: run.builder.compiler(run.builder.top_stage, run.host),
-        });
+        run.never()
     }
 
     /// Run `rustdoc --test` for all documentation in `src/doc`.
@@ -1026,9 +1022,9 @@ impl Step for Docs {
 
         // Do a breadth-first traversal of the `src/doc` directory and just run
         // tests for all files that end in `*.md`
-        let mut stack = vec![build.src.join("src/doc")];
+        let mut stack = vec![build.src.join(self.path)];
         let _time = util::timeit();
-        let _folder = build.fold_output(|| "test_docs");
+        let _folder = build.fold_output(|| format!("test_{}", self.name));
 
         while let Some(p) = stack.pop() {
             if p.is_dir() {
@@ -1050,6 +1046,51 @@ impl Step for Docs {
         }
     }
 }
+
+macro_rules! test_book {
+    ($($name:ident, $path:expr, $book_name:expr, default=$default:expr;)+) => {
+        $(
+            #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+            pub struct $name {
+                compiler: Compiler,
+            }
+
+            impl Step for $name {
+                type Output = ();
+                const DEFAULT: bool = $default;
+                const ONLY_HOSTS: bool = true;
+
+                fn should_run(run: ShouldRun) -> ShouldRun {
+                    run.path($path)
+                }
+
+                fn make_run(run: RunConfig) {
+                    run.builder.ensure($name {
+                        compiler: run.builder.compiler(run.builder.top_stage, run.host),
+                    });
+                }
+
+                fn run(self, builder: &Builder) {
+                    builder.ensure(DocTest {
+                        compiler: self.compiler,
+                        path: $path,
+                        name: $book_name,
+                        is_ext_doc: !$default,
+                    });
+                }
+            }
+        )+
+    }
+}
+
+test_book!(
+    Nomicon, "src/doc/nomicon", "nomicon", default=false;
+    Reference, "src/doc/reference", "reference", default=false;
+    RustdocBook, "src/doc/rustdoc", "rustdoc", default=true;
+    RustByExample, "src/doc/rust-by-example", "rust-by-example", default=false;
+    TheBook, "src/doc/book", "book", default=false;
+    UnstableBook, "src/doc/unstable-book", "unstable-book", default=true;
+);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ErrorIndex {

@@ -231,7 +231,7 @@ pub struct ShouldRun<'a> {
     paths: BTreeSet<PathSet>,
 
     // If this is a default rule, this is an additional constraint placed on
-    // it's run. Generally something like compiler docs being enabled.
+    // its run. Generally something like compiler docs being enabled.
     is_really_default: bool,
 }
 
@@ -326,7 +326,9 @@ impl<'a> Builder<'a> {
                 test::RunPassPretty, test::RunFailPretty, test::RunPassValgrindPretty,
                 test::RunPassFullDepsPretty, test::RunFailFullDepsPretty, test::RunMake,
                 test::Crate, test::CrateLibrustc, test::Rustdoc, test::Linkcheck, test::Cargotest,
-                test::Cargo, test::Rls, test::Docs, test::ErrorIndex, test::Distcheck,
+                test::Cargo, test::Rls, test::ErrorIndex, test::Distcheck,
+                test::Nomicon, test::Reference, test::RustdocBook, test::RustByExample,
+                test::TheBook, test::UnstableBook,
                 test::Rustfmt, test::Miri, test::Clippy, test::RustdocJS, test::RustdocTheme),
             Kind::Bench => describe!(test::Crate, test::CrateLibrustc),
             Kind::Doc => describe!(doc::UnstableBook, doc::UnstableBookGen, doc::TheBook,
