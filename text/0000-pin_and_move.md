@@ -186,7 +186,7 @@ struct Anchor<T> {
      ptr: T,
 }
 
-impl<T: StableDeref + Own> Anchor<T> {
+impl<T: StableDerefMut + Own> Anchor<T> {
      pub fn new(ptr: T) -> Anchor<T>;
 
      pub unsafe fn get_mut(this: &mut Anchor<T>) -> &mut T;
@@ -196,15 +196,15 @@ impl<T: StableDeref + Own> Anchor<T> {
      pub fn pin<'a>(this: &'a mut Anchor<T>) -> Pin<'a, T::Target>;
 }
 
-impl<T: StableDeref + Own> Anchor<T> where T::Target: Move {
+impl<T: StableDerefMut + Own> Anchor<T> where T::Target: Move {
      pub fn into_inner(this: Anchor<T>) -> T;
 }
 
-impl<T: StableDeref + Own> Deref for Anchor<T> {
+impl<T: StableDerefMut + Own> Deref for Anchor<T> {
      type Target = T;
 }
 
-impl<T: StableDeref + Own> DerefMut for Anchor<T> where T::Target: Move { }
+impl<T: StableDerefMut + Own> DerefMut for Anchor<T> where T::Target: Move { }
 ```
 
 Because `Anchor` implements `StableDeref` and `Own`, and it is not safe to get

@@ -1,0 +1,12 @@
+digraph {
+	Deref [shape=box]
+	Deref -> DerefMut
+	Deref -> StableDeref
+	Deref -> Own
+	Deref -> Share
+	DerefMut [shape=box]
+	DerefMut -> StableDerefMut
+	Clone [shape=box]
+	Clone -> Share
+	StableDeref -> StableDerefMut
+}
