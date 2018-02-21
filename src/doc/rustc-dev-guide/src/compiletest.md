@@ -14,7 +14,7 @@ representing tests that should succeed, `run-fail`, a folder holding tests that 
 a failure (non-zero status), `compile-fail`, a folder holding tests that should fail to compile, and many more.  The various
 suites are defined in [src/tools/compiletest/src/common.rs](https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/common.rs) in the `pub struct Config` declaration.  And a very good 
 introduction to the different suites of compiler tests along with details about them can be found
-[here, at Brian Anderson's blog](https://brson.github.io/2017/07/10/how-rust-is-tested#s-ct).
+in [`Adding new tests`](https://github.com/rust-lang-nursery/rustc-guide/blob/master/src/tests/adding.md).
 
 ## Adding a new test file
 Briefly, simply create your new test in the appropriate location under [src/test](https://github.com/rust-lang/rust/tree/master/src/test).  No registration of test files is necessary as 
@@ -25,14 +25,11 @@ See [`Adding new tests`](https://github.com/rust-lang-nursery/rustc-guide/blob/m
 Source file annotations which appear in comments near the top of the source file *before* any test code are known as header
 commands.  These commands can instruct `compiletest` to ignore this test, set expectations on whether it is expected to 
 succeed at compiling, or what the test's return code is expected to be.  Header commands (and their inline counterparts,
-Error Info commands) are described more fully 
-[here](https://github.com/rust-lang/rust/blob/master/src/test/COMPILER_TESTS.md).
+Error Info commands) are described more fully [here](https://github.com/rust-lang-nursery/rustc-guide/blob/master/src/tests/adding.md#header-commands-configuring-rustc).
 
 ### Adding a new header command
-Header commands are defined in [src/tools/compiletest/src/header.rs](https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/header.rs).  At a high level, dozens of test properties are defined
-in the `TestProps` struct.  These are all set to default values in the struct's `impl` block and any test can override this
-default value by specifying the property as header command as a comment (`//`) in the test source file, before any source 
-code.
+Header commands are defined in the `TestProps` struct in [src/tools/compiletest/src/header.rs](https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/header.rs).  At a high level, there are dozens of test properties are defined here, all set to default values in the `TestProp` struct's `impl` block. Any test can override this
+default value by specifying the property in question as header command as a comment (`//`) in the test source file, before any source code.
 
 #### Using a header command
 Here is an example, specifying the `must-compile-successfully` header command, which takes no arguments, followed by the
@@ -140,7 +137,7 @@ is that `compiletest` expects the failure code defined by the header command inv
 value.
 
 Although specific to `failure-status` (as every header command will have a different implementation in order to invoke
-behavior change) perhaps it is helpful to see the behavior hange implementation of one case, simply as an example.  To implement `failure-status`, the `check_correct_failure_status()` function found in the `TestCx` implementation block,
+behavior change) perhaps it is helpful to see the behavior change implementation of one case, simply as an example.  To implement `failure-status`, the `check_correct_failure_status()` function found in the `TestCx` implementation block,
 located in [src/tools/compiletest/src/runtest.rs](https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/runtest.rs), was modified as per below:
 ```diff
 @@ -295,11 +295,14 @@ impl<'test> TestCx<'test> {
