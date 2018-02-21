@@ -1506,6 +1506,8 @@ pub trait BufRead: Read {
     /// error is encountered then `buf` may contain some bytes already read in
     /// the event that all data read so far was valid UTF-8.
     ///
+    /// [`read_until`]: #method.read_until
+    ///
     /// # Examples
     ///
     /// [`std::io::Cursor`][`Cursor`] is a type that implements `BufRead`. In
