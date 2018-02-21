@@ -13,28 +13,29 @@ use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::convert::AsRef;
-use std::ffi::OsStr;
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::marker::PhantomData;
 use std::mem;
 use std::ops::Deref;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Mutex;
 
 use builder::Step;
 
-pub struct Interned<T>(usize, PhantomData<*const T>);
+pub struct Interned<T>(*mut T);
 
-impl Default for Interned<String> {
-    fn default() -> Self {
-        INTERNER.intern_string(String::default())
+impl<T> Interned<T> {
+    fn as_static(&self) -> &'static T {
+        unsafe { mem::transmute::<&T, &'static T>(&*self.0) }
     }
 }
 
-impl Default for Interned<PathBuf> {
-    fn default() -> Self {
-        INTERNER.intern_path(PathBuf::default())
+impl<T> Default for Interned<T>
+where
+    T: Intern<T> + Default
+{
+    fn default() -> Interned<T> {
+        T::intern(T::default())
     }
 }
 
@@ -45,28 +46,21 @@ impl<T> Clone for Interned<T> {
     }
 }
 
-impl<T> PartialEq for Interned<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
+impl<A, B> PartialEq<A> for Interned<B>
+where
+    A: ?Sized + PartialEq<B>,
+    B: 'static,
+{
+    fn eq(&self, other: &A) -> bool {
+        other.eq(&*self.as_static())
     }
 }
-impl<T> Eq for Interned<T> {}
 
-impl PartialEq<str> for Interned<String> {
-    fn eq(&self, other: &str) -> bool {
-       *self == other
-    }
-}
-impl<'a> PartialEq<&'a str> for Interned<String> {
-    fn eq(&self, other: &&str) -> bool {
-        **self == **other
-    }
-}
-impl<'a, T> PartialEq<&'a Interned<T>> for Interned<T> {
-    fn eq(&self, other: &&Self) -> bool {
-        self.0 == other.0
-    }
-}
+impl<B> Eq for Interned<B>
+where
+    Interned<B>: PartialEq<Interned<B>>,
+{}
+
 impl<'a, T> PartialEq<Interned<T>> for &'a Interned<T> {
     fn eq(&self, other: &Interned<T>) -> bool {
         self.0 == other.0
@@ -76,99 +70,79 @@ impl<'a, T> PartialEq<Interned<T>> for &'a Interned<T> {
 unsafe impl<T> Send for Interned<T> {}
 unsafe impl<T> Sync for Interned<T> {}
 
-impl fmt::Display for Interned<String> {
+impl<T: 'static + fmt::Display> fmt::Display for Interned<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let s: &str = &*self;
-        f.write_str(s)
+        fmt::Display::fmt(self.as_static(), f)
     }
 }
 
-impl fmt::Debug for Interned<String> {
+impl<T: 'static + fmt::Debug> fmt::Debug for Interned<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let s: &str = &*self;
-        f.write_fmt(format_args!("{:?}", s))
-    }
-}
-impl fmt::Debug for Interned<PathBuf> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let s: &Path = &*self;
-        f.write_fmt(format_args!("{:?}", s))
+        fmt::Debug::fmt(self.as_static(), f)
     }
 }
 
-impl Hash for Interned<String> {
+impl<T: 'static + Hash> Hash for Interned<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        let l = INTERNER.strs.lock().unwrap();
-        l.get(*self).hash(state)
+        self.as_static().hash(state)
     }
 }
 
-impl Hash for Interned<PathBuf> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        let l = INTERNER.paths.lock().unwrap();
-        l.get(*self).hash(state)
+impl<T: 'static + Deref> Deref for Interned<T> {
+    type Target = <T as Deref>::Target;
+    fn deref(&self) -> &'static Self::Target {
+        &*self.as_static()
     }
 }
 
-impl Deref for Interned<String> {
-    type Target = str;
-    fn deref(&self) -> &'static str {
-        let l = INTERNER.strs.lock().unwrap();
-        unsafe { mem::transmute::<&str, &'static str>(l.get(*self)) }
+impl<R, I> AsRef<R> for Interned<I>
+where
+    I: AsRef<R> + 'static,
+    R: ?Sized,
+{
+    fn as_ref(&self) -> &'static R {
+        self.as_static().as_ref()
     }
 }
 
-impl Deref for Interned<PathBuf> {
-    type Target = Path;
-    fn deref(&self) -> &'static Path {
-        let l = INTERNER.paths.lock().unwrap();
-        unsafe { mem::transmute::<&Path, &'static Path>(l.get(*self)) }
+pub trait Intern<InternAs>: Sized {
+    fn intern(self) -> Interned<InternAs>;
+}
+
+impl Intern<String> for String {
+    fn intern(self) -> Interned<String> {
+        INTERNER.place(self)
     }
 }
 
-impl AsRef<Path> for Interned<PathBuf> {
-    fn as_ref(&self) -> &'static Path {
-        let l = INTERNER.paths.lock().unwrap();
-        unsafe { mem::transmute::<&Path, &'static Path>(l.get(*self)) }
+impl Intern<PathBuf> for PathBuf {
+    fn intern(self) -> Interned<PathBuf> {
+        INTERNER.place(self)
     }
 }
 
-impl AsRef<Path> for Interned<String> {
-    fn as_ref(&self) -> &'static Path {
-        let l = INTERNER.strs.lock().unwrap();
-        unsafe { mem::transmute::<&Path, &'static Path>(l.get(*self).as_ref()) }
+impl<'a, B, I> Intern<I> for &'a B
+where
+    B: Eq + Hash + ToOwned<Owned=I> + ?Sized + 'static,
+    I: Borrow<B> + Clone + Hash + Eq + Send + 'static + Intern<I>,
+{
+    fn intern(self) -> Interned<I> {
+        INTERNER.place_borrow(self)
     }
 }
 
-impl AsRef<OsStr> for Interned<PathBuf> {
-    fn as_ref(&self) -> &'static OsStr {
-        let l = INTERNER.paths.lock().unwrap();
-        unsafe { mem::transmute::<&OsStr, &'static OsStr>(l.get(*self).as_ref()) }
-    }
-}
-
-impl AsRef<OsStr> for Interned<String> {
-    fn as_ref(&self) -> &'static OsStr {
-        let l = INTERNER.strs.lock().unwrap();
-        unsafe { mem::transmute::<&OsStr, &'static OsStr>(l.get(*self).as_ref()) }
-    }
-}
-
-
-struct TyIntern<T> {
-    items: Vec<T>,
+struct TyIntern<T: Eq + Hash> {
     set: HashMap<T, Interned<T>>,
 }
 
 impl<T: Hash + Clone + Eq> TyIntern<T> {
     fn new() -> TyIntern<T> {
         TyIntern {
-            items: Vec::new(),
             set: HashMap::new(),
         }
     }
 
-    fn intern_borrow<B>(&mut self, item: &B) -> Interned<T>
+    fn place_borrow<B>(&mut self, item: &B) -> Interned<T>
     where
         B: Eq + Hash + ToOwned<Owned=T> + ?Sized,
         T: Borrow<B>,
@@ -176,50 +150,70 @@ impl<T: Hash + Clone + Eq> TyIntern<T> {
         if let Some(i) = self.set.get(&item) {
             return *i;
         }
-        let item = item.to_owned();
-        let interned =  Interned(self.items.len(), PhantomData::<*const T>);
-        self.set.insert(item.clone(), interned);
-        self.items.push(item);
-        interned
+        self.place(item.to_owned())
     }
 
-    fn intern(&mut self, item: T) -> Interned<T> {
+    fn place(&mut self, item: T) -> Interned<T> {
         if let Some(i) = self.set.get(&item) {
             return *i;
         }
-        let interned =  Interned(self.items.len(), PhantomData::<*const T>);
-        self.set.insert(item.clone(), interned);
-        self.items.push(item);
+        let ptr = Box::into_raw(Box::new(item.clone()));
+        let interned = Interned(ptr);
+        self.set.insert(item, interned);
         interned
-    }
-
-    fn get(&self, i: Interned<T>) -> &T {
-        &self.items[i.0]
     }
 }
 
 pub struct Interner {
-    strs: Mutex<TyIntern<String>>,
-    paths: Mutex<TyIntern<PathBuf>>,
+    generic: Mutex<Vec<Box<Any + Send + 'static>>>,
 }
 
 impl Interner {
     fn new() -> Interner {
         Interner {
-            strs: Mutex::new(TyIntern::new()),
-            paths: Mutex::new(TyIntern::new()),
+            generic: Mutex::new(Vec::new()),
         }
     }
 
+    fn place<T: Hash + Eq + Send + Clone + 'static>(&self, i: T) -> Interned<T> {
+        let mut l = self.generic.lock().unwrap();
+        for x in l.iter_mut() {
+            if let Some(ty_interner) = (&mut **x).downcast_mut::<TyIntern<T>>() {
+                return ty_interner.place(i);
+            }
+        }
+        let mut ty_interner = TyIntern::new();
+        let interned = ty_interner.place(i);
+        l.push(Box::new(ty_interner));
+        interned
+    }
+
+    fn place_borrow<B, I>(&self, i: &B) -> Interned<I>
+    where
+        B: Eq + Hash + ToOwned<Owned=I> + ?Sized + 'static,
+        I: Borrow<B> + Clone + Hash + Eq + Send + 'static,
+    {
+        let mut l = self.generic.lock().unwrap();
+        for x in l.iter_mut() {
+            if let Some(ty_interner) = (&mut **x).downcast_mut::<TyIntern<I>>() {
+                return ty_interner.place_borrow(i);
+            }
+        }
+        let mut ty_interner = TyIntern::new();
+        let interned = ty_interner.place_borrow(i);
+        l.push(Box::new(ty_interner));
+        interned
+    }
+
     pub fn intern_str(&self, s: &str) -> Interned<String> {
-        self.strs.lock().unwrap().intern_borrow(s)
+        s.intern()
     }
     pub fn intern_string(&self, s: String) -> Interned<String> {
-        self.strs.lock().unwrap().intern(s)
+        s.intern()
     }
 
     pub fn intern_path(&self, s: PathBuf) -> Interned<PathBuf> {
-        self.paths.lock().unwrap().intern(s)
+        s.intern()
     }
 }
 
