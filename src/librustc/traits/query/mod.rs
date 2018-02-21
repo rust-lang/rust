@@ -20,6 +20,7 @@ use ty::{self, Ty};
 
 pub mod dropck_outlives;
 pub mod normalize;
+pub mod normalize_erasing_regions;
 
 pub type CanonicalProjectionGoal<'tcx> =
     Canonical<'tcx, ty::ParamEnvAnd<'tcx, ty::ProjectionTy<'tcx>>>;

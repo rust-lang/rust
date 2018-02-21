@@ -38,7 +38,7 @@ use traits::query::{CanonicalProjectionGoal, CanonicalTyGoal, NoSolution};
 use traits::query::dropck_outlives::{DtorckConstraint, DropckOutlivesResult};
 use traits::query::normalize::NormalizationResult;
 use traits::specialization_graph;
-use ty::{self, CrateInherentImpls, Ty, TyCtxt};
+use ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
 use ty::steal::Steal;
 use ty::subst::Substs;
 use util::nodemap::{DefIdSet, DefIdMap, ItemLocalSet};
@@ -393,6 +393,11 @@ define_maps! { <'tcx>
         Lrc<Canonical<'tcx, QueryResult<'tcx, NormalizationResult<'tcx>>>>,
         NoSolution,
     >,
+
+    /// Do not call this query directly: invoke `normalize_erasing_regions` instead.
+    [] fn normalize_ty_after_erasing_regions: NormalizeTyAfterErasingRegions(
+        ParamEnvAnd<'tcx, Ty<'tcx>>
+    ) -> Ty<'tcx>,
 
     /// Do not call this query directly: invoke `infcx.at().dropck_outlives()` instead.
     [] fn dropck_outlives: DropckOutlives(

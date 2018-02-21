@@ -12,7 +12,7 @@ use dep_graph::SerializedDepNodeIndex;
 use hir::def_id::{CrateNum, DefId, DefIndex};
 use mir::interpret::{GlobalId};
 use traits::query::{CanonicalProjectionGoal, CanonicalTyGoal};
-use ty::{self, Ty, TyCtxt};
+use ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use ty::subst::Substs;
 use ty::maps::queries;
 
@@ -64,6 +64,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::normalize_projection_ty<'tcx> {
 impl<'tcx> QueryDescription<'tcx> for queries::dropck_outlives<'tcx> {
     fn describe(_tcx: TyCtxt, goal: CanonicalTyGoal<'tcx>) -> String {
         format!("computing dropck types for `{:?}`", goal)
+    }
+}
+
+impl<'tcx> QueryDescription<'tcx> for queries::normalize_ty_after_erasing_regions<'tcx> {
+    fn describe(_tcx: TyCtxt, goal: ParamEnvAnd<'tcx, Ty<'tcx>>) -> String {
+        format!("normalizing `{:?}`", goal)
     }
 }
 
