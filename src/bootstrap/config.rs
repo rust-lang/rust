@@ -116,9 +116,9 @@ pub struct Build {
     target: Vec<Interned<String>>,
 
     #[serde(rename = "cargo")]
-    pub initial_cargo: Option<PathBuf>,
+    pub initial_cargo: PathBuf,
     #[serde(rename = "rustc")]
-    pub initial_rustc: Option<PathBuf>,
+    pub initial_rustc: PathBuf,
 
     pub low_priority: bool,
     pub compiler_docs: bool,
@@ -138,16 +138,21 @@ pub struct Build {
     pub openssl_static: bool,
     pub configure_args: Vec<String>,
     pub local_rebuild: bool,
+    #[serde(skip)]
+    pub out: PathBuf,
 }
 
 impl Default for Build {
     fn default() -> Build {
+        let out = t!(env::current_dir()).join("build");
+        let build = env::var("BUILD").unwrap().intern();
+        let stage0_root = out.join(&build).join("stage0/bin");
         Build {
-            build: env::var("BUILD").unwrap().intern(),
             host: Vec::new(),
             target: Vec::new(),
-            initial_cargo: None,
-            initial_rustc: None,
+            initial_cargo: stage0_root.join(exe("cargo", &build)),
+            initial_rustc: stage0_root.join(exe("rustc", &build)),
+            build: build,
             low_priority: false,
             compiler_docs: false,
             docs: true,
@@ -166,6 +171,7 @@ impl Default for Build {
             openssl_static: false,
             configure_args: Vec::new(),
             local_rebuild: false,
+            out: out,
         }
     }
 }
@@ -430,10 +436,6 @@ impl Config {
         config.incremental = flags.incremental;
         config.keep_stage = flags.keep_stage;
 
-        let cwd = t!(env::current_dir());
-        let out = cwd.join("build");
-        config.out = out.clone();
-
         // If --target was specified but --host wasn't specified, don't run any host-only tests.
         config.run_host_only = !(flags.host.is_empty() && !flags.target.is_empty());
 
@@ -512,15 +514,9 @@ impl Config {
 
         config.dist = toml.dist;
 
-        let stage0_root = out.join(&config.build).join("stage0/bin");
-        config.initial_rustc = match toml.build.initial_rustc {
-            Some(s) => PathBuf::from(s),
-            None => stage0_root.join(exe("rustc", &config.build)),
-        };
-        config.initial_cargo = match toml.build.initial_cargo {
-            Some(s) => PathBuf::from(s),
-            None => stage0_root.join(exe("cargo", &config.build)),
-        };
+        config.out = toml.build.out;
+        config.initial_rustc = toml.build.initial_rustc;
+        config.initial_cargo = toml.build.initial_cargo;
 
         // If local-rust is the same major.minor as the current version, then force a local-rebuild
         let local_version_verbose = output(
