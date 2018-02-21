@@ -111,9 +111,9 @@ struct TomlConfig {
 pub struct Build {
     #[serde(skip)]
     // We get build from the BUILD env-var, provided by bootstrap.py
-    build: String,
-    host: Vec<String>,
-    target: Vec<String>,
+    build: Interned<String>,
+    host: Vec<Interned<String>>,
+    target: Vec<Interned<String>>,
 
     #[serde(rename = "cargo")]
     pub initial_cargo: Option<PathBuf>,
@@ -143,7 +143,7 @@ pub struct Build {
 impl Default for Build {
     fn default() -> Build {
         Build {
-            build: env::var("BUILD").unwrap(),
+            build: env::var("BUILD").unwrap().intern(),
             host: Vec::new(),
             target: Vec::new(),
             initial_cargo: None,
@@ -463,31 +463,29 @@ impl Config {
 
         config.general = toml.build.clone();
         // bootstrap.py already handles this fully -- checks flags, toml, and default-generates
-        config.build = toml.build.build.intern();
-        let mut hosts = toml.build.host.into_iter()
-            .map(|h| h.intern())
-            .chain(iter::once(config.build.clone()))
-            .collect::<Vec<_>>();
-        hosts.sort_by(|a, b| a.cmp(&b));
-        hosts.dedup_by(|a, b| a == b);
-        config.hosts = hosts;
-        let mut targets = toml.build.target.into_iter()
-            .map(|t| t.intern())
-            .chain(config.hosts.clone())
-            .collect::<Vec<_>>();
-        targets.sort_by(|a, b| a.cmp(&b));
-        targets.dedup_by(|a, b| a == b);
-        config.targets = targets;
-        config.hosts = if !flags.host.is_empty() {
+        config.build = toml.build.build;
+
+        let mut hosts = if !flags.host.is_empty() {
             flags.host
         } else {
-            config.hosts
+            toml.build.host.into_iter()
+                .chain(iter::once(config.build.clone()))
+                .collect::<Vec<Interned<String>>>()
         };
-        config.targets = if !flags.target.is_empty() {
+        hosts.sort();
+        hosts.dedup();
+        config.hosts = hosts;
+
+        let mut targets = if !flags.target.is_empty() {
             flags.target
         } else {
-            config.targets
+            toml.build.target.into_iter()
+                .chain(config.hosts.clone())
+                .collect::<Vec<Interned<String>>>()
         };
+        targets.sort();
+        targets.dedup();
+        config.targets = targets;
 
         config.general.verbose = cmp::max(toml.build.verbose, flags.verbose);
 
