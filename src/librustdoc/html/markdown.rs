@@ -471,18 +471,21 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, position: Sp
                         break 'main;
                     }
                 }
-                let offset = offset.unwrap_or(0);
-                let lines = test_s.lines().map(|l| map_line(l).for_code());
-                let text = lines.collect::<Vec<&str>>().join("\n");
-                nb_lines += doc[prev_offset..offset].lines().count();
-                let line = tests.get_line() + (nb_lines - 1);
-                let filename = tests.get_filename();
-                tests.add_test(text.to_owned(),
-                               block_info.should_panic, block_info.no_run,
-                               block_info.ignore, block_info.test_harness,
-                               block_info.compile_fail, block_info.error_codes,
-                               line, filename, block_info.allow_fail);
-                prev_offset = offset;
+                if let Some(offset) = offset {
+                    let lines = test_s.lines().map(|l| map_line(l).for_code());
+                    let text = lines.collect::<Vec<&str>>().join("\n");
+                    nb_lines += doc[prev_offset..offset].lines().count();
+                    let line = tests.get_line() + (nb_lines - 1);
+                    let filename = tests.get_filename();
+                    tests.add_test(text.to_owned(),
+                                   block_info.should_panic, block_info.no_run,
+                                   block_info.ignore, block_info.test_harness,
+                                   block_info.compile_fail, block_info.error_codes,
+                                   line, filename, block_info.allow_fail);
+                    prev_offset = offset;
+                } else {
+                    break;
+                }
             }
             Event::Start(Tag::Header(level)) => {
                 register_header = Some(level as u32);
