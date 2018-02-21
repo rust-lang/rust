@@ -7,7 +7,7 @@
 # Summary
 [summary]: #summary
 
-Allow overriding profile keys for certain dependencies, as well as providing
+Allow overriding profile keys for certain dependencies, as well as providing a way to set profiles in `.cargo/config`
 
 # Motivation
 [motivation]: #motivation
