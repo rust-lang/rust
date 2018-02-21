@@ -271,18 +271,18 @@ fn check_attrs(cx: &LateContext, span: Span, name: &Name, attrs: &[Attribute]) {
                 return;
             }
 
-            let attr_to_item_span = Span::new(attr.span.lo(), span.lo(), span.ctxt());
+            let begin_of_attr_to_item = Span::new(attr.span.lo(), span.lo(), span.ctxt());
+            let end_of_attr_to_item = Span::new(attr.span.hi(), span.lo(), span.ctxt());
 
-            if let Some(snippet) = snippet_opt(cx, attr_to_item_span) {
+            if let Some(snippet) = snippet_opt(cx, end_of_attr_to_item) {
                 let lines = snippet.split('\n').collect::<Vec<_>>();
-                if lines.iter().filter(|l| l.trim().is_empty()).count() > 1 {
+                if lines.iter().filter(|l| l.trim().is_empty()).count() > 2 {
                     span_lint(
                         cx,
                         EMPTY_LINE_AFTER_OUTER_ATTR,
-                        attr_to_item_span,
+                        begin_of_attr_to_item,
                         "Found an empty line after an outer attribute. Perhaps you forgot to add a '!' to make it an inner attribute?"
-                        );
-
+                    );
                 }
             }
         }
