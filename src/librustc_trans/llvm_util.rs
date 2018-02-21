@@ -75,7 +75,7 @@ unsafe fn configure_llvm(sess: &Session) {
                                  llvm_args.as_ptr());
 }
 
-// WARNING: the features after aplpying `to_llvm_feature` must be known
+// WARNING: the features after applying `to_llvm_feature` must be known
 // to LLVM or the feature detection code will walk past the end of the feature
 // array, leading to crashes.
 
