@@ -17,6 +17,9 @@ TOOLSTATE_FILE="$(realpath $2)"
 OS="$3"
 COMMIT="$(git rev-parse HEAD)"
 CHANGED_FILES="$(git diff --name-status HEAD HEAD^)"
+SIX_WEEK_CYCLE="$(( ($(date +%s) / 604800 - 3) % 6 ))"
+# ^ 1970 Jan 1st is a Thursday, and our release dates are also on Thursdays,
+#   thus we could divide by 604800 (7 days in seconds) directly.
 
 touch "$TOOLSTATE_FILE"
 
@@ -59,6 +62,11 @@ if [ "$RUST_RELEASE_CHANNEL" = nightly -a -n "${TOOLSTATE_REPO_ACCESS_TOKEN+is_s
         sed -i "1 a\\
 $COMMIT\t$(cat "$TOOLSTATE_FILE")
 " "history/$OS.tsv"
+    # if we are at the last week in the 6-week release cycle, reject any kind of regression.
+    if [ $SIX_WEEK_CYCLE -eq 5 ]; then
+        python2.7 "$(dirname $0)/checkregression.py" \
+            "$OS" "$TOOLSTATE_FILE" "rust-toolstate/_data/latest.json"
+    fi
     rm -f "$MESSAGE_FILE"
     exit 0
 fi
