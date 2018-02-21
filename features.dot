@@ -1,5 +1,0 @@
-digraph {
-	stable_deref -> anchor_type
-	pin_and_move -> anchor_type
-	pin_and_move -> stack_pinning
-}
