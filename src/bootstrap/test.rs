@@ -78,15 +78,17 @@ fn try_run(build: &Build, cmd: &mut Command) -> bool {
     true
 }
 
-fn try_run_quiet(build: &Build, cmd: &mut Command) {
+fn try_run_quiet(build: &Build, cmd: &mut Command) -> bool {
     if !build.fail_fast {
         if !build.try_run_quiet(cmd) {
             let mut failures = build.delayed_failures.borrow_mut();
             failures.push(format!("{:?}", cmd));
+            return false;
         }
     } else {
         build.run_quiet(cmd);
     }
+    true
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -1042,7 +1044,15 @@ impl Step for DocTest {
                 continue;
             }
 
-            markdown_test(builder, compiler, &p);
+            let test_result = markdown_test(builder, compiler, &p);
+            if self.is_ext_doc {
+                let toolstate = if test_result {
+                    ToolState::TestPass
+                } else {
+                    ToolState::TestFail
+                };
+                build.save_toolstate(self.name, toolstate);
+            }
         }
     }
 }
@@ -1142,13 +1152,13 @@ impl Step for ErrorIndex {
     }
 }
 
-fn markdown_test(builder: &Builder, compiler: Compiler, markdown: &Path) {
+fn markdown_test(builder: &Builder, compiler: Compiler, markdown: &Path) -> bool {
     let build = builder.build;
     let mut file = t!(File::open(markdown));
     let mut contents = String::new();
     t!(file.read_to_string(&mut contents));
     if !contents.contains("```") {
-        return;
+        return true;
     }
 
     println!("doc tests for: {}", markdown.display());
@@ -1162,9 +1172,9 @@ fn markdown_test(builder: &Builder, compiler: Compiler, markdown: &Path) {
     cmd.arg("--test-args").arg(test_args);
 
     if build.config.quiet_tests {
-        try_run_quiet(build, &mut cmd);
+        try_run_quiet(build, &mut cmd)
     } else {
-        try_run(build, &mut cmd);
+        try_run(build, &mut cmd)
     }
 }
 

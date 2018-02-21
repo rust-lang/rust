@@ -29,6 +29,10 @@ MAINTAINERS = {
     'clippy-driver': '@Manishearth @llogiq @mcarton @oli-obk',
     'rls': '@nrc',
     'rustfmt': '@nrc',
+    'book': '@carols10cents @steveklabnik',
+    'nomicon': '@frewsxcv @Gankro',
+    'reference': '@steveklabnik @Havvy @matthewjasper @alercah',
+    'rust-by-example': '@steveklabnik @marioidival @projektir',
 }
 
 
@@ -83,7 +87,7 @@ def update_latest(
                 elif new < old:
                     changed = True
                     message += '💔 {} on {}: {} → {} (cc {}).\n' \
-                        .format(tool, os, old, new, MAINTAINERS[tool])
+                        .format(tool, os, old, new, MAINTAINERS.get(tool))
 
             if changed:
                 status['commit'] = current_commit
