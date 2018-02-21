@@ -18,6 +18,10 @@ import copy
 import datetime
 import collections
 import textwrap
+try:
+    import urllib2
+except ImportError:
+    import urllib.request as urllib2
 
 # List of people to ping when the status of a tool changed.
 MAINTAINERS = {
@@ -100,6 +104,7 @@ if __name__ == '__main__':
     cur_datetime = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
     cur_commit_msg = sys.argv[2]
     save_message_to_path = sys.argv[3]
+    github_token = sys.argv[4]
 
     relevant_pr_match = re.search('#([0-9]+)', cur_commit_msg)
     if relevant_pr_match:
@@ -107,6 +112,7 @@ if __name__ == '__main__':
         relevant_pr_number = 'rust-lang/rust#' + number
         relevant_pr_url = 'https://github.com/rust-lang/rust/pull/' + number
     else:
+        number = '-1'
         relevant_pr_number = '<unknown PR>'
         relevant_pr_url = '<unknown>'
 
@@ -116,9 +122,23 @@ if __name__ == '__main__':
         relevant_pr_url,
         cur_datetime
     )
-    if message:
-        print(message)
-        with open(save_message_to_path, 'w') as f:
-            f.write(message)
-    else:
+    if not message:
         print('<Nothing changed>')
+        sys.exit(0)
+
+    print(message)
+    with open(save_message_to_path, 'w') as f:
+        f.write(message)
+
+    # Write the toolstate comment on the PR as well.
+    gh_url = 'https://api.github.com/repos/rust-lang/rust/issues/{}/comments' \
+        .format(number)
+    response = urllib2.urlopen(urllib2.Request(
+        gh_url,
+        json.dumps({'body': message}),
+        {
+            'Authorization': 'token ' + github_token,
+            'Content-Type': 'application/json',
+        }
+    ))
+    response.read()
