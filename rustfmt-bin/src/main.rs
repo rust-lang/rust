@@ -386,14 +386,14 @@ fn print_usage_to_stdout(opts: &Options, reason: &str) {
 }
 
 fn print_version() {
-    println!(
-        "rustfmt {}",
-        concat!(
-            env!("CARGO_PKG_VERSION"),
-            "-",
-            include_str!(concat!(env!("OUT_DIR"), "/commit-info.txt"))
-        )
+    let version_info = format!(
+        "{}{}{}",
+        option_env!("CARGO_PKG_VERSION").unwrap_or("unknown"),
+        "-",
+        include_str!(concat!(env!("OUT_DIR"), "/commit-info.txt"))
     );
+
+    println!("rustfmt {}", version_info);
 }
 
 fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
