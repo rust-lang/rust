@@ -22,7 +22,27 @@ use std::sync::Mutex;
 
 use builder::Step;
 
+use serde::{Serialize, Serializer, Deserialize, Deserializer};
+
 pub struct Interned<T>(*mut T);
+
+impl<T: Serialize> Serialize for Interned<T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.as_static().serialize(serializer)
+    }
+}
+
+impl<'de, T: Deserialize<'de> + Intern<T>> Deserialize<'de> for Interned<T> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Ok(T::deserialize(deserializer)?.intern())
+    }
+}
 
 impl<T> Interned<T> {
     fn as_static(&self) -> &'static T {
