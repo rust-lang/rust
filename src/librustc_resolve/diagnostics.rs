@@ -325,6 +325,8 @@ Erroneous code example:
 extern crate core;
 
 struct core;
+
+fn main() {}
 ```
 
 There are two possible solutions:
