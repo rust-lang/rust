@@ -25,7 +25,7 @@ use config::Config;
 use metadata;
 use builder::Builder;
 
-use cache::{Interned, INTERNER};
+use cache::{Interned, Intern};
 
 /// Deserialized version of all flags for this compile.
 pub struct Flags {
@@ -355,11 +355,11 @@ Arguments:
             on_fail: matches.opt_str("on-fail"),
             rustc_error_format: matches.opt_str("error-format"),
             keep_stage: matches.opt_str("keep-stage").map(|j| j.parse().unwrap()),
-            build: matches.opt_str("build").map(|s| INTERNER.intern_string(s)),
+            build: matches.opt_str("build").map(|s| s.intern()),
             host: split(matches.opt_strs("host"))
-                .into_iter().map(|x| INTERNER.intern_string(x)).collect::<Vec<_>>(),
+                .into_iter().map(|x| x.intern()).collect::<Vec<_>>(),
             target: split(matches.opt_strs("target"))
-                .into_iter().map(|x| INTERNER.intern_string(x)).collect::<Vec<_>>(),
+                .into_iter().map(|x| x.intern()).collect::<Vec<_>>(),
             config: cfg_file,
             jobs: matches.opt_str("jobs").map(|j| j.parse().unwrap()),
             cmd,

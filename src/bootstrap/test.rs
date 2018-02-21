@@ -26,7 +26,7 @@ use build_helper::{self, output};
 
 use builder::{Kind, RunConfig, ShouldRun, Builder, Compiler, Step};
 use Crate as CargoCrate;
-use cache::{INTERNER, Interned};
+use cache::{Intern, Interned};
 use compile;
 use dist;
 use native;
@@ -1230,7 +1230,7 @@ impl Step for CrateNotDefault {
             target: self.target,
             mode: Mode::Libstd,
             test_kind: self.test_kind,
-            krate: INTERNER.intern_str(self.krate),
+            krate: self.krate.intern(),
         });
     }
 }

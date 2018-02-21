@@ -24,7 +24,7 @@ use install;
 use dist;
 use util::{exe, libdir, add_lib_path};
 use {Build, Mode};
-use cache::{INTERNER, Interned, Cache};
+use cache::{Intern, Interned, Cache};
 use check;
 use test;
 use flags::Subcommand;
@@ -440,7 +440,7 @@ impl<'a> Builder<'a> {
                     .join("rustlib").join(self.target).join("lib");
                 let _ = fs::remove_dir_all(&sysroot);
                 t!(fs::create_dir_all(&sysroot));
-                INTERNER.intern_path(sysroot)
+                sysroot.intern()
             }
         }
         self.ensure(Libdir { compiler, target })

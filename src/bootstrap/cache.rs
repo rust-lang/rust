@@ -164,7 +164,7 @@ impl<T: Hash + Clone + Eq> TyIntern<T> {
     }
 }
 
-pub struct Interner {
+struct Interner {
     generic: Mutex<Vec<Box<Any + Send + 'static>>>,
 }
 
@@ -204,21 +204,10 @@ impl Interner {
         l.push(Box::new(ty_interner));
         interned
     }
-
-    pub fn intern_str(&self, s: &str) -> Interned<String> {
-        s.intern()
-    }
-    pub fn intern_string(&self, s: String) -> Interned<String> {
-        s.intern()
-    }
-
-    pub fn intern_path(&self, s: PathBuf) -> Interned<PathBuf> {
-        s.intern()
-    }
 }
 
 lazy_static! {
-    pub static ref INTERNER: Interner = Interner::new();
+    static ref INTERNER: Interner = Interner::new();
 }
 
 /// This is essentially a HashMap which allows storing any type in its input and

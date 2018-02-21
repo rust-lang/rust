@@ -16,7 +16,7 @@ use build_helper::output;
 use serde_json;
 
 use {Build, Crate};
-use cache::INTERNER;
+use cache::Intern;
 
 #[derive(Deserialize)]
 struct Output {
@@ -60,7 +60,7 @@ fn build_krate(build: &mut Build, krate: &str) {
     let mut id2name = HashMap::new();
     for package in output.packages {
         if package.source.is_none() {
-            let name = INTERNER.intern_string(package.name);
+            let name = package.name.intern();
             id2name.insert(package.id, name);
             let mut path = PathBuf::from(package.manifest_path);
             path.pop();

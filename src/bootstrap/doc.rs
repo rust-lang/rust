@@ -29,7 +29,7 @@ use util::{cp_r, symlink_dir};
 use builder::{Builder, Compiler, RunConfig, ShouldRun, Step};
 use tool::Tool;
 use compile;
-use cache::{INTERNER, Interned};
+use cache::{Intern, Interned};
 
 macro_rules! book {
     ($($name:ident, $path:expr, $book_name:expr;)+) => {
@@ -57,7 +57,7 @@ macro_rules! book {
             fn run(self, builder: &Builder) {
                 builder.ensure(Rustbook {
                     target: self.target,
-                    name: INTERNER.intern_str($book_name),
+                    name: $book_name.intern(),
                 })
             }
         }
@@ -96,7 +96,7 @@ impl Step for Rustbook {
         builder.ensure(RustbookSrc {
             target: self.target,
             name: self.name,
-            src: INTERNER.intern_path(src),
+            src: src.intern(),
         });
     }
 }
@@ -127,7 +127,7 @@ impl Step for UnstableBook {
         });
         builder.ensure(RustbookSrc {
             target: self.target,
-            name: INTERNER.intern_str("unstable-book"),
+            name: "unstable-book".intern(),
             src: builder.build.md_doc_out(self.target),
         })
     }
@@ -151,7 +151,7 @@ impl Step for CargoBook {
     fn make_run(run: RunConfig) {
         run.builder.ensure(CargoBook {
             target: run.target,
-            name: INTERNER.intern_str("cargo"),
+            name: "cargo".intern(),
         });
     }
 
@@ -263,13 +263,13 @@ impl Step for TheBook {
         // build book first edition
         builder.ensure(Rustbook {
             target,
-            name: INTERNER.intern_string(format!("{}/first-edition", name)),
+            name: format!("{}/first-edition", name).intern(),
         });
 
         // build book second edition
         builder.ensure(Rustbook {
             target,
-            name: INTERNER.intern_string(format!("{}/second-edition", name)),
+            name: format!("{}/second-edition", name).intern(),
         });
 
         // build the version info page and CSS

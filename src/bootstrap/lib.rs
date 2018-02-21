@@ -189,7 +189,7 @@ mod job {
 
 pub use config::Config;
 use flags::Subcommand;
-use cache::{Interned, INTERNER};
+use cache::{Interned, Intern};
 use toolstate::ToolState;
 
 /// A structure representing a Rust compiler.
@@ -452,7 +452,7 @@ impl Build {
 
     /// Output directory for some generated md crate documentation for a target (temporary)
     fn md_doc_out(&self, target: Interned<String>) -> Interned<PathBuf> {
-        INTERNER.intern_path(self.config.out.join(&*target).join("md-doc"))
+        self.config.out.join(&*target).join("md-doc").intern()
     }
 
     /// Output directory for all crate documentation for a target (temporary)
@@ -908,7 +908,7 @@ impl Build {
 
     fn in_tree_crates(&self, root: &str) -> Vec<&Crate> {
         let mut ret = Vec::new();
-        let mut list = vec![INTERNER.intern_str(root)];
+        let mut list = vec![root.intern()];
         let mut visited = HashSet::new();
         while let Some(krate) = list.pop() {
             let krate = &self.crates[&krate];

@@ -34,7 +34,7 @@ use {Build, Compiler, Mode};
 use native;
 use tool;
 
-use cache::{INTERNER, Interned};
+use cache::{Intern, Interned};
 use builder::{Step, RunConfig, ShouldRun, Builder};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -600,7 +600,7 @@ impl Step for CodegenBackend {
         let backend = backend.cloned().unwrap_or_else(|| {
             String::from("llvm")
         });
-        let backend = INTERNER.intern_string(backend);
+        let backend = backend.intern();
         run.builder.ensure(CodegenBackend {
             compiler: run.builder.compiler(run.builder.top_stage, run.host),
             target: run.target,
@@ -811,7 +811,7 @@ impl Step for Sysroot {
         };
         let _ = fs::remove_dir_all(&sysroot);
         t!(fs::create_dir_all(&sysroot));
-        INTERNER.intern_path(sysroot)
+        sysroot.intern()
     }
 }
 
@@ -890,7 +890,7 @@ impl Step for Assemble {
                 builder.ensure(CodegenBackend {
                     compiler: build_compiler,
                     target: target_compiler.host,
-                    backend: INTERNER.intern_str(backend),
+                    backend: backend.intern(),
                 });
             }
         }

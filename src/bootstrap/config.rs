@@ -26,7 +26,7 @@ use num_cpus;
 use channel;
 use toml;
 use util::exe;
-use cache::{INTERNER, Interned};
+use cache::{Intern, Interned};
 use flags::Flags;
 use build_helper::output;
 pub use flags::Subcommand;
@@ -463,16 +463,16 @@ impl Config {
 
         config.general = toml.build.clone();
         // bootstrap.py already handles this fully -- checks flags, toml, and default-generates
-        config.build = INTERNER.intern_str(&toml.build.build);
+        config.build = toml.build.build.intern();
         let mut hosts = toml.build.host.into_iter()
-            .map(|h| INTERNER.intern_string(h))
+            .map(|h| h.intern())
             .chain(iter::once(config.build.clone()))
             .collect::<Vec<_>>();
         hosts.sort_by(|a, b| a.cmp(&b));
         hosts.dedup_by(|a, b| a == b);
         config.hosts = hosts;
         let mut targets = toml.build.target.into_iter()
-            .map(|t| INTERNER.intern_string(t))
+            .map(|t| t.intern())
             .chain(config.hosts.clone())
             .collect::<Vec<_>>();
         targets.sort_by(|a, b| a.cmp(&b));
@@ -498,7 +498,7 @@ impl Config {
 
         for (triple, cfg) in toml.target {
             let cwd = t!(env::current_dir());
-            config.target_config.insert(INTERNER.intern_string(triple.clone()), Target {
+            config.target_config.insert(triple.intern(), Target {
                 llvm_config: cfg.llvm_config.map(|p| cwd.join(p)),
                 jemalloc: cfg.jemalloc.map(|p| cwd.join(p)),
                 ndk: cfg.android_ndk.map(|p| cwd.join(p)),

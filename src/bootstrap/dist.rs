@@ -33,7 +33,7 @@ use builder::{Builder, RunConfig, ShouldRun, Step};
 use compile;
 use native;
 use tool::{self, Tool};
-use cache::{INTERNER, Interned};
+use cache::{Intern, Interned};
 use time;
 
 pub fn pkgname(build: &Build, component: &str) -> String {
@@ -460,7 +460,7 @@ impl Step for Rustc {
 
             // Debugger scripts
             builder.ensure(DebuggerScripts {
-                sysroot: INTERNER.intern_path(image.to_owned()),
+                sysroot: image.intern(),
                 host,
             });
 
