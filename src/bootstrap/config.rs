@@ -424,32 +424,8 @@ impl Config {
     pub fn parse(args: &[String]) -> Config {
         let flags = Flags::parse(&args);
         let file = flags.config.clone();
-        let mut config = Config::default();
-        config.exclude = flags.exclude;
-        config.paths = flags.paths;
-        config.rustc_error_format = flags.rustc_error_format;
-        config.on_fail = flags.on_fail;
-        config.stage = flags.stage;
-        config.src = flags.src;
-        config.jobs = flags.jobs;
-        config.cmd = flags.cmd;
-        config.incremental = flags.incremental;
-        config.keep_stage = flags.keep_stage;
 
-        // If --target was specified but --host wasn't specified, don't run any host-only tests.
-        config.run_host_only = !(flags.host.is_empty() && !flags.target.is_empty());
-
-        config.is_sudo = match env::var_os("SUDO_USER") {
-            Some(sudo_user) => {
-                match env::var_os("USER") {
-                    Some(user) => user != sudo_user,
-                    None => false,
-                }
-            }
-            None => false,
-        };
-
-        let toml = file.map(|file| {
+        let mut toml = file.map(|file| {
             let mut f = t!(File::open(&file));
             let mut contents = String::new();
             t!(f.read_to_string(&mut contents));
@@ -463,42 +439,34 @@ impl Config {
             }
         }).unwrap_or_else(|| TomlConfig::default());
 
-        config.general = toml.build.clone();
-        // bootstrap.py already handles this fully -- checks flags, toml, and default-generates
-        config.build = toml.build.build;
-
         let mut hosts = if !flags.host.is_empty() {
-            flags.host
+            flags.host.clone()
         } else {
             toml.build.host.into_iter()
-                .chain(iter::once(config.build.clone()))
+                .chain(iter::once(toml.build.build))
                 .collect::<Vec<Interned<String>>>()
         };
         hosts.sort();
         hosts.dedup();
-        config.hosts = hosts;
 
         let mut targets = if !flags.target.is_empty() {
-            flags.target
+            flags.target.clone()
         } else {
             toml.build.target.into_iter()
-                .chain(config.hosts.clone())
+                .chain(hosts.clone())
                 .collect::<Vec<Interned<String>>>()
         };
         targets.sort();
         targets.dedup();
-        config.targets = targets;
 
-        config.general.verbose = cmp::max(toml.build.verbose, flags.verbose);
+        toml.build.host = hosts;
+        toml.build.target = targets;
+        toml.build.verbose = cmp::max(toml.build.verbose, flags.verbose);
 
-        config.install = toml.install;
-        config.llvm = toml.llvm;
-
-        config.rust = toml.rust.clone();
-
+        let mut target_config = HashMap::new();
         for (triple, cfg) in toml.target {
             let cwd = t!(env::current_dir());
-            config.target_config.insert(triple.intern(), Target {
+            target_config.insert(triple.intern(), Target {
                 llvm_config: cfg.llvm_config.map(|p| cwd.join(p)),
                 jemalloc: cfg.jemalloc.map(|p| cwd.join(p)),
                 ndk: cfg.android_ndk.map(|p| cwd.join(p)),
@@ -512,31 +480,63 @@ impl Config {
             });
         }
 
-        config.dist = toml.dist;
-
-        config.out = toml.build.out;
-        config.initial_rustc = toml.build.initial_rustc;
-        config.initial_cargo = toml.build.initial_cargo;
-
         // If local-rust is the same major.minor as the current version, then force a local-rebuild
         let local_version_verbose = output(
-            Command::new(&config.initial_rustc).arg("--version").arg("--verbose"));
+            Command::new(&toml.build.initial_rustc).arg("--version").arg("--verbose"));
         let local_release = local_version_verbose
             .lines().filter(|x| x.starts_with("release:"))
             .next().unwrap().trim_left_matches("release:").trim();
         let my_version = channel::CFG_RELEASE_NUM;
         if local_release.split('.').take(2).eq(my_version.split('.').take(2)) {
             eprintln!("auto-detected local rebuild");
-            config.general.local_rebuild = true;
+            toml.build.local_rebuild = true;
         }
 
         // The msvc hosts don't use jemalloc, turn it off globally to
         // avoid packaging the dummy liballoc_jemalloc on that platform.
-        if config.hosts.iter().any(|host| host.contains("msvc")) {
-            config.rust.use_jemalloc = false;
+        if toml.build.host.iter().any(|host| host.contains("msvc")) {
+            toml.rust.use_jemalloc = false;
         }
 
-        config
+        Config {
+            exclude: flags.exclude,
+            paths: flags.paths,
+            on_fail: flags.on_fail,
+            rustc_error_format: flags.rustc_error_format,
+            stage: flags.stage,
+            src: flags.src,
+            jobs: flags.jobs,
+            cmd: flags.cmd,
+            incremental: flags.incremental,
+            keep_stage: flags.keep_stage,
+
+            // If --target was specified and --host wasn't specified,
+            // then run any host-only tests.
+            run_host_only: !(flags.host.is_empty() && !flags.target.is_empty()),
+            is_sudo: match env::var_os("SUDO_USER") {
+                Some(sudo_user) => {
+                    match env::var_os("USER") {
+                        Some(user) => user != sudo_user,
+                        None => false,
+                    }
+                }
+                None => false,
+            },
+            out: toml.build.out.clone(),
+            // bootstrap.py already handles this fully -- checks flags, toml, and default-generates
+            build: toml.build.build.clone(),
+            hosts: toml.build.host.clone(),
+            targets: toml.build.target.clone(),
+            initial_rustc: toml.build.initial_rustc.clone(),
+            initial_cargo: toml.build.initial_cargo.clone(),
+
+            general: toml.build,
+            install: toml.install,
+            llvm: toml.llvm,
+            rust: toml.rust,
+            target_config: target_config,
+            dist: toml.dist,
+        }
     }
 
     /// Try to find the relative path of `libdir`.
