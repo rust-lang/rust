@@ -45,8 +45,9 @@ impl<'de, T: Deserialize<'de> + Intern<T>> Deserialize<'de> for Interned<T> {
 }
 
 impl<T> Interned<T> {
-    fn as_static(&self) -> &'static T {
-        unsafe { mem::transmute::<&T, &'static T>(&*self.0) }
+    fn as_static<'a>(&self) -> &'a T {
+        // This is safe because the values Interned points to are effectively leaked
+        unsafe { mem::transmute::<&T, &'a T>(&*self.0) }
     }
 }
 
@@ -55,7 +56,7 @@ where
     T: Intern<T> + Default
 {
     fn default() -> Interned<T> {
-        T::intern(T::default())
+        T::default().intern()
     }
 }
 
@@ -69,7 +70,6 @@ impl<T> Clone for Interned<T> {
 impl<A, B> PartialEq<A> for Interned<B>
 where
     A: ?Sized + PartialEq<B>,
-    B: 'static,
 {
     fn eq(&self, other: &A) -> bool {
         other.eq(&*self.as_static())
@@ -90,19 +90,19 @@ impl<'a, T> PartialEq<Interned<T>> for &'a Interned<T> {
 unsafe impl<T> Send for Interned<T> {}
 unsafe impl<T> Sync for Interned<T> {}
 
-impl<T: 'static + fmt::Display> fmt::Display for Interned<T> {
+impl<T: fmt::Display> fmt::Display for Interned<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(self.as_static(), f)
     }
 }
 
-impl<T: 'static + fmt::Debug> fmt::Debug for Interned<T> {
+impl<T: fmt::Debug> fmt::Debug for Interned<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(self.as_static(), f)
     }
 }
 
-impl<T: 'static + Hash> Hash for Interned<T> {
+impl<T: Hash> Hash for Interned<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.as_static().hash(state)
     }
