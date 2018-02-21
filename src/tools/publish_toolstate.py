@@ -17,6 +17,7 @@ import json
 import copy
 import datetime
 import collections
+import textwrap
 
 # List of people to ping when the status of a tool changed.
 MAINTAINERS = {
@@ -38,7 +39,12 @@ def read_current_status(current_commit, path):
     return {}
 
 
-def update_latest(current_commit, relevant_pr_number, current_datetime):
+def update_latest(
+    current_commit,
+    relevant_pr_number,
+    relevant_pr_url,
+    current_datetime
+):
     '''Updates `_data/latest.json` to match build result of the given commit.
     '''
     with open('_data/latest.json', 'rb+') as f:
@@ -50,8 +56,13 @@ def update_latest(current_commit, relevant_pr_number, current_datetime):
         }
 
         slug = 'rust-lang/rust'
-        message = '📣 Toolstate changed by {}!\n\nTested on commit {}@{}.\n\n' \
-            .format(relevant_pr_number, slug, current_commit)
+        message = textwrap.dedent('''\
+            📣 Toolstate changed by {}!
+
+            Tested on commit {}@{}.
+            Direct link to PR: <{}>
+
+        ''').format(relevant_pr_number, slug, current_commit, relevant_pr_url)
         anything_changed = False
         for status in latest:
             tool = status['tool']
@@ -90,13 +101,21 @@ if __name__ == '__main__':
     cur_commit_msg = sys.argv[2]
     save_message_to_path = sys.argv[3]
 
-    relevant_pr_match = re.search('#[0-9]+', cur_commit_msg)
+    relevant_pr_match = re.search('#([0-9]+)', cur_commit_msg)
     if relevant_pr_match:
-        relevant_pr_number = 'rust-lang/rust' + relevant_pr_match.group(0)
+        number = relevant_pr_match.group(1)
+        relevant_pr_number = 'rust-lang/rust#' + number
+        relevant_pr_url = 'https://github.com/rust-lang/rust/pull/' + number
     else:
         relevant_pr_number = '<unknown PR>'
+        relevant_pr_url = '<unknown>'
 
-    message = update_latest(cur_commit, relevant_pr_number, cur_datetime)
+    message = update_latest(
+        cur_commit,
+        relevant_pr_number,
+        relevant_pr_url,
+        cur_datetime
+    )
     if message:
         print(message)
         with open(save_message_to_path, 'w') as f:
