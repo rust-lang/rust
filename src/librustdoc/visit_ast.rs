@@ -24,12 +24,12 @@ use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::cstore::{LoadedMacro, CrateStore};
 use rustc::middle::privacy::AccessLevel;
 use rustc::ty::Visibility;
-use rustc::util::nodemap::FxHashSet;
+use rustc::util::nodemap::{FxHashSet, FxHashMap};
 
 use rustc::hir;
 
 use core;
-use clean::{self, AttributesExt, NestedAttributesExt};
+use clean::{self, AttributesExt, NestedAttributesExt, def_id_to_path};
 use doctree::*;
 
 // looks to me like the first two of these are actually
@@ -41,7 +41,7 @@ use doctree::*;
 // framework from syntax?
 
 pub struct RustdocVisitor<'a, 'tcx: 'a, 'rcx: 'a> {
-    cstore: &'a CrateStore,
+    pub cstore: &'a CrateStore,
     pub module: Module,
     pub attrs: hir::HirVec<ast::Attribute>,
     pub cx: &'a core::DocContext<'a, 'tcx, 'rcx>,
@@ -50,6 +50,7 @@ pub struct RustdocVisitor<'a, 'tcx: 'a, 'rcx: 'a> {
     /// Is the current module and all of its parents public?
     inside_public_path: bool,
     reexported_macros: FxHashSet<DefId>,
+    exact_paths: Option<FxHashMap<DefId, Vec<String>>>,
 }
 
 impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
@@ -66,7 +67,18 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
             inlining: false,
             inside_public_path: true,
             reexported_macros: FxHashSet(),
+            exact_paths: Some(FxHashMap()),
             cstore,
+        }
+    }
+
+    fn store_path(&mut self, did: DefId) {
+        // We can't use the entry api, as that keeps the mutable borrow of self active
+        // when we try to use cx
+        let exact_paths = self.exact_paths.as_mut().unwrap();
+        if exact_paths.get(&did).is_none() {
+            let path = def_id_to_path(self.cx, did, self.cx.crate_name.clone());
+            exact_paths.insert(did, path);
         }
     }
 
@@ -94,6 +106,8 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
             krate.exported_macros.iter().map(|def| self.visit_local_macro(def)).collect();
         self.module.macros.extend(macro_exports);
         self.module.is_crate = true;
+
+        self.cx.renderinfo.borrow_mut().exact_paths = self.exact_paths.take().unwrap();
     }
 
     pub fn visit_variant_data(&mut self, item: &hir::Item,
@@ -371,6 +385,12 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                       renamed: Option<ast::Name>, om: &mut Module) {
         debug!("Visiting item {:?}", item);
         let name = renamed.unwrap_or(item.name);
+
+        if item.vis == hir::Public {
+            let def_id = self.cx.tcx.hir.local_def_id(item.id);
+            self.store_path(def_id);
+        }
+
         match item.node {
             hir::ItemForeignMod(ref fm) => {
                 // If inlining we only want to include public functions.
