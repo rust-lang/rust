@@ -6,6 +6,7 @@
 - [The compiler testing framework](./tests/intro.md)
     - [Running tests](./tests/running.md)
     - [Adding new tests](./tests/adding.md)
+    - [Using `compiletest` + commands to control test execution](./compiletest.md)
 - [Walkthrough: a typical contribution](./walkthrough.md)
 - [High-level overview of the compiler source](./high-level-overview.md)
 - [Queries: demand-driven compilation](./query.md)
