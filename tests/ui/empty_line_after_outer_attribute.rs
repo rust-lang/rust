@@ -58,4 +58,13 @@ mod foo {
 #[allow(missing_docs)]
 fn three_attributes() { assert!(true) }
 
+// This should not produce a warning
+#[doc = "
+Returns the escaped value of the textual representation of
+
+"]
+pub fn function() -> bool {
+    true
+}
+
 fn main() { }
