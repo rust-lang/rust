@@ -39,7 +39,6 @@ pub use flags::Subcommand;
 /// filled out from the decoded forms of the structs below. For documentation
 /// each field, see the corresponding fields in
 /// `config.toml.example`.
-#[derive(Default)]
 pub struct Config {
     pub rustc_error_format: Option<String>,
     pub build: Interned<String>,
