@@ -1014,7 +1014,9 @@ fn link_args(cmd: &mut Linker,
         RelroLevel::Partial => {
             cmd.partial_relro();
         },
-        RelroLevel::Off => {},
+        RelroLevel::Off => {
+            cmd.no_relro();
+        },
     }
 
     // Pass optimization flags down to the linker.
