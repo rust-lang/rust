@@ -27,7 +27,9 @@ impl BitVector {
     #[inline]
     pub fn new(num_bits: usize) -> BitVector {
         let num_words = words(num_bits);
-        BitVector { data: vec![0; num_words] }
+        BitVector {
+            data: vec![0; num_words],
+        }
     }
 
     #[inline]
@@ -133,7 +135,10 @@ impl<'a> Iterator for BitVectorIter<'a> {
 }
 
 impl FromIterator<bool> for BitVector {
-    fn from_iter<I>(iter: I) -> BitVector where I: IntoIterator<Item=bool> {
+    fn from_iter<I>(iter: I) -> BitVector
+    where
+        I: IntoIterator<Item = bool>,
+    {
         let iter = iter.into_iter();
         let (len, _) = iter.size_hint();
         // Make the minimum length for the bitvector WORD_BITS bits since that's
@@ -262,7 +267,11 @@ impl BitMatrix {
 }
 
 #[derive(Clone, Debug)]
-pub struct SparseBitMatrix<R, C> where R: Idx, C: Idx {
+pub struct SparseBitMatrix<R, C>
+where
+    R: Idx,
+    C: Idx,
+{
     vector: IndexVec<R, SparseBitSet<C>>,
 }
 
@@ -340,7 +349,7 @@ impl<I: Idx> SparseChunk<I> {
         SparseChunk {
             key,
             bits: 1 << (index % 128),
-            _marker: PhantomData
+            _marker: PhantomData,
         }
     }
 
@@ -351,18 +360,20 @@ impl<I: Idx> SparseChunk<I> {
     pub fn iter(&self) -> impl Iterator<Item = I> {
         let base = self.key as usize * 128;
         let mut bits = self.bits;
-        (0..128).map(move |i| {
-            let current_bits = bits;
-            bits >>= 1;
-            (i, current_bits)
-        }).take_while(|&(_, bits)| bits != 0)
-          .filter_map(move |(i, bits)| {
-            if (bits & 1) != 0 {
-                Some(I::new(base + i))
-            } else {
-                None
-            }
-        })
+        (0..128)
+            .map(move |i| {
+                let current_bits = bits;
+                bits >>= 1;
+                (i, current_bits)
+            })
+            .take_while(|&(_, bits)| bits != 0)
+            .filter_map(move |(i, bits)| {
+                if (bits & 1) != 0 {
+                    Some(I::new(base + i))
+                } else {
+                    None
+                }
+            })
     }
 }
 
@@ -370,7 +381,7 @@ impl<I: Idx> SparseBitSet<I> {
     pub fn new() -> Self {
         SparseBitSet {
             chunk_bits: BTreeMap::new(),
-            _marker: PhantomData
+            _marker: PhantomData,
         }
     }
 
@@ -380,7 +391,9 @@ impl<I: Idx> SparseBitSet<I> {
 
     pub fn contains_chunk(&self, chunk: SparseChunk<I>) -> SparseChunk<I> {
         SparseChunk {
-            bits: self.chunk_bits.get(&chunk.key).map_or(0, |bits| bits & chunk.bits),
+            bits: self.chunk_bits
+                .get(&chunk.key)
+                .map_or(0, |bits| bits & chunk.bits),
             ..chunk
         }
     }
@@ -415,7 +428,7 @@ impl<I: Idx> SparseBitSet<I> {
                 }
                 new_bits ^ old_bits
             }
-            Entry::Vacant(_) => 0
+            Entry::Vacant(_) => 0,
         };
         SparseChunk {
             bits: changed,
@@ -428,12 +441,10 @@ impl<I: Idx> SparseBitSet<I> {
     }
 
     pub fn chunks<'a>(&'a self) -> impl Iterator<Item = SparseChunk<I>> + 'a {
-        self.chunk_bits.iter().map(|(&key, &bits)| {
-            SparseChunk {
-                key,
-                bits,
-                _marker: PhantomData
-            }
+        self.chunk_bits.iter().map(|(&key, &bits)| SparseChunk {
+            key,
+            bits,
+            _marker: PhantomData,
         })
     }
 
@@ -478,10 +489,11 @@ fn bitvec_iter_works() {
     bitvec.insert(65);
     bitvec.insert(66);
     bitvec.insert(99);
-    assert_eq!(bitvec.iter().collect::<Vec<_>>(),
-               [1, 10, 19, 62, 63, 64, 65, 66, 99]);
+    assert_eq!(
+        bitvec.iter().collect::<Vec<_>>(),
+        [1, 10, 19, 62, 63, 64, 65, 66, 99]
+    );
 }
-
 
 #[test]
 fn bitvec_iter_works_2() {
@@ -514,24 +526,24 @@ fn union_two_vecs() {
 #[test]
 fn grow() {
     let mut vec1 = BitVector::new(65);
-    for index in 0 .. 65 {
+    for index in 0..65 {
         assert!(vec1.insert(index));
         assert!(!vec1.insert(index));
     }
     vec1.grow(128);
 
     // Check if the bits set before growing are still set
-    for index in 0 .. 65 {
+    for index in 0..65 {
         assert!(vec1.contains(index));
     }
 
     // Check if the new bits are all un-set
-    for index in 65 .. 128 {
+    for index in 65..128 {
         assert!(!vec1.contains(index));
     }
 
     // Check that we can set all new bits without running out of bounds
-    for index in 65 .. 128 {
+    for index in 65..128 {
         assert!(vec1.insert(index));
         assert!(!vec1.insert(index));
     }
