@@ -151,22 +151,13 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
 
     pub fn type_bit_size(
         &self,
-        ty: Ty<'tcx>,
+        ty: Ty,
     ) -> u64 {
-        let tcx = self.tcx.global_tcx();
-        let (ty, param_env) = self
-            .tcx
-            .lift_to_global(&(ty, self.param_env))
-            .unwrap_or_else(|| {
-            bug!("MIR: Cx::const_eval_literal({:?}, {:?}) got \
-                type with inference types/regions",
-                ty, self.param_env);
-        });
-        tcx
-            .layout_of(param_env.and(ty))
-            .expect("int layout")
-            .size
-            .bits()
+        match ty.sty {
+            ty::TyInt(ity) => ity.bit_width(),
+            ty::TyUint(uty) => uty.bit_width(),
+            _ => bug!("{} is not an integer", ty),
+        }.map_or(self.tcx.data_layout.pointer_size.bits(), |n| n as u64)
     }
 
     pub fn const_eval_literal(

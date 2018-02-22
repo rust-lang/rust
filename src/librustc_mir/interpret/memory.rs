@@ -655,7 +655,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         Ok(())
     }
 
-    pub fn read_primval(&self, ptr: MemoryPointer, ptr_align: Align, size: u64, signed: bool) -> EvalResult<'tcx, PrimVal> {
+    pub fn read_primval(&self, ptr: MemoryPointer, ptr_align: Align, size: u64) -> EvalResult<'tcx, PrimVal> {
         self.check_relocation_edges(ptr, size)?; // Make sure we don't read part of a pointer as a pointer
         let endianness = self.endianness();
         let bytes = self.get_bytes_unchecked(ptr, size, ptr_align.min(self.int_align(size)))?;
@@ -665,14 +665,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             return Ok(PrimVal::Undef.into());
         }
         // Now we do the actual reading
-        let bytes = if signed {
-            let bytes = read_target_int(endianness, bytes).unwrap() as u128;
-            let amt = 128 - (size * 8);
-            // truncate (shift left to drop out leftover values, shift right to fill with zeroes)
-            (bytes << amt) >> amt
-        } else {
-            read_target_uint(endianness, bytes).unwrap()
-        };
+        let bytes = read_target_uint(endianness, bytes).unwrap();
         // See if we got a pointer
         if size != self.pointer_size() {
             if self.relocations(ptr, size)?.count() != 0 {
@@ -689,8 +682,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         Ok(PrimVal::Bytes(bytes))
     }
 
-    pub fn read_ptr_sized_unsigned(&self, ptr: MemoryPointer, ptr_align: Align) -> EvalResult<'tcx, PrimVal> {
-        self.read_primval(ptr, ptr_align, self.pointer_size(), false)
+    pub fn read_ptr_sized(&self, ptr: MemoryPointer, ptr_align: Align) -> EvalResult<'tcx, PrimVal> {
+        self.read_primval(ptr, ptr_align, self.pointer_size())
     }
 
     pub fn write_primval(&mut self, ptr: MemoryPointer, ptr_align: Align, val: PrimVal, size: u64, signed: bool) -> EvalResult<'tcx> {
@@ -901,13 +894,6 @@ pub fn read_target_uint(endianness: layout::Endian, mut source: &[u8]) -> Result
     }
 }
 
-pub fn read_target_int(endianness: layout::Endian, mut source: &[u8]) -> Result<i128, io::Error> {
-    match endianness {
-        layout::Endian::Little => source.read_int128::<LittleEndian>(source.len()),
-        layout::Endian::Big => source.read_int128::<BigEndian>(source.len()),
-    }
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // Unaligned accesses
 ////////////////////////////////////////////////////////////////////////////////
@@ -924,7 +910,7 @@ pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     ) -> EvalResult<'tcx, Pointer> {
         Ok(match value {
             Value::ByRef(ptr, align) => {
-                self.memory().read_ptr_sized_unsigned(ptr.to_ptr()?, align)?
+                self.memory().read_ptr_sized(ptr.to_ptr()?, align)?
             }
             Value::ByVal(ptr) |
             Value::ByValPair(ptr, _) => ptr,
@@ -938,8 +924,8 @@ pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
         match value {
             Value::ByRef(ref_ptr, align) => {
                 let mem = self.memory();
-                let ptr = mem.read_ptr_sized_unsigned(ref_ptr.to_ptr()?, align)?.into();
-                let vtable = mem.read_ptr_sized_unsigned(
+                let ptr = mem.read_ptr_sized(ref_ptr.to_ptr()?, align)?.into();
+                let vtable = mem.read_ptr_sized(
                     ref_ptr.offset(mem.pointer_size(), &mem.tcx.data_layout)?.to_ptr()?,
                     align
                 )?.to_ptr()?;
@@ -960,8 +946,8 @@ pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
         match value {
             Value::ByRef(ref_ptr, align) => {
                 let mem = self.memory();
-                let ptr = mem.read_ptr_sized_unsigned(ref_ptr.to_ptr()?, align)?.into();
-                let len = mem.read_ptr_sized_unsigned(
+                let ptr = mem.read_ptr_sized(ref_ptr.to_ptr()?, align)?.into();
+                let len = mem.read_ptr_sized(
                     ref_ptr.offset(mem.pointer_size(), &mem.tcx.data_layout)?.to_ptr()?,
                     align
                 )?.to_bytes()? as u64;

@@ -1256,7 +1256,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         pointee_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, Value> {
         let ptr_size = self.memory.pointer_size();
-        let p: Pointer = self.memory.read_ptr_sized_unsigned(ptr, ptr_align)?.into();
+        let p: Pointer = self.memory.read_ptr_sized(ptr, ptr_align)?.into();
         if self.type_is_sized(pointee_ty) {
             Ok(p.to_value())
         } else {
@@ -1264,12 +1264,12 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             let extra = ptr.offset(ptr_size, self)?;
             match self.tcx.struct_tail(pointee_ty).sty {
                 ty::TyDynamic(..) => Ok(p.to_value_with_vtable(
-                    self.memory.read_ptr_sized_unsigned(extra, ptr_align)?.to_ptr()?,
+                    self.memory.read_ptr_sized(extra, ptr_align)?.to_ptr()?,
                 )),
                 ty::TySlice(..) | ty::TyStr => {
                     let len = self
                         .memory
-                        .read_ptr_sized_unsigned(extra, ptr_align)?
+                        .read_ptr_sized(extra, ptr_align)?
                         .to_bytes()?;
                     Ok(p.to_value_with_len(len as u64))
                 },
@@ -1284,7 +1284,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         let ptr = ptr.to_ptr()?;
         let val = match ty.sty {
             ty::TyBool => {
-                let val = self.memory.read_primval(ptr, ptr_align, 1, false)?;
+                let val = self.memory.read_primval(ptr, ptr_align, 1)?;
                 let val = match val {
                     PrimVal::Bytes(0) => false,
                     PrimVal::Bytes(1) => true,
@@ -1294,7 +1294,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 PrimVal::from_bool(val)
             }
             ty::TyChar => {
-                let c = self.memory.read_primval(ptr, ptr_align, 4, false)?.to_bytes()? as u32;
+                let c = self.memory.read_primval(ptr, ptr_align, 4)?.to_bytes()? as u32;
                 match ::std::char::from_u32(c) {
                     Some(ch) => PrimVal::from_char(ch),
                     None => return err!(InvalidChar(c as u128)),
@@ -1311,7 +1311,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     I128 => 16,
                     Isize => self.memory.pointer_size(),
                 };
-                self.memory.read_primval(ptr, ptr_align, size, true)?
+                self.memory.read_primval(ptr, ptr_align, size)?
             }
 
             ty::TyUint(uint_ty) => {
@@ -1324,17 +1324,17 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     U128 => 16,
                     Usize => self.memory.pointer_size(),
                 };
-                self.memory.read_primval(ptr, ptr_align, size, false)?
+                self.memory.read_primval(ptr, ptr_align, size)?
             }
 
             ty::TyFloat(FloatTy::F32) => {
-                PrimVal::Bytes(self.memory.read_primval(ptr, ptr_align, 4, false)?.to_bytes()?)
+                PrimVal::Bytes(self.memory.read_primval(ptr, ptr_align, 4)?.to_bytes()?)
             }
             ty::TyFloat(FloatTy::F64) => {
-                PrimVal::Bytes(self.memory.read_primval(ptr, ptr_align, 8, false)?.to_bytes()?)
+                PrimVal::Bytes(self.memory.read_primval(ptr, ptr_align, 8)?.to_bytes()?)
             }
 
-            ty::TyFnPtr(_) => self.memory.read_ptr_sized_unsigned(ptr, ptr_align)?,
+            ty::TyFnPtr(_) => self.memory.read_ptr_sized(ptr, ptr_align)?,
             ty::TyRef(_, ref tam) |
             ty::TyRawPtr(ref tam) => return self.read_ptr(ptr, ptr_align, tam.ty).map(Some),
 
@@ -1344,12 +1344,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 }
 
                 if let layout::Abi::Scalar(ref scalar) = self.layout_of(ty)?.abi {
-                    let mut signed = false;
-                    if let layout::Int(_, s) = scalar.value {
-                        signed = s;
-                    }
                     let size = scalar.value.size(self).bytes();
-                    self.memory.read_primval(ptr, ptr_align, size, signed)?
+                    self.memory.read_primval(ptr, ptr_align, size)?
                 } else {
                     return Ok(None);
                 }
