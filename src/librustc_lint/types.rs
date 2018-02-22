@@ -153,18 +153,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                 if (negative && v > max + 1) || (!negative && v > max) {
                                     if let Some(repr_str) = get_bin_hex_repr(cx, lit) {
                                         let bits = int_ty_bits(t, cx.sess().target.isize_ty);
-                                        let mut actually = v as i128;
-                                        if bits < 128 {
-                                            // v & 0b0..01..1, |1| = bits
-                                            let trimmed = v & ((1 << bits) - 1);
-                                            actually = if v & (1 << (bits - 1)) == 0 {
-                                                // positive
-                                                trimmed as i128
-                                            } else {
-                                                // negative -> two's complement
-                                                (((-1 as i128 as u128) << bits) | trimmed) as i128
-                                            };
-                                        }
+                                        let actually =
+                                            ((v << (128 - bits)) as i128) >> (128 - bits);
                                         let mut err = cx.struct_span_lint(
                                             OVERFLOWING_LITERALS,
                                             e.span,
@@ -175,15 +165,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                              an `{:?}` and will become `{}{:?}`.",
                                             repr_str, v, t, actually, t
                                         ));
-                                        let sugg_ty = get_fitting_type(
+                                        let sugg_ty = get_type_suggestion(
                                             &cx.tables.node_id_to_type(e.hir_id).sty,
                                             v,
                                             negative,
-                                        ).map_or(String::new(), |ty| match ty {
-                                            ty::TyUint(t) => format!("Consider using `{:?}`", t),
-                                            ty::TyInt(t) => format!("Consider using `{:?}`", t),
-                                            _ => String::new(),
-                                        });
+                                        );
                                         if !sugg_ty.is_empty() {
                                             err.help(&sugg_ty);
                                         }
@@ -221,24 +207,20 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                 if let hir::ExprCast(..) = parent_expr.node {
                                     if let ty::TyChar = cx.tables.expr_ty(parent_expr).sty {
                                         let mut err = cx.struct_span_lint(
-                                            OVERFLOWING_LITERALS,
-                                            parent_expr.span,
-                                            "only u8 can be casted into char",
-                                        );
-                                        err.span_suggestion(
-                                            parent_expr.span,
-                                            &"use a char literal instead",
-                                            format!("'\\u{{{:X}}}'", lit_val),
-                                        );
+                                                             OVERFLOWING_LITERALS,
+                                                             parent_expr.span,
+                                                             "only u8 can be casted into char");
+                                        err.span_suggestion(parent_expr.span,
+                                                            &"use a char literal instead",
+                                                            format!("'\\u{{{:X}}}'", lit_val));
                                         err.emit();
-                                        return;
+                                        return
                                     }
                                 }
                             }
                             if let Some(repr_str) = get_bin_hex_repr(cx, lit) {
                                 let bits = uint_ty_bits(t, cx.sess().target.usize_ty);
-                                // u128 cannot be greater than max -> compiler error
-                                let actually = lit_val & ((1 << bits) - 1);
+                                let actually = (lit_val << (128 - bits)) >> (128 - bits);
                                 let mut err = cx.struct_span_lint(
                                     OVERFLOWING_LITERALS,
                                     e.span,
@@ -249,19 +231,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                      an `{:?}` and will become `{}{:?}`.",
                                     repr_str, lit_val, t, actually, t
                                 ));
-                                let sugg_ty = get_fitting_type(
+                                let sugg_ty = get_type_suggestion(
                                     &cx.tables.node_id_to_type(e.hir_id).sty,
                                     lit_val,
                                     false,
-                                ).map_or(
-                                    String::new(),
-                                    |ty| {
-                                        if let ty::TyUint(t) = ty {
-                                            format!("Consider using `{:?}`", t)
-                                        } else {
-                                            String::new()
-                                        }
-                                    },
                                 );
                                 if !sugg_ty.is_empty() {
                                     err.help(&sugg_ty);
@@ -279,19 +252,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                     }
                     ty::TyFloat(t) => {
                         let is_infinite = match lit.node {
-                            ast::LitKind::Float(v, _) | ast::LitKind::FloatUnsuffixed(v) => match t
-                            {
-                                ast::FloatTy::F32 => v.as_str().parse().map(f32::is_infinite),
-                                ast::FloatTy::F64 => v.as_str().parse().map(f64::is_infinite),
-                            },
+                            ast::LitKind::Float(v, _) |
+                            ast::LitKind::FloatUnsuffixed(v) => {
+                                match t {
+                                    ast::FloatTy::F32 => v.as_str().parse().map(f32::is_infinite),
+                                    ast::FloatTy::F64 => v.as_str().parse().map(f64::is_infinite),
+                                }
+                            }
                             _ => bug!(),
                         };
                         if is_infinite == Ok(true) {
-                            cx.span_lint(
-                                OVERFLOWING_LITERALS,
-                                e.span,
-                                &format!("literal out of range for {:?}", t),
-                            );
+                            cx.span_lint(OVERFLOWING_LITERALS,
+                                         e.span,
+                                         &format!("literal out of range for {:?}", t));
                         }
                     }
                     _ => (),
@@ -421,26 +394,27 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
         }
 
         fn get_bin_hex_repr(cx: &LateContext, lit: &ast::Lit) -> Option<String> {
-            if let Some(src) = cx.sess().codemap().span_to_snippet(lit.span).ok() {
-                if let Some(firstch) = src.chars().next() {
-                    if let Some(0) = char::to_digit(firstch, 10) {
-                        if let Some(base) = src.chars().nth(1) {
-                            if base == 'x' || base == 'b' {
-                                return Some(src);
-                            }
-                        }
-                    }
+            let src = cx.sess().codemap().span_to_snippet(lit.span).ok()?;
+            let firstch = src.chars().next()?;
+
+            if let Some(0) = char::to_digit(firstch, 10) {
+                match src.chars().nth(1) {
+                    Some('x') | Some('b') => return Some(src),
+                    _ => return None,
                 }
             }
 
             None
         }
 
-        fn get_fitting_type<'a>(
-            t: &ty::TypeVariants,
-            val: u128,
-            negative: bool,
-        ) -> Option<ty::TypeVariants<'a>> {
+        // This function finds the next fitting type and generates a suggestion string.
+        // It searches for fitting types in the following way (`X < Y`):
+        //  - `iX`: if literal fits in `uX` => `uX`, else => `iY`
+        //  - `-iX` => `iY`
+        //  - `uX` => `uY`
+        //
+        // No suggestion for: `isize`, `usize`.
+        fn get_type_suggestion<'a>(t: &ty::TypeVariants, val: u128, negative: bool) -> String {
             use syntax::ast::IntTy::*;
             use syntax::ast::UintTy::*;
             macro_rules! find_fit {
@@ -451,36 +425,33 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                         match $ty {
                             $($type => {
                                 $(if !negative && val <= uint_ty_range($utypes).1 {
-                                    return Some(ty::TyUint($utypes))
+                                    return format!("Consider using `{:?}`", $utypes)
                                 })*
                                 $(if val <= int_ty_range($itypes).1 as u128 + _neg {
-                                    return Some(ty::TyInt($itypes))
+                                    return format!("Consider using `{:?}`", $itypes)
                                 })*
-                                None
+                                String::new()
                             },)*
-                            _ => None
+                            _ => String::new()
                         }
                     }
                 }
             }
-            if let &ty::TyInt(i) = t {
-                return find_fit!(i, val, negative,
-                                 I8 => [U8] => [I16, I32, I64, I128],
-                                 I16 => [U16] => [I32, I64, I128],
-                                 I32 => [U32] => [I64, I128],
-                                 I64 => [U64] => [I128],
-                                 I128 => [U128] => []);
+            match t {
+                &ty::TyInt(i) => find_fit!(i, val, negative,
+                              I8 => [U8] => [I16, I32, I64, I128],
+                              I16 => [U16] => [I32, I64, I128],
+                              I32 => [U32] => [I64, I128],
+                              I64 => [U64] => [I128],
+                              I128 => [U128] => []),
+                &ty::TyUint(u) => find_fit!(u, val, negative,
+                              U8 => [U8, U16, U32, U64, U128] => [],
+                              U16 => [U16, U32, U64, U128] => [],
+                              U32 => [U32, U64, U128] => [],
+                              U64 => [U64, U128] => [],
+                              U128 => [U128] => []),
+                _ => String::new(),
             }
-            if let &ty::TyUint(u) = t {
-                return find_fit!(u, val, negative,
-                                 U8 => [U8, U16, U32, U64, U128] => [],
-                                 U16 => [U16, U32, U64, U128] => [],
-                                 U32 => [U32, U64, U128] => [],
-                                 U64 => [U64, U128] => [],
-                                 U128 => [U128] => []);
-            }
-
-            None
         }
     }
 }
