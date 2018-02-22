@@ -744,7 +744,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     lint_unnecessary_fold(cx, expr, arglists[0]);
                 }
 
-                lint_or_fun_call(cx, expr, method_span, &method_call.name.as_str(), args);
+                lint_or_fun_call(cx, expr, *method_span, &method_call.name.as_str(), args);
 
                 let self_ty = cx.tables.expr_ty_adjusted(&args[0]);
                 if args.len() == 1 && method_call.name == "clone" {
@@ -845,7 +845,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 }
 
 /// Checks for the `OR_FUN_CALL` lint.
-fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: &Span, name: &str, args: &[hir::Expr]) {
+fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, name: &str, args: &[hir::Expr]) {
     /// Check for `unwrap_or(T::new())` or `unwrap_or(T::default())`.
     fn check_unwrap_or_default(
         cx: &LateContext,
@@ -894,7 +894,7 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: &Span, name
     fn check_general_case(
         cx: &LateContext,
         name: &str,
-        method_span: &Span,
+        method_span: Span,
         fun_span: Span,
         self_expr: &hir::Expr,
         arg: &hir::Expr,
