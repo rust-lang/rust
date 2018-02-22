@@ -422,9 +422,7 @@ struct TomlTarget {
 impl Config {
     pub fn parse(args: &[String]) -> Config {
         let flags = Flags::parse(&args);
-        let file = flags.config.clone();
-
-        let mut toml = file.map(|file| {
+        let mut toml: TomlConfig = flags.config.as_ref().map(|file| {
             let mut f = t!(File::open(&file));
             let mut contents = String::new();
             t!(f.read_to_string(&mut contents));
@@ -436,7 +434,7 @@ impl Config {
                     process::exit(2);
                 }
             }
-        }).unwrap_or_else(|| TomlConfig::default());
+        }).unwrap_or_default();
 
         let mut hosts = if !flags.host.is_empty() {
             flags.host.clone()
