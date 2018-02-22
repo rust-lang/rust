@@ -10,10 +10,24 @@
 
 //! Shareable mutable containers.
 //!
+//! Rust memory safety is based on this rule: Given an object `T`, is only possible to
+//! have one of the following:
+//!
+//! - Having several inmutable references (`&T`) to the object (also know as Aliasing).
+//! - Having one mutable reference (`&mut T`) to the object (also know as Mutability).
+//!
+//! This is enforced by the Rust compiler. However, there are situations where this rule is not
+//! flexible enough. Sometimes is required to have multiple references to an object and yet 
+//! mutate it.
+//!
+//! Shareable mutable containers exist to permit mutability in presence of aliasing in a 
+//! controlled manner. Both `Cell<T>` and `RefCell<T>` allows to do this in a single threaded
+//! way. For multiple threads is possible to use `Mutex`, `RwLock` or `AtomicXXX`.
+//!
 //! Values of the `Cell<T>` and `RefCell<T>` types may be mutated through shared references (i.e.
 //! the common `&T` type), whereas most Rust types can only be mutated through unique (`&mut T`)
 //! references. We say that `Cell<T>` and `RefCell<T>` provide 'interior mutability', in contrast
-//! with typical Rust types that exhibit 'inherited mutability'.
+//! with typical Rust types that exhibit 'inherited mutability'. 
 //!
 //! Cell types come in two flavors: `Cell<T>` and `RefCell<T>`. `Cell<T>` implements interior
 //! mutability by moving values in and out of the `Cell<T>`. To use references instead of values,
