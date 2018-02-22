@@ -504,6 +504,10 @@ fn compare_self_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let param_env = ty::ParamEnv::empty(Reveal::All);
 
         tcx.infer_ctxt().enter(|infcx| {
+            let self_arg_ty = tcx.liberate_late_bound_regions(
+                method.def_id,
+                &ty::Binder(self_arg_ty)
+            );
             let can_eq_self = |ty| infcx.can_eq(param_env, untransformed_self_ty, ty).is_ok();
             match ExplicitSelf::determine(self_arg_ty, can_eq_self) {
                 ExplicitSelf::ByValue => "self".to_string(),
