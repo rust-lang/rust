@@ -41,7 +41,7 @@ use std::collections::btree_map::Iter as BTreeMapIter;
 use std::collections::btree_map::Keys as BTreeMapKeysIter;
 use std::collections::btree_map::Values as BTreeMapValuesIter;
 
-use std::fmt;
+use std::{fmt, str};
 use std::hash::Hasher;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
@@ -135,6 +135,28 @@ pub enum Epoch {
     // somewhere. That will need to be updated
     // whenever we're stabilizing/introducing a new epoch
     // as well as changing the default Cargo template.
+}
+
+pub const ALL_EPOCHS: &[Epoch] = &[Epoch::Epoch2015, Epoch::Epoch2018];
+
+impl ToString for Epoch {
+    fn to_string(&self) -> String {
+        match *self {
+            Epoch::Epoch2015 => "2015".into(),
+            Epoch::Epoch2018 => "2018".into(),
+        }
+    }
+}
+
+impl str::FromStr for Epoch {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, ()> {
+        match s {
+            "2015" => Ok(Epoch::Epoch2015),
+            "2018" => Ok(Epoch::Epoch2018),
+            _ => Err(())
+        }
+    }
 }
 
 impl_stable_hash_for!(enum self::OutputType {
@@ -1021,11 +1043,17 @@ macro_rules! options {
 
         fn parse_epoch(slot: &mut Epoch, v: Option<&str>) -> bool {
             match v {
-                Some("2015") => *slot = Epoch::Epoch2015,
-                Some("2018") => *slot = Epoch::Epoch2018,
-                _ => return false,
+                Some(s) => {
+                    let epoch = s.parse();
+                    if let Ok(parsed) = epoch {
+                        *slot = parsed;
+                        true
+                    } else {
+                        false
+                    }
+                }
+                _ => false,
             }
-            true
         }
     }
 ) }
