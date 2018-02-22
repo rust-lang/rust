@@ -27,7 +27,8 @@ fn main() {
     let tmpdir = PathBuf::from(env::var_os("TMPDIR").unwrap());
     let ok = tmpdir.join("ok");
     if env::var("YOU_ARE_A_LINKER").is_ok() {
-        if let Some(file) = env::args().find(|a| a.contains("@")) {
+        if let Some(file) = env::args_os().find(|a| a.to_string_lossy().contains("@")) {
+            let file = file.to_str().expect("non-utf8 file argument");
             fs::copy(&file[1..], &ok).unwrap();
         }
         return
@@ -76,11 +77,23 @@ fn main() {
             continue
         }
 
-        let mut contents = String::new();
-        File::open(&ok).unwrap().read_to_string(&mut contents).unwrap();
+        let mut contents = Vec::new();
+        File::open(&ok).unwrap().read_to_end(&mut contents).unwrap();
 
         for j in 0..i {
-            assert!(contents.contains(&format!("{}{}", lib_name, j)));
+            let exp = format!("{}{}", lib_name, j);
+            let exp = if cfg!(target_env = "msvc") {
+                let mut out = Vec::with_capacity(exp.len() * 2);
+                for c in exp.encode_utf16() {
+                    // encode in little endian
+                    out.push(c as u8);
+                    out.push((c >> 8) as u8);
+                }
+                out
+            } else {
+                exp.into_bytes()
+            };
+            assert!(contents.windows(exp.len()).any(|w| w == &exp[..]));
         }
 
         break
