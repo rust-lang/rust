@@ -24,7 +24,7 @@ use Build;
 use config::Config;
 
 // The version number
-pub const CFG_RELEASE_NUM: &str = "1.24.0";
+pub const CFG_RELEASE_NUM: &str = "1.24.1";
 
 pub struct GitInfo {
     inner: Option<Info>,
