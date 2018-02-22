@@ -1,4 +1,5 @@
 use rustc::ty::Ty;
+use rustc::ty::layout::LayoutOf;
 use syntax::ast::{FloatTy, IntTy, UintTy};
 
 use rustc_const_math::ConstFloat;
@@ -35,23 +36,30 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         src_ty: Ty<'tcx>,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, PrimVal> {
+        let signed = self.layout_of(src_ty)?.abi.is_signed();
+        let v = if signed {
+            self.sign_extend(v, src_ty)?
+        } else {
+            v
+        };
         trace!("cast_from_int: {}, {}, {}", v, src_ty, dest_ty);
         use rustc::ty::TypeVariants::*;
         match dest_ty.sty {
             TyInt(_) | TyUint(_) => {
-                let v = self.sign_extend(v, src_ty)?;
                 let v = self.truncate(v, dest_ty)?;
                 Ok(PrimVal::Bytes(v))
             }
 
-            TyFloat(fty) if src_ty.is_signed() => Ok(PrimVal::Bytes(ConstFloat::from_i128(v as i128, fty).bits)),
+            TyFloat(fty) if signed => Ok(PrimVal::Bytes(ConstFloat::from_i128(v as i128, fty).bits)),
             TyFloat(fty) => Ok(PrimVal::Bytes(ConstFloat::from_u128(v, fty).bits)),
 
             TyChar if v as u8 as u128 == v => Ok(PrimVal::Bytes(v)),
             TyChar => err!(InvalidChar(v)),
 
             // No alignment check needed for raw pointers.  But we have to truncate to target ptr size.
-            TyRawPtr(_) => Ok(PrimVal::Bytes(self.memory.truncate_to_ptr(v).0 as u128)),
+            TyRawPtr(_) => {
+                Ok(PrimVal::Bytes(self.memory.truncate_to_ptr(v).0 as u128))
+            },
 
             // Casts to bool are not permitted by rustc, no need to handle them here.
             _ => err!(Unimplemented(format!("int to {:?} cast", dest_ty))),

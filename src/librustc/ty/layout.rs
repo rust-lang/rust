@@ -794,6 +794,17 @@ impl Abi {
             Abi::Aggregate { sized } => !sized
         }
     }
+
+    /// Returns true if this is a single signed integer scalar
+    pub fn is_signed(&self) -> bool {
+        match *self {
+            Abi::Scalar(ref scal) => match scal.value {
+                Primitive::Int(_, signed) => signed,
+                _ => false,
+            },
+            _ => false,
+        }
+    }
 }
 
 #[derive(PartialEq, Eq, Hash, Debug)]

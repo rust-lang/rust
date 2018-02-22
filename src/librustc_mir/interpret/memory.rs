@@ -702,19 +702,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 val.offset as u128
             }
 
-            PrimVal::Bytes(bytes) => {
-                // We need to mask here, or the byteorder crate can die when given a u64 larger
-                // than fits in an integer of the requested size.
-                let mask = match size {
-                    1 => !0u8 as u128,
-                    2 => !0u16 as u128,
-                    4 => !0u32 as u128,
-                    8 => !0u64 as u128,
-                    16 => !0,
-                    n => bug!("unexpected PrimVal::Bytes size: {}", n),
-                };
-                bytes & mask
-            }
+            PrimVal::Bytes(bytes) => bytes,
 
             PrimVal::Undef => {
                 self.mark_definedness(PrimVal::Ptr(ptr).into(), size, false)?;

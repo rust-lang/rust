@@ -83,21 +83,34 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         let l = left.to_bytes()?;
         let r = right.to_bytes()?;
 
+        let left_layout = self.layout_of(left_ty)?;
+
         // These ops can have an RHS with a different numeric type.
         if right_kind.is_int() && (bin_op == Shl || bin_op == Shr) {
-            let op: fn(u128, u32) -> (u128, bool) = match bin_op {
-                Shl => u128::overflowing_shl,
-                Shr => u128::overflowing_shr,
-                _ => bug!("it has already been checked that this is a shift op"),
-            };
-            let l = if left_ty.is_signed() {
-                self.sign_extend(l, left_ty)?
+            let signed = left_layout.abi.is_signed();
+            let mut r = r as u32;
+            let size = left_layout.size.bits() as u32;
+            let oflo = r > size;
+            if oflo {
+                r %= size;
+            }
+            let result = if signed {
+                let l = self.sign_extend(l, left_ty)? as i128;
+                let result = match bin_op {
+                    Shl => l << r,
+                    Shr => l >> r,
+                    _ => bug!("it has already been checked that this is a shift op"),
+                };
+                result as u128
             } else {
-                l
+                match bin_op {
+                    Shl => l << r,
+                    Shr => l >> r,
+                    _ => bug!("it has already been checked that this is a shift op"),
+                }
             };
-            let (result, oflo) = op(l, r as u32);
             let truncated = self.truncate(result, left_ty)?;
-            return Ok((PrimVal::Bytes(truncated), oflo || truncated != result));
+            return Ok((PrimVal::Bytes(truncated), oflo));
         }
 
         if left_kind != right_kind {
@@ -137,7 +150,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             }
         };
 
-        if left_ty.is_signed() {
+        if left_layout.abi.is_signed() {
             let op: Option<fn(&i128, &i128) -> bool> = match bin_op {
                 Lt => Some(i128::lt),
                 Le => Some(i128::le),
@@ -162,7 +175,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             if let Some(op) = op {
                 let l128 = self.sign_extend(l, left_ty)? as i128;
                 let r = self.sign_extend(r, right_ty)? as i128;
-                let size = self.layout_of(left_ty)?.size.bits();
+                let size = left_layout.size.bits();
                 match bin_op {
                     Rem | Div => {
                         // int_min / -1

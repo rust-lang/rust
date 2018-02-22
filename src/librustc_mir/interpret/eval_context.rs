@@ -1128,20 +1128,22 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         dest_align: Align,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
-        trace!("write_value_to_ptr: {:#?}", value);
         let layout = self.layout_of(dest_ty)?;
+        trace!("write_value_to_ptr: {:#?}, {}, {:#?}", value, dest_ty, layout);
         match value {
             Value::ByRef(ptr, align) => {
                 self.memory.copy(ptr, align.min(layout.align), dest, dest_align.min(layout.align), layout.size.bytes(), false)
             }
             Value::ByVal(primval) => {
-                match layout.abi {
-                    layout::Abi::Scalar(_) => {}
-                    _ if primval.is_undef() => {}
+                let signed = match layout.abi {
+                    layout::Abi::Scalar(ref scal) => match scal.value {
+                        layout::Primitive::Int(_, signed) => signed,
+                        _ => false,
+                    },
+                    _ if primval.is_undef() => false,
                     _ => bug!("write_value_to_ptr: invalid ByVal layout: {:#?}", layout)
-                }
-                // TODO: Do we need signedness?
-                self.memory.write_primval(dest.to_ptr()?, dest_align, primval, layout.size.bytes(), false)
+                };
+                self.memory.write_primval(dest.to_ptr()?, dest_align, primval, layout.size.bytes(), signed)
             }
             Value::ByValPair(a_val, b_val) => {
                 let ptr = dest.to_ptr()?;
@@ -1679,7 +1681,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     }
 
     pub fn sign_extend(&self, value: u128, ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
-        let size = self.layout_of(ty)?.size.bits();
+        let layout = self.layout_of(ty)?;
+        let size = layout.size.bits();
+        assert!(layout.abi.is_signed());
         // sign extend
         let amt = 128 - size;
         // shift the unsigned value to the left

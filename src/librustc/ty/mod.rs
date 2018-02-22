@@ -1824,7 +1824,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     }
 
     #[inline]
-    fn eval_explicit_discr(
+    pub fn eval_explicit_discr(
         &self,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         expr_did: DefId,
@@ -1871,8 +1871,21 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                         ty,
                     })
                 }
+            },
+            Ok(&ty::Const {
+                val: ConstVal::Value(other),
+                ..
+            }) => {
+                info!("invalid enum discriminant: {:#?}", other);
+                ::middle::const_val::struct_error(
+                    tcx,
+                    tcx.def_span(expr_did),
+                    "constant evaluation of enum discriminant resulted in non-integer",
+                ).emit();
+                None
             }
-            _ => {
+            Err(err) => {
+                err.report(tcx, tcx.def_span(expr_did), "enum discriminant");
                 if !expr_did.is_local() {
                     span_bug!(tcx.def_span(expr_did),
                         "variant discriminant evaluation succeeded \
@@ -1880,6 +1893,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 }
                 None
             }
+            _ => span_bug!(tcx.def_span(expr_did), "const eval "),
         }
     }
 
