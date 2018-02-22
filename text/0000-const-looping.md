@@ -9,16 +9,18 @@
 Allow the use of `loop`, `while` and `while let` during constant evaluation.
 `for` loops are technically allowed, too, but can't be used in practice because
 each iteration calls `iterator.next()`, which is not a `const fn` and thus can't
-be called within constants.
+be called within constants. Future RFCs (like
+https://github.com/rust-lang/rfcs/pull/2237) might lift that restriction.
 
 # Motivation
 [motivation]: #motivation
 
-Any iteration is expressible as a recursion. Since we already allow recursion
+Any iteration is expressible with recursion. Since we already allow recursion
 via const fn and termination of said recursion via `if` or `match`, all code
-enabled by const recursion is already legal now. Writing loops with recursion is
-very tedious and can quickly become unreadable, while regular loops are much
-more natural in Rust.
+enabled by const recursion is already legal now. Some algorithms are better
+expressed as imperative loops and a lot of Rust code uses loops instead of
+recursion. Allowing loops in constants will allow more functions to become const
+fn without requiring any changes.
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
@@ -73,8 +75,8 @@ const fn fib(n: u128) -> u128 {
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-A loop in MIR is a cyclic graph of BasicBlocks. Evaluating such a loop is no
-different from evaluating a linear sequence of BasicBlocks, except that
+A loop in MIR is a cyclic graph of `BasicBlock`s. Evaluating such a loop is no
+different from evaluating a linear sequence of `BasicBlock`s, except that
 termination is not guaranteed. To ensure that the compiler never hangs
 indefinitely, we count the number of terminators processed and once we reach a
 fixed limit, we report an error mentioning that we aborted constant evaluation,
