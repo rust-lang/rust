@@ -1824,63 +1824,76 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     }
 
     #[inline]
+    fn eval_explicit_discr(
+        &self,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        expr_did: DefId,
+    ) -> Option<Discr<'tcx>> {
+        let param_env = ParamEnv::empty(traits::Reveal::UserFacing);
+        let repr_type = self.repr.discr_type();
+        let substs = Substs::identity_for_item(tcx.global_tcx(), expr_did);
+        let instance = ty::Instance::new(expr_did, substs);
+        let cid = GlobalId {
+            instance,
+            promoted: None
+        };
+        match tcx.const_eval(param_env.and(cid)) {
+            Ok(&ty::Const {
+                val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))),
+                ..
+            }) => {
+                trace!("discriminants: {} ({:?})", b, repr_type);
+                let ty = repr_type.to_ty(tcx);
+                if ty.is_signed() {
+                    let (ty, param_env) = tcx
+                        .lift_to_global(&(ty, param_env))
+                        .unwrap_or_else(|| {
+                        bug!("MIR: discriminants({:?}, {:?}) got \
+                            type with inference types/regions",
+                            ty, param_env);
+                    });
+                    let size = tcx.global_tcx()
+                        .layout_of(param_env.and(ty))
+                        .expect("int layout")
+                        .size
+                        .bits();
+                    let val = b as i128;
+                    // sign extend to i128
+                    let amt = 128 - size;
+                    let val = (val << amt) >> amt;
+                    Some(Discr {
+                        val: val as u128,
+                        ty,
+                    })
+                } else {
+                    Some(Discr {
+                        val: b,
+                        ty,
+                    })
+                }
+            }
+            _ => {
+                if !expr_did.is_local() {
+                    span_bug!(tcx.def_span(expr_did),
+                        "variant discriminant evaluation succeeded \
+                            in its crate but failed locally");
+                }
+                None
+            }
+        }
+    }
+
+    #[inline]
     pub fn discriminants(&'a self, tcx: TyCtxt<'a, 'gcx, 'tcx>)
                          -> impl Iterator<Item=Discr<'tcx>> + 'a {
-        let param_env = ParamEnv::empty(traits::Reveal::UserFacing);
         let repr_type = self.repr.discr_type();
         let initial = repr_type.initial_discriminant(tcx.global_tcx());
         let mut prev_discr = None::<Discr<'tcx>>;
         self.variants.iter().map(move |v| {
             let mut discr = prev_discr.map_or(initial, |d| d.wrap_incr(tcx));
             if let VariantDiscr::Explicit(expr_did) = v.discr {
-                let substs = Substs::identity_for_item(tcx.global_tcx(), expr_did);
-                let instance = ty::Instance::new(expr_did, substs);
-                let cid = GlobalId {
-                    instance,
-                    promoted: None
-                };
-                match tcx.const_eval(param_env.and(cid)) {
-                    Ok(&ty::Const {
-                        val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))),
-                        ..
-                    }) => {
-                        trace!("discriminants: {} ({:?})", b, repr_type);
-                        let ty = repr_type.to_ty(tcx);
-                        if ty.is_signed() {
-                            let (ty, param_env) = tcx
-                                .lift_to_global(&(ty, param_env))
-                                .unwrap_or_else(|| {
-                                bug!("MIR: discriminants({:?}, {:?}) got \
-                                    type with inference types/regions",
-                                    ty, param_env);
-                            });
-                            let size = tcx.global_tcx()
-                                .layout_of(param_env.and(ty))
-                                .expect("int layout")
-                                .size
-                                .bits();
-                            let val = b as i128;
-                            // sign extend to i128
-                            let amt = 128 - size;
-                            let val = (val << amt) >> amt;
-                            discr = Discr {
-                                val: val as u128,
-                                ty,
-                            };
-                        } else {
-                            discr = Discr {
-                                val: b,
-                                ty,
-                            };
-                        }
-                    }
-                    _ => {
-                        if !expr_did.is_local() {
-                            span_bug!(tcx.def_span(expr_did),
-                                "variant discriminant evaluation succeeded \
-                                 in its crate but failed locally");
-                        }
-                    }
+                if let Some(new_discr) = self.eval_explicit_discr(tcx, expr_did) {
+                    discr = new_discr;
                 }
             }
             prev_discr = Some(discr);
@@ -1898,7 +1911,6 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                                     tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                     variant_index: usize)
                                     -> Discr<'tcx> {
-        let param_env = ParamEnv::empty(traits::Reveal::UserFacing);
         let repr_type = self.repr.discr_type();
         let mut explicit_value = repr_type.initial_discriminant(tcx.global_tcx());
         let mut explicit_index = variant_index;
@@ -1909,30 +1921,12 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                     explicit_index -= distance;
                 }
                 ty::VariantDiscr::Explicit(expr_did) => {
-                    let substs = Substs::identity_for_item(tcx.global_tcx(), expr_did);
-                    let instance = ty::Instance::new(expr_did, substs);
-                    let cid = GlobalId {
-                        instance,
-                        promoted: None
-                    };
-                    match tcx.const_eval(param_env.and(cid)) {
-                        Ok(&ty::Const {
-                            val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))),
-                            ..
-                        }) => {
-                            trace!("discriminants: {} ({:?})", b, repr_type);
-                            explicit_value = Discr {
-                                val: b,
-                                ty: repr_type.to_ty(tcx),
-                            };
+                    match self.eval_explicit_discr(tcx, expr_did) {
+                        Some(discr) => {
+                            explicit_value = discr;
                             break;
-                        }
-                        _ => {
-                            if !expr_did.is_local() {
-                                span_bug!(tcx.def_span(expr_did),
-                                    "variant discriminant evaluation succeeded \
-                                     in its crate but failed locally");
-                            }
+                        },
+                        None => {
                             if explicit_index == 0 {
                                 break;
                             }
