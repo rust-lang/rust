@@ -1006,10 +1006,11 @@ impl<'a, 'tcx> CrateMetadata {
         arg_names.decode(self).collect()
     }
 
-    pub fn get_exported_symbols(&self) -> DefIdSet {
-        self.exported_symbols
-            .iter()
-            .map(|&index| self.local_def_id(index))
+    pub fn reachable_non_generics(&self) -> DefIdSet {
+        self.root
+            .reachable_non_generics
+            .decode(self)
+            .map(|index| self.local_def_id(index))
             .collect()
     }
 

@@ -151,7 +151,7 @@ pub fn get_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
             if cx.tcx.is_translated_item(instance_def_id) {
                 if instance_def_id.is_local() {
-                    if !cx.tcx.is_exported_symbol(instance_def_id) {
+                    if !cx.tcx.is_reachable_non_generic(instance_def_id) {
                         llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
                     }
                 } else {

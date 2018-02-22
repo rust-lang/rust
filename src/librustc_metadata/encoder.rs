@@ -53,7 +53,7 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     opaque: opaque::Encoder<'a>,
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     link_meta: &'a LinkMeta,
-    exported_symbols: &'a NodeSet,
+    reachable_non_generics: &'a NodeSet,
 
     lazy_state: LazyState,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
@@ -395,10 +395,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         // Encode exported symbols info.
         i = self.position();
-        let exported_symbols = self.tracked(
-            IsolatedEncoder::encode_exported_symbols,
-            self.exported_symbols);
-        let exported_symbols_bytes = self.position() - i;
+        let reachable_non_generics = self.tracked(
+            IsolatedEncoder::encode_reachable_non_generics,
+            self.reachable_non_generics);
+        let reachable_non_generics_bytes = self.position() - i;
 
         // Encode and index the items.
         i = self.position();
@@ -442,7 +442,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             codemap,
             def_path_table,
             impls,
-            exported_symbols,
+            reachable_non_generics,
             index,
         });
 
@@ -462,7 +462,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             println!("          native bytes: {}", native_lib_bytes);
             println!("         codemap bytes: {}", codemap_bytes);
             println!("            impl bytes: {}", impl_bytes);
-            println!("    exp. symbols bytes: {}", exported_symbols_bytes);
+            println!("    exp. symbols bytes: {}", reachable_non_generics_bytes);
             println!("  def-path table bytes: {}", def_path_table_bytes);
             println!("            item bytes: {}", item_bytes);
             println!("           index bytes: {}", index_bytes);
@@ -1388,9 +1388,12 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
     // middle::reachable module but filters out items that either don't have a
     // symbol associated with them (they weren't translated) or if they're an FFI
     // definition (as that's not defined in this crate).
-    fn encode_exported_symbols(&mut self, exported_symbols: &NodeSet) -> LazySeq<DefIndex> {
+    fn encode_reachable_non_generics(&mut self,
+                                     reachable_non_generics: &NodeSet)
+                                     -> LazySeq<DefIndex> {
         let tcx = self.tcx;
-        self.lazy_seq(exported_symbols.iter().map(|&id| tcx.hir.local_def_id(id).index))
+        self.lazy_seq(reachable_non_generics.iter()
+                                            .map(|&id| tcx.hir.local_def_id(id).index))
     }
 
     fn encode_dylib_dependency_formats(&mut self, _: ()) -> LazySeq<Option<LinkagePreference>> {
@@ -1664,7 +1667,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'a, 'tcx> {
 
 pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  link_meta: &LinkMeta,
-                                 exported_symbols: &NodeSet)
+                                 reachable_non_generics: &NodeSet)
                                  -> EncodedMetadata
 {
     let mut cursor = Cursor::new(vec![]);
@@ -1678,7 +1681,7 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             opaque: opaque::Encoder::new(&mut cursor),
             tcx,
             link_meta,
-            exported_symbols,
+            reachable_non_generics,
             lazy_state: LazyState::NoNode,
             type_shorthands: Default::default(),
             predicate_shorthands: Default::default(),

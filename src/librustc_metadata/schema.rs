@@ -202,7 +202,7 @@ pub struct CrateRoot {
     pub codemap: LazySeq<syntax_pos::FileMap>,
     pub def_path_table: Lazy<hir::map::definitions::DefPathTable>,
     pub impls: LazySeq<TraitImpls>,
-    pub exported_symbols: LazySeq<DefIndex>,
+    pub reachable_non_generics: LazySeq<DefIndex>,
     pub index: LazySeq<index::Index>,
 }
 
