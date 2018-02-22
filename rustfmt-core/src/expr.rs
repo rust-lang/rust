@@ -2327,9 +2327,16 @@ pub fn wrap_args_with_parens(
     shape: Shape,
     nested_shape: Shape,
 ) -> String {
+    let paren_overhead = paren_overhead(context);
+    let fits_one_line = args_str.len() + paren_overhead <= shape.width;
+    let extend_width = if args_str.is_empty() {
+        paren_overhead
+    } else {
+        paren_overhead / 2
+    };
     if !context.use_block_indent()
-        || (context.inside_macro && !args_str.contains('\n')
-            && args_str.len() + paren_overhead(context) <= shape.width) || is_extendable
+        || (context.inside_macro && !args_str.contains('\n') && fits_one_line)
+        || (is_extendable && extend_width <= shape.width)
     {
         let mut result = String::with_capacity(args_str.len() + 4);
         if context.config.spaces_within_parens_and_brackets() && !args_str.is_empty() {
@@ -2348,8 +2355,10 @@ pub fn wrap_args_with_parens(
         let mut result =
             String::with_capacity(args_str.len() + 2 + indent_str.len() + nested_indent_str.len());
         result.push_str("(");
-        result.push_str(&nested_indent_str);
-        result.push_str(args_str);
+        if !args_str.is_empty() {
+            result.push_str(&nested_indent_str);
+            result.push_str(args_str);
+        }
         result.push_str(&indent_str);
         result.push_str(")");
         result
