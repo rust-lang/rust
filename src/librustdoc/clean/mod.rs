@@ -26,31 +26,41 @@ use syntax::codemap::Spanned;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::ptr::P;
 use syntax::symbol::keywords;
+use syntax::symbol::Symbol;
 use syntax_pos::{self, DUMMY_SP, Pos, FileName};
 
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::resolve_lifetime as rl;
+use rustc::ty::fold::TypeFolder;
 use rustc::middle::lang_items;
-use rustc::hir::def::{Def, CtorKind};
-use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc::hir::{self, HirVec};
+use rustc::hir::def::{self, Def, CtorKind};
+use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc::hir::def_id::DefIndexAddressSpace;
+use rustc::traits;
 use rustc::ty::subst::Substs;
-use rustc::ty::{self, Ty, AdtKind};
+use rustc::ty::{self, TyCtxt, Region, RegionVid, Ty, AdtKind};
 use rustc::middle::stability;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_typeck::hir_ty_to_ty;
-
-use rustc::hir;
+use rustc::infer::{InferCtxt, RegionObligation};
+use rustc::infer::region_constraints::{RegionConstraintData, Constraint};
+use rustc::traits::*;
+use std::collections::hash_map::Entry;
+use std::collections::VecDeque;
+use std::fmt;
 
 use rustc_const_math::ConstInt;
 use std::default::Default;
 use std::{mem, slice, vec};
-use std::iter::FromIterator;
+use std::iter::{FromIterator, once};
 use std::rc::Rc;
+use std::cell::RefCell;
 use std::sync::Arc;
 use std::u32;
 
-use core::DocContext;
+use core::{self, DocContext};
 use doctree;
 use visit_ast;
 use html::item_type::ItemType;
@@ -59,8 +69,14 @@ use html::markdown::markdown_links;
 pub mod inline;
 pub mod cfg;
 mod simplify;
+mod auto_trait;
 
 use self::cfg::Cfg;
+use self::auto_trait::AutoTraitFinder;
+
+thread_local!(static MAX_DEF_ID: RefCell<FxHashMap<CrateNum, DefId>> = RefCell::new(FxHashMap()));
+
+const FN_OUTPUT_NAME: &'static str = "Output";
 
 // extract the stability index for a node from tcx, if possible
 fn get_stability(cx: &DocContext, def_id: DefId) -> Option<Stability> {
@@ -282,7 +298,7 @@ impl Clean<ExternalCrate> for CrateNum {
 /// Anything with a source location and set of attributes and, optionally, a
 /// name. That is, anything that can be documented. This doesn't correspond
 /// directly to the AST's concept of an item; it's a strict superset.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Item {
     /// Stringified span
     pub source: Span,
@@ -294,6 +310,26 @@ pub struct Item {
     pub def_id: DefId,
     pub stability: Option<Stability>,
     pub deprecation: Option<Deprecation>,
+}
+
+impl fmt::Debug for Item {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+
+        let fake = MAX_DEF_ID.with(|m| m.borrow().get(&self.def_id.krate)
+                                   .map(|id| self.def_id >= *id).unwrap_or(false));
+        let def_id: &fmt::Debug = if fake { &"**FAKE**" } else { &self.def_id };
+
+        fmt.debug_struct("Item")
+            .field("source", &self.source)
+            .field("name", &self.name)
+            .field("attrs", &self.attrs)
+            .field("inner", &self.inner)
+            .field("visibility", &self.visibility)
+            .field("def_id", def_id)
+            .field("stability", &self.stability)
+            .field("deprecation", &self.deprecation)
+            .finish()
+    }
 }
 
 impl Item {
@@ -492,9 +528,9 @@ impl Clean<Item> for doctree::Module {
         let mut items: Vec<Item> = vec![];
         items.extend(self.extern_crates.iter().map(|x| x.clean(cx)));
         items.extend(self.imports.iter().flat_map(|x| x.clean(cx)));
-        items.extend(self.structs.iter().map(|x| x.clean(cx)));
-        items.extend(self.unions.iter().map(|x| x.clean(cx)));
-        items.extend(self.enums.iter().map(|x| x.clean(cx)));
+        items.extend(self.structs.iter().flat_map(|x| x.clean(cx)));
+        items.extend(self.unions.iter().flat_map(|x| x.clean(cx)));
+        items.extend(self.enums.iter().flat_map(|x| x.clean(cx)));
         items.extend(self.fns.iter().map(|x| x.clean(cx)));
         items.extend(self.foreigns.iter().flat_map(|x| x.clean(cx)));
         items.extend(self.mods.iter().map(|x| x.clean(cx)));
@@ -601,7 +637,7 @@ impl<I: IntoIterator<Item=ast::NestedMetaItem>> NestedAttributesExt for I {
 /// Included files are kept separate from inline doc comments so that proper line-number
 /// information can be given when a doctest fails. Sugared doc comments and "raw" doc comments are
 /// kept separate because of issue #42760.
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub enum DocFragment {
     // FIXME #44229 (misdreavus): sugared and raw doc comments can be brought back together once
     // hoedown is completely removed from rustdoc.
@@ -653,7 +689,7 @@ impl<'a> FromIterator<&'a DocFragment> for String {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug, Default)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Default, Hash)]
 pub struct Attributes {
     pub doc_strings: Vec<DocFragment>,
     pub other_attrs: Vec<ast::Attribute>,
@@ -1008,7 +1044,7 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option
 
 /// Resolve a string as a macro
 fn macro_resolve(cx: &DocContext, path_str: &str) -> Option<Def> {
-    use syntax::ext::base::MacroKind;
+    use syntax::ext::base::{MacroKind, SyntaxExtension};
     use syntax::ext::hygiene::Mark;
     let segment = ast::PathSegment {
         identifier: ast::Ident::from_str(path_str),
@@ -1025,7 +1061,11 @@ fn macro_resolve(cx: &DocContext, path_str: &str) -> Option<Def> {
     let res = resolver
         .resolve_macro_to_def_inner(mark, &path, MacroKind::Bang, false);
     if let Ok(def) = res {
-        Some(def)
+        if let SyntaxExtension::DeclMacro(..) = *resolver.get_macro(def) {
+            Some(def)
+        } else {
+            None
+        }
     } else if let Some(def) = resolver.all_macros.get(&path_str.into()) {
         Some(*def)
     } else {
@@ -1177,7 +1217,7 @@ impl Clean<Attributes> for [ast::Attribute] {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub struct TyParam {
     pub name: String,
     pub did: DefId,
@@ -1212,7 +1252,7 @@ impl<'tcx> Clean<TyParam> for ty::TypeParameterDef {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub enum TyParamBound {
     RegionBound(Lifetime),
     TraitBound(PolyTrait, hir::TraitBoundModifier)
@@ -1244,6 +1284,21 @@ impl TyParamBound {
             }
         }
         false
+    }
+
+    fn get_poly_trait(&self) -> Option<PolyTrait> {
+        if let TyParamBound::TraitBound(ref p, _) = *self {
+            return Some(p.clone())
+        }
+        None
+    }
+
+    fn get_trait_type(&self) -> Option<Type> {
+
+        if let TyParamBound::TraitBound(PolyTrait { ref trait_, .. }, _) = *self {
+            return Some(trait_.clone());
+        }
+        None
     }
 }
 
@@ -1363,7 +1418,7 @@ impl<'tcx> Clean<Option<Vec<TyParamBound>>> for Substs<'tcx> {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub struct Lifetime(String);
 
 impl Lifetime {
@@ -1380,17 +1435,19 @@ impl Lifetime {
 
 impl Clean<Lifetime> for hir::Lifetime {
     fn clean(&self, cx: &DocContext) -> Lifetime {
-        let hir_id = cx.tcx.hir.node_to_hir_id(self.id);
-        let def = cx.tcx.named_region(hir_id);
-        match def {
-            Some(rl::Region::EarlyBound(_, node_id, _)) |
-            Some(rl::Region::LateBound(_, node_id, _)) |
-            Some(rl::Region::Free(_, node_id)) => {
-                if let Some(lt) = cx.lt_substs.borrow().get(&node_id).cloned() {
-                    return lt;
+        if self.id != ast::DUMMY_NODE_ID {
+            let hir_id = cx.tcx.hir.node_to_hir_id(self.id);
+            let def = cx.tcx.named_region(hir_id);
+            match def {
+                Some(rl::Region::EarlyBound(_, node_id, _)) |
+                Some(rl::Region::LateBound(_, node_id, _)) |
+                Some(rl::Region::Free(_, node_id)) => {
+                    if let Some(lt) = cx.lt_substs.borrow().get(&node_id).cloned() {
+                        return lt;
+                    }
                 }
+                _ => {}
             }
-            _ => {}
         }
         Lifetime(self.name.name().to_string())
     }
@@ -1437,7 +1494,7 @@ impl Clean<Option<Lifetime>> for ty::RegionKind {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub enum WherePredicate {
     BoundPredicate { ty: Type, bounds: Vec<TyParamBound> },
     RegionPredicate { lifetime: Lifetime, bounds: Vec<Lifetime>},
@@ -1562,7 +1619,7 @@ impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub enum GenericParam {
     Lifetime(Lifetime),
     Type(TyParam),
@@ -1577,7 +1634,8 @@ impl Clean<GenericParam> for hir::GenericParam {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug, Default)]
+// maybe use a Generic enum and use Vec<Generic>?
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Default, Hash)]
 pub struct Generics {
     pub params: Vec<GenericParam>,
     pub where_predicates: Vec<WherePredicate>,
@@ -1747,7 +1805,7 @@ impl Clean<Item> for doctree::Function {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub struct FnDecl {
     pub inputs: Arguments,
     pub output: FunctionRetTy,
@@ -1765,7 +1823,7 @@ impl FnDecl {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub struct Arguments {
     pub values: Vec<Argument>,
 }
@@ -1840,7 +1898,7 @@ impl<'a, 'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub struct Argument {
     pub type_: Type,
     pub name: String,
@@ -1870,7 +1928,7 @@ impl Argument {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub enum FunctionRetTy {
     Return(Type),
     DefaultReturn,
@@ -1896,6 +1954,7 @@ impl GetDefId for FunctionRetTy {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Trait {
+    pub auto: bool,
     pub unsafety: hir::Unsafety,
     pub items: Vec<Item>,
     pub generics: Generics,
@@ -1917,6 +1976,7 @@ impl Clean<Item> for doctree::Trait {
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
             inner: TraitItem(Trait {
+                auto: self.is_auto.clean(cx),
                 unsafety: self.unsafety,
                 items: self.items.clean(cx),
                 generics: self.generics.clean(cx),
@@ -2158,7 +2218,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
 }
 
 /// A trait reference, which may have higher ranked lifetimes.
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub struct PolyTrait {
     pub trait_: Type,
     pub generic_params: Vec<GenericParam>,
@@ -2167,7 +2227,7 @@ pub struct PolyTrait {
 /// A representation of a Type suitable for hyperlinking purposes. Ideally one can get the original
 /// type out of the AST/TyCtxt given one of these, if more information is needed. Most importantly
 /// it does not preserve mutability or boxes.
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub enum Type {
     /// structs/enums/traits (most that'd be an hir::TyPath)
     ResolvedPath {
@@ -2782,10 +2842,13 @@ pub struct Union {
     pub fields_stripped: bool,
 }
 
-impl Clean<Item> for doctree::Struct {
-    fn clean(&self, cx: &DocContext) -> Item {
-        Item {
-            name: Some(self.name.clean(cx)),
+impl Clean<Vec<Item>> for doctree::Struct {
+    fn clean(&self, cx: &DocContext) -> Vec<Item> {
+        let name = self.name.clean(cx);
+        let mut ret = get_auto_traits_with_node_id(cx, self.id, name.clone());
+
+        ret.push(Item {
+            name: Some(name),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
             def_id: cx.tcx.hir.local_def_id(self.id),
@@ -2798,14 +2861,19 @@ impl Clean<Item> for doctree::Struct {
                 fields: self.fields.clean(cx),
                 fields_stripped: false,
             }),
-        }
+        });
+
+        ret
     }
 }
 
-impl Clean<Item> for doctree::Union {
-    fn clean(&self, cx: &DocContext) -> Item {
-        Item {
-            name: Some(self.name.clean(cx)),
+impl Clean<Vec<Item>> for doctree::Union {
+    fn clean(&self, cx: &DocContext) -> Vec<Item> {
+        let name = self.name.clean(cx);
+        let mut ret = get_auto_traits_with_node_id(cx, self.id, name.clone());
+
+        ret.push(Item {
+            name: Some(name),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
             def_id: cx.tcx.hir.local_def_id(self.id),
@@ -2818,7 +2886,9 @@ impl Clean<Item> for doctree::Union {
                 fields: self.fields.clean(cx),
                 fields_stripped: false,
             }),
-        }
+        });
+
+        ret
     }
 }
 
@@ -2849,10 +2919,13 @@ pub struct Enum {
     pub variants_stripped: bool,
 }
 
-impl Clean<Item> for doctree::Enum {
-    fn clean(&self, cx: &DocContext) -> Item {
-        Item {
-            name: Some(self.name.clean(cx)),
+impl Clean<Vec<Item>> for doctree::Enum {
+    fn clean(&self, cx: &DocContext) -> Vec<Item> {
+        let name = self.name.clean(cx);
+        let mut ret = get_auto_traits_with_node_id(cx, self.id, name.clone());
+
+        ret.push(Item {
+            name: Some(name),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
             def_id: cx.tcx.hir.local_def_id(self.id),
@@ -2864,7 +2937,9 @@ impl Clean<Item> for doctree::Enum {
                 generics: self.generics.clean(cx),
                 variants_stripped: false,
             }),
-        }
+        });
+
+        ret
     }
 }
 
@@ -2989,7 +3064,7 @@ impl Clean<Span> for syntax_pos::Span {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub struct Path {
     pub global: bool,
     pub def: Def,
@@ -3006,7 +3081,7 @@ impl Path {
                 params: PathParameters::AngleBracketed {
                     lifetimes: Vec::new(),
                     types: Vec::new(),
-                    bindings: Vec::new()
+                    bindings: Vec::new(),
                 }
             }]
         }
@@ -3027,7 +3102,7 @@ impl Clean<Path> for hir::Path {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub enum PathParameters {
     AngleBracketed {
         lifetimes: Vec<Lifetime>,
@@ -3062,7 +3137,7 @@ impl Clean<PathParameters> for hir::PathParameters {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub struct PathSegment {
     pub name: String,
     pub params: PathParameters,
@@ -3074,6 +3149,50 @@ impl Clean<PathSegment> for hir::PathSegment {
             name: self.name.clean(cx),
             params: self.with_parameters(|parameters| parameters.clean(cx))
         }
+    }
+}
+
+fn strip_type(ty: Type) -> Type {
+    match ty {
+        Type::ResolvedPath { path, typarams, did, is_generic } => {
+            Type::ResolvedPath { path: strip_path(&path), typarams, did, is_generic }
+        }
+        Type::Tuple(inner_tys) => {
+            Type::Tuple(inner_tys.iter().map(|t| strip_type(t.clone())).collect())
+        }
+        Type::Slice(inner_ty) => Type::Slice(Box::new(strip_type(*inner_ty))),
+        Type::Array(inner_ty, s) => Type::Array(Box::new(strip_type(*inner_ty)), s),
+        Type::Unique(inner_ty) => Type::Unique(Box::new(strip_type(*inner_ty))),
+        Type::RawPointer(m, inner_ty) => Type::RawPointer(m, Box::new(strip_type(*inner_ty))),
+        Type::BorrowedRef { lifetime, mutability, type_ } => {
+            Type::BorrowedRef { lifetime, mutability, type_: Box::new(strip_type(*type_)) }
+        }
+        Type::QPath { name, self_type, trait_ } => {
+            Type::QPath {
+                name,
+                self_type: Box::new(strip_type(*self_type)), trait_: Box::new(strip_type(*trait_))
+            }
+        }
+        _ => ty
+    }
+}
+
+fn strip_path(path: &Path) -> Path {
+    let segments = path.segments.iter().map(|s| {
+        PathSegment {
+            name: s.name.clone(),
+            params: PathParameters::AngleBracketed {
+                lifetimes: Vec::new(),
+                types: Vec::new(),
+                bindings: Vec::new(),
+            }
+        }
+    }).collect();
+
+    Path {
+        global: path.global,
+        def: path.def.clone(),
+        segments,
     }
 }
 
@@ -3125,7 +3244,7 @@ impl Clean<Item> for doctree::Typedef {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub struct BareFunctionDecl {
     pub unsafety: hir::Unsafety,
     pub generic_params: Vec<GenericParam>,
@@ -3198,7 +3317,7 @@ impl Clean<Item> for doctree::Constant {
     }
 }
 
-#[derive(Debug, Clone, RustcEncodable, RustcDecodable, PartialEq, Copy)]
+#[derive(Debug, Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Copy, Hash)]
 pub enum Mutability {
     Mutable,
     Immutable,
@@ -3213,7 +3332,7 @@ impl Clean<Mutability> for hir::Mutability {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Copy, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Copy, Debug, Hash)]
 pub enum ImplPolarity {
     Positive,
     Negative,
@@ -3237,6 +3356,20 @@ pub struct Impl {
     pub for_: Type,
     pub items: Vec<Item>,
     pub polarity: Option<ImplPolarity>,
+    pub synthetic: bool,
+}
+
+pub fn get_auto_traits_with_node_id(cx: &DocContext, id: ast::NodeId, name: String) -> Vec<Item> {
+    let finder = AutoTraitFinder { cx };
+    finder.get_with_node_id(id, name)
+}
+
+pub fn get_auto_traits_with_def_id(cx: &DocContext, id: DefId) -> Vec<Item> {
+    let finder = AutoTraitFinder {
+        cx,
+    };
+
+    finder.get_with_def_id(id)
 }
 
 impl Clean<Vec<Item>> for doctree::Impl {
@@ -3274,7 +3407,8 @@ impl Clean<Vec<Item>> for doctree::Impl {
                 for_: self.for_.clean(cx),
                 items,
                 polarity: Some(self.polarity.clean(cx)),
-            }),
+                synthetic: false,
+            })
         });
         ret
     }
@@ -3294,7 +3428,7 @@ fn build_deref_target_impls(cx: &DocContext,
         let primitive = match *target {
             ResolvedPath { did, .. } if did.is_local() => continue,
             ResolvedPath { did, .. } => {
-                ret.extend(inline::build_impls(cx, did));
+                ret.extend(inline::build_impls(cx, did, true));
                 continue
             }
             _ => match target.primitive_type() {
@@ -3514,7 +3648,11 @@ fn print_const_expr(cx: &DocContext, body: hir::BodyId) -> String {
 fn resolve_type(cx: &DocContext,
                 path: Path,
                 id: ast::NodeId) -> Type {
-    debug!("resolve_type({:?},{:?})", path, id);
+    if id == ast::DUMMY_NODE_ID {
+        debug!("resolve_type({:?})", path);
+    } else {
+        debug!("resolve_type({:?},{:?})", path, id);
+    }
 
     let is_generic = match path.def {
         Def::PrimTy(p) => match p {
@@ -3669,7 +3807,7 @@ impl Clean<Deprecation> for attr::Deprecation {
 }
 
 /// An equality constraint on an associated type, e.g. `A=Bar` in `Foo<A=Bar>`
-#[derive(Clone, PartialEq, RustcDecodable, RustcEncodable, Debug)]
+#[derive(Clone, PartialEq, Eq, RustcDecodable, RustcEncodable, Debug, Hash)]
 pub struct TypeBinding {
     pub name: String,
     pub ty: Type
@@ -3680,6 +3818,185 @@ impl Clean<TypeBinding> for hir::TypeBinding {
         TypeBinding {
             name: self.name.clean(cx),
             ty: self.ty.clean(cx)
+        }
+    }
+}
+
+pub fn def_id_to_path(cx: &DocContext, did: DefId, name: Option<String>) -> Vec<String> {
+    let crate_name = name.unwrap_or_else(|| cx.tcx.crate_name(did.krate).to_string());
+    let relative = cx.tcx.def_path(did).data.into_iter().filter_map(|elem| {
+        // extern blocks have an empty name
+        let s = elem.data.to_string();
+        if !s.is_empty() {
+            Some(s)
+        } else {
+            None
+        }
+    });
+    once(crate_name).chain(relative).collect()
+}
+
+// Start of code copied from rust-clippy
+
+pub fn get_trait_def_id(tcx: &TyCtxt, path: &[&str], use_local: bool) -> Option<DefId> {
+    if use_local {
+        path_to_def_local(tcx, path)
+    } else {
+        path_to_def(tcx, path)
+    }
+}
+
+pub fn path_to_def_local(tcx: &TyCtxt, path: &[&str]) -> Option<DefId> {
+    let krate = tcx.hir.krate();
+    let mut items = krate.module.item_ids.clone();
+    let mut path_it = path.iter().peekable();
+
+    loop {
+        let segment = match path_it.next() {
+            Some(segment) => segment,
+            None => return None,
+        };
+
+        for item_id in mem::replace(&mut items, HirVec::new()).iter() {
+            let item = tcx.hir.expect_item(item_id.id);
+            if item.name == *segment {
+                if path_it.peek().is_none() {
+                    return Some(tcx.hir.local_def_id(item_id.id))
+                }
+
+                items = match &item.node {
+                    &hir::ItemMod(ref m) => m.item_ids.clone(),
+                    _ => panic!("Unexpected item {:?} in path {:?} path")
+                };
+                break;
+            }
+        }
+    }
+}
+
+pub fn path_to_def(tcx: &TyCtxt, path: &[&str]) -> Option<DefId> {
+    let crates = tcx.crates();
+
+    let krate = crates
+        .iter()
+        .find(|&&krate| tcx.crate_name(krate) == path[0]);
+
+    if let Some(krate) = krate {
+        let krate = DefId {
+            krate: *krate,
+            index: CRATE_DEF_INDEX,
+        };
+        let mut items = tcx.item_children(krate);
+        let mut path_it = path.iter().skip(1).peekable();
+
+        loop {
+            let segment = match path_it.next() {
+                Some(segment) => segment,
+                None => return None,
+            };
+
+            for item in mem::replace(&mut items, Rc::new(vec![])).iter() {
+                if item.ident.name == *segment {
+                    if path_it.peek().is_none() {
+                        return match item.def {
+                            def::Def::Trait(did) => Some(did),
+                            _ => None,
+                        }
+                    }
+
+                    items = tcx.item_children(item.def.def_id());
+                    break;
+                }
+            }
+        }
+    } else {
+        None
+    }
+}
+
+fn get_path_for_type(tcx: TyCtxt, def_id: DefId, def_ctor: fn(DefId) -> Def) -> hir::Path {
+    struct AbsolutePathBuffer {
+        names: Vec<String>,
+    }
+
+    impl ty::item_path::ItemPathBuffer for AbsolutePathBuffer {
+        fn root_mode(&self) -> &ty::item_path::RootMode {
+            const ABSOLUTE: &'static ty::item_path::RootMode = &ty::item_path::RootMode::Absolute;
+            ABSOLUTE
+        }
+
+        fn push(&mut self, text: &str) {
+            self.names.push(text.to_owned());
+        }
+    }
+
+    let mut apb = AbsolutePathBuffer { names: vec![] };
+
+    tcx.push_item_path(&mut apb, def_id);
+
+    hir::Path {
+        span: DUMMY_SP,
+        def: def_ctor(def_id),
+        segments: hir::HirVec::from_vec(apb.names.iter().map(|s| hir::PathSegment {
+            name: ast::Name::intern(&s),
+            parameters: None,
+            infer_types: false,
+        }).collect())
+    }
+}
+
+// End of code copied from rust-clippy
+
+
+#[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
+enum RegionTarget<'tcx> {
+    Region(Region<'tcx>),
+    RegionVid(RegionVid)
+}
+
+#[derive(Default, Debug, Clone)]
+struct RegionDeps<'tcx> {
+    larger: FxHashSet<RegionTarget<'tcx>>,
+    smaller: FxHashSet<RegionTarget<'tcx>>
+}
+
+#[derive(Eq, PartialEq, Hash, Debug)]
+enum SimpleBound {
+    RegionBound(Lifetime),
+    TraitBound(Vec<PathSegment>, Vec<SimpleBound>, Vec<GenericParam>, hir::TraitBoundModifier)
+}
+
+enum AutoTraitResult {
+    ExplicitImpl,
+    PositiveImpl(Generics),
+    NegativeImpl,
+}
+
+impl AutoTraitResult {
+    fn is_auto(&self) -> bool {
+        match *self {
+            AutoTraitResult::PositiveImpl(_) | AutoTraitResult::NegativeImpl => true,
+            _ => false,
+        }
+    }
+}
+
+impl From<TyParamBound> for SimpleBound {
+    fn from(bound: TyParamBound) -> Self {
+        match bound.clone() {
+            TyParamBound::RegionBound(l) => SimpleBound::RegionBound(l),
+            TyParamBound::TraitBound(t, mod_) => match t.trait_ {
+                Type::ResolvedPath { path, typarams, .. } => {
+                    SimpleBound::TraitBound(path.segments,
+                                            typarams
+                                                .map_or_else(|| Vec::new(), |v| v.iter()
+                                                        .map(|p| SimpleBound::from(p.clone()))
+                                                        .collect()),
+                                            t.generic_params,
+                                            mod_)
+                }
+                _ => panic!("Unexpected bound {:?}", bound),
+            }
         }
     }
 }

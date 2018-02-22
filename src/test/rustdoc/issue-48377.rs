@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,18 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    let x;
+// compile-flags:--test
 
-    match x {
-        (..) => {} //~ ERROR type annotations needed
-        _ => {}
-    }
+//! This is a doc comment
+//!
+//! ```rust
+//! fn main() {}
+//! ```
+//!
+//! With a trailing code fence
+//! ```
 
-    match 0u8 {
-        (..) => {} //~ ERROR mismatched types
-        _ => {}
-    }
-
-    x = 10;
-}
+/// Some foo function
+pub fn foo() {}

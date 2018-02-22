@@ -471,18 +471,21 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, position: Sp
                         break 'main;
                     }
                 }
-                let offset = offset.unwrap_or(0);
-                let lines = test_s.lines().map(|l| map_line(l).for_code());
-                let text = lines.collect::<Vec<&str>>().join("\n");
-                nb_lines += doc[prev_offset..offset].lines().count();
-                let line = tests.get_line() + (nb_lines - 1);
-                let filename = tests.get_filename();
-                tests.add_test(text.to_owned(),
-                               block_info.should_panic, block_info.no_run,
-                               block_info.ignore, block_info.test_harness,
-                               block_info.compile_fail, block_info.error_codes,
-                               line, filename, block_info.allow_fail);
-                prev_offset = offset;
+                if let Some(offset) = offset {
+                    let lines = test_s.lines().map(|l| map_line(l).for_code());
+                    let text = lines.collect::<Vec<&str>>().join("\n");
+                    nb_lines += doc[prev_offset..offset].lines().count();
+                    let line = tests.get_line() + (nb_lines - 1);
+                    let filename = tests.get_filename();
+                    tests.add_test(text.to_owned(),
+                                   block_info.should_panic, block_info.no_run,
+                                   block_info.ignore, block_info.test_harness,
+                                   block_info.compile_fail, block_info.error_codes,
+                                   line, filename, block_info.allow_fail);
+                    prev_offset = offset;
+                } else {
+                    break;
+                }
             }
             Event::Start(Tag::Header(level)) => {
                 register_header = Some(level as u32);
@@ -591,7 +594,15 @@ impl<'a> fmt::Display for Markdown<'a> {
         opts.insert(OPTION_ENABLE_TABLES);
         opts.insert(OPTION_ENABLE_FOOTNOTES);
 
-        let p = Parser::new_ext(md, opts);
+        let replacer = |_: &str, s: &str| {
+            if let Some(&(_, ref replace)) = links.into_iter().find(|link| &*link.0 == s) {
+                Some((replace.clone(), s.to_owned()))
+            } else {
+                None
+            }
+        };
+
+        let p = Parser::new_with_broken_link_callback(md, opts, Some(&replacer));
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
@@ -662,7 +673,16 @@ impl<'a> fmt::Display for MarkdownSummaryLine<'a> {
         // This is actually common enough to special-case
         if md.is_empty() { return Ok(()) }
 
-        let p = Parser::new(md);
+        let replacer = |_: &str, s: &str| {
+            if let Some(&(_, ref replace)) = links.into_iter().find(|link| &*link.0 == s) {
+                Some((replace.clone(), s.to_owned()))
+            } else {
+                None
+            }
+        };
+
+        let p = Parser::new_with_broken_link_callback(md, Options::empty(),
+                                                      Some(&replacer));
 
         let mut s = String::new();
 
@@ -731,17 +751,29 @@ pub fn markdown_links(md: &str) -> Vec<String> {
     opts.insert(OPTION_ENABLE_TABLES);
     opts.insert(OPTION_ENABLE_FOOTNOTES);
 
-    let p = Parser::new_ext(md, opts);
-
-    let iter = Footnotes::new(HeadingLinks::new(p, None));
     let mut links = vec![];
+    let shortcut_links = RefCell::new(vec![]);
 
-    for ev in iter {
-        if let Event::Start(Tag::Link(dest, _)) = ev {
-            debug!("found link: {}", dest);
-            links.push(dest.into_owned());
+    {
+        let push = |_: &str, s: &str| {
+            shortcut_links.borrow_mut().push(s.to_owned());
+            None
+        };
+        let p = Parser::new_with_broken_link_callback(md, opts,
+            Some(&push));
+
+        let iter = Footnotes::new(HeadingLinks::new(p, None));
+
+        for ev in iter {
+            if let Event::Start(Tag::Link(dest, _)) = ev {
+                debug!("found link: {}", dest);
+                links.push(dest.into_owned());
+            }
         }
     }
+
+    let mut shortcut_links = shortcut_links.into_inner();
+    links.extend(shortcut_links.drain(..));
 
     links
 }

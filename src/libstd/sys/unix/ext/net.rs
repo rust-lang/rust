@@ -415,7 +415,7 @@ impl UnixStream {
     /// method.
     ///
     /// [`None`]: ../../../../std/option/enum.Option.html#variant.None
-    /// [`read`]: ../../../../std/io/trait.Write.html#tymethod.write
+    /// [`write`]: ../../../../std/io/trait.Write.html#tymethod.write
     /// [`Duration`]: ../../../../std/time/struct.Duration.html
     ///
     /// # Examples

@@ -414,7 +414,8 @@ fn partition_source(s: &str) -> (String, String) {
     for line in s.lines() {
         let trimline = line.trim();
         let header = trimline.is_whitespace() ||
-            trimline.starts_with("#![");
+            trimline.starts_with("#![") ||
+            trimline.starts_with("extern crate");
         if !header || after_header {
             after_header = true;
             after.push_str(line);
@@ -814,8 +815,8 @@ use asdf::qwop;
 assert_eq!(2+2, 4);";
         let expected =
 "#![allow(unused)]
-fn main() {
 extern crate asdf;
+fn main() {
 use asdf::qwop;
 assert_eq!(2+2, 4);
 }".to_string();

@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    let x;
-
-    match x {
-        (..) => {} //~ ERROR E0619
-        _ => {}
-    }
+pub struct Inner<T> {
+    field: T,
 }
 
+unsafe impl<T> Send for Inner<T>
+where
+    T: Copy + Send,
+{
+}
+
+// @has no_redundancy/struct.Outer.html
+// @has - '//*[@id="synthetic-implementations-list"]/*[@class="impl"]/*/code' "impl<T> Send for \
+// Outer<T> where T: Copy + Send"
+pub struct Outer<T> {
+    inner_field: Inner<T>,
+}
