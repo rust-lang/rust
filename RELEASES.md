@@ -5,8 +5,8 @@ Language
 --------
 - [Stabilised `#[repr(align(x))]`.][47006] [RFC 1358]
 - [You can now use nested groups of imports.][47948]
-  eg. `use std::{fs::File, io::Read, path::{Path, PathBuf}};`
-- [You can now have `|` at the start of a match arm.][47947] eg.
+  e.g. `use std::{fs::File, io::Read, path::{Path, PathBuf}};`
+- [You can now have `|` at the start of a match arm.][47947] e.g.
 ```rust
 enum Foo { A, B, C }
 
@@ -55,7 +55,7 @@ Cargo
 -----
 - [`cargo new` no longer removes `rust` or `rs` prefixs/suffixs.][cargo/5013]
 - [`cargo new` now defaults to creating a binary crate, instead of a
-  libary crate.][cargo/5029]
+  library crate.][cargo/5029]
 
 Misc
 ----
