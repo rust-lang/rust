@@ -32,57 +32,6 @@ note: External requirements
    = note: where T: '_#2r
    = note: where '_#1r: '_#2r
 
-note: External requirements
-  --> $DIR/projection-one-region-closure.rs:68:29
-   |
-68 |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: defining type: DefId(0/1:23 ~ projection_one_region_closure[317d]::no_relationships_early[0]::{{closure}}[0]) with closure substs [
-               '_#1r,
-               '_#2r,
-               T,
-               i32,
-               extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T))
-           ]
-   = note: number of external vids: 4
-   = note: where T: '_#3r
-   = note: where '_#2r: '_#3r
-
-note: External requirements
-  --> $DIR/projection-one-region-closure.rs:90:29
-   |
-90 |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: defining type: DefId(0/1:27 ~ projection_one_region_closure[317d]::projection_outlives[0]::{{closure}}[0]) with closure substs [
-               '_#1r,
-               '_#2r,
-               T,
-               i32,
-               extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T))
-           ]
-   = note: number of external vids: 4
-   = note: where T: '_#3r
-   = note: where '_#2r: '_#3r
-
-note: External requirements
-   --> $DIR/projection-one-region-closure.rs:103:29
-    |
-103 |     with_signature(cell, t, |cell, t| require(cell, t));
-    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |
-    = note: defining type: DefId(0/1:31 ~ projection_one_region_closure[317d]::elements_outlive[0]::{{closure}}[0]) with closure substs [
-                '_#1r,
-                '_#2r,
-                T,
-                i32,
-                extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T))
-            ]
-    = note: number of external vids: 4
-    = note: where T: '_#3r
-    = note: where '_#2r: '_#3r
-
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/projection-one-region-closure.rs:56:29
    |
@@ -113,6 +62,23 @@ note: No external requirements
                '_#1r,
                T
            ]
+
+note: External requirements
+  --> $DIR/projection-one-region-closure.rs:68:29
+   |
+68 |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: DefId(0/1:23 ~ projection_one_region_closure[317d]::no_relationships_early[0]::{{closure}}[0]) with closure substs [
+               '_#1r,
+               '_#2r,
+               T,
+               i32,
+               extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T))
+           ]
+   = note: number of external vids: 4
+   = note: where T: '_#3r
+   = note: where '_#2r: '_#3r
 
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/projection-one-region-closure.rs:68:29
@@ -146,6 +112,23 @@ note: No external requirements
                T
            ]
 
+note: External requirements
+  --> $DIR/projection-one-region-closure.rs:90:29
+   |
+90 |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: DefId(0/1:27 ~ projection_one_region_closure[317d]::projection_outlives[0]::{{closure}}[0]) with closure substs [
+               '_#1r,
+               '_#2r,
+               T,
+               i32,
+               extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T))
+           ]
+   = note: number of external vids: 4
+   = note: where T: '_#3r
+   = note: where '_#2r: '_#3r
+
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/projection-one-region-closure.rs:90:29
    |
@@ -177,6 +160,23 @@ note: No external requirements
                '_#2r,
                T
            ]
+
+note: External requirements
+   --> $DIR/projection-one-region-closure.rs:103:29
+    |
+103 |     with_signature(cell, t, |cell, t| require(cell, t));
+    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: defining type: DefId(0/1:31 ~ projection_one_region_closure[317d]::elements_outlive[0]::{{closure}}[0]) with closure substs [
+                '_#1r,
+                '_#2r,
+                T,
+                i32,
+                extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T))
+            ]
+    = note: number of external vids: 4
+    = note: where T: '_#3r
+    = note: where '_#2r: '_#3r
 
 note: No external requirements
    --> $DIR/projection-one-region-closure.rs:97:1
