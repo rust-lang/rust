@@ -1908,12 +1908,16 @@ where
         1
     };
     let used_width = extra_offset(callee_str, shape);
-    let one_line_width = shape.width.checked_sub(used_width + 2 * paren_overhead)?;
+    let one_line_width = shape
+        .width
+        .checked_sub(used_width + 2 * paren_overhead)
+        .unwrap_or(0);
 
     // 1 = "(" or ")"
     let one_line_shape = shape
-        .offset_left(last_line_width(callee_str) + 1)?
-        .sub_width(1)?;
+        .offset_left(last_line_width(callee_str) + 1)
+        .and_then(|shape| shape.sub_width(1))
+        .unwrap_or(Shape { width: 0, ..shape });
     let nested_shape = shape_from_indent_style(
         context,
         shape,
@@ -1950,7 +1954,13 @@ where
         );
     }
 
-    let args_shape = shape.sub_width(last_line_width(callee_str))?;
+    let args_shape = Shape {
+        width: shape
+            .width
+            .checked_sub(last_line_width(callee_str))
+            .unwrap_or(0),
+        ..shape
+    };
     Some(format!(
         "{}{}",
         callee_str,
