@@ -272,7 +272,7 @@ impl<'a> Builder<'a> {
 
         let builder = Builder {
             build,
-            top_stage: build.config.stage.unwrap_or(2),
+            top_stage: build.config.stage,
             kind,
             cache: Cache::new(),
             stack: RefCell::new(Vec::new()),
@@ -374,7 +374,7 @@ impl<'a> Builder<'a> {
 
         let builder = Builder {
             build,
-            top_stage: build.config.stage.unwrap_or(2),
+            top_stage: build.config.stage,
             kind,
             cache: Cache::new(),
             stack: RefCell::new(Vec::new()),

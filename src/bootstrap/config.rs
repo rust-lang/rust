@@ -55,7 +55,7 @@ pub struct Config {
 
     pub exclude: Vec<PathBuf>,
     pub on_fail: Option<String>,
-    pub stage: Option<u32>,
+    pub stage: u32,
     pub keep_stage: Option<u32>,
     pub src: PathBuf,
     pub jobs: Option<u32>,
@@ -500,7 +500,7 @@ impl Config {
             paths: flags.paths,
             on_fail: flags.on_fail,
             rustc_error_format: flags.rustc_error_format,
-            stage: flags.stage,
+            stage: flags.stage.unwrap_or(2),
             src: flags.src,
             jobs: flags.jobs,
             cmd: flags.cmd,
