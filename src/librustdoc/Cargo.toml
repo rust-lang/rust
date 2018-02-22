@@ -6,8 +6,6 @@ version = "0.0.0"
 [lib]
 name = "rustdoc"
 path = "lib.rs"
-# SNAP/stage0(cargo)
-doctest = false
 
 [dependencies]
 pulldown-cmark = { version = "0.1.2", default-features = false }

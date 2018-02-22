@@ -194,7 +194,6 @@ impl TransCrate for LlvmTransCrate {
         llvm_util::print_version();
     }
 
-    #[cfg(not(stage0))]
     fn diagnostics(&self) -> &[(&'static str, &'static str)] {
         &DIAGNOSTICS
     }
@@ -404,5 +403,4 @@ struct CrateInfo {
     used_crates_dynamic: Vec<(CrateNum, LibSource)>,
 }
 
-#[cfg(not(stage0))] // remove after the next snapshot
 __build_diagnostic_array! { librustc_trans, DIAGNOSTICS }

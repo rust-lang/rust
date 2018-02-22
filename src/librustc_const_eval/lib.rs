@@ -56,5 +56,4 @@ pub fn provide(providers: &mut Providers) {
 }
 
 // Build the diagnostics array at the end so that the metadata includes error use sites.
-#[cfg(not(stage0))] // remove after the next snapshot
 __build_diagnostic_array! { librustc_const_eval, DIAGNOSTICS }
