@@ -494,7 +494,7 @@ fn separate_supertrait_bounds(mut g: clean::Generics)
 }
 
 pub fn record_extern_trait(cx: &DocContext, did: DefId) {
-    if cx.external_traits.borrow().contains_key(&did) &&
+    if cx.external_traits.borrow().contains_key(&did) ||
         cx.active_extern_traits.borrow().contains(&did)
     {
         return;
