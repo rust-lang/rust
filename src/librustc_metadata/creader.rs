@@ -225,9 +225,6 @@ impl<'a> CrateLoader<'a> {
             crate_root.def_path_table.decode((&metadata, self.sess))
         });
 
-        let exported_symbols = crate_root.exported_symbols
-                                         .decode((&metadata, self.sess))
-                                         .collect();
         let trait_impls = crate_root
             .impls
             .decode((&metadata, self.sess))
@@ -238,7 +235,6 @@ impl<'a> CrateLoader<'a> {
             name,
             extern_crate: Cell::new(None),
             def_path_table: Lrc::new(def_path_table),
-            exported_symbols,
             trait_impls,
             proc_macros: crate_root.macro_derive_registrar.map(|_| {
                 self.load_derive_macros(&crate_root, dylib.clone().map(|p| p.0), span)

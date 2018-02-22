@@ -160,9 +160,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     fn_arg_names => { cdata.get_fn_arg_names(def_id.index) }
     impl_parent => { cdata.get_parent_impl(def_id.index) }
     trait_of_item => { cdata.get_trait_of_item(def_id.index) }
-    is_exported_symbol => {
-        cdata.exported_symbols.contains(&def_id.index)
-    }
     item_body_nested_bodies => { cdata.item_body_nested_bodies(def_id.index) }
     const_is_rvalue_promotable_to_static => {
         cdata.const_is_rvalue_promotable_to_static(def_id.index)
@@ -179,7 +176,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     extern_crate => { Lrc::new(cdata.extern_crate.get()) }
     is_no_builtins => { cdata.is_no_builtins(tcx.sess) }
     impl_defaultness => { cdata.get_impl_defaultness(def_id.index) }
-    exported_symbol_ids => { Lrc::new(cdata.get_exported_symbols()) }
+    reachable_non_generics => { Lrc::new(cdata.reachable_non_generics()) }
     native_libraries => { Lrc::new(cdata.get_native_libraries(tcx.sess)) }
     plugin_registrar_fn => {
         cdata.root.plugin_registrar_fn.map(|index| {

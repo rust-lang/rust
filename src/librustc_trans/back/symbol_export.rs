@@ -61,7 +61,7 @@ pub fn crates_export_threshold(crate_types: &[config::CrateType])
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.exported_symbol_ids = |tcx, cnum| {
+    providers.reachable_non_generics = |tcx, cnum| {
         let export_threshold = threshold(tcx);
         Lrc::new(tcx.exported_symbols(cnum)
             .iter()
@@ -77,8 +77,8 @@ pub fn provide(providers: &mut Providers) {
             .collect())
     };
 
-    providers.is_exported_symbol = |tcx, id| {
-        tcx.exported_symbol_ids(id.krate).contains(&id)
+    providers.is_reachable_non_generic = |tcx, id| {
+        tcx.reachable_non_generics(id.krate).contains(&id)
     };
 
     providers.exported_symbols = |tcx, cnum| {
@@ -156,7 +156,7 @@ pub fn provide_extern(providers: &mut Providers) {
             tcx.is_panic_runtime(cnum) || tcx.is_compiler_builtins(cnum);
 
         let mut crate_exports: Vec<_> = tcx
-            .exported_symbol_ids(cnum)
+            .reachable_non_generics(cnum)
             .iter()
             .map(|&def_id| {
                 let name = tcx.symbol_name(Instance::mono(tcx, def_id));
@@ -190,6 +190,11 @@ pub fn provide_extern(providers: &mut Providers) {
 
         Arc::new(crate_exports)
     };
+
+    providers.is_reachable_non_generic = |tcx, id| {
+        tcx.reachable_non_generics(id.krate).contains(&id)
+    };
+
     providers.symbol_export_level = export_level;
 }
 

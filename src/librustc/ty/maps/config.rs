@@ -212,9 +212,9 @@ impl<'tcx> QueryDescription<'tcx> for queries::item_attrs<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::is_exported_symbol<'tcx> {
+impl<'tcx> QueryDescription<'tcx> for queries::is_reachable_non_generic<'tcx> {
     fn describe(_: TyCtxt, _: DefId) -> String {
-        bug!("is_exported_symbol")
+        bug!("is_reachable_non_generic")
     }
 }
 
@@ -383,7 +383,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::is_sanitizer_runtime<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::exported_symbol_ids<'tcx> {
+impl<'tcx> QueryDescription<'tcx> for queries::reachable_non_generics<'tcx> {
     fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
         format!("looking up the exported symbols of a crate")
     }
