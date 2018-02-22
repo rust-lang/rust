@@ -529,12 +529,9 @@ impl Rewrite for ast::TyParamBound {
             ast::TyParamBound::TraitTyParamBound(ref tref, ast::TraitBoundModifier::None) => {
                 tref.rewrite(context, shape)
             }
-            ast::TyParamBound::TraitTyParamBound(ref tref, ast::TraitBoundModifier::Maybe) => {
-                Some(format!(
-                    "?{}",
-                    tref.rewrite(context, shape.offset_left(1)?)?
-                ))
-            }
+            ast::TyParamBound::TraitTyParamBound(ref tref, ast::TraitBoundModifier::Maybe) => Some(
+                format!("?{}", tref.rewrite(context, shape.offset_left(1)?)?),
+            ),
             ast::TyParamBound::RegionTyParamBound(ref l) => l.rewrite(context, shape),
         }
     }
