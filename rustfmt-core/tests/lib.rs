@@ -706,7 +706,7 @@ impl ConfigCodeBlock {
         let fmt_skip = self.code_block
             .as_ref()
             .unwrap()
-            .split("\n")
+            .split('\n')
             .nth(0)
             .unwrap_or("") == "#![rustfmt_skip]";
 

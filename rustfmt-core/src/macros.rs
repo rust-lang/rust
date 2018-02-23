@@ -299,7 +299,7 @@ pub fn rewrite_macro_def(
     span: Span,
 ) -> Option<String> {
     let snippet = Some(remove_trailing_white_spaces(context.snippet(span)));
-    if snippet.as_ref().map_or(true, |s| s.ends_with(";")) {
+    if snippet.as_ref().map_or(true, |s| s.ends_with(';')) {
         return snippet;
     }
 

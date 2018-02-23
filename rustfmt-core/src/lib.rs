@@ -78,7 +78,7 @@ mod types;
 mod vertical;
 pub mod visitor;
 
-const STDIN: &'static str = "<stdin>";
+const STDIN: &str = "<stdin>";
 
 // A map of the files of a crate, with their new content
 pub type FileMap = Vec<FileRecord>;
@@ -753,7 +753,7 @@ pub struct ModifiedLines {
     pub chunks: Vec<ModifiedChunk>,
 }
 
-/// The successful result of formatting via get_modified_lines().
+/// The successful result of formatting via `get_modified_lines()`.
 pub struct ModifiedLinesResult {
     /// The high level summary details
     pub summary: Summary,

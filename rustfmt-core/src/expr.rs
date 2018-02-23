@@ -1066,7 +1066,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
         debug!("ControlFlow::rewrite {:?} {:?}", self, shape);
 
         let alt_block_sep = &shape.indent.to_string_with_newline(context.config);
-        let (cond_str, used_width) = self.rewrite_cond(context, shape, &alt_block_sep)?;
+        let (cond_str, used_width) = self.rewrite_cond(context, shape, alt_block_sep)?;
         // If `used_width` is 0, it indicates that whole control flow is written in a single line.
         if used_width == 0 {
             return Some(cond_str);
@@ -1273,10 +1273,10 @@ fn rewrite_match(
     let cond_str = cond.rewrite(context, cond_shape)?;
     let alt_block_sep = &shape.indent.to_string_with_newline(context.config);
     let block_sep = match context.config.control_brace_style() {
-        ControlBraceStyle::AlwaysNextLine => &alt_block_sep,
+        ControlBraceStyle::AlwaysNextLine => alt_block_sep,
         _ if last_line_extendable(&cond_str) => " ",
         // 2 = ` {`
-        _ if cond_str.contains('\n') || cond_str.len() + 2 > cond_shape.width => &alt_block_sep,
+        _ if cond_str.contains('\n') || cond_str.len() + 2 > cond_shape.width => alt_block_sep,
         _ => " ",
     };
 
