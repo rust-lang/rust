@@ -1084,7 +1084,7 @@ pub fn check_ast_crate(sess: &Session, krate: &ast::Crate) {
     if !sess.opts.actually_rustdoc {
         for (_id, lints) in cx.buffered.map {
             for early_lint in lints {
-                span_bug!(early_lint.span, "failed to process buffered lint here");
+                sess.delay_span_bug(early_lint.span, "failed to process buffered lint here");
             }
         }
     }
