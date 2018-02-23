@@ -62,7 +62,7 @@ pub trait PpAnn {
 
 pub struct NoAnn;
 impl PpAnn for NoAnn {}
-pub const NO_ANN: &'static PpAnn = &NoAnn;
+pub const NO_ANN: &'static dyn PpAnn = &NoAnn;
 
 impl PpAnn for hir::Crate {
     fn nested(&self, state: &mut State, nested: Nested) -> io::Result<()> {
@@ -83,7 +83,7 @@ pub struct State<'a> {
     literals: Peekable<vec::IntoIter<comments::Literal>>,
     cur_cmnt: usize,
     boxes: Vec<pp::Breaks>,
-    ann: &'a (PpAnn + 'a),
+    ann: &'a (dyn PpAnn + 'a),
 }
 
 impl<'a> PrintState<'a> for State<'a> {
@@ -126,9 +126,9 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
                        sess: &ParseSess,
                        krate: &hir::Crate,
                        filename: FileName,
-                       input: &mut Read,
-                       out: Box<Write + 'a>,
-                       ann: &'a PpAnn,
+                       input: &mut dyn Read,
+                       out: Box<dyn Write + 'a>,
+                       ann: &'a dyn PpAnn,
                        is_expanded: bool)
                        -> io::Result<()> {
     let mut s = State::new_from_input(cm, sess, filename, input, out, ann, is_expanded);
@@ -145,9 +145,9 @@ impl<'a> State<'a> {
     pub fn new_from_input(cm: &'a CodeMap,
                           sess: &ParseSess,
                           filename: FileName,
-                          input: &mut Read,
-                          out: Box<Write + 'a>,
-                          ann: &'a PpAnn,
+                          input: &mut dyn Read,
+                          out: Box<dyn Write + 'a>,
+                          ann: &'a dyn PpAnn,
                           is_expanded: bool)
                           -> State<'a> {
         let (cmnts, lits) = comments::gather_comments_and_literals(sess, filename, input);
@@ -167,8 +167,8 @@ impl<'a> State<'a> {
     }
 
     pub fn new(cm: &'a CodeMap,
-               out: Box<Write + 'a>,
-               ann: &'a PpAnn,
+               out: Box<dyn Write + 'a>,
+               ann: &'a dyn PpAnn,
                comments: Option<Vec<comments::Comment>>,
                literals: Option<Vec<comments::Literal>>)
                -> State<'a> {
@@ -184,7 +184,7 @@ impl<'a> State<'a> {
     }
 }
 
-pub fn to_string<F>(ann: &PpAnn, f: F) -> String
+pub fn to_string<F>(ann: &dyn PpAnn, f: F) -> String
     where F: FnOnce(&mut State) -> io::Result<()>
 {
     let mut wr = Vec::new();

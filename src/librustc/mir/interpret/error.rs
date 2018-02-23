@@ -35,7 +35,7 @@ impl<'tcx> From<EvalErrorKind<'tcx>> for EvalError<'tcx> {
 pub enum EvalErrorKind<'tcx> {
     /// This variant is used by machines to signal their own errors that do not
     /// match an existing variant
-    MachineError(Box<Error>),
+    MachineError(Box<dyn Error>),
     FunctionPointerTyMismatch(FnSig<'tcx>, FnSig<'tcx>),
     NoMirFor(String),
     UnterminatedCString(MemoryPointer),
@@ -248,7 +248,7 @@ impl<'tcx> Error for EvalError<'tcx> {
         }
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&dyn Error> {
         use self::EvalErrorKind::*;
         match self.kind {
             MachineError(ref inner) => Some(&**inner),

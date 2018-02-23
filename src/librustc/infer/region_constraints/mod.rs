@@ -896,7 +896,7 @@ impl<'a, 'gcx, 'tcx> GenericKind<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> VerifyBound<'tcx> {
-    fn for_each_region(&self, f: &mut FnMut(ty::Region<'tcx>)) {
+    fn for_each_region(&self, f: &mut dyn FnMut(ty::Region<'tcx>)) {
         match self {
             &VerifyBound::AnyRegion(ref rs) | &VerifyBound::AllRegions(ref rs) => for &r in rs {
                 f(r);

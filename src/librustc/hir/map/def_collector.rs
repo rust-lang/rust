@@ -26,7 +26,7 @@ pub struct DefCollector<'a> {
     definitions: &'a mut Definitions,
     parent_def: Option<DefIndex>,
     expansion: Mark,
-    pub visit_macro_invoc: Option<&'a mut FnMut(MacroInvocationData)>,
+    pub visit_macro_invoc: Option<&'a mut dyn FnMut(MacroInvocationData)>,
 }
 
 pub struct MacroInvocationData {
