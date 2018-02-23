@@ -1,3 +1,5 @@
+// rustfmt-error_on_line_overflow: false
+
 macro_rules! m {
     // a
     ($expr: expr, $($func: ident)*) => {{
@@ -42,11 +44,36 @@ macro m2 {
     }
 }
 
-// #2438
+// #2438, #2476
 macro_rules! m {
     () => {
-        this_line_is_99_characters_long_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx(
-        ); // this line is drifting
+        fn foo() {
+            this_line_is_98_characters_long_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx();
+        }
+    };
+}
+macro_rules! m {
+    () => {
+        fn foo() {
+            this_line_is_99_characters_long_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx(
+            );
+        }
+    };
+}
+macro_rules! m {
+    () => {
+        fn foo() {
+            this_line_is_100_characters_long_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx(
+            );
+        }
+    };
+}
+macro_rules! m {
+    () => {
+        fn foo() {
+            this_line_is_101_characters_long_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx(
+            );
+        }
     };
 }
 

@@ -38,7 +38,7 @@ use expr::{rewrite_array, rewrite_call_inner};
 use lists::{itemize_list, write_list, ListFormatting};
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
-use utils::{format_visibility, mk_sp};
+use utils::{format_visibility, mk_sp, wrap_str};
 
 const FORCED_BRACKET_MACROS: &[&str] = &["vec!"];
 
@@ -810,6 +810,7 @@ impl MacroBranch {
                 None => return None,
             },
         };
+        let new_body = wrap_str(new_body, config.max_width(), shape)?;
 
         // Indent the body since it is in a block.
         let indent_str = body_indent.to_string(&config);

@@ -1908,12 +1908,16 @@ where
         1
     };
     let used_width = extra_offset(callee_str, shape);
-    let one_line_width = shape.width.checked_sub(used_width + 2 * paren_overhead)?;
+    let one_line_width = shape
+        .width
+        .checked_sub(used_width + 2 * paren_overhead)
+        .unwrap_or(0);
 
     // 1 = "(" or ")"
     let one_line_shape = shape
-        .offset_left(last_line_width(callee_str) + 1)?
-        .sub_width(1)?;
+        .offset_left(last_line_width(callee_str) + 1)
+        .and_then(|shape| shape.sub_width(1))
+        .unwrap_or(Shape { width: 0, ..shape });
     let nested_shape = shape_from_indent_style(
         context,
         shape,
@@ -1950,7 +1954,13 @@ where
         );
     }
 
-    let args_shape = shape.sub_width(last_line_width(callee_str))?;
+    let args_shape = Shape {
+        width: shape
+            .width
+            .checked_sub(last_line_width(callee_str))
+            .unwrap_or(0),
+        ..shape
+    };
     Some(format!(
         "{}{}",
         callee_str,
@@ -2317,9 +2327,16 @@ pub fn wrap_args_with_parens(
     shape: Shape,
     nested_shape: Shape,
 ) -> String {
+    let paren_overhead = paren_overhead(context);
+    let fits_one_line = args_str.len() + paren_overhead <= shape.width;
+    let extend_width = if args_str.is_empty() {
+        paren_overhead
+    } else {
+        paren_overhead / 2
+    };
     if !context.use_block_indent()
-        || (context.inside_macro && !args_str.contains('\n')
-            && args_str.len() + paren_overhead(context) <= shape.width) || is_extendable
+        || (context.inside_macro && !args_str.contains('\n') && fits_one_line)
+        || (is_extendable && extend_width <= shape.width)
     {
         let mut result = String::with_capacity(args_str.len() + 4);
         if context.config.spaces_within_parens_and_brackets() && !args_str.is_empty() {
@@ -2338,8 +2355,10 @@ pub fn wrap_args_with_parens(
         let mut result =
             String::with_capacity(args_str.len() + 2 + indent_str.len() + nested_indent_str.len());
         result.push_str("(");
-        result.push_str(&nested_indent_str);
-        result.push_str(args_str);
+        if !args_str.is_empty() {
+            result.push_str(&nested_indent_str);
+            result.push_str(args_str);
+        }
         result.push_str(&indent_str);
         result.push_str(")");
         result
