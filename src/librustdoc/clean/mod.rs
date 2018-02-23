@@ -3428,7 +3428,11 @@ fn build_deref_target_impls(cx: &DocContext,
         let primitive = match *target {
             ResolvedPath { did, .. } if did.is_local() => continue,
             ResolvedPath { did, .. } => {
-                ret.extend(inline::build_impls(cx, did, true));
+                // We set the last parameter to false to avoid looking for auto-impls for traits
+                // and therefore avoid an ICE.
+                // The reason behind this is that auto-traits don't propagate through Deref so
+                // we're not supposed to synthesise impls for them.
+                ret.extend(inline::build_impls(cx, did, false));
                 continue
             }
             _ => match target.primitive_type() {
