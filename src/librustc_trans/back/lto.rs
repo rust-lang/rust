@@ -122,8 +122,9 @@ pub(crate) fn run(cgcx: &CodegenContext,
             None
         }
     };
-
-    let mut symbol_white_list = cgcx.exported_symbols[&LOCAL_CRATE]
+    let exported_symbols = cgcx.exported_symbols
+        .as_ref().expect("needs exported symbols for LTO");
+    let mut symbol_white_list = exported_symbols[&LOCAL_CRATE]
         .iter()
         .filter_map(symbol_filter)
         .collect::<Vec<CString>>();
@@ -156,8 +157,10 @@ pub(crate) fn run(cgcx: &CodegenContext,
         }
 
         for &(cnum, ref path) in cgcx.each_linked_rlib_for_lto.iter() {
+            let exported_symbols = cgcx.exported_symbols
+                .as_ref().expect("needs exported symbols for LTO");
             symbol_white_list.extend(
-                cgcx.exported_symbols[&cnum]
+                exported_symbols[&cnum]
                     .iter()
                     .filter_map(symbol_filter));
 
