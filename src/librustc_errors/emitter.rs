@@ -162,6 +162,14 @@ impl EmitterWriter {
         Self { ui_testing, ..self }
     }
 
+    fn maybe_anonymized(&self, line_num: usize) -> String {
+        if self.ui_testing {
+            ANONYMIZED_LINE_NUM.to_string()
+        } else {
+            line_num.to_string()
+        }
+    }
+
     fn preprocess_annotations(&mut self, msp: &MultiSpan) -> Vec<FileWithAnnotatedLines> {
         fn add_annotation_to_file(file_vec: &mut Vec<FileWithAnnotatedLines>,
                                   file: Rc<FileMap>,
@@ -313,14 +321,9 @@ impl EmitterWriter {
 
         // First create the source line we will highlight.
         buffer.puts(line_offset, code_offset, &source_string, Style::Quotation);
-        let line_index = if self.ui_testing {
-            ANONYMIZED_LINE_NUM.to_string()
-        } else {
-            line.line_index.to_string()
-        };
         buffer.puts(line_offset,
                     0,
-                    &line_index,
+                    &self.maybe_anonymized(line.line_index),
                     Style::LineNumber);
 
         draw_col_separator(buffer, line_offset, width_offset - 2);
@@ -1141,8 +1144,8 @@ impl EmitterWriter {
 
                             buffer.puts(last_buffer_line_num,
                                         0,
-                                        &(annotated_file.lines[line_idx + 1].line_index - 1)
-                                            .to_string(),
+                                        &self.maybe_anonymized(annotated_file.lines[line_idx + 1]
+                                                                             .line_index - 1),
                                         Style::LineNumber);
                             draw_col_separator(&mut buffer,
                                                last_buffer_line_num,
@@ -1216,7 +1219,7 @@ impl EmitterWriter {
                     // Print the span column to avoid confusion
                     buffer.puts(row_num,
                                 0,
-                                &((line_start + line_pos).to_string()),
+                                &self.maybe_anonymized(line_start + line_pos),
                                 Style::LineNumber);
                     // print the suggestion
                     draw_col_separator(&mut buffer, row_num, max_line_num_len + 1);
