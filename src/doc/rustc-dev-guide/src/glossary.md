@@ -13,6 +13,7 @@ DAG                     |  a directed acyclic graph is used during compilation t
 DefId                   |  an index identifying a definition (see `librustc/hir/def_id.rs`). Uniquely identifies a `DefPath`.
 HIR                     |  the High-level IR, created by lowering and desugaring the AST ([see more](hir.html))
 HirId                   |  identifies a particular node in the HIR by combining a def-id with an "intra-definition offset".
+HIR Map                 |  The HIR map, accessible via tcx.hir, allows you to quickly navigate the HIR and convert between various forms of identifiers.
 'gcx                    |  the lifetime of the global arena ([see more](ty.html))
 generics                |  the set of generic type parameters defined on a type or item
 ICE                     |  internal compiler error. When the compiler crashes.
