@@ -145,8 +145,18 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         end_block.unit()
     }
 
+    pub fn user_assert_ty(&mut self, block: BasicBlock, ty: Ty<'tcx>, var: NodeId, span: Span) {
+        let local_id = self.var_indices[&var];
+        let source_info = self.source_info(span);
+        self.cfg.push(block, Statement {
+            source_info,
+            kind: StatementKind::UserAssertTy(ty, local_id),
+        });
+    }
+
     pub fn expr_into_pattern(&mut self,
                              mut block: BasicBlock,
+                             ty: Option<Ty<'tcx>>,
                              irrefutable_pat: Pattern<'tcx>,
                              initializer: ExprRef<'tcx>)
                              -> BlockAnd<()> {
@@ -156,6 +166,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                    var,
                                    subpattern: None, .. } => {
                 let place = self.storage_live_binding(block, var, irrefutable_pat.span);
+
+                if let Some(ty) = ty {
+                    self.user_assert_ty(block, ty, var, irrefutable_pat.span);
+                }
+
                 unpack!(block = self.into(&place, block, initializer));
                 self.schedule_drop_for_binding(var, irrefutable_pat.span);
                 block.unit()

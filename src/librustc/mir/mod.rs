@@ -1253,6 +1253,15 @@ pub enum StatementKind<'tcx> {
     /// (The starting point(s) arise implicitly from borrows.)
     EndRegion(region::Scope),
 
+    /// Encodes a user's type assertion. These need to be preserved intact so that NLL can respect
+    /// them. For example:
+    ///
+    ///     let (a, b): (T, U) = y;
+    ///
+    /// Here we would insert a `UserAssertTy<(T, U)>(y)` instruction to check that the type of `y`
+    /// is the right thing.
+    UserAssertTy(Ty<'tcx>, Local),
+
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
 }
@@ -1324,6 +1333,7 @@ impl<'tcx> Debug for Statement<'tcx> {
             InlineAsm { ref asm, ref outputs, ref inputs } => {
                 write!(fmt, "asm!({:?} : {:?} : {:?})", asm, outputs, inputs)
             },
+            UserAssertTy(ref ty, ref local) => write!(fmt, "UserAssertTy({:?}, {:?})", ty, local),
             Nop => write!(fmt, "nop"),
         }
     }
@@ -2184,6 +2194,7 @@ EnumTypeFoldableImpl! {
         (StatementKind::InlineAsm) { asm, outputs, inputs },
         (StatementKind::Validate)(a, b),
         (StatementKind::EndRegion)(a),
+        (StatementKind::UserAssertTy)(a, b),
         (StatementKind::Nop),
     }
 }

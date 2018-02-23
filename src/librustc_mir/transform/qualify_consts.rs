@@ -1099,6 +1099,7 @@ This does not pose a problem by itself because they can't be accessed directly."
                 StatementKind::InlineAsm {..} |
                 StatementKind::EndRegion(_) |
                 StatementKind::Validate(..) |
+                StatementKind::UserAssertTy(..) |
                 StatementKind::Nop => {}
             }
         });

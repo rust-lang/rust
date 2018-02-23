@@ -84,6 +84,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
             }
             mir::StatementKind::EndRegion(_) |
             mir::StatementKind::Validate(..) |
+            mir::StatementKind::UserAssertTy(..) |
             mir::StatementKind::Nop => bx,
         }
     }

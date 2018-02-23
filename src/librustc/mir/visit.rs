@@ -144,6 +144,13 @@ macro_rules! make_mir_visitor {
                 self.super_operand(operand, location);
             }
 
+            fn visit_user_assert_ty(&mut self,
+                                    ty: & $($mutability)* Ty<'tcx>,
+                                    local: & $($mutability)* Local,
+                                    location: Location) {
+                self.super_user_assert_ty(ty, local, location);
+            }
+
             fn visit_place(&mut self,
                             place: & $($mutability)* Place<'tcx>,
                             context: PlaceContext<'tcx>,
@@ -375,6 +382,10 @@ macro_rules! make_mir_visitor {
                         for input in & $($mutability)* inputs[..] {
                             self.visit_operand(input, location);
                         }
+                    }
+                    StatementKind::UserAssertTy(ref $($mutability)* ty,
+                                                ref $($mutability)* local) => {
+                        self.visit_user_assert_ty(ty, local, location);
                     }
                     StatementKind::Nop => {}
                 }
@@ -617,6 +628,14 @@ macro_rules! make_mir_visitor {
                         self.visit_constant(constant, location);
                     }
                 }
+            }
+
+            fn super_user_assert_ty(&mut self,
+                                    ty: & $($mutability)* Ty<'tcx>,
+                                    local: & $($mutability)* Local,
+                                    location: Location) {
+                self.visit_ty(ty, TyContext::Location(location));
+                self.visit_local(local, PlaceContext::Validate, location);
             }
 
             fn super_place(&mut self,

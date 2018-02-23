@@ -89,6 +89,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 M::end_region(self, Some(ce))?;
             }
 
+            UserAssertTy(..) => {}
+
             // Defined to do nothing. These are added by optimization passes, to avoid changing the
             // size of MIR constantly.
             Nop => {}
