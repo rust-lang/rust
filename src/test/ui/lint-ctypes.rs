@@ -51,27 +51,27 @@ pub struct TransparentCustomZst(i32, ZeroSize);
 pub struct ZeroSizeWithPhantomData(::std::marker::PhantomData<i32>);
 
 extern {
-    pub fn ptr_type1(size: *const Foo); //~ ERROR: found struct without
-    pub fn ptr_type2(size: *const Foo); //~ ERROR: found struct without
-    pub fn slice_type(p: &[u32]); //~ ERROR: found Rust slice type
-    pub fn str_type(p: &str); //~ ERROR: found Rust type
-    pub fn box_type(p: Box<u32>); //~ ERROR found struct without
-    pub fn char_type(p: char); //~ ERROR found Rust type
-    pub fn i128_type(p: i128); //~ ERROR found Rust type
-    pub fn u128_type(p: u128); //~ ERROR found Rust type
-    pub fn trait_type(p: &Clone); //~ ERROR found Rust trait type
-    pub fn tuple_type(p: (i32, i32)); //~ ERROR found Rust tuple type
-    pub fn tuple_type2(p: I32Pair); //~ ERROR found Rust tuple type
-    pub fn zero_size(p: ZeroSize); //~ ERROR found zero-size struct
-    pub fn zero_size_phantom(p: ZeroSizeWithPhantomData); //~ ERROR found zero-sized type
+    pub fn ptr_type1(size: *const Foo); //~ ERROR: uses type `Foo`
+    pub fn ptr_type2(size: *const Foo); //~ ERROR: uses type `Foo`
+    pub fn slice_type(p: &[u32]); //~ ERROR: uses type `[u32]`
+    pub fn str_type(p: &str); //~ ERROR: uses type `str`
+    pub fn box_type(p: Box<u32>); //~ ERROR uses type `std::boxed::Box<u32>`
+    pub fn char_type(p: char); //~ ERROR uses type `char`
+    pub fn i128_type(p: i128); //~ ERROR uses type `i128`
+    pub fn u128_type(p: u128); //~ ERROR uses type `u128`
+    pub fn trait_type(p: &Clone); //~ ERROR uses type `std::clone::Clone`
+    pub fn tuple_type(p: (i32, i32)); //~ ERROR uses type `(i32, i32)`
+    pub fn tuple_type2(p: I32Pair); //~ ERROR uses type `(i32, i32)`
+    pub fn zero_size(p: ZeroSize); //~ ERROR struct has no fields
+    pub fn zero_size_phantom(p: ZeroSizeWithPhantomData); //~ ERROR composed only of PhantomData
     pub fn zero_size_phantom_toplevel()
-        -> ::std::marker::PhantomData<bool>; //~ ERROR: found zero-sized type
-    pub fn fn_type(p: RustFn); //~ ERROR found function pointer with Rust
-    pub fn fn_type2(p: fn()); //~ ERROR found function pointer with Rust
-    pub fn fn_contained(p: RustBadRet); //~ ERROR: found struct without
-    pub fn transparent_i128(p: TransparentI128); //~ ERROR: found Rust type `i128`
-    pub fn transparent_str(p: TransparentStr); //~ ERROR: found Rust type `str`
-    pub fn transparent_fn(p: TransparentBadFn); //~ ERROR: found struct without
+        -> ::std::marker::PhantomData<bool>; //~ ERROR: composed only of PhantomData
+    pub fn fn_type(p: RustFn); //~ ERROR function pointer has Rust-specific
+    pub fn fn_type2(p: fn()); //~ ERROR function pointer has Rust-specific
+    pub fn fn_contained(p: RustBadRet); //~ ERROR: uses type `std::boxed::Box<u32>`
+    pub fn transparent_i128(p: TransparentI128); //~ ERROR: uses type `i128`
+    pub fn transparent_str(p: TransparentStr); //~ ERROR: uses type `str`
+    pub fn transparent_fn(p: TransparentBadFn); //~ ERROR: uses type `std::boxed::Box<u32>`
 
     pub fn good3(fptr: Option<extern fn()>);
     pub fn good4(aptr: &[u8; 4 as usize]);
