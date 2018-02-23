@@ -523,7 +523,7 @@ impl Build {
 
     /// Returns the libdir of the snapshot compiler.
     fn rustc_snapshot_libdir(&self) -> PathBuf {
-        self.config.initial_rustc.parent().unwrap().parent().unwrap()
+        self.config.general.initial_rustc.parent().unwrap().parent().unwrap()
             .join(libdir(&self.config.build))
     }
 

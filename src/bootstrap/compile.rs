@@ -287,7 +287,7 @@ impl Step for StartupObjects {
             let src_file = &src_dir.join(file.to_string() + ".rs");
             let dst_file = &dst_dir.join(file.to_string() + ".o");
             if !up_to_date(src_file, dst_file) {
-                let mut cmd = Command::new(&build.config.initial_rustc);
+                let mut cmd = Command::new(&build.config.general.initial_rustc);
                 build.run(cmd.env("RUSTC_BOOTSTRAP", "1")
                             .arg("--cfg").arg("stage0")
                             .arg("--target").arg(target)

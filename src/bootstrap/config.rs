@@ -45,10 +45,6 @@ pub struct Config {
     pub hosts: Vec<Interned<String>>,
     pub targets: Vec<Interned<String>>,
 
-    // These are either the stage0 downloaded binaries or the locally installed ones.
-    pub initial_cargo: PathBuf,
-    pub initial_rustc: PathBuf,
-
     pub run_host_only: bool,
     pub is_sudo: bool,
 
@@ -522,8 +518,6 @@ impl Config {
             build: toml.build.build.clone(),
             hosts: toml.build.host.clone(),
             targets: toml.build.target.clone(),
-            initial_rustc: toml.build.initial_rustc.clone(),
-            initial_cargo: toml.build.initial_cargo.clone(),
 
             general: toml.build,
             install: toml.install,

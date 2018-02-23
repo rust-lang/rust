@@ -164,7 +164,7 @@ impl Step for Cargotest {
 
         let _time = util::timeit();
         let mut cmd = builder.tool_cmd(Tool::CargoTest);
-        try_run(build, cmd.arg(&build.config.initial_cargo)
+        try_run(build, cmd.arg(&build.config.general.initial_cargo)
                           .arg(&out_dir)
                           .env("RUSTC", builder.rustc(compiler))
                           .env("RUSTDOC", builder.rustdoc(compiler.host)));
@@ -1604,7 +1604,7 @@ impl Step for Distcheck {
         build.run(&mut cmd);
 
         let toml = dir.join("rust-src/lib/rustlib/src/rust/src/libstd/Cargo.toml");
-        build.run(Command::new(&build.config.initial_cargo)
+        build.run(Command::new(&build.config.general.initial_cargo)
                          .arg("generate-lockfile")
                          .arg("--manifest-path")
                          .arg(&toml)
@@ -1623,12 +1623,12 @@ impl Step for Bootstrap {
     /// Test the build system itself
     fn run(self, builder: &Builder) {
         let build = builder.build;
-        let mut cmd = Command::new(&build.config.initial_cargo);
+        let mut cmd = Command::new(&build.config.general.initial_cargo);
         cmd.arg("test")
            .current_dir(build.config.src.join("src/bootstrap"))
            .env("CARGO_TARGET_DIR", build.config.general.out.join("bootstrap-test"))
            .env("RUSTC_BOOTSTRAP", "1")
-           .env("RUSTC", &build.config.initial_rustc);
+           .env("RUSTC", &build.config.general.initial_rustc);
         if !build.config.cmd.fail_fast() {
             cmd.arg("--no-fail-fast");
         }
