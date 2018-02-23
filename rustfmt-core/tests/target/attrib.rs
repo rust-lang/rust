@@ -152,3 +152,9 @@ fn attributes_on_statements() {
 #[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize,
          Deserialize)]
 pub struct HP(pub u8);
+
+// Long `#[doc = "..."]`
+struct A {
+    #[doc = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+    b: i32,
+}
