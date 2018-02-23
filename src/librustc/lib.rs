@@ -60,6 +60,7 @@
 #![feature(never_type)]
 #![feature(non_exhaustive)]
 #![feature(nonzero)]
+#![feature(proc_macro_internals)]
 #![feature(quote)]
 #![feature(refcell_replace_swap)]
 #![feature(rustc_diagnostic_macros)]
@@ -81,6 +82,7 @@ extern crate core;
 extern crate fmt_macros;
 extern crate getopts;
 extern crate graphviz;
+#[macro_use] extern crate lazy_static;
 #[cfg(windows)]
 extern crate libc;
 extern crate rustc_back;
@@ -92,6 +94,7 @@ extern crate rustc_errors as errors;
 #[macro_use] extern crate syntax;
 extern crate syntax_pos;
 extern crate jobserver;
+extern crate proc_macro;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
