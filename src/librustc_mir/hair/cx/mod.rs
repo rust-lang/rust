@@ -23,7 +23,7 @@ use rustc::hir::map::blocks::FnLikeNode;
 use rustc::middle::region;
 use rustc::infer::InferCtxt;
 use rustc::ty::subst::Subst;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, layout};
 use rustc::ty::subst::Substs;
 use syntax::ast::{self, LitKind};
 use syntax::attr;
@@ -153,11 +153,12 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         &self,
         ty: Ty,
     ) -> u64 {
-        match ty.sty {
-            ty::TyInt(ity) => ity.bit_width(),
-            ty::TyUint(uty) => uty.bit_width(),
+        let ty = match ty.sty {
+            ty::TyInt(ity) => attr::IntType::SignedInt(ity),
+            ty::TyUint(uty) => attr::IntType::UnsignedInt(uty),
             _ => bug!("{} is not an integer", ty),
-        }.map_or(self.tcx.data_layout.pointer_size.bits(), |n| n as u64)
+        };
+        layout::Integer::from_attr(self.tcx, ty).size().bits()
     }
 
     pub fn const_eval_literal(
