@@ -22,7 +22,9 @@
 //!
 //! Shareable mutable containers exist to permit mutability in presence of aliasing in a 
 //! controlled manner. Both `Cell<T>` and `RefCell<T>` allows to do this in a single threaded
-//! way. For multiple threads is possible to use `Mutex`, `RwLock` or `AtomicXXX`.
+//! way, you can mutate them using an inmutable reference. However, neither `Cell<T>` nor 
+//! `RefCell<T>` are thread safe (they do not implement `Sync`), if you need to do Aliasing and 
+//! Mutation between multiple threads is possible to use `Mutex`, `RwLock` or `AtomicXXX`.
 //!
 //! Values of the `Cell<T>` and `RefCell<T>` types may be mutated through shared references (i.e.
 //! the common `&T` type), whereas most Rust types can only be mutated through unique (`&mut T`)
