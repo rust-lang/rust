@@ -11,8 +11,11 @@
 // compile-flags: --test
 
 #![feature(termination_trait)]
+#![feature(test)]
 
+extern crate test;
 use std::num::ParseIntError;
+use test::Bencher;
 
 #[test]
 fn is_a_num() -> Result<(), ParseIntError> {
@@ -23,6 +26,18 @@ fn is_a_num() -> Result<(), ParseIntError> {
 #[test]
 #[should_panic]
 fn not_a_num() -> Result<(), ParseIntError> {
+    let _: u32 = "abc".parse()?;
+    Ok(())
+}
+
+#[bench]
+fn test_a_positive_bench(_: &mut Bencher) -> Result<(), ParseIntError> {
+    Ok(())
+}
+
+#[bench]
+#[should_panic]
+fn test_a_neg_bench(_: &mut Bencher) -> Result<(), ParseIntError> {
     let _: u32 = "abc".parse()?;
     Ok(())
 }
