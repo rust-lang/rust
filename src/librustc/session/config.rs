@@ -341,7 +341,7 @@ macro_rules! hash_option {
     ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, [UNTRACKED]) => ({});
     ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, [TRACKED]) => ({
         if $sub_hashes.insert(stringify!($opt_name),
-                              $opt_expr as &dyn dep_tracking::DepTrackingHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHashHash).is_some() {
+                              $opt_expr as &dyn dep_tracking::DepTrackingHash).is_some() {
             bug!("Duplicate key in CLI DepTrackingHash: {}", stringify!($opt_name))
         }
     });
