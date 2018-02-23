@@ -623,6 +623,7 @@ For people new to Rust, and just starting to contribute, or even for
 more seasoned developers, some useful places to look for information
 are:
 
+* The [rustc guide] contains information about how various parts of the compiler work
 * [Rust Forge][rustforge] contains additional documentation, including write-ups of how to achieve common tasks
 * The [Rust Internals forum][rif], a place to ask questions and
   discuss Rust's internals
@@ -635,6 +636,7 @@ are:
 * **Google!** ([search only in Rust Documentation][gsearchdocs] to find types, traits, etc. quickly)
 * Don't be afraid to ask! The Rust community is friendly and helpful.
 
+[rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/about-this-guide.html
 [gdfrustc]: http://manishearth.github.io/rust-internals-docs/rustc/
 [gsearchdocs]: https://www.google.com/search?q=site:doc.rust-lang.org+your+query+here
 [rif]: http://internals.rust-lang.org
