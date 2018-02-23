@@ -14,6 +14,10 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
+use std::process::Command;
+
+use serde_json;
+
 static LICENSES: &'static [&'static str] = &[
     "MIT/Apache-2.0",
     "MIT / Apache-2.0",
@@ -44,31 +48,68 @@ static EXCEPTIONS: &'static [&'static str] = &[
     "clippy_lints",       // MPL-2.0 rls
 ];
 
+// Whitelist of crates rustc is allowed to depend on. Avoid adding to the list if possible.
+static WHITELIST: &'static [(&'static str, &'static str)] = &[];
+
+// Some type for Serde to deserialize the output of `cargo metadata` to...
+
+#[derive(Deserialize)]
+struct Output {
+    packages: Vec<Package>,
+    _resolve: String,
+}
+
+#[derive(Deserialize)]
+struct Package {
+    _id: String,
+    name: String,
+    version: String,
+    _source: Option<String>,
+    _manifest_path: String,
+}
+
+/// Checks the dependency at the given path. Changes `bad` to `true` if a check failed.
+///
+/// Specifically, this checks that the license is correct and that the dependencies are on the
+/// whitelist.
 pub fn check(path: &Path, bad: &mut bool) {
+    // Check licences
     let path = path.join("vendor");
     assert!(path.exists(), "vendor directory missing");
     let mut saw_dir = false;
-    'next_path: for dir in t!(path.read_dir()) {
+    for dir in t!(path.read_dir()) {
         saw_dir = true;
         let dir = t!(dir);
 
         // skip our exceptions
-        for exception in EXCEPTIONS {
-            if dir.path()
+        if EXCEPTIONS.iter().any(|exception| {
+            dir.path()
                 .to_str()
                 .unwrap()
                 .contains(&format!("src/vendor/{}", exception))
-            {
-                continue 'next_path;
-            }
+        }) {
+            continue;
         }
 
         let toml = dir.path().join("Cargo.toml");
-        if !check_license(&toml) {
-            *bad = true;
-        }
+        *bad = *bad || !check_license(&toml);
     }
     assert!(saw_dir, "no vendored source");
+
+    // Check dependencies
+    let deps = get_deps(&path);
+    *bad = *bad
+        || deps.iter().any(
+            |&Package {
+                 ref name,
+                 ref version,
+                 ..
+             }| {
+                WHITELIST
+                    .iter()
+                    .all(|&(wname, wversion)| name != wname || version != wversion)
+            },
+        );
 }
 
 fn check_license(path: &Path) -> bool {
@@ -108,4 +149,21 @@ fn extract_license(line: &str) -> String {
     } else {
         "bad-license-parse".into()
     }
+}
+
+fn get_deps(path: &Path) -> Vec<Package> {
+    // Run `cargo metadata` to get the set of dependencies
+    let output = Command::new("cargo")
+        .arg("metadata")
+        .arg("--format-version")
+        .arg("1")
+        .arg("--manifest-path")
+        .arg(path.join("Cargo.toml"))
+        .output()
+        .expect("Unable to run `cargo metadata`")
+        .stdout;
+    let output = String::from_utf8_lossy(&output);
+    let output: Output = serde_json::from_str(&output).unwrap();
+
+    output.packages
 }
