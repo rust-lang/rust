@@ -37,7 +37,7 @@ use errors::{DiagnosticBuilder, DiagnosticId};
 use hir::def_id::{CrateNum, LOCAL_CRATE};
 use hir::intravisit::{self, FnKind};
 use hir;
-use session::{Session, DiagnosticMessageId};
+use session::{config, Session, DiagnosticMessageId};
 use std::hash;
 use syntax::ast;
 use syntax::codemap::MultiSpan;
@@ -74,6 +74,9 @@ pub struct Lint {
     ///
     /// e.g. "imports that are never used"
     pub desc: &'static str,
+
+    /// Deny lint after this epoch
+    pub epoch_deny: Option<config::Epoch>,
 }
 
 impl Lint {
@@ -81,18 +84,36 @@ impl Lint {
     pub fn name_lower(&self) -> String {
         self.name.to_ascii_lowercase()
     }
+
+    pub fn default_level(&self, session: &Session) -> Level {
+        if let Some(epoch_deny) = self.epoch_deny {
+            if session.epoch() >= epoch_deny {
+                return Level::Deny
+            }
+        }
+        self.default_level
+    }
 }
 
 /// Declare a static item of type `&'static Lint`.
 #[macro_export]
 macro_rules! declare_lint {
+    ($vis: vis $NAME: ident, $Level: ident, $desc: expr, $epoch: expr) => (
+        $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
+            name: stringify!($NAME),
+            default_level: $crate::lint::$Level,
+            desc: $desc,
+            epoch_deny: Some($epoch)
+        };
+    );
     ($vis: vis $NAME: ident, $Level: ident, $desc: expr) => (
         $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
             name: stringify!($NAME),
             default_level: $crate::lint::$Level,
-            desc: $desc
+            desc: $desc,
+            epoch_deny: None,
         };
-    )
+    );
 }
 
 /// Declare a static `LintArray` and return it as an expression.
@@ -304,7 +325,7 @@ impl LintId {
 /// Setting for how to handle a lint.
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 pub enum Level {
-    Allow, Warn, Deny, Forbid
+    Allow, Warn, Deny, Forbid,
 }
 
 impl_stable_hash_for!(enum self::Level {

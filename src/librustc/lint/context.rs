@@ -99,7 +99,11 @@ pub struct BufferedEarlyLint {
 /// guidelines.
 pub struct FutureIncompatibleInfo {
     pub id: LintId,
-    pub reference: &'static str // e.g., a URL for an issue/PR/RFC or error code
+    /// e.g., a URL for an issue/PR/RFC or error code
+    pub reference: &'static str,
+    /// If this is an epoch fixing lint, the epoch in which
+    /// this lint becomes obsolete
+    pub epoch: Option<config::Epoch>,
 }
 
 /// The target of the `by_name` map, which accounts for renaming/deprecation.
@@ -194,11 +198,24 @@ impl LintStore {
     pub fn register_future_incompatible(&mut self,
                                         sess: Option<&Session>,
                                         lints: Vec<FutureIncompatibleInfo>) {
-        let ids = lints.iter().map(|f| f.id).collect();
-        self.register_group(sess, false, "future_incompatible", ids);
-        for info in lints {
-            self.future_incompatible.insert(info.id, info);
+
+        for epoch in config::ALL_EPOCHS {
+            let lints = lints.iter().filter(|f| f.epoch == Some(*epoch)).map(|f| f.id)
+                             .collect::<Vec<_>>();
+            if !lints.is_empty() {
+                self.register_group(sess, false, epoch.lint_name(), lints)
+            }
         }
+
+        let mut future_incompatible = vec![];
+        for lint in lints {
+            future_incompatible.push(lint.id);
+            self.future_incompatible.insert(lint.id, lint);
+        }
+
+        self.register_group(sess, false, "future_incompatible", future_incompatible);
+
+
     }
 
     pub fn future_incompatible(&self, id: LintId) -> Option<&FutureIncompatibleInfo> {

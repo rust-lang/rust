@@ -869,6 +869,10 @@ impl Session {
     pub fn rust_2018(&self) -> bool {
         self.opts.debugging_opts.epoch >= Epoch::Epoch2018
     }
+
+    pub fn epoch(&self) -> Epoch {
+        self.opts.debugging_opts.epoch
+    }
 }
 
 pub fn build_session(sopts: config::Options,

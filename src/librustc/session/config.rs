@@ -113,7 +113,7 @@ pub enum OutputType {
 }
 
 /// The epoch of the compiler (RFC 2052)
-#[derive(Clone, Copy, Hash, PartialOrd, Ord, Eq, PartialEq)]
+#[derive(Clone, Copy, Hash, PartialOrd, Ord, Eq, PartialEq, Debug)]
 #[non_exhaustive]
 pub enum Epoch {
     // epochs must be kept in order, newest to oldest
@@ -144,6 +144,15 @@ impl ToString for Epoch {
         match *self {
             Epoch::Epoch2015 => "2015".into(),
             Epoch::Epoch2018 => "2018".into(),
+        }
+    }
+}
+
+impl Epoch {
+    pub fn lint_name(&self) -> &'static str {
+        match *self {
+            Epoch::Epoch2015 => "epoch_2015",
+            Epoch::Epoch2018 => "epoch_2018",
         }
     }
 }
