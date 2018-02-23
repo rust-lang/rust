@@ -40,6 +40,7 @@ pub struct JsonEmitter {
     pretty: bool,
     /// Whether "approximate suggestions" are enabled in the config
     approximate_suggestions: bool,
+    ui_testing: bool,
 }
 
 impl JsonEmitter {
@@ -53,6 +54,7 @@ impl JsonEmitter {
             cm: code_map,
             pretty,
             approximate_suggestions,
+            ui_testing: false,
         }
     }
 
@@ -73,7 +75,12 @@ impl JsonEmitter {
             cm: code_map,
             pretty,
             approximate_suggestions,
+            ui_testing: false,
         }
+    }
+
+    pub fn ui_testing(self, ui_testing: bool) -> Self {
+        Self { ui_testing, ..self }
     }
 }
 
@@ -199,7 +206,8 @@ impl Diagnostic {
         }
         let buf = BufWriter::default();
         let output = buf.clone();
-        EmitterWriter::new(Box::new(buf), Some(je.cm.clone()), false, false).emit(db);
+        EmitterWriter::new(Box::new(buf), Some(je.cm.clone()), false, false)
+            .ui_testing(je.ui_testing).emit(db);
         let output = Arc::try_unwrap(output.0).unwrap().into_inner().unwrap();
         let output = String::from_utf8(output).unwrap();
 

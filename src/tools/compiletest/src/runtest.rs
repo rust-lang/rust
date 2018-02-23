@@ -1627,15 +1627,12 @@ impl<'test> TestCx<'test> {
                     rustc.args(&["--error-format", "json"]);
                 }
             }
-            Ui => if !self.props
-                .compile_flags
-                .iter()
-                .any(|s| s.starts_with("--error-format"))
-            {
+            Ui => {
                 // In case no "--error-format" has been given in the test, we'll compile
                 // a first time to get the compiler's output then compile with
                 // "--error-format json" to check if all expected errors are actually there
                 // and that no new one appeared.
+                rustc.arg("-Zui-testing");
             }
             MirOpt => {
                 rustc.args(&[

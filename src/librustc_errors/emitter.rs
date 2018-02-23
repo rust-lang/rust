@@ -25,6 +25,8 @@ use std::collections::{HashMap, HashSet};
 use std::cmp::min;
 use unicode_width;
 
+const ANONYMIZED_LINE_NUM: &str = "LL";
+
 /// Emitter trait for emitting errors.
 pub trait Emitter {
     /// Emit a structured diagnostic.
@@ -108,6 +110,7 @@ pub struct EmitterWriter {
     short_message: bool,
     teach: bool,
     error_codes: HashSet<String>,
+    ui_testing: bool,
 }
 
 struct FileWithAnnotatedLines {
@@ -157,6 +160,7 @@ impl EmitterWriter {
                 short_message,
                 teach,
                 error_codes: HashSet::new(),
+                ui_testing: false,
             }
         } else {
             EmitterWriter {
@@ -165,6 +169,7 @@ impl EmitterWriter {
                 short_message,
                 teach,
                 error_codes: HashSet::new(),
+                ui_testing: false,
             }
         }
     }
@@ -180,7 +185,12 @@ impl EmitterWriter {
             short_message,
             teach,
             error_codes: HashSet::new(),
+            ui_testing: false,
         }
+    }
+
+    pub fn ui_testing(self, ui_testing: bool) -> Self {
+        Self { ui_testing, ..self }
     }
 
     fn preprocess_annotations(&mut self, msp: &MultiSpan) -> Vec<FileWithAnnotatedLines> {
@@ -334,9 +344,14 @@ impl EmitterWriter {
 
         // First create the source line we will highlight.
         buffer.puts(line_offset, code_offset, &source_string, Style::Quotation);
+        let line_index = if self.ui_testing {
+            ANONYMIZED_LINE_NUM.to_string()
+        } else {
+            line.line_index.to_string()
+        };
         buffer.puts(line_offset,
                     0,
-                    &(line.line_index.to_string()),
+                    &line_index,
                     Style::LineNumber);
 
         draw_col_separator(buffer, line_offset, width_offset - 2);
@@ -1288,8 +1303,11 @@ impl EmitterWriter {
                              span: &MultiSpan,
                              children: &Vec<SubDiagnostic>,
                              suggestions: &[CodeSuggestion]) {
-        let max_line_num = self.get_max_line_num(span, children);
-        let max_line_num_len = max_line_num.to_string().len();
+        let max_line_num_len = if self.ui_testing {
+            ANONYMIZED_LINE_NUM.len()
+        } else {
+            self.get_max_line_num(span, children).to_string().len()
+        };
 
         match self.emit_message_default(span,
                                         message,
