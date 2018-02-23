@@ -369,9 +369,9 @@ impl fmt::Display for clean::PathSegment {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(&self.name)?;
         if f.alternate() {
-            write!(f, "{:#}", self.params)
+            write!(f, "{:#}", self.args)
         } else {
-            write!(f, "{}", self.params)
+            write!(f, "{}", self.args)
         }
     }
 }
@@ -447,7 +447,7 @@ fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
         }
     }
     if w.alternate() {
-        write!(w, "{:#}{:#}", HRef::new(did, &last.name), last.params)?;
+        write!(w, "{:#}{:#}", HRef::new(did, &last.name), last.args)?;
     } else {
         let path = if use_absolute {
             match href(did) {
@@ -461,7 +461,7 @@ fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
         } else {
             format!("{}", HRef::new(did, &last.name))
         };
-        write!(w, "{}{}", path, last.params)?;
+        write!(w, "{}{}", path, last.args)?;
     }
     Ok(())
 }
@@ -757,7 +757,7 @@ fn fmt_impl(i: &clean::Impl,
                 clean::ResolvedPath { typarams: None, ref path, is_generic: false, .. } => {
                     let last = path.segments.last().unwrap();
                     fmt::Display::fmt(&last.name, f)?;
-                    fmt::Display::fmt(&last.params, f)?;
+                    fmt::Display::fmt(&last.args, f)?;
                 }
                 _ => unreachable!(),
             }

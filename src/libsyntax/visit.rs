@@ -131,10 +131,10 @@ pub trait Visitor<'ast>: Sized {
     fn visit_generic_args(&mut self, path_span: Span, generic_args: &'ast GenericArgs) {
         walk_generic_args(self, path_span, generic_args)
     }
-    fn visit_angle_bracketed_param(&mut self, param: &'ast AngleBracketedParam) {
+    fn visit_angle_bracketed_param(&mut self, param: &'ast GenericArg) {
         match param {
-            AngleBracketedParam::Lifetime(lt) => self.visit_lifetime(lt),
-            AngleBracketedParam::Type(ty)     => self.visit_ty(ty),
+            GenericArg::Lifetime(lt) => self.visit_lifetime(lt),
+            GenericArg::Type(ty)     => self.visit_ty(ty),
         }
     }
     fn visit_assoc_type_binding(&mut self, type_binding: &'ast TypeBinding) {
@@ -381,8 +381,8 @@ pub fn walk_path_segment<'a, V: Visitor<'a>>(visitor: &mut V,
                                              path_span: Span,
                                              segment: &'a PathSegment) {
     visitor.visit_ident(segment.ident);
-    if let Some(ref parameters) = segment.parameters {
-        visitor.visit_generic_args(path_span, parameters);
+    if let Some(ref args) = segment.args {
+        visitor.visit_generic_args(path_span, args);
     }
 }
 
@@ -393,7 +393,7 @@ pub fn walk_generic_args<'a, V>(visitor: &mut V,
 {
     match *generic_args {
         GenericArgs::AngleBracketed(ref data) => {
-            walk_list!(visitor, visit_angle_bracketed_param, &data.parameters);
+            walk_list!(visitor, visit_angle_bracketed_param, &data.args);
             walk_list!(visitor, visit_assoc_type_binding, &data.bindings);
         }
         GenericArgs::Parenthesized(ref data) => {

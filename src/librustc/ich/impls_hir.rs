@@ -177,7 +177,7 @@ impl_stable_hash_for!(struct hir::Path {
 impl_stable_hash_for!(struct hir::PathSegment {
     name,
     infer_types,
-    parameters
+    args
 });
 
 impl_stable_hash_for!(enum hir::GenericArg {
@@ -186,7 +186,7 @@ impl_stable_hash_for!(enum hir::GenericArg {
 });
 
 impl_stable_hash_for!(struct hir::GenericArgs {
-    parameters,
+    args,
     bindings,
     parenthesized
 });

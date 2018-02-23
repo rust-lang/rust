@@ -327,7 +327,7 @@ pub struct PathSegment {
     /// this is more than just simple syntactic sugar; the use of
     /// parens affects the region binding rules, so we preserve the
     /// distinction.
-    pub parameters: Option<P<GenericArgs>>,
+    pub args: Option<P<GenericArgs>>,
 
     /// Whether to infer remaining type parameters, if any.
     /// This only applies to expression and pattern paths, and
@@ -342,30 +342,30 @@ impl PathSegment {
         PathSegment {
             name,
             infer_types: true,
-            parameters: None
+            args: None,
         }
     }
 
-    pub fn new(name: Name, parameters: GenericArgs, infer_types: bool) -> Self {
+    pub fn new(name: Name, args: GenericArgs, infer_types: bool) -> Self {
         PathSegment {
             name,
             infer_types,
-            parameters: if parameters.is_empty() {
+            args: if args.is_empty() {
                 None
             } else {
-                Some(P(parameters))
+                Some(P(args))
             }
         }
     }
 
     // FIXME: hack required because you can't create a static
     // GenericArgs, so you can't just return a &GenericArgs.
-    pub fn with_parameters<F, R>(&self, f: F) -> R
+    pub fn with_args<F, R>(&self, f: F) -> R
         where F: FnOnce(&GenericArgs) -> R
     {
         let dummy = GenericArgs::none();
-        f(if let Some(ref params) = self.parameters {
-            &params
+        f(if let Some(ref args) = self.args {
+            &args
         } else {
             &dummy
         })
@@ -380,12 +380,12 @@ pub enum GenericArg {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct GenericArgs {
-    /// The generic parameters for this path segment.
-    pub parameters: HirVec<GenericArg>,
+    /// The generic arguments for this path segment.
+    pub args: HirVec<GenericArg>,
     /// Bindings (equality constraints) on associated types, if present.
     /// E.g., `Foo<A=Bar>`.
     pub bindings: HirVec<TypeBinding>,
-    /// Were parameters written in parenthesized form `Fn(T) -> U`?
+    /// Were arguments written in parenthesized form `Fn(T) -> U`?
     /// This is required mostly for pretty-printing and diagnostics,
     /// but also for changing lifetime elision rules to be "function-like".
     pub parenthesized: bool,
@@ -394,14 +394,14 @@ pub struct GenericArgs {
 impl GenericArgs {
     pub fn none() -> Self {
         Self {
-            parameters: HirVec::new(),
+            args: HirVec::new(),
             bindings: HirVec::new(),
             parenthesized: false,
         }
     }
 
     pub fn is_empty(&self) -> bool {
-        self.parameters.is_empty() && self.bindings.is_empty() && !self.parenthesized
+        self.args.is_empty() && self.bindings.is_empty() && !self.parenthesized
     }
 
     pub fn inputs(&self) -> &[P<Ty>] {
@@ -416,7 +416,7 @@ impl GenericArgs {
     }
 
     pub fn lifetimes(&self) -> impl DoubleEndedIterator<Item = &Lifetime> {
-        self.parameters.iter().filter_map(|p| {
+        self.args.iter().filter_map(|p| {
             if let GenericArg::Lifetime(lt) = p {
                 Some(lt)
             } else {
@@ -426,7 +426,7 @@ impl GenericArgs {
     }
 
     pub fn types(&self) -> impl DoubleEndedIterator<Item = &P<Ty>> {
-        self.parameters.iter().filter_map(|p| {
+        self.args.iter().filter_map(|p| {
             if let GenericArg::Type(ty) = p {
                 Some(ty)
             } else {

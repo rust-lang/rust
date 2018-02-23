@@ -193,7 +193,7 @@ use std::vec;
 
 use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, BinOpKind, EnumDef, Expr, GenericParam, Generics, Ident, PatKind};
-use syntax::ast::{VariantData, AngleBracketedParam};
+use syntax::ast::{VariantData, GenericArg};
 use syntax::attr;
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
@@ -683,9 +683,9 @@ impl<'a> TraitDef<'a> {
             .collect();
 
         let self_params = self_lifetimes.into_iter()
-                                        .map(|lt| AngleBracketedParam::Lifetime(lt))
+                                        .map(|lt| GenericArg::Lifetime(lt))
                                         .chain(self_ty_params.into_iter().map(|ty|
-                                            AngleBracketedParam::Type(ty)))
+                                            GenericArg::Type(ty)))
                                         .collect();
 
         // Create the type of `self`.

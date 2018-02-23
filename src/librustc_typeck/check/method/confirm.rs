@@ -59,7 +59,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             "confirm(unadjusted_self_ty={:?}, pick={:?}, generic_args={:?})",
             unadjusted_self_ty,
             pick,
-            segment.parameters,
+            segment.args,
         );
 
         let mut confirm_cx = ConfirmContext::new(self, span, self_expr, call_expr);
@@ -321,7 +321,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // Create subst for early-bound lifetime parameters, combining
         // parameters from the type and those from the method.
         assert_eq!(method_generics.parent_count, parent_substs.len());
-        let provided = &segment.parameters;
+        let provided = &segment.args;
         let own_counts = method_generics.own_counts();
         Substs::for_item(self.tcx, pick.item.def_id, |param, _| {
             let i = param.index as usize;
@@ -331,7 +331,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                 match param.kind {
                     GenericParamDefKind::Lifetime => {
                         if let Some(lifetime) = provided.as_ref().and_then(|p| {
-                            p.lifetimes().get(i - parent_substs.len())
+                            p.lifetimes().nth(i - parent_substs.len())
                         }) {
                             return AstConv::ast_region_to_region(
                                 self.fcx, lifetime, Some(param)).into();
@@ -339,7 +339,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                     }
                     GenericParamDefKind::Type {..} => {
                         if let Some(ast_ty) = provided.as_ref().and_then(|p| {
-                            p.types().get(i - parent_substs.len() - own_counts.lifetimes)
+                            p.types().nth(i - parent_substs.len() - own_counts.lifetimes)
                         }) {
                             return self.to_ty(ast_ty).into();
                         }
@@ -347,7 +347,6 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                 }
                 self.var_for_def(self.span, param)
             }
-            self.type_var_for_def(self.span, def, cur_substs)
         })
     }
 

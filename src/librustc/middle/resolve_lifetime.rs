@@ -28,7 +28,6 @@ use rustc_data_structures::sync::Lrc;
 use session::Session;
 use std::cell::Cell;
 use std::mem::replace;
-use std::slice;
 use syntax::ast;
 use syntax::attr;
 use syntax::ptr::P;
@@ -155,11 +154,10 @@ impl Region {
         }
     }
 
-    fn subst(self, params: Vec<&hir::Lifetime>, map: &NamedRegionMap) -> Option<Region> {
+    fn subst<'a, L>(self, mut params: L, map: &NamedRegionMap) -> Option<Region>
+            where L: Iterator<Item = &'a hir::Lifetime>  {
         if let Region::EarlyBound(index, _, _) = self {
-            params
-                .get(index as usize)
-                .and_then(|lifetime| map.defs.get(&lifetime.id).cloned())
+            params.nth(index as usize).and_then(|lifetime| map.defs.get(&lifetime.id).cloned())
         } else {
             Some(self)
         }
@@ -603,7 +601,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         // resolved the same as the `'_` in `&'_ Foo`.
                         //
                         // cc #48468
-                        self.resolve_elided_lifetimes(slice::from_ref(lifetime), false)
+                        self.resolve_elided_lifetimes(vec![lifetime], false)
                     }
                     LifetimeName::Fresh(_) | LifetimeName::Static | LifetimeName::Name(_) => {
                         // If the user wrote an explicit name, use that.
@@ -833,8 +831,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     fn visit_path(&mut self, path: &'tcx hir::Path, _: ast::NodeId) {
         for (i, segment) in path.segments.iter().enumerate() {
             let depth = path.segments.len() - i - 1;
-            if let Some(ref parameters) = segment.parameters {
-                self.visit_segment_parameters(path.def, depth, parameters);
+            if let Some(ref args) = segment.args {
+                self.visit_segment_args(path.def, depth, args);
             }
         }
     }
@@ -1599,24 +1597,24 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         }
     }
 
-    fn visit_segment_parameters(
+    fn visit_segment_args(
         &mut self,
         def: Def,
         depth: usize,
-        params: &'tcx hir::GenericArgs,
+        args: &'tcx hir::GenericArgs,
     ) {
-        if params.parenthesized {
+        if args.parenthesized {
             let was_in_fn_syntax = self.is_in_fn_syntax;
             self.is_in_fn_syntax = true;
-            self.visit_fn_like_elision(params.inputs(), Some(&params.bindings[0].ty));
+            self.visit_fn_like_elision(args.inputs(), Some(&args.bindings[0].ty));
             self.is_in_fn_syntax = was_in_fn_syntax;
             return;
         }
 
-        if params.lifetimes().all(|l| l.is_elided()) {
-            self.resolve_elided_lifetimes(params.lifetimes().collect(), true);
+        if args.lifetimes().all(|l| l.is_elided()) {
+            self.resolve_elided_lifetimes(args.lifetimes().collect(), true);
         } else {
-            for l in params.lifetimes() {
+            for l in args.lifetimes() {
                 self.visit_lifetime(l);
             }
         }
@@ -1688,13 +1686,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     } else {
                         Some(Region::Static)
                     },
-                    Set1::One(r) => r.subst(params.lifetimes().collect(), map),
+                    Set1::One(r) => r.subst(args.lifetimes(), map),
                     Set1::Many => None,
                 })
                 .collect()
         });
 
-        for (i, ty) in params.types().enumerate() {
+        for (i, ty) in args.types().enumerate() {
             if let Some(&lt) = object_lifetime_defaults.get(i) {
                 let scope = Scope::ObjectLifetimeDefault {
                     lifetime: lt,
@@ -1706,7 +1704,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
         }
 
-        for b in &params.bindings {
+        for b in &args.bindings {
             self.visit_assoc_type_binding(b);
         }
     }

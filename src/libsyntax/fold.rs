@@ -132,11 +132,11 @@ pub trait Folder : Sized {
         noop_fold_exprs(es, self)
     }
 
-    fn fold_param(&mut self, p: AngleBracketedParam) -> AngleBracketedParam {
+    fn fold_param(&mut self, p: GenericArg) -> GenericArg {
         match p {
-            AngleBracketedParam::Lifetime(lt) =>
-                AngleBracketedParam::Lifetime(self.fold_lifetime(lt)),
-            AngleBracketedParam::Type(ty) => AngleBracketedParam::Type(self.fold_ty(ty)),
+            GenericArg::Lifetime(lt) =>
+                GenericArg::Lifetime(self.fold_lifetime(lt)),
+            GenericArg::Type(ty) => GenericArg::Type(self.fold_ty(ty)),
         }
     }
 
@@ -184,14 +184,14 @@ pub trait Folder : Sized {
         noop_fold_generic_args(p, self)
     }
 
-    fn fold_angle_bracketed_parameter_data(&mut self, p: AngleBracketedParameterData)
-                                           -> AngleBracketedParameterData
+    fn fold_angle_bracketed_parameter_data(&mut self, p: AngleBracketedArgs)
+                                           -> AngleBracketedArgs
     {
         noop_fold_angle_bracketed_parameter_data(p, self)
     }
 
-    fn fold_parenthesized_parameter_data(&mut self, p: ParenthesizedParameterData)
-                                         -> ParenthesizedParameterData
+    fn fold_parenthesized_parameter_data(&mut self, p: ParenthesizedArgData)
+                                         -> ParenthesizedArgData
     {
         noop_fold_parenthesized_parameter_data(p, self)
     }
@@ -441,9 +441,9 @@ pub fn noop_fold_usize<T: Folder>(i: usize, _: &mut T) -> usize {
 
 pub fn noop_fold_path<T: Folder>(Path { segments, span }: Path, fld: &mut T) -> Path {
     Path {
-        segments: segments.move_map(|PathSegment {ident, parameters}| PathSegment {
+        segments: segments.move_map(|PathSegment {ident, args}| PathSegment {
             ident: fld.fold_ident(ident),
-            parameters: parameters.map(|ps| ps.map(|ps| fld.fold_generic_args(ps))),
+            args: args.map(|ps| ps.map(|ps| fld.fold_generic_args(ps))),
         }),
         span: fld.new_span(span)
     }
@@ -473,22 +473,22 @@ pub fn noop_fold_generic_args<T: Folder>(generic_args: GenericArgs, fld: &mut T)
     }
 }
 
-pub fn noop_fold_angle_bracketed_parameter_data<T: Folder>(data: AngleBracketedParameterData,
+pub fn noop_fold_angle_bracketed_parameter_data<T: Folder>(data: AngleBracketedArgs,
                                                            fld: &mut T)
-                                                           -> AngleBracketedParameterData
+                                                           -> AngleBracketedArgs
 {
-    let AngleBracketedParameterData { parameters, bindings, span } = data;
-    AngleBracketedParameterData { parameters: parameters.move_map(|p| fld.fold_param(p)),
+    let AngleBracketedArgs { args, bindings, span } = data;
+    AngleBracketedArgs { args: args.move_map(|p| fld.fold_param(p)),
                                   bindings: bindings.move_map(|b| fld.fold_ty_binding(b)),
                                   span: fld.new_span(span) }
 }
 
-pub fn noop_fold_parenthesized_parameter_data<T: Folder>(data: ParenthesizedParameterData,
+pub fn noop_fold_parenthesized_parameter_data<T: Folder>(data: ParenthesizedArgData,
                                                          fld: &mut T)
-                                                         -> ParenthesizedParameterData
+                                                         -> ParenthesizedArgData
 {
-    let ParenthesizedParameterData { inputs, output, span } = data;
-    ParenthesizedParameterData { inputs: inputs.move_map(|ty| fld.fold_ty(ty)),
+    let ParenthesizedArgData { inputs, output, span } = data;
+    ParenthesizedArgData { inputs: inputs.move_map(|ty| fld.fold_ty(ty)),
                                  output: output.map(|ty| fld.fold_ty(ty)),
                                  span: fld.new_span(span) }
 }
@@ -1191,7 +1191,7 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                 ExprKind::MethodCall(
                     PathSegment {
                         ident: folder.fold_ident(seg.ident),
-                        parameters: seg.parameters.map(|ps| {
+                        args: seg.args.map(|ps| {
                             ps.map(|ps| folder.fold_generic_args(ps))
                         }),
                     },

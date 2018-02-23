@@ -97,7 +97,7 @@ pub fn where_clauses(cx: &DocContext, clauses: Vec<WP>) -> Vec<WP> {
                 return false
             }
             let last = path.segments.last_mut().unwrap();
-            match last.params {
+            match last.args {
                 PP::AngleBracketed { ref mut bindings, .. } => {
                     bindings.push(clean::TypeBinding {
                         name: name.clone(),

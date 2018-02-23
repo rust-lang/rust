@@ -40,6 +40,7 @@ use rustc::middle::weak_lang_items;
 use rustc::mir::mono::{Linkage, Visibility, Stats};
 use rustc::middle::cstore::{EncodedMetadata};
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::subst::Kind;
 use rustc::ty::layout::{self, Align, TyLayout, LayoutOf};
 use rustc::ty::query::Providers;
 use rustc::dep_graph::{DepNode, DepConstructor};

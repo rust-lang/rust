@@ -59,6 +59,7 @@ use std::fmt::Debug;
 use std::iter;
 use std::mem;
 use syntax::attr;
+use syntax::ast;
 use syntax::ast::*;
 use syntax::errors;
 use syntax::ext::hygiene::{Mark, SyntaxContext};
@@ -1039,14 +1040,14 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_generic_arg(&mut self,
-                        p: &AngleBracketedParam,
+                        p: &ast::GenericArg,
                         itctx: ImplTraitContext)
-                        -> GenericArg {
+                        -> hir::GenericArg {
         match p {
-            AngleBracketedParam::Lifetime(lt) => {
+            ast::GenericArg::Lifetime(lt) => {
                 GenericArg::Lifetime(self.lower_lifetime(&lt))
             }
-            AngleBracketedParam::Type(ty) => {
+            ast::GenericArg::Type(ty) => {
                 GenericArg::Type(self.lower_ty(&ty, itctx))
             }
         }
@@ -1684,8 +1685,7 @@ impl<'a> LoweringContext<'a> {
         parenthesized_generic_args: ParenthesizedGenericArgs,
         itctx: ImplTraitContext,
     ) -> hir::PathSegment {
-        let (mut generic_args, infer_types) =
-            if let Some(ref generic_args) = segment.parameters {
+        let (mut generic_args, infer_types) = if let Some(ref generic_args) = segment.args {
             let msg = "parenthesized parameters may only be used with a trait";
             match **generic_args {
                 GenericArgs::AngleBracketed(ref data) => {
@@ -1715,13 +1715,16 @@ impl<'a> LoweringContext<'a> {
         };
 
         if !generic_args.parenthesized && generic_args.lifetimes().count() == 0 {
-            generic_args.parameters = (0..expected_lifetimes).map(|_| {
-                GenericArg::Lifetime(self.elided_lifetime(path_span))
-            }).chain(generic_args.parameters.into_iter()).collect();
+            generic_args.args =
+                self.elided_path_lifetimes(path_span, expected_lifetimes)
+                    .into_iter()
+                    .map(|lt| GenericArg::Lifetime(lt))
+                    .chain(generic_args.args.into_iter())
+                    .collect();
         }
 
         hir::PathSegment::new(
-            self.lower_ident(segment.identifier),
+            self.lower_ident(segment.ident),
             generic_args,
             infer_types
         )
@@ -1729,13 +1732,13 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_angle_bracketed_parameter_data(
         &mut self,
-        data: &AngleBracketedParameterData,
+        data: &AngleBracketedArgs,
         param_mode: ParamMode,
         itctx: ImplTraitContext,
     ) -> (hir::GenericArgs, bool) {
-        let &AngleBracketedParameterData { ref parameters, ref bindings, .. } = data;
+        let &AngleBracketedArgs { ref args, ref bindings, .. } = data;
         (hir::GenericArgs {
-            parameters: parameters.iter().map(|p| self.lower_generic_arg(p, itctx)).collect(),
+            args: args.iter().map(|p| self.lower_generic_arg(p, itctx)).collect(),
             bindings: bindings.iter().map(|b| self.lower_ty_binding(b, itctx)).collect(),
             parenthesized: false,
         },
@@ -1755,23 +1758,11 @@ impl<'a> LoweringContext<'a> {
             AnonymousLifetimeMode::PassThrough,
             |this| {
                 const DISALLOWED: ImplTraitContext = ImplTraitContext::Disallowed;
-                let &ParenthesizedParameterData {
-                    ref inputs,
-                    ref output,
-                    span,
-                } = data;
-                let inputs = inputs
-                    .iter()
-                    .map(|ty| this.lower_ty(ty, DISALLOWED))
-                    .collect();
+                let &ParenthesizedParameterData { ref inputs, ref output, span } = data;
+                let inputs = inputs.iter().map(|ty| this.lower_ty(ty, DISALLOWED)).collect();
                 let mk_tup = |this: &mut Self, tys, span| {
                     let LoweredNodeId { node_id, hir_id } = this.next_id();
-                    P(hir::Ty {
-                        node: hir::TyTup(tys),
-                        id: node_id,
-                        hir_id,
-                        span,
-                    })
+                    P(hir::Ty { node: hir::TyTup(tys), id: node_id, hir_id, span })
                 };
 
                 (

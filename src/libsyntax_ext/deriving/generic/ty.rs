@@ -15,7 +15,7 @@ pub use self::PtrTy::*;
 pub use self::Ty::*;
 
 use syntax::ast;
-use syntax::ast::{Expr, GenericParam, Generics, Ident, SelfKind, AngleBracketedParam};
+use syntax::ast::{Expr, GenericParam, Generics, Ident, SelfKind, GenericArg};
 use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
 use syntax::codemap::{respan, DUMMY_SP};
@@ -89,8 +89,8 @@ impl<'a> Path<'a> {
         let tys: Vec<P<ast::Ty>> =
             self.params.iter().map(|t| t.to_ty(cx, span, self_ty, self_generics)).collect();
         let params = lt.into_iter()
-                       .map(|lt| AngleBracketedParam::Lifetime(lt))
-                       .chain(tys.into_iter().map(|ty| AngleBracketedParam::Type(ty)))
+                       .map(|lt| GenericArg::Lifetime(lt))
+                       .chain(tys.into_iter().map(|ty| GenericArg::Type(ty)))
                        .collect();
 
         match self.kind {
@@ -206,9 +206,9 @@ impl<'a> Ty<'a> {
                     .collect();
 
                 let params = lifetimes.into_iter()
-                                      .map(|lt| AngleBracketedParam::Lifetime(lt))
+                                      .map(|lt| GenericArg::Lifetime(lt))
                                       .chain(ty_params.into_iter().map(|ty|
-                                            AngleBracketedParam::Type(ty)))
+                                            GenericArg::Type(ty)))
                                       .collect();
 
                 cx.path_all(span,

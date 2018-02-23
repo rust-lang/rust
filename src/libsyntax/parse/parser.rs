@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc_target::spec::abi::{self, Abi};
-use ast::{AngleBracketedParameterData, ParenthesizedParameterData, AttrStyle, BareFnTy};
+use ast::{AngleBracketedArgs, ParenthesizedArgData, AttrStyle, BareFnTy};
 use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::Unsafety;
 use ast::{Mod, AnonConst, Arg, Arm, Attribute, BindingMode, TraitItemKind};
@@ -22,7 +22,7 @@ use ast::{Expr, ExprKind, RangeLimits};
 use ast::{Field, FnDecl};
 use ast::{ForeignItem, ForeignItemKind, FunctionRetTy};
 use ast::GenericParam;
-use ast::AngleBracketedParam;
+use ast::GenericArg;
 use ast::{Ident, ImplItem, IsAuto, Item, ItemKind};
 use ast::{Label, Lifetime, LifetimeDef, Lit, LitKind};
 use ast::Local;
@@ -1895,7 +1895,7 @@ impl<'a> Parser<'a> {
                              -> PResult<'a, ast::Path> {
         maybe_whole!(self, NtPath, |path| {
             if style == PathStyle::Mod &&
-               path.segments.iter().any(|segment| segment.parameters.is_some()) {
+               path.segments.iter().any(|segment| segment.args.is_some()) {
                 self.diagnostic().span_err(path.span, "unexpected generic arguments in path");
             }
             path
@@ -1970,12 +1970,12 @@ impl<'a> Parser<'a> {
                                  .span_label(self.prev_span, "try removing `::`").emit();
             }
 
-            let parameters = if self.eat_lt() {
+            let args = if self.eat_lt() {
                 // `<'a, T, A = U>`
-                let (parameters, bindings) = self.parse_generic_args()?;
+                let (args, bindings) = self.parse_generic_args()?;
                 self.expect_gt()?;
                 let span = lo.to(self.prev_span);
-                AngleBracketedParameterData { parameters, bindings, span }.into()
+                AngleBracketedArgs { args, bindings, span }.into()
             } else {
                 // `(T, U) -> R`
                 self.bump(); // `(`
@@ -1991,10 +1991,10 @@ impl<'a> Parser<'a> {
                     None
                 };
                 let span = lo.to(self.prev_span);
-                ParenthesizedParameterData { inputs, output, span }.into()
+                ParenthesizedArgData { inputs, output, span }.into()
             };
 
-            PathSegment { ident, parameters }
+            PathSegment { ident, args }
         } else {
             // Generic arguments are not found.
             PathSegment::from_ident(ident)
@@ -2544,8 +2544,8 @@ impl<'a> Parser<'a> {
             }
             _ => {
                 // Field access `expr.f`
-                if let Some(parameters) = segment.parameters {
-                    self.span_err(parameters.span(),
+                if let Some(args) = segment.args {
+                    self.span_err(args.span(),
                                   "field expressions may not have generic arguments");
                 }
 
@@ -4938,15 +4938,15 @@ impl<'a> Parser<'a> {
     /// Parses (possibly empty) list of lifetime and type arguments and associated type bindings,
     /// possibly including trailing comma.
     fn parse_generic_args(&mut self)
-                          -> PResult<'a, (Vec<AngleBracketedParam>, Vec<TypeBinding>)> {
-        let mut parameters = Vec::new();
+                          -> PResult<'a, (Vec<GenericArg>, Vec<TypeBinding>)> {
+        let mut args = Vec::new();
         let mut bindings = Vec::new();
         let mut seen_type = false;
         let mut seen_binding = false;
         loop {
             if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
                 // Parse lifetime argument.
-                parameters.push(AngleBracketedParam::Lifetime(self.expect_lifetime()));
+                args.push(GenericArg::Lifetime(self.expect_lifetime()));
                 if seen_type || seen_binding {
                     self.span_err(self.prev_span,
                         "lifetime parameters must be declared prior to type parameters");
@@ -4971,7 +4971,7 @@ impl<'a> Parser<'a> {
                     self.span_err(ty_param.span,
                         "type parameters must be declared prior to associated type bindings");
                 }
-                parameters.push(AngleBracketedParam::Type(ty_param));
+                args.push(GenericArg::Type(ty_param));
                 seen_type = true;
             } else {
                 break
@@ -4981,7 +4981,7 @@ impl<'a> Parser<'a> {
                 break
             }
         }
-        Ok((parameters, bindings))
+        Ok((args, bindings))
     }
 
     /// Parses an optional `where` clause and places it in `generics`.

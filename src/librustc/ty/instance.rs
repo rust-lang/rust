@@ -10,6 +10,7 @@
 
 use hir::def_id::DefId;
 use ty::{self, Ty, TypeFoldable, Substs, TyCtxt};
+use ty::subst::Kind;
 use traits;
 use rustc_target::spec::abi::Abi;
 use util::ppaux;

@@ -31,7 +31,7 @@ pub trait AstBuilder {
     fn path_all(&self, sp: Span,
                 global: bool,
                 idents: Vec<ast::Ident>,
-                parameters: Vec<ast::AngleBracketedParam>,
+                parameters: Vec<ast::GenericArg>,
                 bindings: Vec<ast::TypeBinding>)
         -> ast::Path;
 
@@ -42,7 +42,7 @@ pub trait AstBuilder {
     fn qpath_all(&self, self_type: P<ast::Ty>,
                 trait_path: ast::Path,
                 ident: ast::Ident,
-                parameters: Vec<ast::AngleBracketedParam>,
+                parameters: Vec<ast::GenericArg>,
                 bindings: Vec<ast::TypeBinding>)
                 -> (ast::QSelf, ast::Path);
 
@@ -314,7 +314,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 span: Span,
                 global: bool,
                 mut idents: Vec<ast::Ident> ,
-                parameters: Vec<ast::AngleBracketedParam>,
+                args: Vec<ast::GenericArg>,
                 bindings: Vec<ast::TypeBinding> )
                 -> ast::Path {
         let last_ident = idents.pop().unwrap();
@@ -323,12 +323,12 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         segments.extend(idents.into_iter().map(|ident| {
             ast::PathSegment::from_ident(ident.with_span_pos(span))
         }));
-        let parameters = if !parameters.is_empty() !bindings.is_empty() {
-            ast::AngleBracketedParameterData { parameters, bindings, span }.into()
+        let args = if !args.is_empty() || !bindings.is_empty() {
+            ast::AngleBracketedArgs { args, bindings, span }.into()
         } else {
             None
         };
-        segments.push(ast::PathSegment { ident: last_ident.with_span_pos(span), parameters });
+        segments.push(ast::PathSegment { ident: last_ident.with_span_pos(span), args });
         let mut path = ast::Path { span, segments };
         if global {
             if let Some(seg) = path.make_root() {
@@ -356,16 +356,16 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                  self_type: P<ast::Ty>,
                  trait_path: ast::Path,
                  ident: ast::Ident,
-                 parameters: Vec<ast::AngleBracketedParam>,
+                 args: Vec<ast::GenericArg>,
                  bindings: Vec<ast::TypeBinding>)
                  -> (ast::QSelf, ast::Path) {
         let mut path = trait_path;
-        let parameters = if !parameters.is_empty() || !bindings.is_empty() {
-            ast::AngleBracketedParameterData { parameters, bindings, span: ident.span }.into()
+        let args = if !args.is_empty() || !bindings.is_empty() {
+            ast::AngleBracketedArgs { args, bindings, span: ident.span }.into()
         } else {
             None
         };
-        path.segments.push(ast::PathSegment { ident, parameters });
+        path.segments.push(ast::PathSegment { ident, args });
 
         (ast::QSelf {
             ty: self_type,
@@ -424,7 +424,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             self.path_all(DUMMY_SP,
                           true,
                           self.std_path(&["option", "Option"]),
-                          vec![ ast::AngleBracketedParam::Type(ty) ],
+                          vec![ ast::GenericArg::Type(ty) ],
                           Vec::new()))
     }
 

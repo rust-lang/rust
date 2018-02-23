@@ -135,27 +135,27 @@ pub struct PathSegment {
     /// `Some` means that parameter list is supplied (`Path<X, Y>`)
     /// but it can be empty (`Path<>`).
     /// `P` is used as a size optimization for the common case with no parameters.
-    pub parameters: Option<P<GenericArgs>>,
+    pub args: Option<P<GenericArgs>>,
 }
 
 impl PathSegment {
     pub fn from_ident(ident: Ident) -> Self {
-        PathSegment { ident, parameters: None }
+        PathSegment { ident, args: None }
     }
     pub fn crate_root(span: Span) -> Self {
         PathSegment::from_ident(Ident::new(keywords::CrateRoot.name(), span))
     }
 }
 
-/// Parameters of a path segment.
+/// Arguments of a path segment.
 ///
 /// E.g. `<A, B>` as in `Foo<A, B>` or `(A, B)` as in `Foo(A, B)`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum GenericArgs {
     /// The `<'a, A,B,C>` in `foo::bar::baz::<'a, A,B,C>`
-    AngleBracketed(AngleBracketedParameterData),
+    AngleBracketed(AngleBracketedArgs),
     /// The `(A,B)` and `C` in `Foo(A,B) -> C`
-    Parenthesized(ParenthesizedParameterData),
+    Parenthesized(ParenthesizedArgData),
 }
 
 impl GenericArgs {
@@ -168,28 +168,28 @@ impl GenericArgs {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum AngleBracketedParam {
+pub enum GenericArg {
     Lifetime(Lifetime),
     Type(P<Ty>),
 }
 
 /// A path like `Foo<'a, T>`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Default)]
-pub struct AngleBracketedParameterData {
+pub struct AngleBracketedArgs {
     /// Overall span
     pub span: Span,
-    /// The parameters for this path segment.
-    pub parameters: Vec<AngleBracketedParam>,
+    /// The arguments for this path segment.
+    pub args: Vec<GenericArg>,
     /// Bindings (equality constraints) on associated types, if present.
     ///
     /// E.g., `Foo<A=Bar>`.
     pub bindings: Vec<TypeBinding>,
 }
 
-impl AngleBracketedParameterData {
+impl AngleBracketedArgs {
     pub fn lifetimes(&self) -> impl DoubleEndedIterator<Item = &Lifetime> {
-        self.parameters.iter().filter_map(|p| {
-            if let AngleBracketedParam::Lifetime(lt) = p {
+        self.args.iter().filter_map(|p| {
+            if let GenericArg::Lifetime(lt) = p {
                 Some(lt)
             } else {
                 None
@@ -198,8 +198,8 @@ impl AngleBracketedParameterData {
     }
 
     pub fn types(&self) -> impl DoubleEndedIterator<Item = &P<Ty>> {
-        self.parameters.iter().filter_map(|p| {
-            if let AngleBracketedParam::Type(ty) = p {
+        self.args.iter().filter_map(|p| {
+            if let GenericArg::Type(ty) = p {
                 Some(ty)
             } else {
                 None
@@ -208,13 +208,13 @@ impl AngleBracketedParameterData {
     }
 }
 
-impl Into<Option<P<GenericArgs>>> for AngleBracketedParameterData {
+impl Into<Option<P<GenericArgs>>> for AngleBracketedArgs {
     fn into(self) -> Option<P<GenericArgs>> {
         Some(P(GenericArgs::AngleBracketed(self)))
     }
 }
 
-impl Into<Option<P<GenericArgs>>> for ParenthesizedParameterData {
+impl Into<Option<P<GenericArgs>>> for ParenthesizedArgData {
     fn into(self) -> Option<P<GenericArgs>> {
         Some(P(GenericArgs::Parenthesized(self)))
     }
@@ -222,7 +222,7 @@ impl Into<Option<P<GenericArgs>>> for ParenthesizedParameterData {
 
 /// A path like `Foo(A,B) -> C`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct ParenthesizedParameterData {
+pub struct ParenthesizedArgData {
     /// Overall span
     pub span: Span,
 

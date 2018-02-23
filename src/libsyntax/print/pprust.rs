@@ -13,7 +13,7 @@ pub use self::AnnNode::*;
 use rustc_target::spec::abi::{self, Abi};
 use ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
 use ast::{SelfKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
-use ast::{Attribute, MacDelimiter, AngleBracketedParam};
+use ast::{Attribute, MacDelimiter, GenericArg};
 use util::parser::{self, AssocOp, Fixity};
 use attr;
 use codemap::{self, CodeMap};
@@ -1017,10 +1017,10 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    pub fn print_param(&mut self, param: &AngleBracketedParam) -> io::Result<()> {
+    pub fn print_param(&mut self, param: &GenericArg) -> io::Result<()> {
         match param {
-            AngleBracketedParam::Lifetime(lt) => self.print_lifetime(lt),
-            AngleBracketedParam::Type(ty) => self.print_type(ty),
+            GenericArg::Lifetime(lt) => self.print_lifetime(lt),
+            GenericArg::Type(ty) => self.print_type(ty),
         }
     }
 
@@ -1991,8 +1991,8 @@ impl<'a> State<'a> {
         self.print_expr_maybe_paren(&args[0], parser::PREC_POSTFIX)?;
         self.s.word(".")?;
         self.print_ident(segment.ident)?;
-        if let Some(ref parameters) = segment.parameters {
-            self.print_generic_args(parameters, true)?;
+        if let Some(ref args) = segment.args {
+            self.print_generic_args(args, true)?;
         }
         self.print_call_post(base_args)
     }
@@ -2435,8 +2435,8 @@ impl<'a> State<'a> {
         if segment.ident.name != keywords::CrateRoot.name() &&
            segment.ident.name != keywords::DollarCrate.name() {
             self.print_ident(segment.ident)?;
-            if let Some(ref parameters) = segment.parameters {
-                self.print_generic_args(parameters, colons_before_params)?;
+            if let Some(ref args) = segment.args {
+                self.print_generic_args(args, colons_before_params)?;
             }
         } else if segment.ident.name == keywords::DollarCrate.name() {
             self.print_dollar_crate(segment.ident.span.ctxt())?;
@@ -2462,14 +2462,14 @@ impl<'a> State<'a> {
         self.s.word("::")?;
         let item_segment = path.segments.last().unwrap();
         self.print_ident(item_segment.ident)?;
-        match item_segment.parameters {
-            Some(ref parameters) => self.print_generic_args(parameters, colons_before_params),
+        match item_segment.args {
+            Some(ref args) => self.print_generic_args(args, colons_before_params),
             None => Ok(()),
         }
     }
 
     fn print_generic_args(&mut self,
-                             parameters: &ast::GenericArgs,
+                             args: &ast::GenericArgs,
                              colons_before_params: bool)
                              -> io::Result<()>
     {
@@ -2477,13 +2477,13 @@ impl<'a> State<'a> {
             self.s.word("::")?
         }
 
-        match *parameters {
+        match *args {
             ast::GenericArgs::AngleBracketed(ref data) => {
                 self.s.word("<")?;
 
-                self.commasep(Inconsistent, &data.parameters, |s, p| s.print_param(p))?;
+                self.commasep(Inconsistent, &data.args, |s, p| s.print_param(p))?;
 
-                let mut comma = data.parameters.len() != 0;
+                let mut comma = data.args.len() != 0;
 
                 for binding in data.bindings.iter() {
                     if comma {

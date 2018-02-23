@@ -230,9 +230,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         // }
         // foo!(bar::baz<T>);
         use_tree.prefix.segments.iter().find(|segment| {
-            segment.parameters.is_some()
+            segment.args.is_some()
         }).map(|segment| {
-            self.err_handler().span_err(segment.parameters.as_ref().unwrap().span(),
+            self.err_handler().span_err(segment.args.as_ref().unwrap().span(),
                                         "generic arguments in import path");
         });
 
@@ -398,8 +398,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_vis(&mut self, vis: &'a Visibility) {
         match vis.node {
             VisibilityKind::Restricted { ref path, .. } => {
-                path.segments.iter().find(|segment| segment.parameters.is_some()).map(|segment| {
-                    self.err_handler().span_err(segment.parameters.as_ref().unwrap().span(),
+                path.segments.iter().find(|segment| segment.args.is_some()).map(|segment| {
+                    self.err_handler().span_err(segment.args.as_ref().unwrap().span(),
                                                 "generic arguments in visibility path");
                 });
             }
@@ -521,10 +521,10 @@ impl<'a> Visitor<'a> for NestedImplTraitVisitor<'a> {
             visit::walk_ty(self, t);
         }
     }
-    fn visit_path_parameters(&mut self, _: Span, path_parameters: &'a PathParameters) {
-        match *path_parameters {
-            PathParameters::AngleBracketed(ref params) => {
-                for type_ in &params.types {
+    fn visit_generic_args(&mut self, _: Span, generic_args: &'a GenericArgs) {
+        match *generic_args {
+            GenericArgs::AngleBracketed(ref params) => {
+                for type_ in params.types() {
                     self.visit_ty(type_);
                 }
                 for type_binding in &params.bindings {
@@ -533,7 +533,7 @@ impl<'a> Visitor<'a> for NestedImplTraitVisitor<'a> {
                     self.with_impl_trait(None, |this| visit::walk_ty(this, &type_binding.ty));
                 }
             }
-            PathParameters::Parenthesized(ref params) => {
+            GenericArgs::Parenthesized(ref params) => {
                 for type_ in &params.inputs {
                     self.visit_ty(type_);
                 }
@@ -590,7 +590,7 @@ impl<'a> Visitor<'a> for ImplTraitProjectionVisitor<'a> {
                 //
                 // To implement this, we disallow `impl Trait` from `qself`
                 // (for cases like `<impl Trait>::Foo>`)
-                // but we allow `impl Trait` in `PathParameters`
+                // but we allow `impl Trait` in `GenericArgs`
                 // iff there are no more PathSegments.
                 if let Some(ref qself) = *qself {
                     // `impl Trait` in `qself` is always illegal

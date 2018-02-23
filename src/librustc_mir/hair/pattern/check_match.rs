@@ -295,7 +295,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             );
             let label_msg = match pat.node {
                 PatKind::Path(hir::QPath::Resolved(None, ref path))
-                        if path.segments.len() == 1 && path.segments[0].parameters.is_none() => {
+                        if path.segments.len() == 1 && path.segments[0].args.is_none() => {
                     format!("interpreted as a {} pattern, not new variable", path.def.kind_name())
                 }
                 _ => format!("pattern `{}` not covered", pattern_string),

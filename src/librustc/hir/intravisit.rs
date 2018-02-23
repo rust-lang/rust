@@ -648,15 +648,15 @@ pub fn walk_path_segment<'v, V: Visitor<'v>>(visitor: &mut V,
                                              path_span: Span,
                                              segment: &'v PathSegment) {
     visitor.visit_name(path_span, segment.name);
-    if let Some(ref parameters) = segment.parameters {
-        visitor.visit_generic_args(path_span, parameters);
+    if let Some(ref args) = segment.args {
+        visitor.visit_generic_args(path_span, args);
     }
 }
 
 pub fn walk_generic_args<'v, V: Visitor<'v>>(visitor: &mut V,
                                                 _path_span: Span,
                                                 generic_args: &'v GenericArgs) {
-    walk_list!(visitor, visit_generic_arg, &generic_args.parameters);
+    walk_list!(visitor, visit_generic_arg, &generic_args.args);
     walk_list!(visitor, visit_assoc_type_binding, &generic_args.bindings);
 }
 
