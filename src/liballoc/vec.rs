@@ -1966,8 +1966,8 @@ impl<T> Vec<T> {
     /// Creates an iterator which uses a closure to determine if an element should be removed.
     ///
     /// If the closure returns true, then the element is removed and yielded.
-    /// If the closure returns false, it will try again, and call the closure
-    /// on the next element, seeing if it passes the test.
+    /// If the closure returns false, the element will remain in the vector and will not be yielded
+    /// by the iterator.
     ///
     /// Using this method is equivalent to the following code:
     ///
