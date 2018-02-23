@@ -27,7 +27,7 @@ use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, CRATE_DEF_INDEX};
 use rustc::hir::map::{DefKey, DefPath, DefPathHash};
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::hir::map::definitions::DefPathTable;
-use rustc::util::nodemap::{NodeSet, DefIdMap};
+use rustc::util::nodemap::DefIdMap;
 
 use std::any::Any;
 use rustc_data_structures::sync::Lrc;
@@ -517,11 +517,10 @@ impl CrateStore for cstore::CStore {
 
     fn encode_metadata<'a, 'tcx>(&self,
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 link_meta: &LinkMeta,
-                                 reachable: &NodeSet)
+                                 link_meta: &LinkMeta)
                                  -> EncodedMetadata
     {
-        encoder::encode_metadata(tcx, link_meta, reachable)
+        encoder::encode_metadata(tcx, link_meta)
     }
 
     fn metadata_encoding_version(&self) -> &[u8]

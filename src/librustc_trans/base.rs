@@ -70,7 +70,7 @@ use time_graph;
 use trans_item::{MonoItem, BaseMonoItemExt, MonoItemExt, DefPathBasedNames};
 use type_::Type;
 use type_of::LayoutLlvmExt;
-use rustc::util::nodemap::{NodeSet, FxHashMap, FxHashSet, DefIdSet};
+use rustc::util::nodemap::{FxHashMap, FxHashSet, DefIdSet};
 use CrateInfo;
 
 use std::any::Any;
@@ -89,7 +89,7 @@ use syntax::ast;
 
 use mir::operand::OperandValue;
 
-pub use rustc_trans_utils::{find_exported_symbols, check_for_rustc_errors_attr};
+pub use rustc_trans_utils::check_for_rustc_errors_attr;
 pub use rustc_mir::monomorphize::item::linkage_by_name;
 
 pub struct StatRecorder<'a, 'tcx: 'a> {
@@ -606,8 +606,7 @@ fn contains_null(s: &str) -> bool {
 
 fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
                             llmod_id: &str,
-                            link_meta: &LinkMeta,
-                            exported_symbols: &NodeSet)
+                            link_meta: &LinkMeta)
                             -> (ContextRef, ModuleRef, EncodedMetadata) {
     use std::io::Write;
     use flate2::Compression;
@@ -643,7 +642,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
                 EncodedMetadata::new());
     }
 
-    let metadata = tcx.encode_metadata(link_meta, exported_symbols);
+    let metadata = tcx.encode_metadata(link_meta);
     if kind == MetadataKind::Uncompressed {
         return (metadata_llcx, metadata_llmod, metadata);
     }
@@ -718,13 +717,12 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let crate_hash = tcx.crate_hash(LOCAL_CRATE);
     let link_meta = link::build_link_meta(crate_hash);
-    let exported_symbol_node_ids = find_exported_symbols(tcx);
 
     // Translate the metadata.
     let llmod_id = "metadata";
     let (metadata_llcx, metadata_llmod, metadata) =
         time(tcx.sess.time_passes(), "write metadata", || {
-            write_metadata(tcx, llmod_id, &link_meta, &exported_symbol_node_ids)
+            write_metadata(tcx, llmod_id, &link_meta)
         });
 
     let metadata_module = ModuleTranslation {

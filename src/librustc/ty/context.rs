@@ -46,7 +46,7 @@ use ty::layout::{LayoutDetails, TargetDataLayout};
 use ty::maps;
 use ty::steal::Steal;
 use ty::BindingMode;
-use util::nodemap::{NodeMap, NodeSet, DefIdSet, ItemLocalMap};
+use util::nodemap::{NodeMap, DefIdSet, ItemLocalMap};
 use util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
@@ -1417,10 +1417,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
-    pub fn encode_metadata(self, link_meta: &LinkMeta, reachable: &NodeSet)
+    pub fn encode_metadata(self, link_meta: &LinkMeta)
         -> EncodedMetadata
     {
-        self.cstore.encode_metadata(self, link_meta, reachable)
+        self.cstore.encode_metadata(self, link_meta)
     }
 }
 
