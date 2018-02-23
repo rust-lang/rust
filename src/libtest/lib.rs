@@ -83,8 +83,8 @@ const QUIET_MODE_MAX_COLUMN: usize = 100; // insert a '\n' after 100 tests in qu
 pub mod test {
     pub use {Bencher, TestName, TestResult, TestDesc, TestDescAndFn, TestOpts, TrFailed,
              TrFailedMsg, TrIgnored, TrOk, Metric, MetricMap, StaticTestFn, StaticTestName,
-             DynTestName, DynTestFn, run_test, test_main, test_main_static, filter_tests,
-             parse_opts, StaticBenchFn, ShouldPanic, Options};
+             DynTestName, DynTestFn, assert_test_result, run_test, test_main, test_main_static,
+             filter_tests, parse_opts, StaticBenchFn, ShouldPanic, Options};
 }
 
 pub mod stats;
