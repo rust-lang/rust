@@ -1322,6 +1322,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
          epoch). Crates compiled with different epochs can be linked together."),
     run_dsymutil: Option<bool> = (None, parse_opt_bool, [TRACKED],
           "run `dsymutil` and delete intermediate object files"),
+    ui_testing: bool = (false, parse_bool, [UNTRACKED],
+          "format compiler diagnostics in a way that's better suitable for UI testing"),
 }
 
 pub fn default_lib_output() -> CrateType {
