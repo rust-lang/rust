@@ -32,7 +32,6 @@ use ich;
 use ty::{self, TyCtxt};
 use session::{Session, CrateDisambiguator};
 use session::search_paths::PathKind;
-use util::nodemap::NodeSet;
 
 use std::any::Any;
 use std::collections::BTreeMap;
@@ -258,8 +257,7 @@ pub trait CrateStore {
     // utility functions
     fn encode_metadata<'a, 'tcx>(&self,
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 link_meta: &LinkMeta,
-                                 reachable: &NodeSet)
+                                 link_meta: &LinkMeta)
                                  -> EncodedMetadata;
     fn metadata_encoding_version(&self) -> &[u8];
 }
@@ -342,8 +340,7 @@ impl CrateStore for DummyCrateStore {
     fn extern_mod_stmt_cnum_untracked(&self, emod_id: ast::NodeId) -> Option<CrateNum> { None }
     fn encode_metadata<'a, 'tcx>(&self,
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 link_meta: &LinkMeta,
-                                 reachable: &NodeSet)
+                                 link_meta: &LinkMeta)
                                  -> EncodedMetadata {
         bug!("encode_metadata")
     }
