@@ -155,7 +155,8 @@ pub fn rewrite_macro(
     };
 
     let ts: TokenStream = mac.node.stream();
-    if ts.is_empty() && !contains_comment(context.snippet(mac.span)) {
+    let has_comment = contains_comment(context.snippet(mac.span));
+    if ts.is_empty() && !has_comment {
         return match style {
             MacroStyle::Parens if position == MacroPosition::Item => {
                 Some(format!("{}();", macro_name))
@@ -164,6 +165,13 @@ pub fn rewrite_macro(
             MacroStyle::Brackets => Some(format!("{}[]", macro_name)),
             MacroStyle::Braces => Some(format!("{}{{}}", macro_name)),
         };
+    }
+    // Format well-known macros which cannot be parsed as a valid AST.
+    // TODO: Maybe add more macros?
+    if macro_name == "lazy_static!" && !has_comment {
+        if let success @ Some(..) = format_lazy_static(context, shape, &ts) {
+            return success;
+        }
     }
 
     let mut parser = new_parser_from_tts(context.parse_session, ts.trees().collect());
@@ -846,6 +854,82 @@ impl MacroBranch {
 
         Some(result)
     }
+}
+
+/// Format `lazy_static!` from https://crates.io/crates/lazy_static.
+///
+/// # Expected syntax
+///
+/// ```
+/// lazy_static! {
+///     [pub] static ref NAME_1: TYPE_1 = EXPR_1;
+///     [pub] static ref NAME_2: TYPE_2 = EXPR_2;
+///     ...
+///     [pub] static ref NAME_N: TYPE_N = EXPR_N;
+/// }
+/// ```
+fn format_lazy_static(context: &RewriteContext, shape: Shape, ts: &TokenStream) -> Option<String> {
+    let mut result = String::with_capacity(1024);
+    let mut parser = new_parser_from_tts(context.parse_session, ts.trees().collect());
+    let nested_shape = shape.block_indent(context.config.tab_spaces());
+
+    result.push_str("lazy_static! {");
+    result.push_str(&nested_shape.indent.to_string_with_newline(context.config));
+
+    macro parse_or($method:ident $(,)* $($arg:expr),* $(,)*) {
+        match parser.$method($($arg,)*) {
+            Ok(val) => {
+                if parser.sess.span_diagnostic.has_errors() {
+                    parser.sess.span_diagnostic.reset_err_count();
+                    return None;
+                } else {
+                    val
+                }
+            }
+            Err(mut err) => {
+                err.cancel();
+                parser.sess.span_diagnostic.reset_err_count();
+                return None;
+            }
+        }
+    }
+
+    while parser.token != Token::Eof {
+        // Parse a `lazy_static!` item.
+        let vis = ::utils::format_visibility(&parse_or!(parse_visibility, false));
+        parser.eat_keyword(symbol::keywords::Static);
+        parser.eat_keyword(symbol::keywords::Ref);
+        let id = parse_or!(parse_ident);
+        parser.eat(&Token::Colon);
+        let ty = parse_or!(parse_ty);
+        parser.eat(&Token::Eq);
+        let expr = parse_or!(parse_expr);
+        parser.eat(&Token::Semi);
+
+        // Rewrite as a static item.
+        let mut stmt = String::with_capacity(128);
+        stmt.push_str(&format!(
+            "{}static ref {}: {} =",
+            vis,
+            id,
+            ty.rewrite(context, shape)?
+        ));
+        result.push_str(&::expr::rewrite_assign_rhs(
+            context,
+            stmt,
+            &*expr,
+            nested_shape.sub_width(1)?,
+        )?);
+        result.push(';');
+        if parser.token != Token::Eof {
+            result.push_str(&nested_shape.indent.to_string_with_newline(context.config));
+        }
+    }
+
+    result.push_str(&shape.indent.to_string_with_newline(context.config));
+    result.push('}');
+
+    Some(result)
 }
 
 #[cfg(test)]
