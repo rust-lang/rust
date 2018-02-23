@@ -50,11 +50,11 @@ pub fn pkgname(build: &Build, component: &str) -> String {
 }
 
 fn distdir(build: &Build) -> PathBuf {
-    build.config.out.join("dist")
+    build.config.general.out.join("dist")
 }
 
 pub fn tmpdir(build: &Build) -> PathBuf {
-    build.config.out.join("tmp/dist")
+    build.config.general.out.join("tmp/dist")
 }
 
 fn rust_installer(builder: &Builder) -> Command {
@@ -102,7 +102,7 @@ impl Step for Docs {
 
         let dst = image.join("share/doc/rust/html");
         t!(fs::create_dir_all(&dst));
-        let src = build.config.out.join(host).join("doc");
+        let src = build.config.general.out.join(host).join("doc");
         cp_r(&src, &dst);
 
         let mut cmd = rust_installer(builder);

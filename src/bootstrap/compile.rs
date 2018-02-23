@@ -805,9 +805,9 @@ impl Step for Sysroot {
         let build = builder.build;
         let compiler = self.compiler;
         let sysroot = if compiler.stage == 0 {
-            build.config.out.join(&compiler.host).join("stage0-sysroot")
+            build.config.general.out.join(&compiler.host).join("stage0-sysroot")
         } else {
-            build.config.out.join(&compiler.host).join(format!("stage{}", compiler.stage))
+            build.config.general.out.join(&compiler.host).join(format!("stage{}", compiler.stage))
         };
         let _ = fs::remove_dir_all(&sysroot);
         t!(fs::create_dir_all(&sysroot));

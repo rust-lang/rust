@@ -87,7 +87,7 @@ fn install_sh(
     let libdir = add_destdir(&libdir, &destdir);
     let mandir = add_destdir(&mandir, &destdir);
 
-    let empty_dir = build.config.out.join("tmp/empty_dir");
+    let empty_dir = build.config.general.out.join("tmp/empty_dir");
 
     t!(fs::create_dir_all(&empty_dir));
     let package_name = if let Some(host) = host {

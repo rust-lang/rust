@@ -113,7 +113,7 @@ impl Step for Linkcheck {
 
         let _time = util::timeit();
         try_run(build, builder.tool_cmd(Tool::Linkchecker)
-                              .arg(build.config.out.join(host).join("doc")));
+                              .arg(build.config.general.out.join(host).join("doc")));
     }
 
     fn should_run(run: ShouldRun) -> ShouldRun {
@@ -159,7 +159,7 @@ impl Step for Cargotest {
         // Note that this is a short, cryptic, and not scoped directory name. This
         // is currently to minimize the length of path on Windows where we otherwise
         // quickly run into path name limit constraints.
-        let out_dir = build.config.out.join("ct");
+        let out_dir = build.config.general.out.join("ct");
         t!(fs::create_dir_all(&out_dir));
 
         let _time = util::timeit();
@@ -546,7 +546,7 @@ impl Step for Tidy {
 }
 
 fn testdir(build: &Build, host: Interned<String>) -> PathBuf {
-    build.config.out.join(host).join("test")
+    build.config.general.out.join(host).join("test")
 }
 
 macro_rules! default_test {
@@ -973,7 +973,7 @@ impl Step for Compiletest {
             cmd.env("PROFILER_SUPPORT", "1");
         }
 
-        cmd.env("RUST_TEST_TMPDIR", build.config.out.join("tmp"));
+        cmd.env("RUST_TEST_TMPDIR", build.config.general.out.join("tmp"));
 
         cmd.arg("--adb-path").arg("adb");
         cmd.arg("--adb-test-dir").arg(ADB_TEST_DIR);
@@ -1520,7 +1520,7 @@ impl Step for RemoteCopyLibs {
         builder.ensure(compile::Test { compiler, target });
 
         println!("REMOTE copy libs to emulator ({})", target);
-        t!(fs::create_dir_all(build.config.out.join("tmp")));
+        t!(fs::create_dir_all(build.config.general.out.join("tmp")));
 
         let server = builder.ensure(tool::RemoteTestServer { compiler, target });
 
@@ -1530,7 +1530,7 @@ impl Step for RemoteCopyLibs {
         cmd.arg("spawn-emulator")
            .arg(target)
            .arg(&server)
-           .arg(build.config.out.join("tmp"));
+           .arg(build.config.general.out.join("tmp"));
         if let Some(rootfs) = build.qemu_rootfs(target) {
             cmd.arg(rootfs);
         }
@@ -1568,7 +1568,7 @@ impl Step for Distcheck {
         let build = builder.build;
 
         println!("Distcheck");
-        let dir = build.config.out.join("tmp").join("distcheck");
+        let dir = build.config.general.out.join("tmp").join("distcheck");
         let _ = fs::remove_dir_all(&dir);
         t!(fs::create_dir_all(&dir));
 
@@ -1592,7 +1592,7 @@ impl Step for Distcheck {
 
         // Now make sure that rust-src has all of libstd's dependencies
         println!("Distcheck rust-src");
-        let dir = build.config.out.join("tmp").join("distcheck-src");
+        let dir = build.config.general.out.join("tmp").join("distcheck-src");
         let _ = fs::remove_dir_all(&dir);
         t!(fs::create_dir_all(&dir));
 
@@ -1626,7 +1626,7 @@ impl Step for Bootstrap {
         let mut cmd = Command::new(&build.config.initial_cargo);
         cmd.arg("test")
            .current_dir(build.config.src.join("src/bootstrap"))
-           .env("CARGO_TARGET_DIR", build.config.out.join("bootstrap-test"))
+           .env("CARGO_TARGET_DIR", build.config.general.out.join("bootstrap-test"))
            .env("RUSTC_BOOTSTRAP", "1")
            .env("RUSTC", &build.config.initial_rustc);
         if !build.config.cmd.fail_fast() {

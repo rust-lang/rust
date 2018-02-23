@@ -402,7 +402,7 @@ impl Build {
     }
 
     fn tools_dir(&self, compiler: Compiler) -> PathBuf {
-        let out = self.config.out.join(&*compiler.host)
+        let out = self.config.general.out.join(&*compiler.host)
             .join(format!("stage{}-tools-bin", compiler.stage));
         t!(fs::create_dir_all(&out));
         out
@@ -419,7 +419,7 @@ impl Build {
             Mode::Tool => "-tools",
             Mode::Librustc => "-rustc",
         };
-        self.config.out.join(&*compiler.host)
+        self.config.general.out.join(&*compiler.host)
                 .join(format!("stage{}{}", compiler.stage, suffix))
     }
 
@@ -438,28 +438,28 @@ impl Build {
     /// Note that if LLVM is configured externally then the directory returned
     /// will likely be empty.
     fn llvm_out(&self, target: Interned<String>) -> PathBuf {
-        self.config.out.join(&*target).join("llvm")
+        self.config.general.out.join(&*target).join("llvm")
     }
 
     fn emscripten_llvm_out(&self, target: Interned<String>) -> PathBuf {
-        self.config.out.join(&*target).join("llvm-emscripten")
+        self.config.general.out.join(&*target).join("llvm-emscripten")
     }
 
     /// Output directory for all documentation for a target
     fn doc_out(&self, target: Interned<String>) -> PathBuf {
-        self.config.out.join(&*target).join("doc")
+        self.config.general.out.join(&*target).join("doc")
     }
 
     /// Output directory for some generated md crate documentation for a target (temporary)
     fn md_doc_out(&self, target: Interned<String>) -> Interned<PathBuf> {
-        self.config.out.join(&*target).join("md-doc").intern()
+        self.config.general.out.join(&*target).join("md-doc").intern()
     }
 
     /// Output directory for all crate documentation for a target (temporary)
     ///
     /// The artifacts here are then copied into `doc_out` above.
     fn crate_doc_out(&self, target: Interned<String>) -> PathBuf {
-        self.config.out.join(&*target).join("crate-docs")
+        self.config.general.out.join(&*target).join("crate-docs")
     }
 
     /// Returns true if no custom `llvm-config` is set for the specified target.
@@ -505,7 +505,7 @@ impl Build {
 
     /// Directory for libraries built from C/C++ code and shared between stages.
     fn native_dir(&self, target: Interned<String>) -> PathBuf {
-        self.config.out.join(&*target).join("native")
+        self.config.general.out.join(&*target).join("native")
     }
 
     /// Root output directory for rust_test_helpers library compiled for
@@ -679,7 +679,7 @@ impl Build {
 
     /// Temporary directory that extended error information is emitted to.
     fn extended_error_dir(&self) -> PathBuf {
-        self.config.out.join("tmp/extended-error-metadata")
+        self.config.general.out.join("tmp/extended-error-metadata")
     }
 
     /// Tests whether the `compiler` compiling for `target` should be forced to
@@ -713,7 +713,7 @@ impl Build {
         if target.contains("windows") {
             None
         } else if self.config.general.openssl_static {
-            Some(self.config.out.join(&*target).join("openssl"))
+            Some(self.config.general.out.join(&*target).join("openssl"))
         } else {
             None
         }

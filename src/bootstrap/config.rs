@@ -51,7 +51,6 @@ pub struct Config {
 
     pub run_host_only: bool,
     pub is_sudo: bool,
-    pub out: PathBuf,
 
     pub exclude: Vec<PathBuf>,
     pub on_fail: Option<String>,
@@ -519,7 +518,6 @@ impl Config {
                 }
                 None => false,
             },
-            out: toml.build.out.clone(),
             // bootstrap.py already handles this fully -- checks flags, toml, and default-generates
             build: toml.build.build.clone(),
             hosts: toml.build.host.clone(),
