@@ -37,6 +37,7 @@ use errors::{DiagnosticBuilder, DiagnosticId};
 use hir::def_id::{CrateNum, LOCAL_CRATE};
 use hir::intravisit::{self, FnKind};
 use hir;
+use lint::builtin::BuiltinLintDiagnostics;
 use session::{config, Session, DiagnosticMessageId};
 use std::hash;
 use syntax::ast;
@@ -399,12 +400,14 @@ impl LintBuffer {
                     lint: &'static Lint,
                     id: ast::NodeId,
                     sp: MultiSpan,
-                    msg: &str) {
+                    msg: &str,
+                    diagnostic: BuiltinLintDiagnostics) {
         let early_lint = BufferedEarlyLint {
             lint_id: LintId::of(lint),
             ast_id: id,
             span: sp,
             msg: msg.to_string(),
+            diagnostic
         };
         let arr = self.map.entry(id).or_insert(Vec::new());
         if !arr.contains(&early_lint) {

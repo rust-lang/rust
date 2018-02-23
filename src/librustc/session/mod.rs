@@ -16,6 +16,7 @@ use ich::Fingerprint;
 
 use ich;
 use lint;
+use lint::builtin::BuiltinLintDiagnostics;
 use middle::allocator::AllocatorKind;
 use middle::dependency_format;
 use session::search_paths::PathKind;
@@ -341,7 +342,18 @@ impl Session {
                                            sp: S,
                                            msg: &str) {
         match *self.buffered_lints.borrow_mut() {
-            Some(ref mut buffer) => buffer.add_lint(lint, id, sp.into(), msg),
+            Some(ref mut buffer) => buffer.add_lint(lint, id, sp.into(),
+                                                    msg, BuiltinLintDiagnostics::Normal),
+            None => bug!("can't buffer lints after HIR lowering"),
+        }
+    }
+
+    pub fn buffer_lint_with_diagnostic<S: Into<MultiSpan>>(&self,
+        lint: &'static lint::Lint, id: ast::NodeId, sp: S,
+        msg: &str, diagnostic: BuiltinLintDiagnostics) {
+        match *self.buffered_lints.borrow_mut() {
+            Some(ref mut buffer) => buffer.add_lint(lint, id, sp.into(),
+                                                    msg, diagnostic),
             None => bug!("can't buffer lints after HIR lowering"),
         }
     }

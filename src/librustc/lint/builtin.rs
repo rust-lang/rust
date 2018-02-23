@@ -14,8 +14,11 @@
 //! compiler code, rather than using their own custom pass. Those
 //! lints are all available in `rustc_lint::builtin`.
 
+use errors::DiagnosticBuilder;
 use lint::{LintPass, LateLintPass, LintArray};
+use session::Session;
 use session::config::Epoch;
+use syntax::codemap::Span;
 
 declare_lint! {
     pub CONST_ERR,
@@ -309,6 +312,29 @@ impl LintPass for HardwiredLints {
             ELIDED_LIFETIME_IN_PATH,
             BARE_TRAIT_OBJECT
         )
+    }
+}
+
+// this could be a closure, but then implementing derive traits
+// becomes hacky (and it gets allocated)
+#[derive(PartialEq, RustcEncodable, RustcDecodable, Debug)]
+pub enum BuiltinLintDiagnostics {
+    Normal,
+    BareTraitObject(Span)
+}
+
+impl BuiltinLintDiagnostics {
+    pub fn run(self, sess: &Session, db: &mut DiagnosticBuilder) {
+        match self {
+            BuiltinLintDiagnostics::Normal => (),
+            BuiltinLintDiagnostics::BareTraitObject(span) => {
+                let sugg = match sess.codemap().span_to_snippet(span) {
+                    Ok(s) => format!("dyn {}", s),
+                    Err(_) => format!("dyn <type>")
+                };
+                db.span_suggestion(span, "use `dyn`", sugg);
+            }
+        }
     }
 }
 
