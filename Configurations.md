@@ -579,7 +579,7 @@ Don't reformat anything
 
 ## `error_on_line_overflow`
 
-Error if unable to get all lines within `max_width`
+Error if unable to get all lines within `max_width`, except for comments and string literals.
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
@@ -587,15 +587,14 @@ Error if unable to get all lines within `max_width`
 
 See also [`max_width`](#max_width).
 
-## `error_on_line_overflow_comments`
+## `error_on_unformatted`
 
-Error if unable to get all comment lines within `comment_width`.
+Error if unable to get comments or string literals within `max_width`, or they are left with
+trailing whitespaces.
 
-- **Default value**: `true`
+- **Default value**: `false`
 - **Possible values**: `true`, `false`
 - **Stable**: No
-
-See also [`comment_width`](#comment_width).
 
 ## `fn_args_density`
 
@@ -1379,6 +1378,41 @@ extern crate sit;
 
 This value has no influence beyond the effect of the [`reorder_extern_crates`](#reorder_extern_crates) option. Set [`reorder_extern_crates`](#reorder_extern_crates) to `false` if you do not want `extern crate` groups to be collapsed and ordered.
 
+## `reorder_modules`
+
+Reorder `mod` declarations alphabetically in group.
+
+- **Default value**: `true`
+- **Possible values**: `true`, `false`
+- **Stable**: No
+
+#### `true`
+
+```rust
+mod a;
+mod b;
+
+mod dolor;
+mod ipsum;
+mod lorem;
+mod sit;
+```
+
+#### `false`
+
+```rust
+mod b;
+mod a;
+
+mod lorem;
+mod ipsum;
+mod dolor;
+mod sit;
+```
+
+**Note** `mod` with `#[macro_export]` will not be reordered since that could change the semantic
+of the original source code.
+
 ## `report_todo`
 
 Report `TODO` items in comments.
@@ -2008,3 +2042,76 @@ fn bar() {
     println!("c");
 }
 ```
+
+## `remove_blank_lines_at_start_or_end_of_block`
+
+Remove blank lines at the start or the end of a block.
+
+- **Default value**: `true`
+- **Possible values**: `true`, `false`
+- **Stable**: No
+
+#### `true`
+
+```rust
+fn foo() {
+    let msg = {
+        let mut str = String::new();
+        str.push_str("hello, ");
+        str.push_str("world!");
+        str
+    };
+    println!("{}", msg);
+}
+```
+
+#### `false`
+
+```rust
+fn foo() {
+
+    let msg = {
+
+        let mut str = String::new();
+        str.push_str("hello, ");
+        str.push_str("world!");
+        str
+
+    };
+    println!("{}", msg);
+
+}
+```
+
+## `required_version`
+
+Require a specific version of rustfmt. If you want to make sure that the 
+specific version of rustfmt is used in your CI, use this option.
+
+- **Default value**: `CARGO_PKG_VERSION`
+- **Possible values**: any published version (e.g. `"0.3.8"`)
+- **Stable**: No
+
+## `hide_parse_errors`
+
+Do not show parse errors if the parser failed to parse files.
+
+- **Default value**: `false`
+- **Possible values**: `true`, `false`
+- **Stable**: No
+
+## `color`
+
+Whether to use colored output or not.
+
+- **Default value**: `"Auto"`
+- **Possible values**: "Auto", "Always", "Never"
+- **Stable**: No
+
+## `unstable_features`
+
+Enable unstable featuers on stable channel.
+
+- **Default value**: `false`
+- **Possible values**: `true`, `false`
+- **Stable**: Yes
