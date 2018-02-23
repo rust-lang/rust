@@ -121,6 +121,8 @@ where
     }
 }
 
+/// Rewrite the same kind of attributes at the same time. This includes doc
+/// comments and derives.
 fn rewrite_first_group_attrs(
     context: &RewriteContext,
     attrs: &[ast::Attribute],
