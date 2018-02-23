@@ -110,7 +110,7 @@ pub fn check(build: &mut Build) {
         //
         // In these cases we automatically enable Ninja if we find it in the
         // environment.
-        if !build.config.llvm.ninja && build.config.build.contains("msvc") {
+        if !build.config.llvm.ninja && build.config.general.build.contains("msvc") {
             if cmd_finder.maybe_have("ninja").is_some() {
                 build.config.llvm.ninja = true;
             }
@@ -151,7 +151,7 @@ pub fn check(build: &mut Build) {
     }
 
     // Externally configured LLVM requires FileCheck to exist
-    let filecheck = build.llvm_filecheck(build.config.build);
+    let filecheck = build.llvm_filecheck(build.config.general.build);
     if !filecheck.starts_with(&build.config.general.out) && !filecheck.exists() &&
         build.config.rust.codegen_tests {
         panic!("FileCheck executable {:?} does not exist", filecheck);
@@ -160,7 +160,7 @@ pub fn check(build: &mut Build) {
     for target in &build.config.general.target {
         // Can't compile for iOS unless we're on macOS
         if target.contains("apple-ios") &&
-           !build.config.build.contains("apple-darwin") {
+           !build.config.general.build.contains("apple-darwin") {
             panic!("the iOS target is only supported on macOS");
         }
 
@@ -168,7 +168,7 @@ pub fn check(build: &mut Build) {
         if target.contains("musl") {
             // If this is a native target (host is also musl) and no musl-root is given,
             // fall back to the system toolchain in /usr before giving up
-            if build.musl_root(*target).is_none() && build.config.build == *target {
+            if build.musl_root(*target).is_none() && build.config.general.build == *target {
                 let target = build.config.target_config.entry(target.clone())
                                  .or_insert(Default::default());
                 target.musl_root = Some("/usr".into());

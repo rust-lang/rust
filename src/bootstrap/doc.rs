@@ -240,7 +240,7 @@ impl Step for TheBook {
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(TheBook {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.config.build),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.config.general.build),
             target: run.target,
             name: "book",
         });
@@ -339,7 +339,7 @@ impl Step for Standalone {
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(Standalone {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.config.build),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.config.general.build),
             target: run.target,
         });
     }
@@ -450,7 +450,7 @@ impl Step for Std {
         println!("Documenting stage{} std ({})", stage, target);
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
-        let compiler = builder.compiler(stage, build.config.build);
+        let compiler = builder.compiler(stage, build.config.general.build);
         let rustdoc = builder.rustdoc(compiler.host);
         let compiler = if build.force_use_stage1(compiler, target) {
             builder.compiler(1, compiler.host)
@@ -535,7 +535,7 @@ impl Step for Test {
         println!("Documenting stage{} test ({})", stage, target);
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
-        let compiler = builder.compiler(stage, build.config.build);
+        let compiler = builder.compiler(stage, build.config.general.build);
         let rustdoc = builder.rustdoc(compiler.host);
         let compiler = if build.force_use_stage1(compiler, target) {
             builder.compiler(1, compiler.host)
@@ -596,7 +596,7 @@ impl Step for Rustc {
         println!("Documenting stage{} compiler ({})", stage, target);
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
-        let compiler = builder.compiler(stage, build.config.build);
+        let compiler = builder.compiler(stage, build.config.general.build);
         let rustdoc = builder.rustdoc(compiler.host);
         let compiler = if build.force_use_stage1(compiler, target) {
             builder.compiler(1, compiler.host)
@@ -672,7 +672,7 @@ impl Step for ErrorIndex {
         index.arg(out.join("error-index.html"));
 
         // FIXME: shouldn't have to pass this env var
-        index.env("CFG_BUILD", &build.config.build)
+        index.env("CFG_BUILD", &build.config.general.build)
              .env("RUSTC_ERROR_METADATA_DST", build.extended_error_dir());
 
         build.run(&mut index);
@@ -705,7 +705,7 @@ impl Step for UnstableBookGen {
         let target = self.target;
 
         builder.ensure(compile::Std {
-            compiler: builder.compiler(builder.top_stage, build.config.build),
+            compiler: builder.compiler(builder.top_stage, build.config.general.build),
             target,
         });
 

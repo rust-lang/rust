@@ -167,7 +167,7 @@ macro_rules! install {
                 run.builder.ensure($name {
                     stage: run.builder.top_stage,
                     target: run.target,
-                    host: run.builder.build.config.build,
+                    host: run.builder.build.config.general.build,
                 });
             }
 
@@ -220,7 +220,7 @@ install!((self, builder, _config),
         install_analysis(builder, self.stage, self.target);
     };
     Src, "src", Self::should_build(_config) , only_hosts: true, {
-        if self.target == builder.build.config.build {
+        if self.target == builder.build.config.general.build {
             builder.ensure(dist::Src);
             install_src(builder, self.stage);
         }

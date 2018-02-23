@@ -40,12 +40,10 @@ pub use flags::Subcommand;
 /// each field, see the corresponding fields in
 /// `config.toml.example`.
 pub struct Config {
-    pub rustc_error_format: Option<String>,
-    pub build: Interned<String>,
-
     pub run_host_only: bool,
     pub is_sudo: bool,
 
+    pub rustc_error_format: Option<String>,
     pub exclude: Vec<PathBuf>,
     pub on_fail: Option<String>,
     pub stage: u32,
@@ -103,7 +101,7 @@ struct TomlConfig {
 pub struct Build {
     #[serde(skip)]
     // We get build from the BUILD env-var, provided by bootstrap.py
-    build: Interned<String>,
+    pub build: Interned<String>,
     pub host: Vec<Interned<String>>,
     pub target: Vec<Interned<String>>,
 
@@ -512,8 +510,6 @@ impl Config {
                 }
                 None => false,
             },
-            // bootstrap.py already handles this fully -- checks flags, toml, and default-generates
-            build: toml.build.build.clone(),
 
             general: toml.build,
             install: toml.install,

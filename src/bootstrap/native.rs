@@ -85,11 +85,11 @@ impl Step for Llvm {
             (dir, config_dir)
         } else {
             (build.llvm_out(target),
-                build.llvm_out(build.config.build).join("bin"))
+                build.llvm_out(build.config.general.build).join("bin"))
         };
         let done_stamp = out_dir.join("llvm-finished-building");
         let build_llvm_config = llvm_config_ret_dir
-            .join(exe("llvm-config", &*build.config.build));
+            .join(exe("llvm-config", &*build.config.general.build));
         if done_stamp.exists() {
             let mut done_contents = String::new();
             t!(t!(File::open(&done_stamp)).read_to_string(&mut done_contents));
@@ -137,7 +137,7 @@ impl Step for Llvm {
         let assertions = if build.config.llvm.assertions {"ON"} else {"OFF"};
 
         cfg.target(&target)
-           .host(&build.config.build)
+           .host(&build.config.general.build)
            .out_dir(&out_dir)
            .profile(profile)
            .define("LLVM_ENABLE_ASSERTIONS", assertions)
@@ -187,15 +187,15 @@ impl Step for Llvm {
         }
 
         // http://llvm.org/docs/HowToCrossCompileLLVM.html
-        if target != build.config.build && !emscripten {
+        if target != build.config.general.build && !emscripten {
             builder.ensure(Llvm {
-                target: build.config.build,
+                target: build.config.general.build,
                 emscripten: false,
             });
             // FIXME: if the llvm root for the build triple is overridden then we
             //        should use llvm-tblgen from there, also should verify that it
             //        actually exists most of the time in normal installs of LLVM.
-            let host = build.llvm_out(build.config.build).join("bin/llvm-tblgen");
+            let host = build.llvm_out(build.config.general.build).join("bin/llvm-tblgen");
             cfg.define("CMAKE_CROSSCOMPILING", "True")
                .define("LLVM_TABLEGEN", &host);
 
@@ -205,7 +205,7 @@ impl Step for Llvm {
                cfg.define("CMAKE_SYSTEM_NAME", "FreeBSD");
             }
 
-            cfg.define("LLVM_NATIVE_BUILD", build.llvm_out(build.config.build).join("build"));
+            cfg.define("LLVM_NATIVE_BUILD", build.llvm_out(build.config.general.build).join("build"));
         }
 
         let sanitize_cc = |cc: &Path| {
@@ -344,7 +344,7 @@ impl Step for TestHelpers {
         cfg.cargo_metadata(false)
            .out_dir(&dst)
            .target(&target)
-           .host(&build.config.build)
+           .host(&build.config.general.build)
            .opt_level(0)
            .warnings(false)
            .debug(false)
@@ -408,7 +408,7 @@ impl Step for Openssl {
                 }
 
                 // Ensure the hash is correct.
-                let mut shasum = if target.contains("apple") || build.config.build.contains("netbsd") {
+                let mut shasum = if target.contains("apple") || build.config.general.build.contains("netbsd") {
                     let mut cmd = Command::new("shasum");
                     cmd.arg("-a").arg("256");
                     cmd
@@ -506,7 +506,7 @@ impl Step for Openssl {
         if target == "sparc64-unknown-netbsd" {
             // Need -m64 to get assembly generated correctly for sparc64.
             configure.arg("-m64");
-            if build.config.build.contains("netbsd") {
+            if build.config.general.build.contains("netbsd") {
                 // Disable sparc64 asm on NetBSD builders, it uses
                 // m4(1)'s -B flag, which NetBSD m4 does not support.
                 configure.arg("no-asm");

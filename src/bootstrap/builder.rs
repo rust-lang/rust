@@ -495,7 +495,7 @@ impl<'a> Builder<'a> {
         let compiler = self.compiler(self.top_stage, host);
         cmd.env("RUSTC_STAGE", compiler.stage.to_string())
            .env("RUSTC_SYSROOT", self.sysroot(compiler))
-           .env("RUSTDOC_LIBDIR", self.sysroot_libdir(compiler, self.build.config.build))
+           .env("RUSTDOC_LIBDIR", self.sysroot_libdir(compiler, self.build.config.general.build))
            .env("CFG_RELEASE_CHANNEL", &self.build.config.rust.channel)
            .env("RUSTDOC_REAL", self.rustdoc(host))
            .env("RUSTDOC_CRATE_VERSION", self.build.rust_version())
@@ -589,7 +589,7 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_ERROR_FORMAT", error_format);
         }
         if cmd != "build" && cmd != "check" {
-            cargo.env("RUSTDOC_LIBDIR", self.rustc_libdir(self.compiler(2, self.build.config.build)));
+            cargo.env("RUSTDOC_LIBDIR", self.rustc_libdir(self.compiler(2, self.build.config.general.build)));
         }
 
         if mode != Mode::Tool {

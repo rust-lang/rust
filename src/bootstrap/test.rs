@@ -540,7 +540,7 @@ impl Step for Tidy {
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(Tidy {
-            host: run.builder.build.config.build,
+            host: run.builder.build.config.general.build,
         });
     }
 }
@@ -791,12 +791,12 @@ impl Step for Compiletest {
 
         if suite == "debuginfo" {
             // Skip debuginfo tests on MSVC
-            if build.config.build.contains("msvc") {
+            if build.config.general.build.contains("msvc") {
                 return;
             }
 
             if mode == "debuginfo-XXX" {
-                return if build.config.build.contains("apple") {
+                return if build.config.general.build.contains("apple") {
                     builder.ensure(Compiletest {
                         mode: "debuginfo-lldb",
                         ..self
@@ -851,7 +851,7 @@ impl Step for Compiletest {
         cmd.arg("--mode").arg(mode);
         cmd.arg("--target").arg(target);
         cmd.arg("--host").arg(&*compiler.host);
-        cmd.arg("--llvm-filecheck").arg(build.llvm_filecheck(build.config.build));
+        cmd.arg("--llvm-filecheck").arg(build.llvm_filecheck(build.config.general.build));
 
         if let Some(ref nodejs) = build.config.general.nodejs {
             cmd.arg("--nodejs").arg(nodejs);
@@ -881,7 +881,7 @@ impl Step for Compiletest {
 
         cmd.arg("--docck-python").arg(build.python());
 
-        if build.config.build.ends_with("apple-darwin") {
+        if build.config.general.build.ends_with("apple-darwin") {
             // Force /usr/bin/python on macOS for LLDB tests because we're loading the
             // LLDB plugin's compiled module which only works with the system python
             // (namely not Homebrew-installed python)
@@ -1093,7 +1093,7 @@ impl Step for ErrorIndex {
         build.run(builder.tool_cmd(Tool::ErrorIndex)
                     .arg("markdown")
                     .arg(&output)
-                    .env("CFG_BUILD", &build.config.build)
+                    .env("CFG_BUILD", &build.config.general.build)
                     .env("RUSTC_ERROR_METADATA_DST", build.extended_error_dir()));
 
         markdown_test(builder, compiler, &output);
@@ -1586,7 +1586,7 @@ impl Step for Distcheck {
                          .args(&build.config.general.configure_args)
                          .arg("--enable-vendor")
                          .current_dir(&dir));
-        build.run(Command::new(build_helper::make(&build.config.build))
+        build.run(Command::new(build_helper::make(&build.config.general.build))
                          .arg("check")
                          .current_dir(&dir));
 

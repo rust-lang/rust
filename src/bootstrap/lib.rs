@@ -311,7 +311,7 @@ impl Build {
 
     pub fn build_triple(&self) -> &[Interned<String>] {
         unsafe {
-            slice::from_raw_parts(&self.config.build, 1)
+            slice::from_raw_parts(&self.config.general.build, 1)
         }
     }
 
@@ -481,7 +481,7 @@ impl Build {
         if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
             s.clone()
         } else {
-            self.llvm_out(self.config.build).join("bin")
+            self.llvm_out(self.config.general.build).join("bin")
                 .join(exe("llvm-config", &*target))
         }
     }
@@ -493,9 +493,9 @@ impl Build {
             let llvm_bindir = output(Command::new(s).arg("--bindir"));
             Path::new(llvm_bindir.trim()).join(exe("FileCheck", &*target))
         } else {
-            let base = self.llvm_out(self.config.build).join("build");
+            let base = self.llvm_out(self.config.general.build).join("build");
             let exe = exe("FileCheck", &*target);
-            if !self.config.llvm.ninja && self.config.build.contains("msvc") {
+            if !self.config.llvm.ninja && self.config.general.build.contains("msvc") {
                 base.join("Release/bin").join(exe)
             } else {
                 base.join("bin").join(exe)
@@ -524,7 +524,7 @@ impl Build {
     /// Returns the libdir of the snapshot compiler.
     fn rustc_snapshot_libdir(&self) -> PathBuf {
         self.config.general.initial_rustc.parent().unwrap().parent().unwrap()
-            .join(libdir(&self.config.build))
+            .join(libdir(&self.config.general.build))
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
@@ -628,7 +628,7 @@ impl Build {
         if let Some(linker) = self.config.target_config.get(&target)
                                                        .and_then(|c| c.linker.as_ref()) {
             Some(linker)
-        } else if target != self.config.build &&
+        } else if target != self.config.general.build &&
                   !target.contains("msvc") && !target.contains("emscripten") {
             Some(self.cc(target))
         } else {
@@ -703,7 +703,7 @@ impl Build {
     fn force_use_stage1(&self, compiler: Compiler, target: Interned<String>) -> bool {
         !self.config.general.full_bootstrap &&
             compiler.stage >= 2 &&
-            (self.config.general.host.iter().any(|h| *h == target) || target == self.config.build)
+            (self.config.general.host.iter().any(|h| *h == target) || target == self.config.general.build)
     }
 
     /// Returns the directory that OpenSSL artifacts are compiled into if
@@ -933,7 +933,7 @@ impl<'a> Compiler {
 
     /// Returns whether this is a snapshot compiler for `build`'s configuration
     pub fn is_snapshot(&self, build: &Build) -> bool {
-        self.stage == 0 && self.host == build.config.build
+        self.stage == 0 && self.host == build.config.general.build
     }
 
     /// Returns if this compiler should be treated as a final stage one in the

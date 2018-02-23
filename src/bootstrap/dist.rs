@@ -122,7 +122,7 @@ impl Step for Docs {
 
         // As part of this step, *also* copy the docs directory to a directory which
         // buildbot typically uploads.
-        if host == build.config.build {
+        if host == build.config.general.build {
             let dst = distdir(build).join("doc").join(build.rust_package_vers());
             t!(fs::create_dir_all(&dst));
             cp_r(&src, &dst);
@@ -549,7 +549,7 @@ impl Step for Std {
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(Std {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.config.build),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.config.general.build),
             target: run.target,
         });
     }
@@ -564,7 +564,7 @@ impl Step for Std {
 
         // The only true set of target libraries came from the build triple, so
         // let's reduce redundant work by only producing archives from that host.
-        if compiler.host != build.config.build {
+        if compiler.host != build.config.general.build {
             println!("\tskipping, not a build host");
             return distdir(build).join(format!("{}-{}.tar.gz", name, target));
         }
@@ -623,7 +623,7 @@ impl Step for Analysis {
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(Analysis {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.config.build),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.config.general.build),
             target: run.target,
         });
     }
@@ -637,7 +637,7 @@ impl Step for Analysis {
         println!("Dist analysis");
         let name = pkgname(build, "rust-analysis");
 
-        if &compiler.host != build.config.build {
+        if &compiler.host != build.config.general.build {
             println!("\tskipping, not a build host");
             return distdir(build).join(format!("{}-{}.tar.gz", name, target));
         }
@@ -890,9 +890,9 @@ impl Step for PlainSourceTarball {
                    .arg("--vers").arg(CARGO_VENDOR_VERSION)
                    .arg("cargo-vendor")
                    .env("RUSTC", &build.config.general.initial_rustc);
-                if let Some(dir) = build.openssl_install_dir(build.config.build) {
+                if let Some(dir) = build.openssl_install_dir(build.config.general.build) {
                     builder.ensure(native::Openssl {
-                        target: build.config.build,
+                        target: build.config.general.build,
                     });
                     cmd.env("OPENSSL_DIR", dir);
                 }
@@ -1012,7 +1012,7 @@ impl Step for Cargo {
         t!(fs::create_dir_all(image.join("share/zsh/site-functions")));
         t!(fs::create_dir_all(image.join("etc/bash_completion.d")));
         let cargo = builder.ensure(tool::Cargo {
-            compiler: builder.compiler(stage, build.config.build),
+            compiler: builder.compiler(stage, build.config.general.build),
             target
         });
         install(&cargo, &image.join("bin"), 0o755);
@@ -1099,7 +1099,7 @@ impl Step for Rls {
         // We expect RLS to build, because we've exited this step above if tool
         // state for RLS isn't testing.
         let rls = builder.ensure(tool::Rls {
-            compiler: builder.compiler(stage, build.config.build),
+            compiler: builder.compiler(stage, build.config.general.build),
             target
         }).or_else(|| { println!("Unable to build RLS, skipping dist"); None })?;
 
@@ -1178,11 +1178,11 @@ impl Step for Rustfmt {
 
         // Prepare the image directory
         let rustfmt = builder.ensure(tool::Rustfmt {
-            compiler: builder.compiler(stage, build.config.build),
+            compiler: builder.compiler(stage, build.config.general.build),
             target
         }).or_else(|| { println!("Unable to build Rustfmt, skipping dist"); None })?;
         let cargofmt = builder.ensure(tool::Cargofmt {
-            compiler: builder.compiler(stage, build.config.build),
+            compiler: builder.compiler(stage, build.config.general.build),
             target
         }).or_else(|| { println!("Unable to build Cargofmt, skipping dist"); None })?;
 
@@ -1241,7 +1241,7 @@ impl Step for Extended {
     fn make_run(run: RunConfig) {
         run.builder.ensure(Extended {
             stage: run.builder.top_stage,
-            host: run.builder.build.config.build,
+            host: run.builder.build.config.general.build,
             target: run.host,
         });
     }

@@ -71,7 +71,7 @@ impl Step for Std {
         builder.ensure(StartupObjects { compiler, target });
 
         if build.force_use_stage1(compiler, target) {
-            let from = builder.compiler(1, build.config.build);
+            let from = builder.compiler(1, build.config.general.build);
             builder.ensure(Std {
                 compiler: from,
                 target,
@@ -112,7 +112,7 @@ impl Step for Std {
                   false);
 
         builder.ensure(StdLink {
-            compiler: builder.compiler(compiler.stage, build.config.build),
+            compiler: builder.compiler(compiler.stage, build.config.general.build),
             target_compiler: compiler,
             target,
         });
@@ -344,12 +344,12 @@ impl Step for Test {
 
         if build.force_use_stage1(compiler, target) {
             builder.ensure(Test {
-                compiler: builder.compiler(1, build.config.build),
+                compiler: builder.compiler(1, build.config.general.build),
                 target,
             });
-            println!("Uplifting stage1 test ({} -> {})", &build.config.build, target);
+            println!("Uplifting stage1 test ({} -> {})", &build.config.general.build, target);
             builder.ensure(TestLink {
-                compiler: builder.compiler(1, build.config.build),
+                compiler: builder.compiler(1, build.config.general.build),
                 target_compiler: compiler,
                 target,
             });
@@ -369,7 +369,7 @@ impl Step for Test {
                   false);
 
         builder.ensure(TestLink {
-            compiler: builder.compiler(compiler.stage, build.config.build),
+            compiler: builder.compiler(compiler.stage, build.config.general.build),
             target_compiler: compiler,
             target,
         });
@@ -460,12 +460,12 @@ impl Step for Rustc {
 
         if build.force_use_stage1(compiler, target) {
             builder.ensure(Rustc {
-                compiler: builder.compiler(1, build.config.build),
+                compiler: builder.compiler(1, build.config.general.build),
                 target,
             });
-            println!("Uplifting stage1 rustc ({} -> {})", &build.config.build, target);
+            println!("Uplifting stage1 rustc ({} -> {})", &build.config.general.build, target);
             builder.ensure(RustcLink {
-                compiler: builder.compiler(1, build.config.build),
+                compiler: builder.compiler(1, build.config.general.build),
                 target_compiler: compiler,
                 target,
             });
@@ -474,8 +474,8 @@ impl Step for Rustc {
 
         // Ensure that build scripts have a std to link against.
         builder.ensure(Std {
-            compiler: builder.compiler(self.compiler.stage, build.config.build),
-            target: build.config.build,
+            compiler: builder.compiler(self.compiler.stage, build.config.general.build),
+            target: build.config.general.build,
         });
 
         let _folder = build.fold_output(|| format!("stage{}-rustc", compiler.stage));
@@ -494,7 +494,7 @@ impl Step for Rustc {
                   false);
 
         builder.ensure(RustcLink {
-            compiler: builder.compiler(compiler.stage, build.config.build),
+            compiler: builder.compiler(compiler.stage, build.config.general.build),
             target_compiler: compiler,
             target,
         });
@@ -617,7 +617,7 @@ impl Step for CodegenBackend {
 
         if build.force_use_stage1(compiler, target) {
             builder.ensure(CodegenBackend {
-                compiler: builder.compiler(1, build.config.build),
+                compiler: builder.compiler(1, build.config.general.build),
                 target,
                 backend: self.backend,
             });
@@ -841,7 +841,7 @@ impl Step for Assemble {
         let target_compiler = self.target_compiler;
 
         if target_compiler.stage == 0 {
-            assert_eq!(build.config.build, target_compiler.host,
+            assert_eq!(build.config.general.build, target_compiler.host,
                 "Cannot obtain compiler for non-native build triple at stage 0");
             // The stage 0 compiler for the build triple is always pre-built.
             return target_compiler;
@@ -864,7 +864,7 @@ impl Step for Assemble {
         // FIXME: It may be faster if we build just a stage 1 compiler and then
         //        use that to bootstrap this compiler forward.
         let build_compiler =
-            builder.compiler(target_compiler.stage - 1, build.config.build);
+            builder.compiler(target_compiler.stage - 1, build.config.general.build);
 
         // Build the libraries for this compiler to link to (i.e., the libraries
         // it uses at runtime). NOTE: Crates the target compiler compiles don't
