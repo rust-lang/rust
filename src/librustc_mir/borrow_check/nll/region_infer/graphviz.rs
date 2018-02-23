@@ -20,7 +20,7 @@ use super::*;
 
 impl<'tcx> RegionInferenceContext<'tcx> {
     /// Write out the region constraint graph.
-    pub(crate) fn dump_graphviz(&self, mut w: &mut Write) -> io::Result<()> {
+    pub(crate) fn dump_graphviz(&self, mut w: &mut dyn Write) -> io::Result<()> {
         dot::render(self, &mut w)
     }
 }
