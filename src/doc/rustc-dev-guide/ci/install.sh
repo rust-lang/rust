@@ -1,4 +1,5 @@
 #!/bin/bash
+
 set -ex
 
 function cargo_install() {
