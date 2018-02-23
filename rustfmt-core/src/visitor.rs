@@ -26,15 +26,6 @@ use shape::{Indent, Shape};
 use spanned::Spanned;
 use utils::{self, contains_skip, count_newlines, inner_attributes, mk_sp, ptr_vec_to_ref_vec};
 
-/// Returns attributes that are within `outer_span`.
-pub fn filter_inline_attrs(attrs: &[ast::Attribute], outer_span: Span) -> Vec<ast::Attribute> {
-    attrs
-        .iter()
-        .filter(|a| outer_span.lo() <= a.span.lo() && a.span.hi() <= outer_span.hi())
-        .cloned()
-        .collect()
-}
-
 /// Returns true for `mod foo;`, false for `mod foo { .. }`.
 fn is_mod_decl(item: &ast::Item) -> bool {
     match item.node {

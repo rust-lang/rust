@@ -19,6 +19,7 @@
 use config::{Config, lists::*};
 use syntax::{ast, attr, codemap::Span};
 
+use attr::filter_inline_attrs;
 use codemap::LineRangeUtils;
 use comment::combine_strs_with_missing_comments;
 use imports::{path_to_imported_ident, rewrite_import};
@@ -28,7 +29,7 @@ use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use spanned::Spanned;
 use utils::mk_sp;
-use visitor::{filter_inline_attrs, rewrite_extern_crate, FmtVisitor};
+use visitor::{rewrite_extern_crate, FmtVisitor};
 
 use std::cmp::Ordering;
 

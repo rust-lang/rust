@@ -12,6 +12,7 @@
 
 use config::lists::*;
 use syntax::ast;
+use syntax::codemap::Span;
 
 use comment::{combine_strs_with_missing_comments, contains_comment, rewrite_doc_comment};
 use expr::rewrite_literal;
@@ -30,6 +31,15 @@ pub fn get_attrs_from_stmt(stmt: &ast::Stmt) -> &[ast::Attribute] {
         ast::StmtKind::Expr(ref expr) | ast::StmtKind::Semi(ref expr) => &expr.attrs,
         ast::StmtKind::Mac(ref mac) => &mac.2,
     }
+}
+
+/// Returns attributes that are within `outer_span`.
+pub fn filter_inline_attrs(attrs: &[ast::Attribute], outer_span: Span) -> Vec<ast::Attribute> {
+    attrs
+        .iter()
+        .filter(|a| outer_span.lo() <= a.span.lo() && a.span.hi() <= outer_span.hi())
+        .cloned()
+        .collect()
 }
 
 fn is_derive(attr: &ast::Attribute) -> bool {
