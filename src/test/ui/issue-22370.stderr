@@ -1,7 +1,7 @@
 error[E0393]: the type parameter `T` must be explicitly specified
   --> $DIR/issue-22370.rs:15:10
    |
-15 | fn f(a: &A) {}
+LL | fn f(a: &A) {}
    |          ^ missing reference to `T`
    |
    = note: because of the default `Self` reference, type parameters must be specified on object types

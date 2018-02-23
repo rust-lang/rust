@@ -1,11 +1,11 @@
 error: expected expression, found `_`
   --> $DIR/underscore.rs:18:9
    |
-18 |         _
+LL |         _
    |         ^
    | 
   ::: $DIR/main.rs:15:5
    |
-15 |     underscore!();
+LL |     underscore!();
    |     -------------- in this macro invocation
 

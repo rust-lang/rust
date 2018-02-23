@@ -1,13 +1,13 @@
 error: unused import: `std::thread`
   --> $DIR/issue-30730.rs:13:5
    |
-13 | use std::thread;
+LL | use std::thread;
    |     ^^^^^^^^^^^
    |
 note: lint level defined here
   --> $DIR/issue-30730.rs:12:9
    |
-12 | #![deny(warnings)]
+LL | #![deny(warnings)]
    |         ^^^^^^^^
    = note: #[deny(unused_imports)] implied by #[deny(warnings)]
 

@@ -1,9 +1,9 @@
 error[E0308]: mismatched types
   --> $DIR/main.rs:12:18
    |
-12 |       let x: u32 = ( //~ ERROR mismatched types
+LL |       let x: u32 = ( //~ ERROR mismatched types
    |  __________________^
-13 | |     );
+LL | |     );
    | |_____^ expected u32, found ()
    |
    = note: expected type `u32`

@@ -370,7 +370,7 @@ mod foo {
   "rendered": "error[E0412]: cannot find type `Iter` in this scope
   --> $DIR/use_suggestion_json.rs:21:12
    |
-21 |     let x: Iter;
+LL |     let x: Iter;
    |            ^^^^ not found in this scope
 help: possible candidates are found in other modules, you can import them into scope
    |

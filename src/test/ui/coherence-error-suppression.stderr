@@ -1,7 +1,7 @@
 error[E0412]: cannot find type `DoesNotExist` in this scope
   --> $DIR/coherence-error-suppression.rs:19:14
    |
-19 | impl Foo for DoesNotExist {} //~ ERROR cannot find type `DoesNotExist` in this scope
+LL | impl Foo for DoesNotExist {} //~ ERROR cannot find type `DoesNotExist` in this scope
    |              ^^^^^^^^^^^^ not found in this scope
 
 error: aborting due to previous error

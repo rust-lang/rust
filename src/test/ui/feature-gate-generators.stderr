@@ -1,7 +1,7 @@
 error[E0658]: yield syntax is experimental
   --> $DIR/feature-gate-generators.rs:12:5
    |
-12 |     yield true; //~ ERROR yield syntax is experimental
+LL |     yield true; //~ ERROR yield syntax is experimental
    |     ^^^^^^^^^^
    |
    = help: add #![feature(generators)] to the crate attributes to enable

@@ -1,7 +1,7 @@
 error[E0565]: unsupported literal
   --> $DIR/E0565-1.rs:14:14
    |
-14 | #[deprecated("since")] //~ ERROR E0565
+LL | #[deprecated("since")] //~ ERROR E0565
    |              ^^^^^^^
 
 error: aborting due to previous error

@@ -1,10 +1,10 @@
 error[E0255]: the name `foo` is defined multiple times
   --> $DIR/E0255.rs:13:1
    |
-11 | use bar::foo;
+LL | use bar::foo;
    |     -------- previous import of the value `foo` here
 12 | 
-13 | fn foo() {} //~ ERROR E0255
+LL | fn foo() {} //~ ERROR E0255
    | ^^^^^^^^ `foo` redefined here
    |
    = note: `foo` must be defined only once in the value namespace of this module

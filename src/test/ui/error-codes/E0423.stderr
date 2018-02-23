@@ -1,7 +1,7 @@
 error[E0423]: expected function, found struct `Foo`
   --> $DIR/E0423.rs:14:13
    |
-14 |     let f = Foo(); //~ ERROR E0423
+LL |     let f = Foo(); //~ ERROR E0423
    |             ^^^ did you mean `Foo { /* fields */ }`?
 
 error: aborting due to previous error

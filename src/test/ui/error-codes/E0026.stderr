@@ -1,7 +1,7 @@
 error[E0026]: struct `Thing` does not have a field named `z`
   --> $DIR/E0026.rs:19:23
    |
-19 |         Thing { x, y, z } => {}
+LL |         Thing { x, y, z } => {}
    |                       ^ struct `Thing` does not have field `z`
 
 error: aborting due to previous error

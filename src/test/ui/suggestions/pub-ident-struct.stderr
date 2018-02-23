@@ -1,7 +1,7 @@
 error: missing `struct` for struct definition
   --> $DIR/pub-ident-struct.rs:11:4
    |
-11 | pub S {
+LL | pub S {
    |    ^
 help: add `struct` here to parse `S` as a public struct
    |

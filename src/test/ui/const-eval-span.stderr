@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/const-eval-span.rs:19:9
    |
-19 |     V = CONSTANT,
+LL |     V = CONSTANT,
    |         ^^^^^^^^ expected isize, found struct `S`
    |
    = note: expected type `isize`

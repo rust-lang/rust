@@ -1,9 +1,9 @@
 error[E0252]: the name `foo` is defined multiple times
   --> $DIR/double-import.rs:23:5
    |
-22 | use sub1::foo;
+LL | use sub1::foo;
    |     --------- previous import of the value `foo` here
-23 | use sub2::foo; //~ ERROR the name `foo` is defined multiple times
+LL | use sub2::foo; //~ ERROR the name `foo` is defined multiple times
    |     ^^^^^^^^^ `foo` reimported here
    |
    = note: `foo` must be defined only once in the value namespace of this module

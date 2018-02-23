@@ -1,7 +1,7 @@
 error: character literal may only contain one codepoint
   --> $DIR/str-as-char.rs:12:14
    |
-12 |     println!('●●');
+LL |     println!('●●');
    |              ^^^^
 help: if you meant to write a `str` literal, use double quotes
    |

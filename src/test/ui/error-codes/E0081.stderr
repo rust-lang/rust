@@ -1,9 +1,9 @@
 error[E0081]: discriminant value `3isize` already exists
   --> $DIR/E0081.rs:13:9
    |
-12 |     P = 3,
+LL |     P = 3,
    |         - first use of `3isize`
-13 |     X = 3,
+LL |     X = 3,
    |         ^ enum already has `3isize`
 
 error: aborting due to previous error
