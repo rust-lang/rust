@@ -80,6 +80,10 @@ macro_rules! erase {
     ($x:tt) => ({})
 }
 
+macro_rules! replace {
+    ($x:tt with $($y:tt)*) => ($($y)*)
+}
+
 macro_rules! is_anon_attr {
     (anon) => (true);
     ($attr:ident) => (false);
@@ -111,7 +115,7 @@ macro_rules! define_dep_nodes {
     (<$tcx:tt>
     $(
         [$($attr:ident),* ]
-        $variant:ident $(( $($tuple_arg:tt),* ))*
+        $variant:ident $(( $tuple_arg_ty:ty $(,)* ))*
                        $({ $($struct_arg_name:ident : $struct_arg_ty:ty),* })*
       ,)*
     ) => (
@@ -134,7 +138,7 @@ macro_rules! define_dep_nodes {
 
                             // tuple args
                             $({
-                                return <( $($tuple_arg,)* ) as DepNodeParams>
+                                return <$tuple_arg_ty as DepNodeParams>
                                     ::CAN_RECONSTRUCT_QUERY_KEY;
                             })*
 
@@ -186,7 +190,7 @@ macro_rules! define_dep_nodes {
                         DepKind :: $variant => {
                             // tuple args
                             $({
-                                $(erase!($tuple_arg);)*
+                                erase!($tuple_arg_ty);
                                 return true;
                             })*
 
@@ -205,7 +209,7 @@ macro_rules! define_dep_nodes {
 
         pub enum DepConstructor<$tcx> {
             $(
-                $variant $(( $($tuple_arg),* ))*
+                $variant $(( $tuple_arg_ty ))*
                          $({ $($struct_arg_name : $struct_arg_ty),* })*
             ),*
         }
@@ -227,15 +231,14 @@ macro_rules! define_dep_nodes {
             {
                 match dep {
                     $(
-                        DepConstructor :: $variant $(( $($tuple_arg),* ))*
+                        DepConstructor :: $variant $(( replace!(($tuple_arg_ty) with arg) ))*
                                                    $({ $($struct_arg_name),* })*
                             =>
                         {
                             // tuple args
                             $({
-                                let tupled_args = ( $($tuple_arg,)* );
-                                let hash = DepNodeParams::to_fingerprint(&tupled_args,
-                                                                         tcx);
+                                erase!($tuple_arg_ty);
+                                let hash = DepNodeParams::to_fingerprint(&arg, tcx);
                                 let dep_node = DepNode {
                                     kind: DepKind::$variant,
                                     hash
@@ -247,7 +250,7 @@ macro_rules! define_dep_nodes {
                                     tcx.sess.opts.debugging_opts.query_dep_graph)
                                 {
                                     tcx.dep_graph.register_dep_node_debug_str(dep_node, || {
-                                        tupled_args.to_debug_str(tcx)
+                                        arg.to_debug_str(tcx)
                                     });
                                 }
 
@@ -679,43 +682,43 @@ impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a, T> DepNodeParams<'a, 'gcx, 'tcx> for T
     }
 }
 
-impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for (DefId,) {
+impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for DefId {
     const CAN_RECONSTRUCT_QUERY_KEY: bool = true;
 
     fn to_fingerprint(&self, tcx: TyCtxt) -> Fingerprint {
-        tcx.def_path_hash(self.0).0
+        tcx.def_path_hash(*self).0
     }
 
     fn to_debug_str(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> String {
-        tcx.item_path_str(self.0)
+        tcx.item_path_str(*self)
     }
 }
 
-impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for (DefIndex,) {
+impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for DefIndex {
     const CAN_RECONSTRUCT_QUERY_KEY: bool = true;
 
     fn to_fingerprint(&self, tcx: TyCtxt) -> Fingerprint {
-        tcx.hir.definitions().def_path_hash(self.0).0
+        tcx.hir.definitions().def_path_hash(*self).0
     }
 
     fn to_debug_str(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> String {
-        tcx.item_path_str(DefId::local(self.0))
+        tcx.item_path_str(DefId::local(*self))
     }
 }
 
-impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for (CrateNum,) {
+impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for CrateNum {
     const CAN_RECONSTRUCT_QUERY_KEY: bool = true;
 
     fn to_fingerprint(&self, tcx: TyCtxt) -> Fingerprint {
         let def_id = DefId {
-            krate: self.0,
+            krate: *self,
             index: CRATE_DEF_INDEX,
         };
         tcx.def_path_hash(def_id).0
     }
 
     fn to_debug_str(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> String {
-        tcx.crate_name(self.0).as_str().to_string()
+        tcx.crate_name(*self).as_str().to_string()
     }
 }
 
@@ -743,17 +746,17 @@ impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for (DefId, De
     }
 }
 
-impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for (HirId,) {
+impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for HirId {
     const CAN_RECONSTRUCT_QUERY_KEY: bool = false;
 
     // We actually would not need to specialize the implementation of this
     // method but it's faster to combine the hashes than to instantiate a full
     // hashing context and stable-hashing state.
     fn to_fingerprint(&self, tcx: TyCtxt) -> Fingerprint {
-        let (HirId {
+        let HirId {
             owner,
             local_id: ItemLocalId(local_id),
-        },) = *self;
+        } = *self;
 
         let def_path_hash = tcx.def_path_hash(DefId::local(owner));
         let local_id = Fingerprint::from_smaller_hash(local_id as u64);
