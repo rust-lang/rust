@@ -151,6 +151,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     err.emit();
                 }
             }
+        } else if let PatKind::Ref(..) = pat.node {
+            // When you encounter a `&pat` pattern, reset to "by
+            // value". This is so that `x` and `y` here are by value,
+            // as they appear to be:
+            //
+            // ```
+            // match &(&22, &44) {
+            //   (&x, &y) => ...
+            // }
+            // ```
+            //
+            // cc #46688
+            def_bm = ty::BindByValue(hir::MutImmutable);
         }
 
         // Lose mutability now that we know binding mode and discriminant type.
