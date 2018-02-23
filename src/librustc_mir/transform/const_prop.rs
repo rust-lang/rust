@@ -404,10 +404,12 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                     );
                     use rustc::mir::AssertMessage::*;
                     match msg {
-                        GeneratorResumedAfterReturn =>
-                            lint.span_label(span, "generator resumed after completion"),
-                        GeneratorResumedAfterPanic =>
-                            lint.span_label(span, "generator resumed after panicking"),
+                        // Need proper const propagator for these
+                        GeneratorResumedAfterReturn |
+                        GeneratorResumedAfterPanic => {
+                            lint.cancel();
+                            return;
+                        },
                         Math(ref err) => lint.span_label(span, err.description()),
                         BoundsCheck { ref len, ref index } => {
                             let len = self.eval_operand(len).expect("len must be const");
