@@ -53,6 +53,7 @@ pub use config::summary::Summary;
 #[macro_use]
 mod utils;
 
+mod attr;
 mod chains;
 mod checkstyle;
 mod closures;
