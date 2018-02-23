@@ -19,11 +19,11 @@ use std::mem;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Mutex;
-use std::cmp::{PartialOrd, Ord, Ordering};
+use std::cmp::{Ord, Ordering, PartialOrd};
 
 use builder::Step;
 
-use serde::{Serialize, Serializer, Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 pub struct Interned<T>(*mut T);
 
@@ -54,7 +54,7 @@ impl<T> Interned<T> {
 
 impl<T> Default for Interned<T>
 where
-    T: Intern<T> + Default
+    T: Intern<T> + Default,
 {
     fn default() -> Interned<T> {
         T::default().intern()
@@ -80,7 +80,8 @@ where
 impl<B> Eq for Interned<B>
 where
     Interned<B>: PartialEq<Interned<B>>,
-{}
+{
+}
 
 impl<A, B> PartialOrd<Interned<A>> for Interned<B>
 where
@@ -160,7 +161,7 @@ impl Intern<PathBuf> for PathBuf {
 
 impl<'a, B, I> Intern<I> for &'a B
 where
-    B: Eq + Hash + ToOwned<Owned=I> + ?Sized + 'static,
+    B: Eq + Hash + ToOwned<Owned = I> + ?Sized + 'static,
     I: Borrow<B> + Clone + Hash + Eq + Send + 'static + Intern<I>,
 {
     fn intern(self) -> Interned<I> {
@@ -181,7 +182,7 @@ impl<T: Hash + Clone + Eq> TyIntern<T> {
 
     fn place_borrow<B>(&mut self, item: &B) -> Interned<T>
     where
-        B: Eq + Hash + ToOwned<Owned=T> + ?Sized,
+        B: Eq + Hash + ToOwned<Owned = T> + ?Sized,
         T: Borrow<B>,
     {
         if let Some(i) = self.set.get(&item) {
@@ -227,7 +228,7 @@ impl Interner {
 
     fn place_borrow<B, I>(&self, i: &B) -> Interned<I>
     where
-        B: Eq + Hash + ToOwned<Owned=I> + ?Sized + 'static,
+        B: Eq + Hash + ToOwned<Owned = I> + ?Sized + 'static,
         I: Borrow<B> + Clone + Hash + Eq + Send + 'static,
     {
         let mut l = self.generic.lock().unwrap();
@@ -253,10 +254,12 @@ lazy_static! {
 /// get() method.
 #[derive(Debug)]
 pub struct Cache(
-    RefCell<HashMap<
-        TypeId,
-        Box<Any>, // actually a HashMap<Step, Interned<Step::Output>>
-    >>
+    RefCell<
+        HashMap<
+            TypeId,
+            Box<Any>, // actually a HashMap<Step, Interned<Step::Output>>
+        >,
+    >,
 );
 
 impl Cache {
@@ -267,21 +270,27 @@ impl Cache {
     pub fn put<S: Step>(&self, step: S, value: S::Output) {
         let mut cache = self.0.borrow_mut();
         let type_id = TypeId::of::<S>();
-        let stepcache = cache.entry(type_id)
-                        .or_insert_with(|| Box::new(HashMap::<S, S::Output>::new()))
-                        .downcast_mut::<HashMap<S, S::Output>>()
-                        .expect("invalid type mapped");
-        assert!(!stepcache.contains_key(&step), "processing {:?} a second time", step);
+        let stepcache = cache
+            .entry(type_id)
+            .or_insert_with(|| Box::new(HashMap::<S, S::Output>::new()))
+            .downcast_mut::<HashMap<S, S::Output>>()
+            .expect("invalid type mapped");
+        assert!(
+            !stepcache.contains_key(&step),
+            "processing {:?} a second time",
+            step
+        );
         stepcache.insert(step, value);
     }
 
     pub fn get<S: Step>(&self, step: &S) -> Option<S::Output> {
         let mut cache = self.0.borrow_mut();
         let type_id = TypeId::of::<S>();
-        let stepcache = cache.entry(type_id)
-                        .or_insert_with(|| Box::new(HashMap::<S, S::Output>::new()))
-                        .downcast_mut::<HashMap<S, S::Output>>()
-                        .expect("invalid type mapped");
+        let stepcache = cache
+            .entry(type_id)
+            .or_insert_with(|| Box::new(HashMap::<S, S::Output>::new()))
+            .downcast_mut::<HashMap<S, S::Output>>()
+            .expect("invalid type mapped");
         stepcache.get(step).cloned()
     }
 }

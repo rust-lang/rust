@@ -73,14 +73,23 @@ fn cc2ar(cc: &Path, target: &str) -> Option<PathBuf> {
 pub fn find(build: &mut Build) {
     // For all targets we're going to need a C compiler for building some shims
     // and such as well as for being a linker for Rust code.
-    let targets = build.config.general.target.iter()
-        .chain(&build.config.general.host).cloned()
+    let targets = build
+        .config
+        .general
+        .target
+        .iter()
+        .chain(&build.config.general.host)
+        .cloned()
         .chain(iter::once(build.config.general.build))
         .collect::<HashSet<_>>();
     for target in targets.into_iter() {
         let mut cfg = cc::Build::new();
-        cfg.cargo_metadata(false).opt_level(0).warnings(false).debug(false)
-           .target(&target).host(&build.config.general.build);
+        cfg.cargo_metadata(false)
+            .opt_level(0)
+            .warnings(false)
+            .debug(false)
+            .target(&target)
+            .host(&build.config.general.build);
 
         let config = build.config.target_config.get(&target);
         if let Some(cc) = config.and_then(|c| c.cc.as_ref()) {
@@ -105,11 +114,23 @@ pub fn find(build: &mut Build) {
     }
 
     // For all host triples we need to find a C++ compiler as well
-    let hosts = build.config.general.host.iter().cloned().chain(iter::once(build.config.general.build)).collect::<HashSet<_>>();
+    let hosts = build
+        .config
+        .general
+        .host
+        .iter()
+        .cloned()
+        .chain(iter::once(build.config.general.build))
+        .collect::<HashSet<_>>();
     for host in hosts.into_iter() {
         let mut cfg = cc::Build::new();
-        cfg.cargo_metadata(false).opt_level(0).warnings(false).debug(false).cpp(true)
-           .target(&host).host(&build.config.general.build);
+        cfg.cargo_metadata(false)
+            .opt_level(0)
+            .warnings(false)
+            .debug(false)
+            .cpp(true)
+            .target(&host)
+            .host(&build.config.general.build);
         let config = build.config.target_config.get(&host);
         if let Some(cxx) = config.and_then(|c| c.cxx.as_ref()) {
             cfg.compiler(cxx);
@@ -122,11 +143,13 @@ pub fn find(build: &mut Build) {
     }
 }
 
-fn set_compiler(cfg: &mut cc::Build,
-                compiler: Language,
-                target: Interned<String>,
-                config: Option<&Target>,
-                build: &Build) {
+fn set_compiler(
+    cfg: &mut cc::Build,
+    compiler: Language,
+    target: Interned<String>,
+    config: Option<&Target>,
+    build: &Build,
+) {
     match &*target {
         // When compiling for android we may have the NDK configured in the
         // config.toml in which case we look there. Otherwise the default
@@ -145,7 +168,7 @@ fn set_compiler(cfg: &mut cc::Build,
             let c = cfg.get_compiler();
             let gnu_compiler = compiler.gcc();
             if !c.path().ends_with(gnu_compiler) {
-                return
+                return;
             }
 
             let output = output(c.to_command().arg("--version"));
@@ -154,7 +177,7 @@ fn set_compiler(cfg: &mut cc::Build,
                 None => return,
             };
             match output[i + 3..].chars().next().unwrap() {
-                '0' ... '6' => {}
+                '0'...'6' => {}
                 _ => return,
             }
             let alternative = format!("e{}", gnu_compiler);

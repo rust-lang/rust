@@ -52,9 +52,12 @@ pub fn build(build: &mut Build) {
 
 fn build_krate(build: &mut Build, krate: &str) {
     let mut cargo = Command::new(&build.config.general.initial_cargo);
-    cargo.arg("metadata")
-         .arg("--format-version").arg("1")
-         .arg("--manifest-path").arg(build.config.src.join(krate).join("Cargo.toml"));
+    cargo
+        .arg("metadata")
+        .arg("--format-version")
+        .arg("1")
+        .arg("--manifest-path")
+        .arg(build.config.src.join(krate).join("Cargo.toml"));
     let output = output(&mut cargo);
     let output: Output = serde_json::from_str(&output).unwrap();
     let mut id2name = HashMap::new();
@@ -64,12 +67,15 @@ fn build_krate(build: &mut Build, krate: &str) {
             id2name.insert(package.id, name);
             let mut path = PathBuf::from(package.manifest_path);
             path.pop();
-            build.crates.insert(name, Crate {
+            build.crates.insert(
                 name,
-                version: package.version,
-                deps: Vec::new(),
-                path,
-            });
+                Crate {
+                    name,
+                    version: package.version,
+                    deps: Vec::new(),
+                    path,
+                },
+            );
         }
     }
 

@@ -15,7 +15,7 @@
 
 use std::env;
 use std::fs;
-use std::path::{Path, PathBuf, Component};
+use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 
 use dist::{self, pkgname, sanitize_sh, tmpdir};
@@ -60,7 +60,7 @@ fn install_sh(
     package: &str,
     name: &str,
     stage: u32,
-    host: Option<Interned<String>>
+    host: Option<Interned<String>>,
 ) {
     let build = builder.build;
     println!("Install {} stage{} ({:?})", package, stage, host);
@@ -98,7 +98,9 @@ fn install_sh(
 
     let mut cmd = Command::new("sh");
     cmd.current_dir(&empty_dir)
-        .arg(sanitize_sh(&tmpdir(build).join(&package_name).join("install.sh")))
+        .arg(sanitize_sh(&tmpdir(build)
+            .join(&package_name)
+            .join("install.sh")))
         .arg(format!("--prefix={}", sanitize_sh(&prefix)))
         .arg(format!("--sysconfdir={}", sanitize_sh(&sysconfdir)))
         .arg(format!("--docdir={}", sanitize_sh(&docdir)))

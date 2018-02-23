@@ -221,12 +221,8 @@ pub struct Llvm {
 impl Llvm {
     pub fn ccache(&self) -> Option<String> {
         match self.ccache {
-            StringOrBool::String(ref s) => {
-                Some(s.to_string())
-            }
-            StringOrBool::Bool(true) => {
-                Some("ccache".to_string())
-            }
+            StringOrBool::String(ref s) => Some(s.to_string()),
+            StringOrBool::Bool(true) => Some("ccache".to_string()),
             StringOrBool::Bool(false) => None,
         }
     }
@@ -242,8 +238,9 @@ impl Default for Llvm {
             optimize: true,
             release_debuginfo: false,
             version_check: true,
-            targets:
-                String::from("X86;ARM;AArch64;Mips;PowerPC;SystemZ;MSP430;Sparc;NVPTX;Hexagon"),
+            targets: String::from(
+                "X86;ARM;AArch64;Mips;PowerPC;SystemZ;MSP430;Sparc;NVPTX;Hexagon",
+            ),
             experimental_targets: String::from("WebAssembly"),
             link_jobs: 0,
             static_libstdcpp: false,
@@ -413,24 +410,33 @@ struct TomlTarget {
 impl Config {
     pub fn parse(args: &[String]) -> Config {
         let flags = Flags::parse(&args);
-        let mut toml: TomlConfig = flags.config.as_ref().map(|file| {
-            let mut f = t!(File::open(&file));
-            let mut contents = String::new();
-            t!(f.read_to_string(&mut contents));
-            match toml::from_str(&contents) {
-                Ok(table) => table,
-                Err(err) => {
-                    println!("failed to parse TOML configuration '{}': {}",
-                        file.display(), err);
-                    process::exit(2);
+        let mut toml: TomlConfig = flags
+            .config
+            .as_ref()
+            .map(|file| {
+                let mut f = t!(File::open(&file));
+                let mut contents = String::new();
+                t!(f.read_to_string(&mut contents));
+                match toml::from_str(&contents) {
+                    Ok(table) => table,
+                    Err(err) => {
+                        println!(
+                            "failed to parse TOML configuration '{}': {}",
+                            file.display(),
+                            err
+                        );
+                        process::exit(2);
+                    }
                 }
-            }
-        }).unwrap_or_default();
+            })
+            .unwrap_or_default();
 
         let mut hosts = if !flags.host.is_empty() {
             flags.host.clone()
         } else {
-            toml.build.host.into_iter()
+            toml.build
+                .host
+                .into_iter()
                 .chain(iter::once(toml.build.build))
                 .collect::<Vec<Interned<String>>>()
         };
@@ -440,7 +446,9 @@ impl Config {
         let mut targets = if !flags.target.is_empty() {
             flags.target.clone()
         } else {
-            toml.build.target.into_iter()
+            toml.build
+                .target
+                .into_iter()
                 .chain(hosts.clone())
                 .collect::<Vec<Interned<String>>>()
         };
@@ -454,28 +462,42 @@ impl Config {
         let mut target_config = HashMap::new();
         for (triple, cfg) in toml.target {
             let cwd = t!(env::current_dir());
-            target_config.insert(triple.intern(), Target {
-                llvm_config: cfg.llvm_config.map(|p| cwd.join(p)),
-                jemalloc: cfg.jemalloc.map(|p| cwd.join(p)),
-                ndk: cfg.android_ndk.map(|p| cwd.join(p)),
-                cc: cfg.cc,
-                cxx: cfg.cxx,
-                ar: cfg.ar,
-                linker: cfg.linker,
-                crt_static: cfg.crt_static,
-                musl_root: cfg.musl_root,
-                qemu_rootfs: cfg.qemu_rootfs,
-            });
+            target_config.insert(
+                triple.intern(),
+                Target {
+                    llvm_config: cfg.llvm_config.map(|p| cwd.join(p)),
+                    jemalloc: cfg.jemalloc.map(|p| cwd.join(p)),
+                    ndk: cfg.android_ndk.map(|p| cwd.join(p)),
+                    cc: cfg.cc,
+                    cxx: cfg.cxx,
+                    ar: cfg.ar,
+                    linker: cfg.linker,
+                    crt_static: cfg.crt_static,
+                    musl_root: cfg.musl_root,
+                    qemu_rootfs: cfg.qemu_rootfs,
+                },
+            );
         }
 
         // If local-rust is the same major.minor as the current version, then force a local-rebuild
         let local_version_verbose = output(
-            Command::new(&toml.build.initial_rustc).arg("--version").arg("--verbose"));
+            Command::new(&toml.build.initial_rustc)
+                .arg("--version")
+                .arg("--verbose"),
+        );
         let local_release = local_version_verbose
-            .lines().filter(|x| x.starts_with("release:"))
-            .next().unwrap().trim_left_matches("release:").trim();
+            .lines()
+            .filter(|x| x.starts_with("release:"))
+            .next()
+            .unwrap()
+            .trim_left_matches("release:")
+            .trim();
         let my_version = channel::CFG_RELEASE_NUM;
-        if local_release.split('.').take(2).eq(my_version.split('.').take(2)) {
+        if local_release
+            .split('.')
+            .take(2)
+            .eq(my_version.split('.').take(2))
+        {
             eprintln!("auto-detected local rebuild");
             toml.build.local_rebuild = true;
         }
@@ -502,12 +524,10 @@ impl Config {
             // then run any host-only tests.
             run_host_only: !(flags.host.is_empty() && !flags.target.is_empty()),
             is_sudo: match env::var_os("SUDO_USER") {
-                Some(sudo_user) => {
-                    match env::var_os("USER") {
-                        Some(user) => user != sudo_user,
-                        None => false,
-                    }
-                }
+                Some(sudo_user) => match env::var_os("USER") {
+                    Some(user) => user != sudo_user,
+                    None => false,
+                },
                 None => false,
             },
 
