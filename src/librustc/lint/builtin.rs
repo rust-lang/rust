@@ -320,15 +320,16 @@ impl LintPass for HardwiredLints {
 #[derive(PartialEq, RustcEncodable, RustcDecodable, Debug)]
 pub enum BuiltinLintDiagnostics {
     Normal,
-    BareTraitObject(Span)
+    BareTraitObject(Span, /* is_global */ bool)
 }
 
 impl BuiltinLintDiagnostics {
     pub fn run(self, sess: &Session, db: &mut DiagnosticBuilder) {
         match self {
             BuiltinLintDiagnostics::Normal => (),
-            BuiltinLintDiagnostics::BareTraitObject(span) => {
+            BuiltinLintDiagnostics::BareTraitObject(span, is_global) => {
                 let sugg = match sess.codemap().span_to_snippet(span) {
+                    Ok(ref s) if is_global => format!("dyn ({})", s),
                     Ok(s) => format!("dyn {}", s),
                     Err(_) => format!("dyn <type>")
                 };

@@ -914,7 +914,7 @@ impl<'a> LoweringContext<'a> {
                 let qpath = self.lower_qpath(t.id, qself, path, ParamMode::Explicit, itctx);
                 let ty = self.ty_path(id, t.span, qpath);
                 if let hir::TyTraitObject(..) = ty.node {
-                    self.maybe_lint_bare_trait(t.span, t.id);
+                    self.maybe_lint_bare_trait(t.span, t.id, qself.is_none() && path.is_global());
                 }
                 return ty;
             }
@@ -955,7 +955,7 @@ impl<'a> LoweringContext<'a> {
                     self.elided_lifetime(t.span)
                 });
                 if kind != TraitObjectSyntax::Dyn {
-                    self.maybe_lint_bare_trait(t.span, t.id);
+                    self.maybe_lint_bare_trait(t.span, t.id, false);
                 }
                 hir::TyTraitObject(bounds, lifetime_bound)
             }
@@ -3710,12 +3710,12 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn maybe_lint_bare_trait(&self, span: Span, id: NodeId) {
+    fn maybe_lint_bare_trait(&self, span: Span, id: NodeId, is_global: bool) {
         if self.sess.features.borrow().dyn_trait {
             self.sess.buffer_lint_with_diagnostic(
                 builtin::BARE_TRAIT_OBJECT, id, span,
                 "trait objects without an explicit `dyn` are deprecated",
-                builtin::BuiltinLintDiagnostics::BareTraitObject(span)
+                builtin::BuiltinLintDiagnostics::BareTraitObject(span, is_global)
             )
         }
     }
