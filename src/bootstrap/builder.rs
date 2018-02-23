@@ -152,18 +152,17 @@ impl StepDescription {
                 pathset, self.name, builder.config.exclude
             );
         }
-        let build = builder.build;
-        let hosts = &build.config.general.host;
+        let hosts = &builder.config.general.host;
 
-        if self.only_hosts && !build.config.run_host_only {
+        if self.only_hosts && !builder.config.run_host_only {
             return;
         }
 
         // Determine the targets participating in this rule.
         let targets = if self.only_hosts {
-            &build.config.general.host
+            &builder.config.general.host
         } else {
-            &build.config.general.target
+            &builder.config.general.target
         };
 
         for host in hosts {
@@ -288,7 +287,7 @@ impl<'a> Builder<'a> {
 
         if kind == Kind::Dist {
             assert!(
-                !build.config.rust.test_miri,
+                !builder.config.rust.test_miri,
                 "Do not distribute with miri enabled.\n\
                 The distributed libraries would include all MIR (increasing binary size).
                 The distributed MIR would include validation statements."
@@ -563,7 +562,7 @@ impl<'a> Builder<'a> {
     /// Windows.
     pub fn rustc_libdir(&self, compiler: Compiler) -> PathBuf {
         if compiler.is_snapshot(self) {
-            self.build.rustc_snapshot_libdir()
+            self.rustc_snapshot_libdir()
         } else {
             self.sysroot(compiler).join(libdir(&compiler.host))
         }
@@ -604,13 +603,13 @@ impl<'a> Builder<'a> {
             .env("RUSTC_SYSROOT", self.sysroot(compiler))
             .env(
                 "RUSTDOC_LIBDIR",
-                self.sysroot_libdir(compiler, self.build.config.general.build),
+                self.sysroot_libdir(compiler, self.config.general.build),
             )
-            .env("CFG_RELEASE_CHANNEL", &self.build.config.rust.channel)
+            .env("CFG_RELEASE_CHANNEL", &self.config.rust.channel)
             .env("RUSTDOC_REAL", self.rustdoc(host))
-            .env("RUSTDOC_CRATE_VERSION", self.build.rust_version())
+            .env("RUSTDOC_CRATE_VERSION", self.rust_version())
             .env("RUSTC_BOOTSTRAP", "1");
-        if let Some(linker) = self.build.linker(host) {
+        if let Some(linker) = self.linker(host) {
             cmd.env("RUSTC_TARGET_LINKER", linker);
         }
         cmd
@@ -710,10 +709,10 @@ impl<'a> Builder<'a> {
             .env("TEST_MIRI", self.config.rust.test_miri.to_string())
             .env("RUSTC_ERROR_METADATA_DST", self.extended_error_dir());
 
-        if let Some(host_linker) = self.build.linker(compiler.host) {
+        if let Some(host_linker) = self.linker(compiler.host) {
             cargo.env("RUSTC_HOST_LINKER", host_linker);
         }
-        if let Some(target_linker) = self.build.linker(target) {
+        if let Some(target_linker) = self.linker(target) {
             cargo.env("RUSTC_TARGET_LINKER", target_linker);
         }
         if let Some(ref error_format) = self.config.rustc_error_format {
@@ -722,7 +721,7 @@ impl<'a> Builder<'a> {
         if cmd != "build" && cmd != "check" {
             cargo.env(
                 "RUSTDOC_LIBDIR",
-                self.rustc_libdir(self.compiler(2, self.build.config.general.build)),
+                self.rustc_libdir(self.compiler(2, self.config.general.build)),
             );
         }
 
@@ -780,7 +779,7 @@ impl<'a> Builder<'a> {
         //
         // If LLVM support is disabled we need to use the snapshot compiler to compile
         // build scripts, as the new compiler doesn't support executables.
-        if mode == Mode::Libstd || !self.build.config.llvm.enabled {
+        if mode == Mode::Libstd || !self.config.llvm.enabled {
             cargo
                 .env("RUSTC_SNAPSHOT", &self.config.general.initial_rustc)
                 .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_snapshot_libdir());
@@ -846,7 +845,7 @@ impl<'a> Builder<'a> {
         }
 
         // For `cargo doc` invocations, make rustdoc print the Rust version into the docs
-        cargo.env("RUSTDOC_CRATE_VERSION", self.build.rust_version());
+        cargo.env("RUSTDOC_CRATE_VERSION", self.rust_version());
 
         // Environment variables *required* throughout the build
         //
@@ -854,7 +853,7 @@ impl<'a> Builder<'a> {
         cargo.env("CFG_COMPILER_HOST_TRIPLE", target);
 
         // Set this for all builds to make sure doc builds also get it.
-        cargo.env("CFG_RELEASE_CHANNEL", &self.build.config.rust.channel);
+        cargo.env("CFG_RELEASE_CHANNEL", &self.config.rust.channel);
 
         // This one's a bit tricky. As of the time of this writing the compiler
         // links to the `winapi` crate on crates.io. This crate provides raw
@@ -905,7 +904,7 @@ impl<'a> Builder<'a> {
                 cargo.arg("--release");
             }
 
-            if self.config.rust.codegen_units().is_none() && self.build.is_rust_llvm(compiler.host)
+            if self.config.rust.codegen_units().is_none() && self.is_rust_llvm(compiler.host)
                 && self.config.rust.thinlto
             {
                 cargo.env("RUSTC_THINLTO", "1");
@@ -951,13 +950,11 @@ impl<'a> Builder<'a> {
                 panic!(out);
             }
             if let Some(out) = self.cache.get(&step) {
-                self.build
-                    .verbose(&format!("{}c {:?}", "  ".repeat(stack.len()), step));
+                self.verbose(&format!("{}c {:?}", "  ".repeat(stack.len()), step));
 
                 return out;
             }
-            self.build
-                .verbose(&format!("{}> {:?}", "  ".repeat(stack.len()), step));
+            self.verbose(&format!("{}> {:?}", "  ".repeat(stack.len()), step));
             stack.push(Box::new(step.clone()));
         }
         let out = step.clone().run(self);
@@ -966,7 +963,7 @@ impl<'a> Builder<'a> {
             let cur_step = stack.pop().expect("step stack empty");
             assert_eq!(cur_step.downcast_ref(), Some(&step));
         }
-        self.build.verbose(&format!(
+        self.verbose(&format!(
             "{}< {:?}",
             "  ".repeat(self.stack.borrow().len()),
             step
