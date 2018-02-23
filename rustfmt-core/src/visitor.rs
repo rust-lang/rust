@@ -15,38 +15,16 @@ use syntax::parse::ParseSess;
 
 use attr::*;
 use codemap::{LineRangeUtils, SpanUtils};
-use comment::{contains_comment, CodeCharKind, CommentCodeSlices, FindUncommented};
+use comment::{CodeCharKind, CommentCodeSlices, FindUncommented};
 use config::{BraceStyle, Config};
-use items::{format_impl, format_trait, format_trait_alias, rewrite_associated_impl_type,
-            rewrite_associated_type, rewrite_type_alias, FnSig, StaticParts, StructParts};
+use items::{format_impl, format_trait, format_trait_alias, is_mod_decl, is_use_item,
+            rewrite_associated_impl_type, rewrite_associated_type, rewrite_extern_crate,
+            rewrite_type_alias, FnSig, StaticParts, StructParts};
 use macros::{rewrite_macro, rewrite_macro_def, MacroPosition};
-use regex::Regex;
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
 use spanned::Spanned;
 use utils::{self, contains_skip, count_newlines, inner_attributes, mk_sp, ptr_vec_to_ref_vec};
-
-/// Returns true for `mod foo;`, false for `mod foo { .. }`.
-fn is_mod_decl(item: &ast::Item) -> bool {
-    match item.node {
-        ast::ItemKind::Mod(ref m) => m.inner.hi() != item.span.hi(),
-        _ => false,
-    }
-}
-
-fn is_use_item(item: &ast::Item) -> bool {
-    match item.node {
-        ast::ItemKind::Use(_) => true,
-        _ => false,
-    }
-}
-
-fn is_extern_crate(item: &ast::Item) -> bool {
-    match item.node {
-        ast::ItemKind::ExternCrate(..) => true,
-        _ => false,
-    }
-}
 
 /// Creates a string slice corresponding to the specified span.
 pub struct SnippetProvider<'a> {
@@ -719,16 +697,4 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             snippet_provider: self.snippet_provider,
         }
     }
-}
-
-// Rewrite `extern crate foo;` WITHOUT attributes.
-pub fn rewrite_extern_crate(context: &RewriteContext, item: &ast::Item) -> Option<String> {
-    assert!(is_extern_crate(item));
-    let new_str = context.snippet(item.span);
-    Some(if contains_comment(new_str) {
-        new_str.to_owned()
-    } else {
-        let no_whitespace = &new_str.split_whitespace().collect::<Vec<&str>>().join(" ");
-        String::from(&*Regex::new(r"\s;").unwrap().replace(no_whitespace, ";"))
-    })
 }

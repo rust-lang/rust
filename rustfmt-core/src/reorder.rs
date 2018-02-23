@@ -23,13 +23,13 @@ use attr::filter_inline_attrs;
 use codemap::LineRangeUtils;
 use comment::combine_strs_with_missing_comments;
 use imports::{path_to_imported_ident, rewrite_import};
-use items::rewrite_mod;
+use items::{rewrite_extern_crate, rewrite_mod};
 use lists::{itemize_list, write_list, ListFormatting};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use spanned::Spanned;
 use utils::mk_sp;
-use visitor::{rewrite_extern_crate, FmtVisitor};
+use visitor::FmtVisitor;
 
 use std::cmp::Ordering;
 
