@@ -18,6 +18,7 @@ use serialize::{self, Encodable, Encoder, Decodable, Decoder};
 use syntax_pos::{Span, DUMMY_SP};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 
+use core::intrinsics;
 use core::nonzero::NonZero;
 use std::fmt;
 use std::iter;
@@ -84,14 +85,12 @@ impl<'tcx> Kind<'tcx> {
     #[inline]
     pub fn unpack(self) -> UnpackedKind<'tcx> {
         let ptr = self.ptr.get();
-        match ptr & TAG_MASK {
-            REGION_TAG => unsafe {
-                UnpackedKind::Lifetime(&*((ptr & !TAG_MASK) as *const _))
-            },
-            TYPE_TAG => unsafe {
-                UnpackedKind::Type(&*((ptr & !TAG_MASK) as *const _))
-            },
-            _ => bug!("packed kind has invalid tag")
+        unsafe {
+            match ptr & TAG_MASK {
+                REGION_TAG => UnpackedKind::Lifetime(&*((ptr & !TAG_MASK) as *const _)),
+                TYPE_TAG => UnpackedKind::Type(&*((ptr & !TAG_MASK) as *const _)),
+                _ => intrinsics::unreachable()
+            }
         }
     }
 }
