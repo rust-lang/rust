@@ -1,3 +1,5 @@
+// rustfmt-indent_style: Visual
+
 // #1357
 impl<
     'a,
