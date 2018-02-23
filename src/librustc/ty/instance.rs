@@ -355,10 +355,7 @@ fn fn_once_adapter_instance<'a, 'tcx>(
     let sig = substs.closure_sig(closure_did, tcx);
     let sig = tcx.erase_late_bound_regions_and_normalize(&sig);
     assert_eq!(sig.inputs().len(), 1);
-    let substs = tcx.mk_substs([
-                               Kind::from(self_ty),
-                               Kind::from(sig.inputs()[0]),
-    ].iter().cloned());
+    let substs = tcx.mk_substs([Kind::from(self_ty), sig.inputs()[0].into()].iter().cloned());
 
     debug!("fn_once_adapter_shim: self_ty={:?} sig={:?}", self_ty, sig);
     Instance { def, substs }

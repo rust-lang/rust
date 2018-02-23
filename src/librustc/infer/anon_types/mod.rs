@@ -17,7 +17,7 @@ use traits::{self, PredicateObligation};
 use ty::{self, Ty};
 use ty::fold::{BottomUpFolder, TypeFoldable};
 use ty::outlives::Component;
-use ty::subst::{Kind, Substs};
+use ty::subst::{Kind, UnpackedKind, Substs};
 use util::nodemap::DefIdMap;
 
 pub type AnonTypeMap<'tcx> = DefIdMap<AnonTypeDecl<'tcx>>;
@@ -321,7 +321,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             let index = region_def.index as usize;
 
             // Get the value supplied for this region from the substs.
-            let subst_arg = anon_defn.substs[index].as_region().unwrap();
+            let subst_arg = anon_defn.substs.region_at(index);
 
             // Compute the least upper bound of it with the other regions.
             debug!("constrain_anon_types: least_region={:?}", least_region);
@@ -466,7 +466,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 // All other regions, we map them appropriately to their adjusted
                 // indices, erroring if we find any lifetimes that were not mapped
                 // into the new set.
-                _ => if let Some(r1) = map.get(&Kind::from(r)).and_then(|k| k.as_region()) {
+                _ => if let Some(UnpackedKind::Lifetime(r1)) = map.get(&r.into())
+                                                                  .map(|k| k.unpack()) {
                     r1
                 } else {
                     // No mapping was found. This means that

@@ -17,7 +17,7 @@ use driver;
 use rustc_lint;
 use rustc_resolve::MakeGlobMap;
 use rustc::middle::region;
-use rustc::ty::subst::{Kind, Subst};
+use rustc::ty::subst::Subst;
 use rustc::traits::{ObligationCause, Reveal};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::maps::OnDiskCache;
@@ -468,7 +468,7 @@ fn subst_ty_renumber_bound() {
             env.t_fn(&[t_param], env.t_nil())
         };
 
-        let substs = env.infcx.tcx.intern_substs(&[Kind::from(t_rptr_bound1)]);
+        let substs = env.infcx.tcx.intern_substs(&[t_rptr_bound1.into()]);
         let t_substituted = t_source.subst(env.infcx.tcx, substs);
 
         // t_expected = fn(&'a isize)
@@ -503,7 +503,7 @@ fn subst_ty_renumber_some_bounds() {
             env.t_pair(t_param, env.t_fn(&[t_param], env.t_nil()))
         };
 
-        let substs = env.infcx.tcx.intern_substs(&[Kind::from(t_rptr_bound1)]);
+        let substs = env.infcx.tcx.intern_substs(&[t_rptr_bound1.into()]);
         let t_substituted = t_source.subst(env.infcx.tcx, substs);
 
         // t_expected = (&'a isize, fn(&'a isize))
@@ -565,7 +565,7 @@ fn subst_region_renumber_region() {
             env.t_fn(&[env.t_rptr(re_early)], env.t_nil())
         };
 
-        let substs = env.infcx.tcx.intern_substs(&[Kind::from(re_bound1)]);
+        let substs = env.infcx.tcx.intern_substs(&[re_bound1.into()]);
         let t_substituted = t_source.subst(env.infcx.tcx, substs);
 
         // t_expected = fn(&'a isize)
