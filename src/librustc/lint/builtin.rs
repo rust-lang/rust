@@ -15,6 +15,7 @@
 //! lints are all available in `rustc_lint::builtin`.
 
 use lint::{LintPass, LateLintPass, LintArray};
+use session::config::Epoch;
 
 declare_lint! {
     pub CONST_ERR,
@@ -252,6 +253,13 @@ declare_lint! {
     "hidden lifetime parameters are deprecated, try `Foo<'_>`"
 }
 
+declare_lint! {
+    pub BARE_TRAIT_OBJECT,
+    Warn,
+    "suggest using `dyn Trait` for trait objects",
+    Epoch::Epoch2018
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -298,8 +306,8 @@ impl LintPass for HardwiredLints {
             COERCE_NEVER,
             SINGLE_USE_LIFETIME,
             TYVAR_BEHIND_RAW_POINTER,
-            ELIDED_LIFETIME_IN_PATH
-
+            ELIDED_LIFETIME_IN_PATH,
+            BARE_TRAIT_OBJECT
         )
     }
 }

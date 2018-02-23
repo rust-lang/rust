@@ -272,6 +272,11 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             reference: "issue #46906 <https://github.com/rust-lang/rust/issues/46906>",
             epoch: None,
         },
+         FutureIncompatibleInfo {
+             id: LintId::of(lint::builtin::BARE_TRAIT_OBJECT),
+             reference: "issue #48457 <https://github.com/rust-lang/rust/issues/48457>",
+             epoch: Some(session::config::Epoch::Epoch2018),
+         }
         ]);
 
     // Register renamed and removed lints
