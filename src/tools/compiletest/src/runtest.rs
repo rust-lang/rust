@@ -1625,7 +1625,9 @@ impl<'test> TestCx<'test> {
                 }
             }
             Ui => {
-                rustc.arg("-Zui-testing");
+                if !self.props.disable_ui_testing_normalization {
+                    rustc.arg("-Zui-testing");
+                }
                 if !self.props.compile_flags.iter().any(|s| s.starts_with("--error-format")) {
                     rustc.args(&["--error-format", "json"]);
                 }
