@@ -11,7 +11,7 @@
 use ast::{self, Block, Ident, NodeId, PatKind, Path};
 use ast::{MacStmtStyle, StmtKind, ItemKind};
 use attr::{self, HasAttrs};
-use codemap::{ExpnInfo, NameAndSpan, MacroBang, MacroAttribute, dummy_spanned};
+use codemap::{ExpnInfo, NameAndSpan, MacroBang, MacroAttribute, dummy_spanned, respan};
 use config::{is_test_or_bench, StripUnconfigured};
 use errors::FatalError;
 use ext::base::*;
@@ -238,7 +238,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             node: ast::ItemKind::Mod(krate.module),
             ident: keywords::Invalid.ident(),
             id: ast::DUMMY_NODE_ID,
-            vis: ast::Visibility::Public,
+            vis: respan(krate.span.empty(), ast::VisibilityKind::Public),
             tokens: None,
         })));
 
@@ -1022,7 +1022,10 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
             // Ensure that test functions are accessible from the test harness.
             ast::ItemKind::Fn(..) if self.cx.ecfg.should_test => {
                 if item.attrs.iter().any(|attr| is_test_or_bench(attr)) {
-                    item = item.map(|mut item| { item.vis = ast::Visibility::Public; item });
+                    item = item.map(|mut item| {
+                        item.vis = respan(item.vis.span, ast::VisibilityKind::Public);
+                        item
+                    });
                 }
                 noop_fold_item(item, self)
             }

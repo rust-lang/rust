@@ -1816,8 +1816,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_vis(&mut self, vis: &'a ast::Visibility) {
-        if let ast::Visibility::Crate(span, ast::CrateSugar::JustCrate) = *vis {
-            gate_feature_post!(&self, crate_visibility_modifier, span,
+        if let ast::VisibilityKind::Crate(ast::CrateSugar::JustCrate) = vis.node {
+            gate_feature_post!(&self, crate_visibility_modifier, vis.span,
                                "`crate` visibility modifier is experimental");
         }
         visit::walk_vis(self, vis);

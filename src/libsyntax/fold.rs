@@ -1018,7 +1018,7 @@ pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, span}: Crate,
         ident: keywords::Invalid.ident(),
         attrs,
         id: ast::DUMMY_NODE_ID,
-        vis: ast::Visibility::Public,
+        vis: respan(span.empty(), ast::VisibilityKind::Public),
         span,
         node: ast::ItemKind::Mod(module),
         tokens: None,
@@ -1367,11 +1367,13 @@ pub fn noop_fold_stmt_kind<T: Folder>(node: StmtKind, folder: &mut T) -> SmallVe
 }
 
 pub fn noop_fold_vis<T: Folder>(vis: Visibility, folder: &mut T) -> Visibility {
-    match vis {
-        Visibility::Restricted { path, id } => Visibility::Restricted {
-            path: path.map(|path| folder.fold_path(path)),
-            id: folder.new_id(id)
-        },
+    match vis.node {
+        VisibilityKind::Restricted { path, id } => {
+            respan(vis.span, VisibilityKind::Restricted {
+                path: path.map(|path| folder.fold_path(path)),
+                id: folder.new_id(id),
+            })
+        }
         _ => vis,
     }
 }
