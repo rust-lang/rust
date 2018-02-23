@@ -228,7 +228,14 @@ impl Rewrite for ast::MetaItem {
                 let name = self.name.as_str();
                 // 3 = ` = `
                 let lit_shape = shape.shrink_left(name.len() + 3)?;
-                let value = rewrite_literal(context, literal, lit_shape)?;
+                // `rewrite_literal` returns `None` when `literal` exceeds max
+                // width. Since a literal is basically unformattable unless it
+                // is a string literal (and only if `format_strings` is set),
+                // we might be better off ignoring the fact that the attribute
+                // is longer than the max width and contiue on formatting.
+                // See #2479 for example.
+                let value = rewrite_literal(context, literal, lit_shape)
+                    .unwrap_or_else(|| context.snippet(literal.span).to_owned());
                 format!("{} = {}", name, value)
             }
         })
