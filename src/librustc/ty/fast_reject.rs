@@ -121,7 +121,7 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         ty::TyForeign(def_id) => {
             Some(ForeignSimplifiedType(def_id))
         }
-        ty::TyInfer(_) | ty::TyError => None,
+        ty::TyInfer(_) | ty::TyError | ty::TyUnusedParam => None,
     }
 }
 

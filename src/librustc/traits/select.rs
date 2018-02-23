@@ -2039,7 +2039,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 ))
             }
 
-            ty::TyProjection(_) | ty::TyParam(_) | ty::TyAnon(..) => None,
+            ty::TyProjection(_) | ty::TyParam(_) | ty::TyUnusedParam | ty::TyAnon(..) => None,
             ty::TyInfer(ty::TyVar(_)) => Ambiguous,
 
             ty::TyInfer(ty::CanonicalTy(_)) |
@@ -2120,6 +2120,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 bug!("asked to assemble builtin bounds of unexpected type: {:?}",
                      self_ty);
             }
+            ty::TyUnusedParam => bug!("Unexpected TyUnusedParam in copy_clone_conditions"),
         }
     }
 
@@ -2155,6 +2156,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::TyParam(..) |
             ty::TyForeign(..) |
             ty::TyProjection(..) |
+            ty::TyUnusedParam |
             ty::TyInfer(ty::CanonicalTy(_)) |
             ty::TyInfer(ty::TyVar(_)) |
             ty::TyInfer(ty::FreshTy(_)) |

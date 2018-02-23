@@ -857,7 +857,8 @@ for ty::TypeVariants<'gcx>
             TyChar  |
             TyStr   |
             TyError |
-            TyNever => {
+            TyNever |
+            TyUnusedParam => {
                 // Nothing more to hash.
             }
             TyInt(int_ty) => {

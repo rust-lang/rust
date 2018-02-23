@@ -27,6 +27,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(dyn_trait)]
 #![feature(fs_read_write)]
 #![feature(macro_vis_matcher)]
+#![feature(macro_lifetime_matcher)]
 #![feature(exhaustive_patterns)]
 #![feature(range_contains)]
 #![feature(rustc_diagnostic_macros)]
@@ -75,7 +76,7 @@ pub fn provide(providers: &mut Providers) {
     providers.const_eval = interpret::const_eval_provider;
     providers.check_match = hair::pattern::check_match;
     providers.collapse_interchangable_instances =
-        monomorphize::deduplicate_instances::collapse_interchangable_instances; Fix it
+        monomorphize::deduplicate_instances::collapse_interchangable_instances;
 }
 
 __build_diagnostic_array! { librustc_mir, DIAGNOSTICS }

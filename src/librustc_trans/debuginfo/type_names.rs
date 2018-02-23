@@ -171,6 +171,9 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         ty::TyGenerator(..) => {
             output.push_str("generator");
         }
+        ty::TyUnusedParam => {
+            output.push_str("[unused type param]");
+        }
         ty::TyError |
         ty::TyInfer(_) |
         ty::TyProjection(..) |

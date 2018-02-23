@@ -48,6 +48,8 @@ use rustc_data_structures::sync::Lrc;
 use std::slice;
 use std::vec::IntoIter;
 use std::mem;
+use std::iter;
+use syntax::abi::Abi;
 use syntax::ast::{self, DUMMY_NODE_ID, Name, Ident, NodeId};
 use syntax::attr;
 use syntax::ext::hygiene::{Mark, SyntaxContext};
@@ -2067,7 +2069,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 }
             }
 
-            TyInfer(..) => {
+            TyUnusedParam | TyInfer(..) => {
                 bug!("unexpected type `{:?}` in sized_constraint_for_ty",
                      ty)
             }
@@ -2833,7 +2835,7 @@ pub fn ty_fn_sig<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             ))
         }
         ty::TyGenerator(def_id, substs, _) => {
-            let sig = substs.generator_poly_sig(def_id, cx.tcx);
+            let sig = substs.generator_poly_sig(def_id, tcx);
 
             let env_region = ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrEnv);
             let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);

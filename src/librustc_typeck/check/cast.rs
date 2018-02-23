@@ -138,6 +138,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     span, &format!("`{:?}` should be sized but is not?", t));
                 return Err(ErrorReported);
             }
+            ty::TyUnusedParam => bug!("Unexpected TyUnusedParam in FnCtxt::pointer_kind"),
         })
     }
 }

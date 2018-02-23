@@ -238,6 +238,8 @@ fn dtorck_constraint_for_ty<'a, 'gcx, 'tcx>(
             // be fully resolved.
             Err(NoSolution)
         }
+
+        ty::TyUnusedParam => bug!("dtorck_constraint_for_ty called with TyUnusedParam"),
     };
 
     debug!("dtorck_constraint_for_ty({:?}) = {:?}", ty, result);
