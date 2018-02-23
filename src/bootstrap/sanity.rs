@@ -86,7 +86,7 @@ pub fn check(build: &mut Build) {
     }
 
     // We need cmake, but only if we're actually building LLVM or sanitizers.
-    let building_llvm = build.config.hosts.iter()
+    let building_llvm = build.config.general.host.iter()
         .filter_map(|host| build.config.target_config.get(host))
         .any(|config| config.llvm_config.is_none());
     if building_llvm || build.config.general.sanitizers {
@@ -132,7 +132,7 @@ pub fn check(build: &mut Build) {
 
     // We're gonna build some custom C code here and there, host triples
     // also build some C++ shims for LLVM so we need a C++ compiler.
-    for target in &build.config.targets {
+    for target in &build.config.general.target {
         // On emscripten we don't actually need the C compiler to just
         // build the target artifacts, only for testing. For the sake
         // of easier bot configuration, just skip detection.
@@ -146,7 +146,7 @@ pub fn check(build: &mut Build) {
         }
     }
 
-    for host in &build.config.hosts {
+    for host in &build.config.general.host {
         cmd_finder.must_have(build.cxx(*host).unwrap());
     }
 
@@ -157,7 +157,7 @@ pub fn check(build: &mut Build) {
         panic!("FileCheck executable {:?} does not exist", filecheck);
     }
 
-    for target in &build.config.targets {
+    for target in &build.config.general.target {
         // Can't compile for iOS unless we're on macOS
         if target.contains("apple-ios") &&
            !build.config.build.contains("apple-darwin") {

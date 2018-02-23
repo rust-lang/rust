@@ -572,7 +572,7 @@ impl Step for Std {
         // We want to package up as many target libraries as possible
         // for the `rust-std` package, so if this is a host target we
         // depend on librustc and otherwise we just depend on libtest.
-        if build.config.hosts.iter().any(|t| t == target) {
+        if build.config.general.host.iter().any(|t| t == target) {
             builder.ensure(compile::Rustc { compiler, target });
         } else {
             builder.ensure(compile::Test { compiler, target });

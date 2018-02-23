@@ -73,8 +73,8 @@ fn cc2ar(cc: &Path, target: &str) -> Option<PathBuf> {
 pub fn find(build: &mut Build) {
     // For all targets we're going to need a C compiler for building some shims
     // and such as well as for being a linker for Rust code.
-    let targets = build.config.targets.iter()
-        .chain(&build.config.hosts).cloned()
+    let targets = build.config.general.target.iter()
+        .chain(&build.config.general.host).cloned()
         .chain(iter::once(build.config.build))
         .collect::<HashSet<_>>();
     for target in targets.into_iter() {
@@ -105,7 +105,7 @@ pub fn find(build: &mut Build) {
     }
 
     // For all host triples we need to find a C++ compiler as well
-    let hosts = build.config.hosts.iter().cloned().chain(iter::once(build.config.build)).collect::<HashSet<_>>();
+    let hosts = build.config.general.host.iter().cloned().chain(iter::once(build.config.build)).collect::<HashSet<_>>();
     for host in hosts.into_iter() {
         let mut cfg = cc::Build::new();
         cfg.cargo_metadata(false).opt_level(0).warnings(false).debug(false).cpp(true)

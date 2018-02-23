@@ -184,7 +184,7 @@ install!((self, builder, _config),
         install_docs(builder, self.stage, self.target);
     };
     Std, "src/libstd", true, only_hosts: true, {
-        for target in &builder.config.targets {
+        for target in &builder.config.general.target {
             builder.ensure(dist::Std {
                 compiler: builder.compiler(self.stage, self.host),
                 target: *target

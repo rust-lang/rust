@@ -145,7 +145,7 @@ impl StepDescription {
                 self.name, builder.config.exclude);
         }
         let build = builder.build;
-        let hosts = &build.config.hosts;
+        let hosts = &build.config.general.host;
 
         if self.only_hosts && !build.config.run_host_only {
             return;
@@ -153,9 +153,9 @@ impl StepDescription {
 
         // Determine the targets participating in this rule.
         let targets = if self.only_hosts {
-            &build.config.hosts
+            &build.config.general.host
         } else {
-            &build.config.targets
+            &build.config.general.target
         };
 
         for host in hosts {

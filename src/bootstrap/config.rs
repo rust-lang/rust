@@ -42,8 +42,6 @@ pub use flags::Subcommand;
 pub struct Config {
     pub rustc_error_format: Option<String>,
     pub build: Interned<String>,
-    pub hosts: Vec<Interned<String>>,
-    pub targets: Vec<Interned<String>>,
 
     pub run_host_only: bool,
     pub is_sudo: bool,
@@ -106,8 +104,8 @@ pub struct Build {
     #[serde(skip)]
     // We get build from the BUILD env-var, provided by bootstrap.py
     build: Interned<String>,
-    host: Vec<Interned<String>>,
-    target: Vec<Interned<String>>,
+    pub host: Vec<Interned<String>>,
+    pub target: Vec<Interned<String>>,
 
     #[serde(rename = "cargo")]
     pub initial_cargo: PathBuf,
@@ -516,8 +514,6 @@ impl Config {
             },
             // bootstrap.py already handles this fully -- checks flags, toml, and default-generates
             build: toml.build.build.clone(),
-            hosts: toml.build.host.clone(),
-            targets: toml.build.target.clone(),
 
             general: toml.build,
             install: toml.install,
