@@ -2630,8 +2630,7 @@ impl<'a> Parser<'a> {
                     // A tuple index may not have a suffix
                     self.expect_no_suffix(sp, "tuple index", suf);
 
-                    let dot_span = self.prev_span;
-                    hi = self.span;
+                    let idx_span = self.span;
                     self.bump();
 
                     let invalid_msg = "invalid tuple or struct index";
@@ -2646,9 +2645,8 @@ impl<'a> Parser<'a> {
                                                     n.to_string());
                                 err.emit();
                             }
-                            let id = respan(dot_span.to(hi), n);
-                            let field = self.mk_tup_field(e, id);
-                            e = self.mk_expr(lo.to(hi), field, ThinVec::new());
+                            let field = self.mk_tup_field(e, respan(idx_span, n));
+                            e = self.mk_expr(lo.to(idx_span), field, ThinVec::new());
                         }
                         None => {
                             let prev_span = self.prev_span;
