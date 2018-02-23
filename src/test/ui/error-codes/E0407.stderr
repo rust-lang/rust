@@ -1,7 +1,7 @@
 error[E0407]: method `b` is not a member of trait `Foo`
   --> $DIR/E0407.rs:19:5
    |
-19 |     fn b() {}
+LL |     fn b() {}
    |     ^^^^^^^^^ not a member of trait `Foo`
 
 error: aborting due to previous error

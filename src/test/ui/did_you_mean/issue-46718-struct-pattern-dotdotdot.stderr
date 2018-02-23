@@ -1,7 +1,7 @@
 error: expected field pattern, found `...`
   --> $DIR/issue-46718-struct-pattern-dotdotdot.rs:21:55
    |
-21 |             PersonalityInventory { expressivity: exp, ... } => exp
+LL |             PersonalityInventory { expressivity: exp, ... } => exp
    |                                                       ^^^ help: to omit remaining fields, use one fewer `.`: `..`
 
 error: aborting due to previous error

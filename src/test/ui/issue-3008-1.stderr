@@ -1,10 +1,10 @@
 error[E0072]: recursive type `Bar` has infinite size
   --> $DIR/issue-3008-1.rs:15:1
    |
-15 | enum Bar {
+LL | enum Bar {
    | ^^^^^^^^ recursive type has infinite size
 ...
-18 |     BarSome(Bar)
+LL |     BarSome(Bar)
    |             ---- recursive without indirection
    |
    = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `Bar` representable

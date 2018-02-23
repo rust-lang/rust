@@ -1,9 +1,9 @@
 error[E0505]: cannot move out of `x` because it is borrowed
   --> $DIR/E0505.rs:19:13
    |
-18 |         let _ref_to_val: &Value = &x;
+LL |         let _ref_to_val: &Value = &x;
    |                                    - borrow of `x` occurs here
-19 |         eat(x); //~ ERROR E0505
+LL |         eat(x); //~ ERROR E0505
    |             ^ move out of `x` occurs here
 
 error: aborting due to previous error

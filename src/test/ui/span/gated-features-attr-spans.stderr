@@ -1,7 +1,7 @@
 error[E0658]: SIMD types are experimental and possibly buggy (see issue #27731)
   --> $DIR/gated-features-attr-spans.rs:20:1
    |
-20 | #[repr(simd)] //~ ERROR are experimental
+LL | #[repr(simd)] //~ ERROR are experimental
    | ^^^^^^^^^^^^^
    |
    = help: add #![feature(repr_simd)] to the crate attributes to enable
@@ -9,7 +9,7 @@ error[E0658]: SIMD types are experimental and possibly buggy (see issue #27731)
 warning: `#[must_use]` on methods is experimental (see issue #43302)
   --> $DIR/gated-features-attr-spans.rs:27:5
    |
-27 |     #[must_use] fn summon_weapon(&self) -> Weapon { self.weapon }
+LL |     #[must_use] fn summon_weapon(&self) -> Weapon { self.weapon }
    |     ^^^^^^^^^^^
    |
    = help: add #![feature(fn_must_use)] to the crate attributes to enable
@@ -17,7 +17,7 @@ warning: `#[must_use]` on methods is experimental (see issue #43302)
 warning: `#[must_use]` on functions is experimental (see issue #43302)
   --> $DIR/gated-features-attr-spans.rs:31:1
    |
-31 | #[must_use] //~ WARN is experimental
+LL | #[must_use] //~ WARN is experimental
    | ^^^^^^^^^^^
    |
    = help: add #![feature(fn_must_use)] to the crate attributes to enable

@@ -1,7 +1,7 @@
 error[E0275]: overflow evaluating the requirement `Foo: std::marker::Sync`
   --> $DIR/recursive-requirements.rs:26:12
    |
-26 |     let _: AssertSync<Foo> = unimplemented!(); //~ ERROR E0275
+LL |     let _: AssertSync<Foo> = unimplemented!(); //~ ERROR E0275
    |            ^^^^^^^^^^^^^^^
    |
    = help: consider adding a `#![recursion_limit="128"]` attribute to your crate

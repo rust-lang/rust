@@ -1,7 +1,7 @@
 error[E0267]: `break` inside of a closure
   --> $DIR/E0267.rs:12:18
    |
-12 |     let w = || { break; }; //~ ERROR E0267
+LL |     let w = || { break; }; //~ ERROR E0267
    |                  ^^^^^ cannot break inside of a closure
 
 error: aborting due to previous error

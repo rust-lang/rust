@@ -1,7 +1,7 @@
 error[E0658]: non-reference pattern used to match a reference (see issue #42640)
   --> $DIR/suggestion.rs:12:12
    |
-12 |     if let Some(y) = &Some(22) { //~ ERROR non-reference pattern
+LL |     if let Some(y) = &Some(22) { //~ ERROR non-reference pattern
    |            ^^^^^^^ help: consider using a reference: `&Some(y)`
    |
    = help: add #![feature(match_default_bindings)] to the crate attributes to enable

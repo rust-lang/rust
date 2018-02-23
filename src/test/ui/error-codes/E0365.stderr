@@ -1,7 +1,7 @@
 error[E0365]: `foo` is private, and cannot be re-exported
   --> $DIR/E0365.rs:15:9
    |
-15 | pub use foo as foo2;
+LL | pub use foo as foo2;
    |         ^^^^^^^^^^^ re-export of private `foo`
    |
    = note: consider declaring type or module `foo` with `pub`

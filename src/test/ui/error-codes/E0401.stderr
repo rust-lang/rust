@@ -1,7 +1,7 @@
 error[E0401]: can't use type parameters from outer function; try using a local type parameter instead
   --> $DIR/E0401.rs:12:15
    |
-12 |     fn bar(y: T) { //~ ERROR E0401
+LL |     fn bar(y: T) { //~ ERROR E0401
    |               ^ use of type variable from outer function
 
 error: aborting due to previous error

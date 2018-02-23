@@ -1,7 +1,7 @@
 error[E0658]: The attribute `lt_struct` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
   --> $DIR/feature-gate-custom_attribute2.rs:23:13
    |
-23 | struct StLt<#[lt_struct] 'a>(&'a u32);
+LL | struct StLt<#[lt_struct] 'a>(&'a u32);
    |             ^^^^^^^^^^^^
    |
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
@@ -9,7 +9,7 @@ error[E0658]: The attribute `lt_struct` is currently unknown to the compiler and
 error[E0658]: The attribute `ty_struct` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
   --> $DIR/feature-gate-custom_attribute2.rs:25:13
    |
-25 | struct StTy<#[ty_struct] I>(I);
+LL | struct StTy<#[ty_struct] I>(I);
    |             ^^^^^^^^^^^^
    |
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
@@ -17,7 +17,7 @@ error[E0658]: The attribute `ty_struct` is currently unknown to the compiler and
 error[E0658]: The attribute `lt_enum` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
   --> $DIR/feature-gate-custom_attribute2.rs:28:11
    |
-28 | enum EnLt<#[lt_enum] 'b> { A(&'b u32), B }
+LL | enum EnLt<#[lt_enum] 'b> { A(&'b u32), B }
    |           ^^^^^^^^^^
    |
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
@@ -25,7 +25,7 @@ error[E0658]: The attribute `lt_enum` is currently unknown to the compiler and m
 error[E0658]: The attribute `ty_enum` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
   --> $DIR/feature-gate-custom_attribute2.rs:30:11
    |
-30 | enum EnTy<#[ty_enum] J> { A(J), B }
+LL | enum EnTy<#[ty_enum] J> { A(J), B }
    |           ^^^^^^^^^^
    |
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
@@ -33,7 +33,7 @@ error[E0658]: The attribute `ty_enum` is currently unknown to the compiler and m
 error[E0658]: The attribute `lt_trait` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
   --> $DIR/feature-gate-custom_attribute2.rs:33:12
    |
-33 | trait TrLt<#[lt_trait] 'c> { fn foo(&self, _: &'c [u32]) -> &'c u32; }
+LL | trait TrLt<#[lt_trait] 'c> { fn foo(&self, _: &'c [u32]) -> &'c u32; }
    |            ^^^^^^^^^^^
    |
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
@@ -41,7 +41,7 @@ error[E0658]: The attribute `lt_trait` is currently unknown to the compiler and 
 error[E0658]: The attribute `ty_trait` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
   --> $DIR/feature-gate-custom_attribute2.rs:35:12
    |
-35 | trait TrTy<#[ty_trait] K> { fn foo(&self, _: K); }
+LL | trait TrTy<#[ty_trait] K> { fn foo(&self, _: K); }
    |            ^^^^^^^^^^^
    |
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
@@ -49,7 +49,7 @@ error[E0658]: The attribute `ty_trait` is currently unknown to the compiler and 
 error[E0658]: The attribute `lt_type` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
   --> $DIR/feature-gate-custom_attribute2.rs:38:11
    |
-38 | type TyLt<#[lt_type] 'd> = &'d u32;
+LL | type TyLt<#[lt_type] 'd> = &'d u32;
    |           ^^^^^^^^^^
    |
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
@@ -57,7 +57,7 @@ error[E0658]: The attribute `lt_type` is currently unknown to the compiler and m
 error[E0658]: The attribute `ty_type` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
   --> $DIR/feature-gate-custom_attribute2.rs:40:11
    |
-40 | type TyTy<#[ty_type] L> = (L, );
+LL | type TyTy<#[ty_type] L> = (L, );
    |           ^^^^^^^^^^
    |
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
@@ -65,7 +65,7 @@ error[E0658]: The attribute `ty_type` is currently unknown to the compiler and m
 error[E0658]: The attribute `lt_inherent` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
   --> $DIR/feature-gate-custom_attribute2.rs:43:6
    |
-43 | impl<#[lt_inherent] 'e> StLt<'e> { }
+LL | impl<#[lt_inherent] 'e> StLt<'e> { }
    |      ^^^^^^^^^^^^^^
    |
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
@@ -73,7 +73,7 @@ error[E0658]: The attribute `lt_inherent` is currently unknown to the compiler a
 error[E0658]: The attribute `ty_inherent` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
   --> $DIR/feature-gate-custom_attribute2.rs:45:6
    |
-45 | impl<#[ty_inherent] M> StTy<M> { }
+LL | impl<#[ty_inherent] M> StTy<M> { }
    |      ^^^^^^^^^^^^^^
    |
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
@@ -81,7 +81,7 @@ error[E0658]: The attribute `ty_inherent` is currently unknown to the compiler a
 error[E0658]: The attribute `lt_impl_for` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
   --> $DIR/feature-gate-custom_attribute2.rs:48:6
    |
-48 | impl<#[lt_impl_for] 'f> TrLt<'f> for StLt<'f> {
+LL | impl<#[lt_impl_for] 'f> TrLt<'f> for StLt<'f> {
    |      ^^^^^^^^^^^^^^
    |
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
@@ -89,7 +89,7 @@ error[E0658]: The attribute `lt_impl_for` is currently unknown to the compiler a
 error[E0658]: The attribute `ty_impl_for` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
   --> $DIR/feature-gate-custom_attribute2.rs:52:6
    |
-52 | impl<#[ty_impl_for] N> TrTy<N> for StTy<N> {
+LL | impl<#[ty_impl_for] N> TrTy<N> for StTy<N> {
    |      ^^^^^^^^^^^^^^
    |
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
@@ -97,7 +97,7 @@ error[E0658]: The attribute `ty_impl_for` is currently unknown to the compiler a
 error[E0658]: The attribute `lt_fn` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
   --> $DIR/feature-gate-custom_attribute2.rs:57:9
    |
-57 | fn f_lt<#[lt_fn] 'g>(_: &'g [u32]) -> &'g u32 { loop { } }
+LL | fn f_lt<#[lt_fn] 'g>(_: &'g [u32]) -> &'g u32 { loop { } }
    |         ^^^^^^^^
    |
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
@@ -105,7 +105,7 @@ error[E0658]: The attribute `lt_fn` is currently unknown to the compiler and may
 error[E0658]: The attribute `ty_fn` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
   --> $DIR/feature-gate-custom_attribute2.rs:59:9
    |
-59 | fn f_ty<#[ty_fn] O>(_: O) { }
+LL | fn f_ty<#[ty_fn] O>(_: O) { }
    |         ^^^^^^^^
    |
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
@@ -113,7 +113,7 @@ error[E0658]: The attribute `ty_fn` is currently unknown to the compiler and may
 error[E0658]: The attribute `lt_meth` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
   --> $DIR/feature-gate-custom_attribute2.rs:63:13
    |
-63 |     fn m_lt<#[lt_meth] 'h>(_: &'h [u32]) -> &'h u32 { loop { } }
+LL |     fn m_lt<#[lt_meth] 'h>(_: &'h [u32]) -> &'h u32 { loop { } }
    |             ^^^^^^^^^^
    |
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
@@ -121,7 +121,7 @@ error[E0658]: The attribute `lt_meth` is currently unknown to the compiler and m
 error[E0658]: The attribute `ty_meth` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
   --> $DIR/feature-gate-custom_attribute2.rs:65:13
    |
-65 |     fn m_ty<#[ty_meth] P>(_: P) { }
+LL |     fn m_ty<#[ty_meth] P>(_: P) { }
    |             ^^^^^^^^^^
    |
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
@@ -129,7 +129,7 @@ error[E0658]: The attribute `ty_meth` is currently unknown to the compiler and m
 error[E0658]: The attribute `lt_hof` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
   --> $DIR/feature-gate-custom_attribute2.rs:70:19
    |
-70 |     where Q: for <#[lt_hof] 'i> Fn(&'i [u32]) -> &'i u32
+LL |     where Q: for <#[lt_hof] 'i> Fn(&'i [u32]) -> &'i u32
    |                   ^^^^^^^^^
    |
    = help: add #![feature(custom_attribute)] to the crate attributes to enable

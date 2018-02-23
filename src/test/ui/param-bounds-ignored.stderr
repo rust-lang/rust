@@ -1,18 +1,18 @@
 warning[E0122]: generic bounds are ignored in type aliases
   --> $DIR/param-bounds-ignored.rs:15:1
    |
-15 | type SVec<T: Send> = Vec<T>;
+LL | type SVec<T: Send> = Vec<T>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning[E0122]: generic bounds are ignored in type aliases
   --> $DIR/param-bounds-ignored.rs:16:1
    |
-16 | type VVec<'b, 'a: 'b> = Vec<&'a i32>;
+LL | type VVec<'b, 'a: 'b> = Vec<&'a i32>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning[E0122]: generic bounds are ignored in type aliases
   --> $DIR/param-bounds-ignored.rs:17:1
    |
-17 | type WVec<'b, T: 'b> = Vec<T>;
+LL | type WVec<'b, T: 'b> = Vec<T>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

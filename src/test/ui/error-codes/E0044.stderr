@@ -1,13 +1,13 @@
 error[E0044]: foreign items may not have type parameters
   --> $DIR/E0044.rs:11:10
    |
-11 | extern { fn some_func<T>(x: T); } //~ ERROR E0044
+LL | extern { fn some_func<T>(x: T); } //~ ERROR E0044
    |          ^^^^^^^^^^^^^^^^^^^^^^
    |
 help: consider using specialization instead of type parameters
   --> $DIR/E0044.rs:11:10
    |
-11 | extern { fn some_func<T>(x: T); } //~ ERROR E0044
+LL | extern { fn some_func<T>(x: T); } //~ ERROR E0044
    |          ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

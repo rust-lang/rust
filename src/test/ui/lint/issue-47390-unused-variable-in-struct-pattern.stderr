@@ -1,26 +1,26 @@
 warning: unused variable: `i_think_continually`
   --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:22:9
    |
-22 |     let i_think_continually = 2;
+LL |     let i_think_continually = 2;
    |         ^^^^^^^^^^^^^^^^^^^ help: consider using `_i_think_continually` instead
    |
 note: lint level defined here
   --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:13:9
    |
-13 | #![warn(unused)] // UI tests pass `-A unused` (#43896)
+LL | #![warn(unused)] // UI tests pass `-A unused` (#43896)
    |         ^^^^^^
    = note: #[warn(unused_variables)] implied by #[warn(unused)]
 
 warning: unused variable: `corridors_of_light`
   --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:29:26
    |
-29 |     if let SoulHistory { corridors_of_light,
+LL |     if let SoulHistory { corridors_of_light,
    |                          ^^^^^^^^^^^^^^^^^^ help: try ignoring the field: `corridors_of_light: _`
 
 warning: variable `hours_are_suns` is assigned to, but never used
   --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:30:26
    |
-30 |                          mut hours_are_suns,
+LL |                          mut hours_are_suns,
    |                          ^^^^^^^^^^^^^^^^^^
    |
    = note: consider using `_hours_are_suns` instead
@@ -28,13 +28,13 @@ warning: variable `hours_are_suns` is assigned to, but never used
 warning: value assigned to `hours_are_suns` is never read
   --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:32:9
    |
-32 |         hours_are_suns = false;
+LL |         hours_are_suns = false;
    |         ^^^^^^^^^^^^^^
    |
 note: lint level defined here
   --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:13:9
    |
-13 | #![warn(unused)] // UI tests pass `-A unused` (#43896)
+LL | #![warn(unused)] // UI tests pass `-A unused` (#43896)
    |         ^^^^^^
    = note: #[warn(unused_assignments)] implied by #[warn(unused)]
 

@@ -1,7 +1,7 @@
 error[E0429]: `self` imports are only allowed within a { } list
   --> $DIR/E0429.rs:11:5
    |
-11 | use std::fmt::self; //~ ERROR E0429
+LL | use std::fmt::self; //~ ERROR E0429
    |     ^^^^^^^^^^^^^^
 
 error: aborting due to previous error

@@ -1,19 +1,19 @@
 warning: unnecessary parentheses around assigned value
   --> $DIR/suggestions.rs:48:21
    |
-48 |         let mut a = (1); // should suggest no `mut`, no parens
+LL |         let mut a = (1); // should suggest no `mut`, no parens
    |                     ^^^ help: remove these parentheses
    |
 note: lint level defined here
   --> $DIR/suggestions.rs:13:21
    |
-13 | #![warn(unused_mut, unused_parens)] // UI tests pass `-A unused`—see Issue #43896
+LL | #![warn(unused_mut, unused_parens)] // UI tests pass `-A unused`—see Issue #43896
    |                     ^^^^^^^^^^^^^
 
 warning: use of deprecated attribute `no_debug`: the `#[no_debug]` attribute was an experimental feature that has been deprecated due to lack of demand. See https://github.com/rust-lang/rust/issues/29721
   --> $DIR/suggestions.rs:43:1
    |
-43 | #[no_debug] // should suggest removal of deprecated attribute
+LL | #[no_debug] // should suggest removal of deprecated attribute
    | ^^^^^^^^^^^ help: remove this attribute
    |
    = note: #[warn(deprecated)] on by default
@@ -21,7 +21,7 @@ warning: use of deprecated attribute `no_debug`: the `#[no_debug]` attribute was
 warning: variable does not need to be mutable
   --> $DIR/suggestions.rs:48:13
    |
-48 |         let mut a = (1); // should suggest no `mut`, no parens
+LL |         let mut a = (1); // should suggest no `mut`, no parens
    |             ----^
    |             |
    |             help: remove this `mut`
@@ -29,17 +29,17 @@ warning: variable does not need to be mutable
 note: lint level defined here
   --> $DIR/suggestions.rs:13:9
    |
-13 | #![warn(unused_mut, unused_parens)] // UI tests pass `-A unused`—see Issue #43896
+LL | #![warn(unused_mut, unused_parens)] // UI tests pass `-A unused`—see Issue #43896
    |         ^^^^^^^^^^
 
 warning: variable does not need to be mutable
   --> $DIR/suggestions.rs:52:13
    |
-52 |            let mut
+LL |            let mut
    |   _____________^
    |  |_____________|
    | ||
-53 | ||             b = 1;
+LL | ||             b = 1;
    | ||____________-^
    |  |____________|
    |               help: remove this `mut`
@@ -47,7 +47,7 @@ warning: variable does not need to be mutable
 warning: static is marked #[no_mangle], but not exported
   --> $DIR/suggestions.rs:16:14
    |
-16 | #[no_mangle] static SHENZHOU: usize = 1; // should suggest `pub`
+LL | #[no_mangle] static SHENZHOU: usize = 1; // should suggest `pub`
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
    |              help: try making it public: `pub`
@@ -57,7 +57,7 @@ warning: static is marked #[no_mangle], but not exported
 error: const items should never be #[no_mangle]
   --> $DIR/suggestions.rs:18:14
    |
-18 | #[no_mangle] const DISCOVERY: usize = 1; // should suggest `pub static` rather than `const`
+LL | #[no_mangle] const DISCOVERY: usize = 1; // should suggest `pub static` rather than `const`
    |              -----^^^^^^^^^^^^^^^^^^^^^^
    |              |
    |              help: try a static value: `pub static`
@@ -67,9 +67,9 @@ error: const items should never be #[no_mangle]
 warning: functions generic over types must be mangled
   --> $DIR/suggestions.rs:22:1
    |
-21 | #[no_mangle] // should suggest removal (generics can't be no-mangle)
+LL | #[no_mangle] // should suggest removal (generics can't be no-mangle)
    | ------------ help: remove this attribute
-22 | pub fn defiant<T>(_t: T) {}
+LL | pub fn defiant<T>(_t: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: #[warn(no_mangle_generic_items)] on by default
@@ -77,7 +77,7 @@ warning: functions generic over types must be mangled
 warning: function is marked #[no_mangle], but not exported
   --> $DIR/suggestions.rs:26:1
    |
-26 | fn rio_grande() {} // should suggest `pub`
+LL | fn rio_grande() {} // should suggest `pub`
    | -^^^^^^^^^^^^^^^^^
    | |
    | help: try making it public: `pub`
@@ -87,19 +87,19 @@ warning: function is marked #[no_mangle], but not exported
 warning: static is marked #[no_mangle], but not exported
   --> $DIR/suggestions.rs:33:18
    |
-33 |     #[no_mangle] pub static DAUNTLESS: bool = true;
+LL |     #[no_mangle] pub static DAUNTLESS: bool = true;
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: function is marked #[no_mangle], but not exported
   --> $DIR/suggestions.rs:35:18
    |
-35 |     #[no_mangle] pub fn val_jean() {}
+LL |     #[no_mangle] pub fn val_jean() {}
    |                  ^^^^^^^^^^^^^^^^^^^^
 
 warning: denote infinite loops with `loop { ... }`
   --> $DIR/suggestions.rs:46:5
    |
-46 |     while true { // should suggest `loop`
+LL |     while true { // should suggest `loop`
    |     ^^^^^^^^^^ help: use `loop`
    |
    = note: #[warn(while_true)] on by default
@@ -107,7 +107,7 @@ warning: denote infinite loops with `loop { ... }`
 warning: the `warp_factor:` in this pattern is redundant
   --> $DIR/suggestions.rs:57:23
    |
-57 |             Equinox { warp_factor: warp_factor } => {} // should suggest shorthand
+LL |             Equinox { warp_factor: warp_factor } => {} // should suggest shorthand
    |                       ------------^^^^^^^^^^^^
    |                       |
    |                       help: remove this

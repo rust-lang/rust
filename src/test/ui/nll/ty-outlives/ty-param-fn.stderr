@@ -1,19 +1,19 @@
 warning: not reporting region error due to -Znll
   --> $DIR/ty-param-fn.rs:22:5
    |
-22 |     x
+LL |     x
    |     ^
 
 warning: not reporting region error due to -Znll
   --> $DIR/ty-param-fn.rs:38:5
    |
-38 |     x
+LL |     x
    |     ^
 
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-fn.rs:22:5
    |
-22 |     x
+LL |     x
    |     ^
    |
    = help: consider adding an explicit lifetime bound `T: 'a`...
@@ -21,7 +21,7 @@ error[E0309]: the parameter type `T` may not live long enough
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-fn.rs:38:5
    |
-38 |     x
+LL |     x
    |     ^
    |
    = help: consider adding an explicit lifetime bound `T: 'a`...

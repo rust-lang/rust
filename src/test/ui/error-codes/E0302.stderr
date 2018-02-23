@@ -1,7 +1,7 @@
 error[E0302]: cannot assign in a pattern guard
   --> $DIR/E0302.rs:14:21
    |
-14 |         option if { option = None; false } => { }, //~ ERROR E0302
+LL |         option if { option = None; false } => { }, //~ ERROR E0302
    |                     ^^^^^^^^^^^^^ assignment in pattern guard
 
 error: aborting due to previous error

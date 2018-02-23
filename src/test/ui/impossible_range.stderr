@@ -1,7 +1,7 @@
 error[E0586]: inclusive range with no end
   --> $DIR/impossible_range.rs:20:8
    |
-20 |     ..=; //~ERROR inclusive range with no end
+LL |     ..=; //~ERROR inclusive range with no end
    |        ^
    |
    = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
@@ -9,7 +9,7 @@ error[E0586]: inclusive range with no end
 error[E0586]: inclusive range with no end
   --> $DIR/impossible_range.rs:27:9
    |
-27 |     0..=; //~ERROR inclusive range with no end
+LL |     0..=; //~ERROR inclusive range with no end
    |         ^
    |
    = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)

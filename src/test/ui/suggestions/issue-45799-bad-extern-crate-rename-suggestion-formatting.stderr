@@ -1,7 +1,7 @@
 error[E0259]: the name `std` is defined multiple times
   --> $DIR/issue-45799-bad-extern-crate-rename-suggestion-formatting.rs:11:1
    |
-11 | extern crate std;
+LL | extern crate std;
    | ^^^^^^^^^^^^^^^^^ `std` reimported here
    |
    = note: `std` must be defined only once in the type namespace of this module

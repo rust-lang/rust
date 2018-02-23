@@ -1,7 +1,7 @@
 error[E0658]: the `#[target_feature]` attribute is an experimental feature
   --> $DIR/feature-gate-target_feature.rs:11:1
    |
-11 | #[target_feature = "+sse2"]
+LL | #[target_feature = "+sse2"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(target_feature)] to the crate attributes to enable

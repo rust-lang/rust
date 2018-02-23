@@ -1,13 +1,13 @@
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
   --> $DIR/E0121.rs:11:13
    |
-11 | fn foo() -> _ { 5 } //~ ERROR E0121
+LL | fn foo() -> _ { 5 } //~ ERROR E0121
    |             ^ not allowed in type signatures
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
   --> $DIR/E0121.rs:13:13
    |
-13 | static BAR: _ = "test"; //~ ERROR E0121
+LL | static BAR: _ = "test"; //~ ERROR E0121
    |             ^ not allowed in type signatures
 
 error: aborting due to 2 previous errors

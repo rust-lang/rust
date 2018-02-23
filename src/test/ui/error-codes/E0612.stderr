@@ -1,7 +1,7 @@
 error[E0612]: attempted out-of-bounds tuple index `1` on type `Foo`
   --> $DIR/E0612.rs:15:4
    |
-15 |    y.1; //~ ERROR E0612
+LL |    y.1; //~ ERROR E0612
    |    ^^^
 
 error: aborting due to previous error
