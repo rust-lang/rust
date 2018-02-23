@@ -1632,7 +1632,9 @@ impl<'test> TestCx<'test> {
                 // a first time to get the compiler's output then compile with
                 // "--error-format json" to check if all expected errors are actually there
                 // and that no new one appeared.
-                rustc.arg("-Zui-testing");
+                if !self.props.disable_ui_testing_normalization {
+                    rustc.arg("-Zui-testing");
+                }
             }
             MirOpt => {
                 rustc.args(&[

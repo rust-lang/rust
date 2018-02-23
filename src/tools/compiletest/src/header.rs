@@ -226,9 +226,10 @@ pub struct TestProps {
     pub must_compile_successfully: bool,
     // rustdoc will test the output of the `--test` option
     pub check_test_line_numbers_match: bool,
-    // The test must be compiled and run successfully. Only used in UI tests for
-    // now.
+    // The test must be compiled and run successfully. Only used in UI tests for now.
     pub run_pass: bool,
+    // Do not pass `-Z ui-testing` to UI tests
+    pub disable_ui_testing_normalization: bool,
     // customized normalization rules
     pub normalize_stdout: Vec<(String, String)>,
     pub normalize_stderr: Vec<(String, String)>,
@@ -259,6 +260,7 @@ impl TestProps {
             must_compile_successfully: false,
             check_test_line_numbers_match: false,
             run_pass: false,
+            disable_ui_testing_normalization: false,
             normalize_stdout: vec![],
             normalize_stderr: vec![],
             failure_status: 101,
@@ -377,6 +379,11 @@ impl TestProps {
                 // run-pass implies must_compile_sucessfully
                 self.must_compile_successfully =
                     config.parse_must_compile_successfully(ln) || self.run_pass;
+            }
+
+            if !self.disable_ui_testing_normalization {
+                self.disable_ui_testing_normalization =
+                    config.parse_disable_ui_testing_normalization(ln);
             }
 
             if let Some(rule) = config.parse_custom_normalization(ln, "normalize-stdout") {
@@ -503,6 +510,10 @@ impl Config {
 
     fn parse_must_compile_successfully(&self, line: &str) -> bool {
         self.parse_name_directive(line, "must-compile-successfully")
+    }
+
+    fn parse_disable_ui_testing_normalization(&self, line: &str) -> bool {
+        self.parse_name_directive(line, "disable-ui-testing-normalization")
     }
 
     fn parse_check_test_line_numbers_match(&self, line: &str) -> bool {
