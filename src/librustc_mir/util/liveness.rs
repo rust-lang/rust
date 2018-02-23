@@ -425,12 +425,12 @@ pub fn write_mir_fn<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     src: MirSource,
     mir: &Mir<'tcx>,
-    w: &mut Write,
+    w: &mut dyn Write,
     result: &LivenessResult,
 ) -> io::Result<()> {
     write_mir_intro(tcx, src, mir, w)?;
     for block in mir.basic_blocks().indices() {
-        let print = |w: &mut Write, prefix, result: &IndexVec<BasicBlock, LocalSet>| {
+        let print = |w: &mut dyn Write, prefix, result: &IndexVec<BasicBlock, LocalSet>| {
             let live: Vec<String> = mir.local_decls
                 .indices()
                 .filter(|i| result[block].contains(i))
