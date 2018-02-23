@@ -51,7 +51,7 @@ static EXCEPTIONS: &'static [&'static str] = &[
 // Whitelist of crates rustc is allowed to depend on. Avoid adding to the list if possible.
 static WHITELIST: &'static [(&'static str, &'static str)] = &[];
 
-// Some type for Serde to deserialize the output of `cargo metadata` to...
+// Some types for Serde to deserialize the output of `cargo metadata` to...
 
 #[derive(Deserialize)]
 struct Output {
@@ -151,6 +151,7 @@ fn extract_license(line: &str) -> String {
     }
 }
 
+/// Get the dependencies of the crate at the given path using `cargo metadata`.
 fn get_deps(path: &Path) -> Vec<Package> {
     // Run `cargo metadata` to get the set of dependencies
     let output = Command::new("cargo")
