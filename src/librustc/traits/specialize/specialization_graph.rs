@@ -190,13 +190,13 @@ impl<'a, 'gcx, 'tcx> Children {
         Ok(Inserted::BecameNewSibling(last_lint))
     }
 
-    fn iter_mut(&'a mut self) -> Box<Iterator<Item = &'a mut DefId> + 'a> {
+    fn iter_mut(&'a mut self) -> Box<dyn Iterator<Item = &'a mut DefId> + 'a> {
         let nonblanket = self.nonblanket_impls.iter_mut().flat_map(|(_, v)| v.iter_mut());
         Box::new(self.blanket_impls.iter_mut().chain(nonblanket))
     }
 
     fn filtered_mut(&'a mut self, sty: SimplifiedType)
-                    -> Box<Iterator<Item = &'a mut DefId> + 'a> {
+                    -> Box<dyn Iterator<Item = &'a mut DefId> + 'a> {
         let nonblanket = self.nonblanket_impls.entry(sty).or_insert(vec![]).iter_mut();
         Box::new(self.blanket_impls.iter_mut().chain(nonblanket))
     }

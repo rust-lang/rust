@@ -419,7 +419,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn calculate_dtor(
         self,
         adt_did: DefId,
-        validate: &mut FnMut(Self, DefId) -> Result<(), ErrorReported>
+        validate: &mut dyn FnMut(Self, DefId) -> Result<(), ErrorReported>
     ) -> Option<ty::Destructor> {
         let drop_trait = if let Some(def_id) = self.lang_items().drop_trait() {
             def_id

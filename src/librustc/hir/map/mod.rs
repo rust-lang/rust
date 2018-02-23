@@ -1137,7 +1137,7 @@ impl Named for TraitItem { fn name(&self) -> Name { self.name } }
 impl Named for ImplItem { fn name(&self) -> Name { self.name } }
 
 pub fn map_crate<'hir>(sess: &::session::Session,
-                       cstore: &::middle::cstore::CrateStore,
+                       cstore: &dyn ::middle::cstore::CrateStore,
                        forest: &'hir mut Forest,
                        definitions: &'hir Definitions)
                        -> Map<'hir> {

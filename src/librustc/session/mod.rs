@@ -905,7 +905,7 @@ pub fn build_session_with_codemap(sopts: config::Options,
                                   local_crate_source_file: Option<PathBuf>,
                                   registry: errors::registry::Registry,
                                   codemap: Lrc<codemap::CodeMap>,
-                                  emitter_dest: Option<Box<Write + Send>>)
+                                  emitter_dest: Option<Box<dyn Write + Send>>)
                                   -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
@@ -924,7 +924,7 @@ pub fn build_session_with_codemap(sopts: config::Options,
 
     let external_macro_backtrace = sopts.debugging_opts.external_macro_backtrace;
 
-    let emitter: Box<Emitter> = match (sopts.error_format, emitter_dest) {
+    let emitter: Box<dyn Emitter> = match (sopts.error_format, emitter_dest) {
         (config::ErrorOutputType::HumanReadable(color_config), None) => {
             Box::new(EmitterWriter::stderr(color_config, Some(codemap.clone()),
                      false, sopts.debugging_opts.teach)
@@ -1123,7 +1123,7 @@ pub enum IncrCompSession {
 }
 
 pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
-    let emitter: Box<Emitter> = match output {
+    let emitter: Box<dyn Emitter> = match output {
         config::ErrorOutputType::HumanReadable(color_config) => {
             Box::new(EmitterWriter::stderr(color_config, None, false, false))
         }
@@ -1138,7 +1138,7 @@ pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
 }
 
 pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
-    let emitter: Box<Emitter> = match output {
+    let emitter: Box<dyn Emitter> = match output {
         config::ErrorOutputType::HumanReadable(color_config) => {
             Box::new(EmitterWriter::stderr(color_config, None, false, false))
         }
