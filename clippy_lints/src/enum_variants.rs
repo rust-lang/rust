@@ -260,7 +260,7 @@ impl EarlyLintPass for EnumVariantNames {
                             );
                         }
                     }
-                    if item.vis == Visibility::Public {
+                    if item.vis.node == VisibilityKind::Public {
                         let matching = partial_match(mod_camel, &item_camel);
                         let rmatching = partial_rmatch(mod_camel, &item_camel);
                         let nchars = mod_camel.chars().count();
@@ -284,8 +284,8 @@ impl EarlyLintPass for EnumVariantNames {
             }
         }
         if let ItemKind::Enum(ref def, _) = item.node {
-            let lint = match item.vis {
-                Visibility::Public => PUB_ENUM_VARIANT_NAMES,
+            let lint = match item.vis.node {
+                VisibilityKind::Public => PUB_ENUM_VARIANT_NAMES,
                 _ => ENUM_VARIANT_NAMES,
             };
             check_variant(cx, self.threshold, def, &item_name, item_name_chars, item.span, lint);
