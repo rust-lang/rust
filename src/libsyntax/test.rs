@@ -747,9 +747,10 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
     visible_path.extend(path);
 
     // Rather than directly give the test function to the test
-    // harness, we create a wrapper like this:
+    // harness, we create a wrapper like one of the following:
     //
-    //     || test::assert_test_result(real_function())
+    //     || test::assert_test_result(real_function()) // for test
+    //     |b| test::assert_test_result(real_function(b)) // for bench
     //
     // this will coerce into a fn pointer that is specialized to the
     // actual return type of `real_function` (Typically `()`, but not always).
@@ -758,24 +759,47 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
         let real_function_expr = ecx.expr_path(ecx.path_global(span, visible_path));
         // construct path `test::assert_test_result`
         let assert_test_result = test_path("assert_test_result");
-        // construct `|| {..}`
-        ecx.lambda(
-            span,
-            vec![],
-            // construct `assert_test_result(..)`
-            ecx.expr_call(
+        if test.bench {
+            // construct `|b| {..}`
+            let b_ident = Ident::with_empty_ctxt(Symbol::gensym("b"));
+            let b_expr = ecx.expr_ident(span, b_ident);
+            ecx.lambda(
                 span,
-                ecx.expr_path(assert_test_result),
-                vec![
-                    // construct `real_function()`
-                    ecx.expr_call(
-                        span,
-                        real_function_expr,
-                        vec![],
-                    )
-                ],
-            ),
-        )
+                vec![b_ident],
+                // construct `assert_test_result(..)`
+                ecx.expr_call(
+                    span,
+                    ecx.expr_path(assert_test_result),
+                    vec![
+                        // construct `real_function(b)`
+                        ecx.expr_call(
+                            span,
+                            real_function_expr,
+                            vec![b_expr],
+                        )
+                    ],
+                ),
+            )
+        } else {
+            // construct `|| {..}`
+            ecx.lambda(
+                span,
+                vec![],
+                // construct `assert_test_result(..)`
+                ecx.expr_call(
+                    span,
+                    ecx.expr_path(assert_test_result),
+                    vec![
+                        // construct `real_function()`
+                        ecx.expr_call(
+                            span,
+                            real_function_expr,
+                            vec![],
+                        )
+                    ],
+                ),
+            )
+        }
     };
 
     let variant_name = if test.bench { "StaticBenchFn" } else { "StaticTestFn" };
