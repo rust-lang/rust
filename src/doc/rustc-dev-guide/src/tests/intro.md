@@ -1,17 +1,18 @@
-# Using the compiler testing framework
+# The compiler testing framework
 
-The compiler has an extensive testing framework, masterminded by the
-compiletest tool (sources in the [`src/tools/compiletest`]). This
-section gives a brief overview of how the testing framework is setup,
-and then gets into some of the details on
-[how to run tests](./tests/running.html#ui) as well as
-[how to add new tests](./tests/adding.html).
+The Rust project runs a wide variety of different tests, orchestrated by the
+build system (`x.py test`).  The main test harness for testing the compiler
+itself is a tool called compiletest (sources in the
+[`src/tools/compiletest`]). This section gives a brief overview of how the
+testing framework is setup, and then gets into some of the details on [how to
+run tests](./tests/running.html#ui) as well as [how to add new
+tests](./tests/adding.html).
 
 [`src/tools/compiletest`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest
 
-## Test suites
+## Compiletest test suites
 
-The tests are located in the tree in the [`src/test`]
+The compiletest tests are located in the tree in the [`src/test`]
 directory. Immediately within you will see a series of subdirectories
 (e.g. `ui`, `run-make`, and so forth). Each of those directories is
 called a **test suite** -- they house a group of tests that are run in
@@ -47,6 +48,61 @@ that give more details.
   the expected documentation.
 - `*-fulldeps` -- same as above, but indicates that the test depends on things other
   than `libstd` (and hence those things must be built)
+
+## Other Tests
+
+The Rust build system handles running tests for various other things,
+including:
+
+- **Tidy** -- This is a custom tool used for validating source code style and
+  formatting conventions, such as rejecting long lines.  There is more
+  information in the [section on coding conventions](./conventions.html#formatting).
+
+  Example: `./x.py test src/tools/tidy`
+
+- **Unittests** -- The Rust standard library and many of the Rust packages
+  include typical Rust `#[test]` unittests.  Under the hood, `x.py` will run
+  `cargo test` on each package to run all the tests.
+
+  Example: `./x.py test src/libstd`
+
+- **Doctests** -- Example code embedded within Rust documentation is executed
+  via `rustdoc --test`.  Examples:
+
+  `./x.py test src/doc` -- Runs `rustdoc --test` for all documentation in
+  `src/doc`.
+
+  `./x.py test --doc src/libstd` -- Runs `rustdoc --test` on the standard
+  library.
+
+- **Linkchecker** -- A small tool for verifying `href` links within
+  documentation.
+
+  Example: `./x.py test src/tools/linkchecker`
+
+- **Distcheck** -- This verifies that the source distribution tarball created
+  by the build system will unpack, build, and run all tests.
+
+  Example: `./x.py test distcheck`
+
+- **Tool tests** -- Packages that are included with Rust have all of their
+  tests run as well (typically by running `cargo test` within their
+  directory).  This includes things such as cargo, clippy, rustfmt, rls, miri,
+  bootstrap (testing the Rust build system itself), etc.
+
+- **Cargotest** -- This is a small tool which runs `cargo test` on a few
+  significant projects (such as `servo`, `ripgrep`, `tokei`, etc.) just to
+  ensure there aren't any significant regressions.
+
+  Example: `./x.py test src/tools/cargotest`
+
+## Testing infrastructure
+
+TODO - bors, platforms, etc.
+
+## Crater
+
+TODO
 
 ## Further reading
 

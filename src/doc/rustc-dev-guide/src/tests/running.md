@@ -13,13 +13,6 @@ a very long time, and anyway bors / travis will do it for you. (Often,
 I will run this command in the background after opening a PR that I
 think is done, but rarely otherwise. -nmatsakis)
 
-## Tidy
-
-When you run the full suite of tests via `./x.py test`, the first
-thing that executes is a "tidy suite" that checks for long lines and
-other formatting conventions. There is more information in the
-[section on coding conventions](./conventions.html#formatting).
-
 ## Running a subset of the test suites
 
 When working on a specific PR, you will usually want to run a smaller
