@@ -1,0 +1,9 @@
+root = true
+
+[src/*]
+end_of_line = lf
+insert_final_newline = true
+
+[ci/*.sh]
+indent_style = space
+indent_size = 2
