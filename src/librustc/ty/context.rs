@@ -1780,6 +1780,7 @@ macro_rules! sty_debug_print {
                     region_infer: 0, ty_infer: 0, both_infer: 0,
                 };
                 $(let mut $variant = total;)*
+                let mut TyUnusedParam = total;
 
 
                 for &Interned(t) in tcx.interners.type_.borrow().iter() {
@@ -1787,6 +1788,7 @@ macro_rules! sty_debug_print {
                         ty::TyBool | ty::TyChar | ty::TyInt(..) | ty::TyUint(..) |
                             ty::TyFloat(..) | ty::TyStr | ty::TyNever => continue,
                         ty::TyError => /* unimportant */ continue,
+                        ty::TyUnusedParam => &mut TyUnusedParam,
                         $(ty::$variant(..) => &mut $variant,)*
                     };
                     let region = t.flags.intersects(ty::TypeFlags::HAS_RE_INFER);

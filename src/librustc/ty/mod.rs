@@ -2069,7 +2069,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 }
             }
 
-            TyInfer(..) => {
+            TyUnusedParam | TyInfer(..) => {
                 bug!("unexpected type `{:?}` in sized_constraint_for_ty",
                      ty)
             }

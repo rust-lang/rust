@@ -387,6 +387,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
             ty::TyInfer(_) |
             ty::TyProjection(..) |
             ty::TyParam(_) |
+            ty::TyUnusedParam |
             ty::TyGeneratorWitness(_) |
             ty::TyAnon(..) => {
                 bug!("DefPathBasedNames: Trying to create type name for \

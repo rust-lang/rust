@@ -1636,6 +1636,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             TyTuple(..) |
             TyForeign(..) |
             TyParam(_) |
+            TyUnusedParam |
             TyInfer(_) |
             TyError => {
                 vec![]
