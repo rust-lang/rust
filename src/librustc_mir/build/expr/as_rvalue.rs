@@ -381,7 +381,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     // Helper to get a `-1` value of the appropriate type
     fn neg_1_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
-        let bits = self.hir.type_bit_size(ty);
+        let bits = self.hir.integer_bit_width(ty);
         let n = (!0u128) >> (128 - bits);
         let literal = Literal::Value {
             value: self.hir.tcx().mk_const(ty::Const {
@@ -396,7 +396,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     // Helper to get the minimum value of the appropriate type
     fn minval_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
         assert!(ty.is_signed());
-        let bits = self.hir.type_bit_size(ty);
+        let bits = self.hir.integer_bit_width(ty);
         let n = 1 << (bits - 1);
         let literal = Literal::Value {
             value: self.hir.tcx().mk_const(ty::Const {

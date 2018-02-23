@@ -149,7 +149,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn type_bit_size(
+    pub fn integer_bit_width(
         &self,
         ty: Ty,
     ) -> u64 {
@@ -179,7 +179,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         };
 
         let clamp = |n| {
-            let size = self.type_bit_size(ty);
+            let size = self.integer_bit_width(ty);
             trace!("clamp {} with size {} and amt {}", n, size, 128 - size);
             let amt = 128 - size;
             let result = (n << amt) >> amt;
