@@ -691,7 +691,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         }
 
         match expr.node {
-            hir::ExprMethodCall(ref method_call, _, ref args) => {
+            hir::ExprMethodCall(ref method_call, ref method_span, ref args) => {
                 // Chain calls
                 // GET_UNWRAP needs to be checked before general `UNWRAP` lints
                 if let Some(arglists) = method_chain_args(expr, &["get", "unwrap"]) {
@@ -744,7 +744,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     lint_unnecessary_fold(cx, expr, arglists[0]);
                 }
 
-                lint_or_fun_call(cx, expr, &method_call.name.as_str(), args);
+                lint_or_fun_call(cx, expr, *method_span, &method_call.name.as_str(), args);
 
                 let self_ty = cx.tables.expr_ty_adjusted(&args[0]);
                 if args.len() == 1 && method_call.name == "clone" {
@@ -845,7 +845,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 }
 
 /// Checks for the `OR_FUN_CALL` lint.
-fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir::Expr]) {
+fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, name: &str, args: &[hir::Expr]) {
     /// Check for `unwrap_or(T::new())` or `unwrap_or(T::default())`.
     fn check_unwrap_or_default(
         cx: &LateContext,
@@ -894,6 +894,7 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
     fn check_general_case(
         cx: &LateContext,
         name: &str,
+        method_span: Span,
         fun_span: Span,
         self_expr: &hir::Expr,
         arg: &hir::Expr,
@@ -939,14 +940,14 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
             (false, false) => format!("|| {}", snippet(cx, arg.span, "..")).into(),
             (false, true) => snippet(cx, fun_span, ".."),
         };
-
+        let span_replace_word = method_span.with_hi(span.hi());
         span_lint_and_sugg(
             cx,
             OR_FUN_CALL,
-            span,
+            span_replace_word,
             &format!("use of `{}` followed by a function call", name),
             "try this",
-            format!("{}.{}_{}({})", snippet(cx, self_expr.span, "_"), name, suffix, sugg),
+            format!("{}_{}({})", name, suffix, sugg),
         );
     }
 
@@ -955,11 +956,11 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
             hir::ExprCall(ref fun, ref or_args) => {
                 let or_has_args = !or_args.is_empty();
                 if !check_unwrap_or_default(cx, name, fun, &args[0], &args[1], or_has_args, expr.span) {
-                    check_general_case(cx, name, fun.span, &args[0], &args[1], or_has_args, expr.span);
+                    check_general_case(cx, name, method_span, fun.span, &args[0], &args[1], or_has_args, expr.span);
                 }
             },
             hir::ExprMethodCall(_, span, ref or_args) => {
-                check_general_case(cx, name, span, &args[0], &args[1], !or_args.is_empty(), expr.span)
+                check_general_case(cx, name, method_span, span, &args[0], &args[1], !or_args.is_empty(), expr.span)
             },
             _ => {},
         }
