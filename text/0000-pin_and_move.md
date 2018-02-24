@@ -126,8 +126,8 @@ backing data would otherwise be in rodata.
 ### Notes on existing ecosystem traits
 
 These traits supplant certain traits in the ecosystem which already provide
-similar guarantees. In particular, the [stable-deref][stable-deref] crate
-provides a similar bit different hierarchy. The differences are:
+similar guarantees. In particular, the [stable_deref_trait][stable-deref]
+crate provides a similar bit different hierarchy. The differences are:
 
 - That crate draws no distinction between `StableDeref` and `StableDerefMut`.
   This does not leave forward compatibility for the static string optimization
@@ -377,3 +377,5 @@ introduced (especially the `Move` trait) have evolved away from their original
 design, making the names a bit of a misnomer (`Move` really means that its safe
 to convert between `Pin<T>` and `&mut T`, for example). We want to make sure we
 have adequate names before stabilizing these APIs.
+
+[stable-deref]: https://crates.io/crates/stable_deref_trait
