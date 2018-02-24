@@ -5,10 +5,9 @@
 
 use rustc::lint::*;
 use rustc::hir;
-use rustc::hir::{Expr, Expr_, QPath};
+use rustc::hir::{Expr, Expr_, QPath, Ty_};
 use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
-use syntax::ast::{self, Attribute, LitKind, NodeId, DUMMY_NODE_ID};
-use syntax::codemap::Span;
+use syntax::ast::{self, Attribute, LitKind, DUMMY_NODE_ID};
 use std::collections::HashMap;
 
 /// **What it does:** Generates clippy code that detects the offending pattern
@@ -171,6 +170,12 @@ impl PrintVisitor {
             },
         }
     }
+
+    fn print_qpath(&mut self, path: &QPath) {
+        print!("    if match_qpath({}, &[", self.current);
+        print_path(path, &mut true);
+        println!("]);");
+    }
 }
 
 struct PrintVisitor {
@@ -260,9 +265,17 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                     },
                 }
             },
-            Expr_::ExprCast(ref expr, ref _ty) => {
+            Expr_::ExprCast(ref expr, ref ty) => {
                 let cast_pat = self.next("expr");
-                println!("Cast(ref {}, _) = {};", cast_pat, current);
+                let cast_ty = self.next("cast_ty");
+                let qp_label = self.next("qp");
+
+                println!("Cast(ref {}, ref {}) = {};", cast_pat, cast_ty, current);
+                if let Ty_::TyPath(ref qp) = ty.node {
+                    println!("    if let Ty_::TyPath(ref {}) = {}.node;", qp_label, cast_ty);
+                    self.current = qp_label;
+                    self.print_qpath(&qp);
+                }
                 self.current = cast_pat;
                 self.visit_expr(expr);
             },
@@ -376,7 +389,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 let path_pat = self.next("path");
                 println!("Path(ref {}) = {};", path_pat, current);
                 self.current = path_pat;
-                self.visit_qpath(path, expr.id, expr.span);
+                self.print_qpath(path);
             },
             Expr_::ExprAddrOf(mutability, ref inner) => {
                 let inner_pat = self.next("inner");
@@ -431,7 +444,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                     println!("Struct(ref {}, ref {}, None) = {};", path_pat, fields_pat, current);
                 }
                 self.current = path_pat;
-                self.visit_qpath(path, expr.id, expr.span);
+                self.print_qpath(path);
                 println!("    if {}.len() == {};", fields_pat, fields.len());
                 println!("    // unimplemented: field checks");
             },
@@ -446,11 +459,6 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
         }
     }
 
-    fn visit_qpath(&mut self, path: &QPath, _: NodeId, _: Span) {
-        print!("    if match_qpath({}, &[", self.current);
-        print_path(path, &mut true);
-        println!("]);");
-    }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::None
     }
