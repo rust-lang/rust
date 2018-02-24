@@ -35,9 +35,9 @@ This new auto trait is added to the `core::marker` and `std::marker` modules:
 pub unsafe auto trait Move { }
 ```
 
-A type implements `Move` if in its stack representation, it contains internal
-references to other positions within its stack representation. Nearly every
-type in Rust is `Move`.
+A type implements `Move` if in its stack representation, it does not contain
+internal references to other positions within its stack representation. Nearly
+every type in Rust is `Move`.
 
 Positive impls of `Move` are added for types which contain pointers to generic
 types, but do not contain those types in their stack representation, e.g:
