@@ -911,3 +911,7 @@ macro foo() {
 macro lex_err($kind: ident $(, $body: expr)*) {
     Err(QlError::LexError(LexError::$kind($($body,)*)))
 }
+
+// Preserve trailing comma on item-level macro with `()` or `[]`.
+methods![get, post, delete,];
+methods!(get, post, delete,);
