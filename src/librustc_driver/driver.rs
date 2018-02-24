@@ -36,7 +36,7 @@ use rustc_typeck as typeck;
 use rustc_privacy;
 use rustc_plugin::registry::Registry;
 use rustc_plugin as plugin;
-use rustc_passes::{self, ast_validation, loops, consts, static_recursion, hir_stats};
+use rustc_passes::{self, ast_validation, loops, consts, hir_stats};
 use rustc_const_eval::{self, check_match};
 use super::Compilation;
 
@@ -818,7 +818,8 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
                                          &mut resolver,
                                          sess.opts.test,
                                          krate,
-                                         sess.diagnostic())
+                                         sess.diagnostic(),
+                                         &sess.features.borrow())
     });
 
     // If we're actually rustdoc then there's no need to actually compile
@@ -931,6 +932,7 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
 }
 
 pub fn default_provide(providers: &mut ty::maps::Providers) {
+    hir::provide(providers);
     borrowck::provide(providers);
     mir::provide(providers);
     reachable::provide(providers);
@@ -989,10 +991,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(trans: &TransCrate,
     time(time_passes,
          "loop checking",
          || loops::check_crate(sess, &hir_map));
-
-    time(time_passes,
-              "static item recursion checking",
-              || static_recursion::check_crate(sess, &hir_map))?;
 
     let mut local_providers = ty::maps::Providers::default();
     default_provide(&mut local_providers);

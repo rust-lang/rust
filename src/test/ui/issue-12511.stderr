@@ -1,4 +1,4 @@
-error[E0391]: unsupported cyclic reference between types/traits detected
+error[E0391]: cyclic dependency detected
   --> $DIR/issue-12511.rs:14:1
    |
 14 | trait t2 : t1 {

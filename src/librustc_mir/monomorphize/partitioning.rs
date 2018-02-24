@@ -180,7 +180,9 @@ pub trait CodegenUnitExt<'tcx> {
                         }
                     }
                 }
-                MonoItem::Static(node_id) |
+                MonoItem::Static(def_id) => {
+                    tcx.hir.as_local_node_id(def_id)
+                }
                 MonoItem::GlobalAsm(node_id) => {
                     Some(node_id)
                 }
@@ -382,7 +384,15 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         };
                         (Linkage::External, visibility)
                     }
-                    MonoItem::Static(node_id) |
+                    MonoItem::Static(def_id) => {
+                        let visibility = if tcx.is_exported_symbol(def_id) {
+                            can_be_internalized = false;
+                            default_visibility(def_id)
+                        } else {
+                            Visibility::Hidden
+                        };
+                        (Linkage::External, visibility)
+                    }
                     MonoItem::GlobalAsm(node_id) => {
                         let def_id = tcx.hir.local_def_id(node_id);
                         let visibility = if tcx.is_exported_symbol(def_id) {
@@ -643,7 +653,7 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             Some(def_id)
         }
-        MonoItem::Static(node_id) |
+        MonoItem::Static(def_id) => Some(def_id),
         MonoItem::GlobalAsm(node_id) => Some(tcx.hir.local_def_id(node_id)),
     }
 }

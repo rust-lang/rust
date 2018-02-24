@@ -15,7 +15,7 @@ use std::intrinsics;
 
 struct Foo {
     bytes: [u8; unsafe { intrinsics::size_of::<Foo>() }],
-    //~^ ERROR unsupported cyclic reference between types/traits detected
+    //~^ ERROR cyclic dependency detected
     x: usize,
 }
 

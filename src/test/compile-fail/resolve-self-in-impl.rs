@@ -21,10 +21,10 @@ impl Tr for S where Self: Copy {} // OK
 impl Tr for S where S<Self>: Copy {} // OK
 impl Tr for S where Self::A: Copy {} // OK
 
-impl Tr for Self {} //~ ERROR unsupported cyclic reference between types/traits detected
-impl Tr for S<Self> {} //~ ERROR unsupported cyclic reference between types/traits detected
-impl Self {} //~ ERROR unsupported cyclic reference between types/traits detected
-impl S<Self> {} //~ ERROR unsupported cyclic reference between types/traits detected
-impl Tr<Self::A> for S {} //~ ERROR unsupported cyclic reference between types/traits detected
+impl Tr for Self {} //~ ERROR cyclic dependency detected
+impl Tr for S<Self> {} //~ ERROR cyclic dependency detected
+impl Self {} //~ ERROR cyclic dependency detected
+impl S<Self> {} //~ ERROR cyclic dependency detected
+impl Tr<Self::A> for S {} //~ ERROR cyclic dependency detected
 
 fn main() {}

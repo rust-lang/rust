@@ -29,12 +29,16 @@ pub trait Idx: Copy + 'static + Eq + Debug {
 }
 
 impl Idx for usize {
+    #[inline]
     fn new(idx: usize) -> Self { idx }
+    #[inline]
     fn index(self) -> usize { self }
 }
 
 impl Idx for u32 {
+    #[inline]
     fn new(idx: usize) -> Self { assert!(idx <= u32::MAX as usize); idx as u32 }
+    #[inline]
     fn index(self) -> usize { self as usize }
 }
 
@@ -73,11 +77,13 @@ macro_rules! newtype_index {
         pub struct $type($($pub)* u32);
 
         impl Idx for $type {
+            #[inline]
             fn new(value: usize) -> Self {
                 assert!(value < ($max) as usize);
                 $type(value as u32)
             }
 
+            #[inline]
             fn index(self) -> usize {
                 self.0 as usize
             }

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(conservative_impl_trait, underscore_lifetimes, universal_impl_trait, nested_impl_trait)]
+#![feature(conservative_impl_trait, underscore_lifetimes, universal_impl_trait)]
 #![allow(warnings)]
 
 use std::fmt::Debug;
@@ -63,12 +63,11 @@ fn pass_through_elision_with_fn_ptr(x: &fn(&u32) -> &u32) -> impl Into<&fn(&u32)
 
 fn pass_through_elision_with_fn_path<T: Fn(&u32) -> &u32>(
     x: &T
-) -> impl Into<&impl Fn(&u32) -> &u32> { x }
+) -> &impl Fn(&u32) -> &u32 { x }
 
-fn foo(x: &impl Debug) -> impl Into<&impl Debug> { x }
-fn foo_explicit_lifetime<'a>(x: &'a impl Debug) -> impl Into<&'a impl Debug> { x }
-fn foo_no_outer_impl(x: &impl Debug) -> &impl Debug { x }
-fn foo_explicit_arg<T: Debug>(x: &T) -> impl Into<&impl Debug> { x }
+fn foo(x: &impl Debug) -> &impl Debug { x }
+fn foo_explicit_lifetime<'a>(x: &'a impl Debug) -> &'a impl Debug { x }
+fn foo_explicit_arg<T: Debug>(x: &T) -> &impl Debug { x }
 
 fn mixed_lifetimes<'a>() -> impl for<'b: 'a> Fn(&'b u32) { |_| () }
 fn mixed_as_static() -> impl Fn(&'static u32) { mixed_lifetimes() }

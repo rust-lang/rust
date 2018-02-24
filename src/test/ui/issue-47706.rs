@@ -22,3 +22,18 @@ impl Foo {
     }
     //~^^ ERROR function is expected to take 1 argument, but it takes 2 arguments [E0593]
 }
+
+enum Qux {
+    Bar(i32),
+}
+
+fn foo<F>(f: F)
+where
+    F: Fn(),
+{
+}
+
+fn main() {
+    foo(Qux::Bar);
+}
+//~^^ ERROR function is expected to take 0 arguments, but it takes 1 argument [E0593]

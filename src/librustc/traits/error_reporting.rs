@@ -756,7 +756,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         }).collect(),
                     ref sty => vec![ArgKind::Arg("_".to_owned(), format!("{}", sty))],
                 };
-                if found.len()== expected.len() {
+                if found.len() == expected.len() {
                     self.report_closure_arg_mismatch(span,
                                                      found_span,
                                                      found_trait_ref,
@@ -873,6 +873,19 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     ),
                     _ => ArgKind::Arg("_".to_owned(), "_".to_owned())
                 }).collect::<Vec<ArgKind>>())
+            }
+            hir::map::NodeVariant(&hir::Variant {
+                span,
+                node: hir::Variant_ {
+                    data: hir::VariantData::Tuple(ref fields, _),
+                    ..
+                },
+                ..
+            }) => {
+                (self.tcx.sess.codemap().def_span(span),
+                 fields.iter().map(|field| {
+                     ArgKind::Arg(format!("{}", field.name), "_".to_string())
+                 }).collect::<Vec<_>>())
             }
             _ => panic!("non-FnLike node found: {:?}", node),
         }

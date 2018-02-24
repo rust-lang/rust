@@ -42,7 +42,7 @@ fn after() -> impl Fn(i32) {
 // independently resolved and only require the concrete
 // return type, which can't depend on the obligation.
 fn cycle1() -> impl Clone {
-    //~^ ERROR unsupported cyclic reference between types/traits detected
+    //~^ ERROR cyclic dependency detected
     //~| cyclic reference
     send(cycle2().clone());
 

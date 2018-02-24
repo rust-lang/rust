@@ -28,7 +28,7 @@ note: required by `send`
 24 | fn send<T: Send>(_: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0391]: unsupported cyclic reference between types/traits detected
+error[E0391]: cyclic dependency detected
   --> $DIR/auto-trait-leak.rs:44:1
    |
 44 | fn cycle1() -> impl Clone {

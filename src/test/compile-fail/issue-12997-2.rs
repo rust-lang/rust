@@ -15,6 +15,3 @@
 #[bench]
 fn bar(x: isize) { }
 //~^ ERROR mismatched types
-//~| expected type `for<'r> fn(&'r mut __test::test::Bencher)`
-//~| found type `fn(isize) {bar}`
-//~| expected mutable reference, found isize

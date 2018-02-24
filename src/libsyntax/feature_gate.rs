@@ -432,9 +432,6 @@ declare_features! (
     // `foo.rs` as an alternative to `foo/mod.rs`
     (active, non_modrs_mods, "1.24.0", Some(44660)),
 
-    // Nested `impl Trait`
-    (active, nested_impl_trait, "1.24.0", Some(34511)),
-
     // Termination trait in main (RFC 1937)
     (active, termination_trait, "1.24.0", Some(43301)),
 
@@ -1352,73 +1349,8 @@ fn contains_novel_literal(item: &ast::MetaItem) -> bool {
     }
 }
 
-// Bans nested `impl Trait`, e.g. `impl Into<impl Debug>`.
-// Nested `impl Trait` _is_ allowed in associated type position,
-// e.g `impl Iterator<Item=impl Debug>`
-struct NestedImplTraitVisitor<'a> {
-    context: &'a Context<'a>,
-    is_in_impl_trait: bool,
-}
-
-impl<'a> NestedImplTraitVisitor<'a> {
-    fn with_impl_trait<F>(&mut self, is_in_impl_trait: bool, f: F)
-        where F: FnOnce(&mut NestedImplTraitVisitor<'a>)
-    {
-        let old_is_in_impl_trait = self.is_in_impl_trait;
-        self.is_in_impl_trait = is_in_impl_trait;
-        f(self);
-        self.is_in_impl_trait = old_is_in_impl_trait;
-    }
-}
-
-
-impl<'a> Visitor<'a> for NestedImplTraitVisitor<'a> {
-    fn visit_ty(&mut self, t: &'a ast::Ty) {
-        if let ast::TyKind::ImplTrait(_) = t.node {
-            if self.is_in_impl_trait {
-                gate_feature_post!(&self, nested_impl_trait, t.span,
-                    "nested `impl Trait` is experimental"
-                );
-            }
-            self.with_impl_trait(true, |this| visit::walk_ty(this, t));
-        } else {
-            visit::walk_ty(self, t);
-        }
-    }
-    fn visit_path_parameters(&mut self, _: Span, path_parameters: &'a ast::PathParameters) {
-        match *path_parameters {
-            ast::PathParameters::AngleBracketed(ref params) => {
-                for type_ in &params.types {
-                    self.visit_ty(type_);
-                }
-                for type_binding in &params.bindings {
-                    // Type bindings such as `Item=impl Debug` in `Iterator<Item=Debug>`
-                    // are allowed to contain nested `impl Trait`.
-                    self.with_impl_trait(false, |this| visit::walk_ty(this, &type_binding.ty));
-                }
-            }
-            ast::PathParameters::Parenthesized(ref params) => {
-                for type_ in &params.inputs {
-                    self.visit_ty(type_);
-                }
-                if let Some(ref type_) = params.output {
-                    // `-> Foo` syntax is essentially an associated type binding,
-                    // so it is also allowed to contain nested `impl Trait`.
-                    self.with_impl_trait(false, |this| visit::walk_ty(this, type_));
-                }
-            }
-        }
-    }
-}
-
 impl<'a> PostExpansionVisitor<'a> {
-    fn whole_crate_feature_gates(&mut self, krate: &ast::Crate) {
-        visit::walk_crate(
-            &mut NestedImplTraitVisitor {
-                context: self.context,
-                is_in_impl_trait: false,
-            }, krate);
-
+    fn whole_crate_feature_gates(&mut self, _krate: &ast::Crate) {
         for &(ident, span) in &*self.context.parse_sess.non_modrs_mods.borrow() {
             if !span.allows_unstable() {
                 let cx = &self.context;

@@ -15,7 +15,7 @@ trait Trait<T> {
 }
 
 pub struct Foo<T = Box<Trait<DefaultFoo>>>;
-type DefaultFoo = Foo; //~ ERROR unsupported cyclic reference
+type DefaultFoo = Foo; //~ ERROR cyclic dependency detected
 
 fn main() {
 }

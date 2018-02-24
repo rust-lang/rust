@@ -8,21 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that an enum with recursion in the discriminant throws
-// the appropriate error (rather than, say, blowing the stack).
-enum X {
-    A = X::A as isize, //~ ERROR E0265
-}
+const A: i32 = B; //~ ERROR E0391
 
-// Since `Y::B` here defaults to `Y::A+1`, this is also a
-// recursive definition.
-enum Y {
-    A = Y::B as isize, //~ ERROR E0265
-    B,
-}
-
-const A: i32 = B; //~ ERROR E0265
-
-const B: i32 = A; //~ ERROR E0265
+const B: i32 = A;
 
 fn main() { }

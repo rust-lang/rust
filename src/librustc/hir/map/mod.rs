@@ -22,6 +22,7 @@ use hir::def_id::{CRATE_DEF_INDEX, DefId, LocalDefId, DefIndexAddressSpace};
 use syntax::abi::Abi;
 use syntax::ast::{self, Name, NodeId, CRATE_NODE_ID};
 use syntax::codemap::Spanned;
+use syntax::ext::base::MacroKind;
 use syntax_pos::Span;
 
 use hir::*;
@@ -32,12 +33,14 @@ use util::nodemap::{DefIdMap, FxHashMap};
 use arena::TypedArena;
 use std::cell::RefCell;
 use std::io;
+use ty::TyCtxt;
 
 pub mod blocks;
 mod collector;
 mod def_collector;
 pub mod definitions;
 mod hir_id_validator;
+
 
 pub const ITEM_LIKE_SPACE: DefIndexAddressSpace = DefIndexAddressSpace::Low;
 pub const REGULAR_SPACE: DefIndexAddressSpace = DefIndexAddressSpace::High;
@@ -371,6 +374,92 @@ impl<'hir> Map<'hir> {
     #[inline]
     pub fn local_def_id_to_node_id(&self, def_id: LocalDefId) -> NodeId {
         self.definitions.as_local_node_id(def_id.to_def_id()).unwrap()
+    }
+
+    pub fn describe_def(&self, node_id: NodeId) -> Option<Def> {
+        let node = if let Some(node) = self.find(node_id) {
+            node
+        } else {
+            return None
+        };
+
+        match node {
+            NodeItem(item) => {
+                let def_id = || {
+                    self.local_def_id(item.id)
+                };
+
+                match item.node {
+                    ItemStatic(_, m, _) => Some(Def::Static(def_id(),
+                                                            m == MutMutable)),
+                    ItemConst(..) => Some(Def::Const(def_id())),
+                    ItemFn(..) => Some(Def::Fn(def_id())),
+                    ItemMod(..) => Some(Def::Mod(def_id())),
+                    ItemGlobalAsm(..) => Some(Def::GlobalAsm(def_id())),
+                    ItemTy(..) => Some(Def::TyAlias(def_id())),
+                    ItemEnum(..) => Some(Def::Enum(def_id())),
+                    ItemStruct(..) => Some(Def::Struct(def_id())),
+                    ItemUnion(..) => Some(Def::Union(def_id())),
+                    ItemTrait(..) => Some(Def::Trait(def_id())),
+                    ItemTraitAlias(..) => {
+                        bug!("trait aliases are not yet implemented (see issue #41517)")
+                    },
+                    ItemExternCrate(_) |
+                    ItemUse(..) |
+                    ItemForeignMod(..) |
+                    ItemImpl(..) => None,
+                }
+            }
+            NodeForeignItem(item) => {
+                let def_id = self.local_def_id(item.id);
+                match item.node {
+                    ForeignItemFn(..) => Some(Def::Fn(def_id)),
+                    ForeignItemStatic(_, m) => Some(Def::Static(def_id, m)),
+                    ForeignItemType => Some(Def::TyForeign(def_id)),
+                }
+            }
+            NodeTraitItem(item) => {
+                let def_id = self.local_def_id(item.id);
+                match item.node {
+                    TraitItemKind::Const(..) => Some(Def::AssociatedConst(def_id)),
+                    TraitItemKind::Method(..) => Some(Def::Method(def_id)),
+                    TraitItemKind::Type(..) => Some(Def::AssociatedTy(def_id)),
+                }
+            }
+            NodeImplItem(item) => {
+                let def_id = self.local_def_id(item.id);
+                match item.node {
+                    ImplItemKind::Const(..) => Some(Def::AssociatedConst(def_id)),
+                    ImplItemKind::Method(..) => Some(Def::Method(def_id)),
+                    ImplItemKind::Type(..) => Some(Def::AssociatedTy(def_id)),
+                }
+            }
+            NodeVariant(variant) => {
+                let def_id = self.local_def_id(variant.node.data.id());
+                Some(Def::Variant(def_id))
+            }
+            NodeField(_) |
+            NodeExpr(_) |
+            NodeStmt(_) |
+            NodeTy(_) |
+            NodeTraitRef(_) |
+            NodePat(_) |
+            NodeBinding(_) |
+            NodeStructCtor(_) |
+            NodeLifetime(_) |
+            NodeVisibility(_) |
+            NodeBlock(_) => None,
+            NodeLocal(local) => {
+                Some(Def::Local(local.id))
+            }
+            NodeMacroDef(macro_def) => {
+                Some(Def::Macro(self.local_def_id(macro_def.id),
+                                MacroKind::Bang))
+            }
+            NodeTyParam(param) => {
+                Some(Def::TyParam(self.local_def_id(param.id)))
+            }
+        }
     }
 
     fn entry_count(&self) -> usize {
@@ -1273,5 +1362,14 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         None => {
             format!("unknown node{}", id_str)
         }
+    }
+}
+
+pub fn describe_def(tcx: TyCtxt, def_id: DefId) -> Option<Def> {
+    if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
+        tcx.hir.describe_def(node_id)
+    } else {
+        bug!("Calling local describe_def query provider for upstream DefId: {:?}",
+             def_id)
     }
 }

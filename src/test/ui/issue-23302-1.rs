@@ -1,4 +1,4 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(termination_trait)]
-
-use std::io::Error;
-
-fn main() -> Result<(), Box<Error>> {
-    Ok(())
+// Check that an enum with recursion in the discriminant throws
+// the appropriate error (rather than, say, blowing the stack).
+enum X {
+    A = X::A as isize, //~ ERROR E0391
 }
+
+fn main() { }

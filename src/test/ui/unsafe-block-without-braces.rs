@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const A: usize = B; //~ ERROR: recursive constant
-const B: usize = A; //~ ERROR: recursive constant
-
-fn main() {}
+fn main() {
+    unsafe //{
+        std::mem::transmute::<f32, u32>(1.0);
+    //}
+}
+//~^^^ ERROR expected one of `extern`, `fn`, or `{`, found `std`

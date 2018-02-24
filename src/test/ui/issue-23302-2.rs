@@ -8,16 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: cyclic dependency detected
-// note-pattern: the cycle begins when computing layout of
-// note-pattern: ...which then requires computing layout of
-// note-pattern: ...which then again requires computing layout of
-
-
-trait Mirror { type It: ?Sized; }
-impl<T: ?Sized> Mirror for T { type It = Self; }
-struct S(Option<<S as Mirror>::It>);
-
-fn main() {
-    let _s = S(None);
+// Since `Y::B` here defaults to `Y::A+1`, this is also a
+// recursive definition.
+enum Y {
+    A = Y::B as isize, //~ ERROR E0391
+    B,
 }
+
+fn main() { }
