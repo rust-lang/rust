@@ -278,8 +278,12 @@ pub fn rewrite_macro(
                 );
                 let arg_vec = &arg_vec.iter().map(|e| &*e).collect::<Vec<_>>()[..];
                 let rewrite = rewrite_array(arg_vec, sp, context, mac_shape, trailing_comma)?;
+                let comma = match position {
+                    MacroPosition::Item => ";",
+                    _ => "",
+                };
 
-                Some(format!("{}{}", macro_name, rewrite))
+                Some(format!("{}{}{}", macro_name, rewrite, comma))
             }
         }
         MacroStyle::Braces => {
