@@ -61,6 +61,9 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a> {
     pub renderinfo: RefCell<RenderInfo>,
     /// Later on moved through `clean::Crate` into `html::render::CACHE_KEY`
     pub external_traits: RefCell<FxHashMap<DefId, clean::Trait>>,
+    /// Used while populating `external_traits` to ensure we don't process the same trait twice at
+    /// the same time.
+    pub active_extern_traits: RefCell<Vec<DefId>>,
     // The current set of type and lifetime substitutions,
     // for expanding type aliases at the HIR level:
 
@@ -253,6 +256,7 @@ pub fn run_core(search_paths: SearchPaths,
             populated_all_crate_impls: Cell::new(false),
             access_levels: RefCell::new(access_levels),
             external_traits: Default::default(),
+            active_extern_traits: Default::default(),
             renderinfo: Default::default(),
             ty_substs: Default::default(),
             lt_substs: Default::default(),
