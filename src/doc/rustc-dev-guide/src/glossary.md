@@ -28,13 +28,16 @@ node-id or NodeId       |  an index identifying a particular node in the AST or 
 obligation              |  something that must be proven by the trait system ([see more](trait-resolution.html))
 provider                |  the function that executes a query ([see more](query.html))
 query                   |  perhaps some sub-computation during compilation ([see more](query.html))
+region                  |  another term for "lifetime" often used in the literature and in the borrow checker.
 sess                    |  the compiler session, which stores global data used throughout compilation
 side tables             |  because the AST and HIR are immutable once created, we often carry extra information about them in the form of hashtables, indexed by the id of a particular node.
+sigil                   |  like a keyword but composed entirely of non-alphanumeric tokens. For example, `&` is a sigil for references.
 soundness               |  soundness is a technical term in type theory. Roughly, if a type system is sound, then if a program type-checks, it is type-safe; i.e. I can never (in safe rust) force a value into a variable of the wrong type. (see "completeness").
 span                    |  a location in the user's source code, used for error reporting primarily. These are like a file-name/line-number/column tuple on steroids: they carry a start/end point, and also track macro expansions and compiler desugaring. All while being packed into a few bytes (really, it's an index into a table). See the Span datatype for more.
 substs                  |  the substitutions for a given generic type or item (e.g. the `i32`, `u32` in `HashMap<i32, u32>`)
 tcx                     |  the "typing context", main data structure of the compiler ([see more](ty.html))
 'tcx                    |  the lifetime of the currently active inference context ([see more](ty.html))
+token                   |  the smallest unit of parsing. Tokens are produced after lexing ([see more](the-parser.html)).
 trans                   |  the code to translate MIR into LLVM IR.
 trait reference         |  a trait and values for its type parameters ([see more](ty.html)).
 ty                      |  the internal representation of a type ([see more](ty.html)).
