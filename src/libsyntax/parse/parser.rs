@@ -405,11 +405,14 @@ impl TokenType {
     }
 }
 
-// Returns true if `IDENT t` can start a type - `IDENT::a::b`, `IDENT<u8, u8>`,
-// `IDENT<<u8 as Trait>::AssocTy>`, `IDENT(u8, u8) -> u8`.
-fn can_continue_type_after_ident(t: &token::Token) -> bool {
+/// Returns true if `IDENT t` can start a type - `IDENT::a::b`, `IDENT<u8, u8>`,
+/// `IDENT<<u8 as Trait>::AssocTy>`.
+///
+/// Types can also be of the form `IDENT(u8, u8) -> u8`, however this assumes
+/// that IDENT is not the ident of a fn trait
+fn can_continue_type_after_non_fn_ident(t: &token::Token) -> bool {
     t == &token::ModSep || t == &token::Lt ||
-    t == &token::BinOp(token::Shl) || t == &token::OpenDelim(token::Paren)
+    t == &token::BinOp(token::Shl)
 }
 
 /// Information about the path to a module.
@@ -1619,7 +1622,8 @@ impl<'a> Parser<'a> {
             impl_dyn_multi = bounds.len() > 1 || self.prev_token_kind == PrevTokenKind::Plus;
             TyKind::ImplTrait(bounds)
         } else if self.check_keyword(keywords::Dyn) &&
-                  self.look_ahead(1, |t| t.can_begin_bound() && !can_continue_type_after_ident(t)) {
+                  self.look_ahead(1, |t| t.can_begin_bound() &&
+                                         !can_continue_type_after_non_fn_ident(t)) {
             self.bump(); // `dyn`
             // Always parse bounds greedily for better error recovery.
             let bounds = self.parse_ty_param_bounds()?;
