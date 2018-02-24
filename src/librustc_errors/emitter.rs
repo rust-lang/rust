@@ -122,9 +122,12 @@ impl Drop for EmitterWriter {
             let mut error_codes = self.error_codes.clone().into_iter().collect::<Vec<_>>();
             error_codes.sort();
             if error_codes.len() > 1 {
+                let limit = if error_codes.len() > 9 { 9 } else { error_codes.len() };
                 writeln!(self.dst,
-                         "You've got a few errors: {}",
-                         error_codes.join(", ")).expect("failed to give tips...");
+                         "You've got a few errors: {}{}",
+                         error_codes[..limit].join(", "),
+                         if error_codes.len() > 9 { "..." } else { "" }
+                        ).expect("failed to give tips...");
                 writeln!(self.dst,
                          "If you want more information on an error, try using \
                           \"rustc --explain {}\"",
