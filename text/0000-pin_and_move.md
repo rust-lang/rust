@@ -80,7 +80,7 @@ construct.
 - **Share** implies that this type has shared ownership over the data which it
   dereferences to. It implies `Clone`, and every type it is `Clone`d it must
   continue to refer to the same data; it cannot perform deep clones of that
-  data. Examples of `Share`
+  data. Examples of `Share` types are `Rc<T>` and `Arc<T>`.
 
 These traits are mutually exclusive - it would be a logic error to implement
 both of them for a single type. We retain the liberty to assume that no type
