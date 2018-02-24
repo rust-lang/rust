@@ -1321,7 +1321,7 @@ impl<'a> Parser<'a> {
     pub fn token_is_bare_fn_keyword(&mut self) -> bool {
         self.check_keyword(keywords::Fn) ||
             self.check_keyword(keywords::Unsafe) ||
-            self.check_keyword(keywords::Extern)
+            self.check_keyword(keywords::Extern) && self.is_extern_non_path()
     }
 
     fn eat_label(&mut self) -> Option<Label> {
