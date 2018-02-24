@@ -26,6 +26,7 @@ use coresimd::arch::x86_64::*;
 use super::{bit, cache};
 
 #[macro_export]
+#[unstable(feature = "stdsimd", issue = "0")]
 macro_rules! is_target_feature_detected {
     ("aes") => {
         $crate::arch::detect::check_for(

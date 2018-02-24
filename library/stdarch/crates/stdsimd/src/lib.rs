@@ -32,7 +32,7 @@
 //! # Example
 //!
 //! ```rust
-//! #![feature(cfg_target_feature, target_feature)]
+//! #![feature(cfg_target_feature, target_feature, stdsimd)]
 //!
 //! #[macro_use]
 //! extern crate stdsimd;
@@ -132,9 +132,10 @@
 //! [simd_soundness_bug]: https://github.com/rust-lang/rust/issues/44367
 //! [target_feature_impr]: https://github.com/rust-lang/rust/issues/44839
 
-#![feature(const_fn, integer_atomics)]
+#![feature(const_fn, integer_atomics, staged_api, stdsimd)]
 #![cfg_attr(target_os = "linux", feature(linkage))]
 #![no_std]
+#![unstable(feature = "stdsimd", issue = "0")]
 
 extern crate std as _std;
 extern crate coresimd;

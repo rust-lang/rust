@@ -1,4 +1,5 @@
 /// Platform independent SIMD vector types and operations.
+#[unstable(feature = "stdsimd", issue = "0")]
 pub mod simd {
     pub use coresimd::v128::*;
     pub use coresimd::v256::*;
@@ -7,20 +8,28 @@ pub mod simd {
 }
 
 /// Platform dependent vendor intrinsics.
-pub mod vendor {
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-    pub use coresimd::x86::*;
+#[unstable(feature = "stdsimd", issue = "0")]
+pub mod arch {
+    #[cfg(target_arch = "x86")]
+    pub mod x86 {
+        pub use coresimd::x86::*;
+    }
 
-    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-    pub use coresimd::arm::*;
+    #[cfg(target_arch = "x86_64")]
+    pub mod x86_64 {
+        pub use coresimd::x86::*;
+    }
+
+    #[cfg(target_arch = "arm")]
+    pub mod arm {
+        pub use coresimd::arm::*;
+    }
 
     #[cfg(target_arch = "aarch64")]
-    pub use coresimd::aarch64::*;
-
-    // FIXME: rust does not expose the nvptx and nvptx64 targets yet
-    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64",
-                  target_arch = "arm", target_arch = "aarch64")))]
-    pub use coresimd::nvptx::*;
+    pub mod aarch64 {
+        pub use coresimd::arm::*;
+        pub use coresimd::aarch64::*;
+    }
 }
 
 #[macro_use]

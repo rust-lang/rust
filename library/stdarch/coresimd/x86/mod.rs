@@ -54,7 +54,7 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(cfg_target_feature, target_feature)]
+    /// # #![feature(cfg_target_feature, target_feature, stdsimd)]
     /// # #[macro_use]
     /// # extern crate stdsimd;
     /// # fn main() {
@@ -100,7 +100,7 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(cfg_target_feature, target_feature)]
+    /// # #![feature(cfg_target_feature, target_feature, stdsimd)]
     /// # #[macro_use]
     /// # extern crate stdsimd;
     /// # fn main() {
@@ -139,7 +139,7 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(cfg_target_feature, target_feature)]
+    /// # #![feature(cfg_target_feature, target_feature, stdsimd)]
     /// # #[macro_use]
     /// # extern crate stdsimd;
     /// # fn main() {
@@ -178,7 +178,7 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(cfg_target_feature, target_feature)]
+    /// # #![feature(cfg_target_feature, target_feature, stdsimd)]
     /// # #[macro_use]
     /// # extern crate stdsimd;
     /// # fn main() {
@@ -221,7 +221,7 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(cfg_target_feature, target_feature)]
+    /// # #![feature(cfg_target_feature, target_feature, stdsimd)]
     /// # #[macro_use]
     /// # extern crate stdsimd;
     /// # fn main() {
@@ -260,7 +260,7 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(cfg_target_feature, target_feature)]
+    /// # #![feature(cfg_target_feature, target_feature, stdsimd)]
     /// # #[macro_use]
     /// # extern crate stdsimd;
     /// # fn main() {
@@ -299,7 +299,7 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(cfg_target_feature, target_feature)]
+    /// # #![feature(cfg_target_feature, target_feature, stdsimd)]
     /// # #[macro_use]
     /// # extern crate stdsimd;
     /// # fn main() {

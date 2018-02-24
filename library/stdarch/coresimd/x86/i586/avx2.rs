@@ -2017,7 +2017,7 @@ pub unsafe fn _mm256_shuffle_epi8(a: __m256i, b: __m256i) -> __m256i {
 ///
 /// ```rust
 /// # #![feature(cfg_target_feature)]
-/// # #![feature(target_feature)]
+/// # #![feature(target_feature, stdsimd)]
 /// #
 /// # #[macro_use] extern crate stdsimd;
 /// #
@@ -2623,7 +2623,7 @@ pub unsafe fn _mm256_subs_epu8(a: __m256i, b: __m256i) -> __m256i {
 ///
 /// ```rust
 /// # #![feature(cfg_target_feature)]
-/// # #![feature(target_feature)]
+/// # #![feature(target_feature, stdsimd)]
 /// #
 /// # #[macro_use] extern crate stdsimd;
 /// #
@@ -2672,7 +2672,7 @@ pub unsafe fn _mm256_unpackhi_epi8(a: __m256i, b: __m256i) -> __m256i {
 ///
 /// ```rust
 /// # #![feature(cfg_target_feature)]
-/// # #![feature(target_feature)]
+/// # #![feature(target_feature, stdsimd)]
 /// #
 /// # #[macro_use] extern crate stdsimd;
 /// #
@@ -2720,7 +2720,7 @@ pub unsafe fn _mm256_unpacklo_epi8(a: __m256i, b: __m256i) -> __m256i {
 ///
 /// ```rust
 /// # #![feature(cfg_target_feature)]
-/// # #![feature(target_feature)]
+/// # #![feature(target_feature, stdsimd)]
 /// #
 /// # #[macro_use] extern crate stdsimd;
 /// #
@@ -2764,7 +2764,7 @@ pub unsafe fn _mm256_unpackhi_epi16(a: __m256i, b: __m256i) -> __m256i {
 ///
 /// ```rust
 /// # #![feature(cfg_target_feature)]
-/// # #![feature(target_feature)]
+/// # #![feature(target_feature, stdsimd)]
 /// #
 /// # #[macro_use] extern crate stdsimd;
 /// #
@@ -2808,7 +2808,7 @@ pub unsafe fn _mm256_unpacklo_epi16(a: __m256i, b: __m256i) -> __m256i {
 ///
 /// ```rust
 /// # #![feature(cfg_target_feature)]
-/// # #![feature(target_feature)]
+/// # #![feature(target_feature, stdsimd)]
 /// #
 /// # #[macro_use] extern crate stdsimd;
 /// #
@@ -2851,7 +2851,7 @@ pub unsafe fn _mm256_unpackhi_epi32(a: __m256i, b: __m256i) -> __m256i {
 ///
 /// ```rust
 /// # #![feature(cfg_target_feature)]
-/// # #![feature(target_feature)]
+/// # #![feature(target_feature, stdsimd)]
 /// #
 /// # #[macro_use] extern crate stdsimd;
 /// #
@@ -2891,7 +2891,7 @@ pub unsafe fn _mm256_unpacklo_epi32(a: __m256i, b: __m256i) -> __m256i {
 ///
 /// ```rust
 /// # #![feature(cfg_target_feature)]
-/// # #![feature(target_feature)]
+/// # #![feature(target_feature, stdsimd)]
 /// #
 /// # #[macro_use] extern crate stdsimd;
 /// #
@@ -2930,7 +2930,7 @@ pub unsafe fn _mm256_unpackhi_epi64(a: __m256i, b: __m256i) -> __m256i {
 ///
 /// ```rust
 /// # #![feature(cfg_target_feature)]
-/// # #![feature(target_feature)]
+/// # #![feature(target_feature, stdsimd)]
 /// #
 /// # #[macro_use] extern crate stdsimd;
 /// #

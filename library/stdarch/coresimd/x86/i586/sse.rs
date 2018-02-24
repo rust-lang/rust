@@ -867,7 +867,7 @@ pub unsafe fn _mm_movemask_ps(a: __m128) -> i32 {
 ///
 /// ```rust
 /// # #![feature(cfg_target_feature)]
-/// # #![feature(target_feature)]
+/// # #![feature(target_feature, stdsimd)]
 /// #
 /// # #[macro_use] extern crate stdsimd;
 /// #
@@ -921,7 +921,7 @@ pub unsafe fn _mm_loadh_pi(a: __m128, p: *const __m64) -> __m128 {
 ///
 /// ```rust
 /// # #![feature(cfg_target_feature)]
-/// # #![feature(target_feature)]
+/// # #![feature(target_feature, stdsimd)]
 /// #
 /// # #[macro_use] extern crate stdsimd;
 /// #
