@@ -1,4 +1,4 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(termination_trait)]
+// Check that `#[test]` works with extern-absolute-paths enabled.
+//
+// Regression test for #47075.
 
-use std::io::Error;
+// compile-flags: --test
 
-fn main() -> Result<(), Box<Error>> {
-    Ok(())
+#![feature(extern_absolute_paths)]
+
+#[test]
+fn test() {
 }

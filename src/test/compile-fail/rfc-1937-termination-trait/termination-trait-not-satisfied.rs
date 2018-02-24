@@ -12,6 +12,6 @@
 
 struct ReturnType {}
 
-fn main() -> ReturnType { //~ ERROR `ReturnType: std::Termination` is not satisfied
+fn main() -> ReturnType { //~ ERROR `ReturnType: std::process::Termination` is not satisfied
     ReturnType {}
 }

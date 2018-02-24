@@ -818,7 +818,8 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
                                          &mut resolver,
                                          sess.opts.test,
                                          krate,
-                                         sess.diagnostic())
+                                         sess.diagnostic(),
+                                         &sess.features.borrow())
     });
 
     // If we're actually rustdoc then there's no need to actually compile
