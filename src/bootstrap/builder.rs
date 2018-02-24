@@ -791,6 +791,7 @@ impl<'a> Builder<'a> {
         cmd: &'static str,
     ) -> CargoCommand {
         let mut cargo = Command::new(&self.config.general.initial_cargo);
+        cargo.arg(cmd);
         let out_dir = self.stage_out(compiler, mode);
         self.clear_if_dirty(&out_dir, &self.rustc(compiler));
 
@@ -840,7 +841,6 @@ impl<'a> Builder<'a> {
 
         cargo
             .env("CARGO_TARGET_DIR", out_dir)
-            .arg(cmd)
             .arg("--target")
             .arg(target);
 
