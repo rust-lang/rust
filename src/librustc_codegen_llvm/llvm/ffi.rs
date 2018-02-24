@@ -1470,10 +1470,12 @@ extern "C" {
                                        EmitStackSizeSection: bool)
                                        -> Option<&'static mut TargetMachine>;
     pub fn LLVMRustDisposeTargetMachine(T: &'static mut TargetMachine);
-    pub fn LLVMRustAddAnalysisPasses(T: &'a TargetMachine, PM: &PassManager<'a>, M: &'a Module);
+    pub fn LLVMRustAddAnalysisPasses(T: &'a TargetMachine, PM: &PassManager<'a>, M: &'a Module,
+                                     Polly: bool);
     pub fn LLVMRustAddBuilderLibraryInfo(PMB: &'a PassManagerBuilder,
                                          M: &'a Module,
-                                         DisableSimplifyLibCalls: bool);
+                                         DisableSimplifyLibCalls: bool,
+                                         Polly: bool);
     pub fn LLVMRustConfigurePassManagerBuilder(PMB: &PassManagerBuilder,
                                                OptLevel: CodeGenOptLevel,
                                                MergeFunctions: bool,

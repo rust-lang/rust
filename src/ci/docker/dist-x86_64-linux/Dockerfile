@@ -86,6 +86,10 @@ RUN ./build-headers.sh
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
+# Polly needs `PATH_MAX`
+ENV CFLAGS="-DPATH_MAX=4096 ${CFLAGS}"
+ENV CXXFLAGS="-DPATH_MAX=4096 ${CXXFLAGS}"
+
 ENV HOSTS=x86_64-unknown-linux-gnu
 
 ENV RUST_CONFIGURE_ARGS \

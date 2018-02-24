@@ -64,4 +64,7 @@
 	path = src/tools/clang
 	url = https://github.com/rust-lang-nursery/clang.git
 	branch = rust-release-80-v1
-  
+[submodule "src/polly"]
+	path = src/polly
+	url = https://github.com/llvm-mirror/polly.git
+	branch = master

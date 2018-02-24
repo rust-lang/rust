@@ -1382,6 +1382,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "run the self profiler"),
     profile_json: bool = (false, parse_bool, [UNTRACKED],
         "output a json file with profiler results"),
+    polly: bool = (false, parse_bool, [UNTRACKED], "Run the Polly polyhedral \
+           model optimization passes."),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emits a section containing stack size metadata"),
     plt: Option<bool> = (None, parse_opt_bool, [TRACKED],

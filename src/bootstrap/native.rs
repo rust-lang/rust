@@ -148,12 +148,16 @@ impl Step for Llvm {
            .define("LLVM_INCLUDE_DOCS", "OFF")
            .define("LLVM_INCLUDE_BENCHMARKS", "OFF")
            .define("LLVM_ENABLE_ZLIB", "OFF")
-           .define("WITH_POLLY", "OFF")
            .define("LLVM_ENABLE_TERMINFO", "OFF")
            .define("LLVM_ENABLE_LIBEDIT", "OFF")
            .define("LLVM_PARALLEL_COMPILE_JOBS", builder.jobs().to_string())
            .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
            .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
+
+        if !self.emscripten {
+            let polly_src = builder.src.join("src/polly");
+            cfg.define("LLVM_EXTERNAL_POLLY_SOURCE_DIR", polly_src);
+        }
 
         if builder.config.llvm_thin_lto && !emscripten {
             cfg.define("LLVM_ENABLE_LTO", "Thin")

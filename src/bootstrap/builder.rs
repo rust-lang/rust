@@ -1116,6 +1116,18 @@ impl<'a> Builder<'a> {
             cargo.env("WINAPI_NO_BUNDLED_LIBRARIES", "1");
         }
 
+        let use_polly = match cmd {
+            "test" | "bench" => {
+                self.config.rust_polly_tests
+            },
+            _ => self.config.rust_polly_self
+        };
+        if use_polly && stage > 1 {
+            cargo.env("RUSTC_USE_POLLY", "1");
+        } else {
+            cargo.env("RUSTC_USE_POLLY", "0");
+        }
+
         for _ in 1..self.verbosity {
             cargo.arg("-v");
         }

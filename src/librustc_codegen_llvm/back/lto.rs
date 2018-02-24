@@ -569,7 +569,7 @@ fn run_pass_manager(cgcx: &CodegenContext,
     debug!("running the pass manager");
     unsafe {
         let pm = llvm::LLVMCreatePassManager();
-        llvm::LLVMRustAddAnalysisPasses(tm, pm, llmod);
+        llvm::LLVMRustAddAnalysisPasses(tm, pm, llmod, config.polly);
 
         if config.verify_llvm_ir {
             let pass = llvm::LLVMRustFindAndCreatePass("verify\0".as_ptr() as *const _);

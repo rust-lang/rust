@@ -161,11 +161,54 @@ fn main() {
         cfg.define("LLVM_RUSTLLVM", None);
     }
 
+    let (enable_polly, polly_link_kind, polly_link_isl) = {
+        let mut cmd = Command::new(&llvm_config);
+        cmd.arg("--libdir");
+        let libdir = output(&mut cmd);
+        let libdir = libdir.lines().next().unwrap();
+        let libdir = Path::new(&libdir);
+        assert!(libdir.exists());
+
+        // We can't specify the full libname to rust, so the linker will always expect (on unix)
+        // LLVMPolly to be libLLVMPolly, which won't be present. I didn't realize this fact until
+        // after I wrote the following, but maybe this issue will be resolved in the future.
+        let allow_shared = false;
+        let mut found_static = false;
+        let mut found_shared = false;
+        for entry in libdir.read_dir().unwrap() {
+            if let Ok(entry) = entry {
+                if let Some(name) = entry.path().file_name() {
+                    let name = name.to_str().unwrap();
+                    if name.contains("Polly") {
+                        if !found_static {
+                            found_static = !name.contains("LLVM");
+                        }
+                        if !found_shared {
+                            found_shared = name.contains("LLVM");
+                        }
+                    }
+                }
+            }
+        }
+
+        let found_static = found_static;
+        let found_shared = allow_shared && found_shared;
+        let enabled = !cfg!(feature = "emscripten") &&
+            (found_static || found_shared);
+        let (kind, isl) = match (found_static, found_shared) {
+            (false, false) => ("", false),
+            (true, _) => ("static", true),
+            (false, true) => ("dylib", false),
+        };
+        (enabled, kind, isl)
+    };
+
     build_helper::rerun_if_changed_anything_in_dir(Path::new("../rustllvm"));
     cfg.file("../rustllvm/PassWrapper.cpp")
        .file("../rustllvm/RustWrapper.cpp")
        .file("../rustllvm/ArchiveWrapper.cpp")
        .file("../rustllvm/Linker.cpp")
+       .define("ENABLE_POLLY", if enable_polly { "1" } else { "0" })
        .cpp(true)
        .cpp_link_stdlib(None) // we handle this below
        .compile("rustllvm");
@@ -216,6 +259,20 @@ fn main() {
             "dylib"
         };
         println!("cargo:rustc-link-lib={}={}", kind, name);
+    }
+
+    if enable_polly {
+        match polly_link_kind {
+            "dylib" => {
+                panic!("dynamically linking polly is not possible :(");
+                //println!("cargo:rustc-flags=-l:LLVMPolly")
+            },
+            _ => println!("cargo:rustc-link-lib={}=Polly", polly_link_kind),
+        }
+
+        if polly_link_isl {
+            println!("cargo:rustc-link-lib={}=PollyISL", polly_link_kind);
+        }
     }
 
     // LLVM ldflags

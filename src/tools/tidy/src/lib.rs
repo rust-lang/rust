@@ -78,6 +78,7 @@ fn filter_dirs(path: &Path) -> bool {
         "src/tools/lldb",
         "src/target",
         "src/stdsimd",
+        "src/polly",
     ];
     skip.iter().any(|p| path.ends_with(p))
 }
