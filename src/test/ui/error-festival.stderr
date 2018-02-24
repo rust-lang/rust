@@ -1,19 +1,19 @@
 error[E0425]: cannot find value `y` in this scope
   --> $DIR/error-festival.rs:24:5
    |
-24 |     y = 2;
+LL |     y = 2;
    |     ^ did you mean `x`?
 
 error[E0603]: constant `FOO` is private
   --> $DIR/error-festival.rs:32:5
    |
-32 |     foo::FOO;
+LL |     foo::FOO;
    |     ^^^^^^^^
 
 error[E0368]: binary assignment operation `+=` cannot be applied to type `&str`
   --> $DIR/error-festival.rs:22:5
    |
-22 |     x += 2;
+LL |     x += 2;
    |     -^^^^^
    |     |
    |     cannot use `+=` on type `&str`
@@ -21,25 +21,25 @@ error[E0368]: binary assignment operation `+=` cannot be applied to type `&str`
 error[E0599]: no method named `z` found for type `&str` in the current scope
   --> $DIR/error-festival.rs:26:7
    |
-26 |     x.z();
+LL |     x.z();
    |       ^
 
 error[E0600]: cannot apply unary operator `!` to type `Question`
   --> $DIR/error-festival.rs:29:5
    |
-29 |     !Question::Yes;
+LL |     !Question::Yes;
    |     ^^^^^^^^^^^^^^
 
 error[E0604]: only `u8` can be cast as `char`, not `u32`
   --> $DIR/error-festival.rs:35:5
    |
-35 |     0u32 as char;
+LL |     0u32 as char;
    |     ^^^^^^^^^^^^
 
 error[E0605]: non-primitive cast: `u8` as `std::vec::Vec<u8>`
   --> $DIR/error-festival.rs:39:5
    |
-39 |     x as Vec<u8>;
+LL |     x as Vec<u8>;
    |     ^^^^^^^^^^^^
    |
    = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
@@ -47,7 +47,7 @@ error[E0605]: non-primitive cast: `u8` as `std::vec::Vec<u8>`
 error[E0054]: cannot cast as `bool`
   --> $DIR/error-festival.rs:43:24
    |
-43 |     let x_is_nonzero = x as bool;
+LL |     let x_is_nonzero = x as bool;
    |                        ^^^^^^^^^ unsupported cast
    |
    = help: compare with zero instead
@@ -55,19 +55,19 @@ error[E0054]: cannot cast as `bool`
 error[E0606]: casting `&u8` as `u32` is invalid
   --> $DIR/error-festival.rs:47:18
    |
-47 |     let y: u32 = x as u32;
+LL |     let y: u32 = x as u32;
    |                  ^^^^^^^^ cannot cast `&u8` as `u32`
    |
 help: did you mean `*x`?
   --> $DIR/error-festival.rs:47:18
    |
-47 |     let y: u32 = x as u32;
+LL |     let y: u32 = x as u32;
    |                  ^
 
 error[E0607]: cannot cast thin pointer `*const u8` to fat pointer `*const [u8]`
   --> $DIR/error-festival.rs:51:5
    |
-51 |     v as *const [u8];
+LL |     v as *const [u8];
    |     ^^^^^^^^^^^^^^^^
 
 error: aborting due to 10 previous errors

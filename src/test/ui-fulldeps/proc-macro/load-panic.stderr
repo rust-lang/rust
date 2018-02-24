@@ -1,7 +1,7 @@
 error: proc-macro derive panicked
   --> $DIR/load-panic.rs:17:10
    |
-17 | #[derive(A)]
+LL | #[derive(A)]
    |          ^
    |
    = help: message: nope!

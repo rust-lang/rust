@@ -189,8 +189,9 @@ impl EmitterWriter {
         }
     }
 
-    pub fn ui_testing(self, ui_testing: bool) -> Self {
-        Self { ui_testing, ..self }
+    pub fn ui_testing(mut self, ui_testing: bool) -> Self {
+        self.ui_testing = ui_testing;
+        self
     }
 
     fn maybe_anonymized(&self, line_num: usize) -> String {

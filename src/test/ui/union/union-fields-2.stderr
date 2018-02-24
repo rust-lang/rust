@@ -13,7 +13,7 @@ LL |     let u = U { a: 0, b: 1 }; //~ ERROR union expressions should have exact
 error[E0560]: union `U` has no field named `c`
   --> $DIR/union-fields-2.rs:20:29
    |
-20 |     let u = U { a: 0, b: 1, c: 2 }; //~ ERROR union expressions should have exactly one field
+LL |     let u = U { a: 0, b: 1, c: 2 }; //~ ERROR union expressions should have exactly one field
    |                             ^ `U` does not have this field
    |
    = note: available fields are: `a`, `b`

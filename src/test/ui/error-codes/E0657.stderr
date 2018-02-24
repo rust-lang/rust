@@ -1,14 +1,14 @@
 error[E0657]: `impl Trait` can only capture lifetimes bound at the fn or impl level
   --> $DIR/E0657.rs:20:31
    |
-LL |     -> impl for<'a> Id<impl Lt<'a>>
-   |                                ^^
+LL |     -> Box<for<'a> Id<impl Lt<'a>>>
+   |                               ^^
 
 error[E0657]: `impl Trait` can only capture lifetimes bound at the fn or impl level
   --> $DIR/E0657.rs:29:35
    |
-LL |         -> impl for<'a> Id<impl Lt<'a>>
-   |                                    ^^
+LL |         -> Box<for<'a> Id<impl Lt<'a>>>
+   |                                   ^^
 
 error: aborting due to 2 previous errors
 
