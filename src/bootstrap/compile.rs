@@ -561,33 +561,12 @@ impl Step for CodegenBackend {
             _ => panic!("unknown backend: {}", self.backend),
         }
 
-        let tmp_stamp = builder
-            .cargo_out(compiler, Mode::CodegenBackend(self.backend), target)
-            .join(".tmp.stamp");
-        let files = run_cargo(
+        run_cargo(
             builder,
             &mut cargo,
-            &tmp_stamp,
+            &builder.codegen_backend_stamp(compiler, target, &*self.backend),
             false,
         );
-        let mut files = files.into_iter().filter(|f| {
-            let filename = f.file_name().unwrap().to_str().unwrap();
-            is_dylib(filename) && filename.contains("rustc_trans-")
-        });
-        let codegen_backend = match files.next() {
-            Some(f) => f,
-            None => panic!("no dylibs built for codegen backend?"),
-        };
-        if let Some(f) = files.next() {
-            panic!(
-                "codegen backend built two dylibs:\n{}\n{}",
-                codegen_backend.display(),
-                f.display()
-            );
-        }
-        let stamp = builder.codegen_backend_stamp(compiler, target, &*self.backend);
-        let codegen_backend = codegen_backend.to_str().unwrap();
-        t!(t!(File::create(&stamp)).write_all(codegen_backend.as_bytes()));
     }
 }
 
@@ -617,17 +596,25 @@ fn copy_codegen_backends_to_sysroot(
 
     for backend in builder.config.rust.codegen_backends.iter() {
         let stamp = builder.codegen_backend_stamp(compiler, target, &backend);
-        let mut dylib = String::new();
-        t!(t!(File::open(&stamp)).read_to_string(&mut dylib));
-        let file = Path::new(&dylib);
-        let filename = file.file_name().unwrap().to_str().unwrap();
-        // change `librustc_trans-xxxxxx.so` to `librustc_trans-llvm.so`
-        let target_filename = {
-            let dash = filename.find("-").unwrap();
-            let dot = filename.find(".").unwrap();
-            format!("{}-{}{}", &filename[..dash], backend, &filename[dot..])
-        };
-        copy(&file, &dst.join(target_filename));
+        let mut saw_backend: Option<PathBuf> = None;
+        for path in read_stamp_file(&stamp) {
+            let filename = path.file_name().unwrap().to_str().unwrap();
+            if is_dylib(filename) && filename.contains("rustc_trans-") {
+                if let Some(past) = saw_backend {
+                    panic!("found two codegen backends:\n{}\n{}",
+                        path.display(),
+                        past.display());
+                }
+                // change `librustc_trans-xxxxxx.so` to `librustc_trans-llvm.so`
+                let target_filename = {
+                    let dash = filename.find("-").unwrap();
+                    let dot = filename.find(".").unwrap();
+                    format!("{}-{}{}", &filename[..dash], backend, &filename[dot..])
+                };
+                copy(&path, &dst.join(target_filename));
+                saw_backend = Some(path.clone());
+            }
+        }
     }
 }
 
