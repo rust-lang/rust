@@ -386,10 +386,13 @@ fn is_enclosed(tcx: TyCtxt,
         if used_unsafe.contains(&parent_id) {
             Some(("block".to_string(), parent_id))
         } else if let Some(hir::map::NodeItem(&hir::Item {
-            node: hir::ItemFn(_, hir::Unsafety::Unsafe, _, _, _, _),
+            node: hir::ItemFn(_, fn_unsafety, _, _, _, _),
             ..
         })) = tcx.hir.find(parent_id) {
-            Some(("fn".to_string(), parent_id))
+            match fn_unsafety {
+                hir::Unsafety::Unsafe => Some(("fn".to_string(), parent_id)),
+                hir::Unsafety::Normal => None,
+            }
         } else {
             is_enclosed(tcx, used_unsafe, parent_id)
         }
