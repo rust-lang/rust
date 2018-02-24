@@ -36,7 +36,7 @@ pub unsafe auto trait Move { }
 ```
 
 A type implements `Move` if in its stack representation, it contains internal
-references to other positions within its strack representation. Nearly every
+references to other positions within its stack representation. Nearly every
 type in Rust is `Move`.
 
 Positive impls of `Move` are added for types which contain pointers to generic
