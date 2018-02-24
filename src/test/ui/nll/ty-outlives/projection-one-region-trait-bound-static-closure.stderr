@@ -14,12 +14,12 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
 note: No external requirements
   --> $DIR/projection-one-region-trait-bound-static-closure.rs:43:1
    |
-43 | / fn no_relationships_late<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
-44 | | where
-45 | |     T: Anything<'b>,
-46 | | {
-47 | |     with_signature(cell, t, |cell, t| require(cell, t));
-48 | | }
+LL | / fn no_relationships_late<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
+LL | | where
+LL | |     T: Anything<'b>,
+LL | | {
+LL | |     with_signature(cell, t, |cell, t| require(cell, t));
+LL | | }
    | |_^
    |
    = note: defining type: DefId(0/0:8 ~ projection_one_region_trait_bound_static_closure[317d]::no_relationships_late[0]) with substs [
@@ -30,7 +30,7 @@ note: No external requirements
 note: No external requirements
   --> $DIR/projection-one-region-trait-bound-static-closure.rs:56:29
    |
-56 |     with_signature(cell, t, |cell, t| require(cell, t));
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: DefId(0/1:23 ~ projection_one_region_trait_bound_static_closure[317d]::no_relationships_early[0]::{{closure}}[0]) with closure substs [
@@ -62,7 +62,7 @@ LL | | }
 note: No external requirements
   --> $DIR/projection-one-region-trait-bound-static-closure.rs:75:29
    |
-75 |     with_signature(cell, t, |cell, t| require(cell, t));
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: DefId(0/1:27 ~ projection_one_region_trait_bound_static_closure[317d]::projection_outlives[0]::{{closure}}[0]) with closure substs [
@@ -94,7 +94,7 @@ LL | | }
 note: No external requirements
   --> $DIR/projection-one-region-trait-bound-static-closure.rs:84:29
    |
-84 |     with_signature(cell, t, |cell, t| require(cell, t));
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: DefId(0/1:31 ~ projection_one_region_trait_bound_static_closure[317d]::elements_outlive[0]::{{closure}}[0]) with closure substs [
@@ -126,7 +126,7 @@ LL | | }
 note: No external requirements
   --> $DIR/projection-one-region-trait-bound-static-closure.rs:96:29
    |
-96 |     with_signature(cell, t, |cell, t| require(cell, t));
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: DefId(0/1:34 ~ projection_one_region_trait_bound_static_closure[317d]::one_region[0]::{{closure}}[0]) with closure substs [

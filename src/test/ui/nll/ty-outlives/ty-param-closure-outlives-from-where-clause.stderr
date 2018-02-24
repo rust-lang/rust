@@ -65,14 +65,14 @@ LL | | }
 note: External requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:55:26
    |
-55 |       with_signature(a, b, |x, y| {
+LL |       with_signature(a, b, |x, y| {
    |  __________________________^
-56 | |         // Key point of this test:
-57 | |         //
-58 | |         // The *closure* is being type-checked with all of its free
+LL | |         // Key point of this test:
+LL | |         //
+LL | |         // The *closure* is being type-checked with all of its free
 ...  |
-67 | |         require(&x, &y)
-68 | |     })
+LL | |         require(&x, &y)
+LL | |     })
    | |_____^
    |
    = note: defining type: DefId(0/1:19 ~ ty_param_closure_outlives_from_where_clause[317d]::correct_region[0]::{{closure}}[0]) with closure substs [
@@ -104,13 +104,13 @@ LL | | }
 note: External requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:76:26
    |
-76 |       with_signature(a, b, |x, y| {
+LL |       with_signature(a, b, |x, y| {
    |  __________________________^
-77 | |         //~^ ERROR the parameter type `T` may not live long enough
-78 | |         // See `correct_region`
-79 | |         require(&x, &y)
-80 | |         //~^ WARNING not reporting region error due to -Znll
-81 | |     })
+LL | |         //~^ ERROR the parameter type `T` may not live long enough
+LL | |         // See `correct_region`
+LL | |         require(&x, &y)
+LL | |         //~^ WARNING not reporting region error due to -Znll
+LL | |     })
    | |_____^
    |
    = note: defining type: DefId(0/1:23 ~ ty_param_closure_outlives_from_where_clause[317d]::wrong_region[0]::{{closure}}[0]) with closure substs [
@@ -156,11 +156,11 @@ LL | | }
 note: External requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:90:26
    |
-90 |       with_signature(a, b, |x, y| {
+LL |       with_signature(a, b, |x, y| {
    |  __________________________^
-91 | |         // See `correct_region`
-92 | |         require(&x, &y)
-93 | |     })
+LL | |         // See `correct_region`
+LL | |         require(&x, &y)
+LL | |     })
    | |_____^
    |
    = note: defining type: DefId(0/1:27 ~ ty_param_closure_outlives_from_where_clause[317d]::outlives_region[0]::{{closure}}[0]) with closure substs [
