@@ -689,7 +689,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 invoc.expansion_data.mark.set_expn_info(expn_info);
                 let span = span.with_ctxt(self.cx.backtrace());
                 let dummy = ast::MetaItem { // FIXME(jseyfried) avoid this
-                    name: keywords::Invalid.name(),
+                    name: Path::from_ident(DUMMY_SP, keywords::Invalid.ident()),
                     span: DUMMY_SP,
                     node: ast::MetaItemKind::Word,
                 };
@@ -857,12 +857,16 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     fn check_attributes(&mut self, attrs: &[ast::Attribute]) {
         let features = self.cx.ecfg.features.unwrap();
         for attr in attrs.iter() {
-            feature_gate::check_attribute(attr, self.cx.parse_sess, features);
+            self.check_attribute_inner(attr, features);
         }
     }
 
     fn check_attribute(&mut self, at: &ast::Attribute) {
         let features = self.cx.ecfg.features.unwrap();
+        self.check_attribute_inner(at, features);
+    }
+
+    fn check_attribute_inner(&mut self, at: &ast::Attribute, features: &Features) {
         feature_gate::check_attribute(at, self.cx.parse_sess, features);
     }
 }
