@@ -92,7 +92,7 @@ fn fn_once_adapter_instance<'a, 'tcx>(
     assert_eq!(sig.inputs().len(), 1);
     let substs = tcx.mk_substs([
         Kind::from(self_ty),
-        Kind::from(sig.inputs()[0]),
+        sig.inputs()[0].into(),
     ].iter().cloned());
 
     debug!("fn_once_adapter_shim: self_ty={:?} sig={:?}", self_ty, sig);
@@ -153,7 +153,7 @@ pub fn resolve_drop_in_place<'a, 'tcx>(
     -> ty::Instance<'tcx>
 {
     let def_id = tcx.require_lang_item(DropInPlaceFnLangItem);
-    let substs = tcx.intern_substs(&[Kind::from(ty)]);
+    let substs = tcx.intern_substs(&[ty.into()]);
     Instance::resolve(tcx, ty::ParamEnv::empty(traits::Reveal::All), def_id, substs).unwrap()
 }
 

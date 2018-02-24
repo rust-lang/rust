@@ -19,7 +19,7 @@ use hir::def::Def;
 use hir::def_id::DefId;
 use middle::resolve_lifetime as rl;
 use namespace::Namespace;
-use rustc::ty::subst::{Kind, Subst, Substs};
+use rustc::ty::subst::{Kind, UnpackedKind, Subst, Substs};
 use rustc::traits;
 use rustc::ty::{self, RegionKind, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::wf::object_region_bounds;
@@ -1136,7 +1136,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
             // Replace all lifetimes with 'static
             for subst in &mut substs {
-                if let Some(_) = subst.as_region() {
+                if let UnpackedKind::Lifetime(_) = subst.unpack() {
                     *subst = Kind::from(&RegionKind::ReStatic);
                 }
             }
@@ -1146,8 +1146,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         // Fill in our own generics with the resolved lifetimes
         assert_eq!(lifetimes.len(), generics.own_count());
-        substs.extend(lifetimes.iter().map(|lt|
-            Kind::from(self.ast_region_to_region(lt, None))));
+        substs.extend(lifetimes.iter().map(|lt| Kind::from(self.ast_region_to_region(lt, None))));
 
         debug!("impl_trait_ty_to_ty: final substs = {:?}", substs);
 

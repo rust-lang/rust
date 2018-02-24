@@ -584,7 +584,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     let trait_ref = &mut trait_pred.trait_ref;
                     let unit_substs = trait_ref.substs;
                     let mut never_substs = Vec::with_capacity(unit_substs.len());
-                    never_substs.push(From::from(tcx.types.never));
+                    never_substs.push(tcx.types.never.into());
                     never_substs.extend(&unit_substs[1..]);
                     trait_ref.substs = tcx.intern_substs(&never_substs);
                 }
@@ -2997,7 +2997,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 // unsized parameters is equal to the target.
                 let params = substs_a.iter().enumerate().map(|(i, &k)| {
                     if ty_params.contains(i) {
-                        Kind::from(substs_b.type_at(i))
+                        substs_b.type_at(i).into()
                     } else {
                         k
                     }

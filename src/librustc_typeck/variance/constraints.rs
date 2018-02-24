@@ -14,7 +14,7 @@
 //! We walk the set of items and, for each member, generate new constraints.
 
 use hir::def_id::DefId;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::{Substs, UnpackedKind};
 use rustc::ty::{self, Ty, TyCtxt};
 use syntax::ast;
 use rustc::hir;
@@ -381,12 +381,13 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             debug!("add_constraints_from_substs: variance_decl={:?} variance_i={:?}",
                    variance_decl,
                    variance_i);
-            if let Some(ty) = k.as_type() {
-                self.add_constraints_from_ty(current, ty, variance_i);
-            } else if let Some(r) = k.as_region() {
-                self.add_constraints_from_region(current, r, variance_i);
-            } else {
-                bug!();
+            match k.unpack() {
+                UnpackedKind::Lifetime(lt) => {
+                    self.add_constraints_from_region(current, lt, variance_i)
+                }
+                UnpackedKind::Type(ty) => {
+                    self.add_constraints_from_ty(current, ty, variance_i)
+                }
             }
         }
     }
