@@ -12,7 +12,17 @@ which cannot be safely moved around.
 # Motivation
 [motivation]: #motivation
 
-Why are we doing this? What use cases does it support? What is the expected outcome?
+A longstanding problem for Rust has been dealing with types that should not be
+moved. A common motivation for this is when a struct contains a pointer into
+its own representation - moving that struct would invalidate that pointer. This
+use case has become especially important recently with work on generators.
+Because generators essentially reify a stackframe into an object that can be
+manipulated in code, it is likely for idiomatic usage of a generator to result
+in such a self-referential type, if it is allowed.
+
+This proposal adds an API to std which would allow you to guarantee that a
+particular value will never move again, enabling safe APIs that rely on
+self-references to exist.
 
 # Explanation
 [explanation]: #explanation
@@ -296,18 +306,74 @@ separate feature flags, which can be stabilized in stages:
 # Drawbacks
 [drawbacks]: #drawbacks
 
-Why should we *not* do this?
+This adds additional APIs to std, including several marker traits and an auto
+trait. Such additions should not be taken lightly, and only included if they
+are well-justified by the abstractions they express.
 
 # Rationale and alternatives
 [alternatives]: #alternatives
 
-- Why is this design the best in the space of possible designs?
-- What other designs have been considered and what is the rationale for not choosing them?
-- What is the impact of not doing this?
+## Comparison to `?Move`
+
+One previous proposal was to add a built-in `Move` trait, similar to `Sized`. A
+type that did not implement `Move` could not be moved after it had been
+referenced.
+
+This solution had some problems. First, the `?Move` bound ended up "infecting"
+many different APIs where it wasn't relevant, and introduced a breaking change
+in several cases where the API bound changed in a non-backwards compatible way.
+
+In a certain sense, this proposal is a much more narrowly scoped version of
+`?Move`. With `?Move`, *any* reference could act as the "Pin" reference does
+here. However, because of this flexibility, the negative consequences of having
+a type that can't be moved had a much broader impact.
+
+Instead, we require APIs to opt into supporting immovability (a niche case) by
+operating with the `Pin` type, avoiding "infecting" the basic reference type
+with concerns around immovable types.
+
+## Comparison to using `unsafe` APIs
+
+Another alternative we've considered was to just have the APIs which require
+immovability be `unsafe`. It would be up to the users of these APIs to review
+and guarantee that they never moved the self-referential types. For example,
+generator would look like this:
+
+```rust
+trait Generator {
+    type Yield;
+    type Return;
+
+    unsafe fn resume(&mut self) -> CoResult<Self::Yield, Self::Return>;
+}
+```
+
+This would require no extensions to the standard library, but would place the
+burden on every user who wants to call resume to guarantee (at the risk of
+memory insafety) that their types were not moved, or that they were moveable.
+This seemed like a worse trade off than adding these APIs.
+
+## Relationship to owning-ref & rental
+
+Existing crates like owning-ref and rental make some use of "self-referential"
+types. Unlike the generators this RFC is designed to support, their references
+always point into the heap - making it acceptable to move their types around.
+
+However, some of this infrastructure is still useful to those crates. In
+particular, the stable deref hierarchy is related to the existing hierarchy in
+the stable_deref crate, which those other crates depend on. By uplifting those
+markers into the standard library, we create a shared, endorsed, and guaranteed
+set of markers for the invariants those libraries care about.
+
+In order to be implemented in safe code, those library need additional features
+connecting to "existential" or "generative" lifetimes. These language changes
+are out of scope for this RFC.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-- What parts of the design do you expect to resolve through the RFC process before this gets merged?
-- What parts of the design do you expect to resolve through the implementation of this feature before stabilization?
-- What related issues do you consider out of scope for this RFC that could be addressed in the future independently of the solution that comes out of this RFC?
+The names used in this RFC are all entirely up for debate. Some of the items
+introduced (especially the `Move` trait) have evolved away from their original
+design, making the names a bit of a misnomer (`Move` really means that its safe
+to convert between `Pin<T>` and `&mut T`, for example). We want to make sure we
+have adequate names before stabilizing these APIs.
