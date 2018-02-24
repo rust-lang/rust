@@ -57,6 +57,7 @@ pub struct Config {
     pub profiler: bool,
     pub ignore_git: bool,
     pub exclude: Vec<PathBuf>,
+    pub rustc_error_format: Option<String>,
 
     pub run_host_only: bool,
 
@@ -330,6 +331,7 @@ impl Config {
         config.test_miri = false;
         config.rust_codegen_backends = vec![INTERNER.intern_str("llvm")];
 
+        config.rustc_error_format = flags.rustc_error_format;
         config.on_fail = flags.on_fail;
         config.stage = flags.stage;
         config.src = flags.src;

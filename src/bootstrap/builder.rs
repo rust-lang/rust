@@ -598,6 +598,9 @@ impl<'a> Builder<'a> {
         if let Some(target_linker) = self.build.linker(target) {
             cargo.env("RUSTC_TARGET_LINKER", target_linker);
         }
+        if let Some(ref error_format) = self.config.rustc_error_format {
+            cargo.env("RUSTC_ERROR_FORMAT", error_format);
+        }
         if cmd != "build" && cmd != "check" {
             cargo.env("RUSTDOC_LIBDIR", self.rustc_libdir(self.compiler(2, self.build.build)));
         }
