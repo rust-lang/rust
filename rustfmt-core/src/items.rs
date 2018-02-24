@@ -14,6 +14,7 @@ use std::borrow::Cow;
 use std::cmp::min;
 
 use config::lists::*;
+use regex::Regex;
 use syntax::{abi, ast, ptr, symbol};
 use syntax::ast::{CrateSugar, ImplItem};
 use syntax::codemap::{BytePos, Span};
@@ -2853,4 +2854,38 @@ pub fn rewrite_mod(item: &ast::Item) -> String {
     result.push_str(&item.ident.to_string());
     result.push(';');
     result
+}
+
+/// Rewrite `extern crate foo;` WITHOUT attributes.
+pub fn rewrite_extern_crate(context: &RewriteContext, item: &ast::Item) -> Option<String> {
+    assert!(is_extern_crate(item));
+    let new_str = context.snippet(item.span);
+    Some(if contains_comment(new_str) {
+        new_str.to_owned()
+    } else {
+        let no_whitespace = &new_str.split_whitespace().collect::<Vec<&str>>().join(" ");
+        String::from(&*Regex::new(r"\s;").unwrap().replace(no_whitespace, ";"))
+    })
+}
+
+/// Returns true for `mod foo;`, false for `mod foo { .. }`.
+pub fn is_mod_decl(item: &ast::Item) -> bool {
+    match item.node {
+        ast::ItemKind::Mod(ref m) => m.inner.hi() != item.span.hi(),
+        _ => false,
+    }
+}
+
+pub fn is_use_item(item: &ast::Item) -> bool {
+    match item.node {
+        ast::ItemKind::Use(_) => true,
+        _ => false,
+    }
+}
+
+pub fn is_extern_crate(item: &ast::Item) -> bool {
+    match item.node {
+        ast::ItemKind::ExternCrate(..) => true,
+        _ => false,
+    }
 }
