@@ -735,7 +735,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::Generics {
                                           hasher: &mut StableHasher<W>) {
         let ty::Generics {
             parent,
-            ref parent_parameters,
+            ref parent_count,
             ref parameters,
 
             // Reverse map to each `TypeParameterDef`'s `index` field, from
@@ -746,7 +746,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::Generics {
         } = *self;
 
         parent.hash_stable(hcx, hasher);
-        parent_parameters.hash_stable(hcx, hasher);
+        parent_count.hash_stable(hcx, hasher);
         parameters.hash_stable(hcx, hasher);
         has_self.hash_stable(hcx, hasher);
         has_late_bound_regions.hash_stable(hcx, hasher);

@@ -784,7 +784,7 @@ impl GenericParameterDef {
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct Generics {
     pub parent: Option<DefId>,
-    pub parent_parameters: Vec<u32>,
+    pub parent_count: usize,
     pub parameters: Vec<GenericParameterDef>,
 
     /// Reverse map to each `TypeParameterDef`'s `index` field
@@ -795,16 +795,12 @@ pub struct Generics {
 }
 
 impl<'a, 'gcx, 'tcx> Generics {
-    pub fn parent_count(&self) -> usize {
-        self.parent_parameters.iter().map(|&x| x as usize).sum()
-    }
-
     pub fn own_count(&self) -> usize {
         self.parameters.len()
     }
 
     pub fn count(&self) -> usize {
-        self.parent_count() + self.own_count()
+        self.parent_count + self.own_count()
     }
 
     pub fn lifetimes(&self) -> Vec<&RegionParameterDef> {
@@ -827,12 +823,16 @@ impl<'a, 'gcx, 'tcx> Generics {
         }).collect()
     }
 
-    pub fn parent_lifetimes(&self) -> u32 {
-        self.parent_parameters[0]
-    }
-
-    pub fn parent_types(&self) -> u32 {
-        self.parent_parameters[1]
+    pub fn has_type_parameters(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
+        if self.types().len() != 0 {
+            return true;
+        }
+        if let Some(parent_def_id) = self.parent {
+            let parent = tcx.generics_of(parent_def_id);
+            parent.has_type_parameters(tcx)
+        } else {
+            false
+        }
     }
 
     pub fn region_param(&'tcx self,
@@ -840,7 +840,7 @@ impl<'a, 'gcx, 'tcx> Generics {
                         tcx: TyCtxt<'a, 'gcx, 'tcx>)
                         -> &'tcx RegionParameterDef
     {
-        if let Some(index) = param.index.checked_sub(self.parent_count() as u32) {
+        if let Some(index) = param.index.checked_sub(self.parent_count as u32) {
             // We're currently assuming that lifetimes precede other generic parameters.
             match self.parameters[index as usize - self.has_self as usize] {
                 ty::GenericParameterDef::Lifetime(ref lt) => lt,
@@ -857,7 +857,7 @@ impl<'a, 'gcx, 'tcx> Generics {
                       param: &ParamTy,
                       tcx: TyCtxt<'a, 'gcx, 'tcx>)
                       -> &TypeParameterDef {
-        if let Some(idx) = param.idx.checked_sub(self.parent_count() as u32) {
+        if let Some(idx) = param.idx.checked_sub(self.parent_count as u32) {
             // non-Self type parameters are always offset by exactly
             // `self.regions.len()`. In the absence of a Self, this is obvious,
             // but even in the presence of a `Self` we just have to "compensate"

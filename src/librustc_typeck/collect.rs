@@ -876,13 +876,12 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let has_self = opt_self.is_some();
     let mut parent_has_self = false;
     let mut own_start = has_self as u32;
-    let (parent_regions, parent_types) = parent_def_id.map_or((0, 0), |def_id| {
+    let parent_count = parent_def_id.map_or(0, |def_id| {
         let generics = tcx.generics_of(def_id);
         assert_eq!(has_self, false);
         parent_has_self = generics.has_self;
         own_start = generics.count() as u32;
-        (generics.parent_lifetimes() + generics.lifetimes().len() as u32,
-            generics.parent_types() + generics.types().len() as u32)
+        generics.parent_count + generics.parameters.len()
     });
 
     let early_lifetimes = early_bound_lifetimes_from_generics(tcx, ast_generics);
@@ -971,7 +970,6 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    .map(|param| (param.def_id, param.index))
                                    .collect();
 
-    let parent_parameters = vec![parent_regions, parent_types];
     let lifetimes: Vec<ty::GenericParameterDef> =
         regions.into_iter().map(|lt| ty::GenericParameterDef::Lifetime(lt)).collect();
     let types: Vec<ty::GenericParameterDef> =
@@ -980,7 +978,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     tcx.alloc_generics(ty::Generics {
         parent: parent_def_id,
-        parent_parameters,
+        parent_count,
         parameters,
         type_param_to_index,
         has_self: has_self || parent_has_self,
@@ -1395,7 +1393,7 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
 
     let generics = tcx.generics_of(def_id);
-    let parent_count = generics.parent_count() as u32;
+    let parent_count = generics.parent_count as u32;
     let has_own_self = generics.has_self && parent_count == 0;
 
     let mut predicates = vec![];

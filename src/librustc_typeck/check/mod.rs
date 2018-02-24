@@ -4751,7 +4751,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let (fn_start, has_self) = match (type_segment, fn_segment) {
             (_, Some((_, generics))) => {
-                (generics.parent_count(), generics.has_self)
+                (generics.parent_count, generics.has_self)
             }
             (Some((_, generics)), None) => {
                 (generics.own_count(), generics.has_self)

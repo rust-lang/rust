@@ -292,7 +292,7 @@ impl<'tcx> ClosureSubsts<'tcx> {
     /// ordering.
     fn split(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> SplitClosureSubsts<'tcx> {
         let generics = tcx.generics_of(def_id);
-        let parent_len = generics.parent_count();
+        let parent_len = generics.parent_count;
         SplitClosureSubsts {
             closure_kind_ty: self.substs.type_at(parent_len),
             closure_sig_ty: self.substs.type_at(parent_len + 1),

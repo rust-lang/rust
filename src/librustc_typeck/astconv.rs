@@ -1139,7 +1139,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
             debug!("impl_trait_ty_to_ty: substs from parent = {:?}", substs);
         }
-        assert_eq!(substs.len(), generics.parent_count());
+        assert_eq!(substs.len(), generics.parent_count);
 
         // Fill in our own generics with the resolved lifetimes
         assert_eq!(lifetimes.len(), generics.own_count());

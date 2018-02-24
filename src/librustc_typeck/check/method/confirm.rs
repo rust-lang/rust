@@ -314,7 +314,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
         // Create subst for early-bound lifetime parameters, combining
         // parameters from the type and those from the method.
-        assert_eq!(method_generics.parent_count(), parent_substs.len());
+        assert_eq!(method_generics.parent_count, parent_substs.len());
         let provided = &segment.parameters;
         Substs::for_item(self.tcx, pick.item.def_id, |def, _| {
             let i = def.index as usize;
