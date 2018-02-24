@@ -30,8 +30,6 @@
 // #![feature(rustc_attrs)]
 
 use std::ops::{Index, IndexMut};
-use std::ops::{AddAssign, SubAssign, MulAssign, DivAssign, RemAssign};
-use std::ops::{BitAndAssign, BitOrAssign, BitXorAssign, ShlAssign, ShrAssign};
 
 // This is case outlined by Niko that we want to ensure we reject
 // (at least initially).
@@ -182,56 +180,6 @@ fn coerce_index_op() {
     //[nll]~^^ ERROR cannot borrow `i` as immutable because it is also borrowed as mutable [E0502]
 }
 
-struct A(i32);
-
-macro_rules! trivial_binop {
-    ($Trait:ident, $m:ident) => {
-        impl $Trait<i32> for A { fn $m(&mut self, rhs: i32) { self.0 = rhs; } }
-    }
-}
-
-trivial_binop!(AddAssign, add_assign);
-trivial_binop!(SubAssign, sub_assign);
-trivial_binop!(MulAssign, mul_assign);
-trivial_binop!(DivAssign, div_assign);
-trivial_binop!(RemAssign, rem_assign);
-trivial_binop!(BitAndAssign, bitand_assign);
-trivial_binop!(BitOrAssign, bitor_assign);
-trivial_binop!(BitXorAssign, bitxor_assign);
-trivial_binop!(ShlAssign, shl_assign);
-trivial_binop!(ShrAssign, shr_assign);
-
-fn overloaded_binops() {
-    let mut a = A(10);
-    a += a.0;
-    //[lxl]~^   ERROR cannot use `a.0` because it was mutably borrowed
-    //[nll]~^^  ERROR cannot use `a.0` because it was mutably borrowed
-    a -= a.0;
-    //[lxl]~^   ERROR cannot use `a.0` because it was mutably borrowed
-    //[nll]~^^  ERROR cannot use `a.0` because it was mutably borrowed
-    a *= a.0;
-    //[lxl]~^   ERROR cannot use `a.0` because it was mutably borrowed
-    //[nll]~^^  ERROR cannot use `a.0` because it was mutably borrowed
-    a /= a.0;
-    //[lxl]~^   ERROR cannot use `a.0` because it was mutably borrowed
-    //[nll]~^^  ERROR cannot use `a.0` because it was mutably borrowed
-    a &= a.0;
-    //[lxl]~^   ERROR cannot use `a.0` because it was mutably borrowed
-    //[nll]~^^  ERROR cannot use `a.0` because it was mutably borrowed
-    a |= a.0;
-    //[lxl]~^   ERROR cannot use `a.0` because it was mutably borrowed
-    //[nll]~^^  ERROR cannot use `a.0` because it was mutably borrowed
-    a ^= a.0;
-    //[lxl]~^   ERROR cannot use `a.0` because it was mutably borrowed
-    //[nll]~^^  ERROR cannot use `a.0` because it was mutably borrowed
-    a <<= a.0;
-    //[lxl]~^   ERROR cannot use `a.0` because it was mutably borrowed
-    //[nll]~^^  ERROR cannot use `a.0` because it was mutably borrowed
-    a >>= a.0;
-    //[lxl]~^   ERROR cannot use `a.0` because it was mutably borrowed
-    //[nll]~^^  ERROR cannot use `a.0` because it was mutably borrowed
-}
-
 fn main() {
 
     // As a reminder, this is the basic case we want to ensure we handle.
@@ -252,5 +200,4 @@ fn main() {
 
     coerce_unsized();
     coerce_index_op();
-    overloaded_binops();
 }
