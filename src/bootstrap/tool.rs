@@ -53,7 +53,12 @@ impl Step for ToolBuild {
 
         match self.mode {
             Mode::TestTool => builder.ensure(compile::Test { compiler, target }),
-            Mode::RustcTool => builder.ensure(compile::Rustc { compiler, target }),
+            Mode::RustcTool => {
+                // because this means a proc macro tool, too, we need to build librustc for both the
+                // compiler host and the target.
+                builder.ensure(compile::Rustc { compiler, target: compiler.host });
+                builder.ensure(compile::Rustc { compiler, target });
+            },
             _ => panic!("unexpected mode for tool {:?}", self.mode),
         }
 
@@ -405,24 +410,11 @@ macro_rules! tool_extended {
 
 tool_extended!((self, builder),
     Cargofmt, rustfmt, "src/tools/rustfmt", "cargo-fmt", {};
-    Clippy, clippy, "src/tools/clippy", "clippy-driver", {
-        // Clippy depends on procedural macros (serde), which requires a full host
-        // compiler to be available, so we need to depend on that.
-        builder.ensure(compile::Rustc {
-            compiler: self.compiler,
-            target: builder.config.general.build,
-        });
-    };
+    Clippy, clippy, "src/tools/clippy", "clippy-driver", {};
     Miri, miri, "src/tools/miri", "miri", {};
     Rls, rls, "src/tools/rls", "rls", {
         builder.ensure(native::Openssl {
             target: self.target,
-        });
-        // RLS depends on procedural macros, which requires a full host
-        // compiler to be available, so we need to depend on that.
-        builder.ensure(compile::Rustc {
-            compiler: self.compiler,
-            target: builder.config.general.build,
         });
     };
     Rustfmt, rustfmt, "src/tools/rustfmt", "rustfmt", {};
