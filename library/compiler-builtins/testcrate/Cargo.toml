@@ -17,9 +17,9 @@ default-features = false
 features = ["no-lang-items"]
 
 [target.'cfg(all(target_arch = "arm", not(any(target_env = "gnu", target_env = "musl")), target_os = "linux"))'.dev-dependencies]
-test = { git = "https://github.com/paoloteti/utest", branch = "ci" }
-utest-cortex-m-qemu = { default-features = false, git = "https://github.com/paoloteti/utest", branch = "ci" }
-utest-macros = { git = "https://github.com/paoloteti/utest", branch = "ci" }
+test = { git = "https://github.com/japaric/utest" }
+utest-cortex-m-qemu = { default-features = false, git = "https://github.com/japaric/utest" }
+utest-macros = { git = "https://github.com/japaric/utest" }
 
 [features]
 c = ["compiler_builtins/c"]
