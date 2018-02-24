@@ -562,7 +562,7 @@ impl Pat {
             PatKind::TupleStruct(_, ref s, _) | PatKind::Tuple(ref s, _) => {
                 s.iter().all(|p| p.walk(it))
             }
-            PatKind::Box(ref s) | PatKind::Ref(ref s, _) => {
+            PatKind::Box(ref s) | PatKind::Ref(ref s, _) | PatKind::Paren(ref s) => {
                 s.walk(it)
             }
             PatKind::Slice(ref before, ref slice, ref after) => {
@@ -656,6 +656,8 @@ pub enum PatKind {
     /// `[a, b, ..i, y, z]` is represented as:
     ///     `PatKind::Slice(box [a, b], Some(i), box [y, z])`
     Slice(Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>),
+    /// Parentheses in patters used for grouping, i.e. `(PAT)`.
+    Paren(P<Pat>),
     /// A macro pattern; pre-expansion
     Mac(Mac),
 }
