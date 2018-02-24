@@ -497,7 +497,6 @@ impl Step for Std {
         t!(symlink_dir_force(&my_out, &out_dir));
 
         let mut cargo = builder.cargo(compiler, Mode::Libstd, target, "doc");
-        compile::std_cargo(builder, &compiler, target, &mut cargo);
 
         // We don't want to build docs for internal std dependencies unless
         // in compiler-docs mode. When not in that mode, we whitelist the crates
@@ -574,7 +573,6 @@ impl Step for Test {
         t!(symlink_dir_force(&my_out, &out_dir));
 
         let mut cargo = builder.cargo(compiler, Mode::Libtest, target, "doc");
-        compile::test_cargo(builder, &compiler, target, &mut cargo);
         builder.run(&mut cargo);
         cp_r(&my_out, &out);
     }
@@ -637,7 +635,6 @@ impl Step for Rustc {
         t!(symlink_dir_force(&my_out, &out_dir));
 
         let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "doc");
-        compile::rustc_cargo(builder, &mut cargo);
 
         if builder.config.general.compiler_docs {
             // src/rustc/Cargo.toml contains a bin crate called rustc which

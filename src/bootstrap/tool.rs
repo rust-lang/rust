@@ -105,6 +105,9 @@ impl Step for ToolBuild {
             Mode::Libstd => builder.ensure(compile::Std { compiler, target }),
             Mode::Libtest => builder.ensure(compile::Test { compiler, target }),
             Mode::Librustc => builder.ensure(compile::Rustc { compiler, target }),
+            Mode::CodegenBackend(name) => builder.ensure(compile::CodegenBackend {
+                compiler, target, backend: name,
+            }),
             Mode::Tool => panic!("unexpected Mode::Tool for tool build"),
         }
 

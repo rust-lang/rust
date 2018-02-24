@@ -273,6 +273,10 @@ pub enum Mode {
     /// Build librustc and compiler libraries, placing output in the "stageN-rustc" directory.
     Librustc,
 
+    /// Build the codegen backend, with the string being its name.
+    /// Output also goes into stageN-rustc.
+    CodegenBackend(Interned<String>),
+
     /// Build some tool, placing output in the "stageN-tools" directory.
     Tool,
 }
@@ -423,7 +427,7 @@ impl Build {
             Mode::Libstd => "-std",
             Mode::Libtest => "-test",
             Mode::Tool => "-tools",
-            Mode::Librustc => "-rustc",
+            Mode::Librustc | Mode::CodegenBackend(_) => "-rustc",
         };
         self.config
             .general

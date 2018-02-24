@@ -10,7 +10,7 @@
 
 //! Implementation of compiling the compiler and standard library, in "check" mode.
 
-use compile::{add_to_sysroot, run_cargo, rustc_cargo, std_cargo, test_cargo};
+use compile::{add_to_sysroot, run_cargo};
 use builder::{Builder, RunConfig, ShouldRun, Step};
 use Mode;
 use cache::Interned;
@@ -40,7 +40,6 @@ impl Step for Std {
         println!("Checking std artifacts ({} -> {})", &compiler.host, target);
 
         let mut cargo = builder.cargo(compiler, Mode::Libstd, target, "check");
-        std_cargo(builder, &compiler, target, &mut cargo);
         run_cargo(
             builder,
             &mut cargo,
@@ -86,7 +85,6 @@ impl Step for Rustc {
         );
 
         let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "check");
-        rustc_cargo(builder, &mut cargo);
         run_cargo(
             builder,
             &mut cargo,
@@ -122,7 +120,6 @@ impl Step for Test {
         let _folder = builder.fold_output(|| format!("stage{}-test", compiler.stage));
         println!("Checking test artifacts ({} -> {})", &compiler.host, target);
         let mut cargo = builder.cargo(compiler, Mode::Libtest, target, "check");
-        test_cargo(builder, &compiler, target, &mut cargo);
         run_cargo(
             builder,
             &mut cargo,

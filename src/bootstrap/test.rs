@@ -1382,15 +1382,10 @@ impl Step for Crate {
 
         let mut cargo = builder.cargo(compiler, mode, target, test_kind.subcommand());
         match mode {
-            Mode::Libstd => {
-                compile::std_cargo(builder, &compiler, target, &mut cargo);
-            }
-            Mode::Libtest => {
-                compile::test_cargo(builder, &compiler, target, &mut cargo);
-            }
+            Mode::Libstd => {}
+            Mode::Libtest => {}
             Mode::Librustc => {
                 builder.ensure(compile::Rustc { compiler, target });
-                compile::rustc_cargo(builder, &mut cargo);
             }
             _ => panic!("can only test libraries"),
         };

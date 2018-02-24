@@ -650,6 +650,108 @@ impl<'a> Builder<'a> {
             .join(format!(".librustc_trans-{}.stamp", backend))
     }
 
+    /// Configure cargo to compile the standard library, adding appropriate env vars
+    /// and such.
+    fn std_cargo(
+        &self,
+        compiler: Compiler,
+        target: Interned<String>,
+        cargo: &mut Command,
+    ) {
+        let mut features = self.std_features();
+
+        if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
+            cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
+        }
+
+        // When doing a local rebuild we tell cargo that we're stage1 rather than
+        // stage0. This works fine if the local rust and being-built rust have the
+        // same view of what the default allocator is, but fails otherwise. Since
+        // we don't have a way to express an allocator preference yet, work
+        // around the issue in the case of a local rebuild with jemalloc disabled.
+        if compiler.stage == 0 && self.config.general.local_rebuild
+            && !self.config.rust.use_jemalloc
+        {
+            features.push_str(" force_alloc_system");
+        }
+
+        if compiler.stage != 0 && self.config.general.sanitizers {
+            // This variable is used by the sanitizer runtime crates, e.g.
+            // rustc_lsan, to build the sanitizer runtime from C code
+            // When this variable is missing, those crates won't compile the C code,
+            // so we don't set this variable during stage0 where llvm-config is
+            // missing
+            // We also only build the runtimes when --enable-sanitizers (or its
+            // config.toml equivalent) is used
+            cargo.env("LLVM_CONFIG", self.llvm_config(target));
+        }
+
+        cargo
+            .arg("--features")
+            .arg(features)
+            .arg("--manifest-path")
+            .arg(self.config.src.join("src/libstd/Cargo.toml"));
+
+        if let Some(target) = self.config.target_config.get(&target) {
+            if let Some(ref jemalloc) = target.jemalloc {
+                cargo.env("JEMALLOC_OVERRIDE", jemalloc);
+            }
+        }
+        if target.contains("musl") {
+            if let Some(p) = self.musl_root(target) {
+                cargo.env("MUSL_ROOT", p);
+            }
+        }
+    }
+
+    /// Same as `std_cargo`, but for libtest
+    fn test_cargo(&self, cargo: &mut Command) {
+        if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
+            cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
+        }
+        cargo
+            .arg("--manifest-path")
+            .arg(self.config.src.join("src/libtest/Cargo.toml"));
+    }
+
+    // A little different from {std,test}_cargo since we don't pass
+    // --manifest-path or --features, since those vary between the
+    // codegen backend building and normal rustc library building.
+    fn rustc_cargo(&self, cargo: &mut Command) {
+        // Set some configuration variables picked up by build scripts and
+        // the compiler alike
+        cargo
+            .env("CFG_RELEASE", self.rust_release())
+            .env("CFG_RELEASE_CHANNEL", &self.config.rust.channel)
+            .env("CFG_VERSION", self.rust_version())
+            .env("CFG_PREFIX", &self.config.install.prefix);
+
+        let libdir_relative = self.config.libdir_relative().unwrap_or(Path::new("lib"));
+        cargo.env("CFG_LIBDIR_RELATIVE", libdir_relative);
+
+        // If we're not building a compiler with debugging information then remove
+        // these two env vars which would be set otherwise.
+        if self.config.rust.debuginfo_only_std() {
+            cargo.env_remove("RUSTC_DEBUGINFO");
+            cargo.env_remove("RUSTC_DEBUGINFO_LINES");
+        }
+
+        if let Some(ref ver_date) = self.rust_info.commit_date() {
+            cargo.env("CFG_VER_DATE", ver_date);
+        }
+        if let Some(ref ver_hash) = self.rust_info.sha() {
+            cargo.env("CFG_VER_HASH", ver_hash);
+        }
+        if !self.unstable_features() {
+            cargo.env("CFG_DISABLE_UNSTABLE_FEATURES", "1");
+        }
+        if let Some(ref s) = self.config.rust.default_linker {
+            cargo.env("CFG_DEFAULT_LINKER", s);
+        }
+        if self.config.rust.experimental_parallel_queries {
+            cargo.env("RUSTC_PARALLEL_QUERIES", "1");
+        }
+    }
 
     /// Prepares an invocation of `cargo` to be run.
     ///
@@ -670,11 +772,33 @@ impl<'a> Builder<'a> {
         self.clear_if_dirty(&out_dir, &self.rustc(compiler));
 
         match mode {
-            Mode::Libstd => {},
+            Mode::Libstd => {
+                self.std_cargo(compiler, target, &mut cargo);
+            },
             Mode::Libtest => {
+                self.test_cargo(&mut cargo);
                 self.clear_if_dirty(&out_dir, &self.libstd_stamp(compiler, target));
             }
             Mode::Librustc => {
+                self.rustc_cargo(&mut cargo);
+                cargo
+                    .arg("--features")
+                    .arg(self.rustc_features())
+                    .arg("--manifest-path")
+                    .arg(self.config.src.join("src/rustc/Cargo.toml"));
+                self.clear_if_dirty(&out_dir, &self.libstd_stamp(compiler, target));
+                self.clear_if_dirty(&out_dir, &self.libtest_stamp(compiler, target));
+            }
+            Mode::CodegenBackend(backend) => {
+                self.rustc_cargo(&mut cargo);
+                let mut features = self.rustc_features().to_string();
+                cargo
+                    .arg("--manifest-path")
+                    .arg(self.config.src.join("src/librustc_trans/Cargo.toml"));
+                if backend == "emscripten" {
+                    features.push_str(" emscripten");
+                }
+                cargo.arg("--features").arg(features);
                 self.clear_if_dirty(&out_dir, &self.libstd_stamp(compiler, target));
                 self.clear_if_dirty(&out_dir, &self.libtest_stamp(compiler, target));
             }
