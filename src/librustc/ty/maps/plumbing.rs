@@ -147,7 +147,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }
                 match self.dep_graph.try_mark_green(self.global_tcx(), &dep_node) {
                     Some(dep_node_index) => {
-                        debug_assert!(self.dep_graph.is_green(dep_node_index));
+                        debug_assert!(self.dep_graph.is_green(&dep_node));
                         self.dep_graph.read_index(dep_node_index);
                         Some(dep_node_index)
                     }
@@ -403,7 +403,7 @@ macro_rules! define_maps {
                                                   dep_node: &DepNode)
                                                   -> Result<$V, CycleError<'a, $tcx>>
             {
-                debug_assert!(tcx.dep_graph.is_green(dep_node_index));
+                debug_assert!(tcx.dep_graph.is_green(dep_node));
 
                 // First we try to load the result from the on-disk cache
                 let result = if Self::cache_on_disk(key) &&
@@ -491,7 +491,7 @@ macro_rules! define_maps {
                      span: Span,
                      dep_node: DepNode)
                      -> Result<($V, DepNodeIndex), CycleError<'a, $tcx>> {
-                debug_assert!(tcx.dep_graph.node_color(&dep_node).is_none());
+                debug_assert!(!tcx.dep_graph.dep_node_exists(&dep_node));
 
                 profq_msg!(tcx, ProfileQueriesMsg::ProviderBegin);
                 let res = tcx.cycle_check(span, Query::$name(key), || {
