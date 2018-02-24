@@ -747,8 +747,8 @@ impl<T> LinkedList<T> {
     /// Creates an iterator which uses a closure to determine if an element should be removed.
     ///
     /// If the closure returns true, then the element is removed and yielded.
-    /// If the closure returns false, it will try again, and call the closure on the next element,
-    /// seeing if it passes the test.
+    /// If the closure returns false, the element will remain in the list and will not be yielded
+    /// by the iterator.
     ///
     /// Note that `drain_filter` lets you mutate every element in the filter closure, regardless of
     /// whether you choose to keep or remove it.

@@ -844,6 +844,12 @@ pub mod __internal {
         })
     }
 
+    pub fn in_sess() -> bool
+    {
+        let p = CURRENT_SESS.with(|p| p.get());
+        !p.0.is_null()
+    }
+
     pub fn with_sess<F, R>(f: F) -> R
         where F: FnOnce((&ParseSess, Mark)) -> R
     {

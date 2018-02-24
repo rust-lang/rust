@@ -24,7 +24,7 @@ use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, TyCtxt, Resolutions, AllArenas};
 use rustc::traits;
-use rustc::util::common::{ErrorReported, time};
+use rustc::util::common::{ErrorReported, time, install_panic_hook};
 use rustc_allocator as allocator;
 use rustc_borrowck as borrowck;
 use rustc_incremental;
@@ -123,6 +123,8 @@ pub fn compile_input(trans: Box<TransCrate>,
         let outputs = build_output_filenames(input, outdir, output, &krate.attrs, sess);
         let crate_name =
             ::rustc_trans_utils::link::find_crate_name(Some(sess), &krate.attrs, input);
+        install_panic_hook();
+
         let ExpansionResult { expanded_crate, defs, analysis, resolutions, mut hir_forest } = {
             phase_2_configure_and_expand(
                 sess,

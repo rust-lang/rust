@@ -186,7 +186,7 @@ declare_features! (
     (active, rustc_attrs, "1.0.0", Some(29642)),
 
     // Allows the use of non lexical lifetimes; RFC 2094
-    (active, nll, "1.0.0", Some(44928)),
+    (active, nll, "1.0.0", Some(43234)),
 
     // Allows the use of #[allow_internal_unstable]. This is an
     // attribute on macro_rules! and can't use the attribute handling

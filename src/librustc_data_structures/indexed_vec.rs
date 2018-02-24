@@ -482,6 +482,21 @@ impl<I: Idx, T> IndexVec<I, T> {
     pub fn get_mut(&mut self, index: I) -> Option<&mut T> {
         self.raw.get_mut(index.index())
     }
+
+    /// Return mutable references to two distinct elements, a and b. Panics if a == b.
+    #[inline]
+    pub fn pick2_mut(&mut self, a: I, b: I) -> (&mut T, &mut T) {
+        let (ai, bi) = (a.index(), b.index());
+        assert!(ai != bi);
+
+        if ai < bi {
+            let (c1, c2) = self.raw.split_at_mut(bi);
+            (&mut c1[ai], &mut c2[0])
+        } else {
+            let (c2, c1) = self.pick2_mut(b, a);
+            (c1, c2)
+        }
+    }
 }
 
 impl<I: Idx, T: Clone> IndexVec<I, T> {
