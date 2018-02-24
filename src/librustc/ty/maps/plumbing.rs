@@ -84,7 +84,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             let span = self.sess.codemap().def_span(span);
             let mut err =
                 struct_span_err!(self.sess, span, E0391,
-                                 "unsupported cyclic reference between types/traits detected");
+                                 "cyclic dependency detected");
             err.span_label(span, "cyclic reference");
 
             err.span_note(self.sess.codemap().def_span(stack[0].0),

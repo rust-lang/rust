@@ -1,4 +1,4 @@
-error[E0391]: unsupported cyclic reference between types/traits detected
+error[E0391]: cyclic dependency detected
   --> $DIR/issue-23305.rs:15:12
    |
 15 | impl ToNbt<Self> {}

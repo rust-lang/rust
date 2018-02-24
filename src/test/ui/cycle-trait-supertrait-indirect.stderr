@@ -1,4 +1,4 @@
-error[E0391]: unsupported cyclic reference between types/traits detected
+error[E0391]: cyclic dependency detected
   --> $DIR/cycle-trait-supertrait-indirect.rs:20:1
    |
 20 | trait C: B { }

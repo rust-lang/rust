@@ -1,0 +1,15 @@
+error[E0391]: cyclic dependency detected
+  --> $DIR/issue-23302-2.rs:14:9
+   |
+14 |     A = Y::B as isize, //~ ERROR E0391
+   |         ^^^^^^^^^^^^^ cyclic reference
+   |
+note: the cycle begins when const-evaluating `Y::A::{{initializer}}`...
+  --> $DIR/issue-23302-2.rs:14:5
+   |
+14 |     A = Y::B as isize, //~ ERROR E0391
+   |     ^^^^^^^^^^^^^^^^^
+   = note: ...which then again requires const-evaluating `Y::A::{{initializer}}`, completing the cycle.
+
+error: aborting due to previous error
+

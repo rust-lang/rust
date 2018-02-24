@@ -128,22 +128,6 @@ impl !Enterprise for Foo { }
 Please note that negative impls are only allowed for auto traits.
 "##,
 
-E0265: r##"
-This error indicates that a static or constant references itself.
-All statics and constants need to resolve to a value in an acyclic manner.
-
-For example, neither of the following can be sensibly compiled:
-
-```compile_fail,E0265
-const X: u32 = X;
-```
-
-```compile_fail,E0265
-const X: u32 = Y;
-const Y: u32 = X;
-```
-"##,
-
 E0267: r##"
 This error indicates the use of a loop keyword (`break` or `continue`) inside a
 closure but outside of any loop. Erroneous code example:

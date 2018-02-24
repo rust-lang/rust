@@ -8,16 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const A: i32 = Foo::B; //~ ERROR E0265
+const A: isize = Foo::B as isize;
 
 enum Foo {
-    B = A, //~ ERROR E0265
+    B = A, //~ ERROR E0391
 }
-
-enum Bar {
-    C = Bar::C, //~ ERROR E0265
-}
-
-const D: i32 = A;
 
 fn main() {}
