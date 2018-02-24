@@ -14,7 +14,6 @@ use super::metadata::{unknown_file_metadata, UNKNOWN_LINE_NUMBER};
 use super::utils::{DIB, debug_context};
 use monomorphize::Instance;
 use rustc::ty;
-use syntax::ast;
 
 use llvm;
 use llvm::debuginfo::DIScope;
@@ -31,16 +30,6 @@ pub fn mangled_name_of_instance<'a, 'tcx>(
 ) -> ty::SymbolName {
      let tcx = cx.tcx;
      tcx.symbol_name(instance)
-}
-
-pub fn mangled_name_of_item<'a, 'tcx>(
-    cx: &CodegenCx<'a, 'tcx>,
-    node_id: ast::NodeId,
-) -> ty::SymbolName {
-    let tcx = cx.tcx;
-    let node_def_id = tcx.hir.local_def_id(node_id);
-    let instance = Instance::mono(tcx, node_def_id);
-    tcx.symbol_name(instance)
 }
 
 pub fn item_namespace(cx: &CodegenCx, def_id: DefId) -> DIScope {

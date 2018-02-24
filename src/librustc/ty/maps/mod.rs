@@ -349,7 +349,7 @@ define_maps! { <'tcx>
     [] fn export_name: ExportName(DefId) -> Option<Symbol>,
     [] fn contains_extern_indicator: ContainsExternIndicator(DefId) -> bool,
     [] fn symbol_export_level: GetSymbolExportLevel(DefId) -> SymbolExportLevel,
-    [] fn is_translated_function: IsTranslatedFunction(DefId) -> bool,
+    [] fn is_translated_item: IsTranslatedItem(DefId) -> bool,
     [] fn codegen_unit: CodegenUnit(InternedString) -> Arc<CodegenUnit<'tcx>>,
     [] fn compile_codegen_unit: CompileCodegenUnit(InternedString) -> Stats,
     [] fn output_filenames: output_filenames_node(CrateNum)

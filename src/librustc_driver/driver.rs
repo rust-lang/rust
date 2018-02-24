@@ -932,6 +932,7 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
 }
 
 pub fn default_provide(providers: &mut ty::maps::Providers) {
+    hir::provide(providers);
     borrowck::provide(providers);
     mir::provide(providers);
     reachable::provide(providers);

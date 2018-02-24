@@ -21,9 +21,8 @@ use llvm::debuginfo::{DIScope, DIBuilderRef, DIDescriptor, DIArray};
 use common::{CodegenCx};
 
 use syntax_pos::{self, Span};
-use syntax::ast;
 
-pub fn is_node_local_to_unit(cx: &CodegenCx, node_id: ast::NodeId) -> bool
+pub fn is_node_local_to_unit(cx: &CodegenCx, def_id: DefId) -> bool
 {
     // The is_local_to_unit flag indicates whether a function is local to the
     // current compilation unit (i.e. if it is *static* in the C-sense). The
@@ -33,7 +32,6 @@ pub fn is_node_local_to_unit(cx: &CodegenCx, node_id: ast::NodeId) -> bool
     // visible). It might better to use the `exported_items` set from
     // `driver::CrateAnalysis` in the future, but (atm) this set is not
     // available in the translation pass.
-    let def_id = cx.tcx.hir.local_def_id(node_id);
     !cx.tcx.is_exported_symbol(def_id)
 }
 
