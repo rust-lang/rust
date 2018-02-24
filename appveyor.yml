@@ -47,7 +47,13 @@ environment:
   # SourceForge is notoriously flaky, so we mirror it on our own infrastructure.
   - MSYS_BITS: 32
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
-    SCRIPT: python x.py test
+    SCRIPT: python x.py test --exclude src/test/run-pass --exclude src/test/compile-fail
+    MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
+    MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
+    MINGW_DIR: mingw32
+  - MSYS_BITS: 32
+    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
+    SCRIPT: python x.py test src/test/run-pass src/test/compile-fail
     MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
     MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
     MINGW_DIR: mingw32
