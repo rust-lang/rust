@@ -10,17 +10,17 @@
 
 //! Shareable mutable containers.
 //!
-//! Rust memory safety is based on this rule: Given an object `T`, is only possible to
+//! Rust memory safety is based on this rule: Given an object `T`, it is only possible to
 //! have one of the following:
 //!
-//! - Having several inmutable references (`&T`) to the object (also know as Aliasing).
+//! - Having several immutable references (`&T`) to the object (also know as Aliasing).
 //! - Having one mutable reference (`&mut T`) to the object (also know as Mutability).
 //!
 //! This is enforced by the Rust compiler. However, there are situations where this rule is not
-//! flexible enough. Sometimes is required to have multiple references to an object and yet
+//! flexible enough. Sometimes it is required to have multiple references to an object and yet
 //! mutate it.
 //!
-//! Shareable mutable containers exist to permit mutability in presence of aliasing in a
+//! Shareable mutable containers exist to permit mutability in the presence of aliasing in a
 //! controlled manner. Both `Cell<T>` and `RefCell<T>` allows to do this in a single threaded
 //! way. However, neither `Cell<T>` nor `RefCell<T>` are thread safe (they do not implement
 //! `Sync`), if you need to do Aliasing and Mutation between multiple threads is possible to use
