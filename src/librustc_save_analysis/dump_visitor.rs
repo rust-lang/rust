@@ -1031,6 +1031,81 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         }
     }
 
+    fn process_var_decl_multi(&mut self, pats: &'l [P<ast::Pat>]) {
+        let mut collector = PathCollector::new();
+        for pattern in pats {
+            // collect paths from the arm's patterns
+            collector.visit_pat(&pattern);
+            self.visit_pat(&pattern);
+        }
+
+        // process collected paths
+        for (id, i, sp, immut) in collector.collected_idents {
+            match self.save_ctxt.get_path_def(id) {
+                HirDef::Local(id) => {
+                    let mut value = if immut == ast::Mutability::Immutable {
+                        self.span.snippet(sp).to_string()
+                    } else {
+                        "<mutable>".to_string()
+                    };
+                    let hir_id = self.tcx.hir.node_to_hir_id(id);
+                    let typ = self.save_ctxt
+                        .tables
+                        .node_id_to_type_opt(hir_id)
+                        .map(|t| t.to_string())
+                        .unwrap_or(String::new());
+                    value.push_str(": ");
+                    value.push_str(&typ);
+
+                    if !self.span.filter_generated(Some(sp), sp) {
+                        let qualname = format!("{}${}", i.to_string(), id);
+                        let id = ::id_from_node_id(id, &self.save_ctxt);
+                        let span = self.span_from_span(sp);
+
+                        self.dumper.dump_def(
+                            &Access {
+                                public: false,
+                                reachable: false,
+                            },
+                            Def {
+                                kind: DefKind::Local,
+                                id,
+                                span,
+                                name: i.to_string(),
+                                qualname,
+                                value: typ,
+                                parent: None,
+                                children: vec![],
+                                decl_id: None,
+                                docs: String::new(),
+                                sig: None,
+                                attributes: vec![],
+                            },
+                        );
+                    }
+                }
+                HirDef::StructCtor(..) |
+                HirDef::VariantCtor(..) |
+                HirDef::Const(..) |
+                HirDef::AssociatedConst(..) |
+                HirDef::Struct(..) |
+                HirDef::Variant(..) |
+                HirDef::TyAlias(..) |
+                HirDef::AssociatedTy(..) |
+                HirDef::SelfTy(..) => {
+                    self.dump_path_ref(id, &ast::Path::from_ident(sp, i));
+                }
+                def => error!(
+                    "unexpected definition kind when processing collected idents: {:?}",
+                    def
+                ),
+            }
+        }
+
+        for (id, ref path) in collector.collected_paths {
+            self.process_path(id, path);
+        }
+    }
 
     fn process_var_decl(&mut self, p: &'l ast::Pat, value: String) {
         // The local could declare multiple new vars, we must walk the
@@ -1622,17 +1697,21 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                     v.nest_scope(ex.id, |v| v.visit_expr(body))
                 });
             }
-            ast::ExprKind::ForLoop(ref pattern, ref subexpression, ref block, _) |
-            ast::ExprKind::WhileLet(ref pattern, ref subexpression, ref block, _) => {
+            ast::ExprKind::ForLoop(ref pattern, ref subexpression, ref block, _) => {
                 let value = self.span.snippet(subexpression.span);
                 self.process_var_decl(pattern, value);
                 debug!("for loop, walk sub-expr: {:?}", subexpression.node);
                 self.visit_expr(subexpression);
                 visit::walk_block(self, block);
             }
-            ast::ExprKind::IfLet(ref pattern, ref subexpression, ref block, ref opt_else) => {
-                let value = self.span.snippet(subexpression.span);
-                self.process_var_decl(pattern, value);
+            ast::ExprKind::WhileLet(ref pats, ref subexpression, ref block, _) => {
+                self.process_var_decl_multi(pats);
+                debug!("for loop, walk sub-expr: {:?}", subexpression.node);
+                self.visit_expr(subexpression);
+                visit::walk_block(self, block);
+            }
+            ast::ExprKind::IfLet(ref pats, ref subexpression, ref block, ref opt_else) => {
+                self.process_var_decl_multi(pats);
                 self.visit_expr(subexpression);
                 visit::walk_block(self, block);
                 opt_else.as_ref().map(|el| self.visit_expr(el));
@@ -1661,79 +1740,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
     }
 
     fn visit_arm(&mut self, arm: &'l ast::Arm) {
-        let mut collector = PathCollector::new();
-        for pattern in &arm.pats {
-            // collect paths from the arm's patterns
-            collector.visit_pat(&pattern);
-            self.visit_pat(&pattern);
-        }
-
-        // process collected paths
-        for (id, i, sp, immut) in collector.collected_idents {
-            match self.save_ctxt.get_path_def(id) {
-                HirDef::Local(id) => {
-                    let mut value = if immut == ast::Mutability::Immutable {
-                        self.span.snippet(sp).to_string()
-                    } else {
-                        "<mutable>".to_string()
-                    };
-                    let hir_id = self.tcx.hir.node_to_hir_id(id);
-                    let typ = self.save_ctxt
-                        .tables
-                        .node_id_to_type_opt(hir_id)
-                        .map(|t| t.to_string())
-                        .unwrap_or(String::new());
-                    value.push_str(": ");
-                    value.push_str(&typ);
-
-                    if !self.span.filter_generated(Some(sp), sp) {
-                        let qualname = format!("{}${}", i.to_string(), id);
-                        let id = ::id_from_node_id(id, &self.save_ctxt);
-                        let span = self.span_from_span(sp);
-
-                        self.dumper.dump_def(
-                            &Access {
-                                public: false,
-                                reachable: false,
-                            },
-                            Def {
-                                kind: DefKind::Local,
-                                id,
-                                span,
-                                name: i.to_string(),
-                                qualname,
-                                value: typ,
-                                parent: None,
-                                children: vec![],
-                                decl_id: None,
-                                docs: String::new(),
-                                sig: None,
-                                attributes: vec![],
-                            },
-                        );
-                    }
-                }
-                HirDef::StructCtor(..) |
-                HirDef::VariantCtor(..) |
-                HirDef::Const(..) |
-                HirDef::AssociatedConst(..) |
-                HirDef::Struct(..) |
-                HirDef::Variant(..) |
-                HirDef::TyAlias(..) |
-                HirDef::AssociatedTy(..) |
-                HirDef::SelfTy(..) => {
-                    self.dump_path_ref(id, &ast::Path::from_ident(sp, i));
-                }
-                def => error!(
-                    "unexpected definition kind when processing collected idents: {:?}",
-                    def
-                ),
-            }
-        }
-
-        for (id, ref path) in collector.collected_paths {
-            self.process_path(id, path);
-        }
+        self.process_var_decl_multi(&arm.pats);
         walk_list!(self, visit_expr, &arm.guard);
         self.visit_expr(&arm.body);
     }

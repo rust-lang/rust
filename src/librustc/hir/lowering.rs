@@ -2956,7 +2956,7 @@ impl<'a> LoweringContext<'a> {
 
             // Desugar ExprIfLet
             // From: `if let <pat> = <sub_expr> <body> [<else_opt>]`
-            ExprKind::IfLet(ref pat, ref sub_expr, ref body, ref else_opt) => {
+            ExprKind::IfLet(ref pats, ref sub_expr, ref body, ref else_opt) => {
                 // to:
                 //
                 //   match <sub_expr> {
@@ -2970,8 +2970,8 @@ impl<'a> LoweringContext<'a> {
                 {
                     let body = self.lower_block(body, false);
                     let body_expr = P(self.expr_block(body, ThinVec::new()));
-                    let pat = self.lower_pat(pat);
-                    arms.push(self.arm(hir_vec![pat], body_expr));
+                    let pats = pats.iter().map(|pat| self.lower_pat(pat)).collect();
+                    arms.push(self.arm(pats, body_expr));
                 }
 
                 // _ => [<else_opt>|()]
@@ -3000,7 +3000,7 @@ impl<'a> LoweringContext<'a> {
 
             // Desugar ExprWhileLet
             // From: `[opt_ident]: while let <pat> = <sub_expr> <body>`
-            ExprKind::WhileLet(ref pat, ref sub_expr, ref body, opt_label) => {
+            ExprKind::WhileLet(ref pats, ref sub_expr, ref body, opt_label) => {
                 // to:
                 //
                 //   [opt_ident]: loop {
@@ -3021,8 +3021,8 @@ impl<'a> LoweringContext<'a> {
                 // `<pat> => <body>`
                 let pat_arm = {
                     let body_expr = P(self.expr_block(body, ThinVec::new()));
-                    let pat = self.lower_pat(pat);
-                    self.arm(hir_vec![pat], body_expr)
+                    let pats = pats.iter().map(|pat| self.lower_pat(pat)).collect();
+                    self.arm(pats, body_expr)
                 };
 
                 // `_ => break`
