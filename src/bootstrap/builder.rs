@@ -16,7 +16,7 @@ use std::fmt::Debug;
 use std::fs::{self, File};
 use std::io::{BufRead, Read, Write, BufReader};
 use std::hash::Hash;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
@@ -770,8 +770,8 @@ impl<'a> Builder<'a> {
         compiler: Compiler,
         mode: Mode,
         target: Interned<String>,
-        cmd: &str,
-    ) -> Command {
+        cmd: &'static str,
+    ) -> CargoCommand {
         let mut cargo = Command::new(&self.config.general.initial_cargo);
         let out_dir = self.stage_out(compiler, mode);
         self.clear_if_dirty(&out_dir, &self.rustc(compiler));
@@ -1108,28 +1108,117 @@ impl<'a> Builder<'a> {
 
         self.ci_env.force_coloring_in_ci(&mut cargo);
 
-        cargo
+        CargoCommand {
+            cargo,
+            mode,
+            target,
+            cmd,
+            compiler,
+            builder: self,
+        }
     }
 
-    pub fn run_cargo(&self, cargo: &mut Command, stamp: &Path, is_check: bool) {
+    /// Ensure that a given step is built, returning it's output. This will
+    /// cache the step, so it is safe (and good!) to call this as often as
+    /// needed to ensure that all dependencies are built.
+    pub fn ensure<S: Step>(&'a self, step: S) -> S::Output {
+        {
+            let mut stack = self.stack.borrow_mut();
+            for stack_step in stack.iter() {
+                // should skip
+                if stack_step
+                    .downcast_ref::<S>()
+                    .map_or(true, |stack_step| *stack_step != step)
+                {
+                    continue;
+                }
+                let mut out = String::new();
+                out += &format!("\n\nCycle in build detected when adding {:?}\n", step);
+                for el in stack.iter().rev() {
+                    out += &format!("\t{:?}\n", el);
+                }
+                panic!(out);
+            }
+            if let Some(out) = self.cache.get(&step) {
+                self.verbose(&format!("{}c {:?}", "  ".repeat(stack.len()), step));
+
+                return out;
+            }
+            self.verbose(&format!("{}> {:?}", "  ".repeat(stack.len()), step));
+            stack.push(Box::new(step.clone()));
+        }
+        let out = step.clone().run(self);
+        {
+            let mut stack = self.stack.borrow_mut();
+            let cur_step = stack.pop().expect("step stack empty");
+            assert_eq!(cur_step.downcast_ref(), Some(&step));
+        }
+        self.verbose(&format!(
+            "{}< {:?}",
+            "  ".repeat(self.stack.borrow().len()),
+            step
+        ));
+        self.cache.put(step, out.clone());
+        out
+    }
+}
+
+pub struct CargoCommand<'a> {
+    builder: &'a Builder<'a>,
+    cargo: Command,
+    mode: Mode,
+    compiler: Compiler,
+    target: Interned<String>,
+    cmd: &'static str,
+}
+
+impl<'a> Deref for CargoCommand<'a> {
+    type Target = Command;
+    fn deref(&self) -> &Command {
+        &self.cargo
+    }
+}
+
+impl<'a> DerefMut for CargoCommand<'a> {
+    fn deref_mut(&mut self) -> &mut Command {
+        &mut self.cargo
+    }
+}
+
+impl<'a> CargoCommand<'a> {
+    pub fn run(&mut self) {
+        let stamp = match self.mode {
+            Mode::Libstd => self.builder.libstd_stamp(self.compiler, self.target),
+            Mode::Libtest => self.builder.libtest_stamp(self.compiler, self.target),
+            Mode::Librustc => self.builder.librustc_stamp(self.compiler, self.target),
+            Mode::CodegenBackend(backend) => {
+                self.builder.codegen_backend_stamp(self.compiler, self.target, &*backend)
+            }
+            Mode::Tool => {
+                panic!("did not expect to execute with tools");
+            }
+        };
+
+        let is_check = self.cmd == "check";
+
         // Instruct Cargo to give us json messages on stdout, critically leaving
         // stderr as piped so we can get those pretty colors.
-        cargo
+        self.cargo
             .arg("--message-format")
             .arg("json")
             .stdout(Stdio::piped());
 
-        if stderr_isatty() && self.ci_env == CiEnv::None {
+        if stderr_isatty() && self.builder.ci_env == CiEnv::None {
             // since we pass message-format=json to cargo, we need to tell the rustc
             // wrapper to give us colored output if necessary. This is because we
             // only want Cargo's JSON output, not rustcs.
-            cargo.env("RUSTC_COLOR", "1");
+            self.cargo.env("RUSTC_COLOR", "1");
         }
 
-        self.verbose(&format!("running: {:?}", cargo));
-        let mut child = match cargo.spawn() {
+        self.builder.verbose(&format!("running: {:?}", self.cargo));
+        let mut child = match self.cargo.spawn() {
             Ok(child) => child,
-            Err(e) => panic!("failed to execute command: {:?}\nerror: {}", cargo, e),
+            Err(e) => panic!("failed to execute command: {:?}\nerror: {}", self.cargo, e),
         };
 
         // `target_root_dir` looks like $dir/$target/release
@@ -1209,7 +1298,7 @@ impl<'a> Builder<'a> {
             panic!(
                 "command did not execute successfully: {:?}\n\
                 expected success, got: {}",
-                cargo, status
+                self.cargo, status
             );
         }
 
@@ -1253,7 +1342,7 @@ impl<'a> Builder<'a> {
         // is newer then we rewrite the stamp file.
         deps.sort();
         let mut stamp_contents = Vec::new();
-        if let Ok(mut f) = File::open(stamp) {
+        if let Ok(mut f) = File::open(&stamp) {
             t!(f.read_to_end(&mut stamp_contents));
         }
         let stamp_mtime = mtime(&stamp);
@@ -1272,63 +1361,20 @@ impl<'a> Builder<'a> {
         let max = max.unwrap();
         let max_path = max_path.unwrap();
         if stamp_contents == new_contents && max <= stamp_mtime {
-            self.verbose(&format!(
+            self.builder.verbose(&format!(
                 "not updating {:?}; contents equal and {} <= {}",
                 stamp, max, stamp_mtime
             ));
             return;
         }
         if max > stamp_mtime {
-            self.verbose(&format!("updating {:?} as {:?} changed", stamp, max_path));
+            self.builder.verbose(&format!("updating {:?} as {:?} changed", stamp, max_path));
         } else {
-            self.verbose(&format!("updating {:?} as deps changed", stamp));
+            self.builder.verbose(&format!("updating {:?} as deps changed", stamp));
         }
-        t!(t!(File::create(stamp)).write_all(&new_contents));
+        t!(t!(File::create(&stamp)).write_all(&new_contents));
     }
 
-    /// Ensure that a given step is built, returning it's output. This will
-    /// cache the step, so it is safe (and good!) to call this as often as
-    /// needed to ensure that all dependencies are built.
-    pub fn ensure<S: Step>(&'a self, step: S) -> S::Output {
-        {
-            let mut stack = self.stack.borrow_mut();
-            for stack_step in stack.iter() {
-                // should skip
-                if stack_step
-                    .downcast_ref::<S>()
-                    .map_or(true, |stack_step| *stack_step != step)
-                {
-                    continue;
-                }
-                let mut out = String::new();
-                out += &format!("\n\nCycle in build detected when adding {:?}\n", step);
-                for el in stack.iter().rev() {
-                    out += &format!("\t{:?}\n", el);
-                }
-                panic!(out);
-            }
-            if let Some(out) = self.cache.get(&step) {
-                self.verbose(&format!("{}c {:?}", "  ".repeat(stack.len()), step));
-
-                return out;
-            }
-            self.verbose(&format!("{}> {:?}", "  ".repeat(stack.len()), step));
-            stack.push(Box::new(step.clone()));
-        }
-        let out = step.clone().run(self);
-        {
-            let mut stack = self.stack.borrow_mut();
-            let cur_step = stack.pop().expect("step stack empty");
-            assert_eq!(cur_step.downcast_ref(), Some(&step));
-        }
-        self.verbose(&format!(
-            "{}< {:?}",
-            "  ".repeat(self.stack.borrow().len()),
-            step
-        ));
-        self.cache.put(step, out.clone());
-        out
-    }
 }
 
 // Avoiding a dependency on winapi to keep compile times down
@@ -1353,4 +1399,3 @@ fn stderr_isatty() -> bool {
         GetConsoleMode(handle, &mut out) != 0
     }
 }
-

@@ -15,7 +15,7 @@ use std::process::{exit, Command};
 
 use Mode;
 use Compiler;
-use builder::{Builder, RunConfig, ShouldRun, Step};
+use builder::{CargoCommand, Builder, RunConfig, ShouldRun, Step};
 use util::{add_lib_path, copy, exe};
 use compile;
 use native;
@@ -145,13 +145,13 @@ impl Step for ToolBuild {
     }
 }
 
-pub fn prepare_tool_cargo(
-    builder: &Builder,
+pub fn prepare_tool_cargo<'a>(
+    builder: &'a Builder<'a>,
     compiler: Compiler,
     target: Interned<String>,
     command: &'static str,
     path: &'static str,
-) -> Command {
+) -> CargoCommand<'a> {
     let mut cargo = builder.cargo(compiler, Mode::Tool, target, command);
     let dir = builder.config.src.join(path);
     cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));

@@ -86,12 +86,7 @@ impl Step for Std {
             compiler.stage, &compiler.host, target
         );
 
-        let mut cargo = builder.cargo(compiler, Mode::Libstd, target, "build");
-        builder.run_cargo(
-            &mut cargo,
-            &builder.libstd_stamp(compiler, target),
-            false,
-        );
+        builder.cargo(compiler, Mode::Libstd, target, "build").run();
 
         builder.ensure(StdLink {
             compiler: builder.compiler(compiler.stage, builder.config.general.build),
@@ -303,12 +298,7 @@ impl Step for Test {
             "Building stage{} test artifacts ({} -> {})",
             compiler.stage, &compiler.host, target
         );
-        let mut cargo = builder.cargo(compiler, Mode::Libtest, target, "build");
-        builder.run_cargo(
-            &mut cargo,
-            &builder.libtest_stamp(compiler, target),
-            false,
-        );
+        builder.cargo(compiler, Mode::Libtest, target, "build").run();
 
         builder.ensure(TestLink {
             compiler: builder.compiler(compiler.stage, builder.config.general.build),
@@ -415,12 +405,7 @@ impl Step for Rustc {
             compiler.stage, &compiler.host, target
         );
 
-        let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "build");
-        builder.run_cargo(
-            &mut cargo,
-            &builder.librustc_stamp(compiler, target),
-            false,
-        );
+        builder.cargo(compiler, Mode::Librustc, target, "build").run();
 
         builder.ensure(RustcLink {
             compiler: builder.compiler(compiler.stage, builder.config.general.build),
@@ -554,11 +539,7 @@ impl Step for CodegenBackend {
             _ => panic!("unknown backend: {}", self.backend),
         }
 
-        builder.run_cargo(
-            &mut cargo,
-            &builder.codegen_backend_stamp(compiler, target, &*self.backend),
-            false,
-        );
+        cargo.run();
     }
 }
 
