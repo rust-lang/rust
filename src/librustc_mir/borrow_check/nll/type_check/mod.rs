@@ -1585,6 +1585,12 @@ impl MirPass for TypeckMir {
         let id = tcx.hir.as_local_node_id(def_id).unwrap();
         debug!("run_pass: {:?}", def_id);
 
+        // When NLL is enabled, the borrow checker runs the typeck
+        // itself, so we don't need this MIR pass anymore.
+        if tcx.sess.nll() {
+            return;
+        }
+
         if tcx.sess.err_count() > 0 {
             // compiling a broken program can obviously result in a
             // broken MIR, so try not to report duplicate errors.
