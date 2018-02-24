@@ -41,6 +41,7 @@ fn main() {
     if !args.iter().any(|s| *s == "--no-vendor") {
         deps::check(&path, &mut bad);
     }
+    deps::check_whitelist(&path, &mut bad);
 
     if bad {
         eprintln!("some tidy checks failed");

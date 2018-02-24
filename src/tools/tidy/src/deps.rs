@@ -10,10 +10,10 @@
 
 //! Check license of third-party deps by inspecting src/vendor
 
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-
 use std::process::Command;
 
 use serde_json;
@@ -56,22 +56,40 @@ static WHITELIST: &'static [(&'static str, &'static str)] = &[];
 #[derive(Deserialize)]
 struct Output {
     packages: Vec<Package>,
-    _resolve: String,
+
+    // Not used, but needed to not confuse serde :P
+    #[allow(dead_code)] resolve: Resolve,
 }
 
 #[derive(Deserialize)]
 struct Package {
-    _id: String,
     name: String,
     version: String,
-    _source: Option<String>,
-    _manifest_path: String,
+
+    // Not used, but needed to not confuse serde :P
+    #[allow(dead_code)] id: String,
+    #[allow(dead_code)] source: Option<String>,
+    #[allow(dead_code)] manifest_path: String,
+}
+
+// Not used, but needed to not confuse serde :P
+#[allow(dead_code)]
+#[derive(Deserialize)]
+struct Resolve {
+    nodes: Vec<ResolveNode>,
+}
+
+// Not used, but needed to not confuse serde :P
+#[allow(dead_code)]
+#[derive(Deserialize)]
+struct ResolveNode {
+    id: String,
+    dependencies: Vec<String>,
 }
 
 /// Checks the dependency at the given path. Changes `bad` to `true` if a check failed.
 ///
-/// Specifically, this checks that the license is correct and that the dependencies are on the
-/// whitelist.
+/// Specifically, this checks that the license is correct.
 pub fn check(path: &Path, bad: &mut bool) {
     // Check licences
     let path = path.join("vendor");
@@ -95,21 +113,35 @@ pub fn check(path: &Path, bad: &mut bool) {
         *bad = *bad || !check_license(&toml);
     }
     assert!(saw_dir, "no vendored source");
+}
 
+/// Checks the dependency at the given path. Changes `bad` to `true` if a check failed.
+///
+/// Specifically, this checks that the dependencies are on the whitelist.
+pub fn check_whitelist(path: &Path, bad: &mut bool) {
     // Check dependencies
-    let deps = get_deps(&path);
-    *bad = *bad
-        || deps.iter().any(
-            |&Package {
-                 ref name,
-                 ref version,
-                 ..
-             }| {
-                WHITELIST
-                    .iter()
-                    .all(|&(wname, wversion)| name != wname || version != wversion)
-            },
-        );
+    let deps: HashSet<_> = get_deps(&path)
+        .into_iter()
+        .map(|Package { name, version, .. }| (name, version))
+        .collect();
+    let whitelist: HashSet<(String, String)> = WHITELIST
+        .iter()
+        .map(|&(n, v)| (n.to_owned(), v.to_owned()))
+        .collect();
+
+    // Dependencies not in the whitelist
+    let mut unapproved: Vec<_> = deps.difference(&whitelist).collect();
+
+    // For ease of reading
+    unapproved.sort();
+
+    if unapproved.len() > 0 {
+        println!("Dependencies not on the whitelist:");
+        for dep in unapproved {
+            println!("* {} {}", dep.0, dep.1); // name version
+        }
+        *bad = true;
+    }
 }
 
 fn check_license(path: &Path) -> bool {
