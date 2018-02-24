@@ -98,7 +98,72 @@ including:
 
 ## Testing infrastructure
 
-TODO - bors, platforms, etc.
+When a Pull Request is opened on Github, [Travis] will automatically launch a
+build that will run all tests on a single configuration (x86-64 linux). In
+essence, it runs `./x.py test` after building.
+
+The integration bot [bors] is used for coordinating merges to the master
+branch. When a PR is approved, it goes into a [queue] where merges are tested
+one at a time on a wide set of platforms using Travis and [Appveyor]
+(currently over 50 different configurations).  Most platforms only run the
+build steps, some run a restricted set of tests, only a subset run the full
+suite of tests (see Rust's [platform tiers]).
+
+[Travis]: https://travis-ci.org/rust-lang/rust
+[bors]: https://github.com/servo/homu
+[queue]: https://buildbot2.rust-lang.org/homu/queue/rust
+[Appveyor]: https://ci.appveyor.com/project/rust-lang/rust
+[platform tiers]: https://forge.rust-lang.org/platform-support.html
+
+## Testing with Docker images
+
+The Rust tree includes [Docker] image definitions for the platforms used on
+Travis in [src/ci/docker].  The script [src/ci/docker/run.sh] is used to build
+the Docker image, run it, build Rust within the image, and run the tests.
+
+> TODO: What is a typical workflow for testing/debugging on a platform that
+> you don't have easy access to?  Do people build Docker images and enter them
+> to test things out?
+
+[Docker]: https://www.docker.com/
+[src/ci/docker]: https://github.com/rust-lang/rust/tree/master/src/ci/docker
+[src/ci/docker/run.sh]: https://github.com/rust-lang/rust/blob/master/src/ci/docker/run.sh
+
+## Testing on emulators
+
+Some platforms are tested via an emulator for architectures that aren't
+readily available.  There is a set of tools for orchestrating running the
+tests within the emulator.  Platforms such as `arm-android` and
+`arm-unknown-linux-gnueabihf` are set up to automatically run the tests under
+emulation on Travis.  The following will take a look at how a target's tests
+are run under emulation.
+
+The Docker image for [armhf-gnu] includes [QEMU] to emulate the ARM CPU
+architecture.  Included in the Rust tree are the tools [remote-test-client]
+and [remote-test-server] which are programs for sending test programs and
+libraries to the emulator, and running the tests within the emulator, and
+reading the results.  The Docker image is set up to launch
+`remote-test-server` and the build tools use `remote-test-client` to
+communicate with the server to coordinate running tests (see
+[src/bootstrap/test.rs]).
+
+> TODO: What are the steps for manually running tests within an emulator?
+> `./src/ci/docker/run.sh armhf-gnu` will do everything, but takes hours to
+> run and doesn't offer much help with interacting within the emulator.
+>
+> Is there any support for emulating other (non-Android) platforms, such as
+> running on an iOS emulator?
+>
+> Is there anything else interesting that can be said here about running tests
+> remotely on real hardware?
+>
+> It's also unclear to me how the wasm or asm.js tests are run.
+
+[armhf-gnu]: https://github.com/rust-lang/rust/tree/master/src/ci/docker/armhf-gnu
+[QEMU]: https://www.qemu.org/
+[remote-test-client]: https://github.com/rust-lang/rust/tree/master/src/tools/remote-test-client
+[remote-test-server]: https://github.com/rust-lang/rust/tree/master/src/tools/remote-test-server
+[src/bootstrap/test.rs]: https://github.com/rust-lang/rust/tree/master/src/bootstrap/test.rs
 
 ## Crater
 
