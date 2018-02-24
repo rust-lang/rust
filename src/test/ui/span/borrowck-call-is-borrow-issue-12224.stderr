@@ -5,7 +5,7 @@ LL |     f(Box::new(|| {
    |     -          ^^ second mutable borrow occurs here
    |     |
    |     first mutable borrow occurs here
-23 |     //~^ ERROR: cannot borrow `f` as mutable more than once
+LL |     //~^ ERROR: cannot borrow `f` as mutable more than once
 LL |         f((Box::new(|| {})))
    |         - borrow occurs due to use of `f` in closure
 LL |     }));
@@ -40,7 +40,7 @@ error[E0507]: cannot move out of captured outer variable in an `FnMut` closure
    |
 LL |     let mut f = |g: Box<FnMut(isize)>, b: isize| {};
    |         ----- captured outer variable
-62 |     f(Box::new(|a| {
+LL |     f(Box::new(|a| {
 LL |         foo(f);
    |             ^ cannot move out of captured outer variable in an `FnMut` closure
 

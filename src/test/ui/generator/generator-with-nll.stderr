@@ -12,7 +12,7 @@ error[E0626]: borrow may still be in use when generator yields (Ast)
    |
 LL |         let b = &mut true; //~ ERROR borrow may still be in use when generator yields (Ast)
    |                      ^^^^
-21 |         //~^ borrow may still be in use when generator yields (Mir)
+LL |         //~^ borrow may still be in use when generator yields (Mir)
 LL |         yield ();
    |         -------- possible yield occurs here
 
@@ -21,7 +21,7 @@ error[E0626]: borrow may still be in use when generator yields (Mir)
    |
 LL |         let b = &mut true; //~ ERROR borrow may still be in use when generator yields (Ast)
    |                 ^^^^^^^^^
-21 |         //~^ borrow may still be in use when generator yields (Mir)
+LL |         //~^ borrow may still be in use when generator yields (Mir)
 LL |         yield ();
    |         -------- possible yield occurs here
 

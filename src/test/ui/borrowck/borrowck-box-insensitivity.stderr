@@ -3,7 +3,7 @@ error[E0382]: use of moved value: `a`
    |
 LL |     let _x = a.x;
    |         -- value moved here
-36 |     //~^ value moved here
+LL |     //~^ value moved here
 LL |     let _y = a.y; //~ ERROR use of moved
    |         ^^ value used here after move
    |
@@ -14,7 +14,7 @@ error[E0382]: use of moved value: `a`
    |
 LL |     let _x = a.x;
    |         -- value moved here
-45 |     //~^ value moved here
+LL |     //~^ value moved here
 LL |     let _y = a.y; //~ ERROR use of moved
    |         ^^ value used here after move
    |
@@ -25,7 +25,7 @@ error[E0382]: use of moved value: `a`
    |
 LL |     let _x = a.x;
    |         -- value moved here
-54 |     //~^ value moved here
+LL |     //~^ value moved here
 LL |     let _y = &a.y; //~ ERROR use of moved
    |               ^^^ value used here after move
    |
@@ -62,7 +62,7 @@ LL |     let _x = &mut a.x;
    |                   --- mutable borrow occurs here (via `a.x`)
 LL |     let _y = &a.y; //~ ERROR cannot borrow
    |               ^^^ immutable borrow occurs here (via `a.y`)
-86 |     //~^ immutable borrow occurs here (via `a.y`)
+LL |     //~^ immutable borrow occurs here (via `a.y`)
 LL | }
    | - mutable borrow ends here
 
@@ -73,7 +73,7 @@ LL |     let _x = &a.x;
    |               --- immutable borrow occurs here (via `a.x`)
 LL |     let _y = &mut a.y; //~ ERROR cannot borrow
    |                   ^^^ mutable borrow occurs here (via `a.y`)
-93 |     //~^ mutable borrow occurs here (via `a.y`)
+LL |     //~^ mutable borrow occurs here (via `a.y`)
 LL | }
    | - immutable borrow ends here
 
@@ -82,7 +82,7 @@ error[E0382]: use of collaterally moved value: `a.y`
    |
 LL |     let _x = a.x.x;
    |         -- value moved here
-99 |     //~^ value moved here
+LL |     //~^ value moved here
 LL |     let _y = a.y; //~ ERROR use of collaterally moved
    |         ^^ value used here after move
    |
@@ -93,7 +93,7 @@ error[E0382]: use of collaterally moved value: `a.y`
    |
 LL |     let _x = a.x.x;
    |         -- value moved here
-107|     //~^ value moved here
+LL |     //~^ value moved here
 LL |     let _y = a.y; //~ ERROR use of collaterally moved
    |         ^^ value used here after move
    |
@@ -104,7 +104,7 @@ error[E0382]: use of collaterally moved value: `a.y`
    |
 LL |     let _x = a.x.x;
    |         -- value moved here
-115|     //~^ value moved here
+LL |     //~^ value moved here
 LL |     let _y = &a.y; //~ ERROR use of collaterally moved
    |               ^^^ value used here after move
    |
@@ -115,7 +115,7 @@ error[E0505]: cannot move out of `a.y` because it is borrowed
    |
 LL |     let _x = &a.x.x;
    |               ----- borrow of `a.x.x` occurs here
-123|     //~^ borrow of `a.x.x` occurs here
+LL |     //~^ borrow of `a.x.x` occurs here
 LL |     let _y = a.y;
    |         ^^ move out of `a.y` occurs here
 
@@ -140,10 +140,10 @@ error[E0502]: cannot borrow `a.y` as immutable because `a.x.x` is also borrowed 
    |
 LL |     let _x = &mut a.x.x;
    |                   ----- mutable borrow occurs here
-146|     //~^ mutable borrow occurs here
+LL |     //~^ mutable borrow occurs here
 LL |     let _y = &a.y; //~ ERROR cannot borrow
    |               ^^^ immutable borrow occurs here
-148|     //~^ immutable borrow occurs here
+LL |     //~^ immutable borrow occurs here
 LL | }
    | - mutable borrow ends here
 
@@ -152,10 +152,10 @@ error[E0502]: cannot borrow `a.y` as mutable because `a.x.x` is also borrowed as
    |
 LL |     let _x = &a.x.x;
    |               ----- immutable borrow occurs here
-154|     //~^ immutable borrow occurs here
+LL |     //~^ immutable borrow occurs here
 LL |     let _y = &mut a.y; //~ ERROR cannot borrow
    |                   ^^^ mutable borrow occurs here
-156|     //~^ mutable borrow occurs here
+LL |     //~^ mutable borrow occurs here
 LL | }
    | - immutable borrow ends here
 

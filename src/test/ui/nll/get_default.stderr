@@ -15,7 +15,7 @@ error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as imm
    |
 LL |         match map.get() {
    |               --- immutable borrow occurs here
-43 |             Some(v) => {
+LL |             Some(v) => {
 LL |                 map.set(String::new()); // Both AST and MIR error here
    |                 ^^^ mutable borrow occurs here
 ...
@@ -39,7 +39,7 @@ error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as imm
    |
 LL |         match map.get() {
    |               --- immutable borrow occurs here
-43 |             Some(v) => {
+LL |             Some(v) => {
 LL |                 map.set(String::new()); // Both AST and MIR error here
    |                 ^^^ mutable borrow occurs here
 ...

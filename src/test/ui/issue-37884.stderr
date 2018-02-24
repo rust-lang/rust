@@ -5,7 +5,7 @@ LL | /     fn next(&'a mut self) -> Option<Self::Item>
 LL | |     //~^ ERROR method not compatible with trait
 LL | |     //~| lifetime mismatch
 LL | |     {
-20 | |         Some(&mut self.0)
+LL | |         Some(&mut self.0)
 LL | |     }
    | |_____^ lifetime mismatch
    |
@@ -18,7 +18,7 @@ LL | /     fn next(&'a mut self) -> Option<Self::Item>
 LL | |     //~^ ERROR method not compatible with trait
 LL | |     //~| lifetime mismatch
 LL | |     {
-20 | |         Some(&mut self.0)
+LL | |         Some(&mut self.0)
 LL | |     }
    | |_____^
 note: ...does not necessarily outlive the lifetime 'a as defined on the impl at 13:1

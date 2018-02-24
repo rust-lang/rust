@@ -11,7 +11,7 @@ error: unreachable pattern
    |
 LL |         Nil => true,
    |         --- matches any value
-24 | //~^ WARN pattern binding `Nil` is named the same as one of the variants of the type `Stack`
+LL | //~^ WARN pattern binding `Nil` is named the same as one of the variants of the type `Stack`
 LL |         _ => false
    |         ^ unreachable pattern
    |

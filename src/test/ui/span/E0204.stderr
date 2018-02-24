@@ -12,7 +12,7 @@ error[E0204]: the trait `Copy` may not be implemented for this type
    |
 LL | #[derive(Copy)] //~ ERROR may not be implemented for this type
    |          ^^^^
-18 | struct Foo2<'a> {
+LL | struct Foo2<'a> {
 LL |     ty: &'a mut bool,
    |     ---------------- this field does not implement `Copy`
 
@@ -30,7 +30,7 @@ error[E0204]: the trait `Copy` may not be implemented for this type
    |
 LL | #[derive(Copy)] //~ ERROR may not be implemented for this type
    |          ^^^^
-30 | enum EFoo2<'a> {
+LL | enum EFoo2<'a> {
 LL |     Bar(&'a mut bool),
    |         ------------- this field does not implement `Copy`
 

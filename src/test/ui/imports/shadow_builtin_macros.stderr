@@ -3,7 +3,7 @@ error: `panic` is already in scope
    |
 LL |         macro_rules! panic { () => {} } //~ ERROR `panic` is already in scope
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-43 |     } }
+LL |     } }
 LL |     m!();
    |     ----- in this macro invocation
    |

@@ -8,11 +8,11 @@ LL |     foo(4 as usize)
               found type `S<usize>`
 help: try adding a semicolon
    |
-20 |     foo(4 as usize);
+LL |     foo(4 as usize);
    |                    ^
 help: try adding a return type
    |
-19 | fn bar() -> S<usize> {
+LL | fn bar() -> S<usize> {
    |          ^^^^^^^^^^^
 
 error: aborting due to previous error

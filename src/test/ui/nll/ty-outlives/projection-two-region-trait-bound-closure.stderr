@@ -176,7 +176,7 @@ LL | / fn elements_outlive1<'a, 'b, 'c, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
 LL | |     T: Anything<'b, 'c>,
 LL | |     'b: 'a,
-91 | | {
+LL | | {
 LL | |     with_signature(cell, t, |cell, t| require(cell, t));
 LL | | }
    | |_^
@@ -212,7 +212,7 @@ LL | / fn elements_outlive2<'a, 'b, 'c, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
 LL | |     T: Anything<'b, 'c>,
 LL | |     'c: 'a,
-100| | {
+LL | | {
 LL | |     with_signature(cell, t, |cell, t| require(cell, t));
 LL | | }
    | |_^
@@ -285,7 +285,7 @@ LL | / fn two_regions_outlive<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
 LL | |     T: Anything<'b, 'b>,
 LL | |     'b: 'a,
-119| | {
+LL | | {
 LL | |     with_signature(cell, t, |cell, t| require(cell, t));
 LL | | }
    | |_^

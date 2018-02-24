@@ -69,7 +69,7 @@ LL | / pub fn main() { //~ ERROR compilation successful
 LL | |     let s = S;
 LL | |     s.m1();
 LL | |     s.m2();
-53 | |     foo();
+LL | |     foo();
 LL | | }
    | |_^
 

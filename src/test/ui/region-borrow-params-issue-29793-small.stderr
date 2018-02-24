@@ -59,7 +59,7 @@ LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x
    |                 may outlive borrowed value `x`
 help: to force the closure to take ownership of `x` (and any other referenced variables), use the `move` keyword
    |
-65 |         let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
+LL |         let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                 ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `y`, which is owned by the current function
@@ -71,7 +71,7 @@ LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x
    |                 may outlive borrowed value `y`
 help: to force the closure to take ownership of `y` (and any other referenced variables), use the `move` keyword
    |
-65 |         let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
+LL |         let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                 ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
@@ -83,7 +83,7 @@ LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x
    |                 may outlive borrowed value `x`
 help: to force the closure to take ownership of `x` (and any other referenced variables), use the `move` keyword
    |
-76 |         let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
+LL |         let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                 ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `y`, which is owned by the current function
@@ -95,7 +95,7 @@ LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x
    |                 may outlive borrowed value `y`
 help: to force the closure to take ownership of `y` (and any other referenced variables), use the `move` keyword
    |
-76 |         let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
+LL |         let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                 ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
@@ -107,7 +107,7 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
    |                     may outlive borrowed value `x`
 help: to force the closure to take ownership of `x` (and any other referenced variables), use the `move` keyword
    |
-100|             let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
+LL |             let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `y`, which is owned by the current function
@@ -119,7 +119,7 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
    |                     may outlive borrowed value `y`
 help: to force the closure to take ownership of `y` (and any other referenced variables), use the `move` keyword
    |
-100|             let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
+LL |             let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
@@ -131,7 +131,7 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
    |                     may outlive borrowed value `x`
 help: to force the closure to take ownership of `x` (and any other referenced variables), use the `move` keyword
    |
-114|             let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
+LL |             let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `y`, which is owned by the current function
@@ -143,7 +143,7 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
    |                     may outlive borrowed value `y`
 help: to force the closure to take ownership of `y` (and any other referenced variables), use the `move` keyword
    |
-114|             let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
+LL |             let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
@@ -155,7 +155,7 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
    |                     may outlive borrowed value `x`
 help: to force the closure to take ownership of `x` (and any other referenced variables), use the `move` keyword
    |
-142|             let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
+LL |             let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `y`, which is owned by the current function
@@ -167,7 +167,7 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
    |                     may outlive borrowed value `y`
 help: to force the closure to take ownership of `y` (and any other referenced variables), use the `move` keyword
    |
-142|             let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
+LL |             let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
@@ -179,7 +179,7 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
    |                     may outlive borrowed value `x`
 help: to force the closure to take ownership of `x` (and any other referenced variables), use the `move` keyword
    |
-157|             let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
+LL |             let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `y`, which is owned by the current function
@@ -191,7 +191,7 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
    |                     may outlive borrowed value `y`
 help: to force the closure to take ownership of `y` (and any other referenced variables), use the `move` keyword
    |
-157|             let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
+LL |             let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
@@ -203,7 +203,7 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
    |                     may outlive borrowed value `x`
 help: to force the closure to take ownership of `x` (and any other referenced variables), use the `move` keyword
    |
-185|             let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
+LL |             let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `y`, which is owned by the current function
@@ -215,7 +215,7 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
    |                     may outlive borrowed value `y`
 help: to force the closure to take ownership of `y` (and any other referenced variables), use the `move` keyword
    |
-185|             let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
+LL |             let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
@@ -227,7 +227,7 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
    |                     may outlive borrowed value `x`
 help: to force the closure to take ownership of `x` (and any other referenced variables), use the `move` keyword
    |
-199|             let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
+LL |             let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `y`, which is owned by the current function
@@ -239,7 +239,7 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
    |                     may outlive borrowed value `y`
 help: to force the closure to take ownership of `y` (and any other referenced variables), use the `move` keyword
    |
-199|             let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
+LL |             let f = move |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
    |                     ^^^^^^^^^^^^^^
 
 error: aborting due to 20 previous errors

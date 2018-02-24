@@ -3,7 +3,7 @@ error[E0072]: recursive type `t1` has infinite size
    |
 LL | struct t1 { //~ ERROR E0072
    | ^^^^^^^^^ recursive type has infinite size
-12 |     foo: isize,
+LL |     foo: isize,
 LL |     foolish: t1
    |     ----------- recursive without indirection
    |

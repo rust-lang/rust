@@ -8,7 +8,7 @@ LL |         Z;
    |         constructor is not visible here due to private fields
 help: possible better candidate is found in another module, you can import it into scope
    |
-25 |     use m::n::Z;
+LL |     use m::n::Z;
    |
 
 error[E0423]: expected value, found struct `S`
@@ -18,7 +18,7 @@ LL |     S;
    |     ^ constructor is not visible here due to private fields
 help: possible better candidate is found in another module, you can import it into scope
    |
-35 | use m::S;
+LL | use m::S;
    |
 
 error[E0423]: expected value, found struct `S2`
@@ -34,7 +34,7 @@ LL |     xcrate::S;
    |     ^^^^^^^^^ constructor is not visible here due to private fields
 help: possible better candidate is found in another module, you can import it into scope
    |
-35 | use m::S;
+LL | use m::S;
    |
 
 error[E0603]: tuple struct `Z` is private

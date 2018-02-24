@@ -5,7 +5,7 @@ LL | impl T for Foo {}
    |      ^ not found in this scope
 help: possible candidate is found in another module, you can import it into scope
    |
-18 | use issue_21221_4::T;
+LL | use issue_21221_4::T;
    |
 
 error: cannot continue compilation due to previous error

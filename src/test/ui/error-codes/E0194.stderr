@@ -3,7 +3,7 @@ error[E0194]: type parameter `T` shadows another type parameter of the same name
    |
 LL | trait Foo<T> {
    |           - first `T` declared here
-12 |     fn do_something(&self) -> T;
+LL |     fn do_something(&self) -> T;
 LL |     fn do_something_else<T: Clone>(&self, bar: T);
    |                          ^ shadows another type parameter
 

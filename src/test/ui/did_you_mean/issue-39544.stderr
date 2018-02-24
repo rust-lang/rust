@@ -27,7 +27,7 @@ error[E0596]: cannot borrow field `other.x` of immutable binding as mutable
    |
 LL |     fn foo1(&self, other: &Z) {
    |                           -- use `&mut Z` here to make mutable
-30 |         let _ = &mut self.x; //~ ERROR cannot borrow
+LL |         let _ = &mut self.x; //~ ERROR cannot borrow
 LL |         let _ = &mut other.x; //~ ERROR cannot borrow
    |                      ^^^^^^^ cannot mutably borrow field of immutable binding
 
@@ -44,7 +44,7 @@ error[E0596]: cannot borrow field `other.x` of immutable binding as mutable
    |
 LL |     fn foo2<'a>(&'a self, other: &Z) {
    |                                  -- use `&mut Z` here to make mutable
-35 |         let _ = &mut self.x; //~ ERROR cannot borrow
+LL |         let _ = &mut self.x; //~ ERROR cannot borrow
 LL |         let _ = &mut other.x; //~ ERROR cannot borrow
    |                      ^^^^^^^ cannot mutably borrow field of immutable binding
 
@@ -61,7 +61,7 @@ error[E0596]: cannot borrow field `other.x` of immutable binding as mutable
    |
 LL |     fn foo3<'a>(self: &'a Self, other: &Z) {
    |                                        -- use `&mut Z` here to make mutable
-40 |         let _ = &mut self.x; //~ ERROR cannot borrow
+LL |         let _ = &mut self.x; //~ ERROR cannot borrow
 LL |         let _ = &mut other.x; //~ ERROR cannot borrow
    |                      ^^^^^^^ cannot mutably borrow field of immutable binding
 
@@ -86,7 +86,7 @@ error[E0596]: cannot borrow field `w.x` of immutable binding as mutable
    |
 LL | pub fn with_arg(z: Z, w: &Z) {
    |                          -- use `&mut Z` here to make mutable
-51 |     let _ = &mut z.x; //~ ERROR cannot borrow
+LL |     let _ = &mut z.x; //~ ERROR cannot borrow
 LL |     let _ = &mut w.x; //~ ERROR cannot borrow
    |                  ^^^ cannot mutably borrow field of immutable binding
 

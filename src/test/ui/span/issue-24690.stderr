@@ -32,7 +32,7 @@ LL | / fn main() { //~ ERROR compilation successful
 LL | |     let theTwo = 2; //~ WARN should have a snake case name
 LL | |     let theOtherTwo = 2; //~ WARN should have a snake case name
 LL | |     //~^ WARN unused variable
-25 | |     println!("{}", theTwo);
+LL | |     println!("{}", theTwo);
 LL | | }
    | |_^
 

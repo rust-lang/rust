@@ -8,7 +8,7 @@ LL |     X::Entry();
    |     ^^^^^^^^^^ not a function
 help: `X::Entry` is a unit variant, you need to write it without the parenthesis
    |
-16 |     X::Entry;
+LL |     X::Entry;
    |     ^^^^^^^^
 
 error[E0618]: expected function, found `i32`

@@ -11,7 +11,7 @@ warning: label name `'bad` shadows a lifetime name that is already in scope
    |
 LL |     impl<'bad, 'c> Struct<'bad, 'c> {
    |          ---- first declared here
-44 |         fn meth_bad(&self) {
+LL |         fn meth_bad(&self) {
 LL |             'bad: loop { break 'bad; }
    |             ^^^^ lifetime 'bad already in scope
 
@@ -20,7 +20,7 @@ warning: label name `'bad` shadows a lifetime name that is already in scope
    |
 LL |     impl<'b, 'bad> Struct<'b, 'bad> {
    |              ---- first declared here
-51 |         fn meth_bad2(&self) {
+LL |         fn meth_bad2(&self) {
 LL |             'bad: loop { break 'bad; }
    |             ^^^^ lifetime 'bad already in scope
 
@@ -45,7 +45,7 @@ warning: label name `'bad` shadows a lifetime name that is already in scope
    |
 LL |     impl <'bad, 'e> Enum<'bad, 'e> {
    |           ---- first declared here
-70 |         fn meth_bad(&self) {
+LL |         fn meth_bad(&self) {
 LL |             'bad: loop { break 'bad; }
    |             ^^^^ lifetime 'bad already in scope
 
@@ -54,7 +54,7 @@ warning: label name `'bad` shadows a lifetime name that is already in scope
    |
 LL |     impl <'d, 'bad> Enum<'d, 'bad> {
    |               ---- first declared here
-76 |         fn meth_bad2(&self) {
+LL |         fn meth_bad2(&self) {
 LL |             'bad: loop { break 'bad; }
    |             ^^^^ lifetime 'bad already in scope
 
@@ -88,7 +88,7 @@ warning: label name `'bad` shadows a lifetime name that is already in scope
    |
 LL |     trait HasDefaultMethod2<'a,'bad> {
    |                                ---- first declared here
-103|         fn meth_bad(&self) {
+LL |         fn meth_bad(&self) {
 LL |             'bad: loop { break 'bad; }
    |             ^^^^ lifetime 'bad already in scope
 

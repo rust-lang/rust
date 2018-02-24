@@ -3,7 +3,7 @@ error[E0507]: cannot move out of borrowed content
    |
 LL |     match *f {             //~ ERROR cannot move out of
    |           ^^ cannot move out of borrowed content
-22 |                            //~| cannot move out
+LL |                            //~| cannot move out
 LL |         Foo::Foo1(num1,
    |                   ---- hint: to prevent move, use `ref num1` or `ref mut num1`
 LL |                   num2) => (),
@@ -28,7 +28,7 @@ error[E0507]: cannot move out of borrowed content
    |
 LL |     match a.a {           //~ ERROR cannot move out of
    |           ^ cannot move out of borrowed content
-58 |                           //~| cannot move out
+LL |                           //~| cannot move out
 LL |         n => {
    |         - hint: to prevent move, use `ref n` or `ref mut n`
 

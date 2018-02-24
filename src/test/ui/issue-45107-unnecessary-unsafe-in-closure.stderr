@@ -3,7 +3,7 @@ error: unnecessary `unsafe` block
    |
 LL |     unsafe {
    |     ------ because it's nested under this `unsafe` block
-16 |         let f = |v: &mut Vec<_>| {
+LL |         let f = |v: &mut Vec<_>| {
 LL |             unsafe { //~ ERROR unnecessary `unsafe`
    |             ^^^^^^ unnecessary `unsafe` block
    |

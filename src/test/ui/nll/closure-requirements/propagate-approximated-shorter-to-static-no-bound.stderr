@@ -12,7 +12,7 @@ LL |       establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
 LL | |         //~^ ERROR does not outlive free region
 LL | |
 LL | |         // Only works if 'x: 'y:
-49 | |         demand_y(x, y, x.get()) //~ WARNING not reporting region error due to -Znll
+LL | |         demand_y(x, y, x.get()) //~ WARNING not reporting region error due to -Znll
 LL | |     });
    | |_____^
    |
@@ -31,7 +31,7 @@ LL |       establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
 LL | |         //~^ ERROR does not outlive free region
 LL | |
 LL | |         // Only works if 'x: 'y:
-49 | |         demand_y(x, y, x.get()) //~ WARNING not reporting region error due to -Znll
+LL | |         demand_y(x, y, x.get()) //~ WARNING not reporting region error due to -Znll
 LL | |     });
    | |_____^
 

@@ -59,7 +59,7 @@ error: unnecessary `unsafe` block
    |
 LL | unsafe fn bad7() {
    | ---------------- because it's nested under this `unsafe` fn
-39 |     unsafe {                             //~ ERROR: unnecessary `unsafe` block
+LL |     unsafe {                             //~ ERROR: unnecessary `unsafe` block
 LL |         unsafe {                         //~ ERROR: unnecessary `unsafe` block
    |         ^^^^^^ unnecessary `unsafe` block
 

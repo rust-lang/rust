@@ -143,7 +143,7 @@ LL |     foo::<u64>(x_u32);
    |                ^^^^^ expected u64, found u32
 help: you can cast an `u32` to `u64`, which will zero-extend the source value
    |
-79 |     foo::<u64>(x_u32.into());
+LL |     foo::<u64>(x_u32.into());
    |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -153,7 +153,7 @@ LL |     foo::<u64>(x_u16);
    |                ^^^^^ expected u64, found u16
 help: you can cast an `u16` to `u64`, which will zero-extend the source value
    |
-81 |     foo::<u64>(x_u16.into());
+LL |     foo::<u64>(x_u16.into());
    |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -163,7 +163,7 @@ LL |     foo::<u64>(x_u8);
    |                ^^^^ expected u64, found u8
 help: you can cast an `u8` to `u64`, which will zero-extend the source value
    |
-83 |     foo::<u64>(x_u8.into());
+LL |     foo::<u64>(x_u8.into());
    |                ^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -251,7 +251,7 @@ LL |     foo::<i64>(x_i32);
    |                ^^^^^ expected i64, found i32
 help: you can cast an `i32` to `i64`, which will sign-extend the source value
    |
-113|     foo::<i64>(x_i32.into());
+LL |     foo::<i64>(x_i32.into());
    |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -261,7 +261,7 @@ LL |     foo::<i64>(x_i16);
    |                ^^^^^ expected i64, found i16
 help: you can cast an `i16` to `i64`, which will sign-extend the source value
    |
-115|     foo::<i64>(x_i16.into());
+LL |     foo::<i64>(x_i16.into());
    |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -271,7 +271,7 @@ LL |     foo::<i64>(x_i8);
    |                ^^^^ expected i64, found i8
 help: you can cast an `i8` to `i64`, which will sign-extend the source value
    |
-117|     foo::<i64>(x_i8.into());
+LL |     foo::<i64>(x_i8.into());
    |                ^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -305,7 +305,7 @@ LL |     foo::<u32>(x_u16);
    |                ^^^^^ expected u32, found u16
 help: you can cast an `u16` to `u32`, which will zero-extend the source value
    |
-129|     foo::<u32>(x_u16.into());
+LL |     foo::<u32>(x_u16.into());
    |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -315,7 +315,7 @@ LL |     foo::<u32>(x_u8);
    |                ^^^^ expected u32, found u8
 help: you can cast an `u8` to `u32`, which will zero-extend the source value
    |
-131|     foo::<u32>(x_u8.into());
+LL |     foo::<u32>(x_u8.into());
    |                ^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -409,7 +409,7 @@ LL |     foo::<i32>(x_i16);
    |                ^^^^^ expected i32, found i16
 help: you can cast an `i16` to `i32`, which will sign-extend the source value
    |
-163|     foo::<i32>(x_i16.into());
+LL |     foo::<i32>(x_i16.into());
    |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -419,7 +419,7 @@ LL |     foo::<i32>(x_i8);
    |                ^^^^ expected i32, found i8
 help: you can cast an `i8` to `i32`, which will sign-extend the source value
    |
-165|     foo::<i32>(x_i8.into());
+LL |     foo::<i32>(x_i8.into());
    |                ^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -459,7 +459,7 @@ LL |     foo::<u16>(x_u8);
    |                ^^^^ expected u16, found u8
 help: you can cast an `u8` to `u16`, which will zero-extend the source value
    |
-179|     foo::<u16>(x_u8.into());
+LL |     foo::<u16>(x_u8.into());
    |                ^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -559,7 +559,7 @@ LL |     foo::<i16>(x_i8);
    |                ^^^^ expected i16, found i8
 help: you can cast an `i8` to `i16`, which will sign-extend the source value
    |
-213|     foo::<i16>(x_i8.into());
+LL |     foo::<i16>(x_i8.into());
    |                ^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -725,7 +725,7 @@ LL |     foo::<f64>(x_u32);
    |                ^^^^^ expected f64, found u32
 help: you can cast an `u32` to `f64`, producing the floating point representation of the integer
    |
-272|     foo::<f64>(x_u32.into());
+LL |     foo::<f64>(x_u32.into());
    |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -735,7 +735,7 @@ LL |     foo::<f64>(x_u16);
    |                ^^^^^ expected f64, found u16
 help: you can cast an `u16` to `f64`, producing the floating point representation of the integer
    |
-274|     foo::<f64>(x_u16.into());
+LL |     foo::<f64>(x_u16.into());
    |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -745,7 +745,7 @@ LL |     foo::<f64>(x_u8);
    |                ^^^^ expected f64, found u8
 help: you can cast an `u8` to `f64`, producing the floating point representation of the integer
    |
-276|     foo::<f64>(x_u8.into());
+LL |     foo::<f64>(x_u8.into());
    |                ^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -767,7 +767,7 @@ LL |     foo::<f64>(x_i32);
    |                ^^^^^ expected f64, found i32
 help: you can cast an `i32` to `f64`, producing the floating point representation of the integer
    |
-282|     foo::<f64>(x_i32.into());
+LL |     foo::<f64>(x_i32.into());
    |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -777,7 +777,7 @@ LL |     foo::<f64>(x_i16);
    |                ^^^^^ expected f64, found i16
 help: you can cast an `i16` to `f64`, producing the floating point representation of the integer
    |
-284|     foo::<f64>(x_i16.into());
+LL |     foo::<f64>(x_i16.into());
    |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -787,7 +787,7 @@ LL |     foo::<f64>(x_i8);
    |                ^^^^ expected f64, found i8
 help: you can cast an `i8` to `f64`, producing the floating point representation of the integer
    |
-286|     foo::<f64>(x_i8.into());
+LL |     foo::<f64>(x_i8.into());
    |                ^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -797,7 +797,7 @@ LL |     foo::<f64>(x_f32);
    |                ^^^^^ expected f64, found f32
 help: you can cast an `f32` to `f64` in a lossless way
    |
-289|     foo::<f64>(x_f32.into());
+LL |     foo::<f64>(x_f32.into());
    |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -825,7 +825,7 @@ LL |     foo::<f32>(x_u16);
    |                ^^^^^ expected f32, found u16
 help: you can cast an `u16` to `f32`, producing the floating point representation of the integer
    |
-298|     foo::<f32>(x_u16.into());
+LL |     foo::<f32>(x_u16.into());
    |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -835,7 +835,7 @@ LL |     foo::<f32>(x_u8);
    |                ^^^^ expected f32, found u8
 help: you can cast an `u8` to `f32`, producing the floating point representation of the integer
    |
-300|     foo::<f32>(x_u8.into());
+LL |     foo::<f32>(x_u8.into());
    |                ^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -863,7 +863,7 @@ LL |     foo::<f32>(x_i16);
    |                ^^^^^ expected f32, found i16
 help: you can cast an `i16` to `f32`, producing the floating point representation of the integer
    |
-308|     foo::<f32>(x_i16.into());
+LL |     foo::<f32>(x_i16.into());
    |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -873,7 +873,7 @@ LL |     foo::<f32>(x_i8);
    |                ^^^^ expected f32, found i8
 help: you can cast an `i8` to `f32`, producing the floating point representation of the integer
    |
-310|     foo::<f32>(x_i8.into());
+LL |     foo::<f32>(x_i8.into());
    |                ^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -889,7 +889,7 @@ LL |     foo::<u32>(x_u8 as u16);
    |                ^^^^^^^^^^^ expected u32, found u16
 help: you can cast an `u16` to `u32`, which will zero-extend the source value
    |
-316|     foo::<u32>((x_u8 as u16).into());
+LL |     foo::<u32>((x_u8 as u16).into());
    |                ^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -899,7 +899,7 @@ LL |     foo::<i32>(-x_i8);
    |                ^^^^^ expected i32, found i8
 help: you can cast an `i8` to `i32`, which will sign-extend the source value
    |
-318|     foo::<i32>((-x_i8).into());
+LL |     foo::<i32>((-x_i8).into());
    |                ^^^^^^^^^^^^^^
 
 error: aborting due to 134 previous errors

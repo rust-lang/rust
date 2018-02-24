@@ -157,7 +157,7 @@ LL | / fn elements_outlive<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
 LL | |     T: Anything<'b>,
 LL | |     'b: 'a,
-90 | | {
+LL | | {
 LL | |     with_signature(cell, t, |cell, t| require(cell, t));
 LL | | }
    | |_^

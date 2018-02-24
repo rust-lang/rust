@@ -6,7 +6,7 @@ LL |         Some(ref m) => {
 ...
 LL |     }
    |     - borrowed value dropped here while still borrowed
-20 |     println!("{}", *msg);
+LL |     println!("{}", *msg);
 LL | }
    | - borrowed value needs to live until here
    |

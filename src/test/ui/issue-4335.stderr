@@ -7,7 +7,7 @@ LL |     id(Box::new(|| *v))
    |                 may outlive borrowed value `v`
 help: to force the closure to take ownership of `v` (and any other referenced variables), use the `move` keyword
    |
-16 |     id(Box::new(move || *v))
+LL |     id(Box::new(move || *v))
    |                 ^^^^^^^
 
 error[E0507]: cannot move out of borrowed content

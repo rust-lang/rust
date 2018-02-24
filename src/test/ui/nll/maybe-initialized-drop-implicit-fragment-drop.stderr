@@ -6,7 +6,7 @@ LL |     let wrap = Wrap { p: &mut x };
 ...
 LL |     x = 1; //~ ERROR cannot assign to `x` because it is borrowed [E0506]
    |     ^^^^^ assignment to borrowed `x` occurs here
-33 |     // FIXME ^ Should not error in the future with implicit dtors, only manually implemented ones
+LL |     // FIXME ^ Should not error in the future with implicit dtors, only manually implemented ones
 LL | }
    | - borrow later used here, when `foo` is dropped
 

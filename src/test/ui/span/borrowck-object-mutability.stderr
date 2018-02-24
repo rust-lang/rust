@@ -3,7 +3,7 @@ error[E0596]: cannot borrow immutable borrowed content `*x` as mutable
    |
 LL | fn borrowed_receiver(x: &Foo) {
    |                         ---- use `&mut Foo` here to make mutable
-18 |     x.borrowed();
+LL |     x.borrowed();
 LL |     x.borrowed_mut(); //~ ERROR cannot borrow
    |     ^ cannot borrow as mutable
 
@@ -12,7 +12,7 @@ error[E0596]: cannot borrow immutable `Box` content `*x` as mutable
    |
 LL | fn owned_receiver(x: Box<Foo>) {
    |                   - consider changing this to `mut x`
-28 |     x.borrowed();
+LL |     x.borrowed();
 LL |     x.borrowed_mut(); //~ ERROR cannot borrow
    |     ^ cannot borrow as mutable
 

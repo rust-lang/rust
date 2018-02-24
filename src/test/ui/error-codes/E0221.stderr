@@ -6,7 +6,7 @@ LL |     type A: T1;
 ...
 LL |     type A: T2;
    |     ----------- ambiguous `A` from `Bar`
-20 |     fn do_something() {
+LL |     fn do_something() {
 LL |         let _: Self::A;
    |                ^^^^^^^ ambiguous associated type `A`
 
@@ -15,7 +15,7 @@ error[E0221]: ambiguous associated type `Err` in bounds of `Self`
    |
 LL |     type Err: T3;
    |     ------------- ambiguous `Err` from `My`
-30 |     fn test() {
+LL |     fn test() {
 LL |         let _: Self::Err;
    |                ^^^^^^^^^ ambiguous associated type `Err`
    |
