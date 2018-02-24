@@ -27,7 +27,6 @@ use build_helper::{output, up_to_date};
 use util::{copy, exe, is_dylib, libdir, read_stamp_file};
 use {Compiler, Mode};
 use native;
-use tool;
 
 use cache::{Intern, Interned};
 use builder::{Builder, RunConfig, ShouldRun, Step};
@@ -157,12 +156,6 @@ impl Step for StdLink {
             let libdir = builder.sysroot_libdir(target_compiler, target);
             copy_musl_third_party_objects(builder, target, &libdir);
         }
-
-        builder.ensure(tool::CleanTools {
-            compiler: target_compiler,
-            target,
-            mode: Mode::Libstd,
-        });
     }
 }
 
@@ -335,11 +328,6 @@ impl Step for TestLink {
             &builder.sysroot_libdir(target_compiler, target),
             &builder.libtest_stamp(compiler, target),
         );
-        builder.ensure(tool::CleanTools {
-            compiler: target_compiler,
-            target,
-            mode: Mode::Libtest,
-        });
     }
 }
 
@@ -442,11 +430,6 @@ impl Step for RustcLink {
             &builder.sysroot_libdir(target_compiler, target),
             &builder.librustc_stamp(compiler, target),
         );
-        builder.ensure(tool::CleanTools {
-            compiler: target_compiler,
-            target,
-            mode: Mode::Librustc,
-        });
     }
 }
 

@@ -209,7 +209,7 @@ impl Step for Cargo {
             compiler,
             target: self.host,
         });
-        let mut cargo = builder.cargo(compiler, Mode::Tool, self.host, "test");
+        let mut cargo = builder.cargo(compiler, Mode::RustcTool, self.host, "test");
         cargo
             .arg("--manifest-path")
             .arg(builder.config.src.join("src/tools/cargo/Cargo.toml"));
@@ -262,7 +262,8 @@ impl Step for Rls {
             compiler,
             target: self.host,
         });
-        let mut cargo = tool::prepare_tool_cargo(builder, compiler, host, "test", "src/tools/rls");
+        let mut cargo = tool::prepare_tool_cargo(
+            builder, compiler, Mode::RustcTool, host, "test", "src/tools/rls");
 
         // Don't build tests dynamically, just a pain to work with
         cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
@@ -307,7 +308,7 @@ impl Step for Rustfmt {
             target: self.host,
         });
         let mut cargo =
-            tool::prepare_tool_cargo(builder, compiler, host, "test", "src/tools/rustfmt");
+            tool::prepare_tool_cargo(builder, compiler, Mode::RustcTool, host, "test", "src/tools/rustfmt");
 
         // Don't build tests dynamically, just a pain to work with
         cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
@@ -353,7 +354,7 @@ impl Step for Miri {
             compiler,
             target: self.host,
         }) {
-            let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
+            let mut cargo = builder.cargo(compiler, Mode::RustcTool, host, "test");
             cargo
                 .arg("--manifest-path")
                 .arg(builder.config.src.join("src/tools/miri/Cargo.toml"));
@@ -409,7 +410,7 @@ impl Step for Clippy {
             compiler,
             target: self.host,
         }) {
-            let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
+            let mut cargo = builder.cargo(compiler, Mode::RustcTool, host, "test");
             cargo
                 .arg("--manifest-path")
                 .arg(builder.config.src.join("src/tools/clippy/Cargo.toml"));
@@ -421,7 +422,7 @@ impl Step for Clippy {
             cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
             cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
             let host_libs = builder
-                .stage_out(compiler, Mode::Tool)
+                .stage_out(compiler, Mode::RustcTool)
                 .join(builder.cargo_dir());
             cargo.env("HOST_LIBS", host_libs);
             // clippy tests need to find the driver
@@ -1522,6 +1523,7 @@ impl Step for CrateRustdoc {
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
+            Mode::TestTool,
             target,
             test_kind.subcommand(),
             "src/tools/rustdoc",

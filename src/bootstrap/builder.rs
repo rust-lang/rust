@@ -825,11 +825,16 @@ impl<'a> Builder<'a> {
                 self.clear_if_dirty(&out_dir, &self.libstd_stamp(compiler, target));
                 self.clear_if_dirty(&out_dir, &self.libtest_stamp(compiler, target));
             }
-            Mode::Tool => {
+            Mode::TestTool => {
                 self.tool_cargo(target, &mut cargo);
-                // taken care of via tool::CleanTools
-                // FIXME: store which kind of tool this is (std-dep, test-dep, or rustc-dep, and
-                // take care of this here)
+                self.clear_if_dirty(&out_dir, &self.libstd_stamp(compiler, target));
+                self.clear_if_dirty(&out_dir, &self.libtest_stamp(compiler, target));
+            }
+            Mode::RustcTool => {
+                self.tool_cargo(target, &mut cargo);
+                self.clear_if_dirty(&out_dir, &self.libstd_stamp(compiler, target));
+                self.clear_if_dirty(&out_dir, &self.libtest_stamp(compiler, target));
+                self.clear_if_dirty(&out_dir, &self.librustc_stamp(compiler, target));
             }
         }
 
@@ -927,7 +932,7 @@ impl<'a> Builder<'a> {
             );
         }
 
-        if mode != Mode::Tool {
+        if mode != Mode::TestTool && mode != Mode::RustcTool {
             // Tools don't get debuginfo right now, e.g. cargo and rls don't
             // get compiled with debuginfo.
             // Adding debuginfo increases their sizes by a factor of 3-4.
@@ -1213,7 +1218,7 @@ impl<'a> CargoCommand<'a> {
             Mode::CodegenBackend(backend) => {
                 self.builder.codegen_backend_stamp(self.compiler, self.target, &*backend)
             }
-            Mode::Tool => {
+            Mode::TestTool | Mode::RustcTool => {
                 panic!("did not expect to execute with tools");
             }
         };

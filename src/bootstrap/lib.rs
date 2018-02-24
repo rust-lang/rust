@@ -277,8 +277,12 @@ pub enum Mode {
     /// Output also goes into stageN-rustc.
     CodegenBackend(Interned<String>),
 
-    /// Build some tool, placing output in the "stageN-tools" directory.
-    Tool,
+    /// Build some tool, placing output in the "stageN-{std/test/rustc}-tools" directory.
+    /// N.B. There is no StdTool because all tools may want to run tests. It is Cargo's job to
+    /// determine whether we'd need to recompile, and it's not all that bad to require test. It's
+    /// fast to build and is (almost) always built in a pair with std anyway, at least on CI.
+    TestTool,
+    RustcTool,
 }
 
 impl Build {
@@ -426,7 +430,8 @@ impl Build {
         let suffix = match mode {
             Mode::Libstd => "-std",
             Mode::Libtest => "-test",
-            Mode::Tool => "-tools",
+            Mode::TestTool => "-test-tools",
+            Mode::RustcTool => "-rustc-tools",
             Mode::Librustc | Mode::CodegenBackend(_) => "-rustc",
         };
         self.config
