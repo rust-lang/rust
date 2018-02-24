@@ -615,6 +615,42 @@ impl<'a> Builder<'a> {
         cmd
     }
 
+    /// Cargo's output path for the standard library in a given stage, compiled
+    /// by a particular compiler for the specified target.
+    pub fn libstd_stamp(&self, compiler: Compiler, target: Interned<String>) -> PathBuf {
+        self
+            .cargo_out(compiler, Mode::Libstd, target)
+            .join(".libstd.stamp")
+    }
+
+    /// Cargo's output path for libtest in a given stage, compiled by a particular
+    /// compiler for the specified target.
+    pub fn libtest_stamp(&self, compiler: Compiler, target: Interned<String>) -> PathBuf {
+        self
+            .cargo_out(compiler, Mode::Libtest, target)
+            .join(".libtest.stamp")
+    }
+
+    /// Cargo's output path for librustc in a given stage, compiled by a particular
+    /// compiler for the specified target.
+    pub fn librustc_stamp(&self, compiler: Compiler, target: Interned<String>) -> PathBuf {
+        self
+            .cargo_out(compiler, Mode::Librustc, target)
+            .join(".librustc.stamp")
+    }
+
+    pub fn codegen_backend_stamp(
+        &self,
+        compiler: Compiler,
+        target: Interned<String>,
+        backend: &str,
+    ) -> PathBuf {
+        self
+            .cargo_out(compiler, Mode::Librustc, target)
+            .join(format!(".librustc_trans-{}.stamp", backend))
+    }
+
+
     /// Prepares an invocation of `cargo` to be run.
     ///
     /// This will create a `Command` that represents a pending execution of
@@ -631,6 +667,24 @@ impl<'a> Builder<'a> {
     ) -> Command {
         let mut cargo = Command::new(&self.config.general.initial_cargo);
         let out_dir = self.stage_out(compiler, mode);
+        self.clear_if_dirty(&out_dir, &self.rustc(compiler));
+
+        match mode {
+            Mode::Libstd => {},
+            Mode::Libtest => {
+                self.clear_if_dirty(&out_dir, &self.libstd_stamp(compiler, target));
+            }
+            Mode::Librustc => {
+                self.clear_if_dirty(&out_dir, &self.libstd_stamp(compiler, target));
+                self.clear_if_dirty(&out_dir, &self.libtest_stamp(compiler, target));
+            }
+            Mode::Tool => {
+                // taken care of via tool::CleanTools
+                // FIXME: store which kind of tool this is (std-dep, test-dep, or rustc-dep, and
+                // take care of this here)
+            }
+        }
+
         cargo
             .env("CARGO_TARGET_DIR", out_dir)
             .arg(cmd)

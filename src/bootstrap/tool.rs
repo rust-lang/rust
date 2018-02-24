@@ -17,7 +17,7 @@ use Mode;
 use Compiler;
 use builder::{Builder, RunConfig, ShouldRun, Step};
 use util::{add_lib_path, copy, exe};
-use compile::{self, librustc_stamp, libstd_stamp, libtest_stamp};
+use compile;
 use native;
 use channel::GitInfo;
 use cache::Interned;
@@ -54,9 +54,9 @@ impl Step for CleanTools {
 
         for &cur_mode in &[Mode::Libstd, Mode::Libtest, Mode::Librustc] {
             let stamp = match cur_mode {
-                Mode::Libstd => libstd_stamp(builder, compiler, target),
-                Mode::Libtest => libtest_stamp(builder, compiler, target),
-                Mode::Librustc => librustc_stamp(builder, compiler, target),
+                Mode::Libstd => builder.libstd_stamp(compiler, target),
+                Mode::Libtest => builder.libtest_stamp(compiler, target),
+                Mode::Librustc => builder.librustc_stamp(compiler, target),
                 _ => panic!(),
             };
 

@@ -77,13 +77,6 @@ impl Step for Std {
             });
             println!("Uplifting stage1 std ({} -> {})", from.host, target);
 
-            // Even if we're not building std this stage, the new sysroot must
-            // still contain the musl startup objects.
-            if target.contains("musl") {
-                let libdir = builder.sysroot_libdir(compiler, target);
-                copy_musl_third_party_objects(builder, target, &libdir);
-            }
-
             builder.ensure(StdLink {
                 compiler: from,
                 target_compiler: compiler,
@@ -98,19 +91,12 @@ impl Step for Std {
             compiler.stage, &compiler.host, target
         );
 
-        if target.contains("musl") {
-            let libdir = builder.sysroot_libdir(compiler, target);
-            copy_musl_third_party_objects(builder, target, &libdir);
-        }
-
-        let out_dir = builder.stage_out(compiler, Mode::Libstd);
-        builder.clear_if_dirty(&out_dir, &builder.rustc(compiler));
         let mut cargo = builder.cargo(compiler, Mode::Libstd, target, "build");
         std_cargo(builder, &compiler, target, &mut cargo);
         run_cargo(
             builder,
             &mut cargo,
-            &libstd_stamp(builder, compiler, target),
+            &builder.libstd_stamp(compiler, target),
             false,
         );
 
@@ -222,7 +208,7 @@ impl Step for StdLink {
             target_compiler.stage, compiler.stage, &compiler.host, target_compiler.host, target
         );
         let libdir = builder.sysroot_libdir(target_compiler, target);
-        add_to_sysroot(&libdir, &libstd_stamp(builder, compiler, target));
+        add_to_sysroot(&libdir, &builder.libstd_stamp(compiler, target));
 
         if builder.config.general.sanitizers && compiler.stage != 0
             && target == "x86_64-apple-darwin"
@@ -231,6 +217,11 @@ impl Step for StdLink {
             // be missing in stage0 and causes panic. See the `std()` function above
             // for reason why the sanitizers are not built in stage0.
             copy_apple_sanitizer_dylibs(&builder.native_dir(target), "osx", &libdir);
+        }
+
+        if target.contains("musl") {
+            let libdir = builder.sysroot_libdir(target_compiler, target);
+            copy_musl_third_party_objects(builder, target, &libdir);
         }
 
         builder.ensure(tool::CleanTools {
@@ -373,14 +364,12 @@ impl Step for Test {
             "Building stage{} test artifacts ({} -> {})",
             compiler.stage, &compiler.host, target
         );
-        let out_dir = builder.stage_out(compiler, Mode::Libtest);
-        builder.clear_if_dirty(&out_dir, &libstd_stamp(builder, compiler, target));
         let mut cargo = builder.cargo(compiler, Mode::Libtest, target, "build");
         test_cargo(builder, &compiler, target, &mut cargo);
         run_cargo(
             builder,
             &mut cargo,
-            &libtest_stamp(builder, compiler, target),
+            &builder.libtest_stamp(compiler, target),
             false,
         );
 
@@ -432,7 +421,7 @@ impl Step for TestLink {
         );
         add_to_sysroot(
             &builder.sysroot_libdir(target_compiler, target),
-            &libtest_stamp(builder, compiler, target),
+            &builder.libtest_stamp(compiler, target),
         );
         builder.ensure(tool::CleanTools {
             compiler: target_compiler,
@@ -504,16 +493,12 @@ impl Step for Rustc {
             compiler.stage, &compiler.host, target
         );
 
-        let stage_out = builder.stage_out(compiler, Mode::Librustc);
-        builder.clear_if_dirty(&stage_out, &libstd_stamp(builder, compiler, target));
-        builder.clear_if_dirty(&stage_out, &libtest_stamp(builder, compiler, target));
-
         let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "build");
         rustc_cargo(builder, &mut cargo);
         run_cargo(
             builder,
             &mut cargo,
-            &librustc_stamp(builder, compiler, target),
+            &builder.librustc_stamp(compiler, target),
             false,
         );
 
@@ -595,7 +580,7 @@ impl Step for RustcLink {
         );
         add_to_sysroot(
             &builder.sysroot_libdir(target_compiler, target),
-            &librustc_stamp(builder, compiler, target),
+            &builder.librustc_stamp(compiler, target),
         );
         builder.ensure(tool::CleanTools {
             compiler: target_compiler,
@@ -726,7 +711,7 @@ impl Step for CodegenBackend {
                 f.display()
             );
         }
-        let stamp = codegen_backend_stamp(builder, compiler, target, &*self.backend);
+        let stamp = builder.codegen_backend_stamp(compiler, target, &*self.backend);
         let codegen_backend = codegen_backend.to_str().unwrap();
         t!(t!(File::create(&stamp)).write_all(codegen_backend.as_bytes()));
     }
@@ -757,7 +742,7 @@ fn copy_codegen_backends_to_sysroot(
     t!(fs::create_dir_all(&dst));
 
     for backend in builder.config.rust.codegen_backends.iter() {
-        let stamp = codegen_backend_stamp(builder, compiler, target, &backend);
+        let stamp = builder.codegen_backend_stamp(compiler, target, &backend);
         let mut dylib = String::new();
         t!(t!(File::open(&stamp)).read_to_string(&mut dylib));
         let file = Path::new(&dylib);
@@ -770,41 +755,6 @@ fn copy_codegen_backends_to_sysroot(
         };
         copy(&file, &dst.join(target_filename));
     }
-}
-
-/// Cargo's output path for the standard library in a given stage, compiled
-/// by a particular compiler for the specified target.
-pub fn libstd_stamp(builder: &Builder, compiler: Compiler, target: Interned<String>) -> PathBuf {
-    builder
-        .cargo_out(compiler, Mode::Libstd, target)
-        .join(".libstd.stamp")
-}
-
-/// Cargo's output path for libtest in a given stage, compiled by a particular
-/// compiler for the specified target.
-pub fn libtest_stamp(builder: &Builder, compiler: Compiler, target: Interned<String>) -> PathBuf {
-    builder
-        .cargo_out(compiler, Mode::Libtest, target)
-        .join(".libtest.stamp")
-}
-
-/// Cargo's output path for librustc in a given stage, compiled by a particular
-/// compiler for the specified target.
-pub fn librustc_stamp(builder: &Builder, compiler: Compiler, target: Interned<String>) -> PathBuf {
-    builder
-        .cargo_out(compiler, Mode::Librustc, target)
-        .join(".librustc.stamp")
-}
-
-fn codegen_backend_stamp(
-    builder: &Builder,
-    compiler: Compiler,
-    target: Interned<String>,
-    backend: &str,
-) -> PathBuf {
-    builder
-        .cargo_out(compiler, Mode::Librustc, target)
-        .join(format!(".librustc_trans-{}.stamp", backend))
 }
 
 fn compiler_file(
