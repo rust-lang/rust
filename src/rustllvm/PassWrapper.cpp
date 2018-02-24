@@ -61,6 +61,13 @@ DEFINE_STDCXX_CONVERSION_FUNCTIONS(TargetMachine, LLVMTargetMachineRef)
 DEFINE_STDCXX_CONVERSION_FUNCTIONS(PassManagerBuilder,
                                    LLVMPassManagerBuilderRef)
 
+#if ENABLE_POLLY
+namespace polly {
+void initializePollyPasses(llvm::PassRegistry &Registry);
+void registerPollyPasses(llvm::legacy::PassManagerBase &PM);
+}
+#endif
+
 extern "C" void LLVMInitializePasses() {
   PassRegistry &Registry = *PassRegistry::getPassRegistry();
   initializeCore(Registry);
@@ -73,6 +80,10 @@ extern "C" void LLVMInitializePasses() {
   initializeInstCombine(Registry);
   initializeInstrumentation(Registry);
   initializeTarget(Registry);
+
+#if ENABLE_POLLY
+  polly::initializePollyPasses(Registry);
+#endif
 }
 
 enum class LLVMRustPassKind {
@@ -420,10 +431,19 @@ extern "C" void LLVMRustDisposeTargetMachine(LLVMTargetMachineRef TM) {
 // this function.
 extern "C" void LLVMRustAddAnalysisPasses(LLVMTargetMachineRef TM,
                                           LLVMPassManagerRef PMR,
-                                          LLVMModuleRef M) {
+                                          LLVMModuleRef M,
+                                          bool Polly) {
   PassManagerBase *PM = unwrap(PMR);
   PM->add(
       createTargetTransformInfoWrapperPass(unwrap(TM)->getTargetIRAnalysis()));
+
+#if ENABLE_POLLY
+  if(Polly) {
+    polly::registerPollyPasses(*PM);
+  }
+#else
+  (void)Polly;
+#endif
 }
 
 extern "C" void LLVMRustConfigurePassManagerBuilder(

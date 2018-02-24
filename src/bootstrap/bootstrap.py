@@ -690,6 +690,10 @@ class RustBuild(object):
             recorded_submodules[data[3]] = data[2]
         for module in filtered_submodules:
             self.update_submodule(module[0], module[1], recorded_submodules)
+        polly_path = "src/llvm/tools/polly"
+        if not os.path.exists(os.path.join(self.rust_root, polly_path)):
+            run(["git", "clone", "https://github.com/llvm-mirror/polly.git",
+                 "src/llvm/tools/polly", "-b", "release_60"])
         print("Submodules updated in %.2f seconds" % (time() - start_time))
 
     def set_dev_environment(self):

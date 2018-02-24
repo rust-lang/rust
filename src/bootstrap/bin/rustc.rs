@@ -91,6 +91,7 @@ fn main() {
         ("RUSTC_REAL", "RUSTC_LIBDIR")
     };
     let stage = env::var("RUSTC_STAGE").expect("RUSTC_STAGE was not set");
+    let stage = usize::from_str(stage.as_str()).expect("RUSTC_STAGE not a usize");
     let sysroot = env::var_os("RUSTC_SYSROOT").expect("RUSTC_SYSROOT was not set");
     let on_fail = env::var_os("RUSTC_ON_FAIL").map(|of| Command::new(of));
 
@@ -152,7 +153,7 @@ fn main() {
         // workaround undefined references to `rust_eh_unwind_resume` generated
         // otherwise, see issue https://github.com/rust-lang/rust/issues/43095.
         if crate_name == "panic_abort" ||
-           crate_name == "compiler_builtins" && stage != "0" {
+           crate_name == "compiler_builtins" && stage != 0 {
             cmd.arg("-C").arg("panic=abort");
         }
 
@@ -265,6 +266,14 @@ fn main() {
 
     if env::var_os("RUSTC_PARALLEL_QUERIES").is_some() {
         cmd.arg("--cfg").arg("parallel_queries");
+    }
+
+    let use_polly = match env::var("RUSTC_USE_POLLY") {
+        Ok(v) => v != "0",
+        Err(_) => false,
+    };
+    if use_polly && stage >= 1 {
+        cmd.arg("-Z").arg("polly");
     }
 
     let color = match env::var("RUSTC_COLOR") {
