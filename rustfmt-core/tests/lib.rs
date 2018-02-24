@@ -17,7 +17,7 @@ extern crate rustfmt_config as config;
 extern crate rustfmt_core as rustfmt;
 extern crate term;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io::{self, BufRead, BufReader, Read};
 use std::iter::{Enumerate, Peekable};
@@ -795,6 +795,7 @@ impl ConfigCodeBlock {
     fn extract<I: Iterator<Item = String>>(
         file: &mut Enumerate<I>,
         prev: Option<&ConfigCodeBlock>,
+        hash_set: &mut HashSet<String>,
     ) -> Option<ConfigCodeBlock> {
         let mut code_block = ConfigCodeBlock::new();
         code_block.config_name = prev.and_then(|cb| cb.config_name.clone());
@@ -806,6 +807,16 @@ impl ConfigCodeBlock {
                     break;
                 }
                 Some(ConfigurationSection::ConfigName(name)) => {
+                    assert!(
+                        Config::is_valid_name(&name),
+                        "an unknown configuration option was found: {}",
+                        name
+                    );
+                    assert!(
+                        hash_set.remove(&name),
+                        "multiple configuration guides found for option {}",
+                        name
+                    );
                     code_block.set_config_name(Some(name));
                 }
                 Some(ConfigurationSection::ConfigValue(value)) => {
@@ -831,9 +842,18 @@ fn configuration_snippet_tests() {
             .map(|l| l.unwrap())
             .enumerate();
         let mut code_blocks: Vec<ConfigCodeBlock> = Vec::new();
+        let mut hash_set = Config::hash_set();
 
-        while let Some(cb) = ConfigCodeBlock::extract(&mut file_iter, code_blocks.last()) {
+        while let Some(cb) =
+            ConfigCodeBlock::extract(&mut file_iter, code_blocks.last(), &mut hash_set)
+        {
             code_blocks.push(cb);
+        }
+
+        for name in hash_set {
+            if !Config::is_hidden_option(&name) {
+                panic!("{} does not have a configuration guide", name);
+            }
         }
 
         code_blocks

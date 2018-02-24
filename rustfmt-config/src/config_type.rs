@@ -74,6 +74,8 @@ macro_rules! is_nightly_channel {
 
 macro_rules! create_config {
     ($($i:ident: $ty:ty, $def:expr, $stb:expr, $( $dstring:expr ),+ );+ $(;)*) => (
+        use std::collections::HashSet;
+
         #[derive(Clone)]
         pub struct Config {
             // For each config item, we store a bool indicating whether it has
@@ -190,6 +192,24 @@ macro_rules! create_config {
                 self
             }
 
+            /// Returns a hash set initialized with every user-facing config option name.
+            pub fn hash_set() -> HashSet<String> {
+                let mut hash_set = HashSet::new();
+                $(
+                    hash_set.insert(stringify!($i).to_owned());
+                )+
+                hash_set
+            }
+
+            pub fn is_valid_name(name: &str) -> bool {
+                match name {
+                    $(
+                        stringify!($i) => true,
+                    )+
+                        _ => false,
+                }
+            }
+
             pub fn from_toml(toml: &str) -> Result<Config, String> {
                 let parsed: toml::Value =
                     toml.parse().map_err(|e| format!("Could not parse TOML: {}", e))?;
@@ -199,15 +219,9 @@ macro_rules! create_config {
                         .as_table()
                         .ok_or(String::from("Parsed config was not table"))?;
                     for key in table.keys() {
-                        match &**key {
-                            $(
-                                stringify!($i) => (),
-                            )+
-                            _ => {
-                                let msg =
-                                    &format!("Warning: Unknown configuration option `{}`\n", key);
-                                err.push_str(msg)
-                            }
+                        if !Config::is_valid_name(key) {
+                            let msg = &format!("Warning: Unknown configuration option `{}`\n", key);
+                            err.push_str(msg)
                         }
                     }
                 }
@@ -324,10 +338,13 @@ macro_rules! create_config {
                 }
             }
 
+            pub fn is_hidden_option(name: &str) -> bool {
+                const HIDE_OPTIONS: [&str; 3] = ["verbose", "file_lines", "width_heuristics"];
+                HIDE_OPTIONS.contains(&name)
+            }
 
             pub fn print_docs() {
                 use std::cmp;
-                const HIDE_OPTIONS: [&str; 3] = ["verbose", "file_lines", "width_heuristics"];
                 let max = 0;
                 $( let max = cmp::max(max, stringify!($i).len()+1); )+
                 let mut space_str = String::with_capacity(max);
@@ -338,7 +355,7 @@ macro_rules! create_config {
                 $(
                     let name_raw = stringify!($i);
 
-                    if !HIDE_OPTIONS.contains(&name_raw) {
+                    if !Config::is_hidden_option(name_raw) {
                         let mut name_out = String::with_capacity(max);
                         for _ in name_raw.len()..max-1 {
                             name_out.push(' ')
