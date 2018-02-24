@@ -5,8 +5,9 @@
 
 use rustc::lint::*;
 use rustc::hir;
-use rustc::hir::{Expr, Expr_, QPath};
-use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
+use rustc::hir::{Expr, Expr_, QPath, Ty_};
+use rustc::hir::intravisit::{NestedVisitorMap, Visitor, walk_decl};
+use rustc::hir::Decl;
 use syntax::ast::{self, Attribute, LitKind, NodeId, DUMMY_NODE_ID};
 use syntax::codemap::Span;
 use std::collections::HashMap;
@@ -79,6 +80,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             return;
         }
         prelude();
+
         PrintVisitor::new("item").visit_impl_item(item);
         done();
     }
@@ -182,6 +184,18 @@ struct PrintVisitor {
 }
 
 impl<'tcx> Visitor<'tcx> for PrintVisitor {
+    fn visit_decl(&mut self, d: &'tcx Decl) {
+        match d.node {
+            hir::DeclLocal(ref local) => {
+                self.visit_pat(&local.pat);
+                if let Some(ref e) = local.init {
+                    self.visit_expr(e);
+                }
+            },
+            _ => walk_decl(self, d)
+        }
+    }
+
     fn visit_expr(&mut self, expr: &Expr) {
         print!("    if let Expr_::Expr");
         let current = format!("{}.node", self.current);
@@ -260,9 +274,17 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                     },
                 }
             },
-            Expr_::ExprCast(ref expr, ref _ty) => {
+            Expr_::ExprCast(ref expr, ref ty) => {
                 let cast_pat = self.next("expr");
-                println!("Cast(ref {}, _) = {};", cast_pat, current);
+                let cast_ty = self.next("cast_ty");
+                let qp_label = self.next("qp");
+
+                println!("Cast(ref {}, ref {}) = {};", cast_pat, cast_ty, current);
+                if let Ty_::TyPath(ref qp) = ty.node {
+                    println!("    if let Ty_::TyPath(ref {}) = {}.node;", qp_label, cast_ty);
+                    self.current = qp_label;
+                    self.visit_qpath(&qp, ty.id, ty.span);
+                }
                 self.current = cast_pat;
                 self.visit_expr(expr);
             },
