@@ -152,29 +152,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                 // avoiding use of -min to prevent overflow/panic
                                 if (negative && v > max + 1) || (!negative && v > max) {
                                     if let Some(repr_str) = get_bin_hex_repr(cx, lit) {
-                                        let bits = int_ty_bits(t, cx.sess().target.isize_ty);
-                                        let actually =
-                                            ((v << (128 - bits)) as i128) >> (128 - bits);
-                                        let mut err = cx.struct_span_lint(
-                                            OVERFLOWING_LITERALS,
-                                            e.span,
-                                            &format!("literal out of range for {:?}", t),
-                                        );
-                                        err.note(&format!(
-                                            "the literal `{}` (decimal `{}`) does not fit into \
-                                             an `{:?}` and will become `{}{:?}`.",
-                                            repr_str, v, t, actually, t
-                                        ));
-                                        let sugg_ty = get_type_suggestion(
-                                            &cx.tables.node_id_to_type(e.hir_id).sty,
+                                        report_bin_hex_error(
+                                            cx,
+                                            e,
+                                            ty::TyInt(t),
+                                            repr_str,
                                             v,
                                             negative,
                                         );
-                                        if !sugg_ty.is_empty() {
-                                            err.help(&sugg_ty);
-                                        }
-
-                                        err.emit();
                                         return;
                                     }
                                     cx.span_lint(
@@ -219,28 +204,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                 }
                             }
                             if let Some(repr_str) = get_bin_hex_repr(cx, lit) {
-                                let bits = uint_ty_bits(t, cx.sess().target.usize_ty);
-                                let actually = (lit_val << (128 - bits)) >> (128 - bits);
-                                let mut err = cx.struct_span_lint(
-                                    OVERFLOWING_LITERALS,
-                                    e.span,
-                                    &format!("literal out of range for {:?}", t),
-                                );
-                                err.note(&format!(
-                                    "the literal `{}` (decimal `{}`) does not fit into \
-                                     an `{:?}` and will become `{}{:?}`.",
-                                    repr_str, lit_val, t, actually, t
-                                ));
-                                let sugg_ty = get_type_suggestion(
-                                    &cx.tables.node_id_to_type(e.hir_id).sty,
+                                report_bin_hex_error(
+                                    cx,
+                                    e,
+                                    ty::TyUint(t),
+                                    repr_str,
                                     lit_val,
                                     false,
                                 );
-                                if !sugg_ty.is_empty() {
-                                    err.help(&sugg_ty);
-                                }
-
-                                err.emit();
                                 return;
                             }
                             cx.span_lint(
@@ -414,7 +385,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
         //  - `uX` => `uY`
         //
         // No suggestion for: `isize`, `usize`.
-        fn get_type_suggestion<'a>(t: &ty::TypeVariants, val: u128, negative: bool) -> String {
+        fn get_type_suggestion<'a>(
+            t: &ty::TypeVariants,
+            val: u128,
+            negative: bool,
+        ) -> Option<String> {
             use syntax::ast::IntTy::*;
             use syntax::ast::UintTy::*;
             macro_rules! find_fit {
@@ -425,14 +400,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                         match $ty {
                             $($type => {
                                 $(if !negative && val <= uint_ty_range($utypes).1 {
-                                    return format!("Consider using `{:?}`", $utypes)
+                                    return Some(format!("{:?}", $utypes))
                                 })*
                                 $(if val <= int_ty_range($itypes).1 as u128 + _neg {
-                                    return format!("Consider using `{:?}`", $itypes)
+                                    return Some(format!("{:?}", $itypes))
                                 })*
-                                String::new()
+                                None
                             },)*
-                            _ => String::new()
+                            _ => None
                         }
                     }
                 }
@@ -450,8 +425,57 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                               U32 => [U32, U64, U128] => [],
                               U64 => [U64, U128] => [],
                               U128 => [U128] => []),
-                _ => String::new(),
+                _ => None,
             }
+        }
+
+        fn report_bin_hex_error(
+            cx: &LateContext,
+            expr: &hir::Expr,
+            ty: ty::TypeVariants,
+            repr_str: String,
+            val: u128,
+            negative: bool,
+        ) {
+            let (t, actually) = match ty {
+                ty::TyInt(t) => {
+                    let bits = int_ty_bits(t, cx.sess().target.isize_ty);
+                    let actually = (val << (128 - bits)) as i128 >> (128 - bits);
+                    (format!("{:?}", t), actually.to_string())
+                }
+                ty::TyUint(t) => {
+                    let bits = uint_ty_bits(t, cx.sess().target.usize_ty);
+                    let actually = (val << (128 - bits)) >> (128 - bits);
+                    (format!("{:?}", t), actually.to_string())
+                }
+                _ => bug!(),
+            };
+            let mut err = cx.struct_span_lint(
+                OVERFLOWING_LITERALS,
+                expr.span,
+                &format!("literal out of range for {}", t),
+            );
+            err.note(&format!(
+                "the literal `{}` (decimal `{}`) does not fit into \
+                 an `{}` and will become `{}{}`",
+                repr_str, val, t, actually, t
+            ));
+            if let Some(sugg_ty) =
+                get_type_suggestion(&cx.tables.node_id_to_type(expr.hir_id).sty, val, negative)
+            {
+                if let Some(pos) = repr_str.chars().position(|c| c == 'i' || c == 'u') {
+                    let (sans_suffix, _) = repr_str.split_at(pos);
+                    err.span_suggestion(
+                        expr.span,
+                        &format!("consider using `{}` instead", sugg_ty),
+                        format!("{}{}", sans_suffix, sugg_ty),
+                    );
+                } else {
+                    err.help(&format!("consider using `{}` instead", sugg_ty));
+                }
+            }
+
+            err.emit();
         }
     }
 }
