@@ -13,7 +13,8 @@
 
 // ignore-wasm32-bare compiled with panic=abort by default
 
-#![feature(generators, generator_trait, untagged_unions, slice_patterns, advanced_slice_patterns)]
+#![feature(generators, generator_trait, untagged_unions)]
+#![feature(slice_patterns)]
 
 use std::cell::{Cell, RefCell};
 use std::ops::Generator;

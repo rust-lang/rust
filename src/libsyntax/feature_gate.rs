@@ -145,7 +145,6 @@ declare_features! (
     // rustc internal
     (active, rustc_diagnostic_macros, "1.0.0", None, None),
     (active, rustc_const_unstable, "1.0.0", None, None),
-    (active, advanced_slice_patterns, "1.0.0", Some(23121), None),
     (active, box_syntax, "1.0.0", Some(27779), None),
     (active, placement_in_syntax, "1.0.0", Some(27779), None),
     (active, unboxed_closures, "1.0.0", Some(29625), None),
@@ -474,6 +473,8 @@ declare_features! (
     (removed, allocator, "1.0.0", None, None),
     // Allows the `#[simd]` attribute -- removed in favor of `#[repr(simd)]`
     (removed, simd, "1.0.0", Some(27731), None),
+    // Merged into `slice_patterns`
+    (removed, advanced_slice_patterns, "1.0.0", Some(23121), None),
 );
 
 declare_features! (
@@ -1655,17 +1656,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_pat(&mut self, pattern: &'a ast::Pat) {
         match pattern.node {
-            PatKind::Slice(_, Some(_), ref last) if !last.is_empty() => {
-                gate_feature_post!(&self, advanced_slice_patterns,
-                                  pattern.span,
-                                  "multiple-element slice matches anywhere \
-                                   but at the end of a slice (e.g. \
-                                   `[0, ..xs, 0]`) are experimental")
-            }
-            PatKind::Slice(..) => {
+            PatKind::Slice(_, Some(ref subslice), _) => {
                 gate_feature_post!(&self, slice_patterns,
-                                  pattern.span,
-                                  "slice pattern syntax is experimental");
+                                   subslice.span,
+                                   "syntax for subslices in slice patterns is not yet stabilized");
             }
             PatKind::Box(..) => {
                 gate_feature_post!(&self, box_patterns,

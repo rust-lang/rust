@@ -24,7 +24,6 @@
 #![feature(i128_type)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(slice_patterns)]
 #![feature(conservative_impl_trait)]
 
 extern crate ar;

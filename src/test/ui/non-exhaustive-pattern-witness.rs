@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(advanced_slice_patterns)]
 #![feature(slice_patterns)]
 
 struct Foo {

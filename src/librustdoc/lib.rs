@@ -20,7 +20,7 @@
 #![feature(box_syntax)]
 #![feature(fs_read_write)]
 #![feature(set_stdio)]
-#![feature(slice_patterns)]
+#![cfg_attr(stage0, feature(slice_patterns))]
 #![feature(test)]
 #![feature(unicode)]
 #![feature(vec_remove_item)]

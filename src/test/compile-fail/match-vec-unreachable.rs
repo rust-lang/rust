@@ -10,7 +10,6 @@
 
 #![feature(slice_patterns)]
 #![deny(unreachable_patterns)]
-#![allow(unused_variables)]
 
 fn main() {
     let x: Vec<(isize, isize)> = Vec::new();

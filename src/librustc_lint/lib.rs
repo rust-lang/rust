@@ -31,7 +31,6 @@
 #![feature(macro_vis_matcher)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(slice_patterns)]
 #![cfg_attr(stage0, feature(never_type))]
 
 #[macro_use]

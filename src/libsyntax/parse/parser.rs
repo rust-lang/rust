@@ -3618,7 +3618,7 @@ impl<'a> Parser<'a> {
                         slice = Some(P(Pat {
                             id: ast::DUMMY_NODE_ID,
                             node: PatKind::Wild,
-                            span: self.span,
+                            span: self.prev_span,
                         }));
                         before_slice = false;
                     }
