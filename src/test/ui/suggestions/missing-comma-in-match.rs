@@ -14,7 +14,6 @@ fn main() {
         &Some(2) => { 3 }
         //~^ ERROR expected one of `,`, `.`, `?`, `}`, or an operator, found `=>`
         //~| NOTE expected one of `,`, `.`, `?`, `}`, or an operator here
-        //~^^^^ NOTE while parsing the match arm starting here
         _ => 2
     };
 }

@@ -2,9 +2,7 @@ error: expected one of `,`, `.`, `?`, `}`, or an operator, found `=>`
   --> $DIR/missing-comma-in-match.rs:14:18
    |
 13 |         &None => 1
-   |               --  - help: missing a comma here to end this match arm
-   |               |
-   |               while parsing the match arm starting here
+   |                   - help: missing a comma here to end this `match` arm
 14 |         &Some(2) => { 3 }
    |                  ^^ expected one of `,`, `.`, `?`, `}`, or an operator here
 

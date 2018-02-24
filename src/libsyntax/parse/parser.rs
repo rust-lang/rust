@@ -3231,18 +3231,8 @@ impl<'a> Parser<'a> {
             return Err(err)
         }
         let not_block = self.token != token::OpenDelim(token::Brace);
-        let fat_arrow_sp = if self.token == token::FatArrow {
-            Some(self.span)
-        } else {
-            None
-        };
         let thn = self.parse_block().map_err(|mut err| {
-            if let Some(sp) = fat_arrow_sp {
-                // if cond => expr
-                err.span_suggestion(sp,
-                                    "only necessary in match arms, not before if blocks",
-                                    "".to_string());
-            } else if not_block {
+            if not_block {
                 err.span_label(lo, "this `if` statement has a condition, but no block");
             }
             err
@@ -3444,7 +3434,7 @@ impl<'a> Parser<'a> {
 
         let expr = self.parse_expr_res(Restrictions::STMT_EXPR, None)
             .map_err(|mut err| {
-                err.span_label(arrow_span, "while parsing the match arm starting here");
+                err.span_label(arrow_span, "while parsing the `match` arm starting here");
                 err
             })?;
 
@@ -3455,7 +3445,6 @@ impl<'a> Parser<'a> {
             let cm = self.sess.codemap();
             self.expect_one_of(&[token::Comma], &[token::CloseDelim(token::Brace)])
                 .map_err(|mut err| {
-                    err.span_label(arrow_span, "while parsing the match arm starting here");
                     match (cm.span_to_lines(expr.span), cm.span_to_lines(arm_start_span)) {
                         (Ok(ref expr_lines), Ok(ref arm_start_lines))
                         if arm_start_lines.lines[0].end_col == expr_lines.lines[0].end_col
@@ -3472,11 +3461,16 @@ impl<'a> Parser<'a> {
                             //   |      - ^^ self.span
                             //   |      |
                             //   |      parsed until here as `"y" & X`
-                            err.span_suggestion_short(cm.next_point(arm_start_span),
-                                                      "missing a comma here to end this match arm",
-                                                      ",".to_owned());
+                            err.span_suggestion_short(
+                                cm.next_point(arm_start_span),
+                                "missing a comma here to end this `match` arm",
+                                ",".to_owned()
+                            );
                         }
-                        _ => {}
+                        _ => {
+                            err.span_label(arrow_span,
+                                           "while parsing the `match` arm starting here");
+                        }
                     }
                     err
                 })?;
