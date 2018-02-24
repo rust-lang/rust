@@ -25,7 +25,7 @@ LL |     self
    = note: `bar` must be defined only once in the type namespace of this module
 help: You can use `as` to change the binding name of the import
    |
-15 |     self as other_bar
+LL |     self as other_bar
    |
 
 error: aborting due to 3 previous errors

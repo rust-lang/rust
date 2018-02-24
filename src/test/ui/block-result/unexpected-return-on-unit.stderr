@@ -8,11 +8,11 @@ LL |     foo() //~ ERROR mismatched types
               found type `usize`
 help: try adding a semicolon
    |
-19 |     foo(); //~ ERROR mismatched types
+LL |     foo(); //~ ERROR mismatched types
    |          ^
 help: try adding a return type
    |
-18 | fn bar() -> usize {
+LL | fn bar() -> usize {
    |          ^^^^^^^^
 
 error: aborting due to previous error

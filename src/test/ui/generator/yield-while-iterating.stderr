@@ -16,7 +16,7 @@ LL |         for p in &mut x {
 ...
 LL |     println!("{}", x[0]); //~ ERROR
    |                    ^ immutable borrow occurs here
-68 |     b.resume();
+LL |     b.resume();
 LL | }
    | - mutable borrow ends here
 

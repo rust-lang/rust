@@ -11,7 +11,7 @@ error[E0496]: lifetime name `'s` shadows a lifetime name that is already in scop
    |
 LL | impl Foo<&'s u8> {
    |           -- first declared here
-17 |     fn bar<'s>(&self, x: &'s u8) {} //~ ERROR shadows a lifetime name
+LL |     fn bar<'s>(&self, x: &'s u8) {} //~ ERROR shadows a lifetime name
 LL |     fn baz(x: for<'s> fn(&'s u32)) {} //~ ERROR shadows a lifetime name
    |                   ^^ lifetime 's already in scope
 

@@ -6,7 +6,7 @@ LL |   fn foo() -> String {  //~ ERROR mismatched types
 LL | |     format!("Hello {}",
 LL | |             "world")
 LL | |     // Put the trailing semicolon on its own line to test that the
-17 | |     // note message gets the offending semicolon exactly
+LL | |     // note message gets the offending semicolon exactly
 LL | |     ;
    | |     - help: consider removing this semicolon
 LL | | }

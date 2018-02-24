@@ -12,7 +12,7 @@ LL |       establish_relationships(cell_a, cell_b, |outlives1, outlives2, x, y| 
 LL | |         //~^ ERROR lifetime mismatch
 LL | |
 LL | |         // Only works if 'x: 'y:
-50 | |         demand_y(outlives1, outlives2, x.get()) //~ WARNING not reporting region error due to -Znll
+LL | |         demand_y(outlives1, outlives2, x.get()) //~ WARNING not reporting region error due to -Znll
 LL | |     });
    | |_____^
    |

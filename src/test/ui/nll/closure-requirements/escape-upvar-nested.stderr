@@ -58,7 +58,7 @@ LL | |         };
 ...
 LL |       }
    |       - borrowed value only lives until here
-37 | 
+LL | 
 LL |       deref(p);
    |             - borrow later used here
    |

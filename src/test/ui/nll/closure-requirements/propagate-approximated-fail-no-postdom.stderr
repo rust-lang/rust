@@ -17,7 +17,7 @@ LL | /         |_outlives1, _outlives2, _outlives3, x, y| {
 LL | |             // Only works if 'x: 'y:
 LL | |             let p = x.get();
 LL | |             //~^ WARN not reporting region error due to -Znll
-57 | |             //~| ERROR does not outlive free region
+LL | |             //~| ERROR does not outlive free region
 LL | |             demand_y(x, y, p)
 LL | |         },
    | |_________^

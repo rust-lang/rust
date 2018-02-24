@@ -3,7 +3,7 @@ error[E0453]: allow(unused_variables) overruled by outer forbid(unused)
    |
 LL | #![forbid(unused, non_snake_case)]
    |           ------ `forbid` level set here
-18 | 
+LL | 
 LL | #[allow(unused_variables)] //~ ERROR overruled
    |         ^^^^^^^^^^^^^^^^ overruled by previous forbid
 

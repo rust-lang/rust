@@ -11,7 +11,7 @@ error[E0124]: field `bar` is already declared
    |
 LL |     bar: u8,
    |     ------- `bar` first declared here
-16 |     pub bar: u8, //~ ERROR is already declared
+LL |     pub bar: u8, //~ ERROR is already declared
 LL |     pub(crate) bar: u8, //~ ERROR is already declared
    |     ^^^^^^^^^^^^^^^^^^ field already declared
 

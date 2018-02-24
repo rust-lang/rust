@@ -35,7 +35,7 @@ LL |     real_method_stmt!();
    |     -------------------- in this macro invocation
 help: you must specify a concrete type for this numeric value, like `f32`
    |
-51 |           2.0_f32.powi(2) //~ ERROR can't call method `powi` on ambiguous numeric type `{float}`
+LL |           2.0_f32.powi(2) //~ ERROR can't call method `powi` on ambiguous numeric type `{float}`
    |           ^^^^^^^
 
 error[E0599]: no method named `fake` found for type `{integer}` in the current scope
@@ -75,7 +75,7 @@ LL |     let _ = real_method_expr!();
    |             ------------------- in this macro invocation
 help: you must specify a concrete type for this numeric value, like `f32`
    |
-57 |           2.0_f32.powi(2) //~ ERROR can't call method `powi` on ambiguous numeric type `{float}`
+LL |           2.0_f32.powi(2) //~ ERROR can't call method `powi` on ambiguous numeric type `{float}`
    |           ^^^^^^^
 
 error: aborting due to 8 previous errors

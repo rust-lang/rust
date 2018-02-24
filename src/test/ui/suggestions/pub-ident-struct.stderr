@@ -5,7 +5,7 @@ LL | pub S {
    |    ^
 help: add `struct` here to parse `S` as a public struct
    |
-11 | pub struct S {
+LL | pub struct S {
    |     ^^^^^^
 
 error: aborting due to previous error

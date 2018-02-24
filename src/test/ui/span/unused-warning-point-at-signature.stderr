@@ -30,7 +30,7 @@ LL | / fn //~ WARN function is never used
 LL | | func_complete_span()
 LL | | -> usize
 LL | | {
-37 | |     3
+LL | |     3
 LL | | }
    | |_^
 

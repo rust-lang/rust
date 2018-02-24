@@ -3,7 +3,7 @@ error[E0592]: duplicate definitions with name `dummy`
    |
 LL | impl<T:Sugar> Cake<T> { fn dummy(&self) { } }
    |                         ^^^^^^^^^^^^^^^^^^^ duplicate definitions for `dummy`
-20 | //~^ ERROR E0592
+LL | //~^ ERROR E0592
 LL | impl<U:Sugar> Cake<Box<U>> { fn dummy(&self) { } }
    |                              ------------------- other definition for `dummy`
    |

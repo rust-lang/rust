@@ -3,7 +3,7 @@ error[E0499]: cannot borrow `*arg` as mutable more than once at a time
    |
 LL |             (self.func)(arg) //~ ERROR cannot borrow
    |                         ^^^ mutable borrow starts here in previous iteration of loop
-21 |         }
+LL |         }
 LL |     }
    |     - mutable borrow ends here
 
@@ -12,7 +12,7 @@ error[E0499]: cannot borrow `*arg` as mutable more than once at a time
    |
 LL |             (self.func)(arg) //~ ERROR cannot borrow
    |                         ^^^ mutable borrow starts here in previous iteration of loop
-27 |         }
+LL |         }
 LL |     }
    |     - mutable borrow ends here
 
@@ -21,7 +21,7 @@ error[E0499]: cannot borrow `*arg` as mutable more than once at a time
    |
 LL |             (self.func)(arg) //~ ERROR cannot borrow
    |                         ^^^ mutable borrow starts here in previous iteration of loop
-34 |         }
+LL |         }
 LL |     }
    |     - mutable borrow ends here
 

@@ -116,7 +116,7 @@ LL |         ($visibility: vis, $name: ident) => { $visibility struct $name {} }
    |                                               -----------^^^^^^^^^^^^^
    |                                               |
    |                                               help: consider restricting its visibility: `pub(crate)`
-50 |     }
+LL |     }
 LL |     define_empty_struct_with_visibility!(pub, Fluorine);
    |     ---------------------------------------------------- in this macro invocation
    |

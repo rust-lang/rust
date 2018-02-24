@@ -5,7 +5,7 @@ LL |     type Bar = Path; //~ ERROR cannot find
    |                ^^^^ not found in this scope
 help: possible candidate is found in another module, you can import it into scope
    |
-23 |     use std::path::Path;
+LL |     use std::path::Path;
    |
 
 error[E0425]: cannot find value `A` in this scope
@@ -15,7 +15,7 @@ LL |     let _ = A; //~ ERROR cannot find
    |             ^ not found in this scope
 help: possible candidate is found in another module, you can import it into scope
    |
-13 | use m::A;
+LL | use m::A;
    |
 
 error[E0412]: cannot find type `HashMap` in this scope
@@ -25,9 +25,9 @@ LL |     type Dict<K, V> = HashMap<K, V>; //~ ERROR cannot find
    |                       ^^^^^^^ not found in this scope
 help: possible candidates are found in other modules, you can import them into scope
    |
-13 | use std::collections::HashMap;
+LL | use std::collections::HashMap;
    |
-13 | use std::collections::hash_map::HashMap;
+LL | use std::collections::hash_map::HashMap;
    |
 
 error: aborting due to 3 previous errors

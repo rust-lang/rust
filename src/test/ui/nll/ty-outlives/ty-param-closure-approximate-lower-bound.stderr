@@ -37,7 +37,7 @@ LL | / fn generic<T>(value: T) {
 LL | |     let cell = Cell::new(&());
 LL | |     twice(cell, value, |a, b| invoke(a, b));
 LL | |     //~^ WARNING not reporting region error
-37 | |     //
+LL | |     //
 LL | |     // This error from the old region solver looks bogus.
 LL | | }
    | |_^
@@ -75,7 +75,7 @@ LL | / fn generic_fail<'a, T>(cell: Cell<&'a ()>, value: T) {
 LL | |     twice(cell, value, |a, b| invoke(a, b));
 LL | |     //~^ WARNING not reporting region error
 LL | |     //~| WARNING not reporting region error
-46 | |     //~| ERROR the parameter type `T` may not live long enough
+LL | |     //~| ERROR the parameter type `T` may not live long enough
 LL | | }
    | |_^
    |

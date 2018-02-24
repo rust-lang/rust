@@ -5,7 +5,7 @@ LL | / impl<#[may_dangle] A, B: fmt::Debug> Drop for Pt<A, B> {
 LL | |     //~^ ERROR requires an `unsafe impl` declaration due to `#[may_dangle]` attribute
 LL | |
 LL | |     // (unsafe to access self.1  due to #[may_dangle] on A)
-36 | |     fn drop(&mut self) { println!("drop {} {:?}", self.0, self.2); }
+LL | |     fn drop(&mut self) { println!("drop {} {:?}", self.0, self.2); }
 LL | | }
    | |_^
 
@@ -16,7 +16,7 @@ LL | / impl<#[may_dangle] 'a, 'b, B: fmt::Debug> Drop for Pr<'a, 'b, B> {
 LL | |     //~^ ERROR requires an `unsafe impl` declaration due to `#[may_dangle]` attribute
 LL | |
 LL | |     // (unsafe to access self.1 due to #[may_dangle] on 'a)
-42 | |     fn drop(&mut self) { println!("drop {} {:?}", self.0, self.2); }
+LL | |     fn drop(&mut self) { println!("drop {} {:?}", self.0, self.2); }
 LL | | }
    | |_^
 

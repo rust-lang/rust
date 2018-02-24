@@ -5,7 +5,7 @@ LL | / fn foo<'a,'b,T>(x: &'a T, y: &'b T) //~ ERROR type annotations required
 LL | |     where &'a T : Foo,
 LL | |           &'b T : Foo
 LL | | {
-19 | |     x.foo();
+LL | |     x.foo();
 LL | |     y.foo();
 LL | | }
    | |_^

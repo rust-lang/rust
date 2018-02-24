@@ -72,7 +72,7 @@ LL | / fn correct_region<'a, T>(x: Box<T>) -> Box<dyn Anything + 'a>
 LL | | where
 LL | |     T: 'a + Iterator,
 LL | | {
-46 | |     with_signature(x, |mut y| Box::new(y.next()))
+LL | |     with_signature(x, |mut y| Box::new(y.next()))
 LL | | }
    | |_^
    |
@@ -146,7 +146,7 @@ LL | / fn outlives_region<'a, 'b, T>(x: Box<T>) -> Box<dyn Anything + 'a>
 LL | | where
 LL | |     T: 'b + Iterator,
 LL | |     'b: 'a,
-64 | | {
+LL | | {
 LL | |     with_signature(x, |mut y| Box::new(y.next()))
 LL | | }
    | |_^

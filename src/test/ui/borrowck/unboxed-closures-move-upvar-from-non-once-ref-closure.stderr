@@ -3,7 +3,7 @@ error[E0507]: cannot move out of captured outer variable in an `Fn` closure
    |
 LL |     let y = vec![format!("World")];
    |         - captured outer variable
-20 |     call(|| {
+LL |     call(|| {
 LL |         y.into_iter();
    |         ^ cannot move out of captured outer variable in an `Fn` closure
 

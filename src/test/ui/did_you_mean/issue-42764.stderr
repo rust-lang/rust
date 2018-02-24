@@ -8,9 +8,9 @@ LL |     this_function_expects_a_double_option(n);
               found type `usize`
 help: try using a variant of the expected type
    |
-21 |     this_function_expects_a_double_option(DoubleOption::FirstSome(n));
+LL |     this_function_expects_a_double_option(DoubleOption::FirstSome(n));
    |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^
-21 |     this_function_expects_a_double_option(DoubleOption::AlternativeSome(n));
+LL |     this_function_expects_a_double_option(DoubleOption::AlternativeSome(n));
    |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

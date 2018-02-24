@@ -23,7 +23,7 @@ LL |     [1, 2, 3].sort_by(|(tuple, tuple2)| panic!());
    |               expected closure that takes 2 distinct arguments
 help: change the closure to take multiple arguments instead of a single tuple
    |
-19 |     [1, 2, 3].sort_by(|tuple, tuple2| panic!());
+LL |     [1, 2, 3].sort_by(|tuple, tuple2| panic!());
    |                       ^^^^^^^^^^^^^^^
 
 error[E0593]: closure is expected to take 2 distinct arguments, but it takes a single 2-tuple as argument
@@ -35,7 +35,7 @@ LL |     [1, 2, 3].sort_by(|(tuple, tuple2): (usize, _)| panic!());
    |               expected closure that takes 2 distinct arguments
 help: change the closure to take multiple arguments instead of a single tuple
    |
-21 |     [1, 2, 3].sort_by(|tuple, tuple2| panic!());
+LL |     [1, 2, 3].sort_by(|tuple, tuple2| panic!());
    |                       ^^^^^^^^^^^^^^^
 
 error[E0593]: closure is expected to take 1 argument, but it takes 0 arguments
@@ -61,7 +61,7 @@ LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|i, x| i);
    |                                                     expected closure that takes a single 2-tuple as argument
 help: change the closure to accept a tuple instead of individual arguments
    |
-26 |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|(i, x)| i);
+LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|(i, x)| i);
    |                                                         ^^^^^^^^
 
 error[E0593]: closure is expected to take a single 2-tuple as argument, but it takes 2 distinct arguments
@@ -73,7 +73,7 @@ LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|i: usize, x| i);
    |                                                     expected closure that takes a single 2-tuple as argument
 help: change the closure to accept a tuple instead of individual arguments
    |
-28 |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|(i, x)| i);
+LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|(i, x)| i);
    |                                                         ^^^^^^^^
 
 error[E0593]: closure is expected to take a single 2-tuple as argument, but it takes 3 distinct arguments

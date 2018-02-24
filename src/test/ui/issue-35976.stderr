@@ -5,7 +5,7 @@ LL |     arg.wait();
    |         ^^^^
 help: another candidate was found in the following trait, perhaps add a `use` for it:
    |
-11 | use private::Future;
+LL | use private::Future;
    |
 
 error: aborting due to previous error

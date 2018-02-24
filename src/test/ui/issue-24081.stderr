@@ -10,7 +10,7 @@ LL | type Add = bool; //~ ERROR the name `Add` is defined multiple times
    = note: `Add` must be defined only once in the type namespace of this module
 help: You can use `as` to change the binding name of the import
    |
-11 | use std::ops::Add as OtherAdd;
+LL | use std::ops::Add as OtherAdd;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0255]: the name `Sub` is defined multiple times
@@ -25,7 +25,7 @@ LL | struct Sub { x: f32 } //~ ERROR the name `Sub` is defined multiple times
    = note: `Sub` must be defined only once in the type namespace of this module
 help: You can use `as` to change the binding name of the import
    |
-12 | use std::ops::Sub as OtherSub;
+LL | use std::ops::Sub as OtherSub;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0255]: the name `Mul` is defined multiple times
@@ -40,7 +40,7 @@ LL | enum Mul { A, B } //~ ERROR the name `Mul` is defined multiple times
    = note: `Mul` must be defined only once in the type namespace of this module
 help: You can use `as` to change the binding name of the import
    |
-13 | use std::ops::Mul as OtherMul;
+LL | use std::ops::Mul as OtherMul;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0255]: the name `Div` is defined multiple times
@@ -55,7 +55,7 @@ LL | mod Div { } //~ ERROR the name `Div` is defined multiple times
    = note: `Div` must be defined only once in the type namespace of this module
 help: You can use `as` to change the binding name of the import
    |
-14 | use std::ops::Div as OtherDiv;
+LL | use std::ops::Div as OtherDiv;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0255]: the name `Rem` is defined multiple times
@@ -70,7 +70,7 @@ LL | trait Rem {  } //~ ERROR the name `Rem` is defined multiple times
    = note: `Rem` must be defined only once in the type namespace of this module
 help: You can use `as` to change the binding name of the import
    |
-15 | use std::ops::Rem as OtherRem;
+LL | use std::ops::Rem as OtherRem;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 5 previous errors

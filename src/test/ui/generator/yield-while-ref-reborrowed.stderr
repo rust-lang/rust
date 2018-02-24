@@ -8,7 +8,7 @@ LL |         let a = &mut *x;
 ...
 LL |     println!("{}", x); //~ ERROR
    |                    ^ borrow occurs here
-46 |     b.resume();
+LL |     b.resume();
 LL | }
    | - borrow from closure ends here
 

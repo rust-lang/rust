@@ -3,7 +3,7 @@ error[E0596]: cannot borrow immutable local variable `y` as mutable
    |
 LL |     let y = Int(2);
    |         - consider changing this to `mut y`
-29 |     //~^ consider changing this to `mut y`
+LL |     //~^ consider changing this to `mut y`
 LL |     y   //~ error: cannot borrow immutable local variable `y` as mutable
    |     ^ cannot borrow mutably
 

@@ -5,7 +5,7 @@ LL |         *lock.lock().unwrap() = &z;
    |                                  ^ borrowed value does not live long enough
 LL |     }
    |     - `z` dropped here while still borrowed
-28 |     //~^^ ERROR `z` does not live long enough
+LL |     //~^^ ERROR `z` does not live long enough
 LL | }
    | - borrowed value needs to live until here
 
@@ -24,7 +24,7 @@ LL |         *lock.write().unwrap() = &z;
    |                                   ^ borrowed value does not live long enough
 LL |     }
    |     - `z` dropped here while still borrowed
-41 |     //~^^ ERROR `z` does not live long enough
+LL |     //~^^ ERROR `z` does not live long enough
 LL | }
    | - borrowed value needs to live until here
 
@@ -43,7 +43,7 @@ LL |         tx.send(&z).unwrap();
    |                  ^ borrowed value does not live long enough
 LL |     }
    |     - `z` dropped here while still borrowed
-56 |     //~^^ ERROR `z` does not live long enough
+LL |     //~^^ ERROR `z` does not live long enough
 LL | }
    | - borrowed value needs to live until here
 

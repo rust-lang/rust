@@ -6,7 +6,7 @@ LL |         y = borrow(&*x);
 ...
 LL |     }
    |     - `*x` dropped here while still borrowed
-30 |     assert!(*y != 0);
+LL |     assert!(*y != 0);
 LL | }
    | - borrowed value needs to live until here
 

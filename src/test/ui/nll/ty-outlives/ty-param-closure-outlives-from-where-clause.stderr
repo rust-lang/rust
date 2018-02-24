@@ -130,7 +130,7 @@ LL |       with_signature(a, b, |x, y| {
 LL | |         //~^ ERROR the parameter type `T` may not live long enough
 LL | |         // See `correct_region`
 LL | |         require(&x, &y)
-80 | |         //~^ WARNING not reporting region error due to -Znll
+LL | |         //~^ WARNING not reporting region error due to -Znll
 LL | |     })
    | |_____^
    |

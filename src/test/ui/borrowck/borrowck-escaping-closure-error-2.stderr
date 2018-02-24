@@ -7,7 +7,7 @@ LL |     Box::new(|| books.push(4))
    |              may outlive borrowed value `books`
 help: to force the closure to take ownership of `books` (and any other referenced variables), use the `move` keyword
    |
-21 |     Box::new(move || books.push(4))
+LL |     Box::new(move || books.push(4))
    |              ^^^^^^^
 
 error: aborting due to previous error

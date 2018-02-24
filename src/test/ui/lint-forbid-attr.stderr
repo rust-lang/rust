@@ -3,7 +3,7 @@ error[E0453]: allow(deprecated) overruled by outer forbid(deprecated)
    |
 LL | #![forbid(deprecated)]
    |           ---------- `forbid` level set here
-12 | 
+LL | 
 LL | #[allow(deprecated)]
    |         ^^^^^^^^^^ overruled by previous forbid
 

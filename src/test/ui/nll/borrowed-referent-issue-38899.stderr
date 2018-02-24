@@ -3,7 +3,7 @@ error[E0502]: cannot borrow `*block.current` as immutable because it is also bor
    |
 LL |     let x = &mut block;
    |             ---------- mutable borrow occurs here
-23 |     println!("{}", x.current);
+LL |     println!("{}", x.current);
 LL |     let p: &'a u8 = &*block.current;
    |                     ^^^^^^^^^^^^^^^ immutable borrow occurs here
 

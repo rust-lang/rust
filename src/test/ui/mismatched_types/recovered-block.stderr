@@ -5,7 +5,7 @@ LL |     pub Foo { text }
    |        ^
 help: add `struct` here to parse `Foo` as a public struct
    |
-23 |     pub struct Foo { text }
+LL |     pub struct Foo { text }
    |         ^^^^^^
 
 error: expected one of `(` or `<`, found `{`

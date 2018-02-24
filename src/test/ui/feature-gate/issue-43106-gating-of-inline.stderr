@@ -5,7 +5,7 @@ error[E0518]: attribute should be applied to function
    |
 LL |   #[inline = "2100"]
    |   ^^^^^^^^^^^^^^^^^^
-22 |   //~^ ERROR attribute should be applied to function
+LL |   //~^ ERROR attribute should be applied to function
 LL | / mod inline {
 LL | |     mod inner { #![inline="2100"] }
 LL | |     //~^ ERROR attribute should be applied to function
