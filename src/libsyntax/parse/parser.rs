@@ -6482,6 +6482,8 @@ impl<'a> Parser<'a> {
             && self.look_ahead(1, |t| *t != token::OpenDelim(token::Brace)) {
             // UNSAFE FUNCTION ITEM
             self.bump(); // `unsafe`
+            // `{` is also expected after `unsafe`, in case of error, include it in the diagnostic
+            self.check(&token::OpenDelim(token::Brace));
             let abi = if self.eat_keyword(keywords::Extern) {
                 self.parse_opt_abi()?.unwrap_or(Abi::C)
             } else {
