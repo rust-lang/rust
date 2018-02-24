@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-macro_rules! int_module { ($T:ident, $T_i:ident) => (
+macro_rules! int_module { ($T:ident, $T_i:ident, $w:expr) => (
 #[cfg(test)]
 mod tests {
     use core::$T_i::*;
     use core::isize;
     use core::ops::{Shl, Shr, Not, BitXor, BitAnd, BitOr};
     use core::mem;
+    use core::convert::TryInto;
 
     use num;
 
@@ -213,6 +214,38 @@ mod tests {
         r = -2 as $T;
         assert_eq!(r.pow(2), 4 as $T);
         assert_eq!(r.pow(3), -8 as $T);
+    }
+
+    #[test]
+    fn test_f32_try_from() {
+        for n in &[1f32, 2f32, 3f32] {
+            let v = 2f32.powi(i32::min(24, $w - 1)) - n;
+            assert!((v.try_into() as Result<$T, _>).is_ok());
+        }
+
+        for n in &[0f32, 1f32, 2f32] {
+            let v = -2f32.powi(i32::min(24, $w - 1)) + n;
+            assert!((v.try_into() as Result<$T, _>).is_ok());
+        }
+
+        assert!((2f32.powi($w - 1).try_into() as Result<$T, _>).is_err());
+        assert!(((-2f32.powi($w)).try_into() as Result<$T, _>).is_err());
+    }
+
+    #[test]
+    fn test_f64_try_from() {
+        for n in &[1f64, 2f64, 3f64] {
+            let v = 2f64.powi(i32::min(53, $w - 1)) - n;
+            assert!((v.try_into() as Result<$T, _>).is_ok());
+        }
+
+        for n in &[0f64, 1f64, 2f64] {
+            let v = -2f64.powi(i32::min(53, $w - 1)) + n;
+            assert!((v.try_into() as Result<$T, _>).is_ok());
+        }
+
+        assert!((2f64.powi($w - 1).try_into() as Result<$T, _>).is_err());
+        assert!(((-2f64.powi($w)).try_into() as Result<$T, _>).is_err());
     }
 }
 

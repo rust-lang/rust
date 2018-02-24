@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-macro_rules! uint_module { ($T:ident, $T_i:ident) => (
+macro_rules! uint_module { ($T:ident, $T_i:ident, $w:expr) => (
 #[cfg(test)]
 mod tests {
     use core::$T_i::*;
@@ -16,6 +16,7 @@ mod tests {
     use core::ops::{BitOr, BitAnd, BitXor, Shl, Shr, Not};
     use std::str::FromStr;
     use std::mem;
+    use core::convert::TryInto;
 
     #[test]
     fn test_overflows() {
@@ -153,6 +154,26 @@ mod tests {
 
         assert_eq!($T::from_str_radix("Z", 10).ok(), None::<$T>);
         assert_eq!($T::from_str_radix("_", 2).ok(), None::<$T>);
+    }
+
+    #[test]
+    fn test_f32_try_from() {
+        for n in &[1f32, 2f32, 3f32] {
+            let v = 2f32.powi(i32::min(24, $w)) - n;
+            assert!((v.try_into() as Result<$T, _>).is_ok());
+        }
+
+        assert!((2f32.powi($w).try_into() as Result<$T, _>).is_err());
+    }
+
+    #[test]
+    fn test_f64_try_from() {
+        for n in &[1f64, 2f64, 3f64] {
+            let v = 2f64.powi(i32::min(53, $w)) - n;
+            assert!((v.try_into() as Result<$T, _>).is_ok());
+        }
+
+        assert!((2f64.powi($w).try_into() as Result<$T, _>).is_err());
     }
 }
 )}
