@@ -18,6 +18,7 @@ HirId                   |  identifies a particular node in the HIR by combining 
 HIR Map                 |  The HIR map, accessible via tcx.hir, allows you to quickly navigate the HIR and convert between various forms of identifiers.
 ICE                     |  internal compiler error. When the compiler crashes.
 ICH                     |  incremental compilation hash. ICHs are used as fingerprints for things such as HIR and crate metadata, to check if changes have been made. This is useful in incremental compilation to see if part of a crate has changed and should be recompiled.
+inference variable      |  when doing type or region inference, an "inference variable" is a kind of special type/region that represents value you are trying to find. Think of `X` in algebra.
 infcx                   |  the inference context (see `librustc/infer`)
 IR                      |  Intermediate Representation. A general term in compilers. During compilation, the code is transformed from raw source (ASCII text) to various IRs. In Rust, these are primarily HIR, MIR, and LLVM IR. Each IR is well-suited for some set of computations. For example, MIR is well-suited for the borrow checker, and LLVM IR is well-suited for codegen because LLVM accepts it.
 local crate             |  the crate currently being compiled.
@@ -25,6 +26,7 @@ LTO                     |  Link-Time Optimizations. A set of optimizations offer
 [LLVM]                  |  (actually not an acronym :P) an open-source compiler backend. It accepts LLVM IR and outputs native binaries. Various languages (e.g. Rust) can then implement a compiler front-end that output LLVM IR and use LLVM to compile to all the platforms LLVM supports.
 MIR                     |  the Mid-level IR that is created after type-checking for use by borrowck and trans ([see more](./mir.html))
 miri                    |  an interpreter for MIR used for constant evaluation ([see more](./miri.html))
+newtype                 |  a "newtype" is a wrapper around some other type (e.g., `struct Foo(T)` is a "newtype" for `T`). This is commonly used in Rust to give a stronger type for indices.
 node-id or NodeId       |  an index identifying a particular node in the AST or HIR; gradually being phased out and replaced with `HirId`.
 obligation              |  something that must be proven by the trait system ([see more](trait-resolution.html))
 provider                |  the function that executes a query ([see more](query.html))
