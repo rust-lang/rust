@@ -156,23 +156,6 @@ pub fn prepare_tool_cargo<'a>(
     let dir = builder.config.src.join(path);
     cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
 
-    // We don't want to build tools dynamically as they'll be running across
-    // stages and such and it's just easier if they're not dynamically linked.
-    cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
-
-    if let Some(dir) = builder.openssl_install_dir(target) {
-        cargo.env("OPENSSL_STATIC", "1");
-        cargo.env("OPENSSL_DIR", dir);
-        cargo.env("LIBZ_SYS_STATIC", "1");
-    }
-
-    // if tools are using lzma we want to force the build script to build its
-    // own copy
-    cargo.env("LZMA_API_STATIC", "1");
-
-    cargo.env("CFG_RELEASE_CHANNEL", &builder.config.rust.channel);
-    cargo.env("CFG_VERSION", builder.rust_version());
-
     let info = GitInfo::new(&builder.config, &dir);
     if let Some(sha) = info.sha() {
         cargo.env("CFG_COMMIT_HASH", sha);

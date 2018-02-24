@@ -758,6 +758,24 @@ impl<'a> Builder<'a> {
         }
     }
 
+    fn tool_cargo(&self, target: Interned<String>, cargo: &mut Command) {
+        // We don't want to build tools dynamically as they'll be running across
+        // stages and such and it's just easier if they're not dynamically linked.
+        cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
+
+        if let Some(dir) = self.openssl_install_dir(target) {
+            cargo.env("OPENSSL_STATIC", "1");
+            cargo.env("OPENSSL_DIR", dir);
+            cargo.env("LIBZ_SYS_STATIC", "1");
+        }
+
+        // if tools are using lzma we want to force the build script to build its
+        // own copy
+        cargo.env("LZMA_API_STATIC", "1");
+        cargo.env("CFG_RELEASE_CHANNEL", &self.config.rust.channel);
+        cargo.env("CFG_VERSION", self.rust_version());
+    }
+
     /// Prepares an invocation of `cargo` to be run.
     ///
     /// This will create a `Command` that represents a pending execution of
@@ -808,6 +826,7 @@ impl<'a> Builder<'a> {
                 self.clear_if_dirty(&out_dir, &self.libtest_stamp(compiler, target));
             }
             Mode::Tool => {
+                self.tool_cargo(target, &mut cargo);
                 // taken care of via tool::CleanTools
                 // FIXME: store which kind of tool this is (std-dep, test-dep, or rustc-dep, and
                 // take care of this here)
