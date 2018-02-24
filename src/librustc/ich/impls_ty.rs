@@ -736,7 +736,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::Generics {
         let ty::Generics {
             parent,
             ref parent_count,
-            ref parameters,
+            ref params,
 
             // Reverse map to each `TypeParameterDef`'s `index` field, from
             // `def_id.index` (`def_id.krate` is the same as the item's).
@@ -747,7 +747,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::Generics {
 
         parent.hash_stable(hcx, hasher);
         parent_count.hash_stable(hcx, hasher);
-        parameters.hash_stable(hcx, hasher);
+        params.hash_stable(hcx, hasher);
         has_self.hash_stable(hcx, hasher);
         has_late_bound_regions.hash_stable(hcx, hasher);
     }

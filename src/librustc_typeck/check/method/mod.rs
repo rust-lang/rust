@@ -288,7 +288,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let method_item = self.associated_item(trait_def_id, m_name, Namespace::Value).unwrap();
         let def_id = method_item.def_id;
         let generics = tcx.generics_of(def_id);
-        assert_eq!(generics.parameters.len(), 0);
+        assert_eq!(generics.params.len(), 0);
 
         debug!("lookup_in_trait_adjusted: method_item={:?}", method_item);
         let mut obligations = vec![];

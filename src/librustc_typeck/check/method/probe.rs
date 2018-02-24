@@ -1384,7 +1384,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         // in the values from the substitution.
         let xform_fn_sig = self.erase_late_bound_regions(&fn_sig);
 
-        if generics.parameters.is_empty() {
+        if generics.params.is_empty() {
             xform_fn_sig.subst(self.tcx, substs)
         } else {
             let substs = Substs::for_item(self.tcx, method, |def, _| {

@@ -252,7 +252,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
             substs.push(ty.into());
         }
 
-        for def in &defs.parameters {
+        for def in &defs.params {
             let param = match def {
                 ty::GenericParameterDef::Lifetime(ref lt) => {
                     UnpackedKind::Lifetime(mk_region(lt, substs))
