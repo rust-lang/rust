@@ -39,7 +39,6 @@ use util::nodemap::{NodeSet, DefIdMap, FxHashMap, FxHashSet};
 use serialize::{self, Encodable, Encoder};
 use std::cell::RefCell;
 use std::cmp;
-use std::cmp::Ordering;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::iter::FromIterator;
@@ -498,20 +497,6 @@ impl<'tcx> Hash for TyS<'tcx> {
     }
 }
 
-impl<'tcx> Ord for TyS<'tcx> {
-    #[inline]
-    fn cmp(&self, other: &TyS<'tcx>) -> Ordering {
-        // (self as *const _).cmp(other as *const _)
-        (self as *const TyS<'tcx>).cmp(&(other as *const TyS<'tcx>))
-    }
-}
-impl<'tcx> PartialOrd for TyS<'tcx> {
-    #[inline]
-    fn partial_cmp(&self, other: &TyS<'tcx>) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
 impl<'tcx> TyS<'tcx> {
     pub fn is_primitive_ty(&self) -> bool {
         match self.sty {
@@ -580,19 +565,6 @@ impl<T> PartialEq for Slice<T> {
     }
 }
 impl<T> Eq for Slice<T> {}
-
-impl<T> Ord for Slice<T> {
-    #[inline]
-    fn cmp(&self, other: &Slice<T>) -> Ordering {
-        (&self.0 as *const [T]).cmp(&(&other.0 as *const [T]))
-    }
-}
-impl<T> PartialOrd for Slice<T> {
-    #[inline]
-    fn partial_cmp(&self, other: &Slice<T>) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
 
 impl<T> Hash for Slice<T> {
     fn hash<H: Hasher>(&self, s: &mut H) {
@@ -1128,7 +1100,7 @@ pub type PolySubtypePredicate<'tcx> = ty::Binder<SubtypePredicate<'tcx>>;
 /// equality between arbitrary types. Processing an instance of
 /// Form #2 eventually yields one of these `ProjectionPredicate`
 /// instances to normalize the LHS.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct ProjectionPredicate<'tcx> {
     pub projection_ty: ProjectionTy<'tcx>,
     pub ty: Ty<'tcx>,
@@ -1532,7 +1504,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for AdtDef {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum AdtKind { Struct, Union, Enum }
 
 bitflags! {

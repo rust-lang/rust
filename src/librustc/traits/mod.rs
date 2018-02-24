@@ -73,7 +73,7 @@ pub enum IntercrateMode {
 /// either identifying an `impl` (e.g., `impl Eq for int`) that
 /// provides the required vtable, or else finding a bound that is in
 /// scope. The eventual result is usually a `Selection` (defined below).
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Obligation<'tcx, T> {
     pub cause: ObligationCause<'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
@@ -85,7 +85,7 @@ pub type PredicateObligation<'tcx> = Obligation<'tcx, ty::Predicate<'tcx>>;
 pub type TraitObligation<'tcx> = Obligation<'tcx, ty::PolyTraitPredicate<'tcx>>;
 
 /// Why did we incur this obligation? Used for error reporting.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ObligationCause<'tcx> {
     pub span: Span,
 
@@ -113,7 +113,7 @@ impl<'tcx> ObligationCause<'tcx> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ObligationCauseCode<'tcx> {
     /// Not well classified or should be obvious from span.
     MiscObligation,
@@ -215,7 +215,7 @@ pub enum ObligationCauseCode<'tcx> {
     BlockTailExpression(ast::NodeId),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct DerivedObligationCause<'tcx> {
     /// The trait reference of the parent obligation that led to the
     /// current obligation. Note that only trait obligations lead to
@@ -304,7 +304,7 @@ pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 /// ### The type parameter `N`
 ///
 /// See explanation on `VtableImplData`.
-#[derive(Clone, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum Vtable<'tcx, N> {
     /// Vtable identifying a particular impl.
     VtableImpl(VtableImplData<'tcx, N>),
@@ -374,13 +374,13 @@ pub struct VtableClosureData<'tcx, N> {
     pub nested: Vec<N>
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct VtableAutoImplData<N> {
     pub trait_def_id: DefId,
     pub nested: Vec<N>
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct VtableBuiltinData<N> {
     pub nested: Vec<N>
 }
