@@ -58,20 +58,20 @@ will then be generated in the output binary.
 
 Trait resolution consists of three major parts:
 
-- **Selection** is deciding how to resolve a specific obligation. For
+- **Selection**: Deciding how to resolve a specific obligation. For
   example, selection might decide that a specific obligation can be
-  resolved by employing an impl which matches the `Self` type, or by
-  using a parameter bound (e.g. `T: Trait`). In the case of an impl, selecting one
+  resolved by employing an impl which matches the `Self` type, or by using a
+  parameter bound (e.g. `T: Trait`). In the case of an impl, selecting one
   obligation can create *nested obligations* because of where clauses
   on the impl itself. It may also require evaluating those nested
   obligations to resolve ambiguities.
 
-- **Fulfillment** is keeping track of which obligations
-  are completely fulfilled. Basically, it is a worklist of obligations
+- **Fulfillment**: The fulfillment code is what tracks that obligations
+  are completely fulfilled. Basically it is a worklist of obligations
   to be selected: once selection is successful, the obligation is
   removed from the worklist and any nested obligations are enqueued.
 
-- **Coherence** checks are intended to ensure that there
+- **Coherence**: The coherence checks are intended to ensure that there
   are never overlapping impls, where two impls could be used with
   equal precedence.
 
@@ -174,8 +174,12 @@ select this impl, which will cause the type of `$Y` to be unified to
 `usize`. (Note that while assembling candidates, we do the initial
 unifications in a transaction, so that they don't affect one another.)
 
-**TODO**: The example says we can "select" the impl, but this section is talking specifically about candidate assembly. Does this mean we can sometimes skip confirmation? Or is this poor wording?
-**TODO**: Is the unification of `$Y` part of trait resolution or type inference? Or is this not the same type of "inference variable" as in type inference?
+**TODO**: The example says we can "select" the impl, but this section is
+talking specifically about candidate assembly. Does this mean we can sometimes
+skip confirmation? Or is this poor wording?
+**TODO**: Is the unification of `$Y` part of trait resolution or type
+inference? Or is this not the same type of "inference variable" as in type
+inference?
 
 #### Winnowing: Resolving ambiguities
 
@@ -282,10 +286,10 @@ to a particular impl.
 One interesting twist has to do with nested obligations. In general, in trans,
 we only need to do a "shallow" selection for an obligation. That is, we wish to
 identify which impl applies, but we do not (yet) need to decide how to select
-any nested obligations. Nonetheless, we *do* currently do a complete
-resolution, and that is because it can sometimes inform the results of type
-inference. That is, we do not have the full substitutions for the type
-variables of the impl available to us, so we must run trait selection to figure
+any nested obligations. Nonetheless, we *do* currently do a complete resolution,
+and that is because it can sometimes inform the results of type inference.
+That is, we do not have the full substitutions in terms of the type variables
+of the impl available to us, so we must run trait selection to figure
 everything out.
 
 **TODO**: is this still talking about trans?

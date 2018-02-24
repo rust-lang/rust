@@ -2,8 +2,8 @@
 
 The incremental compilation scheme is, in essence, a surprisingly
 simple extension to the overall query system. We'll start by describing
-a slightly simplified variant of the real thing – the "basic algorithm" – and then describe
-some possible improvements.
+a slightly simplified variant of the real thing – the "basic algorithm" –
+and then describe some possible improvements.
 
 ## The basic algorithm
 
@@ -40,7 +40,7 @@ There are two key insights here:
     produced the same result as the previous time. **If it did,** we
     can still mark the query as green, and hence avoid re-executing
     dependent queries.
-    
+
 ### The try-mark-green algorithm
 
 At the core of incremental compilation is an algorithm called
@@ -66,13 +66,15 @@ Try-mark-green works as follows:
   - For each query R in `reads(Q)`, we recursively demand the color
     of R using try-mark-green.
     - Note: it is important that we visit each node in `reads(Q)` in same order
-      as they occurred in the original compilation. See [the section on the query DAG below](#dag).
-    - If **any** of the nodes in `reads(Q)` wind up colored **red**, then Q is dirty.
-      - We re-execute Q and compare the hash of its result to the hash of the result
-        from the previous compilation.
+      as they occurred in the original compilation. See [the section on the
+      query DAG below](#dag).
+    - If **any** of the nodes in `reads(Q)` wind up colored **red**, then Q is
+      dirty.
+      - We re-execute Q and compare the hash of its result to the hash of the
+        result from the previous compilation.
       - If the hash has not changed, we can mark Q as **green** and return.
-    - Otherwise, **all** of the nodes in `reads(Q)` must be **green**. In that case,
-      we can color Q as **green** and return.
+    - Otherwise, **all** of the nodes in `reads(Q)` must be **green**. In that
+      case, we can color Q as **green** and return.
 
 <a name="dag">
 
@@ -80,14 +82,14 @@ Try-mark-green works as follows:
 
 The query DAG code is stored in
 [`src/librustc/dep_graph`][dep_graph]. Construction of the DAG is done
-by instrumenting the query execution. 
+by instrumenting the query execution.
 
 One key point is that the query DAG also tracks ordering; that is, for
 each query Q, we not only track the queries that Q reads, we track the
 **order** in which they were read.  This allows try-mark-green to walk
-those queries back in the same order. This is important because once a subquery comes back as red,
-we can no longer be sure that Q will continue along the same path as before.
-That is, imagine a query like this:
+those queries back in the same order. This is important because once a
+subquery comes back as red, we can no longer be sure that Q will continue
+along the same path as before. That is, imagine a query like this:
 
 ```rust,ignore
 fn main_query(tcx) {
@@ -105,9 +107,10 @@ query `main_query` executes will be `subquery2`, and `subquery3` will
 not be executed at all.
 
 But now imagine that in the **next** compilation, the input has
-changed such that `subquery1` returns **false**. In this case, `subquery2` would never
-execute. If try-mark-green were to visit `reads(main_query)` out of order,
-however, it might visit `subquery2` before `subquery1`, and hence execute it.
+changed such that `subquery1` returns **false**. In this case, `subquery2`
+would never execute. If try-mark-green were to visit `reads(main_query)` out
+of order, however, it might visit `subquery2` before `subquery1`, and hence
+execute it.
 This can lead to ICEs and other problems in the compiler.
 
 [dep_graph]: https://github.com/rust-lang/rust/tree/master/src/librustc/dep_graph
@@ -124,8 +127,8 @@ we **also** save the results.
 
 This is why the incremental algorithm separates computing the
 **color** of a node, which often does not require its value, from
-computing the **result** of a node. Computing the result is done via a simple algorithm
-like so:
+computing the **result** of a node. Computing the result is done via a simple
+algorithm like so:
 
 - Check if a saved result for Q is available. If so, compute the color of Q.
   If Q is green, deserialize and return the saved result.

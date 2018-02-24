@@ -94,20 +94,21 @@ order to compile a Rust crate, these are the general steps that we
 take:
 
 1. **Parsing input**
-    - this processes the `.rs` files and produces the AST ("abstract syntax tree")
+    - this processes the `.rs` files and produces the AST
+      ("abstract syntax tree")
     - the AST is defined in `syntax/ast.rs`. It is intended to match the lexical
       syntax of the Rust language quite closely.
 2. **Name resolution, macro expansion, and configuration**
-    - once parsing is complete, we process the AST recursively, resolving paths
-      and expanding macros. This same process also processes `#[cfg]` nodes, and hence
-      may strip things out of the AST as well.
+    - once parsing is complete, we process the AST recursively, resolving
+      paths and expanding macros. This same process also processes `#[cfg]`
+      nodes, and hence may strip things out of the AST as well.
 3. **Lowering to HIR**
     - Once name resolution completes, we convert the AST into the HIR,
-      or "high-level IR". The HIR is defined in `src/librustc/hir/`; that module also includes
-      the lowering code.
-    - The HIR is a lightly desugared variant of the AST. It is more processed than the
-      AST and more suitable for the analyses that follow. It is **not** required to match
-      the syntax of the Rust language.
+      or "high-level IR". The HIR is defined in `src/librustc/hir/`;
+      that module also includes the lowering code.
+    - The HIR is a lightly desugared variant of the AST. It is more processed
+      than the AST and more suitable for the analyses that follow.
+      It is **not** required to match the syntax of the Rust language.
     - As a simple example, in the **AST**, we preserve the parentheses
       that the user wrote, so `((1 + 2) + 3)` and `1 + 2 + 3` parse
       into distinct trees, even though they are equivalent. In the
@@ -125,13 +126,13 @@ take:
       the types of expressions, the way to resolve methods, and so forth.
     - After type-checking, we can do other analyses, such as privacy checking.
 4. **Lowering to MIR and post-processing**
-    - Once type-checking is done, we can lower the HIR into MIR ("middle IR"), which
-      is a **very** desugared version of Rust, well suited to the borrowck but also
-      certain high-level optimizations.
+    - Once type-checking is done, we can lower the HIR into MIR ("middle IR"),
+      which is a **very** desugared version of Rust, well suited to borrowck
+      but also to certain high-level optimizations.
 5. **Translation to LLVM and LLVM optimizations**
     - From MIR, we can produce LLVM IR.
-    - LLVM then runs its various optimizations, which produces a number of `.o` files
-      (one for each "codegen unit").
+    - LLVM then runs its various optimizations, which produces a number of
+      `.o` files (one for each "codegen unit").
 6. **Linking**
     - Finally, those `.o` files are linked together.
 

@@ -63,23 +63,25 @@ carry around references into the HIR, but rather to carry around
 *identifier numbers* (or just "ids"). Right now, you will find four
 sorts of identifiers in active use:
 
-- `DefId` – primarily names "definitions" or top-level items.
-  - You can think of a `DefId` as shorthand for a very explicit and complete
-    path, like `std::collections::HashMap`. However, these paths are able to
-    name things that are not nameable in normal Rust (e.g. `impl`s), and they
-    also include extra information about the crate (such as its version number,
-    since two versions of the same crate can co-exist).
-  - A `DefId` really consists of two parts, a `CrateNum` (which identifies the
-    crate) and a `DefIndex` (which indexes into a list of items that is
-    maintained per crate).
-- `HirId` – combines the index of a particular item with an offset within
-  that item.
-  - The key point of an `HirId` is that it is *relative* to some item (which is
-    named via a `DefId`).
-- `BodyId` – an absolute identifier that refers to a specific body (definition
-  of a function or constant) in the crate. It is currently effectively a
-  "newtype'd" `NodeId`.
-- `NodeId` – an absolute ID that identifies a single node in the HIR tree.
+- `DefId`, which primarily names "definitions" or top-level items.
+  - You can think of a `DefId` as being shorthand for a very explicit
+    and complete path, like `std::collections::HashMap`. However,
+    these paths are able to name things that are not nameable in
+    normal Rust (e.g. impls), and they also include extra information
+    about the crate (such as its version number, as two versions of
+    the same crate can co-exist).
+  - A `DefId` really consists of two parts, a `CrateNum` (which
+    identifies the crate) and a `DefIndex` (which indixes into a list
+    of items that is maintained per crate).
+- `HirId`, which combines the index of a particular item with an
+  offset within that item.
+  - the key point of a `HirId` is that it is *relative* to some item
+    (which is named via a `DefId`).
+- `BodyId`, this is an absolute identifier that refers to a specific
+  body (definition of a function or constant) in the crate. It is currently
+  effectively a "newtype'd" `NodeId`.
+- `NodeId`, which is an absolute id that identifies a single node in the HIR
+  tree.
   - While these are still in common use, **they are being slowly phased out**.
   - Since they are absolute within the crate, adding a new node anywhere in the
     tree causes the `NodeId`s of all subsequent code in the crate to change.
@@ -119,5 +121,5 @@ of a function/closure or the definition of a constant. Bodies are
 associated with an **owner**, which is typically some kind of item
 (e.g. an `fn()` or `const`), but could also be a closure expression
 (e.g. `|x, y| x + y`). You can use the HIR map to find the body
-associated with a given `DefId` (`maybe_body_owned_by()`) or to find
+associated with a given def-id (`maybe_body_owned_by()`) or to find
 the owner of a body (`body_owner_def_id()`).

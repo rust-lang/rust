@@ -12,8 +12,8 @@ structure:
 - They always begin with the [copyright notice](./conventions.html#copyright);
 - then they should have some kind of
   [comment explaining what the test is about](#explanatory_comment);
-- next, they can have one or more [header commands](#header_commands), which are special
-  comments that the test interpreter knows how to interpret.
+- next, they can have one or more [header commands](#header_commands), which
+  are special comments that the test interpreter knows how to interpret.
 - finally, they have the Rust source. This may have various [error
   annotations](#error_annotations) which indicate expected compilation errors or
   warnings.
@@ -28,10 +28,12 @@ rough heuristics:
 
 - Some tests have specialized needs:
   - need to run gdb or lldb? use the `debuginfo` test suite
-  - need to inspect LLVM IR or MIR IR? use the `codegen` or `mir-opt` test suites
+  - need to inspect LLVM IR or MIR IR? use the `codegen` or `mir-opt` test
+    suites
   - need to run rustdoc? Prefer a `rustdoc` test
   - need to inspect the resulting binary in some way? Then use `run-make`
-- For most other things, [a `ui` (or `ui-fulldeps`) test](#ui) is to be preferred:
+- For most other things, [a `ui` (or `ui-fulldeps`) test](#ui) is to be
+  preferred:
   - `ui` tests subsume both run-pass, compile-fail, and parse-fail tests
   - in the case of warnings or errors, `ui` tests capture the full output,
     which makes it easier to review but also helps prevent "hidden" regressions
@@ -59,8 +61,8 @@ When writing a new feature, **create a subdirectory to store your
 tests**. For example, if you are implementing RFC 1234 ("Widgets"),
 then it might make sense to put the tests in directories like:
 
-- `src/test/ui/rfc1234-widgets/` 
-- `src/test/run-pass/rfc1234-widgets/` 
+- `src/test/ui/rfc1234-widgets/`
+- `src/test/run-pass/rfc1234-widgets/`
 - etc
 
 In other cases, there may already be a suitable directory. (The proper
@@ -118,16 +120,22 @@ fn main() {
 These are used to ignore the test in some situations, which means the test won't
 be compiled or run.
 
-* `ignore-X` where `X` is a target detail or stage will ignore the test accordingly (see below)
-* `ignore-pretty` will not compile the pretty-printed test (this is done to test the pretty-printer, but might not always work)
+* `ignore-X` where `X` is a target detail or stage will ignore the
+  test accordingly (see below)
+* `ignore-pretty` will not compile the pretty-printed test (this is
+  done to test the pretty-printer, but might not always work)
 * `ignore-test` always ignores the test
-* `ignore-lldb` and `ignore-gdb` will skip a debuginfo test on that debugger.
+* `ignore-lldb` and `ignore-gdb` will skip a debuginfo test on that
+  debugger.
 
 Some examples of `X` in `ignore-X`:
 
-* Architecture: `aarch64`, `arm`, `asmjs`, `mips`, `wasm32`, `x86_64`, `x86`, ...
-* OS: `android`, `emscripten`, `freebsd`, `ios`, `linux`, `macos`, `windows`, ...
-* Environment (fourth word of the target triple): `gnu`, `msvc`, `musl`.
+* Architecture: `aarch64`, `arm`, `asmjs`, `mips`, `wasm32`, `x86_64`,
+  `x86`, ...
+* OS: `android`, `emscripten`, `freebsd`, `ios`, `linux`, `macos`,
+  `windows`, ...
+* Environment (fourth word of the target triple): `gnu`, `msvc`,
+  `musl`.
 * Pointer width: `32bit`, `64bit`.
 * Stage: `stage0`, `stage1`, `stage2`.
 
@@ -140,17 +148,20 @@ source.
 
 * `min-{gdb,lldb}-version`
 * `min-llvm-version`
-* `must-compile-successfully` for UI tests, indicates that the test is supposed
-  to compile, as opposed to the default where the test is supposed to error out.
+* `must-compile-successfully` for UI tests, indicates that the test is
+  supposed to compile, as opposed to the default where the test is
+  supposed to error out.
 * `compile-flags` passes extra command-line args to the compiler,
   e.g. `compile-flags -g` which forces debuginfo to be enabled.
-* `should-fail` indicates that the test should fail; used for "meta testing",
-  where we test the compiletest program itself to check that it will generate
-  errors in appropriate scenarios. This header is ignored for pretty-printer tests.
-* `gate-test-X` where `X` is a feature marks the test as "gate test" for feature X.
-  Such tests are supposed to ensure that the compiler errors when usage of a gated
-  feature is attempted without the proper `#![feature(X)]` tag.
-  Each unstable lang feature is required to have a gate test.
+* `should-fail` indicates that the test should fail; used for "meta
+  testing", where we test the compiletest program itself to check that
+  it will generate errors in appropriate scenarios. This header is
+  ignored for pretty-printer tests.
+* `gate-test-X` where `X` is a feature marks the test as "gate test"
+  for feature X.  Such tests are supposed to ensure that the compiler
+  errors when usage of a gated feature is attempted without the proper
+  `#![feature(X)]` tag.  Each unstable lang feature is required to
+  have a gate test.
 
 [`header.rs`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/header.rs
 
@@ -245,8 +256,10 @@ can also make UI tests where compilation is expected to succeed, and
 you can even run the resulting program. Just add one of the following
 [header commands](#header_commands):
 
-- `// must-compile-successfully` -- compilation should succeed but do not run the resulting binary
-- `// run-pass` -- compilation should succeed and we should run the resulting binary
+- `// must-compile-successfully` -- compilation should succeed but do
+  not run the resulting binary
+- `// run-pass` -- compilation should succeed and we should run the
+  resulting binary
 
 ### Editing and updating the reference files
 
@@ -293,7 +306,8 @@ The corresponding reference file will use the normalized output to test both
 ...
 ```
 
-Please see [`ui/transmute/main.rs`][mrs] and [`main.stderr`][] for a concrete usage example.
+Please see [`ui/transmute/main.rs`][mrs] and [`main.stderr`][] for a
+concrete usage example.
 
 [mrs]: https://github.com/rust-lang/rust/blob/master/src/test/ui/transmute/main.rs
 [`main.stderr`]: https://github.com/rust-lang/rust/blob/master/src/test/ui/transmute/main.stderr

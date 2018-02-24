@@ -2,8 +2,9 @@
 
 The compiler is built using a tool called `x.py`. You will need to
 have Python installed to run it. But before we get to that, if you're going to
-be hacking on rustc, you'll want to tweak the configuration of the compiler. The default
-configuration is oriented towards running the compiler as a user, not a developer.
+be hacking on rustc, you'll want to tweak the configuration of the compiler.
+The default configuration is oriented towards running the compiler as a user,
+not a developer.
 
 ### Create a config.toml
 
@@ -84,15 +85,16 @@ What this command will do is the following:
 - Using this stage 1 compiler, it will build the standard library.
   (this is what the `src/libstd`) means.
 
-This is just a subset of the full rustc build. The **full** rustc build (what you
-get if you just say `./x.py build`) has quite a few more steps:
+This is just a subset of the full rustc build. The **full** rustc build
+(what you get if you just say `./x.py build`) has quite a few more steps:
 
-- Build stage1 rustc with stage0 compiler
-- Build libstd with stage1 compiler (up to here is the same)
-- Build rustc from `src` again, this time with the stage1 compiler (this part is new)
-  - The resulting compiler here is called the "stage2" compiler
-- Build libstd with stage2 compiler
-- Build librustdoc and a bunch of other things
+- Build stage1 rustc with stage0 compiler.
+- Build libstd with stage1 compiler (up to here is the same).
+- Build rustc from `src` again, this time with the stage1 compiler
+  (this part is new).
+  - The resulting compiler here is called the "stage2" compiler.
+- Build libstd with stage2 compiler.
+- Build librustdoc and a bunch of other things.
 
 ### Creating a rustup toolchain
 
@@ -126,12 +128,16 @@ LLVM version: 4.0
 
 ### Other x.py commands
 
-Here are a few other useful x.py commands. We'll cover some of them in detail in other sections:
+Here are a few other useful x.py commands. We'll cover some of them in detail
+in other sections:
 
 - Building things:
-  - `./x.py clean` – clean up the build directory (`rm -rf build` works too, but then you have to rebuild LLVM)
-  - `./x.py build --stage 1` – builds everything using the stage 1 compiler, not just up to libstd
+  - `./x.py clean` – clean up the build directory (`rm -rf build` works too,
+    but then you have to rebuild LLVM)
+  - `./x.py build --stage 1` – builds everything using the stage 1 compiler,
+    not just up to libstd
   - `./x.py build` – builds the stage2 compiler
-- Running tests (see the [section on running tests](./tests/running.html) for more details):
+- Running tests (see the [section on running tests](./tests/running.html) for
+  more details):
   - `./x.py test --stage 1 src/libstd` – runs the `#[test]` tests from libstd
   - `./x.py test --stage 1 src/test/run-pass` – runs the `run-pass` test suite

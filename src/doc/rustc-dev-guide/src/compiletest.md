@@ -1,8 +1,10 @@
 # `compiletest`
 ## Introduction
-`compiletest` is the main test harness of the Rust test suite.  It allows test authors to organize large numbers of tests (the
-Rust compiler has many thousands), efficient test execution (parallel execution is supported), and allows the test author to
-configure behavior and expected results of both individual and groups of tests.
+`compiletest` is the main test harness of the Rust test suite.  It allows
+test authors to organize large numbers of tests (the Rust compiler has many
+thousands), efficient test execution (parallel execution is supported), and
+allows the test author to configure behavior and expected results of both
+individual and groups of tests.
 
 `compiletest` tests may check test code for success, for failure or in some cases, even failure to compile.  Tests are
 typically organized as a Rust source file with annotations in comments before and/or within the test code, which serve to
@@ -12,17 +14,17 @@ testing framework, see [`this chapter`](./tests/intro.html) for additional backg
 The tests themselves are typically (but not always) organized into "suites"--for example, `run-pass`, a folder
 representing tests that should succeed, `run-fail`, a folder holding tests that should compile successfully, but return
 a failure (non-zero status), `compile-fail`, a folder holding tests that should fail to compile, and many more.  The various
-suites are defined in [src/tools/compiletest/src/common.rs](https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/common.rs) in the `pub struct Config` declaration.  And a very good 
+suites are defined in [src/tools/compiletest/src/common.rs](https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/common.rs) in the `pub struct Config` declaration.  And a very good
 introduction to the different suites of compiler tests along with details about them can be found in [`Adding new tests`](./tests/adding.html).
 
 ## Adding a new test file
-Briefly, simply create your new test in the appropriate location under [src/test](https://github.com/rust-lang/rust/tree/master/src/test).  No registration of test files is necessary as 
+Briefly, simply create your new test in the appropriate location under [src/test](https://github.com/rust-lang/rust/tree/master/src/test).  No registration of test files is necessary as
 `compiletest` will scan the [src/test](https://github.com/rust-lang/rust/tree/master/src/test) subfolder recursively, and will execute any Rust source files it finds as tests.
-See [`Adding new tests`](./tests/adding.html) for a complete guide on how to adding new tests. 
+See [`Adding new tests`](./tests/adding.html) for a complete guide on how to adding new tests.
 
 ## Header Commands
 Source file annotations which appear in comments near the top of the source file *before* any test code are known as header
-commands.  These commands can instruct `compiletest` to ignore this test, set expectations on whether it is expected to 
+commands.  These commands can instruct `compiletest` to ignore this test, set expectations on whether it is expected to
 succeed at compiling, or what the test's return code is expected to be.  Header commands (and their inline counterparts,
 Error Info commands) are described more fully [here](./tests/adding.html#header-commands-configuring-rustc).
 
@@ -96,7 +98,7 @@ As a concrete example, here is the implementation for the `parse_failure_status(
      pub normalize_stderr: Vec<(String, String)>,
 +    pub failure_status: i32,
  }
- 
+
  impl TestProps {
 @@ -260,6 +261,7 @@ impl TestProps {
              run_pass: false,
@@ -105,7 +107,7 @@ As a concrete example, here is the implementation for the `parse_failure_status(
 +            failure_status: 101,
          }
      }
- 
+
 @@ -383,6 +385,10 @@ impl TestProps {
              if let Some(rule) = config.parse_custom_normalization(ln, "normalize-stderr") {
                  self.normalize_stderr.push(rule);
@@ -115,12 +117,12 @@ As a concrete example, here is the implementation for the `parse_failure_status(
 +                self.failure_status = code;
 +            }
          });
- 
+
          for key in &["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
 @@ -488,6 +494,13 @@ impl Config {
          self.parse_name_directive(line, "pretty-compare-only")
      }
- 
+
 +    fn parse_failure_status(&self, line: &str) -> Option<i32> {
 +        match self.parse_name_value_directive(line, "failure-status") {
 +            Some(code) => code.trim().parse::<i32>().ok(),
@@ -141,7 +143,7 @@ located in [src/tools/compiletest/src/runtest.rs](https://github.com/rust-lang/r
 ```diff
 @@ -295,11 +295,14 @@ impl<'test> TestCx<'test> {
      }
- 
+
      fn check_correct_failure_status(&self, proc_res: &ProcRes) {
 -        // The value the rust runtime returns on failure
 -        const RUST_ERR: i32 = 101;
@@ -160,7 +162,7 @@ located in [src/tools/compiletest/src/runtest.rs](https://github.com/rust-lang/r
          }
 @@ -320,7 +323,6 @@ impl<'test> TestCx<'test> {
          );
- 
+
          let proc_res = self.exec_compiled_test();
 -
          if !proc_res.status.success() {
@@ -172,7 +174,7 @@ located in [src/tools/compiletest/src/runtest.rs](https://github.com/rust-lang/r
              );
 -            panic!();
          }
-     }    
+     }
 ```
 Note the use of `self.props.failure_status` to access the header command property.  In tests which do not specify the failure
 status header command, `self.props.failure_status` will evaluate to the default value of 101 at the time of this writing.

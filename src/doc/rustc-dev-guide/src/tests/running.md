@@ -24,10 +24,11 @@ generally working correctly would be the following:
 ./x.py test --stage 1 src/test/{ui,compile-fail,run-pass}
 ```
 
-This will run the `ui`, `compile-fail`, and `run-pass` test suites, and
-only with the stage 1 build. Of course, the choice of test suites is somewhat
-arbitrary, and may not suit the task you are doing. For example, if you are hacking
-on debuginfo, you may be better off with the debuginfo test suite:
+This will run the `ui`, `compile-fail`, and `run-pass` test suites,
+and only with the stage 1 build. Of course, the choice of test suites
+is somewhat arbitrary, and may not suit the task you are doing. For
+example, if you are hacking on debuginfo, you may be better off with
+the debuginfo test suite:
 
 ```bash
 ./x.py test --stage 1 src/test/debuginfo

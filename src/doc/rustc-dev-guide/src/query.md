@@ -74,10 +74,12 @@ match queries::type_of::try_get(tcx, DUMMY_SP, self.did) {
 }
 ```
 
-So, if you get back an `Err` from `try_get`, then a cycle *did* occur. This means that
-you must ensure that a compiler error message is reported. You can do that in two ways:
+So, if you get back an `Err` from `try_get`, then a cycle *did* occur. This
+means that you must ensure that a compiler error message is reported. You can
+do that in two ways:
 
-The simplest is to invoke `err.emit()`. This will emit the cycle error to the user.
+The simplest is to invoke `err.emit()`. This will emit the cycle error to the
+user.
 
 However, often cycles happen because of an illegal program, and you
 know at that point that an error either already has been reported or
@@ -192,8 +194,8 @@ fn fubar<'cx, 'tcx>(tcx: TyCtxt<'cx, 'tcx>, key: DefId) -> Fubar<'tcx> { .. }
 
 N.B. Most of the `rustc_*` crates only provide **local
 providers**. Almost all **extern providers** wind up going through the
-[`rustc_metadata` crate][rustc_metadata], which loads the information from the crate
-metadata.  But in some cases there are crates that provide queries for
+[`rustc_metadata` crate][rustc_metadata], which loads the information from the
+crate metadata. But in some cases there are crates that provide queries for
 *both* local and external crates, in which case they define both a
 `provide` and a `provide_extern` function that `rustc_driver` can
 invoke.

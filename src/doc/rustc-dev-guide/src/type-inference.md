@@ -59,13 +59,14 @@ inference works, or perhaps this blog post on
 
 [Unification in the Chalk project]: http://smallcultfollowing.com/babysteps/blog/2017/03/25/unification-in-chalk-part-1/
 
-All said, the inference context stores four kinds of inference variables as of
-writing:
+All told, the inference context stores four kinds of inference variables as of
+this writing:
 
 - Type variables, which come in three varieties:
-  - General type variables (the most common). These can be unified with any type.
-  - Integral type variables, which can only be unified with an integral type, and
-    arise from an integer literal expression like `22`.
+  - General type variables (the most common). These can be unified with any
+    type.
+  - Integral type variables, which can only be unified with an integral type,
+    and arise from an integer literal expression like `22`.
   - Float type variables, which can only be unified with a float type, and
     arise from a float literal expression like `22.0`.
 - Region variables, which represent lifetimes, and arise all over the place.
@@ -177,7 +178,7 @@ form of an "outlives" constraint:
 
     'a: 'b
 
-Actually, the code tends to view them as a subregion relation, but it's the same
+Actually the code tends to view them as a subregion relation, but it's the same
 idea:
 
     'b <= 'a
@@ -185,8 +186,8 @@ idea:
 (There are various other kinds of constriants, such as "verifys"; see
 the `region_constraints` module for details.)
 
-There is one case where we do some amount of eager unification. If you have an equality constraint
-between two regions
+There is one case where we do some amount of eager unification. If you have an
+equality constraint between two regions
 
     'a = 'b
 

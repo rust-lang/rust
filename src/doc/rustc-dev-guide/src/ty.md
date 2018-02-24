@@ -56,8 +56,8 @@ fn not_in_inference<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
 }
 ```
 
-In contrast, if we want to code that can be usable during type inference, then you
-need to declare a distinct `'gcx` and `'tcx` lifetime parameter:
+In contrast, if we want to code that can be usable during type inference, then
+you need to declare a distinct `'gcx` and `'tcx` lifetime parameter:
 
 ```rust
 fn maybe_in_inference<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>, def_id: DefId) {
@@ -141,19 +141,22 @@ In addition to types, there are a number of other arena-allocated data
 structures that you can allocate, and which are found in this
 module. Here are a few examples:
 
-- `Substs`, allocated with `mk_substs` – this will intern a slice of types, often used to
-  specify the values to be substituted for generics (e.g. `HashMap<i32, u32>`
-  would be represented as a slice `&'tcx [tcx.types.i32, tcx.types.u32]`).
+- `Substs`, allocated with `mk_substs` – this will intern a slice of types,
+  often used to specify the values to be substituted for generics
+  (e.g. `HashMap<i32, u32>` would be represented as a slice
+  `&'tcx [tcx.types.i32, tcx.types.u32]`).
 - `TraitRef`, typically passed by value – a **trait reference**
   consists of a reference to a trait along with its various type
   parameters (including `Self`), like `i32: Display` (here, the def-id
   would reference the `Display` trait, and the substs would contain
   `i32`).
-- `Predicate` defines something the trait system has to prove (see `traits` module).
+- `Predicate` defines something the trait system has to prove (see `traits`
+  module).
 
 ### Import conventions
 
-Although there is no hard and fast rule, the `ty` module tends to be used like so:
+Although there is no hard and fast rule, the `ty` module tends to be used like
+so:
 
 ```rust
 use ty::{self, Ty, TyCtxt};

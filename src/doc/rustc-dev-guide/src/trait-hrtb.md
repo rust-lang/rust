@@ -32,7 +32,7 @@ impl<'a> Foo<&'a isize> for AnyInt { }
 
 And the question is, does `AnyInt : for<'a> Foo<&'a isize>`? We want the
 answer to be yes. The algorithm for figuring it out is closely related
-to the subtyping for higher-ranked types (which is described in [here][hrsubtype]
+to the subtyping for higher-ranked types (which is described [here][hrsubtype]
 and also in a [paper by SPJ]. If you wish to understand higher-ranked
 subtyping, we recommend you read the paper). There are a few parts:
 
@@ -83,7 +83,8 @@ skolemized to `'0` and the impl trait reference is instantiated to
 like `'static == '0`. This means that the taint set for `'0` is `{'0,
 'static}`, which fails the leak check.
 
-**TODO**: This is because `'static` is not a region variable but is in the taint set, right?
+**TODO**: This is because `'static` is not a region variable but is in the
+taint set, right?
 
 ## Higher-ranked trait obligations
 
@@ -122,4 +123,5 @@ from. (This is done in `higher_ranked::plug_leaks`). We know that the
 leak check passed, so this taint set consists solely of the skolemized
 region itself plus various intermediate region variables. We then walk
 the trait-reference and convert every region in that taint set back to
-a late-bound region, so in this case we'd wind up with `Baz: for<'a> Bar<&'a isize>`.
+a late-bound region, so in this case we'd wind up with
+`Baz: for<'a> Bar<&'a isize>`.
