@@ -12,7 +12,8 @@ use cmp::Ordering;
 use ops::Try;
 
 use super::{AlwaysOk, LoopState};
-use super::{Chain, Cycle, Cloned, Enumerate, Filter, FilterMap, FlatMap, Fuse};
+use super::{Chain, Cycle, Cloned, Enumerate, Filter, FilterMap, Fuse};
+use super::{Flatten, FlatMap, flatten_compat};
 use super::{Inspect, Map, Peekable, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile, Rev};
 use super::{Zip, Sum, Product};
 use super::{ChainState, FromIterator, ZipImpl};
@@ -997,11 +998,15 @@ pub trait Iterator {
     /// an extra layer of indirection. `flat_map()` will remove this extra layer
     /// on its own.
     ///
+    /// You can think of [`flat_map(f)`][flat_map] as the semantic equivalent
+    /// of [`map`]ping, and then [`flatten`]ing as in `map(f).flatten()`.
+    ///
     /// Another way of thinking about `flat_map()`: [`map`]'s closure returns
     /// one item for each element, and `flat_map()`'s closure returns an
     /// iterator for each element.
     ///
     /// [`map`]: #method.map
+    /// [`flatten`]: #method.flatten
     ///
     /// # Examples
     ///
@@ -1021,7 +1026,79 @@ pub trait Iterator {
     fn flat_map<U, F>(self, f: F) -> FlatMap<Self, U, F>
         where Self: Sized, U: IntoIterator, F: FnMut(Self::Item) -> U,
     {
-        FlatMap{iter: self, f: f, frontiter: None, backiter: None }
+        FlatMap { inner: flatten_compat(self.map(f)) }
+    }
+
+    /// Creates an iterator that flattens nested structure.
+    ///
+    /// This is useful when you have an iterator of iterators or an iterator of
+    /// things that can be turned into iterators and you want to remove one
+    /// level of indirection.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iterator_flatten)]
+    ///
+    /// let data = vec![vec![1, 2, 3, 4], vec![5, 6]];
+    /// let flattened = data.into_iter().flatten().collect::<Vec<u8>>();
+    /// assert_eq!(flattened, &[1, 2, 3, 4, 5, 6]);
+    /// ```
+    ///
+    /// Mapping and then flattening:
+    ///
+    /// ```
+    /// #![feature(iterator_flatten)]
+    ///
+    /// let words = ["alpha", "beta", "gamma"];
+    ///
+    /// // chars() returns an iterator
+    /// let merged: String = words.iter()
+    ///                           .map(|s| s.chars())
+    ///                           .flatten()
+    ///                           .collect();
+    /// assert_eq!(merged, "alphabetagamma");
+    /// ```
+    ///
+    /// You can also rewrite this in terms of [`flat_map()`] which is preferable
+    /// in this case since that conveys intent clearer:
+    ///
+    /// ```
+    /// let words = ["alpha", "beta", "gamma"];
+    ///
+    /// // chars() returns an iterator
+    /// let merged: String = words.iter()
+    ///                           .flat_map(|s| s.chars())
+    ///                           .collect();
+    /// assert_eq!(merged, "alphabetagamma");
+    /// ```
+    ///
+    /// Flattening once only removes one level of nesting:
+    ///
+    /// ```
+    /// #![feature(iterator_flatten)]
+    ///
+    /// let d3 = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]];
+    ///
+    /// let d2 = d3.iter().flatten().collect::<Vec<_>>();
+    /// assert_eq!(d2, [&[1, 2], &[3, 4], &[5, 6], &[7, 8]]);
+    ///
+    /// let d1 = d3.iter().flatten().flatten().collect::<Vec<_>>();
+    /// assert_eq!(d1, [&1, &2, &3, &4, &5, &6, &7, &8]);
+    /// ```
+    ///
+    /// Here we see that `flatten()` does not perform a "deep" flatten.
+    /// Instead, only one level of nesting is removed. That is, if you
+    /// `flatten()` a three-dimensional array the result will be
+    /// two-dimensional and not one-dimensional. To get a one-dimensional
+    /// structure, you have to `flatten()` again.
+    #[inline]
+    #[unstable(feature = "iterator_flatten", issue = "48213")]
+    fn flatten(self) -> Flatten<Self>
+    where Self: Sized, Self::Item: IntoIterator {
+        Flatten { inner: flatten_compat(self) }
     }
 
     /// Creates an iterator which ends after the first [`None`].

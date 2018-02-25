@@ -93,6 +93,7 @@
 #![feature(doc_spotlight)]
 #![feature(rustc_const_unstable)]
 #![feature(iterator_repeat_with)]
+#![feature(iterator_flatten)]
 
 #[prelude_import]
 #[allow(unused)]

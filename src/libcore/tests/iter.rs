@@ -875,6 +875,44 @@ fn test_iterator_flat_map_fold() {
 }
 
 #[test]
+fn test_iterator_flatten() {
+    let xs = [0, 3, 6];
+    let ys = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+    let it = xs.iter().map(|&x| (x..).step_by(1).take(3)).flatten();
+    let mut i = 0;
+    for x in it {
+        assert_eq!(x, ys[i]);
+        i += 1;
+    }
+    assert_eq!(i, ys.len());
+}
+
+/// Test `Flatten::fold` with items already picked off the front and back,
+/// to make sure all parts of the `Flatten` are folded correctly.
+#[test]
+fn test_iterator_flatten_fold() {
+    let xs = [0, 3, 6];
+    let ys = [1, 2, 3, 4, 5, 6, 7];
+    let mut it = xs.iter().map(|&x| x..x+3).flatten();
+    assert_eq!(it.next(), Some(0));
+    assert_eq!(it.next_back(), Some(8));
+    let i = it.fold(0, |i, x| {
+        assert_eq!(x, ys[i]);
+        i + 1
+    });
+    assert_eq!(i, ys.len());
+
+    let mut it = xs.iter().map(|&x| x..x+3).flatten();
+    assert_eq!(it.next(), Some(0));
+    assert_eq!(it.next_back(), Some(8));
+    let i = it.rfold(ys.len(), |i, x| {
+        assert_eq!(x, ys[i - 1]);
+        i - 1
+    });
+    assert_eq!(i, 0);
+}
+
+#[test]
 fn test_inspect() {
     let xs = [1, 2, 3, 4];
     let mut n = 0;
@@ -1275,6 +1313,23 @@ fn test_double_ended_flat_map() {
     let u = [0,1];
     let v = [5,6,7,8];
     let mut it = u.iter().flat_map(|x| &v[*x..v.len()]);
+    assert_eq!(it.next_back().unwrap(), &8);
+    assert_eq!(it.next().unwrap(),      &5);
+    assert_eq!(it.next_back().unwrap(), &7);
+    assert_eq!(it.next_back().unwrap(), &6);
+    assert_eq!(it.next_back().unwrap(), &8);
+    assert_eq!(it.next().unwrap(),      &6);
+    assert_eq!(it.next_back().unwrap(), &7);
+    assert_eq!(it.next_back(), None);
+    assert_eq!(it.next(),      None);
+    assert_eq!(it.next_back(), None);
+}
+
+#[test]
+fn test_double_ended_flatten() {
+    let u = [0,1];
+    let v = [5,6,7,8];
+    let mut it = u.iter().map(|x| &v[*x..v.len()]).flatten();
     assert_eq!(it.next_back().unwrap(), &8);
     assert_eq!(it.next().unwrap(),      &5);
     assert_eq!(it.next_back().unwrap(), &7);
@@ -1977,4 +2032,55 @@ fn test_flat_map_try_folds() {
     assert_eq!(iter.next(), Some(17));
     assert_eq!(iter.try_rfold(0, i8::checked_add), None);
     assert_eq!(iter.next_back(), Some(35));
+}
+
+#[test]
+fn test_flatten_try_folds() {
+    let f = &|acc, x| i32::checked_add(acc*2/3, x);
+    let mr = &|x| (5*x)..(5*x + 5);
+    assert_eq!((0..10).map(mr).flatten().try_fold(7, f), (0..50).try_fold(7, f));
+    assert_eq!((0..10).map(mr).flatten().try_rfold(7, f), (0..50).try_rfold(7, f));
+    let mut iter = (0..10).map(mr).flatten();
+    iter.next(); iter.next_back(); // have front and back iters in progress
+    assert_eq!(iter.try_rfold(7, f), (1..49).try_rfold(7, f));
+
+    let mut iter = (0..10).map(|x| (4*x)..(4*x + 4)).flatten();
+    assert_eq!(iter.try_fold(0, i8::checked_add), None);
+    assert_eq!(iter.next(), Some(17));
+    assert_eq!(iter.try_rfold(0, i8::checked_add), None);
+    assert_eq!(iter.next_back(), Some(35));
+}
+
+#[test]
+fn test_functor_laws() {
+    // identity:
+    fn identity<T>(x: T) -> T { x }
+    assert_eq!((0..10).map(identity).sum::<usize>(), (0..10).sum());
+
+    // composition:
+    fn f(x: usize) -> usize { x + 3 }
+    fn g(x: usize) -> usize { x * 2 }
+    fn h(x: usize) -> usize { g(f(x)) }
+    assert_eq!((0..10).map(f).map(g).sum::<usize>(), (0..10).map(h).sum());
+}
+
+#[test]
+fn test_monad_laws_left_identity() {
+    fn f(x: usize) -> impl Iterator<Item = usize> {
+        (0..10).map(move |y| x * y)
+    }
+    assert_eq!(once(42).flat_map(f.clone()).sum::<usize>(), f(42).sum());
+}
+
+#[test]
+fn test_monad_laws_right_identity() {
+    assert_eq!((0..10).flat_map(|x| once(x)).sum::<usize>(), (0..10).sum());
+}
+
+#[test]
+fn test_monad_laws_associativity() {
+    fn f(x: usize) -> impl Iterator<Item = usize> { 0..x }
+    fn g(x: usize) -> impl Iterator<Item = usize> { (0..x).rev() }
+    assert_eq!((0..10).flat_map(f).flat_map(g).sum::<usize>(),
+                (0..10).flat_map(|x| f(x).flat_map(g)).sum::<usize>());
 }
