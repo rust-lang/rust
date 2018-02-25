@@ -25,4 +25,5 @@ utest-macros = { git = "https://github.com/japaric/utest" }
 c = ["compiler_builtins/c"]
 mem = ["compiler_builtins/mem"]
 mangled-names = ["compiler_builtins/mangled-names"]
+default = ["mangled-names"]
 no_std = []

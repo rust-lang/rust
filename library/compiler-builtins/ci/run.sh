@@ -30,7 +30,8 @@ case $1 in
 
             RUSTFLAGS="-C debug-assertions=no -C lto" \
             CARGO_INCREMENTAL=0 \
-              $run --test $t --features 'no_std mem c' --no-run
+              $run --test $t --no-default-features \
+                   --features 'no_std mem c' --no-run
             qemu-arm-static target/${1}/debug/$t-*
 	done
 
@@ -38,16 +39,17 @@ case $1 in
             t=${t%.rs}
             RUSTFLAGS="-C lto" \
             CARGO_INCREMENTAL=0 \
-              $run --test $t --features 'no_std mem c' --no-run --release
+              $run --test $t --no-default-features \
+                   --features 'no_std mem c' --no-run --release
             qemu-arm-static target/${1}/release/$t-*
         done
         ;;
     *)
         run="cargo test --manifest-path testcrate/Cargo.toml --target $1"
-        $run --features mangled-names
-        $run --features mangled-names --release
-        $run --features 'mangled-names c'
-        $run --features 'mangled-names c' --release
+        $run
+        $run --release
+        $run --features c
+        $run --features c --release
         ;;
 esac
 
