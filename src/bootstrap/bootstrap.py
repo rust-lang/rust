@@ -294,7 +294,7 @@ def default_build_triple():
             raise ValueError('unknown byteorder: {}'.format(sys.byteorder))
         # only the n64 ABI is supported, indicate it
         ostype += 'abi64'
-    elif cputype == 'sparcv9' or cputype == 'sparc64':
+    elif cputype == 'sparc' or cputype == 'sparcv9' or cputype == 'sparc64':
         pass
     else:
         err = "unknown cpu type: {}".format(cputype)
