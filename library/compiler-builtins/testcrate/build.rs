@@ -280,6 +280,20 @@ fn main() {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
+                Some((a.0 <= b.0) as i32)
+            },
+            "compiler_builtins::float::cmp::__lesf2vfp(a, b)");
+        gen(|(a, b): (MyF64, MyF64)| {
+                if a.0.is_nan() || b.0.is_nan() {
+                    return None;
+                }
+                Some((a.0 <= b.0) as i32)
+            },
+            "compiler_builtins::float::cmp::__ledf2vfp(a, b)");
+        gen(|(a, b): (LargeF32, LargeF32)| {
+                if a.0.is_nan() || b.0.is_nan() {
+                    return None;
+                }
                 Some((a.0 != b.0) as i32)
             },
             "compiler_builtins::float::cmp::__nesf2vfp(a, b)");

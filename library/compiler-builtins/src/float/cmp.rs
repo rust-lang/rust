@@ -240,6 +240,14 @@ intrinsics! {
         (a < b) as i32
     }
 
+    pub extern "C" fn __lesf2vfp(a: f32, b: f32) -> i32 {
+        (a <= b) as i32
+    }
+
+    pub extern "C" fn __ledf2vfp(a: f64, b: f64) -> i32 {
+        (a <= b) as i32
+    }
+
     pub extern "C" fn __nesf2vfp(a: f32, b: f32) -> i32 {
         (a != b) as i32
     }

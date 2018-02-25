@@ -115,8 +115,8 @@ features = ["c"]
 - [x] arm/gesf2vfp.S
 - [x] arm/gtdf2vfp.S
 - [x] arm/gtsf2vfp.S
-- [ ] arm/ledf2vfp.S
-- [ ] arm/lesf2vfp.S
+- [x] arm/ledf2vfp.S
+- [x] arm/lesf2vfp.S
 - [x] arm/ltdf2vfp.S
 - [x] arm/ltsf2vfp.S
 - [ ] arm/modsi3.S (generic version is done)
