@@ -205,29 +205,29 @@ pub fn parse(
                     }
                 } else {
                     const VALID_SPECIFIERS: &[&str] = &[
-                        "ident", "block", "stmt", "expr", "pat", "ty",
-                        "path", "meta", "tt", "item", "vis"
+                        "ident", "block", "stmt", "expr", "pat", "ty", "path", "meta", "tt",
+                        "item", "vis",
                     ];
                     match parse_matcher(start_sp, ident, &mut trees.clone()) {
                         Ok((TokenTree::MetaVarDecl(full_sp, _, kind), colon_sp, end_sp))
-                        if start_sp.hi() == colon_sp.lo()
-                        && colon_sp.hi() == end_sp.lo()
-                        && VALID_SPECIFIERS.contains(&&*kind.name.as_str()) => {
+                            if start_sp.hi() == colon_sp.lo() && colon_sp.hi() == end_sp.lo()
+                                && VALID_SPECIFIERS.contains(&&*kind.name.as_str()) =>
+                        {
                             let specifier_sp = colon_sp.with_hi(end_sp.hi());
                             sess.span_diagnostic
                                 .struct_span_warn(
                                     specifier_sp,
-                                    "macro expansion includes fragment specifier"
+                                    "macro expansion includes fragment specifier",
                                 )
                                 .span_suggestion(
                                     full_sp,
                                     "to just use the macro argument, remove the fragment specifier",
-                                    format!("${}", ident)
+                                    format!("${}", ident),
                                 )
                                 .span_suggestion(
                                     specifier_sp,
                                     "to suppress this warning, add a space after the colon",
-                                    format!(": {}", kind)
+                                    format!(": {}", kind),
                                 )
                                 .emit();
                         }
@@ -259,10 +259,10 @@ pub fn parse(
 fn parse_matcher<I>(
     start_sp: Span,
     ident: ast::Ident,
-    trees: &mut I
+    trees: &mut I,
 ) -> Result<(TokenTree, Span, Span), Span>
 where
-    I: Iterator<Item = tokenstream::TokenTree>
+    I: Iterator<Item = tokenstream::TokenTree>,
 {
     match trees.next() {
         Some(tokenstream::TokenTree::Token(colon_sp, token::Colon)) => match trees.next() {
@@ -280,7 +280,9 @@ where
                 Err(span)
             }
         },
-        tree => Err(tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(start_sp))
+        tree => Err(tree.as_ref()
+            .map(tokenstream::TokenTree::span)
+            .unwrap_or(start_sp)),
     }
 }
 
