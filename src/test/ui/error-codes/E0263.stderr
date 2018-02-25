@@ -1,7 +1,7 @@
 error[E0263]: lifetime name `'a` declared twice in the same scope
   --> $DIR/E0263.rs:11:16
    |
-11 | fn foo<'a, 'b, 'a>(x: &'a str, y: &'b str) {
+LL | fn foo<'a, 'b, 'a>(x: &'a str, y: &'b str) {
    |        --      ^^ declared twice
    |        |
    |        previous declaration here

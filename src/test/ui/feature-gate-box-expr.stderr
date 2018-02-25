@@ -1,7 +1,7 @@
 error[E0658]: box expression syntax is experimental; you can call `Box::new` instead. (see issue #27779)
   --> $DIR/feature-gate-box-expr.rs:22:13
    |
-22 |     let x = box 'c'; //~ ERROR box expression syntax is experimental
+LL |     let x = box 'c'; //~ ERROR box expression syntax is experimental
    |             ^^^^^^^
    |
    = help: add #![feature(box_syntax)] to the crate attributes to enable

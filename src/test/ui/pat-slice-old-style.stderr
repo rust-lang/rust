@@ -1,7 +1,7 @@
 error[E0658]: non-reference pattern used to match a reference (see issue #42640)
   --> $DIR/pat-slice-old-style.rs:19:9
    |
-19 |         [a, b..] => {},
+LL |         [a, b..] => {},
    |         ^^^^^^^^ help: consider using a reference: `&[a, b..]`
    |
    = help: add #![feature(match_default_bindings)] to the crate attributes to enable

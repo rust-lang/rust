@@ -1,7 +1,7 @@
 error[E0658]: compiler plugins are experimental and possibly buggy (see issue #29597)
   --> $DIR/feature-gate-plugin_registrar.rs:16:1
    |
-16 | pub fn registrar() {}
+LL | pub fn registrar() {}
    | ^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(plugin_registrar)] to the crate attributes to enable

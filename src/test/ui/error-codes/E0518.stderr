@@ -1,18 +1,18 @@
 error[E0518]: attribute should be applied to function
   --> $DIR/E0518.rs:11:1
    |
-11 | #[inline(always)] //~ ERROR: E0518
+LL | #[inline(always)] //~ ERROR: E0518
    | ^^^^^^^^^^^^^^^^^
-12 | struct Foo;
+LL | struct Foo;
    | ----------- not a function
 
 error[E0518]: attribute should be applied to function
   --> $DIR/E0518.rs:14:1
    |
-14 |   #[inline(never)] //~ ERROR: E0518
+LL |   #[inline(never)] //~ ERROR: E0518
    |   ^^^^^^^^^^^^^^^^
-15 | / impl Foo {
-16 | | }
+LL | / impl Foo {
+LL | | }
    | |_- not a function
 
 error: aborting due to 2 previous errors

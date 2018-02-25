@@ -1,7 +1,7 @@
 error[E0430]: `self` import can only appear once in an import list
   --> $DIR/E0430.rs:11:16
    |
-11 | use std::fmt::{self, self}; //~ ERROR E0430
+LL | use std::fmt::{self, self}; //~ ERROR E0430
    |                ^^^^  ---- another `self` import appears here
    |                |
    |                can only appear once in an import list
@@ -9,7 +9,7 @@ error[E0430]: `self` import can only appear once in an import list
 error[E0252]: the name `fmt` is defined multiple times
   --> $DIR/E0430.rs:11:22
    |
-11 | use std::fmt::{self, self}; //~ ERROR E0430
+LL | use std::fmt::{self, self}; //~ ERROR E0430
    |                ----  ^^^^ `fmt` reimported here
    |                |
    |                previous import of the module `fmt` here
@@ -17,7 +17,7 @@ error[E0252]: the name `fmt` is defined multiple times
    = note: `fmt` must be defined only once in the type namespace of this module
 help: You can use `as` to change the binding name of the import
    |
-11 | use std::fmt::{self, self as other_fmt}; //~ ERROR E0430
+LL | use std::fmt::{self, self as other_fmt}; //~ ERROR E0430
    |                      ^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors

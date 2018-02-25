@@ -1,7 +1,7 @@
 error[E0275]: overflow evaluating the requirement `Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<T>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: std::marker::Sized`
   --> $DIR/E0275.rs:15:1
    |
-15 | impl<T> Foo for T where Bar<T>: Foo {} //~ ERROR E0275
+LL | impl<T> Foo for T where Bar<T>: Foo {} //~ ERROR E0275
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider adding a `#![recursion_limit="128"]` attribute to your crate
@@ -72,7 +72,7 @@ error[E0275]: overflow evaluating the requirement `Bar<Bar<Bar<Bar<Bar<Bar<Bar<B
 note: required by `Foo`
   --> $DIR/E0275.rs:11:1
    |
-11 | trait Foo {}
+LL | trait Foo {}
    | ^^^^^^^^^
 
 error: aborting due to previous error

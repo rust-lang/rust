@@ -1,76 +1,76 @@
 error[E0423]: expected value, found struct `Z`
   --> $DIR/privacy-struct-ctor.rs:30:9
    |
-30 |         Z;
+LL |         Z;
    |         ^
    |         |
    |         did you mean `S`?
    |         constructor is not visible here due to private fields
 help: possible better candidate is found in another module, you can import it into scope
    |
-25 |     use m::n::Z;
+LL |     use m::n::Z;
    |
 
 error[E0423]: expected value, found struct `S`
   --> $DIR/privacy-struct-ctor.rs:43:5
    |
-43 |     S;
+LL |     S;
    |     ^ constructor is not visible here due to private fields
 help: possible better candidate is found in another module, you can import it into scope
    |
-35 | use m::S;
+LL | use m::S;
    |
 
 error[E0423]: expected value, found struct `S2`
   --> $DIR/privacy-struct-ctor.rs:48:5
    |
-48 |     S2;
+LL |     S2;
    |     ^^ did you mean `S2 { /* fields */ }`?
 
 error[E0423]: expected value, found struct `xcrate::S`
   --> $DIR/privacy-struct-ctor.rs:53:5
    |
-53 |     xcrate::S;
+LL |     xcrate::S;
    |     ^^^^^^^^^ constructor is not visible here due to private fields
 help: possible better candidate is found in another module, you can import it into scope
    |
-35 | use m::S;
+LL | use m::S;
    |
 
 error[E0603]: tuple struct `Z` is private
   --> $DIR/privacy-struct-ctor.rs:28:9
    |
-28 |         n::Z;
+LL |         n::Z;
    |         ^^^^
 
 error[E0603]: tuple struct `S` is private
   --> $DIR/privacy-struct-ctor.rs:39:5
    |
-39 |     m::S;
+LL |     m::S;
    |     ^^^^
 
 error[E0603]: tuple struct `S` is private
   --> $DIR/privacy-struct-ctor.rs:41:16
    |
-41 |     let _: S = m::S(2);
+LL |     let _: S = m::S(2);
    |                ^^^^
 
 error[E0603]: tuple struct `Z` is private
   --> $DIR/privacy-struct-ctor.rs:45:5
    |
-45 |     m::n::Z;
+LL |     m::n::Z;
    |     ^^^^^^^
 
 error[E0603]: tuple struct `S` is private
   --> $DIR/privacy-struct-ctor.rs:51:5
    |
-51 |     xcrate::m::S;
+LL |     xcrate::m::S;
    |     ^^^^^^^^^^^^
 
 error[E0603]: tuple struct `Z` is private
   --> $DIR/privacy-struct-ctor.rs:55:5
    |
-55 |     xcrate::m::n::Z;
+LL |     xcrate::m::n::Z;
    |     ^^^^^^^^^^^^^^^
 
 error: aborting due to 10 previous errors

@@ -1,15 +1,15 @@
 warning: not reporting region error due to -Znll
   --> $DIR/region-lbr-anon-does-not-outlive-static.rs:19:5
    |
-19 |     &*x
+LL |     &*x
    |     ^^^
 
 error[E0621]: explicit lifetime required in the type of `x`
   --> $DIR/region-lbr-anon-does-not-outlive-static.rs:19:5
    |
-18 | fn foo(x: &u32) -> &'static u32 {
+LL | fn foo(x: &u32) -> &'static u32 {
    |        - consider changing the type of `x` to `&ReStatic u32`
-19 |     &*x
+LL |     &*x
    |     ^^^ lifetime `ReStatic` required
 
 error: aborting due to previous error

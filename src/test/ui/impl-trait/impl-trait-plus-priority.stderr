@@ -1,67 +1,67 @@
 error: ambiguous `+` in a type
   --> $DIR/impl-trait-plus-priority.rs:33:18
    |
-33 | type A = fn() -> impl A +;
+LL | type A = fn() -> impl A +;
    |                  ^^^^^^^^ help: use parentheses to disambiguate: `(impl A)`
 
 error: ambiguous `+` in a type
   --> $DIR/impl-trait-plus-priority.rs:35:18
    |
-35 | type A = fn() -> impl A + B;
+LL | type A = fn() -> impl A + B;
    |                  ^^^^^^^^^^ help: use parentheses to disambiguate: `(impl A + B)`
 
 error: ambiguous `+` in a type
   --> $DIR/impl-trait-plus-priority.rs:37:18
    |
-37 | type A = fn() -> dyn A + B;
+LL | type A = fn() -> dyn A + B;
    |                  ^^^^^^^^^ help: use parentheses to disambiguate: `(dyn A + B)`
 
 error[E0178]: expected a path on the left-hand side of `+`, not `fn() -> A`
   --> $DIR/impl-trait-plus-priority.rs:39:10
    |
-39 | type A = fn() -> A + B;
+LL | type A = fn() -> A + B;
    |          ^^^^^^^^^^^^^ perhaps you forgot parentheses?
 
 error: ambiguous `+` in a type
   --> $DIR/impl-trait-plus-priority.rs:42:18
    |
-42 | type A = Fn() -> impl A +;
+LL | type A = Fn() -> impl A +;
    |                  ^^^^^^^^ help: use parentheses to disambiguate: `(impl A)`
 
 error: ambiguous `+` in a type
   --> $DIR/impl-trait-plus-priority.rs:44:18
    |
-44 | type A = Fn() -> impl A + B;
+LL | type A = Fn() -> impl A + B;
    |                  ^^^^^^^^^^ help: use parentheses to disambiguate: `(impl A + B)`
 
 error: ambiguous `+` in a type
   --> $DIR/impl-trait-plus-priority.rs:46:18
    |
-46 | type A = Fn() -> dyn A + B;
+LL | type A = Fn() -> dyn A + B;
    |                  ^^^^^^^^^ help: use parentheses to disambiguate: `(dyn A + B)`
 
 error: ambiguous `+` in a type
   --> $DIR/impl-trait-plus-priority.rs:50:11
    |
-50 | type A = &impl A +;
+LL | type A = &impl A +;
    |           ^^^^^^^^ help: use parentheses to disambiguate: `(impl A)`
 
 error: ambiguous `+` in a type
   --> $DIR/impl-trait-plus-priority.rs:52:11
    |
-52 | type A = &impl A + B;
+LL | type A = &impl A + B;
    |           ^^^^^^^^^^ help: use parentheses to disambiguate: `(impl A + B)`
 
 error: ambiguous `+` in a type
   --> $DIR/impl-trait-plus-priority.rs:54:11
    |
-54 | type A = &dyn A + B;
+LL | type A = &dyn A + B;
    |           ^^^^^^^^^ help: use parentheses to disambiguate: `(dyn A + B)`
 
 error[E0178]: expected a path on the left-hand side of `+`, not `&A`
   --> $DIR/impl-trait-plus-priority.rs:56:10
    |
-56 | type A = &A + B;
+LL | type A = &A + B;
    |          ^^^^^^ help: try adding parentheses: `&(A + B)`
 
 error: aborting due to 11 previous errors

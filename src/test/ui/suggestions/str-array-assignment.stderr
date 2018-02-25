@@ -1,7 +1,7 @@
 error[E0308]: if and else have incompatible types
   --> $DIR/str-array-assignment.rs:13:11
    |
-13 |   let t = if true { s[..2] } else { s };
+LL |   let t = if true { s[..2] } else { s };
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected str, found &str
    |
    = note: expected type `str`
@@ -10,10 +10,10 @@ error[E0308]: if and else have incompatible types
 error[E0308]: mismatched types
   --> $DIR/str-array-assignment.rs:15:27
    |
-11 | fn main() {
+LL | fn main() {
    |           - expected `()` because of default return type
 ...
-15 |   let u: &str = if true { s[..2] } else { s };
+LL |   let u: &str = if true { s[..2] } else { s };
    |                           ^^^^^^ expected &str, found str
    |
    = note: expected type `&str`
@@ -22,7 +22,7 @@ error[E0308]: mismatched types
 error[E0277]: the trait bound `str: std::marker::Sized` is not satisfied
   --> $DIR/str-array-assignment.rs:17:7
    |
-17 |   let v = s[..2];
+LL |   let v = s[..2];
    |       ^   ------ help: consider borrowing here: `&s[..2]`
    |       |
    |       `str` does not have a constant size known at compile-time
@@ -33,7 +33,7 @@ error[E0277]: the trait bound `str: std::marker::Sized` is not satisfied
 error[E0308]: mismatched types
   --> $DIR/str-array-assignment.rs:19:17
    |
-19 |   let w: &str = s[..2];
+LL |   let w: &str = s[..2];
    |                 ^^^^^^
    |                 |
    |                 expected &str, found str

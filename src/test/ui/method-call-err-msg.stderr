@@ -1,37 +1,37 @@
 error[E0061]: this function takes 0 parameters but 1 parameter was supplied
   --> $DIR/method-call-err-msg.rs:22:7
    |
-15 |     fn zero(self) -> Foo { self }
+LL |     fn zero(self) -> Foo { self }
    |     -------------------- defined here
 ...
-22 |     x.zero(0)   //~ ERROR this function takes 0 parameters but 1 parameter was supplied
+LL |     x.zero(0)   //~ ERROR this function takes 0 parameters but 1 parameter was supplied
    |       ^^^^ expected 0 parameters
 
 error[E0061]: this function takes 1 parameter but 0 parameters were supplied
   --> $DIR/method-call-err-msg.rs:23:7
    |
-16 |     fn one(self, _: isize) -> Foo { self }
+LL |     fn one(self, _: isize) -> Foo { self }
    |     ----------------------------- defined here
 ...
-23 |      .one()     //~ ERROR this function takes 1 parameter but 0 parameters were supplied
+LL |      .one()     //~ ERROR this function takes 1 parameter but 0 parameters were supplied
    |       ^^^ expected 1 parameter
 
 error[E0061]: this function takes 2 parameters but 1 parameter was supplied
   --> $DIR/method-call-err-msg.rs:24:7
    |
-17 |     fn two(self, _: isize, _: isize) -> Foo { self }
+LL |     fn two(self, _: isize, _: isize) -> Foo { self }
    |     --------------------------------------- defined here
 ...
-24 |      .two(0);   //~ ERROR this function takes 2 parameters but 1 parameter was supplied
+LL |      .two(0);   //~ ERROR this function takes 2 parameters but 1 parameter was supplied
    |       ^^^ expected 2 parameters
 
 error[E0599]: no method named `take` found for type `Foo` in the current scope
   --> $DIR/method-call-err-msg.rs:28:7
    |
-13 | pub struct Foo;
+LL | pub struct Foo;
    | --------------- method `take` not found for this
 ...
-28 |      .take()    //~ ERROR no method named `take` found for type `Foo` in the current scope
+LL |      .take()    //~ ERROR no method named `take` found for type `Foo` in the current scope
    |       ^^^^
    |
    = note: the method `take` exists but the following trait bounds were not satisfied:

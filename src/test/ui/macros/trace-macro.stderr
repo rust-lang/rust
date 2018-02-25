@@ -1,7 +1,7 @@
 note: trace_macro
   --> $DIR/trace-macro.rs:15:5
    |
-15 |     println!("Hello, World!");
+LL |     println!("Hello, World!");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: expanding `println! { "Hello, World!" }`
