@@ -227,8 +227,7 @@ assert_eq!(parts.next(), None);
 [reference-level-explanation]: #reference-level-explanation
 
 It is trivial to apply the pattern API to `OsStr` on platforms where it is just an `[u8]`. The main
-difficulty is on Windows where it is an `[u16]` encoded as WTF-8. This RFC thus focuses on Windows
-only.
+difficulty is on Windows where it is an `[u16]` encoded as WTF-8. This RFC thus focuses on Windows.
 
 We will generalize the encoding of `OsStr` to specify these two capabilities:
 
@@ -262,12 +261,43 @@ representing the high surrogate by the first 3 bytes, and the low surrogate by t
 "\u{10000}"[2..] =    90 80 80
 ```
 
+The index splitting the surrogate pair will be positioned at the middle of the 4-byte sequence
+(index "2" in the above example).
+
 Note that this means:
 
 1. `x[..i]` and `x[i..]` will have overlapping parts. This makes `OsStr::split_at_mut` (if exists)
     unable to split a surrogate pair in half. This also means `Pattern<&mut OsStr>` cannot be
     implemented for `&OsStr`.
 2. The length of `x[..n]` may be longer than `n`.
+
+### Platform-agnostic guarantees
+
+If an index points to an invalid position (e.g. `\u{1000}[1..]` or `"\u{10000}"[1..]` or
+`"\u{10000}"[3..]`), a panic will be raised, similar to that of `str`. The following are guaranteed
+to be valid positions on all platforms:
+
+* `0`.
+* `self.len()`.
+* The returned indices from `find()`, `rfind()`, `match_indices()` and `rmatch_indices()`.
+* The returned ranges from `find_range()`, `rfind_range()`, `match_ranges()` and `rmatch_ranges()`.
+
+Index arithmetic is wrong for `OsStr`, i.e. `i + n` may not produce the correct index (see
+[Drawbacks](#drawbacks)).
+
+For WTF-8 encoding on Windows, we define:
+
+* boundary of a character or surrogate byte sequence is Valid.
+* middle (byte 2) of a 4-byte sequence is Valid.
+* interior of a 2- or 3-byte sequence is Invalid.
+* byte 1 or 3 of a 4-byte sequence is Invalid.
+
+Outside of Windows where the `OsStr` consists of arbitrary bytes, all numbers within
+`0 ..= self.len()` are considered a valid index. This is because we want to allow
+`os_str.find(OsStr::from_bytes(b"\xff"))`, and thus cannot use UTF-8 to reason with a Unix `OsStr`.
+
+Note that we have never guaranteed the actual `OsStr` encoding, these should only be considered an
+implementation detail.
 
 ## Comparison and storage
 
@@ -284,7 +314,9 @@ We can this transformation “*canonicalization*”.
 All owned `OsStr` should be canonicalized to contain well-formed WTF-8 only: `Box<OsStr>`,
 `Rc<OsStr>`, `Arc<OsStr>` and `OsString`.
 
-Two `OsStr` are compared equal if they have the same canonicalization.
+Two `OsStr` are compared equal if they have the same canonicalization. This may slightly reduce the
+performance with a constant overhead, since there would be more checking involving the first and
+last three bytes.
 
 ## Matching
 
@@ -423,7 +455,9 @@ match self.matcher.next_match() {
 # Rationale and alternatives
 [alternatives]: #alternatives
 
-This is the only design which allows borrowing a sub-slice of a surrogate code point from a
+## Indivisible surrogate pair
+
+This RFC is the only design which allows borrowing a sub-slice of a surrogate code point from a
 surrogate pair.
 
 An alternative is keep using the vanilla WTF-8, and treat a surrogate pair as an atomic entity:
@@ -445,6 +479,47 @@ There are two potential implementations when we want to match with an unpaired s
 
 Note that, for consistency, we need to make `"\u{10000}".starts_with("\u{d800}")` return `false` or
 panic.
+
+## Slicing at real byte offset
+
+The current RFC defines the index that splits a surrogate pair into half at byte 2 of the 4-byte
+sequence. This has the drawback of `"\u{10000}"[..2].len() == 3`, and caused index arithmetic to be
+wrong.
+
+```
+"\u{10000}"      = f0 90 80 80
+"\u{10000}"[..2] = f0 90 80
+"\u{10000}"[2..] =    90 80 80
+```
+
+The main advantage of this scheme is we could use the same number as the start and end index.
+
+```rust
+let s = OsStr::new("\u{10000}");
+assert_eq!(s.len(), 4);
+let index = s.find('\u{dc00}').unwrap();
+let right = &s[index..];  // [90 80 80]
+let left = &s[..index];   // [f0 90 80]
+```
+
+An alternative make the index refer to the real byte offsets:
+
+```
+"\u{10000}"      = f0 90 80 80
+"\u{10000}"[..3] = f0 90 80
+"\u{10000}"[1..] =    90 80 80
+```
+
+However the question would be, what should `s[..1]` do?
+
+* **Panic** — But this means we cannot get `left`. We could inspect the raw bytes of `s` itself and
+    perform `&s[..(index + 2)]`, but we never explicitly exposed the encoding of `OsStr`, so we
+    cannot read a single byte and thus impossible to do this.
+
+* **Treat as same as `s[..3]`** — But then this inherits all the disadvantages of using 2 as valid
+    index, plus we need to consider whether `s[1..3]` and `s[3..1]` should be valid.
+
+Given these, we decided not to treat the real byte offsets as valid indices.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
