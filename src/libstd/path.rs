@@ -905,7 +905,7 @@ impl<'a> DoubleEndedIterator for Iter<'a> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.25.0")]
 impl<'a> FusedIterator for Iter<'a> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1008,7 +1008,7 @@ impl<'a> DoubleEndedIterator for Components<'a> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.25.0")]
 impl<'a> FusedIterator for Components<'a> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
