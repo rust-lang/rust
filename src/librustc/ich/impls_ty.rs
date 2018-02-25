@@ -56,8 +56,19 @@ for ty::subst::Kind<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
-        self.as_type().hash_stable(hcx, hasher);
-        self.as_region().hash_stable(hcx, hasher);
+        self.unpack().hash_stable(hcx, hasher);
+    }
+}
+
+impl<'gcx> HashStable<StableHashingContext<'gcx>>
+for ty::subst::UnpackedKind<'gcx> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        match self {
+            ty::subst::UnpackedKind::Lifetime(lt) => lt.hash_stable(hcx, hasher),
+            ty::subst::UnpackedKind::Type(ty) => ty.hash_stable(hcx, hasher),
+        }
     }
 }
 

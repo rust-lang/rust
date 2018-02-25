@@ -18,6 +18,7 @@ use serialize::{self, Encodable, Encoder, Decodable, Decoder};
 use syntax_pos::{Span, DUMMY_SP};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 
+use core::intrinsics;
 use core::nonzero::NonZero;
 use std::fmt;
 use std::iter;
@@ -29,7 +30,7 @@ use std::mem;
 /// To reduce memory usage, a `Kind` is a interned pointer,
 /// with the lowest 2 bits being reserved for a tag to
 /// indicate the type (`Ty` or `Region`) it points to.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Kind<'tcx> {
     ptr: NonZero<usize>,
     marker: PhantomData<(Ty<'tcx>, ty::Region<'tcx>)>
@@ -39,15 +40,29 @@ const TAG_MASK: usize = 0b11;
 const TYPE_TAG: usize = 0b00;
 const REGION_TAG: usize = 0b01;
 
-impl<'tcx> From<Ty<'tcx>> for Kind<'tcx> {
-    fn from(ty: Ty<'tcx>) -> Kind<'tcx> {
-        // Ensure we can use the tag bits.
-        assert_eq!(mem::align_of_val(ty) & TAG_MASK, 0);
+pub enum UnpackedKind<'tcx> {
+    Lifetime(ty::Region<'tcx>),
+    Type(Ty<'tcx>),
+}
 
-        let ptr = ty as *const _ as usize;
+impl<'tcx> UnpackedKind<'tcx> {
+    fn pack(self) -> Kind<'tcx> {
+        let (tag, ptr) = match self {
+            UnpackedKind::Lifetime(lt) => {
+                // Ensure we can use the tag bits.
+                assert_eq!(mem::align_of_val(lt) & TAG_MASK, 0);
+                (REGION_TAG, lt as *const _ as usize)
+            }
+            UnpackedKind::Type(ty) => {
+                // Ensure we can use the tag bits.
+                assert_eq!(mem::align_of_val(ty) & TAG_MASK, 0);
+                (TYPE_TAG, ty as *const _ as usize)
+            }
+        };
+
         Kind {
             ptr: unsafe {
-                NonZero::new_unchecked(ptr | TYPE_TAG)
+                NonZero::new_unchecked(ptr | tag)
             },
             marker: PhantomData
         }
@@ -56,88 +71,60 @@ impl<'tcx> From<Ty<'tcx>> for Kind<'tcx> {
 
 impl<'tcx> From<ty::Region<'tcx>> for Kind<'tcx> {
     fn from(r: ty::Region<'tcx>) -> Kind<'tcx> {
-        // Ensure we can use the tag bits.
-        assert_eq!(mem::align_of_val(r) & TAG_MASK, 0);
+        UnpackedKind::Lifetime(r).pack()
+    }
+}
 
-        let ptr = r as *const _ as usize;
-        Kind {
-            ptr: unsafe {
-                NonZero::new_unchecked(ptr | REGION_TAG)
-            },
-            marker: PhantomData
-        }
+impl<'tcx> From<Ty<'tcx>> for Kind<'tcx> {
+    fn from(ty: Ty<'tcx>) -> Kind<'tcx> {
+        UnpackedKind::Type(ty).pack()
     }
 }
 
 impl<'tcx> Kind<'tcx> {
     #[inline]
-    unsafe fn downcast<T>(self, tag: usize) -> Option<&'tcx T> {
+    pub fn unpack(self) -> UnpackedKind<'tcx> {
         let ptr = self.ptr.get();
-        if ptr & TAG_MASK == tag {
-            Some(&*((ptr & !TAG_MASK) as *const _))
-        } else {
-            None
-        }
-    }
-
-    #[inline]
-    pub fn as_type(self) -> Option<Ty<'tcx>> {
         unsafe {
-            self.downcast(TYPE_TAG)
-        }
-    }
-
-    #[inline]
-    pub fn as_region(self) -> Option<ty::Region<'tcx>> {
-        unsafe {
-            self.downcast(REGION_TAG)
+            match ptr & TAG_MASK {
+                REGION_TAG => UnpackedKind::Lifetime(&*((ptr & !TAG_MASK) as *const _)),
+                TYPE_TAG => UnpackedKind::Type(&*((ptr & !TAG_MASK) as *const _)),
+                _ => intrinsics::unreachable()
+            }
         }
     }
 }
 
 impl<'tcx> fmt::Debug for Kind<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Some(ty) = self.as_type() {
-            write!(f, "{:?}", ty)
-        } else if let Some(r) = self.as_region() {
-            write!(f, "{:?}", r)
-        } else {
-            write!(f, "<unknown @ {:p}>", self.ptr.get() as *const ())
+        match self.unpack() {
+            UnpackedKind::Lifetime(lt) => write!(f, "{:?}", lt),
+            UnpackedKind::Type(ty) => write!(f, "{:?}", ty),
         }
     }
 }
 
 impl<'tcx> fmt::Display for Kind<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Some(ty) = self.as_type() {
-            write!(f, "{}", ty)
-        } else if let Some(r) = self.as_region() {
-            write!(f, "{}", r)
-        } else {
-            // FIXME(RFC 2000): extend this if/else chain when we support const generic.
-            unimplemented!();
+        match self.unpack() {
+            UnpackedKind::Lifetime(lt) => write!(f, "{}", lt),
+            UnpackedKind::Type(ty) => write!(f, "{}", ty),
         }
     }
 }
 
 impl<'tcx> TypeFoldable<'tcx> for Kind<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        if let Some(ty) = self.as_type() {
-            Kind::from(ty.fold_with(folder))
-        } else if let Some(r) = self.as_region() {
-            Kind::from(r.fold_with(folder))
-        } else {
-            bug!()
+        match self.unpack() {
+            UnpackedKind::Lifetime(lt) => lt.fold_with(folder).into(),
+            UnpackedKind::Type(ty) => ty.fold_with(folder).into(),
         }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        if let Some(ty) = self.as_type() {
-            ty.visit_with(visitor)
-        } else if let Some(r) = self.as_region() {
-            r.visit_with(visitor)
-        } else {
-            bug!()
+        match self.unpack() {
+            UnpackedKind::Lifetime(lt) => lt.visit_with(visitor),
+            UnpackedKind::Type(ty) => ty.visit_with(visitor),
         }
     }
 }
@@ -145,16 +132,17 @@ impl<'tcx> TypeFoldable<'tcx> for Kind<'tcx> {
 impl<'tcx> Encodable for Kind<'tcx> {
     fn encode<E: Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
         e.emit_enum("Kind", |e| {
-            if let Some(ty) = self.as_type() {
-                e.emit_enum_variant("Ty", TYPE_TAG, 1, |e| {
-                    e.emit_enum_variant_arg(0, |e| ty.encode(e))
-                })
-            } else if let Some(r) = self.as_region() {
-                e.emit_enum_variant("Region", REGION_TAG, 1, |e| {
-                    e.emit_enum_variant_arg(0, |e| r.encode(e))
-                })
-            } else {
-                bug!()
+            match self.unpack() {
+                UnpackedKind::Lifetime(lt) => {
+                    e.emit_enum_variant("Region", REGION_TAG, 1, |e| {
+                        e.emit_enum_variant_arg(0, |e| lt.encode(e))
+                    })
+                }
+                UnpackedKind::Type(ty) => {
+                    e.emit_enum_variant("Ty", TYPE_TAG, 1, |e| {
+                        e.emit_enum_variant_arg(0, |e| ty.encode(e))
+                    })
+                }
             }
         })
     }
@@ -247,7 +235,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
             let def = types.next().unwrap();
             let ty = mk_type(def, substs);
             assert_eq!(def.index as usize, substs.len());
-            substs.push(Kind::from(ty));
+            substs.push(ty.into());
         }
 
         for def in &defs.regions {
@@ -269,26 +257,42 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
 
     #[inline]
     pub fn types(&'a self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'a {
-        self.iter().filter_map(|k| k.as_type())
+        self.iter().filter_map(|k| {
+            if let UnpackedKind::Type(ty) = k.unpack() {
+                Some(ty)
+            } else {
+                None
+            }
+        })
     }
 
     #[inline]
     pub fn regions(&'a self) -> impl DoubleEndedIterator<Item=ty::Region<'tcx>> + 'a {
-        self.iter().filter_map(|k| k.as_region())
+        self.iter().filter_map(|k| {
+            if let UnpackedKind::Lifetime(lt) = k.unpack() {
+                Some(lt)
+            } else {
+                None
+            }
+        })
     }
 
     #[inline]
     pub fn type_at(&self, i: usize) -> Ty<'tcx> {
-        self[i].as_type().unwrap_or_else(|| {
+        if let UnpackedKind::Type(ty) = self[i].unpack() {
+            ty
+        } else {
             bug!("expected type for param #{} in {:?}", i, self);
-        })
+        }
     }
 
     #[inline]
     pub fn region_at(&self, i: usize) -> ty::Region<'tcx> {
-        self[i].as_region().unwrap_or_else(|| {
+        if let UnpackedKind::Lifetime(lt) = self[i].unpack() {
+            lt
+        } else {
             bug!("expected region for param #{} in {:?}", i, self);
-        })
+        }
     }
 
     #[inline]
@@ -413,13 +417,12 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for SubstFolder<'a, 'gcx, 'tcx> {
         // the specialized routine `ty::replace_late_regions()`.
         match *r {
             ty::ReEarlyBound(data) => {
-                let r = self.substs.get(data.index as usize)
-                            .and_then(|k| k.as_region());
+                let r = self.substs.get(data.index as usize).map(|k| k.unpack());
                 match r {
-                    Some(r) => {
-                        self.shift_region_through_binders(r)
+                    Some(UnpackedKind::Lifetime(lt)) => {
+                        self.shift_region_through_binders(lt)
                     }
-                    None => {
+                    _ => {
                         let span = self.span.unwrap_or(DUMMY_SP);
                         span_bug!(
                             span,
@@ -470,11 +473,10 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for SubstFolder<'a, 'gcx, 'tcx> {
 impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
     fn ty_for_param(&self, p: ty::ParamTy, source_ty: Ty<'tcx>) -> Ty<'tcx> {
         // Look up the type in the substitutions. It really should be in there.
-        let opt_ty = self.substs.get(p.idx as usize)
-                         .and_then(|k| k.as_type());
+        let opt_ty = self.substs.get(p.idx as usize).map(|k| k.unpack());
         let ty = match opt_ty {
-            Some(t) => t,
-            None => {
+            Some(UnpackedKind::Type(ty)) => ty,
+            _ => {
                 let span = self.span.unwrap_or(DUMMY_SP);
                 span_bug!(
                     span,
@@ -600,7 +602,7 @@ impl<'a, 'gcx, 'tcx> ty::PolyExistentialTraitRef<'tcx> {
             ty::TraitRef {
                 def_id: trait_ref.def_id,
                 substs: tcx.mk_substs(
-                    iter::once(Kind::from(self_ty)).chain(trait_ref.substs.iter().cloned()))
+                    iter::once(self_ty.into()).chain(trait_ref.substs.iter().cloned()))
             }
         })
     }

@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[derive(Debug, PartialEq)]
-pub struct S;
+// aux-build:issue-48414.rs
 
-#[derive(Debug)]
-pub struct Z;
+// ICE when resolving paths for a trait that linked to another trait, when both were in an external
+// crate
 
-pub trait Tr<'a> {}
+#![crate_name = "base"]
+
+extern crate issue_48414;
+
+#[doc(inline)]
+pub use issue_48414::{SomeTrait, OtherTrait};

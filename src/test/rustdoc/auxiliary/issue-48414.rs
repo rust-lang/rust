@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[derive(Debug, PartialEq)]
-pub struct S;
+/// Woah, this trait links to [OtherTrait](OtherTrait)!
+pub trait SomeTrait {}
 
-#[derive(Debug)]
-pub struct Z;
-
-pub trait Tr<'a> {}
+/// Woah, this trait links to [SomeTrait](SomeTrait)!
+pub trait OtherTrait {}

@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[derive(Debug, PartialEq)]
-pub struct S;
-
-#[derive(Debug)]
-pub struct Z;
-
-pub trait Tr<'a> {}
+fn main() {
+    if let 0 | 1 = 0 { //~ ERROR multiple patterns in `if let` and `while let` are unstable
+        ;
+    }
+    while let 0 | 1 = 1 { //~ ERROR multiple patterns in `if let` and `while let` are unstable
+        break;
+    }
+}

@@ -1767,11 +1767,11 @@ impl<'a> State<'a> {
                         self.print_else(e.as_ref().map(|e| &**e))
                     }
                     // "another else-if-let"
-                    ast::ExprKind::IfLet(ref pat, ref expr, ref then, ref e) => {
+                    ast::ExprKind::IfLet(ref pats, ref expr, ref then, ref e) => {
                         self.cbox(INDENT_UNIT - 1)?;
                         self.ibox(0)?;
                         self.s.word(" else if let ")?;
-                        self.print_pat(pat)?;
+                        self.print_pats(pats)?;
                         self.s.space()?;
                         self.word_space("=")?;
                         self.print_expr_as_cond(expr)?;
@@ -1805,10 +1805,10 @@ impl<'a> State<'a> {
         self.print_else(elseopt)
     }
 
-    pub fn print_if_let(&mut self, pat: &ast::Pat, expr: &ast::Expr, blk: &ast::Block,
+    pub fn print_if_let(&mut self, pats: &[P<ast::Pat>], expr: &ast::Expr, blk: &ast::Block,
                         elseopt: Option<&ast::Expr>) -> io::Result<()> {
         self.head("if let")?;
-        self.print_pat(pat)?;
+        self.print_pats(pats)?;
         self.s.space()?;
         self.word_space("=")?;
         self.print_expr_as_cond(expr)?;
@@ -2109,8 +2109,8 @@ impl<'a> State<'a> {
             ast::ExprKind::If(ref test, ref blk, ref elseopt) => {
                 self.print_if(test, blk, elseopt.as_ref().map(|e| &**e))?;
             }
-            ast::ExprKind::IfLet(ref pat, ref expr, ref blk, ref elseopt) => {
-                self.print_if_let(pat, expr, blk, elseopt.as_ref().map(|e| &**e))?;
+            ast::ExprKind::IfLet(ref pats, ref expr, ref blk, ref elseopt) => {
+                self.print_if_let(pats, expr, blk, elseopt.as_ref().map(|e| &**e))?;
             }
             ast::ExprKind::While(ref test, ref blk, opt_label) => {
                 if let Some(label) = opt_label {
@@ -2122,13 +2122,13 @@ impl<'a> State<'a> {
                 self.s.space()?;
                 self.print_block_with_attrs(blk, attrs)?;
             }
-            ast::ExprKind::WhileLet(ref pat, ref expr, ref blk, opt_label) => {
+            ast::ExprKind::WhileLet(ref pats, ref expr, ref blk, opt_label) => {
                 if let Some(label) = opt_label {
                     self.print_ident(label.ident)?;
                     self.word_space(":")?;
                 }
                 self.head("while let")?;
-                self.print_pat(pat)?;
+                self.print_pats(pats)?;
                 self.s.space()?;
                 self.word_space("=")?;
                 self.print_expr_as_cond(expr)?;
@@ -2664,6 +2664,20 @@ impl<'a> State<'a> {
         self.ann.post(self, NodePat(pat))
     }
 
+    fn print_pats(&mut self, pats: &[P<ast::Pat>]) -> io::Result<()> {
+        let mut first = true;
+        for p in pats {
+            if first {
+                first = false;
+            } else {
+                self.s.space()?;
+                self.word_space("|")?;
+            }
+            self.print_pat(p)?;
+        }
+        Ok(())
+    }
+
     fn print_arm(&mut self, arm: &ast::Arm) -> io::Result<()> {
         // I have no idea why this check is necessary, but here it
         // is :(
@@ -2674,16 +2688,7 @@ impl<'a> State<'a> {
         self.ibox(0)?;
         self.maybe_print_comment(arm.pats[0].span.lo())?;
         self.print_outer_attributes(&arm.attrs)?;
-        let mut first = true;
-        for p in &arm.pats {
-            if first {
-                first = false;
-            } else {
-                self.s.space()?;
-                self.word_space("|")?;
-            }
-            self.print_pat(p)?;
-        }
+        self.print_pats(&arm.pats)?;
         self.s.space()?;
         if let Some(ref e) = arm.guard {
             self.word_space("if")?;

@@ -446,6 +446,9 @@ declare_features! (
 
     // Use `?` as the Kleene "at most one" operator
     (active, macro_at_most_once_rep, "1.25.0", Some(48075)),
+
+    // Multiple patterns with `|` in `if let` and `while let`
+    (active, if_while_or_patterns, "1.26.0", Some(48215)),
 );
 
 declare_features! (
@@ -1617,6 +1620,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
             ast::ExprKind::Catch(_) => {
                 gate_feature_post!(&self, catch_expr, e.span, "`catch` expression is experimental");
+            }
+            ast::ExprKind::IfLet(ref pats, ..) | ast::ExprKind::WhileLet(ref pats, ..) => {
+                if pats.len() > 1 {
+                    gate_feature_post!(&self, if_while_or_patterns, e.span,
+                                    "multiple patterns in `if let` and `while let` are unstable");
+                }
             }
             _ => {}
         }

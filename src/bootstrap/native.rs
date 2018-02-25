@@ -313,7 +313,7 @@ impl Step for TestHelpers {
     type Output = ();
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/rt/rust_test_helpers.c")
+        run.path("src/test/auxiliary/rust_test_helpers.c")
     }
 
     fn make_run(run: RunConfig) {
@@ -326,7 +326,7 @@ impl Step for TestHelpers {
         let build = builder.build;
         let target = self.target;
         let dst = build.test_helpers_out(target);
-        let src = build.src.join("src/rt/rust_test_helpers.c");
+        let src = build.src.join("src/test/auxiliary/rust_test_helpers.c");
         if up_to_date(&src, &dst.join("librust_test_helpers.a")) {
             return
         }
@@ -353,7 +353,7 @@ impl Step for TestHelpers {
            .opt_level(0)
            .warnings(false)
            .debug(false)
-           .file(build.src.join("src/rt/rust_test_helpers.c"))
+           .file(build.src.join("src/test/auxiliary/rust_test_helpers.c"))
            .compile("rust_test_helpers");
     }
 }

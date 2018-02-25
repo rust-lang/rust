@@ -359,8 +359,6 @@ impl<T: ?Sized> Box<T> {
     /// Simple usage:
     ///
     /// ```
-    /// #![feature(box_leak)]
-    ///
     /// fn main() {
     ///     let x = Box::new(41);
     ///     let static_ref: &'static mut usize = Box::leak(x);
@@ -372,8 +370,6 @@ impl<T: ?Sized> Box<T> {
     /// Unsized data:
     ///
     /// ```
-    /// #![feature(box_leak)]
-    ///
     /// fn main() {
     ///     let x = vec![1, 2, 3].into_boxed_slice();
     ///     let static_ref = Box::leak(x);
@@ -381,8 +377,7 @@ impl<T: ?Sized> Box<T> {
     ///     assert_eq!(*static_ref, [4, 2, 3]);
     /// }
     /// ```
-    #[unstable(feature = "box_leak", reason = "needs an FCP to stabilize",
-               issue = "46179")]
+    #[stable(feature = "box_leak", since = "1.26.0")]
     #[inline]
     pub fn leak<'a>(b: Box<T>) -> &'a mut T
     where

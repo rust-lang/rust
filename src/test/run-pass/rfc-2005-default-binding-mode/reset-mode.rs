@@ -8,21 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn main() {
-    let x = "Hello " + "World!";
-    //~^ ERROR cannot be applied to type
+#![feature(match_default_bindings)]
 
-    // Make sure that the span outputs a warning
-    // for not having an implementation for std::ops::Add
-    // that won't output for the above string concatenation
-    let y = World::Hello + World::Goodbye;
-    //~^ ERROR cannot be applied to type
+// Test that we "reset" the mode as we pass through a `&` pattern.
+//
+// cc #46688
 
-    let x = "Hello " + "World!".to_owned();
-    //~^ ERROR cannot be applied to type
+fn surprise(x: i32) {
+    assert_eq!(x, 2);
 }
 
-enum World {
-    Hello,
-    Goodbye,
+fn main() {
+    let x = &(1, &2);
+    let (_, &b) = x;
+    surprise(b);
 }

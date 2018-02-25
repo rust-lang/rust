@@ -153,6 +153,12 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                     NON_UPPER_CASE_GLOBALS);
 
     add_lint_group!(sess,
+                    "nonstandard_style",
+                    NON_CAMEL_CASE_TYPES,
+                    NON_SNAKE_CASE,
+                    NON_UPPER_CASE_GLOBALS);
+
+    add_lint_group!(sess,
                     "unused",
                     UNUSED_IMPORTS,
                     UNUSED_VARIABLES,

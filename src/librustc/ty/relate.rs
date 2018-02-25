@@ -16,7 +16,7 @@
 use hir::def_id::DefId;
 use middle::const_val::ConstVal;
 use traits::Reveal;
-use ty::subst::{Kind, Substs};
+use ty::subst::{UnpackedKind, Substs};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 use ty::fold::{TypeVisitor, TypeFolder};
 use ty::error::{ExpectedFound, TypeError};
@@ -142,12 +142,14 @@ pub fn relate_substs<'a, 'gcx, 'tcx, R>(relation: &mut R,
 
     let params = a_subst.iter().zip(b_subst).enumerate().map(|(i, (a, b))| {
         let variance = variances.map_or(ty::Invariant, |v| v[i]);
-        if let (Some(a_ty), Some(b_ty)) = (a.as_type(), b.as_type()) {
-            Ok(Kind::from(relation.relate_with_variance(variance, &a_ty, &b_ty)?))
-        } else if let (Some(a_r), Some(b_r)) = (a.as_region(), b.as_region()) {
-            Ok(Kind::from(relation.relate_with_variance(variance, &a_r, &b_r)?))
-        } else {
-            bug!()
+        match (a.unpack(), b.unpack()) {
+            (UnpackedKind::Lifetime(a_lt), UnpackedKind::Lifetime(b_lt)) => {
+                Ok(relation.relate_with_variance(variance, &a_lt, &b_lt)?.into())
+            }
+            (UnpackedKind::Type(a_ty), UnpackedKind::Type(b_ty)) => {
+                Ok(relation.relate_with_variance(variance, &a_ty, &b_ty)?.into())
+            }
+            (UnpackedKind::Lifetime(_), _) | (UnpackedKind::Type(_), _) => bug!()
         }
     });
 

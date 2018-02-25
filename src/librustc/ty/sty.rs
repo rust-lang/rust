@@ -15,10 +15,9 @@ use hir::def_id::DefId;
 use middle::const_val::ConstVal;
 use middle::region;
 use rustc_data_structures::indexed_vec::Idx;
-use ty::subst::{Substs, Subst};
+use ty::subst::{Substs, Subst, Kind, UnpackedKind};
 use ty::{self, AdtDef, TypeFlags, Ty, TyCtxt, TypeFoldable};
 use ty::{Slice, TyS};
-use ty::subst::Kind;
 
 use std::iter;
 use std::cmp::Ordering;
@@ -297,8 +296,8 @@ impl<'tcx> ClosureSubsts<'tcx> {
         let generics = tcx.generics_of(def_id);
         let parent_len = generics.parent_count();
         SplitClosureSubsts {
-            closure_kind_ty: self.substs[parent_len].as_type().expect("CK should be a type"),
-            closure_sig_ty: self.substs[parent_len + 1].as_type().expect("CS should be a type"),
+            closure_kind_ty: self.substs.type_at(parent_len),
+            closure_sig_ty: self.substs.type_at(parent_len + 1),
             upvar_kinds: &self.substs[parent_len + 2..],
         }
     }
@@ -308,7 +307,13 @@ impl<'tcx> ClosureSubsts<'tcx> {
         impl Iterator<Item=Ty<'tcx>> + 'tcx
     {
         let SplitClosureSubsts { upvar_kinds, .. } = self.split(def_id, tcx);
-        upvar_kinds.iter().map(|t| t.as_type().expect("upvar should be type"))
+        upvar_kinds.iter().map(|t| {
+            if let UnpackedKind::Type(ty) = t.unpack() {
+                ty
+            } else {
+                bug!("upvar should be type")
+            }
+        })
     }
 
     /// Returns the closure kind for this closure; may return a type
@@ -620,7 +625,7 @@ impl<'a, 'gcx, 'tcx> ExistentialTraitRef<'tcx> {
         ty::TraitRef {
             def_id: self.def_id,
             substs: tcx.mk_substs(
-                iter::once(Kind::from(self_ty)).chain(self.substs.iter().cloned()))
+                iter::once(self_ty.into()).chain(self.substs.iter().cloned()))
         }
     }
 }
@@ -645,7 +650,7 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
 /// erase, or otherwise "discharge" these bound regions, we change the
 /// type from `Binder<T>` to just `T` (see
 /// e.g. `liberate_late_bound_regions`).
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct Binder<T>(pub T);
 
 impl<T> Binder<T> {
@@ -745,7 +750,7 @@ impl<T> Binder<T> {
 
 /// Represents the projection of an associated type. In explicit UFCS
 /// form this would be written `<T as Trait<..>>::N`.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct ProjectionTy<'tcx> {
     /// The parameters of the associated item.
     pub substs: &'tcx Substs<'tcx>,
@@ -1127,7 +1132,7 @@ impl<'a, 'tcx, 'gcx> ExistentialProjection<'tcx> {
             projection_ty: ty::ProjectionTy {
                 item_def_id: self.item_def_id,
                 substs: tcx.mk_substs(
-                iter::once(Kind::from(self_ty)).chain(self.substs.iter().cloned())),
+                iter::once(self_ty.into()).chain(self.substs.iter().cloned())),
             },
             ty: self.ty,
         }

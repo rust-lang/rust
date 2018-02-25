@@ -8,21 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn main() {
-    let x = "Hello " + "World!";
-    //~^ ERROR cannot be applied to type
+#![feature(if_while_or_patterns)]
 
-    // Make sure that the span outputs a warning
-    // for not having an implementation for std::ops::Add
-    // that won't output for the above string concatenation
-    let y = World::Hello + World::Goodbye;
-    //~^ ERROR cannot be applied to type
-
-    let x = "Hello " + "World!".to_owned();
-    //~^ ERROR cannot be applied to type
+enum E {
+    V(u8),
+    U(u8),
+    W,
 }
+use E::*;
 
-enum World {
-    Hello,
-    Goodbye,
+fn main() {
+    let mut e = V(10);
+
+    if let V(x) | U(x) = e {
+        assert_eq!(x, 10);
+    }
+    while let V(x) | U(x) = e {
+        assert_eq!(x, 10);
+        e = W;
+    }
 }

@@ -1210,8 +1210,8 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                        folder.fold_block(tr),
                        fl.map(|x| folder.fold_expr(x)))
             }
-            ExprKind::IfLet(pat, expr, tr, fl) => {
-                ExprKind::IfLet(folder.fold_pat(pat),
+            ExprKind::IfLet(pats, expr, tr, fl) => {
+                ExprKind::IfLet(pats.move_map(|pat| folder.fold_pat(pat)),
                           folder.fold_expr(expr),
                           folder.fold_block(tr),
                           fl.map(|x| folder.fold_expr(x)))
@@ -1221,8 +1221,8 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                           folder.fold_block(body),
                           opt_label.map(|label| folder.fold_label(label)))
             }
-            ExprKind::WhileLet(pat, expr, body, opt_label) => {
-                ExprKind::WhileLet(folder.fold_pat(pat),
+            ExprKind::WhileLet(pats, expr, body, opt_label) => {
+                ExprKind::WhileLet(pats.move_map(|pat| folder.fold_pat(pat)),
                              folder.fold_expr(expr),
                              folder.fold_block(body),
                              opt_label.map(|label| folder.fold_label(label)))

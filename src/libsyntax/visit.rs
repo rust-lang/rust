@@ -705,15 +705,15 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             visitor.visit_expr(subexpression);
             visitor.visit_block(block);
         }
-        ExprKind::IfLet(ref pattern, ref subexpression, ref if_block, ref optional_else) => {
-            visitor.visit_pat(pattern);
+        ExprKind::IfLet(ref pats, ref subexpression, ref if_block, ref optional_else) => {
+            walk_list!(visitor, visit_pat, pats);
             visitor.visit_expr(subexpression);
             visitor.visit_block(if_block);
             walk_list!(visitor, visit_expr, optional_else);
         }
-        ExprKind::WhileLet(ref pattern, ref subexpression, ref block, ref opt_label) => {
+        ExprKind::WhileLet(ref pats, ref subexpression, ref block, ref opt_label) => {
             walk_list!(visitor, visit_label, opt_label);
-            visitor.visit_pat(pattern);
+            walk_list!(visitor, visit_pat, pats);
             visitor.visit_expr(subexpression);
             visitor.visit_block(block);
         }
