@@ -233,11 +233,12 @@ impl<T> Option<T> {
     /// [`usize`]: ../../std/primitive.usize.html
     ///
     /// ```
-    /// let num_as_str: Option<String> = Some("12".to_string());
+    /// let text: Option<String> = Some("Hello, world!".to_string());
     /// // First, cast `Option<String>` to `Option<&String>` with `as_ref`,
-    /// // then consume *that* with `map`, leaving `num_as_str` on the stack.
-    /// let num_length: Option<usize> = num_as_str.as_ref().map(|n| n.len());
-    /// println!("still can print num_as_str: {:?}", num_as_str);
+    /// // then consume *that* with `map`, leaving `text` on the stack.
+    /// let text_length: Option<usize> = text.as_ref().map(|s| s.len());
+    /// println!("text length: {}", text_length);
+    /// println!("still can print text: {:?}", text);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
