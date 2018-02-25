@@ -135,7 +135,7 @@ impl<A, F: FnMut() -> A> DoubleEndedIterator for RepeatWith<F> {
     fn next_back(&mut self) -> Option<A> { self.next() }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.25.0")]
 impl<A, F: FnMut() -> A> FusedIterator for RepeatWith<F> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
