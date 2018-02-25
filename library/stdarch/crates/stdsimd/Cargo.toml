@@ -35,3 +35,11 @@ strict = [ "coresimd/strict" ]
 # Internal-usage only: enables only those intrinsics supported by Intel's
 # Software Development Environment (SDE).
 intel_sde = [ "coresimd/intel_sde" ]
+
+[[example]]
+name = "hex"
+path = "../../examples/hex.rs"
+
+[[example]]
+name = "nbody"
+path = "../../examples/nbody.rs"

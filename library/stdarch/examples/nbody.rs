@@ -4,7 +4,7 @@
 //! html#nbody
 
 #![cfg_attr(feature = "strict", deny(warnings))]
-#![feature(cfg_target_feature)]
+#![feature(cfg_target_feature, stdsimd)]
 #![feature(target_feature)]
 #![cfg_attr(feature = "cargo-clippy",
             allow(similar_names, missing_docs_in_private_items,
@@ -27,7 +27,10 @@ impl Frsqrt for f64x2 {
         #[cfg(all(any(target_arch = "x86", target_arch = "x86_64"),
                   target_feature = "sse"))]
         {
-            use stdsimd::vendor::*;
+            #[cfg(target_arch = "x86")]
+            use stdsimd::arch::x86::*;
+            #[cfg(target_arch = "x86_64")]
+            use stdsimd::arch::x86_64::*;
 
             let t = self.as_f32x2();
 
@@ -45,8 +48,12 @@ impl Frsqrt for f64x2 {
         #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"),
                   target_feature = "neon"))]
         {
-            use self::stdsimd::vendor;
-            unsafe { vendor::vrsqrte_f32(self.as_f32x2()).as_f64x2() }
+            #[cfg(target_arch = "arm")]
+            use stdsimd::arch::arm::*;
+            #[cfg(target_arch = "aarch64")]
+            use stdsimd::arch::aarch64::*;
+
+            unsafe { vrsqrte_f32(self.as_f32x2()).as_f64x2() }
         }
         #[cfg(not(any(all(any(target_arch = "x86",
                               target_arch = "x86_64"),

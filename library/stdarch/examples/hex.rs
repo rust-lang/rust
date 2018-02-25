@@ -8,16 +8,12 @@
 //!
 //! You can test out this program via:
 //!
-//!     echo test | cargo +nightly run --release --example hex
+//!     echo test | cargo +nightly run --release --example hex -p stdsimd
 //!
 //! and you should see `746573740a` get printed out.
 
-#![feature(cfg_target_feature, target_feature)]
+#![feature(cfg_target_feature, target_feature, stdsimd)]
 #![cfg_attr(test, feature(test))]
-#![cfg_attr(feature = "cargo-clippy",
-            allow(result_unwrap_used, option_unwrap_used, print_stdout,
-                  missing_docs_in_private_items, shadow_reuse,
-                  cast_possible_wrap, cast_sign_loss))]
 
 #[macro_use]
 extern crate stdsimd;
@@ -29,7 +25,10 @@ extern crate quickcheck;
 use std::str;
 use std::io::{self, Read};
 
-use stdsimd::vendor::*;
+#[cfg(target_arch = "x86")]
+use stdsimd::arch::x86::*;
+#[cfg(target_arch = "x86_64")]
+use stdsimd::arch::x86_64::*;
 
 fn main() {
     let mut input = Vec::new();
@@ -175,7 +174,7 @@ fn hex_encode_fallback<'a>(
     unsafe { Ok(str::from_utf8_unchecked(&dst[..src.len() * 2])) }
 }
 
-// Run these with `cargo +nightly test --example hex`
+// Run these with `cargo +nightly test --example hex -p stdsimd`
 #[cfg(test)]
 mod tests {
     use std::iter;
@@ -281,7 +280,7 @@ mod tests {
     }
 }
 
-// Run these with `cargo +nightly bench --example hex`
+// Run these with `cargo +nightly bench --example hex -p stdsimd`
 #[cfg(test)]
 mod benches {
     extern crate rand;
