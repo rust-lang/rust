@@ -572,13 +572,13 @@ impl Config {
     }
 
     /// Try to find the relative path of `libdir`.
-    pub fn libdir_relative(&self) -> Option<&Path> {
-        let libdir = self.install.libdir.as_ref()?;
+    pub fn libdir_relative(&self) -> &Path {
+        let libdir = &self.install.libdir;
         if libdir.is_relative() {
-            Some(libdir)
+            libdir
         } else {
             // Try to make it relative to the prefix.
-            libdir.strip_prefix(self.prefix.as_ref()?).ok()
+            libdir.strip_prefix(&self.install.prefix).unwrap_or(Path::new("lib"))
         }
     }
 

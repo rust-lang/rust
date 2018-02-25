@@ -541,8 +541,8 @@ impl<'a> Builder<'a> {
             fn run(self, builder: &Builder) -> Interned<PathBuf> {
                 let compiler = self.compiler;
                 let config = &builder.build.config;
-                let lib = if compiler.stage >= 1 && config.libdir_relative().is_some() {
-                    config.libdir_relative().unwrap()
+                let lib = if compiler.stage >= 1 {
+                    config.libdir_relative()
                 } else {
                     Path::new("lib")
                 };
@@ -736,7 +736,7 @@ impl<'a> Builder<'a> {
             .env("CFG_VERSION", self.rust_version())
             .env("CFG_PREFIX", &self.config.install.prefix);
 
-        let libdir_relative = self.config.libdir_relative().unwrap_or(Path::new("lib"));
+        let libdir_relative = self.config.libdir_relative();
         cargo.env("CFG_LIBDIR_RELATIVE", libdir_relative);
 
         // If we're not building a compiler with debugging information then remove
