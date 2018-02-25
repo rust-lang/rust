@@ -17,7 +17,7 @@ use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process;
 use std::cmp;
 
@@ -57,6 +57,7 @@ pub struct Config {
     pub profiler: bool,
     pub ignore_git: bool,
     pub exclude: Vec<PathBuf>,
+    pub rustc_error_format: Option<String>,
 
     pub run_host_only: bool,
 
@@ -330,6 +331,7 @@ impl Config {
         config.test_miri = false;
         config.rust_codegen_backends = vec![INTERNER.intern_str("llvm")];
 
+        config.rustc_error_format = flags.rustc_error_format;
         config.on_fail = flags.on_fail;
         config.stage = flags.stage;
         config.src = flags.src;
@@ -562,6 +564,17 @@ impl Config {
         config.ignore_git = ignore_git.unwrap_or(default);
 
         config
+    }
+
+    /// Try to find the relative path of `libdir`.
+    pub fn libdir_relative(&self) -> Option<&Path> {
+        let libdir = self.libdir.as_ref()?;
+        if libdir.is_relative() {
+            Some(libdir)
+        } else {
+            // Try to make it relative to the prefix.
+            libdir.strip_prefix(self.prefix.as_ref()?).ok()
+        }
     }
 
     pub fn verbose(&self) -> bool {

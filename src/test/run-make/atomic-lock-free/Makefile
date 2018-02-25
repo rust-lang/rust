@@ -36,6 +36,8 @@ ifeq ($(filter powerpc,$(LLVM_COMPONENTS)),powerpc)
 	nm "$(TMPDIR)/libatomic_lock_free.rlib" | $(CGREP) -v __atomic_fetch_add
 	$(RUSTC) --target=powerpc64le-unknown-linux-gnu atomic_lock_free.rs
 	nm "$(TMPDIR)/libatomic_lock_free.rlib" | $(CGREP) -v __atomic_fetch_add
+endif
+ifeq ($(filter systemz,$(LLVM_COMPONENTS)),systemz)
 	$(RUSTC) --target=s390x-unknown-linux-gnu atomic_lock_free.rs
 	nm "$(TMPDIR)/libatomic_lock_free.rlib" | $(CGREP) -v __atomic_fetch_add
 endif

@@ -61,6 +61,11 @@ fn main() {
         args.remove(n);
     }
 
+    if let Some(s) = env::var_os("RUSTC_ERROR_FORMAT") {
+        args.push("--error-format".into());
+        args.push(s);
+    }
+
     // Detect whether or not we're a build script depending on whether --target
     // is passed (a bit janky...)
     let target = args.windows(2)

@@ -516,8 +516,7 @@ fn rustc_cargo_env(build: &Build, cargo: &mut Command) {
          .env("CFG_VERSION", build.rust_version())
          .env("CFG_PREFIX", build.config.prefix.clone().unwrap_or_default());
 
-    let libdir_relative =
-        build.config.libdir.clone().unwrap_or(PathBuf::from("lib"));
+    let libdir_relative = build.config.libdir_relative().unwrap_or(Path::new("lib"));
     cargo.env("CFG_LIBDIR_RELATIVE", libdir_relative);
 
     // If we're not building a compiler with debugging information then remove

@@ -109,6 +109,10 @@ impl Command {
 
     // extensions
 
+    pub fn get_args(&self) -> &[OsString] {
+        &self.args
+    }
+
     pub fn take_args(&mut self) -> Vec<OsString> {
         mem::replace(&mut self.args, Vec::new())
     }

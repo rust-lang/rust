@@ -25,6 +25,8 @@
 #![feature(inclusive_range)]
 #![feature(inclusive_range_syntax)]
 #![feature(iterator_try_fold)]
+#![feature(iterator_flatten)]
+#![feature(conservative_impl_trait)]
 #![feature(iter_rfind)]
 #![feature(iter_rfold)]
 #![feature(iterator_repeat_with)]
