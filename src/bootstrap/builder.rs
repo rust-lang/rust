@@ -1565,6 +1565,41 @@ mod __test {
             },
         ]);
         assert_eq!(first(builder.cache.all::<dist::Src>()), &[dist::Src]);
+
+
+        assert_eq!(first(builder.cache.all::<compile::Rustc>()), &[
+            compile::Rustc {
+                compiler: Compiler { host: a, stage: 0 },
+                target: a,
+            },
+            compile::Rustc { // FIXME: this is not needed
+                compiler: Compiler { host: a, stage: 1 },
+                target: a,
+            },
+            compile::Rustc { // FIXME: this is not needed
+                compiler: Compiler { host: a, stage: 2 },
+                target: a,
+            },
+        ]);
+
+        assert_eq!(first(builder.cache.all::<compile::Test>()), &[
+            compile::Test {
+                compiler: Compiler { host: a, stage: 0 },
+                target: a,
+            },
+            compile::Test {
+                compiler: Compiler { host: a, stage: 1 },
+                target: a,
+            },
+            compile::Test {
+                compiler: Compiler { host: a, stage: 2 },
+                target: a,
+            },
+            compile::Test {
+                compiler: Compiler { host: a, stage: 2 },
+                target: b,
+            },
+        ]);
     }
 
     #[test]
@@ -1680,6 +1715,56 @@ mod __test {
             },
         ]);
         assert_eq!(first(builder.cache.all::<dist::Src>()), &[]);
+
+        assert_eq!(first(builder.cache.all::<compile::Rustc>()), &[
+            compile::Rustc {
+                compiler: Compiler { host: a, stage: 0 },
+                target: a,
+            },
+            compile::Rustc {
+                compiler: Compiler { host: a, stage: 1 },
+                target: a,
+            },
+            compile::Rustc {
+                compiler: Compiler { host: a, stage: 1 },
+                target: b,
+            },
+            compile::Rustc {
+                compiler: Compiler { host: a, stage: 2 },
+                target: a,
+            },
+            compile::Rustc {
+                compiler: Compiler { host: a, stage: 2 },
+                target: b,
+            },
+        ]);
+
+        assert_eq!(first(builder.cache.all::<compile::Test>()), &[
+            compile::Test {
+                compiler: Compiler { host: a, stage: 0 },
+                target: a,
+            },
+            compile::Test {
+                compiler: Compiler { host: a, stage: 1 },
+                target: a,
+            },
+            compile::Test {
+                compiler: Compiler { host: a, stage: 2 },
+                target: a,
+            },
+            compile::Test {
+                compiler: Compiler { host: a, stage: 1 },
+                target: b,
+            },
+            compile::Test {
+                compiler: Compiler { host: a, stage: 2 },
+                target: b,
+            },
+            compile::Test {
+                compiler: Compiler { host: a, stage: 2 },
+                target: c,
+            },
+        ]);
     }
 
     #[test]
@@ -1859,6 +1944,8 @@ mod __test {
 
     #[test]
     fn build_with_target_flag() {
+        // --build=A --host=B --target=C:
+        // ./x.py build --target=C
         let mut config = configure(&["B"], &["C"]);
         config.run_host_only = false;
         let build = Build::new(config);
