@@ -46,6 +46,7 @@ extern crate rustc_metadata;
 extern crate rustc_mir;
 extern crate rustc_resolve;
 extern crate rustc_save_analysis;
+extern crate rustc_traits;
 extern crate rustc_trans_utils;
 extern crate rustc_typeck;
 extern crate serialize;

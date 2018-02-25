@@ -69,6 +69,7 @@ pub mod type_variable;
 pub mod unify_key;
 
 #[must_use]
+#[derive(Debug)]
 pub struct InferOk<'tcx, T> {
     pub value: T,
     pub obligations: PredicateObligations<'tcx>,
@@ -1222,6 +1223,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 self.region_obligations.borrow());
 
         self.borrow_region_constraints().take_and_reset_data()
+    }
+
+    /// Gives temporary access to the region constraint data.
+    #[allow(non_camel_case_types)] // bug with impl trait
+    pub fn with_region_constraints<R>(
+        &self,
+        op: impl FnOnce(&RegionConstraintData<'tcx>) -> R,
+    ) -> R {
+        let region_constraints = self.borrow_region_constraints();
+        op(region_constraints.data())
     }
 
     /// Takes ownership of the list of variable regions. This implies

@@ -175,6 +175,11 @@ pub struct PerfStats {
     pub decode_def_path_tables_time: Cell<Duration>,
     /// Total number of values canonicalized queries constructed.
     pub queries_canonicalized: Cell<usize>,
+    /// Number of times we canonicalized a value and found that the
+    /// result had already been canonicalized.
+    pub canonicalized_values_allocated: Cell<usize>,
+    /// Number of times this query is invoked.
+    pub normalize_projection_ty: Cell<usize>,
 }
 
 /// Enum to support dispatch of one-time diagnostics (in Session.diag_once)
@@ -862,6 +867,10 @@ impl Session {
         );
         println!("Total queries canonicalized:                   {}",
                  self.perf_stats.queries_canonicalized.get());
+        println!("Total canonical values interned:               {}",
+                 self.perf_stats.canonicalized_values_allocated.get());
+        println!("normalize_projection_ty:                       {}",
+                 self.perf_stats.normalize_projection_ty.get());
     }
 
     /// We want to know if we're allowed to do an optimization for crate foo from -z fuel=foo=n.
@@ -1149,6 +1158,8 @@ pub fn build_session_(
             symbol_hash_time: Cell::new(Duration::from_secs(0)),
             decode_def_path_tables_time: Cell::new(Duration::from_secs(0)),
             queries_canonicalized: Cell::new(0),
+            canonicalized_values_allocated: Cell::new(0),
+            normalize_projection_ty: Cell::new(0),
         },
         code_stats: RefCell::new(CodeStats::new()),
         optimization_fuel_crate,

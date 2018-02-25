@@ -20,7 +20,8 @@ use dataflow::move_paths::MoveData;
 use rustc::hir::def_id::DefId;
 use rustc::infer::{InferCtxt, InferOk, InferResult, LateBoundRegionConversionTime, UnitResult};
 use rustc::infer::region_constraints::{GenericKind, RegionConstraintData};
-use rustc::traits::{self, FulfillmentContext};
+use rustc::traits::{self, Normalized, FulfillmentContext};
+use rustc::traits::query::NoSolution;
 use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeVariants};
@@ -1553,10 +1554,17 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     {
         debug!("normalize(value={:?}, location={:?})", value, location);
         self.fully_perform_op(location.at_self(), |this| {
-            let mut selcx = traits::SelectionContext::new(this.infcx);
-            let cause = this.misc(this.last_span);
-            let traits::Normalized { value, obligations } =
-                traits::normalize(&mut selcx, this.param_env, cause, value);
+            let Normalized { value, obligations } = this.infcx
+                .at(&this.misc(this.last_span), this.param_env)
+                .normalize(value)
+                .unwrap_or_else(|NoSolution| {
+                    span_bug!(
+                        this.last_span,
+                        "normalization of `{:?}` failed at {:?}",
+                        value,
+                        location,
+                    );
+                });
             Ok(InferOk { value, obligations })
         }).unwrap()
     }

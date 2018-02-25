@@ -11,6 +11,7 @@
 use dep_graph::SerializedDepNodeIndex;
 use hir::def_id::{CrateNum, DefId, DefIndex};
 use mir::interpret::{GlobalId};
+use traits::query::CanonicalProjectionGoal;
 use ty::{self, Ty, TyCtxt};
 use ty::subst::Substs;
 use ty::maps::queries;
@@ -48,6 +49,15 @@ impl<'tcx, M: QueryConfig<Key=DefId>> QueryDescription<'tcx> for M {
             let name = unsafe { ::std::intrinsics::type_name::<M>() };
             format!("processing `{}` applied to `{:?}`", name, def_id)
         }
+    }
+}
+
+impl<'tcx> QueryDescription<'tcx> for queries::normalize_projection_ty<'tcx> {
+    fn describe(
+        _tcx: TyCtxt,
+        goal: CanonicalProjectionGoal<'tcx>,
+    ) -> String {
+        format!("normalizing `{:?}`", goal)
     }
 }
 

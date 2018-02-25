@@ -40,9 +40,9 @@ use super::*;
 use ty::relate::{Relate, TypeRelation};
 
 pub struct At<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    cause: &'a ObligationCause<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    pub infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+    pub cause: &'a ObligationCause<'tcx>,
+    pub param_env: ty::ParamEnv<'tcx>,
 }
 
 pub struct Trace<'a, 'gcx: 'tcx, 'tcx: 'a> {

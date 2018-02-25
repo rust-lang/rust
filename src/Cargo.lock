@@ -1884,6 +1884,7 @@ dependencies = [
  "rustc_privacy 0.0.0",
  "rustc_resolve 0.0.0",
  "rustc_save_analysis 0.0.0",
+ "rustc_traits 0.0.0",
  "rustc_trans_utils 0.0.0",
  "rustc_typeck 0.0.0",
  "serialize 0.0.0",
@@ -2064,6 +2065,19 @@ dependencies = [
  "rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_data_structures 0.0.0",
  "rustc_typeck 0.0.0",
+ "syntax 0.0.0",
+ "syntax_pos 0.0.0",
+]
+
+[[package]]
+name = "rustc_traits"
+version = "0.0.0"
+dependencies = [
+ "bitflags 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "graphviz 0.0.0",
+ "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc 0.0.0",
+ "rustc_data_structures 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]

@@ -14,6 +14,7 @@ use hir::def_id::{CrateNum, DefId, DefIndex};
 use hir::def::{Def, Export};
 use hir::{self, TraitCandidate, ItemLocalId, TransFnAttrs};
 use hir::svh::Svh;
+use infer::canonical::{Canonical, QueryResult};
 use lint;
 use middle::borrowck::BorrowCheckResult;
 use middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary,
@@ -33,6 +34,8 @@ use mir::interpret::{GlobalId};
 use session::{CompileResult, CrateDisambiguator};
 use session::config::OutputFilenames;
 use traits::Vtable;
+use traits::query::{CanonicalProjectionGoal, NoSolution};
+use traits::query::normalize::NormalizationResult;
 use traits::specialization_graph;
 use ty::{self, CrateInherentImpls, Ty, TyCtxt};
 use ty::steal::Steal;
@@ -380,6 +383,14 @@ define_maps! { <'tcx>
     [] fn erase_regions_ty: erase_regions_ty(Ty<'tcx>) -> Ty<'tcx>,
     [] fn fully_normalize_monormophic_ty: normalize_ty_node(Ty<'tcx>) -> Ty<'tcx>,
 
+    /// Do not call this query directly: invoke `normalize` instead.
+    [] fn normalize_projection_ty: NormalizeProjectionTy(
+        CanonicalProjectionGoal<'tcx>
+    ) -> Result<
+        Lrc<Canonical<'tcx, QueryResult<'tcx, NormalizationResult<'tcx>>>>,
+        NoSolution,
+    >,
+
     [] fn substitute_normalize_and_test_predicates:
         substitute_normalize_and_test_predicates_node((DefId, &'tcx Substs<'tcx>)) -> bool,
 
@@ -537,6 +548,7 @@ fn output_filenames_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
 fn vtable_methods_node<'tcx>(trait_ref: ty::PolyTraitRef<'tcx>) -> DepConstructor<'tcx> {
     DepConstructor::VtableMethods{ trait_ref }
 }
+
 fn normalize_ty_node<'tcx>(_: Ty<'tcx>) -> DepConstructor<'tcx> {
     DepConstructor::NormalizeTy
 }
