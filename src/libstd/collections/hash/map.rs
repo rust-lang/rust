@@ -2080,7 +2080,7 @@ impl<'a, K, V> Entry<'a, K, V> {
     ///    .or_insert(42);
     /// assert_eq!(map["poneyland"], 43);
     /// ```
-    #[stable(feature = "entry_and_modify", since = "1.25.0")]
+    #[stable(feature = "entry_and_modify", since = "1.26.0")]
     pub fn and_modify<F>(self, mut f: F) -> Self
         where F: FnMut(&mut V)
     {
