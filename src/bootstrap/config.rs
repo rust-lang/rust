@@ -428,6 +428,7 @@ impl Config {
             cmd: Subcommand::default(),
             incremental: false,
             keep_stage: None,
+            rustc_error_format: None,
 
             run_host_only: true,
             is_sudo: false,
