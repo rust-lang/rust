@@ -177,58 +177,6 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> TypeFolder<'gcx, 'tcx> for SubstsVisitor<'a,
             return ty;
         }
         match ty.sty {
-            /*ty::TyAdt(_, substs) => {
-                for subst in substs {
-                    if let Some(ty) = subst.as_type() {
-                        ty.fold_with(self);
-                    }
-                }
-            }
-            ty::TyArray(ty, _) |
-            ty::TySlice(ty) |
-            ty::TyRawPtr(TypeAndMut { ty, .. }) |
-            ty::TyRef(_, TypeAndMut { ty, .. }) => {
-                ty.fold_with(self);
-            }
-            ty::TyFnDef(_, substs) => {
-                for subst in substs {
-                    if let UnpackedKind::Type(ty) = subst.unpack() {
-                        ty.fold_with(self);
-                    }
-                }
-            }
-            ty::TyFnPtr(poly_fn_sig) => {
-                for ty in poly_fn_sig.skip_binder().inputs_and_outputs {
-                    ty.fold_with(self);
-                }
-            }
-            ty::TyClosure(_, closure_substs) => {
-                for subst in closure_substs.substs {
-                    if let UnpackedKind::Type(ty) = subst.unpack() {
-                        ty.fold_with(self);
-                    }
-                }
-            }
-            ty::TyGenerator(_, closure_substs, generator_interior) => {
-                for subst in closure_substs.substs {
-                    if let Some(ty) = subst.as_type() {
-                        ty.fold_with(self);
-                    }
-                }
-                generator_interior.witness.fold_with(self);
-            }
-            ty::TyTuple(types, _) => {
-                for ty in types {
-                    ty.fold_with(self);
-                }
-            }
-            ty::TyProjection(projection_ty) => {
-                for subst in projection_ty.substs {
-                    if let Some(ty) = subst.as_type() {
-                        ty.fold_with(self);
-                    }
-                }
-            }*/
             ty::TyParam(param) => {
                 self.2.parameters[ParamIdx(param.idx)] = ParamUsage::Used;
             }
