@@ -344,6 +344,12 @@ pub trait Visitor<'v> : Sized {
     fn visit_label(&mut self, label: &'v Label) {
         walk_label(self, label)
     }
+    fn visit_path_param(&mut self, path_param: &'v PathParam) {
+        match path_param {
+            PathParam::Lifetime(lt) => self.visit_lifetime(lt),
+            PathParam::Type(ty) => self.visit_ty(ty),
+        }
+    }
     fn visit_lifetime(&mut self, lifetime: &'v Lifetime) {
         walk_lifetime(self, lifetime)
     }
@@ -650,8 +656,7 @@ pub fn walk_path_segment<'v, V: Visitor<'v>>(visitor: &mut V,
 pub fn walk_path_parameters<'v, V: Visitor<'v>>(visitor: &mut V,
                                                 _path_span: Span,
                                                 path_parameters: &'v PathParameters) {
-    walk_list!(visitor, visit_lifetime, path_parameters.lifetimes());
-    walk_list!(visitor, visit_ty, path_parameters.types());
+    walk_list!(visitor, visit_path_param, &path_parameters.parameters);
     walk_list!(visitor, visit_assoc_type_binding, &path_parameters.bindings);
 }
 
