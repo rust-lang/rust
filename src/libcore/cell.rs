@@ -24,8 +24,8 @@
 //! controlled manner. Both `Cell<T>` and `RefCell<T>` allows to do this in a single threaded
 //! way. However, neither `Cell<T>` nor `RefCell<T>` are thread safe (they do not implement
 //! `Sync`), if you need to do Aliasing and Mutation between multiple threads is possible to use
-//! [`Mutex`](../sync/struct.Mutex.html), [`RwLock`](../sync/struct.RwLock.html) or
-//! [`atomic`](../sync/atomic/index.html) types.
+//! [`Mutex`](../../std/sync/struct.Mutex.html), [`RwLock`](../../std/sync/struct.RwLock.html) or
+//! [`atomic`](../../core/sync/atomic/index.html) types.
 //!
 //! Values of the `Cell<T>` and `RefCell<T>` types may be mutated through shared references (i.e.
 //! the common `&T` type), whereas most Rust types can only be mutated through unique (`&mut T`)
