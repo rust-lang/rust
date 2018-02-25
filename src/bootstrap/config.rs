@@ -28,6 +28,7 @@ use cache::{Intern, Interned};
 use flags::Flags;
 use build_helper::output;
 pub use flags::Subcommand;
+use serde;
 use fs;
 
 /// Global configuration for the entire build and/or bootstrap.
@@ -94,12 +95,20 @@ struct TomlConfig {
     dist: Dist,
 }
 
+fn build_build_deserialize<'de, D>(_d: D) -> Result<Interned<String>, D::Error>
+where
+    D: serde::Deserializer<'de>
+{
+    let build = env::var("BUILD").expect("'BUILD' defined").intern();
+    Ok(build)
+}
+
 /// TOML representation of various global build decisions.
 #[derive(Deserialize, Clone)]
 #[serde(default, deny_unknown_fields, rename_all = "kebab-case")]
 pub struct Build {
-    #[serde(skip)]
     // We get build from the BUILD env-var, provided by bootstrap.py
+    #[serde(deserialize_with = "build_build_deserialize")]
     pub build: Interned<String>,
     pub host: Vec<Interned<String>>,
     pub target: Vec<Interned<String>>,
