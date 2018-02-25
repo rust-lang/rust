@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-pretty `dyn ::foo` parses differently in the current epoch
+
 #![feature(dyn_trait)]
 
 use std::fmt::Display;
