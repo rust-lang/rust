@@ -1,6 +1,6 @@
 
 
-#![allow(single_match, unused_assignments, unused_variables)]
+#![allow(single_match, unused_assignments, unused_variables, while_immutable_condition)]
 
 fn test1() {
     let mut x = 0;

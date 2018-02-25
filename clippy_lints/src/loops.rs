@@ -343,6 +343,27 @@ declare_lint! {
     "for loop over a range where one of the bounds is a mutable variable"
 }
 
+/// **What it does:** Checks whether variables used within while loop condition
+/// can be (and are) mutated in the body.
+///
+/// **Why is this bad?** If the condition is unchanged, entering the body of the loop
+/// will lead to an infinite loop.
+///
+/// **Known problems:** None
+///
+/// **Example:**
+/// ```rust
+/// let i = 0;
+/// while i > 10 {
+///    println!("let me loop forever!");
+/// }
+/// ```
+declare_lint! {
+    pub WHILE_IMMUTABLE_CONDITION,
+    Warn,
+    "variables used within while expression are not mutated in the body"
+}
+
 #[derive(Copy, Clone)]
 pub struct Pass;
 
@@ -364,7 +385,8 @@ impl LintPass for Pass {
             WHILE_LET_ON_ITERATOR,
             FOR_KV_MAP,
             NEVER_LOOP,
-            MUT_RANGE_BOUND
+            MUT_RANGE_BOUND,
+            WHILE_IMMUTABLE_CONDITION,
         )
     }
 }
@@ -468,6 +490,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     );
                 }
             }
+        }
+
+        // check for while loops which conditions never change
+        if let ExprWhile(ref cond, ref block, _) = expr.node {
+            check_infinite_loop(cx, cond, block, expr);
         }
     }
 
@@ -660,6 +687,46 @@ fn check_for_loop<'a, 'tcx>(
     check_for_loop_over_map_kv(cx, pat, arg, body, expr);
     check_for_mut_range_bound(cx, arg, body);
     detect_manual_memcpy(cx, pat, arg, body, expr);
+}
+
+fn search_mutable_vars<'a, 'tcx> (
+    cx: &LateContext<'a, 'tcx>,
+    ex: &'tcx Expr,
+    acc: &mut Vec<NodeId>,
+) -> bool {
+    match ex.node {
+        ExprBinary(_, ref a, ref b) =>
+            search_mutable_vars(cx, a, acc) && search_mutable_vars(cx, b, acc),
+
+        ExprUnary(_, ref a) => search_mutable_vars(cx, a, acc),
+        ExprPath(_) => {
+            if let Some(node_id) = check_for_mutability(cx, &ex) {
+                acc.push(node_id);
+            }
+            true
+        }
+        ExprLit(_) => true,
+
+        // Skip if any method or function call is encountered
+        _ => false
+    }
+}
+
+fn check_infinite_loop<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    cond: &'tcx Expr,
+    _block: &'tcx Block,
+    _expr: &'tcx Expr,
+) {
+    let mut mutable_vars = Vec::new();
+    if search_mutable_vars(cx, cond, &mut mutable_vars) && mutable_vars.len() == 0 {
+        span_lint(
+            cx,
+            WHILE_IMMUTABLE_CONDITION,
+            cond.span,
+            "all variables in condition are immutable. This might lead to infinite loops."
+        )
+    }
 }
 
 fn same_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: ast::NodeId) -> bool {

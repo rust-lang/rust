@@ -521,6 +521,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         loops::UNUSED_COLLECT,
         loops::WHILE_LET_LOOP,
         loops::WHILE_LET_ON_ITERATOR,
+        loops::WHILE_IMMUTABLE_CONDITION,
         map_clone::MAP_CLONE,
         matches::MATCH_AS_REF,
         matches::MATCH_BOOL,

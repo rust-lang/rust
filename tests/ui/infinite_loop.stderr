@@ -1,0 +1,22 @@
+error: all variables in condition are immutable. This might lead to infinite loops.
+ --> $DIR/infinite_loop.rs:9:11
+  |
+9 |     while y < 10 {
+  |           ^^^^^^
+  |
+  = note: `-D while-immutable-condition` implied by `-D warnings`
+
+error: all variables in condition are immutable. This might lead to infinite loops.
+  --> $DIR/infinite_loop.rs:14:11
+   |
+14 |     while y < 10 && x < 3 {
+   |           ^^^^^^^^^^^^^^^
+
+error: all variables in condition are immutable. This might lead to infinite loops.
+  --> $DIR/infinite_loop.rs:19:11
+   |
+19 |     while !cond {
+   |           ^^^^^
+
+error: aborting due to 3 previous errors
+
