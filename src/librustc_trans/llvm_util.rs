@@ -75,26 +75,25 @@ unsafe fn configure_llvm(sess: &Session) {
                                  llvm_args.as_ptr());
 }
 
-// WARNING: the features must be known to LLVM or the feature
-// detection code will walk past the end of the feature array,
-// leading to crashes.
+// WARNING: the features after applying `to_llvm_feature` must be known
+// to LLVM or the feature detection code will walk past the end of the feature
+// array, leading to crashes.
 
 const ARM_WHITELIST: &'static [&'static str] = &["neon", "v7", "vfp2", "vfp3", "vfp4"];
 
 const AARCH64_WHITELIST: &'static [&'static str] = &["neon", "v7"];
 
-const X86_WHITELIST: &'static [&'static str] = &["avx", "avx2", "bmi", "bmi2", "sse",
-                                                 "sse2", "sse3", "sse4.1", "sse4.2",
-                                                 "ssse3", "tbm", "lzcnt", "popcnt",
-                                                 "sse4a", "rdrnd", "rdseed", "fma",
-                                                 "xsave", "xsaveopt", "xsavec",
-                                                 "xsaves", "aes", "pclmulqdq",
-                                                 "avx512bw", "avx512cd",
-                                                 "avx512dq", "avx512er",
-                                                 "avx512f", "avx512ifma",
-                                                 "avx512pf", "avx512vbmi",
-                                                 "avx512vl", "avx512vpopcntdq",
-                                                 "mmx", "fxsr"];
+const X86_WHITELIST: &'static [&'static str] = &["aes", "avx", "avx2", "avx512bw",
+                                                 "avx512cd", "avx512dq", "avx512er",
+                                                 "avx512f", "avx512ifma", "avx512pf",
+                                                 "avx512vbmi", "avx512vl", "avx512vpopcntdq",
+                                                 "bmi", "bmi2", "fma", "fxsr",
+                                                 "lzcnt", "mmx", "pclmulqdq",
+                                                 "popcnt", "rdrand", "rdseed",
+                                                 "sse", "sse2", "sse3", "sse4.1",
+                                                 "sse4.2", "sse4a", "ssse3",
+                                                 "tbm", "xsave", "xsavec",
+                                                 "xsaveopt", "xsaves"];
 
 const HEXAGON_WHITELIST: &'static [&'static str] = &["hvx", "hvx-double"];
 
@@ -108,6 +107,7 @@ const MIPS_WHITELIST: &'static [&'static str] = &["msa"];
 pub fn to_llvm_feature(s: &str) -> &str {
     match s {
         "pclmulqdq" => "pclmul",
+        "rdrand" => "rdrnd",
         s => s,
     }
 }
