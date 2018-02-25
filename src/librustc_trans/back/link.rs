@@ -700,9 +700,6 @@ fn link_natively(sess: &Session,
         prog = time(sess.time_passes(), "running linker", || {
             exec_linker(sess, &mut cmd, tmpdir)
         });
-        if !retry_on_segfault || i > 3 {
-            break
-        }
         let output = match prog {
             Ok(ref output) => output,
             Err(_) => break,
@@ -713,6 +710,31 @@ fn link_natively(sess: &Session,
         let mut out = output.stderr.clone();
         out.extend(&output.stdout);
         let out = String::from_utf8_lossy(&out);
+
+        // Check to see if the link failed with "unrecognized command line option:
+        // '-no-pie'" for gcc or "unknown argument: '-no-pie'" for clang. If so,
+        // reperform the link step without the -no-pie option. This is safe because
+        // if the linker doesn't support -no-pie then it should not default to
+        // linking executables as pie. Different versions of gcc seem to use
+        // different quotes in the error message so don't check for them.
+        if sess.target.target.options.linker_is_gnu &&
+           (out.contains("unrecognized command line option") ||
+            out.contains("unknown argument")) &&
+           out.contains("-no-pie") &&
+           cmd.get_args().iter().any(|e| e.to_string_lossy() == "-no-pie") {
+            info!("linker output: {:?}", out);
+            warn!("Linker does not support -no-pie command line option. Retrying without.");
+            for arg in cmd.take_args() {
+                if arg.to_string_lossy() != "-no-pie" {
+                    cmd.arg(arg);
+                }
+            }
+            info!("{:?}", &cmd);
+            continue;
+        }
+        if !retry_on_segfault || i > 3 {
+            break
+        }
         let msg_segv = "clang: error: unable to execute command: Segmentation fault: 11";
         let msg_bus  = "clang: error: unable to execute command: Bus error: 10";
         if !(out.contains(msg_segv) || out.contains(msg_bus)) {
@@ -949,16 +971,30 @@ fn link_args(cmd: &mut Linker,
 
     let used_link_args = &trans.crate_info.link_args;
 
-    if crate_type == config::CrateTypeExecutable &&
-       t.options.position_independent_executables {
-        let empty_vec = Vec::new();
-        let args = sess.opts.cg.link_args.as_ref().unwrap_or(&empty_vec);
-        let more_args = &sess.opts.cg.link_arg;
-        let mut args = args.iter().chain(more_args.iter()).chain(used_link_args.iter());
+    if crate_type == config::CrateTypeExecutable {
+        let mut position_independent_executable = false;
 
-        if get_reloc_model(sess) == llvm::RelocMode::PIC
-            && !sess.crt_static() && !args.any(|x| *x == "-static") {
+        if t.options.position_independent_executables {
+            let empty_vec = Vec::new();
+            let args = sess.opts.cg.link_args.as_ref().unwrap_or(&empty_vec);
+            let more_args = &sess.opts.cg.link_arg;
+            let mut args = args.iter().chain(more_args.iter()).chain(used_link_args.iter());
+
+            if get_reloc_model(sess) == llvm::RelocMode::PIC
+                && !sess.crt_static() && !args.any(|x| *x == "-static") {
+                position_independent_executable = true;
+            }
+        }
+
+        if position_independent_executable {
             cmd.position_independent_executable();
+        } else {
+            // recent versions of gcc can be configured to generate position
+            // independent executables by default. We have to pass -no-pie to
+            // explicitly turn that off.
+            if sess.target.target.options.linker_is_gnu {
+                cmd.no_position_independent_executable();
+            }
         }
     }
 
