@@ -21,13 +21,12 @@
 use std::collections::HashMap;
 use std::env;
 use std::ffi::{OsStr, OsString};
-use std::fs::{self, File};
 use std::io::Read;
 use std::path::PathBuf;
 use std::process::Command;
 
 use build_helper::output;
-
+use fs::{self, File};
 use Build;
 
 struct Finder {

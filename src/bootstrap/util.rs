@@ -15,12 +15,12 @@
 
 use std::env;
 use std::str;
-use std::fs::{self, File, OpenOptions};
 use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Instant, SystemTime};
 
+use fs::{self, File, OpenOptions};
 use filetime::{self, FileTime};
 
 /// Returns the `name` as the filename of a static library for `target`.
@@ -34,6 +34,7 @@ pub fn staticlib(name: &str, target: &str) -> String {
 
 /// Copies a file from `src` to `dst`
 pub fn copy(src: &Path, dst: &Path) {
+    if cfg!(test) { return; }
     let _ = fs::remove_file(&dst);
     // Attempt to "easy copy" by creating a hard link (symlinks don't work on
     // windows), but if that fails just fall back to a slow `copy` operation.
@@ -70,6 +71,7 @@ pub fn replace_in_file(path: &Path, replacements: &[(&str, &str)]) {
 }
 
 pub fn read_stamp_file(stamp: &Path) -> Vec<PathBuf> {
+    if cfg!(test) { return Vec::new(); }
     let mut paths = Vec::new();
     let mut contents = Vec::new();
     t!(t!(File::open(stamp)).read_to_end(&mut contents));

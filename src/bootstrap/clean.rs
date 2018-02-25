@@ -15,10 +15,10 @@
 //! `build/cache` directory (download cache) or the `build/$target/llvm`
 //! directory unless the --all flag is present.
 
-use std::fs;
 use std::io::{self, ErrorKind};
 use std::path::Path;
 
+use fs;
 use Build;
 
 pub fn clean(build: &Build, all: bool) {

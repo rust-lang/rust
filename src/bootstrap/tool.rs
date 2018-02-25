@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::fs;
 use std::env;
 use std::path::PathBuf;
 use std::process::{exit, Command};
@@ -22,6 +21,7 @@ use native;
 use channel::GitInfo;
 use cache::Interned;
 use toolstate::ToolState;
+use fs;
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 struct ToolBuild {
@@ -81,7 +81,11 @@ impl Step for ToolBuild {
 
         if !is_expected {
             if !is_ext_tool {
-                exit(1);
+                if cfg!(test) {
+                    panic!("unexpected failure; would have aborted");
+                } else {
+                    exit(1);
+                }
             } else {
                 return None;
             }

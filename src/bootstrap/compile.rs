@@ -16,7 +16,6 @@
 //! compiler. This module is also responsible for assembling the sysroot as it
 //! goes along from the output of the previous stage.
 
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str;
@@ -24,6 +23,7 @@ use std::cmp::min;
 
 use build_helper::{output, up_to_date};
 
+use fs;
 use util::{copy, exe, is_dylib, libdir, read_stamp_file};
 use {Compiler, Mode};
 use native;
@@ -31,7 +31,7 @@ use native;
 use cache::{Intern, Interned};
 use builder::{Builder, RunConfig, ShouldRun, Step};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Std {
     pub target: Interned<String>,
     pub compiler: Compiler,
@@ -123,6 +123,8 @@ impl Step for StdLink {
     fn should_run(run: ShouldRun) -> ShouldRun {
         run.never()
     }
+
+    fn for_test(self, _builder: &Builder) {}
 
     /// Link all libstd rlibs/dylibs into the sysroot location.
     ///
@@ -237,10 +239,10 @@ impl Step for StartupObjects {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Test {
-    pub compiler: Compiler,
     pub target: Interned<String>,
+    pub compiler: Compiler,
 }
 
 impl Step for Test {
@@ -315,6 +317,8 @@ impl Step for TestLink {
         run.never()
     }
 
+    fn for_test(self, _builder: &Builder) {}
+
     /// Same as `std_link`, only for libtest
     fn run(self, builder: &Builder) {
         let compiler = self.compiler;
@@ -331,7 +335,7 @@ impl Step for TestLink {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Rustc {
     pub compiler: Compiler,
     pub target: Interned<String>,
@@ -416,6 +420,8 @@ impl Step for RustcLink {
     fn should_run(run: ShouldRun) -> ShouldRun {
         run.never()
     }
+
+    fn for_test(self, _builder: &Builder) {}
 
     /// Same as `std_link`, only for librustc
     fn run(self, builder: &Builder) {
@@ -628,7 +634,7 @@ impl Step for Sysroot {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Assemble {
     /// The compiler which we will produce in this step. Assemble itself will
     /// take care of ensuring that the necessary prerequisites to do so exist,

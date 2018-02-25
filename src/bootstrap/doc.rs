@@ -17,7 +17,6 @@
 //! Everything here is basically just a shim around calling either `rustbook` or
 //! `rustdoc`.
 
-use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -25,6 +24,7 @@ use std::path::{Path, PathBuf};
 use Mode;
 use build_helper::up_to_date;
 
+use fs::{self, File};
 use util::{cp_r, symlink_dir};
 use builder::{Builder, Compiler, RunConfig, ShouldRun, Step};
 use tool::Tool;
@@ -736,6 +736,7 @@ impl Step for UnstableBookGen {
 }
 
 fn symlink_dir_force(src: &Path, dst: &Path) -> io::Result<()> {
+    if cfg!(test) { return Ok(()); }
     if let Ok(m) = fs::symlink_metadata(dst) {
         if m.file_type().is_dir() {
             try!(fs::remove_dir_all(dst));

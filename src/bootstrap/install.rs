@@ -14,12 +14,12 @@
 //! compiler, and documentation.
 
 use std::env;
-use std::fs;
 use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 
 use dist::{self, pkgname, sanitize_sh, tmpdir};
 
+use fs;
 use builder::{Builder, RunConfig, ShouldRun, Step};
 use cache::Interned;
 use config::Config;

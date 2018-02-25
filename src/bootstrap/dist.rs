@@ -19,8 +19,7 @@
 //! pieces of `rustup.rs`!
 
 use std::env;
-use std::fs::{self, File};
-use std::io::{self, Read, Write};
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
@@ -35,6 +34,7 @@ use native;
 use tool::{self, Tool};
 use cache::{Intern, Interned};
 use time;
+use fs::{self, File};
 
 pub fn pkgname(builder: &Builder, component: &str) -> String {
     if component == "cargo" {
@@ -61,7 +61,7 @@ fn rust_installer(builder: &Builder) -> Command {
     builder.tool_cmd(Tool::RustInstaller)
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Docs {
     pub stage: u32,
     pub host: Interned<String>,
@@ -274,9 +274,9 @@ fn make_win_dist(
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Mingw {
-    host: Interned<String>,
+    pub host: Interned<String>,
 }
 
 impl Step for Mingw {
@@ -334,9 +334,14 @@ impl Step for Mingw {
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Rustc {
     pub compiler: Compiler,
+}
+
+fn create(path: &Path, contents: &str) {
+    if cfg!(test) { return; }
+    t!(t!(File::create(path)).write_all(contents.as_bytes()));
 }
 
 impl Step for Rustc {
@@ -380,9 +385,9 @@ impl Step for Rustc {
         cp("README.md");
         // tiny morsel of metadata is used by rust-packaging
         let version = builder.rust_version();
-        t!(t!(File::create(overlay.join("version"))).write_all(version.as_bytes()));
+        create(&overlay.join("version"), &version);
         if let Some(sha) = builder.rust_sha() {
-            t!(t!(File::create(overlay.join("git-commit-hash"))).write_all(sha.as_bytes()));
+            create(&overlay.join("git-commit-hash"), &sha);
         }
 
         // On MinGW we've got a few runtime DLL dependencies that we need to
@@ -439,7 +444,7 @@ impl Step for Rustc {
 
             // Copy runtime DLLs needed by the compiler
             if libdir != "bin" {
-                for entry in t!(src.join(libdir).read_dir()).map(|e| t!(e)) {
+                for entry in t!(fs::read_dir(src.join(libdir))).map(|e| t!(e)) {
                     let name = entry.file_name();
                     if let Some(s) = name.to_str() {
                         if is_dylib(s) {
@@ -566,7 +571,7 @@ impl Step for DebuggerScripts {
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Std {
     pub compiler: Compiler,
     pub target: Interned<String>,
@@ -787,7 +792,7 @@ fn copy_src_dirs(builder: &Builder, src_dirs: &[&str], exclude_dirs: &[&str], ds
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Src;
 
 impl Step for Src {
@@ -1002,11 +1007,7 @@ fn install(src: &Path, dstdir: &Path, perms: u32) {
     let dst = dstdir.join(src.file_name().unwrap());
     t!(fs::create_dir_all(dstdir));
     drop(fs::remove_file(&dst));
-    {
-        let mut s = t!(fs::File::open(&src));
-        let mut d = t!(fs::File::create(&dst));
-        io::copy(&mut s, &mut d).expect("failed to copy");
-    }
+    fs::copy(&src, &dst).expect("failed to copy");
     chmod(&dst, perms);
 }
 

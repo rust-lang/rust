@@ -17,13 +17,13 @@ use std::env;
 use std::ffi::OsString;
 use std::iter;
 use std::fmt;
-use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::io::Read;
 
 use build_helper::{self, output};
 
+use fs::{self, File};
 use builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
 use Crate as CargoCrate;
 use cache::{Intern, Interned};
@@ -1702,7 +1702,8 @@ impl Step for Bootstrap {
     fn run(self, builder: &Builder) {
         let mut cmd = Command::new(&builder.config.general.initial_cargo);
         cmd.arg("test")
-            .current_dir(builder.config.src.join("src/bootstrap"))
+            .arg("--manifest-path")
+            .arg(builder.config.src.join("src/bootstrap/Cargo.toml"))
             .env(
                 "CARGO_TARGET_DIR",
                 builder.config.general.out.join("bootstrap-test"),
@@ -1712,6 +1713,7 @@ impl Step for Bootstrap {
         if !builder.config.cmd.fail_fast() {
             cmd.arg("--no-fail-fast");
         }
+        cmd.arg("--lib");
         cmd.arg("--").args(&builder.config.cmd.test_args());
         try_run(builder, &mut cmd);
     }

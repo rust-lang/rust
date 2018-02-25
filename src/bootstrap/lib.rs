@@ -118,6 +118,9 @@
 
 #[macro_use]
 extern crate build_helper;
+#[cfg(test)]
+#[macro_use]
+extern crate pretty_assertions;
 extern crate cc;
 extern crate cmake;
 extern crate filetime;
@@ -135,10 +138,47 @@ extern crate toml;
 #[cfg(unix)]
 extern crate libc;
 
+#[cfg(test)]
+mod fs {
+    use std::path::Path;
+    use std::io::Result;
+    use std::iter;
+    pub use std::fs::*;
+    pub fn create_dir_all<P: AsRef<Path>>(_path: P) -> Result<()> {
+        Ok(())
+    }
+    pub fn remove_dir_all<P: AsRef<Path>>(_path: P) -> Result<()> {
+        Ok(())
+    }
+    pub fn remove_dir<P: AsRef<Path>>(_path: P) -> Result<()> {
+        Ok(())
+    }
+    pub fn remove_file<P: AsRef<Path>>(_path: P) -> Result<()> {
+        Ok(())
+    }
+    pub fn hard_link<P: AsRef<Path>, Q: AsRef<Path>>(_src: P, _dst: Q) -> Result<()> {
+        Ok(())
+    }
+    pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(_src: P, _dst: Q) -> Result<()> {
+        Ok(())
+    }
+    pub fn set_permissions<P: AsRef<Path>>(_path: P, _perm: Permissions) -> Result<()> {
+        Ok(())
+    }
+    pub fn read_dir<P: AsRef<Path>>(_path: P) -> Result<iter::Empty<Result<DirEntry>>> {
+        Ok(iter::Empty::default())
+    }
+}
+
+#[cfg(not(test))]
+mod fs {
+    pub use std::fs::*;
+}
+
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::env;
-use std::fs::{self, File};
+use fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
@@ -197,7 +237,7 @@ use toolstate::ToolState;
 /// Each compiler has a `stage` that it is associated with and a `host` that
 /// corresponds to the platform the compiler runs on. This structure is used as
 /// a parameter to many methods below.
-#[derive(Eq, PartialEq, Clone, Copy, Hash, Debug)]
+#[derive(Eq, PartialEq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]
 pub struct Compiler {
     stage: u32,
     host: Interned<String>,
@@ -296,7 +336,7 @@ impl Build {
         let rls_info = channel::GitInfo::new(&config, &config.src.join("src/tools/rls"));
         let rustfmt_info = channel::GitInfo::new(&config, &config.src.join("src/tools/rustfmt"));
 
-        Build {
+        let mut build = Build {
             config,
 
             rust_info,
@@ -312,7 +352,16 @@ impl Build {
             ci_env: CiEnv::current(),
             delayed_failures: RefCell::new(Vec::new()),
             prerelease_version: Cell::new(None),
-        }
+        };
+
+        build.verbose("finding compilers");
+        cc_detect::find(&mut build);
+        build.verbose("running sanity check");
+        sanity::check(&mut build);
+        build.verbose("learning about cargo");
+        metadata::build(&mut build);
+
+        build
     }
 
     pub fn build_triple(&self) -> &[Interned<String>] {
@@ -329,14 +378,13 @@ impl Build {
             return clean::clean(self, all);
         }
 
-        self.verbose("finding compilers");
-        cc_detect::find(self);
-        self.verbose("running sanity check");
-        sanity::check(self);
-        self.verbose("learning about cargo");
-        metadata::build(self);
-
-        builder::Builder::run(&self);
+        if let Some(path) = self.config.paths.get(0) {
+            if path == Path::new("nonexistent/path/to/trigger/cargo/metadata") {
+                return;
+            }
+        }
+        let builder = builder::Builder::new(&self);
+        builder.execute();
 
         // Check for postponed failures from `test --no-fail-fast`.
         let failures = self.delayed_failures.borrow();
@@ -356,6 +404,7 @@ impl Build {
     ///
     /// After this executes, it will also ensure that `dir` exists.
     fn clear_if_dirty(&self, dir: &Path, input: &Path) -> bool {
+        if cfg!(test) { return true; }
         let stamp = dir.join(".stamp");
         let mut cleared = false;
         if mtime(&stamp) < mtime(input) {
@@ -563,13 +612,17 @@ impl Build {
     /// Runs a command, printing out nice contextual information if it fails.
     fn run(&self, cmd: &mut Command) {
         self.verbose(&format!("running: {:?}", cmd));
-        run_silent(cmd)
+        if !cfg!(test) {
+            run_silent(cmd)
+        }
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
     fn run_quiet(&self, cmd: &mut Command) {
         self.verbose(&format!("running: {:?}", cmd));
-        run_suppressed(cmd)
+        if !cfg!(test) {
+            run_suppressed(cmd)
+        }
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
@@ -577,7 +630,11 @@ impl Build {
     /// `status.success()`.
     fn try_run(&self, cmd: &mut Command) -> bool {
         self.verbose(&format!("running: {:?}", cmd));
-        try_run_silent(cmd)
+        if !cfg!(test) {
+            try_run_silent(cmd)
+        } else {
+            true
+        }
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
@@ -585,7 +642,11 @@ impl Build {
     /// `status.success()`.
     fn try_run_quiet(&self, cmd: &mut Command) -> bool {
         self.verbose(&format!("running: {:?}", cmd));
-        try_run_suppressed(cmd)
+        if cfg!(test) {
+            true
+        } else {
+            try_run_suppressed(cmd)
+        }
     }
 
     pub fn is_verbose(&self) -> bool {
@@ -661,6 +722,7 @@ impl Build {
 
     /// Returns the path to the linker for the given target if it needs to be overridden.
     fn linker(&self, target: Interned<String>) -> Option<&Path> {
+        if cfg!(test) { return None; }
         if let Some(linker) = self.config
             .target_config
             .get(&target)
@@ -938,6 +1000,7 @@ impl Build {
     /// `rust.save-toolstates` in `config.toml`. If unspecified, nothing will be
     /// done. The file is updated immediately after this function completes.
     pub fn save_toolstate(&self, tool: &str, state: ToolState) {
+        if cfg!(test) { return; }
         use std::io::{Seek, SeekFrom};
 
         if let Some(ref path) = self.config.rust.save_toolstates {

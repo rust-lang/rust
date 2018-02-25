@@ -20,7 +20,6 @@
 
 use std::env;
 use std::ffi::OsString;
-use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -29,6 +28,7 @@ use build_helper::output;
 use cmake;
 use cc;
 
+use fs::{self, File};
 use util::{self, exe};
 use build_helper::up_to_date;
 use builder::{Builder, RunConfig, ShouldRun, Step};
@@ -55,6 +55,10 @@ impl Step for Llvm {
             target: run.host,
             emscripten,
         });
+    }
+
+    fn for_test(self, _builder: &Builder) -> PathBuf {
+        PathBuf::from("llvm-config-for-test")
     }
 
     /// Compile LLVM for `target`.
@@ -335,6 +339,8 @@ impl Step for TestHelpers {
         run.path("src/test/auxiliary/rust_test_helpers.c")
     }
 
+    fn for_test(self, _builder: &Builder) {}
+
     fn make_run(run: RunConfig) {
         run.builder.ensure(TestHelpers { target: run.target })
     }
@@ -391,6 +397,8 @@ impl Step for Openssl {
     fn should_run(run: ShouldRun) -> ShouldRun {
         run.never()
     }
+
+    fn for_test(self, _builder: &Builder) {}
 
     fn run(self, builder: &Builder) {
         let target = self.target;

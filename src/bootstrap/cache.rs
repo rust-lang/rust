@@ -248,16 +248,12 @@ lazy_static! {
     static ref INTERNER: Interner = Interner::new();
 }
 
-/// This is essentially a HashMap which allows storing any type in its input and
-/// any type in its output. It is a write-once cache; values are never evicted,
-/// which means that references to the value can safely be returned from the
-/// get() method.
 #[derive(Debug)]
 pub struct Cache(
     RefCell<
         HashMap<
             TypeId,
-            Box<Any>, // actually a HashMap<Step, Interned<Step::Output>>
+            Box<Any>, // actually a HashMap<Step, Step::Output>
         >,
     >,
 );
@@ -292,5 +288,17 @@ impl Cache {
             .downcast_mut::<HashMap<S, S::Output>>()
             .expect("invalid type mapped");
         stepcache.get(step).cloned()
+    }
+
+    #[cfg(test)]
+    pub fn all<S: Ord + Step>(&mut self) -> Vec<(S, S::Output)> {
+        let cache = self.0.get_mut();
+        let type_id = TypeId::of::<S>();
+        let mut v = cache.remove(&type_id)
+            .map(|b| b.downcast::<HashMap<S, S::Output>>().expect("correct type"))
+            .map(|m| m.into_iter().collect::<Vec<_>>())
+            .unwrap_or_default();
+        v.sort_by_key(|&(a, _)| a);
+        v
     }
 }

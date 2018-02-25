@@ -751,6 +751,7 @@ def bootstrap():
     env["SRC"] = build.rust_root
     env["BOOTSTRAP_PARENT_ID"] = str(os.getpid())
     env["BOOTSTRAP_PYTHON"] = sys.executable
+    env["BUILD_DIR"] = build.build_dir
     run(args, env=env, verbose=build.verbose)
 
 

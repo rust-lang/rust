@@ -14,12 +14,12 @@
 //! has various flags to configure how it's run.
 
 use std::env;
-use std::fs;
 use std::path::PathBuf;
 use std::process;
 
 use getopts::Options;
 
+use fs;
 use Build;
 use config::Config;
 use metadata;

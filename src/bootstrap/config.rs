@@ -15,7 +15,6 @@
 
 use std::collections::{HashMap, HashSet};
 use std::env;
-use std::fs::File;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
@@ -30,6 +29,7 @@ use cache::{Intern, Interned};
 use flags::Flags;
 use build_helper::output;
 pub use flags::Subcommand;
+use fs::File;
 
 /// Global configuration for the entire build and/or bootstrap.
 ///
@@ -134,12 +134,12 @@ pub struct Build {
 
 impl Default for Build {
     fn default() -> Build {
-        let out = t!(env::current_dir()).join("build");
-        let build = env::var("BUILD").unwrap().intern();
+        let out = env::var_os("BUILD_DIR").map(PathBuf::from).expect("'BUILD_DIR' defined");
+        let build = env::var("BUILD").expect("'BUILD' defined").intern();
         let stage0_root = out.join(&build).join("stage0/bin");
         Build {
-            host: Vec::new(),
-            target: Vec::new(),
+            host: vec![build],
+            target: vec![build],
             initial_cargo: stage0_root.join(exe("cargo", &build)),
             initial_rustc: stage0_root.join(exe("rustc", &build)),
             build: build,
@@ -408,6 +408,31 @@ struct TomlTarget {
 }
 
 impl Config {
+    #[cfg(test)]
+    pub fn for_test() -> Config {
+        Config {
+            exclude: Vec::new(),
+            paths: Vec::new(),
+            on_fail: None,
+            stage: 2,
+            src: env::var_os("SRC").map(PathBuf::from).expect("'SRC' to be defined"),
+            jobs: None,
+            cmd: Subcommand::default(),
+            incremental: false,
+            keep_stage: None,
+
+            run_host_only: true,
+            is_sudo: false,
+
+            general: Build::default(),
+            install: Install::default(),
+            llvm: Llvm::default(),
+            rust: Rust::default(),
+            target_config: Default::default(),
+            dist: Dist::default(),
+        }
+    }
+
     pub fn parse(args: &[String]) -> Config {
         let flags = Flags::parse(&args);
         let mut toml: TomlConfig = flags
