@@ -1284,8 +1284,8 @@ impl<'a> CargoCommand<'a> {
             for filename in json["filenames"].as_array().unwrap() {
                 let filename = filename.as_str().unwrap();
                 // Skip files like executables
-                if !filename.ends_with(".rlib") && !filename.ends_with(".lib") && !is_dylib(&filename)
-                    && !(is_check && filename.ends_with(".rmeta"))
+                if !filename.ends_with(".rlib") && !filename.ends_with(".lib")
+                    && !is_dylib(&filename) && !(is_check && filename.ends_with(".rmeta"))
                 {
                     continue;
                 }
@@ -1354,7 +1354,9 @@ impl<'a> CargoCommand<'a> {
                     && filename.ends_with(&extension[..]) && meta.len() == expected_len
             });
             let max = candidates
-                .max_by_key(|&&(_, _, ref metadata)| FileTime::from_last_modification_time(metadata));
+                .max_by_key(|&&(_, _, ref metadata)| {
+                    FileTime::from_last_modification_time(metadata)
+                });
             let path_to_add = match max {
                 Some(triple) => triple.0.to_str().unwrap(),
                 None => panic!("no output generated for {:?} {:?}", prefix, extension),

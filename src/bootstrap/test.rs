@@ -306,8 +306,8 @@ impl Step for Rustfmt {
             compiler,
             target: self.host,
         });
-        let mut cargo =
-            tool::prepare_tool_cargo(builder, compiler, Mode::RustcTool, host, "test", "src/tools/rustfmt");
+        let mut cargo = tool::prepare_tool_cargo(
+                builder, compiler, Mode::RustcTool, host, "test", "src/tools/rustfmt");
 
         // Don't build tests dynamically, just a pain to work with
         cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
