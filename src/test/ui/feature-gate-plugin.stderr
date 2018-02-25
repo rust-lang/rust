@@ -1,7 +1,7 @@
 error[E0658]: compiler plugins are experimental and possibly buggy (see issue #29597)
   --> $DIR/feature-gate-plugin.rs:13:1
    |
-13 | #![plugin(foo)]
+LL | #![plugin(foo)]
    | ^^^^^^^^^^^^^^^
    |
    = help: add #![feature(plugin)] to the crate attributes to enable

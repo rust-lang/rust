@@ -1,7 +1,7 @@
 error[E0026]: struct `Thing` does not have a field named `z`
   --> $DIR/E0026-teach.rs:21:23
    |
-21 |         Thing { x, y, z } => {}
+LL |         Thing { x, y, z } => {}
    |                       ^ struct `Thing` does not have field `z`
    |
    = note: This error indicates that a struct pattern attempted to extract a non-existent field from a struct. Struct fields are identified by the name used before the colon : so struct patterns should resemble the declaration of the struct type being matched.

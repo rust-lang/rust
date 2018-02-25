@@ -643,7 +643,7 @@ impl ExactSizeIterator for EscapeUnicode {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.25.0")]
 impl FusedIterator for EscapeUnicode {}
 
 #[stable(feature = "char_struct_display", since = "1.16.0")]
@@ -756,7 +756,7 @@ impl ExactSizeIterator for EscapeDefault {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.25.0")]
 impl FusedIterator for EscapeDefault {}
 
 #[stable(feature = "char_struct_display", since = "1.16.0")]
@@ -790,7 +790,7 @@ impl Iterator for EscapeDebug {
 #[stable(feature = "char_escape_debug", since = "1.20.0")]
 impl ExactSizeIterator for EscapeDebug { }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.25.0")]
 impl FusedIterator for EscapeDebug {}
 
 #[stable(feature = "char_escape_debug", since = "1.20.0")]
@@ -904,5 +904,5 @@ impl<I: Iterator<Item = u8>> Iterator for DecodeUtf8<I> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.25.0")]
 impl<I: FusedIterator<Item = u8>> FusedIterator for DecodeUtf8<I> {}

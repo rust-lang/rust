@@ -1,28 +1,28 @@
 error: function cannot return without recurring
   --> $DIR/lint-unconditional-recursion.rs:14:1
    |
-14 | fn foo() { //~ ERROR function cannot return without recurring
+LL | fn foo() { //~ ERROR function cannot return without recurring
    | ^^^^^^^^ cannot return without recurring
-15 |     foo();
+LL |     foo();
    |     ----- recursive call site
    |
 note: lint level defined here
   --> $DIR/lint-unconditional-recursion.rs:11:9
    |
-11 | #![deny(unconditional_recursion)]
+LL | #![deny(unconditional_recursion)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^
    = help: a `loop` may express intention better if this is on purpose
 
 error: function cannot return without recurring
   --> $DIR/lint-unconditional-recursion.rs:24:1
    |
-24 | fn baz() { //~ ERROR function cannot return without recurring
+LL | fn baz() { //~ ERROR function cannot return without recurring
    | ^^^^^^^^ cannot return without recurring
-25 |     if true {
-26 |         baz()
+LL |     if true {
+LL |         baz()
    |         ----- recursive call site
-27 |     } else {
-28 |         baz()
+LL |     } else {
+LL |         baz()
    |         ----- recursive call site
    |
    = help: a `loop` may express intention better if this is on purpose
@@ -30,13 +30,13 @@ error: function cannot return without recurring
 error: function cannot return without recurring
   --> $DIR/lint-unconditional-recursion.rs:36:1
    |
-36 | fn quz() -> bool { //~ ERROR function cannot return without recurring
+LL | fn quz() -> bool { //~ ERROR function cannot return without recurring
    | ^^^^^^^^^^^^^^^^ cannot return without recurring
-37 |     if true {
-38 |         while quz() {}
+LL |     if true {
+LL |         while quz() {}
    |               ----- recursive call site
 ...
-41 |         loop { quz(); }
+LL |         loop { quz(); }
    |                ----- recursive call site
    |
    = help: a `loop` may express intention better if this is on purpose
@@ -44,9 +44,9 @@ error: function cannot return without recurring
 error: function cannot return without recurring
   --> $DIR/lint-unconditional-recursion.rs:47:5
    |
-47 |     fn bar(&self) { //~ ERROR function cannot return without recurring
+LL |     fn bar(&self) { //~ ERROR function cannot return without recurring
    |     ^^^^^^^^^^^^^ cannot return without recurring
-48 |         self.bar()
+LL |         self.bar()
    |         ---------- recursive call site
    |
    = help: a `loop` may express intention better if this is on purpose
@@ -54,10 +54,10 @@ error: function cannot return without recurring
 error: function cannot return without recurring
   --> $DIR/lint-unconditional-recursion.rs:53:5
    |
-53 |     fn bar(&self) { //~ ERROR function cannot return without recurring
+LL |     fn bar(&self) { //~ ERROR function cannot return without recurring
    |     ^^^^^^^^^^^^^ cannot return without recurring
-54 |         loop {
-55 |             self.bar()
+LL |         loop {
+LL |             self.bar()
    |             ---------- recursive call site
    |
    = help: a `loop` may express intention better if this is on purpose
@@ -65,9 +65,9 @@ error: function cannot return without recurring
 error: function cannot return without recurring
   --> $DIR/lint-unconditional-recursion.rs:62:5
    |
-62 |     fn bar(&self) { //~ ERROR function cannot return without recurring
+LL |     fn bar(&self) { //~ ERROR function cannot return without recurring
    |     ^^^^^^^^^^^^^ cannot return without recurring
-63 |         0.bar()
+LL |         0.bar()
    |         ------- recursive call site
    |
    = help: a `loop` may express intention better if this is on purpose
@@ -75,9 +75,9 @@ error: function cannot return without recurring
 error: function cannot return without recurring
   --> $DIR/lint-unconditional-recursion.rs:75:5
    |
-75 |     fn bar(&self) { //~ ERROR function cannot return without recurring
+LL |     fn bar(&self) { //~ ERROR function cannot return without recurring
    |     ^^^^^^^^^^^^^ cannot return without recurring
-76 |         Foo2::bar(self)
+LL |         Foo2::bar(self)
    |         --------------- recursive call site
    |
    = help: a `loop` may express intention better if this is on purpose
@@ -85,10 +85,10 @@ error: function cannot return without recurring
 error: function cannot return without recurring
   --> $DIR/lint-unconditional-recursion.rs:81:5
    |
-81 |     fn bar(&self) { //~ ERROR function cannot return without recurring
+LL |     fn bar(&self) { //~ ERROR function cannot return without recurring
    |     ^^^^^^^^^^^^^ cannot return without recurring
-82 |         loop {
-83 |             Foo2::bar(self)
+LL |         loop {
+LL |             Foo2::bar(self)
    |             --------------- recursive call site
    |
    = help: a `loop` may express intention better if this is on purpose
@@ -96,9 +96,9 @@ error: function cannot return without recurring
 error: function cannot return without recurring
   --> $DIR/lint-unconditional-recursion.rs:91:5
    |
-91 |     fn qux(&self) { //~ ERROR function cannot return without recurring
+LL |     fn qux(&self) { //~ ERROR function cannot return without recurring
    |     ^^^^^^^^^^^^^ cannot return without recurring
-92 |         self.qux();
+LL |         self.qux();
    |         ---------- recursive call site
    |
    = help: a `loop` may express intention better if this is on purpose
@@ -106,52 +106,52 @@ error: function cannot return without recurring
 error: function cannot return without recurring
   --> $DIR/lint-unconditional-recursion.rs:96:5
    |
-96 |     fn as_ref(&self) -> &Self { //~ ERROR function cannot return without recurring
+LL |     fn as_ref(&self) -> &Self { //~ ERROR function cannot return without recurring
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recurring
-97 |         Baz::as_ref(self)
+LL |         Baz::as_ref(self)
    |         ----------------- recursive call site
    |
    = help: a `loop` may express intention better if this is on purpose
 
 error: function cannot return without recurring
-   --> $DIR/lint-unconditional-recursion.rs:103:5
-    |
-103 |     fn default() -> Baz { //~ ERROR function cannot return without recurring
-    |     ^^^^^^^^^^^^^^^^^^^ cannot return without recurring
-104 |         let x = Default::default();
-    |                 ------------------ recursive call site
-    |
-    = help: a `loop` may express intention better if this is on purpose
+  --> $DIR/lint-unconditional-recursion.rs:103:5
+   |
+LL |     fn default() -> Baz { //~ ERROR function cannot return without recurring
+   |     ^^^^^^^^^^^^^^^^^^^ cannot return without recurring
+LL |         let x = Default::default();
+   |                 ------------------ recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
 
 error: function cannot return without recurring
-   --> $DIR/lint-unconditional-recursion.rs:112:5
-    |
-112 |     fn deref(&self) -> &() { //~ ERROR function cannot return without recurring
-    |     ^^^^^^^^^^^^^^^^^^^^^^ cannot return without recurring
-113 |         &**self
-    |          ------ recursive call site
-    |
-    = help: a `loop` may express intention better if this is on purpose
+  --> $DIR/lint-unconditional-recursion.rs:112:5
+   |
+LL |     fn deref(&self) -> &() { //~ ERROR function cannot return without recurring
+   |     ^^^^^^^^^^^^^^^^^^^^^^ cannot return without recurring
+LL |         &**self
+   |          ------ recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
 
 error: function cannot return without recurring
-   --> $DIR/lint-unconditional-recursion.rs:119:5
-    |
-119 |     fn index(&self, x: usize) -> &Baz { //~ ERROR function cannot return without recurring
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recurring
-120 |         &self[x]
-    |          ------- recursive call site
-    |
-    = help: a `loop` may express intention better if this is on purpose
+  --> $DIR/lint-unconditional-recursion.rs:119:5
+   |
+LL |     fn index(&self, x: usize) -> &Baz { //~ ERROR function cannot return without recurring
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recurring
+LL |         &self[x]
+   |          ------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
 
 error: function cannot return without recurring
-   --> $DIR/lint-unconditional-recursion.rs:128:5
-    |
-128 |     fn deref(&self) -> &Baz { //~ ERROR function cannot return without recurring
-    |     ^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recurring
-129 |         self.as_ref()
-    |         ---- recursive call site
-    |
-    = help: a `loop` may express intention better if this is on purpose
+  --> $DIR/lint-unconditional-recursion.rs:128:5
+   |
+LL |     fn deref(&self) -> &Baz { //~ ERROR function cannot return without recurring
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recurring
+LL |         self.as_ref()
+   |         ---- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
 
 error: aborting due to 14 previous errors
 

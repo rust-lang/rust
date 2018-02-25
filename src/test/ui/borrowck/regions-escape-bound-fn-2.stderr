@@ -1,9 +1,9 @@
 error: borrowed data cannot be stored outside of its closure
   --> $DIR/regions-escape-bound-fn-2.rs:18:27
    |
-17 |     let mut x = None;
+LL |     let mut x = None;
    |         ----- borrowed data cannot be stored into here...
-18 |     with_int(|y| x = Some(y));
+LL |     with_int(|y| x = Some(y));
    |              ---          ^ cannot be stored outside of its closure
    |              |
    |              ...because it cannot outlive this closure

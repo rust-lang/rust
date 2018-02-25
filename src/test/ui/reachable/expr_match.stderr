@@ -1,19 +1,19 @@
 error: unreachable expression
   --> $DIR/expr_match.rs:20:5
    |
-20 |     match {return} { } //~ ERROR unreachable
+LL |     match {return} { } //~ ERROR unreachable
    |     ^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
   --> $DIR/expr_match.rs:14:9
    |
-14 | #![deny(unreachable_code)]
+LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
 
 error: unreachable statement
   --> $DIR/expr_match.rs:25:5
    |
-25 |     println!("I am dead");
+LL |     println!("I am dead");
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
@@ -21,7 +21,7 @@ error: unreachable statement
 error: unreachable statement
   --> $DIR/expr_match.rs:35:5
    |
-35 |     println!("I am dead");
+LL |     println!("I am dead");
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)

@@ -1,7 +1,7 @@
 error[E0658]: language items are subject to change
   --> $DIR/feature-gate-lang-items.rs:11:1
    |
-11 | #[lang="foo"]   //~ ERROR language items are subject to change
+LL | #[lang="foo"]   //~ ERROR language items are subject to change
    | ^^^^^^^^^^^^^
    |
    = help: add #![feature(lang_items)] to the crate attributes to enable

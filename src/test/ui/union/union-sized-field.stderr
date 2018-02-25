@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `T: std::marker::Sized` is not satisfied
   --> $DIR/union-sized-field.rs:14:5
    |
-14 |     value: T, //~ ERROR the trait bound `T: std::marker::Sized` is not satisfied
+LL |     value: T, //~ ERROR the trait bound `T: std::marker::Sized` is not satisfied
    |     ^^^^^^^^ `T` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `T`
@@ -11,7 +11,7 @@ error[E0277]: the trait bound `T: std::marker::Sized` is not satisfied
 error[E0277]: the trait bound `T: std::marker::Sized` is not satisfied
   --> $DIR/union-sized-field.rs:18:5
    |
-18 |     value: T, //~ ERROR the trait bound `T: std::marker::Sized` is not satisfied
+LL |     value: T, //~ ERROR the trait bound `T: std::marker::Sized` is not satisfied
    |     ^^^^^^^^ `T` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `T`
@@ -21,7 +21,7 @@ error[E0277]: the trait bound `T: std::marker::Sized` is not satisfied
 error[E0277]: the trait bound `T: std::marker::Sized` is not satisfied
   --> $DIR/union-sized-field.rs:23:11
    |
-23 |     Value(T), //~ ERROR the trait bound `T: std::marker::Sized` is not satisfied
+LL |     Value(T), //~ ERROR the trait bound `T: std::marker::Sized` is not satisfied
    |           ^^ `T` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `T`

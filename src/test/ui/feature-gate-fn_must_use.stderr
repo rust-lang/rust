@@ -1,7 +1,7 @@
 warning: `#[must_use]` on methods is experimental (see issue #43302)
   --> $DIR/feature-gate-fn_must_use.rs:16:5
    |
-16 |     #[must_use] //~ WARN `#[must_use]` on methods is experimental
+LL |     #[must_use] //~ WARN `#[must_use]` on methods is experimental
    |     ^^^^^^^^^^^
    |
    = help: add #![feature(fn_must_use)] to the crate attributes to enable
@@ -9,7 +9,7 @@ warning: `#[must_use]` on methods is experimental (see issue #43302)
 warning: `#[must_use]` on functions is experimental (see issue #43302)
   --> $DIR/feature-gate-fn_must_use.rs:20:1
    |
-20 | #[must_use] //~ WARN `#[must_use]` on functions is experimental
+LL | #[must_use] //~ WARN `#[must_use]` on functions is experimental
    | ^^^^^^^^^^^
    |
    = help: add #![feature(fn_must_use)] to the crate attributes to enable
@@ -17,6 +17,6 @@ warning: `#[must_use]` on functions is experimental (see issue #43302)
 error: compilation successful
   --> $DIR/feature-gate-fn_must_use.rs:31:1
    |
-31 | fn main() {} //~ ERROR compilation successful
+LL | fn main() {} //~ ERROR compilation successful
    | ^^^^^^^^^^^^
 

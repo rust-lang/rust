@@ -90,13 +90,13 @@
   "rendered": "warning: unnecessary parentheses around assigned value
   --> $DIR/unused_parens_json_suggestion.rs:25:14
    |
-25 |     let _a = (1 / (2 + 3));
+LL |     let _a = (1 / (2 + 3));
    |              ^^^^^^^^^^^^^ help: remove these parentheses
    |
 note: lint level defined here
   --> $DIR/unused_parens_json_suggestion.rs:20:9
    |
-20 | #![warn(unused_parens)]
+LL | #![warn(unused_parens)]
    |         ^^^^^^^^^^^^^
 
 "

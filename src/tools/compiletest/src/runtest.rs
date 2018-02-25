@@ -1624,13 +1624,14 @@ impl<'test> TestCx<'test> {
                     rustc.args(&["--error-format", "json"]);
                 }
             }
-            Ui => if !self.props
-                .compile_flags
-                .iter()
-                .any(|s| s.starts_with("--error-format"))
-            {
-                rustc.args(&["--error-format", "json"]);
-            },
+            Ui => {
+                if !self.props.disable_ui_testing_normalization {
+                    rustc.arg("-Zui-testing");
+                }
+                if !self.props.compile_flags.iter().any(|s| s.starts_with("--error-format")) {
+                    rustc.args(&["--error-format", "json"]);
+                }
+            }
             MirOpt => {
                 rustc.args(&[
                     "-Zdump-mir=all",

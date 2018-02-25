@@ -297,9 +297,9 @@
     document.onkeydown = handleShortcut;
     document.onclick = function(ev) {
         if (hasClass(ev.target, 'collapse-toggle')) {
-            collapseDocs(ev.target);
+            collapseDocs(ev.target, "toggle");
         } else if (hasClass(ev.target.parentNode, 'collapse-toggle')) {
-            collapseDocs(ev.target.parentNode);
+            collapseDocs(ev.target.parentNode, "toggle");
         } else if (ev.target.tagName === 'SPAN' && hasClass(ev.target.parentNode, 'line-numbers')) {
             var prev_id = 0;
 
@@ -1636,19 +1636,8 @@
                 e.innerHTML = labelForToggleButton(false);
             });
             toggle.title = "collapse all docs";
-            onEach(document.getElementsByClassName("docblock"), function(e) {
-                e.style.display = 'block';
-            });
-            onEach(document.getElementsByClassName("toggle-label"), function(e) {
-                e.style.display = 'none';
-            });
-            onEach(document.getElementsByClassName("toggle-wrapper"), function(e) {
-                removeClass(e, "collapsed");
-            });
             onEach(document.getElementsByClassName("collapse-toggle"), function(e) {
-                onEveryMatchingChild(e, "inner", function(i_e) {
-                    i_e.innerHTML = labelForToggleButton(false);
-                });
+                collapseDocs(e, "show");
             });
         } else {
             addClass(toggle, "will-expand");
@@ -1656,56 +1645,134 @@
                 e.innerHTML = labelForToggleButton(true);
             });
             toggle.title = "expand all docs";
-            onEach(document.getElementsByClassName("docblock"), function(e) {
-                e.style.display = 'none';
-            });
-            onEach(document.getElementsByClassName("toggle-label"), function(e) {
-                e.style.display = 'inline-block';
-            });
-            onEach(document.getElementsByClassName("toggle-wrapper"), function(e) {
-                addClass(e, "collapsed");
-            });
+
             onEach(document.getElementsByClassName("collapse-toggle"), function(e) {
-                onEveryMatchingChild(e, "inner", function(i_e) {
-                    i_e.innerHTML = labelForToggleButton(true);
-                });
+                collapseDocs(e, "hide");
             });
         }
     }
 
-    function collapseDocs(toggle) {
+    function collapseDocs(toggle, mode) {
         if (!toggle || !toggle.parentNode) {
             return;
         }
-        var relatedDoc = toggle.parentNode.nextElementSibling;
-        if (hasClass(relatedDoc, "stability")) {
-            relatedDoc = relatedDoc.nextElementSibling;
-        }
-        if (hasClass(relatedDoc, "docblock")) {
-            if (!isHidden(relatedDoc)) {
-                relatedDoc.style.display = 'none';
-                onEach(toggle.childNodes, function(e) {
-                    if (hasClass(e, 'toggle-label')) {
+
+        function adjustToggle(arg) {
+            return function(e) {
+                if (hasClass(e, 'toggle-label')) {
+                    if (arg) {
                         e.style.display = 'inline-block';
-                    }
-                    if (hasClass(e, 'inner')) {
-                        e.innerHTML = labelForToggleButton(true);
-                    }
-                });
-                addClass(toggle.parentNode, 'collapsed');
-            } else {
-                relatedDoc.style.display = 'block';
-                removeClass(toggle.parentNode, 'collapsed');
-                onEach(toggle.childNodes, function(e) {
-                    if (hasClass(e, 'toggle-label')) {
+                    } else {
                         e.style.display = 'none';
                     }
-                    if (hasClass(e, 'inner')) {
-                        e.innerHTML = labelForToggleButton(false);
+                }
+                if (hasClass(e, 'inner')) {
+                    e.innerHTML = labelForToggleButton(arg);
+                }
+            };
+        };
+
+        if (!hasClass(toggle.parentNode, "impl")) {
+            var relatedDoc = toggle.parentNode.nextElementSibling;
+            if (hasClass(relatedDoc, "stability")) {
+                relatedDoc = relatedDoc.nextElementSibling;
+            }
+            if (hasClass(relatedDoc, "docblock")) {
+                var action = mode;
+                if (action === "toggle") {
+                    if (hasClass(relatedDoc, "hidden-by-usual-hider")) {
+                        action = "show";
+                    } else {
+                        action = "hide";
+                    }
+                }
+                if (action === "hide") {
+                    addClass(relatedDoc, "hidden-by-usual-hider");
+                    onEach(toggle.childNodes, adjustToggle(true));
+                    addClass(toggle.parentNode, 'collapsed');
+                } else if (action === "show") {
+                    removeClass(relatedDoc, "hidden-by-usual-hider");
+                    removeClass(toggle.parentNode, 'collapsed');
+                    onEach(toggle.childNodes, adjustToggle(false));
+                }
+            }
+        } else {
+            // we are collapsing the impl block
+            function implHider(addOrRemove) {
+                return function(n) {
+                    if (hasClass(n, "method")) {
+                        if (addOrRemove) {
+                            addClass(n, "hidden-by-impl-hider");
+                        } else {
+                            removeClass(n, "hidden-by-impl-hider");
+                        }
+                        var ns = n.nextElementSibling;
+                        while (true) {
+                            if (ns && (
+                                    hasClass(ns, "docblock") ||
+                                    hasClass(ns, "stability") ||
+                                    false
+                                    )) {
+                                if (addOrRemove) {
+                                    addClass(ns, "hidden-by-impl-hider");
+                                } else {
+                                    removeClass(ns, "hidden-by-impl-hider");
+                                }
+                                ns = ns.nextElementSibling;
+                                continue;
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+
+            var relatedDoc = toggle.parentNode;
+
+            while (!hasClass(relatedDoc, "impl-items")) {
+                relatedDoc = relatedDoc.nextElementSibling;
+            }
+
+            if (!relatedDoc) {
+                return;
+            }
+
+            // Hide all functions, but not associated types/consts
+
+            var action = mode;
+            if (action === "toggle") {
+                if (hasClass(relatedDoc, "fns-now-collapsed")) {
+                    action = "show";
+                } else {
+                    action = "hide";
+                }
+            }
+
+            if (action === "show") {
+                removeClass(relatedDoc, "fns-now-collapsed");
+                onEach(toggle.childNodes, adjustToggle(false));
+                onEach(relatedDoc.childNodes, implHider(false));
+            } else if (action === "hide") {
+                addClass(relatedDoc, "fns-now-collapsed");
+                onEach(toggle.childNodes, adjustToggle(true));
+                onEach(relatedDoc.childNodes, implHider(true));
+            }
+        }
+    }
+
+    function autoCollapseAllImpls() {
+        // Automatically minimize all non-inherent impls
+        onEach(document.getElementsByClassName('impl'), function(n) {
+            // inherent impl ids are like 'impl' or impl-<number>'
+            var inherent = (n.id.match(/^impl(?:-\d+)?$/) !== null);
+            if (!inherent) {
+                onEach(n.childNodes, function(m) {
+                    if (hasClass(m, "collapse-toggle")) {
+                        collapseDocs(m, "hide");
                     }
                 });
             }
-        }
+        });
     }
 
     var x = document.getElementById('toggle-all-docs');
@@ -1732,8 +1799,12 @@
              hasClass(next.nextElementSibling, 'docblock'))) {
             insertAfter(toggle.cloneNode(true), e.childNodes[e.childNodes.length - 1]);
         }
+        if (hasClass(e, 'impl')) {
+            insertAfter(toggle.cloneNode(true), e.childNodes[e.childNodes.length - 1]);
+        }
     }
     onEach(document.getElementsByClassName('method'), func);
+    onEach(document.getElementsByClassName('impl'), func);
     onEach(document.getElementsByClassName('impl-items'), function(e) {
         onEach(e.getElementsByClassName('associatedconstant'), func);
     });
@@ -1781,6 +1852,8 @@
         }
     })
 
+    autoCollapseAllImpls();
+
     function createToggleWrapper() {
         var span = document.createElement('span');
         span.className = 'toggle-label';
@@ -1821,7 +1894,7 @@
     onEach(document.getElementById('main').getElementsByTagName('pre'), function(e) {
         onEach(e.getElementsByClassName('attributes'), function(i_e) {
             i_e.parentNode.insertBefore(createToggleWrapper(), i_e);
-            collapseDocs(i_e.previousSibling.childNodes[0]);
+            collapseDocs(i_e.previousSibling.childNodes[0], "toggle");
         });
     });
 

@@ -1,19 +1,19 @@
 error[E0445]: private trait `Foo` in public interface
   --> $DIR/E0445.rs:15:1
    |
-15 | pub trait Bar : Foo {}
+LL | pub trait Bar : Foo {}
    | ^^^^^^^^^^^^^^^^^^^^^^ can't leak private trait
 
 error[E0445]: private trait `Foo` in public interface
   --> $DIR/E0445.rs:18:1
    |
-18 | pub struct Bar2<T: Foo>(pub T);
+LL | pub struct Bar2<T: Foo>(pub T);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private trait
 
 error[E0445]: private trait `Foo` in public interface
   --> $DIR/E0445.rs:21:1
    |
-21 | pub fn foo<T: Foo> (t: T) {}
+LL | pub fn foo<T: Foo> (t: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private trait
 
 error: aborting due to 3 previous errors

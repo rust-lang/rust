@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `W: std::marker::Sized` is not satisfied
   --> $DIR/unsized-enum2.rs:33:8
    |
-33 |     VA(W), //~ ERROR `W: std::marker::Sized` is not satisfied
+LL |     VA(W), //~ ERROR `W: std::marker::Sized` is not satisfied
    |        ^^ `W` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `W`
@@ -11,7 +11,7 @@ error[E0277]: the trait bound `W: std::marker::Sized` is not satisfied
 error[E0277]: the trait bound `X: std::marker::Sized` is not satisfied
   --> $DIR/unsized-enum2.rs:34:8
    |
-34 |     VB{x: X}, //~ ERROR `X: std::marker::Sized` is not satisfied
+LL |     VB{x: X}, //~ ERROR `X: std::marker::Sized` is not satisfied
    |        ^^^^ `X` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `X`
@@ -21,7 +21,7 @@ error[E0277]: the trait bound `X: std::marker::Sized` is not satisfied
 error[E0277]: the trait bound `Y: std::marker::Sized` is not satisfied
   --> $DIR/unsized-enum2.rs:35:15
    |
-35 |     VC(isize, Y), //~ ERROR `Y: std::marker::Sized` is not satisfied
+LL |     VC(isize, Y), //~ ERROR `Y: std::marker::Sized` is not satisfied
    |               ^^ `Y` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `Y`
@@ -31,7 +31,7 @@ error[E0277]: the trait bound `Y: std::marker::Sized` is not satisfied
 error[E0277]: the trait bound `Z: std::marker::Sized` is not satisfied
   --> $DIR/unsized-enum2.rs:36:18
    |
-36 |     VD{u: isize, x: Z}, //~ ERROR `Z: std::marker::Sized` is not satisfied
+LL |     VD{u: isize, x: Z}, //~ ERROR `Z: std::marker::Sized` is not satisfied
    |                  ^^^^ `Z` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `Z`
@@ -41,7 +41,7 @@ error[E0277]: the trait bound `Z: std::marker::Sized` is not satisfied
 error[E0277]: the trait bound `[u8]: std::marker::Sized` is not satisfied
   --> $DIR/unsized-enum2.rs:39:8
    |
-39 |     VE([u8]), //~ ERROR `[u8]: std::marker::Sized` is not satisfied
+LL |     VE([u8]), //~ ERROR `[u8]: std::marker::Sized` is not satisfied
    |        ^^^^^ `[u8]` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[u8]`
@@ -50,7 +50,7 @@ error[E0277]: the trait bound `[u8]: std::marker::Sized` is not satisfied
 error[E0277]: the trait bound `str: std::marker::Sized` is not satisfied
   --> $DIR/unsized-enum2.rs:40:8
    |
-40 |     VF{x: str}, //~ ERROR `str: std::marker::Sized` is not satisfied
+LL |     VF{x: str}, //~ ERROR `str: std::marker::Sized` is not satisfied
    |        ^^^^^^ `str` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
@@ -59,7 +59,7 @@ error[E0277]: the trait bound `str: std::marker::Sized` is not satisfied
 error[E0277]: the trait bound `[f32]: std::marker::Sized` is not satisfied
   --> $DIR/unsized-enum2.rs:41:15
    |
-41 |     VG(isize, [f32]), //~ ERROR `[f32]: std::marker::Sized` is not satisfied
+LL |     VG(isize, [f32]), //~ ERROR `[f32]: std::marker::Sized` is not satisfied
    |               ^^^^^^ `[f32]` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[f32]`
@@ -68,7 +68,7 @@ error[E0277]: the trait bound `[f32]: std::marker::Sized` is not satisfied
 error[E0277]: the trait bound `[u32]: std::marker::Sized` is not satisfied
   --> $DIR/unsized-enum2.rs:42:18
    |
-42 |     VH{u: isize, x: [u32]}, //~ ERROR `[u32]: std::marker::Sized` is not satisfied
+LL |     VH{u: isize, x: [u32]}, //~ ERROR `[u32]: std::marker::Sized` is not satisfied
    |                  ^^^^^^^^ `[u32]` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[u32]`
@@ -77,7 +77,7 @@ error[E0277]: the trait bound `[u32]: std::marker::Sized` is not satisfied
 error[E0277]: the trait bound `Foo + 'static: std::marker::Sized` is not satisfied
   --> $DIR/unsized-enum2.rs:51:8
    |
-51 |     VM(Foo),  //~ ERROR `Foo + 'static: std::marker::Sized` is not satisfied
+LL |     VM(Foo),  //~ ERROR `Foo + 'static: std::marker::Sized` is not satisfied
    |        ^^^^ `Foo + 'static` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `Foo + 'static`
@@ -86,7 +86,7 @@ error[E0277]: the trait bound `Foo + 'static: std::marker::Sized` is not satisfi
 error[E0277]: the trait bound `Bar + 'static: std::marker::Sized` is not satisfied
   --> $DIR/unsized-enum2.rs:52:8
    |
-52 |     VN{x: Bar}, //~ ERROR `Bar + 'static: std::marker::Sized` is not satisfied
+LL |     VN{x: Bar}, //~ ERROR `Bar + 'static: std::marker::Sized` is not satisfied
    |        ^^^^^^ `Bar + 'static` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `Bar + 'static`
@@ -95,7 +95,7 @@ error[E0277]: the trait bound `Bar + 'static: std::marker::Sized` is not satisfi
 error[E0277]: the trait bound `FooBar + 'static: std::marker::Sized` is not satisfied
   --> $DIR/unsized-enum2.rs:53:15
    |
-53 |     VO(isize, FooBar), //~ ERROR `FooBar + 'static: std::marker::Sized` is not satisfied
+LL |     VO(isize, FooBar), //~ ERROR `FooBar + 'static: std::marker::Sized` is not satisfied
    |               ^^^^^^^ `FooBar + 'static` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `FooBar + 'static`
@@ -104,7 +104,7 @@ error[E0277]: the trait bound `FooBar + 'static: std::marker::Sized` is not sati
 error[E0277]: the trait bound `BarFoo + 'static: std::marker::Sized` is not satisfied
   --> $DIR/unsized-enum2.rs:54:18
    |
-54 |     VP{u: isize, x: BarFoo}, //~ ERROR `BarFoo + 'static: std::marker::Sized` is not satisfied
+LL |     VP{u: isize, x: BarFoo}, //~ ERROR `BarFoo + 'static: std::marker::Sized` is not satisfied
    |                  ^^^^^^^^^ `BarFoo + 'static` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `BarFoo + 'static`
@@ -113,7 +113,7 @@ error[E0277]: the trait bound `BarFoo + 'static: std::marker::Sized` is not sati
 error[E0277]: the trait bound `[i8]: std::marker::Sized` is not satisfied
   --> $DIR/unsized-enum2.rs:57:8
    |
-57 |     VQ(<&'static [i8] as Deref>::Target), //~ ERROR `[i8]: std::marker::Sized` is not satisfied
+LL |     VQ(<&'static [i8] as Deref>::Target), //~ ERROR `[i8]: std::marker::Sized` is not satisfied
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `[i8]` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[i8]`
@@ -122,7 +122,7 @@ error[E0277]: the trait bound `[i8]: std::marker::Sized` is not satisfied
 error[E0277]: the trait bound `[char]: std::marker::Sized` is not satisfied
   --> $DIR/unsized-enum2.rs:58:8
    |
-58 |     VR{x: <&'static [char] as Deref>::Target},
+LL |     VR{x: <&'static [char] as Deref>::Target},
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `[char]` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[char]`
@@ -131,7 +131,7 @@ error[E0277]: the trait bound `[char]: std::marker::Sized` is not satisfied
 error[E0277]: the trait bound `[f64]: std::marker::Sized` is not satisfied
   --> $DIR/unsized-enum2.rs:60:15
    |
-60 |     VS(isize, <&'static [f64] as Deref>::Target),
+LL |     VS(isize, <&'static [f64] as Deref>::Target),
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `[f64]` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[f64]`
@@ -140,7 +140,7 @@ error[E0277]: the trait bound `[f64]: std::marker::Sized` is not satisfied
 error[E0277]: the trait bound `[i32]: std::marker::Sized` is not satisfied
   --> $DIR/unsized-enum2.rs:62:18
    |
-62 |     VT{u: isize, x: <&'static [i32] as Deref>::Target},
+LL |     VT{u: isize, x: <&'static [i32] as Deref>::Target},
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `[i32]` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[i32]`
@@ -149,7 +149,7 @@ error[E0277]: the trait bound `[i32]: std::marker::Sized` is not satisfied
 error[E0277]: the trait bound `PathHelper1 + 'static: std::marker::Sized` is not satisfied in `Path1`
   --> $DIR/unsized-enum2.rs:45:8
    |
-45 |     VI(Path1), //~ ERROR `PathHelper1 + 'static: std::marker::Sized` is not satisfied
+LL |     VI(Path1), //~ ERROR `PathHelper1 + 'static: std::marker::Sized` is not satisfied
    |        ^^^^^^ `PathHelper1 + 'static` does not have a constant size known at compile-time
    |
    = help: within `Path1`, the trait `std::marker::Sized` is not implemented for `PathHelper1 + 'static`
@@ -159,7 +159,7 @@ error[E0277]: the trait bound `PathHelper1 + 'static: std::marker::Sized` is not
 error[E0277]: the trait bound `PathHelper2 + 'static: std::marker::Sized` is not satisfied in `Path2`
   --> $DIR/unsized-enum2.rs:46:8
    |
-46 |     VJ{x: Path2}, //~ ERROR `PathHelper2 + 'static: std::marker::Sized` is not satisfied
+LL |     VJ{x: Path2}, //~ ERROR `PathHelper2 + 'static: std::marker::Sized` is not satisfied
    |        ^^^^^^^^ `PathHelper2 + 'static` does not have a constant size known at compile-time
    |
    = help: within `Path2`, the trait `std::marker::Sized` is not implemented for `PathHelper2 + 'static`
@@ -169,7 +169,7 @@ error[E0277]: the trait bound `PathHelper2 + 'static: std::marker::Sized` is not
 error[E0277]: the trait bound `PathHelper3 + 'static: std::marker::Sized` is not satisfied in `Path3`
   --> $DIR/unsized-enum2.rs:47:15
    |
-47 |     VK(isize, Path3), //~ ERROR `PathHelper3 + 'static: std::marker::Sized` is not satisfied
+LL |     VK(isize, Path3), //~ ERROR `PathHelper3 + 'static: std::marker::Sized` is not satisfied
    |               ^^^^^^ `PathHelper3 + 'static` does not have a constant size known at compile-time
    |
    = help: within `Path3`, the trait `std::marker::Sized` is not implemented for `PathHelper3 + 'static`
@@ -179,7 +179,7 @@ error[E0277]: the trait bound `PathHelper3 + 'static: std::marker::Sized` is not
 error[E0277]: the trait bound `PathHelper4 + 'static: std::marker::Sized` is not satisfied in `Path4`
   --> $DIR/unsized-enum2.rs:48:18
    |
-48 |     VL{u: isize, x: Path4}, //~ ERROR `PathHelper4 + 'static: std::marker::Sized` is not satisfied
+LL |     VL{u: isize, x: Path4}, //~ ERROR `PathHelper4 + 'static: std::marker::Sized` is not satisfied
    |                  ^^^^^^^^ `PathHelper4 + 'static` does not have a constant size known at compile-time
    |
    = help: within `Path4`, the trait `std::marker::Sized` is not implemented for `PathHelper4 + 'static`

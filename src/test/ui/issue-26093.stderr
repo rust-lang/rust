@@ -1,10 +1,10 @@
 error[E0070]: invalid left-hand side expression
   --> $DIR/issue-26093.rs:13:9
    |
-13 |         $thing = 42;
+LL |         $thing = 42;
    |         ^^^^^^^^^^^ left-hand of expression not valid
 ...
-19 |     not_a_place!(99);
+LL |     not_a_place!(99);
    |     ----------------- in this macro invocation
 
 error: aborting due to previous error

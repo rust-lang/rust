@@ -1,7 +1,7 @@
 error[E0658]: 128-bit integers are not stable (see issue #35118)
   --> $DIR/feature-gate-i128_type.rs:12:5
    |
-12 |     0i128; //~ ERROR 128-bit integers are not stable
+LL |     0i128; //~ ERROR 128-bit integers are not stable
    |     ^^^^^
    |
    = help: add #![feature(i128_type)] to the crate attributes to enable
@@ -9,7 +9,7 @@ error[E0658]: 128-bit integers are not stable (see issue #35118)
 error[E0658]: 128-bit integers are not stable (see issue #35118)
   --> $DIR/feature-gate-i128_type.rs:16:5
    |
-16 |     0u128; //~ ERROR 128-bit integers are not stable
+LL |     0u128; //~ ERROR 128-bit integers are not stable
    |     ^^^^^
    |
    = help: add #![feature(i128_type)] to the crate attributes to enable

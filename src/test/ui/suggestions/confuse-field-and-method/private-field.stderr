@@ -1,10 +1,10 @@
 error[E0599]: no method named `dog_age` found for type `animal::Dog` in the current scope
   --> $DIR/private-field.rs:26:23
    |
-12 |     pub struct Dog {
+LL |     pub struct Dog {
    |     -------------- method `dog_age` not found for this
 ...
-26 |     let dog_age = dog.dog_age(); //~ ERROR no method
+LL |     let dog_age = dog.dog_age(); //~ ERROR no method
    |                       ^^^^^^^ private field, not a method
 
 error: aborting due to previous error

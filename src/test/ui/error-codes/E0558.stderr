@@ -1,7 +1,7 @@
 error[E0558]: export_name attribute has invalid format
   --> $DIR/E0558.rs:11:1
    |
-11 | #[export_name]
+LL | #[export_name]
    | ^^^^^^^^^^^^^^ did you mean #[export_name="*"]?
 
 error: aborting due to previous error

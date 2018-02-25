@@ -1,9 +1,9 @@
 error[E0124]: field `field1` is already declared
   --> $DIR/E0124.rs:13:5
    |
-12 |     field1: i32,
+LL |     field1: i32,
    |     ----------- `field1` first declared here
-13 |     field1: i32,
+LL |     field1: i32,
    |     ^^^^^^^^^^^ field already declared
 
 error: aborting due to previous error

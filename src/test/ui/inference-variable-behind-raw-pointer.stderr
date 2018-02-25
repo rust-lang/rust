@@ -1,7 +1,7 @@
 warning: type annotations needed
   --> $DIR/inference-variable-behind-raw-pointer.rs:18:13
    |
-18 |     if data.is_null() {}
+LL |     if data.is_null() {}
    |             ^^^^^^^
    |
    = note: #[warn(tyvar_behind_raw_pointer)] on by default

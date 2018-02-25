@@ -1,17 +1,17 @@
 warning: not reporting region error due to -Znll
   --> $DIR/propagate-despite-same-free-region.rs:54:21
    |
-54 |             let p = x.get();
+LL |             let p = x.get();
    |                     ^^^^^^^
 
 note: External requirements
   --> $DIR/propagate-despite-same-free-region.rs:52:9
    |
-52 | /         |_outlives1, _outlives2, x, y| {
-53 | |             // Only works if 'x: 'y:
-54 | |             let p = x.get();
-55 | |             demand_y(x, y, p)
-56 | |         },
+LL | /         |_outlives1, _outlives2, x, y| {
+LL | |             // Only works if 'x: 'y:
+LL | |             let p = x.get();
+LL | |             demand_y(x, y, p)
+LL | |         },
    | |_________^
    |
    = note: defining type: DefId(0/1:16 ~ propagate_despite_same_free_region[317d]::supply[0]::{{closure}}[0]) with closure substs [
@@ -24,13 +24,13 @@ note: External requirements
 note: No external requirements
   --> $DIR/propagate-despite-same-free-region.rs:49:1
    |
-49 | / fn supply<'a>(cell_a: Cell<&'a u32>) {
-50 | |     establish_relationships(
-51 | |         cell_a,
-52 | |         |_outlives1, _outlives2, x, y| {
+LL | / fn supply<'a>(cell_a: Cell<&'a u32>) {
+LL | |     establish_relationships(
+LL | |         cell_a,
+LL | |         |_outlives1, _outlives2, x, y| {
 ...  |
-57 | |     );
-58 | | }
+LL | |     );
+LL | | }
    | |_^
    |
    = note: defining type: DefId(0/0:6 ~ propagate_despite_same_free_region[317d]::supply[0]) with substs []

@@ -1,19 +1,19 @@
 error[E0283]: type annotations required: cannot resolve `&'a T: Foo`
   --> $DIR/issue-40294.rs:15:1
    |
-15 | / fn foo<'a,'b,T>(x: &'a T, y: &'b T) //~ ERROR type annotations required
-16 | |     where &'a T : Foo,
-17 | |           &'b T : Foo
-18 | | {
-19 | |     x.foo();
-20 | |     y.foo();
-21 | | }
+LL | / fn foo<'a,'b,T>(x: &'a T, y: &'b T) //~ ERROR type annotations required
+LL | |     where &'a T : Foo,
+LL | |           &'b T : Foo
+LL | | {
+LL | |     x.foo();
+LL | |     y.foo();
+LL | | }
    | |_^
    |
 note: required by `Foo`
   --> $DIR/issue-40294.rs:11:1
    |
-11 | trait Foo: Sized {
+LL | trait Foo: Sized {
    | ^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

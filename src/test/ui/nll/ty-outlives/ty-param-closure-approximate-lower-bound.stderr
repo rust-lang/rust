@@ -1,25 +1,25 @@
 warning: not reporting region error due to -Znll
   --> $DIR/ty-param-closure-approximate-lower-bound.rs:35:31
    |
-35 |     twice(cell, value, |a, b| invoke(a, b));
+LL |     twice(cell, value, |a, b| invoke(a, b));
    |                               ^^^^^^^^^^^^
 
 warning: not reporting region error due to -Znll
   --> $DIR/ty-param-closure-approximate-lower-bound.rs:43:31
    |
-43 |     twice(cell, value, |a, b| invoke(a, b));
+LL |     twice(cell, value, |a, b| invoke(a, b));
    |                               ^^^^^^
 
 warning: not reporting region error due to -Znll
   --> $DIR/ty-param-closure-approximate-lower-bound.rs:43:31
    |
-43 |     twice(cell, value, |a, b| invoke(a, b));
+LL |     twice(cell, value, |a, b| invoke(a, b));
    |                               ^^^^^^^^^^^^
 
 note: External requirements
   --> $DIR/ty-param-closure-approximate-lower-bound.rs:35:24
    |
-35 |     twice(cell, value, |a, b| invoke(a, b));
+LL |     twice(cell, value, |a, b| invoke(a, b));
    |                        ^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: DefId(0/1:14 ~ ty_param_closure_approximate_lower_bound[317d]::generic[0]::{{closure}}[0]) with closure substs [
@@ -33,13 +33,13 @@ note: External requirements
 note: No external requirements
   --> $DIR/ty-param-closure-approximate-lower-bound.rs:33:1
    |
-33 | / fn generic<T>(value: T) {
-34 | |     let cell = Cell::new(&());
-35 | |     twice(cell, value, |a, b| invoke(a, b));
-36 | |     //~^ WARNING not reporting region error
-37 | |     //
-38 | |     // This error from the old region solver looks bogus.
-39 | | }
+LL | / fn generic<T>(value: T) {
+LL | |     let cell = Cell::new(&());
+LL | |     twice(cell, value, |a, b| invoke(a, b));
+LL | |     //~^ WARNING not reporting region error
+LL | |     //
+LL | |     // This error from the old region solver looks bogus.
+LL | | }
    | |_^
    |
    = note: defining type: DefId(0/0:5 ~ ty_param_closure_approximate_lower_bound[317d]::generic[0]) with substs [
@@ -49,7 +49,7 @@ note: No external requirements
 note: External requirements
   --> $DIR/ty-param-closure-approximate-lower-bound.rs:43:24
    |
-43 |     twice(cell, value, |a, b| invoke(a, b));
+LL |     twice(cell, value, |a, b| invoke(a, b));
    |                        ^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: DefId(0/1:17 ~ ty_param_closure_approximate_lower_bound[317d]::generic_fail[0]::{{closure}}[0]) with closure substs [
@@ -63,7 +63,7 @@ note: External requirements
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-closure-approximate-lower-bound.rs:43:24
    |
-43 |     twice(cell, value, |a, b| invoke(a, b));
+LL |     twice(cell, value, |a, b| invoke(a, b));
    |                        ^^^^^^^^^^^^^^^^^^^
    |
    = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0/0:6 ~ ty_param_closure_approximate_lower_bound[317d]::generic_fail[0]), BrNamed(crate0:DefIndex(1:15), 'a))`...
@@ -71,12 +71,12 @@ error[E0309]: the parameter type `T` may not live long enough
 note: No external requirements
   --> $DIR/ty-param-closure-approximate-lower-bound.rs:42:1
    |
-42 | / fn generic_fail<'a, T>(cell: Cell<&'a ()>, value: T) {
-43 | |     twice(cell, value, |a, b| invoke(a, b));
-44 | |     //~^ WARNING not reporting region error
-45 | |     //~| WARNING not reporting region error
-46 | |     //~| ERROR the parameter type `T` may not live long enough
-47 | | }
+LL | / fn generic_fail<'a, T>(cell: Cell<&'a ()>, value: T) {
+LL | |     twice(cell, value, |a, b| invoke(a, b));
+LL | |     //~^ WARNING not reporting region error
+LL | |     //~| WARNING not reporting region error
+LL | |     //~| ERROR the parameter type `T` may not live long enough
+LL | | }
    | |_^
    |
    = note: defining type: DefId(0/0:6 ~ ty_param_closure_approximate_lower_bound[317d]::generic_fail[0]) with substs [

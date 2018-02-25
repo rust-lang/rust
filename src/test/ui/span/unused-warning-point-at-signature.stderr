@@ -1,36 +1,36 @@
 warning: enum is never used: `Enum`
   --> $DIR/unused-warning-point-at-signature.rs:15:1
    |
-15 | enum Enum { //~ WARN enum is never used
+LL | enum Enum { //~ WARN enum is never used
    | ^^^^^^^^^
    |
 note: lint level defined here
   --> $DIR/unused-warning-point-at-signature.rs:13:9
    |
-13 | #![warn(unused)]
+LL | #![warn(unused)]
    |         ^^^^^^
    = note: #[warn(dead_code)] implied by #[warn(unused)]
 
 warning: struct is never used: `Struct`
   --> $DIR/unused-warning-point-at-signature.rs:22:1
    |
-22 | struct Struct { //~ WARN struct is never used
+LL | struct Struct { //~ WARN struct is never used
    | ^^^^^^^^^^^^^
 
 warning: function is never used: `func`
   --> $DIR/unused-warning-point-at-signature.rs:29:1
    |
-29 | fn func() -> usize { //~ WARN function is never used
+LL | fn func() -> usize { //~ WARN function is never used
    | ^^^^^^^^^^^^^^^^^^
 
 warning: function is never used: `func_complete_span`
   --> $DIR/unused-warning-point-at-signature.rs:33:1
    |
-33 | / fn //~ WARN function is never used
-34 | | func_complete_span()
-35 | | -> usize
-36 | | {
-37 | |     3
-38 | | }
+LL | / fn //~ WARN function is never used
+LL | | func_complete_span()
+LL | | -> usize
+LL | | {
+LL | |     3
+LL | | }
    | |_^
 
