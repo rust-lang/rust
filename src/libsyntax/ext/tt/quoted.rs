@@ -204,9 +204,15 @@ pub fn parse(
                         }
                     }
                 } else {
+                    const VALID_SPECIFIERS: &[&str] = &[
+                        "ident", "block", "stmt", "expr", "pat", "ty",
+                        "path", "meta", "tt", "item", "vis"
+                    ];
                     match parse_matcher(start_sp, ident, &mut trees.clone()) {
-                        Ok((_, colon_sp, end_sp))
-                        if start_sp.hi() == colon_sp.lo() && colon_sp.hi() == end_sp.lo() => {
+                        Ok((TokenTree::MetaVarDecl(_, _, kind), colon_sp, end_sp))
+                        if start_sp.hi() == colon_sp.lo()
+                        && colon_sp.hi() == end_sp.lo()
+                        && VALID_SPECIFIERS.contains(&&*kind.name.as_str()) => {
                             sess.span_diagnostic
                                 .struct_span_warn(
                                     colon_sp.with_hi(end_sp.hi()),
