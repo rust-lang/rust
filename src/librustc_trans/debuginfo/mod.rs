@@ -206,7 +206,8 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                                sig: ty::FnSig<'tcx>,
                                                llfn: ValueRef,
                                                mir: &mir::Mir) -> FunctionDebugContext {
-    if cx.sess().opts.debuginfo == NoDebugInfo {
+    let has_unused_subst = true; // FIXME: make it work with TyUnusedSubst
+    if cx.sess().opts.debuginfo == NoDebugInfo || has_unused_subst {
         return FunctionDebugContext::DebugInfoDisabled;
     }
 
