@@ -45,7 +45,8 @@ static EXCEPTIONS: &'static [&'static str] = &[
 ];
 
 pub fn check(path: &Path, bad: &mut bool) {
-    let path = path.join("vendor");
+    // the vendor directly will be in project root whereas we're passed the src directory
+    let path = path.parent().expect("parent exist").join("vendor");
     assert!(path.exists(), "vendor directory missing");
     let mut saw_dir = false;
     'next_path: for dir in t!(path.read_dir()) {
@@ -57,7 +58,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             if dir.path()
                 .to_str()
                 .unwrap()
-                .contains(&format!("src/vendor/{}", exception)) {
+                .contains(&format!("vendor/{}", exception)) {
                 continue 'next_path;
             }
         }
