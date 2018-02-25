@@ -758,16 +758,16 @@ impl ty::EarlyBoundRegion {
 }
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
-pub enum GenericParameterDef {
+pub enum GenericParam {
     Lifetime(RegionParameterDef),
     Type(TypeParameterDef),
 }
 
-impl GenericParameterDef {
+impl GenericParam {
     pub fn index(&self) -> u32 {
         match self {
-            GenericParameterDef::Lifetime(lt) => lt.index,
-            GenericParameterDef::Type(ty)     => ty.index,
+            GenericParam::Lifetime(lt) => lt.index,
+            GenericParam::Type(ty)     => ty.index,
         }
     }
 }
@@ -785,7 +785,7 @@ impl GenericParameterDef {
 pub struct Generics {
     pub parent: Option<DefId>,
     pub parent_count: usize,
-    pub params: Vec<GenericParameterDef>,
+    pub params: Vec<GenericParam>,
 
     /// Reverse map to each `TypeParameterDef`'s `index` field
     pub type_param_to_index: FxHashMap<DefId, u32>,
@@ -805,7 +805,7 @@ impl<'a, 'gcx, 'tcx> Generics {
 
     pub fn lifetimes(&self) -> Vec<&RegionParameterDef> {
         self.params.iter().filter_map(|p| {
-            if let GenericParameterDef::Lifetime(lt) = p {
+            if let GenericParam::Lifetime(lt) = p {
                 Some(lt)
             } else {
                 None
@@ -815,7 +815,7 @@ impl<'a, 'gcx, 'tcx> Generics {
 
     pub fn types(&self) -> Vec<&TypeParameterDef> {
         self.params.iter().filter_map(|p| {
-            if let GenericParameterDef::Type(ty) = p {
+            if let GenericParam::Type(ty) = p {
                 Some(ty)
             } else {
                 None
@@ -843,7 +843,7 @@ impl<'a, 'gcx, 'tcx> Generics {
         if let Some(index) = param.index.checked_sub(self.parent_count as u32) {
             // We're currently assuming that lifetimes precede other generic parameters.
             match self.params[index as usize - self.has_self as usize] {
-                ty::GenericParameterDef::Lifetime(ref lt) => lt,
+                ty::GenericParam::Lifetime(ref lt) => lt,
                 _ => bug!("expected region parameter, but found another generic parameter")
             }
         } else {
@@ -893,13 +893,13 @@ impl<'a, 'gcx, 'tcx> Generics {
             if let Some(_) = (idx as usize).checked_sub(type_param_offset) {
                 assert!(!is_separated_self, "found a Self after type_param_offset");
                 match self.params[idx as usize] {
-                    ty::GenericParameterDef::Type(ref ty) => ty,
+                    ty::GenericParam::Type(ref ty) => ty,
                     _ => bug!("expected type parameter, but found another generic parameter")
                 }
             } else {
                 assert!(is_separated_self, "non-Self param before type_param_offset");
                 match self.params[type_param_offset] {
-                    ty::GenericParameterDef::Type(ref ty) => ty,
+                    ty::GenericParam::Type(ref ty) => ty,
                     _ => bug!("expected type parameter, but found another generic parameter")
                 }
             }
