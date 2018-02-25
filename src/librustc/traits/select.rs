@@ -1029,7 +1029,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     // caller obligations, and so forth and assembling a list of
     // candidates. See [rustc guide] for more details.
     //
-    // [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/trait-resolution.html#candidate-assembly
+    // [rustc guide]:
+    // https://rust-lang-nursery.github.io/rustc-guide/trait-resolution.html#candidate-assembly
 
     fn candidate_from_obligation<'o>(&mut self,
                                      stack: &TraitObligationStack<'o, 'tcx>)
@@ -2317,7 +2318,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     // with the values found in the obligation, possibly yielding a
     // type error.  See [rustc guide] for more details.
     //
-    // [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/trait-resolution.html#confirmation
+    // [rustc guide]:
+    // https://rust-lang-nursery.github.io/rustc-guide/trait-resolution.html#confirmation
 
     fn confirm_candidate(&mut self,
                          obligation: &TraitObligation<'tcx>,
