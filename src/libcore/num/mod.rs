@@ -2892,7 +2892,7 @@ impl u8 {
     }
 
     /// Checks if the value is an ASCII graphic character:
-    /// U+0021 '@' ... U+007E '~'.
+    /// U+0021 '!' ... U+007E '~'.
     ///
     /// # Examples
     ///
