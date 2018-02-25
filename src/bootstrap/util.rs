@@ -15,12 +15,12 @@
 
 use std::env;
 use std::str;
-use std::io::{self, Read, Seek, SeekFrom, Write};
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Instant, SystemTime};
 
-use fs::{self, File, OpenOptions};
+use fs;
 use filetime::{self, FileTime};
 
 /// Returns the `name` as the filename of a static library for `target`.
@@ -59,22 +59,17 @@ pub fn copy(src: &Path, dst: &Path) {
 /// Search-and-replaces within a file. (Not maximally efficiently: allocates a
 /// new string for each replacement.)
 pub fn replace_in_file(path: &Path, replacements: &[(&str, &str)]) {
-    let mut contents = String::new();
-    let mut file = t!(OpenOptions::new().read(true).write(true).open(path));
-    t!(file.read_to_string(&mut contents));
+    let mut contents = t!(fs::read_string(path));
     for &(target, replacement) in replacements {
         contents = contents.replace(target, replacement);
     }
-    t!(file.seek(SeekFrom::Start(0)));
-    t!(file.set_len(0));
-    t!(file.write_all(contents.as_bytes()));
+    t!(fs::write(path, contents.as_bytes()));
 }
 
 pub fn read_stamp_file(stamp: &Path) -> Vec<PathBuf> {
     if cfg!(test) { return Vec::new(); }
     let mut paths = Vec::new();
-    let mut contents = Vec::new();
-    t!(t!(File::open(stamp)).read_to_end(&mut contents));
+    let contents = t!(fs::read(stamp));
     // This is the method we use for extracting paths from the stamp file passed to us. See
     // run_cargo for more information (in compile.rs).
     for part in contents.split(|b| *b == 0) {

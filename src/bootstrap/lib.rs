@@ -114,7 +114,7 @@
 //! also check out the `src/bootstrap/README.md` file for more information.
 
 #![deny(warnings)]
-#![feature(core_intrinsics)]
+#![feature(fs_read_write, core_intrinsics)]
 
 #[macro_use]
 extern crate build_helper;
@@ -168,6 +168,15 @@ mod fs {
     pub fn read_dir<P: AsRef<Path>>(_path: P) -> Result<iter::Empty<Result<DirEntry>>> {
         Ok(iter::Empty::default())
     }
+    pub fn read<P: AsRef<Path>>(path: P) -> Result<Vec<u8>> {
+        Ok(String::from(format!("{} into string", path.as_ref().display())).into_bytes())
+    }
+    pub fn read_string<P: AsRef<Path>>(path: P) -> Result<String> {
+        Ok(String::from(format!("{} into string", path.as_ref().display())))
+    }
+    pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(_path: P, _contents: C) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[cfg(not(test))]
@@ -178,8 +187,6 @@ mod fs {
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::env;
-use fs::File;
-use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 use std::slice;
@@ -415,7 +422,7 @@ impl Build {
             return cleared;
         }
         t!(fs::create_dir_all(dir));
-        t!(File::create(stamp));
+        t!(fs::write(stamp, &[]));
         cleared
     }
 
@@ -954,11 +961,13 @@ impl Build {
 
     /// Returns the `a.b.c` version that the given package is at.
     fn release_num(&self, package: &str) -> String {
-        let mut toml = String::new();
+        if cfg!(test) {
+            return String::from("0.1.2");
+        }
         let toml_file_name = self.config
             .src
             .join(&format!("src/tools/{}/Cargo.toml", package));
-        t!(t!(File::open(toml_file_name)).read_to_string(&mut toml));
+        let toml = t!(fs::read_string(&toml_file_name));
         for line in toml.lines() {
             let prefix = "version = \"";
             let suffix = "\"";

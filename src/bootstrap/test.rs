@@ -19,11 +19,10 @@ use std::iter;
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::io::Read;
 
 use build_helper::{self, output};
 
-use fs::{self, File};
+use fs;
 use builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
 use Crate as CargoCrate;
 use cache::{Intern, Interned};
@@ -1159,9 +1158,7 @@ impl Step for ErrorIndex {
 }
 
 fn markdown_test(builder: &Builder, compiler: Compiler, markdown: &Path) {
-    let mut file = t!(File::open(markdown));
-    let mut contents = String::new();
-    t!(file.read_to_string(&mut contents));
+    let contents = t!(fs::read_string(markdown));
     if !contents.contains("```") {
         return;
     }

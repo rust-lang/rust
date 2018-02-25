@@ -21,12 +21,11 @@
 use std::collections::HashMap;
 use std::env;
 use std::ffi::{OsStr, OsString};
-use std::io::Read;
 use std::path::PathBuf;
 use std::process::Command;
 
 use build_helper::output;
-use fs::{self, File};
+use fs;
 use Build;
 
 struct Finder {
@@ -261,8 +260,7 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
     }
 
     if build.config.rust.channel == "stable" {
-        let mut stage0 = String::new();
-        t!(t!(File::open(build.config.src.join("src/stage0.txt"))).read_to_string(&mut stage0));
+        let stage0 = t!(fs::read_string(build.config.src.join("src/stage0.txt")));
         if stage0.contains("\ndev:") {
             panic!(
                 "bootstrapping from a dev compiler in a stable release, but \

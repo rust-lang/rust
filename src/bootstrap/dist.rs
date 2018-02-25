@@ -19,7 +19,7 @@
 //! pieces of `rustup.rs`!
 
 use std::env;
-use std::io::{Read, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
@@ -34,7 +34,7 @@ use native;
 use tool::{self, Tool};
 use cache::{Intern, Interned};
 use time;
-use fs::{self, File};
+use fs;
 
 pub fn pkgname(builder: &Builder, component: &str) -> String {
     if component == "cargo" {
@@ -339,11 +339,6 @@ pub struct Rustc {
     pub compiler: Compiler,
 }
 
-fn create(path: &Path, contents: &str) {
-    if cfg!(test) { return; }
-    t!(t!(File::create(path)).write_all(contents.as_bytes()));
-}
-
 impl Step for Rustc {
     type Output = PathBuf;
     const DEFAULT: bool = true;
@@ -385,9 +380,9 @@ impl Step for Rustc {
         cp("README.md");
         // tiny morsel of metadata is used by rust-packaging
         let version = builder.rust_version();
-        create(&overlay.join("version"), &version);
+        t!(fs::write(&overlay.join("version"), &version));
         if let Some(sha) = builder.rust_sha() {
-            create(&overlay.join("git-commit-hash"), &sha);
+            t!(fs::write(&overlay.join("git-commit-hash"), &sha));
         }
 
         // On MinGW we've got a few runtime DLL dependencies that we need to
@@ -941,12 +936,9 @@ impl Step for PlainSourceTarball {
         }
 
         // Create the version file
-        write_file(
-            &plain_dst_src.join("version"),
-            builder.rust_version().as_bytes(),
-        );
+        t!(fs::write(&plain_dst_src.join("version"), &builder.rust_version()));
         if let Some(sha) = builder.rust_sha() {
-            write_file(&plain_dst_src.join("git-commit-hash"), sha.as_bytes());
+            t!(fs::write(&plain_dst_src.join("git-commit-hash"), &sha));
         }
 
         // If we're building from git sources, we need to vendor a complete distribution.
@@ -1038,11 +1030,6 @@ pub fn sanitize_sh(path: &Path) -> String {
     }
 }
 
-fn write_file(path: &Path, data: &[u8]) {
-    let mut vf = t!(fs::File::create(path));
-    t!(vf.write_all(data));
-}
-
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Cargo {
     pub stage: u32,
@@ -1115,7 +1102,7 @@ impl Step for Cargo {
         install(&src.join("LICENSE-MIT"), &overlay, 0o644);
         install(&src.join("LICENSE-APACHE"), &overlay, 0o644);
         install(&src.join("LICENSE-THIRD-PARTY"), &overlay, 0o644);
-        create(&overlay.join("version"), &version);
+        t!(fs::write(&overlay.join("version"), &version));
 
         // Generate the installer tarball
         let mut cmd = rust_installer(builder);
@@ -1202,7 +1189,7 @@ impl Step for Rls {
         install(&src.join("README.md"), &overlay, 0o644);
         install(&src.join("LICENSE-MIT"), &overlay, 0o644);
         install(&src.join("LICENSE-APACHE"), &overlay, 0o644);
-        create(&overlay.join("version"), &version);
+        t!(fs::write(&overlay.join("version"), &version));
 
         // Generate the installer tarball
         let mut cmd = rust_installer(builder);
@@ -1298,7 +1285,7 @@ impl Step for Rustfmt {
         install(&src.join("README.md"), &overlay, 0o644);
         install(&src.join("LICENSE-MIT"), &overlay, 0o644);
         install(&src.join("LICENSE-APACHE"), &overlay, 0o644);
-        create(&overlay.join("version"), &version);
+        t!(fs::write(&overlay.join("version"), &version));
 
         // Generate the installer tarball
         let mut cmd = rust_installer(builder);
@@ -1387,9 +1374,9 @@ impl Step for Extended {
         install(&builder.config.src.join("LICENSE-APACHE"), &overlay, 0o644);
         install(&builder.config.src.join("LICENSE-MIT"), &overlay, 0o644);
         let version = builder.rust_version();
-        create(&overlay.join("version"), &version);
+        t!(fs::write(&overlay.join("version"), &version));
         if let Some(sha) = builder.rust_sha() {
-            create(&overlay.join("git-commit-hash"), &sha);
+            t!(fs::write(&overlay.join("git-commit-hash"), &sha));
         }
         install(&etc.join("README.md"), &overlay, 0o644);
 
@@ -1437,12 +1424,11 @@ impl Step for Extended {
             .arg(&overlay);
         builder.run(&mut cmd);
 
-        let mut license = String::new();
-        t!(t!(File::open(builder.config.src.join("COPYRIGHT"))).read_to_string(&mut license));
+        let mut license = t!(fs::read_string(builder.config.src.join("COPYRIGHT")));
         license.push_str("\n");
-        t!(t!(File::open(builder.config.src.join("LICENSE-APACHE"))).read_to_string(&mut license));
+        license += &t!(fs::read_string(builder.config.src.join("LICENSE-APACHE")));
         license.push_str("\n");
-        t!(t!(File::open(builder.config.src.join("LICENSE-MIT"))).read_to_string(&mut license));
+        license += &t!(fs::read_string(builder.config.src.join("LICENSE-MIT")));
 
         let rtf = r"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Arial;}}\nowwrap\fs18";
         let mut rtf = rtf.to_string();
@@ -1472,8 +1458,7 @@ impl Step for Extended {
         }
 
         let xform = |p: &Path| {
-            let mut contents = String::new();
-            t!(t!(File::open(p)).read_to_string(&mut contents));
+            let mut contents = t!(fs::read_string(p));
             if rls_installer.is_none() {
                 contents = filter(&contents, "rls");
             }
@@ -1481,7 +1466,7 @@ impl Step for Extended {
                 contents = filter(&contents, "rustfmt");
             }
             let ret = tmp.join(p.file_name().unwrap());
-            create(&ret, &contents);
+            t!(fs::write(&ret, &contents));
             return ret;
         };
 
@@ -1524,7 +1509,7 @@ impl Step for Extended {
             pkgbuild("uninstall");
 
             t!(fs::create_dir_all(pkg.join("res")));
-            t!(t!(File::create(pkg.join("res/LICENSE.txt"))).write_all(license.as_bytes()));
+            t!(fs::write(pkg.join("res/LICENSE.txt"), &license));
             install(&etc.join("gfx/rust-logo.png"), &pkg.join("res"), 0o644);
             let mut cmd = Command::new("productbuild");
             cmd.arg("--distribution")
@@ -1573,7 +1558,7 @@ impl Step for Extended {
             install(&etc.join("exe/modpath.iss"), &exe, 0o644);
             install(&etc.join("exe/upgrade.iss"), &exe, 0o644);
             install(&etc.join("gfx/rust-logo.ico"), &exe, 0o644);
-            t!(t!(File::create(exe.join("LICENSE.txt"))).write_all(license.as_bytes()));
+            t!(fs::write(exe.join("LICENSE.txt"), &license));
 
             // Generate exe installer
             let mut cmd = Command::new("iscc");
@@ -1761,7 +1746,7 @@ impl Step for Extended {
                 candle("GccGroup.wxs".as_ref());
             }
 
-            t!(t!(File::create(exe.join("LICENSE.rtf"))).write_all(rtf.as_bytes()));
+            t!(fs::write(exe.join("LICENSE.rtf"), rtf));
             install(&etc.join("gfx/banner.bmp"), &exe, 0o644);
             install(&etc.join("gfx/dialogbg.bmp"), &exe, 0o644);
 
@@ -1862,8 +1847,7 @@ impl Step for HashSign {
             .unwrap_or_else(|| {
                 panic!("\n\nfailed to specify `dist.gpg-password-file` in `config.toml`\n\n")
             });
-        let mut pass = String::new();
-        t!(t!(File::open(&file)).read_to_string(&mut pass));
+        let pass = t!(fs::read_string(&file));
 
         let today = output(Command::new("date").arg("+%Y-%m-%d"));
 

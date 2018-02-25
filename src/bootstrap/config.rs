@@ -15,7 +15,6 @@
 
 use std::collections::{HashMap, HashSet};
 use std::env;
-use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 use std::cmp;
@@ -29,7 +28,7 @@ use cache::{Intern, Interned};
 use flags::Flags;
 use build_helper::output;
 pub use flags::Subcommand;
-use fs::File;
+use fs;
 
 /// Global configuration for the entire build and/or bootstrap.
 ///
@@ -439,9 +438,7 @@ impl Config {
             .config
             .as_ref()
             .map(|file| {
-                let mut f = t!(File::open(&file));
-                let mut contents = String::new();
-                t!(f.read_to_string(&mut contents));
+                let contents = t!(fs::read_string(&file));
                 match toml::from_str(&contents) {
                     Ok(table) => table,
                     Err(err) => {

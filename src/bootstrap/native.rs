@@ -20,7 +20,6 @@
 
 use std::env;
 use std::ffi::OsString;
-use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -28,7 +27,7 @@ use build_helper::output;
 use cmake;
 use cc;
 
-use fs::{self, File};
+use fs;
 use util::{self, exe};
 use build_helper::up_to_date;
 use builder::{Builder, RunConfig, ShouldRun, Step};
@@ -78,8 +77,7 @@ impl Step for Llvm {
         }
 
         let rebuild_trigger = builder.config.src.join("src/rustllvm/llvm-rebuild-trigger");
-        let mut rebuild_trigger_contents = String::new();
-        t!(t!(File::open(&rebuild_trigger)).read_to_string(&mut rebuild_trigger_contents));
+        let rebuild_trigger_contents = t!(fs::read_string(&rebuild_trigger));
 
         let (out_dir, llvm_config_ret_dir) = if emscripten {
             let dir = builder.emscripten_llvm_out(target);
@@ -95,8 +93,7 @@ impl Step for Llvm {
         let build_llvm_config =
             llvm_config_ret_dir.join(exe("llvm-config", &*builder.config.general.build));
         if done_stamp.exists() {
-            let mut done_contents = String::new();
-            t!(t!(File::open(&done_stamp)).read_to_string(&mut done_contents));
+            let done_contents = t!(fs::read_string(&done_stamp));
 
             // If LLVM was already built previously and contents of the rebuild-trigger file
             // didn't change from the previous build, then no action is required.
@@ -302,7 +299,7 @@ impl Step for Llvm {
         //        tools and libs on all platforms.
         cfg.build();
 
-        t!(t!(File::create(&done_stamp)).write_all(rebuild_trigger_contents.as_bytes()));
+        t!(fs::write(&done_stamp, rebuild_trigger_contents.as_bytes()));
 
         build_llvm_config
     }
@@ -408,8 +405,7 @@ impl Step for Openssl {
         };
 
         let stamp = out.join(".stamp");
-        let mut contents = String::new();
-        drop(File::open(&stamp).and_then(|mut f| f.read_to_string(&mut contents)));
+        let contents = fs::read_string(&stamp).unwrap_or_default();
         if contents == OPENSSL_VERS {
             return;
         }
@@ -564,7 +560,6 @@ impl Step for Openssl {
         println!("Installing openssl for {}", target);
         builder.run_quiet(Command::new("make").arg("install").current_dir(&obj));
 
-        let mut f = t!(File::create(&stamp));
-        t!(f.write_all(OPENSSL_VERS.as_bytes()));
+        t!(fs::write(&stamp, OPENSSL_VERS.as_bytes()));
     }
 }

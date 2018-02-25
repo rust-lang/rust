@@ -13,7 +13,7 @@ use std::cell::RefCell;
 use std::collections::BTreeSet;
 use std::env;
 use std::fmt::Debug;
-use std::io::{BufRead, Read, Write, BufReader};
+use std::io::{BufRead, BufReader};
 use std::hash::Hash;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
@@ -22,7 +22,7 @@ use std::process::{Command, Stdio};
 use filetime::FileTime;
 use serde_json;
 
-use fs::{self, File};
+use fs;
 use compile;
 use install;
 use dist;
@@ -1374,10 +1374,7 @@ impl<'a> CargoCommand<'a> {
         // contents (the list of files to copy) is different or if any dep's mtime
         // is newer then we rewrite the stamp file.
         deps.sort();
-        let mut stamp_contents = Vec::new();
-        if let Ok(mut f) = File::open(&stamp) {
-            t!(f.read_to_end(&mut stamp_contents));
-        }
+        let stamp_contents = fs::read(&stamp).unwrap_or_default();
         let stamp_mtime = mtime(&stamp);
         let mut new_contents = Vec::new();
         let mut max = None;
@@ -1405,9 +1402,8 @@ impl<'a> CargoCommand<'a> {
         } else {
             self.builder.verbose(&format!("updating {:?} as deps changed", stamp));
         }
-        t!(t!(File::create(&stamp)).write_all(&new_contents));
+        t!(fs::write(&stamp, &new_contents));
     }
-
 }
 
 // Avoiding a dependency on winapi to keep compile times down

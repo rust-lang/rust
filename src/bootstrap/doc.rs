@@ -17,14 +17,13 @@
 //! Everything here is basically just a shim around calling either `rustbook` or
 //! `rustdoc`.
 
-use std::io::prelude::*;
 use std::io;
 use std::path::{Path, PathBuf};
 
 use Mode;
 use build_helper::up_to_date;
 
-use fs::{self, File};
+use fs;
 use util::{cp_r, symlink_dir};
 use builder::{Builder, Compiler, RunConfig, ShouldRun, Step};
 use tool::Tool;
@@ -382,12 +381,11 @@ impl Step for Standalone {
         let version_info = out.join("version_info.html");
 
         if !up_to_date(&version_input, &version_info) {
-            let mut info = String::new();
-            t!(t!(File::open(&version_input)).read_to_string(&mut info));
+            let info = t!(fs::read_string(&version_input));
             let info = info.replace("VERSION", &builder.rust_release())
                 .replace("SHORT_HASH", builder.rust_info.sha_short().unwrap_or(""))
                 .replace("STAMP", builder.rust_info.sha().unwrap_or(""));
-            t!(t!(File::create(&version_info)).write_all(info.as_bytes()));
+            t!(fs::write(&version_info, info))
         }
 
         for file in t!(fs::read_dir(builder.config.src.join("src/doc"))) {
