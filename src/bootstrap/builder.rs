@@ -1476,6 +1476,9 @@ mod __test {
         assert_eq!(first(builder.cache.all::<dist::Rustc>()), &[
             dist::Rustc { compiler: Compiler { host: a, stage: 2 } },
         ]);
+        let ds = first(builder.cache.all::<dist::DebuggerScripts>());
+        assert_eq!(ds.len(), 1);
+        assert_eq!(ds[0].host, a);
         assert_eq!(first(builder.cache.all::<dist::Std>()), &[
             dist::Std {
                 compiler: Compiler { host: a, stage: 2 },
@@ -1483,6 +1486,56 @@ mod __test {
             },
         ]);
         assert_eq!(first(builder.cache.all::<dist::Src>()), &[dist::Src]);
+        assert_eq!(first(builder.cache.all::<dist::PlainSourceTarball>()),
+            &[dist::PlainSourceTarball]);
+    }
+
+    #[test]
+    fn dist_baseline_extended() {
+        let mut config = configure(&[], &[]);
+        config.general.extended = true;
+        let build = Build::new(config);
+        let mut builder = Builder::new(&build);
+        builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
+
+        let a = "A".intern();
+
+        assert_eq!(first(builder.cache.all::<dist::Docs>()), &[
+            dist::Docs { stage: 2, host: a },
+        ]);
+        assert_eq!(first(builder.cache.all::<dist::Mingw>()), &[
+            dist::Mingw { host: a },
+        ]);
+        assert_eq!(first(builder.cache.all::<dist::Rustc>()), &[
+            dist::Rustc { compiler: Compiler { host: a, stage: 2 } },
+        ]);
+        let ds = first(builder.cache.all::<dist::DebuggerScripts>());
+        assert_eq!(ds.len(), 1);
+        assert_eq!(ds[0].host, a);
+        assert_eq!(first(builder.cache.all::<dist::Std>()), &[
+            dist::Std {
+                compiler: Compiler { host: a, stage: 2 },
+                target: a,
+            },
+        ]);
+        assert_eq!(first(builder.cache.all::<dist::Analysis>()), &[
+            dist::Analysis {
+                compiler: Compiler { host: a, stage: 2 },
+                target: a,
+            },
+        ]);
+        assert_eq!(first(builder.cache.all::<dist::Cargo>()), &[
+            dist::Cargo { stage: 2, target: a },
+        ]);
+        assert_eq!(first(builder.cache.all::<dist::Rls>()), &[
+            dist::Rls { stage: 2, target: a },
+        ]);
+        assert_eq!(first(builder.cache.all::<dist::Rustfmt>()), &[
+            dist::Rustfmt { stage: 2, target: a },
+        ]);
+        assert_eq!(first(builder.cache.all::<dist::Src>()), &[dist::Src]);
+        assert_eq!(first(builder.cache.all::<dist::PlainSourceTarball>()),
+            &[dist::PlainSourceTarball]);
     }
 
     #[test]

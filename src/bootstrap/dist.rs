@@ -505,7 +505,7 @@ impl Step for Rustc {
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct DebuggerScripts {
     pub sysroot: Interned<PathBuf>,
     pub host: Interned<String>,
@@ -650,7 +650,7 @@ impl Step for Std {
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Analysis {
     pub compiler: Compiler,
     pub target: Interned<String>,
@@ -890,7 +890,7 @@ impl Step for Src {
 
 const CARGO_VENDOR_VERSION: &str = "0.1.4";
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PlainSourceTarball;
 
 impl Step for PlainSourceTarball {
@@ -1043,7 +1043,7 @@ fn write_file(path: &Path, data: &[u8]) {
     t!(vf.write_all(data));
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Cargo {
     pub stage: u32,
     pub target: Interned<String>,
@@ -1115,7 +1115,7 @@ impl Step for Cargo {
         install(&src.join("LICENSE-MIT"), &overlay, 0o644);
         install(&src.join("LICENSE-APACHE"), &overlay, 0o644);
         install(&src.join("LICENSE-THIRD-PARTY"), &overlay, 0o644);
-        t!(t!(File::create(overlay.join("version"))).write_all(version.as_bytes()));
+        create(&overlay.join("version"), &version);
 
         // Generate the installer tarball
         let mut cmd = rust_installer(builder);
@@ -1139,7 +1139,7 @@ impl Step for Cargo {
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Rls {
     pub stage: u32,
     pub target: Interned<String>,
@@ -1202,7 +1202,7 @@ impl Step for Rls {
         install(&src.join("README.md"), &overlay, 0o644);
         install(&src.join("LICENSE-MIT"), &overlay, 0o644);
         install(&src.join("LICENSE-APACHE"), &overlay, 0o644);
-        t!(t!(File::create(overlay.join("version"))).write_all(version.as_bytes()));
+        create(&overlay.join("version"), &version);
 
         // Generate the installer tarball
         let mut cmd = rust_installer(builder);
@@ -1227,7 +1227,7 @@ impl Step for Rls {
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Rustfmt {
     pub stage: u32,
     pub target: Interned<String>,
@@ -1298,7 +1298,7 @@ impl Step for Rustfmt {
         install(&src.join("README.md"), &overlay, 0o644);
         install(&src.join("LICENSE-MIT"), &overlay, 0o644);
         install(&src.join("LICENSE-APACHE"), &overlay, 0o644);
-        t!(t!(File::create(overlay.join("version"))).write_all(version.as_bytes()));
+        create(&overlay.join("version"), &version);
 
         // Generate the installer tarball
         let mut cmd = rust_installer(builder);
@@ -1323,7 +1323,7 @@ impl Step for Rustfmt {
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Extended {
     stage: u32,
     host: Interned<String>,
@@ -1387,9 +1387,9 @@ impl Step for Extended {
         install(&builder.config.src.join("LICENSE-APACHE"), &overlay, 0o644);
         install(&builder.config.src.join("LICENSE-MIT"), &overlay, 0o644);
         let version = builder.rust_version();
-        t!(t!(File::create(overlay.join("version"))).write_all(version.as_bytes()));
+        create(&overlay.join("version"), &version);
         if let Some(sha) = builder.rust_sha() {
-            t!(t!(File::create(overlay.join("git-commit-hash"))).write_all(sha.as_bytes()));
+            create(&overlay.join("git-commit-hash"), &sha);
         }
         install(&etc.join("README.md"), &overlay, 0o644);
 
@@ -1481,7 +1481,7 @@ impl Step for Extended {
                 contents = filter(&contents, "rustfmt");
             }
             let ret = tmp.join(p.file_name().unwrap());
-            t!(t!(File::create(&ret)).write_all(contents.as_bytes()));
+            create(&ret, &contents);
             return ret;
         };
 
@@ -1831,7 +1831,7 @@ fn add_env(builder: &Builder, cmd: &mut Command, target: Interned<String>) {
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct HashSign;
 
 impl Step for HashSign {
