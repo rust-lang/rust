@@ -377,7 +377,7 @@ fn check_region_bounds_on_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // but found 0" it's confusing, because it looks like there
     // are zero. Since I don't quite know how to phrase things at
     // the moment, give a kind of vague error message.
-    if trait_params.len() != impl_params.len() {
+    if trait_params.count() != impl_params.count() {
         let mut err = struct_span_err!(tcx.sess,
                                        span,
                                        E0195,
@@ -574,8 +574,8 @@ fn compare_number_of_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         -> Result<(), ErrorReported> {
     let impl_m_generics = tcx.generics_of(impl_m.def_id);
     let trait_m_generics = tcx.generics_of(trait_m.def_id);
-    let num_impl_m_type_params = impl_m_generics.types().len();
-    let num_trait_m_type_params = trait_m_generics.types().len();
+    let num_impl_m_type_params = impl_m_generics.types().count();
+    let num_trait_m_type_params = trait_m_generics.types().count();
     if num_impl_m_type_params != num_trait_m_type_params {
         let impl_m_node_id = tcx.hir.as_local_node_id(impl_m.def_id).unwrap();
         let impl_m_item = tcx.hir.expect_impl_item(impl_m_node_id);
@@ -728,7 +728,7 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut error_found = false;
     let impl_m_generics = tcx.generics_of(impl_m.def_id);
     let trait_m_generics = tcx.generics_of(trait_m.def_id);
-    for (impl_ty, trait_ty) in impl_m_generics.types().iter().zip(trait_m_generics.types().iter()) {
+    for (impl_ty, trait_ty) in impl_m_generics.types().zip(trait_m_generics.types()) {
         if impl_ty.synthetic != trait_ty.synthetic {
             let impl_node_id = tcx.hir.as_local_node_id(impl_ty.def_id).unwrap();
             let impl_span = tcx.hir.span(impl_node_id);

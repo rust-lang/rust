@@ -242,8 +242,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     where FR: FnMut(&ty::RegionParameterDef, &[Kind<'tcx>]) -> ty::Region<'tcx>,
           FT: FnMut(&ty::TypeParameterDef, &[Kind<'tcx>]) -> Ty<'tcx> {
         // Handle Self first, before all regions.
-        let types = defs.types();
-        let mut types = types.iter();
+        let mut types = defs.types();
         let mut skip_self = defs.parent.is_none() && defs.has_self;
         if skip_self {
             let def = types.next().unwrap();

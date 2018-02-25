@@ -417,7 +417,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         let mut names = generics.parent.map_or(vec![], |def_id| {
             get_type_parameter_names(cx, cx.tcx.generics_of(def_id))
         });
-        names.extend(generics.types().iter().map(|param| param.name));
+        names.extend(generics.types().map(|param| param.name));
         names
     }
 

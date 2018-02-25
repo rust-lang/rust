@@ -1108,7 +1108,7 @@ fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         continue;
                     }
 
-                    if !tcx.generics_of(method.def_id).types().is_empty() {
+                    if tcx.generics_of(method.def_id).types().count() != 0 {
                         continue;
                     }
 

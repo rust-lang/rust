@@ -1459,10 +1459,9 @@ impl<'a> LoweringContext<'a> {
                             return n;
                         }
                         assert!(!def_id.is_local());
-                        let n = self.cstore
-                            .item_generics_cloned_untracked(def_id, self.sess)
-                            .lifetimes()
-                            .len();
+                        let item_generics =
+                            self.cstore.item_generics_cloned_untracked(def_id, self.sess);
+                        let n = item_generics.lifetimes().count();
                         self.type_def_lifetime_params.insert(def_id, n);
                         n
                     });

@@ -209,7 +209,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // whatever & would get replaced with).
         let decl_generics = tcx.generics_of(def_id);
         let num_types_provided = parameters.types.len();
-        let expected_num_region_params = decl_generics.lifetimes().len();
+        let expected_num_region_params = decl_generics.lifetimes().count();
         let supplied_num_region_params = parameters.lifetimes.len();
         if expected_num_region_params != supplied_num_region_params {
             report_lifetime_number_error(tcx, span,
@@ -221,9 +221,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         assert_eq!(decl_generics.has_self, self_ty.is_some());
 
         // Check the number of type parameters supplied by the user.
-        let ty_param_defs = &decl_generics.types()[self_ty.is_some() as usize..];
+        let ty_param_defs =
+            decl_generics.types().skip(self_ty.is_some() as usize).collect::<Vec<_>>();
         if !infer_types || num_types_provided > ty_param_defs.len() {
-            check_type_argument_count(tcx, span, num_types_provided, ty_param_defs);
+            check_type_argument_count(tcx, span, num_types_provided, &ty_param_defs);
         }
 
         let is_object = self_ty.map_or(false, |ty| ty.sty == TRAIT_OBJECT_DUMMY_SELF);
@@ -254,7 +255,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 return ty;
             }
 
-            let i = i - self_ty.is_some() as usize - decl_generics.lifetimes().len();
+            let i = i - self_ty.is_some() as usize - decl_generics.lifetimes().count();
             if i < num_types_provided {
                 // A provided type parameter.
                 self.ast_ty_to_ty(&parameters.types[i])

@@ -243,7 +243,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
         let name = tcx.item_name(trait_def_id);
         let generics = tcx.generics_of(trait_def_id);
         let parser = Parser::new(&self.0);
-        let types = generics.types();
+        let mut types = generics.types();
         let mut result = Ok(());
         for token in parser {
             match token {
@@ -254,7 +254,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
                     // `{ThisTraitsName}` is allowed
                     Position::ArgumentNamed(s) if s == name => (),
                     // So is `{A}` if A is a type parameter
-                    Position::ArgumentNamed(s) => match types.iter().find(|t| {
+                    Position::ArgumentNamed(s) => match types.find(|t| {
                         t.name == s
                     }) {
                         Some(_) => (),
@@ -288,7 +288,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
         let name = tcx.item_name(trait_ref.def_id);
         let trait_str = tcx.item_path_str(trait_ref.def_id);
         let generics = tcx.generics_of(trait_ref.def_id);
-        let generic_map = generics.types().iter().map(|param| {
+        let generic_map = generics.types().map(|param| {
             (param.name.to_string(),
              trait_ref.substs.type_for_def(param).to_string())
         }).collect::<FxHashMap<String, String>>();

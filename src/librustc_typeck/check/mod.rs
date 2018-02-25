@@ -1239,7 +1239,7 @@ pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item
         } else {
             for item in &m.items {
                 let generics = tcx.generics_of(tcx.hir.local_def_id(item.id));
-                if !generics.types().is_empty() {
+                if generics.types().count() != 0 {
                     let mut err = struct_span_err!(tcx.sess, item.span, E0044,
                         "foreign items may not have type parameters");
                     err.span_label(item.span, "can't have type parameters");
@@ -4799,7 +4799,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             // Skip over the lifetimes in the same segment.
             if let Some((_, generics)) = segment {
-                i -= generics.lifetimes().len();
+                i -= generics.lifetimes().count();
             }
 
             if let Some(ast_ty) = types.get(i) {
@@ -4920,9 +4920,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Check provided type parameters.
         let type_defs = segment.map_or(vec![], |(_, generics)| {
             if generics.parent.is_none() {
-                generics.types()[generics.has_self as usize..].to_vec()
+                generics.types().skip(generics.has_self as usize).collect()
             } else {
-                generics.types()
+                generics.types().collect()
             }
         });
         let required_len = type_defs.iter().take_while(|d| !d.has_default).count();
@@ -4957,7 +4957,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
 
         // Check provided lifetime parameters.
-        let lifetime_defs = segment.map_or(vec![], |(_, generics)| generics.lifetimes());
+        let lifetime_defs = segment.map_or(vec![], |(_, generics)| generics.lifetimes().collect());
         let required_len = lifetime_defs.len();
 
         // Prohibit explicit lifetime arguments if late bound lifetime parameters are present.
@@ -4968,7 +4968,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let primary_msg = "cannot specify lifetime arguments explicitly \
                                if late bound lifetime parameters are present";
             let note_msg = "the late bound lifetime parameter is introduced here";
-            if !is_method_call && (lifetimes.len() > lifetime_defs.len() ||
+            if !is_method_call && (lifetimes.len() > required_len ||
                                    lifetimes.len() < required_len && !infer_lifetimes) {
                 let mut err = self.tcx.sess.struct_span_err(lifetimes[0].span, primary_msg);
                 err.span_note(span_late, note_msg);
@@ -4983,9 +4983,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             return;
         }
 
-        if lifetimes.len() > lifetime_defs.len() {
-            let span = lifetimes[lifetime_defs.len()].span;
-            let expected_text = count_lifetime_params(lifetime_defs.len());
+        if lifetimes.len() > required_len {
+            let span = lifetimes[required_len].span;
+            let expected_text = count_lifetime_params(required_len);
             let actual_text = count_lifetime_params(lifetimes.len());
             struct_span_err!(self.tcx.sess, span, E0088,
                              "too many lifetime parameters provided: \
@@ -4994,7 +4994,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 .span_label(span, format!("expected {}", expected_text))
                 .emit();
         } else if lifetimes.len() < required_len && !infer_lifetimes {
-            let expected_text = count_lifetime_params(lifetime_defs.len());
+            let expected_text = count_lifetime_params(required_len);
             let actual_text = count_lifetime_params(lifetimes.len());
             struct_span_err!(self.tcx.sess, span, E0090,
                              "too few lifetime parameters provided: \
@@ -5014,8 +5014,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let segment = segment.map(|(path_segment, generics)| {
             let explicit = !path_segment.infer_types;
-            let impl_trait = generics.types().iter()
-                                             .any(|ty_param| {
+            let impl_trait = generics.types().any(|ty_param| {
                                                  match ty_param.synthetic {
                                                      Some(ImplTrait) => true,
                                                      _ => false,

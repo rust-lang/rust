@@ -642,7 +642,6 @@ fn reject_shadowing_type_parameters(tcx: TyCtxt, def_id: DefId) {
     let generics = tcx.generics_of(def_id);
     let parent = tcx.generics_of(generics.parent.unwrap());
     let impl_params: FxHashMap<_, _> = parent.types()
-                                             .iter()
                                              .map(|tp| (tp.name, tp.def_id))
                                              .collect();
 

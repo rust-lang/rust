@@ -803,28 +803,28 @@ impl<'a, 'gcx, 'tcx> Generics {
         self.parent_count + self.own_count()
     }
 
-    pub fn lifetimes(&self) -> Vec<&RegionParameterDef> {
+    pub fn lifetimes(&self) -> impl DoubleEndedIterator<Item = &RegionParameterDef> {
         self.params.iter().filter_map(|p| {
             if let GenericParam::Lifetime(lt) = p {
                 Some(lt)
             } else {
                 None
             }
-        }).collect()
+        })
     }
 
-    pub fn types(&self) -> Vec<&TypeParameterDef> {
+    pub fn types(&self) -> impl DoubleEndedIterator<Item = &TypeParameterDef> {
         self.params.iter().filter_map(|p| {
             if let GenericParam::Type(ty) = p {
                 Some(ty)
             } else {
                 None
             }
-        }).collect()
+        })
     }
 
     pub fn has_type_parameters(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
-        if self.types().len() != 0 {
+        if self.types().count() != 0 {
             return true;
         }
         if let Some(parent_def_id) = self.parent {
@@ -885,7 +885,7 @@ impl<'a, 'gcx, 'tcx> Generics {
             // And it can be seen that in both cases, to move from a substs
             // offset to a generics offset you just have to offset by the
             // number of regions.
-            let type_param_offset = self.lifetimes().len();
+            let type_param_offset = self.lifetimes().count();
 
             let has_self = self.has_self && self.parent.is_none();
             let is_separated_self = type_param_offset != 0 && idx == 0 && has_self;
