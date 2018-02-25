@@ -14,7 +14,7 @@ macro n($foo:ident, $S:ident, $i:ident, $m:ident) {
     mod $foo {
         #[derive(Default)]
         pub struct $S { $i: u32 }
-        pub macro $m($e:expr) { $e.$i }
+        pub macro $m($e: expr) { $e.$i }
     }
 }
 
