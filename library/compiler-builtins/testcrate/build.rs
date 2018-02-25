@@ -143,6 +143,18 @@ fn main() {
         },
         "compiler_builtins::float::cmp::__lesf2(a, b)");
 
+    gen(|(a, b): (MyF32, MyF32)| {
+            let c = a.0.is_nan() || b.0.is_nan();
+            Some(c as i32)
+        },
+        "compiler_builtins::float::cmp::__unordsf2(a, b)");
+
+    gen(|(a, b): (MyF64, MyF64)| {
+            let c = a.0.is_nan() || b.0.is_nan();
+            Some(c as i32)
+        },
+        "compiler_builtins::float::cmp::__unorddf2(a, b)");
+
     if target_arch_arm {
         gen(|(a, b): (MyF32, MyF32)| {
                 if a.0.is_nan() || b.0.is_nan() {
