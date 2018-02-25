@@ -209,17 +209,26 @@ pub fn parse(
                         "path", "meta", "tt", "item", "vis"
                     ];
                     match parse_matcher(start_sp, ident, &mut trees.clone()) {
-                        Ok((TokenTree::MetaVarDecl(_, _, kind), colon_sp, end_sp))
+                        Ok((TokenTree::MetaVarDecl(full_sp, _, kind), colon_sp, end_sp))
                         if start_sp.hi() == colon_sp.lo()
                         && colon_sp.hi() == end_sp.lo()
                         && VALID_SPECIFIERS.contains(&&*kind.name.as_str()) => {
+                            let specifier_sp = colon_sp.with_hi(end_sp.hi());
                             sess.span_diagnostic
                                 .struct_span_warn(
-                                    colon_sp.with_hi(end_sp.hi()),
-                                    "matchers are treated literally on the expansion side"
+                                    specifier_sp,
+                                    "macro expansion includes fragment specifier"
                                 )
-                                .help("if this is what you want, \
-                                       insert spaces to silence this warning")
+                                .span_suggestion(
+                                    full_sp,
+                                    "to just use the macro argument, remove the fragment specifier",
+                                    format!("${}", ident)
+                                )
+                                .span_suggestion(
+                                    specifier_sp,
+                                    "to suppress this warning, add a space after the colon",
+                                    format!(": {}", kind)
+                                )
                                 .emit();
                         }
                         _ => {}
