@@ -40,7 +40,7 @@ use rustc::ty::layout::{self, Align, Size, TyLayout};
 use rustc::ty::layout::{HasDataLayout, LayoutOf};
 
 use libc::c_uint;
-use std::{cmp, iter};
+use std::cmp;
 
 pub use syntax::abi::Abi;
 pub use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
@@ -279,30 +279,6 @@ impl Uniform {
     pub fn align(&self, cx: &CodegenCx) -> Align {
         self.unit.align(cx)
     }
-
-    pub fn llvm_type(&self, cx: &CodegenCx) -> Type {
-        let llunit = self.unit.llvm_type(cx);
-
-        if self.total <= self.unit.size {
-            return llunit;
-        }
-
-        let count = self.total.bytes() / self.unit.size.bytes();
-        let rem_bytes = self.total.bytes() % self.unit.size.bytes();
-
-        if rem_bytes == 0 {
-            return Type::array(&llunit, count);
-        }
-
-        // Only integers can be really split further.
-        assert_eq!(self.unit.kind, RegKind::Integer);
-
-        let args: Vec<_> = (0..count).map(|_| llunit)
-            .chain(iter::once(Type::ix(cx, rem_bytes * 8)))
-            .collect();
-
-        Type::struct_(cx, &args, false)
-    }
 }
 
 pub trait LayoutExt<'tcx> {
@@ -405,55 +381,81 @@ impl<'tcx> LayoutExt<'tcx> for TyLayout<'tcx> {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum CastTarget {
-    Uniform(Uniform),
-    Pair(Reg, Reg)
+pub struct CastTarget {
+    pub prefix: [Option<RegKind>; 8],
+    pub prefix_chunk: Size,
+    pub rest: Uniform,
 }
 
 impl From<Reg> for CastTarget {
     fn from(unit: Reg) -> CastTarget {
-        CastTarget::Uniform(Uniform::from(unit))
+        CastTarget::from(Uniform::from(unit))
     }
 }
 
 impl From<Uniform> for CastTarget {
     fn from(uniform: Uniform) -> CastTarget {
-        CastTarget::Uniform(uniform)
+        CastTarget {
+            prefix: [None; 8],
+            prefix_chunk: Size::from_bytes(0),
+            rest: uniform
+        }
     }
 }
 
 impl CastTarget {
-    pub fn size(&self, cx: &CodegenCx) -> Size {
-        match *self {
-            CastTarget::Uniform(u) => u.total,
-            CastTarget::Pair(a, b) => {
-                (a.size.abi_align(a.align(cx)) + b.size)
-                    .abi_align(self.align(cx))
-            }
+    pub fn pair(a: Reg, b: Reg) -> CastTarget {
+        CastTarget {
+            prefix: [Some(a.kind), None, None, None, None, None, None, None],
+            prefix_chunk: a.size,
+            rest: Uniform::from(b)
         }
+    }
+
+    pub fn size(&self, cx: &CodegenCx) -> Size {
+        (self.prefix_chunk * self.prefix.iter().filter(|x| x.is_some()).count() as u64)
+            .abi_align(self.rest.align(cx)) + self.rest.total
     }
 
     pub fn align(&self, cx: &CodegenCx) -> Align {
-        match *self {
-            CastTarget::Uniform(u) => u.align(cx),
-            CastTarget::Pair(a, b) => {
-                cx.data_layout().aggregate_align
-                    .max(a.align(cx))
-                    .max(b.align(cx))
-            }
-        }
+        self.prefix.iter()
+            .filter_map(|x| x.map(|kind| Reg { kind: kind, size: self.prefix_chunk }.align(cx)))
+            .fold(cx.data_layout().aggregate_align.max(self.rest.align(cx)),
+                |acc, align| acc.max(align))
     }
 
     pub fn llvm_type(&self, cx: &CodegenCx) -> Type {
-        match *self {
-            CastTarget::Uniform(u) => u.llvm_type(cx),
-            CastTarget::Pair(a, b) => {
-                Type::struct_(cx, &[
-                    a.llvm_type(cx),
-                    b.llvm_type(cx)
-                ], false)
+        let rest_ll_unit = self.rest.unit.llvm_type(cx);
+        let rest_count = self.rest.total.bytes() / self.rest.unit.size.bytes();
+        let rem_bytes = self.rest.total.bytes() % self.rest.unit.size.bytes();
+
+        if self.prefix.iter().all(|x| x.is_none()) {
+            // Simplify to a single unit when there is no prefix and size <= unit size
+            if self.rest.total <= self.rest.unit.size {
+                return rest_ll_unit;
+            }
+
+            // Simplify to array when all chunks are the same size and type
+            if rem_bytes == 0 {
+                return Type::array(&rest_ll_unit, rest_count);
             }
         }
+
+        // Create list of fields in the main structure
+        let mut args: Vec<_> =
+            self.prefix.iter().flat_map(|option_kind| option_kind.map(
+                    |kind| Reg { kind: kind, size: self.prefix_chunk }.llvm_type(cx)))
+            .chain((0..rest_count).map(|_| rest_ll_unit))
+            .collect();
+
+        // Append final integer
+        if rem_bytes != 0 {
+            // Only integers can be really split further.
+            assert_eq!(self.rest.unit.kind, RegKind::Integer);
+            args.push(Type::ix(cx, rem_bytes * 8));
+        }
+
+        Type::struct_(cx, &args, false)
     }
 }
 
