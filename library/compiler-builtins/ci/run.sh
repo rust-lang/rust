@@ -30,8 +30,7 @@ case $1 in
 
             RUSTFLAGS="-C debug-assertions=no -C lto" \
             CARGO_INCREMENTAL=0 \
-              $run --test $t --no-default-features \
-                   --features 'no_std mem c' --no-run
+              $run --test $t --no-default-features --features 'mem c' --no-run
             qemu-arm-static target/${1}/debug/$t-*
 	done
 
@@ -39,8 +38,7 @@ case $1 in
             t=${t%.rs}
             RUSTFLAGS="-C lto" \
             CARGO_INCREMENTAL=0 \
-              $run --test $t --no-default-features \
-                   --features 'no_std mem c' --no-run --release
+              $run --test $t --no-default-features --features 'mem c' --no-run --release
             qemu-arm-static target/${1}/release/$t-*
         done
         ;;
