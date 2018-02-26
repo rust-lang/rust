@@ -1,0 +1,14 @@
+error[E0502]: cannot borrow `heap` as immutable because it is also borrowed as mutable
+  --> $DIR/issue-47646.rs:25:30
+   |
+21 |     let borrow = heap.peek_mut();
+   |                  ---- mutable borrow occurs here
+...
+25 |             println!("{:?}", heap); //~ ERROR cannot borrow `heap` as immutable
+   |                              ^^^^ immutable borrow occurs here
+...
+28 |     };
+   |      - borrow later used here, when binding is dropped
+
+error: aborting due to previous error
+
