@@ -9,3 +9,4 @@ error[E0060]: this function takes at least 1 parameter but 0 parameters were sup
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0060"

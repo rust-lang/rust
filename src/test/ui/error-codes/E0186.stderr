@@ -9,3 +9,4 @@ error[E0186]: method `foo` has a `&self` declaration in the trait, but not in th
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0186"

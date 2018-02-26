@@ -12,3 +12,5 @@ error[E0601]: main function not found
 
 error: cannot continue compilation due to previous error
 
+You've got a few errors: E0405, E0601
+If you want more information on an error, try using "rustc --explain E0405"

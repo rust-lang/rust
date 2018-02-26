@@ -10,3 +10,4 @@ error[E0597]: `ticking` does not live long enough
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0597"

@@ -32,3 +32,5 @@ error[E0532]: expected tuple struct/variant, found type alias `A`
 
 error: aborting due to 4 previous errors
 
+You've got a few errors: E0423, E0532
+If you want more information on an error, try using "rustc --explain E0423"

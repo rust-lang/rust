@@ -24,3 +24,4 @@ error[E0599]: no method named `c_fn_ptr` found for type `&D` in the current scop
 
 error: aborting due to 3 previous errors
 
+If you want more information on this error, try using "rustc --explain E0599"

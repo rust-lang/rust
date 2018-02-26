@@ -14,3 +14,5 @@ error[E0067]: invalid left-hand side expression
 
 error: aborting due to 2 previous errors
 
+You've got a few errors: E0067, E0368
+If you want more information on an error, try using "rustc --explain E0067"

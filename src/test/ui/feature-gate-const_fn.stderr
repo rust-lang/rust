@@ -58,3 +58,5 @@ error[E0658]: const fn is unstable (see issue #24111)
 
 error: aborting due to 8 previous errors
 
+You've got a few errors: E0379, E0658
+If you want more information on an error, try using "rustc --explain E0379"

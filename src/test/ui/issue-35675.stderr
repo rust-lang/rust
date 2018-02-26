@@ -65,3 +65,5 @@ error[E0573]: expected type, found variant `Some`
 
 error: aborting due to 7 previous errors
 
+You've got a few errors: E0412, E0425, E0573
+If you want more information on an error, try using "rustc --explain E0412"

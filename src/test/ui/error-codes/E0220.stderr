@@ -12,3 +12,5 @@ error[E0191]: the value of the associated type `Bar` (from the trait `Trait`) mu
 
 error: aborting due to 2 previous errors
 
+You've got a few errors: E0191, E0220
+If you want more information on an error, try using "rustc --explain E0191"

@@ -18,3 +18,4 @@ error[E0442]: intrinsic return value has wrong type: found vector with length 2,
 
 error: aborting due to 3 previous errors
 
+If you want more information on this error, try using "rustc --explain E0442"

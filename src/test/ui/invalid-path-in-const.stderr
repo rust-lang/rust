@@ -6,3 +6,4 @@ error[E0599]: no associated item named `DOESNOTEXIST` found for type `u32` in th
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0599"

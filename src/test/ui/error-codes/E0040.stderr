@@ -6,3 +6,4 @@ error[E0040]: explicit use of destructor method
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0040"

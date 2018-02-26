@@ -18,3 +18,4 @@ error[E0107]: wrong number of lifetime parameters: expected 1, found 3
 
 error: aborting due to 3 previous errors
 
+If you want more information on this error, try using "rustc --explain E0107"

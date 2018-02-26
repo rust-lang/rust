@@ -108,3 +108,5 @@ error[E0424]: expected value, found module `self`
 
 error: aborting due to 17 previous errors
 
+You've got a few errors: E0424, E0425
+If you want more information on an error, try using "rustc --explain E0424"

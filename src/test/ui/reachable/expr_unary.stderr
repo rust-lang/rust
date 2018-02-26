@@ -32,3 +32,4 @@ error[E0600]: cannot apply unary operator `!` to type `!`
 
 error: aborting due to 3 previous errors
 
+If you want more information on this error, try using "rustc --explain E0600"

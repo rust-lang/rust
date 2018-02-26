@@ -8,3 +8,4 @@ error[E0038]: the trait `issue_3907::Foo` cannot be made into an object
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0038"

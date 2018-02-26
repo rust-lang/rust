@@ -8,3 +8,4 @@ error[E0133]: construction of immovable generator requires unsafe function or bl
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0133"

@@ -6,3 +6,4 @@ error[E0090]: too few lifetime parameters provided: expected 2 lifetime paramete
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0090"

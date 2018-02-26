@@ -27,3 +27,4 @@ note: associated type `Self` could derive from `std::str::FromStr`
 
 error: aborting due to 2 previous errors
 
+If you want more information on this error, try using "rustc --explain E0221"

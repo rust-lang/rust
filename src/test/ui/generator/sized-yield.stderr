@@ -20,3 +20,4 @@ error[E0277]: the trait bound `str: std::marker::Sized` is not satisfied
 
 error: aborting due to 2 previous errors
 
+If you want more information on this error, try using "rustc --explain E0277"

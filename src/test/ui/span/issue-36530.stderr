@@ -16,3 +16,4 @@ error[E0658]: The attribute `foo` is currently unknown to the compiler and may h
 
 error: aborting due to 2 previous errors
 
+If you want more information on this error, try using "rustc --explain E0658"

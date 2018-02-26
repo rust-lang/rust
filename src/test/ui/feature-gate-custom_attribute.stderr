@@ -104,3 +104,4 @@ error[E0658]: The attribute `fake_doc` is currently unknown to the compiler and 
 
 error: aborting due to 13 previous errors
 
+If you want more information on this error, try using "rustc --explain E0658"

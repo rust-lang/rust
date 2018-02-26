@@ -24,3 +24,4 @@ error[E0658]: unless otherwise specified, attributes with the prefix `rustc_` ar
 
 error: aborting due to 3 previous errors
 
+If you want more information on this error, try using "rustc --explain E0658"

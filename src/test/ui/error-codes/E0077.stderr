@@ -6,3 +6,4 @@ error[E0077]: SIMD vector element type should be machine type
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0077"

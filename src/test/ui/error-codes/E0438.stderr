@@ -6,3 +6,4 @@ error[E0438]: const `BAR` is not a member of trait `Bar`
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0438"

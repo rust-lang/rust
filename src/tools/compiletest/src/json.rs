@@ -57,25 +57,6 @@ struct DiagnosticCode {
     explanation: Option<String>,
 }
 
-pub fn extract_rendered(output: &str, proc_res: &ProcRes) -> String {
-    output.lines()
-        .filter_map(|line| if line.starts_with('{') {
-            match json::decode::<Diagnostic>(line) {
-                Ok(diagnostic) => diagnostic.rendered,
-                Err(error) => {
-                    proc_res.fatal(Some(&format!("failed to decode compiler output as json: \
-                                                `{}`\noutput: {}\nline: {}",
-                                                error,
-                                                line,
-                                                output)));
-                }
-            }
-        } else {
-            None
-        })
-        .collect()
-}
-
 pub fn parse_output(file_name: &str, output: &str, proc_res: &ProcRes) -> Vec<Error> {
     output.lines()
         .flat_map(|line| parse_line(file_name, line, output, proc_res))

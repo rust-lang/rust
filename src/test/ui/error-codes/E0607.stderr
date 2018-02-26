@@ -6,3 +6,4 @@ error[E0607]: cannot cast thin pointer `*const u8` to fat pointer `*const [u8]`
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0607"

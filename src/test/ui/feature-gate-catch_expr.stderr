@@ -12,3 +12,4 @@ error[E0658]: `catch` expression is experimental (see issue #31436)
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0658"

@@ -6,3 +6,4 @@ error[E0192]: negative impls are only allowed for auto traits (e.g., `Send` and 
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0192"

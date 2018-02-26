@@ -6,3 +6,4 @@ error[E0243]: wrong number of type arguments: expected 1, found 0
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0243"

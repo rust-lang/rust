@@ -38,3 +38,4 @@ note: ...does not necessarily outlive the lifetime 'b as defined on the impl at 
 
 error: aborting due to 2 previous errors
 
+If you want more information on this error, try using "rustc --explain E0308"

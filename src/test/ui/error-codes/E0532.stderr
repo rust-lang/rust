@@ -6,3 +6,4 @@ error[E0532]: expected tuple struct/variant, found constant `StructConst1`
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0532"

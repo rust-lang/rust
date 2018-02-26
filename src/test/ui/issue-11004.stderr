@@ -16,3 +16,4 @@ error[E0609]: no field `y` on type `*mut A`
 
 error: aborting due to 2 previous errors
 
+If you want more information on this error, try using "rustc --explain E0609"

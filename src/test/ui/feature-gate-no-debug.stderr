@@ -8,3 +8,4 @@ error[E0658]: the `#[no_debug]` attribute was an experimental feature that has b
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0658"

@@ -43,3 +43,5 @@ error[E0599]: no method named `take` found for type `Foo` in the current scope
 
 error: aborting due to 4 previous errors
 
+You've got a few errors: E0061, E0599
+If you want more information on an error, try using "rustc --explain E0061"

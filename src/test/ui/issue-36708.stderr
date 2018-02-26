@@ -6,3 +6,4 @@ error[E0049]: method `foo` has 1 type parameter but its trait declaration has 0 
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0049"

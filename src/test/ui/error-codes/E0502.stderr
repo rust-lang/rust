@@ -10,3 +10,4 @@ error[E0502]: cannot borrow `*a` as mutable because `a` is also borrowed as immu
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0502"

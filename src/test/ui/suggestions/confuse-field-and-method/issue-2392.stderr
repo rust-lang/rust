@@ -121,3 +121,4 @@ error[E0599]: no method named `f3` found for type `FuncContainer` in the current
 
 error: aborting due to 11 previous errors
 
+If you want more information on this error, try using "rustc --explain E0599"

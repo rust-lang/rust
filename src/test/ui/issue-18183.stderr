@@ -6,3 +6,4 @@ error[E0128]: type parameters with a default cannot use forward declared identif
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0128"

@@ -41,3 +41,5 @@ error[E0518]: attribute should be applied to function
 
 error: aborting due to 6 previous errors
 
+You've got a few errors: E0518, E0601
+If you want more information on an error, try using "rustc --explain E0518"

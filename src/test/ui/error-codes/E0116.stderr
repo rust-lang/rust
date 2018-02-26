@@ -8,3 +8,4 @@ error[E0116]: cannot define inherent `impl` for a type outside of the crate wher
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0116"

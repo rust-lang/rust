@@ -24,3 +24,4 @@ error[E0688]: cannot mix in-band and explicit lifetime definitions
 
 error: aborting due to 3 previous errors
 
+If you want more information on this error, try using "rustc --explain E0688"

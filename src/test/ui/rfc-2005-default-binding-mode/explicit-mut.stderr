@@ -24,3 +24,4 @@ error[E0594]: cannot assign to immutable borrowed content `*n`
 
 error: aborting due to 3 previous errors
 
+If you want more information on this error, try using "rustc --explain E0594"

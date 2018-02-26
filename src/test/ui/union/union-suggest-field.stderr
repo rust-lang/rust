@@ -20,3 +20,5 @@ error[E0615]: attempted to take value of method `calculate` on type `U`
 
 error: aborting due to 3 previous errors
 
+You've got a few errors: E0560, E0609, E0615
+If you want more information on an error, try using "rustc --explain E0560"

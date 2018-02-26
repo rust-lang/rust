@@ -110,3 +110,4 @@ error[E0658]: non-ascii idents are not fully supported. (see issue #28979)
 
 error: aborting due to 13 previous errors
 
+If you want more information on this error, try using "rustc --explain E0658"

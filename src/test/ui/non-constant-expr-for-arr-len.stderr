@@ -6,3 +6,4 @@ error[E0435]: attempt to use a non-constant value in a constant
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0435"

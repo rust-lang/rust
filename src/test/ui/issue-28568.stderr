@@ -9,3 +9,4 @@ error[E0119]: conflicting implementations of trait `std::ops::Drop` for type `My
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0119"

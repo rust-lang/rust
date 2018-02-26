@@ -16,3 +16,4 @@ error[E0658]: negative trait bounds are not yet fully implemented; use marker ty
 
 error: aborting due to 2 previous errors
 
+If you want more information on this error, try using "rustc --explain E0658"

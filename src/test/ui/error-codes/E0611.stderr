@@ -6,3 +6,4 @@ error[E0611]: field `0` of tuple-struct `a::Foo` is private
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0611"

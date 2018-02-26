@@ -36,3 +36,4 @@ error[E0277]: `no_debug::Bar` doesn't implement `std::fmt::Display`
 
 error: aborting due to 4 previous errors
 
+If you want more information on this error, try using "rustc --explain E0277"

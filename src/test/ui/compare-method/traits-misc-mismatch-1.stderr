@@ -63,3 +63,4 @@ error[E0276]: impl has stricter requirements than trait
 
 error: aborting due to 7 previous errors
 
+If you want more information on this error, try using "rustc --explain E0276"

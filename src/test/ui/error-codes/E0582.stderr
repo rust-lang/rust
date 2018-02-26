@@ -12,3 +12,4 @@ error[E0582]: binding for associated type `Item` references lifetime `'a`, which
 
 error: aborting due to 2 previous errors
 
+If you want more information on this error, try using "rustc --explain E0582"

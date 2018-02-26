@@ -8,3 +8,4 @@ error[E0084]: unsupported representation for zero-variant enum
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0084"

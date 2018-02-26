@@ -20,3 +20,5 @@ error[E0382]: use of moved value: `x`
 
 error: aborting due to 2 previous errors
 
+You've got a few errors: E0382, E0596
+If you want more information on an error, try using "rustc --explain E0382"

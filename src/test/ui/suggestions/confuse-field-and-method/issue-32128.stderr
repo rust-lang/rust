@@ -11,3 +11,4 @@ error[E0599]: no method named `example` found for type `Example` in the current 
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0599"

@@ -13,3 +13,4 @@ error[E0259]: the name `m1` is defined multiple times
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0259"

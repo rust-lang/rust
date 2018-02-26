@@ -6,3 +6,4 @@ error[E0199]: implementing the trait `Bar` is not unsafe
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0199"

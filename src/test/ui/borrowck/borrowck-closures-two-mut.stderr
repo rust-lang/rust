@@ -150,3 +150,4 @@ error[E0499]: cannot borrow `x` as mutable more than once at a time (Mir)
 
 error: aborting due to 10 previous errors
 
+If you want more information on this error, try using "rustc --explain E0499"

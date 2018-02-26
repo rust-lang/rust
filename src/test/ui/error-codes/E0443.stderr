@@ -6,3 +6,4 @@ error[E0443]: intrinsic return value has wrong type: found `i64x8`, expected `i1
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0443"

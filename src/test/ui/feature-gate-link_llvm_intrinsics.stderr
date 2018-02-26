@@ -8,3 +8,4 @@ error[E0658]: linking to LLVM intrinsics is experimental (see issue #29602)
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0658"

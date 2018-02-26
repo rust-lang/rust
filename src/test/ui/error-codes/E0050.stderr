@@ -27,3 +27,4 @@ error[E0050]: method `less` has 4 parameters but the declaration in trait `Foo::
 
 error: aborting due to 3 previous errors
 
+If you want more information on this error, try using "rustc --explain E0050"

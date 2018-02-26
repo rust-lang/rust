@@ -42,3 +42,5 @@ error[E0221]: ambiguous associated type `Color` in bounds of `C`
 
 error: aborting due to 4 previous errors
 
+You've got a few errors: E0191, E0221
+If you want more information on an error, try using "rustc --explain E0191"

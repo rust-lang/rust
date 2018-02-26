@@ -6,3 +6,4 @@ error[E0439]: invalid `simd_shuffle`, needs length: `simd_shuffle`
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0439"

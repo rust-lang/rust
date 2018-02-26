@@ -30,3 +30,4 @@ note: borrowed value must be valid for the lifetime 'a as defined on the functio
 
 error: aborting due to 2 previous errors
 
+If you want more information on this error, try using "rustc --explain E0597"

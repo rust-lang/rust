@@ -34,3 +34,5 @@ error[E0507]: cannot move out of borrowed content
 
 error: aborting due to 3 previous errors
 
+You've got a few errors: E0507, E0509
+If you want more information on an error, try using "rustc --explain E0507"

@@ -13,3 +13,4 @@ help: consider changing this closure to take self by mutable reference
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0594"

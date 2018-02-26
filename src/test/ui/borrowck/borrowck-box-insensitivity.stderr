@@ -161,3 +161,5 @@ error[E0502]: cannot borrow `a.y` as mutable because `a.x.x` is also borrowed as
 
 error: aborting due to 16 previous errors
 
+You've got a few errors: E0382, E0502, E0503, E0505
+If you want more information on an error, try using "rustc --explain E0382"

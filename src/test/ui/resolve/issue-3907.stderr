@@ -10,3 +10,4 @@ help: possible better candidate is found in another module, you can import it in
 
 error: cannot continue compilation due to previous error
 
+If you want more information on this error, try using "rustc --explain E0404"

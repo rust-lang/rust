@@ -111,3 +111,5 @@ note: ...so that the reference type `&'a Nested<M>` does not outlive the data it
 
 error: aborting due to 7 previous errors
 
+You've got a few errors: E0309, E0310
+If you want more information on an error, try using "rustc --explain E0309"

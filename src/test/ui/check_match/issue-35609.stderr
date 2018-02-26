@@ -48,3 +48,4 @@ error[E0004]: non-exhaustive patterns: `Some(B)`, `Some(C)`, `Some(D)` and 2 mor
 
 error: aborting due to 8 previous errors
 
+If you want more information on this error, try using "rustc --explain E0004"

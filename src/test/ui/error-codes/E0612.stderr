@@ -6,3 +6,4 @@ error[E0612]: attempted out-of-bounds tuple index `1` on type `Foo`
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0612"

@@ -24,3 +24,4 @@ error[E0596]: cannot borrow immutable borrowed content `*a` as mutable
 
 error: aborting due to 3 previous errors
 
+If you want more information on this error, try using "rustc --explain E0596"

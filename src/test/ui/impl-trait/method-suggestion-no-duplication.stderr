@@ -15,3 +15,4 @@ error[E0599]: no method named `is_empty` found for type `Foo` in the current sco
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0599"

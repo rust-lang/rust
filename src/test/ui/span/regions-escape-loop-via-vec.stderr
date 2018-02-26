@@ -37,3 +37,5 @@ error[E0506]: cannot assign to `x` because it is borrowed
 
 error: aborting due to 4 previous errors
 
+You've got a few errors: E0503, E0506, E0597
+If you want more information on an error, try using "rustc --explain E0503"

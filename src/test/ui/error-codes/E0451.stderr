@@ -12,3 +12,4 @@ error[E0451]: field `b` of struct `Bar::Foo` is private
 
 error: aborting due to 2 previous errors
 
+If you want more information on this error, try using "rustc --explain E0451"

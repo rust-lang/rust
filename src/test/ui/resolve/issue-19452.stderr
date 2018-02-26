@@ -12,3 +12,4 @@ error[E0423]: expected value, found struct variant `issue_19452_aux::Homura::Mad
 
 error: aborting due to 2 previous errors
 
+If you want more information on this error, try using "rustc --explain E0423"

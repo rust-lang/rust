@@ -8,3 +8,4 @@ error[E0403]: the name `T` is already used for a type parameter in this type par
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0403"

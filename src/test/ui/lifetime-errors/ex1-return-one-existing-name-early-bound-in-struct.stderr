@@ -9,3 +9,4 @@ error[E0621]: explicit lifetime required in the type of `other`
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0621"

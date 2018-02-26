@@ -15,3 +15,4 @@ help: try using a variant of the expected type
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0308"

@@ -6,3 +6,4 @@ error[E0207]: the type parameter `T` is not constrained by the impl trait, self 
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0207"

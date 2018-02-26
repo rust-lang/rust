@@ -22,3 +22,4 @@ error[E0597]: `d1` does not live long enough
 
 error: aborting due to 2 previous errors
 
+If you want more information on this error, try using "rustc --explain E0597"

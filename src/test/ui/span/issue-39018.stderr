@@ -32,3 +32,4 @@ help: you also need to borrow the `String` on the right to get a `&str`
 
 error: aborting due to 3 previous errors
 
+If you want more information on this error, try using "rustc --explain E0369"

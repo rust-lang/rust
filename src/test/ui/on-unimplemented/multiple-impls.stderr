@@ -63,3 +63,4 @@ error[E0277]: the trait bound `[i32]: Index<Bar<u32>>` is not satisfied
 
 error: aborting due to 6 previous errors
 
+If you want more information on this error, try using "rustc --explain E0277"

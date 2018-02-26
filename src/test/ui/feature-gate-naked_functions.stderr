@@ -16,3 +16,4 @@ error[E0658]: the `#[naked]` attribute is an experimental feature (see issue #32
 
 error: aborting due to 2 previous errors
 
+If you want more information on this error, try using "rustc --explain E0658"

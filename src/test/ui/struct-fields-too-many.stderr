@@ -8,3 +8,4 @@ error[E0560]: struct `BuildData` has no field named `bar`
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0560"

@@ -36,3 +36,4 @@ error[E0204]: the trait `Copy` may not be implemented for this type
 
 error: aborting due to 4 previous errors
 
+If you want more information on this error, try using "rustc --explain E0204"

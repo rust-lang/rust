@@ -9,3 +9,4 @@ error[E0599]: no variant named `PIE` found for type `Delicious` in the current s
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0599"

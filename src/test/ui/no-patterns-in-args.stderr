@@ -30,3 +30,5 @@ error[E0561]: patterns aren't allowed in function pointer types
 
 error: aborting due to 5 previous errors
 
+You've got a few errors: E0130, E0561
+If you want more information on an error, try using "rustc --explain E0130"

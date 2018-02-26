@@ -8,3 +8,4 @@ error[E0658]: declaration of a nonstandard #[main] function may change over time
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0658"

@@ -11,3 +11,4 @@ error[E0460]: found possibly newer version of crate `a` which `b` depends on
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0460"

@@ -6,3 +6,4 @@ error[E0225]: only auto traits can be used as additional traits in a trait objec
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0225"
