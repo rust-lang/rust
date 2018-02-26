@@ -24,7 +24,7 @@
 - [Type checking](./type-checking.md)
 - [The MIR (Mid-level IR)](./mir.md)
     - [MIR construction](./mir-construction.md)
-    - [MIR visitor](./mir-visitor.md)
+    - [MIR visitor and traversal](./mir-visitor.md)
     - [MIR passes: getting the MIR for a function](./mir-passes.md)
     - [MIR borrowck](./mir-borrowck.md)
       - [MIR-based region checking (NLL)](./mir-regionck.md)

@@ -4,9 +4,9 @@ If you would like to get the MIR for a function (or constant, etc),
 you can use the `optimized_mir(def_id)` query. This will give you back
 the final, optimized MIR. For foreign def-ids, we simply read the MIR
 from the other crate's metadata. But for local def-ids, the query will
-construct the MIR and then iteratively optimize it by putting it
-through various pipeline stages. This section describes those pipeline
-stages and how you can extend them.
+construct the MIR and then iteratively optimize it by applying a
+series of passes. This section describes how those passes work and how
+you can extend them.
 
 To produce the `optimized_mir(D)` for a given def-id `D`, the MIR
 passes through several suites of optimizations, each represented by a
@@ -97,18 +97,19 @@ that appeared within the `main` function.)
 ### Implementing and registering a pass
 
 A `MirPass` is some bit of code that processes the MIR, typically --
-but not always -- transforming it along the way in some way. For
-example, it might perform an optimization. The `MirPass` trait itself
-is found in in [the `rustc_mir::transform` module][mirtransform], and
-it basically consists of one method, `run_pass`, that simply gets an
+but not always -- transforming it along the way somehow. For example,
+it might perform an optimization. The `MirPass` trait itself is found
+in in [the `rustc_mir::transform` module][mirtransform], and it
+basically consists of one method, `run_pass`, that simply gets an
 `&mut Mir` (along with the tcx and some information about where it
-came from).
+came from). The MIR is therefore modified in place (which helps to
+keep things efficient).
 
-A good example of a basic MIR pass is [`NoLandingPads`], which walks the
-MIR and removes all edges that are due to unwinding -- this is used
-with when configured with `panic=abort`, which never unwinds. As you can see
-from its source, a MIR pass is defined by first defining a dummy type, a struct
-with no fields, something like:
+A good example of a basic MIR pass is [`NoLandingPads`], which walks
+the MIR and removes all edges that are due to unwinding -- this is
+used when configured with `panic=abort`, which never unwinds. As you
+can see from its source, a MIR pass is defined by first defining a
+dummy type, a struct with no fields, something like:
 
 ```rust
 struct MyPass;
@@ -120,8 +121,9 @@ this pass into the appropriate list of passes found in a query like
 should go into the `optimized_mir` list.)
 
 If you are writing a pass, there's a good chance that you are going to
-want to use a [MIR visitor] too -- those are a handy visitor that
-walks the MIR for you and lets you make small edits here and there.
+want to use a [MIR visitor]. MIR visitors are a handy way to walk all
+the parts of the MIR, either to search for something or to make small
+edits.
 
 ### Stealing
 
@@ -149,7 +151,9 @@ be **stolen** by the `mir_validated()` suite. If nothing was done,
 then `mir_const_qualif(D)` would succeed if it came before
 `mir_validated(D)`, but fail otherwise. Therefore, `mir_validated(D)`
 will **force** `mir_const_qualif` before it actually steals, thus
-ensuring that the reads have already happened:
+ensuring that the reads have already happened (remember that
+[queries are memoized](./query.html), so executing a query twice
+simply loads from a cache the second time):
 
 ```
 mir_const(D) --read-by--> mir_const_qualif(D)

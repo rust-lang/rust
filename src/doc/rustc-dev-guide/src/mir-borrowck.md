@@ -37,9 +37,9 @@ in several modes, but this text will describe only the mode when NLL is enabled
 
 The overall flow of the borrow checker is as follows:
 
-- We first create a **local copy** C of the MIR. We will be modifying
-  this copy in place to modify the types and things to include
-  references to the new regions that we are computing.
+- We first create a **local copy** C of the MIR. In the coming steps,
+  we will modify this copy in place to modify the types and things to
+  include references to the new regions that we are computing.
 - We then invoke `nll::replace_regions_in_mir` to modify this copy C.
   Among other things, this function will replace all of the regions in
   the MIR with fresh [inference variables](glossary.html).
@@ -51,6 +51,6 @@ The overall flow of the borrow checker is as follows:
   - (More details can be found in [the NLL section](./mir-regionck.html).)
 - Finally, the borrow checker itself runs, taking as input (a) the
   results of move analysis and (b) the regions computed by the region
-  checker. This allows is to figure out which loans are still in scope
+  checker. This allows us to figure out which loans are still in scope
   at any particular point.
   

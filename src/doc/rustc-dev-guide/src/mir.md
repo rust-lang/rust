@@ -1,10 +1,10 @@
 # The MIR (Mid-level IR)
 
 MIR is Rust's _Mid-level Intermediate Representation_. It is
-constructed from HIR (described in an earlier chapter). MIR was
-introduced in [RFC 1211]. It is a radically simplified form of Rust
-that is used for certain flow-sensitive safety checks -- notably the
-borrow checker! -- and also for optimization and code generation.
+constructed from [HIR](./hir.html). MIR was introduced in
+[RFC 1211]. It is a radically simplified form of Rust that is used for
+certain flow-sensitive safety checks -- notably the borrow checker! --
+and also for optimization and code generation.
 
 If you'd like a very high-level introduction to MIR, as well as some
 of the compiler concepts that it relies on (such as control-flow
@@ -35,20 +35,20 @@ This section introduces the key concepts of MIR, summarized here:
 - **Basic blocks**: units of the control-flow graph, consisting of:
   - **statements:** actions with one successor
   - **terminators:** actions with potentially multiple successors; always at the end of a block
-  - (if you're not familiar with the term basic block, see the [MIR background chapter][bg])
+  - (if you're not familiar with the term *basic block*, see the [background chapter][cfg])
 - **Locals:** Memory locations alloated on the stack (conceptually, at
   least), such as function arguments, local variables, and
   temporaries. These are identified by an index, written with a
   leading underscore, like `_1`. There is also a special "local"
   (`_0`) allocated to store the return value.
 - **Places:** expressions that identify a location in memory, like `_1` or `_1.f`.
-- **Rvalues:** expressions that product a value. The "R" stands for
+- **Rvalues:** expressions that produce a value. The "R" stands for
   the fact that these are the "right-hand side" of an assignment.
   - **Operands:** the arguments to an rvalue, which can either be a
     constant (like `22`) or a place (like `_1`).
 
 You can get a feeling for how MIR is structed by translating simple
-programs into MIR and ready the pretty printed output. In fact, the
+programs into MIR and reading the pretty printed output. In fact, the
 playground makes this easy, since it supplies a MIR button that will
 show you the MIR for your program. Try putting this program into play
 (or [clicking on this link][sample-play]), and then clicking the "MIR"
@@ -96,7 +96,9 @@ You can see that variables in MIR don't have names, they have indices,
 like `_0` or `_1`.  We also intermingle the user's variables (e.g.,
 `_1`) with temporary values (e.g., `_2` or `_3`). You can tell the
 difference between user-defined variables have a comment that gives
-you their original name (`// "vec" in scope 1...`).
+you their original name (`// "vec" in scope 1...`). The "scope" blocks
+(e.g., `scope 1 { .. }`) describe the lexical structure of the source
+program (which names were in scope when).
 
 **Basic blocks.** Reading further, we see our first **basic block** (naturally it may look
 slightly different when you view it, and I am ignoring some of the comments):
@@ -223,27 +225,15 @@ but [you can read about those below](#promoted)).
 - **Rvalues** are represented by the enum `Rvalue`.
 - **Operands** are represented by the enum `Operand`.
 
-## MIR Visitor
-
-The main MIR data type is `rustc::mir::Mir`, defined in `mod.rs`.
-There is also the MIR visitor (in `visit.rs`) which allows you to walk
-the MIR and override what actions will be taken at various points (you
-can visit in either shared or mutable mode; the latter allows changing
-the MIR in place). Finally `traverse.rs` contains various traversal
-routines for visiting the MIR CFG in [different standard orders][traversal]
-(e.g. pre-order, reverse post-order, and so forth).
-
-[traversal]: https://en.wikipedia.org/wiki/Tree_traversal
-
 ## Representing constants
 
-TBD
+*to be written*
 
 <a name=promoted>
 
 ### Promoted constants
 
-TBD
+*to be written*
 
 
 [mir]: https://github.com/rust-lang/rust/tree/master/src/librustc/mir

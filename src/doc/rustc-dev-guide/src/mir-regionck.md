@@ -10,11 +10,11 @@ deprecated once they become the standard kind of lifetime.)
 The MIR-based region analysis consists of two major functions:
 
 - `replace_regions_in_mir`, invoked first, has two jobs:
-  - First, it analyzes the signature of the MIR and finds the set of
-    regions that appear in the MIR signature (e.g., `'a` in `fn
-    foo<'a>(&'a u32) { ... }`. These are called the "universal" or
-    "free" regions -- in particular, they are the regions that
-    [appear free][fvb] in the function body.
+  - First, it finds the set of regions that appear within the
+    signature of the function (e.g., `'a` in `fn foo<'a>(&'a u32) {
+    ... }`. These are called the "universal" or "free" regions -- in
+    particular, they are the regions that [appear free][fvb] in the
+    function body.
   - Second, it replaces all the regions from the function body with
     fresh inference variables. This is because (presently) those
     regions are the results of lexical region inference and hence are
@@ -48,6 +48,8 @@ The MIR-based region analysis consists of two major functions:
 the role of `liveness_constraints` vs other `constraints`, plus
 
 ## Closures
+
+*to be written*
 
 <a name=mirtypeck>
 
@@ -131,15 +133,14 @@ replace them with
 representatives, written like `!1`. We call these regions "skolemized
 regions" -- they represent, basically, "some unknown region".
 
-Once we've done that replacement, we have the following types:
+Once we've done that replacement, we have the following relation:
 
     fn(&'static u32) <: fn(&'!1 u32)
     
 The key idea here is that this unknown region `'!1` is not related to
 any other regions. So if we can prove that the subtyping relationship
 is true for `'!1`, then it ought to be true for any region, which is
-what we wanted. (This number `!1` is called a "universe", for reasons
-we'll get into later.)
+what we wanted.
 
 So let's work through what happens next. To check if two functions are
 subtypes, we check if their arguments have the desired relationship
@@ -153,6 +154,118 @@ true if `'!1: 'static`. That is -- if "some unknown region `!1`" lives
 outlives `'static`. Now, this *might* be true -- after all, `'!1`
 could be `'static` -- but we don't *know* that it's true. So this
 should yield up an error (eventually).
+
+### What is a universe
+
+In the previous section, we introduced the idea of a skolemized
+region, and we denoted it `!1`. We call this number `1` the **universe
+index**. The idea of a "universe" is that it is a set of names that
+are in scope within some type or at some point. Universes are formed
+into a tree, where each child extends its parents with some new names.
+So the **root universe** conceptually contains global names, such as
+the the lifetime `'static` or the type `i32`. In the compiler, we also
+put generic type parameters into this root universe. So consider
+this function `bar`:
+
+```rust
+struct Foo { }
+
+fn bar<'a, T>(t: &'a T) {
+    ...
+}
+```
+
+Here, the root universe would consider of the lifetimes `'static` and
+`'a`.  In fact, although we're focused on lifetimes here, we can apply
+the same concept to types, in which case the types `Foo` and `T` would
+be in the root universe (along with other global types, like `i32`).
+Basically, the root universe contains all the names that
+[appear free](./background.html#free-vs-bound) in the body of `bar`.
+
+Now let's extend `bar` a bit by adding a variable `x`:
+
+```rust
+fn bar<'a, T>(t: &'a T) {
+    let x: for<'b> fn(&'b u32) = ...;
+}
+```
+
+Here, the name `'b` is not part of the root universe. Instead, when we
+"enter" into this `for<'b>` (e.g., by skolemizing it), we will create
+a child universe of the root, let's call it U1:
+
+```
+U0 (root universe)
+│
+└─ U1 (child universe)
+```
+
+The idea is that this child universe U1 extends the root universe U0
+with a new name, which we are identifying by its universe number:
+`!1`.
+
+Now let's extend `bar` a bit by adding one more variable, `y`:
+
+```rust
+fn bar<'a, T>(t: &'a T) {
+    let x: for<'b> fn(&'b u32) = ...;
+    let y: for<'c> fn(&'b u32) = ...;
+}
+```
+
+When we enter *this* type, we will again create a new universe, which
+let's call `U2`. It's parent will be the root universe, and U1 will be
+its sibling:
+
+```
+U0 (root universe)
+│
+├─ U1 (child universe)
+│
+└─ U2 (child universe)
+```
+
+This implies that, while in U2, we can name things from U0 or U2, but
+not U1.
+
+**Giving existential variables a universe.** Now that we have this
+notion of universes, we can use it to extend our type-checker and
+things to prevent illegal names from leaking out. The idea is that we
+give each inference (existential) variable -- whether it be a type or
+a lifetime -- a universe. That variable's value can then only
+reference names visible from that universe. So for example is a
+lifetime variable is created in U0, then it cannot be assigned a value
+of `!1` or `!2`, because those names are not visible from the universe
+U0.
+
+**Representing universes with just a counter.** You might be surprised
+to see that the compiler doesn't keep track of a full tree of
+universes. Instead, it just keeps a counter -- and, to determine if
+one universe can see another one, it just checks if the index is
+greater. For example, U2 can see U0 because 2 >= 0. But U0 cannot see
+U2, because 0 >= 2 is false.
+
+How can we get away with this? Doesn't this mean that we would allow
+U2 to also see U1? The answer is that, yes, we would, **if that
+question ever arose**.  But because of the structure of our type
+checker etc, there is no way for that to happen. In order for
+something happening in the universe U1 to "communicate" with something
+happening in U2, they would have to have a shared inference variable X
+in common. And because everything in U1 is scoped to just U1 and its
+children, that inference variable X would have to be in U0. And since
+X is in U0, it cannot name anything from U1 (or U2). This is perhaps easiest
+to see by using a kind of generic "logic" example:
+
+```
+exists<X> {
+   forall<Y> { ... /* Y is in U1 ... */ }
+   forall<Z> { ... /* Z is in U2 ... */ }
+}   
+```
+
+Here, the only way for the two foralls to interact would be through X,
+but neither Y nor Z are in scope when X is declared, so its value
+cannot reference either of them.
 
 ### Universes and skolemized region elements
 
@@ -179,10 +292,11 @@ In the region inference engine, outlives constraints have the form:
     V1: V2 @ P
     
 where `V1` and `V2` are region indices, and hence map to some region
-variable (which may be universally or existentially quantified). This
-variable will have a universe, so let's call those universes `U(V1)`
-and `U(V2)` respectively. (Actually, the only one we are going to care
-about is `U(V1)`.)
+variable (which may be universally or existentially quantified). The
+`P` here is a "point" in the control-flow graph; it's not important
+for this section. This variable will have a universe, so let's call
+those universes `U(V1)` and `U(V2)` respectively. (Actually, the only
+one we are going to care about is `U(V1)`.)
 
 When we encounter this constraint, the ordinary procedure is to start
 a DFS from `P`. We keep walking so long as the nodes we are walking
@@ -190,24 +304,24 @@ are present in `value(V2)` and we add those nodes to `value(V1)`. If
 we reach a return point, we add in any `end(X)` elements. That part
 remains unchanged.
 
-But then *after that* we want to iterate over the skolemized `skol(u)`
+But then *after that* we want to iterate over the skolemized `skol(x)`
 elements in V2 (each of those must be visible to `U(V2)`, but we
 should be able to just assume that is true, we don't have to check
 it). We have to ensure that `value(V1)` outlives each of those
 skolemized elements.
 
 Now there are two ways that could happen. First, if `U(V1)` can see
-the universe `u` (i.e., `u <= U(V1)`), then we can just add `skol(u1)`
+the universe `x` (i.e., `x <= U(V1)`), then we can just add `skol(x)`
 to `value(V1)` and be done. But if not, then we have to approximate:
-we may not know what set of elements `skol(u1)` represents, but we
-should be able to compute some sort of **upper bound** for it --
-something that it is smaller than. For now, we'll just use `'static`
-for that (since it is bigger than everything) -- in the future, we can
-sometimes be smarter here (and in fact we have code for doing this
-already in other contexts). Moreover, since `'static` is in U0, we
-know that all variables can see it -- so basically if we find a that
-`value(V2)` contains `skol(u)` for some universe `u` that `V1` can't
-see, then we force `V1` to `'static`.
+we may not know what set of elements `skol(x)` represents, but we
+should be able to compute some sort of **upper bound** B for it --
+some region B that outlives `skol(x)`. For now, we'll just use
+`'static` for that (since it outlives everything) -- in the future, we
+can sometimes be smarter here (and in fact we have code for doing this
+already in other contexts). Moreover, since `'static` is in the root
+universe U0, we know that all variables can see it -- so basically if
+we find that `value(V2)` contains `skol(x)` for some universe `x`
+that `V1` can't see, then we force `V1` to `'static`.
 
 ### Extending the "universal regions" check
 
@@ -258,7 +372,7 @@ To process this, we would grow the value of V1 to include all of Vs:
     Vs = { CFG; end('static) }
     V1 = { CFG; end('static), skol(1) }
 
-At that point, constraint propagation is done, because all the
+At that point, constraint propagation is complete, because all the
 outlives relationships are satisfied. Then we would go to the "check
 universal regions" portion of the code, which would test that no
 universal region grew too large.
@@ -280,8 +394,9 @@ Here we would skolemize the supertype, as before, yielding:
         <:
     fn(&'!1 u32, &'!2 u32)
     
-then we instantiate the variable on the left-hand side with an existential
-in universe U2, yielding:
+then we instantiate the variable on the left-hand side with an
+existential in universe U2, yielding the following (`?n` is a notation
+for an existential variable):
 
     fn(&'?3 u32, &'?3 u32) 
         <: 

@@ -17,9 +17,9 @@ A control-flow graph is structured as a set of **basic blocks**
 connected by edges. The key idea of a basic block is that it is a set
 of statements that execute "together" -- that is, whenever you branch
 to a basic block, you start at the first statement and then execute
-all the remainder. Only at the end of the is there the possibility of
-branching to more than one place (in MIR, we call that final statement
-the **terminator**):
+all the remainder. Only at the end of the block is there the
+possibility of branching to more than one place (in MIR, we call that
+final statement the **terminator**):
 
 ```
 bb0: {
@@ -88,7 +88,8 @@ cycle.
 
 ## What is co- and contra-variance?
 
-*to be written*
+Check out the subtyping chapter from the
+[Rust Nomicon](https://doc.rust-lang.org/nomicon/subtyping.html).
 
 <a name=free-vs-bound>
 
@@ -97,18 +98,17 @@ cycle.
 Let's describe the concepts of free vs bound in terms of program
 variables, since that's the thing we're most familiar with.
 
-- Consider this expression: `a + b`. In this expression, `a` and `b`
-  refer to local variables that are defined *outside* of the
-  expression. We say that those variables **appear free** in the
-  expression. To see why this term makes sense, consider the next
-  example.
-- In contrast, consider this expression, which creates a closure: `|a,
+- Consider this expression, which creates a closure: `|a,
   b| a + b`. Here, the `a` and `b` in `a + b` refer to the arguments
   that the closure will be given when it is called. We say that the
   `a` and `b` there are **bound** to the closure, and that the closure
   signature `|a, b|` is a **binder** for the names `a` and `b`
   (because any references to `a` or `b` within refer to the variables
   that it introduces).
+- Consider this expression: `a + b`. In this expression, `a` and `b`
+  refer to local variables that are defined *outside* of the
+  expression. We say that those variables **appear free** in the
+  expression (i.e., they are **free**, not **bound** (tied up)).
 
 So there you have it: a variable "appears free" in some
 expression/statement/whatever if it refers to something defined

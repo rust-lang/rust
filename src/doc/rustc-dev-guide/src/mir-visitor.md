@@ -43,3 +43,13 @@ terminators and removes their `unwind` successors.
 
 [`NoLandingPads`]: https://github.com/rust-lang/rust/tree/master/src/librustc_mir/transform/no_landing_pads.rs
 
+## Traversal
+
+In addition the visitor, [the `rustc::mir::traversal` module][t]
+contains useful functions for walking the MIR CFG in
+[different standard orders][traversal] (e.g. pre-order, reverse
+post-order, and so forth).
+
+[t]: https://github.com/rust-lang/rust/tree/master/src/librustc/mir/traversal.rs
+[traversal]: https://en.wikipedia.org/wiki/Tree_traversal
+
