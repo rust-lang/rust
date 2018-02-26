@@ -384,8 +384,6 @@ mod c {
                         "arm/floatsisfvfp.S",
                         "arm/floatunssidfvfp.S",
                         "arm/floatunssisfvfp.S",
-                        "arm/ledf2vfp.S",
-                        "arm/lesf2vfp.S",
                         "arm/restore_vfp_d8_d15_regs.S",
                         "arm/save_vfp_d8_d15_regs.S",
                     ],

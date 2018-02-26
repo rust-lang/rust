@@ -143,6 +143,18 @@ fn main() {
         },
         "compiler_builtins::float::cmp::__lesf2(a, b)");
 
+    gen(|(a, b): (MyF32, MyF32)| {
+            let c = a.0.is_nan() || b.0.is_nan();
+            Some(c as i32)
+        },
+        "compiler_builtins::float::cmp::__unordsf2(a, b)");
+
+    gen(|(a, b): (MyF64, MyF64)| {
+            let c = a.0.is_nan() || b.0.is_nan();
+            Some(c as i32)
+        },
+        "compiler_builtins::float::cmp::__unorddf2(a, b)");
+
     if target_arch_arm {
         gen(|(a, b): (MyF32, MyF32)| {
                 if a.0.is_nan() || b.0.is_nan() {
@@ -276,6 +288,20 @@ fn main() {
                 Some((a.0 < b.0) as i32)
             },
             "compiler_builtins::float::cmp::__ltdf2vfp(a, b)");
+        gen(|(a, b): (LargeF32, LargeF32)| {
+                if a.0.is_nan() || b.0.is_nan() {
+                    return None;
+                }
+                Some((a.0 <= b.0) as i32)
+            },
+            "compiler_builtins::float::cmp::__lesf2vfp(a, b)");
+        gen(|(a, b): (MyF64, MyF64)| {
+                if a.0.is_nan() || b.0.is_nan() {
+                    return None;
+                }
+                Some((a.0 <= b.0) as i32)
+            },
+            "compiler_builtins::float::cmp::__ledf2vfp(a, b)");
         gen(|(a, b): (LargeF32, LargeF32)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
