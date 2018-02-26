@@ -40,4 +40,4 @@ error[E0658]: The `!` type is experimental (see issue #35121)
 
 error: aborting due to 5 previous errors
 
-If you want more information on this error, try using "rustc --explain E0658"
+For more information about this error, try `rustc --explain E0658`.

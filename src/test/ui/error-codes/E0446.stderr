@@ -8,4 +8,4 @@ error[E0446]: private type `Foo::Bar` in public interface
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0446"
+For more information about this error, try `rustc --explain E0446`.

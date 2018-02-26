@@ -29,4 +29,4 @@ note: ...does not necessarily outlive the lifetime 'a as defined on the impl at 
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0308"
+For more information about this error, try `rustc --explain E0308`.

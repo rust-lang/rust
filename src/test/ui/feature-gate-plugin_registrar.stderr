@@ -8,4 +8,4 @@ error[E0658]: compiler plugins are experimental and possibly buggy (see issue #2
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0658"
+For more information about this error, try `rustc --explain E0658`.
