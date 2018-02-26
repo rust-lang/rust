@@ -81,7 +81,7 @@ unsafe fn configure_llvm(sess: &Session) {
 
 const ARM_WHITELIST: &'static [&'static str] = &["neon", "v7", "vfp2", "vfp3", "vfp4"];
 
-const AARCH64_WHITELIST: &'static [&'static str] = &["neon", "v7"];
+const AARCH64_WHITELIST: &'static [&'static str] = &["neon"];
 
 const X86_WHITELIST: &'static [&'static str] = &["aes", "avx", "avx2", "avx512bw",
                                                  "avx512cd", "avx512dq", "avx512er",
