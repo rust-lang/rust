@@ -990,9 +990,7 @@ macro_rules! atomic_int {
         #[$stable_debug]
         impl fmt::Debug for $atomic_type {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                f.debug_tuple(stringify!($atomic_type))
-                 .field(&self.load(Ordering::SeqCst))
-                 .finish()
+                fmt::Debug::fmt(&self.load(Ordering::SeqCst), f)
             }
         }
 
@@ -1866,7 +1864,7 @@ pub fn compiler_fence(order: Ordering) {
 #[stable(feature = "atomic_debug", since = "1.3.0")]
 impl fmt::Debug for AtomicBool {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("AtomicBool").field(&self.load(Ordering::SeqCst)).finish()
+        fmt::Debug::fmt(&self.load(Ordering::SeqCst), f)
     }
 }
 
@@ -1874,7 +1872,7 @@ impl fmt::Debug for AtomicBool {
 #[stable(feature = "atomic_debug", since = "1.3.0")]
 impl<T> fmt::Debug for AtomicPtr<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("AtomicPtr").field(&self.load(Ordering::SeqCst)).finish()
+        fmt::Debug::fmt(&self.load(Ordering::SeqCst), f)
     }
 }
 
