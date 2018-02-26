@@ -141,13 +141,17 @@ pub(crate) fn on_all_children_bits<'a, 'gcx, 'tcx, F>(
     on_all_children_bits(tcx, mir, move_data, move_path_index, &mut each_child);
 }
 
+/// Invokes the `each_child` callback with each child path of `path`
+/// whose type may need-drop.
 pub(crate) fn on_all_drop_children_bits<'a, 'gcx, 'tcx, F>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
     ctxt: &MoveDataParamEnv<'gcx, 'tcx>,
     path: MovePathIndex,
-    mut each_child: F)
-    where F: FnMut(MovePathIndex)
+    mut each_child: F,
+)
+where
+    F: FnMut(MovePathIndex),
 {
     on_all_children_bits(tcx, mir, &ctxt.move_data, path, |child| {
         let place = &ctxt.move_data.move_paths[path].place;
