@@ -402,14 +402,11 @@ macro_rules! create_config {
                     }
                 };
                 let mut license_template_str = String::new();
-                match license_template_file.read_to_string(&mut license_template_str) {
-                    Ok(_) => (),
-                    Err(e) => {
-                        eprintln!("Warning: unable to read from license template file {:?}: {}",
-                                  license_template_path, e);
-                        return;
-                    }
-                }
+                if let Err(e) = license_template_file.read_to_string(&mut license_template_str) {
+                    eprintln!("Warning: unable to read from license template file {:?}: {}",
+                              license_template_path, e);
+                    return;
+                };
                 let license_template_parsed = match parse_license_template(&license_template_str) {
                     Ok(string) => string,
                     Err(e) => {
