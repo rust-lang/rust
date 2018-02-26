@@ -377,6 +377,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box question_mark::QuestionMarkPass);
     reg.register_late_lint_pass(box suspicious_trait_impl::SuspiciousImpl);
     reg.register_late_lint_pass(box redundant_field_names::RedundantFieldNames);
+    reg.register_late_lint_pass(box misc::BareTraitLate);
 
 
     reg.register_lint_group("clippy_restrictions", vec![

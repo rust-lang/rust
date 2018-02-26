@@ -149,7 +149,7 @@ fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item, trait_ref
                     }
                 }
                 for subst in substs {
-                    if let Some(subst) = subst.as_type() {
+                    if let ty::subst::UnpackedKind::Type(subst) = subst.unpack() {
                         if let ty::TyParam(_) = subst.sty {
                             return;
                         }
