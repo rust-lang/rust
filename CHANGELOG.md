@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.187
+* Rustup to *rustc 1.26.0-nightly (322d7f7b9 2018-02-25)*
+* New lints: [`redundant_field_names`], [`suspicious_arithmetic_impl`], [`suspicious_op_assign_impl`]
+
 ## 0.0.186
 * Rustup to *rustc 1.25.0-nightly (0c6091fbd 2018-02-04)*
 * Various false positive fixes
@@ -705,6 +709,7 @@ All notable changes to this project will be documented in this file.
 [`range_zip_with_len`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#range_zip_with_len
 [`redundant_closure`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#redundant_closure
 [`redundant_closure_call`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#redundant_closure_call
+[`redundant_field_names`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#redundant_field_names
 [`redundant_pattern`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#redundant_pattern
 [`regex_macro`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#regex_macro
 [`replace_consts`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#replace_consts
@@ -730,8 +735,10 @@ All notable changes to this project will be documented in this file.
 [`string_lit_as_bytes`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#string_lit_as_bytes
 [`string_to_string`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#string_to_string
 [`stutter`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#stutter
+[`suspicious_arithmetic_impl`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#suspicious_arithmetic_impl
 [`suspicious_assignment_formatting`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#suspicious_assignment_formatting
 [`suspicious_else_formatting`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#suspicious_else_formatting
+[`suspicious_op_assign_impl`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#suspicious_op_assign_impl
 [`temporary_assignment`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#temporary_assignment
 [`temporary_cstring_as_ptr`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#temporary_cstring_as_ptr
 [`too_many_arguments`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#too_many_arguments

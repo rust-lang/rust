@@ -151,8 +151,8 @@ pub mod print;
 pub mod ptr;
 pub mod question_mark;
 pub mod ranges;
-pub mod reference;
 pub mod redundant_field_names;
+pub mod reference;
 pub mod regex;
 pub mod replace_consts;
 pub mod returns;
@@ -385,9 +385,9 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         array_indexing::INDEXING_SLICING,
         assign_ops::ASSIGN_OPS,
         else_if_without_else::ELSE_IF_WITHOUT_ELSE,
+        literal_representation::DECIMAL_LITERAL_REPRESENTATION,
         methods::CLONE_ON_REF_PTR,
         misc::FLOAT_CMP_CONST,
-        literal_representation::DECIMAL_LITERAL_REPRESENTATION,
     ]);
 
     reg.register_lint_group("clippy_pedantic", vec![
