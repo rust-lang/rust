@@ -636,3 +636,61 @@ fn check_cast(cx: &LateContext, span: Span, e: &Expr, ty: &Ty) {
         }
     }
 }
+
+declare_lint! {
+    pub BARE_TRAIT_OBJECT,
+    Warn,
+    "suggest using `dyn Trait` for trait objects"
+}
+
+#[derive(Copy, Clone)]
+pub struct BareTraitLate;
+
+impl LintPass for BareTraitLate {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(BARE_TRAIT_OBJECT)
+    }
+}
+
+use rustc::hir::intravisit::{walk_ty, NestedVisitorMap, Visitor};
+
+struct TraitTyVisitor<'a, 'tcx: 'a> {
+    cx: &'a LateContext<'a, 'tcx>
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for TraitTyVisitor<'a, 'tcx> {
+    fn visit_ty(&mut self, ty: &'tcx Ty) {
+        println!("{:?}", ty.node);
+        if let TyPath(ref qpath) = ty.node {
+            println!("{:?}", qpath);
+            let hir_id = self.cx.tcx.hir.node_to_hir_id(ty.id);
+            let def = self.cx.tables.qpath_def(qpath, hir_id);
+            let t = self.cx.tcx.type_of(def.def_id());
+            println!("{:?}", t);
+            if let ty::TyDynamic(..) = t.sty {
+                let mut err = self.cx.struct_span_lint(BARE_TRAIT_OBJECT, ty.span,
+                    "Trait objects without an explicit `dyn` are deprecated");
+                let sugg = match self.cx.tcx.sess.codemap().span_to_snippet(ty.span) {
+                    Ok(s) => format!("dyn {}", s),
+                    Err(_) => format!("dyn <type>")
+                };
+                err.span_suggestion(ty.span, "use `dyn`", sugg);
+                err.emit();
+            }
+        }
+        walk_ty(self, ty)
+    }
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
+    }
+}
+
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BareTraitLate {
+    fn check_ty(&mut self, cx: &LateContext<'a, 'tcx>, ty: &'tcx Ty) {
+        if !cx.sess().features.borrow().dyn_trait {
+            return;
+        }
+        println!("toplevel {:?}", ty);
+        TraitTyVisitor { cx }.visit_ty(ty)
+    }
+}
