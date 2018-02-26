@@ -1957,6 +1957,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             (&ty::TyArray(..), &ty::TySlice(_)) => true,
 
             // Struct<T> -> Struct<U>.
+            // Union<T> -> Union<U>.
             (&ty::TyAdt(def_id_a, _), &ty::TyAdt(def_id_b, _))
                 if def_id_a.is_struct() || def_id_a.is_union() => {
                 def_id_a == def_id_b

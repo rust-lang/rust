@@ -1342,7 +1342,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                   sized type");
                     }
                     AdtKind::Union => {
-                        err.note("only the last field of a union may have a dynamically \
+                        err.note("only single-field unions may have a dynamically \
                                   sized type");
                     }
                     AdtKind::Enum => {

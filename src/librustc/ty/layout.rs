@@ -1389,12 +1389,13 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     let mut sized = true;
                     for field in &variants[0] {
                         if field.is_unsized() {
-                            if !sized {
+                            if variants[0].len() > 1 {
                                 bug!("compute_uncached: field {:?} of union {:?} \
-                                     comes after unsized field", field, ty);
+                                    is unsized, but is not the only field",
+                                    field, ty);
+                            } else {
+                                sized = false;
                             }
-                            sized = false;
-                            break;
                         }
 
                         if !packed {
