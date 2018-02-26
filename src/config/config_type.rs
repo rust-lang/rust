@@ -408,7 +408,7 @@ macro_rules! create_config {
                                 license_template_path, e);
                         return;
                     };
-                    let license_template_parsed = match license::parse_template(&license_template_str) {
+                    let license_template_parsed = match TemplateParser::parse(&license_template_str) {
                         Ok(string) => string,
                         Err(e) => {
                             eprintln!("Warning: unable to parse license template file {:?}: {}",
