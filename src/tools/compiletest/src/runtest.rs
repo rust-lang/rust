@@ -248,7 +248,7 @@ impl<'test> TestCx<'test> {
     }
 
     fn run_cfail_test(&self) {
-        let proc_res = self.compile_test(&[]);
+        let proc_res = self.compile_test();
         self.check_if_test_should_compile(&proc_res);
         self.check_no_compiler_crash(&proc_res);
 
@@ -267,7 +267,7 @@ impl<'test> TestCx<'test> {
     }
 
     fn run_rfail_test(&self) {
-        let proc_res = self.compile_test(&[]);
+        let proc_res = self.compile_test();
 
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
@@ -309,7 +309,7 @@ impl<'test> TestCx<'test> {
     }
 
     fn run_rpass_test(&self) {
-        let proc_res = self.compile_test(&[]);
+        let proc_res = self.compile_test();
 
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
@@ -336,7 +336,7 @@ impl<'test> TestCx<'test> {
             return self.run_rpass_test();
         }
 
-        let mut proc_res = self.compile_test(&[]);
+        let mut proc_res = self.compile_test();
 
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
@@ -578,7 +578,7 @@ impl<'test> TestCx<'test> {
         let mut cmds = commands.join("\n");
 
         // compile test file (it should have 'compile-flags:-g' in the header)
-        let compiler_run_result = self.compile_test(&[]);
+        let compiler_run_result = self.compile_test();
         if !compiler_run_result.status.success() {
             self.fatal_proc_rec("compilation failed!", &compiler_run_result);
         }
@@ -835,7 +835,7 @@ impl<'test> TestCx<'test> {
 
     fn run_debuginfo_lldb_test_no_opt(&self) {
         // compile test file (it should have 'compile-flags:-g' in the header)
-        let compile_result = self.compile_test(&[]);
+        let compile_result = self.compile_test();
         if !compile_result.status.success() {
             self.fatal_proc_rec("compilation failed!", &compile_result);
         }
@@ -1272,15 +1272,12 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn compile_test(&self, extra_args: &[&'static str]) -> ProcRes {
+    fn compile_test(&self) -> ProcRes {
         let mut rustc = self.make_compile_args(
             &self.testpaths.file,
             TargetLocation::ThisFile(self.make_exe_name()),
         );
 
-        if !extra_args.is_empty() {
-            rustc.args(extra_args);
-        }
         rustc.arg("-L").arg(&self.aux_output_dir_name());
 
         match self.config.mode {
@@ -2115,7 +2112,7 @@ impl<'test> TestCx<'test> {
     fn run_codegen_units_test(&self) {
         assert!(self.revision.is_none(), "revisions not relevant here");
 
-        let proc_res = self.compile_test(&[]);
+        let proc_res = self.compile_test();
 
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
@@ -2491,15 +2488,7 @@ impl<'test> TestCx<'test> {
     }
 
     fn run_ui_test(&self) {
-        // if the user specified a format in the ui test
-        // print the output to the stderr file, otherwise extract
-        // the rendered error messages from json and print them
-        let explicit = self.props
-            .compile_flags
-            .iter()
-            .any(|s| s.contains("--error-format"));
-
-        let proc_res = self.compile_test(&[]);
+        let proc_res = self.compile_test();
         self.check_if_test_should_compile(&proc_res);
 
         let expected_stderr_path = self.expected_output_path(UI_STDERR);
@@ -2535,8 +2524,6 @@ impl<'test> TestCx<'test> {
             );
         }
 
-        let expected_errors = errors::load_errors(&self.testpaths.file, self.revision);
-
         if self.props.run_pass {
             let proc_res = self.exec_compiled_test();
 
@@ -2544,20 +2531,10 @@ impl<'test> TestCx<'test> {
                 self.fatal_proc_rec("test run failed!", &proc_res);
             }
         }
-        if !explicit {
-            let proc_res = self.compile_test(&["--error-format", "json"]);
-            if !expected_errors.is_empty() || !proc_res.status.success() {
-                // "// error-pattern" comments
-                self.check_expected_errors(expected_errors, &proc_res);
-            } else if !self.props.error_patterns.is_empty() || !proc_res.status.success() {
-                // "//~ERROR comments"
-                self.check_error_patterns(&proc_res.stderr, &proc_res);
-            }
-        }
     }
 
     fn run_mir_opt_test(&self) {
-        let proc_res = self.compile_test(&[]);
+        let proc_res = self.compile_test();
 
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
