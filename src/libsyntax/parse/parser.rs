@@ -4443,13 +4443,83 @@ impl<'a> Parser<'a> {
                 continue;
             };
         }
+
+        let block_sp = lo.to(self.prev_span);
+
+        self.warn_closure_in_block(block_sp, &stmts);
+
         Ok(P(ast::Block {
             stmts,
             id: ast::DUMMY_NODE_ID,
             rules: s,
-            span: lo.to(self.prev_span),
+            span: block_sp,
             recovered,
         }))
+    }
+
+    /// Possibly trying to write closure in a non-Rust language
+    ///
+    /// The following, given that `foo` takes a single argument, is incorrect:
+    ///
+    /// ```text
+    /// let x = "asdf".chars().filter({|x|
+    ///     println!("{:?}", x);
+    ///     x.is_whitespace()
+    /// });
+    /// ```
+    ///
+    /// Writing the above code _without_ the `println!()` _would_ work, as it is syntactically
+    /// correct, so we don't warn in that case, as the enclosing block implicitly returns the
+    /// closure, which evaluates correctly. That case would be caught by clippy.
+    ///
+    /// Originally reported as #27300.
+    fn warn_closure_in_block(&self, block_sp: Span, stmts: &Vec<Stmt>) {
+        match stmts.get(0) {
+            Some(Stmt {
+                node: StmtKind::Semi(expr), ..
+            }) if stmts.len() > 1 => {
+                if let ExprKind::Closure(_, _, _, ref cl_expr, cl_sp) = expr.node {
+                    if let ExprKind::Block(_) = cl_expr.node {
+                        // Only emit warning if the closure is not using a block for its body, as it
+                        // more likely we're trying to write a closure in another's language syntax:
+                        //
+                        // let x = {|arg| stmts}
+                    } else {
+                        let mut warn = self.diagnostic().struct_span_warn(
+                            cl_sp,
+                            "a closure's body is not determined by its enclosing block"
+                        );
+                        warn.span_label(
+                            cl_sp,
+                            "this closure's body is not determined by its enclosing block"
+                        );
+                        warn.span_note(expr.span, "this is the closure's block...");
+
+                        if let Some(Stmt {
+                            node: StmtKind::Expr(expr), ..
+                        }) = stmts.last() {
+                            warn.span_note(block_sp, "...while this enclosing block...");
+                            warn.span_note(expr.span, "...implicitly returns this");
+                        } else {
+                            warn.span_note(block_sp, "...while this is the enclosing block");
+                        }
+                        match self.sess.codemap().span_to_snippet(cl_sp) {
+                            Ok(snippet) =>  warn.span_suggestion(
+                                block_sp.until(cl_sp).to(cl_sp),
+                                "you should open the block *after* the closure's argument list",
+                                format!("{} {{", snippet)
+                            ),
+                            _ => warn.help(
+                                "you should open the block *after* the closure's argument list:\
+                                 |<args>| {"
+                            ),
+                        };
+                        warn.emit();
+                    }
+                }
+            }
+            _ => (),
+        }
     }
 
     /// Parse a statement, including the trailing semicolon.
