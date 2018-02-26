@@ -23,9 +23,10 @@ use rustc::ty::{self, Ty, ToPolyTraitRef, ToPredicate, TraitRef, TypeFoldable};
 use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::util::nodemap::FxHashSet;
 use rustc::infer::{self, InferOk};
+use rustc::middle::stability;
 use syntax::ast;
 use syntax::util::lev_distance::{lev_distance, find_best_match_for_name};
-use syntax_pos::Span;
+use syntax_pos::{Span, symbol::Symbol};
 use rustc::hir;
 use rustc::lint;
 use std::mem;
@@ -937,30 +938,59 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         debug!("pick_method(self_ty={})", self.ty_to_string(self_ty));
 
         let mut possibly_unsatisfied_predicates = Vec::new();
+        let mut unstable_candidates = Vec::new();
 
-        debug!("searching inherent candidates");
-        if let Some(pick) = self.consider_candidates(self_ty,
-                                                     &self.inherent_candidates,
-                                                     &mut possibly_unsatisfied_predicates) {
-            return Some(pick);
+        for (kind, candidates) in &[
+            ("inherent", &self.inherent_candidates),
+            ("extension", &self.extension_candidates),
+        ] {
+            debug!("searching {} candidates", kind);
+            let res = self.consider_candidates(
+                self_ty,
+                candidates.iter(),
+                &mut possibly_unsatisfied_predicates,
+                Some(&mut unstable_candidates),
+            );
+            if let Some(pick) = res {
+                if !unstable_candidates.is_empty() && !self_ty.is_ty_var() {
+                    if let Ok(p) = &pick {
+                        // Emit a lint if there are unstable candidates alongside the stable ones.
+                        //
+                        // Note, we suppress warning if `self_ty` is TyVar (`_`), since every
+                        // possible candidates of every type will be considered, which leads to
+                        // bogus ambiguity like `str::rsplit` vs `[_]::rsplit`. This condition is
+                        // seen in `src/test/compile-fail/occurs-check-2.rs`.
+                        self.emit_unstable_name_collision_hint(p, &unstable_candidates);
+                    }
+                }
+                return Some(pick);
+            }
         }
 
-        debug!("searching extension candidates");
-        let res = self.consider_candidates(self_ty,
-                                           &self.extension_candidates,
-                                           &mut possibly_unsatisfied_predicates);
-        if let None = res {
+        debug!("searching unstable candidates");
+        let res = self.consider_candidates(
+            self_ty,
+            unstable_candidates.into_iter().map(|(c, _)| c),
+            &mut possibly_unsatisfied_predicates,
+            None,
+        );
+        if res.is_none() {
             self.unsatisfied_predicates.extend(possibly_unsatisfied_predicates);
         }
         res
     }
 
-    fn consider_candidates(&self,
-                           self_ty: Ty<'tcx>,
-                           probes: &[Candidate<'tcx>],
-                           possibly_unsatisfied_predicates: &mut Vec<TraitRef<'tcx>>)
-                           -> Option<PickResult<'tcx>> {
-        let mut applicable_candidates: Vec<_> = probes.iter()
+    fn consider_candidates<'b, ProbesIter>(
+        &self,
+        self_ty: Ty<'tcx>,
+        probes: ProbesIter,
+        possibly_unsatisfied_predicates: &mut Vec<TraitRef<'tcx>>,
+        unstable_candidates: Option<&mut Vec<(&'b Candidate<'tcx>, Symbol)>>,
+    ) -> Option<PickResult<'tcx>>
+    where
+        ProbesIter: Iterator<Item = &'b Candidate<'tcx>> + Clone,
+    {
+        let mut applicable_candidates: Vec<_> = probes.clone()
             .map(|probe| {
                 (probe, self.consider_probe(self_ty, probe, possibly_unsatisfied_predicates))
             })
@@ -975,8 +1005,20 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             }
         }
 
+        if let Some(uc) = unstable_candidates {
+            applicable_candidates.retain(|&(p, _)| {
+                if let stability::EvalResult::Deny { feature, .. } =
+                    self.tcx.eval_stability(p.item.def_id, ast::DUMMY_NODE_ID, self.span)
+                {
+                    uc.push((p, feature));
+                    return false;
+                }
+                true
+            });
+        }
+
         if applicable_candidates.len() > 1 {
-            let sources = probes.iter()
+            let sources = probes
                 .map(|p| self.candidate_source(p, self_ty))
                 .collect();
             return Some(Err(MethodError::Ambiguity(sources)));
@@ -989,6 +1031,39 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 Err(MethodError::BadReturnType)
             }
         })
+    }
+
+    fn emit_unstable_name_collision_hint(
+        &self,
+        stable_pick: &Pick,
+        unstable_candidates: &[(&Candidate<'tcx>, Symbol)],
+    ) {
+        let mut diag = self.tcx.struct_span_lint_node(
+            lint::builtin::UNSTABLE_NAME_COLLISION,
+            self.fcx.body_id,
+            self.span,
+            "a method with this name will be added to the standard library in the future",
+        );
+
+        // FIXME: This should be a `span_suggestion` instead of `help`. However `self.span` only
+        // highlights the method name, so we can't use it. Also consider reusing the code from
+        // `report_method_error()`.
+        diag.help(&format!(
+            "call with fully qualified syntax `{}(...)` to keep using the current method",
+            self.tcx.item_path_str(stable_pick.item.def_id),
+        ));
+
+        if ::rustc::session::config::nightly_options::is_nightly_build() {
+            for (candidate, feature) in unstable_candidates {
+                diag.note(&format!(
+                    "add #![feature({})] to the crate attributes to enable `{}`",
+                    feature,
+                    self.tcx.item_path_str(candidate.item.def_id),
+                ));
+            }
+        }
+
+        diag.emit();
     }
 
     fn select_trait_candidate(&self, trait_ref: ty::TraitRef<'tcx>)

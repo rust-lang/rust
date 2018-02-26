@@ -474,6 +474,22 @@ struct Checker<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
+/// Result of `TyCtxt::eval_stability`.
+pub enum EvalResult {
+    /// We can use the item because it is stable or we provided the
+    /// corresponding feature gate.
+    Allow,
+    /// We cannot use the item because it is unstable and we did not provide the
+    /// corresponding feature gate.
+    Deny {
+        feature: Symbol,
+        reason: Option<Symbol>,
+        issue: u32,
+    },
+    /// The item does not have the `#[stable]` or `#[unstable]` marker assigned.
+    Unmarked,
+}
+
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     // (See issue #38412)
     fn skip_stability_check_due_to_privacy(self, mut def_id: DefId) -> bool {
@@ -509,11 +525,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn check_stability(self, def_id: DefId, id: NodeId, span: Span) {
+    /// Evaluates the stability of an item.
+    ///
+    /// Returns `None` if the item is stable, or unstable but the corresponding `#![feature]` has
+    /// been provided. Returns the tuple `Some((feature, reason, issue))` of the offending unstable
+    /// feature otherwise.
+    pub fn eval_stability(self, def_id: DefId, id: NodeId, span: Span) -> EvalResult {
         if span.allows_unstable() {
             debug!("stability: \
                     skipping span={:?} since it is internal", span);
-            return;
+            return EvalResult::Allow;
         }
 
         let lint_deprecated = |def_id: DefId, note: Option<Symbol>| {
@@ -549,7 +570,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ..def_id
         }).is_some();
         if !is_staged_api {
-            return;
+            return EvalResult::Allow;
         }
 
         let stability = self.lookup_stability(def_id);
@@ -566,18 +587,18 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // Only the cross-crate scenario matters when checking unstable APIs
         let cross_crate = !def_id.is_local();
         if !cross_crate {
-            return
+            return EvalResult::Allow;
         }
 
         // Issue 38412: private items lack stability markers.
         if self.skip_stability_check_due_to_privacy(def_id) {
-            return
+            return EvalResult::Allow;
         }
 
         match stability {
-            Some(&Stability { level: attr::Unstable {ref reason, issue}, ref feature, .. }) => {
-                if self.stability().active_features.contains(feature) {
-                    return
+            Some(&Stability { level: attr::Unstable { reason, issue }, feature, .. }) => {
+                if self.stability().active_features.contains(&feature) {
+                    return EvalResult::Allow;
                 }
 
                 // When we're compiling the compiler itself we may pull in
@@ -589,18 +610,33 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 // the `-Z force-unstable-if-unmarked` flag present (we're
                 // compiling a compiler crate), then let this missing feature
                 // annotation slide.
-                if *feature == "rustc_private" && issue == 27812 {
+                if feature == "rustc_private" && issue == 27812 {
                     if self.sess.opts.debugging_opts.force_unstable_if_unmarked {
-                        return
+                        return EvalResult::Allow;
                     }
                 }
 
-                let msg = match *reason {
-                    Some(ref r) => format!("use of unstable library feature '{}': {}",
-                                           feature.as_str(), &r),
+                EvalResult::Deny { feature, reason, issue }
+            }
+            Some(_) => {
+                // Stable APIs are always ok to call and deprecated APIs are
+                // handled by the lint emitting logic above.
+                EvalResult::Allow
+            }
+            None => {
+                EvalResult::Unmarked
+            }
+        }
+    }
+
+    pub fn check_stability(self, def_id: DefId, id: NodeId, span: Span) {
+        match self.eval_stability(def_id, id, span) {
+            EvalResult::Allow => {}
+            EvalResult::Deny { feature, reason, issue } => {
+                let msg = match reason {
+                    Some(r) => format!("use of unstable library feature '{}': {}", feature, r),
                     None => format!("use of unstable library feature '{}'", &feature)
                 };
-
 
                 let msp: MultiSpan = span.into();
                 let cm = &self.sess.parse_sess.codemap();
@@ -624,12 +660,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                      GateIssue::Library(Some(issue)), &msg);
                 }
             }
-            Some(_) => {
-                // Stable APIs are always ok to call and deprecated APIs are
-                // handled by the lint emitting logic above.
-            }
-            None => {
-                span_bug!(span, "encountered unmarked API");
+            EvalResult::Unmarked => {
+                span_bug!(span, "encountered unmarked API: {:?}", def_id);
             }
         }
     }
