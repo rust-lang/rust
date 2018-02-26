@@ -398,21 +398,21 @@ macro_rules! create_config {
                         Ok(file) => file,
                         Err(e) => {
                             eprintln!("Warning: unable to open license template file {:?}: {}",
-                                    license_template_path, e);
+                                      license_template_path, e);
                             return;
                         }
                     };
                     let mut license_template_str = String::new();
                     if let Err(e) = license_template_file.read_to_string(&mut license_template_str) {
                         eprintln!("Warning: unable to read from license template file {:?}: {}",
-                                license_template_path, e);
+                                  license_template_path, e);
                         return;
                     };
                     let license_template_parsed = match TemplateParser::parse(&license_template_str) {
                         Ok(string) => string,
                         Err(e) => {
                             eprintln!("Warning: unable to parse license template file {:?}: {}",
-                                    license_template_path, e);
+                                      license_template_path, e);
                             return;
                         }
                     };
@@ -420,7 +420,7 @@ macro_rules! create_config {
                         Ok(re) => Some(re),
                         Err(e) => {
                             eprintln!("Warning: regex syntax error in placeholder, unable to compile \
-                                    license template from file {:?}: {}", license_template_path, e);
+                                       license template from file {:?}: {}", license_template_path, e);
                             return;
                         }
                     }
