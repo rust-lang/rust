@@ -426,9 +426,9 @@ pub fn check(path: &Path, bad: &mut bool) {
 /// Checks the dependency at the given path. Changes `bad` to `true` if a check failed.
 ///
 /// Specifically, this checks that the dependencies are on the whitelist.
-pub fn check_whitelist(path: &Path, bad: &mut bool) {
+pub fn check_whitelist(path: &Path, cargo: &Path, bad: &mut bool) {
     // Check dependencies
-    let deps: HashSet<_> = get_deps(&path)
+    let deps: HashSet<_> = get_deps(&path, &cargo)
         .into_iter()
         .map(|Package { name, version, .. }| (name, version))
         .collect();
@@ -492,10 +492,9 @@ fn extract_license(line: &str) -> String {
 }
 
 /// Get the dependencies of the crate at the given path using `cargo metadata`.
-fn get_deps(path: &Path) -> Vec<Package> {
+fn get_deps(path: &Path, cargo: &Path) -> Vec<Package> {
     // Run `cargo metadata` to get the set of dependencies
-    println!("Getting metadata from {:?}", path.join("Cargo.toml"));
-    let output = Command::new("cargo")
+    let output = Command::new(cargo)
         .arg("metadata")
         .arg("--format-version")
         .arg("1")
