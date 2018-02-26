@@ -258,6 +258,11 @@ fn main() {
         if env::var_os("RUSTC_FORCE_UNSTABLE").is_some() {
             cmd.arg("-Z").arg("force-unstable-if-unmarked");
         }
+
+        // Don't use MIR only RLIBs for the compiler yet
+        if stage != "0" {
+            cmd.arg("-Zmir-only-rlibs=no");
+        }
     } else {
         // Override linker if necessary.
         if let Ok(host_linker) = env::var("RUSTC_HOST_LINKER") {

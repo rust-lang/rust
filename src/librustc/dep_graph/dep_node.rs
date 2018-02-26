@@ -642,6 +642,7 @@ define_dep_nodes!( <'tcx>
 
     [] GetSymbolExportLevel(DefId),
 
+    [input] IsMirOnlyRlib(CrateNum),
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {

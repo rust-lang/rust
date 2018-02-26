@@ -415,6 +415,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let has_default_lib_allocator =
             attr::contains_name(tcx.hir.krate_attrs(), "default_lib_allocator");
         let has_global_allocator = tcx.sess.has_global_allocator.get();
+
+        let is_mir_only_rlib = if tcx.sess.opts.debugging_opts.mir_only_rlibs != Some(false) {
+            let crate_types = tcx.sess.crate_types.borrow();
+            crate_types.len() == 1 && crate_types[0] == config::CrateTypeRlib
+        } else {
+            false
+        };
+
         let root = self.lazy(&CrateRoot {
             name: tcx.crate_name(LOCAL_CRATE),
             triple: tcx.sess.opts.target_triple.clone(),
@@ -423,6 +431,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             panic_strategy: tcx.sess.panic_strategy(),
             has_global_allocator: has_global_allocator,
             has_default_lib_allocator: has_default_lib_allocator,
+            is_mir_only_rlib,
             plugin_registrar_fn: tcx.sess
                 .plugin_registrar_fn
                 .get()
@@ -833,7 +842,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             let needs_inline = types > 0 || attr::requests_inline(&ast_item.attrs);
             let is_const_fn = sig.constness == hir::Constness::Const;
             let ast = if is_const_fn { Some(body) } else { None };
-            let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
+            let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir ||
+                                    self.tcx.sess.opts.debugging_opts.mir_only_rlibs != Some(false);
             (ast, needs_inline || is_const_fn || always_encode_mir)
         } else {
             (None, false)
@@ -1115,14 +1125,16 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 _ => None,
             },
             mir: match item.node {
-                hir::ItemStatic(..) if self.tcx.sess.opts.debugging_opts.always_encode_mir => {
+                hir::ItemStatic(..) if self.tcx.sess.opts.debugging_opts.always_encode_mir ||
+                            self.tcx.sess.opts.debugging_opts.mir_only_rlibs != Some(false) => {
                     self.encode_optimized_mir(def_id)
                 }
                 hir::ItemConst(..) => self.encode_optimized_mir(def_id),
                 hir::ItemFn(_, _, constness, _, ref generics, _) => {
                     let has_tps = generics.ty_params().next().is_some();
                     let needs_inline = has_tps || attr::requests_inline(&item.attrs);
-                    let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
+                    let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir ||
+                                self.tcx.sess.opts.debugging_opts.mir_only_rlibs != Some(false);
                     if needs_inline || constness == hir::Constness::Const || always_encode_mir {
                         self.encode_optimized_mir(def_id)
                     } else {

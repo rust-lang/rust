@@ -192,6 +192,7 @@ use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 
 use rustc::hir::map as hir_map;
+use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem, StartFnLangItem};
@@ -301,6 +302,18 @@ pub fn collect_crate_mono_items<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                           mode: MonoItemCollectionMode)
                                           -> (FxHashSet<MonoItem<'tcx>>,
                                                      InliningMap<'tcx>) {
+    let current_crate_is_mir_only_rlib =
+        if tcx.sess.opts.debugging_opts.mir_only_rlibs != Some(false) {
+        let crate_types = tcx.sess.crate_types.borrow();
+        crate_types.len() == 1 && crate_types[0] == config::CrateTypeRlib
+    } else {
+        false
+    };
+
+    if current_crate_is_mir_only_rlib {
+        return (FxHashSet(), InliningMap::new())
+    }
+
     let roots = collect_roots(tcx, mode);
 
     debug!("Building mono item graph, beginning at roots");
@@ -342,6 +355,22 @@ fn collect_roots<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         };
 
         tcx.hir.krate().visit_all_item_likes(&mut visitor);
+
+        // Collect upstream roots
+        for &cnum in tcx.crates().iter() {
+            if tcx.is_mir_only_rlib(cnum) {
+                for &def_id in tcx.exported_symbol_ids(cnum).iter() {
+                    match tcx.describe_def(def_id) {
+                        Some(Def::Static(..)) => {
+                            visitor.output.push(MonoItem::Static(def_id));
+                        }
+                        _ => {
+                            visitor.push_if_root(def_id);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // We can only translate items that are instantiable - items all of
@@ -383,7 +412,8 @@ fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
         MonoItem::Fn(instance) => {
             // Sanity check whether this ended up being collected accidentally
-            debug_assert!(should_monomorphize_locally(tcx, &instance));
+            debug_assert!(should_monomorphize_locally(tcx, &instance),
+                "Instantiation Error: {:?}", instance);
 
             // Keep track of the monomorphization recursion depth
             recursion_depth_reset = Some(check_recursion_limit(tcx,
@@ -736,8 +766,8 @@ fn should_monomorphize_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: 
         }
         Some(_) => true,
         None => {
-            if tcx.is_exported_symbol(def_id) ||
-                tcx.is_foreign_item(def_id)
+            if tcx.is_foreign_item(def_id) ||
+              (!tcx.is_mir_only_rlib(def_id.krate) && tcx.is_exported_symbol(def_id))
             {
                 // We can link to the item in question, no instance needed
                 // in this crate
