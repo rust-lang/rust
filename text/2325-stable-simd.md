@@ -1,7 +1,7 @@
 - Feature Name: `vendor_intrinsics`
 - Start Date: 2018-02-04
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#2325](https://github.com/rust-lang/rfcs/pull/2325)
+- Rust Issue: [rust-lang/rust#48556](https://github.com/rust-lang/rust/issues/48556)
 
 # Summary
 [summary]: #summary
