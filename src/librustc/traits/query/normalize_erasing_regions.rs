@@ -30,6 +30,13 @@ impl<'cx, 'tcx> TyCtxt<'cx, 'tcx, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
+        debug!(
+            "normalize_erasing_regions::<{}>(value={:?}, param_env={:?})",
+            unsafe { ::std::intrinsics::type_name::<T>() },
+            value,
+            param_env,
+        );
+
         // Erase first before we do the real query -- this keeps the
         // cache from being too polluted.
         let value = self.erase_regions(&value);

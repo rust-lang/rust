@@ -38,7 +38,8 @@ impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
     pub fn dropck_outlives(&self, ty: Ty<'tcx>) -> InferOk<'tcx, Vec<Kind<'tcx>>> {
         debug!(
             "dropck_outlives(ty={:?}, param_env={:?})",
-            ty, self.param_env,
+            ty,
+            self.param_env,
         );
 
         let tcx = self.infcx.tcx;

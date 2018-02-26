@@ -45,6 +45,12 @@ impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
+        debug!(
+            "normalize::<{}>(value={:?}, param_env={:?})",
+            unsafe { ::std::intrinsics::type_name::<T>() },
+            value,
+            self.param_env,
+        );
         let mut normalizer = QueryNormalizer {
             infcx: self.infcx,
             cause: self.cause,
