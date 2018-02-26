@@ -8,10 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: --test
-
-#![feature(rustc_private, std_panic)]
-
 extern crate rand;
 
 use std::env::*;
