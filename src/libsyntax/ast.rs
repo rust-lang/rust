@@ -883,6 +883,9 @@ pub struct Arm {
     pub pats: Vec<P<Pat>>,
     pub guard: Option<P<Expr>>,
     pub body: P<Expr>,
+    /// Holds a span of `| ` at the beginning of an arm, if available.
+    /// This field is used in rustfmt.
+    pub beginning_vert: Option<Span>,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
