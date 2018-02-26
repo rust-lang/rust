@@ -1007,6 +1007,10 @@ pub fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path, is_check: boo
             continue
         };
         if json["reason"].as_str() != Some("compiler-artifact") {
+            if build.config.rustc_error_format.as_ref().map_or(false, |e| e == "json") {
+                // most likely not a cargo message, so let's send it out as well
+                println!("{}", line);
+            }
             continue
         }
         for filename in json["filenames"].as_array().unwrap() {
