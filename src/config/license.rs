@@ -1,4 +1,36 @@
+use std::io;
+use std::fmt;
+
 use regex;
+
+#[derive(Debug)]
+pub enum LicenseError {
+    IO(io::Error),
+    Regex(regex::Error),
+    Parse(String),
+}
+
+impl fmt::Display for LicenseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            LicenseError::IO(ref err) => err.fmt(f),
+            LicenseError::Regex(ref err) => err.fmt(f),
+            LicenseError::Parse(ref err) => write!(f, "parsing failed, {}", err),
+        }
+    }
+}
+
+impl From<io::Error> for LicenseError {
+    fn from(err: io::Error) -> LicenseError {
+        LicenseError::IO(err)
+    }
+}
+
+impl From<regex::Error> for LicenseError {
+    fn from(err: regex::Error) -> LicenseError {
+        LicenseError::Regex(err)
+    }
+}
 
 // the template is parsed using a state machine
 enum ParsingState {
@@ -76,7 +108,7 @@ impl TemplateParser {
     /// "
     /// );
     /// ```
-    pub fn parse(template: &str) -> Result<String, String> {
+    pub fn parse(template: &str) -> Result<String, LicenseError> {
         let mut parser = Self::new();
         for chr in template.chars() {
             if chr == '\n' {
@@ -87,19 +119,24 @@ impl TemplateParser {
                 LitEsc => parser.trans_from_litesc(chr),
                 Re(brace_nesting) => parser.trans_from_re(chr, brace_nesting),
                 ReEsc(brace_nesting) => parser.trans_from_reesc(chr, brace_nesting),
-                Abort(msg) => return Err(msg),
+                Abort(msg) => return Err(LicenseError::Parse(msg)),
             };
         }
         // check if we've ended parsing in a valid state
         match parser.state {
-            Abort(msg) => return Err(msg),
+            Abort(msg) => return Err(LicenseError::Parse(msg)),
             Re(_) | ReEsc(_) => {
-                return Err(format!(
+                return Err(LicenseError::Parse(format!(
                     "escape or balance opening brace on l. {}",
                     parser.open_brace_line
-                ));
+                )));
             }
-            LitEsc => return Err(format!("incomplete escape sequence on l. {}", parser.linum)),
+            LitEsc => {
+                return Err(LicenseError::Parse(format!(
+                    "incomplete escape sequence on l. {}",
+                    parser.linum
+                )))
+            }
             _ => (),
         }
         parser.parsed.push_str(&regex::escape(&parser.buffer));
@@ -198,16 +235,22 @@ mod test {
             r"^unbalanced nested braces \{{3}"
         );
         assert_eq!(
-            TemplateParser::parse("parsing error }").unwrap_err(),
-            "escape or balance closing brace on l. 1"
+            &TemplateParser::parse("parsing error }")
+                .unwrap_err()
+                .to_string(),
+            "parsing failed, escape or balance closing brace on l. 1"
         );
         assert_eq!(
-            TemplateParser::parse("parsing error {\nsecond line").unwrap_err(),
-            "escape or balance opening brace on l. 1"
+            &TemplateParser::parse("parsing error {\nsecond line")
+                .unwrap_err()
+                .to_string(),
+            "parsing failed, escape or balance opening brace on l. 1"
         );
         assert_eq!(
-            TemplateParser::parse(r"parsing error \").unwrap_err(),
-            "incomplete escape sequence on l. 1"
+            &TemplateParser::parse(r"parsing error \")
+                .unwrap_err()
+                .to_string(),
+            "parsing failed, incomplete escape sequence on l. 1"
         );
     }
 }

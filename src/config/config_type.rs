@@ -392,39 +392,22 @@ macro_rules! create_config {
             }
 
             fn set_license_template(&mut self) {
-                if self.was_set().license_template_path() {
-                    let lt_path = self.license_template_path();
-                    let mut lt_file = match File::open(&lt_path) {
-                        Ok(file) => file,
-                        Err(e) => {
-                            eprintln!("Warning: unable to open license template file {:?}: {}",
-                                      lt_path, e);
-                            return;
-                        }
-                    };
-                    let mut lt_str = String::new();
-                    if let Err(e) = lt_file.read_to_string(&mut lt_str) {
-                        eprintln!("Warning: unable to read from license template file {:?}: {}",
-                                  lt_path, e);
-                        return;
-                    };
-                    let lt_parsed = match TemplateParser::parse(&lt_str) {
-                        Ok(string) => string,
-                        Err(e) => {
-                            eprintln!("Warning: unable to parse license template file {:?}: {}",
-                                      lt_path, e);
-                            return;
-                        }
-                    };
-                    self.license_template = match Regex::new(&lt_parsed) {
-                        Ok(re) => Some(re),
-                        Err(e) => {
-                            eprintln!("Warning: regex syntax error in placeholder, unable to compile \
-                                       license template from file {:?}: {}", lt_path, e);
-                            return;
-                        }
-                    }
+                if !self.was_set().license_template_path() {
+                    return;
                 }
+                let lt_path = self.license_template_path();
+                let try = || -> Result<Regex, LicenseError> {
+                    let mut lt_file = File::open(&lt_path)?;
+                    let mut lt_str = String::new();
+                    lt_file.read_to_string(&mut lt_str)?;
+                    let lt_parsed = TemplateParser::parse(&lt_str)?;
+                    Ok(Regex::new(&lt_parsed)?)
+                };
+                match try() {
+                    Ok(re) => self.license_template = Some(re),
+                    Err(msg) => eprintln!("Warning for license template file {:?}: {}",
+                                          lt_path, msg),
+                };
             }
         }
 
