@@ -191,7 +191,7 @@ So why do this? AFAICS there are 3 main reasons
     `Result<T, E>` to satisfy a trait but we know that the method will always
     succeed.
 
-    For example, here's a saner implementation of `FromStr` for `String` than
+    For example, here's a saner implementation of `FromStr` for `String` that
     currently exists in `libstd`.
 
     ```rust
@@ -406,7 +406,7 @@ Someone would have to implement this.
 # Unresolved questions
 
 `!` has a unique impl of any trait whose only items are non-static methods. It
-would be nice if there was a way a to automate the creation of these impls.
+would be nice if there was a way to automate the creation of these impls.
 Should `!` automatically satisfy any such trait? This RFC is not blocked on
 resolving this question if we are willing to accept backward-incompatibilities
 in questionably-valid code which tries to call trait methods on diverging
