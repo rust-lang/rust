@@ -15,5 +15,5 @@ name = "git-rustfmt"
 env_logger = "0.4"
 getopts = "0.2"
 log = "0.3"
-rustfmt-config = { path = "../rustfmt-config" }
-rustfmt-core = { path = "../rustfmt-core" }
+rustfmt-config = "0.4.0"
+rustfmt-core = "0.4.0"
