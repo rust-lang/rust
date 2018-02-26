@@ -1467,6 +1467,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.borrowck_mode().use_mir()
     }
 
+    /// If true, pattern variables for use in guards on match arms
+    /// will be bound as references to the data, and occurrences of
+    /// those variables in the guard expression will implicitly
+    /// dereference those bindings. (See rust-lang/rust#27282.)
+    pub fn all_pat_vars_are_implicit_refs_within_guards(self) -> bool {
+        self.borrowck_mode().use_mir()
+    }
+
     /// If true, we should enable two-phase borrows checks. This is
     /// done with either `-Ztwo-phase-borrows` or with
     /// `#![feature(nll)]`.

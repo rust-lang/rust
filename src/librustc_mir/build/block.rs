@@ -9,6 +9,8 @@
 // except according to those terms.
 
 use build::{BlockAnd, BlockAndExtension, Builder};
+use build::ForGuard::OutsideGuard;
+use build::matches::ArmHasGuard;
 use hair::*;
 use rustc::mir::*;
 use rustc::hir;
@@ -113,7 +115,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     // Declare the bindings, which may create a visibility scope.
                     let remainder_span = remainder_scope.span(this.hir.tcx(),
                                                               &this.hir.region_scope_tree);
-                    let scope = this.declare_bindings(None, remainder_span, lint_level, &pattern);
+                    let scope = this.declare_bindings(None, remainder_span, lint_level, &pattern,
+                                                      ArmHasGuard(false));
 
                     // Evaluate the initializer, if present.
                     if let Some(init) = initializer {
@@ -135,8 +138,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         }
 
                         this.visit_bindings(&pattern, &mut |this, _, _, node, span, _| {
-                            this.storage_live_binding(block, node, span);
-                            this.schedule_drop_for_binding(node, span);
+                            this.storage_live_binding(block, node, span, OutsideGuard);
+                            this.schedule_drop_for_binding(node, span, OutsideGuard);
                         })
                     }
 
