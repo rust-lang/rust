@@ -11,19 +11,20 @@ completeness            |  completeness is a technical term in type theory. Comp
 cx                      |  we tend to use "cx" as an abbrevation for context. See also `tcx`, `infcx`, etc.
 DAG                     |  a directed acyclic graph is used during compilation to keep track of dependencies between queries. ([see more](incremental-compilation.html))
 DefId                   |  an index identifying a definition (see `librustc/hir/def_id.rs`). Uniquely identifies a `DefPath`.
+'gcx                    |  the lifetime of the global arena ([see more](ty.html))
+generics                |  the set of generic type parameters defined on a type or item
 HIR                     |  the High-level IR, created by lowering and desugaring the AST ([see more](hir.html))
 HirId                   |  identifies a particular node in the HIR by combining a def-id with an "intra-definition offset".
 HIR Map                 |  The HIR map, accessible via tcx.hir, allows you to quickly navigate the HIR and convert between various forms of identifiers.
-'gcx                    |  the lifetime of the global arena ([see more](ty.html))
-generics                |  the set of generic type parameters defined on a type or item
 ICE                     |  internal compiler error. When the compiler crashes.
 ICH                     |  incremental compilation hash. ICHs are used as fingerprints for things such as HIR and crate metadata, to check if changes have been made. This is useful in incremental compilation to see if part of a crate has changed and should be recompiled.
 infcx                   |  the inference context (see `librustc/infer`)
+IR                      |  Intermediate Representation. A general term in compilers. During compilation, the code is transformed from raw source (ASCII text) to various IRs. In Rust, these are primarily HIR, MIR, and LLVM IR. Each IR is well-suited for some set of computations. For example, MIR is well-suited for the borrow checker, and LLVM IR is well-suited for codegen because LLVM accepts it.
+local crate             |  the crate currently being compiled.
+LTO                     |  Link-Time Optimizations. A set of optimizations offered by LLVM that occur just before the final binary is linked. These include optmizations like removing functions that are never used in the final program, for example. _ThinLTO_ is a variant of LTO that aims to be a bit more scalable and efficient, but possibly sacrifices some optimizations. You may also read issues in the Rust repo about "FatLTO", which is the loving nickname given to non-Thin LTO. LLVM documentation: [here][lto] and [here][thinlto]
+[LLVM]                  |  (actually not an acronym :P) an open-source compiler backend. It accepts LLVM IR and outputs native binaries. Various languages (e.g. Rust) can then implement a compiler front-end that output LLVM IR and use LLVM to compile to all the platforms LLVM supports.
 MIR                     |  the Mid-level IR that is created after type-checking for use by borrowck and trans ([see more](./mir.html))
 miri                    |  an interpreter for MIR used for constant evaluation ([see more](./miri.html))
-obligation              |  something that must be proven by the trait system ([see more](trait-resolution.html))
-local crate             |  the crate currently being compiled.
-MIR                     |  the Mid-level IR that is created after type-checking for use by borrowck and trans ([see more](./mir.html))
 node-id or NodeId       |  an index identifying a particular node in the AST or HIR; gradually being phased out and replaced with `HirId`.
 obligation              |  something that must be proven by the trait system ([see more](trait-resolution.html))
 provider                |  the function that executes a query ([see more](query.html))
@@ -38,6 +39,12 @@ substs                  |  the substitutions for a given generic type or item (e
 tcx                     |  the "typing context", main data structure of the compiler ([see more](ty.html))
 'tcx                    |  the lifetime of the currently active inference context ([see more](ty.html))
 token                   |  the smallest unit of parsing. Tokens are produced after lexing ([see more](the-parser.html)).
+[TLS]                   |  Thread-Local Storage. Variables may be defined so that each thread has its own copy (rather than all threads sharing the variable). This has some interactions with LLVM. Not all platforms support TLS.
 trans                   |  the code to translate MIR into LLVM IR.
 trait reference         |  a trait and values for its type parameters ([see more](ty.html)).
 ty                      |  the internal representation of a type ([see more](ty.html)).
+
+[LLVM]: https://llvm.org/
+[lto]: https://llvm.org/docs/LinkTimeOptimization.html
+[thinlto]: https://clang.llvm.org/docs/ThinLTO.html
+[TLS]: https://llvm.org/docs/LangRef.html#thread-local-storage-models
