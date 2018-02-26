@@ -198,6 +198,8 @@ macro_rules! array_impls {
                 fn into_iter(self) -> Iter<'a, T> {
                     self.iter()
                 }
+
+                const SIZE_HINT: (usize, Option<usize>) = ($N, Some($N));
             }
 
             #[stable(feature = "rust1", since = "1.0.0")]
@@ -208,6 +210,8 @@ macro_rules! array_impls {
                 fn into_iter(self) -> IterMut<'a, T> {
                     self.iter_mut()
                 }
+
+                const SIZE_HINT: (usize, Option<usize>) = ($N, Some($N));
             }
 
             // NOTE: some less important impls are omitted to reduce code bloat

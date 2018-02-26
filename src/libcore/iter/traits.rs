@@ -246,6 +246,28 @@ pub trait IntoIterator {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn into_iter(self) -> Self::IntoIter;
+
+    /// A hint for the size of the iterators produced by this type.
+    ///
+    /// This allows things like `.flatten()` to return a meaningful
+    /// `.size_hint()` before the actual iterators have been produced.
+    ///
+    /// This is more useful than having it on `Iterator`, since finite
+    /// iterators always have a lower-bound size of `0` by definition.
+    /// A `&[T; N]`, in contrast, knows that its iterator will produce
+    /// exactly `N` items even though its iterator type is a normal
+    /// slice iterator that has a wide range of `.size_hint()`s.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(typelevel_size_hint)]
+    ///
+    /// assert_eq!(<&'static [i32; 10] as IntoIterator>::SIZE_HINT, (10, Some(10)));
+    /// assert_eq!(<Option<String> as IntoIterator>::SIZE_HINT, (0, Some(1)));
+    /// ```
+    #[unstable(feature = "typelevel_size_hint", issue = "7777777")]
+    const SIZE_HINT: (usize, Option<usize>) = (0, None);
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
