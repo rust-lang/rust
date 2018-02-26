@@ -18,3 +18,4 @@ error[E0502]: cannot borrow `u.s.a` as mutable because it is also borrowed as im
 
 error: aborting due to 2 previous errors
 
+If you want more information on this error, try using "rustc --explain E0502"
