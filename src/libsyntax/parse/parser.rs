@@ -2125,8 +2125,8 @@ impl<'a> Parser<'a> {
         // Check if a colon exists one ahead. This means we're parsing a fieldname.
         let (fieldname, expr, is_shorthand) = if self.look_ahead(1, |t| t == &token::Colon) {
             let fieldname = self.parse_field_name()?;
-            self.bump();
             hi = self.prev_span;
+            self.bump();
             (fieldname, self.parse_expr()?, false)
         } else {
             let fieldname = self.parse_ident_common(false)?;

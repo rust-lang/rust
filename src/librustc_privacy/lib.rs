@@ -34,6 +34,7 @@ use rustc::util::nodemap::NodeSet;
 use syntax::ast::{self, CRATE_NODE_ID, Ident};
 use syntax::symbol::keywords;
 use syntax_pos::Span;
+use syntax_pos::hygiene::SyntaxContext;
 
 use std::cmp;
 use std::mem::replace;
@@ -491,9 +492,13 @@ struct NamePrivacyVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> NamePrivacyVisitor<'a, 'tcx> {
-    // Checks that a field is accessible.
-    fn check_field(&mut self, span: Span, def: &'tcx ty::AdtDef, field: &'tcx ty::FieldDef) {
-        let ident = Ident { ctxt: span.ctxt().modern(), ..keywords::Invalid.ident() };
+    // Checks that a field in a struct constructor (expression or pattern) is accessible.
+    fn check_field(&mut self,
+                   use_ctxt: SyntaxContext, // Syntax context of the field name at the use site
+                   span: Span, // Span of the field pattern, e.g. `x: 0`
+                   def: &'tcx ty::AdtDef, // Definition of the struct or enum
+                   field: &'tcx ty::FieldDef) { // Definition of the field
+        let ident = Ident { ctxt: use_ctxt.modern(), ..keywords::Invalid.ident() };
         let def_id = self.tcx.adjust_ident(ident, def.did, self.current_item).1;
         if !def.is_enum() && !field.vis.is_accessible_from(def_id, self.tcx) {
             struct_span_err!(self.tcx.sess, span, E0451, "field `{}` of {} `{}` is private",
@@ -566,12 +571,17 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
                     // unmentioned fields, just check them all.
                     for variant_field in &variant.fields {
                         let field = fields.iter().find(|f| f.name.node == variant_field.name);
-                        let span = if let Some(f) = field { f.span } else { base.span };
-                        self.check_field(span, adt, variant_field);
+                        let (use_ctxt, span) = match field {
+                            Some(field) => (field.name.node.to_ident().ctxt, field.span),
+                            None => (base.span.ctxt(), base.span),
+                        };
+                        self.check_field(use_ctxt, span, adt, variant_field);
                     }
                 } else {
                     for field in fields {
-                        self.check_field(field.span, adt, variant.field_named(field.name.node));
+                        let use_ctxt = field.name.node.to_ident().ctxt;
+                        let field_def = variant.field_named(field.name.node);
+                        self.check_field(use_ctxt, field.span, adt, field_def);
                     }
                 }
             }
@@ -588,7 +598,9 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
                 let adt = self.tables.pat_ty(pat).ty_adt_def().unwrap();
                 let variant = adt.variant_of_def(def);
                 for field in fields {
-                    self.check_field(field.span, adt, variant.field_named(field.node.name));
+                    let use_ctxt = field.node.name.to_ident().ctxt;
+                    let field_def = variant.field_named(field.node.name);
+                    self.check_field(use_ctxt, field.span, adt, field_def);
                 }
             }
             _ => {}
