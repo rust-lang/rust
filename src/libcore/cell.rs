@@ -1164,8 +1164,8 @@ impl<'a, T: ?Sized + fmt::Display> fmt::Display for RefMut<'a, T> {
 /// The compiler makes optimizations based on the knowledge that `&T` is not mutably aliased or
 /// mutated, and that `&mut T` is unique. When building abstractions like `Cell`, `RefCell`,
 /// `Mutex`, etc, you need to turn these optimizations off. `UnsafeCell` is the only legal way
-/// to do this. When `UnsafeCell<T>` _itself_ is immutably aliased, it is still safe to obtain
-/// a mutable reference to its _interior_ and/or to mutate the interior. However, it is up to
+/// to do this. When `UnsafeCell<T>` itself is immutably aliased, it is still safe to obtain
+/// a mutable reference to its interior and/or to mutate the interior. However, it is up to
 /// the abstraction designer to ensure that no two mutable references obtained this way are active
 /// at the same time, there are no active immutable reference when a mutable reference is obtained
 /// from the cell, and that there are no active mutable references or mutations when an immutable
