@@ -484,8 +484,8 @@ impl<'a> Builder<'a> {
              } else {
                  PathBuf::from("/path/to/nowhere/rustdoc/not/required")
              })
-             .env("TEST_MIRI", self.config.test_miri.to_string());
-
+             .env("TEST_MIRI", self.config.test_miri.to_string())
+             .env("RUSTC_ERROR_METADATA_DST", self.extended_error_dir());
         if let Some(n) = self.config.rust_codegen_units {
             cargo.env("RUSTC_CODEGEN_UNITS", n.to_string());
         }

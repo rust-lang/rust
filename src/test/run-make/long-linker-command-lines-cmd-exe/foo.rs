@@ -36,8 +36,11 @@ fn main() {
     let ok = tmpdir.join("ok");
     let not_ok = tmpdir.join("not_ok");
     if env::var("YOU_ARE_A_LINKER").is_ok() {
-        match env::args().find(|a| a.contains("@")) {
-            Some(file) => { fs::copy(&file[1..], &ok).unwrap(); }
+        match env::args_os().find(|a| a.to_string_lossy().contains("@")) {
+            Some(file) => {
+                let file = file.to_str().unwrap();
+                fs::copy(&file[1..], &ok).unwrap();
+            }
             None => { File::create(&not_ok).unwrap(); }
         }
         return
@@ -84,11 +87,23 @@ fn main() {
             continue
         }
 
-        let mut contents = String::new();
-        File::open(&ok).unwrap().read_to_string(&mut contents).unwrap();
+        let mut contents = Vec::new();
+        File::open(&ok).unwrap().read_to_end(&mut contents).unwrap();
 
         for j in 0..i {
-            assert!(contents.contains(&format!("{}{}", lib_name, j)));
+            let exp = format!("{}{}", lib_name, j);
+            let exp = if cfg!(target_env = "msvc") {
+                let mut out = Vec::with_capacity(exp.len() * 2);
+                for c in exp.encode_utf16() {
+                    // encode in little endian
+                    out.push(c as u8);
+                    out.push((c >> 8) as u8);
+                }
+                out
+            } else {
+                exp.into_bytes()
+            };
+            assert!(contents.windows(exp.len()).any(|w| w == &exp[..]));
         }
 
         break

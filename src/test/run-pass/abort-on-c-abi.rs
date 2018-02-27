@@ -12,6 +12,7 @@
 // we never unwind through them.
 
 // ignore-emscripten no processes
+// ignore-test FIXME rust-lang/rust#48251 -- temporarily disabled
 
 use std::{env, panic};
 use std::io::prelude::*;
