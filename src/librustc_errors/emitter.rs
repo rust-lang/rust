@@ -17,12 +17,14 @@ use snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, StyledStrin
 use styled_buffer::StyledBuffer;
 
 use rustc_data_structures::sync::Lrc;
+use atty;
 use std::borrow::Cow;
 use std::io::prelude::*;
 use std::io;
-use term;
 use std::collections::{HashMap, HashSet};
 use std::cmp::min;
+use termcolor::{StandardStream, ColorChoice, ColorSpec, BufferWriter};
+use termcolor::{WriteColor, Color, Buffer};
 use unicode_width;
 
 const ANONYMIZED_LINE_NUM: &str = "LL";
@@ -95,11 +97,14 @@ pub enum ColorConfig {
 }
 
 impl ColorConfig {
-    fn use_color(&self) -> bool {
+    fn to_color_choice(&self) -> ColorChoice {
         match *self {
-            ColorConfig::Always => true,
-            ColorConfig::Never => false,
-            ColorConfig::Auto => stderr_isatty(),
+            ColorConfig::Always => ColorChoice::Always,
+            ColorConfig::Never => ColorChoice::Never,
+            ColorConfig::Auto if atty::is(atty::Stream::Stderr) => {
+                ColorChoice::Auto
+            }
+            ColorConfig::Auto => ColorChoice::Never,
         }
     }
 }
@@ -123,25 +128,26 @@ impl Drop for EmitterWriter {
     fn drop(&mut self) {
         if !self.short_message && !self.error_codes.is_empty() {
             let mut error_codes = self.error_codes.clone().into_iter().collect::<Vec<_>>();
+            let mut dst = self.dst.writable();
             error_codes.sort();
             if error_codes.len() > 1 {
                 let limit = if error_codes.len() > 9 { 9 } else { error_codes.len() };
-                writeln!(self.dst,
+                writeln!(dst,
                          "You've got a few errors: {}{}",
                          error_codes[..limit].join(", "),
                          if error_codes.len() > 9 { "..." } else { "" }
                         ).expect("failed to give tips...");
-                writeln!(self.dst,
+                writeln!(dst,
                          "If you want more information on an error, try using \
                           \"rustc --explain {}\"",
                          &error_codes[0]).expect("failed to give tips...");
             } else {
-                writeln!(self.dst,
+                writeln!(dst,
                          "If you want more information on this error, try using \
                           \"rustc --explain {}\"",
                          &error_codes[0]).expect("failed to give tips...");
             }
-            self.dst.flush().expect("failed to emit errors");
+            dst.flush().expect("failed to emit errors");
         }
     }
 }
@@ -152,25 +158,14 @@ impl EmitterWriter {
                   short_message: bool,
                   teach: bool)
                   -> EmitterWriter {
-        if color_config.use_color() {
-            let dst = Destination::from_stderr();
-            EmitterWriter {
-                dst,
-                cm: code_map,
-                short_message,
-                teach,
-                error_codes: HashSet::new(),
-                ui_testing: false,
-            }
-        } else {
-            EmitterWriter {
-                dst: Raw(Box::new(io::stderr())),
-                cm: code_map,
-                short_message,
-                teach,
-                error_codes: HashSet::new(),
-                ui_testing: false,
-            }
+        let dst = Destination::from_stderr(color_config);
+        EmitterWriter {
+            dst,
+            cm: code_map,
+            short_message,
+            teach,
+            error_codes: HashSet::new(),
+            ui_testing: false,
         }
     }
 
@@ -1356,10 +1351,12 @@ impl EmitterWriter {
             }
             Err(e) => panic!("failed to emit error: {}", e),
         }
-        match write!(&mut self.dst, "\n") {
+
+        let mut dst = self.dst.writable();
+        match write!(dst, "\n") {
             Err(e) => panic!("failed to emit error: {}", e),
             _ => {
-                match self.dst.flush() {
+                match dst.flush() {
                     Err(e) => panic!("failed to emit error: {}", e),
                     _ => (),
                 }
@@ -1424,6 +1421,8 @@ fn emit_to_destination(rendered_buffer: &Vec<Vec<StyledString>>,
                        -> io::Result<()> {
     use lock;
 
+    let mut dst = dst.writable();
+
     // In order to prevent error message interleaving, where multiple error lines get intermixed
     // when multiple compiler processes error simultaneously, we emit errors with additional
     // steps.
@@ -1444,7 +1443,7 @@ fn emit_to_destination(rendered_buffer: &Vec<Vec<StyledString>>,
             if !short_message && part.text.len() == 12 && part.text.starts_with("error[E") {
                 error_codes.insert(part.text[6..11].to_owned());
             }
-            dst.reset_attrs()?;
+            dst.reset()?;
         }
         if !short_message {
             write!(dst, "\n")?;
@@ -1454,180 +1453,136 @@ fn emit_to_destination(rendered_buffer: &Vec<Vec<StyledString>>,
     Ok(())
 }
 
-#[cfg(unix)]
-fn stderr_isatty() -> bool {
-    use libc;
-    unsafe { libc::isatty(libc::STDERR_FILENO) != 0 }
-}
-#[cfg(windows)]
-fn stderr_isatty() -> bool {
-    type DWORD = u32;
-    type BOOL = i32;
-    type HANDLE = *mut u8;
-    const STD_ERROR_HANDLE: DWORD = -12i32 as DWORD;
-    extern "system" {
-        fn GetStdHandle(which: DWORD) -> HANDLE;
-        fn GetConsoleMode(hConsoleHandle: HANDLE, lpMode: *mut DWORD) -> BOOL;
-    }
-    unsafe {
-        let handle = GetStdHandle(STD_ERROR_HANDLE);
-        let mut out = 0;
-        GetConsoleMode(handle, &mut out) != 0
-    }
-}
-
-pub type BufferedStderr = term::Terminal<Output = BufferedWriter> + Send;
-
 pub enum Destination {
-    Terminal(Box<term::StderrTerminal>),
-    BufferedTerminal(Box<BufferedStderr>),
+    Terminal(StandardStream),
+    Buffered(BufferWriter),
     Raw(Box<Write + Send>),
 }
 
-/// Buffered writer gives us a way on Unix to buffer up an entire error message before we output
-/// it.  This helps to prevent interleaving of multiple error messages when multiple compiler
-/// processes error simultaneously
-pub struct BufferedWriter {
-    buffer: Vec<u8>,
-}
-
-impl BufferedWriter {
-    // note: we use _new because the conditional compilation at its use site may make this
-    // this function unused on some platforms
-    fn _new() -> BufferedWriter {
-        BufferedWriter { buffer: vec![] }
-    }
-}
-
-impl Write for BufferedWriter {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        for b in buf {
-            self.buffer.push(*b);
-        }
-        Ok(buf.len())
-    }
-    fn flush(&mut self) -> io::Result<()> {
-        let mut stderr = io::stderr();
-        let result = stderr.write_all(&self.buffer)
-                           .and_then(|_| stderr.flush());
-        self.buffer.clear();
-        result
-    }
+pub enum WritableDst<'a> {
+    Terminal(&'a mut StandardStream),
+    Buffered(&'a mut BufferWriter, Buffer),
+    Raw(&'a mut Box<Write + Send>),
 }
 
 impl Destination {
-    #[cfg(not(windows))]
-    /// When not on Windows, prefer the buffered terminal so that we can buffer an entire error
-    /// to be emitted at one time.
-    fn from_stderr() -> Destination {
-        let stderr: Option<Box<BufferedStderr>> =
-            term::TerminfoTerminal::new(BufferedWriter::_new())
-                .map(|t| Box::new(t) as Box<BufferedStderr>);
-
-        match stderr {
-            Some(t) => BufferedTerminal(t),
-            None => Raw(Box::new(io::stderr())),
+    fn from_stderr(color: ColorConfig) -> Destination {
+        let choice = color.to_color_choice();
+        // On Windows we'll be performing global synchronization on the entire
+        // system for emitting rustc errors, so there's no need to buffer
+        // anything.
+        //
+        // On non-Windows we rely on the atomicity of `write` to ensure errors
+        // don't get all jumbled up.
+        if cfg!(windows) {
+            Terminal(StandardStream::stderr(choice))
+        } else {
+            Buffered(BufferWriter::stderr(choice))
         }
     }
 
-    #[cfg(windows)]
-    /// Return a normal, unbuffered terminal when on Windows.
-    fn from_stderr() -> Destination {
-        let stderr: Option<Box<term::StderrTerminal>> = term::TerminfoTerminal::new(io::stderr())
-            .map(|t| Box::new(t) as Box<term::StderrTerminal>)
-            .or_else(|| {
-                term::WinConsole::new(io::stderr())
-                    .ok()
-                    .map(|t| Box::new(t) as Box<term::StderrTerminal>)
-            });
-
-        match stderr {
-            Some(t) => Terminal(t),
-            None => Raw(Box::new(io::stderr())),
+    fn writable<'a>(&'a mut self) -> WritableDst<'a> {
+        match *self {
+            Destination::Terminal(ref mut t) => WritableDst::Terminal(t),
+            Destination::Buffered(ref mut t) => {
+                let buf = t.buffer();
+                WritableDst::Buffered(t, buf)
+            }
+            Destination::Raw(ref mut t) => WritableDst::Raw(t),
         }
     }
+}
 
+impl<'a> WritableDst<'a> {
     fn apply_style(&mut self, lvl: Level, style: Style) -> io::Result<()> {
+        let mut spec = ColorSpec::new();
         match style {
             Style::LineAndColumn => {}
             Style::LineNumber => {
-                self.start_attr(term::Attr::Bold)?;
+                spec.set_bold(true);
+                spec.set_intense(true);
                 if cfg!(windows) {
-                    self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_CYAN))?;
+                    spec.set_fg(Some(Color::Cyan));
                 } else {
-                    self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_BLUE))?;
+                    spec.set_fg(Some(Color::Blue));
                 }
             }
             Style::Quotation => {}
             Style::OldSchoolNoteText | Style::HeaderMsg => {
-                self.start_attr(term::Attr::Bold)?;
+                spec.set_bold(true);
                 if cfg!(windows) {
-                    self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_WHITE))?;
+                    spec.set_intense(true)
+                        .set_fg(Some(Color::White));
                 }
             }
             Style::UnderlinePrimary | Style::LabelPrimary => {
-                self.start_attr(term::Attr::Bold)?;
-                self.start_attr(term::Attr::ForegroundColor(lvl.color()))?;
+                spec = lvl.color();
+                spec.set_bold(true);
             }
             Style::UnderlineSecondary |
             Style::LabelSecondary => {
-                self.start_attr(term::Attr::Bold)?;
+                spec.set_bold(true)
+                    .set_intense(true);
                 if cfg!(windows) {
-                    self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_CYAN))?;
+                    spec.set_fg(Some(Color::Cyan));
                 } else {
-                    self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_BLUE))?;
+                    spec.set_fg(Some(Color::Blue));
                 }
             }
             Style::NoStyle => {}
-            Style::Level(l) => {
-                self.start_attr(term::Attr::Bold)?;
-                self.start_attr(term::Attr::ForegroundColor(l.color()))?;
+            Style::Level(lvl) => {
+                spec = lvl.color();
+                spec.set_bold(true);
             }
-            Style::Highlight => self.start_attr(term::Attr::Bold)?,
+            Style::Highlight => {
+                spec.set_bold(true);
+            }
         }
-        Ok(())
+        self.set_color(&spec)
     }
 
-    fn start_attr(&mut self, attr: term::Attr) -> io::Result<()> {
+    fn set_color(&mut self, color: &ColorSpec) -> io::Result<()> {
         match *self {
-            Terminal(ref mut t) => {
-                t.attr(attr)?;
-            }
-            BufferedTerminal(ref mut t) => {
-                t.attr(attr)?;
-            }
-            Raw(_) => {}
+            WritableDst::Terminal(ref mut t) => t.set_color(color),
+            WritableDst::Buffered(_, ref mut t) => t.set_color(color),
+            WritableDst::Raw(_) => Ok(())
         }
-        Ok(())
     }
 
-    fn reset_attrs(&mut self) -> io::Result<()> {
+    fn reset(&mut self) -> io::Result<()> {
         match *self {
-            Terminal(ref mut t) => {
-                t.reset()?;
-            }
-            BufferedTerminal(ref mut t) => {
-                t.reset()?;
-            }
-            Raw(_) => {}
+            WritableDst::Terminal(ref mut t) => t.reset(),
+            WritableDst::Buffered(_, ref mut t) => t.reset(),
+            WritableDst::Raw(_) => Ok(()),
         }
-        Ok(())
     }
 }
 
-impl Write for Destination {
+impl<'a> Write for WritableDst<'a> {
     fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
         match *self {
-            Terminal(ref mut t) => t.write(bytes),
-            BufferedTerminal(ref mut t) => t.write(bytes),
-            Raw(ref mut w) => w.write(bytes),
+            WritableDst::Terminal(ref mut t) => t.write(bytes),
+            WritableDst::Buffered(_, ref mut buf) => buf.write(bytes),
+            WritableDst::Raw(ref mut w) => w.write(bytes),
         }
     }
+
     fn flush(&mut self) -> io::Result<()> {
         match *self {
-            Terminal(ref mut t) => t.flush(),
-            BufferedTerminal(ref mut t) => t.flush(),
-            Raw(ref mut w) => w.flush(),
+            WritableDst::Terminal(ref mut t) => t.flush(),
+            WritableDst::Buffered(_, ref mut buf) => buf.flush(),
+            WritableDst::Raw(ref mut w) => w.flush(),
+        }
+    }
+}
+
+impl<'a> Drop for WritableDst<'a> {
+    fn drop(&mut self) {
+        match *self {
+            WritableDst::Buffered(ref mut dst, ref mut buf) => {
+                drop(dst.print(buf));
+            }
+            _ => {}
         }
     }
 }

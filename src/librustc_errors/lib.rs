@@ -21,7 +21,8 @@
 #![feature(i128_type)]
 #![feature(optin_builtin_traits)]
 
-extern crate term;
+extern crate atty;
+extern crate termcolor;
 #[cfg(unix)]
 extern crate libc;
 extern crate rustc_data_structures;
@@ -46,6 +47,8 @@ use std::{error, fmt};
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::SeqCst;
 use std::panic;
+
+use termcolor::{ColorSpec, Color};
 
 mod diagnostic;
 mod diagnostic_builder;
@@ -660,20 +663,28 @@ impl fmt::Display for Level {
 }
 
 impl Level {
-    fn color(self) -> term::color::Color {
+    fn color(self) -> ColorSpec {
+        let mut spec = ColorSpec::new();
         match self {
-            Bug | Fatal | PhaseFatal | Error => term::color::BRIGHT_RED,
-            Warning => {
-                if cfg!(windows) {
-                    term::color::BRIGHT_YELLOW
-                } else {
-                    term::color::YELLOW
-                }
+            Bug | Fatal | PhaseFatal | Error => {
+                spec.set_fg(Some(Color::Red))
+                    .set_intense(true);
             }
-            Note => term::color::BRIGHT_GREEN,
-            Help => term::color::BRIGHT_CYAN,
+            Warning => {
+                spec.set_fg(Some(Color::Yellow))
+                    .set_intense(cfg!(windows));
+            }
+            Note => {
+                spec.set_fg(Some(Color::Green))
+                    .set_intense(true);
+            }
+            Help => {
+                spec.set_fg(Some(Color::Cyan))
+                    .set_intense(true);
+            }
             Cancelled => unreachable!(),
         }
+        return spec
     }
 
     pub fn to_str(self) -> &'static str {
