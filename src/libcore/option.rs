@@ -237,7 +237,6 @@ impl<T> Option<T> {
     /// // First, cast `Option<String>` to `Option<&String>` with `as_ref`,
     /// // then consume *that* with `map`, leaving `text` on the stack.
     /// let text_length: Option<usize> = text.as_ref().map(|s| s.len());
-    /// println!("text length: {}", text_length);
     /// println!("still can print text: {:?}", text);
     /// ```
     #[inline]
