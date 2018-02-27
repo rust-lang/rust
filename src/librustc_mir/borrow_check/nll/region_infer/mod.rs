@@ -26,7 +26,6 @@ use rustc::ty::{self, RegionVid, Ty, TypeFoldable};
 use rustc::util::common::ErrorReported;
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_errors::DiagnosticBuilder;
 use std::fmt;
 use std::rc::Rc;
 use syntax::ast;
@@ -435,7 +434,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         self.check_type_tests(infcx, mir, mir_def_id, outlives_requirements.as_mut());
 
-        self.check_universal_regions(infcx, mir, mir_def_id, outlives_requirements.as_mut());
+        self.check_universal_regions(infcx, mir_def_id, outlives_requirements.as_mut());
 
         let outlives_requirements = outlives_requirements.unwrap_or(vec![]);
 
@@ -897,7 +896,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn check_universal_regions<'gcx>(
         &self,
         infcx: &InferCtxt<'_, 'gcx, 'tcx>,
-        mir: &Mir<'tcx>,
         mir_def_id: DefId,
         mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'gcx>>>,
     ) {
@@ -913,7 +911,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         for (fr, _) in universal_definitions {
             self.check_universal_region(
                 infcx,
-                mir,
                 mir_def_id,
                 fr,
                 &mut propagated_outlives_requirements,
@@ -932,7 +929,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn check_universal_region<'gcx>(
         &self,
         infcx: &InferCtxt<'_, 'gcx, 'tcx>,
-        mir: &Mir<'tcx>,
         mir_def_id: DefId,
         longer_fr: RegionVid,
         propagated_outlives_requirements: &mut Option<&mut Vec<ClosureOutlivesRequirement<'gcx>>>,
@@ -990,7 +986,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // Note: in this case, we use the unapproximated regions
             // to report the error. This gives better error messages
             // in some cases.
-            self.report_error(infcx, mir, mir_def_id, longer_fr, shorter_fr, blame_span);
+            self.report_error(infcx, mir_def_id, longer_fr, shorter_fr, blame_span);
         }
     }
 
@@ -1005,7 +1001,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn report_error(
         &self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
-        mir: &Mir<'tcx>,
         mir_def_id: DefId,
         fr: RegionVid,
         outlived_fr: RegionVid,
@@ -1038,12 +1033,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             blame_span,
             &format!("{} does not outlive {}", fr_string, outlived_fr_string,),
         );
-
-        // Find out why `fr` had to outlive `outlived_fr`...
-        let inferred_values = self.inferred_values.as_ref().unwrap();
-        if let Some(cause) = inferred_values.cause(fr, outlived_fr) {
-            cause.label_diagnostic(mir, &mut diag);
-        }
 
         diag.emit();
     }
@@ -1285,62 +1274,6 @@ impl CauseExt for Rc<Cause> {
 }
 
 impl Cause {
-    pub(crate) fn label_diagnostic(&self, mir: &Mir<'_>, diag: &mut DiagnosticBuilder<'_>) {
-        // The cause information is pretty messy. Only dump it as an
-        // internal debugging aid if -Znll-dump-cause is given.
-        let nll_dump_cause = ty::tls::with(|tcx| tcx.sess.nll_dump_cause());
-        if !nll_dump_cause {
-            return;
-        }
-
-        let mut string = String::new();
-        self.push_diagnostic_string(mir, &mut string);
-        diag.note(&string);
-    }
-
-    fn push_diagnostic_string(&self, mir: &Mir<'_>, string: &mut String) {
-        match self {
-            Cause::LiveVar(local, location) => {
-                string.push_str(&format!("because `{:?}` is live at {:?}", local, location));
-            }
-
-            Cause::DropVar(local, location) => {
-                string.push_str(&format!(
-                    "because `{:?}` is dropped at {:?}",
-                    local,
-                    location
-                ));
-            }
-
-            Cause::LiveOther(location) => {
-                string.push_str(&format!(
-                    "because of a general liveness constraint at {:?}",
-                    location
-                ));
-            }
-
-            Cause::UniversalRegion(region_vid) => {
-                string.push_str(&format!(
-                    "because `{:?}` is universally quantified",
-                    region_vid
-                ));
-            }
-
-            Cause::Outlives {
-                original_cause,
-                constraint_location,
-                constraint_span: _,
-            } => {
-                string.push_str(&format!(
-                    "because of an outlives relation created at `{:?}`\n",
-                    constraint_location
-                ));
-
-                original_cause.push_diagnostic_string(mir, string);
-            }
-        }
-    }
-
     pub(crate) fn root_cause(&self) -> &Cause {
         match self {
             Cause::LiveVar(..) |

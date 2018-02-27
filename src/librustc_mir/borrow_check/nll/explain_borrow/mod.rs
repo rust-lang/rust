@@ -71,7 +71,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     }
 
                     _ => {
-                        cause.label_diagnostic(mir, err);
                     }
                 }
             }
