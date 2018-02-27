@@ -670,7 +670,7 @@ class RustBuild(object):
         self._download_url = 'https://dev-static.rust-lang.org'
 
 
-def bootstrap():
+def bootstrap(help_triggered):
     """Configure, fetch, build and run the initial bootstrap"""
     parser = argparse.ArgumentParser(description='Build rust')
     parser.add_argument('--config')
@@ -708,7 +708,7 @@ def bootstrap():
             print('      and so in order to preserve your $HOME this will now')
             print('      use vendored sources by default. Note that if this')
             print('      does not work you should run a normal build first')
-            print('      before running a command like `sudo make install`')
+            print('      before running a command like `sudo ./x.py install`')
 
     if build.use_vendored_sources:
         if not os.path.exists('.cargo'):
@@ -734,7 +734,10 @@ def bootstrap():
     if 'dev' in data:
         build.set_dev_environment()
 
-    build.update_submodules()
+    # No help text depends on submodules. This check saves ~1 minute of git commands, even if
+    # all the submodules are present and downloaded!
+    if not help_triggered:
+        build.update_submodules()
 
     # Fetch/build the bootstrap
     build.build = args.build or build.build_triple()
@@ -760,7 +763,13 @@ def main():
     help_triggered = (
         '-h' in sys.argv) or ('--help' in sys.argv) or (len(sys.argv) == 1)
     try:
-        bootstrap()
+        # If the user is asking for help, let them know that the whole download-and-build
+        # process has to happen before anything is printed out.
+        if help_triggered:
+            print("NOTE: Downloading and compiling bootstrap requirements before processing")
+            print("      --help command. See src/bootstrap/README.md for help with common")
+            print("      commands.")
+        bootstrap(help_triggered)
         if not help_triggered:
             print("Build completed successfully in {}".format(
                 format_build_time(time() - start_time)))
