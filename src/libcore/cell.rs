@@ -1166,12 +1166,12 @@ impl<'a, T: ?Sized + fmt::Display> fmt::Display for RefMut<'a, T> {
 /// `Mutex`, etc, you need to turn these optimizations off. `UnsafeCell` is the only legal way
 /// to do this. When `UnsafeCell<T>` itself is immutably aliased, it is still safe to obtain
 /// a mutable reference to its interior and/or to mutate the interior. However, the abstraction
-/// designer must ensure that any active mutable references to the interior obtained this way does 
-/// not co-exist with other active references to the interior, either mutable or not. This is often 
+/// designer must ensure that any active mutable references to the interior obtained this way does
+/// not co-exist with other active references to the interior, either mutable or not. This is often
 /// done via runtime checks. Naturally, several active immutable references to the interior can 
 /// co-exits with each other (but not with a mutable reference).
 ///
-/// To put it in other words, if a mutable reference to the contents is active, no other references 
+/// To put it in other words, if a mutable reference to the contents is active, no other references
 /// can be active at the same time, and if an immutable reference to the contents is active, then
 /// only other immutable reference may be active. 
 ///
