@@ -34,6 +34,12 @@ macro_rules! is_target_feature_detected {
     ("pclmulqdq") => {
         $crate::arch::detect::check_for(
             $crate::arch::detect::Feature::pclmulqdq)  };
+    ("rdrand") => {
+        $crate::arch::detect::check_for(
+            $crate::arch::detect::Feature::rdrand)  };
+    ("rdseed") => {
+        $crate::arch::detect::check_for(
+            $crate::arch::detect::Feature::rdseed)  };
     ("tsc") => {
         $crate::arch::detect::check_for(
             $crate::arch::detect::Feature::tsc)  };
@@ -180,6 +186,10 @@ pub enum Feature {
     aes,
     /// CLMUL (Carry-less Multiplication)
     pclmulqdq,
+    /// RDRAND
+    rdrand,
+    /// RDSEED
+    rdseed,
     /// TSC (Time Stamp Counter)
     tsc,
     /// MMX
@@ -352,6 +362,8 @@ pub fn detect_features() -> cache::Initializer {
         enable(proc_info_ecx, 23, Feature::popcnt);
         enable(proc_info_ecx, 25, Feature::aes);
         enable(proc_info_ecx, 1, Feature::pclmulqdq);
+        enable(proc_info_ecx, 30, Feature::rdrand);
+        enable(extended_features_ebx, 18, Feature::rdseed);
         enable(proc_info_edx, 4, Feature::tsc);
         enable(proc_info_edx, 23, Feature::mmx);
         enable(proc_info_edx, 24, Feature::fxsr);
@@ -465,6 +477,8 @@ mod tests {
     fn dump() {
         println!("aes: {:?}", is_target_feature_detected!("aes"));
         println!("pclmulqdq: {:?}", is_target_feature_detected!("pclmulqdq"));
+        println!("rdrand: {:?}", is_target_feature_detected!("rdrand"));
+        println!("rdseed: {:?}", is_target_feature_detected!("rdseed"));
         println!("tsc: {:?}", is_target_feature_detected!("tsc"));
         println!("sse: {:?}", is_target_feature_detected!("sse"));
         println!("sse2: {:?}", is_target_feature_detected!("sse2"));
@@ -507,6 +521,8 @@ mod tests {
         let information = cupid::master().unwrap();
         assert_eq!(is_target_feature_detected!("aes"), information.aesni());
         assert_eq!(is_target_feature_detected!("pclmulqdq"), information.pclmulqdq());
+        assert_eq!(is_target_feature_detected!("rdrand"), information.rdrand());
+        assert_eq!(is_target_feature_detected!("rdseed"), information.rdseed());
         assert_eq!(is_target_feature_detected!("tsc"), information.tsc());
         assert_eq!(is_target_feature_detected!("sse"), information.sse());
         assert_eq!(is_target_feature_detected!("sse2"), information.sse2());

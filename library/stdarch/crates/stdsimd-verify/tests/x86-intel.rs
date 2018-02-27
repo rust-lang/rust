@@ -395,6 +395,7 @@ fn equate(t: &Type,
         (&Type::Ptr(&Type::PrimSigned(32)), "int*") => {}
         (&Type::Ptr(&Type::PrimSigned(64)), "__int64*") => {}
         (&Type::Ptr(&Type::PrimSigned(8)), "char*") => {}
+        (&Type::Ptr(&Type::PrimUnsigned(16)), "unsigned short*") => {}
         (&Type::Ptr(&Type::PrimUnsigned(32)), "unsigned int*") => {}
         (&Type::Ptr(&Type::PrimUnsigned(64)), "unsigned __int64*") => {}
         (&Type::Ptr(&Type::PrimUnsigned(8)), "const void*") => {}

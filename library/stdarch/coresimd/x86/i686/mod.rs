@@ -3,6 +3,9 @@
 mod aes;
 pub use self::aes::*;
 
+mod rdrand;
+pub use self::rdrand::*;
+
 mod mmx;
 pub use self::mmx::*;
 

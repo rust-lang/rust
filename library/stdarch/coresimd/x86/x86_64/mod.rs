@@ -37,3 +37,6 @@ pub use self::avx2::*;
 
 mod bswap;
 pub use self::bswap::*;
+
+mod rdrand;
+pub use self::rdrand::*;
