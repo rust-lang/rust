@@ -497,14 +497,34 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         _proper_span: Span,
         _end_span: Option<Span>,
     ) {
+        debug!(
+            "report_unscoped_local_value_does_not_live_long_enough(\
+                {:?}, {:?}, {:?}, {:?}, {:?}, {:?}\
+            )",
+            context,
+            name,
+            scope_tree,
+            borrow,
+            drop_span,
+            borrow_span
+        );
+
         let mut err = self.tcx.path_does_not_live_long_enough(borrow_span,
                                                               &format!("`{}`", name),
                                                               Origin::Mir);
         err.span_label(borrow_span, "borrowed value does not live long enough");
         err.span_label(drop_span, "borrowed value only lives until here");
-        self.tcx.note_and_explain_region(scope_tree, &mut err,
-                                         "borrowed value must be valid for ",
-                                         borrow.region, "...");
+
+        if !self.tcx.sess.nll() {
+            self.tcx.note_and_explain_region(
+                scope_tree,
+                &mut err,
+                "borrowed value must be valid for ",
+                borrow.region,
+                "...",
+            );
+        }
+
         self.explain_why_borrow_contains_point(context, borrow, &mut err);
         err.emit();
     }
@@ -519,14 +539,33 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         proper_span: Span,
         _end_span: Option<Span>
     ) {
+        debug!(
+            "report_unscoped_temporary_value_does_not_live_long_enough(\
+                {:?}, {:?}, {:?}, {:?}, {:?}\
+            )",
+            context,
+            scope_tree,
+            borrow,
+            drop_span,
+            proper_span
+        );
+
         let mut err = self.tcx.path_does_not_live_long_enough(proper_span,
                                                               "borrowed value",
                                                               Origin::Mir);
         err.span_label(proper_span, "temporary value does not live long enough");
         err.span_label(drop_span, "temporary value only lives until here");
-        self.tcx.note_and_explain_region(scope_tree, &mut err,
-                                         "borrowed value must be valid for ",
-                                         borrow.region, "...");
+
+        if !self.tcx.sess.nll() {
+            self.tcx.note_and_explain_region(
+                scope_tree,
+                &mut err,
+                "borrowed value must be valid for ",
+                borrow.region,
+                "...",
+            );
+        }
+
         self.explain_why_borrow_contains_point(context, borrow, &mut err);
         err.emit();
     }
