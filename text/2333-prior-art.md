@@ -1,7 +1,7 @@
-- Feature Name: prior_art
+- Feature Name: `prior_art`
 - Start Date: 2018-02-12
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#2333](https://github.com/rust-lang/rfcs/pull/2333)
+- Rust Issue: **self-executing**
 
 # Summary
 [summary]: #summary
