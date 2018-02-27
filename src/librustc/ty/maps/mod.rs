@@ -26,7 +26,7 @@ use middle::region;
 use middle::resolve_lifetime::{ResolveLifetimes, Region, ObjectLifetimeDefault};
 use middle::stability::{self, DeprecationEntry};
 use middle::lang_items::{LanguageItems, LangItem};
-use middle::exported_symbols::SymbolExportLevel;
+use middle::exported_symbols::{SymbolExportLevel, ExportedSymbol};
 use mir::mono::{CodegenUnit, Stats};
 use mir;
 use session::{CompileResult, CrateDisambiguator};
@@ -358,7 +358,7 @@ define_maps! { <'tcx>
     [] fn all_crate_nums: all_crate_nums_node(CrateNum) -> Lrc<Vec<CrateNum>>,
 
     [] fn exported_symbols: ExportedSymbols(CrateNum)
-        -> Arc<Vec<(String, Option<DefId>, SymbolExportLevel)>>,
+        -> Arc<Vec<(ExportedSymbol, SymbolExportLevel)>>,
     [] fn collect_and_partition_translation_items:
         collect_and_partition_translation_items_node(CrateNum)
         -> (Arc<DefIdSet>, Arc<Vec<Arc<CodegenUnit<'tcx>>>>),

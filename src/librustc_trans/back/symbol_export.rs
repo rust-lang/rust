@@ -15,9 +15,9 @@ use monomorphize::Instance;
 use rustc::hir;
 use rustc::hir::def_id::CrateNum;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-use rustc::middle::exported_symbols::SymbolExportLevel;
+use rustc::middle::exported_symbols::{SymbolExportLevel, ExportedSymbol};
 use rustc::session::config;
-use rustc::ty::TyCtxt;
+use rustc::ty::{TyCtxt, SymbolName};
 use rustc::ty::maps::Providers;
 use rustc::util::nodemap::{FxHashMap, DefIdSet};
 use rustc_allocator::ALLOCATOR_METHODS;
@@ -25,7 +25,7 @@ use syntax::attr;
 
 pub type ExportedSymbols = FxHashMap<
     CrateNum,
-    Arc<Vec<(String, Option<DefId>, SymbolExportLevel)>>,
+    Arc<Vec<(String, SymbolExportLevel)>>,
 >;
 
 pub fn threshold(tcx: TyCtxt) -> SymbolExportLevel {
@@ -78,9 +78,10 @@ fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let reachable_non_generics = tcx
         .exported_symbols(LOCAL_CRATE)
         .iter()
-        .filter_map(|&(_, opt_def_id, level)| {
-            if let Some(def_id) = opt_def_id {
-                if level.is_below_threshold(export_threshold) {
+        .filter_map(|&(exported_symbol, _)| {
+            if let ExportedSymbol::NonGeneric(def_id) = exported_symbol {
+                if tcx.symbol_export_level(def_id)
+                      .is_below_threshold(export_threshold) {
                     return Some(def_id)
                 }
             }
@@ -100,8 +101,7 @@ fn is_reachable_non_generic_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                              cnum: CrateNum)
-                                             -> Arc<Vec<(String,
-                                                         Option<DefId>,
+                                             -> Arc<Vec<(ExportedSymbol,
                                                          SymbolExportLevel)>>
 {
     assert_eq!(cnum, LOCAL_CRATE);
@@ -176,34 +176,40 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut symbols: Vec<_> = reachable_non_generics
         .iter()
         .map(|&def_id| {
-            let name = tcx.symbol_name(Instance::mono(tcx, def_id));
             let export_level = tcx.symbol_export_level(def_id);
-            debug!("EXPORTED SYMBOL (local): {} ({:?})", name, export_level);
-            (str::to_owned(&name), Some(def_id), export_level)
+            debug!("EXPORTED SYMBOL (local): {} ({:?})",
+                   tcx.symbol_name(Instance::mono(tcx, def_id)),
+                   export_level);
+            (ExportedSymbol::NonGeneric(def_id), export_level)
         })
         .collect();
 
     if let Some(_) = *tcx.sess.entry_fn.borrow() {
-        symbols.push(("main".to_string(), None, SymbolExportLevel::C));
+        let symbol_name = "main".to_string();
+        let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(&symbol_name));
+
+        symbols.push((exported_symbol, SymbolExportLevel::C));
     }
 
     if tcx.sess.allocator_kind.get().is_some() {
         for method in ALLOCATOR_METHODS {
-            symbols.push((format!("__rust_{}", method.name),
-                          None,
-                          SymbolExportLevel::Rust));
+            let symbol_name = format!("__rust_{}", method.name);
+            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(&symbol_name));
+
+            symbols.push((exported_symbol, SymbolExportLevel::Rust));
         }
     }
 
     if tcx.sess.crate_types.borrow().contains(&config::CrateTypeDylib) {
-        symbols.push((metadata_symbol_name(tcx),
-                      None,
-                      SymbolExportLevel::Rust));
+        let symbol_name = metadata_symbol_name(tcx);
+        let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(&symbol_name));
+
+        symbols.push((exported_symbol, SymbolExportLevel::Rust));
     }
 
     // Sort so we get a stable incr. comp. hash.
-    symbols.sort_unstable_by(|&(ref name1, ..), &(ref name2, ..)| {
-        name1.cmp(name2)
+    symbols.sort_unstable_by(|&(ref symbol1, ..), &(ref symbol2, ..)| {
+        symbol1.compare_stable(tcx, symbol2)
     });
 
     Arc::new(symbols)
@@ -218,8 +224,7 @@ pub fn provide(providers: &mut Providers) {
 
 fn exported_symbols_provider_extern<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                               cnum: CrateNum)
-                                              -> Arc<Vec<(String,
-                                                          Option<DefId>,
+                                              -> Arc<Vec<(ExportedSymbol,
                                                           SymbolExportLevel)>>
 {
     // If this crate is a plugin and/or a custom derive crate, then
@@ -243,8 +248,8 @@ fn exported_symbols_provider_extern<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         .reachable_non_generics(cnum)
         .iter()
         .map(|&def_id| {
-            let name = tcx.symbol_name(Instance::mono(tcx, def_id));
             let export_level = if special_runtime_crate {
+                let name = tcx.symbol_name(Instance::mono(tcx, def_id));
                 // We can probably do better here by just ensuring that
                 // it has hidden visibility rather than public
                 // visibility, as this is primarily here to ensure it's
@@ -262,14 +267,18 @@ fn exported_symbols_provider_extern<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             } else {
                 tcx.symbol_export_level(def_id)
             };
-            debug!("EXPORTED SYMBOL (re-export): {} ({:?})", name, export_level);
-            (str::to_owned(&name), Some(def_id), export_level)
+
+            debug!("EXPORTED SYMBOL (re-export): {} ({:?})",
+                   tcx.symbol_name(Instance::mono(tcx, def_id)),
+                   export_level);
+
+            (ExportedSymbol::NonGeneric(def_id), export_level)
         })
         .collect();
 
     // Sort so we get a stable incr. comp. hash.
-    crate_exports.sort_unstable_by(|&(ref name1, ..), &(ref name2, ..)| {
-        name1.cmp(name2)
+    crate_exports.sort_unstable_by(|&(ref symbol1, ..), &(ref symbol2, ..)| {
+        symbol1.compare_stable(tcx, symbol2)
     });
 
     Arc::new(crate_exports)
