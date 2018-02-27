@@ -119,7 +119,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
         opts.optopt("", "src", "path to the root of the rust checkout", "DIR");
         opts.optopt("j", "jobs", "number of jobs to run in parallel", "JOBS");
         opts.optflag("h", "help", "print this help message");
-        opts.optflag("", "error-format", "rustc error format");
+        opts.optopt("", "error-format", "rustc error format", "FORMAT");
 
         // fn usage()
         let usage = |exit_code: i32, opts: &Options, subcommand_help: &str, extra_help: &str| -> ! {

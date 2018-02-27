@@ -25,7 +25,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                 AdtKind::Struct => Def::Struct,
                 AdtKind::Enum => Def::Enum,
                 AdtKind::Union => Def::Union,
-            },
+            }
             _ => panic!("Unexpected type {:?}", def_id),
         };
 
