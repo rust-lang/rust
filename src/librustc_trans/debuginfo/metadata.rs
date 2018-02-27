@@ -1567,7 +1567,7 @@ fn create_struct_stub<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                 unique_type_id: UniqueTypeId,
                                 containing_scope: DIScope)
                                 -> DICompositeType {
-    // TODO: ignore unused generic subsitutions
+    // FIXME: ignore unused generic subsitutions
     cx.tcx.sess.warn(&format!("create_struct_stub({:?})", struct_type));
     let (struct_size, struct_align) = cx.size_and_align_of(struct_type);
 

@@ -66,14 +66,26 @@ pub(crate) fn collapse_interchangable_instances<'a, 'tcx>(
                         loop {
                             if let Some(ref gen) = generics {
                                 for ty in &gen.types {
-                                    pretty_generics.push_str(&format!("{}:{} at {:?}, ", ty.index, ty.name, tcx.def_span(ty.def_id)));
+                                    pretty_generics.push_str(&format!(
+                                        "{}:{} at {:?}, ",
+                                        ty.index,
+                                        ty.name,
+                                        tcx.def_span(ty.def_id)
+                                    ));
                                 }
                             } else {
                                 break;
                             }
-                            generics = generics.and_then(|gen|gen.parent).map(|def_id|tcx.generics_of(def_id));
+                            generics = generics.and_then(|gen|gen.parent)
+                                .map(|def_id|tcx.generics_of(def_id));
                         }
-                        tcx.sess.warn(&format!("Unused subst {} for {:?}<{}>\n with mir: {}", i, instance, pretty_generics, String::from_utf8_lossy(&mir)));
+                        tcx.sess.warn(&format!(
+                            "Unused subst {} for {:?}<{}>\n with mir: {}",
+                            i,
+                            instance,
+                            pretty_generics,
+                            String::from_utf8_lossy(&mir)
+                        ));
                         tcx.mk_ty(ty::TyNever)
                     }
                 }
