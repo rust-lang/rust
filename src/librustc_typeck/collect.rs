@@ -1745,6 +1745,8 @@ fn trans_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> TransFnAt
             trans_fn_attrs.flags |= TransFnAttrFlags::NAKED;
         } else if attr.check_name("no_mangle") {
             trans_fn_attrs.flags |= TransFnAttrFlags::NO_MANGLE;
+        } else if attr.check_name("rustc_std_internal_symbol") {
+            trans_fn_attrs.flags |= TransFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
         } else if attr.check_name("inline") {
             trans_fn_attrs.inline = attrs.iter().fold(InlineAttr::None, |ia, attr| {
                 if attr.path != "inline" {

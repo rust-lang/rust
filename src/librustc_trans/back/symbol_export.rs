@@ -13,6 +13,7 @@ use std::sync::Arc;
 
 use monomorphize::Instance;
 use rustc::hir;
+use rustc::hir::TransFnAttrFlags;
 use rustc::hir::def_id::CrateNum;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::exported_symbols::{SymbolExportLevel, ExportedSymbol, metadata_symbol_name};
@@ -21,7 +22,6 @@ use rustc::ty::{TyCtxt, SymbolName};
 use rustc::ty::maps::Providers;
 use rustc::util::nodemap::{FxHashMap, DefIdSet};
 use rustc_allocator::ALLOCATOR_METHODS;
-use syntax::attr;
 
 pub type ExportedSymbols = FxHashMap<
     CrateNum,
@@ -258,8 +258,8 @@ fn symbol_export_level_provider(tcx: TyCtxt, sym_def_id: DefId) -> SymbolExportL
     // are not considered for export
     let trans_fn_attrs = tcx.trans_fn_attrs(sym_def_id);
     let is_extern = trans_fn_attrs.contains_extern_indicator();
-    let std_internal = attr::contains_name(&tcx.get_attrs(sym_def_id),
-                                           "rustc_std_internal_symbol");
+    let std_internal = trans_fn_attrs.flags.contains(TransFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL);
+
     if is_extern && !std_internal {
         SymbolExportLevel::C
     } else {
