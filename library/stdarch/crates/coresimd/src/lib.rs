@@ -1,12 +1,10 @@
 //! SIMD and vendor intrinsics support library.
 //!
-//! This documentation is only for one particular architecture, you can find
-//! others at:
+//! This documentation is for the `coresimd` crate, but you probably want to use
+//! the [`stdsimd` crate][stdsimd] which should have more complete
+//! documentation.
 //!
-//! * [i686](https://rust-lang-nursery.github.io/stdsimd/i686/stdsimd/)
-//! * [`x86_64`](https://rust-lang-nursery.github.io/stdsimd/x86_64/stdsimd/)
-//! * [arm](https://rust-lang-nursery.github.io/stdsimd/arm/stdsimd/)
-//! * [aarch64](https://rust-lang-nursery.github.io/stdsimd/aarch64/stdsimd/)
+//! [stdsimd]: https://rust-lang-nursery.github.io/stdsimd/x86_64/stdsimd/
 
 #![cfg_attr(feature = "strict", deny(warnings))]
 #![allow(dead_code)]
