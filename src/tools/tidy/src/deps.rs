@@ -108,6 +108,9 @@ static WHITELIST: &'static [Crate] = &[
     Crate("unicode-width"),
     Crate("winapi"),
     Crate("winapi-build"),
+    Crate("proc_macro"),
+    Crate("winapi-i686-pc-windows-gnu"),
+    Crate("winapi-x86_64-pc-windows-gnu"),
 ];
 
 // Some types for Serde to deserialize the output of `cargo metadata` to...
