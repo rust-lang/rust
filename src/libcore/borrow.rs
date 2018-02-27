@@ -17,36 +17,41 @@
 /// In Rust, it is common to provide different representations of a type for
 /// different use cases. For instance, storage location and management for a
 /// value can be specifically chosen as appropriate for a particular use via
-/// pointer types such as [`Box<T>`] or [`Rc<T>`] or one can opt into
-/// concurrency via synchronization types such as [`Mutex<T>`], avoiding the
-/// associated cost when in parallel doesn’t happen. Beyond these generic
+/// pointer types such as [`Box<T>`] or [`Rc<T>`]. Beyond these generic
 /// wrappers that can be used with any type, some types provide optional
 /// facets providing potentially costly functionality. An example for such a
 /// type is [`String`] which adds the ability to extend a string to the basic
 /// [`str`]. This requires keeping additional information unnecessary for a
-/// simple, imutable string.
+/// simple, immutable string.
 ///
 /// These types signal that they are a specialized representation of a basic
 /// type `T` by implementing `Borrow<T>`. The method `borrow` provides a way
-/// to convert a reference to the type into a reference to the underlying
-/// basic type.
+/// to convert a reference to the type into a reference to this basic type
+/// `T`.
 ///
-/// If a type implementing `Borrow<T>` implements other traits also
-/// implemented by `T`, these implementations behave identically if the trait
-/// is concerned with the data rather than its representation. For instance,
-/// the comparison traits such as `PartialEq` or `PartialOrd` must behave
-/// identical for `T` and any type implemeting `Borrow<T>`.
+/// Further, when providing implementations for additional traits, it needs
+/// to be considered whether they should behave identical to those of the
+/// underlying type as a consequence of acting as a representation of that
+/// underlying type.
 ///
-/// When writing generic code, a use of `Borrow` should always be justified
-/// by additional trait bounds, making it clear that the two types need to
-/// behave identically in a certain context. If the code should merely be
-/// able to operate on any type that can produce a reference to a given type,
-/// you should use [`AsRef`] instead.
+/// Generic code typically uses `Borrow<T>` when it not only needs access
+/// to a reference of the underlying type but relies on the identical
+/// behavior of these additional trait implementations. These traits are
+/// likely to appear as additional trait bounds.
 ///
-/// The companion trait [`BorrowMut`] provides the same guarantees for
-/// mutable references.
+/// If generic code merely needs to work for all types that can
+/// provide a reference to related type `T`, it is often better to use
+/// [`AsRef<T>`] as more types can safely implement it.
 ///
-/// [`AsRef`]: ../../std/convert/trait.AsRef.html
+/// If a type implementing `Borrow<T>` also wishes to allow mutable access
+/// to the underlying type `T`, it can do so by implementing the companion
+/// trait [`BorrowMut`].
+///
+/// Note also that it is perfectly fine for a single type to have multiple
+/// implementations of `Borrow<T>` for different `T`s. In fact, a blanket
+/// implementation lets every type be at least a borrow of itself.
+///
+/// [`AsRef<T>`]: ../../std/convert/trait.AsRef.html
 /// [`BorrowMut`]: trait.BorrowMut.html
 /// [`Box<T>`]: ../../std/boxed/struct.Box.html
 /// [`Mutex<T>`]: ../../std/sync/struct.Mutex.html
@@ -111,7 +116,7 @@
 /// data, called `Q` in the method signature above. It states that `K` is a
 /// representation of `Q` by requiring that `K: Borrow<Q>`. By additionally
 /// requiring `Q: Hash + Eq`, it demands that `K` and `Q` have
-/// implementations of the `Hash` and `Eq` traits that procude identical
+/// implementations of the `Hash` and `Eq` traits that produce identical
 /// results.
 ///
 /// The implementation of `get` relies in particular on identical
@@ -124,15 +129,15 @@
 /// type that wraps a string but compares ASCII letters ignoring their case:
 ///
 /// ```
-/// pub struct CIString(String);
+/// pub struct CaseInsensitiveString(String);
 ///
-/// impl PartialEq for CIString {
+/// impl PartialEq for CaseInsensitiveString {
 ///     fn eq(&self, other: &Self) -> bool {
 ///         self.0.eq_ignore_ascii_case(&other.0)
 ///     }
 /// }
 ///
-/// impl Eq for CIString { }
+/// impl Eq for CaseInsensitiveString { }
 /// ```
 ///
 /// Because two equal values need to produce the same hash value, the
@@ -140,8 +145,8 @@
 ///
 /// ```
 /// # use std::hash::{Hash, Hasher};
-/// # pub struct CIString(String);
-/// impl Hash for CIString {
+/// # pub struct CaseInsensitiveString(String);
+/// impl Hash for CaseInsensitiveString {
 ///     fn hash<H: Hasher>(&self, state: &mut H) {
 ///         for c in self.0.as_bytes() {
 ///             c.to_ascii_lowercase().hash(state)
@@ -150,13 +155,12 @@
 /// }
 /// ```
 ///
-/// Can `CIString` implement `Borrow<str>`? It certainly can provide a
-/// reference to a string slice via its contained owned string. But because
-/// its `Hash` implementation differs, it cannot fulfill the guarantee for
-/// `Borrow` that all common trait implementations must behave the same way
-/// and must not, in fact, implement `Borrow<str>`. If it wants to allow
-/// others access to the underlying `str`, it can do that via `AsRef<str>`
-/// which doesn’t carry any such restrictions.
+/// Can `CaseInsensitiveString` implement `Borrow<str>`? It certainly can
+/// provide a reference to a string slice via its contained owned string.
+/// But because its `Hash` implementation differs, it behaves differently
+/// from `str` and therefore must not, in fact, implement `Borrow<str>`.
+/// If it wants to allow others access to the underlying `str`, it can do
+/// that via `AsRef<str>` which doesn’t carry any extra requirements.
 ///
 /// [`Hash`]: ../../std/hash/trait.Hash.html
 /// [`HashMap<K, V>`]: ../../std/collections/struct.HashMap.html
