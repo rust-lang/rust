@@ -69,7 +69,7 @@ extern "C" {
 mod tests {
     use stdsimd_test::simd_test;
 
-    use coresimd::x86::*;
+    use coresimd::x86_64::*;
 
     #[simd_test = "bmi2"]
     unsafe fn test_pext_u64() {

@@ -67,10 +67,10 @@ extern "C" {
 mod tests {
     use stdsimd_test::simd_test;
 
-    use coresimd::x86::i586::bmi2;
+    use coresimd::x86::*;
 
     #[simd_test = "bmi2"]
-    unsafe fn _pext_u32() {
+    unsafe fn test_pext_u32() {
         let n = 0b1011_1110_1001_0011u32;
 
         let m0 = 0b0110_0011_1000_0101u32;
@@ -79,12 +79,12 @@ mod tests {
         let m1 = 0b1110_1011_1110_1111u32;
         let s1 = 0b0001_0111_0100_0011u32;
 
-        assert_eq!(bmi2::_pext_u32(n, m0), s0);
-        assert_eq!(bmi2::_pext_u32(n, m1), s1);
+        assert_eq!(_pext_u32(n, m0), s0);
+        assert_eq!(_pext_u32(n, m1), s1);
     }
 
     #[simd_test = "bmi2"]
-    unsafe fn _pdep_u32() {
+    unsafe fn test_pdep_u32() {
         let n = 0b1011_1110_1001_0011u32;
 
         let m0 = 0b0110_0011_1000_0101u32;
@@ -93,23 +93,23 @@ mod tests {
         let m1 = 0b1110_1011_1110_1111u32;
         let s1 = 0b1110_1001_0010_0011u32;
 
-        assert_eq!(bmi2::_pdep_u32(n, m0), s0);
-        assert_eq!(bmi2::_pdep_u32(n, m1), s1);
+        assert_eq!(_pdep_u32(n, m0), s0);
+        assert_eq!(_pdep_u32(n, m1), s1);
     }
 
     #[simd_test = "bmi2"]
-    unsafe fn _bzhi_u32() {
+    unsafe fn test_bzhi_u32() {
         let n = 0b1111_0010u32;
         let s = 0b0001_0010u32;
-        assert_eq!(bmi2::_bzhi_u32(n, 5), s);
+        assert_eq!(_bzhi_u32(n, 5), s);
     }
 
     #[simd_test = "bmi2"]
-    unsafe fn _mulx_u32() {
+    unsafe fn test_mulx_u32() {
         let a: u32 = 4_294_967_200;
         let b: u32 = 2;
         let mut hi = 0;
-        let lo = bmi2::_mulx_u32(a, b, &mut hi);
+        let lo = _mulx_u32(a, b, &mut hi);
         /*
 result = 8589934400
        = 0b0001_1111_1111_1111_1111_1111_1111_0100_0000u64

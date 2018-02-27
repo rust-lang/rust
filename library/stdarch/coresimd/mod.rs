@@ -48,6 +48,7 @@ pub mod arch {
     #[cfg(target_arch = "x86_64")]
     pub mod x86_64 {
         pub use coresimd::x86::*;
+        pub use coresimd::x86_64::*;
     }
 
     /// Platform-specific intrinsics for the `arm` platform.
@@ -116,6 +117,8 @@ mod v16 {
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 mod x86;
+#[cfg(target_arch = "x86_64")]
+mod x86_64;
 
 #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
 mod arm;

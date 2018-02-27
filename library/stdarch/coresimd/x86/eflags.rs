@@ -34,7 +34,7 @@ pub unsafe fn __writeeflags(eflags: u64) {
 
 #[cfg(test)]
 mod tests {
-    use coresimd::x86::i386::*;
+    use coresimd::x86::*;
 
     #[test]
     fn test_eflags() {

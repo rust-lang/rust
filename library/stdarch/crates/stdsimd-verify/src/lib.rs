@@ -22,10 +22,10 @@ macro_rules! my_quote {
 pub fn x86_functions(input: TokenStream) -> TokenStream {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let root = dir.parent().unwrap();
-    let root = root.join("../coresimd/x86");
 
     let mut files = Vec::new();
-    walk(&root, &mut files);
+    walk(&root.join("../coresimd/x86"), &mut files);
+    walk(&root.join("../coresimd/x86_64"), &mut files);
     assert!(files.len() > 0);
 
     let mut functions = Vec::new();

@@ -66,7 +66,7 @@ mod tests {
 
     use stdsimd_test::simd_test;
 
-    use coresimd::x86::*;
+    use coresimd::arch::x86_64::*;
 
     #[simd_test = "sse"]
     unsafe fn test_mm_cvtss_si64() {

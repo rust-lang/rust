@@ -327,7 +327,7 @@ pub use self::test::*;
 
 #[doc(hidden)]
 #[allow(non_camel_case_types)]
-trait m128iExt: Sized {
+pub(crate) trait m128iExt: Sized {
     fn as_m128i(self) -> __m128i;
 
     #[inline]
@@ -380,7 +380,7 @@ impl m128iExt for __m128i {
 
 #[doc(hidden)]
 #[allow(non_camel_case_types)]
-trait m256iExt: Sized {
+pub(crate) trait m256iExt: Sized {
     fn as_m256i(self) -> __m256i;
 
     #[inline]
@@ -431,21 +431,69 @@ impl m256iExt for __m256i {
     }
 }
 
-mod i386;
-pub use self::i386::*;
 
-// x86 w/o sse2
-mod i586;
-pub use self::i586::*;
+mod eflags;
+pub use self::eflags::*;
 
-// `i686` is `i586 + sse2`.
-//
-// This module is not available for `i586` targets,
-// but available for all `i686` targets by default
-mod i686;
-pub use self::i686::*;
+#[cfg(dont_compile_me)] // TODO: need to upstream `fxsr` target feature
+mod fxsr;
+#[cfg(dont_compile_me)] // TODO: need to upstream `fxsr` target feature
+pub use self::fxsr::*;
 
-#[cfg(target_arch = "x86_64")]
-mod x86_64;
-#[cfg(target_arch = "x86_64")]
-pub use self::x86_64::*;
+mod bswap;
+pub use self::bswap::*;
+
+mod rdtsc;
+pub use self::rdtsc::*;
+
+mod cpuid;
+pub use self::cpuid::*;
+mod xsave;
+pub use self::xsave::*;
+
+mod sse;
+pub use self::sse::*;
+mod sse2;
+pub use self::sse2::*;
+mod sse3;
+pub use self::sse3::*;
+mod ssse3;
+pub use self::ssse3::*;
+mod sse41;
+pub use self::sse41::*;
+mod sse42;
+pub use self::sse42::*;
+mod avx;
+pub use self::avx::*;
+mod avx2;
+pub use self::avx2::*;
+
+mod abm;
+pub use self::abm::*;
+mod bmi;
+pub use self::bmi::*;
+
+mod bmi2;
+pub use self::bmi2::*;
+
+#[cfg(not(feature = "intel_sde"))]
+mod sse4a;
+#[cfg(not(feature = "intel_sde"))]
+pub use self::sse4a::*;
+
+#[cfg(not(feature = "intel_sde"))]
+mod tbm;
+#[cfg(not(feature = "intel_sde"))]
+pub use self::tbm::*;
+
+mod mmx;
+pub use self::mmx::*;
+
+mod pclmulqdq;
+pub use self::pclmulqdq::*;
+
+mod aes;
+pub use self::aes::*;
+
+mod rdrand;
+pub use self::rdrand::*;

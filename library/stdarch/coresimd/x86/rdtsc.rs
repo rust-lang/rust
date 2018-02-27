@@ -54,7 +54,7 @@ extern "C" {
 #[cfg(test)]
 mod tests {
     use stdsimd_test::simd_test;
-    use coresimd::x86::i386::rdtsc;
+    use coresimd::x86::rdtsc;
 
     #[simd_test = "sse2"]
     unsafe fn _rdtsc() {

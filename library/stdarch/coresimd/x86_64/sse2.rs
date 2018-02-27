@@ -117,7 +117,7 @@ mod tests {
 
     use stdsimd_test::simd_test;
 
-    use coresimd::x86::*;
+    use coresimd::arch::x86_64::*;
 
     #[simd_test = "sse2"]
     unsafe fn test_mm_cvtsd_si64() {

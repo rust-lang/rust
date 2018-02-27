@@ -54,7 +54,7 @@ pub unsafe fn _xrstor(mem_addr: *const u8, rs_mask: u64) {
 /// `XFEATURE_ENABLED_MASK` for `XCR`
 ///
 /// This intrinsic maps to `XSETBV` instruction.
-const _XCR_XFEATURE_ENABLED_MASK: u32 = 0;
+pub const _XCR_XFEATURE_ENABLED_MASK: u32 = 0;
 
 /// Copy 64-bits from `val` to the extended control register (`XCR`) specified
 /// by `a`.
@@ -141,7 +141,7 @@ mod tests {
     use std::fmt;
     use std::prelude::v1::*;
 
-    use coresimd::x86::i586::xsave;
+    use coresimd::x86::*;
     use stdsimd_test::simd_test;
 
     #[repr(align(64))]
@@ -194,23 +194,23 @@ mod tests {
         let mut a = XsaveArea::new();
         let mut b = XsaveArea::new();
 
-        xsave::_xsave(a.ptr(), m);
-        xsave::_xrstor(a.ptr(), m);
-        xsave::_xsave(b.ptr(), m);
+        _xsave(a.ptr(), m);
+        _xrstor(a.ptr(), m);
+        _xsave(b.ptr(), m);
         assert_eq!(a, b);
     }
     */
 
     #[simd_test = "xsave"]
     unsafe fn xgetbv_xsetbv() {
-        let xcr_n: u32 = xsave::_XCR_XFEATURE_ENABLED_MASK;
+        let xcr_n: u32 = _XCR_XFEATURE_ENABLED_MASK;
 
-        let xcr: u64 = xsave::_xgetbv(xcr_n);
+        let xcr: u64 = _xgetbv(xcr_n);
         // FIXME: XSETBV is a privileged instruction we should only test this
         // when running in privileged mode:
         //
         // _xsetbv(xcr_n, xcr);
-        let xcr_cpy: u64 = xsave::_xgetbv(xcr_n);
+        let xcr_cpy: u64 = _xgetbv(xcr_n);
         assert_eq!(xcr, xcr_cpy);
     }
 
@@ -222,9 +222,9 @@ mod tests {
         let mut a = XsaveArea::new();
         let mut b = XsaveArea::new();
 
-        xsave::_xsaveopt(a.ptr(), m);
-        xsave::_xrstor(a.ptr(), m);
-        xsave::_xsaveopt(b.ptr(), m);
+        _xsaveopt(a.ptr(), m);
+        _xrstor(a.ptr(), m);
+        _xsaveopt(b.ptr(), m);
         assert_eq!(a, b);
     }
     */
@@ -237,9 +237,9 @@ mod tests {
         let mut a = XsaveArea::new();
         let mut b = XsaveArea::new();
 
-        xsave::_xsavec(a.ptr(), m);
-        xsave::_xrstor(a.ptr(), m);
-        xsave::_xsavec(b.ptr(), m);
+        _xsavec(a.ptr(), m);
+        _xrstor(a.ptr(), m);
+        _xsavec(b.ptr(), m);
         assert_eq!(a, b);
     }
 
@@ -251,9 +251,9 @@ mod tests {
         let mut a = XsaveArea::new();
         let mut b = XsaveArea::new();
 
-        xsave::_xsaves(a.ptr(), m);
-        xsave::_xrstors(a.ptr(), m);
-        xsave::_xsaves(b.ptr(), m);
+        _xsaves(a.ptr(), m);
+        _xrstors(a.ptr(), m);
+        _xsaves(b.ptr(), m);
         assert_eq!(a, b);
     }
     */

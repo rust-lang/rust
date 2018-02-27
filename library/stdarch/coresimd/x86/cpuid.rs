@@ -79,7 +79,7 @@ pub fn has_cpuid() -> bool {
     }
     #[cfg(target_arch = "x86")]
     {
-        use coresimd::x86::i386::{__readeflags, __writeeflags};
+        use coresimd::x86::{__readeflags, __writeeflags};
 
         // On `x86` the `cpuid` instruction is not always available.
         // This follows the approach indicated in:
@@ -121,7 +121,7 @@ pub unsafe fn __get_cpuid_max(leaf: u32) -> (u32, u32) {
 
 #[cfg(test)]
 mod tests {
-    use coresimd::x86::i586::cpuid;
+    use coresimd::x86::*;
 
     #[test]
     fn test_always_has_cpuid() {
@@ -133,7 +133,6 @@ mod tests {
     #[cfg(target_arch = "x86")]
     #[test]
     fn test_has_cpuid() {
-        use coresimd::x86::i386::__readeflags;
         unsafe {
             let before = __readeflags();
 

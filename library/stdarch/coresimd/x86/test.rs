@@ -103,7 +103,7 @@ pub unsafe fn get_m256(a: __m256, idx: usize) -> f32 {
     A { a }.b[idx]
 }
 
-// These intrinsics doesn't exist on x86 b/c it requires a 64-bit registe,r
+// These intrinsics doesn't exist on x86 b/c it requires a 64-bit register,
 // which doesn't exist on x86!
 #[cfg(target_arch = "x86")]
 mod x86_polyfill {
@@ -132,5 +132,8 @@ mod x86_polyfill {
         a.a
     }
 }
-#[cfg(target_arch = "x86")]
+#[cfg(target_arch = "x86_64")]
+mod x86_polyfill {
+    pub use coresimd::x86_64::{_mm_insert_epi64, _mm256_insert_epi64};
+}
 pub use self::x86_polyfill::*;

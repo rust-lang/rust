@@ -31,7 +31,7 @@ pub unsafe fn _mm_insert_epi64(a: __m128i, i: i64, imm8: i32) -> __m128i {
 #[cfg(test)]
 mod tests {
     use stdsimd_test::simd_test;
-    use coresimd::x86::*;
+    use coresimd::arch::x86_64::*;
 
     #[simd_test = "sse4.1"]
     unsafe fn test_mm_extract_epi64() {

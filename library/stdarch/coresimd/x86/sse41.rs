@@ -797,6 +797,125 @@ pub unsafe fn _mm_mpsadbw_epu8(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
     mem::transmute(constify_imm3!(imm8, call))
 }
 
+/// Tests whether the specified bits in a 128-bit integer vector are all
+/// zeros.
+///
+/// Arguments:
+///
+/// * `a` - A 128-bit integer vector containing the bits to be tested.
+/// * `mask` - A 128-bit integer vector selecting which bits to test in
+///            operand `a`.
+///
+/// Returns:
+///
+/// * `1` - if the specified bits are all zeros,
+/// * `0` - otherwise.
+#[inline]
+#[target_feature(enable = "sse4.1")]
+#[cfg_attr(test, assert_instr(ptest))]
+pub unsafe fn _mm_testz_si128(a: __m128i, mask: __m128i) -> i32 {
+    ptestz(a.as_i64x2(), mask.as_i64x2())
+}
+
+/// Tests whether the specified bits in a 128-bit integer vector are all
+/// ones.
+///
+/// Arguments:
+///
+/// * `a` - A 128-bit integer vector containing the bits to be tested.
+/// * `mask` - A 128-bit integer vector selecting which bits to test in
+///            operand `a`.
+///
+/// Returns:
+///
+/// * `1` - if the specified bits are all ones,
+/// * `0` - otherwise.
+#[inline]
+#[target_feature(enable = "sse4.1")]
+#[cfg_attr(test, assert_instr(ptest))]
+pub unsafe fn _mm_testc_si128(a: __m128i, mask: __m128i) -> i32 {
+    ptestc(a.as_i64x2(), mask.as_i64x2())
+}
+
+/// Tests whether the specified bits in a 128-bit integer vector are
+/// neither all zeros nor all ones.
+///
+/// Arguments:
+///
+/// * `a` - A 128-bit integer vector containing the bits to be tested.
+/// * `mask` - A 128-bit integer vector selecting which bits to test in
+///            operand `a`.
+///
+/// Returns:
+///
+/// * `1` - if the specified bits are neither all zeros nor all ones,
+/// * `0` - otherwise.
+#[inline]
+#[target_feature(enable = "sse4.1")]
+#[cfg_attr(test, assert_instr(ptest))]
+pub unsafe fn _mm_testnzc_si128(a: __m128i, mask: __m128i) -> i32 {
+    ptestnzc(a.as_i64x2(), mask.as_i64x2())
+}
+
+/// Tests whether the specified bits in a 128-bit integer vector are all
+/// zeros.
+///
+/// Arguments:
+///
+/// * `a` - A 128-bit integer vector containing the bits to be tested.
+/// * `mask` - A 128-bit integer vector selecting which bits to test in
+///            operand `a`.
+///
+/// Returns:
+///
+/// * `1` - if the specified bits are all zeros,
+/// * `0` - otherwise.
+#[inline]
+#[target_feature(enable = "sse4.1")]
+#[cfg_attr(test, assert_instr(ptest))]
+pub unsafe fn _mm_test_all_zeros(a: __m128i, mask: __m128i) -> i32 {
+    _mm_testz_si128(a, mask)
+}
+
+/// Tests whether the specified bits in `a` 128-bit integer vector are all
+/// ones.
+///
+/// Argument:
+///
+/// * `a` - A 128-bit integer vector containing the bits to be tested.
+///
+/// Returns:
+///
+/// * `1` - if the bits specified in the operand are all set to 1,
+/// * `0` - otherwise.
+#[inline]
+#[target_feature(enable = "sse4.1")]
+#[cfg_attr(test, assert_instr(pcmpeqd))]
+#[cfg_attr(test, assert_instr(ptest))]
+pub unsafe fn _mm_test_all_ones(a: __m128i) -> i32 {
+    _mm_testc_si128(a, _mm_cmpeq_epi32(a, a))
+}
+
+/// Tests whether the specified bits in a 128-bit integer vector are
+/// neither all zeros nor all ones.
+///
+/// Arguments:
+///
+/// * `a` - A 128-bit integer vector containing the bits to be tested.
+/// * `mask` - A 128-bit integer vector selecting which bits to test in
+///            operand `a`.
+///
+/// Returns:
+///
+/// * `1` - if the specified bits are neither all zeros nor all ones,
+/// * `0` - otherwise.
+#[inline]
+#[target_feature(enable = "sse4.1")]
+#[cfg_attr(test, assert_instr(ptest))]
+pub unsafe fn _mm_test_mix_ones_zeros(a: __m128i, mask: __m128i) -> i32 {
+    _mm_testnzc_si128(a, mask)
+}
+
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.x86.sse41.pblendvb"]
@@ -849,6 +968,12 @@ extern "C" {
     fn pmuldq(a: i32x4, b: i32x4) -> i64x2;
     #[link_name = "llvm.x86.sse41.mpsadbw"]
     fn mpsadbw(a: u8x16, b: u8x16, imm8: u8) -> u16x8;
+    #[link_name = "llvm.x86.sse41.ptestz"]
+    fn ptestz(a: i64x2, mask: i64x2) -> i32;
+    #[link_name = "llvm.x86.sse41.ptestc"]
+    fn ptestc(a: i64x2, mask: i64x2) -> i32;
+    #[link_name = "llvm.x86.sse41.ptestnzc"]
+    fn ptestnzc(a: i64x2, mask: i64x2) -> i32;
 }
 
 #[cfg(test)]
@@ -1475,5 +1600,103 @@ mod tests {
         let r = _mm_mpsadbw_epu8(a, a, 0b111);
         let e = _mm_setr_epi16(32, 28, 24, 20, 16, 12, 8, 4);
         assert_eq_m128i(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn test_mm_testz_si128() {
+        let a = _mm_set1_epi8(1);
+        let mask = _mm_set1_epi8(0);
+        let r = _mm_testz_si128(a, mask);
+        assert_eq!(r, 1);
+        let a = _mm_set1_epi8(0b101);
+        let mask = _mm_set1_epi8(0b110);
+        let r = _mm_testz_si128(a, mask);
+        assert_eq!(r, 0);
+        let a = _mm_set1_epi8(0b011);
+        let mask = _mm_set1_epi8(0b100);
+        let r = _mm_testz_si128(a, mask);
+        assert_eq!(r, 1);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn test_mm_testc_si128() {
+        let a = _mm_set1_epi8(-1);
+        let mask = _mm_set1_epi8(0);
+        let r = _mm_testc_si128(a, mask);
+        assert_eq!(r, 1);
+        let a = _mm_set1_epi8(0b101);
+        let mask = _mm_set1_epi8(0b110);
+        let r = _mm_testc_si128(a, mask);
+        assert_eq!(r, 0);
+        let a = _mm_set1_epi8(0b101);
+        let mask = _mm_set1_epi8(0b100);
+        let r = _mm_testc_si128(a, mask);
+        assert_eq!(r, 1);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn test_mm_testnzc_si128() {
+        let a = _mm_set1_epi8(0);
+        let mask = _mm_set1_epi8(1);
+        let r = _mm_testnzc_si128(a, mask);
+        assert_eq!(r, 0);
+        let a = _mm_set1_epi8(-1);
+        let mask = _mm_set1_epi8(0);
+        let r = _mm_testnzc_si128(a, mask);
+        assert_eq!(r, 0);
+        let a = _mm_set1_epi8(0b101);
+        let mask = _mm_set1_epi8(0b110);
+        let r = _mm_testnzc_si128(a, mask);
+        assert_eq!(r, 1);
+        let a = _mm_set1_epi8(0b101);
+        let mask = _mm_set1_epi8(0b101);
+        let r = _mm_testnzc_si128(a, mask);
+        assert_eq!(r, 0);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn test_mm_test_all_zeros() {
+        let a = _mm_set1_epi8(1);
+        let mask = _mm_set1_epi8(0);
+        let r = _mm_test_all_zeros(a, mask);
+        assert_eq!(r, 1);
+        let a = _mm_set1_epi8(0b101);
+        let mask = _mm_set1_epi8(0b110);
+        let r = _mm_test_all_zeros(a, mask);
+        assert_eq!(r, 0);
+        let a = _mm_set1_epi8(0b011);
+        let mask = _mm_set1_epi8(0b100);
+        let r = _mm_test_all_zeros(a, mask);
+        assert_eq!(r, 1);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn test_mm_test_all_ones() {
+        let a = _mm_set1_epi8(-1);
+        let r = _mm_test_all_ones(a);
+        assert_eq!(r, 1);
+        let a = _mm_set1_epi8(0b101);
+        let r = _mm_test_all_ones(a);
+        assert_eq!(r, 0);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn test_mm_test_mix_ones_zeros() {
+        let a = _mm_set1_epi8(0);
+        let mask = _mm_set1_epi8(1);
+        let r = _mm_test_mix_ones_zeros(a, mask);
+        assert_eq!(r, 0);
+        let a = _mm_set1_epi8(-1);
+        let mask = _mm_set1_epi8(0);
+        let r = _mm_test_mix_ones_zeros(a, mask);
+        assert_eq!(r, 0);
+        let a = _mm_set1_epi8(0b101);
+        let mask = _mm_set1_epi8(0b110);
+        let r = _mm_test_mix_ones_zeros(a, mask);
+        assert_eq!(r, 1);
+        let a = _mm_set1_epi8(0b101);
+        let mask = _mm_set1_epi8(0b101);
+        let r = _mm_test_mix_ones_zeros(a, mask);
+        assert_eq!(r, 0);
     }
 }

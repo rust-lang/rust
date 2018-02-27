@@ -5,6 +5,7 @@
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
+use coresimd::simd_llvm::*;
 use coresimd::v128::*;
 use coresimd::x86::*;
 
@@ -601,6 +602,15 @@ pub unsafe fn _mm_crc32_u32(crc: u32, v: u32) -> u32 {
     crc32_32_32(crc, v)
 }
 
+/// Compare packed 64-bit integers in `a` and `b` for greater-than,
+/// return the results.
+#[inline]
+#[target_feature(enable = "sse4.2")]
+#[cfg_attr(test, assert_instr(pcmpgtq))]
+pub unsafe fn _mm_cmpgt_epi64(a: __m128i, b: __m128i) -> __m128i {
+    mem::transmute(simd_gt::<_, i64x2>(a.as_i64x2(), b.as_i64x2()))
+}
+
 #[allow(improper_ctypes)]
 extern "C" {
     // SSE 4.2 string and text comparison ops
@@ -825,5 +835,16 @@ mod tests {
         let v = 0x845fed;
         let i = _mm_crc32_u32(crc, v);
         assert_eq!(i, 0xffae2ed1);
+    }
+
+    #[simd_test = "sse4.2"]
+    unsafe fn test_mm_cmpgt_epi64() {
+        let a = _mm_setr_epi64x(0, 0x2a);
+        let b = _mm_set1_epi64x(0x00);
+        let i = _mm_cmpgt_epi64(a, b);
+        assert_eq_m128i(
+            i,
+            _mm_setr_epi64x(0x00, 0xffffffffffffffffu64 as i64),
+        );
     }
 }
