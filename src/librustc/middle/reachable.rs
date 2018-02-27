@@ -18,7 +18,7 @@
 use hir::map as hir_map;
 use hir::def::Def;
 use hir::def_id::{DefId, CrateNum};
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use ty::{self, TyCtxt};
 use ty::maps::Providers;
 use middle::privacy;
@@ -377,7 +377,7 @@ impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 
 // We introduce a new-type here, so we can have a specialized HashStable
 // implementation for it.
 #[derive(Clone)]
-pub struct ReachableSet(pub Rc<NodeSet>);
+pub struct ReachableSet(pub Lrc<NodeSet>);
 
 
 fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> ReachableSet {
@@ -425,7 +425,7 @@ fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> 
     reachable_context.propagate();
 
     // Return the set of reachable symbols.
-    ReachableSet(Rc::new(reachable_context.reachable_symbols))
+    ReachableSet(Lrc::new(reachable_context.reachable_symbols))
 }
 
 pub fn provide(providers: &mut Providers) {

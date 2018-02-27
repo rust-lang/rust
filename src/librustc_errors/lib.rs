@@ -35,13 +35,13 @@ use self::Level::*;
 
 use emitter::{Emitter, EmitterWriter};
 
+use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stable_hasher::StableHasher;
 
 use std::borrow::Cow;
 use std::cell::{RefCell, Cell};
 use std::mem;
-use std::rc::Rc;
 use std::{error, fmt};
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::SeqCst;
@@ -110,7 +110,7 @@ pub trait CodeMapper {
     fn span_to_filename(&self, sp: Span) -> FileName;
     fn merge_spans(&self, sp_lhs: Span, sp_rhs: Span) -> Option<Span>;
     fn call_span_if_macro(&self, sp: Span) -> Span;
-    fn ensure_filemap_source_present(&self, file_map: Rc<FileMap>) -> bool;
+    fn ensure_filemap_source_present(&self, file_map: Lrc<FileMap>) -> bool;
     fn doctest_offset_line(&self, line: usize) -> usize;
 }
 
@@ -287,7 +287,7 @@ impl Handler {
     pub fn with_tty_emitter(color_config: ColorConfig,
                             can_emit_warnings: bool,
                             treat_err_as_bug: bool,
-                            cm: Option<Rc<CodeMapper>>)
+                            cm: Option<Lrc<CodeMapper>>)
                             -> Handler {
         Handler::with_tty_emitter_and_flags(
             color_config,
@@ -300,7 +300,7 @@ impl Handler {
     }
 
     pub fn with_tty_emitter_and_flags(color_config: ColorConfig,
-                                      cm: Option<Rc<CodeMapper>>,
+                                      cm: Option<Lrc<CodeMapper>>,
                                       flags: HandlerFlags)
                                       -> Handler {
         let emitter = Box::new(EmitterWriter::stderr(color_config, cm, false, false));

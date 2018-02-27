@@ -10,7 +10,6 @@
 //! Set and unset common attributes on LLVM values.
 
 use std::ffi::{CStr, CString};
-use std::rc::Rc;
 
 use rustc::hir::Unsafety;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
@@ -18,6 +17,7 @@ use rustc::session::config::Sanitizer;
 use rustc::ty::TyCtxt;
 use rustc::ty::maps::Providers;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::sync::Lrc;
 
 use llvm::{self, Attribute, ValueRef};
 use llvm::AttributePlace::Function;
@@ -140,7 +140,7 @@ fn cstr(s: &'static str) -> &CStr {
 pub fn provide(providers: &mut Providers) {
     providers.target_features_whitelist = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
-        Rc::new(llvm_util::target_feature_whitelist(tcx.sess)
+        Lrc::new(llvm_util::target_feature_whitelist(tcx.sess)
             .iter()
             .map(|c| c.to_string())
             .collect())
@@ -173,7 +173,7 @@ pub fn provide(providers: &mut Providers) {
             }
             from_target_feature(tcx, attr, &whitelist, &mut target_features);
         }
-        Rc::new(target_features)
+        Lrc::new(target_features)
     };
 }
 

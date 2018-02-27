@@ -17,6 +17,7 @@ use hir::map::definitions::DefPathHash;
 use ich::{CachingCodemapView, Fingerprint};
 use mir;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque,
                       SpecializedDecoder, SpecializedEncoder,
@@ -24,7 +25,6 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque,
 use session::{CrateDisambiguator, Session};
 use std::cell::RefCell;
 use std::mem;
-use std::rc::Rc;
 use syntax::ast::NodeId;
 use syntax::codemap::{CodeMap, StableFilemapId};
 use syntax_pos::{BytePos, Span, DUMMY_SP, FileMap};
@@ -65,7 +65,7 @@ pub struct OnDiskCache<'sess> {
     file_index_to_stable_id: FxHashMap<FileMapIndex, StableFilemapId>,
 
     // These two fields caches that are populated lazily during decoding.
-    file_index_to_file: RefCell<FxHashMap<FileMapIndex, Rc<FileMap>>>,
+    file_index_to_file: RefCell<FxHashMap<FileMapIndex, Lrc<FileMap>>>,
     synthetic_expansion_infos: RefCell<FxHashMap<AbsoluteBytePos, SyntaxContext>>,
 
     // A map from dep-node to the position of the cached query result in
@@ -421,12 +421,12 @@ struct CacheDecoder<'a, 'tcx: 'a, 'x> {
     codemap: &'x CodeMap,
     cnum_map: &'x IndexVec<CrateNum, Option<CrateNum>>,
     synthetic_expansion_infos: &'x RefCell<FxHashMap<AbsoluteBytePos, SyntaxContext>>,
-    file_index_to_file: &'x RefCell<FxHashMap<FileMapIndex, Rc<FileMap>>>,
+    file_index_to_file: &'x RefCell<FxHashMap<FileMapIndex, Lrc<FileMap>>>,
     file_index_to_stable_id: &'x FxHashMap<FileMapIndex, StableFilemapId>,
 }
 
 impl<'a, 'tcx, 'x> CacheDecoder<'a, 'tcx, 'x> {
-    fn file_index_to_file(&self, index: FileMapIndex) -> Rc<FileMap> {
+    fn file_index_to_file(&self, index: FileMapIndex) -> Lrc<FileMap> {
         let CacheDecoder {
             ref file_index_to_file,
             ref file_index_to_stable_id,
@@ -710,7 +710,7 @@ struct CacheEncoder<'enc, 'a, 'tcx, E>
 impl<'enc, 'a, 'tcx, E> CacheEncoder<'enc, 'a, 'tcx, E>
     where E: 'enc + ty_codec::TyEncoder
 {
-    fn filemap_index(&mut self, filemap: Rc<FileMap>) -> FileMapIndex {
+    fn filemap_index(&mut self, filemap: Lrc<FileMap>) -> FileMapIndex {
         self.file_to_file_index[&(&*filemap as *const FileMap)]
     }
 

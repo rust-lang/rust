@@ -31,7 +31,7 @@ use syntax::attr;
 use syntax::symbol::Symbol;
 use rustc::hir;
 use rustc_const_math::{ConstInt, ConstUsize};
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 
 #[derive(Clone)]
 pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
@@ -44,7 +44,7 @@ pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     /// Identity `Substs` for use with const-evaluation.
     pub identity_substs: &'gcx Substs<'gcx>,
 
-    pub region_scope_tree: Rc<region::ScopeTree>,
+    pub region_scope_tree: Lrc<region::ScopeTree>,
     pub tables: &'a ty::TypeckTables<'gcx>,
 
     /// This is `Constness::Const` if we are compiling a `static`,

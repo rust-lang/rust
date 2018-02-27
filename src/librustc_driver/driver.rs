@@ -49,7 +49,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::iter;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use std::sync::mpsc;
 use syntax::{self, ast, attr, diagnostics, visit};
 use syntax::ext::base::ExtCtxt;
@@ -621,7 +621,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
                 },
 
                 analysis: ty::CrateAnalysis {
-                    access_levels: Rc::new(AccessLevels::default()),
+                    access_levels: Lrc::new(AccessLevels::default()),
                     name: crate_name.to_string(),
                     glob_map: if resolver.make_glob_map { Some(resolver.glob_map) } else { None },
                 },

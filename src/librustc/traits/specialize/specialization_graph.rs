@@ -17,7 +17,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
 use traits;
 use ty::{self, TyCtxt, TypeFoldable};
 use ty::fast_reject::{self, SimplifiedType};
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use syntax::ast::Name;
 use util::nodemap::{DefIdMap, FxHashMap};
 
@@ -327,7 +327,7 @@ impl<'a, 'gcx, 'tcx> Node {
 
 pub struct Ancestors {
     trait_def_id: DefId,
-    specialization_graph: Rc<Graph>,
+    specialization_graph: Lrc<Graph>,
     current_source: Option<Node>,
 }
 

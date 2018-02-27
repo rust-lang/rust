@@ -16,6 +16,7 @@ use graphviz::IntoCow;
 use middle::const_val::ConstVal;
 use middle::region;
 use rustc_const_math::{ConstUsize, ConstInt, ConstMathErr};
+use rustc_data_structures::sync::{Lrc};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::control_flow_graph::dominators::{Dominators, dominators};
 use rustc_data_structures::control_flow_graph::{GraphPredecessors, GraphSuccessors};
@@ -36,7 +37,6 @@ use std::cell::Ref;
 use std::fmt::{self, Debug, Formatter, Write};
 use std::{iter, mem, u32};
 use std::ops::{Index, IndexMut};
-use std::rc::Rc;
 use std::vec::IntoIter;
 use syntax::ast::{self, Name};
 use syntax::symbol::InternedString;
@@ -1970,10 +1970,10 @@ pub struct UnsafetyViolation {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct UnsafetyCheckResult {
     /// Violations that are propagated *upwards* from this function
-    pub violations: Rc<[UnsafetyViolation]>,
+    pub violations: Lrc<[UnsafetyViolation]>,
     /// unsafe blocks in this function, along with whether they are used. This is
     /// used for the "unused_unsafe" lint.
-    pub unsafe_blocks: Rc<[(ast::NodeId, bool)]>,
+    pub unsafe_blocks: Lrc<[(ast::NodeId, bool)]>,
 }
 
 /// The layout of generator state

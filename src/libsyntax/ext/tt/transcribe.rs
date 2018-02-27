@@ -20,6 +20,7 @@ use tokenstream::{TokenStream, TokenTree, Delimited};
 use util::small_vector::SmallVector;
 
 use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use std::mem;
 use std::ops::Add;
 use std::collections::HashMap;
@@ -27,12 +28,12 @@ use std::collections::HashMap;
 // An iterator over the token trees in a delimited token tree (`{ ... }`) or a sequence (`$(...)`).
 enum Frame {
     Delimited {
-        forest: Rc<quoted::Delimited>,
+        forest: Lrc<quoted::Delimited>,
         idx: usize,
         span: Span,
     },
     Sequence {
-        forest: Rc<quoted::SequenceRepetition>,
+        forest: Lrc<quoted::SequenceRepetition>,
         idx: usize,
         sep: Option<Token>,
     },
@@ -40,7 +41,7 @@ enum Frame {
 
 impl Frame {
     fn new(tts: Vec<quoted::TokenTree>) -> Frame {
-        let forest = Rc::new(quoted::Delimited { delim: token::NoDelim, tts: tts });
+        let forest = Lrc::new(quoted::Delimited { delim: token::NoDelim, tts: tts });
         Frame::Delimited { forest: forest, idx: 0, span: DUMMY_SP }
     }
 }

@@ -19,6 +19,7 @@
 #[macro_use] extern crate syntax;
 extern crate rustc_typeck;
 extern crate syntax_pos;
+extern crate rustc_data_structures;
 
 use rustc::hir::{self, PatKind};
 use rustc::hir::def::Def;
@@ -38,7 +39,7 @@ use syntax_pos::hygiene::SyntaxContext;
 
 use std::cmp;
 use std::mem::replace;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 
 mod diagnostics;
 
@@ -1646,13 +1647,13 @@ pub fn provide(providers: &mut Providers) {
     };
 }
 
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Rc<AccessLevels> {
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Lrc<AccessLevels> {
     tcx.privacy_access_levels(LOCAL_CRATE)
 }
 
 fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    krate: CrateNum)
-                                   -> Rc<AccessLevels> {
+                                   -> Lrc<AccessLevels> {
     assert_eq!(krate, LOCAL_CRATE);
 
     let krate = tcx.hir.krate();
@@ -1726,7 +1727,7 @@ fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         krate.visit_all_item_likes(&mut DeepVisitor::new(&mut visitor));
     }
 
-    Rc::new(visitor.access_levels)
+    Lrc::new(visitor.access_levels)
 }
 
 __build_diagnostic_array! { librustc_privacy, DIAGNOSTICS }

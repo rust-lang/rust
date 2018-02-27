@@ -20,7 +20,7 @@ use ty;
 
 use std::fmt;
 use std::mem;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use syntax::codemap;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
@@ -1436,7 +1436,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
 }
 
 fn region_scope_tree<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
-    -> Rc<ScopeTree>
+    -> Lrc<ScopeTree>
 {
     let closure_base_def_id = tcx.closure_base_def_id(def_id);
     if closure_base_def_id != def_id {
@@ -1478,7 +1478,7 @@ fn region_scope_tree<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
         ScopeTree::default()
     };
 
-    Rc::new(scope_tree)
+    Lrc::new(scope_tree)
 }
 
 pub fn provide(providers: &mut Providers) {

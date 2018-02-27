@@ -28,7 +28,7 @@ use rustc_metadata::cstore::CStore;
 use rustc::hir::map as hir_map;
 use rustc::session::{self, config};
 use rustc::session::config::{OutputFilenames, OutputTypes};
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax::abi::Abi;
 use syntax::codemap::{CodeMap, FilePathMapping, FileName};
@@ -105,8 +105,8 @@ fn test_env<F>(source_string: &str,
     let sess = session::build_session_(options,
                                        None,
                                        diagnostic_handler,
-                                       Rc::new(CodeMap::new(FilePathMapping::empty())));
-    let cstore = Rc::new(CStore::new(::get_trans(&sess).metadata_loader()));
+                                       Lrc::new(CodeMap::new(FilePathMapping::empty())));
+    let cstore = CStore::new(::get_trans(&sess).metadata_loader());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let input = config::Input::Str {
         name: FileName::Anon,
@@ -128,7 +128,7 @@ fn test_env<F>(source_string: &str,
     };
 
     let arenas = ty::AllArenas::new();
-    let hir_map = hir_map::map_crate(&sess, &*cstore, &mut hir_forest, &defs);
+    let hir_map = hir_map::map_crate(&sess, &cstore, &mut hir_forest, &defs);
 
     // run just enough stuff to build a tcx:
     let (tx, _rx) = mpsc::channel();
@@ -140,7 +140,7 @@ fn test_env<F>(source_string: &str,
         outputs: OutputTypes::new(&[]),
     };
     TyCtxt::create_and_enter(&sess,
-                             &*cstore,
+                             &cstore,
                              ty::maps::Providers::default(),
                              ty::maps::Providers::default(),
                              &arenas,

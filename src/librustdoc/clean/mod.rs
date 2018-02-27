@@ -55,6 +55,7 @@ use rustc_const_math::ConstInt;
 use std::default::Default;
 use std::{mem, slice, vec};
 use std::iter::{FromIterator, once};
+use rustc_data_structures::sync::Lrc;
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::sync::Arc;
@@ -3899,7 +3900,7 @@ pub fn path_to_def(tcx: &TyCtxt, path: &[&str]) -> Option<DefId> {
                 None => return None,
             };
 
-            for item in mem::replace(&mut items, Rc::new(vec![])).iter() {
+            for item in mem::replace(&mut items, Lrc::new(vec![])).iter() {
                 if item.ident.name == *segment {
                     if path_it.peek().is_none() {
                         return match item.def {

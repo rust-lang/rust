@@ -14,8 +14,7 @@ use rustc::mir::{BorrowKind, Field, Local, LocalKind, Location, Operand};
 use rustc::mir::{Place, ProjectionElem, Rvalue, Statement, StatementKind};
 use rustc::ty::{self, RegionKind};
 use rustc_data_structures::indexed_vec::Idx;
-
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 
 use super::{MirBorrowckCtxt, Context};
 use super::{InitializationRequiringAction, PrefixSet};
@@ -444,7 +443,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         &mut self,
         context: Context,
         name: &String,
-        _scope_tree: &Rc<ScopeTree>,
+        _scope_tree: &Lrc<ScopeTree>,
         borrow: &BorrowData<'tcx>,
         drop_span: Span,
         borrow_span: Span,
@@ -466,7 +465,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     fn report_scoped_temporary_value_does_not_live_long_enough(
         &mut self,
         context: Context,
-        _scope_tree: &Rc<ScopeTree>,
+        _scope_tree: &Lrc<ScopeTree>,
         borrow: &BorrowData<'tcx>,
         drop_span: Span,
         _borrow_span: Span,
@@ -490,7 +489,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         &mut self,
         context: Context,
         name: &String,
-        scope_tree: &Rc<ScopeTree>,
+        scope_tree: &Lrc<ScopeTree>,
         borrow: &BorrowData<'tcx>,
         drop_span: Span,
         borrow_span: Span,
@@ -512,7 +511,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     fn report_unscoped_temporary_value_does_not_live_long_enough(
         &mut self,
         context: Context,
-        scope_tree: &Rc<ScopeTree>,
+        scope_tree: &Lrc<ScopeTree>,
         borrow: &BorrowData<'tcx>,
         drop_span: Span,
         _borrow_span: Span,

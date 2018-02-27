@@ -16,7 +16,7 @@ use rustc::hir;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::ty::{self, CrateVariancesMap, TyCtxt};
 use rustc::ty::maps::Providers;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 
 /// Defines the `TermsContext` basically houses an arena where we can
 /// allocate terms.
@@ -43,16 +43,16 @@ pub fn provide(providers: &mut Providers) {
 }
 
 fn crate_variances<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum)
-                             -> Rc<CrateVariancesMap> {
+                             -> Lrc<CrateVariancesMap> {
     assert_eq!(crate_num, LOCAL_CRATE);
     let mut arena = arena::TypedArena::new();
     let terms_cx = terms::determine_parameters_to_be_inferred(tcx, &mut arena);
     let constraints_cx = constraints::add_constraints_from_crate(terms_cx);
-    Rc::new(solve::solve_constraints(constraints_cx))
+    Lrc::new(solve::solve_constraints(constraints_cx))
 }
 
 fn variances_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_def_id: DefId)
-                            -> Rc<Vec<ty::Variance>> {
+                            -> Lrc<Vec<ty::Variance>> {
     let id = tcx.hir.as_local_node_id(item_def_id).expect("expected local def-id");
     let unsupported = || {
         // Variance not relevant.

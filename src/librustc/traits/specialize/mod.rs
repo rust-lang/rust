@@ -30,7 +30,7 @@ use traits::{self, Reveal, ObligationCause};
 use traits::select::IntercrateAmbiguityCause;
 use ty::{self, TyCtxt, TypeFoldable};
 use syntax_pos::DUMMY_SP;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 
 use lint;
 
@@ -308,7 +308,7 @@ impl SpecializesCache {
 // Query provider for `specialization_graph_of`.
 pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                       trait_id: DefId)
-                                                      -> Rc<specialization_graph::Graph> {
+                                                      -> Lrc<specialization_graph::Graph> {
     let mut sg = specialization_graph::Graph::new();
 
     let mut trait_impls = Vec::new();
@@ -392,7 +392,7 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
         }
     }
 
-    Rc::new(sg)
+    Lrc::new(sg)
 }
 
 /// Recovers the "impl X for Y" signature from `impl_def_id` and returns it as a

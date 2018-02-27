@@ -25,6 +25,8 @@ use ty::tls;
 use util::nodemap::{FxHashMap, FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
 
+use rustc_data_structures::sync::Lrc;
+
 use syntax::ast::NodeId;
 use errors::{self, DiagnosticBuilder, DiagnosticId};
 use errors::emitter::{Emitter, EmitterWriter};
@@ -48,7 +50,6 @@ use std::env;
 use std::fmt;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 use std::sync::{Once, ONCE_INIT};
 use std::time::Duration;
 
@@ -896,14 +897,14 @@ pub fn build_session(sopts: config::Options,
     build_session_with_codemap(sopts,
                                local_crate_source_file,
                                registry,
-                               Rc::new(codemap::CodeMap::new(file_path_mapping)),
+                               Lrc::new(codemap::CodeMap::new(file_path_mapping)),
                                None)
 }
 
 pub fn build_session_with_codemap(sopts: config::Options,
                                   local_crate_source_file: Option<PathBuf>,
                                   registry: errors::registry::Registry,
-                                  codemap: Rc<codemap::CodeMap>,
+                                  codemap: Lrc<codemap::CodeMap>,
                                   emitter_dest: Option<Box<Write + Send>>)
                                   -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
@@ -971,7 +972,7 @@ pub fn build_session_with_codemap(sopts: config::Options,
 pub fn build_session_(sopts: config::Options,
                       local_crate_source_file: Option<PathBuf>,
                       span_diagnostic: errors::Handler,
-                      codemap: Rc<codemap::CodeMap>)
+                      codemap: Lrc<codemap::CodeMap>)
                       -> Session {
     let host = match Target::search(config::host_triple()) {
         Ok(t) => t,

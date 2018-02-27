@@ -29,7 +29,8 @@ use tokenstream::{TokenStream, TokenTree};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
-use std::rc::Rc;
+
+use rustc_data_structures::sync::Lrc;
 
 pub struct ParserAnyMacro<'a> {
     parser: Parser<'a>,
@@ -199,7 +200,7 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
     // ...quasiquoting this would be nice.
     // These spans won't matter, anyways
     let argument_gram = vec![
-        quoted::TokenTree::Sequence(DUMMY_SP, Rc::new(quoted::SequenceRepetition {
+        quoted::TokenTree::Sequence(DUMMY_SP, Lrc::new(quoted::SequenceRepetition {
             tts: vec![
                 quoted::TokenTree::MetaVarDecl(DUMMY_SP, lhs_nm, ast::Ident::from_str("tt")),
                 quoted::TokenTree::Token(DUMMY_SP, token::FatArrow),
@@ -210,7 +211,7 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
             num_captures: 2,
         })),
         // to phase into semicolon-termination instead of semicolon-separation
-        quoted::TokenTree::Sequence(DUMMY_SP, Rc::new(quoted::SequenceRepetition {
+        quoted::TokenTree::Sequence(DUMMY_SP, Lrc::new(quoted::SequenceRepetition {
             tts: vec![quoted::TokenTree::Token(DUMMY_SP, token::Semi)],
             separator: None,
             op: quoted::KleeneOp::ZeroOrMore,

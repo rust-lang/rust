@@ -27,7 +27,7 @@ use tokenstream;
 
 use std::cell::Cell;
 use std::{cmp, fmt};
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
 pub enum BinOpToken {
@@ -180,7 +180,7 @@ pub enum Token {
 
     // The `LazyTokenStream` is a pure function of the `Nonterminal`,
     // and so the `LazyTokenStream` can be ignored by Eq, Hash, etc.
-    Interpolated(Rc<(Nonterminal, LazyTokenStream)>),
+    Interpolated(Lrc<(Nonterminal, LazyTokenStream)>),
     // Can be expanded into several tokens.
     /// Doc comment
     DocComment(ast::Name),
@@ -200,7 +200,7 @@ pub enum Token {
 
 impl Token {
     pub fn interpolated(nt: Nonterminal) -> Token {
-        Token::Interpolated(Rc::new((nt, LazyTokenStream::new())))
+        Token::Interpolated(Lrc::new((nt, LazyTokenStream::new())))
     }
 
     /// Returns `true` if the token starts with '>'.

@@ -13,10 +13,10 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHashingContextProvider};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_data_structures::sync::Lrc;
 use std::cell::{Ref, RefCell};
 use std::env;
 use std::hash::Hash;
-use std::rc::Rc;
 use ty::TyCtxt;
 use util::common::{ProfileQueriesMsg, profq_msg};
 
@@ -32,13 +32,13 @@ use super::prev::PreviousDepGraph;
 
 #[derive(Clone)]
 pub struct DepGraph {
-    data: Option<Rc<DepGraphData>>,
+    data: Option<Lrc<DepGraphData>>,
 
     // A vector mapping depnodes from the current graph to their associated
     // result value fingerprints. Do not rely on the length of this vector
     // being the same as the number of nodes in the graph. The vector can
     // contain an arbitrary number of zero-entries at the end.
-    fingerprints: Rc<RefCell<IndexVec<DepNodeIndex, Fingerprint>>>
+    fingerprints: Lrc<RefCell<IndexVec<DepNodeIndex, Fingerprint>>>
 }
 
 
@@ -102,7 +102,7 @@ impl DepGraph {
         let fingerprints = IndexVec::from_elem_n(Fingerprint::ZERO,
                                                  (prev_graph_node_count * 115) / 100);
         DepGraph {
-            data: Some(Rc::new(DepGraphData {
+            data: Some(Lrc::new(DepGraphData {
                 previous_work_products: RefCell::new(FxHashMap()),
                 work_products: RefCell::new(FxHashMap()),
                 dep_node_debug: RefCell::new(FxHashMap()),
@@ -111,14 +111,14 @@ impl DepGraph {
                 colors: RefCell::new(DepNodeColorMap::new(prev_graph_node_count)),
                 loaded_from_cache: RefCell::new(FxHashMap()),
             })),
-            fingerprints: Rc::new(RefCell::new(fingerprints)),
+            fingerprints: Lrc::new(RefCell::new(fingerprints)),
         }
     }
 
     pub fn new_disabled() -> DepGraph {
         DepGraph {
             data: None,
-            fingerprints: Rc::new(RefCell::new(IndexVec::new())),
+            fingerprints: Lrc::new(RefCell::new(IndexVec::new())),
         }
     }
 
