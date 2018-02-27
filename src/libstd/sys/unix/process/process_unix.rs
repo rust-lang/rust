@@ -315,7 +315,7 @@ impl Command {
             cvt(libc::posix_spawnattr_setflags(&mut attrs.0, flags as _))?;
 
             let envp = envp.map(|c| c.as_ptr())
-                .unwrap_or(sys::os::environ() as *const _);
+                .unwrap_or(*sys::os::environ() as *const _);
             let ret = libc::posix_spawnp(
                 &mut p.pid,
                 self.get_argv()[0],
