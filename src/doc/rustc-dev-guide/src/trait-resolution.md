@@ -1,7 +1,12 @@
-# Trait resolution
+# Trait resolution (old-style)
 
 This chapter describes the general process of _trait resolution_ and points out
 some non-obvious things.
+
+**Note:** This chapter (and its subchapters) describe how the trait
+solver **currently** works. However, we are in the process of
+designing a new trait solver. If you'd prefer to read about *that*,
+see [the traits chapter](./traits.html).
 
 ## Major concepts
 
