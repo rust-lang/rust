@@ -13,28 +13,51 @@ use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::convert::AsRef;
-use std::ffi::OsStr;
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::marker::PhantomData;
 use std::mem;
 use std::ops::Deref;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Mutex;
+use std::cmp::{Ord, Ordering, PartialOrd};
 
 use builder::Step;
 
-pub struct Interned<T>(usize, PhantomData<*const T>);
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-impl Default for Interned<String> {
-    fn default() -> Self {
-        INTERNER.intern_string(String::default())
+pub struct Interned<T>(*mut T);
+
+impl<T: Serialize> Serialize for Interned<T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.as_static().serialize(serializer)
     }
 }
 
-impl Default for Interned<PathBuf> {
-    fn default() -> Self {
-        INTERNER.intern_path(PathBuf::default())
+impl<'de, T: Deserialize<'de> + Intern<T>> Deserialize<'de> for Interned<T> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Ok(T::deserialize(deserializer)?.intern())
+    }
+}
+
+impl<T> Interned<T> {
+    fn as_static<'a>(&self) -> &'a T {
+        // This is safe because the values Interned points to are effectively leaked
+        unsafe { mem::transmute::<&T, &'a T>(&*self.0) }
+    }
+}
+
+impl<T> Default for Interned<T>
+where
+    T: Intern<T> + Default,
+{
+    fn default() -> Interned<T> {
+        T::default().intern()
     }
 }
 
@@ -45,28 +68,37 @@ impl<T> Clone for Interned<T> {
     }
 }
 
-impl<T> PartialEq for Interned<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
+impl<A, B> PartialEq<A> for Interned<B>
+where
+    A: ?Sized + PartialEq<B>,
+{
+    fn eq(&self, other: &A) -> bool {
+        other.eq(&*self.as_static())
     }
 }
-impl<T> Eq for Interned<T> {}
 
-impl PartialEq<str> for Interned<String> {
-    fn eq(&self, other: &str) -> bool {
-       *self == other
+impl<B> Eq for Interned<B>
+where
+    Interned<B>: PartialEq<Interned<B>>,
+{
+}
+
+impl<A, B> PartialOrd<Interned<A>> for Interned<B>
+where
+    Interned<B>: PartialEq<Interned<A>>,
+    B: PartialOrd<A>,
+{
+    fn partial_cmp(&self, other: &Interned<A>) -> Option<Ordering> {
+        PartialOrd::partial_cmp(self.as_static(), other.as_static())
     }
 }
-impl<'a> PartialEq<&'a str> for Interned<String> {
-    fn eq(&self, other: &&str) -> bool {
-        **self == **other
+
+impl<T: Ord + PartialOrd<T>> Ord for Interned<T> {
+    fn cmp(&self, other: &Interned<T>) -> Ordering {
+        Ord::cmp(self.as_static(), other.as_static())
     }
 }
-impl<'a, T> PartialEq<&'a Interned<T>> for Interned<T> {
-    fn eq(&self, other: &&Self) -> bool {
-        self.0 == other.0
-    }
-}
+
 impl<'a, T> PartialEq<Interned<T>> for &'a Interned<T> {
     fn eq(&self, other: &Interned<T>) -> bool {
         self.0 == other.0
@@ -76,167 +108,154 @@ impl<'a, T> PartialEq<Interned<T>> for &'a Interned<T> {
 unsafe impl<T> Send for Interned<T> {}
 unsafe impl<T> Sync for Interned<T> {}
 
-impl fmt::Display for Interned<String> {
+impl<T: fmt::Display> fmt::Display for Interned<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let s: &str = &*self;
-        f.write_str(s)
+        fmt::Display::fmt(self.as_static(), f)
     }
 }
 
-impl fmt::Debug for Interned<String> {
+impl<T: fmt::Debug> fmt::Debug for Interned<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let s: &str = &*self;
-        f.write_fmt(format_args!("{:?}", s))
-    }
-}
-impl fmt::Debug for Interned<PathBuf> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let s: &Path = &*self;
-        f.write_fmt(format_args!("{:?}", s))
+        fmt::Debug::fmt(self.as_static(), f)
     }
 }
 
-impl Hash for Interned<String> {
+impl<T: Hash> Hash for Interned<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        let l = INTERNER.strs.lock().unwrap();
-        l.get(*self).hash(state)
+        self.as_static().hash(state)
     }
 }
 
-impl Hash for Interned<PathBuf> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        let l = INTERNER.paths.lock().unwrap();
-        l.get(*self).hash(state)
+impl<T: 'static + Deref> Deref for Interned<T> {
+    type Target = <T as Deref>::Target;
+    fn deref(&self) -> &'static Self::Target {
+        &*self.as_static()
     }
 }
 
-impl Deref for Interned<String> {
-    type Target = str;
-    fn deref(&self) -> &'static str {
-        let l = INTERNER.strs.lock().unwrap();
-        unsafe { mem::transmute::<&str, &'static str>(l.get(*self)) }
+impl<R, I> AsRef<R> for Interned<I>
+where
+    I: AsRef<R> + 'static,
+    R: ?Sized,
+{
+    fn as_ref(&self) -> &'static R {
+        self.as_static().as_ref()
     }
 }
 
-impl Deref for Interned<PathBuf> {
-    type Target = Path;
-    fn deref(&self) -> &'static Path {
-        let l = INTERNER.paths.lock().unwrap();
-        unsafe { mem::transmute::<&Path, &'static Path>(l.get(*self)) }
+pub trait Intern<InternAs>: Sized {
+    fn intern(self) -> Interned<InternAs>;
+}
+
+impl Intern<String> for String {
+    fn intern(self) -> Interned<String> {
+        INTERNER.place(self)
     }
 }
 
-impl AsRef<Path> for Interned<PathBuf> {
-    fn as_ref(&self) -> &'static Path {
-        let l = INTERNER.paths.lock().unwrap();
-        unsafe { mem::transmute::<&Path, &'static Path>(l.get(*self)) }
+impl Intern<PathBuf> for PathBuf {
+    fn intern(self) -> Interned<PathBuf> {
+        INTERNER.place(self)
     }
 }
 
-impl AsRef<Path> for Interned<String> {
-    fn as_ref(&self) -> &'static Path {
-        let l = INTERNER.strs.lock().unwrap();
-        unsafe { mem::transmute::<&Path, &'static Path>(l.get(*self).as_ref()) }
+impl<'a, B, I> Intern<I> for &'a B
+where
+    B: Eq + Hash + ToOwned<Owned = I> + ?Sized + 'static,
+    I: Borrow<B> + Clone + Hash + Eq + Send + 'static + Intern<I>,
+{
+    fn intern(self) -> Interned<I> {
+        INTERNER.place_borrow(self)
     }
 }
 
-impl AsRef<OsStr> for Interned<PathBuf> {
-    fn as_ref(&self) -> &'static OsStr {
-        let l = INTERNER.paths.lock().unwrap();
-        unsafe { mem::transmute::<&OsStr, &'static OsStr>(l.get(*self).as_ref()) }
-    }
-}
-
-impl AsRef<OsStr> for Interned<String> {
-    fn as_ref(&self) -> &'static OsStr {
-        let l = INTERNER.strs.lock().unwrap();
-        unsafe { mem::transmute::<&OsStr, &'static OsStr>(l.get(*self).as_ref()) }
-    }
-}
-
-
-struct TyIntern<T> {
-    items: Vec<T>,
+struct TyIntern<T: Eq + Hash> {
     set: HashMap<T, Interned<T>>,
 }
 
 impl<T: Hash + Clone + Eq> TyIntern<T> {
     fn new() -> TyIntern<T> {
         TyIntern {
-            items: Vec::new(),
             set: HashMap::new(),
         }
     }
 
-    fn intern_borrow<B>(&mut self, item: &B) -> Interned<T>
+    fn place_borrow<B>(&mut self, item: &B) -> Interned<T>
     where
-        B: Eq + Hash + ToOwned<Owned=T> + ?Sized,
+        B: Eq + Hash + ToOwned<Owned = T> + ?Sized,
         T: Borrow<B>,
     {
         if let Some(i) = self.set.get(&item) {
             return *i;
         }
-        let item = item.to_owned();
-        let interned =  Interned(self.items.len(), PhantomData::<*const T>);
-        self.set.insert(item.clone(), interned);
-        self.items.push(item);
-        interned
+        self.place(item.to_owned())
     }
 
-    fn intern(&mut self, item: T) -> Interned<T> {
+    fn place(&mut self, item: T) -> Interned<T> {
         if let Some(i) = self.set.get(&item) {
             return *i;
         }
-        let interned =  Interned(self.items.len(), PhantomData::<*const T>);
-        self.set.insert(item.clone(), interned);
-        self.items.push(item);
+        let ptr = Box::into_raw(Box::new(item.clone()));
+        let interned = Interned(ptr);
+        self.set.insert(item, interned);
         interned
-    }
-
-    fn get(&self, i: Interned<T>) -> &T {
-        &self.items[i.0]
     }
 }
 
-pub struct Interner {
-    strs: Mutex<TyIntern<String>>,
-    paths: Mutex<TyIntern<PathBuf>>,
+struct Interner {
+    generic: Mutex<Vec<Box<Any + Send + 'static>>>,
 }
 
 impl Interner {
     fn new() -> Interner {
         Interner {
-            strs: Mutex::new(TyIntern::new()),
-            paths: Mutex::new(TyIntern::new()),
+            generic: Mutex::new(Vec::new()),
         }
     }
 
-    pub fn intern_str(&self, s: &str) -> Interned<String> {
-        self.strs.lock().unwrap().intern_borrow(s)
-    }
-    pub fn intern_string(&self, s: String) -> Interned<String> {
-        self.strs.lock().unwrap().intern(s)
+    fn place<T: Hash + Eq + Send + Clone + 'static>(&self, i: T) -> Interned<T> {
+        let mut l = self.generic.lock().unwrap();
+        for x in l.iter_mut() {
+            if let Some(ty_interner) = (&mut **x).downcast_mut::<TyIntern<T>>() {
+                return ty_interner.place(i);
+            }
+        }
+        let mut ty_interner = TyIntern::new();
+        let interned = ty_interner.place(i);
+        l.push(Box::new(ty_interner));
+        interned
     }
 
-    pub fn intern_path(&self, s: PathBuf) -> Interned<PathBuf> {
-        self.paths.lock().unwrap().intern(s)
+    fn place_borrow<B, I>(&self, i: &B) -> Interned<I>
+    where
+        B: Eq + Hash + ToOwned<Owned = I> + ?Sized + 'static,
+        I: Borrow<B> + Clone + Hash + Eq + Send + 'static,
+    {
+        let mut l = self.generic.lock().unwrap();
+        for x in l.iter_mut() {
+            if let Some(ty_interner) = (&mut **x).downcast_mut::<TyIntern<I>>() {
+                return ty_interner.place_borrow(i);
+            }
+        }
+        let mut ty_interner = TyIntern::new();
+        let interned = ty_interner.place_borrow(i);
+        l.push(Box::new(ty_interner));
+        interned
     }
 }
 
 lazy_static! {
-    pub static ref INTERNER: Interner = Interner::new();
+    static ref INTERNER: Interner = Interner::new();
 }
 
-/// This is essentially a HashMap which allows storing any type in its input and
-/// any type in its output. It is a write-once cache; values are never evicted,
-/// which means that references to the value can safely be returned from the
-/// get() method.
 #[derive(Debug)]
 pub struct Cache(
-    RefCell<HashMap<
-        TypeId,
-        Box<Any>, // actually a HashMap<Step, Interned<Step::Output>>
-    >>
+    RefCell<
+        HashMap<
+            TypeId,
+            Box<Any>, // actually a HashMap<Step, Step::Output>
+        >,
+    >,
 );
 
 impl Cache {
@@ -247,21 +266,39 @@ impl Cache {
     pub fn put<S: Step>(&self, step: S, value: S::Output) {
         let mut cache = self.0.borrow_mut();
         let type_id = TypeId::of::<S>();
-        let stepcache = cache.entry(type_id)
-                        .or_insert_with(|| Box::new(HashMap::<S, S::Output>::new()))
-                        .downcast_mut::<HashMap<S, S::Output>>()
-                        .expect("invalid type mapped");
-        assert!(!stepcache.contains_key(&step), "processing {:?} a second time", step);
+        let stepcache = cache
+            .entry(type_id)
+            .or_insert_with(|| Box::new(HashMap::<S, S::Output>::new()))
+            .downcast_mut::<HashMap<S, S::Output>>()
+            .expect("invalid type mapped");
+        assert!(
+            !stepcache.contains_key(&step),
+            "processing {:?} a second time",
+            step
+        );
         stepcache.insert(step, value);
     }
 
     pub fn get<S: Step>(&self, step: &S) -> Option<S::Output> {
         let mut cache = self.0.borrow_mut();
         let type_id = TypeId::of::<S>();
-        let stepcache = cache.entry(type_id)
-                        .or_insert_with(|| Box::new(HashMap::<S, S::Output>::new()))
-                        .downcast_mut::<HashMap<S, S::Output>>()
-                        .expect("invalid type mapped");
+        let stepcache = cache
+            .entry(type_id)
+            .or_insert_with(|| Box::new(HashMap::<S, S::Output>::new()))
+            .downcast_mut::<HashMap<S, S::Output>>()
+            .expect("invalid type mapped");
         stepcache.get(step).cloned()
+    }
+
+    #[cfg(test)]
+    pub fn all<S: Ord + Step>(&mut self) -> Vec<(S, S::Output)> {
+        let cache = self.0.get_mut();
+        let type_id = TypeId::of::<S>();
+        let mut v = cache.remove(&type_id)
+            .map(|b| b.downcast::<HashMap<S, S::Output>>().expect("correct type"))
+            .map(|m| m.into_iter().collect::<Vec<_>>())
+            .unwrap_or_default();
+        v.sort_by_key(|&(a, _)| a);
+        v
     }
 }

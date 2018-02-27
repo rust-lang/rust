@@ -21,7 +21,6 @@ ENV TARGETS=$TARGETS,aarch64-linux-android
 ENV TARGETS=$TARGETS,x86_64-linux-android
 
 ENV RUST_CONFIGURE_ARGS \
-      --target=$TARGETS \
       --enable-extended \
       --arm-linux-androideabi-ndk=/android/ndk/arm-14 \
       --armv7-linux-androideabi-ndk=/android/ndk/arm-14 \

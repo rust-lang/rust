@@ -45,8 +45,10 @@ fn main() {
         .arg("dox")
         .arg("--sysroot")
         .arg(sysroot)
-        .env(bootstrap::util::dylib_path_var(),
-             env::join_paths(&dylib_path).unwrap());
+        .env(
+            bootstrap::util::dylib_path_var(),
+            env::join_paths(&dylib_path).unwrap(),
+        );
 
     // Force all crates compiled by this compiler to (a) be unstable and (b)
     // allow the `rustc_private` feature to link to other unstable crates
@@ -55,7 +57,10 @@ fn main() {
         cmd.arg("-Z").arg("force-unstable-if-unmarked");
     }
     if let Some(linker) = env::var_os("RUSTC_TARGET_LINKER") {
-        cmd.arg("--linker").arg(linker).arg("-Z").arg("unstable-options");
+        cmd.arg("--linker")
+            .arg(linker)
+            .arg("-Z")
+            .arg("unstable-options");
     }
 
     // Bootstrap's Cargo-command builder sets this variable to the current Rust version; let's pick
@@ -63,8 +68,9 @@ fn main() {
     if let Some(version) = env::var_os("RUSTDOC_CRATE_VERSION") {
         // This "unstable-options" can be removed when `--crate-version` is stabilized
         cmd.arg("-Z")
-           .arg("unstable-options")
-           .arg("--crate-version").arg(version);
+            .arg("unstable-options")
+            .arg("--crate-version")
+            .arg(version);
     }
 
     if verbose > 1 {

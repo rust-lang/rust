@@ -14,12 +14,12 @@
 //! compiler, and documentation.
 
 use std::env;
-use std::fs;
-use std::path::{Path, PathBuf, Component};
+use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 
 use dist::{self, pkgname, sanitize_sh, tmpdir};
 
+use fs;
 use builder::{Builder, RunConfig, ShouldRun, Step};
 use cache::Interned;
 use config::Config;
@@ -60,23 +60,16 @@ fn install_sh(
     package: &str,
     name: &str,
     stage: u32,
-    host: Option<Interned<String>>
+    host: Option<Interned<String>>,
 ) {
-    let build = builder.build;
     println!("Install {} stage{} ({:?})", package, stage, host);
 
-    let prefix_default = PathBuf::from("/usr/local");
-    let sysconfdir_default = PathBuf::from("/etc");
-    let docdir_default = PathBuf::from("share/doc/rust");
-    let bindir_default = PathBuf::from("bin");
-    let libdir_default = PathBuf::from("lib");
-    let mandir_default = PathBuf::from("share/man");
-    let prefix = build.config.prefix.as_ref().unwrap_or(&prefix_default);
-    let sysconfdir = build.config.sysconfdir.as_ref().unwrap_or(&sysconfdir_default);
-    let docdir = build.config.docdir.as_ref().unwrap_or(&docdir_default);
-    let bindir = build.config.bindir.as_ref().unwrap_or(&bindir_default);
-    let libdir = build.config.libdir.as_ref().unwrap_or(&libdir_default);
-    let mandir = build.config.mandir.as_ref().unwrap_or(&mandir_default);
+    let prefix = &builder.config.install.prefix;
+    let sysconfdir = &builder.config.install.sysconfdir;
+    let docdir = &builder.config.install.docdir;
+    let bindir = &builder.config.install.bindir;
+    let libdir = &builder.config.install.libdir;
+    let mandir = &builder.config.install.mandir;
 
     let sysconfdir = prefix.join(sysconfdir);
     let docdir = prefix.join(docdir);
@@ -93,18 +86,20 @@ fn install_sh(
     let libdir = add_destdir(&libdir, &destdir);
     let mandir = add_destdir(&mandir, &destdir);
 
-    let empty_dir = build.out.join("tmp/empty_dir");
+    let empty_dir = builder.config.general.out.join("tmp/empty_dir");
 
     t!(fs::create_dir_all(&empty_dir));
     let package_name = if let Some(host) = host {
-        format!("{}-{}", pkgname(build, name), host)
+        format!("{}-{}", pkgname(builder, name), host)
     } else {
-        pkgname(build, name)
+        pkgname(builder, name)
     };
 
     let mut cmd = Command::new("sh");
     cmd.current_dir(&empty_dir)
-        .arg(sanitize_sh(&tmpdir(build).join(&package_name).join("install.sh")))
+        .arg(sanitize_sh(&tmpdir(builder)
+            .join(&package_name)
+            .join("install.sh")))
         .arg(format!("--prefix={}", sanitize_sh(&prefix)))
         .arg(format!("--sysconfdir={}", sanitize_sh(&sysconfdir)))
         .arg(format!("--docdir={}", sanitize_sh(&docdir)))
@@ -112,7 +107,7 @@ fn install_sh(
         .arg(format!("--libdir={}", sanitize_sh(&libdir)))
         .arg(format!("--mandir={}", sanitize_sh(&mandir)))
         .arg("--disable-ldconfig");
-    build.run(&mut cmd);
+    builder.run(&mut cmd);
     t!(fs::remove_dir_all(&empty_dir));
 }
 
@@ -148,20 +143,19 @@ macro_rules! install {
         impl $name {
             #[allow(dead_code)]
             fn should_build(config: &Config) -> bool {
-                config.extended && config.tools.as_ref()
+                config.general.extended && config.general.tools.as_ref()
                     .map_or(true, |t| t.contains($path))
             }
 
             #[allow(dead_code)]
             fn should_install(builder: &Builder) -> bool {
-                builder.config.tools.as_ref().map_or(false, |t| t.contains($path))
+                builder.config.general.tools.as_ref().map_or(false, |t| t.contains($path))
             }
         }
 
         impl Step for $name {
             type Output = ();
             const DEFAULT: bool = true;
-            const ONLY_BUILD_TARGETS: bool = true;
             const ONLY_HOSTS: bool = $only_hosts;
             $(const $c: bool = true;)*
 
@@ -174,7 +168,7 @@ macro_rules! install {
                 run.builder.ensure($name {
                     stage: run.builder.top_stage,
                     target: run.target,
-                    host: run.host,
+                    host: run.builder.config.general.build,
                 });
             }
 
@@ -186,12 +180,12 @@ macro_rules! install {
 }
 
 install!((self, builder, _config),
-    Docs, "src/doc", _config.docs, only_hosts: false, {
+    Docs, "src/doc", _config.general.docs, only_hosts: false, {
         builder.ensure(dist::Docs { stage: self.stage, host: self.target });
         install_docs(builder, self.stage, self.target);
     };
     Std, "src/libstd", true, only_hosts: true, {
-        for target in &builder.build.targets {
+        for target in &builder.config.general.target {
             builder.ensure(dist::Std {
                 compiler: builder.compiler(self.stage, self.host),
                 target: *target
@@ -227,9 +221,11 @@ install!((self, builder, _config),
         install_analysis(builder, self.stage, self.target);
     };
     Src, "src", Self::should_build(_config) , only_hosts: true, {
-        builder.ensure(dist::Src);
-        install_src(builder, self.stage);
-    }, ONLY_BUILD;
+        if self.target == builder.config.general.build {
+            builder.ensure(dist::Src);
+            install_src(builder, self.stage);
+        }
+    };
     Rustc, "src/librustc", true, only_hosts: true, {
         builder.ensure(dist::Rustc {
             compiler: builder.compiler(self.stage, self.target),

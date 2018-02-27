@@ -29,6 +29,6 @@ ENV EM_CONFIG=/emsdk-portable/.emscripten
 
 ENV TARGETS=asmjs-unknown-emscripten
 
-ENV RUST_CONFIGURE_ARGS --target=$TARGETS --enable-emscripten
+ENV RUST_CONFIGURE_ARGS --enable-emscripten
 
 ENV SCRIPT python2.7 ../x.py test --target $TARGETS

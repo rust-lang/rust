@@ -45,12 +45,15 @@ fn main() {
             // Dirty code for borrowing issues
             let mut new = None;
             if let Some(current_as_str) = args[i].to_str() {
-                if (&*args[i - 1] == "-C" && current_as_str.starts_with("metadata")) ||
-                   current_as_str.starts_with("-Cmetadata") {
+                if (&*args[i - 1] == "-C" && current_as_str.starts_with("metadata"))
+                    || current_as_str.starts_with("-Cmetadata")
+                {
                     new = Some(format!("{}-{}", current_as_str, s));
                 }
             }
-            if let Some(new) = new { args[i] = new.into(); }
+            if let Some(new) = new {
+                args[i] = new.into();
+            }
         }
     }
 
@@ -95,19 +98,21 @@ fn main() {
     let rustc = env::var_os(rustc).unwrap_or_else(|| panic!("{:?} was not set", rustc));
     let libdir = env::var_os(libdir).unwrap_or_else(|| panic!("{:?} was not set", libdir));
     let mut dylib_path = bootstrap::util::dylib_path();
-    dylib_path.insert(0, PathBuf::from(libdir));
+    dylib_path.insert(0, PathBuf::from(&libdir));
 
     let mut cmd = Command::new(rustc);
     cmd.args(&args)
         .arg("--cfg")
         .arg(format!("stage{}", stage))
-        .env(bootstrap::util::dylib_path_var(),
-             env::join_paths(&dylib_path).unwrap());
+        .env(
+            bootstrap::util::dylib_path_var(),
+            env::join_paths(&dylib_path).unwrap(),
+        );
 
     if let Some(target) = target {
         // The stage0 compiler has a special sysroot distinct from what we
         // actually downloaded, so we just always pass the `--sysroot` option.
-        cmd.arg("--sysroot").arg(sysroot);
+        cmd.arg("--sysroot").arg(&sysroot);
 
         // When we build Rust dylibs they're all intended for intermediate
         // usage, so make sure we pass the -Cprefer-dynamic flag instead of
@@ -130,9 +135,7 @@ fn main() {
             cmd.arg(format!("-Clinker={}", target_linker));
         }
 
-        let crate_name = args.windows(2)
-            .find(|a| &*a[0] == "--crate-name")
-            .unwrap();
+        let crate_name = args.windows(2).find(|a| &*a[0] == "--crate-name").unwrap();
         let crate_name = &*crate_name[1];
 
         // If we're compiling specifically the `panic_abort` crate then we pass
@@ -147,8 +150,7 @@ fn main() {
         // `compiler_builtins` are unconditionally compiled with panic=abort to
         // workaround undefined references to `rust_eh_unwind_resume` generated
         // otherwise, see issue https://github.com/rust-lang/rust/issues/43095.
-        if crate_name == "panic_abort" ||
-           crate_name == "compiler_builtins" && stage != "0" {
+        if crate_name == "panic_abort" || crate_name == "compiler_builtins" && stage != "0" {
             cmd.arg("-C").arg("panic=abort");
         }
 
@@ -160,7 +162,11 @@ fn main() {
             cmd.arg("-Cdebuginfo=1");
         }
         let debug_assertions = match env::var("RUSTC_DEBUG_ASSERTIONS") {
-            Ok(s) => if s == "true" { "y" } else { "n" },
+            Ok(s) => if s == "true" {
+                "y"
+            } else {
+                "n"
+            },
             Err(..) => "n",
         };
 
@@ -169,7 +175,8 @@ fn main() {
         if crate_name == "compiler_builtins" {
             cmd.arg("-C").arg("debug-assertions=no");
         } else {
-            cmd.arg("-C").arg(format!("debug-assertions={}", debug_assertions));
+            cmd.arg("-C")
+                .arg(format!("debug-assertions={}", debug_assertions));
         }
 
         if let Ok(s) = env::var("RUSTC_CODEGEN_UNITS") {
@@ -182,10 +189,12 @@ fn main() {
         // Emit save-analysis info.
         if env::var("RUSTC_SAVE_ANALYSIS") == Ok("api".to_string()) {
             cmd.arg("-Zsave-analysis");
-            cmd.env("RUST_SAVE_ANALYSIS_CONFIG",
-                    "{\"output_file\": null,\"full_docs\": false,\
-                     \"pub_only\": true,\"reachable_only\": false,\
-                     \"distro_crate\": true,\"signatures\": false,\"borrow_data\": false}");
+            cmd.env(
+                "RUST_SAVE_ANALYSIS_CONFIG",
+                "{\"output_file\": null,\"full_docs\": false,\
+                 \"pub_only\": true,\"reachable_only\": false,\
+                 \"distro_crate\": true,\"signatures\": false,\"borrow_data\": false}",
+            );
         }
 
         // Dealing with rpath here is a little special, so let's go into some
@@ -216,7 +225,6 @@ fn main() {
         // to change a flag in a binary?
         if env::var("RUSTC_RPATH") == Ok("true".to_string()) {
             let rpath = if target.contains("apple") {
-
                 // Note that we need to take one extra step on macOS to also pass
                 // `-Wl,-instal_name,@rpath/...` to get things to work right. To
                 // do that we pass a weird flag to the compiler to get it to do
@@ -244,7 +252,10 @@ fn main() {
         }
 
         // When running miri tests, we need to generate MIR for all libraries
-        if env::var("TEST_MIRI").ok().map_or(false, |val| val == "true") {
+        if env::var("TEST_MIRI")
+            .ok()
+            .map_or(false, |val| val == "true")
+        {
             cmd.arg("-Zalways-encode-mir");
             if stage != "0" {
                 cmd.arg("-Zmiri");
@@ -280,6 +291,8 @@ fn main() {
 
     if verbose > 1 {
         eprintln!("rustc command: {:?}", cmd);
+        eprintln!("sysroot: {:?}", sysroot);
+        eprintln!("libdir: {:?}", libdir);
     }
 
     // Actually run the compiler!
