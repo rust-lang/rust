@@ -241,7 +241,7 @@
 ///
 /// ```
 /// #![feature(cfg_target_feature, target_feature, stdsimd)]
-/// # #![no_std]
+/// # #![cfg_attr(not(dox), no_std)]
 /// # #[cfg(not(dox))]
 /// # extern crate std as real_std;
 /// # #[cfg(not(dox))]
