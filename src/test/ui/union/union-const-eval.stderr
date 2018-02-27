@@ -1,7 +1,7 @@
 warning: constant evaluation error: nonexistent struct field
   --> $DIR/union-const-eval.rs:21:21
    |
-21 |         let b: [u8; C.b]; //~ ERROR constant evaluation error
+LL |         let b: [u8; C.b]; //~ ERROR constant evaluation error
    |                     ^^^
    |
    = note: #[warn(const_err)] on by default
@@ -9,7 +9,7 @@ warning: constant evaluation error: nonexistent struct field
 error[E0080]: constant evaluation error
   --> $DIR/union-const-eval.rs:21:21
    |
-21 |         let b: [u8; C.b]; //~ ERROR constant evaluation error
+LL |         let b: [u8; C.b]; //~ ERROR constant evaluation error
    |                     ^^^ nonexistent struct field
 
 error: aborting due to previous error

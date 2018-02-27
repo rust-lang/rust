@@ -1,13 +1,13 @@
 error[E0478]: lifetime bound not satisfied
   --> $DIR/static-lifetime.rs:13:20
    |
-13 | impl<'a, A: Clone> Arbitrary for ::std::borrow::Cow<'a, A> {} //~ ERROR lifetime bound
+LL | impl<'a, A: Clone> Arbitrary for ::std::borrow::Cow<'a, A> {} //~ ERROR lifetime bound
    |                    ^^^^^^^^^
    |
 note: lifetime parameter instantiated with the lifetime 'a as defined on the impl at 13:1
   --> $DIR/static-lifetime.rs:13:1
    |
-13 | impl<'a, A: Clone> Arbitrary for ::std::borrow::Cow<'a, A> {} //~ ERROR lifetime bound
+LL | impl<'a, A: Clone> Arbitrary for ::std::borrow::Cow<'a, A> {} //~ ERROR lifetime bound
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: but lifetime parameter must outlive the static lifetime
 

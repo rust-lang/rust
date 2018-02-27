@@ -1,34 +1,34 @@
 error: unnecessary `unsafe` block
   --> $DIR/issue-45107-unnecessary-unsafe-in-closure.rs:17:13
    |
-15 |     unsafe {
+LL |     unsafe {
    |     ------ because it's nested under this `unsafe` block
-16 |         let f = |v: &mut Vec<_>| {
-17 |             unsafe { //~ ERROR unnecessary `unsafe`
+LL |         let f = |v: &mut Vec<_>| {
+LL |             unsafe { //~ ERROR unnecessary `unsafe`
    |             ^^^^^^ unnecessary `unsafe` block
    |
 note: lint level defined here
   --> $DIR/issue-45107-unnecessary-unsafe-in-closure.rs:11:8
    |
-11 | #[deny(unused_unsafe)]
+LL | #[deny(unused_unsafe)]
    |        ^^^^^^^^^^^^^
 
 error: unnecessary `unsafe` block
   --> $DIR/issue-45107-unnecessary-unsafe-in-closure.rs:19:38
    |
-15 |     unsafe {
+LL |     unsafe {
    |     ------ because it's nested under this `unsafe` block
 ...
-19 |                 |w: &mut Vec<u32>| { unsafe { //~ ERROR unnecessary `unsafe`
+LL |                 |w: &mut Vec<u32>| { unsafe { //~ ERROR unnecessary `unsafe`
    |                                      ^^^^^^ unnecessary `unsafe` block
 
 error: unnecessary `unsafe` block
   --> $DIR/issue-45107-unnecessary-unsafe-in-closure.rs:23:34
    |
-15 |     unsafe {
+LL |     unsafe {
    |     ------ because it's nested under this `unsafe` block
 ...
-23 |             |x: &mut Vec<u32>| { unsafe { //~ ERROR unnecessary `unsafe`
+LL |             |x: &mut Vec<u32>| { unsafe { //~ ERROR unnecessary `unsafe`
    |                                  ^^^^^^ unnecessary `unsafe` block
 
 error: aborting due to 3 previous errors

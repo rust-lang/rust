@@ -1,10 +1,10 @@
 error[E0277]: the trait bound `str: std::marker::Sized` is not satisfied
   --> $DIR/sized-yield.rs:17:26
    |
-17 |      let mut gen = move || { //~ ERROR the trait bound `str: std::marker::Sized` is not satisfied
+LL |      let mut gen = move || { //~ ERROR the trait bound `str: std::marker::Sized` is not satisfied
    |  __________________________^
-18 | |        yield s[..];
-19 | |    };
+LL | |        yield s[..];
+LL | |    };
    | |____^ `str` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
@@ -13,7 +13,7 @@ error[E0277]: the trait bound `str: std::marker::Sized` is not satisfied
 error[E0277]: the trait bound `str: std::marker::Sized` is not satisfied
   --> $DIR/sized-yield.rs:20:8
    |
-20 |    gen.resume(); //~ ERROR the trait bound `str: std::marker::Sized` is not satisfied
+LL |    gen.resume(); //~ ERROR the trait bound `str: std::marker::Sized` is not satisfied
    |        ^^^^^^ `str` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`

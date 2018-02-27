@@ -1,7 +1,7 @@
 error[E0658]: the `#[used]` attribute is an experimental feature (see issue #40289)
   --> $DIR/feature-gate-used.rs:11:1
    |
-11 | #[used]
+LL | #[used]
    | ^^^^^^^
    |
    = help: add #![feature(used)] to the crate attributes to enable

@@ -1,10 +1,10 @@
 error[E0453]: allow(non_snake_case) overruled by outer forbid(non_snake_case)
   --> $DIR/E0453.rs:13:9
    |
-11 | #![forbid(non_snake_case)]
+LL | #![forbid(non_snake_case)]
    |           -------------- `forbid` level set here
-12 | 
-13 | #[allow(non_snake_case)]
+LL | 
+LL | #[allow(non_snake_case)]
    |         ^^^^^^^^^^^^^^ overruled by previous forbid
 
 error: aborting due to previous error

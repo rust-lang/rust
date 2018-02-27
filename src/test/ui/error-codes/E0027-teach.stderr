@@ -1,7 +1,7 @@
 error[E0027]: pattern does not mention field `name`
   --> $DIR/E0027-teach.rs:22:9
    |
-22 |         Dog { age: x } => {}
+LL |         Dog { age: x } => {}
    |         ^^^^^^^^^^^^^^ missing field `name`
    |
    = note: This error indicates that a pattern for a struct fails to specify a sub-pattern for every one of the struct's fields. Ensure that each field from the struct's definition is mentioned in the pattern, or use `..` to ignore unwanted fields.

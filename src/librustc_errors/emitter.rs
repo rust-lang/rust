@@ -25,6 +25,8 @@ use std::collections::{HashMap, HashSet};
 use std::cmp::min;
 use unicode_width;
 
+const ANONYMIZED_LINE_NUM: &str = "LL";
+
 /// Emitter trait for emitting errors.
 pub trait Emitter {
     /// Emit a structured diagnostic.
@@ -108,6 +110,7 @@ pub struct EmitterWriter {
     short_message: bool,
     teach: bool,
     error_codes: HashSet<String>,
+    ui_testing: bool,
 }
 
 struct FileWithAnnotatedLines {
@@ -157,6 +160,7 @@ impl EmitterWriter {
                 short_message,
                 teach,
                 error_codes: HashSet::new(),
+                ui_testing: false,
             }
         } else {
             EmitterWriter {
@@ -165,6 +169,7 @@ impl EmitterWriter {
                 short_message,
                 teach,
                 error_codes: HashSet::new(),
+                ui_testing: false,
             }
         }
     }
@@ -180,6 +185,20 @@ impl EmitterWriter {
             short_message,
             teach,
             error_codes: HashSet::new(),
+            ui_testing: false,
+        }
+    }
+
+    pub fn ui_testing(mut self, ui_testing: bool) -> Self {
+        self.ui_testing = ui_testing;
+        self
+    }
+
+    fn maybe_anonymized(&self, line_num: usize) -> String {
+        if self.ui_testing {
+            ANONYMIZED_LINE_NUM.to_string()
+        } else {
+            line_num.to_string()
         }
     }
 
@@ -336,7 +355,7 @@ impl EmitterWriter {
         buffer.puts(line_offset, code_offset, &source_string, Style::Quotation);
         buffer.puts(line_offset,
                     0,
-                    &(line.line_index.to_string()),
+                    &self.maybe_anonymized(line.line_index),
                     Style::LineNumber);
 
         draw_col_separator(buffer, line_offset, width_offset - 2);
@@ -1159,8 +1178,8 @@ impl EmitterWriter {
 
                             buffer.puts(last_buffer_line_num,
                                         0,
-                                        &(annotated_file.lines[line_idx + 1].line_index - 1)
-                                            .to_string(),
+                                        &self.maybe_anonymized(annotated_file.lines[line_idx + 1]
+                                                                             .line_index - 1),
                                         Style::LineNumber);
                             draw_col_separator(&mut buffer,
                                                last_buffer_line_num,
@@ -1235,7 +1254,7 @@ impl EmitterWriter {
                     // Print the span column to avoid confusion
                     buffer.puts(row_num,
                                 0,
-                                &((line_start + line_pos).to_string()),
+                                &self.maybe_anonymized(line_start + line_pos),
                                 Style::LineNumber);
                     // print the suggestion
                     draw_col_separator(&mut buffer, row_num, max_line_num_len + 1);
@@ -1288,8 +1307,11 @@ impl EmitterWriter {
                              span: &MultiSpan,
                              children: &Vec<SubDiagnostic>,
                              suggestions: &[CodeSuggestion]) {
-        let max_line_num = self.get_max_line_num(span, children);
-        let max_line_num_len = max_line_num.to_string().len();
+        let max_line_num_len = if self.ui_testing {
+            ANONYMIZED_LINE_NUM.len()
+        } else {
+            self.get_max_line_num(span, children).to_string().len()
+        };
 
         match self.emit_message_default(span,
                                         message,

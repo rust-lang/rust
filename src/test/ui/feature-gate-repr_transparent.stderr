@@ -1,7 +1,7 @@
 error[E0658]: the `#[repr(transparent)]` attribute is experimental (see issue #43036)
   --> $DIR/feature-gate-repr_transparent.rs:11:1
    |
-11 | #[repr(transparent)] //~ error: the `#[repr(transparent)]` attribute is experimental
+LL | #[repr(transparent)] //~ error: the `#[repr(transparent)]` attribute is experimental
    | ^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(repr_transparent)] to the crate attributes to enable

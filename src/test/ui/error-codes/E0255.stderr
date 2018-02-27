@@ -1,16 +1,16 @@
 error[E0255]: the name `foo` is defined multiple times
   --> $DIR/E0255.rs:13:1
    |
-11 | use bar::foo;
+LL | use bar::foo;
    |     -------- previous import of the value `foo` here
-12 | 
-13 | fn foo() {} //~ ERROR E0255
+LL | 
+LL | fn foo() {} //~ ERROR E0255
    | ^^^^^^^^ `foo` redefined here
    |
    = note: `foo` must be defined only once in the value namespace of this module
 help: You can use `as` to change the binding name of the import
    |
-11 | use bar::foo as other_foo;
+LL | use bar::foo as other_foo;
    |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

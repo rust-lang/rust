@@ -1,12 +1,12 @@
 error[E0308]: method not compatible with trait
   --> $DIR/issue-37884.rs:16:5
    |
-16 | /     fn next(&'a mut self) -> Option<Self::Item>
-17 | |     //~^ ERROR method not compatible with trait
-18 | |     //~| lifetime mismatch
-19 | |     {
-20 | |         Some(&mut self.0)
-21 | |     }
+LL | /     fn next(&'a mut self) -> Option<Self::Item>
+LL | |     //~^ ERROR method not compatible with trait
+LL | |     //~| lifetime mismatch
+LL | |     {
+LL | |         Some(&mut self.0)
+LL | |     }
    | |_____^ lifetime mismatch
    |
    = note: expected type `fn(&mut RepeatMut<'a, T>) -> std::option::Option<&mut T>`
@@ -14,17 +14,17 @@ error[E0308]: method not compatible with trait
 note: the anonymous lifetime #1 defined on the method body at 16:5...
   --> $DIR/issue-37884.rs:16:5
    |
-16 | /     fn next(&'a mut self) -> Option<Self::Item>
-17 | |     //~^ ERROR method not compatible with trait
-18 | |     //~| lifetime mismatch
-19 | |     {
-20 | |         Some(&mut self.0)
-21 | |     }
+LL | /     fn next(&'a mut self) -> Option<Self::Item>
+LL | |     //~^ ERROR method not compatible with trait
+LL | |     //~| lifetime mismatch
+LL | |     {
+LL | |         Some(&mut self.0)
+LL | |     }
    | |_____^
 note: ...does not necessarily outlive the lifetime 'a as defined on the impl at 13:1
   --> $DIR/issue-37884.rs:13:1
    |
-13 | impl<'a, T: 'a> Iterator for RepeatMut<'a, T> {
+LL | impl<'a, T: 'a> Iterator for RepeatMut<'a, T> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

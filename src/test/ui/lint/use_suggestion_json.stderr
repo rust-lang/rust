@@ -370,17 +370,17 @@ mod foo {
   "rendered": "error[E0412]: cannot find type `Iter` in this scope
   --> $DIR/use_suggestion_json.rs:21:12
    |
-21 |     let x: Iter;
+LL |     let x: Iter;
    |            ^^^^ not found in this scope
 help: possible candidates are found in other modules, you can import them into scope
    |
-20 | use std::collections::binary_heap::Iter;
+LL | use std::collections::binary_heap::Iter;
    |
-20 | use std::collections::btree_map::Iter;
+LL | use std::collections::btree_map::Iter;
    |
-20 | use std::collections::btree_set::Iter;
+LL | use std::collections::btree_set::Iter;
    |
-20 | use std::collections::hash_map::Iter;
+LL | use std::collections::hash_map::Iter;
    |
 and 8 other candidates
 

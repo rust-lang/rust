@@ -1,13 +1,13 @@
 error[E0283]: type annotations required: cannot resolve `_: std::convert::Into<std::string::String>`
   --> $DIR/type-annotation-needed.rs:15:5
    |
-15 |     foo(42);
+LL |     foo(42);
    |     ^^^
    |
 note: required by `foo`
   --> $DIR/type-annotation-needed.rs:11:1
    |
-11 | fn foo<T: Into<String>>(x: i32) {}
+LL | fn foo<T: Into<String>>(x: i32) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

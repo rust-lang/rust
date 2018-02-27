@@ -1,13 +1,13 @@
 error: unreachable statement
   --> $DIR/expr_again.rs:18:9
    |
-18 |         println!("hi");
+LL |         println!("hi");
    |         ^^^^^^^^^^^^^^^
    |
 note: lint level defined here
   --> $DIR/expr_again.rs:13:9
    |
-13 | #![deny(unreachable_code)]
+LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 

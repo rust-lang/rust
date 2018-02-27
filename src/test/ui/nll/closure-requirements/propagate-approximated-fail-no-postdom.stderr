@@ -1,25 +1,25 @@
 warning: not reporting region error due to -Znll
   --> $DIR/propagate-approximated-fail-no-postdom.rs:55:21
    |
-55 |             let p = x.get();
+LL |             let p = x.get();
    |                     ^^^^^^^
 
 error: free region `ReFree(DefId(0/1:20 ~ propagate_approximated_fail_no_postdom[317d]::supply[0]::{{closure}}[0]), BrAnon(1))` does not outlive free region `ReFree(DefId(0/1:20 ~ propagate_approximated_fail_no_postdom[317d]::supply[0]::{{closure}}[0]), BrAnon(2))`
   --> $DIR/propagate-approximated-fail-no-postdom.rs:55:17
    |
-55 |             let p = x.get();
+LL |             let p = x.get();
    |                 ^
 
 note: No external requirements
   --> $DIR/propagate-approximated-fail-no-postdom.rs:53:9
    |
-53 | /         |_outlives1, _outlives2, _outlives3, x, y| {
-54 | |             // Only works if 'x: 'y:
-55 | |             let p = x.get();
-56 | |             //~^ WARN not reporting region error due to -Znll
-57 | |             //~| ERROR does not outlive free region
-58 | |             demand_y(x, y, p)
-59 | |         },
+LL | /         |_outlives1, _outlives2, _outlives3, x, y| {
+LL | |             // Only works if 'x: 'y:
+LL | |             let p = x.get();
+LL | |             //~^ WARN not reporting region error due to -Znll
+LL | |             //~| ERROR does not outlive free region
+LL | |             demand_y(x, y, p)
+LL | |         },
    | |_________^
    |
    = note: defining type: DefId(0/1:20 ~ propagate_approximated_fail_no_postdom[317d]::supply[0]::{{closure}}[0]) with closure substs [
@@ -30,13 +30,13 @@ note: No external requirements
 note: No external requirements
   --> $DIR/propagate-approximated-fail-no-postdom.rs:48:1
    |
-48 | / fn supply<'a, 'b, 'c>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>, cell_c: Cell<&'c u32>) {
-49 | |     establish_relationships(
-50 | |         cell_a,
-51 | |         cell_b,
+LL | / fn supply<'a, 'b, 'c>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>, cell_c: Cell<&'c u32>) {
+LL | |     establish_relationships(
+LL | |         cell_a,
+LL | |         cell_b,
 ...  |
-60 | |     );
-61 | | }
+LL | |     );
+LL | | }
    | |_^
    |
    = note: defining type: DefId(0/0:6 ~ propagate_approximated_fail_no_postdom[317d]::supply[0]) with substs []

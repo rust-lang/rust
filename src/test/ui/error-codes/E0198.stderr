@@ -1,7 +1,7 @@
 error[E0198]: negative impls cannot be unsafe
   --> $DIR/E0198.rs:15:1
    |
-15 | unsafe impl !Send for Foo { } //~ ERROR E0198
+LL | unsafe impl !Send for Foo { } //~ ERROR E0198
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

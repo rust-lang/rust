@@ -1,19 +1,19 @@
 error[E0502]: cannot borrow `u.z.c` as immutable because it is also borrowed as mutable
   --> $DIR/issue-45157.rs:37:20
    |
-34 |         let mref = &mut u.s.a;
+LL |         let mref = &mut u.s.a;
    |                    ---------- mutable borrow occurs here
 ...
-37 |         let nref = &u.z.c;
+LL |         let nref = &u.z.c;
    |                    ^^^^^^ immutable borrow occurs here
 
 error[E0502]: cannot borrow `u.s.a` as mutable because it is also borrowed as immutable
   --> $DIR/issue-45157.rs:39:27
    |
-37 |         let nref = &u.z.c;
+LL |         let nref = &u.z.c;
    |                    ------ immutable borrow occurs here
-38 |         //~^ ERROR cannot borrow `u.z.c` as immutable because it is also borrowed as mutable [E0502]
-39 |         println!("{} {}", mref, nref)
+LL |         //~^ ERROR cannot borrow `u.z.c` as immutable because it is also borrowed as mutable [E0502]
+LL |         println!("{} {}", mref, nref)
    |                           ^^^^ mutable borrow occurs here
 
 error: aborting due to 2 previous errors

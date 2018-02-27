@@ -1,7 +1,7 @@
 note: No external requirements
   --> $DIR/escape-argument.rs:36:38
    |
-36 |         let mut closure = expect_sig(|p, y| *p = y);
+LL |         let mut closure = expect_sig(|p, y| *p = y);
    |                                      ^^^^^^^^^^^^^
    |
    = note: defining type: DefId(0/1:9 ~ escape_argument[317d]::test[0]::{{closure}}[0]) with closure substs [
@@ -12,13 +12,13 @@ note: No external requirements
 note: No external requirements
   --> $DIR/escape-argument.rs:30:1
    |
-30 | / fn test() {
-31 | |     let x = 44;
-32 | |     let mut p = &x;
-33 | |
+LL | / fn test() {
+LL | |     let x = 44;
+LL | |     let mut p = &x;
+LL | |
 ...  |
-41 | |     deref(p);
-42 | | }
+LL | |     deref(p);
+LL | | }
    | |_^
    |
    = note: defining type: DefId(0/0:3 ~ escape_argument[317d]::test[0]) with substs []
@@ -26,13 +26,13 @@ note: No external requirements
 error[E0597]: `y` does not live long enough
   --> $DIR/escape-argument.rs:37:25
    |
-37 |         closure(&mut p, &y);
+LL |         closure(&mut p, &y);
    |                         ^^ borrowed value does not live long enough
-38 |         //~^ ERROR `y` does not live long enough [E0597]
-39 |     }
+LL |         //~^ ERROR `y` does not live long enough [E0597]
+LL |     }
    |     - borrowed value only lives until here
-40 | 
-41 |     deref(p);
+LL | 
+LL |     deref(p);
    |           - borrow later used here
    |
    = note: borrowed value must be valid for lifetime '_#6r...

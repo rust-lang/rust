@@ -1,7 +1,7 @@
 error[E0009]: cannot bind by-move and by-ref in the same pattern
   --> $DIR/E0009.rs:15:15
    |
-15 |         Some((y, ref z)) => {},
+LL |         Some((y, ref z)) => {},
    |               ^  ----- both by-ref and by-move used
    |               |
    |               by-move pattern here

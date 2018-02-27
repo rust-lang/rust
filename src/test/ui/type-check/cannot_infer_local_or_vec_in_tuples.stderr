@@ -1,7 +1,7 @@
 error[E0282]: type annotations needed
   --> $DIR/cannot_infer_local_or_vec_in_tuples.rs:12:18
    |
-12 |     let (x, ) = (vec![], );
+LL |     let (x, ) = (vec![], );
    |         -----    ^^^^^^ cannot infer type for `T`
    |         |
    |         consider giving the pattern a type

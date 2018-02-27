@@ -1,18 +1,18 @@
 error[E0478]: lifetime bound not satisfied
   --> $DIR/E0478.rs:14:5
    |
-14 |     child: Box<Wedding<'kiss> + 'SnowWhite>, //~ ERROR E0478
+LL |     child: Box<Wedding<'kiss> + 'SnowWhite>, //~ ERROR E0478
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lifetime parameter instantiated with the lifetime 'SnowWhite as defined on the struct at 13:1
   --> $DIR/E0478.rs:13:1
    |
-13 | struct Prince<'kiss, 'SnowWhite> {
+LL | struct Prince<'kiss, 'SnowWhite> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: but lifetime parameter must outlive the lifetime 'kiss as defined on the struct at 13:1
   --> $DIR/E0478.rs:13:1
    |
-13 | struct Prince<'kiss, 'SnowWhite> {
+LL | struct Prince<'kiss, 'SnowWhite> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

@@ -1,7 +1,7 @@
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-fn-body-nll-feature.rs:31:5
    |
-31 |     outlives(cell, t)
+LL |     outlives(cell, t)
    |     ^^^^^^^^^^^^^^^^^
    |
    = help: consider adding an explicit lifetime bound `T: 'a`...

@@ -1,7 +1,7 @@
 error[E0658]: slice pattern syntax is experimental (see issue #23121)
   --> $DIR/feature-gate-slice-patterns.rs:16:9
    |
-16 |         [1, 2, xs..] => {} //~ ERROR slice pattern syntax is experimental
+LL |         [1, 2, xs..] => {} //~ ERROR slice pattern syntax is experimental
    |         ^^^^^^^^^^^^
    |
    = help: add #![feature(slice_patterns)] to the crate attributes to enable

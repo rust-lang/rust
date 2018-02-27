@@ -1,7 +1,7 @@
 error[E0282]: type annotations needed
   --> $DIR/issue-12187-1.rs:16:10
    |
-16 |     let &v = new();
+LL |     let &v = new();
    |         -^
    |         ||
    |         |cannot infer type for `_`

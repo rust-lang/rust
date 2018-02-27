@@ -1,13 +1,13 @@
 error[E0597]: `ref_` does not live long enough
   --> $DIR/dropck.rs:23:18
    |
-21 |     gen = || {
+LL |     gen = || {
    |           -- capture occurs here
-22 |         // but the generator can use it to drop a `Ref<'a, i32>`.
-23 |         let _d = ref_.take(); //~ ERROR `ref_` does not live long enough
+LL |         // but the generator can use it to drop a `Ref<'a, i32>`.
+LL |         let _d = ref_.take(); //~ ERROR `ref_` does not live long enough
    |                  ^^^^ borrowed value does not live long enough
 ...
-28 | }
+LL | }
    | - borrowed value dropped before borrower
    |
    = note: values in a scope are dropped in the opposite order they are created

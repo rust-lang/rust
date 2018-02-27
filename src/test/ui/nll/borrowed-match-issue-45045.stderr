@@ -1,23 +1,23 @@
 error[E0503]: cannot use `e` because it was mutably borrowed
   --> $DIR/borrowed-match-issue-45045.rs:24:5
    |
-22 |       let f = &mut e;
+LL |       let f = &mut e;
    |               ------ borrow of `e` occurs here
-23 |       let g = f;
-24 | /     match e { //~ cannot use `e` because it was mutably borrowed [E0503]
-25 | |         Xyz::A => println!("a"),
-26 | |         //~^ cannot use `e` because it was mutably borrowed [E0503]
-27 | |         Xyz::B => println!("b"),
-28 | |     };
+LL |       let g = f;
+LL | /     match e { //~ cannot use `e` because it was mutably borrowed [E0503]
+LL | |         Xyz::A => println!("a"),
+LL | |         //~^ cannot use `e` because it was mutably borrowed [E0503]
+LL | |         Xyz::B => println!("b"),
+LL | |     };
    | |_____^ use of borrowed `e`
 
 error[E0503]: cannot use `e` because it was mutably borrowed
   --> $DIR/borrowed-match-issue-45045.rs:25:9
    |
-22 |     let f = &mut e;
+LL |     let f = &mut e;
    |             ------ borrow of `e` occurs here
 ...
-25 |         Xyz::A => println!("a"),
+LL |         Xyz::A => println!("a"),
    |         ^^^^^^ use of borrowed `e`
 
 error: aborting due to 2 previous errors

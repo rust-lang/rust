@@ -1,16 +1,16 @@
 error[E0282]: type annotations needed
   --> $DIR/issue-42234-unknown-receiver-type.rs:17:5
    |
-16 |     let x: Option<_> = None;
+LL |     let x: Option<_> = None;
    |         - consider giving `x` a type
-17 |     x.unwrap().method_that_could_exist_on_some_type();
+LL |     x.unwrap().method_that_could_exist_on_some_type();
    |     ^^^^^^^^^^ cannot infer type for `T`
 
 error[E0282]: type annotations needed
   --> $DIR/issue-42234-unknown-receiver-type.rs:22:5
    |
-22 | /     data.iter() //~ ERROR 22:5: 23:20: type annotations needed
-23 | |         .sum::<_>()
+LL | /     data.iter() //~ ERROR 22:5: 23:20: type annotations needed
+LL | |         .sum::<_>()
    | |___________________^ cannot infer type for `_`
 
 error: aborting due to 2 previous errors

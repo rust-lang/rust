@@ -1,11 +1,11 @@
 error[E0502]: cannot borrow `*collection` as mutable because `collection` is also borrowed as immutable
   --> $DIR/issue-42106.rs:13:5
    |
-12 |     let _a = &collection;
+LL |     let _a = &collection;
    |               ---------- immutable borrow occurs here
-13 |     collection.swap(1, 2); //~ ERROR also borrowed as immutable
+LL |     collection.swap(1, 2); //~ ERROR also borrowed as immutable
    |     ^^^^^^^^^^ mutable borrow occurs here
-14 | }
+LL | }
    | - immutable borrow ends here
 
 error: aborting due to previous error

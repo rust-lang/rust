@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `(): std::convert::From<std::option::NoneError>` is not satisfied
   --> $DIR/try-on-option.rs:17:5
    |
-17 |     x?; //~ the trait bound
+LL |     x?; //~ the trait bound
    |     ^^ the trait `std::convert::From<std::option::NoneError>` is not implemented for `()`
    |
    = note: required by `std::convert::From::from`
@@ -9,7 +9,7 @@ error[E0277]: the trait bound `(): std::convert::From<std::option::NoneError>` i
 error[E0277]: the `?` operator can only be used in a function that returns `Result` (or another type that implements `std::ops::Try`)
   --> $DIR/try-on-option.rs:23:5
    |
-23 |     x?; //~ the `?` operator
+LL |     x?; //~ the `?` operator
    |     ^^ cannot use the `?` operator in a function that returns `u32`
    |
    = help: the trait `std::ops::Try` is not implemented for `u32`
