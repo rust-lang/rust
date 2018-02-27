@@ -1080,14 +1080,57 @@ impl fmt::Display for ExitStatus {
     }
 }
 
-/// This is ridiculously unstable, as it's a completely-punted-upon part
-/// of the `?`-in-`main` RFC.  It's here only to allow experimenting with
-/// returning a code directly from main.  It will definitely change
-/// drastically before being stabilized, if it doesn't just get deleted.
-#[doc(hidden)]
+/// This type represents the status code a process can return to its
+/// parent under normal termination.
+///
+/// Numeric values used in this type don't have portable meanings, and
+/// different platforms may mask different amounts of them.
+///
+/// For the platform's canonical successful and unsuccessful codes, see
+/// the [`SUCCESS`] and [`FAILURE`] associated items.
+///
+/// [`SUCCESS`]: #constant.SUCCESS
+/// [`FAILURE`]: #constant.FAILURE
+///
+/// **Warning**: While various forms of this were discussed in [RFC #1937],
+/// it was ultimately cut from that RFC, and thus this type is more subject
+/// to change even than the usual unstable item churn.
+///
+/// [RFC #1937]: https://github.com/rust-lang/rfcs/pull/1937
 #[derive(Clone, Copy, Debug)]
 #[unstable(feature = "process_exitcode_placeholder", issue = "43301")]
 pub struct ExitCode(pub i32);
+
+#[cfg(target_arch = "wasm32")]
+mod rawexit {
+    pub const SUCCESS: i32 = 0;
+    pub const FAILURE: i32 = 1;
+}
+#[cfg(not(target_arch = "wasm32"))]
+mod rawexit {
+    use libc;
+    pub const SUCCESS: i32 = libc::EXIT_SUCCESS;
+    pub const FAILURE: i32 = libc::EXIT_FAILURE;
+}
+
+#[unstable(feature = "process_exitcode_placeholder", issue = "43301")]
+impl ExitCode {
+    /// The canonical ExitCode for successful termination on this platform.
+    ///
+    /// Note that a `()`-returning `main` implicitly results in a successful
+    /// termination, so there's no need to return this from `main` unless
+    /// you're also returning other possible codes.
+    #[unstable(feature = "process_exitcode_placeholder", issue = "43301")]
+    pub const SUCCESS: ExitCode = ExitCode(rawexit::SUCCESS);
+
+    /// The canonical ExitCode for unsuccessful termination on this platform.
+    ///
+    /// If you're only returning this and `SUCCESS` from `main`, consider
+    /// instead returning `Err(_)` and `Ok(())` respectively, which will
+    /// return the same codes (but will also `eprintln!` the error).
+    #[unstable(feature = "process_exitcode_placeholder", issue = "43301")]
+    pub const FAILURE: ExitCode = ExitCode(rawexit::FAILURE);
+}
 
 impl Child {
     /// Forces the child to exit. This is equivalent to sending a
@@ -1401,18 +1444,6 @@ pub fn id() -> u32 {
     ::sys::os::getpid()
 }
 
-#[cfg(target_arch = "wasm32")]
-mod exit {
-    pub const SUCCESS: i32 = 0;
-    pub const FAILURE: i32 = 1;
-}
-#[cfg(not(target_arch = "wasm32"))]
-mod exit {
-    use libc;
-    pub const SUCCESS: i32 = libc::EXIT_SUCCESS;
-    pub const FAILURE: i32 = libc::EXIT_FAILURE;
-}
-
 /// A trait for implementing arbitrary return types in the `main` function.
 ///
 /// The c-main function only supports to return integers as return type.
@@ -1433,18 +1464,15 @@ pub trait Termination {
 
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
 impl Termination for () {
-    fn report(self) -> i32 { exit::SUCCESS }
+    fn report(self) -> i32 { ExitCode::SUCCESS.report() }
 }
 
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
 impl<E: fmt::Debug> Termination for Result<(), E> {
     fn report(self) -> i32 {
         match self {
-            Ok(val) => val.report(),
-            Err(err) => {
-                eprintln!("Error: {:?}", err);
-                exit::FAILURE
-            }
+            Ok(()) => ().report(),
+            Err(err) => Err::<!, _>(err).report(),
         }
     }
 }
@@ -1459,7 +1487,7 @@ impl<E: fmt::Debug> Termination for Result<!, E> {
     fn report(self) -> i32 {
         let Err(err) = self;
         eprintln!("Error: {:?}", err);
-        exit::FAILURE
+        ExitCode::FAILURE.report()
     }
 }
 
