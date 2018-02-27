@@ -370,6 +370,9 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
         // Here the default `Vec<[u32]>` is not WF because `[u32]: Sized` does not hold.
         for d in generics.types.iter().cloned().filter(is_our_default).map(|p| p.def_id) {
             let ty = fcx.tcx.type_of(d);
+            // ignore dependent defaults -- that is, where the default of one type
+            // parameter includes another (e.g., <T, U = T>). In those cases, we can't
+            // be sure if it will error or not as user might always specify the other.
             if !ty.needs_subst() {
                 fcx.register_wf_obligation(ty, fcx.tcx.def_span(d), self.code.clone());
             }
