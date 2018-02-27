@@ -1089,8 +1089,6 @@ impl char {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_ctype)]
-    ///
     /// let uppercase_a = 'A';
     /// let uppercase_g = 'G';
     /// let a = 'a';
@@ -1123,8 +1121,6 @@ impl char {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_ctype)]
-    ///
     /// let uppercase_a = 'A';
     /// let uppercase_g = 'G';
     /// let a = 'a';
@@ -1157,8 +1153,6 @@ impl char {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_ctype)]
-    ///
     /// let uppercase_a = 'A';
     /// let uppercase_g = 'G';
     /// let a = 'a';
@@ -1194,8 +1188,6 @@ impl char {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_ctype)]
-    ///
     /// let uppercase_a = 'A';
     /// let uppercase_g = 'G';
     /// let a = 'a';
@@ -1228,8 +1220,6 @@ impl char {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_ctype)]
-    ///
     /// let uppercase_a = 'A';
     /// let uppercase_g = 'G';
     /// let a = 'a';
@@ -1265,8 +1255,6 @@ impl char {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_ctype)]
-    ///
     /// let uppercase_a = 'A';
     /// let uppercase_g = 'G';
     /// let a = 'a';
@@ -1303,8 +1291,6 @@ impl char {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_ctype)]
-    ///
     /// let uppercase_a = 'A';
     /// let uppercase_g = 'G';
     /// let a = 'a';
@@ -1337,8 +1323,6 @@ impl char {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_ctype)]
-    ///
     /// let uppercase_a = 'A';
     /// let uppercase_g = 'G';
     /// let a = 'a';
@@ -1388,8 +1372,6 @@ impl char {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_ctype)]
-    ///
     /// let uppercase_a = 'A';
     /// let uppercase_g = 'G';
     /// let a = 'a';
@@ -1424,8 +1406,6 @@ impl char {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_ctype)]
-    ///
     /// let uppercase_a = 'A';
     /// let uppercase_g = 'G';
     /// let a = 'a';
