@@ -373,12 +373,16 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
         }
         let tcx = self.tcx;
         let llfn = match tcx.lang_items().eh_personality() {
-            Some(def_id) if !base::wants_msvc_seh(self.sess()) => {
+            Some(def_id) => {
                 callee::resolve_and_get_fn(self, def_id, tcx.intern_substs(&[]))
             }
             _ => {
                 let name = if base::wants_msvc_seh(self.sess()) {
-                    "__CxxFrameHandler3"
+                    if self.tcx.sess.target.target.arch == "x86" {
+                        "rust_seh32_personality"
+                    } else {
+                        "rust_seh64_personality"
+                    }
                 } else {
                     "rust_eh_personality"
                 };

@@ -10,6 +10,7 @@
 
 #![allow(non_upper_case_globals)]
 
+use callee;
 use intrinsics::{self, Intrinsic};
 use llvm;
 use llvm::{ValueRef};
@@ -797,7 +798,9 @@ fn trans_msvc_try<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
         // We're generating an IR snippet that looks like:
         //
         //   declare i32 @rust_try(%func, %data, %ptr) {
-        //      %slot = alloca i64*
+        //      %slot = alloca i8*
+        //      call @llvm.localescape(%slot)
+        //      store %ptr, %slot
         //      invoke %func(%data) to label %normal unwind label %catchswitch
         //
         //   normal:
@@ -807,58 +810,38 @@ fn trans_msvc_try<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
         //      %cs = catchswitch within none [%catchpad] unwind to caller
         //
         //   catchpad:
-        //      %tok = catchpad within %cs [%type_descriptor, 0, %slot]
-        //      %ptr[0] = %slot[0]
-        //      %ptr[1] = %slot[1]
+        //      %tok = catchpad within %cs [%rust_try_filter]
         //      catchret from %tok to label %caught
         //
         //   caught:
         //      ret i32 1
         //   }
         //
-        // This structure follows the basic usage of throw/try/catch in LLVM.
-        // For example, compile this C++ snippet to see what LLVM generates:
-        //
-        //      #include <stdint.h>
-        //
-        //      int bar(void (*foo)(void), uint64_t *ret) {
-        //          try {
-        //              foo();
-        //              return 0;
-        //          } catch(uint64_t a[2]) {
-        //              ret[0] = a[0];
-        //              ret[1] = a[1];
-        //              return 1;
-        //          }
-        //      }
+        // This structure follows the basic usage of the instructions in LLVM
+        // (see their documentation/test cases for examples), but a
+        // perhaps-surprising part here is the usage of the `localescape`
+        // intrinsic. This is used to allow the filter function (also generated
+        // here) to access variables on the stack of this intrinsic. This
+        // ability enables us to transfer information about the exception being
+        // thrown to this point, where we're catching the exception.
         //
         // More information can be found in libstd's seh.rs implementation.
-        let i64p = Type::i64(cx).ptr_to();
+
         let ptr_align = bx.tcx().data_layout.pointer_align;
-        let slot = bx.alloca(i64p, "slot", ptr_align);
-        bx.invoke(func, &[data], normal.llbb(), catchswitch.llbb(),
-            None);
+        let slot = bx.alloca(Type::i8p(cx), "slot", ptr_align);
+        let localescape = cx.get_intrinsic("llvm.localescape");
+        bx.call(localescape, &[slot], None);
+        bx.store(local_ptr, slot, ptr_align);
+        bx.invoke(func, &[data], normal.llbb(), catchswitch.llbb(), None);
 
         normal.ret(C_i32(cx, 0));
 
         let cs = catchswitch.catch_switch(None, None, 1);
         catchswitch.add_handler(cs, catchpad.llbb());
 
-        let tcx = cx.tcx;
-        let tydesc = match tcx.lang_items().msvc_try_filter() {
-            Some(did) => ::consts::get_static(cx, did),
-            None => bug!("msvc_try_filter not defined"),
-        };
-        let tok = catchpad.catch_pad(cs, &[tydesc, C_i32(cx, 0), slot]);
-        let addr = catchpad.load(slot, ptr_align);
-
-        let i64_align = bx.tcx().data_layout.i64_align;
-        let arg1 = catchpad.load(addr, i64_align);
-        let val1 = C_i32(cx, 1);
-        let arg2 = catchpad.load(catchpad.inbounds_gep(addr, &[val1]), i64_align);
-        let local_ptr = catchpad.bitcast(local_ptr, i64p);
-        catchpad.store(arg1, local_ptr, i64_align);
-        catchpad.store(arg2, catchpad.inbounds_gep(local_ptr, &[val1]), i64_align);
+        let filter = generate_filter_fn(cx, bx.llfn());
+        let filter = catchpad.bitcast(filter, Type::i8p(cx));
+        let tok = catchpad.catch_pad(cs, &[filter]);
         catchpad.catch_ret(tok, caught.llbb());
 
         caught.ret(C_i32(cx, 1));
@@ -869,6 +852,86 @@ fn trans_msvc_try<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
     let ret = bx.call(llfn, &[func, data, local_ptr], None);
     let i32_align = bx.tcx().data_layout.i32_align;
     bx.store(ret, dest, i32_align);
+}
+
+// For MSVC-style exceptions (SEH), the compiler generates a filter function
+// which is used to determine whether an exception is being caught (e.g. if it's
+// a Rust exception or some other).
+//
+// This function is used to generate said filter function. The shim generated
+// here is actually just a thin wrapper to call the real implementation in the
+// standard library itself. For reasons as to why, see seh.rs in the standard
+// library.
+fn generate_filter_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, rust_try_fn: ValueRef)
+    -> ValueRef
+{
+    let rust_try_filter = match cx.tcx.lang_items().msvc_try_filter() {
+        Some(did) => {
+            callee::resolve_and_get_fn(cx, did, cx.tcx.intern_substs(&[]))
+        }
+        None => bug!("msvc_try_filter not defined"),
+    };
+
+    let output = cx.tcx.types.i32;
+    let i8p = cx.tcx.mk_mut_ptr(cx.tcx.types.i8);
+
+    let frameaddress = cx.get_intrinsic("llvm.frameaddress");
+    let recoverfp = cx.get_intrinsic("llvm.x86.seh.recoverfp");
+    let localrecover = cx.get_intrinsic("llvm.localrecover");
+
+    // On all platforms, once we have the EXCEPTION_POINTERS handle as well as
+    // the base pointer, we follow the standard layout of:
+    //
+    //      block:
+    //          %parentfp = call i8* llvm.x86.seh.recoverfp(@rust_try_fn, %bp)
+    //          %arg = call i8* llvm.localrecover(@rust_try_fn, %parentfp, 0)
+    //          %ret = call i32 @the_real_filter_function(%ehptrs, %arg)
+    //          ret i32 %ret
+    //
+    // The recoverfp intrinsic is used to recover the frame pointer of the
+    // `rust_try_fn` function, which is then in turn passed to the
+    // `localrecover` intrinsic (pairing with the `localescape` intrinsic
+    // mentioned above). Putting all this together means that we now have a
+    // handle to the arguments passed into the `try` function, allowing writing
+    // to the stack over there.
+    //
+    // For more info, see seh.rs in the standard library.
+    let do_trans = |bx: Builder, ehptrs, base_pointer| {
+        let rust_try_fn = bx.bitcast(rust_try_fn, Type::i8p(cx));
+        let parentfp = bx.call(recoverfp, &[rust_try_fn, base_pointer], None);
+        let arg = bx.call(localrecover,
+                         &[rust_try_fn, parentfp, C_i32(cx, 0)], None);
+        let ret = bx.call(rust_try_filter, &[ehptrs, arg], None);
+        bx.ret(ret);
+    };
+
+    if cx.tcx.sess.target.target.arch == "x86" {
+        // On x86 the filter function doesn't actually receive any arguments.
+        // Instead the %ebp register contains some contextual information.
+        //
+        // Unfortunately I don't know of any great documentation as to what's
+        // going on here, all I can say is that there's a few tests cases in
+        // LLVM's test suite which follow this pattern of instructions, so we
+        // just do the same.
+        gen_fn(cx, "__rustc_try_filter", vec![], output, &mut |bx| {
+            let ebp = bx.call(frameaddress, &[C_i32(cx, 1)], None);
+            let exn = bx.inbounds_gep(ebp, &[C_i32(cx, -20)]);
+            let ptr_align = bx.tcx().data_layout.pointer_align;
+            let exn = bx.load(bx.bitcast(exn, Type::i8p(cx).ptr_to()), ptr_align);
+            do_trans(bx, exn, ebp);
+        })
+    } else if cx.tcx.sess.target.target.arch == "x86_64" {
+        // Conveniently on x86_64 the EXCEPTION_POINTERS handle and base pointer
+        // are passed in as arguments to the filter function, so we just pass
+        // those along.
+        gen_fn(cx, "__rustc_try_filter", vec![i8p, i8p], output, &mut |bx| {
+            let exn = llvm::get_param(bx.llfn(), 0);
+            let rbp = llvm::get_param(bx.llfn(), 1);
+            do_trans(bx, exn, rbp);
+        })
+    } else {
+        bug!("unknown target to generate a filter function")
+    }
 }
 
 // Definition of the standard "try" function for Rust using the GNU-like model

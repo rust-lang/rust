@@ -184,6 +184,8 @@ pub fn provide_extern(providers: &mut Providers) {
                     // In general though we won't link right if these
                     // symbols are stripped, and LTO currently strips them.
                     if &*name == "rust_eh_personality" ||
+                       &*name == "rust_seh32_personality" ||
+                       &*name == "rust_seh64_personality" ||
                        &*name == "rust_eh_register_frames" ||
                        &*name == "rust_eh_unregister_frames" {
                         SymbolExportLevel::C

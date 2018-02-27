@@ -28,6 +28,8 @@ pub const EXCEPTION_COLLIDED_UNWIND: DWORD = 0x40; // Collided exception handler
 pub const EXCEPTION_UNWIND: DWORD = EXCEPTION_UNWINDING | EXCEPTION_EXIT_UNWIND |
                                     EXCEPTION_TARGET_UNWIND |
                                     EXCEPTION_COLLIDED_UNWIND;
+pub const DISPOSITION_CONTINUE_SEARCH: i32 = 1;
+pub const STATUS_UNWIND: DWORD = 0xc0000027;
 
 #[repr(C)]
 pub struct EXCEPTION_RECORD {
@@ -93,4 +95,22 @@ extern "system" {
                        HistoryTable: *const UNWIND_HISTORY_TABLE);
     #[unwind]
     pub fn _CxxThrowException(pExceptionObject: *mut c_void, pThrowInfo: *mut u8);
+
+    #[cfg(target_arch = "x86_64")]
+    pub fn __C_specific_handler(
+        ExceptionRecord: *mut EXCEPTION_RECORD,
+        EstablisherFrame: *mut u8,
+        ContextRecord: *mut u8,
+        DispatcherContext: *mut u8,
+    ) -> EXCEPTION_DISPOSITION;
+}
+
+extern {
+    #[cfg(target_arch = "x86")]
+    pub fn _except_handler3(
+       exception_record: *mut EXCEPTION_RECORD,
+       registration: *mut u8,
+       context: *mut u8,
+       dispatcher: *mut u8,
+    ) -> i32;
 }

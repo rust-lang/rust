@@ -275,10 +275,6 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
         tcx.is_foreign_item(def_id)
     };
 
-    if let Some(name) = weak_lang_items::link_name(&attrs) {
-        return name.to_string();
-    }
-
     if is_foreign {
         if let Some(name) = attr::first_attr_value_str_by_name(&attrs, "link_name") {
             return name.to_string();
@@ -295,6 +291,10 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
     if attr::contains_name(&attrs, "no_mangle") {
         // Don't mangle
         return tcx.item_name(def_id).to_string();
+    }
+
+    if let Some(name) = weak_lang_items::link_name(&attrs) {
+        return name.to_string();
     }
 
     // We want to compute the "type" of this item. Unfortunately, some

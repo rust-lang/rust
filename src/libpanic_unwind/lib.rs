@@ -57,7 +57,12 @@ use core::raw;
 pub use imp::eh_frame_registry::*;
 
 // *-pc-windows-msvc
-#[cfg(target_env = "msvc")]
+#[cfg(all(target_env = "msvc", stage0))]
+#[path = "seh_stage0.rs"]
+mod imp;
+
+// *-pc-windows-msvc
+#[cfg(all(target_env = "msvc", not(stage0)))]
 #[path = "seh.rs"]
 mod imp;
 

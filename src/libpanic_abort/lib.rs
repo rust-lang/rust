@@ -98,17 +98,33 @@ pub unsafe extern fn __rust_start_panic(_data: usize, _vtable: usize) -> u32 {
 // runtime at all.
 pub mod personalities {
     #[no_mangle]
-    #[cfg(not(all(target_os = "windows",
-                  target_env = "gnu",
-                  target_arch = "x86_64")))]
+    #[cfg(not(all(
+        target_os = "windows",
+        any(
+            target_env = "msvc",
+            all(target_env = "gnu", target_arch = "x86_64")
+        )
+    )))]
     pub extern fn rust_eh_personality() {}
 
     // On x86_64-pc-windows-gnu we use our own personality function that needs
     // to return `ExceptionContinueSearch` as we're passing on all our frames.
     #[no_mangle]
-    #[cfg(all(target_os = "windows",
-              target_env = "gnu",
-              target_arch = "x86_64"))]
+    #[cfg(all(
+        target_os = "windows",
+        any(
+            target_env = "msvc",
+            all(target_env = "gnu", target_arch = "x86_64")
+        )
+    ))]
+    #[cfg_attr(
+        all(target_env = "msvc", target_arch = "x86"),
+        export_name = "rust_seh32_personality"
+    )]
+    #[cfg_attr(
+        all(target_env = "msvc", target_arch = "x86_64"),
+        export_name = "rust_seh64_personality"
+    )]
     pub extern fn rust_eh_personality(_record: usize,
                                       _frame: usize,
                                       _context: usize,
