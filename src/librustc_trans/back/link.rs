@@ -1085,6 +1085,7 @@ fn link_args(cmd: &mut Linker,
             has_rpath: sess.target.target.options.has_rpath,
             is_like_osx: sess.target.target.options.is_like_osx,
             linker_is_gnu: sess.target.target.options.linker_is_gnu,
+            sysroot_lib_path: sess.host_filesearch(PathKind::All).get_lib_path(),
             get_install_prefix_lib_path: &mut get_install_prefix_lib_path,
         };
         cmd.args(&rpath::get_rpath_flags(&mut rpath_config));
