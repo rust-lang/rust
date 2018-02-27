@@ -20,7 +20,7 @@ The MIR-based region analysis consists of two major functions:
     regions are the results of lexical region inference and hence are
     not of much interest. The intention is that -- eventually -- they
     will be "erased regions" (i.e., no information at all), since we
-    don't be doing lexical region inference at all.
+    won't be doing lexical region inference at all.
 - `compute_regions`, invoked second: this is given as argument the
   results of move analysis. It has the job of computing values for all
   the inference variabes that `replace_regions_in_mir` introduced.
