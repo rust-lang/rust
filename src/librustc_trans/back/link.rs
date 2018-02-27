@@ -849,7 +849,19 @@ fn exec_linker(sess: &Session, cmd: &mut Command, tmpdir: &Path)
         args.push_str("\n");
     }
     let file = tmpdir.join("linker-arguments");
-    fs::write(&file, args.as_bytes())?;
+    let bytes = if sess.target.target.options.is_like_msvc {
+        let mut out = vec![];
+        // start the stream with a UTF-16 BOM
+        for c in vec![0xFEFF].into_iter().chain(args.encode_utf16()) {
+            // encode in little endian
+            out.push(c as u8);
+            out.push((c >> 8) as u8);
+        }
+        out
+    } else {
+        args.into_bytes()
+    };
+    fs::write(&file, &bytes)?;
     cmd2.arg(format!("@{}", file.display()));
     return cmd2.output();
 
