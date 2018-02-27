@@ -21,7 +21,6 @@ use rustc::ty::{TyCtxt, SymbolName};
 use rustc::ty::maps::Providers;
 use rustc::util::nodemap::{FxHashMap, DefIdSet};
 use rustc_allocator::ALLOCATOR_METHODS;
-use rustc_back::LinkerFlavor;
 use syntax::attr;
 
 pub type ExportedSymbols = FxHashMap<
@@ -79,10 +78,9 @@ fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let reachable_non_generics = tcx
         .exported_symbols(LOCAL_CRATE)
         .iter()
-        .filter_map(|&(exported_symbol, _)| {
+        .filter_map(|&(exported_symbol, level)| {
             if let ExportedSymbol::NonGeneric(def_id) = exported_symbol {
-                if tcx.symbol_export_level(def_id)
-                      .is_below_threshold(export_threshold) {
+                if level.is_below_threshold(export_threshold) {
                     return Some(def_id)
                 }
             }
@@ -110,6 +108,16 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if !tcx.sess.opts.output_types.should_trans() {
         return Arc::new(vec![])
     }
+
+    // Check to see if this crate is a "special runtime crate". These
+    // crates, implementation details of the standard library, typically
+    // have a bunch of `pub extern` and `#[no_mangle]` functions as the
+    // ABI between them. We don't want their symbols to have a `C`
+    // export level, however, as they're just implementation details.
+    // Down below we'll hardwire all of the symbols to the `Rust` export
+    // level instead.
+    let special_runtime_crate = tcx.is_panic_runtime(LOCAL_CRATE) ||
+        tcx.is_compiler_builtins(LOCAL_CRATE);
 
     let mut reachable_non_generics: DefIdSet = tcx.reachable_set(LOCAL_CRATE).0
         .iter()
@@ -177,7 +185,25 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut symbols: Vec<_> = reachable_non_generics
         .iter()
         .map(|&def_id| {
-            let export_level = tcx.symbol_export_level(def_id);
+            let export_level = if special_runtime_crate {
+                let name = tcx.symbol_name(Instance::mono(tcx, def_id));
+                // We can probably do better here by just ensuring that
+                // it has hidden visibility rather than public
+                // visibility, as this is primarily here to ensure it's
+                // not stripped during LTO.
+                //
+                // In general though we won't link right if these
+                // symbols are stripped, and LTO currently strips them.
+                if &*name == "rust_eh_personality" ||
+                   &*name == "rust_eh_register_frames" ||
+                   &*name == "rust_eh_unregister_frames" {
+                    SymbolExportLevel::C
+                } else {
+                    SymbolExportLevel::Rust
+                }
+            } else {
+                tcx.symbol_export_level(def_id)
+            };
             debug!("EXPORTED SYMBOL (local): {} ({:?})",
                    tcx.symbol_name(Instance::mono(tcx, def_id)),
                    export_level);
@@ -223,84 +249,7 @@ pub fn provide(providers: &mut Providers) {
     providers.symbol_export_level = symbol_export_level_provider;
 }
 
-fn exported_symbols_provider_extern<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                              cnum: CrateNum)
-                                              -> Arc<Vec<(ExportedSymbol,
-                                                          SymbolExportLevel)>>
-{
-    // If this crate is a plugin and/or a custom derive crate, then
-    // we're not even going to link those in so we skip those crates.
-    if tcx.plugin_registrar_fn(cnum).is_some() ||
-       tcx.derive_registrar_fn(cnum).is_some() {
-        return Arc::new(Vec::new())
-    }
-
-    // Check to see if this crate is a "special runtime crate". These
-    // crates, implementation details of the standard library, typically
-    // have a bunch of `pub extern` and `#[no_mangle]` functions as the
-    // ABI between them. We don't want their symbols to have a `C`
-    // export level, however, as they're just implementation details.
-    // Down below we'll hardwire all of the symbols to the `Rust` export
-    // level instead.
-    let special_runtime_crate =
-        tcx.is_panic_runtime(cnum) || tcx.is_compiler_builtins(cnum);
-
-    // Dealing with compiler-builtins and wasm right now is super janky.
-    // There's no linker! As a result we need all of the compiler-builtins
-    // exported symbols to make their way through all the way to the end of
-    // compilation. We want to make sure that LLVM doesn't remove them as
-    // well because we may or may not need them in the final output
-    // artifact. For now just force them to always get exported at the C
-    // layer, and we'll worry about gc'ing them later.
-    let compiler_builtins_and_binaryen =
-        tcx.is_compiler_builtins(cnum) &&
-        tcx.sess.linker_flavor() == LinkerFlavor::Binaryen;
-
-    let mut crate_exports: Vec<_> = tcx
-        .reachable_non_generics(cnum)
-        .iter()
-        .map(|&def_id| {
-            let export_level = if compiler_builtins_and_binaryen &&
-                                  tcx.contains_extern_indicator(def_id) {
-                SymbolExportLevel::C
-            } else if special_runtime_crate {
-                let name = tcx.symbol_name(Instance::mono(tcx, def_id));
-                // We can probably do better here by just ensuring that
-                // it has hidden visibility rather than public
-                // visibility, as this is primarily here to ensure it's
-                // not stripped during LTO.
-                //
-                // In general though we won't link right if these
-                // symbols are stripped, and LTO currently strips them.
-                if &*name == "rust_eh_personality" ||
-                   &*name == "rust_eh_register_frames" ||
-                   &*name == "rust_eh_unregister_frames" {
-                    SymbolExportLevel::C
-                } else {
-                    SymbolExportLevel::Rust
-                }
-            } else {
-                tcx.symbol_export_level(def_id)
-            };
-
-            debug!("EXPORTED SYMBOL (re-export): {} ({:?})",
-                   tcx.symbol_name(Instance::mono(tcx, def_id)),
-                   export_level);
-
-            (ExportedSymbol::NonGeneric(def_id), export_level)
-        })
-        .collect();
-
-    // Sort so we get a stable incr. comp. hash.
-    crate_exports.sort_unstable_by(|&(ref symbol1, ..), &(ref symbol2, ..)| {
-        symbol1.compare_stable(tcx, symbol2)
-    });
-
-    Arc::new(crate_exports)
-}
-
 pub fn provide_extern(providers: &mut Providers) {
-    providers.exported_symbols = exported_symbols_provider_extern;
     providers.is_reachable_non_generic = is_reachable_non_generic_provider;
     providers.symbol_export_level = symbol_export_level_provider;
 }

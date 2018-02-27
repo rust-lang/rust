@@ -2404,4 +2404,12 @@ pub fn provide(providers: &mut ty::maps::Providers) {
     providers.fully_normalize_monormophic_ty = |tcx, ty| {
         tcx.fully_normalize_associated_types_in(&ty)
     };
+    providers.is_panic_runtime = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        attr::contains_name(tcx.hir.krate_attrs(), "panic_runtime")
+    };
+    providers.is_compiler_builtins = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        attr::contains_name(tcx.hir.krate_attrs(), "compiler_builtins")
+    };
 }
