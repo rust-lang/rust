@@ -24,7 +24,7 @@ pub unsafe fn _mm_cvtsd_si64(a: __m128d) -> i64 {
     cvtsd2si64(a)
 }
 
-/// Alias for [`_mm_cvtsd_si64`](fn._mm_cvtsd_si64_ss.html).
+/// Alias for `_mm_cvtsd_si64`
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(cvtsd2si))]
@@ -41,7 +41,7 @@ pub unsafe fn _mm_cvttsd_si64(a: __m128d) -> i64 {
     cvttsd2si64(a)
 }
 
-/// Alias for [`_mm_cvttsd_si64`](fn._mm_cvttsd_si64_ss.html).
+/// Alias for `_mm_cvttsd_si64`
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(cvttsd2si))]
