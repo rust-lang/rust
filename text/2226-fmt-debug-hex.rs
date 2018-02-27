@@ -1,7 +1,7 @@
 - Feature Name: fmt-debug-hex
 - Start Date: 2017-11-24
-- RFC PR:
-- Rust Issue:
+- RFC PR: https://github.com/rust-lang/rfcs/pull/2226
+- Rust Issue: https://github.com/rust-lang/rust/issues/48584
 
 # Summary
 [summary]: #summary
