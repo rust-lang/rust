@@ -10,7 +10,7 @@
 
 //! Check license of third-party deps by inspecting src/vendor
 
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
@@ -49,69 +49,65 @@ static EXCEPTIONS: &'static [&'static str] = &[
 ];
 
 /// Which crates to check against the whitelist?
-static WHITELIST_CRATES: &'static [Crate] =
-    &[Crate("rustc", "0.0.0"), Crate("rustc_trans", "0.0.0")];
+static WHITELIST_CRATES: &'static [Crate] = &[Crate("rustc"), Crate("rustc_trans")];
 
 /// Whitelist of crates rustc is allowed to depend on. Avoid adding to the list if possible.
 static WHITELIST: &'static [Crate] = &[
-//    Crate("ar", "0.3.1"),
-//    Crate("arena", "0.0.0"),
-//    Crate("backtrace", "0.3.5"),
-//    Crate("backtrace-sys", "0.1.16"),
-//    Crate("bitflags", "1.0.1"),
-//    Crate("build_helper", "0.1.0"),
-//    Crate("byteorder", "1.2.1"),
-//    Crate("cc", "1.0.4"),
-//    Crate("cfg-if", "0.1.2"),
-//    Crate("cmake", "0.1.29"),
-//    Crate("filetime", "0.1.15"),
-//    Crate("flate2", "1.0.1"),
-//    Crate("fmt_macros", "0.0.0"),
-//    Crate("fuchsia-zircon", "0.3.3"),
-//    Crate("fuchsia-zircon-sys", "0.3.3"),
-//    Crate("graphviz", "0.0.0"),
-//    Crate("jobserver", "0.1.9"),
-//    Crate("kernel32-sys", "0.2.2"),
-//    Crate("lazy_static", "0.2.11"),
-//    Crate("libc", "0.2.36"),
-//    Crate("log", "0.4.1"),
-//    Crate("log_settings", "0.1.1"),
-//    Crate("miniz-sys", "0.1.10"),
-//    Crate("num_cpus", "1.8.0"),
-//    Crate("owning_ref", "0.3.3"),
-//    Crate("parking_lot", "0.5.3"),
-//    Crate("parking_lot_core", "0.2.9"),
-//    Crate("rand", "0.3.20"),
-//    Crate("redox_syscall", "0.1.37"),
-//    Crate("rustc", "0.0.0"),
-//    Crate("rustc-demangle", "0.1.5"),
-//    Crate("rustc_allocator", "0.0.0"),
-//    Crate("rustc_apfloat", "0.0.0"),
-//    Crate("rustc_back", "0.0.0"),
-//    Crate("rustc_binaryen", "0.0.0"),
-//    Crate("rustc_const_eval", "0.0.0"),
-//    Crate("rustc_const_math", "0.0.0"),
-//    Crate("rustc_cratesio_shim", "0.0.0"),
-//    Crate("rustc_data_structures", "0.0.0"),
-//    Crate("rustc_errors", "0.0.0"),
-//    Crate("rustc_incremental", "0.0.0"),
-//    Crate("rustc_llvm", "0.0.0"),
-//    Crate("rustc_mir", "0.0.0"),
-//    Crate("rustc_platform_intrinsics", "0.0.0"),
-//    Crate("rustc_trans", "0.0.0"),
-//    Crate("rustc_trans_utils", "0.0.0"),
-//    Crate("serialize", "0.0.0"),
-//    Crate("smallvec", "0.6.0"),
-//    Crate("stable_deref_trait", "1.0.0"),
-//    Crate("syntax", "0.0.0"),
-//    Crate("syntax_pos", "0.0.0"),
-//    Crate("tempdir", "0.3.5"),
-//    Crate("unicode-width", "0.1.4"),
-//    Crate("winapi", "0.2.8"),
-//    Crate("winapi", "0.3.4"),
-//    Crate("winapi-build", "0.1.1"),
-//    Crate("winapi-i686-pc-windows-gnu", "0.4.0"),
-//    Crate("winapi-x86_64-pc-windows-gnu", "0.4.0"),
+//    Crate("ar "),
+//    Crate("arena "),
+//    Crate("backtrace "),
+//    Crate("backtrace-sys "),
+//    Crate("bitflags "),
+//    Crate("build_helper "),
+//    Crate("byteorder "),
+//    Crate("cc "),
+//    Crate("cfg-if "),
+//    Crate("cmake "),
+//    Crate("filetime "),
+//    Crate("flate2 "),
+//    Crate("fmt_macros "),
+//    Crate("fuchsia-zircon "),
+//    Crate("fuchsia-zircon-sys "),
+//    Crate("graphviz "),
+//    Crate("jobserver "),
+//    Crate("kernel32-sys "),
+//    Crate("lazy_static "),
+//    Crate("libc "),
+//    Crate("log "),
+//    Crate("log_settings "),
+//    Crate("miniz-sys "),
+//    Crate("num_cpus "),
+//    Crate("owning_ref "),
+//    Crate("parking_lot "),
+//    Crate("parking_lot_core "),
+//    Crate("rand "),
+//    Crate("redox_syscall "),
+//    Crate("rustc "),
+//    Crate("rustc-demangle "),
+//    Crate("rustc_allocator "),
+//    Crate("rustc_apfloat "),
+//    Crate("rustc_back "),
+//    Crate("rustc_binaryen "),
+//    Crate("rustc_const_eval "),
+//    Crate("rustc_const_math "),
+//    Crate("rustc_cratesio_shim "),
+//    Crate("rustc_data_structures "),
+//    Crate("rustc_errors "),
+//    Crate("rustc_incremental "),
+//    Crate("rustc_llvm "),
+//    Crate("rustc_mir "),
+//    Crate("rustc_platform_intrinsics "),
+//    Crate("rustc_trans "),
+//    Crate("rustc_trans_utils "),
+//    Crate("serialize "),
+//    Crate("smallvec "),
+//    Crate("stable_deref_trait "),
+//    Crate("syntax "),
+//    Crate("syntax_pos "),
+//    Crate("tempdir "),
+//    Crate("unicode-width "),
+//    Crate("winapi "),
+//    Crate("winapi-build"),
 ];
 
 // Some types for Serde to deserialize the output of `cargo metadata` to...
@@ -119,20 +115,6 @@ static WHITELIST: &'static [Crate] = &[
 #[derive(Deserialize)]
 struct Output {
     resolve: Resolve,
-
-    // Not used, but needed to not confuse serde :P
-    #[allow(dead_code)] packages: Vec<Package>,
-}
-
-// Not used, but needed to not confuse serde :P
-#[allow(dead_code)]
-#[derive(Deserialize)]
-struct Package {
-    name: String,
-    version: String,
-    id: String,
-    source: Option<String>,
-    manifest_path: String,
 }
 
 #[derive(Deserialize)]
@@ -148,19 +130,18 @@ struct ResolveNode {
 
 /// A unique identifier for a crate
 #[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Debug, Hash)]
-struct Crate<'a>(&'a str, &'a str); // (name, version)
+struct Crate<'a>(&'a str); // (name,)
 
 impl<'a> Crate<'a> {
     pub fn from_str(s: &'a str) -> Self {
         let mut parts = s.split(" ");
         let name = parts.next().unwrap();
-        let version = parts.next().unwrap();
 
-        Crate(name, version)
+        Crate(name)
     }
 
     pub fn id_str(&self) -> String {
-        format!("{} {}", self.0, self.1)
+        format!("{} ", self.0)
     }
 }
 
@@ -204,20 +185,17 @@ pub fn check_whitelist(path: &Path, cargo: &Path, bad: &mut bool) {
     let whitelist: HashSet<_> = WHITELIST.iter().cloned().collect();
 
     // Check dependencies
-    let mut unapproved = Vec::new();
+    let mut visited = BTreeSet::new();
+    let mut unapproved = BTreeSet::new();
     for &krate in WHITELIST_CRATES.iter() {
-        let mut bad = check_crate_whitelist(&whitelist, &resolve, krate);
+        let mut bad = check_crate_whitelist(&whitelist, &resolve, &mut visited, krate);
         unapproved.append(&mut bad);
     }
-
-    // For ease of reading
-    unapproved.sort_unstable();
-    unapproved.dedup();
 
     if unapproved.len() > 0 {
         println!("Dependencies not on the whitelist:");
         for dep in unapproved {
-            println!("* {} {}", dep.0, dep.1); // name version
+            println!("* {}", dep.id_str());
         }
         *bad = true;
     }
@@ -282,17 +260,25 @@ fn get_deps(path: &Path, cargo: &Path) -> Resolve {
 
 /// Checks the dependencies of the given crate from the given cargo metadata to see if they are on
 /// the whitelist. Returns a list of illegal dependencies.
-fn check_crate_whitelist<'a>(
+fn check_crate_whitelist<'a, 'b>(
     whitelist: &'a HashSet<Crate>,
     resolve: &'a Resolve,
+    visited: &'b mut BTreeSet<Crate<'a>>,
     krate: Crate<'a>,
-) -> Vec<Crate<'a>> {
+) -> BTreeSet<Crate<'a>> {
     // Will contain bad deps
-    let mut unapproved = Vec::new();
+    let mut unapproved = BTreeSet::new();
+
+    // Check if we have already visited this crate
+    if visited.contains(&krate) {
+        return unapproved;
+    }
+
+    visited.insert(krate);
 
     // If this dependency is not on the WHITELIST, add to bad set
     if !whitelist.contains(&krate) {
-        unapproved.push(krate);
+        unapproved.insert(krate);
     }
 
     // Do a DFS in the crate graph (it's a DAG, so we know we have no cycles!)
@@ -304,14 +290,10 @@ fn check_crate_whitelist<'a>(
 
     for dep in to_check.dependencies.iter() {
         let krate = Crate::from_str(dep);
-        let mut bad = check_crate_whitelist(whitelist, resolve, krate);
+        let mut bad = check_crate_whitelist(whitelist, resolve, visited, krate);
 
         unapproved.append(&mut bad);
     }
-
-    // Remove duplicates
-    unapproved.sort_unstable();
-    unapproved.dedup();
 
     unapproved
 }
