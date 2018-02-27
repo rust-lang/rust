@@ -29,8 +29,8 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_macro("multiple_items", expand)
 }
 
-fn expand(cx: &mut ExtCtxt, _: syntax_pos::Span, _: &[tokenstream::TokenTree])
-          -> Box<MacResult+'static> {
+fn expand<'cx>(cx: &'cx mut ExtCtxt, _: syntax_pos::Span, _: &[tokenstream::TokenTree])
+          -> Box<MacResult+'cx> {
     MacEager::items(SmallVector::many(vec![
         quote_item!(cx, struct Struct1;).unwrap(),
         quote_item!(cx, struct Struct2;).unwrap()
