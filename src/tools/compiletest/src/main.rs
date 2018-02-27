@@ -736,17 +736,12 @@ fn analyze_gdb(gdb: Option<String>) -> (Option<String>, Option<u32>, bool) {
         Some(ref s) => s,
     };
 
-    let version_line = Command::new(gdb)
-        .arg("--version")
-        .output()
-        .map(|output| {
-            String::from_utf8_lossy(&output.stdout)
-                .lines()
-                .next()
-                .unwrap()
-                .to_string()
-        })
-        .ok();
+    let mut version_line = None;
+    if let Ok(output) = Command::new(gdb).arg("--version").output() {
+        if let Some(first_line) = String::from_utf8_lossy(&output.stdout).lines().next() {
+            version_line = Some(first_line.to_string());
+        }
+    }
 
     let version = match version_line {
         Some(line) => extract_gdb_version(&line),
