@@ -101,6 +101,7 @@ pub fn opts() -> TargetOptions {
             "rsend.o".to_string()
         ],
         custom_unwind_resume: true,
+        abi_return_struct_as_int: true,
 
         .. Default::default()
     }

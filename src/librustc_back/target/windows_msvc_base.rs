@@ -34,6 +34,7 @@ pub fn opts() -> TargetOptions {
         pre_link_args: args,
         crt_static_allows_dylibs: true,
         crt_static_respected: true,
+        abi_return_struct_as_int: true,
 
         .. Default::default()
     }
