@@ -118,10 +118,13 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
 
         match *self.as_mono_item() {
             MonoItem::Fn(ref instance) => {
+                let entry_def_id =
+                    tcx.sess.entry_fn.borrow().map(|(id, _)| tcx.hir.local_def_id(id));
                 // If this function isn't inlined or otherwise has explicit
                 // linkage, then we'll be creating a globally shared version.
                 if self.explicit_linkage(tcx).is_some() ||
-                    !instance.def.requires_local(tcx)
+                    !instance.def.requires_local(tcx) ||
+                    Some(instance.def_id()) == entry_def_id
                 {
                     return InstantiationMode::GloballyShared  { may_conflict: false }
                 }
