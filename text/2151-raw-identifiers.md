@@ -1,7 +1,7 @@
 - Feature Name: `raw_identifiers`
 - Start Date: 2017-09-14
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#2151](https://github.com/rust-lang/rfcs/pull/2151)
+- Rust Issue: [rust-lang/rust#48589](https://github.com/rust-lang/rust/issues/48589)
 
 # Summary
 [summary]: #summary
