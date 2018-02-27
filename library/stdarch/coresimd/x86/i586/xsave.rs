@@ -13,8 +13,6 @@ extern "C" {
     fn xrstor(p: *const u8, hi: u32, lo: u32) -> ();
     #[link_name = "llvm.x86.xsetbv"]
     fn xsetbv(v: u32, hi: u32, lo: u32) -> ();
-    #[link_name = "llvm.x86.xgetbv"]
-    fn xgetbv(x: u32) -> i64;
     #[link_name = "llvm.x86.xsaveopt"]
     fn xsaveopt(p: *mut u8, hi: u32, lo: u32) -> ();
     #[link_name = "llvm.x86.xsavec"]
@@ -75,7 +73,10 @@ pub unsafe fn _xsetbv(a: u32, val: u64) {
 #[target_feature(enable = "xsave")]
 #[cfg_attr(test, assert_instr(xgetbv))]
 pub unsafe fn _xgetbv(xcr_no: u32) -> u64 {
-    xgetbv(xcr_no) as u64
+    let eax: u32;
+    let edx: u32;
+    asm!("xgetbv" : "={eax}"(eax), "={edx}"(edx) : "{ecx}"(xcr_no));
+    ((edx as u64) << 32) | (eax as u64)
 }
 
 /// Perform a full or partial save of the enabled processor states to memory at
