@@ -24,6 +24,7 @@
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(set_stdio)]
+#![feature(rustc_stack_internals)]
 
 extern crate arena;
 extern crate getopts;
@@ -1461,16 +1462,50 @@ pub fn in_rustc_thread<F, R>(f: F) -> Result<R, Box<Any + Send>>
     // Temporarily have stack size set to 16MB to deal with nom-using crates failing
     const STACK_SIZE: usize = 16 * 1024 * 1024; // 16MB
 
-    let mut cfg = thread::Builder::new().name("rustc".to_string());
+    #[cfg(unix)]
+    let spawn_thread = unsafe {
+        // Fetch the current resource limits
+        let mut rlim = libc::rlimit {
+            rlim_cur: 0,
+            rlim_max: 0,
+        };
+        if libc::getrlimit(libc::RLIMIT_STACK, &mut rlim) != 0 {
+            let err = io::Error::last_os_error();
+            error!("in_rustc_thread: error calling getrlimit: {}", err);
+            true
+        } else if rlim.rlim_max < STACK_SIZE as libc::rlim_t {
+            true
+        } else {
+            rlim.rlim_cur = STACK_SIZE as libc::rlim_t;
+            if libc::setrlimit(libc::RLIMIT_STACK, &mut rlim) != 0 {
+                let err = io::Error::last_os_error();
+                error!("in_rustc_thread: error calling setrlimit: {}", err);
+                true
+            } else {
+                std::thread::update_stack_guard();
+                false
+            }
+        }
+    };
 
-    // FIXME: Hacks on hacks. If the env is trying to override the stack size
-    // then *don't* set it explicitly.
-    if env::var_os("RUST_MIN_STACK").is_none() {
-        cfg = cfg.stack_size(STACK_SIZE);
+    #[cfg(not(unix))]
+    let spawn_thread = true;
+
+    // The or condition is added from backward compatibility.
+    if spawn_thread || env::var_os("RUST_MIN_STACK").is_some() {
+        let mut cfg = thread::Builder::new().name("rustc".to_string());
+
+        // FIXME: Hacks on hacks. If the env is trying to override the stack size
+        // then *don't* set it explicitly.
+        if env::var_os("RUST_MIN_STACK").is_none() {
+            cfg = cfg.stack_size(STACK_SIZE);
+        }
+
+        let thread = cfg.spawn(f);
+        thread.unwrap().join()
+    } else {
+        Ok(f())
     }
-
-    let thread = cfg.spawn(f);
-    thread.unwrap().join()
 }
 
 /// Get a list of extra command-line flags provided by the user, as strings.

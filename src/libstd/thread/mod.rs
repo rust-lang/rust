@@ -208,6 +208,14 @@ pub use self::local::{LocalKey, AccessError};
 #[unstable(feature = "libstd_thread_internals", issue = "0")]
 #[doc(hidden)] pub use self::local::os::Key as __OsLocalKeyInner;
 
+/// Function used for resetting the main stack guard address after setrlimit().
+/// This is POSIX specific and unlikely to be directly stabilized.
+#[unstable(feature = "rustc_stack_internals", issue = "0")]
+pub unsafe fn update_stack_guard() {
+    let main_guard = imp::guard::init();
+    thread_info::reset_guard(main_guard);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Builder
 ////////////////////////////////////////////////////////////////////////////////
