@@ -1168,12 +1168,12 @@ impl<'a, T: ?Sized + fmt::Display> fmt::Display for RefMut<'a, T> {
 /// a mutable reference to its interior and/or to mutate the interior. However, the abstraction
 /// designer must ensure that any active mutable references to the interior obtained this way does
 /// not co-exist with other active references to the interior, either mutable or not. This is often
-/// done via runtime checks. Naturally, several active immutable references to the interior can 
+/// done via runtime checks. Naturally, several active immutable references to the interior can
 /// co-exits with each other (but not with a mutable reference).
 ///
 /// To put it in other words, if a mutable reference to the contents is active, no other references
 /// can be active at the same time, and if an immutable reference to the contents is active, then
-/// only other immutable reference may be active. 
+/// only other immutable reference may be active.
 ///
 /// Note that while mutating or mutably aliasing the contents of an `& UnsafeCell<T>` is
 /// okay (provided you enforce the invariants some other way), it is still undefined behavior
