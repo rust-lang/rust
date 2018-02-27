@@ -280,8 +280,8 @@ impl Command {
         }
 
         unsafe {
-            let mut file_actions = PosixSpawnFileActions(mem::zeroed());
-            let mut attrs = PosixSpawnattr(mem::zeroed());
+            let mut file_actions = PosixSpawnFileActions(mem::uninitialized());
+            let mut attrs = PosixSpawnattr(mem::uninitialized());
 
             libc::posix_spawnattr_init(&mut attrs.0);
             libc::posix_spawn_file_actions_init(&mut file_actions.0);
@@ -302,7 +302,7 @@ impl Command {
                                                            libc::STDERR_FILENO))?;
             }
 
-            let mut set: libc::sigset_t = mem::zeroed();
+            let mut set: libc::sigset_t = mem::uninitialized();
             cvt(libc::sigemptyset(&mut set))?;
             cvt(libc::posix_spawnattr_setsigmask(&mut attrs.0,
                                                  &set))?;
