@@ -1,7 +1,7 @@
-- Feature Name: macro-at-most-once-rep
+- Feature Name: `macro-at-most-once-rep`
 - Start Date: 2018-01-17
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#2298](https://github.com/rust-lang/rfcs/pull/2298)
+- Rust Issue: [rust-lang/rust#48591](https://github.com/rust-lang/rust/issues/48591)
 
 
 Summary
