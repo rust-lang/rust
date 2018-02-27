@@ -1172,7 +1172,7 @@ impl<'a, T: ?Sized + fmt::Display> fmt::Display for RefMut<'a, T> {
 /// reference is obtained. This is often done via runtime checks.
 ///
 /// Note that while mutating or mutably aliasing the contents of an `& UnsafeCell<T>` is
-/// okay (provided you enforce the invariants some other way); it is still undefined behavior
+/// okay (provided you enforce the invariants some other way), it is still undefined behavior
 /// to have multiple `&mut UnsafeCell<T>` aliases.
 ///
 ///
