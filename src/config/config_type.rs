@@ -392,22 +392,14 @@ macro_rules! create_config {
             }
 
             fn set_license_template(&mut self) {
-                if !self.was_set().license_template_path() {
-                    return;
+                if self.was_set().license_template_path() {
+                    let lt_path = self.license_template_path();
+                    match license::load_and_compile_template(&lt_path) {
+                        Ok(re) => self.license_template = Some(re),
+                        Err(msg) => eprintln!("Warning for license template file {:?}: {}",
+                                              lt_path, msg),
+                    }
                 }
-                let lt_path = self.license_template_path();
-                let try = || -> Result<Regex, LicenseError> {
-                    let mut lt_file = File::open(&lt_path)?;
-                    let mut lt_str = String::new();
-                    lt_file.read_to_string(&mut lt_str)?;
-                    let lt_parsed = TemplateParser::parse(&lt_str)?;
-                    Ok(Regex::new(&lt_parsed)?)
-                };
-                match try() {
-                    Ok(re) => self.license_template = Some(re),
-                    Err(msg) => eprintln!("Warning for license template file {:?}: {}",
-                                          lt_path, msg),
-                };
             }
         }
 

@@ -29,7 +29,6 @@ pub mod license;
 
 use config::config_type::ConfigType;
 use config::file_lines::FileLines;
-use config::license::{LicenseError, TemplateParser};
 pub use config::lists::*;
 pub use config::options::*;
 use config::summary::Summary;

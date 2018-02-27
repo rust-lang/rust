@@ -1,7 +1,10 @@
 use std::io;
 use std::fmt;
+use std::fs::File;
+use std::io::Read;
 
 use regex;
+use regex::Regex;
 
 #[derive(Debug)]
 pub enum LicenseError {
@@ -208,6 +211,14 @@ impl TemplateParser {
         self.buffer.push(chr);
         Re(brace_nesting)
     }
+}
+
+pub fn load_and_compile_template(path: &str) -> Result<Regex, LicenseError> {
+    let mut lt_file = File::open(&path)?;
+    let mut lt_str = String::new();
+    lt_file.read_to_string(&mut lt_str)?;
+    let lt_parsed = TemplateParser::parse(&lt_str)?;
+    Ok(Regex::new(&lt_parsed)?)
 }
 
 #[cfg(test)]
