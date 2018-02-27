@@ -237,7 +237,7 @@ impl Command {
     }
 
     #[cfg(not(any(target_os = "linux", target_os = "macos")))]
-    fn posix_spawn(&mut self, stdio: &ChildPipes, envp: Option<&CStringArray>)
+    fn posix_spawn(&mut self, _stdio: &ChildPipes, _envp: Option<&CStringArray>)
         -> io::Result<Option<Process>>
     {
         Ok(None)
