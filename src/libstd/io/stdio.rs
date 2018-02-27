@@ -17,7 +17,9 @@ use io::{self, Initializer, BufReader, LineWriter};
 use sync::{Arc, Mutex, MutexGuard};
 use sys::stdio;
 use sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
-use thread::{LocalKey, LocalKeyState};
+use thread::LocalKey;
+#[allow(deprecated)]
+use thread::LocalKeyState;
 
 /// Stdout used by print! and println! macros
 thread_local! {
@@ -668,6 +670,7 @@ pub fn set_print(sink: Option<Box<Write + Send>>) -> Option<Box<Write + Send>> {
 /// thread, it will just fall back to the global stream.
 ///
 /// However, if the actual I/O causes an error, this function does panic.
+#[allow(deprecated)]
 fn print_to<T>(args: fmt::Arguments,
                local_s: &'static LocalKey<RefCell<Option<Box<Write+Send>>>>,
                global_s: fn() -> T,

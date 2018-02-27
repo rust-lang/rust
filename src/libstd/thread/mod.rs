@@ -191,7 +191,10 @@ use time::Duration;
 #[macro_use] mod local;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::local::{LocalKey, LocalKeyState, AccessError};
+pub use self::local::{LocalKey, AccessError};
+#[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
+pub use self::local::LocalKeyState;
 
 // The types used by the thread_local! macro to access TLS keys. Note that there
 // are two types, the "OS" type and the "fast" type. The OS thread local key

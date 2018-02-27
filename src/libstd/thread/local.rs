@@ -199,6 +199,7 @@ macro_rules! __thread_local_inner {
 #[unstable(feature = "thread_local_state",
            reason = "state querying was recently added",
            issue = "27716")]
+#[rustc_deprecated(since = "1.26.0", reason = "use `LocalKey::try_with` instead")]
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum LocalKeyState {
     /// All keys are in this state whenever a thread starts. Keys will
@@ -234,25 +235,19 @@ pub enum LocalKeyState {
 }
 
 /// An error returned by [`LocalKey::try_with`](struct.LocalKey.html#method.try_with).
-#[unstable(feature = "thread_local_state",
-           reason = "state querying was recently added",
-           issue = "27716")]
+#[stable(feature = "thread_local_try_with", since = "1.26.0")]
 pub struct AccessError {
     _private: (),
 }
 
-#[unstable(feature = "thread_local_state",
-           reason = "state querying was recently added",
-           issue = "27716")]
+#[stable(feature = "thread_local_try_with", since = "1.26.0")]
 impl fmt::Debug for AccessError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("AccessError").finish()
     }
 }
 
-#[unstable(feature = "thread_local_state",
-           reason = "state querying was recently added",
-           issue = "27716")]
+#[stable(feature = "thread_local_try_with", since = "1.26.0")]
 impl fmt::Display for AccessError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt("already destroyed", f)
@@ -341,6 +336,8 @@ impl<T: 'static> LocalKey<T> {
     #[unstable(feature = "thread_local_state",
                reason = "state querying was recently added",
                issue = "27716")]
+    #[rustc_deprecated(since = "1.26.0", reason = "use `LocalKey::try_with` instead")]
+    #[allow(deprecated)]
     pub fn state(&'static self) -> LocalKeyState {
         unsafe {
             match (self.inner)() {
@@ -365,11 +362,11 @@ impl<T: 'static> LocalKey<T> {
     ///
     /// This function will still `panic!()` if the key is uninitialized and the
     /// key's initializer panics.
-    #[unstable(feature = "thread_local_state",
-               reason = "state querying was recently added",
-               issue = "27716")]
+    #[stable(feature = "thread_local_try_with", since = "1.26.0")]
     pub fn try_with<F, R>(&'static self, f: F) -> Result<R, AccessError>
-                      where F: FnOnce(&T) -> R {
+    where
+        F: FnOnce(&T) -> R,
+    {
         unsafe {
             let slot = (self.inner)().ok_or(AccessError {
                 _private: (),
@@ -530,6 +527,7 @@ pub mod os {
 mod tests {
     use sync::mpsc::{channel, Sender};
     use cell::{Cell, UnsafeCell};
+    #[allow(deprecated)]
     use super::LocalKeyState;
     use thread;
 
@@ -565,6 +563,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn states() {
         struct Foo;
         impl Drop for Foo {
@@ -602,6 +601,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn circular() {
         struct S1;
         struct S2;
@@ -642,6 +642,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn self_referential() {
         struct S1;
         thread_local!(static K1: UnsafeCell<Option<S1>> = UnsafeCell::new(None));
@@ -663,6 +664,7 @@ mod tests {
     // test on macOS.
     #[test]
     #[cfg_attr(target_os = "macos", ignore)]
+    #[allow(deprecated)]
     fn dtors_in_dtors_in_dtors() {
         struct S1(Sender<()>);
         thread_local!(static K1: UnsafeCell<Option<S1>> = UnsafeCell::new(None));

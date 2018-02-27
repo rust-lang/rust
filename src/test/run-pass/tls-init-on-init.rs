@@ -11,6 +11,7 @@
 // ignore-emscripten no threads support
 
 #![feature(thread_local_state)]
+#![allow(deprecated)]
 
 use std::thread::{self, LocalKeyState};
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
