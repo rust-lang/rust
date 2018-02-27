@@ -24,7 +24,6 @@ impl Command {
                  -> io::Result<(Process, StdioPipes)> {
         use sys;
 
-
         const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
 
         let envp = self.capture_env();
