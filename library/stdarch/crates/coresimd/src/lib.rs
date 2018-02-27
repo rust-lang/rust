@@ -24,6 +24,8 @@
 #![cfg_attr(test, allow(unused_imports))]
 #![no_core]
 #![unstable(feature = "stdsimd", issue = "0")]
+#![doc(test(attr(deny(warnings))),
+       test(attr(allow(dead_code, deprecated, unused_variables, unused_mut))))]
 
 #[cfg_attr(not(test), macro_use)]
 extern crate core as _core;

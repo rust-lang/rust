@@ -868,8 +868,17 @@ pub unsafe fn _mm_movemask_ps(a: __m128) -> i32 {
 /// ```rust
 /// # #![feature(cfg_target_feature)]
 /// # #![feature(target_feature, stdsimd)]
-/// #
-/// # #[macro_use] extern crate stdsimd;
+/// # #![cfg_attr(not(dox), no_std)]
+/// # #[cfg(not(dox))]
+/// # extern crate std as real_std;
+/// # #[cfg(not(dox))]
+/// # #[macro_use]
+/// # extern crate stdsimd as std;
+/// #[cfg(target_arch = "x86")]
+/// use std::arch::x86::*;
+/// #[cfg(target_arch = "x86_64")]
+/// use std::arch::x86_64::*;
+///
 /// #
 /// # // The real main function
 /// # fn main() {
@@ -877,17 +886,10 @@ pub unsafe fn _mm_movemask_ps(a: __m128) -> i32 {
 /// #         #[target_feature(enable = "sse")]
 /// #         unsafe fn worker() {
 /// #
-/// #[cfg(target_arch = "x86")]
-/// use stdsimd::arch::x86::*;
-/// #[cfg(target_arch = "x86_64")]
-/// use stdsimd::arch::x86_64::*;
-///
-/// unsafe {
-///     let a = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
-///     let data: [f32; 4] = [5.0, 6.0, 7.0, 8.0];
-///     let r = _mm_loadh_pi(a, data[..].as_ptr() as *const _) ;
-///     // assert_eq!(r, _mm_setr_ps(1.0, 2.0, 5.0, 6.0));
-/// }
+/// let a = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
+/// let data: [f32; 4] = [5.0, 6.0, 7.0, 8.0];
+/// let r = _mm_loadh_pi(a, data[..].as_ptr() as *const _) ;
+/// // assert_eq!(r, _mm_setr_ps(1.0, 2.0, 5.0, 6.0));
 /// #
 /// #         }
 /// #         unsafe { worker(); }
@@ -922,26 +924,27 @@ pub unsafe fn _mm_loadh_pi(a: __m128, p: *const __m64) -> __m128 {
 /// ```rust
 /// # #![feature(cfg_target_feature)]
 /// # #![feature(target_feature, stdsimd)]
-/// #
-/// # #[macro_use] extern crate stdsimd;
-/// #
+/// # #![cfg_attr(not(dox), no_std)]
+/// # #[cfg(not(dox))]
+/// # extern crate std as real_std;
+/// # #[cfg(not(dox))]
+/// # #[macro_use]
+/// # extern crate stdsimd as std;
+/// #[cfg(target_arch = "x86")]
+/// use std::arch::x86::*;
+/// #[cfg(target_arch = "x86_64")]
+/// use std::arch::x86_64::*;
+///
 /// # // The real main function
 /// # fn main() {
 /// #     if is_target_feature_detected!("sse") {
 /// #         #[target_feature(enable = "sse")]
 /// #         unsafe fn worker() {
 /// #
-/// #[cfg(target_arch = "x86")]
-/// use stdsimd::arch::x86::*;
-/// #[cfg(target_arch = "x86_64")]
-/// use stdsimd::arch::x86_64::*;
-///
-/// unsafe {
-///     let a = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
-///     let data: [f32; 4] = [5.0, 6.0, 7.0, 8.0];
-///     let r = _mm_loadh_pi(a, data[..].as_ptr() as *const _) ;
-///     // assert_eq!(r, _mm_setr_ps(5.0, 6.0, 3.0, 4.0));
-/// }
+/// let a = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
+/// let data: [f32; 4] = [5.0, 6.0, 7.0, 8.0];
+/// let r = _mm_loadh_pi(a, data[..].as_ptr() as *const _) ;
+/// // assert_eq!(r, _mm_setr_ps(5.0, 6.0, 3.0, 4.0));
 /// #
 /// #         }
 /// #         unsafe { worker(); }

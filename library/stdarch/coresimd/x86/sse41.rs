@@ -552,24 +552,32 @@ pub unsafe fn _mm_ceil_ss(a: __m128, b: __m128) -> __m128 {
 ///
 /// ```
 /// #![feature(stdsimd)]
-///
-/// extern crate stdsimd;
+/// # #![cfg_attr(not(dox), no_std)]
+/// # #[cfg(not(dox))]
+/// # extern crate std as real_std;
+/// # #[cfg(not(dox))]
+/// # extern crate stdsimd as std;
 ///
 /// #[cfg(target_arch = "x86")]
-/// use stdsimd::arch::x86::*;
+/// use std::arch::x86::*;
 /// #[cfg(target_arch = "x86_64")]
-/// use stdsimd::arch::x86_64::*;
+/// use std::arch::x86_64::*;
 ///
 /// # fn main() {
 /// // round to nearest, and suppress exceptions:
-/// (_MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+/// # let _x =
+/// _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC;
 /// // round down, and suppress exceptions:
-/// (_MM_FROUND_TO_NEG_INF | _MM_FROUND_NO_EXC);
+/// # let _x =
+/// _MM_FROUND_TO_NEG_INF | _MM_FROUND_NO_EXC;
 /// // round up, and suppress exceptions:
-/// (_MM_FROUND_TO_POS_INF | _MM_FROUND_NO_EXC);
+/// # let _x =
+/// _MM_FROUND_TO_POS_INF | _MM_FROUND_NO_EXC;
 /// // truncate, and suppress exceptions:
-/// (_MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+/// # let _x =
+/// _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC;
 /// // use MXCSR.RC; see `_MM_SET_ROUNDING_MODE`:
+/// # let _x =
 /// _MM_FROUND_CUR_DIRECTION;
 /// # }
 /// ```
@@ -592,23 +600,32 @@ pub unsafe fn _mm_round_pd(a: __m128d, rounding: i32) -> __m128d {
 /// ```
 /// #![feature(stdsimd)]
 ///
-/// extern crate stdsimd;
+/// # #![cfg_attr(not(dox), no_std)]
+/// # #[cfg(not(dox))]
+/// # extern crate std as real_std;
+/// # #[cfg(not(dox))]
+/// # extern crate stdsimd as std;
 ///
 /// #[cfg(target_arch = "x86")]
-/// use stdsimd::arch::x86::*;
+/// use std::arch::x86::*;
 /// #[cfg(target_arch = "x86_64")]
-/// use stdsimd::arch::x86_64::*;
+/// use std::arch::x86_64::*;
 ///
 /// # fn main() {
 /// // round to nearest, and suppress exceptions:
-/// (_MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+/// # let _x =
+/// _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC;
 /// // round down, and suppress exceptions:
-/// (_MM_FROUND_TO_NEG_INF | _MM_FROUND_NO_EXC);
+/// # let _x =
+/// _MM_FROUND_TO_NEG_INF | _MM_FROUND_NO_EXC;
 /// // round up, and suppress exceptions:
-/// (_MM_FROUND_TO_POS_INF | _MM_FROUND_NO_EXC);
+/// # let _x =
+/// _MM_FROUND_TO_POS_INF | _MM_FROUND_NO_EXC;
 /// // truncate, and suppress exceptions:
-/// (_MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+/// # let _x =
+/// _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC;
 /// // use MXCSR.RC; see `_MM_SET_ROUNDING_MODE`:
+/// # let _x =
 /// _MM_FROUND_CUR_DIRECTION;
 /// # }
 /// ```
@@ -632,24 +649,32 @@ pub unsafe fn _mm_round_ps(a: __m128, rounding: i32) -> __m128 {
 ///
 /// ```
 /// #![feature(stdsimd)]
-///
-/// extern crate stdsimd;
+/// # #![cfg_attr(not(dox), no_std)]
+/// # #[cfg(not(dox))]
+/// # extern crate std as real_std;
+/// # #[cfg(not(dox))]
+/// # extern crate stdsimd as std;
 ///
 /// #[cfg(target_arch = "x86")]
-/// use stdsimd::arch::x86::*;
+/// use std::arch::x86::*;
 /// #[cfg(target_arch = "x86_64")]
-/// use stdsimd::arch::x86_64::*;
+/// use std::arch::x86_64::*;
 ///
 /// # fn main() {
 /// // round to nearest, and suppress exceptions:
-/// (_MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+/// # let _x =
+/// _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC;
 /// // round down, and suppress exceptions:
-/// (_MM_FROUND_TO_NEG_INF | _MM_FROUND_NO_EXC);
+/// # let _x =
+/// _MM_FROUND_TO_NEG_INF | _MM_FROUND_NO_EXC;
 /// // round up, and suppress exceptions:
-/// (_MM_FROUND_TO_POS_INF | _MM_FROUND_NO_EXC);
+/// # let _x =
+/// _MM_FROUND_TO_POS_INF | _MM_FROUND_NO_EXC;
 /// // truncate, and suppress exceptions:
-/// (_MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+/// # let _x =
+/// _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC;
 /// // use MXCSR.RC; see `_MM_SET_ROUNDING_MODE`:
+/// # let _x =
 /// _MM_FROUND_CUR_DIRECTION;
 /// # }
 /// ```
@@ -673,24 +698,32 @@ pub unsafe fn _mm_round_sd(a: __m128d, b: __m128d, rounding: i32) -> __m128d {
 ///
 /// ```
 /// #![feature(stdsimd)]
-///
-/// extern crate stdsimd;
+/// # #![cfg_attr(not(dox), no_std)]
+/// # #[cfg(not(dox))]
+/// # extern crate std as real_std;
+/// # #[cfg(not(dox))]
+/// # extern crate stdsimd as std;
 ///
 /// #[cfg(target_arch = "x86")]
-/// use stdsimd::arch::x86::*;
+/// use std::arch::x86::*;
 /// #[cfg(target_arch = "x86_64")]
-/// use stdsimd::arch::x86_64::*;
+/// use std::arch::x86_64::*;
 ///
 /// # fn main() {
 /// // round to nearest, and suppress exceptions:
-/// (_MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+/// # let _x =
+/// _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC;
 /// // round down, and suppress exceptions:
-/// (_MM_FROUND_TO_NEG_INF | _MM_FROUND_NO_EXC);
+/// # let _x =
+/// _MM_FROUND_TO_NEG_INF | _MM_FROUND_NO_EXC;
 /// // round up, and suppress exceptions:
-/// (_MM_FROUND_TO_POS_INF | _MM_FROUND_NO_EXC);
+/// # let _x =
+/// _MM_FROUND_TO_POS_INF | _MM_FROUND_NO_EXC;
 /// // truncate, and suppress exceptions:
-/// (_MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+/// # let _x =
+/// _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC;
 /// // use MXCSR.RC; see `_MM_SET_ROUNDING_MODE`:
+/// # let _x =
 /// _MM_FROUND_CUR_DIRECTION;
 /// # }
 /// ```

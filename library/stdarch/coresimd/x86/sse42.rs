@@ -100,19 +100,24 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// # #![feature(cfg_target_feature)]
 /// # #![feature(target_feature)]
 /// # #![feature(stdsimd)]
-/// #
-/// # #[macro_use] extern crate stdsimd;
-/// #
+/// # #![cfg_attr(not(dox), no_std)]
+/// # #[cfg(not(dox))]
+/// # #[macro_use]
+/// # extern crate std as real_std;
+/// # #[cfg(not(dox))]
+/// # #[macro_use]
+/// # extern crate stdsimd as std;
+/// # #[cfg(not(dox))]
+/// # use real_std::prelude::v1::*;
+/// #[cfg(target_arch = "x86")]
+/// use std::arch::x86::*;
+/// #[cfg(target_arch = "x86_64")]
+/// use std::arch::x86_64::*;
+///
 /// # fn main() {
 /// #     if is_target_feature_detected!("sse4.2") {
 /// #         #[target_feature(enable = "sse4.2")]
 /// #         unsafe fn worker() {
-///
-/// #[cfg(target_arch = "x86")]
-/// use stdsimd::arch::x86::*;
-/// #[cfg(target_arch = "x86_64")]
-/// use stdsimd::arch::x86_64::*;
-///
 /// let haystack = b"This is a long string of text data\r\n\tthat extends
 /// multiple lines";
 /// let needle = b"\r\n\t\0\0\0\0\0\0\0\0\0\0\0\0\0";
@@ -144,18 +149,22 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// # #![feature(cfg_target_feature)]
 /// # #![feature(target_feature)]
 /// # #![feature(stdsimd)]
-/// #
-/// # #[macro_use] extern crate stdsimd;
-/// #
+/// # #![cfg_attr(not(dox), no_std)]
+/// # #[cfg(not(dox))]
+/// # #[macro_use]
+/// # extern crate std as real_std;
+/// # #[cfg(not(dox))]
+/// # #[macro_use]
+/// # extern crate stdsimd as std;
+/// #[cfg(target_arch = "x86")]
+/// use std::arch::x86::*;
+/// #[cfg(target_arch = "x86_64")]
+/// use std::arch::x86_64::*;
+///
 /// # fn main() {
 /// #     if is_target_feature_detected!("sse4.2") {
 /// #         #[target_feature(enable = "sse4.2")]
 /// #         unsafe fn worker() {
-/// #[cfg(target_arch = "x86")]
-/// use stdsimd::arch::x86::*;
-/// #[cfg(target_arch = "x86_64")]
-/// use stdsimd::arch::x86_64::*;
-///
 /// // Ensure your input is 16 byte aligned
 /// let password = b"hunter2\0\0\0\0\0\0\0\0\0";
 /// let special_chars = b"!@#$%^&*()[]:;<>";
@@ -186,18 +195,22 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// # #![feature(cfg_target_feature)]
 /// # #![feature(target_feature)]
 /// # #![feature(stdsimd)]
-/// #
-/// # #[macro_use] extern crate stdsimd;
-/// #
+/// # #![cfg_attr(not(dox), no_std)]
+/// # #[cfg(not(dox))]
+/// # #[macro_use]
+/// # extern crate std as real_std;
+/// # #[cfg(not(dox))]
+/// # #[macro_use]
+/// # extern crate stdsimd as std;
+/// #[cfg(target_arch = "x86")]
+/// use std::arch::x86::*;
+/// #[cfg(target_arch = "x86_64")]
+/// use std::arch::x86_64::*;
+///
 /// # fn main() {
 /// #     if is_target_feature_detected!("sse4.2") {
 /// #         #[target_feature(enable = "sse4.2")]
 /// #         unsafe fn worker() {
-/// #[cfg(target_arch = "x86")]
-/// use stdsimd::arch::x86::*;
-/// #[cfg(target_arch = "x86_64")]
-/// use stdsimd::arch::x86_64::*;
-///
 /// # let b = b":;<=>?@[\\]^_`abc";
 /// # let b = _mm_loadu_si128(b.as_ptr() as *const _);
 ///
@@ -228,18 +241,22 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// # #![feature(cfg_target_feature)]
 /// # #![feature(target_feature)]
 /// # #![feature(stdsimd)]
-/// #
-/// # #[macro_use] extern crate stdsimd;
-/// #
+/// # #![cfg_attr(not(dox), no_std)]
+/// # #[cfg(not(dox))]
+/// # #[macro_use]
+/// # extern crate std as real_std;
+/// # #[cfg(not(dox))]
+/// # #[macro_use]
+/// # extern crate stdsimd as std;
+/// #[cfg(target_arch = "x86")]
+/// use std::arch::x86::*;
+/// #[cfg(target_arch = "x86_64")]
+/// use std::arch::x86_64::*;
+///
 /// # fn main() {
 /// #     if is_target_feature_detected!("sse4.2") {
 /// #         #[target_feature(enable = "sse4.2")]
 /// #         unsafe fn worker() {
-/// #[cfg(target_arch = "x86")]
-/// use stdsimd::arch::x86::*;
-/// #[cfg(target_arch = "x86_64")]
-/// use stdsimd::arch::x86_64::*;
-///
 /// # let mut some_utf16_words = [0u16; 8];
 /// # let mut more_utf16_words = [0u16; 8];
 /// # '❤'.encode_utf16(&mut some_utf16_words);
@@ -422,18 +439,22 @@ pub unsafe fn _mm_cmpestrm(
 /// # #![feature(cfg_target_feature)]
 /// # #![feature(target_feature)]
 /// # #![feature(stdsimd)]
-/// #
-/// # #[macro_use] extern crate stdsimd;
-/// #
+/// # #![cfg_attr(not(dox), no_std)]
+/// # #[cfg(not(dox))]
+/// # #[macro_use]
+/// # extern crate std as real_std;
+/// # #[cfg(not(dox))]
+/// # #[macro_use]
+/// # extern crate stdsimd as std;
+/// #[cfg(target_arch = "x86")]
+/// use std::arch::x86::*;
+/// #[cfg(target_arch = "x86_64")]
+/// use std::arch::x86_64::*;
+///
 /// # fn main() {
 /// #     if is_target_feature_detected!("sse4.2") {
 /// #         #[target_feature(enable = "sse4.2")]
 /// #         unsafe fn worker() {
-///
-/// #[cfg(target_arch = "x86")]
-/// use stdsimd::arch::x86::*;
-/// #[cfg(target_arch = "x86_64")]
-/// use stdsimd::arch::x86_64::*;
 ///
 /// // The string we want to find a substring in
 /// let haystack = b"Split \r\n\t line  ";

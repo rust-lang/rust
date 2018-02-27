@@ -2076,18 +2076,21 @@ pub unsafe fn _mm256_shuffle_epi8(a: __m256i, b: __m256i) -> __m256i {
 /// ```rust
 /// # #![feature(cfg_target_feature)]
 /// # #![feature(target_feature, stdsimd)]
-/// #
-/// # #[macro_use] extern crate stdsimd;
-/// #
+/// # #![cfg_attr(not(dox), no_std)]
+/// # #[cfg(not(dox))]
+/// # extern crate std as real_std;
+/// # #[cfg(not(dox))]
+/// # #[macro_use]
+/// # extern crate stdsimd as std;
+/// #[cfg(target_arch = "x86")]
+/// use std::arch::x86::*;
+/// #[cfg(target_arch = "x86_64")]
+/// use std::arch::x86_64::*;
+///
 /// # fn main() {
 /// #     if is_target_feature_detected!("avx2") {
 /// #         #[target_feature(enable = "avx2")]
 /// #         unsafe fn worker() {
-/// #[cfg(target_arch = "x86")]
-/// use stdsimd::arch::x86::*;
-/// #[cfg(target_arch = "x86_64")]
-/// use stdsimd::arch::x86_64::*;
-///
 /// let a = _mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7);
 ///
 /// let c1 = _mm256_shuffle_epi32(a, 0b00_11_10_01);
@@ -2682,18 +2685,21 @@ pub unsafe fn _mm256_subs_epu8(a: __m256i, b: __m256i) -> __m256i {
 /// ```rust
 /// # #![feature(cfg_target_feature)]
 /// # #![feature(target_feature, stdsimd)]
-/// #
-/// # #[macro_use] extern crate stdsimd;
-/// #
+/// # #![cfg_attr(not(dox), no_std)]
+/// # #[cfg(not(dox))]
+/// # extern crate std as real_std;
+/// # #[cfg(not(dox))]
+/// # #[macro_use]
+/// # extern crate stdsimd as std;
+/// #[cfg(target_arch = "x86")]
+/// use std::arch::x86::*;
+/// #[cfg(target_arch = "x86_64")]
+/// use std::arch::x86_64::*;
+///
 /// # fn main() {
 /// #     if is_target_feature_detected!("avx2") {
 /// #         #[target_feature(enable = "avx2")]
 /// #         unsafe fn worker() {
-/// #[cfg(target_arch = "x86")]
-/// use stdsimd::arch::x86::*;
-/// #[cfg(target_arch = "x86_64")]
-/// use stdsimd::arch::x86_64::*;
-///
 /// let a = _mm256_setr_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 /// 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31);
 /// let b = _mm256_setr_epi8(0,-1,-2,-3,-4,-5,-6,-7,-8,-9,-10,-11,-12,-13,-14,-15,
@@ -2731,18 +2737,21 @@ pub unsafe fn _mm256_unpackhi_epi8(a: __m256i, b: __m256i) -> __m256i {
 /// ```rust
 /// # #![feature(cfg_target_feature)]
 /// # #![feature(target_feature, stdsimd)]
-/// #
-/// # #[macro_use] extern crate stdsimd;
-/// #
+/// # #![cfg_attr(not(dox), no_std)]
+/// # #[cfg(not(dox))]
+/// # extern crate std as real_std;
+/// # #[cfg(not(dox))]
+/// # #[macro_use]
+/// # extern crate stdsimd as std;
+/// #[cfg(target_arch = "x86")]
+/// use std::arch::x86::*;
+/// #[cfg(target_arch = "x86_64")]
+/// use std::arch::x86_64::*;
+///
 /// # fn main() {
 /// #     if is_target_feature_detected!("avx2") {
 /// #         #[target_feature(enable = "avx2")]
 /// #         unsafe fn worker() {
-/// #[cfg(target_arch = "x86")]
-/// use stdsimd::arch::x86::*;
-/// #[cfg(target_arch = "x86_64")]
-/// use stdsimd::arch::x86_64::*;
-///
 /// let a = _mm256_setr_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 /// 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31);
 /// let b = _mm256_setr_epi8(0,-1,-2,-3,-4,-5,-6,-7,-8,-9,-10,-11,-12,-13,-14,-15,
@@ -2779,18 +2788,21 @@ pub unsafe fn _mm256_unpacklo_epi8(a: __m256i, b: __m256i) -> __m256i {
 /// ```rust
 /// # #![feature(cfg_target_feature)]
 /// # #![feature(target_feature, stdsimd)]
-/// #
-/// # #[macro_use] extern crate stdsimd;
-/// #
+/// # #![cfg_attr(not(dox), no_std)]
+/// # #[cfg(not(dox))]
+/// # extern crate std as real_std;
+/// # #[cfg(not(dox))]
+/// # #[macro_use]
+/// # extern crate stdsimd as std;
+/// #[cfg(target_arch = "x86")]
+/// use std::arch::x86::*;
+/// #[cfg(target_arch = "x86_64")]
+/// use std::arch::x86_64::*;
+///
 /// # fn main() {
 /// #     if is_target_feature_detected!("avx2") {
 /// #         #[target_feature(enable = "avx2")]
 /// #         unsafe fn worker() {
-/// #[cfg(target_arch = "x86")]
-/// use stdsimd::arch::x86::*;
-/// #[cfg(target_arch = "x86_64")]
-/// use stdsimd::arch::x86_64::*;
-///
 /// let a = _mm256_setr_epi16(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
 /// let b = _mm256_setr_epi16(0,-1,-2,-3,-4,-5,-6,-7,-8,-9,-10,-11,-12,-13,-14,-15);
 ///
@@ -2823,17 +2835,21 @@ pub unsafe fn _mm256_unpackhi_epi16(a: __m256i, b: __m256i) -> __m256i {
 /// ```rust
 /// # #![feature(cfg_target_feature)]
 /// # #![feature(target_feature, stdsimd)]
-/// #
-/// # #[macro_use] extern crate stdsimd;
-/// #
+/// # #![cfg_attr(not(dox), no_std)]
+/// # #[cfg(not(dox))]
+/// # extern crate std as real_std;
+/// # #[cfg(not(dox))]
+/// # #[macro_use]
+/// # extern crate stdsimd as std;
+/// #[cfg(target_arch = "x86")]
+/// use std::arch::x86::*;
+/// #[cfg(target_arch = "x86_64")]
+/// use std::arch::x86_64::*;
+///
 /// # fn main() {
 /// #     if is_target_feature_detected!("avx2") {
 /// #         #[target_feature(enable = "avx2")]
 /// #         unsafe fn worker() {
-/// #[cfg(target_arch = "x86")]
-/// use stdsimd::arch::x86::*;
-/// #[cfg(target_arch = "x86_64")]
-/// use stdsimd::arch::x86_64::*;
 ///
 /// let a = _mm256_setr_epi16(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
 /// let b = _mm256_setr_epi16(0,-1,-2,-3,-4,-5,-6,-7,-8,-9,-10,-11,-12,-13,-14,-15);
@@ -2867,18 +2883,21 @@ pub unsafe fn _mm256_unpacklo_epi16(a: __m256i, b: __m256i) -> __m256i {
 /// ```rust
 /// # #![feature(cfg_target_feature)]
 /// # #![feature(target_feature, stdsimd)]
-/// #
-/// # #[macro_use] extern crate stdsimd;
-/// #
+/// # #![cfg_attr(not(dox), no_std)]
+/// # #[cfg(not(dox))]
+/// # extern crate std as real_std;
+/// # #[cfg(not(dox))]
+/// # #[macro_use]
+/// # extern crate stdsimd as std;
+/// #[cfg(target_arch = "x86")]
+/// use std::arch::x86::*;
+/// #[cfg(target_arch = "x86_64")]
+/// use std::arch::x86_64::*;
+///
 /// # fn main() {
 /// #     if is_target_feature_detected!("avx2") {
 /// #         #[target_feature(enable = "avx2")]
 /// #         unsafe fn worker() {
-/// #[cfg(target_arch = "x86")]
-/// use stdsimd::arch::x86::*;
-/// #[cfg(target_arch = "x86_64")]
-/// use stdsimd::arch::x86_64::*;
-///
 /// let a = _mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7);
 /// let b = _mm256_setr_epi32(0,-1,-2,-3,-4,-5,-6,-7);
 ///
@@ -2910,18 +2929,21 @@ pub unsafe fn _mm256_unpackhi_epi32(a: __m256i, b: __m256i) -> __m256i {
 /// ```rust
 /// # #![feature(cfg_target_feature)]
 /// # #![feature(target_feature, stdsimd)]
-/// #
-/// # #[macro_use] extern crate stdsimd;
-/// #
+/// # #![cfg_attr(not(dox), no_std)]
+/// # #[cfg(not(dox))]
+/// # extern crate std as real_std;
+/// # #[cfg(not(dox))]
+/// # #[macro_use]
+/// # extern crate stdsimd as std;
+/// #[cfg(target_arch = "x86")]
+/// use std::arch::x86::*;
+/// #[cfg(target_arch = "x86_64")]
+/// use std::arch::x86_64::*;
+///
 /// # fn main() {
 /// #     if is_target_feature_detected!("avx2") {
 /// #         #[target_feature(enable = "avx2")]
 /// #         unsafe fn worker() {
-/// #[cfg(target_arch = "x86")]
-/// use stdsimd::arch::x86::*;
-/// #[cfg(target_arch = "x86_64")]
-/// use stdsimd::arch::x86_64::*;
-///
 /// let a = _mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7);
 /// let b = _mm256_setr_epi32(0,-1,-2,-3,-4,-5,-6,-7);
 ///
@@ -2950,18 +2972,21 @@ pub unsafe fn _mm256_unpacklo_epi32(a: __m256i, b: __m256i) -> __m256i {
 /// ```rust
 /// # #![feature(cfg_target_feature)]
 /// # #![feature(target_feature, stdsimd)]
-/// #
-/// # #[macro_use] extern crate stdsimd;
-/// #
+/// # #![cfg_attr(not(dox), no_std)]
+/// # #[cfg(not(dox))]
+/// # extern crate std as real_std;
+/// # #[cfg(not(dox))]
+/// # #[macro_use]
+/// # extern crate stdsimd as std;
+/// #[cfg(target_arch = "x86")]
+/// use std::arch::x86::*;
+/// #[cfg(target_arch = "x86_64")]
+/// use std::arch::x86_64::*;
+///
 /// # fn main() {
 /// #     if is_target_feature_detected!("avx2") {
 /// #         #[target_feature(enable = "avx2")]
 /// #         unsafe fn worker() {
-/// #[cfg(target_arch = "x86")]
-/// use stdsimd::arch::x86::*;
-/// #[cfg(target_arch = "x86_64")]
-/// use stdsimd::arch::x86_64::*;
-///
 /// let a = _mm256_setr_epi64x(0, 1, 2, 3);
 /// let b = _mm256_setr_epi64x(0,-1,-2,-3);
 ///
@@ -2989,18 +3014,21 @@ pub unsafe fn _mm256_unpackhi_epi64(a: __m256i, b: __m256i) -> __m256i {
 /// ```rust
 /// # #![feature(cfg_target_feature)]
 /// # #![feature(target_feature, stdsimd)]
-/// #
-/// # #[macro_use] extern crate stdsimd;
-/// #
+/// # #![cfg_attr(not(dox), no_std)]
+/// # #[cfg(not(dox))]
+/// # extern crate std as real_std;
+/// # #[cfg(not(dox))]
+/// # #[macro_use]
+/// # extern crate stdsimd as std;
+/// #[cfg(target_arch = "x86")]
+/// use std::arch::x86::*;
+/// #[cfg(target_arch = "x86_64")]
+/// use std::arch::x86_64::*;
+///
 /// # fn main() {
 /// #     if is_target_feature_detected!("avx2") {
 /// #         #[target_feature(enable = "avx2")]
 /// #         unsafe fn worker() {
-/// #[cfg(target_arch = "x86")]
-/// use stdsimd::arch::x86::*;
-/// #[cfg(target_arch = "x86_64")]
-/// use stdsimd::arch::x86_64::*;
-///
 /// let a = _mm256_setr_epi64x(0, 1, 2, 3);
 /// let b = _mm256_setr_epi64x(0,-1,-2,-3);
 ///
