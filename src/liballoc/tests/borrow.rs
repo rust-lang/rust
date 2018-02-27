@@ -13,7 +13,6 @@ use std::path::{Path, PathBuf};
 use std::ffi::{CStr, CString, OsStr, OsString};
 
 #[test]
-#[ignore]
 fn test_cow_from() {
     const MSG: &'static str = "Hello, World";
     let s = MSG.to_string();
