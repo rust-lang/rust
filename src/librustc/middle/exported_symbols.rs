@@ -17,7 +17,7 @@ use ty;
 /// kind of crate, including cdylibs which export very few things.
 /// `Rust` will only be exported if the crate produced is a Rust
 /// dylib.
-#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone, RustcEncodable, RustcDecodable)]
 pub enum SymbolExportLevel {
     C,
     Rust,
@@ -39,7 +39,7 @@ impl SymbolExportLevel {
     }
 }
 
-#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone, RustcEncodable, RustcDecodable)]
 pub enum ExportedSymbol {
     NonGeneric(DefId),
     NoDefId(ty::SymbolName),

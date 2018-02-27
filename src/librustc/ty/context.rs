@@ -2460,4 +2460,12 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         assert_eq!(cnum, LOCAL_CRATE);
         Lrc::new(tcx.sess.features_untracked().clone())
     };
+    providers.is_panic_runtime = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        attr::contains_name(tcx.hir.krate_attrs(), "panic_runtime")
+    };
+    providers.is_compiler_builtins = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        attr::contains_name(tcx.hir.krate_attrs(), "compiler_builtins")
+    };
 }

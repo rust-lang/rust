@@ -18,6 +18,7 @@ use rustc::ty::maps::QueryConfig;
 use rustc::middle::cstore::{CrateStore, DepKind,
                             MetadataLoader, LinkMeta,
                             LoadedMacro, EncodedMetadata, NativeLibraryKind};
+use rustc::middle::exported_symbols::ExportedSymbol;
 use rustc::middle::stability::DeprecationEntry;
 use rustc::hir::def;
 use rustc::session::{CrateDisambiguator, Session};
@@ -31,6 +32,7 @@ use rustc::util::nodemap::DefIdMap;
 
 use std::any::Any;
 use rustc_data_structures::sync::Lrc;
+use std::sync::Arc;
 
 use syntax::ast;
 use syntax::attr;
@@ -176,7 +178,21 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     extern_crate => { Lrc::new(cdata.extern_crate.get()) }
     is_no_builtins => { cdata.is_no_builtins(tcx.sess) }
     impl_defaultness => { cdata.get_impl_defaultness(def_id.index) }
-    reachable_non_generics => { Lrc::new(cdata.reachable_non_generics()) }
+    reachable_non_generics => {
+        let reachable_non_generics = tcx
+            .exported_symbols(cdata.cnum)
+            .iter()
+            .filter_map(|&(exported_symbol, _)| {
+                if let ExportedSymbol::NonGeneric(def_id) = exported_symbol {
+                    return Some(def_id)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        Lrc::new(reachable_non_generics)
+    }
     native_libraries => { Lrc::new(cdata.get_native_libraries(tcx.sess)) }
     plugin_registrar_fn => {
         cdata.root.plugin_registrar_fn.map(|index| {
@@ -235,6 +251,20 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
     has_copy_closures => { cdata.has_copy_closures(tcx.sess) }
     has_clone_closures => { cdata.has_clone_closures(tcx.sess) }
+
+    exported_symbols => {
+        let cnum = cdata.cnum;
+        assert!(cnum != LOCAL_CRATE);
+
+        // If this crate is a plugin and/or a custom derive crate, then
+        // we're not even going to link those in so we skip those crates.
+        if cdata.root.plugin_registrar_fn.is_some() ||
+           cdata.root.macro_derive_registrar.is_some() {
+            return Arc::new(Vec::new())
+        }
+
+        Arc::new(cdata.exported_symbols())
+    }
 }
 
 pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {

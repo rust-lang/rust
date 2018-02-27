@@ -20,6 +20,7 @@ use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId, LOCAL_CRATE
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::ich::Fingerprint;
 use rustc::middle::dependency_format::Linkage;
+use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc::middle::lang_items;
 use rustc::mir;
 use rustc::traits::specialization_graph;
@@ -27,7 +28,7 @@ use rustc::ty::{self, Ty, TyCtxt, ReprOptions};
 use rustc::ty::codec::{self as ty_codec, TyEncoder};
 
 use rustc::session::config::{self, CrateTypeProcMacro};
-use rustc::util::nodemap::{FxHashMap, DefIdSet};
+use rustc::util::nodemap::FxHashMap;
 
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_serialize::{Encodable, Encoder, SpecializedEncoder, opaque};
@@ -394,11 +395,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         // Encode exported symbols info.
         i = self.position();
-        let reachable_non_generics = self.tcx.reachable_non_generics(LOCAL_CRATE);
-        let reachable_non_generics = self.tracked(
-            IsolatedEncoder::encode_reachable_non_generics,
-            &reachable_non_generics);
-        let reachable_non_generics_bytes = self.position() - i;
+        let exported_symbols = self.tcx.exported_symbols(LOCAL_CRATE);
+        let exported_symbols = self.tracked(
+            IsolatedEncoder::encode_exported_symbols,
+            &exported_symbols);
+        let exported_symbols_bytes = self.position() - i;
 
         // Encode and index the items.
         i = self.position();
@@ -442,7 +443,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             codemap,
             def_path_table,
             impls,
-            reachable_non_generics,
+            exported_symbols,
             index,
         });
 
@@ -462,7 +463,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             println!("          native bytes: {}", native_lib_bytes);
             println!("         codemap bytes: {}", codemap_bytes);
             println!("            impl bytes: {}", impl_bytes);
-            println!("    exp. symbols bytes: {}", reachable_non_generics_bytes);
+            println!("    exp. symbols bytes: {}", exported_symbols_bytes);
             println!("  def-path table bytes: {}", def_path_table_bytes);
             println!("            item bytes: {}", item_bytes);
             println!("           index bytes: {}", index_bytes);
@@ -1388,13 +1389,10 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
     // middle::reachable module but filters out items that either don't have a
     // symbol associated with them (they weren't translated) or if they're an FFI
     // definition (as that's not defined in this crate).
-    fn encode_reachable_non_generics(&mut self,
-                                     reachable_non_generics: &DefIdSet)
-                                     -> LazySeq<DefIndex> {
-        self.lazy_seq(reachable_non_generics.iter().map(|def_id| {
-            debug_assert!(def_id.is_local());
-            def_id.index
-        }))
+    fn encode_exported_symbols(&mut self,
+                               exported_symbols: &[(ExportedSymbol, SymbolExportLevel)])
+                               -> LazySeq<(ExportedSymbol, SymbolExportLevel)> {
+        self.lazy_seq(exported_symbols.iter().cloned())
     }
 
     fn encode_dylib_dependency_formats(&mut self, _: ()) -> LazySeq<Option<LinkagePreference>> {
