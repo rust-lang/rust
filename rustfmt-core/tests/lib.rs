@@ -211,12 +211,7 @@ fn idempotence_tests() {
 #[test]
 fn self_tests() {
     let mut files = get_test_files(Path::new("tests"), false);
-    let bin_directories = vec![
-        "cargo-fmt",
-        "git-rustfmt",
-        "rustfmt-bin",
-        "rustfmt-format-diff",
-    ];
+    let bin_directories = vec!["git-rustfmt", "rustfmt-format-diff"];
     for dir in bin_directories {
         let mut path = PathBuf::from("..");
         path.push(dir);
