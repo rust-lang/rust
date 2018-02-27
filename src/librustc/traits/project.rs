@@ -142,8 +142,11 @@ impl<'tcx> ProjectionTyCandidateSet<'tcx> {
                 true
             }
             Single(current) => {
-                // No duplicates are expected.
-                assert_ne!(current, &candidate);
+                // Duplicates can happen inside ParamEnv. In the case, we
+                // perform a lazy deduplication.
+                if current == &candidate {
+                    return false;
+                }
                 // Prefer where-clauses. As in select, if there are multiple
                 // candidates, we prefer where-clause candidates over impls.  This
                 // may seem a bit surprising, since impls are the source of
