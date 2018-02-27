@@ -17,7 +17,7 @@ use rustc::hir::map::definitions::DefPathData;
 use rustc::infer::InferCtxt;
 use rustc::ty::{self, ParamEnv, TyCtxt};
 use rustc::ty::maps::Providers;
-use rustc::mir::{AssertMessage, BasicBlock, BorrowKind, Location, Place};
+use rustc::mir::{AssertMessage, BasicBlock, BorrowKind, Local, Location, Place, Visitor};
 use rustc::mir::{Mir, Mutability, Operand, Projection, ProjectionElem, Rvalue};
 use rustc::mir::{Field, Statement, StatementKind, Terminator, TerminatorKind};
 use rustc::mir::ClosureRegionRequirements;
@@ -55,6 +55,20 @@ mod flows;
 mod prefixes;
 
 use std::borrow::Cow;
+
+struct FindLocalAssignmentVisitor {
+    from: Local,
+    loc: Vec<Location>,
+}
+
+impl<'tcx> Visitor<'tcx> for FindLocalAssignmentVisitor {
+    fn visit_local(&mut self,
+                   local: &mut Local,
+                   _: PlaceContext<'tcx>,
+                   _: Location) {
+         Visitor::visit_local(local,)
+    }
+}
 
 pub(crate) mod nll;
 
@@ -2271,3 +2285,11 @@ impl ContextKind {
         }
     }
 }
+
+impl Mir { 
+    fn find_assignments(&self, local: Local) -> Vec<Location> 
+    { 
+
+    }
+}
+
