@@ -687,7 +687,6 @@ impl_disk_cacheable_query!(borrowck, |def_id| def_id.is_local());
 impl_disk_cacheable_query!(mir_borrowck, |def_id| def_id.is_local());
 impl_disk_cacheable_query!(mir_const_qualif, |def_id| def_id.is_local());
 impl_disk_cacheable_query!(check_match, |def_id| def_id.is_local());
-impl_disk_cacheable_query!(contains_extern_indicator, |_| true);
 impl_disk_cacheable_query!(def_symbol_name, |_| true);
 impl_disk_cacheable_query!(type_of, |def_id| def_id.is_local());
 impl_disk_cacheable_query!(predicates_of, |def_id| def_id.is_local());

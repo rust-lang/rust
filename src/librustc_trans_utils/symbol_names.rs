@@ -120,11 +120,6 @@ pub fn provide(providers: &mut Providers) {
         def_symbol_name,
         symbol_name,
 
-        contains_extern_indicator: |tcx, id| {
-            attr::contains_name(&tcx.get_attrs(id), "no_mangle") ||
-                tcx.trans_fn_attrs(id).export_name.is_some()
-        },
-
         ..*providers
     };
 }

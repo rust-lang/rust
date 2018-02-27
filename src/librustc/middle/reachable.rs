@@ -233,7 +233,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     false
                 };
                 let def_id = self.tcx.hir.local_def_id(item.id);
-                let is_extern = self.tcx.contains_extern_indicator(def_id);
+                let is_extern = self.tcx.trans_fn_attrs(def_id).contains_extern_indicator();
                 if reachable || is_extern {
                     self.reachable_symbols.insert(search_item);
                 }

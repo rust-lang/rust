@@ -2227,6 +2227,7 @@ bitflags! {
         const UNWIND                    = 0b0000_0100;
         const RUSTC_ALLOCATOR_NOUNWIND  = 0b0000_1000;
         const NAKED                     = 0b0001_0000;
+        const NO_MANGLE                 = 0b0010_0000;
     }
 }
 
@@ -2245,6 +2246,11 @@ impl TransFnAttrs {
             InlineAttr::Hint | InlineAttr::Always => true,
             InlineAttr::None | InlineAttr::Never => false,
         }
+    }
+
+    /// True if `#[no_mangle]` or `#[export_name(...)]` is present.
+    pub fn contains_extern_indicator(&self) -> bool {
+        self.flags.contains(TransFnAttrFlags::NO_MANGLE) || self.export_name.is_some()
     }
 }
 

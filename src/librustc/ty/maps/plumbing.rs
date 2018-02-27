@@ -926,9 +926,6 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::CollectAndPartitionTranslationItems => {
             force!(collect_and_partition_translation_items, LOCAL_CRATE);
         }
-        DepKind::ContainsExternIndicator => {
-            force!(contains_extern_indicator, def_id!());
-        }
         DepKind::IsTranslatedItem => { force!(is_translated_item, def_id!()); }
         DepKind::OutputFilenames => { force!(output_filenames, LOCAL_CRATE); }
 
@@ -997,7 +994,6 @@ impl_load_from_cache!(
     MirConstQualif => mir_const_qualif,
     SymbolName => def_symbol_name,
     ConstIsRvaluePromotableToStatic => const_is_rvalue_promotable_to_static,
-    ContainsExternIndicator => contains_extern_indicator,
     CheckMatch => check_match,
     TypeOfItem => type_of,
     GenericsOfItem => generics_of,

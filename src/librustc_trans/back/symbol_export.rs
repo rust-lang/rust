@@ -256,7 +256,8 @@ fn symbol_export_level_provider(tcx: TyCtxt, sym_def_id: DefId) -> SymbolExportL
     // special symbols in the standard library for various plumbing between
     // core/std/allocators/etc. For example symbols used to hook up allocation
     // are not considered for export
-    let is_extern = tcx.contains_extern_indicator(sym_def_id);
+    let trans_fn_attrs = tcx.trans_fn_attrs(sym_def_id);
+    let is_extern = trans_fn_attrs.contains_extern_indicator();
     let std_internal = attr::contains_name(&tcx.get_attrs(sym_def_id),
                                            "rustc_std_internal_symbol");
     if is_extern && !std_internal {
