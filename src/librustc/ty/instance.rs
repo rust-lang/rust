@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use hir::def_id::DefId;
-use ty::{self, TyCtxt, Ty, TypeFoldable, Substs};
+use ty::{self, Ty, TypeFoldable, Substs, TyCtxt};
 use ty::subst::Kind;
 use traits;
 use syntax::abi::Abi;

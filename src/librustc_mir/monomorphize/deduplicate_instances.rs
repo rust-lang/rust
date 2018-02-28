@@ -58,7 +58,7 @@ pub(crate) fn collapse_interchangable_instances<'a, 'tcx>(
                     if false /*param.name.as_str().starts_with("<")*/ {
                         ty.into()
                     } else {
-                        #[allow(unused_mut)]
+                        /*#[allow(unused_mut)]
                         let mut mir = Vec::new();
                         ::util::write_mir_pretty(tcx, Some(instance.def_id()), &mut mir).unwrap();
                         let mut generics = Some(tcx.generics_of(instance.def_id()));
@@ -85,7 +85,7 @@ pub(crate) fn collapse_interchangable_instances<'a, 'tcx>(
                             instance,
                             pretty_generics,
                             String::from_utf8_lossy(&mir)
-                        ));
+                        ));*/
                         tcx.mk_ty(ty::TyNever)
                     }
                 }
