@@ -227,9 +227,13 @@ variety of channels on Mozilla's IRC network, irc.mozilla.org. The
 most popular channel is [#rust], a venue for general discussion about
 Rust. And a good place to ask for help would be [#rust-beginners].
 
+Also, the [rustc guide] might be a good place to start if you want to
+find out how various parts of the compiler work.
+
 [IRC]: https://en.wikipedia.org/wiki/Internet_Relay_Chat
 [#rust]: irc://irc.mozilla.org/rust
 [#rust-beginners]: irc://irc.mozilla.org/rust-beginners
+[rustc-guide]: https://rust-lang-nursery.github.io/rustc-guide/about-this-guide.html
 
 ## License
 [license]: #license

@@ -1202,6 +1202,10 @@ kbd {
 	top: 19px;
 }
 
+.theme-picker button {
+	outline: none;
+}
+
 #theme-picker {
 	padding: 4px;
 	width: 27px;

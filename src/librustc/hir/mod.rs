@@ -602,9 +602,9 @@ pub type CrateConfig = HirVec<P<MetaItem>>;
 /// The top-level data structure that stores the entire contents of
 /// the crate currently being compiled.
 ///
-/// For more details, see the module-level [README].
+/// For more details, see the [rustc guide].
 ///
-/// [README]: https://github.com/rust-lang/rust/blob/master/src/librustc/hir/README.md.
+/// [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/hir.html
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
 pub struct Crate {
     pub module: Mod,

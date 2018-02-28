@@ -635,6 +635,46 @@ $EndFeature, "
         }
 
         doc_comment! {
+            concat!("Checked exponentiation. Computes `self.pow(exp)`, returning `None` if
+overflow occurred.
+
+# Examples
+
+Basic usage:
+
+```
+#![feature(no_panic_pow)]
+", $Feature, "assert_eq!(8", stringify!($SelfT), ".checked_pow(2), Some(64));
+assert_eq!(", stringify!($SelfT), "::max_value().checked_pow(2), None);",
+$EndFeature, "
+```"),
+
+            #[unstable(feature = "no_panic_pow", issue = "48320")]
+            #[inline]
+            pub fn checked_pow(self, mut exp: u32) -> Option<Self> {
+                let mut base = self;
+                let mut acc: Self = 1;
+
+                while exp > 1 {
+                    if (exp & 1) == 1 {
+                        acc = acc.checked_mul(base)?;
+                    }
+                    exp /= 2;
+                    base = base.checked_mul(base)?;
+                }
+
+                // Deal with the final bit of the exponent separately, since
+                // squaring the base afterwards is not necessary and may cause a
+                // needless overflow.
+                if exp == 1 {
+                    acc = acc.checked_mul(base)?;
+                }
+
+                Some(acc)
+            }
+        }
+
+        doc_comment! {
             concat!("Saturating integer addition. Computes `self + rhs`, saturating at the numeric
 bounds instead of overflowing.
 
@@ -710,6 +750,34 @@ $EndFeature, "
                         Self::min_value()
                     }
                 })
+            }
+        }
+
+        doc_comment! {
+            concat!("Saturating integer exponentiation. Computes `self.pow(exp)`,
+saturating at the numeric bounds instead of overflowing.
+
+# Examples
+
+Basic usage:
+
+```
+#![feature(no_panic_pow)]
+", $Feature, "use std::", stringify!($SelfT), ";
+
+assert_eq!((-4", stringify!($SelfT), ").saturating_pow(3), -64);
+assert_eq!(", stringify!($SelfT), "::MIN.saturating_pow(2), ", stringify!($SelfT), "::MAX);
+assert_eq!(", stringify!($SelfT), "::MIN.saturating_pow(3), ", stringify!($SelfT), "::MIN);",
+$EndFeature, "
+```"),
+            #[unstable(feature = "no_panic_pow", issue = "48320")]
+            #[inline]
+            pub fn saturating_pow(self, exp: u32) -> Self {
+                match self.checked_pow(exp) {
+                    Some(x) => x,
+                    None if self < 0 && exp % 2 == 1 => Self::min_value(),
+                    None => Self::max_value(),
+                }
             }
         }
 
@@ -944,6 +1012,46 @@ $EndFeature, "
                 } else {
                     self
                 }
+            }
+        }
+
+        doc_comment! {
+            concat!("Wrapping (modular) exponentiation. Computes `self.pow(exp)`,
+wrapping around at the boundary of the type.
+
+# Examples
+
+Basic usage:
+
+```
+#![feature(no_panic_pow)]
+", $Feature, "assert_eq!(3", stringify!($SelfT), ".wrapping_pow(4), 81);
+assert_eq!(3i8.wrapping_pow(5), -13);
+assert_eq!(3i8.wrapping_pow(6), -39);",
+$EndFeature, "
+```"),
+            #[unstable(feature = "no_panic_pow", issue = "48320")]
+            #[inline]
+            pub fn wrapping_pow(self, mut exp: u32) -> Self {
+                let mut base = self;
+                let mut acc: Self = 1;
+
+                while exp > 1 {
+                    if (exp & 1) == 1 {
+                        acc = acc.wrapping_mul(base);
+                    }
+                    exp /= 2;
+                    base = base.wrapping_mul(base);
+                }
+
+                // Deal with the final bit of the exponent separately, since
+                // squaring the base afterwards is not necessary and may cause a
+                // needless overflow.
+                if exp == 1 {
+                    acc = acc.wrapping_mul(base);
+                }
+
+                acc
             }
         }
 
@@ -1196,6 +1304,56 @@ $EndFeature, "
                 } else {
                     (self, false)
                 }
+            }
+        }
+
+        doc_comment! {
+            concat!("Raises self to the power of `exp`, using exponentiation by squaring.
+
+Returns a tuple of the exponentiation along with a bool indicating
+whether an overflow happened.
+
+# Examples
+
+Basic usage:
+
+```
+#![feature(no_panic_pow)]
+", $Feature, "assert_eq!(3", stringify!($SelfT), ".overflowing_pow(4), (81, false));
+assert_eq!(3i8.overflowing_pow(5), (-13, true));",
+$EndFeature, "
+```"),
+            #[unstable(feature = "no_panic_pow", issue = "48320")]
+            #[inline]
+            pub fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
+                let mut base = self;
+                let mut acc: Self = 1;
+                let mut overflown = false;
+                // Scratch space for storing results of overflowing_mul.
+                let mut r;
+
+                while exp > 1 {
+                    if (exp & 1) == 1 {
+                        r = acc.overflowing_mul(base);
+                        acc = r.0;
+                        overflown |= r.1;
+                    }
+                    exp /= 2;
+                    r = base.overflowing_mul(base);
+                    base = r.0;
+                    overflown |= r.1;
+                }
+
+                // Deal with the final bit of the exponent separately, since
+                // squaring the base afterwards is not necessary and may cause a
+                // needless overflow.
+                if exp == 1 {
+                    r = acc.overflowing_mul(base);
+                    acc = r.0;
+                    overflown |= r.1;
+                }
+
+                (acc, overflown)
             }
         }
 
@@ -1888,6 +2046,44 @@ assert_eq!(0x10", stringify!($SelfT), ".checked_shr(129), None);", $EndFeature, 
         }
 
         doc_comment! {
+            concat!("Checked exponentiation. Computes `self.pow(exp)`, returning `None` if
+overflow occurred.
+
+# Examples
+
+Basic usage:
+
+```
+#![feature(no_panic_pow)]
+", $Feature, "assert_eq!(2", stringify!($SelfT), ".checked_pow(5), Some(32));
+assert_eq!(", stringify!($SelfT), "::max_value().checked_pow(2), None);", $EndFeature, "
+```"),
+            #[unstable(feature = "no_panic_pow", issue = "48320")]
+            #[inline]
+            pub fn checked_pow(self, mut exp: u32) -> Option<Self> {
+                let mut base = self;
+                let mut acc: Self = 1;
+
+                while exp > 1 {
+                    if (exp & 1) == 1 {
+                        acc = acc.checked_mul(base)?;
+                    }
+                    exp /= 2;
+                    base = base.checked_mul(base)?;
+                }
+
+                // Deal with the final bit of the exponent separately, since
+                // squaring the base afterwards is not necessary and may cause a
+                // needless overflow.
+                if exp == 1 {
+                    acc = acc.checked_mul(base)?;
+                }
+
+                Some(acc)
+            }
+        }
+
+        doc_comment! {
             concat!("Saturating integer addition. Computes `self + rhs`, saturating at
 the numeric bounds instead of overflowing.
 
@@ -1950,6 +2146,32 @@ assert_eq!((", stringify!($SelfT), "::MAX).saturating_mul(10), ", stringify!($Se
             #[inline]
             pub fn saturating_mul(self, rhs: Self) -> Self {
                 self.checked_mul(rhs).unwrap_or(Self::max_value())
+            }
+        }
+
+        doc_comment! {
+            concat!("Saturating integer exponentiation. Computes `self.pow(exp)`,
+saturating at the numeric bounds instead of overflowing.
+
+# Examples
+
+Basic usage:
+
+```
+#![feature(no_panic_pow)]
+", $Feature, "use std::", stringify!($SelfT), ";
+
+assert_eq!(4", stringify!($SelfT), ".saturating_pow(3), 64);
+assert_eq!(", stringify!($SelfT), "::MAX.saturating_pow(2), ", stringify!($SelfT), "::MAX);",
+$EndFeature, "
+```"),
+            #[unstable(feature = "no_panic_pow", issue = "48320")]
+            #[inline]
+            pub fn saturating_pow(self, exp: u32) -> Self {
+                match self.checked_pow(exp) {
+                    Some(x) => x,
+                    None => Self::max_value(),
+                }
             }
         }
 
@@ -2144,6 +2366,44 @@ assert_eq!(128", stringify!($SelfT), ".wrapping_shr(128), 128);", $EndFeature, "
                 unsafe {
                     intrinsics::unchecked_shr(self, (rhs & ($BITS - 1)) as $SelfT)
                 }
+            }
+        }
+
+        doc_comment! {
+            concat!("Wrapping (modular) exponentiation. Computes `self.pow(exp)`,
+wrapping around at the boundary of the type.
+
+# Examples
+
+Basic usage:
+
+```
+#![feature(no_panic_pow)]
+", $Feature, "assert_eq!(3", stringify!($SelfT), ".wrapping_pow(5), 243);
+assert_eq!(3u8.wrapping_pow(6), 217);", $EndFeature, "
+```"),
+            #[unstable(feature = "no_panic_pow", issue = "48320")]
+            #[inline]
+            pub fn wrapping_pow(self, mut exp: u32) -> Self {
+                let mut base = self;
+                let mut acc: Self = 1;
+
+                while exp > 1 {
+                    if (exp & 1) == 1 {
+                        acc = acc.wrapping_mul(base);
+                    }
+                    exp /= 2;
+                    base = base.wrapping_mul(base);
+                }
+
+                // Deal with the final bit of the exponent separately, since
+                // squaring the base afterwards is not necessary and may cause a
+                // needless overflow.
+                if exp == 1 {
+                    acc = acc.wrapping_mul(base);
+                }
+
+                acc
             }
         }
 
@@ -2353,7 +2613,55 @@ assert_eq!(0x10", stringify!($SelfT), ".overflowing_shr(132), (0x1, true));", $E
             pub fn overflowing_shr(self, rhs: u32) -> (Self, bool) {
                 (self.wrapping_shr(rhs), (rhs > ($BITS - 1)))
             }
+        }
 
+        doc_comment! {
+            concat!("Raises self to the power of `exp`, using exponentiation by squaring.
+
+Returns a tuple of the exponentiation along with a bool indicating
+whether an overflow happened.
+
+# Examples
+
+Basic usage:
+
+```
+#![feature(no_panic_pow)]
+", $Feature, "assert_eq!(3", stringify!($SelfT), ".overflowing_pow(5), (243, false));
+assert_eq!(3u8.overflowing_pow(6), (217, true));", $EndFeature, "
+```"),
+            #[unstable(feature = "no_panic_pow", issue = "48320")]
+            #[inline]
+            pub fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
+                let mut base = self;
+                let mut acc: Self = 1;
+                let mut overflown = false;
+                // Scratch space for storing results of overflowing_mul.
+                let mut r;
+
+                while exp > 1 {
+                    if (exp & 1) == 1 {
+                        r = acc.overflowing_mul(base);
+                        acc = r.0;
+                        overflown |= r.1;
+                    }
+                    exp /= 2;
+                    r = base.overflowing_mul(base);
+                    base = r.0;
+                    overflown |= r.1;
+                }
+
+                // Deal with the final bit of the exponent separately, since
+                // squaring the base afterwards is not necessary and may cause a
+                // needless overflow.
+                if exp == 1 {
+                    r = acc.overflowing_mul(base);
+                    acc = r.0;
+                    overflown |= r.1;
+                }
+
+                (acc, overflown)
+            }
         }
 
         doc_comment! {

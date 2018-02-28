@@ -1080,6 +1080,15 @@ impl fmt::Display for ExitStatus {
     }
 }
 
+/// This is ridiculously unstable, as it's a completely-punted-upon part
+/// of the `?`-in-`main` RFC.  It's here only to allow experimenting with
+/// returning a code directly from main.  It will definitely change
+/// drastically before being stabilized, if it doesn't just get deleted.
+#[doc(hidden)]
+#[derive(Clone, Copy, Debug)]
+#[unstable(feature = "process_exitcode_placeholder", issue = "43301")]
+pub struct ExitCode(pub i32);
+
 impl Child {
     /// Forces the child to exit. This is equivalent to sending a
     /// SIGKILL on unix platforms.
@@ -1428,7 +1437,7 @@ impl Termination for () {
 }
 
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
-impl<T: Termination, E: fmt::Debug> Termination for Result<T, E> {
+impl<E: fmt::Debug> Termination for Result<(), E> {
     fn report(self) -> i32 {
         match self {
             Ok(val) => val.report(),
@@ -1442,20 +1451,23 @@ impl<T: Termination, E: fmt::Debug> Termination for Result<T, E> {
 
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
 impl Termination for ! {
-    fn report(self) -> i32 { unreachable!(); }
+    fn report(self) -> i32 { self }
 }
 
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
-impl Termination for bool {
+impl<E: fmt::Debug> Termination for Result<!, E> {
     fn report(self) -> i32 {
-        if self { exit::SUCCESS } else { exit::FAILURE }
+        let Err(err) = self;
+        eprintln!("Error: {:?}", err);
+        exit::FAILURE
     }
 }
 
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
-impl Termination for i32 {
+impl Termination for ExitCode {
     fn report(self) -> i32 {
-        self
+        let ExitCode(code) = self;
+        code
     }
 }
 

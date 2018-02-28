@@ -8,20 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(warnings)]
+#![feature(termination_trait)]
+#![feature(process_exitcode_placeholder)]
 
-#![feature(i128_type)]
-#![feature(rand)]
-#![feature(repr_simd)]
-#![feature(test)]
+use std::process::ExitCode;
 
-extern crate rand;
-extern crate test;
-
-mod btree;
-mod linked_list;
-mod string;
-mod str;
-mod slice;
-mod vec;
-mod vec_deque;
+fn main() -> ExitCode {
+    ExitCode(0)
+}

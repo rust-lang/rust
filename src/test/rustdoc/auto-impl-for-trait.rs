@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,20 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(warnings)]
+// Test for https://github.com/rust-lang/rust/issues/48463 issue.
 
-#![feature(i128_type)]
-#![feature(rand)]
-#![feature(repr_simd)]
-#![feature(test)]
+use std::any::Any;
+use std::ops::Deref;
 
-extern crate rand;
-extern crate test;
+pub struct AnyValue {
+    val: Box<Any>,
+}
 
-mod btree;
-mod linked_list;
-mod string;
-mod str;
-mod slice;
-mod vec;
-mod vec_deque;
+impl Deref for AnyValue {
+    type Target = Any;
+
+    fn deref(&self) -> &Any {
+        &*self.val
+    }
+}
