@@ -1532,6 +1532,10 @@ mod tests {
         assert_eq!(inf.to_degrees(), inf);
         assert_eq!(neg_inf.to_degrees(), neg_inf);
         assert_eq!(1_f32.to_degrees(), 57.2957795130823208767981548141051703);
+        assert_eq!(f32::consts::FRAC_PI_6.to_degrees(), 30.0f32);
+        assert_eq!(f32::consts::FRAC_PI_3.to_degrees(), 60.0f32);
+        assert_eq!(30.0f32.to_degrees().to_radians(), 30.0f32);
+        assert_eq!(30.0f32.to_radians().to_degrees(), 30.0f32);
     }
 
     #[test]
