@@ -663,8 +663,8 @@ pub fn set_print(sink: Option<Box<Write + Send>>) -> Option<Box<Write + Send>> {
 ///
 /// This function is used to print error messages, so it takes extra
 /// care to avoid causing a panic when `local_stream` is unusable.
-/// For instance, if the TLS key for the local stream is uninitialized
-/// or already destroyed, or if the local stream is locked by another
+/// For instance, if the TLS key for the local stream is
+/// already destroyed, or if the local stream is locked by another
 /// thread, it will just fall back to the global stream.
 ///
 /// However, if the actual I/O causes an error, this function does panic.

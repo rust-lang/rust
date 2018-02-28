@@ -272,7 +272,7 @@ impl<T: 'static> LocalKey<T> {
     ///
     /// This will lazily initialize the value if this thread has not referenced
     /// this key yet. If the key has been destroyed (which may happen if this is called
-    /// in a destructor), this function will return a ThreadLocalError.
+    /// in a destructor), this function will return a `ThreadLocalError`.
     ///
     /// # Panics
     ///
@@ -484,11 +484,7 @@ mod tests {
                 assert!(FOO.try_with(|_| ()).is_err());
             }
         }
-        fn foo() -> Foo {
-            assert!(FOO.try_with(|_| ()).is_err());
-            Foo
-        }
-        thread_local!(static FOO: Foo = foo());
+        thread_local!(static FOO: Foo = Foo);
 
         thread::spawn(|| {
             assert!(FOO.try_with(|_| ()).is_ok());
@@ -520,6 +516,7 @@ mod tests {
         impl Drop for S1 {
             fn drop(&mut self) {
                 unsafe {
+                    HITS += 1;
                     if K2.try_with(|_| ()).is_err() {
                         assert_eq!(HITS, 3);
                     } else {
