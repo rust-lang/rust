@@ -1,10 +1,10 @@
 error: expected `{`, found `}`
   --> $DIR/if-without-block.rs:17:1
    |
-13 |     if 5 == {
+LL |     if 5 == {
    |     -- this `if` statement has a condition, but no block
 ...
-17 | }
+LL | }
    | ^
 
 error: aborting due to previous error
