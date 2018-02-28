@@ -787,15 +787,15 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 -> Option<(Input, Option<PathBuf>)> {
         match matches.free.len() {
             0 => {
-                if sopts.describe_lints {
-                    let mut ls = lint::LintStore::new();
-                    rustc_lint::register_builtins(&mut ls, None);
-                    describe_lints(&ls, false);
-                    return None;
-                }
                 let mut sess = build_session(sopts.clone(),
                     None,
                     descriptions.clone());
+                if sopts.describe_lints {
+                    let mut ls = lint::LintStore::new();
+                    rustc_lint::register_builtins(&mut ls, Some(&sess));
+                    describe_lints(&sess, &ls, false);
+                    return None;
+                }
                 rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
                 let mut cfg = config::build_configuration(&sess, cfg.clone());
                 let trans = get_trans(&sess);
@@ -1134,7 +1134,7 @@ fn usage(verbose: bool, include_unstable_options: bool) {
              verbose_help);
 }
 
-fn describe_lints(lint_store: &lint::LintStore, loaded_plugins: bool) {
+fn describe_lints(sess: &Session, lint_store: &lint::LintStore, loaded_plugins: bool) {
     println!("
 Available lint options:
     -W <foo>           Warn about <foo>
@@ -1146,10 +1146,10 @@ Available lint options:
 
 ");
 
-    fn sort_lints(lints: Vec<(&'static Lint, bool)>) -> Vec<&'static Lint> {
+    fn sort_lints(sess: &Session, lints: Vec<(&'static Lint, bool)>) -> Vec<&'static Lint> {
         let mut lints: Vec<_> = lints.into_iter().map(|(x, _)| x).collect();
         lints.sort_by(|x: &&Lint, y: &&Lint| {
-            match x.default_level.cmp(&y.default_level) {
+            match x.default_level(sess).cmp(&y.default_level(sess)) {
                 // The sort doesn't case-fold but it's doubtful we care.
                 Equal => x.name.cmp(y.name),
                 r => r,
@@ -1172,8 +1172,8 @@ Available lint options:
                                                    .iter()
                                                    .cloned()
                                                    .partition(|&(_, p)| p);
-    let plugin = sort_lints(plugin);
-    let builtin = sort_lints(builtin);
+    let plugin = sort_lints(sess, plugin);
+    let builtin = sort_lints(sess, builtin);
 
     let (plugin_groups, builtin_groups): (Vec<_>, _) = lint_store.get_lint_groups()
                                                                  .iter()

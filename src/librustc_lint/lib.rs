@@ -191,75 +191,98 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         FutureIncompatibleInfo {
             id: LintId::of(PRIVATE_IN_PUBLIC),
             reference: "issue #34537 <https://github.com/rust-lang/rust/issues/34537>",
+            epoch: None,
         },
         FutureIncompatibleInfo {
             id: LintId::of(PUB_USE_OF_PRIVATE_EXTERN_CRATE),
             reference: "issue #34537 <https://github.com/rust-lang/rust/issues/34537>",
+            epoch: None,
         },
         FutureIncompatibleInfo {
             id: LintId::of(PATTERNS_IN_FNS_WITHOUT_BODY),
             reference: "issue #35203 <https://github.com/rust-lang/rust/issues/35203>",
+            epoch: None,
         },
         FutureIncompatibleInfo {
             id: LintId::of(SAFE_EXTERN_STATICS),
             reference: "issue #36247 <https://github.com/rust-lang/rust/issues/36247>",
+            epoch: None,
         },
         FutureIncompatibleInfo {
             id: LintId::of(INVALID_TYPE_PARAM_DEFAULT),
             reference: "issue #36887 <https://github.com/rust-lang/rust/issues/36887>",
+            epoch: None,
         },
         FutureIncompatibleInfo {
             id: LintId::of(LEGACY_DIRECTORY_OWNERSHIP),
             reference: "issue #37872 <https://github.com/rust-lang/rust/issues/37872>",
+            epoch: None,
         },
         FutureIncompatibleInfo {
             id: LintId::of(LEGACY_IMPORTS),
             reference: "issue #38260 <https://github.com/rust-lang/rust/issues/38260>",
+            epoch: None,
         },
         FutureIncompatibleInfo {
             id: LintId::of(LEGACY_CONSTRUCTOR_VISIBILITY),
             reference: "issue #39207 <https://github.com/rust-lang/rust/issues/39207>",
+            epoch: None,
         },
         FutureIncompatibleInfo {
             id: LintId::of(RESOLVE_TRAIT_ON_DEFAULTED_UNIT),
             reference: "issue #39216 <https://github.com/rust-lang/rust/issues/39216>",
+            epoch: None,
         },
         FutureIncompatibleInfo {
             id: LintId::of(MISSING_FRAGMENT_SPECIFIER),
             reference: "issue #40107 <https://github.com/rust-lang/rust/issues/40107>",
+            epoch: None,
         },
         FutureIncompatibleInfo {
             id: LintId::of(ILLEGAL_FLOATING_POINT_LITERAL_PATTERN),
             reference: "issue #41620 <https://github.com/rust-lang/rust/issues/41620>",
+            epoch: None,
         },
         FutureIncompatibleInfo {
             id: LintId::of(ANONYMOUS_PARAMETERS),
             reference: "issue #41686 <https://github.com/rust-lang/rust/issues/41686>",
+            epoch: None,
         },
         FutureIncompatibleInfo {
             id: LintId::of(PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES),
             reference: "issue #42238 <https://github.com/rust-lang/rust/issues/42238>",
+            epoch: None,
         },
         FutureIncompatibleInfo {
             id: LintId::of(LATE_BOUND_LIFETIME_ARGUMENTS),
             reference: "issue #42868 <https://github.com/rust-lang/rust/issues/42868>",
+            epoch: None,
         },
         FutureIncompatibleInfo {
             id: LintId::of(SAFE_PACKED_BORROWS),
             reference: "issue #46043 <https://github.com/rust-lang/rust/issues/46043>",
+            epoch: None,
         },
         FutureIncompatibleInfo {
             id: LintId::of(INCOHERENT_FUNDAMENTAL_IMPLS),
             reference: "issue #46205 <https://github.com/rust-lang/rust/issues/46205>",
+            epoch: None,
         },
         FutureIncompatibleInfo {
             id: LintId::of(COERCE_NEVER),
             reference: "issue #46325 <https://github.com/rust-lang/rust/issues/46325>",
+            epoch: None,
         },
         FutureIncompatibleInfo {
             id: LintId::of(TYVAR_BEHIND_RAW_POINTER),
             reference: "issue #46906 <https://github.com/rust-lang/rust/issues/46906>",
+            epoch: None,
         },
+         FutureIncompatibleInfo {
+             id: LintId::of(lint::builtin::BARE_TRAIT_OBJECT),
+             reference: "issue #48457 <https://github.com/rust-lang/rust/issues/48457>",
+             epoch: Some(session::config::Epoch::Epoch2018),
+         }
         ]);
 
     // Register renamed and removed lints

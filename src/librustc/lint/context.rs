@@ -29,6 +29,7 @@ use self::TargetLint::*;
 use std::slice;
 use lint::{EarlyLintPassObject, LateLintPassObject};
 use lint::{Level, Lint, LintId, LintPass, LintBuffer};
+use lint::builtin::BuiltinLintDiagnostics;
 use lint::levels::{LintLevelSets, LintLevelsBuilder};
 use middle::privacy::AccessLevels;
 use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
@@ -92,6 +93,7 @@ pub struct BufferedEarlyLint {
     pub ast_id: ast::NodeId,
     pub span: MultiSpan,
     pub msg: String,
+    pub diagnostic: BuiltinLintDiagnostics,
 }
 
 /// Extra information for a future incompatibility lint. See the call
@@ -99,7 +101,11 @@ pub struct BufferedEarlyLint {
 /// guidelines.
 pub struct FutureIncompatibleInfo {
     pub id: LintId,
-    pub reference: &'static str // e.g., a URL for an issue/PR/RFC or error code
+    /// e.g., a URL for an issue/PR/RFC or error code
+    pub reference: &'static str,
+    /// If this is an epoch fixing lint, the epoch in which
+    /// this lint becomes obsolete
+    pub epoch: Option<config::Epoch>,
 }
 
 /// The target of the `by_name` map, which accounts for renaming/deprecation.
@@ -194,11 +200,24 @@ impl LintStore {
     pub fn register_future_incompatible(&mut self,
                                         sess: Option<&Session>,
                                         lints: Vec<FutureIncompatibleInfo>) {
-        let ids = lints.iter().map(|f| f.id).collect();
-        self.register_group(sess, false, "future_incompatible", ids);
-        for info in lints {
-            self.future_incompatible.insert(info.id, info);
+
+        for epoch in config::ALL_EPOCHS {
+            let lints = lints.iter().filter(|f| f.epoch == Some(*epoch)).map(|f| f.id)
+                             .collect::<Vec<_>>();
+            if !lints.is_empty() {
+                self.register_group(sess, false, epoch.lint_name(), lints)
+            }
         }
+
+        let mut future_incompatible = vec![];
+        for lint in lints {
+            future_incompatible.push(lint.id);
+            self.future_incompatible.insert(lint.id, lint);
+        }
+
+        self.register_group(sess, false, "future_incompatible", future_incompatible);
+
+
     }
 
     pub fn future_incompatible(&self, id: LintId) -> Option<&FutureIncompatibleInfo> {
@@ -429,6 +448,16 @@ pub trait LintContext<'tcx>: Sized {
         self.lookup(lint, span, msg).emit();
     }
 
+    fn lookup_and_emit_with_diagnostics<S: Into<MultiSpan>>(&self,
+                                                            lint: &'static Lint,
+                                                            span: Option<S>,
+                                                            msg: &str,
+                                                            diagnostic: BuiltinLintDiagnostics) {
+        let mut db = self.lookup(lint, span, msg);
+        diagnostic.run(self.sess(), &mut db);
+        db.emit();
+    }
+
     fn lookup<S: Into<MultiSpan>>(&self,
                                   lint: &'static Lint,
                                   span: Option<S>,
@@ -499,9 +528,10 @@ impl<'a> EarlyContext<'a> {
 
     fn check_id(&mut self, id: ast::NodeId) {
         for early_lint in self.buffered.take(id) {
-            self.lookup_and_emit(early_lint.lint_id.lint,
-                                 Some(early_lint.span.clone()),
-                                 &early_lint.msg);
+            self.lookup_and_emit_with_diagnostics(early_lint.lint_id.lint,
+                                                  Some(early_lint.span.clone()),
+                                                  &early_lint.msg,
+                                                  early_lint.diagnostic);
         }
     }
 }
@@ -1054,7 +1084,7 @@ pub fn check_ast_crate(sess: &Session, krate: &ast::Crate) {
     if !sess.opts.actually_rustdoc {
         for (_id, lints) in cx.buffered.map {
             for early_lint in lints {
-                span_bug!(early_lint.span, "failed to process buffered lint here");
+                sess.delay_span_bug(early_lint.span, "failed to process buffered lint here");
             }
         }
     }

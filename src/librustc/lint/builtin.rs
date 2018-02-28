@@ -14,7 +14,11 @@
 //! compiler code, rather than using their own custom pass. Those
 //! lints are all available in `rustc_lint::builtin`.
 
+use errors::DiagnosticBuilder;
 use lint::{LintPass, LateLintPass, LintArray};
+use session::Session;
+use session::config::Epoch;
+use syntax::codemap::Span;
 
 declare_lint! {
     pub CONST_ERR,
@@ -252,6 +256,13 @@ declare_lint! {
     "hidden lifetime parameters are deprecated, try `Foo<'_>`"
 }
 
+declare_lint! {
+    pub BARE_TRAIT_OBJECT,
+    Warn,
+    "suggest using `dyn Trait` for trait objects",
+    Epoch::Epoch2018
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -298,9 +309,33 @@ impl LintPass for HardwiredLints {
             COERCE_NEVER,
             SINGLE_USE_LIFETIME,
             TYVAR_BEHIND_RAW_POINTER,
-            ELIDED_LIFETIME_IN_PATH
-
+            ELIDED_LIFETIME_IN_PATH,
+            BARE_TRAIT_OBJECT
         )
+    }
+}
+
+// this could be a closure, but then implementing derive traits
+// becomes hacky (and it gets allocated)
+#[derive(PartialEq, RustcEncodable, RustcDecodable, Debug)]
+pub enum BuiltinLintDiagnostics {
+    Normal,
+    BareTraitObject(Span, /* is_global */ bool)
+}
+
+impl BuiltinLintDiagnostics {
+    pub fn run(self, sess: &Session, db: &mut DiagnosticBuilder) {
+        match self {
+            BuiltinLintDiagnostics::Normal => (),
+            BuiltinLintDiagnostics::BareTraitObject(span, is_global) => {
+                let sugg = match sess.codemap().span_to_snippet(span) {
+                    Ok(ref s) if is_global => format!("dyn ({})", s),
+                    Ok(s) => format!("dyn {}", s),
+                    Err(_) => format!("dyn <type>")
+                };
+                db.span_suggestion(span, "use `dyn`", sugg);
+            }
+        }
     }
 }
 
