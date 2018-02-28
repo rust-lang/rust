@@ -257,6 +257,7 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
 
 
         // Optimizations begin.
+        uniform_array_move_out::RestoreSubsliceArrayMoveOut,
         inline::Inline,
 
         // Lowering generator control-flow and variables
