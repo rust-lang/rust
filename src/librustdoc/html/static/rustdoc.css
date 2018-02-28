@@ -110,6 +110,7 @@ h3.impl, h3.method, h4.method, h3.type, h4.type, h4.associatedconstant {
 }
 h3.impl, h3.method, h3.type {
 	margin-top: 15px;
+	padding-left: 15px;
 }
 
 h1, h2, h3, h4,
@@ -522,10 +523,10 @@ a {
 .anchor {
 	display: none;
 	position: absolute;
-	left: -25px;
+	left: -7px;
 }
 .anchor.field {
-	left: -20px;
+	left: -5px;
 }
 .anchor:before {
 	content: '\2002\00a7\2002';
@@ -926,6 +927,10 @@ span.since {
 	.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant {
 		display: flex;
 	}
+
+	.anchor {
+		display: none !important;
+	}
 }
 
 @media print {
@@ -1083,6 +1088,14 @@ h4 > .important-traits {
 		z-index: -1;
 		border-bottom: 1px solid;
 	}
+
+	.collapse-toggle {
+		left: -20px;
+	}
+
+	.impl > .collapse-toggle {
+		left: -10px;
+	}
 }
 
 
@@ -1227,4 +1240,10 @@ kbd {
 		top: 54px;
 		z-index: 1;
 	}
+}
+
+.hidden-by-impl-hider,
+.hidden-by-usual-hider {
+	/* important because of conflicting rule for small screens */
+	display: none !important;
 }
