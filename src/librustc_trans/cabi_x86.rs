@@ -52,8 +52,7 @@ pub fn compute_abi_info<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             // http://www.angelcode.com/dev/callconv/callconv.html
             // Clang's ABI handling is in lib/CodeGen/TargetInfo.cpp
             let t = &cx.sess().target.target;
-            if t.options.is_like_osx || t.options.is_like_windows
-                || t.options.is_like_openbsd {
+            if t.options.abi_return_struct_as_int {
                 // According to Clang, everyone but MSVC returns single-element
                 // float aggregates directly in a floating-point register.
                 if !t.options.is_like_msvc && is_single_fp_element(cx, fty.ret.layout) {

@@ -36,6 +36,7 @@ pub fn opts() -> TargetOptions {
         eliminate_frame_pointer: false, // FIXME 43575
         relro_level: RelroLevel::Full,
         exe_allocation_crate: super::maybe_jemalloc(),
+        abi_return_struct_as_int: true,
         .. Default::default()
     }
 }

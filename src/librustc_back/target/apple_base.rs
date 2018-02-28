@@ -46,6 +46,7 @@ pub fn opts() -> TargetOptions {
         pre_link_args: LinkArgs::new(),
         exe_allocation_crate: super::maybe_jemalloc(),
         has_elf_tls: version >= (10, 7),
+        abi_return_struct_as_int: true,
         .. Default::default()
     }
 }
