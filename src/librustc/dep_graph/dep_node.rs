@@ -636,7 +636,6 @@ define_dep_nodes!( <'tcx>
     [] SubstituteNormalizeAndTestPredicates { key: (DefId, &'tcx Substs<'tcx>) },
 
     [input] TargetFeaturesWhitelist,
-    [] TargetFeaturesEnabled(DefId),
 
     [] InstanceDefSizeEstimate { instance_def: InstanceDef<'tcx> },
 

@@ -36,6 +36,7 @@ use rustc::ty::{ToPredicate, ReprOptions};
 use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::ty::util::IntTypeExt;
+use rustc::util::nodemap::FxHashSet;
 use util::nodemap::FxHashMap;
 
 use rustc_const_math::ConstInt;
@@ -47,10 +48,10 @@ use syntax::codemap::Spanned;
 use syntax::symbol::{Symbol, keywords};
 use syntax_pos::{Span, DUMMY_SP};
 
-use rustc::hir::{self, map as hir_map, TransFnAttrs, TransFnAttrFlags};
+use rustc::hir::{self, map as hir_map, TransFnAttrs, TransFnAttrFlags, Unsafety};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::def::{Def, CtorKind};
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 
 ///////////////////////////////////////////////////////////////////////////
 // Main entry point
@@ -1727,10 +1728,67 @@ fn is_foreign_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
+fn from_target_feature(
+    tcx: TyCtxt,
+    attr: &ast::Attribute,
+    whitelist: &FxHashSet<String>,
+    target_features: &mut Vec<Symbol>,
+) {
+    let list = match attr.meta_item_list() {
+        Some(list) => list,
+        None => {
+            let msg = "#[target_feature] attribute must be of the form \
+                       #[target_feature(..)]";
+            tcx.sess.span_err(attr.span, &msg);
+            return
+        }
+    };
+
+    for item in list {
+        if !item.check_name("enable") {
+            let msg = "#[target_feature(..)] only accepts sub-keys of `enable` \
+                       currently";
+            tcx.sess.span_err(item.span, &msg);
+            continue
+        }
+        let value = match item.value_str() {
+            Some(list) => list,
+            None => {
+                let msg = "#[target_feature] attribute must be of the form \
+                           #[target_feature(enable = \"..\")]";
+                tcx.sess.span_err(item.span, &msg);
+                continue
+            }
+        };
+        let value = value.as_str();
+        for feature in value.split(',') {
+            if whitelist.contains(feature) {
+                target_features.push(Symbol::intern(feature));
+                continue
+            }
+
+            let msg = format!("the feature named `{}` is not valid for \
+                               this target", feature);
+            let mut err = tcx.sess.struct_span_err(item.span, &msg);
+
+            if feature.starts_with("+") {
+                let valid = whitelist.contains(&feature[1..]);
+                if valid {
+                    err.help("consider removing the leading `+` in the feature name");
+                }
+            }
+            err.emit();
+        }
+    }
+}
+
+
 fn trans_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> TransFnAttrs {
     let attrs = tcx.get_attrs(id);
 
     let mut trans_fn_attrs = TransFnAttrs::new();
+
+    let whitelist = tcx.target_features_whitelist(LOCAL_CRATE);
 
     for attr in attrs.iter() {
         if attr.check_name("cold") {
@@ -1790,6 +1848,26 @@ fn trans_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> TransFnAt
                     .span_label(attr.span, "did you mean #[export_name=\"*\"]?")
                     .emit();
             }
+        } else if attr.check_name("target_feature") {
+            if let Some(val) = attr.value_str() {
+                for feat in val.as_str().split(",").map(|f| f.trim()) {
+                    if !feat.is_empty() && !feat.contains('\0') {
+                        trans_fn_attrs.target_features.push(Symbol::intern(feat));
+                    }
+                }
+                let msg = "#[target_feature = \"..\"] is deprecated and will \
+                           eventually be removed, use \
+                           #[target_feature(enable = \"..\")] instead";
+                tcx.sess.span_warn(attr.span, &msg);
+                continue
+            }
+
+            if tcx.fn_sig(id).unsafety() == Unsafety::Normal {
+                let msg = "#[target_feature(..)] can only be applied to \
+                           `unsafe` function";
+                tcx.sess.span_err(attr.span, msg);
+            }
+            from_target_feature(tcx, attr, &whitelist, &mut trans_fn_attrs.target_features);
         }
     }
 

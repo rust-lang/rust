@@ -2217,6 +2217,7 @@ pub struct TransFnAttrs {
     pub flags: TransFnAttrFlags,
     pub inline: InlineAttr,
     pub export_name: Option<Symbol>,
+    pub target_features: Vec<Symbol>,
 }
 
 bitflags! {
@@ -2238,6 +2239,7 @@ impl TransFnAttrs {
             flags: TransFnAttrFlags::empty(),
             inline: InlineAttr::None,
             export_name: None,
+            target_features: vec![],
         }
     }
 

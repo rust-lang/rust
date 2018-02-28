@@ -44,6 +44,7 @@ use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::cstore::MetadataLoader;
 use rustc::dep_graph::DepGraph;
 use rustc_back::target::Target;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_mir::monomorphize::collector;
 use link::{build_link_meta, out_filename};
 
@@ -198,8 +199,9 @@ impl TransCrate for MetadataOnlyTransCrate {
 
     fn provide(&self, providers: &mut Providers) {
         ::symbol_names::provide(providers);
-        providers.target_features_enabled = |_tcx, _id| {
-            Lrc::new(Vec::new()) // Just a dummy
+
+        providers.target_features_whitelist = |_tcx, _cnum| {
+            Lrc::new(FxHashSet()) // Just a dummy
         };
     }
     fn provide_extern(&self, _providers: &mut Providers) {}

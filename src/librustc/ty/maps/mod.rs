@@ -384,7 +384,6 @@ define_maps! { <'tcx>
 
     [] fn target_features_whitelist:
         target_features_whitelist_node(CrateNum) -> Lrc<FxHashSet<String>>,
-    [] fn target_features_enabled: TargetFeaturesEnabled(DefId) -> Lrc<Vec<String>>,
 
     // Get an estimate of the size of an InstanceDef based on its MIR for CGU partitioning.
     [] fn instance_def_size_estimate: instance_def_size_estimate_dep_node(ty::InstanceDef<'tcx>)
