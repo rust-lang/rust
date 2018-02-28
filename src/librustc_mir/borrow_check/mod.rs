@@ -17,10 +17,11 @@ use rustc::hir::map::definitions::DefPathData;
 use rustc::infer::InferCtxt;
 use rustc::ty::{self, ParamEnv, TyCtxt};
 use rustc::ty::maps::Providers;
-use rustc::mir::{AssertMessage, BasicBlock, BorrowKind, Location, Place};
-use rustc::mir::{Mir, Mutability, Operand, Projection, ProjectionElem, Rvalue};
-use rustc::mir::{Field, Statement, StatementKind, Terminator, TerminatorKind};
-use rustc::mir::{ClosureRegionRequirements, Local};
+use rustc::lint::builtin::UNUSED_MUT;
+use rustc::mir::{AssertMessage, BasicBlock, BorrowKind, ClearCrossCrate, Local};
+use rustc::mir::{Location, Place, Mir, Mutability, Operand, Projection, ProjectionElem};
+use rustc::mir::{Rvalue, Field, Statement, StatementKind, Terminator, TerminatorKind};
+use rustc::mir::ClosureRegionRequirements;
 
 use rustc_data_structures::control_flow_graph::dominators::Dominators;
 use rustc_data_structures::fx::FxHashSet;
@@ -236,7 +237,8 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         access_place_error_reported: FxHashSet(),
         reservation_error_reported: FxHashSet(),
         moved_error_reported: FxHashSet(),
-        nonlexical_regioncx: regioncx,
+        nonlexical_regioncx: opt_regioncx,
+        used_mut: FxHashSet(),
         nonlexical_cause_info: None,
         borrow_set,
         dominators,
@@ -287,6 +289,9 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     /// This field keeps track of errors reported in the checking of moved variables,
     /// so that we don't report report seemingly duplicate errors.
     moved_error_reported: FxHashSet<Place<'tcx>>,
+    /// This field keeps track of all the local variables that are declared mut and are mutated.
+    /// Used for the warning issued by an unused mutable local variable.
+    used_mut: FxHashSet<Local>,
     /// Non-lexical region inference context, if NLL is enabled.  This
     /// contains the results from region inference and lets us e.g.
     /// find out which CFG points are contained in each borrow region.
@@ -433,6 +438,22 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
         let span = term.source_info.span;
 
         self.check_activations(location, span, flow_state);
+
+        for local in self.mir.mut_vars_iter().filter(|local| !self.used_mut.contains(local)) {
+            if let ClearCrossCrate::Set(ref vsi) = self.mir.visibility_scope_info {
+                let source_info = self.mir.local_decls[local].source_info;
+                let mut_span = self.tcx.sess.codemap().span_until_non_whitespace(source_info.span);
+
+                self.tcx.struct_span_lint_node(
+                    UNUSED_MUT,
+                    vsi[source_info.scope].lint_root,
+                    source_info.span,
+                    "variable does not need to be mutable"
+                )
+                .span_suggestion_short(mut_span, "remove this `mut`", "".to_owned())
+                .emit();
+            }
+        }
 
         match term.kind {
             TerminatorKind::SwitchInt {
@@ -1594,7 +1615,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     ///
     /// Returns true if an error is reported, false otherwise.
     fn check_access_permissions(
-        &self,
+        &mut self,
         (place, span): (&Place<'tcx>, Span),
         kind: ReadOrWrite,
         is_local_mutation_allowed: LocalMutationIsAllowed,
@@ -1631,7 +1652,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 err.emit();
             },
             Reservation(WriteKind::Mutate) | Write(WriteKind::Mutate) => {
-
+                if let Place::Local(local) = *place {
+                    self.used_mut.insert(local);
+                }
                 if let Err(place_err) = self.is_mutable(place, is_local_mutation_allowed) {
                     error_reported = true;
                     let mut err_info = None;
