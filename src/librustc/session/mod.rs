@@ -458,7 +458,7 @@ impl Session {
         self.opts.debugging_opts.print_llvm_passes
     }
 
-    /// Get the features enabled for the current compilation session. Do not use
+    /// Get the features enabled for the current compilation session.
     /// DO NOT USE THIS METHOD if there is a TyCtxt available, as it circumvents
     /// dependency tracking. Use tcx.features() instead.
     #[inline]
