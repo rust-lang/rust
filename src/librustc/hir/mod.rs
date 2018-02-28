@@ -30,6 +30,7 @@ pub use self::Visibility::{Public, Inherited};
 use hir::def::Def;
 use hir::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX};
 use util::nodemap::{NodeMap, FxHashSet};
+use mir::mono::Linkage;
 
 use syntax_pos::{Span, DUMMY_SP};
 use syntax::codemap::{self, Spanned};
@@ -2218,6 +2219,7 @@ pub struct TransFnAttrs {
     pub inline: InlineAttr,
     pub export_name: Option<Symbol>,
     pub target_features: Vec<Symbol>,
+    pub linkage: Option<Linkage>,
 }
 
 bitflags! {
@@ -2240,6 +2242,7 @@ impl TransFnAttrs {
             inline: InlineAttr::None,
             export_name: None,
             target_features: vec![],
+            linkage: None,
         }
     }
 

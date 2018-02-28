@@ -146,20 +146,12 @@ pub fn get_static(cx: &CodegenCx, def_id: DefId) -> ValueRef {
             hir_map::NodeForeignItem(&hir::ForeignItem {
                 ref attrs, span, node: hir::ForeignItemStatic(..), ..
             }) => {
-
-                let g = if let Some(name) =
-                        attr::first_attr_value_str_by_name(&attrs, "linkage") {
+                let g = if let Some(linkage) = cx.tcx.trans_fn_attrs(def_id).linkage {
                     // If this is a static with a linkage specified, then we need to handle
                     // it a little specially. The typesystem prevents things like &T and
                     // extern "C" fn() from being non-null, so we can't just declare a
                     // static and call it a day. Some linkages (like weak) will make it such
                     // that the static actually has a null value.
-                    let linkage = match base::linkage_by_name(&name.as_str()) {
-                        Some(linkage) => linkage,
-                        None => {
-                            cx.sess().span_fatal(span, "invalid linkage specified");
-                        }
-                    };
                     let llty2 = match ty.sty {
                         ty::TyRawPtr(ref mt) => cx.layout_of(mt.ty).llvm_type(cx),
                         _ => {
