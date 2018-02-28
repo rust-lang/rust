@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Regression test for #48551. Covers a case where duplicate candidates
+// arose during associated type projection.
+
 use std::ops::{Mul, MulAssign};
 
 pub trait ClosedMul<Right>: Sized + Mul<Right, Output = Self> + MulAssign<Right> {}
