@@ -9,7 +9,10 @@
 // except according to those terms.
 
 #![feature(termination_trait)]
+#![feature(process_exitcode_placeholder)]
 
-fn main() -> i32 {
-    0
+use std::process::ExitCode;
+
+fn main() -> ExitCode {
+    ExitCode(0)
 }
