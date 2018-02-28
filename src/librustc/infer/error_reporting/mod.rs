@@ -87,42 +87,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                    prefix: &str,
                                    region: ty::Region<'tcx>,
                                    suffix: &str) {
-        fn item_scope_tag(item: &hir::Item) -> &'static str {
-            match item.node {
-                hir::ItemImpl(..) => "impl",
-                hir::ItemStruct(..) => "struct",
-                hir::ItemUnion(..) => "union",
-                hir::ItemEnum(..) => "enum",
-                hir::ItemTrait(..) => "trait",
-                hir::ItemFn(..) => "function body",
-                _ => "item"
-            }
-        }
-
-        fn trait_item_scope_tag(item: &hir::TraitItem) -> &'static str {
-            match item.node {
-                hir::TraitItemKind::Method(..) => "method body",
-                hir::TraitItemKind::Const(..) |
-                hir::TraitItemKind::Type(..) => "associated item"
-            }
-        }
-
-        fn impl_item_scope_tag(item: &hir::ImplItem) -> &'static str {
-            match item.node {
-                hir::ImplItemKind::Method(..) => "method body",
-                hir::ImplItemKind::Const(..) |
-                hir::ImplItemKind::Type(_) => "associated item"
-            }
-        }
-
-        fn explain_span<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                        heading: &str, span: Span)
-                                        -> (String, Option<Span>) {
-            let lo = tcx.sess.codemap().lookup_char_pos_adj(span.lo());
-            (format!("the {} at {}:{}", heading, lo.line, lo.col.to_usize() + 1),
-             Some(span))
-        }
-
         let (description, span) = match *region {
             ty::ReScope(scope) => {
                 let new_string;
@@ -143,9 +107,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         _ => "expression",
                     },
                     Some(hir_map::NodeStmt(_)) => "statement",
-                    Some(hir_map::NodeItem(it)) => item_scope_tag(&it),
-                    Some(hir_map::NodeTraitItem(it)) => trait_item_scope_tag(&it),
-                    Some(hir_map::NodeImplItem(it)) => impl_item_scope_tag(&it),
+                    Some(hir_map::NodeItem(it)) => Self::item_scope_tag(&it),
+                    Some(hir_map::NodeTraitItem(it)) => Self::trait_item_scope_tag(&it),
+                    Some(hir_map::NodeImplItem(it)) => Self::impl_item_scope_tag(&it),
                     Some(_) | None => {
                         err.span_note(span, &unknown_scope());
                         return;
@@ -169,57 +133,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         &new_string[..]
                     }
                 };
-                explain_span(self, scope_decorated_tag, span)
+                self.explain_span(scope_decorated_tag, span)
             }
 
             ty::ReEarlyBound(_) |
             ty::ReFree(_) => {
-                let scope = region.free_region_binding_scope(self);
-                let node = self.hir.as_local_node_id(scope)
-                                   .unwrap_or(DUMMY_NODE_ID);
-                let unknown;
-                let tag = match self.hir.find(node) {
-                    Some(hir_map::NodeBlock(_)) |
-                    Some(hir_map::NodeExpr(_)) => "body",
-                    Some(hir_map::NodeItem(it)) => item_scope_tag(&it),
-                    Some(hir_map::NodeTraitItem(it)) => trait_item_scope_tag(&it),
-                    Some(hir_map::NodeImplItem(it)) => impl_item_scope_tag(&it),
-
-                    // this really should not happen, but it does:
-                    // FIXME(#27942)
-                    Some(_) => {
-                        unknown = format!("unexpected node ({}) for scope {:?}.  \
-                                           Please report a bug.",
-                                          self.hir.node_to_string(node), scope);
-                        &unknown
-                    }
-                    None => {
-                        unknown = format!("unknown node for scope {:?}.  \
-                                           Please report a bug.", scope);
-                        &unknown
-                    }
-                };
-                let (prefix, span) = match *region {
-                    ty::ReEarlyBound(ref br) => {
-                        (format!("the lifetime {} as defined on", br.name),
-                         self.sess.codemap().def_span(self.hir.span(node)))
-                    }
-                    ty::ReFree(ref fr) => {
-                        match fr.bound_region {
-                            ty::BrAnon(idx) => {
-                                (format!("the anonymous lifetime #{} defined on", idx + 1),
-                                 self.hir.span(node))
-                            }
-                            ty::BrFresh(_) => ("an anonymous lifetime defined on".to_owned(),
-                                               self.hir.span(node)),
-                            _ => (format!("the lifetime {} as defined on", fr.bound_region),
-                                  self.sess.codemap().def_span(self.hir.span(node))),
-                        }
-                    }
-                    _ => bug!()
-                };
-                let (msg, opt_span) = explain_span(self, tag, span);
-                (format!("{} {}", prefix, msg), opt_span)
+                self.msg_span_from_free_region(region)
             }
 
             ty::ReStatic => ("the static lifetime".to_owned(), None),
@@ -252,6 +171,93 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         } else {
             err.note(&message);
         }
+    }
+
+    fn msg_span_from_free_region(self,
+                                 region: ty::Region<'tcx>)
+        -> (String, Option<Span>) {
+        let scope = region.free_region_binding_scope(self);
+        let node = self.hir.as_local_node_id(scope)
+            .unwrap_or(DUMMY_NODE_ID);
+        let unknown;
+        let tag = match self.hir.find(node) {
+            Some(hir_map::NodeBlock(_)) |
+                Some(hir_map::NodeExpr(_)) => "body",
+            Some(hir_map::NodeItem(it)) => Self::item_scope_tag(&it),
+            Some(hir_map::NodeTraitItem(it)) => Self::trait_item_scope_tag(&it),
+            Some(hir_map::NodeImplItem(it)) => Self::impl_item_scope_tag(&it),
+
+            // this really should not happen, but it does:
+            // FIXME(#27942)
+            Some(_) => {
+                unknown = format!("unexpected node ({}) for scope {:?}.  \
+                                           Please report a bug.",
+                                           self.hir.node_to_string(node), scope);
+                &unknown
+            }
+            None => {
+                unknown = format!("unknown node for scope {:?}.  \
+                                           Please report a bug.", scope);
+                &unknown
+            }
+        };
+        let (prefix, span) = match *region {
+            ty::ReEarlyBound(ref br) => {
+                (format!("the lifetime {} as defined on", br.name),
+                self.sess.codemap().def_span(self.hir.span(node)))
+            }
+            ty::ReFree(ref fr) => {
+                match fr.bound_region {
+                    ty::BrAnon(idx) => {
+                        (format!("the anonymous lifetime #{} defined on", idx + 1),
+                        self.hir.span(node))
+                    }
+                    ty::BrFresh(_) => ("an anonymous lifetime defined on".to_owned(),
+                    self.hir.span(node)),
+                    _ => (format!("the lifetime {} as defined on", fr.bound_region),
+                    self.sess.codemap().def_span(self.hir.span(node))),
+                }
+            }
+            _ => bug!()
+        };
+        let (msg, opt_span) = self.explain_span(tag, span);
+        (format!("{} {}", prefix, msg), opt_span)
+    }
+
+    fn item_scope_tag(item: &hir::Item) -> &'static str {
+        match item.node {
+            hir::ItemImpl(..) => "impl",
+            hir::ItemStruct(..) => "struct",
+            hir::ItemUnion(..) => "union",
+            hir::ItemEnum(..) => "enum",
+            hir::ItemTrait(..) => "trait",
+            hir::ItemFn(..) => "function body",
+            _ => "item"
+        }
+    }
+
+    fn trait_item_scope_tag(item: &hir::TraitItem) -> &'static str {
+        match item.node {
+            hir::TraitItemKind::Method(..) => "method body",
+            hir::TraitItemKind::Const(..) |
+                hir::TraitItemKind::Type(..) => "associated item"
+        }
+    }
+
+    fn impl_item_scope_tag(item: &hir::ImplItem) -> &'static str {
+        match item.node {
+            hir::ImplItemKind::Method(..) => "method body",
+            hir::ImplItemKind::Const(..) |
+                hir::ImplItemKind::Type(_) => "associated item"
+        }
+    }
+
+    fn explain_span(self,
+                    heading: &str, span: Span)
+        -> (String, Option<Span>) {
+        let lo = self.sess.codemap().lookup_char_pos_adj(span.lo());
+        (format!("the {} at {}:{}", heading, lo.line, lo.col.to_usize() + 1),
+         Some(span))
     }
 }
 
