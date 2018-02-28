@@ -1460,8 +1460,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_rotate)]
-    ///
     /// let mut a = ['a', 'b', 'c', 'd', 'e', 'f'];
     /// a.rotate_left(2);
     /// assert_eq!(a, ['c', 'd', 'e', 'f', 'a', 'b']);
@@ -1470,20 +1468,12 @@ impl<T> [T] {
     /// Rotating a subslice:
     ///
     /// ```
-    /// #![feature(slice_rotate)]
-    ///
     /// let mut a = ['a', 'b', 'c', 'd', 'e', 'f'];
     /// a[1..5].rotate_left(1);
     /// assert_eq!(a, ['a', 'c', 'd', 'e', 'b', 'f']);
-    /// ```
-    #[unstable(feature = "slice_rotate", issue = "41891")]
+   /// ```
+    #[stable(feature = "slice_rotate", since = "1.26.0")]
     pub fn rotate_left(&mut self, mid: usize) {
-        core_slice::SliceExt::rotate_left(self, mid);
-    }
-
-    #[unstable(feature = "slice_rotate", issue = "41891")]
-    #[rustc_deprecated(since = "", reason = "renamed to `rotate_left`")]
-    pub fn rotate(&mut self, mid: usize) {
         core_slice::SliceExt::rotate_left(self, mid);
     }
 
@@ -1505,8 +1495,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_rotate)]
-    ///
     /// let mut a = ['a', 'b', 'c', 'd', 'e', 'f'];
     /// a.rotate_right(2);
     /// assert_eq!(a, ['e', 'f', 'a', 'b', 'c', 'd']);
@@ -1515,13 +1503,11 @@ impl<T> [T] {
     /// Rotate a subslice:
     ///
     /// ```
-    /// #![feature(slice_rotate)]
-    ///
     /// let mut a = ['a', 'b', 'c', 'd', 'e', 'f'];
     /// a[1..5].rotate_right(1);
     /// assert_eq!(a, ['a', 'e', 'b', 'c', 'd', 'f']);
     /// ```
-    #[unstable(feature = "slice_rotate", issue = "41891")]
+    #[stable(feature = "slice_rotate", since = "1.26.0")]
     pub fn rotate_right(&mut self, k: usize) {
         core_slice::SliceExt::rotate_right(self, k);
     }

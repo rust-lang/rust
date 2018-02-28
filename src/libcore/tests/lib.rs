@@ -37,7 +37,6 @@
 #![feature(refcell_replace_swap)]
 #![feature(sip_hash_13)]
 #![feature(slice_patterns)]
-#![feature(slice_rotate)]
 #![feature(sort_internals)]
 #![feature(specialization)]
 #![feature(step_trait)]
