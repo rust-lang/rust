@@ -256,10 +256,9 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         let cnum = cdata.cnum;
         assert!(cnum != LOCAL_CRATE);
 
-        // If this crate is a plugin and/or a custom derive crate, then
-        // we're not even going to link those in so we skip those crates.
-        if cdata.root.plugin_registrar_fn.is_some() ||
-           cdata.root.macro_derive_registrar.is_some() {
+        // If this crate is a custom derive crate, then we're not even going to
+        // link those in so we skip those crates.
+        if cdata.root.macro_derive_registrar.is_some() {
             return Arc::new(Vec::new())
         }
 

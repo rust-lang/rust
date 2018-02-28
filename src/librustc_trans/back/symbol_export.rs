@@ -119,7 +119,7 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let special_runtime_crate = tcx.is_panic_runtime(LOCAL_CRATE) ||
         tcx.is_compiler_builtins(LOCAL_CRATE);
 
-    let mut reachable_non_generics: DefIdSet = tcx.reachable_set(LOCAL_CRATE).0
+    let reachable_non_generics: DefIdSet = tcx.reachable_set(LOCAL_CRATE).0
         .iter()
         .filter_map(|&node_id| {
             // We want to ignore some FFI functions that are not exposed from
@@ -174,14 +174,6 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         })
         .collect();
 
-    if let Some(id) = tcx.sess.derive_registrar_fn.get() {
-        reachable_non_generics.insert(tcx.hir.local_def_id(id));
-    }
-
-    if let Some(id) = tcx.sess.plugin_registrar_fn.get() {
-        reachable_non_generics.insert(tcx.hir.local_def_id(id));
-    }
-
     let mut symbols: Vec<_> = reachable_non_generics
         .iter()
         .map(|&def_id| {
@@ -210,6 +202,16 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             (ExportedSymbol::NonGeneric(def_id), export_level)
         })
         .collect();
+
+    if let Some(id) = tcx.sess.derive_registrar_fn.get() {
+        let def_id = tcx.hir.local_def_id(id);
+        symbols.push((ExportedSymbol::NonGeneric(def_id), SymbolExportLevel::C));
+    }
+
+    if let Some(id) = tcx.sess.plugin_registrar_fn.get() {
+        let def_id = tcx.hir.local_def_id(id);
+        symbols.push((ExportedSymbol::NonGeneric(def_id), SymbolExportLevel::C));
+    }
 
     if let Some(_) = *tcx.sess.entry_fn.borrow() {
         let symbol_name = "main".to_string();
