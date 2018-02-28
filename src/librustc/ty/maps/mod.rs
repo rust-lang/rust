@@ -302,8 +302,6 @@ define_maps! { <'tcx>
     // Does not include external symbols that don't have a corresponding DefId,
     // like the compiler-generated `main` function and so on.
     [] fn reachable_non_generics: ReachableNonGenerics(CrateNum) -> Rc<DefIdSet>,
-
-    // This
     [] fn is_reachable_non_generic: IsReachableNonGeneric(DefId) -> bool,
 
 

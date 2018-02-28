@@ -385,7 +385,7 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         (Linkage::External, visibility)
                     }
                     MonoItem::Static(def_id) => {
-                        let visibility = if tcx.is_exported_symbol(def_id) {
+                        let visibility = if tcx.is_reachable_non_generic(def_id) {
                             can_be_internalized = false;
                             default_visibility(def_id)
                         } else {
