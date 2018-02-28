@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! See `README.md` for high-level documentation
+//! See [rustc guide] for more info on how this works.
+//!
+//! [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/trait-resolution.html#selection
 
 use self::SelectionCandidate::*;
 use self::EvaluationResult::*;
@@ -1045,8 +1047,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     //
     // The selection process begins by examining all in-scope impls,
     // caller obligations, and so forth and assembling a list of
-    // candidates. See `README.md` and the `Candidate` type for more
-    // details.
+    // candidates. See [rustc guide] for more details.
+    //
+    // [rustc guide]:
+    // https://rust-lang-nursery.github.io/rustc-guide/trait-resolution.html#candidate-assembly
 
     fn candidate_from_obligation<'o>(&mut self,
                                      stack: &TraitObligationStack<'o, 'tcx>)
@@ -2333,7 +2337,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     //
     // Confirmation unifies the output type parameters of the trait
     // with the values found in the obligation, possibly yielding a
-    // type error.  See `README.md` for more details.
+    // type error.  See [rustc guide] for more details.
+    //
+    // [rustc guide]:
+    // https://rust-lang-nursery.github.io/rustc-guide/trait-resolution.html#confirmation
 
     fn confirm_candidate(&mut self,
                          obligation: &TraitObligation<'tcx>,

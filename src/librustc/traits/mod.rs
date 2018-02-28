@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Trait Resolution. See README.md for an overview of how this works.
+//! Trait Resolution. See [rustc guide] for more info on how this works.
+//!
+//! [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/trait-resolution.html
 
 pub use self::SelectionError::*;
 pub use self::FulfillmentErrorCode::*;
