@@ -16,4 +16,3 @@ LL |     assert_eq!(20, concat_idents!(X, Y_2)); //~ ERROR `concat_idents` is no
 
 error: aborting due to 2 previous errors
 
-If you want more information on this error, try using "rustc --explain E0658"

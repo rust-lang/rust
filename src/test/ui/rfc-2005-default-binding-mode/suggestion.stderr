@@ -8,4 +8,3 @@ LL |     if let Some(y) = &Some(22) { //~ ERROR non-reference pattern
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0658"

@@ -66,4 +66,3 @@ LL | type A = &A + B;
 
 error: aborting due to 11 previous errors
 
-If you want more information on this error, try using "rustc --explain E0178"

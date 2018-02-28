@@ -198,4 +198,3 @@ LL | | }
 
 error: aborting due to 6 previous errors
 
-If you want more information on this error, try using "rustc --explain E0309"

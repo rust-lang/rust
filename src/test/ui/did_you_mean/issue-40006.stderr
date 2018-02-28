@@ -66,4 +66,3 @@ LL | impl X { //~ ERROR cannot be made into an object
 
 error: aborting due to 9 previous errors
 
-If you want more information on this error, try using "rustc --explain E0038"

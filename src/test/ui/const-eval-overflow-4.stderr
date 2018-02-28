@@ -14,4 +14,3 @@ LL |     : [u32; (i8::MAX as i8 + 1i8) as usize]
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0080"

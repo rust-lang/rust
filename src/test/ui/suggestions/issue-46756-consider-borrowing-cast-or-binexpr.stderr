@@ -24,4 +24,3 @@ LL |     light_flows_our_war_of_mocking_words(with_tears + 4);
 
 error: aborting due to 2 previous errors
 
-If you want more information on this error, try using "rustc --explain E0308"

@@ -8,4 +8,3 @@ LL | impl<#[may_dangle] A> Drop for Pt<A> {
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0658"

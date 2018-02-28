@@ -42,4 +42,3 @@ LL |     match ((), false) {
 
 error: aborting due to 7 previous errors
 
-If you want more information on this error, try using "rustc --explain E0004"

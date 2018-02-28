@@ -30,4 +30,3 @@ LL |     let x = 0 as *const i32 as *const _ as *mut _; //~ ERROR cannot cast
 
 error: aborting due to 3 previous errors
 
-If you want more information on this error, try using "rustc --explain E0641"
