@@ -565,6 +565,51 @@ pub fn find_inline_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> In
     })
 }
 
+#[derive(Copy, Clone, PartialEq)]
+pub enum UnwindAttr {
+    Allowed,
+    Aborts,
+}
+
+/// Determine what `#[unwind]` attribute is present in `attrs`, if any.
+pub fn find_unwind_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> Option<UnwindAttr> {
+    let syntax_error = |attr: &Attribute| {
+        mark_used(attr);
+        diagnostic.map(|d| {
+            span_err!(d, attr.span, E0633, "malformed `#[unwind]` attribute");
+        });
+        None
+    };
+
+    attrs.iter().fold(None, |ia, attr| {
+        if attr.path != "unwind" {
+            return ia;
+        }
+        let meta = match attr.meta() {
+            Some(meta) => meta.node,
+            None => return ia,
+        };
+        match meta {
+            MetaItemKind::Word => {
+                syntax_error(attr)
+            }
+            MetaItemKind::List(ref items) => {
+                mark_used(attr);
+                if items.len() != 1 {
+                    syntax_error(attr)
+                } else if list_contains_name(&items[..], "allowed") {
+                    Some(UnwindAttr::Allowed)
+                } else if list_contains_name(&items[..], "aborts") {
+                    Some(UnwindAttr::Aborts)
+                } else {
+                    syntax_error(attr)
+                }
+            }
+            _ => ia,
+        }
+    })
+}
+
 /// True if `#[inline]` or `#[inline(always)]` is present in `attrs`.
 pub fn requests_inline(attrs: &[Attribute]) -> bool {
     match find_inline_attr(None, attrs) {

@@ -89,14 +89,15 @@ impl LintLevelSets {
     fn get_lint_level(&self,
                       lint: &'static Lint,
                       idx: u32,
-                      aux: Option<&FxHashMap<LintId, (Level, LintSource)>>)
+                      aux: Option<&FxHashMap<LintId, (Level, LintSource)>>,
+                      sess: &Session)
         -> (Level, LintSource)
     {
         let (level, mut src) = self.get_lint_id_level(LintId::of(lint), idx, aux);
 
         // If `level` is none then we actually assume the default level for this
         // lint.
-        let mut level = level.unwrap_or(lint.default_level);
+        let mut level = level.unwrap_or(lint.default_level(sess));
 
         // If we're about to issue a warning, check at the last minute for any
         // directives against the warnings "lint". If, for example, there's an
@@ -235,7 +236,8 @@ impl<'a> LintLevelsBuilder<'a> {
                         let lint = builtin::RENAMED_AND_REMOVED_LINTS;
                         let (level, src) = self.sets.get_lint_level(lint,
                                                                     self.cur,
-                                                                    Some(&specs));
+                                                                    Some(&specs),
+                                                                    &sess);
                         lint::struct_lint_level(self.sess,
                                                 lint,
                                                 level,
@@ -248,7 +250,8 @@ impl<'a> LintLevelsBuilder<'a> {
                         let lint = builtin::UNKNOWN_LINTS;
                         let (level, src) = self.sets.get_lint_level(lint,
                                                                     self.cur,
-                                                                    Some(&specs));
+                                                                    Some(&specs),
+                                                                    self.sess);
                         let msg = format!("unknown lint: `{}`", name);
                         let mut db = lint::struct_lint_level(self.sess,
                                                 lint,
@@ -342,7 +345,7 @@ impl<'a> LintLevelsBuilder<'a> {
                        msg: &str)
         -> DiagnosticBuilder<'a>
     {
-        let (level, src) = self.sets.get_lint_level(lint, self.cur, None);
+        let (level, src) = self.sets.get_lint_level(lint, self.cur, None, self.sess);
         lint::struct_lint_level(self.sess, lint, level, src, span, msg)
     }
 
@@ -377,11 +380,11 @@ impl LintLevelMap {
     /// If the `id` was not previously registered, returns `None`. If `None` is
     /// returned then the parent of `id` should be acquired and this function
     /// should be called again.
-    pub fn level_and_source(&self, lint: &'static Lint, id: HirId)
+    pub fn level_and_source(&self, lint: &'static Lint, id: HirId, session: &Session)
         -> Option<(Level, LintSource)>
     {
         self.id_to_set.get(&id).map(|idx| {
-            self.sets.get_lint_level(lint, *idx, None)
+            self.sets.get_lint_level(lint, *idx, None, session)
         })
     }
 

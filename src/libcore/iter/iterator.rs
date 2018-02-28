@@ -1062,8 +1062,8 @@ pub trait Iterator {
     /// assert_eq!(merged, "alphabetagamma");
     /// ```
     ///
-    /// You can also rewrite this in terms of [`flat_map()`] which is preferable
-    /// in this case since that conveys intent clearer:
+    /// You can also rewrite this in terms of [`flat_map()`], which is preferable
+    /// in this case since it conveys intent more clearly:
     ///
     /// ```
     /// let words = ["alpha", "beta", "gamma"];

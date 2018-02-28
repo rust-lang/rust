@@ -286,7 +286,8 @@ unsafe fn find_eh_action(context: *mut uw::_Unwind_Context)
 // See docs in the `unwind` module.
 #[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
 #[lang = "eh_unwind_resume"]
-#[unwind]
+#[cfg_attr(stage0, unwind)]
+#[cfg_attr(not(stage0), unwind(allowed))]
 unsafe extern "C" fn rust_eh_unwind_resume(panic_ctx: *mut u8) -> ! {
     uw::_Unwind_Resume(panic_ctx as *mut uw::_Unwind_Exception);
 }

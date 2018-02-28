@@ -46,7 +46,7 @@ use hir::HirVec;
 use hir::map::{Definitions, DefKey, DefPathData};
 use hir::def_id::{DefIndex, DefId, CRATE_DEF_INDEX, DefIndexAddressSpace};
 use hir::def::{Def, PathResolution};
-use lint::builtin::PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES;
+use lint::builtin::{self, PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES};
 use middle::cstore::CrateStore;
 use rustc_data_structures::indexed_vec::IndexVec;
 use session::Session;
@@ -912,7 +912,11 @@ impl<'a> LoweringContext<'a> {
             TyKind::Path(ref qself, ref path) => {
                 let id = self.lower_node_id(t.id);
                 let qpath = self.lower_qpath(t.id, qself, path, ParamMode::Explicit, itctx);
-                return self.ty_path(id, t.span, qpath);
+                let ty = self.ty_path(id, t.span, qpath);
+                if let hir::TyTraitObject(..) = ty.node {
+                    self.maybe_lint_bare_trait(t.span, t.id, qself.is_none() && path.is_global());
+                }
+                return ty;
             }
             TyKind::ImplicitSelf => {
                 hir::TyPath(hir::QPath::Resolved(None, P(hir::Path {
@@ -931,7 +935,7 @@ impl<'a> LoweringContext<'a> {
                 let expr = self.lower_body(None, |this| this.lower_expr(expr));
                 hir::TyTypeof(expr)
             }
-            TyKind::TraitObject(ref bounds, ..) => {
+            TyKind::TraitObject(ref bounds, kind) => {
                 let mut lifetime_bound = None;
                 let bounds = bounds.iter().filter_map(|bound| {
                     match *bound {
@@ -950,6 +954,9 @@ impl<'a> LoweringContext<'a> {
                 let lifetime_bound = lifetime_bound.unwrap_or_else(|| {
                     self.elided_lifetime(t.span)
                 });
+                if kind != TraitObjectSyntax::Dyn {
+                    self.maybe_lint_bare_trait(t.span, t.id, false);
+                }
                 hir::TyTraitObject(bounds, lifetime_bound)
             }
             TyKind::ImplTrait(ref bounds) => {
@@ -3685,7 +3692,6 @@ impl<'a> LoweringContext<'a> {
                     // The original ID is taken by the `PolyTraitRef`,
                     // so the `Ty` itself needs a different one.
                     id = self.next_id();
-
                     hir::TyTraitObject(hir_vec![principal], self.elided_lifetime(span))
                 } else {
                     hir::TyPath(hir::QPath::Resolved(None, path))
@@ -3701,6 +3707,16 @@ impl<'a> LoweringContext<'a> {
             id: self.next_id().node_id,
             span,
             name: hir::LifetimeName::Implicit,
+        }
+    }
+
+    fn maybe_lint_bare_trait(&self, span: Span, id: NodeId, is_global: bool) {
+        if self.sess.features.borrow().dyn_trait {
+            self.sess.buffer_lint_with_diagnostic(
+                builtin::BARE_TRAIT_OBJECT, id, span,
+                "trait objects without an explicit `dyn` are deprecated",
+                builtin::BuiltinLintDiagnostics::BareTraitObject(span, is_global)
+            )
         }
     }
 }

@@ -41,7 +41,7 @@ use std::collections::btree_map::Iter as BTreeMapIter;
 use std::collections::btree_map::Keys as BTreeMapKeysIter;
 use std::collections::btree_map::Values as BTreeMapValuesIter;
 
-use std::fmt;
+use std::{fmt, str};
 use std::hash::Hasher;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
@@ -113,7 +113,7 @@ pub enum OutputType {
 }
 
 /// The epoch of the compiler (RFC 2052)
-#[derive(Clone, Copy, Hash, PartialOrd, Ord, Eq, PartialEq)]
+#[derive(Clone, Copy, Hash, PartialOrd, Ord, Eq, PartialEq, Debug)]
 #[non_exhaustive]
 pub enum Epoch {
     // epochs must be kept in order, newest to oldest
@@ -135,6 +135,37 @@ pub enum Epoch {
     // somewhere. That will need to be updated
     // whenever we're stabilizing/introducing a new epoch
     // as well as changing the default Cargo template.
+}
+
+pub const ALL_EPOCHS: &[Epoch] = &[Epoch::Epoch2015, Epoch::Epoch2018];
+
+impl ToString for Epoch {
+    fn to_string(&self) -> String {
+        match *self {
+            Epoch::Epoch2015 => "2015".into(),
+            Epoch::Epoch2018 => "2018".into(),
+        }
+    }
+}
+
+impl Epoch {
+    pub fn lint_name(&self) -> &'static str {
+        match *self {
+            Epoch::Epoch2015 => "epoch_2015",
+            Epoch::Epoch2018 => "epoch_2018",
+        }
+    }
+}
+
+impl str::FromStr for Epoch {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, ()> {
+        match s {
+            "2015" => Ok(Epoch::Epoch2015),
+            "2018" => Ok(Epoch::Epoch2018),
+            _ => Err(())
+        }
+    }
 }
 
 impl_stable_hash_for!(enum self::OutputType {
@@ -435,6 +466,9 @@ top_level_options!(
         // if we otherwise use the defaults of rustc.
         cli_forced_codegen_units: Option<usize> [UNTRACKED],
         cli_forced_thinlto_off: bool [UNTRACKED],
+
+        // Remap source path prefixes in all output (messages, object files, debug, etc)
+        remap_path_prefix: Vec<(PathBuf, PathBuf)> [UNTRACKED],
     }
 );
 
@@ -617,6 +651,7 @@ pub fn basic_options() -> Options {
         actually_rustdoc: false,
         cli_forced_codegen_units: None,
         cli_forced_thinlto_off: false,
+        remap_path_prefix: Vec::new(),
     }
 }
 
@@ -635,11 +670,7 @@ impl Options {
     }
 
     pub fn file_path_mapping(&self) -> FilePathMapping {
-        FilePathMapping::new(
-            self.debugging_opts.remap_path_prefix_from.iter().zip(
-                self.debugging_opts.remap_path_prefix_to.iter()
-            ).map(|(src, dst)| (src.clone(), dst.clone())).collect()
-        )
+        FilePathMapping::new(self.remap_path_prefix.clone())
     }
 
     /// True if there will be an output file generated
@@ -1021,11 +1052,17 @@ macro_rules! options {
 
         fn parse_epoch(slot: &mut Epoch, v: Option<&str>) -> bool {
             match v {
-                Some("2015") => *slot = Epoch::Epoch2015,
-                Some("2018") => *slot = Epoch::Epoch2018,
-                _ => return false,
+                Some(s) => {
+                    let epoch = s.parse();
+                    if let Ok(parsed) = epoch {
+                        *slot = parsed;
+                        true
+                    } else {
+                        false
+                    }
+                }
+                _ => false,
             }
-            true
         }
     }
 ) }
@@ -1269,10 +1306,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "set the optimization fuel quota for a crate"),
     print_fuel: Option<String> = (None, parse_opt_string, [TRACKED],
         "make Rustc print the total optimization fuel used by a crate"),
-    remap_path_prefix_from: Vec<PathBuf> = (vec![], parse_pathbuf_push, [UNTRACKED],
-        "add a source pattern to the file path remapping config"),
-    remap_path_prefix_to: Vec<PathBuf> = (vec![], parse_pathbuf_push, [UNTRACKED],
-        "add a mapping target to the file path remapping config"),
     force_unstable_if_unmarked: bool = (false, parse_bool, [TRACKED],
         "force all crates to be `rustc_private` unstable"),
     pre_link_arg: Vec<String> = (vec![], parse_string_push, [UNTRACKED],
@@ -1597,6 +1630,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
                   `expanded` (crates expanded), or
                   `expanded,identified` (fully parenthesized, AST nodes with IDs).",
                  "TYPE"),
+        opt::multi_s("", "remap-path-prefix", "remap source names in output", "FROM=TO"),
     ]);
     opts
 }
@@ -1718,23 +1752,6 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
     };
     if output_types.is_empty() {
         output_types.insert(OutputType::Exe, None);
-    }
-
-    let remap_path_prefix_sources = debugging_opts.remap_path_prefix_from.len();
-    let remap_path_prefix_targets = debugging_opts.remap_path_prefix_to.len();
-
-    if remap_path_prefix_targets < remap_path_prefix_sources {
-        for source in &debugging_opts.remap_path_prefix_from[remap_path_prefix_targets..] {
-            early_error(error_format,
-                &format!("option `-Zremap-path-prefix-from='{}'` does not have \
-                         a corresponding `-Zremap-path-prefix-to`", source.display()))
-        }
-    } else if remap_path_prefix_targets > remap_path_prefix_sources {
-        for target in &debugging_opts.remap_path_prefix_to[remap_path_prefix_sources..] {
-            early_error(error_format,
-                &format!("option `-Zremap-path-prefix-to='{}'` does not have \
-                          a corresponding `-Zremap-path-prefix-from`", target.display()))
-        }
     }
 
     let mut cg = build_codegen_options(matches, error_format);
@@ -1970,6 +1987,20 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
 
     let crate_name = matches.opt_str("crate-name");
 
+    let remap_path_prefix = matches.opt_strs("remap-path-prefix")
+        .into_iter()
+        .map(|remap| {
+            let mut parts = remap.rsplitn(2, '='); // reverse iterator
+            let to = parts.next();
+            let from = parts.next();
+            match (from, to) {
+                (Some(from), Some(to)) => (PathBuf::from(from), PathBuf::from(to)),
+                _ => early_error(error_format,
+                        "--remap-path-prefix must contain '=' between FROM and TO"),
+            }
+        })
+        .collect();
+
     (Options {
         crate_types,
         optimize: opt_level,
@@ -1997,6 +2028,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         actually_rustdoc: false,
         cli_forced_codegen_units: codegen_units,
         cli_forced_thinlto_off: disable_thinlto,
+        remap_path_prefix,
     },
     cfg)
 }
