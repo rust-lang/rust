@@ -87,7 +87,7 @@ const X86_WHITELIST: &'static [&'static str] = &["aes", "avx", "avx2", "avx512bw
                                                  "avx512cd", "avx512dq", "avx512er",
                                                  "avx512f", "avx512ifma", "avx512pf",
                                                  "avx512vbmi", "avx512vl", "avx512vpopcntdq",
-                                                 "bmi", "bmi2", "fma", "fxsr",
+                                                 "bmi1", "bmi2", "fma", "fxsr",
                                                  "lzcnt", "mmx", "pclmulqdq",
                                                  "popcnt", "rdrand", "rdseed",
                                                  "sse", "sse2", "sse3", "sse4.1",
@@ -108,6 +108,7 @@ pub fn to_llvm_feature(s: &str) -> &str {
     match s {
         "pclmulqdq" => "pclmul",
         "rdrand" => "rdrnd",
+        "bmi1" => "bmi",
         s => s,
     }
 }
