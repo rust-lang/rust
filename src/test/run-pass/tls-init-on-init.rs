@@ -10,10 +10,9 @@
 
 // ignore-emscripten no threads support
 
-#![feature(thread_local_state)]
-#![allow(deprecated)]
+#![feature(thread_local_try_with)]
 
-use std::thread::{self, LocalKeyState};
+use std::thread;
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
 struct Foo { cnt: usize }
@@ -38,10 +37,8 @@ impl Drop for Foo {
             FOO.with(|foo| assert_eq!(foo.cnt, 0));
         } else {
             assert_eq!(self.cnt, 0);
-            match FOO.state() {
-                LocalKeyState::Valid => panic!("should not be in valid state"),
-                LocalKeyState::Uninitialized |
-                LocalKeyState::Destroyed => {}
+            if FOO.try_with(|_| ()).is_ok() {
+                panic!("should not be in valid state");
             }
         }
     }
