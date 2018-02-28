@@ -191,7 +191,7 @@ So why do this? AFAICS there are 3 main reasons
     `Result<T, E>` to satisfy a trait but we know that the method will always
     succeed.
 
-    For example, here's a saner implementation of `FromStr` for `String` that
+    For example, here's a saner implementation of `FromStr` for `String` than
     currently exists in `libstd`.
 
     ```rust
