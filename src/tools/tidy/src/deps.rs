@@ -56,29 +56,40 @@ static WHITELIST_CRATES: &'static [CrateVersion] = &[
 
 /// Whitelist of crates rustc is allowed to depend on. Avoid adding to the list if possible.
 static WHITELIST: &'static [Crate] = &[
-    Crate("backtrace"),
-    Crate("backtrace-sys"),
-    Crate("bitflags"),
-    Crate("byteorder"),
-    Crate("cc"),
-    Crate("cfg-if"),
-    Crate("flate2"),
-    Crate("fuchsia-zircon"),
-    Crate("fuchsia-zircon-sys"),
-    Crate("jobserver"),
-    Crate("lazy_static"),
-    Crate("libc"),
-    Crate("log"),
-    Crate("miniz-sys"),
-    Crate("num_cpus"),
-    Crate("rand"),
-    Crate("rustc"),
-    Crate("rustc-demangle"),
-    Crate("rustc_trans"),
-    Crate("tempdir"),
-    Crate("winapi"),
-    Crate("winapi-i686-pc-windows-gnu"),
-    Crate("winapi-x86_64-pc-windows-gnu"),
+//    Crate("ar"),
+//    Crate("backtrace"),
+//    Crate("backtrace-sys"),
+//    Crate("bitflags"),
+//    Crate("byteorder"),
+//    Crate("cc"),
+//    Crate("cfg-if"),
+//    Crate("cmake"),
+//    Crate("filetime"),
+//    Crate("flate2"),
+//    Crate("fuchsia-zircon"),
+//    Crate("fuchsia-zircon-sys"),
+//    Crate("jobserver"),
+//    Crate("kernel32-sys"),
+//    Crate("lazy_static"),
+//    Crate("libc"),
+//    Crate("log"),
+//    Crate("log_settings"),
+//    Crate("miniz-sys"),
+//    Crate("num_cpus"),
+//    Crate("owning_ref"),
+//    Crate("parking_lot"),
+//    Crate("parking_lot_core"),
+//    Crate("rand"),
+//    Crate("redox_syscall"),
+//    Crate("rustc-demangle"),
+//    Crate("smallvec"),
+//    Crate("stable_deref_trait"),
+//    Crate("tempdir"),
+//    Crate("unicode-width"),
+//    Crate("winapi"),
+//    Crate("winapi-build"),
+//    Crate("winapi-i686-pc-windows-gnu"),
+//    Crate("winapi-x86_64-pc-windows-gnu"),
 ];
 
 // Some types for Serde to deserialize the output of `cargo metadata` to...
@@ -179,7 +190,7 @@ pub fn check_whitelist(path: &Path, cargo: &Path, bad: &mut bool) {
     let mut visited = BTreeSet::new();
     let mut unapproved = BTreeSet::new();
     for &krate in WHITELIST_CRATES.iter() {
-        let mut bad = check_crate_whitelist(&whitelist, &resolve, &mut visited, krate);
+        let mut bad = check_crate_whitelist(&whitelist, &resolve, &mut visited, krate, false);
         unapproved.append(&mut bad);
     }
 
@@ -256,6 +267,7 @@ fn check_crate_whitelist<'a, 'b>(
     resolve: &'a Resolve,
     visited: &'b mut BTreeSet<CrateVersion<'a>>,
     krate: CrateVersion<'a>,
+    must_be_on_whitelist: bool,
 ) -> BTreeSet<Crate<'a>> {
     // Will contain bad deps
     let mut unapproved = BTreeSet::new();
@@ -267,9 +279,12 @@ fn check_crate_whitelist<'a, 'b>(
 
     visited.insert(krate);
 
-    // If this dependency is not on the WHITELIST, add to bad set
-    if !whitelist.contains(&krate.into()) {
-        unapproved.insert(krate.into());
+    // If this path is in-tree, we don't require it to be on the whitelist
+    if must_be_on_whitelist {
+        // If this dependency is not on the WHITELIST, add to bad set
+        if !whitelist.contains(&krate.into()) {
+            unapproved.insert(krate.into());
+        }
     }
 
     // Do a DFS in the crate graph (it's a DAG, so we know we have no cycles!)
@@ -282,11 +297,8 @@ fn check_crate_whitelist<'a, 'b>(
     for dep in to_check.dependencies.iter() {
         let (krate, is_path_dep) = CrateVersion::from_str(dep);
 
-        // We don't check in-tree deps
-        if !is_path_dep {
-            let mut bad = check_crate_whitelist(whitelist, resolve, visited, krate);
-            unapproved.append(&mut bad);
-        }
+        let mut bad = check_crate_whitelist(whitelist, resolve, visited, krate, !is_path_dep);
+        unapproved.append(&mut bad);
     }
 
     unapproved
