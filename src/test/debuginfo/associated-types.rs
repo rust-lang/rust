@@ -125,6 +125,7 @@ fn assoc_return_value<T: TraitWithAssocType>(arg: T) -> T::Type {
     return arg.get_value();
 }
 
+#[inline(never)]
 fn assoc_tuple<T: TraitWithAssocType>(arg: (T, T::Type)) {
     zzz(); // #break
 }

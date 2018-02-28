@@ -30,6 +30,9 @@ link! { F, G }
 
 pub struct G;
 
+#[inline(never)]
+fn drop<T>(_: T) {}
+
 fn main() {
     drop::<Option<A>>(None);
 }

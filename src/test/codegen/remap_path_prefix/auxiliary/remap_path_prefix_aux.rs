@@ -12,7 +12,7 @@
 
 // compile-flags: -g  -Zremap-path-prefix-from={{cwd}} -Zremap-path-prefix-to=/the/aux-cwd -Zremap-path-prefix-from={{src-base}}/remap_path_prefix/auxiliary -Zremap-path-prefix-to=/the/aux-src
 
-#[inline]
-pub fn some_aux_function() -> i32 {
-    1234
+#[inline(never)]
+pub fn some_aux_function<T>() -> usize {
+    std::mem::size_of::<T>()
 }

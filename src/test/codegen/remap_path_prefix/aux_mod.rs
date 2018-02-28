@@ -10,7 +10,7 @@
 
 // ignore-test: this is not a test
 
-#[inline]
-pub fn some_aux_mod_function() -> i32 {
-    1234
+#[inline(never)]
+pub fn some_aux_mod_function<T>() -> usize {
+    ::std::mem::size_of::<T>()
 }

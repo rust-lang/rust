@@ -57,6 +57,7 @@ impl C {
 struct D (Box<A>);
 
 impl D {
+    #[inline(never)]
     pub fn matches<F: Fn()>(&self, f: &F) {
         //~^ ERROR reached the type-length limit while instantiating `D::matches::<[closure
         let &D(ref a) = self;
