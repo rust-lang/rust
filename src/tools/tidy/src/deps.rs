@@ -56,61 +56,27 @@ static WHITELIST_CRATES: &'static [CrateVersion] = &[
 
 /// Whitelist of crates rustc is allowed to depend on. Avoid adding to the list if possible.
 static WHITELIST: &'static [Crate] = &[
-//    Crate("ar"),
-//    Crate("arena"),
 //    Crate("backtrace"),
 //    Crate("backtrace-sys"),
 //    Crate("bitflags"),
-//    Crate("build_helper"),
 //    Crate("byteorder"),
 //    Crate("cc"),
 //    Crate("cfg-if"),
-//    Crate("cmake"),
-//    Crate("filetime"),
 //    Crate("flate2"),
-//    Crate("fmt_macros"),
 //    Crate("fuchsia-zircon"),
 //    Crate("fuchsia-zircon-sys"),
-//    Crate("graphviz"),
 //    Crate("jobserver"),
-//    Crate("kernel32-sys"),
 //    Crate("lazy_static"),
 //    Crate("libc"),
 //    Crate("log"),
-//    Crate("log_settings"),
 //    Crate("miniz-sys"),
 //    Crate("num_cpus"),
-//    Crate("owning_ref"),
-//    Crate("parking_lot"),
-//    Crate("parking_lot_core"),
 //    Crate("rand"),
-//    Crate("redox_syscall"),
 //    Crate("rustc"),
 //    Crate("rustc-demangle"),
-//    Crate("rustc_allocator"),
-//    Crate("rustc_apfloat"),
-//    Crate("rustc_back"),
-//    Crate("rustc_binaryen"),
-//    Crate("rustc_const_eval"),
-//    Crate("rustc_const_math"),
-//    Crate("rustc_cratesio_shim"),
-//    Crate("rustc_data_structures"),
-//    Crate("rustc_errors"),
-//    Crate("rustc_incremental"),
-//    Crate("rustc_llvm"),
-//    Crate("rustc_mir"),
-//    Crate("rustc_platform_intrinsics"),
 //    Crate("rustc_trans"),
-//    Crate("rustc_trans_utils"),
-//    Crate("serialize"),
-//    Crate("smallvec"),
-//    Crate("stable_deref_trait"),
-//    Crate("syntax"),
-//    Crate("syntax_pos"),
 //    Crate("tempdir"),
-//    Crate("unicode-width"),
 //    Crate("winapi"),
-//    Crate("winapi-build"),
 //    Crate("winapi-i686-pc-windows-gnu"),
 //    Crate("winapi-x86_64-pc-windows-gnu"),
 ];
@@ -147,12 +113,16 @@ impl<'a> Crate<'a> {
 }
 
 impl<'a> CrateVersion<'a> {
-    pub fn from_str(s: &'a str) -> Self {
+    /// Returns the struct and whether or not the dep is in-tree
+    pub fn from_str(s: &'a str) -> (Self, bool) {
         let mut parts = s.split(" ");
         let name = parts.next().unwrap();
         let version = parts.next().unwrap();
+        let path = parts.next().unwrap();
 
-        CrateVersion(name, version)
+        let is_path_dep = path.starts_with("(path+");
+
+        (CrateVersion(name, version), is_path_dep)
     }
 
     pub fn id_str(&self) -> String {
@@ -310,10 +280,13 @@ fn check_crate_whitelist<'a, 'b>(
         .expect("crate does not exist");
 
     for dep in to_check.dependencies.iter() {
-        let krate = CrateVersion::from_str(dep);
-        let mut bad = check_crate_whitelist(whitelist, resolve, visited, krate);
+        let (krate, is_path_dep) = CrateVersion::from_str(dep);
 
-        unapproved.append(&mut bad);
+        // We don't check in-tree deps
+        if !is_path_dep {
+            let mut bad = check_crate_whitelist(whitelist, resolve, visited, krate);
+            unapproved.append(&mut bad);
+        }
     }
 
     unapproved
