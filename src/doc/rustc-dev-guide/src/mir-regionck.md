@@ -12,7 +12,7 @@ The MIR-based region analysis consists of two major functions:
 - `replace_regions_in_mir`, invoked first, has two jobs:
   - First, it finds the set of regions that appear within the
     signature of the function (e.g., `'a` in `fn foo<'a>(&'a u32) {
-    ... }`. These are called the "universal" or "free" regions -- in
+    ... }`). These are called the "universal" or "free" regions -- in
     particular, they are the regions that [appear free][fvb] in the
     function body.
   - Second, it replaces all the regions from the function body with
@@ -164,7 +164,8 @@ are in scope within some type or at some point. Universes are formed
 into a tree, where each child extends its parents with some new names.
 So the **root universe** conceptually contains global names, such as
 the the lifetime `'static` or the type `i32`. In the compiler, we also
-put generic type parameters into this root universe. So consider
+put generic type parameters into this root universe (in this sense,
+there is not just one root universe, but one per item). So consider
 this function `bar`:
 
 ```rust
@@ -175,7 +176,7 @@ fn bar<'a, T>(t: &'a T) {
 }
 ```
 
-Here, the root universe would consider of the lifetimes `'static` and
+Here, the root universe would consist of the lifetimes `'static` and
 `'a`.  In fact, although we're focused on lifetimes here, we can apply
 the same concept to types, in which case the types `Foo` and `T` would
 be in the root universe (along with other global types, like `i32`).
@@ -214,7 +215,7 @@ fn bar<'a, T>(t: &'a T) {
 ```
 
 When we enter *this* type, we will again create a new universe, which
-let's call `U2`. It's parent will be the root universe, and U1 will be
+we'll call `U2`. Its parent will be the root universe, and U1 will be
 its sibling:
 
 ```
