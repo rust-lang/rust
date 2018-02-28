@@ -890,8 +890,8 @@ pub fn check_zero_tts(cx: &ExtCtxt,
     }
 }
 
-/// Extract the string literal from the first token of `tts`. If this
-/// is not a string literal, emit an error and return None.
+/// Interpreting `tts` as a comma-separated sequence of expressions,
+/// expect exactly one string literal, or emit an error and return None.
 pub fn get_single_str_from_tts(cx: &mut ExtCtxt,
                                sp: Span,
                                tts: &[tokenstream::TokenTree],
@@ -903,6 +903,8 @@ pub fn get_single_str_from_tts(cx: &mut ExtCtxt,
         return None
     }
     let ret = panictry!(p.parse_expr());
+    let _ = p.eat(&token::Comma);
+
     if p.token != token::Eof {
         cx.span_err(sp, &format!("{} takes 1 argument", name));
     }

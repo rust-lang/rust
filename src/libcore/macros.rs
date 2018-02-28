@@ -19,7 +19,10 @@ macro_rules! panic {
     ($msg:expr) => ({
         $crate::panicking::panic(&($msg, file!(), line!(), __rust_unstable_column!()))
     });
-    ($fmt:expr, $($arg:tt)*) => ({
+    ($msg:expr,) => (
+        panic!($msg)
+    );
+    ($fmt:expr, $($arg:tt)+) => ({
         $crate::panicking::panic_fmt(format_args!($fmt, $($arg)*),
                                      &(file!(), line!(), __rust_unstable_column!()))
     });
@@ -78,6 +81,9 @@ macro_rules! assert {
         if !$cond {
             panic!(concat!("assertion failed: ", stringify!($cond)))
         }
+    );
+    ($cond:expr,) => (
+        assert!($cond)
     );
     ($cond:expr, $($arg:tt)+) => (
         if !$cond {
@@ -359,7 +365,8 @@ macro_rules! try {
         $crate::result::Result::Err(err) => {
             return $crate::result::Result::Err($crate::convert::From::from(err))
         }
-    })
+    });
+    ($expr:expr,) => (try!($expr));
 }
 
 /// Write formatted data into a buffer.
@@ -456,6 +463,9 @@ macro_rules! writeln {
     ($dst:expr) => (
         write!($dst, "\n")
     );
+    ($dst:expr,) => (
+        writeln!($dst)
+    );
     ($dst:expr, $fmt:expr) => (
         write!($dst, concat!($fmt, "\n"))
     );
@@ -523,6 +533,9 @@ macro_rules! unreachable {
     });
     ($msg:expr) => ({
         unreachable!("{}", $msg)
+    });
+    ($msg:expr,) => ({
+        unreachable!($msg)
     });
     ($fmt:expr, $($arg:tt)*) => ({
         panic!(concat!("internal error: entered unreachable code: ", $fmt), $($arg)*)
@@ -603,7 +616,10 @@ mod builtin {
     #[stable(feature = "compile_error_macro", since = "1.20.0")]
     #[macro_export]
     #[cfg(dox)]
-    macro_rules! compile_error { ($msg:expr) => ({ /* compiler built-in */ }) }
+    macro_rules! compile_error {
+        ($msg:expr) => ({ /* compiler built-in */ });
+        ($msg:expr,) => ({ /* compiler built-in */ });
+    }
 
     /// The core macro for formatted string creation & output.
     ///
@@ -639,7 +655,10 @@ mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     #[cfg(dox)]
-    macro_rules! option_env { ($name:expr) => ({ /* compiler built-in */ }) }
+    macro_rules! option_env {
+        ($name:expr) => ({ /* compiler built-in */ });
+        ($name:expr,) => ({ /* compiler built-in */ });
+    }
 
     /// Concatenate identifiers into one identifier.
     ///
@@ -715,7 +734,10 @@ mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     #[cfg(dox)]
-    macro_rules! include_str { ($file:expr) => ({ /* compiler built-in */ }) }
+    macro_rules! include_str {
+        ($file:expr) => ({ /* compiler built-in */ });
+        ($file:expr,) => ({ /* compiler built-in */ });
+    }
 
     /// Includes a file as a reference to a byte array.
     ///
@@ -725,7 +747,10 @@ mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     #[cfg(dox)]
-    macro_rules! include_bytes { ($file:expr) => ({ /* compiler built-in */ }) }
+    macro_rules! include_bytes {
+        ($file:expr) => ({ /* compiler built-in */ });
+        ($file:expr,) => ({ /* compiler built-in */ });
+    }
 
     /// Expands to a string that represents the current module path.
     ///
@@ -755,5 +780,8 @@ mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     #[cfg(dox)]
-    macro_rules! include { ($file:expr) => ({ /* compiler built-in */ }) }
+    macro_rules! include {
+        ($file:expr) => ({ /* compiler built-in */ });
+        ($file:expr,) => ({ /* compiler built-in */ });
+    }
 }
