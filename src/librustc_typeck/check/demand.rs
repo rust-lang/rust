@@ -16,7 +16,7 @@ use rustc::traits::ObligationCause;
 
 use syntax::ast;
 use syntax::util::parser::PREC_POSTFIX;
-use syntax_pos::{self, Span};
+use syntax_pos::Span;
 use rustc::hir;
 use rustc::hir::def::Def;
 use rustc::hir::map::NodeItem;
@@ -140,7 +140,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if let Some((msg, suggestion)) = self.check_ref(expr, checked_ty, expected) {
             err.span_suggestion(expr.span, msg, suggestion);
         } else if !self.check_for_cast(&mut err, expr, expr_ty, expected) {
-            let methods = self.get_conversion_methods(expected, checked_ty);
+            let methods = self.get_conversion_methods(expr.span, expected, checked_ty);
             if let Ok(expr_text) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
                 let suggestions = iter::repeat(expr_text).zip(methods.iter())
                     .map(|(receiver, method)| format!("{}.{}()", receiver, method.name))
@@ -155,9 +155,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         (expected, Some(err))
     }
 
-    fn get_conversion_methods(&self, expected: Ty<'tcx>, checked_ty: Ty<'tcx>)
+    fn get_conversion_methods(&self, span: Span, expected: Ty<'tcx>, checked_ty: Ty<'tcx>)
                               -> Vec<AssociatedItem> {
-        let mut methods = self.probe_for_return_type(syntax_pos::DUMMY_SP,
+        let mut methods = self.probe_for_return_type(span,
                                                      probe::Mode::MethodCall,
                                                      expected,
                                                      checked_ty,
