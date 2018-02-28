@@ -337,7 +337,9 @@ impl<T, S> HashSet<T, S>
     /// assert_eq!(diff, [4].iter().collect());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn difference<'a, U>(&'a self, other: &'a HashSet<T, U>) -> Difference<'a, T, U> {
+    pub fn difference<'a, U: BuildHasher>(&'a self,
+                                          other: &'a HashSet<T, U>)
+                                          -> Difference<'a, T, U> {
         Difference {
             iter: self.iter(),
             other,
@@ -391,7 +393,9 @@ impl<T, S> HashSet<T, S>
     /// assert_eq!(intersection, [2, 3].iter().collect());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn intersection<'a, U>(&'a self, other: &'a HashSet<T, U>) -> Intersection<'a, T, U> {
+    pub fn intersection<'a, U: BuildHasher>(&'a self,
+                                            other: &'a HashSet<T, U>)
+                                            -> Intersection<'a, T, U> {
         Intersection {
             iter: self.iter(),
             other,
