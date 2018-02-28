@@ -2496,6 +2496,17 @@ pub trait Iterator {
     /// assert_eq!(vec![33, 53, 3, 13, 23, 43], vec_3);
     /// assert_eq!(vec![133, 153, 103, 113, 123, 143], vec_103);
     /// ```
+    /// Collecting part of iterator into a vector with manually set capacity
+    ///
+    /// ```
+    /// let mut iter = 1..5;
+    /// let first_2 = iter.by_ref()
+    ///     .take(2)
+    ///     .collect_into(Vec::with_capacity(2));
+    /// let the_rest = iter.collect::<Vec<_>>();
+    /// assert_eq!(vec![1, 2], first_2);
+    /// assert_eq!(vec![3, 4], the_rest);
+    /// ```
     #[unstable(feature = "collect_into", issue = "0")]
     fn collect_into<E>(self, mut collection: E) -> E where
         E: Extend<Self::Item>,
