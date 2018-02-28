@@ -213,6 +213,21 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId, opt_body_id: Option<
                         },
                     );
                 }
+            } else if match_type(cx, ty, &paths::COW) {
+                let as_str = format!("{}", snippet_opt(cx, arg.span).unwrap());
+                let mut cc = as_str.chars();
+                cc.next();
+                let replacement: String = cc.collect();
+
+                span_lint_and_then(
+                    cx,
+                    PTR_ARG,
+                    arg.span,
+                    "using a reference to `Cow` is not recommended.",
+                    |db| {
+                        db.span_suggestion(arg.span, "change this to", replacement);
+                    },
+                );
             }
         }
     }

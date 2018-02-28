@@ -1,4 +1,4 @@
-
+use std::borrow::Cow;
 
 
 fn x(y: &i32) -> i32 {
@@ -50,4 +50,13 @@ fn issue_1432() {
     let _ = v.iter().filter(|&ref a| a.is_empty());
 
     let _ = v.iter().filter(|&a| a.is_empty());
+}
+
+#[allow(dead_code)]
+fn test_cow_with_ref(c: &Cow<[i32]>) {
+}
+
+#[allow(dead_code)]
+fn test_cow(c: Cow<[i32]>) {
+    let _c = c;
 }
