@@ -267,6 +267,11 @@ impl<I: Iterator> IntoIterator for I {
 /// or, in the case of collections that permit multiple entries with equal
 /// keys, that entry is inserted.
 ///
+/// When extending with items from [Iterator](trait.Iterator.html), it's often
+/// more convenient to use
+/// [Iterator::collect_into](trait.Iterator.html#method.collect_into). It works
+/// exactly the same way, but is called on series instead of collection.
+///
 /// # Examples
 ///
 /// Basic usage:
@@ -350,6 +355,13 @@ pub trait Extend<A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn extend<T: IntoIterator<Item=A>>(&mut self, iter: T);
+}
+
+#[unstable(feature = "collect_into", issue = "0")]
+impl <'a, A, E: Extend<A>> Extend<A> for &'a mut E {
+    fn extend<T: IntoIterator<Item=A>>(&mut self, iter: T) {
+        (*self).extend(iter)
+    }
 }
 
 /// An iterator able to yield elements from both ends.
