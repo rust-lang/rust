@@ -24,8 +24,41 @@ This proposal adds an API to std which would allow you to guarantee that a
 particular value will never move again, enabling safe APIs that rely on
 self-references to exist.
 
-# Explanation
-[explanation]: #explanation
+# Guide-level explanation
+
+The core goal of this RFC is to **provide a reference type where the referent is guaranteed to never move before being dropped**. We want to do this with a minimum disruption to the type system, and in fact, this RFC shows that we can achieve the goal without *any* type system changes.
+
+Let's take that goal apart, piece by piece, from the perspective of the futures (i.e. async/await) use case:
+
+- **Reference type**. The reason we need a reference type is that, when working with things like futures, we generally want to combine smaller futures into larger ones, and only at the top level put an entire resulting future into some immovable location. Thus, we need a reference type for methods like `poll`, so that we can break apart a large future into its smaller components, while retaining the guarantee about immobility.
+
+- **Never to move before being dropped**. Again looking at the futures case, once we being `poll`ing a future, we want it to be able to store references into itself, which is possible if we can guarantee that the whole future will never move. We don't try to track *whether* such references exist at the type level, since that would involve cumbersome typestate; instead, we simply decree that by the time you initially `poll`, you promise to never move an immobile future again.
+
+At the same time, we want to support futures (and iterators, etc.) that *can* move. While it's possible to do so by providing two distinct `Future` (or `Iterator`, etc) traits, such designs incur unacceptable ergonomic costs.
+
+The key insight of this RFC is that we can create a new library type, `Pin<'a, T>`, which encompasses *both* moveable and immobile referents. The type is paired with a new auto trait, `Move`, which determines the meaning of `Pin<'a, T>`:
+
+- If `T: Move` (which is the default), then `Pin<'a, T>` is entirely equivalent to `&'a mut T`.
+- If `T: !Move`, then `Pin<'a, T>` provides a unique reference to a `T` with lifetime `'a`, but only provides `&'a T` access safely. It also guarantees that the referent will *never* be moved. However, getting `&'a mut T` access is unsafe, because operations like `mem::replace` mean that `&mut` access is enough to move data out of the referent; you must promise not to do so.
+
+To be clear: the *sole* function of `Move` is to control the meaning of `Pin`. Making `Move` an auto trait means that the vast majority of types are automatically "movable", so `Pin` degenerates to `&mut`. In the case that you need immobility, you *opt out* of `Move`, and then `Pin` becomes meaningful for your type.
+
+Putting this all together, we arrive at the following definition of `Future`:
+
+```rust
+trait Future {
+    type Item;
+    type Error;
+
+    fn poll(self: Pin<Self>, cx: task::Context) -> Poll<Self::Item, Self::Error>;
+}
+```
+
+By default when implementing `Future` for a struct, this definition is equivalent to today's, which takes `&mut self`. But if you want to allow self-referencing in your future, you just opt out of `Move`, and `Pin` takes care of the rest.
+
+The final piece of this RFC is the `Anchor` type, which is just a `Box` that doesn't allow moving out, but *does* allow you to acquire a `Pin` reference.
+
+# Reference-level explanation
 
 ## The `Move` auto trait
 
@@ -50,7 +83,7 @@ enforced through library APIs which use `Move` as a marker.
 An anchor is a new kind of smart pointer. It is very much like a box - it is a
 heap-allocated, exclusive-ownership type - but it provides additional
 constraints. Unless the type it references implements `Move`, it is not
-possible to mutably dereference the `Anchor` or move out of it. It does
+possible to mutably dereference the `Anchor` or move out of it in safe code. It does
 implement immutable Deref for all types, including types that don't implement
 `Move`.
 
