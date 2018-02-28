@@ -11,7 +11,7 @@
 // ignore-windows
 // ignore-tidy-linelength
 
-// compile-flags: -g  -C no-prepopulate-passes -Zremap-path-prefix-from={{cwd}} -Zremap-path-prefix-to=/the/cwd -Zremap-path-prefix-from={{src-base}} -Zremap-path-prefix-to=/the/src
+// compile-flags: -g  -C no-prepopulate-passes --remap-path-prefix={{cwd}}=/the/cwd --remap-path-prefix={{src-base}}=/the/src
 // aux-build:remap_path_prefix_aux.rs
 
 extern crate remap_path_prefix_aux;

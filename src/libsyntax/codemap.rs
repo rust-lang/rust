@@ -129,7 +129,7 @@ pub struct CodeMap {
     pub(super) files: RefCell<Vec<Rc<FileMap>>>,
     file_loader: Box<FileLoader>,
     // This is used to apply the file path remapping as specified via
-    // -Zremap-path-prefix to all FileMaps allocated within this CodeMap.
+    // --remap-path-prefix to all FileMaps allocated within this CodeMap.
     path_mapping: FilePathMapping,
     stable_id_to_filemap: RefCell<FxHashMap<StableFilemapId, Rc<FileMap>>>,
     /// In case we are in a doctest, replace all file names with the PathBuf,

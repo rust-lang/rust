@@ -670,7 +670,7 @@ pub struct FileMap {
     /// originate from files has names between angle brackets by convention,
     /// e.g. `<anon>`
     pub name: FileName,
-    /// True if the `name` field above has been modified by -Zremap-path-prefix
+    /// True if the `name` field above has been modified by --remap-path-prefix
     pub name_was_remapped: bool,
     /// The unmapped path of the file that the source came from.
     /// Set to `None` if the FileMap was imported from an external crate.
