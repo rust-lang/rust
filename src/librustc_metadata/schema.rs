@@ -521,5 +521,5 @@ pub struct GeneratorData<'tcx> {
 impl_stable_hash_for!(struct GeneratorData<'tcx> { layout });
 
 // Tags used for encoding Spans:
-pub const TAG_VALID_SPAN: u8 = 0;
-pub const TAG_INVALID_SPAN: u8 = 1;
+pub const TAG_INVALID_SPAN_CNUM: u32 = 0;
+pub const TAG_VALID_SPAN_CNUM_START: u32 = 1;

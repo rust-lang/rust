@@ -67,6 +67,8 @@ pub struct CrateMetadata {
     pub cnum_map: RefCell<CrateNumMap>,
     pub cnum: CrateNum,
     pub codemap_import_info: RefCell<Vec<ImportedFileMap>>,
+    // Cache the last used filemap for translating spans as an optimization.
+    pub last_filemap_index: Cell<usize>,
     pub attribute_cache: RefCell<[Vec<Option<Rc<[ast::Attribute]>>>; 2]>,
 
     pub root: schema::CrateRoot,
