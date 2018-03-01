@@ -588,7 +588,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// existentially bound, then we check its inferred value and try
     /// to find a good name from that. Returns `None` if we can't find
     /// one (e.g., this is just some random part of the CFG).
-    fn to_error_region(&self, r: RegionVid) -> Option<ty::Region<'tcx>> {
+    pub fn to_error_region(&self, r: RegionVid) -> Option<ty::Region<'tcx>> {
         if self.universal_regions.is_universal_region(r) {
             return self.definitions[r].external_name;
         } else {

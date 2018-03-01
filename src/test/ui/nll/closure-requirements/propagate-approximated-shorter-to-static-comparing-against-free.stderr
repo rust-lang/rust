@@ -78,8 +78,6 @@ LL |     let cell = Cell::new(&a);
 ...
 LL | }
    | - borrowed value only lives until here
-   |
-   = note: borrowed value must be valid for lifetime '_#2r...
 
 error: aborting due to 2 previous errors
 

@@ -233,7 +233,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         context: Context,
         (place, span): (&Place<'tcx>, Span),
         gen_borrow_kind: BorrowKind,
-        issued_borrow: &BorrowData,
+        issued_borrow: &BorrowData<'tcx>,
         end_issued_loan_span: Option<Span>,
     ) {
         let issued_span = self.retrieve_borrow_span(issued_borrow);
@@ -574,7 +574,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         &mut self,
         context: Context,
         (place, span): (&Place<'tcx>, Span),
-        loan: &BorrowData,
+        loan: &BorrowData<'tcx>,
     ) {
         let mut err = self.tcx.cannot_assign_to_borrowed(
             span,

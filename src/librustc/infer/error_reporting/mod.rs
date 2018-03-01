@@ -165,12 +165,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 );
             }
         };
-        let message = format!("{}{}{}", prefix, description, suffix);
-        if let Some(span) = span {
-            err.span_note(span, &message);
-        } else {
-            err.note(&message);
-        }
+
+        TyCtxt::emit_msg_span(err, prefix, description, span, suffix);
+    }
+
+    pub fn note_and_explain_free_region(self,
+                                        err: &mut DiagnosticBuilder,
+                                        prefix: &str,
+                                        region: ty::Region<'tcx>,
+                                        suffix: &str) {
+        let (description, span) = self.msg_span_from_free_region(region);
+
+
+        TyCtxt::emit_msg_span(err, prefix, description, span, suffix);
     }
 
     fn msg_span_from_free_region(self,
@@ -222,6 +229,20 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         };
         let (msg, opt_span) = self.explain_span(tag, span);
         (format!("{} {}", prefix, msg), opt_span)
+    }
+
+    fn emit_msg_span(err: &mut DiagnosticBuilder,
+                     prefix: &str,
+                     description: String,
+                     span: Option<Span>,
+                     suffix: &str) {
+        let message = format!("{}{}{}", prefix, description, suffix);
+
+        if let Some(span) = span {
+            err.span_note(span, &message);
+        } else {
+            err.note(&message);
+        }
     }
 
     fn item_scope_tag(item: &hir::Item) -> &'static str {
