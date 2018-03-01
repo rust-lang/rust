@@ -1314,7 +1314,7 @@ impl<T> [T] {
     /// It is designed to be very fast in cases where the slice is nearly sorted, or consists of
     /// two or more sorted sequences concatenated one after another.
     ///
-    /// The algorithm allocates temporary storage the size of `self`.
+    /// The algorithm allocates temporary storage in a `Vec<(K, usize)` the length of the slice.
     ///
     /// # Examples
     ///
@@ -1326,8 +1326,8 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "slice_sort_by_key", since = "1.7.0")]
     #[inline]
-    pub fn sort_by_key<B, F>(&mut self, f: F)
-        where F: FnMut(&T) -> B, B: Ord
+    pub fn sort_by_key<K, F>(&mut self, f: F)
+        where F: FnMut(&T) -> K, K: Ord
     {
         let mut indices: Vec<_> = self.iter().map(f).enumerate().map(|(i, k)| (k, i)).collect();
         // The elements of `indices` are unique, as they are indexed, so any sort will be stable
@@ -1418,8 +1418,8 @@ impl<T> [T] {
     /// Sorts the slice with a key extraction function, but may not preserve the order of equal
     /// elements.
     ///
-    /// Note that, currently, the key function for `sort_unstable_by_key` is called multiple times
-    /// per element, unlike `sort_stable_by_key`.
+    /// Note that, currently, the key function for [`sort_unstable_by_key`] is called multiple times
+    /// per element, unlike [`sort_by_key`].
     ///
     /// This sort is unstable (i.e. may reorder equal elements), in-place (i.e. does not allocate),
     /// and `O(m n log m n)` worst-case, where the key function is `O(m)`.
@@ -1432,8 +1432,8 @@ impl<T> [T] {
     /// randomization to avoid degenerate cases, but with a fixed seed to always provide
     /// deterministic behavior.
     ///
-    /// Due to its key calling strategy, `sort_unstable_by_key` is likely to be slower than
-    /// `sort_by_key` in cases where the key function is expensive.
+    /// Due to its key calling strategy, [`sort_unstable_by_key`] is likely to be slower than
+    /// [`sort_by_key`] in cases where the key function is expensive.
     ///
     /// # Examples
     ///
@@ -1444,12 +1444,13 @@ impl<T> [T] {
     /// assert!(v == [1, 2, -3, 4, -5]);
     /// ```
     ///
+    /// [`sort_by_key`]: #method.sort_by_key
+    /// [`sort_unstable_by_key`]: #method.sort_unstable_by_key
     /// [pdqsort]: https://github.com/orlp/pdqsort
     #[stable(feature = "sort_unstable", since = "1.20.0")]
     #[inline]
-    pub fn sort_unstable_by_key<B, F>(&mut self, f: F)
-        where F: FnMut(&T) -> B,
-              B: Ord
+    pub fn sort_unstable_by_key<K, F>(&mut self, f: F)
+        where F: FnMut(&T) -> K, K: Ord
     {
         core_slice::SliceExt::sort_unstable_by_key(self, f);
     }
