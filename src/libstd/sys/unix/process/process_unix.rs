@@ -235,14 +235,14 @@ impl Command {
         io::Error::last_os_error()
     }
 
-    #[cfg(not(any(target_os = "freebsd")))]
+    #[cfg(not(any(target_os = "macos", target_os = "freebsd")))]
     fn posix_spawn(&mut self, _stdio: &ChildPipes, _envp: Option<&CStringArray>)
         -> io::Result<Option<Process>>
     {
         Ok(None)
     }
 
-    #[cfg(any(target_os = "freebsd"))]
+    #[cfg(any(target_os = "macos", target_os = "freebsd"))]
     fn posix_spawn(&mut self, stdio: &ChildPipes, envp: Option<&CStringArray>)
         -> io::Result<Option<Process>>
     {
