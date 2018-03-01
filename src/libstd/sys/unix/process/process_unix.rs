@@ -326,7 +326,7 @@ impl Command {
             if ret == 0 {
                 Ok(Some(p))
             } else {
-                Err(io::Error::last_os_error())
+                Err(io::Error::from_raw_os_error(ret))
             }
         }
     }
