@@ -2163,6 +2163,7 @@ impl<'a> Resolver<'a> {
         result
     }
 
+    /// This is called to resolve a trait reference from an `impl` (i.e. `impl Trait for Foo`)
     fn with_optional_trait_ref<T, F>(&mut self, opt_trait_ref: Option<&TraitRef>, f: F) -> T
         where F: FnOnce(&mut Resolver, Option<DefId>) -> T
     {
@@ -2172,13 +2173,14 @@ impl<'a> Resolver<'a> {
             let path: Vec<_> = trait_ref.path.segments.iter()
                 .map(|seg| respan(seg.span, seg.identifier))
                 .collect();
-            let def = self.smart_resolve_path_fragment(trait_ref.ref_id,
-                                                       None,
-                                                       &path,
-                                                       trait_ref.path.span,
-                                                       trait_ref.path.segments.last().unwrap().span,
-                                                       PathSource::Trait(AliasPossibility::No))
-                .base_def();
+            let def = self.smart_resolve_path_fragment(
+                trait_ref.ref_id,
+                None,
+                &path,
+                trait_ref.path.span,
+                trait_ref.path.segments.last().unwrap().span,
+                PathSource::Trait(AliasPossibility::No)
+            ).base_def();
             if def != Def::Err {
                 new_id = Some(def.def_id());
                 let span = trait_ref.path.span;

@@ -4802,7 +4802,7 @@ register_diagnostics! {
 //  E0240,
 //  E0241,
 //  E0242,
-    E0245, // not a trait
+//  E0245, // not a trait
 //  E0246, // invalid recursive type
 //  E0247,
 //  E0248, // value used as a type, now reported earlier during resolution as E0412

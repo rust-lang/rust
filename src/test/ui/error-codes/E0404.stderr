@@ -4,6 +4,12 @@ error[E0404]: expected trait, found struct `Foo`
 LL | impl Foo for Bar {} //~ ERROR E0404
    |      ^^^ not a trait
 
+error[E0404]: expected trait, found struct `Foo`
+  --> $DIR/E0404.rs:18:11
+   |
+LL | fn baz<T: Foo>(_: T) {} //~ ERROR E0404
+   |           ^^^ not a trait
+
 error: cannot continue compilation due to previous error
 
 If you want more information on this error, try using "rustc --explain E0404"
