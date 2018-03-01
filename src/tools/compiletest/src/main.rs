@@ -51,7 +51,7 @@ mod raise_fd_limit;
 mod read2;
 
 fn main() {
-    env_logger::init().unwrap();
+    env_logger::init();
 
     let config = parse_config(env::args().collect());
 

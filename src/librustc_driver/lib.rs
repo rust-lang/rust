@@ -1577,7 +1577,7 @@ pub fn diagnostics_registry() -> errors::registry::Registry {
 }
 
 pub fn main() {
-    env_logger::init().unwrap();
+    env_logger::init();
     let result = run(|| {
         let args = env::args_os().enumerate()
             .map(|(i, arg)| arg.into_string().unwrap_or_else(|arg| {

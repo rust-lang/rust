@@ -139,6 +139,8 @@ fn check(cache: &mut Cache,
        file.ends_with("util/struct.ThinVec.html") ||
        file.ends_with("util/struct.RcSlice.html") ||
        file.ends_with("layout/struct.TyLayout.html") ||
+       file.ends_with("humantime/struct.Timestamp.html") ||
+       file.ends_with("log/index.html") ||
        file.ends_with("ty/struct.Slice.html") ||
        file.ends_with("ty/enum.Attributes.html") ||
        file.ends_with("ty/struct.SymbolName.html") {
