@@ -18,7 +18,7 @@ use rustc::session::config::FullDebugInfo;
 use rustc::ty::TyCtxt;
 use std::mem;
 use analysis::accesses::Accesses;
-use analysis::eventflow::{After, Before, SparseBitSet};
+use analysis::eventflow::{After, Before, Diff, SparseBitSet};
 use analysis::locations::FlatLocations;
 use transform::{MirPass, MirSource};
 
@@ -251,11 +251,36 @@ impl MirPass for UnifyPlaces {
             let mut conflicts = IndexVec::from_elem(SparseBitSet::new(), &mir.local_decls);
             let mut candidates = vec![];
             for (block, data) in mir.basic_blocks().iter_enumerated() {
-                let mut add_conflicts_at = |past: &SparseBitSet<_>, future: &SparseBitSet<_>| {
-                    // FIXME(eddyb) use `diff_at_location` (how?) as an optimization.
+                let mut add_conflicts_at = |(past, past_diff): (&SparseBitSet<_>,
+                                                                Diff<&SparseBitSet<_>>),
+                                            (future, future_diff): (&SparseBitSet<_>,
+                                                                    Diff<&SparseBitSet<_>>)| {
                     let live = || past.chunks().map(|chunk| future.contains_chunk(chunk));
-                    for i in live().flat_map(|chunk| chunk.iter()) {
+                    let (unchanged, new) = match (past_diff.only_added(),
+                                                  future_diff.only_added()) {
+                        (Diff::Removed(_), _) | (_, Diff::Removed(_)) => bug!(),
+
+                        (Diff::Nothing, Diff::Nothing) => return,
+
+                        (Diff::Unknown, _) | (_, Diff::Unknown) |
+                        (Diff::Added(_), Diff::Added(_)) => {
+                            for i in live().flat_map(|chunk| chunk.iter()) {
+                                conflicts[i].extend(live());
+                            }
+                            return;
+                        }
+
+                        (Diff::Added(past_new), Diff::Nothing) => (future, past_new),
+                        (Diff::Nothing, Diff::Added(future_new)) => (past, future_new),
+                    };
+                    let live_new = || new.chunks().map(|chunk| unchanged.contains_chunk(chunk));
+                    for i in live_new().flat_map(|chunk| chunk.iter()) {
                         conflicts[i].extend(live());
+                    }
+                    // FIXME(eddyb) avoid doing overlapping work here.
+                    // Could maybe make the conflicts matrix symmetric after the fact?
+                    for i in live().flat_map(|chunk| chunk.iter()) {
+                        conflicts[i].extend(live_new());
                     }
                 };
                 let mut checked_after_last_statement = false;
@@ -273,8 +298,8 @@ impl MirPass for UnifyPlaces {
                                         .and_then(|c| c.filter(can_rename)));
                                     if !checked_after_last_statement {
                                         add_conflicts_at(
-                                            observers.past.seek(Before(location)),
-                                            observers.future.seek(Before(location)));
+                                            observers.past.seek_diff(Before(location)),
+                                            observers.future.seek_diff(Before(location)));
                                     }
                                     checked_after_last_statement = false;
                                     continue;
@@ -284,8 +309,8 @@ impl MirPass for UnifyPlaces {
                         _ => {}
                     }
                     add_conflicts_at(
-                        observers.past.seek(After(location)),
-                        observers.future.seek(Before(location)));
+                        observers.past.seek_diff(After(location)),
+                        observers.future.seek_diff(Before(location)));
                     checked_after_last_statement = true;
                 }
                 let location = Location {
@@ -293,8 +318,8 @@ impl MirPass for UnifyPlaces {
                     statement_index: data.statements.len()
                 };
                 add_conflicts_at(
-                    observers.past.seek(After(location)),
-                    observers.future.seek(Before(location)));
+                    observers.past.seek_diff(After(location)),
+                    observers.future.seek_diff(Before(location)));
             }
 
             // HACK(eddyb) remove problematic "self-conflicts".
@@ -404,7 +429,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
             StatementKind::StorageLive(local) |
             StatementKind::StorageDead(local) => {
                 let intact = self.conflicts.finder.find(local) == local &&
-                    self.conflicts.finder.children[local].iter().next().is_none();
+                    self.conflicts.finder.children[local].is_empty();
                 // FIXME(eddyb) fuse storage liveness ranges instead of removing them.
                 if !intact {
                     statement.make_nop();

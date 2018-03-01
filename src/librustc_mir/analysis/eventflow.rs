@@ -82,6 +82,9 @@ impl<I: Idx> SparseBitSet<I> {
     }
 
     pub fn contains_chunk(&self, chunk: SparseChunk<I>) -> SparseChunk<I> {
+        if chunk.bits == 0 {
+            return chunk;
+        }
         SparseChunk {
             bits: self.chunk_bits.get(&chunk.key).map_or(0, |bits| bits & chunk.bits),
             ..chunk
@@ -154,6 +157,10 @@ impl<I: Idx> SparseBitSet<I> {
 
     pub fn iter<'a>(&'a self) -> impl Iterator<Item = I> + 'a {
         self.chunks().flat_map(|chunk| chunk.iter())
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.iter().next().is_none()
     }
 }
 
@@ -394,8 +401,45 @@ pub enum SeekLocation {
     After(Location)
 }
 
+pub enum Diff<T> {
+    Nothing,
+    Added(T),
+    Removed(T),
+    Unknown
+}
+
+impl<T> Diff<T> {
+    pub fn add(&mut self, x: T) {
+        *self = match *self {
+            Diff::Nothing => Diff::Added(x),
+            _ => Diff::Unknown
+        };
+    }
+
+    pub fn remove(&mut self, x: T) {
+        *self = match *self {
+            Diff::Nothing => Diff::Removed(x),
+            _ => Diff::Unknown
+        };
+    }
+
+    pub fn only_added(self) -> Self {
+        match self {
+            Diff::Removed(_) => Diff::Nothing,
+            _ => self
+        }
+    }
+}
+
 impl<'a, D: Direction, I: Idx> Observer<'a, D, I> {
     pub fn seek(&mut self, to: SeekLocation) -> &SparseBitSet<I> {
+        self.seek_diff(to).0
+    }
+
+    pub fn seek_diff(&mut self, to: SeekLocation)
+                     -> (&SparseBitSet<I>, Diff<&'a SparseBitSet<I>>) {
+        let mut total_diff = Diff::Nothing;
+
         // Ensure the location is valid for a statement/terminator.
         match to {
             Before(location) | After(location) => {
@@ -428,12 +472,20 @@ impl<'a, D: Direction, I: Idx> Observer<'a, D, I> {
                 self.location.statement_index = locations_in_block;
             }
             self.location.block = to.block;
+            total_diff = Diff::Unknown;
         }
 
         while self.location.statement_index < to.statement_index {
             let flat_location = self.results.flat_locations.get(self.location);
-            // FIXME(eddyb) These could use per-"word" bitwise operations.
-            for i in self.results.diff_at_location[flat_location].chunks() {
+            let diff = &self.results.diff_at_location[flat_location];
+            if !diff.is_empty() {
+                if D::FORWARD {
+                    total_diff.add(diff);
+                } else {
+                    total_diff.remove(diff);
+                }
+            }
+            for i in diff.chunks() {
                 if D::FORWARD {
                     self.state_before.insert_chunk(i);
                 } else {
@@ -446,8 +498,15 @@ impl<'a, D: Direction, I: Idx> Observer<'a, D, I> {
         while self.location.statement_index > to.statement_index {
             self.location.statement_index -= 1;
             let flat_location = self.results.flat_locations.get(self.location);
-            // FIXME(eddyb) These could use per-"word" bitwise operations.
-            for i in self.results.diff_at_location[flat_location].chunks() {
+            let diff = &self.results.diff_at_location[flat_location];
+            if !diff.is_empty() {
+                if D::FORWARD {
+                    total_diff.remove(diff);
+                } else {
+                    total_diff.add(diff);
+                }
+            }
+            for i in diff.chunks() {
                 if D::FORWARD {
                     self.state_before.remove_chunk(i);
                 } else {
@@ -456,7 +515,7 @@ impl<'a, D: Direction, I: Idx> Observer<'a, D, I> {
             }
         }
 
-        &self.state_before
+        (&self.state_before, total_diff)
     }
 }
 
@@ -467,6 +526,15 @@ impl<'a, I: Idx> PastAndFuture<Observer<'a, Forward, I>,
         PastAndFuture {
             past: self.past.seek(to),
             future: self.future.seek(to)
+        }
+    }
+
+    pub fn seek_diff(&mut self, to: SeekLocation)
+                     -> PastAndFuture<(&SparseBitSet<I>, Diff<&'a SparseBitSet<I>>),
+                                      (&SparseBitSet<I>, Diff<&'a SparseBitSet<I>>)> {
+        PastAndFuture {
+            past: self.past.seek_diff(to),
+            future: self.future.seek_diff(to)
         }
     }
 }
