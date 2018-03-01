@@ -212,7 +212,7 @@ fn from_target_feature(
         let value = value.as_str();
         for feature in value.split(',') {
             if whitelist.contains(feature) {
-                let llvm_feature = llvm_util::to_llvm_feature(feature);
+                let llvm_feature = llvm_util::to_llvm_feature(&tcx.sess, feature);
                 target_features.push(format!("+{}", llvm_feature));
                 continue
             }

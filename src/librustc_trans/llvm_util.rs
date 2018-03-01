@@ -81,7 +81,9 @@ unsafe fn configure_llvm(sess: &Session) {
 
 const ARM_WHITELIST: &'static [&'static str] = &["neon", "v7", "vfp2", "vfp3", "vfp4"];
 
-const AARCH64_WHITELIST: &'static [&'static str] = &["neon", "v7"];
+const AARCH64_WHITELIST: &'static [&'static str] = &["fp", "neon", "sve", "crc", "crypto",
+                                                     "ras", "lse", "rdm", "fp16", "rcpc",
+                                                     "dotprod", "v8.1a", "v8.2a", "v8.3a"];
 
 const X86_WHITELIST: &'static [&'static str] = &["aes", "avx", "avx2", "avx512bw",
                                                  "avx512cd", "avx512dq", "avx512er",
@@ -104,12 +106,18 @@ const POWERPC_WHITELIST: &'static [&'static str] = &["altivec",
 
 const MIPS_WHITELIST: &'static [&'static str] = &["msa"];
 
-pub fn to_llvm_feature(s: &str) -> &str {
-    match s {
-        "pclmulqdq" => "pclmul",
-        "rdrand" => "rdrnd",
-        "bmi1" => "bmi",
-        s => s,
+pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> &'a str {
+    let arch = if sess.target.target.arch == "x86_64" {
+        "x86"
+    } else {
+        &*sess.target.target.arch
+    };
+    match (arch, s) {
+        ("x86", "pclmulqdq") => "pclmul",
+        ("x86", "rdrand") => "rdrnd",
+        ("x86", "bmi1") => "bmi",
+        ("aarch64", "fp16") => "fullfp16",
+        (_, s) => s,
     }
 }
 
@@ -118,7 +126,7 @@ pub fn target_features(sess: &Session) -> Vec<Symbol> {
     target_feature_whitelist(sess)
         .iter()
         .filter(|feature| {
-            let llvm_feature = to_llvm_feature(feature);
+            let llvm_feature = to_llvm_feature(sess, feature);
             let cstr = CString::new(llvm_feature).unwrap();
             unsafe { llvm::LLVMRustHasFeature(target_machine, cstr.as_ptr()) }
         })
