@@ -761,12 +761,27 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     );
                 };
             }
+            StatementKind::UserAssertTy(ref ty, ref local) => {
+                let local_ty = mir.local_decls()[*local].ty;
+                debug!("check_stmt: user_assert_ty ty={:?} local_ty={:?}", ty, local_ty);
+                if let Err(terr) =
+                    self.eq_types(ty, local_ty, location.at_successor_within_block())
+                {
+                    span_mirbug!(
+                        self,
+                        stmt,
+                        "bad type assert ({:?} = {:?}): {:?}",
+                        ty,
+                        local_ty,
+                        terr
+                    );
+                }
+            }
             StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::InlineAsm { .. }
             | StatementKind::EndRegion(_)
             | StatementKind::Validate(..)
-            | StatementKind::UserAssertTy(..)
             | StatementKind::Nop => {}
         }
     }

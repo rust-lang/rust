@@ -38,7 +38,7 @@ use rustc::mir::visit::{MutVisitor, Visitor, TyContext};
 use rustc::ty::{Ty, RegionKind, TyCtxt};
 use transform::{MirPass, MirSource};
 
-pub struct CleanupPostBorrowck;
+pub struct CleanEndRegions;
 
 struct GatherBorrowedRegions {
     seen_regions: FxHashSet<region::Scope>,
@@ -48,24 +48,19 @@ struct DeleteTrivialEndRegions<'a> {
     seen_regions: &'a FxHashSet<region::Scope>,
 }
 
-pub struct DeleteUserAssertTy;
-
-impl MirPass for CleanupPostBorrowck {
+impl MirPass for CleanEndRegions {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _source: MirSource,
                           mir: &mut Mir<'tcx>) {
-        if tcx.emit_end_regions() {
-            let mut gather = GatherBorrowedRegions {
-                seen_regions: FxHashSet()
-            };
-            gather.visit_mir(mir);
+        if !tcx.emit_end_regions() { return; }
 
-            let mut delete = DeleteTrivialEndRegions { seen_regions: &mut gather.seen_regions };
-            delete.visit_mir(mir);
-        }
+        let mut gather = GatherBorrowedRegions {
+            seen_regions: FxHashSet()
+        };
+        gather.visit_mir(mir);
 
-        let mut delete = DeleteUserAssertTy;
+        let mut delete = DeleteTrivialEndRegions { seen_regions: &mut gather.seen_regions };
         delete.visit_mir(mir);
     }
 }
@@ -112,6 +107,20 @@ impl<'a, 'tcx> MutVisitor<'tcx> for DeleteTrivialEndRegions<'a> {
             statement.make_nop();
         }
         self.super_statement(block, statement, location);
+    }
+}
+
+pub struct CleanUserAssertTy;
+
+pub struct DeleteUserAssertTy;
+
+impl MirPass for CleanUserAssertTy {
+    fn run_pass<'a, 'tcx>(&self,
+                          _tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          _source: MirSource,
+                          mir: &mut Mir<'tcx>) {
+        let mut delete = DeleteUserAssertTy;
+        delete.visit_mir(mir);
     }
 }
 
