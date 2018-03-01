@@ -1089,8 +1089,8 @@ impl fmt::Display for ExitStatus {
 /// For the platform's canonical successful and unsuccessful codes, see
 /// the [`SUCCESS`] and [`FAILURE`] associated items.
 ///
-/// [`SUCCESS`]: #constant.SUCCESS
-/// [`FAILURE`]: #constant.FAILURE
+/// [`SUCCESS`]: #associatedconstant.SUCCESS
+/// [`FAILURE`]: #associatedconstant.FAILURE
 ///
 /// **Warning**: While various forms of this were discussed in [RFC #1937],
 /// it was ultimately cut from that RFC, and thus this type is more subject
