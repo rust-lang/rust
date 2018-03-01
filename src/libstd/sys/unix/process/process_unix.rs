@@ -242,6 +242,8 @@ impl Command {
         Ok(None)
     }
 
+    // Only support platforms for which posix_spawn() can return ENOENT
+    // directly.
     #[cfg(any(target_os = "macos", target_os = "freebsd"))]
     fn posix_spawn(&mut self, stdio: &ChildPipes, envp: Option<&CStringArray>)
         -> io::Result<Option<Process>>
