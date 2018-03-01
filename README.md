@@ -233,7 +233,7 @@ find out how various parts of the compiler work.
 [IRC]: https://en.wikipedia.org/wiki/Internet_Relay_Chat
 [#rust]: irc://irc.mozilla.org/rust
 [#rust-beginners]: irc://irc.mozilla.org/rust-beginners
-[rustc-guide]: https://rust-lang-nursery.github.io/rustc-guide/about-this-guide.html
+[rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/about-this-guide.html
 
 ## License
 [license]: #license
