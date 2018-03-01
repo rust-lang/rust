@@ -1108,8 +1108,7 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
     }
 
     #[inline]
-    default fn nth(&mut self, n: usize) -> Option<Self::Item>
-    {
+    default fn nth(&mut self, n: usize) -> Option<Self::Item> {
         self.super_nth(n)
     }
 
@@ -1194,8 +1193,7 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
     }
 
     #[inline]
-    fn nth(&mut self, n: usize) -> Option<Self::Item>
-    {
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
         let delta = cmp::min(n, self.len - self.index);
         let end = self.index + delta;
         while self.index < end {
