@@ -77,8 +77,8 @@ fn used_immutable() {
     }
 
     while i < 3 {
-        fn_mutref(&mut i);
         println!("OK - passed by mutable reference");
+        fn_mutref(&mut i)
     }
 }
 

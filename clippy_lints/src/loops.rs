@@ -689,46 +689,6 @@ fn check_for_loop<'a, 'tcx>(
     detect_manual_memcpy(cx, pat, arg, body, expr);
 }
 
-fn search_mutable_vars<'a, 'tcx> (
-    cx: &LateContext<'a, 'tcx>,
-    ex: &'tcx Expr,
-    acc: &mut Vec<NodeId>,
-) -> bool {
-    match ex.node {
-        ExprBinary(_, ref a, ref b) =>
-            search_mutable_vars(cx, a, acc) && search_mutable_vars(cx, b, acc),
-
-        ExprUnary(_, ref a) => search_mutable_vars(cx, a, acc),
-        ExprPath(_) => {
-            if let Some(node_id) = check_for_mutability(cx, &ex) {
-                acc.push(node_id);
-            }
-            true
-        }
-        ExprLit(_) => true,
-
-        // Skip if any method or function call is encountered
-        _ => false
-    }
-}
-
-fn check_infinite_loop<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    cond: &'tcx Expr,
-    _block: &'tcx Block,
-    _expr: &'tcx Expr,
-) {
-    let mut mutable_vars = Vec::new();
-    if search_mutable_vars(cx, cond, &mut mutable_vars) && mutable_vars.len() == 0 {
-        span_lint(
-            cx,
-            WHILE_IMMUTABLE_CONDITION,
-            cond.span,
-            "all variables in condition are immutable. This might lead to infinite loops."
-        )
-    }
-}
-
 fn same_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: ast::NodeId) -> bool {
     if_chain! {
         if let ExprPath(ref qpath) = expr.node;
@@ -2178,4 +2138,46 @@ fn path_name(e: &Expr) -> Option<Name> {
         }
     };
     None
+}
+
+fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, _block: &'tcx Block, _expr: &'tcx Expr) {
+    let mut mut_var_visitor = MutableVarsVisitor {
+        cx,
+        ids: HashSet::new(),
+        skip: false,
+    };
+    walk_expr(&mut mut_var_visitor, cond);
+    if !mut_var_visitor.skip && mut_var_visitor.ids.len() == 0 {
+        span_lint(
+            cx,
+            WHILE_IMMUTABLE_CONDITION,
+            cond.span,
+            "all variables in condition are immutable. This might lead to infinite loops.",
+        )
+    }
+}
+
+struct MutableVarsVisitor<'a, 'tcx: 'a> {
+    cx: &'a LateContext<'a, 'tcx>,
+    ids: HashSet<NodeId>,
+    skip: bool,
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for MutableVarsVisitor<'a, 'tcx> {
+    fn visit_expr(&mut self, ex: &'tcx Expr) {
+        match ex.node {
+            ExprPath(_) => if let Some(node_id) = check_for_mutability(self.cx, &ex) {
+                self.ids.insert(node_id);
+            },
+
+            // If there is any fuction/method call… we just stop analysis
+            ExprCall(_, _) | ExprMethodCall(_, _, _) => self.skip = true,
+
+            _ => walk_expr(self, ex),
+        }
+    }
+
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
+    }
 }
