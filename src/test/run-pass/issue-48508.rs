@@ -16,6 +16,7 @@
 // issue-48508-aux.rs
 
 // compile-flags:-g
+// ignore-pretty issue #37195
 
 #![feature(non_ascii_idents)]
 
