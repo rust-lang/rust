@@ -110,7 +110,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             |_, _| span_bug!(expr.span, "closure has region param"),
             |_, _| {
                 self.infcx
-                    .next_ty_var(TypeVariableOrigin::ClosureSynthetic(expr.span))
+                    .next_ty_var(ty::UniverseIndex::ROOT,
+                                 TypeVariableOrigin::ClosureSynthetic(expr.span))
             },
         );
         let substs = ty::ClosureSubsts { substs };

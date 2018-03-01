@@ -600,7 +600,8 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
             return anon_defn.concrete_ty;
         }
         let span = tcx.def_span(def_id);
-        let ty_var = infcx.next_ty_var(TypeVariableOrigin::TypeInference(span));
+        let ty_var = infcx.next_ty_var(ty::UniverseIndex::ROOT,
+                                       TypeVariableOrigin::TypeInference(span));
 
         let predicates_of = tcx.predicates_of(def_id);
         let bounds = predicates_of.instantiate(tcx, substs);

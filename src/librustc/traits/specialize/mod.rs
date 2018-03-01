@@ -221,7 +221,7 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                        target_impl: DefId)
                                        -> Result<&'tcx Substs<'tcx>, ()> {
     let selcx = &mut SelectionContext::new(&infcx);
-    let target_substs = infcx.fresh_substs_for_item(DUMMY_SP, target_impl);
+    let target_substs = infcx.fresh_substs_for_item(param_env.universe, DUMMY_SP, target_impl);
     let (target_trait_ref, mut obligations) = impl_trait_ref_and_oblig(selcx,
                                                                        param_env,
                                                                        target_impl,

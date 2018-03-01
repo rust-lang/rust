@@ -70,14 +70,6 @@ pub fn super_lattice_tys<'a, 'gcx, 'tcx, L>(this: &mut L,
     let a = infcx.type_variables.borrow_mut().replace_if_possible(a);
     let b = infcx.type_variables.borrow_mut().replace_if_possible(b);
     match (&a.sty, &b.sty) {
-        (&ty::TyInfer(TyVar(..)), &ty::TyInfer(TyVar(..)))
-            if infcx.type_var_diverges(a) && infcx.type_var_diverges(b) => {
-            let v = infcx.next_diverging_ty_var(
-                TypeVariableOrigin::LatticeVariable(this.cause().span));
-            this.relate_bound(v, a, b)?;
-            Ok(v)
-        }
-
         // If one side is known to be a variable and one is not,
         // create a variable (`v`) to represent the LUB. Make sure to
         // relate `v` to the non-type-variable first (by passing it
@@ -96,13 +88,17 @@ pub fn super_lattice_tys<'a, 'gcx, 'tcx, L>(this: &mut L,
         // is (e.g.) `Box<i32>`. A more obvious solution might be to
         // iterate on the subtype obligations that are returned, but I
         // think this suffices. -nmatsakis
-        (&ty::TyInfer(TyVar(..)), _) => {
-            let v = infcx.next_ty_var(TypeVariableOrigin::LatticeVariable(this.cause().span));
+        (&ty::TyInfer(TyVar(a_vid)), _) => {
+            let universe = infcx.type_variables.borrow_mut().probe(a_vid).universe().unwrap();
+            let v = infcx.next_ty_var(universe,
+                                      TypeVariableOrigin::LatticeVariable(this.cause().span));
             this.relate_bound(v, b, a)?;
             Ok(v)
         }
-        (_, &ty::TyInfer(TyVar(..))) => {
-            let v = infcx.next_ty_var(TypeVariableOrigin::LatticeVariable(this.cause().span));
+        (_, &ty::TyInfer(TyVar(b_vid))) => {
+            let universe = infcx.type_variables.borrow_mut().probe(b_vid).universe().unwrap();
+            let v = infcx.next_ty_var(universe,
+                                      TypeVariableOrigin::LatticeVariable(this.cause().span));
             this.relate_bound(v, a, b)?;
             Ok(v)
         }

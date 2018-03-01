@@ -870,6 +870,7 @@ for ty::steal::Steal<T>
 
 impl_stable_hash_for!(struct ty::ParamEnv<'tcx> {
     caller_bounds,
+    universe,
     reveal
 });
 
@@ -1037,5 +1038,14 @@ for traits::VtableGeneratorData<'gcx, N> where N: HashStable<StableHashingContex
         closure_def_id.hash_stable(hcx, hasher);
         substs.hash_stable(hcx, hasher);
         nested.hash_stable(hcx, hasher);
+    }
+}
+
+impl<'gcx> HashStable<StableHashingContext<'gcx>>
+for ty::UniverseIndex {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        self.depth().hash_stable(hcx, hasher);
     }
 }

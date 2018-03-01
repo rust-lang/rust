@@ -54,7 +54,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.autoderef(span, ty).any(|(ty, _)| {
                     self.probe(|_| {
                         let fn_once_substs = tcx.mk_substs_trait(ty,
-                            &[self.next_ty_var(TypeVariableOrigin::MiscVariable(span))]);
+                            &[self.next_ty_var(ty::UniverseIndex::ROOT,
+                                               TypeVariableOrigin::MiscVariable(span))]);
                         let trait_ref = ty::TraitRef::new(fn_once, fn_once_substs);
                         let poly_trait_ref = trait_ref.to_poly_trait_ref();
                         let obligation =

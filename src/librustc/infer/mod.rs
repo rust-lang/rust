@@ -22,14 +22,14 @@ use middle::free_region::RegionRelations;
 use middle::region;
 use middle::lang_items;
 use mir::tcx::PlaceTy;
-use ty::subst::{Kind, Subst, Substs};
+use ty::subst::Substs;
 use ty::{TyVid, IntVid, FloatVid};
 use ty::{self, Ty, TyCtxt};
 use ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use ty::relate::RelateResult;
 use traits::{self, ObligationCause, PredicateObligations, Reveal};
-use rustc_data_structures::unify::{self, UnificationTable};
+use rustc_data_structures::unify as ut;
 use std::cell::{Cell, RefCell, Ref, RefMut};
 use std::collections::BTreeMap;
 use std::fmt;
@@ -99,10 +99,10 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     pub type_variables: RefCell<type_variable::TypeVariableTable<'tcx>>,
 
     // Map from integral variable to the kind of integer it represents
-    int_unification_table: RefCell<UnificationTable<ty::IntVid>>,
+    int_unification_table: RefCell<ut::UnificationTable<ut::InPlace<ty::IntVid>>>,
 
     // Map from floating variable to the kind of float it represents
-    float_unification_table: RefCell<UnificationTable<ty::FloatVid>>,
+    float_unification_table: RefCell<ut::UnificationTable<ut::InPlace<ty::FloatVid>>>,
 
     // Tracks the set of region variables and the constraints between
     // them.  This is initially `Some(_)` but when
@@ -441,8 +441,8 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             in_progress_tables,
             projection_cache: RefCell::new(traits::ProjectionCache::new()),
             type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
-            int_unification_table: RefCell::new(UnificationTable::new()),
-            float_unification_table: RefCell::new(UnificationTable::new()),
+            int_unification_table: RefCell::new(ut::UnificationTable::new()),
+            float_unification_table: RefCell::new(ut::UnificationTable::new()),
             region_constraints: RefCell::new(Some(RegionConstraintCollector::new())),
             lexical_region_resolutions: RefCell::new(None),
             selection_cache: traits::SelectionCache::new(),
@@ -475,9 +475,9 @@ impl<'tcx, T> InferOk<'tcx, T> {
 #[must_use = "once you start a snapshot, you should always consume it"]
 pub struct CombinedSnapshot<'a, 'tcx:'a> {
     projection_cache_snapshot: traits::ProjectionCacheSnapshot,
-    type_snapshot: type_variable::Snapshot,
-    int_snapshot: unify::Snapshot<ty::IntVid>,
-    float_snapshot: unify::Snapshot<ty::FloatVid>,
+    type_snapshot: type_variable::Snapshot<'tcx>,
+    int_snapshot: ut::Snapshot<ut::InPlace<ty::IntVid>>,
+    float_snapshot: ut::Snapshot<ut::InPlace<ty::FloatVid>>,
     region_constraints_snapshot: RegionSnapshot,
     region_obligations_snapshot: usize,
     was_in_snapshot: bool,
@@ -678,14 +678,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         use ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
         match ty.sty {
             ty::TyInfer(ty::IntVar(vid)) => {
-                if self.int_unification_table.borrow_mut().has_value(vid) {
+                if self.int_unification_table.borrow_mut().probe_value(vid).is_some() {
                     Neither
                 } else {
                     UnconstrainedInt
                 }
             },
             ty::TyInfer(ty::FloatVar(vid)) => {
-                if self.float_unification_table.borrow_mut().has_value(vid) {
+                if self.float_unification_table.borrow_mut().probe_value(vid).is_some() {
                     Neither
                 } else {
                     UnconstrainedFloat
@@ -695,46 +695,35 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Returns a type variable's default fallback if any exists. A default
-    /// must be attached to the variable when created, if it is created
-    /// without a default, this will return None.
-    ///
-    /// This code does not apply to integral or floating point variables,
-    /// only to use declared defaults.
-    ///
-    /// See `new_ty_var_with_default` to create a type variable with a default.
-    /// See `type_variable::Default` for details about what a default entails.
-    pub fn default(&self, ty: Ty<'tcx>) -> Option<type_variable::Default<'tcx>> {
-        match ty.sty {
-            ty::TyInfer(ty::TyVar(vid)) => self.type_variables.borrow().default(vid),
-            _ => None
-        }
-    }
-
     pub fn unsolved_variables(&self) -> Vec<Ty<'tcx>> {
         let mut variables = Vec::new();
 
-        let unbound_ty_vars = self.type_variables
-                                  .borrow_mut()
-                                  .unsolved_variables()
-                                  .into_iter()
-                                  .map(|t| self.tcx.mk_var(t));
+        {
+            let mut type_variables = self.type_variables.borrow_mut();
+            variables.extend(
+                type_variables
+                    .unsolved_variables()
+                    .into_iter()
+                    .map(|t| self.tcx.mk_var(t)));
+        }
 
-        let unbound_int_vars = self.int_unification_table
-                                   .borrow_mut()
-                                   .unsolved_variables()
-                                   .into_iter()
-                                   .map(|v| self.tcx.mk_int_var(v));
+        {
+            let mut int_unification_table = self.int_unification_table.borrow_mut();
+            variables.extend(
+                (0..int_unification_table.len())
+                    .map(|i| ty::IntVid { index: i as u32 })
+                    .filter(|&vid| int_unification_table.probe_value(vid).is_none())
+                    .map(|v| self.tcx.mk_int_var(v)));
+        }
 
-        let unbound_float_vars = self.float_unification_table
-                                     .borrow_mut()
-                                     .unsolved_variables()
-                                     .into_iter()
-                                     .map(|v| self.tcx.mk_float_var(v));
-
-        variables.extend(unbound_ty_vars);
-        variables.extend(unbound_int_vars);
-        variables.extend(unbound_float_vars);
+        {
+            let mut float_unification_table = self.float_unification_table.borrow_mut();
+            variables.extend(
+                (0..float_unification_table.len())
+                    .map(|i| ty::FloatVid { index: i as u32 })
+                    .filter(|&vid| float_unification_table.probe_value(vid).is_none())
+                    .map(|v| self.tcx.mk_float_var(v)));
+        }
 
         return variables;
     }
@@ -776,7 +765,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         result
     }
 
-    fn start_snapshot<'b>(&'b self) -> CombinedSnapshot<'b, 'tcx> {
+    fn start_snapshot(&self) -> CombinedSnapshot<'a, 'tcx> {
         debug!("start_snapshot()");
 
         let in_snapshot = self.in_snapshot.get();
@@ -798,7 +787,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn rollback_to(&self, cause: &str, snapshot: CombinedSnapshot) {
+    fn rollback_to(&self, cause: &str, snapshot: CombinedSnapshot<'a, 'tcx>) {
         debug!("rollback_to(cause={})", cause);
         let CombinedSnapshot { projection_cache_snapshot,
                                type_snapshot,
@@ -830,7 +819,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             .rollback_to(region_constraints_snapshot);
     }
 
-    fn commit_from(&self, snapshot: CombinedSnapshot) {
+    fn commit_from(&self, snapshot: CombinedSnapshot<'a, 'tcx>) {
         debug!("commit_from()");
         let CombinedSnapshot { projection_cache_snapshot,
                                type_snapshot,
@@ -872,7 +861,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     /// Execute `f` and commit the bindings if closure `f` returns `Ok(_)`
     pub fn commit_if_ok<T, E, F>(&self, f: F) -> Result<T, E> where
-        F: FnOnce(&CombinedSnapshot) -> Result<T, E>
+        F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> Result<T, E>
     {
         debug!("commit_if_ok()");
         let snapshot = self.start_snapshot();
@@ -887,7 +876,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     // Execute `f` in a snapshot, and commit the bindings it creates
     pub fn in_snapshot<T, F>(&self, f: F) -> T where
-        F: FnOnce(&CombinedSnapshot) -> T
+        F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> T
     {
         debug!("in_snapshot()");
         let snapshot = self.start_snapshot();
@@ -898,7 +887,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     /// Execute `f` then unroll any bindings it creates
     pub fn probe<R, F>(&self, f: F) -> R where
-        F: FnOnce(&CombinedSnapshot) -> R,
+        F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> R,
     {
         debug!("probe()");
         let snapshot = self.start_snapshot();
@@ -1026,18 +1015,25 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         })
     }
 
-    pub fn next_ty_var_id(&self, diverging: bool, origin: TypeVariableOrigin) -> TyVid {
+    pub fn next_ty_var_id(&self,
+                          universe: ty::UniverseIndex,
+                          diverging: bool,
+                          origin: TypeVariableOrigin)
+                          -> TyVid {
         self.type_variables
             .borrow_mut()
-            .new_var(diverging, origin, None)
+            .new_var(universe, diverging, origin)
     }
 
-    pub fn next_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
-        self.tcx.mk_var(self.next_ty_var_id(false, origin))
+    pub fn next_ty_var(&self, universe: ty::UniverseIndex, origin: TypeVariableOrigin) -> Ty<'tcx> {
+        self.tcx.mk_var(self.next_ty_var_id(universe, false, origin))
     }
 
-    pub fn next_diverging_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
-        self.tcx.mk_var(self.next_ty_var_id(true, origin))
+    pub fn next_diverging_ty_var(&self,
+                                 universe: ty::UniverseIndex,
+                                 origin: TypeVariableOrigin)
+                                 -> Ty<'tcx> {
+        self.tcx.mk_var(self.next_ty_var_id(universe, true, origin))
     }
 
     pub fn next_int_var_id(&self) -> IntVid {
@@ -1092,27 +1088,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// use an inference variable for `C` with `[T, U]`
     /// as the substitutions for the default, `(T, U)`.
     pub fn type_var_for_def(&self,
+                            universe: ty::UniverseIndex,
                             span: Span,
-                            def: &ty::TypeParameterDef,
-                            substs: &[Kind<'tcx>])
+                            def: &ty::TypeParameterDef)
                             -> Ty<'tcx> {
-        let default = if def.has_default {
-            let default = self.tcx.type_of(def.def_id);
-            Some(type_variable::Default {
-                ty: default.subst_spanned(self.tcx, substs, Some(span)),
-                origin_span: span,
-                def_id: def.def_id
-            })
-        } else {
-            None
-        };
-
-
         let ty_var_id = self.type_variables
                             .borrow_mut()
-                            .new_var(false,
-                                     TypeVariableOrigin::TypeParameterDefinition(span, def.name),
-                                     default);
+                            .new_var(universe,
+                                     false,
+                                     TypeVariableOrigin::TypeParameterDefinition(span, def.name));
 
         self.tcx.mk_var(ty_var_id)
     }
@@ -1120,13 +1104,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// Given a set of generics defined on a type or impl, returns a substitution mapping each
     /// type/region parameter to a fresh inference variable.
     pub fn fresh_substs_for_item(&self,
+                                 universe: ty::UniverseIndex,
                                  span: Span,
                                  def_id: DefId)
                                  -> &'tcx Substs<'tcx> {
         Substs::for_item(self.tcx, def_id, |def, _| {
             self.region_var_for_def(span, def)
-        }, |def, substs| {
-            self.type_var_for_def(span, def, substs)
+        }, |def, _| {
+            self.type_var_for_def(universe, span, def)
         })
     }
 
@@ -1284,15 +1269,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 // so this recursion should always be of very limited
                 // depth.
                 self.type_variables.borrow_mut()
-                    .probe(v)
-                    .map(|t| self.shallow_resolve(t))
-                    .unwrap_or(typ)
+                                   .probe(v)
+                                   .known()
+                                   .map(|t| self.shallow_resolve(t))
+                                   .unwrap_or(typ)
             }
 
             ty::TyInfer(ty::IntVar(v)) => {
                 self.int_unification_table
                     .borrow_mut()
-                    .probe(v)
+                    .probe_value(v)
                     .map(|v| v.to_type(self.tcx))
                     .unwrap_or(typ)
             }
@@ -1300,7 +1286,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             ty::TyInfer(ty::FloatVar(v)) => {
                 self.float_unification_table
                     .borrow_mut()
-                    .probe(v)
+                    .probe_value(v)
                     .map(|v| v.to_type(self.tcx))
                     .unwrap_or(typ)
             }
@@ -1400,28 +1386,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                    -> DiagnosticBuilder<'tcx> {
         let trace = TypeTrace::types(cause, true, expected, actual);
         self.report_and_explain_type_error(trace, &err)
-    }
-
-    pub fn report_conflicting_default_types(&self,
-                                            span: Span,
-                                            body_id: ast::NodeId,
-                                            expected: type_variable::Default<'tcx>,
-                                            actual: type_variable::Default<'tcx>) {
-        let trace = TypeTrace {
-            cause: ObligationCause::misc(span, body_id),
-            values: Types(ExpectedFound {
-                expected: expected.ty,
-                found: actual.ty
-            })
-        };
-
-        self.report_and_explain_type_error(
-            trace,
-            &TypeError::TyParamDefaultMismatch(ExpectedFound {
-                expected,
-                found: actual
-            }))
-            .emit();
     }
 
     pub fn replace_late_bound_regions_with_fresh_var<T>(

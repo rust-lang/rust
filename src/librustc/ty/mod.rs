@@ -69,7 +69,7 @@ pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};
 pub use self::sty::{ExistentialProjection, PolyExistentialProjection, Const};
 pub use self::sty::{BoundRegion, EarlyBoundRegion, FreeRegion, Region};
 pub use self::sty::RegionKind;
-pub use self::sty::{TyVid, IntVid, FloatVid, RegionVid, SkolemizedRegionVid};
+pub use self::sty::{TyVid, IntVid, FloatVid, RegionVid};
 pub use self::sty::BoundRegion::*;
 pub use self::sty::InferTy::*;
 pub use self::sty::RegionKind::*;
@@ -685,11 +685,14 @@ pub struct ClosureUpvar<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum IntVarValue {
     IntType(ast::IntTy),
     UintType(ast::UintTy),
 }
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct FloatVarValue(pub ast::FloatTy);
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
 pub struct TypeParameterDef {
@@ -1306,6 +1309,85 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
     }
 }
 
+/// "Universes" are used during type- and trait-checking in the
+/// presence of `for<..>` binders to control what sets of names are
+/// visible. Universes are arranged into a tree: the root universe
+/// contains names that are always visible. But when you enter into
+/// some subuniverse, then it may add names that are only visible
+/// within that subtree (but it can still name the names of its
+/// ancestor universes).
+///
+/// To make this more concrete, consider this program:
+///
+/// ```
+/// struct Foo { }
+/// fn bar<T>(x: T) {
+///   let y: for<'a> fn(&'a u8, Foo) = ...;
+/// }
+/// ```
+///
+/// The struct name `Foo` is in the root universe U0. But the type
+/// parameter `T`, introduced on `bar`, is in a subuniverse U1 --
+/// i.e., within `bar`, we can name both `T` and `Foo`, but outside of
+/// `bar`, we cannot name `T`. Then, within the type of `y`, the
+/// region `'a` is in a subuniverse U2 of U1, because we can name it
+/// inside the fn type but not outside.
+///
+/// Universes are related to **skolemization** -- which is a way of
+/// doing type- and trait-checking around these "forall" binders (also
+/// called **universal quantification**). The idea is that when, in
+/// the body of `bar`, we refer to `T` as a type, we aren't referring
+/// to any type in particular, but rather a kind of "fresh" type that
+/// is distinct from all other types we have actually declared. This
+/// is called a **skolemized** type, and we use universes to talk
+/// about this. In other words, a type name in universe 0 always
+/// corresponds to some "ground" type that the user declared, but a
+/// type name in a non-zero universe is a skolemized type -- an
+/// idealized representative of "types in general" that we use for
+/// checking generic functions.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+pub struct UniverseIndex(u32);
+
+impl UniverseIndex {
+    /// The root universe, where things that the user defined are
+    /// visible.
+    pub const ROOT: UniverseIndex = UniverseIndex(0);
+
+    /// A "subuniverse" corresponds to being inside a `forall` quantifier.
+    /// So, for example, suppose we have this type in universe `U`:
+    ///
+    /// ```
+    /// for<'a> fn(&'a u32)
+    /// ```
+    ///
+    /// Once we "enter" into this `for<'a>` quantifier, we are in a
+    /// subuniverse of `U` -- in this new universe, we can name the
+    /// region `'a`, but that region was not nameable from `U` because
+    /// it was not in scope there.
+    pub fn subuniverse(self) -> UniverseIndex {
+        UniverseIndex(self.0.checked_add(1).unwrap())
+    }
+
+    pub fn from(v: u32) -> UniverseIndex {
+        UniverseIndex(v)
+    }
+
+    pub fn as_u32(&self) -> u32 {
+        self.0
+    }
+
+    pub fn as_usize(&self) -> usize {
+        self.0 as usize
+    }
+
+    /// Gets the "depth" of this universe in the universe tree. This
+    /// is not really useful except for e.g. the `HashStable`
+    /// implementation
+    pub fn depth(&self) -> u32 {
+        self.0
+    }
+}
+
 /// When type checking, we use the `ParamEnv` to track
 /// details about the set of where-clauses that are in scope at this
 /// particular point.
@@ -1320,6 +1402,17 @@ pub struct ParamEnv<'tcx> {
     /// want `Reveal::All` -- note that this is always paired with an
     /// empty environment. To get that, use `ParamEnv::reveal()`.
     pub reveal: traits::Reveal,
+
+    /// What is the innermost universe we have created? Starts out as
+    /// `UniverseIndex::root()` but grows from there as we enter
+    /// universal quantifiers.
+    ///
+    /// NB: At present, we exclude the universal quantifiers on the
+    /// item we are type-checking, and just consider those names as
+    /// part of the root universe. So this would only get incremented
+    /// when we enter into a higher-ranked (`for<..>`) type or trait
+    /// bound.
+    pub universe: UniverseIndex,
 }
 
 impl<'tcx> ParamEnv<'tcx> {
@@ -2595,7 +2688,8 @@ fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // sure that this will succeed without errors anyway.
 
     let unnormalized_env = ty::ParamEnv::new(tcx.intern_predicates(&predicates),
-                                             traits::Reveal::UserFacing);
+                                             traits::Reveal::UserFacing,
+                                             ty::UniverseIndex::ROOT);
 
     let body_id = tcx.hir.as_local_node_id(def_id).map_or(DUMMY_NODE_ID, |id| {
         tcx.hir.maybe_body_owned_by(id).map_or(id, |body| body.node_id)

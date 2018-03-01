@@ -77,10 +77,21 @@ pub enum IntercrateMode {
 /// scope. The eventual result is usually a `Selection` (defined below).
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Obligation<'tcx, T> {
+    /// Why do we have to prove this thing?
     pub cause: ObligationCause<'tcx>,
+
+    /// In which environment should we prove this thing?
     pub param_env: ty::ParamEnv<'tcx>,
-    pub recursion_depth: usize,
+
+    /// What are we trying to prove?
     pub predicate: T,
+
+    /// If we started proving this as a result of trying to prove
+    /// something else, track the total depth to ensure termination.
+    /// If this goes over a certain threshold, we abort compilation --
+    /// in such cases, we can not say whether or not the predicate
+    /// holds for certain. Stupid halting problem. Such a drag.
+    pub recursion_depth: usize,
 }
 
 pub type PredicateObligation<'tcx> = Obligation<'tcx, ty::Predicate<'tcx>>;
@@ -535,7 +546,8 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            predicates);
 
     let elaborated_env = ty::ParamEnv::new(tcx.intern_predicates(&predicates),
-                                           unnormalized_env.reveal);
+                                           unnormalized_env.reveal,
+                                           unnormalized_env.universe);
 
     tcx.infer_ctxt().enter(|infcx| {
         // FIXME. We should really... do something with these region
@@ -609,7 +621,9 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         debug!("normalize_param_env_or_error: resolved predicates={:?}",
                predicates);
 
-        ty::ParamEnv::new(tcx.intern_predicates(&predicates), unnormalized_env.reveal)
+        ty::ParamEnv::new(tcx.intern_predicates(&predicates),
+                          unnormalized_env.reveal,
+                          unnormalized_env.universe)
     })
 }
 

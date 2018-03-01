@@ -786,7 +786,7 @@ define_print! {
                 }
 
                 ty::ReSkolemized(id, ref bound_region) => {
-                    write!(f, "ReSkolemized({}, {:?})", id.index, bound_region)
+                    write!(f, "ReSkolemized({:?}, {:?})", id, bound_region)
                 }
 
                 ty::ReEmpty => write!(f, "ReEmpty"),
@@ -913,6 +913,12 @@ impl fmt::Debug for ty::IntVarValue {
             ty::IntType(ref v) => v.fmt(f),
             ty::UintType(ref v) => v.fmt(f),
         }
+    }
+}
+
+impl fmt::Debug for ty::FloatVarValue {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
     }
 }
 

@@ -496,7 +496,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     /// Wraps the inference context's in_snapshot s.t. snapshot handling is only from the selection
     /// context's self.
     fn in_snapshot<R, F>(&mut self, f: F) -> R
-        where F: FnOnce(&mut Self, &infer::CombinedSnapshot) -> R
+        where F: FnOnce(&mut Self, &infer::CombinedSnapshot<'cx, 'tcx>) -> R
     {
         // The irrefutable nature of the operation means we don't need to snapshot the
         // inferred_obligations vector.
@@ -506,7 +506,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     /// Wraps a probe s.t. obligations collected during it are ignored and old obligations are
     /// retained.
     fn probe<R, F>(&mut self, f: F) -> R
-        where F: FnOnce(&mut Self, &infer::CombinedSnapshot) -> R
+        where F: FnOnce(&mut Self, &infer::CombinedSnapshot<'cx, 'tcx>) -> R
     {
         let inferred_obligations_snapshot = self.inferred_obligations.start_snapshot();
         let result = self.infcx.probe(|snapshot| f(self, snapshot));
@@ -1478,7 +1478,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn match_projection_obligation_against_definition_bounds(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-        snapshot: &infer::CombinedSnapshot)
+        snapshot: &infer::CombinedSnapshot<'cx, 'tcx>)
         -> bool
     {
         let poly_trait_predicate =
@@ -1549,7 +1549,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                         trait_bound: ty::PolyTraitRef<'tcx>,
                         skol_trait_ref: ty::TraitRef<'tcx>,
                         skol_map: &infer::SkolemizationMap<'tcx>,
-                        snapshot: &infer::CombinedSnapshot)
+                        snapshot: &infer::CombinedSnapshot<'cx, 'tcx>)
                         -> bool
     {
         assert!(!skol_trait_ref.has_escaping_regions());
@@ -2587,7 +2587,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                    recursion_depth: usize,
                    param_env: ty::ParamEnv<'tcx>,
                    skol_map: infer::SkolemizationMap<'tcx>,
-                   snapshot: &infer::CombinedSnapshot)
+                   snapshot: &infer::CombinedSnapshot<'cx, 'tcx>)
                    -> VtableImplData<'tcx, PredicateObligation<'tcx>>
     {
         debug!("vtable_impl(impl_def_id={:?}, substs={:?}, recursion_depth={}, skol_map={:?})",
@@ -3076,7 +3076,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn rematch_impl(&mut self,
                     impl_def_id: DefId,
                     obligation: &TraitObligation<'tcx>,
-                    snapshot: &infer::CombinedSnapshot)
+                    snapshot: &infer::CombinedSnapshot<'cx, 'tcx>)
                     -> (Normalized<'tcx, &'tcx Substs<'tcx>>,
                         infer::SkolemizationMap<'tcx>)
     {
@@ -3093,7 +3093,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn match_impl(&mut self,
                   impl_def_id: DefId,
                   obligation: &TraitObligation<'tcx>,
-                  snapshot: &infer::CombinedSnapshot)
+                  snapshot: &infer::CombinedSnapshot<'cx, 'tcx>)
                   -> Result<(Normalized<'tcx, &'tcx Substs<'tcx>>,
                              infer::SkolemizationMap<'tcx>), ()>
     {
@@ -3111,7 +3111,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             snapshot);
         let skol_obligation_trait_ref = skol_obligation.trait_ref;
 
-        let impl_substs = self.infcx.fresh_substs_for_item(obligation.cause.span,
+        let impl_substs = self.infcx.fresh_substs_for_item(obligation.param_env.universe,
+                                                           obligation.cause.span,
                                                            impl_def_id);
 
         let impl_trait_ref = impl_trait_ref.subst(self.tcx(),
@@ -3288,7 +3289,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                  def_id: DefId, // of impl or trait
                                  substs: &Substs<'tcx>, // for impl or trait
                                  skol_map: infer::SkolemizationMap<'tcx>,
-                                 snapshot: &infer::CombinedSnapshot)
+                                 snapshot: &infer::CombinedSnapshot<'cx, 'tcx>)
                                  -> Vec<PredicateObligation<'tcx>>
     {
         debug!("impl_or_trait_obligations(def_id={:?})", def_id);

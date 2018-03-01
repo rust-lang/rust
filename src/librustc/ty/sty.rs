@@ -1028,7 +1028,7 @@ pub enum RegionKind {
 
     /// A skolemized region - basically the higher-ranked version of ReFree.
     /// Should not exist after typeck.
-    ReSkolemized(SkolemizedRegionVid, BoundRegion),
+    ReSkolemized(ty::UniverseIndex, BoundRegion),
 
     /// Empty lifetime is for data that is never accessed.
     /// Bottom in the region lattice. We treat ReEmpty somewhat
@@ -1078,11 +1078,6 @@ newtype_index!(RegionVid
         pub idx
         DEBUG_FORMAT = custom,
     });
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, PartialOrd, Ord)]
-pub struct SkolemizedRegionVid {
-    pub index: u32,
-}
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum InferTy {
