@@ -2659,6 +2659,11 @@ impl<'a> State<'a> {
                                    |s, p| s.print_pat(p))?;
                 self.s.word("]")?;
             }
+            PatKind::Paren(ref inner) => {
+                self.popen()?;
+                self.print_pat(inner)?;
+                self.pclose()?;
+            }
             PatKind::Mac(ref m) => self.print_mac(m, token::Paren)?,
         }
         self.ann.post(self, NodePat(pat))

@@ -449,6 +449,9 @@ declare_features! (
 
     // Multiple patterns with `|` in `if let` and `while let`
     (active, if_while_or_patterns, "1.26.0", Some(48215)),
+
+    // Parentheses in patterns
+    (active, pattern_parentheses, "1.26.0", None),
 );
 
 declare_features! (
@@ -1662,6 +1665,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             PatKind::Range(_, _, RangeEnd::Included(RangeSyntax::DotDotEq)) => {
                 gate_feature_post!(&self, dotdoteq_in_patterns, pattern.span,
                                    "`..=` syntax in patterns is experimental");
+            }
+            PatKind::Paren(..) => {
+                gate_feature_post!(&self, pattern_parentheses, pattern.span,
+                                   "parentheses in patterns are unstable");
             }
             _ => {}
         }

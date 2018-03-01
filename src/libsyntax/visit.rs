@@ -425,7 +425,8 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) {
             walk_list!(visitor, visit_pat, tuple_elements);
         }
         PatKind::Box(ref subpattern) |
-        PatKind::Ref(ref subpattern, _) => {
+        PatKind::Ref(ref subpattern, _) |
+        PatKind::Paren(ref subpattern) => {
             visitor.visit_pat(subpattern)
         }
         PatKind::Ident(_, ref pth1, ref optional_subpattern) => {
