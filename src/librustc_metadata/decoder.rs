@@ -1065,11 +1065,13 @@ impl<'a, 'tcx> CrateMetadata {
         arg_names.decode(self).collect()
     }
 
-    pub fn exported_symbols(&self) -> Vec<(ExportedSymbol, SymbolExportLevel)> {
-        self.root
-            .exported_symbols
-            .decode(self)
-            .collect()
+    pub fn exported_symbols(&self,
+                            tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                            -> Vec<(ExportedSymbol<'tcx>, SymbolExportLevel)> {
+        let lazy_seq: LazySeq<(ExportedSymbol<'tcx>, SymbolExportLevel)> =
+            LazySeq::with_position_and_length(self.root.exported_symbols.position,
+                                              self.root.exported_symbols.len);
+        lazy_seq.decode((self, tcx)).collect()
     }
 
     pub fn wasm_custom_sections(&self) -> Vec<DefId> {

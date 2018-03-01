@@ -268,7 +268,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
             return Arc::new(Vec::new())
         }
 
-        Arc::new(cdata.exported_symbols())
+        Arc::new(cdata.exported_symbols(tcx))
     }
 
     wasm_custom_sections => { Lrc::new(cdata.wasm_custom_sections()) }

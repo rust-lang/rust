@@ -33,6 +33,7 @@
 #![cfg_attr(stage0, feature(conservative_impl_trait))]
 #![feature(optin_builtin_traits)]
 #![feature(inclusive_range_fields)]
+#![feature(underscore_lifetimes)]
 
 use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;

@@ -94,7 +94,7 @@ fn is_reachable_non_generic_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                              cnum: CrateNum)
-                                             -> Arc<Vec<(ExportedSymbol,
+                                             -> Arc<Vec<(ExportedSymbol<'tcx>,
                                                          SymbolExportLevel)>>
 {
     assert_eq!(cnum, LOCAL_CRATE);
