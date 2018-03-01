@@ -1623,7 +1623,7 @@
     function toggleAllDocs() {
         var toggle = document.getElementById("toggle-all-docs");
         if (hasClass(toggle, "will-expand")) {
-            updateLocalStorage("collapse", "false");
+            updateLocalStorage("rustdoc-collapse", "false");
             removeClass(toggle, "will-expand");
             onEveryMatchingChild(toggle, "inner", function(e) {
                 e.innerHTML = labelForToggleButton(false);
@@ -1633,7 +1633,7 @@
                 collapseDocs(e, "show");
             });
         } else {
-            updateLocalStorage("collapse", "true");
+            updateLocalStorage("rustdoc-collapse", "true");
             addClass(toggle, "will-expand");
             onEveryMatchingChild(toggle, "inner", function(e) {
                 e.innerHTML = labelForToggleButton(true);
@@ -1975,7 +1975,7 @@
         hideSidebar();
     };
 
-    if (getCurrentValue("collapse") === "true") {
+    if (getCurrentValue("rustdoc-collapse") === "true") {
         toggleAllDocs();
     }
 }());
