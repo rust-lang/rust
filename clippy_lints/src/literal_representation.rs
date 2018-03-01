@@ -4,7 +4,7 @@
 use rustc::lint::*;
 use syntax::ast::*;
 use syntax_pos;
-use utils::{in_external_macro, snippet_opt, span_help_and_lint};
+use utils::{in_external_macro, snippet_opt, span_lint_and_sugg};
 
 /// **What it does:** Warns if a long integral or floating-point constant does
 /// not contain underscores.
@@ -222,33 +222,37 @@ enum WarningType {
 impl WarningType {
     pub fn display(&self, grouping_hint: &str, cx: &EarlyContext, span: &syntax_pos::Span) {
         match *self {
-            WarningType::UnreadableLiteral => span_help_and_lint(
+            WarningType::UnreadableLiteral => span_lint_and_sugg(
                 cx,
                 UNREADABLE_LITERAL,
                 *span,
                 "long literal lacking separators",
-                &format!("consider: {}", grouping_hint),
+                "consider",
+                grouping_hint.to_owned(),
             ),
-            WarningType::LargeDigitGroups => span_help_and_lint(
+            WarningType::LargeDigitGroups => span_lint_and_sugg(
                 cx,
                 LARGE_DIGIT_GROUPS,
                 *span,
                 "digit groups should be smaller",
-                &format!("consider: {}", grouping_hint),
+                "consider",
+                grouping_hint.to_owned(),
             ),
-            WarningType::InconsistentDigitGrouping => span_help_and_lint(
+            WarningType::InconsistentDigitGrouping => span_lint_and_sugg(
                 cx,
                 INCONSISTENT_DIGIT_GROUPING,
                 *span,
                 "digits grouped inconsistently by underscores",
-                &format!("consider: {}", grouping_hint),
+                "consider",
+                grouping_hint.to_owned(),
             ),
-            WarningType::DecimalRepresentation => span_help_and_lint(
+            WarningType::DecimalRepresentation => span_lint_and_sugg(
                 cx,
                 DECIMAL_LITERAL_REPRESENTATION,
                 *span,
                 "integer literal has a better hexadecimal representation",
-                &format!("consider: {}", grouping_hint),
+                "consider",
+                grouping_hint.to_owned(),
             ),
         };
     }
