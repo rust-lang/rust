@@ -1303,6 +1303,7 @@ impl<T> [T] {
     /// Sorts the slice with a key extraction function.
     ///
     /// During sorting, the key function is called only once per element.
+    ///
     /// This sort is stable (i.e. does not reorder equal elements) and `O(m n + n log n)`
     /// worst-case, where the key function is `O(m)`.
     ///
@@ -1329,7 +1330,10 @@ impl<T> [T] {
         where F: FnMut(&T) -> B, B: Ord
     {
         let mut indices: Vec<_> = self.iter().map(f).enumerate().map(|(i, k)| (k, i)).collect();
-        indices.sort();
+        // The elements of `indices` are unique, as they are indexed, so any sort will be stable
+        // with respect to the original slice. We use `sort_unstable` here because it requires less
+        // memory allocation.
+        indices.sort_unstable();
         for i in 0..self.len() {
             let mut index = indices[i].1;
             while index < i {
@@ -1414,8 +1418,11 @@ impl<T> [T] {
     /// Sorts the slice with a key extraction function, but may not preserve the order of equal
     /// elements.
     ///
+    /// Note that, currently, the key function for `sort_unstable_by_key` is called multiple times
+    /// per element, unlike `sort_stable_by_key`.
+    ///
     /// This sort is unstable (i.e. may reorder equal elements), in-place (i.e. does not allocate),
-    /// and `O(n log n)` worst-case.
+    /// and `O(m n log m n)` worst-case, where the key function is `O(m)`.
     ///
     /// # Current implementation
     ///
@@ -1425,8 +1432,8 @@ impl<T> [T] {
     /// randomization to avoid degenerate cases, but with a fixed seed to always provide
     /// deterministic behavior.
     ///
-    /// It is typically faster than stable sorting, except in a few special cases, e.g. when the
-    /// slice consists of several concatenated sorted sequences.
+    /// Due to its key calling strategy, `sort_unstable_by_key` is likely to be slower than
+    /// `sort_by_key` in cases where the key function is expensive.
     ///
     /// # Examples
     ///
