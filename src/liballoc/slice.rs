@@ -1328,10 +1328,18 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "slice_sort_by_key", since = "1.7.0")]
     #[inline]
-    pub fn sort_by_key<B, F>(&mut self, mut f: F)
+    pub fn sort_by_key<B, F>(&mut self, f: F)
         where F: FnMut(&T) -> B, B: Ord
     {
-        merge_sort(self, |a, b| f(a).lt(&f(b)));
+        let mut indices: Vec<_> = self.iter().map(f).enumerate().map(|(i, k)| (k, i)).collect();
+        indices.sort();
+        for i in 0..self.len() {
+            let mut index = indices[i].1;
+            while index < i {
+                index = indices[index].1;
+            }
+            self.swap(i, index);
+        }
     }
 
     /// Sorts the slice, but may not preserve the order of equal elements.
