@@ -1623,6 +1623,7 @@
     function toggleAllDocs() {
         var toggle = document.getElementById("toggle-all-docs");
         if (hasClass(toggle, "will-expand")) {
+            updateLocalStorage("collapse", "false");
             removeClass(toggle, "will-expand");
             onEveryMatchingChild(toggle, "inner", function(e) {
                 e.innerHTML = labelForToggleButton(false);
@@ -1632,6 +1633,7 @@
                 collapseDocs(e, "show");
             });
         } else {
+            updateLocalStorage("collapse", "true");
             addClass(toggle, "will-expand");
             onEveryMatchingChild(toggle, "inner", function(e) {
                 e.innerHTML = labelForToggleButton(true);
@@ -1972,6 +1974,10 @@
     window.onresize = function() {
         hideSidebar();
     };
+
+    if (getCurrentValue("collapse") === "true") {
+        toggleAllDocs();
+    }
 }());
 
 // Sets the focus on the search bar at the top of the page
