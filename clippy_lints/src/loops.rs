@@ -2140,23 +2140,45 @@ fn path_name(e: &Expr) -> Option<Name> {
     None
 }
 
-fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, _block: &'tcx Block, _expr: &'tcx Expr) {
+fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, block: &'tcx Block, expr: &'tcx Expr) {
     let mut mut_var_visitor = MutableVarsVisitor {
         cx,
         ids: HashSet::new(),
         skip: false,
     };
-    walk_expr(&mut mut_var_visitor, cond);
-    if !mut_var_visitor.skip && mut_var_visitor.ids.len() == 0 {
+    walk_expr(&mut mut_var_visitor, expr);
+    if mut_var_visitor.skip {
+        return;
+    }
+
+    if mut_var_visitor.ids.len() == 0 {
         span_lint(
             cx,
             WHILE_IMMUTABLE_CONDITION,
             cond.span,
             "all variables in condition are immutable. This might lead to infinite loops.",
-        )
+        );
+        return;
+    }
+
+    let mut use_visitor = MutablyUsedVisitor {
+        cx,
+        ids: mut_var_visitor.ids,
+        any_used: false,
+    };
+    walk_block(&mut use_visitor, block);
+    if !use_visitor.any_used {
+        span_lint(
+            cx,
+            WHILE_IMMUTABLE_CONDITION,
+            expr.span,
+            "Variable in the condition are not mutated in the loop body. This might lead to infinite loops.",
+        );
     }
 }
 
+/// Collects the set of mutable variable in an expression
+/// Stops analysis if a function call is found
 struct MutableVarsVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
     ids: HashSet<NodeId>,
@@ -2171,9 +2193,43 @@ impl<'a, 'tcx> Visitor<'tcx> for MutableVarsVisitor<'a, 'tcx> {
             },
 
             // If there is any fuction/method call… we just stop analysis
-            ExprCall(_, _) | ExprMethodCall(_, _, _) => self.skip = true,
+            ExprCall(..) | ExprMethodCall(..) => self.skip = true,
 
             _ => walk_expr(self, ex),
+        }
+    }
+
+    fn visit_block(&mut self, _b: &'tcx Block) {}
+
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
+    }
+}
+
+/// checks within an expression/statement if any of the variables are used mutably
+struct MutablyUsedVisitor<'a, 'tcx: 'a> {
+    cx: &'a LateContext<'a, 'tcx>,
+    ids: HashSet<NodeId>,
+    any_used: bool,
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for MutablyUsedVisitor<'a, 'tcx> {
+    fn visit_expr(&mut self, ex: &'tcx Expr) {
+        if self.any_used { return; }
+
+        match ex.node {
+            ExprAddrOf(MutMutable, ref p) | ExprAssign(ref p, _) | ExprAssignOp(_, ref p, _) =>
+                if let Some(id) = check_for_mutability(self.cx, p) {
+                    self.any_used = self.ids.contains(&id);
+                }
+            _ => walk_expr(self, ex)
+        }
+    }
+
+    fn visit_stmt(&mut self, s: &'tcx Stmt) {
+        match s.node {
+            StmtExpr(..) | StmtSemi (..) => walk_stmt(self, s),
+            _ => {}
         }
     }
 

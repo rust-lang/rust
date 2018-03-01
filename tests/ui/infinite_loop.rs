@@ -1,7 +1,8 @@
 fn fn_val(i: i32) -> i32 { unimplemented!() }
 fn fn_constref(i: &i32) -> i32 { unimplemented!() }
 fn fn_mutref(i: &mut i32) { unimplemented!() }
-fn foo() -> i32 { unimplemented!() }
+fn fooi() -> i32 { unimplemented!() }
+fn foob() -> bool { unimplemented!() }
 
 fn immutable_condition() {
     // Should warn when all vars mentionned are immutable
@@ -12,6 +13,8 @@ fn immutable_condition() {
 
     let x = 0;
     while y < 10 && x < 3 {
+        let mut k = 1;
+        k += 2;
         println!("KO - x and y immutable");
     }
 
@@ -32,7 +35,11 @@ fn immutable_condition() {
         println!("OK - mut_cond is mutable");
     }
 
-    while foo() < x {
+    while fooi() < x {
+        println!("OK - Fn call results may vary");
+    }
+
+    while foob() {
         println!("OK - Fn call results may vary");
     }
 
@@ -79,6 +86,11 @@ fn used_immutable() {
     while i < 3 {
         println!("OK - passed by mutable reference");
         fn_mutref(&mut i)
+    }
+
+    while i < 3 {
+        fn_mutref(&mut i);
+        println!("OK - passed by mutable reference");
     }
 }
 
