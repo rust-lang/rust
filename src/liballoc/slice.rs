@@ -1302,11 +1302,9 @@ impl<T> [T] {
 
     /// Sorts the slice with a key extraction function.
     ///
-    /// This sort is stable (i.e. does not reorder equal elements) and `O(n log n)` worst-case.
-    ///
-    /// When applicable, unstable sorting is preferred because it is generally faster than stable
-    /// sorting and it doesn't allocate auxiliary memory.
-    /// See [`sort_unstable_by_key`](#method.sort_unstable_by_key).
+    /// During sorting, the key function is called only once per element.
+    /// This sort is stable (i.e. does not reorder equal elements) and `O(m n + n log n)`
+    /// worst-case, where the key function is `O(m)`.
     ///
     /// # Current implementation
     ///
@@ -1315,8 +1313,7 @@ impl<T> [T] {
     /// It is designed to be very fast in cases where the slice is nearly sorted, or consists of
     /// two or more sorted sequences concatenated one after another.
     ///
-    /// Also, it allocates temporary storage half the size of `self`, but for short slices a
-    /// non-allocating insertion sort is used instead.
+    /// The algorithm allocates temporary storage the size of `self`.
     ///
     /// # Examples
     ///
