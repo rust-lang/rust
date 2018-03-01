@@ -573,10 +573,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // an error that multiple bounds are required.
                 tcx.sess.span_err(
                     type_test.span,
-                    &format!(
-                        "`{}` does not live long enough",
-                        type_test.generic_kind,
-                    ),
+                    &format!("`{}` does not live long enough", type_test.generic_kind,),
                 );
             }
         }
@@ -593,8 +590,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             return self.definitions[r].external_name;
         } else {
             let inferred_values = self.inferred_values
-                                      .as_ref()
-                                      .expect("region values not yet inferred");
+                .as_ref()
+                .expect("region values not yet inferred");
             let upper_bound = self.universal_upper_bound(r);
             if inferred_values.contains(r, upper_bound) {
                 self.to_error_region(upper_bound)
@@ -806,9 +803,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) -> bool {
         debug!(
             "eval_region_test(point={:?}, lower_bound={:?}, test={:?})",
-            point,
-            lower_bound,
-            test
+            point, lower_bound, test
         );
 
         match test {
@@ -840,9 +835,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) -> bool {
         debug!(
             "eval_outlives({:?}: {:?} @ {:?})",
-            sup_region,
-            sub_region,
-            point
+            sup_region, sub_region, point
         );
 
         // Roughly speaking, do a DFS of all region elements reachable
@@ -947,8 +940,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             debug!(
                 "check_universal_region: fr={:?} does not outlive shorter_fr={:?}",
-                longer_fr,
-                shorter_fr,
+                longer_fr, shorter_fr,
             );
 
             let blame_span = self.blame_span(longer_fr, shorter_fr);
@@ -1123,10 +1115,7 @@ impl fmt::Debug for Constraint {
         write!(
             formatter,
             "({:?}: {:?} @ {:?}) due to {:?}",
-            self.sup,
-            self.sub,
-            self.point,
-            self.span
+            self.sup, self.sub, self.point, self.span
         )
     }
 }
@@ -1176,9 +1165,7 @@ impl<'gcx, 'tcx> ClosureRegionRequirementsExt<'gcx, 'tcx> for ClosureRegionRequi
 
         debug!(
             "apply_requirements(location={:?}, closure_def_id={:?}, closure_substs={:?})",
-            location,
-            closure_def_id,
-            closure_substs
+            location, closure_def_id, closure_substs
         );
 
         // Get Tu.
@@ -1206,9 +1193,7 @@ impl<'gcx, 'tcx> ClosureRegionRequirementsExt<'gcx, 'tcx> for ClosureRegionRequi
                         "apply_requirements: region={:?} \
                          outlived_region={:?} \
                          outlives_requirement={:?}",
-                        region,
-                        outlived_region,
-                        outlives_requirement,
+                        region, outlived_region, outlives_requirement,
                     );
                     infcx.sub_regions(origin, outlived_region, region);
                 }
@@ -1219,9 +1204,7 @@ impl<'gcx, 'tcx> ClosureRegionRequirementsExt<'gcx, 'tcx> for ClosureRegionRequi
                         "apply_requirements: ty={:?} \
                          outlived_region={:?} \
                          outlives_requirement={:?}",
-                        ty,
-                        outlived_region,
-                        outlives_requirement,
+                        ty, outlived_region, outlives_requirement,
                     );
                     infcx.register_region_obligation(
                         body_id,
@@ -1276,19 +1259,12 @@ impl CauseExt for Rc<Cause> {
 impl Cause {
     pub(crate) fn root_cause(&self) -> &Cause {
         match self {
-            Cause::LiveVar(..) |
-            Cause::DropVar(..) |
-            Cause::LiveOther(..) |
-            Cause::UniversalRegion(..) => {
-                self
-            }
+            Cause::LiveVar(..)
+            | Cause::DropVar(..)
+            | Cause::LiveOther(..)
+            | Cause::UniversalRegion(..) => self,
 
-            Cause::Outlives {
-                original_cause,
-                ..
-            } => {
-                original_cause.root_cause()
-            }
+            Cause::Outlives { original_cause, .. } => original_cause.root_cause(),
         }
     }
 }

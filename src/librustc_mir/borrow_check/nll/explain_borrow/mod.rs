@@ -72,7 +72,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
                     Cause::UniversalRegion(region_vid) => {
                         if let Some(region) = regioncx.to_error_region(region_vid) {
-
                             self.tcx.note_and_explain_free_region(
                                 err,
                                 "borrowed value must be valid for ",
@@ -82,8 +81,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         }
                     }
 
-                    _ => {
-                    }
+                    _ => {}
                 }
             }
         }
