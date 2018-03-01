@@ -351,6 +351,9 @@ class RustBuild(object):
             with open(self.rustc_stamp(), 'w') as rust_stamp:
                 rust_stamp.write(self.date)
 
+            # This is required so that we don't mix incompatible MinGW
+            # libraries/binaries that are included in rust-std with
+            # the system MinGW ones.
             if "pc-windows-gnu" in self.build:
                 filename = "rust-mingw-{}-{}.tar.gz".format(
                     rustc_channel, self.build)
