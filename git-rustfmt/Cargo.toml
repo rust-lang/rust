@@ -12,7 +12,7 @@ categories = ["development-tools"]
 name = "git-rustfmt"
 
 [dependencies]
-env_logger = "0.4"
+env_logger = "0.5"
 getopts = "0.2"
 log = "0.3"
 rustfmt-config = "0.4.0"
