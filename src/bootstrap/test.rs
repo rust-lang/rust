@@ -78,15 +78,17 @@ fn try_run(build: &Build, cmd: &mut Command) -> bool {
     true
 }
 
-fn try_run_quiet(build: &Build, cmd: &mut Command) {
+fn try_run_quiet(build: &Build, cmd: &mut Command) -> bool {
     if !build.fail_fast {
         if !build.try_run_quiet(cmd) {
             let mut failures = build.delayed_failures.borrow_mut();
             failures.push(format!("{:?}", cmd));
+            return false;
         }
     } else {
         build.run_quiet(cmd);
     }
+    true
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -994,23 +996,19 @@ impl Step for Compiletest {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Docs {
+struct DocTest {
     compiler: Compiler,
+    path: &'static str,
+    name: &'static str,
+    is_ext_doc: bool,
 }
 
-impl Step for Docs {
+impl Step for DocTest {
     type Output = ();
-    const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/doc")
-    }
-
-    fn make_run(run: RunConfig) {
-        run.builder.ensure(Docs {
-            compiler: run.builder.compiler(run.builder.top_stage, run.host),
-        });
+        run.never()
     }
 
     /// Run `rustdoc --test` for all documentation in `src/doc`.
@@ -1026,9 +1024,9 @@ impl Step for Docs {
 
         // Do a breadth-first traversal of the `src/doc` directory and just run
         // tests for all files that end in `*.md`
-        let mut stack = vec![build.src.join("src/doc")];
+        let mut stack = vec![build.src.join(self.path)];
         let _time = util::timeit();
-        let _folder = build.fold_output(|| "test_docs");
+        let _folder = build.fold_output(|| format!("test_{}", self.name));
 
         while let Some(p) = stack.pop() {
             if p.is_dir() {
@@ -1046,10 +1044,63 @@ impl Step for Docs {
                 continue;
             }
 
-            markdown_test(builder, compiler, &p);
+            let test_result = markdown_test(builder, compiler, &p);
+            if self.is_ext_doc {
+                let toolstate = if test_result {
+                    ToolState::TestPass
+                } else {
+                    ToolState::TestFail
+                };
+                build.save_toolstate(self.name, toolstate);
+            }
         }
     }
 }
+
+macro_rules! test_book {
+    ($($name:ident, $path:expr, $book_name:expr, default=$default:expr;)+) => {
+        $(
+            #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+            pub struct $name {
+                compiler: Compiler,
+            }
+
+            impl Step for $name {
+                type Output = ();
+                const DEFAULT: bool = $default;
+                const ONLY_HOSTS: bool = true;
+
+                fn should_run(run: ShouldRun) -> ShouldRun {
+                    run.path($path)
+                }
+
+                fn make_run(run: RunConfig) {
+                    run.builder.ensure($name {
+                        compiler: run.builder.compiler(run.builder.top_stage, run.host),
+                    });
+                }
+
+                fn run(self, builder: &Builder) {
+                    builder.ensure(DocTest {
+                        compiler: self.compiler,
+                        path: $path,
+                        name: $book_name,
+                        is_ext_doc: !$default,
+                    });
+                }
+            }
+        )+
+    }
+}
+
+test_book!(
+    Nomicon, "src/doc/nomicon", "nomicon", default=false;
+    Reference, "src/doc/reference", "reference", default=false;
+    RustdocBook, "src/doc/rustdoc", "rustdoc", default=true;
+    RustByExample, "src/doc/rust-by-example", "rust-by-example", default=false;
+    TheBook, "src/doc/book", "book", default=false;
+    UnstableBook, "src/doc/unstable-book", "unstable-book", default=true;
+);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ErrorIndex {
@@ -1101,13 +1152,13 @@ impl Step for ErrorIndex {
     }
 }
 
-fn markdown_test(builder: &Builder, compiler: Compiler, markdown: &Path) {
+fn markdown_test(builder: &Builder, compiler: Compiler, markdown: &Path) -> bool {
     let build = builder.build;
     let mut file = t!(File::open(markdown));
     let mut contents = String::new();
     t!(file.read_to_string(&mut contents));
     if !contents.contains("```") {
-        return;
+        return true;
     }
 
     println!("doc tests for: {}", markdown.display());
@@ -1121,9 +1172,9 @@ fn markdown_test(builder: &Builder, compiler: Compiler, markdown: &Path) {
     cmd.arg("--test-args").arg(test_args);
 
     if build.config.quiet_tests {
-        try_run_quiet(build, &mut cmd);
+        try_run_quiet(build, &mut cmd)
     } else {
-        try_run(build, &mut cmd);
+        try_run(build, &mut cmd)
     }
 }
 
