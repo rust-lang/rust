@@ -185,10 +185,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                     reject_shadowing_type_parameters(fcx.tcx, item.def_id);
                     let sig = fcx.tcx.fn_sig(item.def_id);
                     let sig = fcx.normalize_associated_types_in(span, &sig);
-                    let predicates = fcx.tcx.predicates_of(item.def_id)
-                        .instantiate_identity(fcx.tcx);
-                    let predicates = fcx.normalize_associated_types_in(span, &predicates);
-                    this.check_fn_or_method(fcx, span, sig, &predicates,
+                    this.check_fn_or_method(fcx, span, sig,
                                             item.def_id, &mut implied_bounds);
                     let sig_if_method = sig_if_method.expect("bad signature for method");
                     this.check_method_receiver(fcx, sig_if_method, &item, self_ty);
@@ -272,9 +269,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                 }
             }
 
-            let predicates = fcx.tcx.predicates_of(def_id).instantiate_identity(fcx.tcx);
-            let predicates = fcx.normalize_associated_types_in(item.span, &predicates);
-            this.check_where_clauses(fcx, item.span, &predicates);
+            self.check_where_clauses(fcx, item.span, def_id);
 
             vec![] // no implied bounds in a struct def'n
         });
@@ -282,10 +277,8 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
 
     fn check_trait(&mut self, item: &hir::Item) {
         let trait_def_id = self.tcx.hir.local_def_id(item.id);
-        self.for_item(item).with_fcx(|fcx, this| {
-            let predicates = fcx.tcx.predicates_of(trait_def_id).instantiate_identity(fcx.tcx);
-            let predicates = fcx.normalize_associated_types_in(item.span, &predicates);
-            this.check_where_clauses(fcx, item.span, &predicates);
+        self.for_item(item).with_fcx(|fcx, _| {
+            self.check_where_clauses(fcx, item.span, trait_def_id);
             vec![]
         });
     }
@@ -295,12 +288,8 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
             let def_id = fcx.tcx.hir.local_def_id(item.id);
             let sig = fcx.tcx.fn_sig(def_id);
             let sig = fcx.normalize_associated_types_in(item.span, &sig);
-
-            let predicates = fcx.tcx.predicates_of(def_id).instantiate_identity(fcx.tcx);
-            let predicates = fcx.normalize_associated_types_in(item.span, &predicates);
-
             let mut implied_bounds = vec![];
-            this.check_fn_or_method(fcx, item.span, sig, &predicates,
+            this.check_fn_or_method(fcx, item.span, sig,
                                     def_id, &mut implied_bounds);
             implied_bounds
         })
@@ -354,19 +343,96 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                 }
             }
 
-            let predicates = fcx.tcx.predicates_of(item_def_id).instantiate_identity(fcx.tcx);
-            let predicates = fcx.normalize_associated_types_in(item.span, &predicates);
-            this.check_where_clauses(fcx, item.span, &predicates);
+            this.check_where_clauses(fcx, item.span, item_def_id);
 
             fcx.impl_implied_bounds(item_def_id, item.span)
         });
     }
 
+    /// Checks where clauses and inline bounds that are declared on def_id.
     fn check_where_clauses<'fcx, 'tcx>(&mut self,
                                        fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
                                        span: Span,
-                                       predicates: &ty::InstantiatedPredicates<'tcx>)
-    {
+                                       def_id: DefId) {
+        use ty::subst::Subst;
+        use rustc::ty::TypeFoldable;
+
+        let mut predicates = fcx.tcx.predicates_of(def_id);
+        let mut substituted_predicates = Vec::new();
+
+        let generics = self.tcx.generics_of(def_id);
+        let is_our_default = |def: &ty::TypeParameterDef|
+                                def.has_default && def.index >= generics.parent_count() as u32;
+
+        // Check that concrete defaults are well-formed. See test `type-check-defaults.rs`.
+        // For example this forbids the declaration:
+        // struct Foo<T = Vec<[u32]>> { .. }
+        // Here the default `Vec<[u32]>` is not WF because `[u32]: Sized` does not hold.
+        for d in generics.types.iter().cloned().filter(is_our_default).map(|p| p.def_id) {
+            let ty = fcx.tcx.type_of(d);
+            // ignore dependent defaults -- that is, where the default of one type
+            // parameter includes another (e.g., <T, U = T>). In those cases, we can't
+            // be sure if it will error or not as user might always specify the other.
+            if !ty.needs_subst() {
+                fcx.register_wf_obligation(ty, fcx.tcx.def_span(d), self.code.clone());
+            }
+        }
+
+        // Check that trait predicates are WF when params are substituted by their defaults.
+        // We don't want to overly constrain the predicates that may be written but we want to
+        // catch cases where a default my never be applied such as `struct Foo<T: Copy = String>`.
+        // Therefore we check if a predicate which contains a single type param
+        // with a concrete default is WF with that default substituted.
+        // For more examples see tests `defaults-well-formedness.rs` and `type-check-defaults.rs`.
+        //
+        // First we build the defaulted substitution.
+        let substs = ty::subst::Substs::for_item(fcx.tcx, def_id, |def, _| {
+                // All regions are identity.
+                fcx.tcx.mk_region(ty::ReEarlyBound(def.to_early_bound_region_data()))
+            }, |def, _| {
+                // If the param has a default,
+                if is_our_default(def) {
+                    let default_ty = fcx.tcx.type_of(def.def_id);
+                    // and it's not a dependent default
+                    if !default_ty.needs_subst() {
+                        // then substitute with the default.
+                        return default_ty;
+                    }
+                }
+                // Mark unwanted params as err.
+                fcx.tcx.types.err
+            });
+        // Now we build the substituted predicates.
+        for &pred in predicates.predicates.iter() {
+            struct CountParams { params: FxHashSet<u32> }
+            impl<'tcx> ty::fold::TypeVisitor<'tcx> for CountParams {
+                fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
+                    match t.sty {
+                        ty::TyParam(p) => {
+                            self.params.insert(p.idx);
+                            t.super_visit_with(self)
+                        }
+                        _ => t.super_visit_with(self)
+                    }
+                }
+            }
+            let mut param_count = CountParams { params: FxHashSet() };
+            pred.visit_with(&mut param_count);
+            let substituted_pred = pred.subst(fcx.tcx, substs);
+            // Don't check non-defaulted params, dependent defaults or preds with multiple params.
+            if substituted_pred.references_error() || param_count.params.len() > 1 {
+                continue;
+            }
+            // Avoid duplication of predicates that contain no parameters, for example.
+            if !predicates.predicates.contains(&substituted_pred) {
+                substituted_predicates.push(substituted_pred);
+            }
+        }
+
+        predicates.predicates.extend(substituted_predicates);
+        let predicates = predicates.instantiate_identity(fcx.tcx);
+        let predicates = fcx.normalize_associated_types_in(span, &predicates);
+
         let obligations =
             predicates.predicates
                       .iter()
@@ -385,7 +451,6 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                                       fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
                                       span: Span,
                                       sig: ty::PolyFnSig<'tcx>,
-                                      predicates: &ty::InstantiatedPredicates<'tcx>,
                                       def_id: DefId,
                                       implied_bounds: &mut Vec<Ty<'tcx>>)
     {
@@ -402,7 +467,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
         // FIXME(#25759) return types should not be implied bounds
         implied_bounds.push(sig.output());
 
-        self.check_where_clauses(fcx, span, predicates);
+        self.check_where_clauses(fcx, span, def_id);
     }
 
     fn check_method_receiver<'fcx, 'tcx>(&mut self,
