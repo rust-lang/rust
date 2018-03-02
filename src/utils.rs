@@ -382,13 +382,12 @@ pub fn isatty() -> bool {
 }
 #[cfg(windows)]
 pub fn isatty() -> bool {
-    extern crate kernel32;
     extern crate winapi;
 
     unsafe {
-        let handle = kernel32::GetStdHandle(winapi::winbase::STD_OUTPUT_HANDLE);
+        let handle = winapi::um::processenv::GetStdHandle(winapi::um::winbase::STD_OUTPUT_HANDLE);
         let mut out = 0;
-        kernel32::GetConsoleMode(handle, &mut out) != 0
+        winapi::um::consoleapi::GetConsoleMode(handle, &mut out) != 0
     }
 }
 

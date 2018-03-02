@@ -58,5 +58,4 @@ lazy_static = "1.0.0"
 libc = "0.2.11"
 
 [target.'cfg(windows)'.dependencies]
-kernel32-sys = "0.2.2"
-winapi = "0.2.7"
+winapi = { version = "0.3" }
