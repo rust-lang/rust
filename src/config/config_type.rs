@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use file_lines::FileLines;
-use options::WidthHeuristics;
+use config::file_lines::FileLines;
+use config::options::WidthHeuristics;
 
 /// Trait for types that can be used in `Config`.
 pub trait ConfigType: Sized {
@@ -102,7 +102,7 @@ macro_rules! create_config {
                 cloned.verbose = None;
                 cloned.width_heuristics = None;
 
-                toml::to_string(&cloned)
+                ::toml::to_string(&cloned)
                     .map_err(|e| format!("Could not output config: {}", e.to_string()))
             }
         }
@@ -211,7 +211,7 @@ macro_rules! create_config {
             }
 
             pub fn from_toml(toml: &str) -> Result<Config, String> {
-                let parsed: toml::Value =
+                let parsed: ::toml::Value =
                     toml.parse().map_err(|e| format!("Could not parse TOML: {}", e))?;
                 let mut err: String = String::new();
                 {

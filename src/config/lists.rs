@@ -10,8 +10,8 @@
 
 //! Configuration options related to rewriting a list.
 
-use IndentStyle;
-use config_type::ConfigType;
+use config::IndentStyle;
+use config::config_type::ConfigType;
 
 /// The definitive formatting tactic for lists.
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]

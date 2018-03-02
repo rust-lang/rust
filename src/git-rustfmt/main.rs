@@ -12,8 +12,7 @@ extern crate env_logger;
 extern crate getopts;
 #[macro_use]
 extern crate log;
-extern crate rustfmt_config as config;
-extern crate rustfmt_core as rustfmt;
+extern crate rustfmt_nightly as rustfmt;
 
 use std::env;
 use std::path::{Path, PathBuf};
@@ -22,7 +21,7 @@ use std::str::FromStr;
 
 use getopts::{Matches, Options};
 
-use rustfmt::{run, Input};
+use rustfmt::{config, run, Input};
 
 fn prune_files(files: Vec<&str>) -> Vec<&str> {
     let prefixes: Vec<_> = files

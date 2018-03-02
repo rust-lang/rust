@@ -8,13 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_json;
-extern crate syntax;
-extern crate toml;
-
 use std::{env, fs};
 use std::cell::Cell;
 use std::default::Default;
@@ -31,11 +24,11 @@ pub mod file_lines;
 pub mod lists;
 pub mod summary;
 
-use config_type::ConfigType;
-use file_lines::FileLines;
-pub use lists::*;
-pub use options::*;
-use summary::Summary;
+use config::config_type::ConfigType;
+use config::file_lines::FileLines;
+pub use config::lists::*;
+pub use config::options::*;
+use config::summary::Summary;
 
 /// This macro defines configuration options used in rustfmt. Each option
 /// is defined as follows:

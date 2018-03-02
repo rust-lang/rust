@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use config_type::ConfigType;
-use lists::*;
+use config::config_type::ConfigType;
+use config::lists::*;
 
 /// Macro for deriving implementations of Serialize/Deserialize for enums
 #[macro_export]

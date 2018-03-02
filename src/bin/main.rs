@@ -12,8 +12,7 @@
 
 extern crate env_logger;
 extern crate getopts;
-extern crate rustfmt_config as config;
-extern crate rustfmt_core as rustfmt;
+extern crate rustfmt_nightly as rustfmt;
 
 use std::{env, error};
 use std::fs::File;
@@ -22,8 +21,8 @@ use std::path::{Path, PathBuf};
 
 use getopts::{Matches, Options};
 
-use config::{get_toml_path, Color, Config, WriteMode};
-use config::file_lines::FileLines;
+use rustfmt::config::{get_toml_path, Color, Config, WriteMode};
+use rustfmt::config::file_lines::FileLines;
 use rustfmt::{run, FileName, Input, Summary};
 
 use std::str::FromStr;
