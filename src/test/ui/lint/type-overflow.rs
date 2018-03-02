@@ -29,7 +29,5 @@ fn main() {
 
     let fail = 0x8FFF_FFFF_FFFF_FFFE; //~WARNING literal out of range for i32
 
-    let fail: isize = 0x8000_0000_0000_0000; //~WARNING literal out of range for isize
-
     let fail = -0b1111_1111i8; //~WARNING literal out of range for i8
 }
