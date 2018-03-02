@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use cstore::CrateMetadata;
 use index::Index;
 use index_builder::{FromId, IndexBuilder, Untracked};
 use isolated_encoder::IsolatedEncoder;
@@ -147,7 +148,7 @@ impl<'a, 'tcx> SpecializedEncoder<DefIndex> for EncodeContext<'a, 'tcx> {
 impl<'a, 'tcx> SpecializedEncoder<Span> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, span: &Span) -> Result<(), Self::Error> {
         if *span == DUMMY_SP {
-            return TAG_INVALID_SPAN.encode(self)
+            return TAG_INVALID_SPAN_CNUM.encode(self)
         }
 
         let span = span.data();
@@ -164,11 +165,29 @@ impl<'a, 'tcx> SpecializedEncoder<Span> for EncodeContext<'a, 'tcx> {
         if !self.filemap_cache.contains(span.hi) {
             // Unfortunately, macro expansion still sometimes generates Spans
             // that malformed in this way.
-            return TAG_INVALID_SPAN.encode(self)
+            return TAG_INVALID_SPAN_CNUM.encode(self)
         }
 
-        TAG_VALID_SPAN.encode(self)?;
-        span.lo.encode(self)?;
+        let cnum = CrateNum::from_u32(self.filemap_cache.crate_of_origin);
+        let cnum_tag = TAG_VALID_SPAN_CNUM_START + cnum.as_u32();
+        cnum_tag.encode(self)?;
+        let original_lo = if cnum == LOCAL_CRATE {
+            span.lo
+        } else {
+            // Imported spans were adjusted when they were decoded, so
+            // they have to be translated back into their crate of origin.
+            let codemap = self.tcx.sess.codemap();
+            let span_cdata_rc_any = self.tcx.crate_data_as_rc_any(cnum);
+            let span_cdata = span_cdata_rc_any.downcast_ref::<CrateMetadata>()
+                .expect("CrateStore crate data is not a CrateMetadata");
+            // FIXME(eddyb) It'd be easier to just put `original_{start,end}_pos`
+            // in `syntax_pos::FileMap` instead of `ImportedFileMap`.
+            let filemap = span_cdata.imported_filemap_containing(&codemap, span.lo, |filemap| {
+                filemap.translated_filemap.start_pos..=filemap.translated_filemap.end_pos
+            });
+            (span.lo + filemap.original_start_pos) - filemap.translated_filemap.start_pos
+        };
+        original_lo.encode(self)?;
 
         // Encode length which is usually less than span.hi and profits more
         // from the variable-length integer encoding that we use.

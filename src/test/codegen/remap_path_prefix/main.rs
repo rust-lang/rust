@@ -26,9 +26,9 @@ include!("aux_mod.rs");
 pub static FILE_PATH: &'static str = file!();
 
 fn main() {
-    remap_path_prefix_aux::some_aux_function();
-    aux_mod::some_aux_mod_function();
-    some_aux_mod_function();
+    remap_path_prefix_aux::some_aux_function::<()>();
+    aux_mod::some_aux_mod_function::<()>();
+    some_aux_mod_function::<()>();
 }
 
 // Here we check that local debuginfo is mapped correctly.

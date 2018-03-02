@@ -260,8 +260,39 @@ fn resolve_associated_item<'a, 'tcx>(
         traits::VtableImpl(impl_data) => {
             let (def_id, substs) = traits::find_associated_item(
                 tcx, trait_item, rcvr_substs, &impl_data);
-            let substs = tcx.erase_regions(&substs);
-            Some(ty::Instance::new(def_id, substs))
+
+            let eligible = {
+                let item = tcx.associated_item(def_id);
+                let is_default = match item.container {
+                    ty::TraitContainer(_) => item.defaultness.has_value(),
+                    ty::ImplContainer(impl_def_id) => {
+                        item.defaultness.is_default() || tcx.impl_is_default(impl_def_id)
+                    }
+                };
+
+                // Only reveal a specializable default if we're past type-checking
+                // and the obligations is monomorphic, otherwise passes such as
+                // transmute checking and polymorphic MIR optimizations could
+                // get a result which isn't correct for all monomorphizations.
+                if !is_default {
+                    true
+                } else if param_env.reveal == traits::Reveal::All {
+                    assert!(!trait_ref.needs_infer());
+                    if !trait_ref.needs_subst() {
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            };
+            if eligible {
+                let substs = tcx.erase_regions(&substs);
+                Some(ty::Instance::new(def_id, substs))
+            } else {
+                None
+            }
         }
         traits::VtableGenerator(closure_data) => {
             Some(Instance {

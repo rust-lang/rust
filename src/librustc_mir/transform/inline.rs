@@ -52,9 +52,7 @@ impl MirPass for Inline {
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           source: MirSource,
                           mir: &mut Mir<'tcx>) {
-        if tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
-            Inliner { tcx, source }.run_pass(mir);
-        }
+        Inliner { tcx, source }.run_pass(mir);
     }
 }
 
