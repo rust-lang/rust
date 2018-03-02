@@ -6,6 +6,8 @@ contributing or need help with anything, please ping nrc on irc, #rust-dev-tools
 on irc.mozilla.org is probably the best channel. Feel free to also ask questions
 on issues, or file new issues specifically to get help.
 
+All contributors are expected to follow our [Code of
+Conduct](CODE_OF_CONDUCT.md).
 
 ## Test and file issues
 
