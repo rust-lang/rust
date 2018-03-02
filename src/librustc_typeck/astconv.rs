@@ -312,7 +312,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
     /// Instantiates the path for the given trait reference, assuming that it's
     /// bound to a valid trait type. Returns the def_id for the defining trait.
-    /// Fails if the type is a type other than a trait type.
+    /// The type _cannot_ be a type other than a trait type.
     ///
     /// If the `projections` argument is `None`, then assoc type bindings like `Foo<T=X>`
     /// are disallowed. Otherwise, they are pushed onto the vector given.
@@ -330,6 +330,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                         trait_ref.path.segments.last().unwrap())
     }
 
+    /// Get the DefId of the given trait ref. It _must_ actually be a trait.
     fn trait_def_id(&self, trait_ref: &hir::TraitRef) -> DefId {
         let path = &trait_ref.path;
         match path.def {
@@ -338,13 +339,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             Def::Err => {
                 self.tcx().sess.fatal("cannot continue compilation due to previous error");
             }
-            _ => {
-                span_fatal!(self.tcx().sess, path.span, E0245, "`{}` is not a trait",
-                            self.tcx().hir.node_to_pretty_string(trait_ref.ref_id));
-            }
+            _ => unreachable!(),
         }
     }
 
+    /// The given `trait_ref` must actually be trait.
     pub(super) fn instantiate_poly_trait_ref_inner(&self,
         trait_ref: &hir::TraitRef,
         self_ty: Ty<'tcx>,

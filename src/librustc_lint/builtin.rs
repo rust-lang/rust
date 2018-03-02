@@ -737,6 +737,7 @@ impl EarlyLintPass for IllegalFloatLiteralPattern {
                 PatKind::TupleStruct(..) |
                 PatKind::Ref(..) |
                 PatKind::Box(..) |
+                PatKind::Paren(..) |
                 PatKind::Slice(..) => (),
 
                 // Extract the expressions and check them

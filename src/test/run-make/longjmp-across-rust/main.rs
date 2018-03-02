@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,33 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+#[link(name = "foo", kind = "static")]
+extern {
+    fn test_start(f: extern fn());
+    fn test_end();
+}
 
 fn main() {
-    match 0 {
-        (pat, ..,) => {} //~ ERROR trailing comma is not permitted after `..`
+    unsafe {
+        test_start(test_middle);
+    }
+}
+
+struct A;
+
+impl Drop for A {
+    fn drop(&mut self) {
+    }
+}
+
+extern fn test_middle() {
+    let _a = A;
+    foo();
+}
+
+fn foo() {
+    let _a = A;
+    unsafe {
+        test_end();
     }
 }

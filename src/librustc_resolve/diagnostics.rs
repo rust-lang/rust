@@ -542,7 +542,7 @@ fn foo<T, T>(s: T, u: T) {} // error: the name `T` is already used for a type
                             //        parameter in this type parameter list
 ```
 
-Please verify that none of the type parameterss are misspelled, and rename any
+Please verify that none of the type parameters are misspelled, and rename any
 clashing parameters. Example:
 
 ```
@@ -551,7 +551,8 @@ fn foo<T, Y>(s: T, u: Y) {} // ok!
 "##,
 
 E0404: r##"
-You tried to implement something which was not a trait on an object.
+You tried to use something which is not a trait in a trait position, such as
+a bound or `impl`.
 
 Erroneous code example:
 
@@ -560,6 +561,14 @@ struct Foo;
 struct Bar;
 
 impl Foo for Bar {} // error: `Foo` is not a trait
+```
+
+Another erroneous code example:
+
+```compile_fail,E0404
+struct Foo;
+
+fn bar<T: Foo>(t: T) {} // error: `Foo` is not a trait
 ```
 
 Please verify that you didn't misspell the trait's name or otherwise use the
@@ -575,6 +584,17 @@ impl Foo for Bar { // ok!
     // functions implementation
 }
 ```
+
+or
+
+```
+trait Foo {
+    // some functions
+}
+
+fn bar<T: Foo>(t: T) {} // ok!
+```
+
 "##,
 
 E0405: r##"

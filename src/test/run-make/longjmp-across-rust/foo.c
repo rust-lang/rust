@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+#include <assert.h>
+#include <setjmp.h>
 
-fn main() {
-    match 0 {
-        (pat, ..,) => {} //~ ERROR trailing comma is not permitted after `..`
-    }
+static jmp_buf ENV;
+
+extern void test_middle();
+
+void test_start(void(*f)()) {
+  if (setjmp(ENV) != 0)
+    return;
+  f();
+  assert(0);
+}
+
+void test_end() {
+  longjmp(ENV, 1);
+  assert(0);
 }

@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+#![feature(pattern_parentheses)]
 
 fn main() {
     match 0 {
-        (pat, ..,) => {} //~ ERROR trailing comma is not permitted after `..`
+        (pat) => assert_eq!(pat, 0)
     }
 }
