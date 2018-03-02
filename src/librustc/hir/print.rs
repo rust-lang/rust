@@ -1810,15 +1810,35 @@ impl<'a> State<'a> {
                 self.pclose()?;
             }
             PatKind::Box(ref inner) => {
+                let is_range_inner = match inner.node {
+                    PatKind::Range(..) => true,
+                    _ => false,
+                };
                 self.s.word("box ")?;
+                if is_range_inner {
+                    self.popen()?;
+                }
                 self.print_pat(&inner)?;
+                if is_range_inner {
+                    self.pclose()?;
+                }
             }
             PatKind::Ref(ref inner, mutbl) => {
+                let is_range_inner = match inner.node {
+                    PatKind::Range(..) => true,
+                    _ => false,
+                };
                 self.s.word("&")?;
                 if mutbl == hir::MutMutable {
                     self.s.word("mut ")?;
                 }
+                if is_range_inner {
+                    self.popen()?;
+                }
                 self.print_pat(&inner)?;
+                if is_range_inner {
+                    self.pclose()?;
+                }
             }
             PatKind::Lit(ref e) => self.print_expr(&e)?,
             PatKind::Range(ref begin, ref end, ref end_kind) => {
