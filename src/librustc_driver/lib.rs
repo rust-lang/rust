@@ -303,7 +303,9 @@ fn get_trans_sysroot(backend_name: &str) -> fn() -> Box<TransCrate> {
     let sysroot = sysroot_candidates.iter()
         .map(|sysroot| {
             let libdir = filesearch::relative_target_lib_path(&sysroot, &target);
-            sysroot.join(libdir).with_file_name("codegen-backends")
+            sysroot.join(libdir)
+                .with_file_name(option_env!("CFG_CODEGEN_BACKENDS_DIR")
+                                .unwrap_or("codegen-backends"))
         })
         .filter(|f| {
             info!("codegen backend candidate: {}", f.display());
