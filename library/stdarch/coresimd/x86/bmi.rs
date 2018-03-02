@@ -15,7 +15,7 @@ use stdsimd_test::assert_instr;
 /// Extracts bits in range [`start`, `start` + `length`) from `a` into
 /// the least significant bits of the result.
 #[inline]
-#[target_feature(enable = "bmi")]
+#[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(bextr))]
 pub unsafe fn _bextr_u32(a: u32, start: u32, len: u32) -> u32 {
     _bextr2_u32(a, (start & 0xff_u32) | ((len & 0xff_u32) << 8_u32))
@@ -27,7 +27,7 @@ pub unsafe fn _bextr_u32(a: u32, start: u32, len: u32) -> u32 {
 /// Bits [7,0] of `control` specify the index to the first bit in the range to
 /// be extracted, and bits [15,8] specify the length of the range.
 #[inline]
-#[target_feature(enable = "bmi")]
+#[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(bextr))]
 pub unsafe fn _bextr2_u32(a: u32, control: u32) -> u32 {
     x86_bmi_bextr_32(a, control)
@@ -35,7 +35,7 @@ pub unsafe fn _bextr2_u32(a: u32, control: u32) -> u32 {
 
 /// Bitwise logical `AND` of inverted `a` with `b`.
 #[inline]
-#[target_feature(enable = "bmi")]
+#[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(andn))]
 pub unsafe fn _andn_u32(a: u32, b: u32) -> u32 {
     !a & b
@@ -43,7 +43,7 @@ pub unsafe fn _andn_u32(a: u32, b: u32) -> u32 {
 
 /// Extract lowest set isolated bit.
 #[inline]
-#[target_feature(enable = "bmi")]
+#[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(blsi))]
 pub unsafe fn _blsi_u32(x: u32) -> u32 {
     x & x.wrapping_neg()
@@ -51,7 +51,7 @@ pub unsafe fn _blsi_u32(x: u32) -> u32 {
 
 /// Get mask up to lowest set bit.
 #[inline]
-#[target_feature(enable = "bmi")]
+#[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(blsmsk))]
 pub unsafe fn _blsmsk_u32(x: u32) -> u32 {
     x ^ (x.wrapping_sub(1_u32))
@@ -61,7 +61,7 @@ pub unsafe fn _blsmsk_u32(x: u32) -> u32 {
 ///
 /// If `x` is sets CF.
 #[inline]
-#[target_feature(enable = "bmi")]
+#[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(blsr))]
 pub unsafe fn _blsr_u32(x: u32) -> u32 {
     x & (x.wrapping_sub(1))
@@ -71,7 +71,7 @@ pub unsafe fn _blsr_u32(x: u32) -> u32 {
 ///
 /// When the source operand is 0, it returns its size in bits.
 #[inline]
-#[target_feature(enable = "bmi")]
+#[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(tzcnt))]
 pub unsafe fn _tzcnt_u32(x: u32) -> u32 {
     x.trailing_zeros()
@@ -81,7 +81,7 @@ pub unsafe fn _tzcnt_u32(x: u32) -> u32 {
 ///
 /// When the source operand is 0, it returns its size in bits.
 #[inline]
-#[target_feature(enable = "bmi")]
+#[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(tzcnt))]
 pub unsafe fn _mm_tzcnt_32(x: u32) -> i32 {
     x.trailing_zeros() as i32
@@ -98,13 +98,13 @@ mod tests {
 
     use coresimd::x86::*;
 
-    #[simd_test = "bmi"]
+    #[simd_test = "bmi1"]
     unsafe fn test_bextr_u32() {
         let r = _bextr_u32(0b0101_0000u32, 4, 4);
         assert_eq!(r, 0b0000_0101u32);
     }
 
-    #[simd_test = "bmi"]
+    #[simd_test = "bmi1"]
     unsafe fn test_andn_u32() {
         assert_eq!(_andn_u32(0, 0), 0);
         assert_eq!(_andn_u32(0, 1), 1);
@@ -127,25 +127,25 @@ mod tests {
         assert_eq!(r, 0b0001_1101u32);
     }
 
-    #[simd_test = "bmi"]
+    #[simd_test = "bmi1"]
     unsafe fn test_blsi_u32() {
         assert_eq!(_blsi_u32(0b1101_0000u32), 0b0001_0000u32);
     }
 
-    #[simd_test = "bmi"]
+    #[simd_test = "bmi1"]
     unsafe fn test_blsmsk_u32() {
         let r = _blsmsk_u32(0b0011_0000u32);
         assert_eq!(r, 0b0001_1111u32);
     }
 
-    #[simd_test = "bmi"]
+    #[simd_test = "bmi1"]
     unsafe fn test_blsr_u32() {
         // TODO: test the behavior when the input is 0
         let r = _blsr_u32(0b0011_0000u32);
         assert_eq!(r, 0b0010_0000u32);
     }
 
-    #[simd_test = "bmi"]
+    #[simd_test = "bmi1"]
     unsafe fn test_tzcnt_u32() {
         assert_eq!(_tzcnt_u32(0b0000_0001u32), 0u32);
         assert_eq!(_tzcnt_u32(0b0000_0000u32), 32u32);

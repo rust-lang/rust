@@ -249,14 +249,6 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
             .flat_map(|c| c.to_lowercase())
             .collect::<String>();
 
-        // Normalize `bmi1` to `bmi` as apparently that's what we're
-        // calling it.
-        let cpuid = if cpuid == "bmi1" {
-            String::from("bmi")
-        } else {
-            cpuid
-        };
-
         let rust_feature = rust.target_feature
             .expect(&format!("no target feature listed for {}", rust.name));
         if rust_feature.contains(&cpuid) {

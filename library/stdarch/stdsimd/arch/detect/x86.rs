@@ -125,7 +125,7 @@ macro_rules! is_target_feature_detected {
         $crate::arch::detect::check_for(
             $crate::arch::detect::Feature::fma)
     };
-    ("bmi") => {
+    ("bmi1") => {
         $crate::arch::detect::check_for(
             $crate::arch::detect::Feature::bmi)
     };
@@ -504,7 +504,7 @@ mod tests {
         );
         println!("fma: {:?}", is_target_feature_detected!("fma"));
         println!("abm: {:?}", is_target_feature_detected!("abm"));
-        println!("bmi: {:?}", is_target_feature_detected!("bmi"));
+        println!("bmi: {:?}", is_target_feature_detected!("bmi1"));
         println!("bmi2: {:?}", is_target_feature_detected!("bmi2"));
         println!("tbm: {:?}", is_target_feature_detected!("tbm"));
         println!("popcnt: {:?}", is_target_feature_detected!("popcnt"));
@@ -553,7 +553,7 @@ mod tests {
             information.avx512_vpopcntdq()
         );
         assert_eq!(is_target_feature_detected!("fma"), information.fma());
-        assert_eq!(is_target_feature_detected!("bmi"), information.bmi1());
+        assert_eq!(is_target_feature_detected!("bmi1"), information.bmi1());
         assert_eq!(is_target_feature_detected!("bmi2"), information.bmi2());
         assert_eq!(is_target_feature_detected!("popcnt"), information.popcnt());
         assert_eq!(is_target_feature_detected!("abm"), information.lzcnt());

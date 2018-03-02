@@ -34,7 +34,7 @@ fn x86_all() {
     );
     println!("fma: {:?}", is_target_feature_detected!("fma"));
     println!("abm: {:?}", is_target_feature_detected!("abm"));
-    println!("bmi: {:?}", is_target_feature_detected!("bmi"));
+    println!("bmi: {:?}", is_target_feature_detected!("bmi1"));
     println!("bmi2: {:?}", is_target_feature_detected!("bmi2"));
     println!("tbm: {:?}", is_target_feature_detected!("tbm"));
     println!("popcnt: {:?}", is_target_feature_detected!("popcnt"));
