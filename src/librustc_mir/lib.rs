@@ -39,6 +39,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(collection_placement)]
 #![feature(nonzero)]
 #![feature(underscore_lifetimes)]
+#![feature(crate_visibility_modifier)]
 
 extern crate arena;
 #[macro_use]
