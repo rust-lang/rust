@@ -312,6 +312,7 @@ fn invoke_rustdoc(builder: &Builder, compiler: Compiler, target: Interned<String
     cmd.arg("--html-after-content").arg(&footer)
         .arg("--html-before-content").arg(&version_info)
         .arg("--html-in-header").arg(&favicon)
+        .arg("--markdown-no-toc")
         .arg("--markdown-playground-url")
         .arg("https://play.rust-lang.org/")
         .arg("-o").arg(&out)
