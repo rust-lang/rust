@@ -314,7 +314,6 @@ class RustBuild(object):
         self.build_dir = os.path.join(os.getcwd(), "build")
         self.clean = False
         self.config_toml = ''
-        self.printed = False
         self.rust_root = os.path.abspath(os.path.join(__file__, '../../..'))
         self.use_locked_deps = ''
         self.use_vendored_sources = ''
@@ -336,7 +335,6 @@ class RustBuild(object):
         if self.rustc().startswith(self.bin_root()) and \
                 (not os.path.exists(self.rustc()) or
                  self.program_out_of_date(self.rustc_stamp())):
-            self.print_what_bootstrap_means()
             if os.path.exists(self.bin_root()):
                 shutil.rmtree(self.bin_root())
             filename = "rust-std-{}-{}.tar.gz".format(
@@ -354,7 +352,6 @@ class RustBuild(object):
         if self.cargo().startswith(self.bin_root()) and \
                 (not os.path.exists(self.cargo()) or
                  self.program_out_of_date(self.cargo_stamp())):
-            self.print_what_bootstrap_means()
             filename = "cargo-{}-{}.tar.gz".format(cargo_channel, self.build)
             self._download_stage0_helper(filename, "cargo")
             self.fix_executable("{}/bin/cargo".format(self.bin_root()))
@@ -555,23 +552,6 @@ class RustBuild(object):
             return '.exe'
         return ''
 
-    def print_what_bootstrap_means(self):
-        """Prints more information about the build system"""
-        if hasattr(self, 'printed'):
-            return
-        self.printed = True
-        if os.path.exists(self.bootstrap_binary()):
-            return
-        if '--help' not in sys.argv or len(sys.argv) == 1:
-            return
-
-        print('info: the build system for Rust is written in Rust, so this')
-        print('      script is now going to download a stage0 rust compiler')
-        print('      and then compile the build system itself')
-        print('')
-        print('info: in the meantime you can read more about rustbuild at')
-        print('      src/bootstrap/README.md before the download finishes')
-
     def bootstrap_binary(self):
         """Return the path of the boostrap binary
 
@@ -585,7 +565,6 @@ class RustBuild(object):
 
     def build_bootstrap(self):
         """Build bootstrap"""
-        self.print_what_bootstrap_means()
         build_dir = os.path.join(self.build_dir, "bootstrap")
         if self.clean and os.path.exists(build_dir):
             shutil.rmtree(build_dir)
@@ -672,6 +651,14 @@ class RustBuild(object):
 
 def bootstrap(help_triggered):
     """Configure, fetch, build and run the initial bootstrap"""
+
+    # If the user is asking for help, let them know that the whole download-and-build
+    # process has to happen before anything is printed out.
+    if help_triggered:
+        print("info: Downloading and building bootstrap before processing --help")
+        print("      command. See src/bootstrap/README.md for help with common")
+        print("      commands.")
+
     parser = argparse.ArgumentParser(description='Build rust')
     parser.add_argument('--config')
     parser.add_argument('--build')
@@ -763,12 +750,6 @@ def main():
     help_triggered = (
         '-h' in sys.argv) or ('--help' in sys.argv) or (len(sys.argv) == 1)
     try:
-        # If the user is asking for help, let them know that the whole download-and-build
-        # process has to happen before anything is printed out.
-        if help_triggered:
-            print("NOTE: Downloading and compiling bootstrap requirements before processing")
-            print("      --help command. See src/bootstrap/README.md for help with common")
-            print("      commands.")
         bootstrap(help_triggered)
         if not help_triggered:
             print("Build completed successfully in {}".format(
