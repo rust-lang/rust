@@ -3,7 +3,8 @@
 A tool for formatting Rust code according to style guidelines.
 
 If you'd like to help out (and you should, it's a fun project!), see
-[Contributing.md](Contributing.md).
+[Contributing.md](Contributing.md) and our [Code of
+Conduct](CODE_OF_CONDUCT.md).
 
 We are changing the default style used by rustfmt. There is an ongoing [RFC
 process][fmt rfcs]. The last version using the old style was 0.8.6. From 0.9
