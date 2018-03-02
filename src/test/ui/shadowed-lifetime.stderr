@@ -16,4 +16,3 @@ LL |         let x: for<'b> fn(&'b isize) = panic!();
 
 error: aborting due to 2 previous errors
 
-If you want more information on this error, try using "rustc --explain E0496"

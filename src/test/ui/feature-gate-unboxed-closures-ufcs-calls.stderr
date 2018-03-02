@@ -24,4 +24,3 @@ LL |     FnOnce::call_once(f, ()); //~ ERROR use of unstable library feature 'fn
 
 error: aborting due to 3 previous errors
 
-If you want more information on this error, try using "rustc --explain E0658"

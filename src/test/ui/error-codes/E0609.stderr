@@ -14,4 +14,3 @@ LL |     y.1; //~ ERROR E0609
 
 error: aborting due to 2 previous errors
 
-If you want more information on this error, try using "rustc --explain E0609"

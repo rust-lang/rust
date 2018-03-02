@@ -44,4 +44,3 @@ LL |     #[stable = "1300"] impl S { }
 
 error: aborting due to 8 previous errors
 
-If you want more information on this error, try using "rustc --explain E0601"

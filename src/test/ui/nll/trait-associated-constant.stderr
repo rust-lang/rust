@@ -38,4 +38,3 @@ LL | impl<'a: 'b, 'b> Anything<'a, 'b> for FailStruct2 {
 
 error: aborting due to 2 previous errors
 
-If you want more information on this error, try using "rustc --explain E0308"

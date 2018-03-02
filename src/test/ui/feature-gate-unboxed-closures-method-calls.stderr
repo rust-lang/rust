@@ -24,4 +24,3 @@ LL |     f.call_once(()); //~ ERROR use of unstable library feature 'fn_traits'
 
 error: aborting due to 3 previous errors
 
-If you want more information on this error, try using "rustc --explain E0658"

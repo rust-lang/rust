@@ -22,4 +22,3 @@ LL |         Xyz::A => println!("a"),
 
 error: aborting due to 2 previous errors
 
-If you want more information on this error, try using "rustc --explain E0503"
