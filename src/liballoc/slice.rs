@@ -1339,6 +1339,7 @@ impl<T> [T] {
             while index < i {
                 index = indices[index].1;
             }
+            indices[i].1 = index;
             self.swap(i, index);
         }
     }
