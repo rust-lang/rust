@@ -38,7 +38,7 @@ error: expected expression, found reserved keyword `typeof`
   --> $DIR/macro-context.rs:13:17
    |
 LL |     () => ( i ; typeof );   //~ ERROR expected expression, found reserved keyword `typeof`
-   |                 ^^^^^^
+   |                 ^^^^^^ expected expression
 ...
 LL |     m!();
    |     ----- in this macro invocation
