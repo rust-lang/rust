@@ -17,7 +17,7 @@ use rustc::hir::map::definitions::DefPathData;
 use rustc::infer::InferCtxt;
 use rustc::ty::{self, ParamEnv, TyCtxt};
 use rustc::ty::maps::Providers;
-use rustc::mir::{AssertMessage, BasicBlock, BorrowKind, Local, Location, Place, Visitor};
+use rustc::mir::{AssertMessage, BasicBlock, BorrowKind, Local, Location, Place};
 use rustc::mir::{Mir, Mutability, Operand, Projection, ProjectionElem, Rvalue};
 use rustc::mir::{Field, Statement, StatementKind, Terminator, TerminatorKind};
 use rustc::mir::ClosureRegionRequirements;
@@ -43,6 +43,7 @@ use dataflow::indexes::BorrowIndex;
 use dataflow::move_paths::{IllegalMoveOriginKind, MoveError};
 use dataflow::move_paths::{HasMoveData, LookupResult, MoveData, MovePathIndex};
 use util::borrowck_errors::{BorrowckErrors, Origin};
+use util::collect_writes::FindAssignments;
 
 use std::iter;
 
@@ -55,37 +56,6 @@ mod flows;
 mod prefixes;
 
 use std::borrow::Cow;
-
-struct FindLocalAssignmentVisitor {
-    needle: Local,
-    locations: Vec<Location>,
-    placectxt: PlaceContext,
-    location: Location,
-}
-
-impl<'tcx> Visitor<'tcx> for FindLocalAssignmentVisitor {
-    fn visit_local(&mut self,
-                   local: &Local,
-                   place_context: PlaceContext<'tcx>,
-                   location: Location) {
-        if self.needle != *local {
-            return;
-        }   
-
-        match place_context {
-            PlaceContext::Store | PlaceContext::Call => {
-                self.locations.push(location);
-            }
-            PlaceContext::AsmOutput | PlaceContext::Drop| PlaceContext::Inspect |
-            PlaceContext::Borrow| PlaceContext::Projection| PlaceContext::Copy| 
-            PlaceContext::Move| PlaceContext::StorageLive| PlaceContext::StorageDead|
-            PlaceContext::Validate => {
-            }
-        }
-
-        Visitor::visit_local(local,place_context,location)
-    }
-}
 
 pub(crate) mod nll;
 
@@ -1587,7 +1557,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     None => "immutable item".to_owned(),
                 };
 
-            // call find_assignments() here
                 let mut err = self.tcx
                     .cannot_borrow_path_as_mutable(span, &item_msg, Origin::Mir);
                 err.span_label(span, "cannot borrow as mutable");
@@ -1603,6 +1572,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Reservation(WriteKind::Mutate) | Write(WriteKind::Mutate) => {
                 if let Err(place_err) = self.is_mutable(place, is_local_mutation_allowed) {
                     error_reported = true;
+
+                    match *place{
+                        Place::Local(local) => {let locations = self.mir.find_assignments(local);
+                        
+                        for n in &locations{
+                            debug!("locations ={:?}", n);}
+                        }
+                        _ => {}}
 
                     let item_msg = if error_reported{
                         if let Some(name) = self.describe_place(place_err) {
@@ -2266,15 +2243,6 @@ impl ContextKind {
             kind: self,
             loc: loc,
         }
-    }
-}
-
-impl Mir {
-    fn find_assignments(&self, local: Local, place_context:PlaceContext, location:Location) -> Vec<Location> 
-    { 
-        let mut visitor = FindLocalAssignmentVisitor { needle: local, locations: vec![], location:location, place_context: };
-        visitor.visit_mir(self);
-        visitor.locations
     }
 }
 
