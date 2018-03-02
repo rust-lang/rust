@@ -38,6 +38,7 @@
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(lang_items)]
+#![feature(optin_builtin_traits)]
 
 #[macro_use]
 extern crate syntax;
@@ -309,6 +310,11 @@ pub struct LineColumn {
 pub struct SourceFile {
     filemap: Lrc<FileMap>,
 }
+
+#[unstable(feature = "proc_macro", issue = "38356")]
+impl !Send for SourceFile {}
+#[unstable(feature = "proc_macro", issue = "38356")]
+impl !Sync for SourceFile {}
 
 impl SourceFile {
     /// Get the path to this source file.
