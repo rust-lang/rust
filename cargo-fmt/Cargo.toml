@@ -1,19 +1,17 @@
 [package]
-name = "git-rustfmt"
+name = "cargo-fmt"
 version = "0.4.0"
 authors = ["Nicholas Cameron <ncameron@mozilla.com>", "The Rustfmt developers"]
-description = "Run rustfmt against git diff"
+description = "Cargo frontend for rustfmt"
 repository = "https://github.com/rust-lang-nursery/rustfmt"
 readme = "README.md"
 license = "Apache-2.0/MIT"
 categories = ["development-tools"]
 
 [[bin]]
-name = "git-rustfmt"
+name = "cargo-fmt"
 
 [dependencies]
-env_logger = "0.5"
+cargo_metadata = "0.4"
 getopts = "0.2"
-log = "0.3"
-rustfmt-config = { path = "../rustfmt-config" }
-rustfmt-core = { path = "../rustfmt-core" }
+serde_json = "1.0"

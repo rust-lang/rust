@@ -146,7 +146,9 @@ script:
 
 `cargo test` to run all tests.
 
-To run Rustfmt, you'll need the binaries repo: https://github.com/rust-lang-nursery/rustfmt-bin
+To run rustfmt after this, use `cargo run --bin rustfmt -- filename`. See the
+notes above on running rustfmt.
+
 
 ## Configuring Rustfmt
 

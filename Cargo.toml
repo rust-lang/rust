@@ -1,11 +1,9 @@
 [workspace]
 members = [
+    "cargo-fmt",
     "git-rustfmt",
+    "rustfmt-bin",
     "rustfmt-config",
     "rustfmt-core",
     "rustfmt-format-diff",
 ]
-
-[patch.crates-io]
-rustfmt-config = { path = "rustfmt-config" }
-rustfmt-core = { path = "rustfmt-core" }
