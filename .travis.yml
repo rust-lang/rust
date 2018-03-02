@@ -21,9 +21,9 @@ addons:
 before_script:
 - |
   if [ $TRAVIS_OS_NAME = 'osx' ]; then
-    brew install python3 &&
-    virtualenv env -p python3 &&
+    virtualenv env &&
     source env/bin/activate &&
+    python --version &&
     pip install 'travis-cargo<0.2'
   else
     pip install 'travis-cargo<0.2' --user &&
