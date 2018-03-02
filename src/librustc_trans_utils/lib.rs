@@ -44,11 +44,7 @@ extern crate rustc_data_structures;
 
 pub extern crate rustc as __rustc;
 
-use rustc::ty::{TyCtxt, Instance};
-use rustc::hir;
-use rustc::hir::def_id::LOCAL_CRATE;
-use rustc::hir::map as hir_map;
-use rustc::util::nodemap::NodeSet;
+use rustc::ty::TyCtxt;
 
 pub mod diagnostics;
 pub mod link;
@@ -68,55 +64,6 @@ pub fn check_for_rustc_errors_attr(tcx: TyCtxt) {
             tcx.sess.span_fatal(span, "compilation successful");
         }
     }
-}
-
-/// The context provided lists a set of reachable ids as calculated by
-/// middle::reachable, but this contains far more ids and symbols than we're
-/// actually exposing from the object file. This function will filter the set in
-/// the context to the set of ids which correspond to symbols that are exposed
-/// from the object file being generated.
-///
-/// This list is later used by linkers to determine the set of symbols needed to
-/// be exposed from a dynamic library and it's also encoded into the metadata.
-pub fn find_exported_symbols<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> NodeSet {
-    tcx.reachable_set(LOCAL_CRATE).0.iter().cloned().filter(|&id| {
-        // Next, we want to ignore some FFI functions that are not exposed from
-        // this crate. Reachable FFI functions can be lumped into two
-        // categories:
-        //
-        // 1. Those that are included statically via a static library
-        // 2. Those included otherwise (e.g. dynamically or via a framework)
-        //
-        // Although our LLVM module is not literally emitting code for the
-        // statically included symbols, it's an export of our library which
-        // needs to be passed on to the linker and encoded in the metadata.
-        //
-        // As a result, if this id is an FFI item (foreign item) then we only
-        // let it through if it's included statically.
-        match tcx.hir.get(id) {
-            hir_map::NodeForeignItem(..) => {
-                let def_id = tcx.hir.local_def_id(id);
-                tcx.is_statically_included_foreign_item(def_id)
-            }
-
-            // Only consider nodes that actually have exported symbols.
-            hir_map::NodeItem(&hir::Item {
-                node: hir::ItemStatic(..), .. }) |
-            hir_map::NodeItem(&hir::Item {
-                node: hir::ItemFn(..), .. }) |
-            hir_map::NodeImplItem(&hir::ImplItem {
-                node: hir::ImplItemKind::Method(..), .. }) => {
-                let def_id = tcx.hir.local_def_id(id);
-                let generics = tcx.generics_of(def_id);
-                (generics.parent_types == 0 && generics.types.is_empty()) &&
-                // Functions marked with #[inline] are only ever translated
-                // with "internal" linkage and are never exported.
-                !Instance::mono(tcx, def_id).def.requires_local(tcx)
-            }
-
-            _ => false
-        }
-    }).collect()
 }
 
 __build_diagnostic_array! { librustc_trans_utils, DIAGNOSTICS }

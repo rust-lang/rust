@@ -113,7 +113,7 @@ pub(crate) fn run(cgcx: &CodegenContext,
         Lto::No => panic!("didn't request LTO but we're doing LTO"),
     };
 
-    let symbol_filter = &|&(ref name, _, level): &(String, _, SymbolExportLevel)| {
+    let symbol_filter = &|&(ref name, level): &(String, SymbolExportLevel)| {
         if level.is_below_threshold(export_threshold) {
             let mut bytes = Vec::with_capacity(name.len() + 1);
             bytes.extend(name.bytes());
