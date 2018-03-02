@@ -64,6 +64,7 @@ static WHITELIST: &'static [Crate] = &[
     Crate("cc"),
     Crate("cfg-if"),
     Crate("cmake"),
+    Crate("ena"),
     Crate("filetime"),
     Crate("flate2"),
     Crate("fuchsia-zircon"),
