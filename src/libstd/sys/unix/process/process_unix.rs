@@ -235,7 +235,8 @@ impl Command {
         io::Error::last_os_error()
     }
 
-    #[cfg(not(any(target_os = "macos", target_os = "freebsd")))]
+    #[cfg(not(any(target_os = "macos", target_os = "freebsd",
+                  all(target_os = "linux", target_env = "gnu"))))]
     fn posix_spawn(&mut self, _: &ChildPipes, _: Option<&CStringArray>)
         -> io::Result<Option<Process>>
     {
@@ -244,7 +245,8 @@ impl Command {
 
     // Only support platforms for which posix_spawn() can return ENOENT
     // directly.
-    #[cfg(any(target_os = "macos", target_os = "freebsd"))]
+    #[cfg(any(target_os = "macos", target_os = "freebsd",
+              all(target_os = "linux", target_env = "gnu")))]
     fn posix_spawn(&mut self, stdio: &ChildPipes, envp: Option<&CStringArray>)
         -> io::Result<Option<Process>>
     {
@@ -256,6 +258,18 @@ impl Command {
             self.get_uid().is_some() ||
             self.get_closures().len() != 0 {
             return Ok(None)
+        }
+
+        // Only glibc 2.24+ posix_spawn() supports returning ENOENT directly.
+        #[cfg(all(target_os = "linux", target_env = "gnu"))]
+        {
+            if let Some(version) = sys::os::glibc_version() {
+                if version < (2, 24) {
+                    return Ok(None)
+                }
+            } else {
+                return Ok(None)
+            }
         }
 
         let mut p = Process { pid: 0, status: None };
