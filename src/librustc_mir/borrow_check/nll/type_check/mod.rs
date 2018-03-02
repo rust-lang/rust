@@ -765,7 +765,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 let local_ty = mir.local_decls()[*local].ty;
                 debug!("check_stmt: user_assert_ty ty={:?} local_ty={:?}", ty, local_ty);
                 if let Err(terr) =
-                    self.eq_types(ty, local_ty, location.at_successor_within_block())
+                    self.eq_types(ty, local_ty, location.at_self())
                 {
                     span_mirbug!(
                         self,
