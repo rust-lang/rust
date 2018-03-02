@@ -20,7 +20,7 @@ use lint::builtin::BuiltinLintDiagnostics;
 use middle::allocator::AllocatorKind;
 use middle::dependency_format;
 use session::search_paths::PathKind;
-use session::config::{BorrowckMode, DebugInfoLevel, OutputType, Epoch};
+use session::config::{BorrowckMode, OutputType, Epoch};
 use ty::tls;
 use util::nodemap::{FxHashMap, FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
@@ -625,8 +625,8 @@ impl Session {
     }
 
     pub fn must_not_eliminate_frame_pointers(&self) -> bool {
-        self.opts.debuginfo != DebugInfoLevel::NoDebugInfo ||
-        !self.target.target.options.eliminate_frame_pointer
+        self.opts.cg.force_frame_pointers ||
+            !self.target.target.options.eliminate_frame_pointer
     }
 
     /// Returns the symbol name for the registrar function,
