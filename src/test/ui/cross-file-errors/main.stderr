@@ -2,7 +2,7 @@ error: expected expression, found `_`
   --> $DIR/underscore.rs:18:9
    |
 LL |         _
-   |         ^
+   |         ^ expected expression
    | 
   ::: $DIR/main.rs:15:5
    |
