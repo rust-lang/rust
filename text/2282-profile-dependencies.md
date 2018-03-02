@@ -1,7 +1,7 @@
 - Feature Name: profile_dependencies
 - Start Date: 2018-01-08
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#2282](https://github.com/rust-lang/rfcs/pull/2282)
+- Rust Issue: [rust-lang/rust#48683](https://github.com/rust-lang/rust/issues/48683)
 
 
 # Summary
@@ -139,7 +139,6 @@ community needs the ability to override profiles.
 [unresolved]: #unresolved-questions
 
 - Bikeshedding the naming of the keys
-- The priority order when doing resolution
 - The current proposal provides a way to say "special-case all build dependencies, even if they are regular dependencies as well",
   but not "special-case all build-only dependencies" (which can be solved with a `!build_override` thing, but that's weird and unweildy)
 - It would be nice to have a way for crates to _declare_ that they use a particular
