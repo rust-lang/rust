@@ -50,3 +50,6 @@
 [submodule "src/llvm-emscripten"]
 	path = src/llvm-emscripten
 	url = https://github.com/rust-lang/llvm
+[submodule "src/stdsimd"]
+	path = src/stdsimd
+	url = https://github.com/rust-lang-nursery/stdsimd
