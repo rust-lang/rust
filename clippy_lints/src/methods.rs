@@ -1763,7 +1763,11 @@ fn lint_single_char_pattern<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hi
     }) = ConstContext::new(cx.tcx, cx.param_env.and(substs), cx.tables).eval(arg)
     {
         if r.len() == 1 {
-            let hint = snippet(cx, expr.span, "..").replace(&format!("\"{}\"", r), &format!("'{}'", r));
+            let c = r.chars().next().unwrap();
+            let snip = snippet(cx, expr.span, "..");
+            let hint = snip.replace(
+                &format!("\"{}\"", c.escape_default()),
+                &format!("'{}'", c.escape_default()));
             span_lint_and_then(
                 cx,
                 SINGLE_CHAR_PATTERN,
