@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 #![feature(custom_attribute)]
 #![feature(decl_macro)]
 #![feature(match_default_bindings)]

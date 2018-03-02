@@ -13,8 +13,7 @@ extern crate lazy_static;
 #[macro_use]
 extern crate log;
 extern crate regex;
-extern crate rustfmt_config as config;
-extern crate rustfmt_core as rustfmt;
+extern crate rustfmt_nightly as rustfmt;
 extern crate term;
 
 use std::collections::{HashMap, HashSet};
@@ -25,8 +24,8 @@ use std::path::{Path, PathBuf};
 use std::str::Chars;
 
 use rustfmt::*;
-use config::{Color, Config, ReportTactic};
-use config::summary::Summary;
+use rustfmt::config::{Color, Config, ReportTactic};
+use rustfmt::config::summary::Summary;
 use rustfmt::filemap::write_system_newlines;
 use rustfmt::rustfmt_diff::*;
 
@@ -211,25 +210,14 @@ fn idempotence_tests() {
 #[test]
 fn self_tests() {
     let mut files = get_test_files(Path::new("tests"), false);
-    let bin_directories = vec![
-        "cargo-fmt",
-        "git-rustfmt",
-        "rustfmt-bin",
-        "rustfmt-format-diff",
-    ];
+    let bin_directories = vec!["cargo-fmt", "git-rustfmt", "bin", "format-diff"];
     for dir in bin_directories {
-        let mut path = PathBuf::from("..");
+        let mut path = PathBuf::from("src");
         path.push(dir);
-        path.push("src/main.rs");
+        path.push("main.rs");
         files.push(path);
     }
-    let lib_directories = vec!["rustfmt-core", "rustfmt-config"];
-    for dir in lib_directories {
-        let mut path = PathBuf::from("..");
-        path.push(dir);
-        path.push("src/lib.rs");
-        files.push(path);
-    }
+    files.push(PathBuf::from("src/lib.rs"));
 
     let (reports, count, fails) = check_files(files);
     let mut warnings = 0;
@@ -838,7 +826,7 @@ fn configuration_snippet_tests() {
     // entry for each Rust code block found.
     fn get_code_blocks() -> Vec<ConfigCodeBlock> {
         let mut file_iter = BufReader::new(
-            fs::File::open(Path::new("..").join(CONFIGURATIONS_FILE_NAME))
+            fs::File::open(Path::new(CONFIGURATIONS_FILE_NAME))
                 .expect(&format!("Couldn't read file {}", CONFIGURATIONS_FILE_NAME)),
         ).lines()
             .map(|l| l.unwrap())
