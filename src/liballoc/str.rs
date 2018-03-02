@@ -43,6 +43,7 @@ use core::str as core_str;
 use core::str::pattern::Pattern;
 use core::str::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 use core::mem;
+use core::ptr;
 use core::iter::FusedIterator;
 use std_unicode::str::{UnicodeStr, Utf16Encoder};
 
@@ -2066,9 +2067,39 @@ impl str {
     /// ```
     #[stable(feature = "repeat_str", since = "1.16.0")]
     pub fn repeat(&self, n: usize) -> String {
-        let mut s = String::with_capacity(self.len() * n);
-        s.extend((0..n).map(|_| self));
-        s
+        if n == 0 {
+            return String::new();
+        }
+
+        // n = 2^j + k (2^j > k)
+
+        // 2^j:
+        let mut s = Vec::with_capacity(self.len() * n);
+        s.extend(self.as_bytes());
+        let mut m = n >> 1;
+        while m > 0 {
+            let len = s.len();
+            unsafe {
+                ptr::copy_nonoverlapping(s.as_ptr(), (s.as_mut_ptr() as *mut u8).add(len), len);
+                s.set_len(len * 2);
+            }
+            m >>= 1;
+        }
+
+        // k:
+        let res_len = n * self.len();
+        if res_len > s.len() {
+            unsafe {
+                ptr::copy_nonoverlapping(
+                    s.as_ptr(),
+                    (s.as_mut_ptr() as *mut u8).add(s.len()),
+                    res_len - s.len(),
+                );
+                s.set_len(res_len);
+            }
+        }
+
+        unsafe { String::from_utf8_unchecked(s) }
     }
 
     /// Checks if all characters in this string are within the ASCII range.
