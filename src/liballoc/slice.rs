@@ -102,6 +102,7 @@ use core::mem::size_of;
 use core::mem;
 use core::ptr;
 use core::slice as core_slice;
+use core::{u8, u16, u32};
 
 use borrow::{Borrow, BorrowMut, ToOwned};
 use boxed::Box;
@@ -1329,19 +1330,31 @@ impl<T> [T] {
     pub fn sort_by_key<K, F>(&mut self, f: F)
         where F: FnMut(&T) -> K, K: Ord
     {
-        let mut indices: Vec<_> = self.iter().map(f).enumerate().map(|(i, k)| (k, i)).collect();
-        // The elements of `indices` are unique, as they are indexed, so any sort will be stable
-        // with respect to the original slice. We use `sort_unstable` here because it requires less
-        // memory allocation.
-        indices.sort_unstable();
-        for i in 0..self.len() {
-            let mut index = indices[i].1;
-            while index < i {
-                index = indices[index].1;
-            }
-            indices[i].1 = index;
-            self.swap(i, index);
+        // Helper macro for indexing our vector by the smallest possible type, to reduce allocation.
+        macro_rules! sort_by_key {
+            ($t:ty, $slice:ident, $f:ident) => ({
+                let mut indices: Vec<_> =
+                    $slice.iter().map($f).enumerate().map(|(i, k)| (k, i as $t)).collect();
+                // The elements of `indices` are unique, as they are indexed, so any sort will be
+                // stable with respect to the original slice. We use `sort_unstable` here because it
+                // requires less memory allocation.
+                indices.sort_unstable();
+                for i in 0..$slice.len() {
+                    let mut index = indices[i].1;
+                    while (index as usize) < i {
+                        index = indices[index as usize].1;
+                    }
+                    indices[i].1 = index;
+                    $slice.swap(i, index as usize);
+                }
+            })
         }
+
+        let len = self.len();
+        if len <= ( u8::MAX as usize) { return sort_by_key!( u8, self, f) }
+        if len <= (u16::MAX as usize) { return sort_by_key!(u16, self, f) }
+        if len <= (u32::MAX as usize) { return sort_by_key!(u32, self, f) }
+        sort_by_key!(usize, self, f)
     }
 
     /// Sorts the slice, but may not preserve the order of equal elements.
