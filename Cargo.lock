@@ -383,18 +383,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustfmt-config"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "rustc-ap-syntax 29.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.27 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_derive 1.0.27 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_json 1.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
- "toml 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "rustfmt-core"
 version = "0.4.0"
 dependencies = [
@@ -407,7 +395,7 @@ dependencies = [
  "regex 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-ap-rustc_errors 29.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-ap-syntax 29.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustfmt-config 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustfmt-config 0.4.0",
  "term 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "unicode-segmentation 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -661,7 +649,6 @@ dependencies = [
 "checksum rustc-ap-syntax 29.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "82efedabe30f393161e11214a9130edfa01ad476372d1c6f3fec1f8d30488c9d"
 "checksum rustc-ap-syntax_pos 29.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "db9de2e927e280c75b8efab9c5f591ad31082d5d2c4c562c68fdba2ee77286b0"
 "checksum rustc-demangle 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)" = "11fb43a206a04116ffd7cfcf9bcb941f8eb6cc7ff667272246b0a1c74259a3cb"
-"checksum rustfmt-config 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2bb115c177399885a8bd398940f1553476273ea9475038a0a9ef73e7cc9c8663"
 "checksum semver 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "bee2bc909ab2d8d60dab26e8cad85b25d795b14603a0dcb627b78b9d30b6454b"
 "checksum semver-parser 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 "checksum serde 1.0.27 (registry+https://github.com/rust-lang/crates.io-index)" = "db99f3919e20faa51bb2996057f5031d8685019b5a06139b1ce761da671b8526"

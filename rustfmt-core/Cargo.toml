@@ -18,7 +18,7 @@ log = "0.3"
 regex = "0.2"
 rustc-ap-syntax = "29.0.0"
 rustc-ap-rustc_errors = "29.0.0"
-rustfmt-config = "0.4.0"
+rustfmt-config = { path = "../rustfmt-config" }
 term = "0.4"
 unicode-segmentation = "1.0.0"
 
