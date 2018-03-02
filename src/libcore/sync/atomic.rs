@@ -949,6 +949,7 @@ macro_rules! atomic_int {
      $stable_nand:meta,
      $s_int_type:expr, $int_ref:expr,
      $extra_feature:expr,
+     $min_fn:ident, $max_fn:ident,
      $int_type:ident $atomic_type:ident $atomic_init:ident) => {
         /// An integer type which can be safely shared between threads.
         ///
@@ -1418,6 +1419,128 @@ assert_eq!(foo.load(Ordering::SeqCst), 0b011110);
                     unsafe { atomic_xor(self.v.get(), val, order) }
                 }
             }
+
+            doc_comment! {
+                concat!("Fetches the value, and applies a function to it that returns an optional
+new value. Returns a `Result` (`Ok(_)` if the function returned `Some(_)`, else `Err(_)`) of the
+previous value.
+
+Note: This may call the function multiple times if the value has been changed from other threads in
+the meantime, as long as the function returns `Some(_)`, but the function will have been applied
+but once to the stored value.
+
+# Examples
+
+```rust
+#![feature(no_more_cas)]
+", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
+
+let x = ", stringify!($atomic_type), "::new(7);
+assert_eq!(x.fetch_update(|_| None, Ordering::SeqCst, Ordering::SeqCst), Err(7));
+assert_eq!(x.fetch_update(|x| Some(x + 1), Ordering::SeqCst, Ordering::SeqCst), Ok(7));
+assert_eq!(x.fetch_update(|x| Some(x + 1), Ordering::SeqCst, Ordering::SeqCst), Ok(8));
+assert_eq!(x.load(Ordering::SeqCst), 9);
+```"),
+                #[inline]
+                #[unstable(feature = "no_more_cas",
+                       reason = "no more CAS loops in user code",
+                       issue = "48655")]
+                pub fn fetch_update<F>(&self,
+                                       mut f: F,
+                                       fetch_order: Ordering,
+                                       set_order: Ordering) -> Result<$int_type, $int_type>
+                where F: FnMut($int_type) -> Option<$int_type> {
+                    let mut prev = self.load(fetch_order);
+                    while let Some(next) = f(prev) {
+                        match self.compare_exchange_weak(prev, next, set_order, fetch_order) {
+                            x @ Ok(_) => return x,
+                            Err(next_prev) => prev = next_prev
+                        }
+                    }
+                    Err(prev)
+                }
+            }
+
+            doc_comment! {
+                concat!("Maximum with the current value.
+
+Finds the maximum of the current value and the argument `val`, and
+sets the new value to the result.
+
+Returns the previous value.
+
+# Examples
+
+```
+#![feature(atomic_min_max)]
+", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
+
+let foo = ", stringify!($atomic_type), "::new(23);
+assert_eq!(foo.fetch_max(42, Ordering::SeqCst), 23);
+assert_eq!(foo.load(Ordering::SeqCst), 42);
+```
+
+If you want to obtain the maximum value in one step, you can use the following:
+
+```
+#![feature(atomic_min_max)]
+", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
+
+let foo = ", stringify!($atomic_type), "::new(23);
+let bar = 42;
+let max_foo = foo.fetch_max(bar, Ordering::SeqCst).max(bar);
+assert!(max_foo == 42);
+```"),
+                #[inline]
+                #[unstable(feature = "atomic_min_max",
+                       reason = "easier and faster min/max than writing manual CAS loop",
+                       issue = "48655")]
+                pub fn fetch_max(&self, val: $int_type, order: Ordering) -> $int_type {
+                    unsafe { $max_fn(self.v.get(), val, order) }
+                }
+            }
+
+            doc_comment! {
+                concat!("Minimum with the current value.
+
+Finds the minimum of the current value and the argument `val`, and
+sets the new value to the result.
+
+Returns the previous value.
+
+# Examples
+
+```
+#![feature(atomic_min_max)]
+", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
+
+let foo = ", stringify!($atomic_type), "::new(23);
+assert_eq!(foo.fetch_min(42, Ordering::Relaxed), 23);
+assert_eq!(foo.load(Ordering::Relaxed), 23);
+assert_eq!(foo.fetch_min(22, Ordering::Relaxed), 23);
+assert_eq!(foo.load(Ordering::Relaxed), 22);
+```
+
+If you want to obtain the minimum value in one step, you can use the following:
+
+```
+#![feature(atomic_min_max)]
+", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
+
+let foo = ", stringify!($atomic_type), "::new(23);
+let bar = 12;
+let min_foo = foo.fetch_min(bar, Ordering::SeqCst).min(bar);
+assert_eq!(min_foo, 12);
+```"),
+                #[inline]
+                #[unstable(feature = "atomic_min_max",
+                       reason = "easier and faster min/max than writing manual CAS loop",
+                       issue = "48655")]
+                pub fn fetch_min(&self, val: $int_type, order: Ordering) -> $int_type {
+                    unsafe { $min_fn(self.v.get(), val, order) }
+                }
+            }
+
         }
     }
 }
@@ -1432,6 +1555,7 @@ atomic_int! {
     unstable(feature = "atomic_nand", issue = "13226"),
     "i8", "../../../std/primitive.i8.html",
     "#![feature(integer_atomics)]\n\n",
+    atomic_min, atomic_max,
     i8 AtomicI8 ATOMIC_I8_INIT
 }
 #[cfg(target_has_atomic = "8")]
@@ -1444,6 +1568,7 @@ atomic_int! {
     unstable(feature = "atomic_nand", issue = "13226"),
     "u8", "../../../std/primitive.u8.html",
     "#![feature(integer_atomics)]\n\n",
+    atomic_umin, atomic_umax,
     u8 AtomicU8 ATOMIC_U8_INIT
 }
 #[cfg(target_has_atomic = "16")]
@@ -1456,6 +1581,7 @@ atomic_int! {
     unstable(feature = "atomic_nand", issue = "13226"),
     "i16", "../../../std/primitive.i16.html",
     "#![feature(integer_atomics)]\n\n",
+    atomic_min, atomic_max,
     i16 AtomicI16 ATOMIC_I16_INIT
 }
 #[cfg(target_has_atomic = "16")]
@@ -1468,6 +1594,7 @@ atomic_int! {
     unstable(feature = "atomic_nand", issue = "13226"),
     "u16", "../../../std/primitive.u16.html",
     "#![feature(integer_atomics)]\n\n",
+    atomic_umin, atomic_umax,
     u16 AtomicU16 ATOMIC_U16_INIT
 }
 #[cfg(target_has_atomic = "32")]
@@ -1480,6 +1607,7 @@ atomic_int! {
     unstable(feature = "atomic_nand", issue = "13226"),
     "i32", "../../../std/primitive.i32.html",
     "#![feature(integer_atomics)]\n\n",
+    atomic_min, atomic_max,
     i32 AtomicI32 ATOMIC_I32_INIT
 }
 #[cfg(target_has_atomic = "32")]
@@ -1492,6 +1620,7 @@ atomic_int! {
     unstable(feature = "atomic_nand", issue = "13226"),
     "u32", "../../../std/primitive.u32.html",
     "#![feature(integer_atomics)]\n\n",
+    atomic_umin, atomic_umax,
     u32 AtomicU32 ATOMIC_U32_INIT
 }
 #[cfg(target_has_atomic = "64")]
@@ -1504,6 +1633,7 @@ atomic_int! {
     unstable(feature = "atomic_nand", issue = "13226"),
     "i64", "../../../std/primitive.i64.html",
     "#![feature(integer_atomics)]\n\n",
+    atomic_min, atomic_max,
     i64 AtomicI64 ATOMIC_I64_INIT
 }
 #[cfg(target_has_atomic = "64")]
@@ -1516,6 +1646,7 @@ atomic_int! {
     unstable(feature = "atomic_nand", issue = "13226"),
     "u64", "../../../std/primitive.u64.html",
     "#![feature(integer_atomics)]\n\n",
+    atomic_umin, atomic_umax,
     u64 AtomicU64 ATOMIC_U64_INIT
 }
 #[cfg(target_has_atomic = "ptr")]
@@ -1528,6 +1659,7 @@ atomic_int!{
     unstable(feature = "atomic_nand", issue = "13226"),
     "isize", "../../../std/primitive.isize.html",
     "",
+    atomic_min, atomic_max,
     isize AtomicIsize ATOMIC_ISIZE_INIT
 }
 #[cfg(target_has_atomic = "ptr")]
@@ -1540,6 +1672,7 @@ atomic_int!{
     unstable(feature = "atomic_nand", issue = "13226"),
     "usize", "../../../std/primitive.usize.html",
     "",
+    atomic_umin, atomic_umax,
     usize AtomicUsize ATOMIC_USIZE_INIT
 }
 
@@ -1713,6 +1846,58 @@ unsafe fn atomic_xor<T>(dst: *mut T, val: T, order: Ordering) -> T {
         AcqRel => intrinsics::atomic_xor_acqrel(dst, val),
         Relaxed => intrinsics::atomic_xor_relaxed(dst, val),
         SeqCst => intrinsics::atomic_xor(dst, val),
+        __Nonexhaustive => panic!("invalid memory ordering"),
+    }
+}
+
+/// returns the max value (signed comparison)
+#[inline]
+unsafe fn atomic_max<T>(dst: *mut T, val: T, order: Ordering) -> T {
+    match order {
+        Acquire => intrinsics::atomic_max_acq(dst, val),
+        Release => intrinsics::atomic_max_rel(dst, val),
+        AcqRel => intrinsics::atomic_max_acqrel(dst, val),
+        Relaxed => intrinsics::atomic_max_relaxed(dst, val),
+        SeqCst => intrinsics::atomic_max(dst, val),
+        __Nonexhaustive => panic!("invalid memory ordering"),
+    }
+}
+
+/// returns the min value (signed comparison)
+#[inline]
+unsafe fn atomic_min<T>(dst: *mut T, val: T, order: Ordering) -> T {
+    match order {
+        Acquire => intrinsics::atomic_min_acq(dst, val),
+        Release => intrinsics::atomic_min_rel(dst, val),
+        AcqRel => intrinsics::atomic_min_acqrel(dst, val),
+        Relaxed => intrinsics::atomic_min_relaxed(dst, val),
+        SeqCst => intrinsics::atomic_min(dst, val),
+        __Nonexhaustive => panic!("invalid memory ordering"),
+    }
+}
+
+/// returns the max value (signed comparison)
+#[inline]
+unsafe fn atomic_umax<T>(dst: *mut T, val: T, order: Ordering) -> T {
+    match order {
+        Acquire => intrinsics::atomic_umax_acq(dst, val),
+        Release => intrinsics::atomic_umax_rel(dst, val),
+        AcqRel => intrinsics::atomic_umax_acqrel(dst, val),
+        Relaxed => intrinsics::atomic_umax_relaxed(dst, val),
+        SeqCst => intrinsics::atomic_umax(dst, val),
+        __Nonexhaustive => panic!("invalid memory ordering"),
+    }
+}
+
+/// returns the min value (signed comparison)
+#[inline]
+unsafe fn atomic_umin<T>(dst: *mut T, val: T, order: Ordering) -> T {
+    match order {
+        Acquire => intrinsics::atomic_umin_acq(dst, val),
+        Release => intrinsics::atomic_umin_rel(dst, val),
+        AcqRel => intrinsics::atomic_umin_acqrel(dst, val),
+        Relaxed => intrinsics::atomic_umin_relaxed(dst, val),
+        SeqCst => intrinsics::atomic_umin(dst, val),
         __Nonexhaustive => panic!("invalid memory ordering"),
     }
 }
