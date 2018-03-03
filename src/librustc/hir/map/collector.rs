@@ -123,7 +123,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
     pub(super) fn finalize_and_compute_crate_hash(self,
                                                   crate_disambiguator: CrateDisambiguator,
-                                                  cstore: &CrateStore,
+                                                  cstore: &dyn CrateStore,
                                                   codemap: &CodeMap,
                                                   commandline_args_hash: u64)
                                                   -> (Vec<MapEntry<'hir>>, Svh) {
