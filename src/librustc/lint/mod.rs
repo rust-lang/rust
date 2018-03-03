@@ -498,15 +498,21 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
 
     // Check for future incompatibility lints and issue a stronger warning.
     let lints = sess.lint_store.borrow();
-    if let Some(future_incompatible) = lints.future_incompatible(LintId::of(lint)) {
-        let future = if let Some(edition) = future_incompatible.edition {
-            format!("the {} edition", edition)
+    let lint_id = LintId::of(lint);
+    if let Some(future_incompatible) = lints.future_incompatible(lint_id) {
+        const STANDARD_MESSAGE: &str =
+            "this was previously accepted by the compiler but is being phased out; \
+             it will become a hard error";
+
+        let explanation = if lint_id == LintId::of(::lint::builtin::UNSTABLE_NAME_COLLISION) {
+            "once this method is added to the standard library, \
+             there will be ambiguity here, which will cause a hard error!"
+                .to_owned()
+        } else if let Some(edition) = future_incompatible.edition {
+            format!("{} in the {} edition!", STANDARD_MESSAGE, edition)
         } else {
-            "a future release".to_owned()
+            format!("{} in a future release!", STANDARD_MESSAGE)
         };
-        let explanation = format!("this was previously accepted by the compiler \
-                                   but is being phased out; \
-                                   it will become a hard error in {}!", future);
         let citation = format!("for more information, see {}",
                                future_incompatible.reference);
         err.warn(&explanation);

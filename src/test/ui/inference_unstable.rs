@@ -24,6 +24,6 @@ use inference_unstable_itertools::IpuItertools;
 
 fn main() {
     assert_eq!('x'.ipu_flatten(), 1);
-    //~^ WARN a method with this name will be added to the standard library in the future
-    //~^^ WARN it will become a hard error in a future release
+    //~^ WARN a method with this name may be added to the standard library in the future
+    //~^^ WARN once this method is added to the standard library, there will be ambiguity here
 }

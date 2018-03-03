@@ -1042,7 +1042,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             lint::builtin::UNSTABLE_NAME_COLLISION,
             self.fcx.body_id,
             self.span,
-            "a method with this name will be added to the standard library in the future",
+            "a method with this name may be added to the standard library in the future",
         );
 
         // FIXME: This should be a `span_suggestion` instead of `help`. However `self.span` only
