@@ -896,7 +896,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 };
 
                 self.note_and_explain_mutbl_error(&mut db, &err, &error_span);
-                self.note_immutability_blame(&mut db, err.cmt.immutability_blame());
+                self.note_immutability_blame(&mut db, err.cmt.immutability_blame(), error_span);
                 db.emit();
             }
             err_out_of_scope(super_scope, sub_scope, cause) => {
@@ -1102,7 +1102,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                                             Origin::Ast)
             }
         };
-        self.note_immutability_blame(&mut err, blame);
+        self.note_immutability_blame(&mut err, blame, span);
 
         if is_closure {
             err.help("closures behind references must be called via `&mut`");
@@ -1181,15 +1181,27 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
     fn note_immutability_blame(&self,
                                db: &mut DiagnosticBuilder,
-                               blame: Option<ImmutabilityBlame>) {
+                               blame: Option<ImmutabilityBlame>,
+                               error_span: Span) {
         match blame {
             None => {}
             Some(ImmutabilityBlame::ClosureEnv(_)) => {}
             Some(ImmutabilityBlame::ImmLocal(node_id)) => {
                 let let_span = self.tcx.hir.span(node_id);
-                if let ty::BindByValue(..) = self.local_binding_mode(node_id) {
-                    if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(let_span) {
-                        let (_, is_implicit_self) = self.local_ty(node_id);
+                if let ty::BindByValue(bind_value_mut) = self.local_binding_mode(node_id) {
+                    let (local_node_ty, is_implicit_self) = self.local_ty(node_id);
+                    if let Some(local_node_ty) = local_node_ty {
+                        if let hir::Ty_::TyPtr(ref ty_ptr_mutability) = local_node_ty.node {
+                            if ty_ptr_mutability.mutbl == bind_value_mut {
+                                if let Ok(snippet) =self.tcx.sess.codemap().span_to_snippet(let_span)   {
+                                    db.span_suggestion(
+                                        error_span,
+                                        "consider removing the `&mut`, as it is an immutable binding to a mutable reference",
+                                        snippet);
+                                }
+                            }
+                        }
+                    } else if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(let_span) {
                         if is_implicit_self && snippet != "self" {
                             // avoid suggesting `mut &self`.
                             return
