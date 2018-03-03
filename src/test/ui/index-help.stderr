@@ -5,7 +5,7 @@ LL |     x[0i32]; //~ ERROR E0277
    |     ^^^^^^^ slice indices are of type `usize` or ranges of `usize`
    |
    = help: the trait `std::slice::SliceIndex<[{integer}]>` is not implemented for `i32`
-   = note: required because of the requirements on the impl of `std::ops::Index<i32>` for `[{integer}]`
+   = note: required because of the requirements on the impl of `std::ops::Index<i32>` for `std::vec::Vec<{integer}>`
 
 error: aborting due to previous error
 

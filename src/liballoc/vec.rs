@@ -1527,23 +1527,27 @@ impl<T: Hash> Hash for Vec<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented = "vector indices are of type `usize` or ranges of `usize`"]
-impl<T, I> Index<I> for Vec<T> where [T]: Index<I> {
-    type Output = <[T] as Index<I>>::Output;
+impl<T, I> Index<I> for Vec<T>
+where
+    I: ::core::slice::SliceIndex<[T]>,
+{
+    type Output = I::Output;
 
     #[inline]
     fn index(&self, index: I) -> &Self::Output {
-        // NB indexing via implementation on slice
-        &(**self)[index]
+        Index::index(&**self, index)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented = "vector indices are of type `usize` or ranges of `usize`"]
-impl<T, I> IndexMut<I> for Vec<T> where [T]: IndexMut<I> {
+impl<T, I> IndexMut<I> for Vec<T>
+where
+    I: ::core::slice::SliceIndex<[T]>,
+{
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
-        // NB indexing via implementation on slice
-        &mut (**self)[index]
+        IndexMut::index_mut(&mut **self, index)
     }
 }
 
