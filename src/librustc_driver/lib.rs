@@ -444,7 +444,7 @@ fn get_trans_sysroot(backend_name: &str) -> fn() -> Box<TransCrate> {
 // The FileLoader provides a way to load files from sources other than the file system.
 pub fn run_compiler<'a>(args: &[String],
                         callbacks: &mut CompilerCalls<'a>,
-                        file_loader: Option<Box<FileLoader + 'static>>,
+                        file_loader: Option<Box<FileLoader + Send + Sync + 'static>>,
                         emitter_dest: Option<Box<Write + Send>>)
                         -> (CompileResult, Option<Session>)
 {
@@ -455,7 +455,7 @@ pub fn run_compiler<'a>(args: &[String],
 
 fn run_compiler_impl<'a>(args: &[String],
                          callbacks: &mut CompilerCalls<'a>,
-                         file_loader: Option<Box<FileLoader + 'static>>,
+                         file_loader: Option<Box<FileLoader + Send + Sync + 'static>>,
                          emitter_dest: Option<Box<Write + Send>>)
                          -> (CompileResult, Option<Session>)
 {
