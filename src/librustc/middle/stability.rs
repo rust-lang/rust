@@ -527,17 +527,21 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     /// Evaluates the stability of an item.
     ///
-    /// Returns `None` if the item is stable, or unstable but the corresponding `#![feature]` has
-    /// been provided. Returns the tuple `Some((feature, reason, issue))` of the offending unstable
-    /// feature otherwise.
-    pub fn eval_stability(self, def_id: DefId, id: NodeId, span: Span) -> EvalResult {
+    /// Returns `EvalResult::Allow` if the item is stable, or unstable but the corresponding
+    /// `#![feature]` has been provided. Returns `EvalResult::Deny` which describes the offending
+    /// unstable feature otherwise.
+    ///
+    /// If `id` is `Some(_)`, this function will also check if the item at `def_id` has been
+    /// deprecated. If the item is indeed deprecated, we will emit a deprecation lint attached to
+    /// `id`.
+    pub fn eval_stability(self, def_id: DefId, id: Option<NodeId>, span: Span) -> EvalResult {
         if span.allows_unstable() {
             debug!("stability: \
                     skipping span={:?} since it is internal", span);
             return EvalResult::Allow;
         }
 
-        let lint_deprecated = |def_id: DefId, note: Option<Symbol>| {
+        let lint_deprecated = |def_id: DefId, id: NodeId, note: Option<Symbol>| {
             let path = self.item_path_str(def_id);
 
             let msg = if let Some(note) = note {
@@ -547,22 +551,21 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             };
 
             self.lint_node(lint::builtin::DEPRECATED, id, span, &msg);
+            if id == ast::DUMMY_NODE_ID {
+                span_bug!(span, "emitted a deprecated lint with dummy node id: {:?}", def_id);
+            }
         };
 
         // Deprecated attributes apply in-crate and cross-crate.
-        if let Some(depr_entry) = self.lookup_deprecation_entry(def_id) {
-            let skip = if id == ast::DUMMY_NODE_ID {
-                true
-            } else {
+        if let Some(id) = id {
+            if let Some(depr_entry) = self.lookup_deprecation_entry(def_id) {
                 let parent_def_id = self.hir.local_def_id(self.hir.get_parent(id));
-                self.lookup_deprecation_entry(parent_def_id).map_or(false, |parent_depr| {
-                    parent_depr.same_origin(&depr_entry)
-                })
+                let skip = self.lookup_deprecation_entry(parent_def_id)
+                    .map_or(false, |parent_depr| parent_depr.same_origin(&depr_entry));
+                if !skip {
+                    lint_deprecated(def_id, id, depr_entry.attr.note);
+                }
             };
-
-            if !skip {
-                lint_deprecated(def_id, depr_entry.attr.note);
-            }
         }
 
         let is_staged_api = self.lookup_stability(DefId {
@@ -579,8 +582,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         if let Some(&Stability{rustc_depr: Some(attr::RustcDeprecation { reason, .. }), ..})
                 = stability {
-            if id != ast::DUMMY_NODE_ID {
-                lint_deprecated(def_id, Some(reason));
+            if let Some(id) = id {
+                lint_deprecated(def_id, id, Some(reason));
             }
         }
 
@@ -629,7 +632,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn check_stability(self, def_id: DefId, id: NodeId, span: Span) {
+    /// Checks if an item is stable or error out.
+    ///
+    /// If the item defined by `def_id` is unstable and the corresponding `#![feature]` does not
+    /// exist, emits an error.
+    ///
+    /// Additionally, this function will also check if the item is deprecated. If so, and `id` is
+    /// not `None`, a deprecated lint attached to `id` will be emitted.
+    pub fn check_stability(self, def_id: DefId, id: Option<NodeId>, span: Span) {
         match self.eval_stability(def_id, id, span) {
             EvalResult::Allow => {}
             EvalResult::Deny { feature, reason, issue } => {
@@ -687,7 +697,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                     None => return,
                 };
                 let def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
-                self.tcx.check_stability(def_id, item.id, item.span);
+                self.tcx.check_stability(def_id, Some(item.id), item.span);
             }
 
             // For implementations of traits, check the stability of each item
@@ -700,8 +710,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                         let trait_item_def_id = self.tcx.associated_items(trait_did)
                             .find(|item| item.name == impl_item.name).map(|item| item.def_id);
                         if let Some(def_id) = trait_item_def_id {
-                            // Pass `DUMMY_NODE_ID` to skip deprecation warnings.
-                            self.tcx.check_stability(def_id, ast::DUMMY_NODE_ID, impl_item.span);
+                            // Pass `None` to skip deprecation warnings.
+                            self.tcx.check_stability(def_id, None, impl_item.span);
                         }
                     }
                 }
@@ -737,7 +747,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         match path.def {
             Def::Local(..) | Def::Upvar(..) |
             Def::PrimTy(..) | Def::SelfTy(..) | Def::Err => {}
-            _ => self.tcx.check_stability(path.def.def_id(), id, path.span)
+            _ => self.tcx.check_stability(path.def.def_id(), Some(id), path.span)
         }
         intravisit::walk_path(self, path)
     }
