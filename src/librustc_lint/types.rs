@@ -368,7 +368,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
             let src = cx.sess().codemap().span_to_snippet(lit.span).ok()?;
             let firstch = src.chars().next()?;
 
-            if let Some(0) = char::to_digit(firstch, 10) {
+            if firstch == '0' {
                 match src.chars().nth(1) {
                     Some('x') | Some('b') => return Some(src),
                     _ => return None,
