@@ -95,6 +95,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                orig_def_id, orig_substs);
 
         use rustc::ty::ReEarlyBound;
+        use rustc::ty::subst::UnpackedKind;
         use std::cell::Cell;
 
         let target_def_id = (self.translate_orig)(self.id_mapping, orig_def_id);
@@ -105,9 +106,9 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
             let target_substs = Substs::for_item(self.tcx, target_def_id, |def, _| {
                 if !success.get() {
                     self.tcx.mk_region(ReEarlyBound(def.to_early_bound_region_data()))
-                } else if let Some(region) = orig_substs
+                } else if let Some(UnpackedKind::Lifetime(region)) = orig_substs
                     .get(def.index as usize)
-                    .and_then(|k| k.as_region())
+                    .map(|k| k.unpack())
                 {
                     self.translate_region(region)
                 } else {
@@ -118,9 +119,9 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
             }, |def, _| {
                 if !success.get() {
                     self.tcx.mk_param_from_def(def)
-                } else if let Some(type_) = orig_substs
+                } else if let Some(UnpackedKind::Type(type_)) = orig_substs
                     .get(def.index as usize)
-                    .and_then(|k| k.as_type())
+                    .map(|k| k.unpack())
                 {
                     self.translate(index_map, &type_)
                 } else if self.id_mapping.is_non_mapped_defaulted_type_param(&def.def_id) {

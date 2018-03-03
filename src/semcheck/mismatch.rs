@@ -67,9 +67,12 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> MismatchRelation<'a, 'gcx, 'tcx> {
 
     /// Ensure that the pair of given `Substs` is suitable to be related.
     fn check_substs(&self, a_substs: &'tcx Substs<'tcx>, b_substs: &'tcx Substs<'tcx>) -> bool {
+        use rustc::ty::subst::UnpackedKind::*;
+
         for (a, b) in a_substs.iter().zip(b_substs) {
-            if a.as_type().is_some() != b.as_type().is_some() {
-                return false;
+            match (a.unpack(), b.unpack()) {
+                (Lifetime(_), Type(_)) | (Type(_), Lifetime(_)) => return false,
+                _ => (),
             }
         }
 
