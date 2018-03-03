@@ -225,10 +225,10 @@ pub struct ExternBodyNestedBodies {
 /// (it'd break incremental compilation) and should only be called pre-HIR (e.g.
 /// during resolve)
 pub trait CrateStore {
-    fn crate_data_as_rc_any(&self, krate: CrateNum) -> Lrc<Any>;
+    fn crate_data_as_rc_any(&self, krate: CrateNum) -> Lrc<dyn Any>;
 
     // access to the metadata loader
-    fn metadata_loader(&self) -> &MetadataLoader;
+    fn metadata_loader(&self) -> &dyn MetadataLoader;
 
     // resolve
     fn def_key(&self, def: DefId) -> DefKey;
@@ -297,7 +297,7 @@ pub struct DummyCrateStore;
 
 #[allow(unused_variables)]
 impl CrateStore for DummyCrateStore {
-    fn crate_data_as_rc_any(&self, krate: CrateNum) -> Lrc<Any>
+    fn crate_data_as_rc_any(&self, krate: CrateNum) -> Lrc<dyn Any>
         { bug!("crate_data_as_rc_any") }
     // item info
     fn visibility_untracked(&self, def: DefId) -> ty::Visibility { bug!("visibility") }
@@ -351,7 +351,7 @@ impl CrateStore for DummyCrateStore {
     fn postorder_cnums_untracked(&self) -> Vec<CrateNum> { bug!("postorder_cnums_untracked") }
 
     // access to the metadata loader
-    fn metadata_loader(&self) -> &MetadataLoader { bug!("metadata_loader") }
+    fn metadata_loader(&self) -> &dyn MetadataLoader { bug!("metadata_loader") }
 }
 
 pub trait CrateLoader {

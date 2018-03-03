@@ -799,7 +799,7 @@ pub struct GlobalCtxt<'tcx> {
     global_arenas: &'tcx GlobalArenas<'tcx>,
     global_interners: CtxtInterners<'tcx>,
 
-    cstore: &'tcx CrateStore,
+    cstore: &'tcx dyn CrateStore,
 
     pub sess: &'tcx Session,
 
@@ -883,7 +883,7 @@ pub struct GlobalCtxt<'tcx> {
     /// This is intended to only get used during the trans phase of the compiler
     /// when satisfying the query for a particular codegen unit. Internally in
     /// the query it'll send data along this channel to get processed later.
-    pub tx_to_llvm_workers: mpsc::Sender<Box<Any + Send>>,
+    pub tx_to_llvm_workers: mpsc::Sender<Box<dyn Any + Send>>,
 
     output_filenames: Arc<OutputFilenames>,
 }
@@ -1131,7 +1131,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// value (types, substs, etc.) can only be used while `ty::tls` has a valid
     /// reference to the context, to allow formatting values that need it.
     pub fn create_and_enter<F, R>(s: &'tcx Session,
-                                  cstore: &'tcx CrateStore,
+                                  cstore: &'tcx dyn CrateStore,
                                   local_providers: ty::maps::Providers<'tcx>,
                                   extern_providers: ty::maps::Providers<'tcx>,
                                   arenas: &'tcx AllArenas<'tcx>,
@@ -1139,7 +1139,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                   hir: hir_map::Map<'tcx>,
                                   on_disk_query_result_cache: maps::OnDiskCache<'tcx>,
                                   crate_name: &str,
-                                  tx: mpsc::Sender<Box<Any + Send>>,
+                                  tx: mpsc::Sender<Box<dyn Any + Send>>,
                                   output_filenames: &OutputFilenames,
                                   f: F) -> R
                                   where F: for<'b> FnOnce(TyCtxt<'b, 'tcx, 'tcx>) -> R
@@ -1312,7 +1312,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     // Note that this is *untracked* and should only be used within the query
     // system if the result is otherwise tracked through queries
-    pub fn crate_data_as_rc_any(self, cnum: CrateNum) -> Lrc<Any> {
+    pub fn crate_data_as_rc_any(self, cnum: CrateNum) -> Lrc<dyn Any> {
         self.cstore.crate_data_as_rc_any(cnum)
     }
 

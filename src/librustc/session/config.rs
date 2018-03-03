@@ -341,7 +341,7 @@ macro_rules! hash_option {
     ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, [UNTRACKED]) => ({});
     ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, [TRACKED]) => ({
         if $sub_hashes.insert(stringify!($opt_name),
-                              $opt_expr as &dep_tracking::DepTrackingHash).is_some() {
+                              $opt_expr as &dyn dep_tracking::DepTrackingHash).is_some() {
             bug!("Duplicate key in CLI DepTrackingHash: {}", stringify!($opt_name))
         }
     });
@@ -420,10 +420,7 @@ top_level_options!(
         lint_cap: Option<lint::Level> [TRACKED],
         describe_lints: bool [UNTRACKED],
         output_types: OutputTypes [TRACKED],
-        // FIXME(mw): We track this for now but it actually doesn't make too
-        //            much sense: The search path can stay the same while the
-        //            things discovered there might have changed on disk.
-        search_paths: SearchPaths [TRACKED],
+        search_paths: SearchPaths [UNTRACKED],
         libs: Vec<(String, Option<String>, Option<cstore::NativeLibraryKind>)> [TRACKED],
         maybe_sysroot: Option<PathBuf> [TRACKED],
 
@@ -442,10 +439,7 @@ top_level_options!(
         // version of `debugging_opts.borrowck`, which is just a plain string.
         borrowck_mode: BorrowckMode [UNTRACKED],
         cg: CodegenOptions [TRACKED],
-        // FIXME(mw): We track this for now but it actually doesn't make too
-        //            much sense: The value of this option can stay the same
-        //            while the files they refer to might have changed on disk.
-        externs: Externs [TRACKED],
+        externs: Externs [UNTRACKED],
         crate_name: Option<String> [TRACKED],
         // An optional name to use as the crate for std during std injection,
         // written `extern crate std = "name"`. Default to "std". Used by
@@ -1456,7 +1450,7 @@ pub enum OptionStability {
 }
 
 pub struct RustcOptGroup {
-    pub apply: Box<Fn(&mut getopts::Options) -> &mut getopts::Options>,
+    pub apply: Box<dyn Fn(&mut getopts::Options) -> &mut getopts::Options>,
     pub name: &'static str,
     pub stability: OptionStability,
 }
@@ -2141,13 +2135,12 @@ impl fmt::Display for CrateType {
 mod dep_tracking {
     use lint;
     use middle::cstore;
-    use session::search_paths::{PathKind, SearchPaths};
     use std::collections::BTreeMap;
     use std::hash::Hash;
     use std::path::PathBuf;
     use std::collections::hash_map::DefaultHasher;
     use super::{Passes, CrateType, OptLevel, DebugInfoLevel, Lto,
-                OutputTypes, Externs, ErrorOutputType, Sanitizer, Epoch};
+                OutputTypes, ErrorOutputType, Sanitizer, Epoch};
     use syntax::feature_gate::UnstableFeatures;
     use rustc_back::{PanicStrategy, RelroLevel};
 
@@ -2204,7 +2197,6 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Lto);
     impl_dep_tracking_hash_via_hash!(DebugInfoLevel);
     impl_dep_tracking_hash_via_hash!(UnstableFeatures);
-    impl_dep_tracking_hash_via_hash!(Externs);
     impl_dep_tracking_hash_via_hash!(OutputTypes);
     impl_dep_tracking_hash_via_hash!(cstore::NativeLibraryKind);
     impl_dep_tracking_hash_via_hash!(Sanitizer);
@@ -2218,15 +2210,6 @@ mod dep_tracking {
     impl_dep_tracking_hash_for_sortable_vec_of!((String, Option<String>,
                                                  Option<cstore::NativeLibraryKind>));
     impl_dep_tracking_hash_for_sortable_vec_of!((String, u64));
-    impl DepTrackingHash for SearchPaths {
-        fn hash(&self, hasher: &mut DefaultHasher, _: ErrorOutputType) {
-            let mut elems: Vec<_> = self
-                .iter(PathKind::All)
-                .collect();
-            elems.sort();
-            Hash::hash(&elems, hasher);
-        }
-    }
 
     impl<T1, T2> DepTrackingHash for (T1, T2)
         where T1: DepTrackingHash,
@@ -2256,7 +2239,7 @@ mod dep_tracking {
     }
 
     // This is a stable hash because BTreeMap is a sorted container
-    pub fn stable_hash(sub_hashes: BTreeMap<&'static str, &DepTrackingHash>,
+    pub fn stable_hash(sub_hashes: BTreeMap<&'static str, &dyn DepTrackingHash>,
                        hasher: &mut DefaultHasher,
                        error_format: ErrorOutputType) {
         for (key, sub_hash) in sub_hashes {
@@ -2414,43 +2397,6 @@ mod tests {
     }
 
     #[test]
-    fn test_externs_tracking_hash_different_values() {
-        let mut v1 = super::basic_options();
-        let mut v2 = super::basic_options();
-        let mut v3 = super::basic_options();
-
-        v1.externs = Externs::new(mk_map(vec![
-            (String::from("a"), mk_set(vec![String::from("b"),
-                                            String::from("c")])),
-            (String::from("d"), mk_set(vec![String::from("e"),
-                                            String::from("f")])),
-        ]));
-
-        v2.externs = Externs::new(mk_map(vec![
-            (String::from("a"), mk_set(vec![String::from("b"),
-                                            String::from("c")])),
-            (String::from("X"), mk_set(vec![String::from("e"),
-                                            String::from("f")])),
-        ]));
-
-        v3.externs = Externs::new(mk_map(vec![
-            (String::from("a"), mk_set(vec![String::from("b"),
-                                            String::from("c")])),
-            (String::from("d"), mk_set(vec![String::from("X"),
-                                            String::from("f")])),
-        ]));
-
-        assert!(v1.dep_tracking_hash() != v2.dep_tracking_hash());
-        assert!(v1.dep_tracking_hash() != v3.dep_tracking_hash());
-        assert!(v2.dep_tracking_hash() != v3.dep_tracking_hash());
-
-        // Check clone
-        assert_eq!(v1.dep_tracking_hash(), v1.clone().dep_tracking_hash());
-        assert_eq!(v2.dep_tracking_hash(), v2.clone().dep_tracking_hash());
-        assert_eq!(v3.dep_tracking_hash(), v3.clone().dep_tracking_hash());
-    }
-
-    #[test]
     fn test_externs_tracking_hash_different_construction_order() {
         let mut v1 = super::basic_options();
         let mut v2 = super::basic_options();
@@ -2538,69 +2484,6 @@ mod tests {
         // Check clone
         assert_eq!(v1.dep_tracking_hash(), v1.clone().dep_tracking_hash());
         assert_eq!(v2.dep_tracking_hash(), v2.clone().dep_tracking_hash());
-    }
-
-    #[test]
-    fn test_search_paths_tracking_hash_different_values() {
-        let mut v1 = super::basic_options();
-        let mut v2 = super::basic_options();
-        let mut v3 = super::basic_options();
-        let mut v4 = super::basic_options();
-        let mut v5 = super::basic_options();
-
-        // Reference
-        v1.search_paths.add_path("native=abc", super::ErrorOutputType::Json(false));
-        v1.search_paths.add_path("crate=def", super::ErrorOutputType::Json(false));
-        v1.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json(false));
-        v1.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json(false));
-        v1.search_paths.add_path("all=mno", super::ErrorOutputType::Json(false));
-
-        // Native changed
-        v2.search_paths.add_path("native=XXX", super::ErrorOutputType::Json(false));
-        v2.search_paths.add_path("crate=def", super::ErrorOutputType::Json(false));
-        v2.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json(false));
-        v2.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json(false));
-        v2.search_paths.add_path("all=mno", super::ErrorOutputType::Json(false));
-
-        // Crate changed
-        v2.search_paths.add_path("native=abc", super::ErrorOutputType::Json(false));
-        v2.search_paths.add_path("crate=XXX", super::ErrorOutputType::Json(false));
-        v2.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json(false));
-        v2.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json(false));
-        v2.search_paths.add_path("all=mno", super::ErrorOutputType::Json(false));
-
-        // Dependency changed
-        v3.search_paths.add_path("native=abc", super::ErrorOutputType::Json(false));
-        v3.search_paths.add_path("crate=def", super::ErrorOutputType::Json(false));
-        v3.search_paths.add_path("dependency=XXX", super::ErrorOutputType::Json(false));
-        v3.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json(false));
-        v3.search_paths.add_path("all=mno", super::ErrorOutputType::Json(false));
-
-        // Framework changed
-        v4.search_paths.add_path("native=abc", super::ErrorOutputType::Json(false));
-        v4.search_paths.add_path("crate=def", super::ErrorOutputType::Json(false));
-        v4.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json(false));
-        v4.search_paths.add_path("framework=XXX", super::ErrorOutputType::Json(false));
-        v4.search_paths.add_path("all=mno", super::ErrorOutputType::Json(false));
-
-        // All changed
-        v5.search_paths.add_path("native=abc", super::ErrorOutputType::Json(false));
-        v5.search_paths.add_path("crate=def", super::ErrorOutputType::Json(false));
-        v5.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json(false));
-        v5.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json(false));
-        v5.search_paths.add_path("all=XXX", super::ErrorOutputType::Json(false));
-
-        assert!(v1.dep_tracking_hash() != v2.dep_tracking_hash());
-        assert!(v1.dep_tracking_hash() != v3.dep_tracking_hash());
-        assert!(v1.dep_tracking_hash() != v4.dep_tracking_hash());
-        assert!(v1.dep_tracking_hash() != v5.dep_tracking_hash());
-
-        // Check clone
-        assert_eq!(v1.dep_tracking_hash(), v1.clone().dep_tracking_hash());
-        assert_eq!(v2.dep_tracking_hash(), v2.clone().dep_tracking_hash());
-        assert_eq!(v3.dep_tracking_hash(), v3.clone().dep_tracking_hash());
-        assert_eq!(v4.dep_tracking_hash(), v4.clone().dep_tracking_hash());
-        assert_eq!(v5.dep_tracking_hash(), v5.clone().dep_tracking_hash());
     }
 
     #[test]
