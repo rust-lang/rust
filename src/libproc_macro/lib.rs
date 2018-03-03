@@ -38,11 +38,13 @@
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(lang_items)]
+#![feature(optin_builtin_traits)]
 
 #[macro_use]
 extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc_errors;
+extern crate rustc_data_structures;
 
 mod diagnostic;
 
@@ -50,7 +52,7 @@ mod diagnostic;
 pub use diagnostic::{Diagnostic, Level};
 
 use std::{ascii, fmt, iter};
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use std::str::FromStr;
 
 use syntax::ast;
@@ -306,8 +308,13 @@ pub struct LineColumn {
 #[unstable(feature = "proc_macro", issue = "38356")]
 #[derive(Clone)]
 pub struct SourceFile {
-    filemap: Rc<FileMap>,
+    filemap: Lrc<FileMap>,
 }
+
+#[unstable(feature = "proc_macro", issue = "38356")]
+impl !Send for SourceFile {}
+#[unstable(feature = "proc_macro", issue = "38356")]
+impl !Sync for SourceFile {}
 
 impl SourceFile {
     /// Get the path to this source file.
@@ -356,7 +363,7 @@ impl fmt::Debug for SourceFile {
 #[unstable(feature = "proc_macro", issue = "38356")]
 impl PartialEq for SourceFile {
     fn eq(&self, other: &Self) -> bool {
-        Rc::ptr_eq(&self.filemap, &other.filemap)
+        Lrc::ptr_eq(&self.filemap, &other.filemap)
     }
 }
 

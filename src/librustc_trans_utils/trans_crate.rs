@@ -26,10 +26,10 @@ use std::io::prelude::*;
 use std::io::{self, Cursor};
 use std::fs::File;
 use std::path::Path;
-use std::rc::Rc;
 use std::sync::mpsc;
 
 use rustc_data_structures::owning_ref::{ErasedBoxRef, OwningRef};
+use rustc_data_structures::sync::Lrc;
 use ar::{Archive, Builder, Header};
 use flate2::Compression;
 use flate2::write::DeflateEncoder;
@@ -199,7 +199,7 @@ impl TransCrate for MetadataOnlyTransCrate {
     fn provide(&self, providers: &mut Providers) {
         ::symbol_names::provide(providers);
         providers.target_features_enabled = |_tcx, _id| {
-            Rc::new(Vec::new()) // Just a dummy
+            Lrc::new(Vec::new()) // Just a dummy
         };
     }
     fn provide_extern(&self, _providers: &mut Providers) {}

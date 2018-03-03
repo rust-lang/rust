@@ -25,7 +25,7 @@ use syntax_pos::Span;
 
 use rustc::hir;
 
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 
 pub use self::MethodError::*;
 pub use self::CandidateSource::*;
@@ -165,7 +165,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if let Some(import_id) = pick.import_id {
             let import_def_id = self.tcx.hir.local_def_id(import_id);
             debug!("used_trait_import: {:?}", import_def_id);
-            Rc::get_mut(&mut self.tables.borrow_mut().used_trait_imports)
+            Lrc::get_mut(&mut self.tables.borrow_mut().used_trait_imports)
                                         .unwrap().insert(import_def_id);
         }
 
@@ -364,7 +364,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if let Some(import_id) = pick.import_id {
             let import_def_id = self.tcx.hir.local_def_id(import_id);
             debug!("used_trait_import: {:?}", import_def_id);
-            Rc::get_mut(&mut self.tables.borrow_mut().used_trait_imports)
+            Lrc::get_mut(&mut self.tables.borrow_mut().used_trait_imports)
                                         .unwrap().insert(import_def_id);
         }
 

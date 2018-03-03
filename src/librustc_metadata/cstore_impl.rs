@@ -30,7 +30,7 @@ use rustc::hir::map::definitions::DefPathTable;
 use rustc::util::nodemap::{NodeSet, DefIdMap};
 
 use std::any::Any;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 
 use syntax::ast;
 use syntax::attr;
@@ -112,12 +112,12 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         let _ = cdata;
         tcx.calculate_dtor(def_id, &mut |_,_| Ok(()))
     }
-    variances_of => { Rc::new(cdata.get_item_variances(def_id.index)) }
+    variances_of => { Lrc::new(cdata.get_item_variances(def_id.index)) }
     associated_item_def_ids => {
         let mut result = vec![];
         cdata.each_child_of_item(def_id.index,
           |child| result.push(child.def.def_id()), tcx.sess);
-        Rc::new(result)
+        Lrc::new(result)
     }
     associated_item => { cdata.get_associated_item(def_id.index) }
     impl_trait_ref => { cdata.get_impl_trait(def_id.index, tcx) }
@@ -137,11 +137,11 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         mir
     }
     mir_const_qualif => {
-        (cdata.mir_const_qualif(def_id.index), Rc::new(IdxSetBuf::new_empty(0)))
+        (cdata.mir_const_qualif(def_id.index), Lrc::new(IdxSetBuf::new_empty(0)))
     }
     typeck_tables_of => { cdata.item_body_tables(def_id.index, tcx) }
     fn_sig => { cdata.fn_sig(def_id.index, tcx) }
-    inherent_impls => { Rc::new(cdata.get_inherent_implementations_for_type(def_id.index)) }
+    inherent_impls => { Lrc::new(cdata.get_inherent_implementations_for_type(def_id.index)) }
     is_const_fn => { cdata.is_const_fn(def_id.index) }
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
     describe_def => { cdata.get_def(def_id.index) }
@@ -169,18 +169,18 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
 
-    dylib_dependency_formats => { Rc::new(cdata.get_dylib_dependency_formats()) }
+    dylib_dependency_formats => { Lrc::new(cdata.get_dylib_dependency_formats()) }
     is_panic_runtime => { cdata.is_panic_runtime(tcx.sess) }
     is_compiler_builtins => { cdata.is_compiler_builtins(tcx.sess) }
     has_global_allocator => { cdata.has_global_allocator() }
     is_sanitizer_runtime => { cdata.is_sanitizer_runtime(tcx.sess) }
     is_profiler_runtime => { cdata.is_profiler_runtime(tcx.sess) }
     panic_strategy => { cdata.panic_strategy() }
-    extern_crate => { Rc::new(cdata.extern_crate.get()) }
+    extern_crate => { Lrc::new(cdata.extern_crate.get()) }
     is_no_builtins => { cdata.is_no_builtins(tcx.sess) }
     impl_defaultness => { cdata.get_impl_defaultness(def_id.index) }
-    exported_symbol_ids => { Rc::new(cdata.get_exported_symbols()) }
-    native_libraries => { Rc::new(cdata.get_native_libraries(tcx.sess)) }
+    exported_symbol_ids => { Lrc::new(cdata.get_exported_symbols()) }
+    native_libraries => { Lrc::new(cdata.get_native_libraries(tcx.sess)) }
     plugin_registrar_fn => {
         cdata.root.plugin_registrar_fn.map(|index| {
             DefId { krate: def_id.krate, index }
@@ -199,13 +199,13 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         let mut result = vec![];
         let filter = Some(other);
         cdata.get_implementations_for_trait(filter, &mut result);
-        Rc::new(result)
+        Lrc::new(result)
     }
 
     all_trait_implementations => {
         let mut result = vec![];
         cdata.get_implementations_for_trait(None, &mut result);
-        Rc::new(result)
+        Lrc::new(result)
     }
 
     is_dllimport_foreign_item => {
@@ -217,10 +217,10 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     item_children => {
         let mut result = vec![];
         cdata.each_child_of_item(def_id.index, |child| result.push(child), tcx.sess);
-        Rc::new(result)
+        Lrc::new(result)
     }
-    defined_lang_items => { Rc::new(cdata.get_lang_items()) }
-    missing_lang_items => { Rc::new(cdata.get_missing_lang_items()) }
+    defined_lang_items => { Lrc::new(cdata.get_lang_items()) }
+    missing_lang_items => { Lrc::new(cdata.get_missing_lang_items()) }
 
     extern_const_body => {
         debug!("item_body({:?}): inlining item", def_id);
@@ -234,7 +234,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         }
     }
 
-    used_crate_source => { Rc::new(cdata.source.clone()) }
+    used_crate_source => { Lrc::new(cdata.source.clone()) }
 
     has_copy_closures => { cdata.has_copy_closures(tcx.sess) }
     has_clone_closures => { cdata.has_clone_closures(tcx.sess) }
@@ -276,11 +276,11 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
         },
         native_libraries: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
-            Rc::new(native_libs::collect(tcx))
+            Lrc::new(native_libs::collect(tcx))
         },
         link_args: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
-            Rc::new(link_args::collect(tcx))
+            Lrc::new(link_args::collect(tcx))
         },
 
         // Returns a map from a sufficiently visible external item (i.e. an
@@ -362,7 +362,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
                 }
             }
 
-            Rc::new(visible_parent_map)
+            Lrc::new(visible_parent_map)
         },
 
         ..*providers
@@ -370,7 +370,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
 }
 
 impl CrateStore for cstore::CStore {
-    fn crate_data_as_rc_any(&self, krate: CrateNum) -> Rc<Any> {
+    fn crate_data_as_rc_any(&self, krate: CrateNum) -> Lrc<Any> {
         self.get_crate_data(krate)
     }
 
@@ -443,7 +443,7 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(def.krate).def_path_hash(def.index)
     }
 
-    fn def_path_table(&self, cnum: CrateNum) -> Rc<DefPathTable> {
+    fn def_path_table(&self, cnum: CrateNum) -> Lrc<DefPathTable> {
         self.get_crate_data(cnum).def_path_table.clone()
     }
 
@@ -467,7 +467,7 @@ impl CrateStore for cstore::CStore {
         } else if data.name == "proc_macro" &&
                   self.get_crate_data(id.krate).item_name(id.index) == "quote" {
             let ext = SyntaxExtension::ProcMacro(Box::new(::proc_macro::__internal::Quoter));
-            return LoadedMacro::ProcMacro(Rc::new(ext));
+            return LoadedMacro::ProcMacro(Lrc::new(ext));
         }
 
         let (name, def) = data.get_macro(id.index);

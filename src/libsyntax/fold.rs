@@ -29,7 +29,7 @@ use tokenstream::*;
 use util::small_vector::SmallVector;
 use util::move_map::MoveMap;
 
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 
 pub trait Folder : Sized {
     // Any additions to this trait should happen in form
@@ -580,7 +580,7 @@ pub fn noop_fold_token<T: Folder>(t: token::Token, fld: &mut T) -> token::Token 
         token::Ident(id) => token::Ident(fld.fold_ident(id)),
         token::Lifetime(id) => token::Lifetime(fld.fold_ident(id)),
         token::Interpolated(nt) => {
-            let nt = match Rc::try_unwrap(nt) {
+            let nt = match Lrc::try_unwrap(nt) {
                 Ok(nt) => nt,
                 Err(nt) => (*nt).clone(),
             };

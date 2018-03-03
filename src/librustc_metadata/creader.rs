@@ -14,6 +14,7 @@ use cstore::{self, CStore, CrateSource, MetadataBlob};
 use locator::{self, CratePaths};
 use native_libs::relevant_lib;
 use schema::CrateRoot;
+use rustc_data_structures::sync::Lrc;
 
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX};
 use rustc::hir::svh::Svh;
@@ -32,7 +33,6 @@ use rustc::hir::map::Definitions;
 use std::cell::{RefCell, Cell};
 use std::ops::Deref;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::{cmp, fs};
 
 use syntax::ast;
@@ -79,7 +79,7 @@ struct ExtensionCrate {
 }
 
 enum PMDSource {
-    Registered(Rc<cstore::CrateMetadata>),
+    Registered(Lrc<cstore::CrateMetadata>),
     Owned(Library),
 }
 
@@ -194,7 +194,7 @@ impl<'a> CrateLoader<'a> {
                       span: Span,
                       lib: Library,
                       dep_kind: DepKind)
-                      -> (CrateNum, Rc<cstore::CrateMetadata>) {
+                      -> (CrateNum, Lrc<cstore::CrateMetadata>) {
         info!("register crate `extern crate {} as {}`", name, ident);
         let crate_root = lib.metadata.get_root();
         self.verify_no_symbol_conflicts(span, &crate_root);
@@ -237,7 +237,7 @@ impl<'a> CrateLoader<'a> {
         let mut cmeta = cstore::CrateMetadata {
             name,
             extern_crate: Cell::new(None),
-            def_path_table: Rc::new(def_path_table),
+            def_path_table: Lrc::new(def_path_table),
             exported_symbols,
             trait_impls,
             proc_macros: crate_root.macro_derive_registrar.map(|_| {
@@ -274,7 +274,7 @@ impl<'a> CrateLoader<'a> {
 
         cmeta.dllimport_foreign_items = dllimports;
 
-        let cmeta = Rc::new(cmeta);
+        let cmeta = Lrc::new(cmeta);
         self.cstore.set_crate_data(cnum, cmeta.clone());
         (cnum, cmeta)
     }
@@ -287,7 +287,7 @@ impl<'a> CrateLoader<'a> {
                      span: Span,
                      path_kind: PathKind,
                      mut dep_kind: DepKind)
-                     -> (CrateNum, Rc<cstore::CrateMetadata>) {
+                     -> (CrateNum, Lrc<cstore::CrateMetadata>) {
         info!("resolving crate `extern crate {} as {}`", name, ident);
         let result = if let Some(cnum) = self.existing_match(name, hash, path_kind) {
             LoadResult::Previous(cnum)
@@ -513,7 +513,7 @@ impl<'a> CrateLoader<'a> {
     /// custom derive (and other macro-1.1 style features) are implemented via
     /// executables and custom IPC.
     fn load_derive_macros(&mut self, root: &CrateRoot, dylib: Option<PathBuf>, span: Span)
-                          -> Vec<(ast::Name, Rc<SyntaxExtension>)> {
+                          -> Vec<(ast::Name, Lrc<SyntaxExtension>)> {
         use std::{env, mem};
         use proc_macro::TokenStream;
         use proc_macro::__internal::Registry;
@@ -541,7 +541,7 @@ impl<'a> CrateLoader<'a> {
             mem::transmute::<*mut u8, fn(&mut Registry)>(sym)
         };
 
-        struct MyRegistrar(Vec<(ast::Name, Rc<SyntaxExtension>)>);
+        struct MyRegistrar(Vec<(ast::Name, Lrc<SyntaxExtension>)>);
 
         impl Registry for MyRegistrar {
             fn register_custom_derive(&mut self,
@@ -551,7 +551,7 @@ impl<'a> CrateLoader<'a> {
                 let attrs = attributes.iter().cloned().map(Symbol::intern).collect::<Vec<_>>();
                 let derive = ProcMacroDerive::new(expand, attrs.clone());
                 let derive = SyntaxExtension::ProcMacroDerive(Box::new(derive), attrs);
-                self.0.push((Symbol::intern(trait_name), Rc::new(derive)));
+                self.0.push((Symbol::intern(trait_name), Lrc::new(derive)));
             }
 
             fn register_attr_proc_macro(&mut self,
@@ -560,7 +560,7 @@ impl<'a> CrateLoader<'a> {
                 let expand = SyntaxExtension::AttrProcMacro(
                     Box::new(AttrProcMacro { inner: expand })
                 );
-                self.0.push((Symbol::intern(name), Rc::new(expand)));
+                self.0.push((Symbol::intern(name), Lrc::new(expand)));
             }
 
             fn register_bang_proc_macro(&mut self,
@@ -569,7 +569,7 @@ impl<'a> CrateLoader<'a> {
                 let expand = SyntaxExtension::ProcMacro(
                     Box::new(BangProcMacro { inner: expand })
                 );
-                self.0.push((Symbol::intern(name), Rc::new(expand)));
+                self.0.push((Symbol::intern(name), Lrc::new(expand)));
             }
         }
 

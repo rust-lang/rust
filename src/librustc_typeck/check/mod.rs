@@ -110,7 +110,7 @@ use util::common::{ErrorReported, indenter};
 use util::nodemap::{DefIdMap, DefIdSet, FxHashMap, NodeMap};
 
 use std::cell::{Cell, RefCell, Ref, RefMut};
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use std::collections::hash_map::Entry;
 use std::cmp;
 use std::fmt::Display;
@@ -814,7 +814,7 @@ fn has_typeck_tables<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 fn used_trait_imports<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               def_id: DefId)
-                              -> Rc<DefIdSet> {
+                              -> Lrc<DefIdSet> {
     tcx.typeck_tables_of(def_id).used_trait_imports.clone()
 }
 

@@ -30,7 +30,7 @@ use tokenstream::{ThinTokenStream, TokenStream};
 use serialize::{self, Encoder, Decoder};
 use std::collections::HashSet;
 use std::fmt;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use std::u32;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
@@ -1274,7 +1274,7 @@ pub enum LitKind {
     /// A string literal (`"foo"`)
     Str(Symbol, StrStyle),
     /// A byte string (`b"foo"`)
-    ByteStr(Rc<Vec<u8>>),
+    ByteStr(Lrc<Vec<u8>>),
     /// A byte char (`b'f'`)
     Byte(u8),
     /// A character literal (`'a'`)

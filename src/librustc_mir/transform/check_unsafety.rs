@@ -10,6 +10,7 @@
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::sync::Lrc;
 
 use rustc::ty::maps::Providers;
 use rustc::ty::{self, TyCtxt};
@@ -22,7 +23,6 @@ use rustc::mir::visit::{PlaceContext, Visitor};
 use syntax::ast;
 use syntax::symbol::Symbol;
 
-use std::rc::Rc;
 use util;
 
 pub struct UnsafetyChecker<'a, 'tcx: 'a> {
@@ -338,8 +338,8 @@ fn unsafety_check_result<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
         ClearCrossCrate::Clear => {
             debug!("unsafety_violations: {:?} - remote, skipping", def_id);
             return UnsafetyCheckResult {
-                violations: Rc::new([]),
-                unsafe_blocks: Rc::new([])
+                violations: Lrc::new([]),
+                unsafe_blocks: Lrc::new([])
             }
         }
     };

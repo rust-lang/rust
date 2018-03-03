@@ -10,7 +10,7 @@
 
 //! The compiler code necessary to implement the `#[derive]` extensions.
 
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax::ext::base::{Annotatable, ExtCtxt, SyntaxExtension, Resolver};
 use syntax::ext::build::AstBuilder;
@@ -65,7 +65,7 @@ macro_rules! derive_traits {
             $(
                 resolver.add_builtin(
                     ast::Ident::with_empty_ctxt(Symbol::intern($name)),
-                    Rc::new(SyntaxExtension::BuiltinDerive($func))
+                    Lrc::new(SyntaxExtension::BuiltinDerive($func))
                 );
             )*
         }

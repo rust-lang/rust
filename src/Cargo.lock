@@ -1407,6 +1407,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "proc_macro"
 version = "0.0.0"
 dependencies = [
+ "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
@@ -1833,6 +1834,7 @@ dependencies = [
  "graphviz 0.0.0",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
+ "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
  "rustc_mir 0.0.0",
  "syntax 0.0.0",
@@ -2029,6 +2031,7 @@ dependencies = [
  "rustc 0.0.0",
  "rustc_const_eval 0.0.0",
  "rustc_const_math 0.0.0",
+ "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
@@ -2054,6 +2057,7 @@ name = "rustc_privacy"
 version = "0.0.0"
 dependencies = [
  "rustc 0.0.0",
+ "rustc_data_structures 0.0.0",
  "rustc_typeck 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
@@ -2445,6 +2449,7 @@ version = "0.0.0"
 dependencies = [
  "fmt_macros 0.0.0",
  "proc_macro 0.0.0",
+ "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",

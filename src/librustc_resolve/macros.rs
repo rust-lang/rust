@@ -40,7 +40,7 @@ use syntax_pos::{Span, DUMMY_SP};
 
 use std::cell::Cell;
 use std::mem;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 
 #[derive(Clone)]
 pub struct InvocationData<'a> {
@@ -185,7 +185,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         invocation.expansion.set(visitor.legacy_scope);
     }
 
-    fn add_builtin(&mut self, ident: ast::Ident, ext: Rc<SyntaxExtension>) {
+    fn add_builtin(&mut self, ident: ast::Ident, ext: Lrc<SyntaxExtension>) {
         let def_id = DefId {
             krate: BUILTIN_MACROS_CRATE,
             index: DefIndex::from_array_index(self.macro_map.len(),
@@ -293,7 +293,7 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn resolve_invoc(&mut self, invoc: &mut Invocation, scope: Mark, force: bool)
-                     -> Result<Option<Rc<SyntaxExtension>>, Determinacy> {
+                     -> Result<Option<Lrc<SyntaxExtension>>, Determinacy> {
         let def = match invoc.kind {
             InvocationKind::Attr { attr: None, .. } => return Ok(None),
             _ => self.resolve_invoc_to_def(invoc, scope, force)?,
@@ -316,7 +316,7 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind, force: bool)
-                     -> Result<Rc<SyntaxExtension>, Determinacy> {
+                     -> Result<Lrc<SyntaxExtension>, Determinacy> {
         self.resolve_macro_to_def(scope, path, kind, force).map(|def| {
             self.unused_macros.remove(&def.def_id());
             self.get_macro(def)
@@ -743,7 +743,7 @@ impl<'a> Resolver<'a> {
         }
 
         let def_id = self.definitions.local_def_id(item.id);
-        let ext = Rc::new(macro_rules::compile(&self.session.parse_sess,
+        let ext = Lrc::new(macro_rules::compile(&self.session.parse_sess,
                                                &self.session.features,
                                                item));
         self.macro_map.insert(def_id, ext);

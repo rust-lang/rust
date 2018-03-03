@@ -305,7 +305,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             let (expansion, new_invocations) = if let Some(ext) = ext {
                 if let Some(ext) = ext {
                     let dummy = invoc.expansion_kind.dummy(invoc.span()).unwrap();
-                    let expansion = self.expand_invoc(invoc, ext).unwrap_or(dummy);
+                    let expansion = self.expand_invoc(invoc, &*ext).unwrap_or(dummy);
                     self.collect_invocations(expansion, &[])
                 } else if let InvocationKind::Attr { attr: None, traits, item } = invoc.kind {
                     if !item.derive_allowed() {
@@ -437,7 +437,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
     }
 
-    fn expand_invoc(&mut self, invoc: Invocation, ext: Rc<SyntaxExtension>) -> Option<Expansion> {
+    fn expand_invoc(&mut self, invoc: Invocation, ext: &SyntaxExtension) -> Option<Expansion> {
         let result = match invoc.kind {
             InvocationKind::Bang { .. } => self.expand_bang_invoc(invoc, ext)?,
             InvocationKind::Attr { .. } => self.expand_attr_invoc(invoc, ext)?,
@@ -463,7 +463,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
     fn expand_attr_invoc(&mut self,
                          invoc: Invocation,
-                         ext: Rc<SyntaxExtension>)
+                         ext: &SyntaxExtension)
                          -> Option<Expansion> {
         let Invocation { expansion_kind: kind, .. } = invoc;
         let (attr, item) = match invoc.kind {
@@ -521,7 +521,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     /// Expand a macro invocation. Returns the result of expansion.
     fn expand_bang_invoc(&mut self,
                          invoc: Invocation,
-                         ext: Rc<SyntaxExtension>)
+                         ext: &SyntaxExtension)
                          -> Option<Expansion> {
         let (mark, kind) = (invoc.expansion_data.mark, invoc.expansion_kind);
         let (mac, ident, span) = match invoc.kind {
@@ -654,7 +654,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     /// Expand a derive invocation. Returns the result of expansion.
     fn expand_derive_invoc(&mut self,
                            invoc: Invocation,
-                           ext: Rc<SyntaxExtension>)
+                           ext: &SyntaxExtension)
                            -> Option<Expansion> {
         let Invocation { expansion_kind: kind, .. } = invoc;
         let (path, item) = match invoc.kind {

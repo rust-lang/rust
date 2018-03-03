@@ -13,6 +13,7 @@
 use cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary};
 use schema::*;
 
+use rustc_data_structures::sync::Lrc;
 use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc::hir;
 use rustc::middle::cstore::{LinkagePreference, ExternConstBody,
@@ -33,7 +34,6 @@ use std::cell::Ref;
 use std::collections::BTreeMap;
 use std::io;
 use std::mem;
-use std::rc::Rc;
 use std::u32;
 
 use rustc_serialize::{Decodable, Decoder, SpecializedDecoder, opaque};
@@ -773,12 +773,12 @@ impl<'a, 'tcx> CrateMetadata {
                                                    .map(|body| (body.id(), body))
                                                    .collect();
             ExternBodyNestedBodies {
-                nested_bodies: Rc::new(nested_bodies),
+                nested_bodies: Lrc::new(nested_bodies),
                 fingerprint: ast.stable_bodies_hash,
             }
         } else {
             ExternBodyNestedBodies {
-                nested_bodies: Rc::new(BTreeMap::new()),
+                nested_bodies: Lrc::new(BTreeMap::new()),
                 fingerprint: Fingerprint::ZERO,
             }
         }
@@ -868,11 +868,11 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn get_item_attrs(&self, node_id: DefIndex, sess: &Session) -> Rc<[ast::Attribute]> {
+    pub fn get_item_attrs(&self, node_id: DefIndex, sess: &Session) -> Lrc<[ast::Attribute]> {
         let (node_as, node_index) =
             (node_id.address_space().index(), node_id.as_array_index());
         if self.is_proc_macro(node_id) {
-            return Rc::new([]);
+            return Lrc::new([]);
         }
 
         if let Some(&Some(ref val)) =
@@ -888,7 +888,7 @@ impl<'a, 'tcx> CrateMetadata {
         if def_key.disambiguated_data.data == DefPathData::StructCtor {
             item = self.entry(def_key.parent.unwrap());
         }
-        let result: Rc<[ast::Attribute]> = Rc::from(self.get_attributes(&item, sess));
+        let result: Lrc<[ast::Attribute]> = Lrc::from(self.get_attributes(&item, sess));
         let vec_ = &mut self.attribute_cache.borrow_mut()[node_as];
         if vec_.len() < node_index + 1 {
             vec_.resize(node_index + 1, None);

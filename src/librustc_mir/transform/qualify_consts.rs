@@ -36,7 +36,7 @@ use syntax::feature_gate::UnstableFeatures;
 use syntax_pos::{Span, DUMMY_SP};
 
 use std::fmt;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use std::usize;
 
 use transform::{MirPass, MirSource};
@@ -319,7 +319,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     }
 
     /// Qualify a whole const, static initializer or const fn.
-    fn qualify_const(&mut self) -> (Qualif, Rc<IdxSetBuf<Local>>) {
+    fn qualify_const(&mut self) -> (Qualif, Lrc<IdxSetBuf<Local>>) {
         debug!("qualifying {} {:?}", self.mode, self.def_id);
 
         let mir = self.mir;
@@ -436,7 +436,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             }
         }
 
-        (self.qualif, Rc::new(promoted_temps))
+        (self.qualif, Lrc::new(promoted_temps))
     }
 }
 
@@ -1121,7 +1121,7 @@ pub fn provide(providers: &mut Providers) {
 
 fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               def_id: DefId)
-                              -> (u8, Rc<IdxSetBuf<Local>>) {
+                              -> (u8, Lrc<IdxSetBuf<Local>>) {
     // NB: This `borrow()` is guaranteed to be valid (i.e., the value
     // cannot yet be stolen), because `mir_validated()`, which steals
     // from `mir_const(), forces this query to execute before
@@ -1130,7 +1130,7 @@ fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     if mir.return_ty().references_error() {
         tcx.sess.delay_span_bug(mir.span, "mir_const_qualif: Mir had errors");
-        return (Qualif::NOT_CONST.bits(), Rc::new(IdxSetBuf::new_empty(0)));
+        return (Qualif::NOT_CONST.bits(), Lrc::new(IdxSetBuf::new_empty(0)));
     }
 
     let mut qualifier = Qualifier::new(tcx, def_id, mir, Mode::Const);
