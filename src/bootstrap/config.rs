@@ -96,6 +96,7 @@ pub struct Config {
     pub rust_debuginfo_tests: bool,
     pub rust_dist_src: bool,
     pub rust_codegen_backends: Vec<Interned<String>>,
+    pub rust_codegen_backends_dir: String,
 
     pub build: Interned<String>,
     pub hosts: Vec<Interned<String>>,
@@ -289,6 +290,7 @@ struct Rust {
     test_miri: Option<bool>,
     save_toolstates: Option<String>,
     codegen_backends: Option<Vec<String>>,
+    codegen_backends_dir: Option<String>,
     wasm_syscall: Option<bool>,
 }
 
@@ -330,6 +332,7 @@ impl Config {
         config.rust_dist_src = true;
         config.test_miri = false;
         config.rust_codegen_backends = vec![INTERNER.intern_str("llvm")];
+        config.rust_codegen_backends_dir = "codegen-backends".to_owned();
 
         config.rustc_error_format = flags.rustc_error_format;
         config.on_fail = flags.on_fail;
@@ -487,6 +490,8 @@ impl Config {
                     .map(|s| INTERNER.intern_str(s))
                     .collect();
             }
+
+            set(&mut config.rust_codegen_backends_dir, rust.codegen_backends_dir.clone());
 
             match rust.codegen_units {
                 Some(0) => config.rust_codegen_units = Some(num_cpus::get() as u32),
