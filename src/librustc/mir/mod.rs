@@ -21,6 +21,7 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::control_flow_graph::dominators::{Dominators, dominators};
 use rustc_data_structures::control_flow_graph::{GraphPredecessors, GraphSuccessors};
 use rustc_data_structures::control_flow_graph::ControlFlowGraph;
+use rustc_data_structures::small_vec::SmallVec;
 use rustc_serialize as serialize;
 use hir::def::CtorKind;
 use hir::def_id::DefId;
@@ -2041,6 +2042,12 @@ pub struct UnsafetyCheckResult {
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct GeneratorLayout<'tcx> {
     pub fields: Vec<LocalDecl<'tcx>>,
+}
+
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+pub struct BorrowCheckResult<'gcx> {
+    pub closure_requirements: Option<ClosureRegionRequirements<'gcx>>,
+    pub used_mut_upvars: SmallVec<[Field; 8]>,
 }
 
 /// After we borrow check a closure, we are left with various

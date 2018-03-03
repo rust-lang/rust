@@ -1426,7 +1426,9 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             // these extra requirements are basically like where
             // clauses on the struct.
             AggregateKind::Closure(def_id, substs) => {
-                if let Some(closure_region_requirements) = tcx.mir_borrowck(*def_id) {
+                if let Some(closure_region_requirements) =
+                    tcx.mir_borrowck(*def_id).closure_requirements
+                {
                     closure_region_requirements.apply_requirements(
                         self.infcx,
                         self.body_id,

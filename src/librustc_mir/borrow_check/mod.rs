@@ -18,15 +18,16 @@ use rustc::infer::InferCtxt;
 use rustc::ty::{self, ParamEnv, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::lint::builtin::UNUSED_MUT;
-use rustc::mir::{AssertMessage, BasicBlock, BorrowKind, ClearCrossCrate, Local};
-use rustc::mir::{Location, Place, Mir, Mutability, Operand, Projection, ProjectionElem};
-use rustc::mir::{Rvalue, Field, Statement, StatementKind, Terminator, TerminatorKind};
-use rustc::mir::ClosureRegionRequirements;
+use rustc::mir::{AssertMessage, AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
+use rustc::mir::{ClearCrossCrate, Local, Location, Place, Mir, Mutability, Operand};
+use rustc::mir::{Projection, ProjectionElem, Rvalue, Field, Statement, StatementKind};
+use rustc::mir::{Terminator, TerminatorKind};
 
 use rustc_data_structures::control_flow_graph::dominators::Dominators;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::Idx;
+use rustc_data_structures::small_vec::SmallVec;
 
 use std::rc::Rc;
 
@@ -70,12 +71,15 @@ pub fn provide(providers: &mut Providers) {
 fn mir_borrowck<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
-) -> Option<ClosureRegionRequirements<'tcx>> {
+) -> BorrowCheckResult<'tcx> {
     let input_mir = tcx.mir_validated(def_id);
     debug!("run query mir_borrowck: {}", tcx.item_path_str(def_id));
 
     if !tcx.has_attr(def_id, "rustc_mir_borrowck") && !tcx.use_mir_borrowck() {
-        return None;
+        return BorrowCheckResult {
+            closure_requirements: None,
+            used_mut_upvars: SmallVec::new(),
+        };
     }
 
     let opt_closure_req = tcx.infer_ctxt().enter(|infcx| {
@@ -91,7 +95,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     input_mir: &Mir<'gcx>,
     def_id: DefId,
-) -> Option<ClosureRegionRequirements<'gcx>> {
+) -> BorrowCheckResult<'gcx> {
     let tcx = infcx.tcx;
     let attributes = tcx.get_attrs(def_id);
     let param_env = tcx.param_env(def_id);
@@ -239,6 +243,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         moved_error_reported: FxHashSet(),
         nonlexical_regioncx: opt_regioncx,
         used_mut: FxHashSet(),
+        used_mut_upvars: SmallVec::new(),
         nonlexical_cause_info: None,
         borrow_set,
         dominators,
@@ -254,7 +259,28 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
 
     mbcx.analyze_results(&mut state); // entry point for DataflowResultsConsumer
 
-    opt_closure_req
+    debug!("mbcx.used_mut: {:?}", mbcx.used_mut);
+
+    for local in mbcx.mir.mut_vars_iter().filter(|local| !mbcx.used_mut.contains(local)) {
+        if let ClearCrossCrate::Set(ref vsi) = mbcx.mir.visibility_scope_info {
+            let source_info = mbcx.mir.local_decls[local].source_info;
+            let mut_span = tcx.sess.codemap().span_until_non_whitespace(source_info.span);
+
+            tcx.struct_span_lint_node(
+                UNUSED_MUT,
+                vsi[source_info.scope].lint_root,
+                source_info.span,
+                "variable does not need to be mutable"
+            )
+            .span_suggestion_short(mut_span, "remove this `mut`", "".to_owned())
+            .emit();
+        }
+    }
+
+    BorrowCheckResult {
+        closure_requirements: opt_closure_req,
+        used_mut_upvars: mbcx.used_mut_upvars,
+    }
 }
 
 #[allow(dead_code)]
@@ -292,6 +318,9 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     /// This field keeps track of all the local variables that are declared mut and are mutated.
     /// Used for the warning issued by an unused mutable local variable.
     used_mut: FxHashSet<Local>,
+    /// If the function we're checking is a closure, then we'll need to report back the list of
+    /// mutable upvars that have been used. This field keeps track of them.
+    used_mut_upvars: SmallVec<[Field; 8]>,
     /// Non-lexical region inference context, if NLL is enabled.  This
     /// contains the results from region inference and lets us e.g.
     /// find out which CFG points are contained in each borrow region.
@@ -438,22 +467,6 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
         let span = term.source_info.span;
 
         self.check_activations(location, span, flow_state);
-
-        for local in self.mir.mut_vars_iter().filter(|local| !self.used_mut.contains(local)) {
-            if let ClearCrossCrate::Set(ref vsi) = self.mir.visibility_scope_info {
-                let source_info = self.mir.local_decls[local].source_info;
-                let mut_span = self.tcx.sess.codemap().span_until_non_whitespace(source_info.span);
-
-                self.tcx.struct_span_lint_node(
-                    UNUSED_MUT,
-                    vsi[source_info.scope].lint_root,
-                    source_info.span,
-                    "variable does not need to be mutable"
-                )
-                .span_suggestion_short(mut_span, "remove this `mut`", "".to_owned())
-                .emit();
-            }
-        }
 
         match term.kind {
             TerminatorKind::SwitchInt {
@@ -1118,9 +1131,33 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 // `NullOp::Box`?
             }
 
-            Rvalue::Aggregate(ref _aggregate_kind, ref operands) => for operand in operands {
-                self.consume_operand(context, (operand, span), flow_state);
-            },
+            Rvalue::Aggregate(ref aggregate_kind, ref operands) => {
+                // We need to report back the list of mutable upvars that were
+                // moved into the closure and subsequently used by the closure,
+                // in order to populate our used_mut set.
+                if let AggregateKind::Closure(def_id, _) = &**aggregate_kind {
+                    let BorrowCheckResult { used_mut_upvars, .. } = self.tcx.mir_borrowck(*def_id);
+                    for field in used_mut_upvars {
+                        match operands[field.index()] {
+                            Operand::Move(Place::Local(local)) => {
+                                self.used_mut.insert(local);
+                            }
+                            Operand::Move(Place::Projection(ref proj)) => {
+                                if let Some(field) = self.is_upvar_field_projection(&proj.base) {
+                                    self.used_mut_upvars.push(field);
+                                }
+                            }
+                            Operand::Move(Place::Static(..)) |
+                            Operand::Copy(..) |
+                            Operand::Constant(..) => {}
+                        }
+                    }
+                }
+
+                for operand in operands {
+                    self.consume_operand(context, (operand, span), flow_state);
+                }
+            }
         }
     }
 
@@ -1652,8 +1689,16 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 err.emit();
             },
             Reservation(WriteKind::Mutate) | Write(WriteKind::Mutate) => {
-                if let Place::Local(local) = *place {
-                    self.used_mut.insert(local);
+                match place {
+                    Place::Local(local) => {
+                        self.used_mut.insert(*local);
+                    }
+                    Place::Projection(ref proj) => {
+                        if let Some(field) = self.is_upvar_field_projection(&proj.base) {
+                            self.used_mut_upvars.push(field);
+                        }
+                    }
+                    Place::Static(..) => {}
                 }
                 if let Err(place_err) = self.is_mutable(place, is_local_mutation_allowed) {
                     error_reported = true;

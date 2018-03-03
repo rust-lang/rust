@@ -563,6 +563,11 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for mir::Literal<'gcx> {
 
 impl_stable_hash_for!(struct mir::Location { block, statement_index });
 
+impl_stable_hash_for!(struct mir::BorrowCheckResult<'tcx> {
+    closure_requirements,
+    used_mut_upvars
+});
+
 impl_stable_hash_for!(struct mir::ClosureRegionRequirements<'tcx> {
     num_external_vids,
     outlives_requirements
