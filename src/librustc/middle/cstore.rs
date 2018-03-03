@@ -37,13 +37,12 @@ use util::nodemap::NodeSet;
 use std::any::Any;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use rustc_data_structures::owning_ref::ErasedBoxRef;
 use syntax::ast;
 use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 use rustc_back::target::Target;
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{MetadataRef, Lrc};
 
 pub use self::NativeLibraryKind::*;
 
@@ -187,11 +186,11 @@ pub trait MetadataLoader {
     fn get_rlib_metadata(&self,
                          target: &Target,
                          filename: &Path)
-                         -> Result<ErasedBoxRef<[u8]>, String>;
+                         -> Result<MetadataRef, String>;
     fn get_dylib_metadata(&self,
                           target: &Target,
                           filename: &Path)
-                          -> Result<ErasedBoxRef<[u8]>, String>;
+                          -> Result<MetadataRef, String>;
 }
 
 #[derive(Clone)]
