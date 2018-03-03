@@ -6,7 +6,7 @@
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::traits::{FulfillmentContext, FulfillmentError, Obligation, ObligationCause};
-use rustc::ty::{ParamEnv, Predicate, TraitRef, Ty, TyCtxt};
+use rustc::ty::{ParamEnv, Predicate, TraitRef, Ty, TyCtxt, UniverseIndex};
 use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::Substs;
@@ -150,11 +150,11 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
 
         Substs::for_item(self.infcx.tcx, target_def_id, |def, _| {
             self.infcx.region_var_for_def(DUMMY_SP, def)
-        }, |def, substs| {
+        }, |def, _| {
             if def.index == 0 && has_self { // `Self` is special
                 self.infcx.tcx.mk_param_from_def(def)
             } else {
-                self.infcx.type_var_for_def(DUMMY_SP, def, substs)
+                self.infcx.type_var_for_def(UniverseIndex::ROOT, DUMMY_SP, def)
             }
         })
     }
