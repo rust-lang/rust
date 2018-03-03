@@ -200,7 +200,7 @@ impl TransCrate for LlvmTransCrate {
         target_features(sess)
     }
 
-    fn metadata_loader(&self) -> Box<MetadataLoader> {
+    fn metadata_loader(&self) -> Box<MetadataLoader + Sync> {
         box metadata::LlvmMetadataLoader
     }
 

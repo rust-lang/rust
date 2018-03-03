@@ -28,7 +28,7 @@ use rustc_trans_utils::trans_crate::{TransCrate, MetadataOnlyTransCrate};
 struct TheBackend(Box<TransCrate>);
 
 impl TransCrate for TheBackend {
-    fn metadata_loader(&self) -> Box<MetadataLoader> {
+    fn metadata_loader(&self) -> Box<MetadataLoader + Sync> {
         self.0.metadata_loader()
     }
 

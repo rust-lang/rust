@@ -93,11 +93,11 @@ pub struct CStore {
     metas: RefCell<IndexVec<CrateNum, Option<Lrc<CrateMetadata>>>>,
     /// Map from NodeId's of local extern crate statements to crate numbers
     extern_mod_crate_map: RefCell<NodeMap<CrateNum>>,
-    pub metadata_loader: Box<MetadataLoader>,
+    pub metadata_loader: Box<MetadataLoader + Sync>,
 }
 
 impl CStore {
-    pub fn new(metadata_loader: Box<MetadataLoader>) -> CStore {
+    pub fn new(metadata_loader: Box<MetadataLoader + Sync>) -> CStore {
         CStore {
             metas: RefCell::new(IndexVec::new()),
             extern_mod_crate_map: RefCell::new(FxHashMap()),
