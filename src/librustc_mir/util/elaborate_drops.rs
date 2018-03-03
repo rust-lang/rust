@@ -206,11 +206,10 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             let field = Field::new(i);
             let subpath = self.elaborator.field_subpath(variant_path, field);
 
-            let field_ty =
-                self.tcx().normalize_associated_type_in_env(
-                    &f.ty(self.tcx(), substs),
-                    self.elaborator.param_env()
-                );
+            let field_ty = self.tcx().normalize_erasing_regions(
+                self.elaborator.param_env(),
+                f.ty(self.tcx(), substs),
+            );
             (base_place.clone().field(field, field_ty), subpath)
         }).collect()
     }

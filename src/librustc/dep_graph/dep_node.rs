@@ -635,7 +635,6 @@ define_dep_nodes!( <'tcx>
     [] CodegenUnit(InternedString),
     [] CompileCodegenUnit(InternedString),
     [input] OutputFilenames,
-    [anon] NormalizeTy,
     [] NormalizeProjectionTy(CanonicalProjectionGoal<'tcx>),
     [] NormalizeTyAfterErasingRegions(ParamEnvAnd<'tcx, Ty<'tcx>>),
     [] DropckOutlives(CanonicalTyGoal<'tcx>),

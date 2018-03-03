@@ -281,7 +281,10 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                     ty::TyDynamic(..) => {
                         let fn_ty = drop_fn.ty(bx.cx.tcx);
                         let sig = common::ty_fn_sig(bx.cx, fn_ty);
-                        let sig = bx.tcx().erase_late_bound_regions_and_normalize(&sig);
+                        let sig = bx.tcx().normalize_erasing_late_bound_regions(
+                            ty::ParamEnv::reveal_all(),
+                            &sig,
+                        );
                         let fn_ty = FnType::new_vtable(bx.cx, sig, &[]);
                         args = &args[..1];
                         (meth::DESTRUCTOR.get_fn(&bx, place.llextra, &fn_ty), fn_ty)
@@ -430,7 +433,10 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                 };
                 let def = instance.map(|i| i.def);
                 let sig = callee.layout.ty.fn_sig(bx.tcx());
-                let sig = bx.tcx().erase_late_bound_regions_and_normalize(&sig);
+                let sig = bx.tcx().normalize_erasing_late_bound_regions(
+                    ty::ParamEnv::reveal_all(),
+                    &sig,
+                );
                 let abi = sig.abi;
 
                 // Handle intrinsics old trans wants Expr's for, ourselves.

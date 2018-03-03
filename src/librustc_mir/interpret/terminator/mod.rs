@@ -75,8 +75,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                         match instance_ty.sty {
                             ty::TyFnDef(..) => {
                                 let real_sig = instance_ty.fn_sig(*self.tcx);
-                                let sig = self.tcx.erase_late_bound_regions_and_normalize(&sig);
-                                let real_sig = self.tcx.erase_late_bound_regions_and_normalize(&real_sig);
+                                let sig = self.tcx.normalize_erasing_late_bound_regions(
+                                    ty::ParamEnv::reveal_all(),
+                                    &sig,
+                                );
+                                let real_sig = self.tcx.normalize_erasing_late_bound_regions(
+                                    ty::ParamEnv::reveal_all(),
+                                    &real_sig,
+                                );
                                 if !self.check_sig_compat(sig, real_sig)? {
                                     return err!(FunctionPointerTyMismatch(real_sig, sig));
                                 }
@@ -95,7 +101,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     }
                 };
                 let args = self.operands_to_args(args)?;
-                let sig = self.tcx.erase_late_bound_regions_and_normalize(&sig);
+                let sig = self.tcx.normalize_erasing_late_bound_regions(
+                    ty::ParamEnv::reveal_all(),
+                    &sig,
+                );
                 self.eval_fn_call(
                     fn_def,
                     destination,

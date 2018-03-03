@@ -258,7 +258,10 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
                     cx.layout_of(self.ty.boxed_ty()).llvm_type(cx).ptr_to()
                 }
                 ty::TyFnPtr(sig) => {
-                    let sig = cx.tcx.erase_late_bound_regions_and_normalize(&sig);
+                    let sig = cx.tcx.normalize_erasing_late_bound_regions(
+                        ty::ParamEnv::reveal_all(),
+                        &sig,
+                    );
                     FnType::new(cx, sig, &[]).llvm_type(cx).ptr_to()
                 }
                 _ => self.scalar_llvm_type_at(cx, scalar, Size::from_bytes(0))

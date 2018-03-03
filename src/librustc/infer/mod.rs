@@ -21,7 +21,6 @@ use hir::def_id::DefId;
 use middle::free_region::RegionRelations;
 use middle::region;
 use middle::lang_items;
-use mir::tcx::PlaceTy;
 use ty::subst::Substs;
 use ty::{TyVid, IntVid, FloatVid};
 use ty::{self, Ty, TyCtxt};
@@ -35,7 +34,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 use syntax::ast;
 use errors::DiagnosticBuilder;
-use syntax_pos::{self, Span, DUMMY_SP};
+use syntax_pos::{self, Span};
 use util::nodemap::FxHashMap;
 use arena::DroplessArena;
 
@@ -493,140 +492,7 @@ pub struct CombinedSnapshot<'a, 'tcx:'a> {
     _in_progress_tables: Option<Ref<'a, ty::TypeckTables<'tcx>>>,
 }
 
-/// Helper trait for shortening the lifetimes inside a
-/// value for post-type-checking normalization.
-///
-/// This trait offers a normalization method where the inputs and
-/// outputs both have the `'gcx` lifetime; the implementations
-/// internally create inference contexts and/or lift as needed.
-pub trait TransNormalize<'gcx>: TypeFoldable<'gcx> {
-    fn trans_normalize<'a, 'tcx>(&self,
-                                 infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                 param_env: ty::ParamEnv<'tcx>)
-                                 -> Self;
-}
-
-macro_rules! items { ($($item:item)+) => ($($item)+) }
-macro_rules! impl_trans_normalize {
-    ($lt_gcx:tt, $($ty:ty),+) => {
-        items!($(impl<$lt_gcx> TransNormalize<$lt_gcx> for $ty {
-            fn trans_normalize<'a, 'tcx>(&self,
-                                         infcx: &InferCtxt<'a, $lt_gcx, 'tcx>,
-                                         param_env: ty::ParamEnv<'tcx>)
-                                         -> Self {
-                infcx.normalize_projections_in(param_env, self)
-            }
-        })+);
-    }
-}
-
-impl_trans_normalize!('gcx,
-    Ty<'gcx>,
-    &'gcx ty::Const<'gcx>,
-    &'gcx Substs<'gcx>,
-    ty::FnSig<'gcx>,
-    ty::PolyFnSig<'gcx>,
-    ty::ClosureSubsts<'gcx>,
-    ty::PolyTraitRef<'gcx>,
-    ty::ExistentialTraitRef<'gcx>
-);
-
-impl<'gcx> TransNormalize<'gcx> for PlaceTy<'gcx> {
-    fn trans_normalize<'a, 'tcx>(&self,
-                                 infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                 param_env: ty::ParamEnv<'tcx>)
-                                 -> Self {
-        match *self {
-            PlaceTy::Ty { ty } => PlaceTy::Ty { ty: ty.trans_normalize(infcx, param_env) },
-            PlaceTy::Downcast { adt_def, substs, variant_index } => {
-                PlaceTy::Downcast {
-                    adt_def,
-                    substs: substs.trans_normalize(infcx, param_env),
-                    variant_index,
-                }
-            }
-        }
-    }
-}
-
-// NOTE: Callable from trans only!
-impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
-    /// Currently, higher-ranked type bounds inhibit normalization. Therefore,
-    /// each time we erase them in translation, we need to normalize
-    /// the contents.
-    pub fn erase_late_bound_regions_and_normalize<T>(self, value: &ty::Binder<T>)
-        -> T
-        where T: TransNormalize<'tcx>
-    {
-        assert!(!value.needs_subst());
-        let value = self.erase_late_bound_regions(value);
-        self.fully_normalize_associated_types_in(&value)
-    }
-
-    /// Fully normalizes any associated types in `value`, using an
-    /// empty environment and `Reveal::All` mode (therefore, suitable
-    /// only for monomorphized code during trans, basically).
-    pub fn fully_normalize_associated_types_in<T>(self, value: &T) -> T
-        where T: TransNormalize<'tcx>
-    {
-        debug!("fully_normalize_associated_types_in(t={:?})", value);
-
-        let param_env = ty::ParamEnv::reveal_all();
-        let value = self.erase_regions(value);
-
-        if !value.has_projections() {
-            return value;
-        }
-
-        self.infer_ctxt().enter(|infcx| {
-            value.trans_normalize(&infcx, param_env)
-        })
-    }
-
-    /// Does a best-effort to normalize any associated types in
-    /// `value`; this includes revealing specializable types, so this
-    /// should be not be used during type-checking, but only during
-    /// optimization and code generation.
-    pub fn normalize_associated_type_in_env<T>(
-        self, value: &T, env: ty::ParamEnv<'tcx>
-    ) -> T
-        where T: TransNormalize<'tcx>
-    {
-        debug!("normalize_associated_type_in_env(t={:?})", value);
-
-        let value = self.erase_regions(value);
-
-        if !value.has_projections() {
-            return value;
-        }
-
-        self.infer_ctxt().enter(|infcx| {
-            value.trans_normalize(&infcx, env.with_reveal_all())
-       })
-    }
-}
-
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
-    fn normalize_projections_in<T>(&self, param_env: ty::ParamEnv<'tcx>, value: &T) -> T::Lifted
-        where T: TypeFoldable<'tcx> + ty::Lift<'gcx>
-    {
-        let mut selcx = traits::SelectionContext::new(self);
-        let cause = traits::ObligationCause::dummy();
-        let traits::Normalized { value: result, obligations } =
-            traits::normalize(&mut selcx, param_env, cause, value);
-
-        debug!("normalize_projections_in: result={:?} obligations={:?}",
-                result, obligations);
-
-        let mut fulfill_cx = traits::FulfillmentContext::new();
-
-        for obligation in obligations {
-            fulfill_cx.register_predicate_obligation(self, obligation);
-        }
-
-        self.drain_fulfillment_cx_or_panic(DUMMY_SP, &mut fulfill_cx, &result)
-    }
-
     /// Finishes processes any obligations that remain in the
     /// fulfillment context, and then returns the result with all type
     /// variables removed and regions erased. Because this is intended

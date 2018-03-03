@@ -14,14 +14,13 @@
 // general routines.
 
 use dep_graph::{DepKind, DepTrackingMapConfig};
-use infer::TransNormalize;
 use std::marker::PhantomData;
 use syntax_pos::DUMMY_SP;
 use hir::def_id::DefId;
 use traits::{FulfillmentContext, Obligation, ObligationCause, SelectionContext, Vtable};
 use ty::{self, Ty, TyCtxt};
 use ty::subst::{Subst, Substs};
-use ty::fold::{TypeFoldable, TypeFolder};
+use ty::fold::TypeFoldable;
 
 /// Attempts to resolve an obligation to a vtable.. The result is
 /// a shallow vtable resolution -- meaning that we do not
@@ -93,12 +92,11 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
                                        param_substs: &Substs<'tcx>,
                                        value: &T)
                                        -> T
-        where T: TransNormalize<'tcx>
+        where T: TypeFoldable<'tcx>
     {
         debug!("apply_param_substs(param_substs={:?}, value={:?})", param_substs, value);
         let substituted = value.subst(self, param_substs);
-        let substituted = self.erase_regions(&substituted);
-        AssociatedTypeNormalizer::new(self).fold(&substituted)
+        self.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substituted)
     }
 
     pub fn trans_apply_param_substs_env<T>(
@@ -108,7 +106,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         value: &T,
     ) -> T
     where
-        T: TransNormalize<'tcx>,
+        T: TypeFoldable<'tcx>,
     {
         debug!(
             "apply_param_substs_env(param_substs={:?}, value={:?}, param_env={:?})",
@@ -117,81 +115,13 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             param_env,
         );
         let substituted = value.subst(self, param_substs);
-        let substituted = self.erase_regions(&substituted);
-        AssociatedTypeNormalizerEnv::new(self, param_env).fold(&substituted)
+        self.normalize_erasing_regions(param_env, substituted)
     }
 
     pub fn trans_impl_self_ty(&self, def_id: DefId, substs: &'tcx Substs<'tcx>)
                               -> Ty<'tcx>
     {
         self.trans_apply_param_substs(substs, &self.type_of(def_id))
-    }
-}
-
-struct AssociatedTypeNormalizer<'a, 'gcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'gcx>,
-}
-
-impl<'a, 'gcx> AssociatedTypeNormalizer<'a, 'gcx> {
-    fn new(tcx: TyCtxt<'a, 'gcx, 'gcx>) -> Self {
-        AssociatedTypeNormalizer { tcx }
-    }
-
-    fn fold<T:TypeFoldable<'gcx>>(&mut self, value: &T) -> T {
-        if !value.has_projections() {
-            value.clone()
-        } else {
-            value.fold_with(self)
-        }
-    }
-}
-
-impl<'a, 'gcx> TypeFolder<'gcx, 'gcx> for AssociatedTypeNormalizer<'a, 'gcx> {
-    fn tcx<'c>(&'c self) -> TyCtxt<'c, 'gcx, 'gcx> {
-        self.tcx
-    }
-
-    fn fold_ty(&mut self, ty: Ty<'gcx>) -> Ty<'gcx> {
-        if !ty.has_projections() {
-            ty
-        } else {
-            debug!("AssociatedTypeNormalizer: ty={:?}", ty);
-            self.tcx.fully_normalize_monormophic_ty(ty)
-        }
-    }
-}
-
-struct AssociatedTypeNormalizerEnv<'a, 'gcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'gcx>,
-    param_env: ty::ParamEnv<'gcx>,
-}
-
-impl<'a, 'gcx> AssociatedTypeNormalizerEnv<'a, 'gcx> {
-    fn new(tcx: TyCtxt<'a, 'gcx, 'gcx>, param_env: ty::ParamEnv<'gcx>) -> Self {
-        Self { tcx, param_env }
-    }
-
-    fn fold<T: TypeFoldable<'gcx>>(&mut self, value: &T) -> T {
-        if !value.has_projections() {
-            value.clone()
-        } else {
-            value.fold_with(self)
-        }
-    }
-}
-
-impl<'a, 'gcx> TypeFolder<'gcx, 'gcx> for AssociatedTypeNormalizerEnv<'a, 'gcx> {
-    fn tcx<'c>(&'c self) -> TyCtxt<'c, 'gcx, 'gcx> {
-        self.tcx
-    }
-
-    fn fold_ty(&mut self, ty: Ty<'gcx>) -> Ty<'gcx> {
-        if !ty.has_projections() {
-            ty
-        } else {
-            debug!("AssociatedTypeNormalizerEnv: ty={:?}", ty);
-            self.tcx.normalize_associated_type_in_env(&ty, self.param_env)
-        }
     }
 }
 

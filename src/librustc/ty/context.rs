@@ -2537,9 +2537,6 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         assert_eq!(cnum, LOCAL_CRATE);
         tcx.features().clone_closures
     };
-    providers.fully_normalize_monormophic_ty = |tcx, ty| {
-        tcx.fully_normalize_associated_types_in(&ty)
-    };
     providers.features_query = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         Lrc::new(tcx.sess.features_untracked().clone())

@@ -650,7 +650,7 @@ impl<'a, 'tcx> FnType<'tcx> {
                        -> Self {
         let fn_ty = instance.ty(cx.tcx);
         let sig = ty_fn_sig(cx, fn_ty);
-        let sig = cx.tcx.erase_late_bound_regions_and_normalize(&sig);
+        let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
         FnType::new(cx, sig, &[])
     }
 

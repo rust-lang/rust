@@ -16,7 +16,6 @@ use rustc::ty::{self, TypeFoldable};
 use rustc::ty::layout::{LayoutOf, TyLayout};
 use rustc::mir::{self, Mir};
 use rustc::ty::subst::Substs;
-use rustc::infer::TransNormalize;
 use rustc::session::config::FullDebugInfo;
 use base;
 use builder::Builder;
@@ -108,7 +107,7 @@ pub struct FunctionCx<'a, 'tcx:'a> {
 
 impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     pub fn monomorphize<T>(&self, value: &T) -> T
-        where T: TransNormalize<'tcx>
+        where T: TypeFoldable<'tcx>
     {
         self.cx.tcx.trans_apply_param_substs(self.param_substs, value)
     }

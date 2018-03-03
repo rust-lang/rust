@@ -610,12 +610,6 @@ impl<'tcx> QueryDescription<'tcx> for queries::has_copy_closures<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::fully_normalize_monormophic_ty<'tcx> {
-    fn describe(_tcx: TyCtxt, _: Ty) -> String {
-        format!("normalizing types")
-    }
-}
-
 impl<'tcx> QueryDescription<'tcx> for queries::features_query<'tcx> {
     fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
         format!("looking up enabled feature gates")

@@ -347,7 +347,10 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
 
                 output.push_str("fn(");
 
-                let sig = self.tcx.erase_late_bound_regions_and_normalize(&sig);
+                let sig = self.tcx.normalize_erasing_late_bound_regions(
+                    ty::ParamEnv::reveal_all(),
+                    &sig,
+                );
 
                 if !sig.inputs().is_empty() {
                     for &parameter_type in sig.inputs() {

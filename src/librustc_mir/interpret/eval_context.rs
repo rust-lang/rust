@@ -285,10 +285,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     pub fn monomorphize(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
         // miri doesn't care about lifetimes, and will choke on some crazy ones
         // let's simply get rid of them
-        let without_lifetimes = self.tcx.erase_regions(&ty);
-        let substituted = without_lifetimes.subst(*self.tcx, substs);
-        let substituted = self.tcx.fully_normalize_monormophic_ty(&substituted);
-        substituted
+        let substituted = ty.subst(*self.tcx, substs);
+        self.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substituted)
     }
 
     /// Return the size and aligment of the value at the given type.

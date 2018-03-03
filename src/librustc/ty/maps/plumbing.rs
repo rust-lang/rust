@@ -774,7 +774,6 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::EraseRegionsTy |
         DepKind::NormalizeProjectionTy |
         DepKind::NormalizeTyAfterErasingRegions |
-        DepKind::NormalizeTy |
         DepKind::DropckOutlives |
         DepKind::SubstituteNormalizeAndTestPredicates |
         DepKind::InstanceDefSizeEstimate |

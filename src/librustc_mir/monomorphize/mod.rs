@@ -88,7 +88,7 @@ fn fn_once_adapter_instance<'a, 'tcx>(
         closure_did, substs);
 
     let sig = substs.closure_sig(closure_did, tcx);
-    let sig = tcx.erase_late_bound_regions_and_normalize(&sig);
+    let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
     assert_eq!(sig.inputs().len(), 1);
     let substs = tcx.mk_substs([
         Kind::from(self_ty),
