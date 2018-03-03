@@ -49,7 +49,7 @@ pub fn compute_ignored_attr_names() -> FxHashSet<Symbol> {
 pub struct StableHashingContext<'gcx> {
     sess: &'gcx Session,
     definitions: &'gcx Definitions,
-    cstore: &'gcx CrateStore,
+    cstore: &'gcx dyn CrateStore,
     body_resolver: BodyResolver<'gcx>,
     hash_spans: bool,
     hash_bodies: bool,
@@ -88,7 +88,7 @@ impl<'gcx> StableHashingContext<'gcx> {
     pub fn new(sess: &'gcx Session,
                krate: &'gcx hir::Crate,
                definitions: &'gcx Definitions,
-               cstore: &'gcx CrateStore)
+               cstore: &'gcx dyn CrateStore)
                -> Self {
         let hash_spans_initial = !sess.opts.debugging_opts.incremental_ignore_spans;
 

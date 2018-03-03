@@ -341,7 +341,7 @@ macro_rules! hash_option {
     ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, [UNTRACKED]) => ({});
     ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, [TRACKED]) => ({
         if $sub_hashes.insert(stringify!($opt_name),
-                              $opt_expr as &dep_tracking::DepTrackingHash).is_some() {
+                              $opt_expr as &dyn dep_tracking::DepTrackingHash).is_some() {
             bug!("Duplicate key in CLI DepTrackingHash: {}", stringify!($opt_name))
         }
     });
@@ -1456,7 +1456,7 @@ pub enum OptionStability {
 }
 
 pub struct RustcOptGroup {
-    pub apply: Box<Fn(&mut getopts::Options) -> &mut getopts::Options>,
+    pub apply: Box<dyn Fn(&mut getopts::Options) -> &mut getopts::Options>,
     pub name: &'static str,
     pub stability: OptionStability,
 }
@@ -2256,7 +2256,7 @@ mod dep_tracking {
     }
 
     // This is a stable hash because BTreeMap is a sorted container
-    pub fn stable_hash(sub_hashes: BTreeMap<&'static str, &DepTrackingHash>,
+    pub fn stable_hash(sub_hashes: BTreeMap<&'static str, &dyn DepTrackingHash>,
                        hasher: &mut DefaultHasher,
                        error_format: ErrorOutputType) {
         for (key, sub_hash) in sub_hashes {

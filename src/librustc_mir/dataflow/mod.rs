@@ -61,7 +61,7 @@ pub(crate) struct DataflowBuilder<'a, 'tcx: 'a, BD> where BD: BitDenotation
 pub(crate) struct DebugFormatted(String);
 
 impl DebugFormatted {
-    pub fn new(input: &fmt::Debug) -> DebugFormatted {
+    pub fn new(input: &dyn fmt::Debug) -> DebugFormatted {
         DebugFormatted(format!("{:?}", input))
     }
 }
