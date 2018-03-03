@@ -7,4 +7,3 @@ LL |     let Ok(_x) = foo(); //~ ERROR refutable pattern in local binding
 error: aborting due to previous error
 
 If you want more information on this error, try using "rustc --explain E0005"
-
