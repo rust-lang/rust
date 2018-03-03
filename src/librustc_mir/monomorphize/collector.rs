@@ -736,7 +736,7 @@ fn should_monomorphize_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: 
         }
         Some(_) => true,
         None => {
-            if tcx.is_exported_symbol(def_id) ||
+            if tcx.is_reachable_non_generic(def_id) ||
                 tcx.is_foreign_item(def_id)
             {
                 // We can link to the item in question, no instance needed
@@ -984,7 +984,7 @@ impl<'b, 'a, 'v> RootCollector<'b, 'a, 'v> {
             }
             MonoItemCollectionMode::Lazy => {
                 self.entry_fn == Some(def_id) ||
-                self.tcx.is_exported_symbol(def_id) ||
+                self.tcx.is_reachable_non_generic(def_id) ||
                 attr::contains_name(&self.tcx.get_attrs(def_id),
                                     "rustc_std_internal_symbol")
             }

@@ -134,7 +134,7 @@ pub fn get_static(cx: &CodegenCx, def_id: DefId) -> ValueRef {
 
                 let g = declare::define_global(cx, &sym[..], llty).unwrap();
 
-                if !cx.tcx.is_exported_symbol(def_id) {
+                if !cx.tcx.is_reachable_non_generic(def_id) {
                     unsafe {
                         llvm::LLVMRustSetVisibility(g, llvm::Visibility::Hidden);
                     }

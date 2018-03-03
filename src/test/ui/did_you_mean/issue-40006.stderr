@@ -19,7 +19,7 @@ error: expected `[`, found `#`
   --> $DIR/issue-40006.rs:20:17
    |
 LL |     fn xxx() { ### } //~ ERROR missing
-   |                 ^
+   |                 ^ expected `[`
 
 error: missing `fn`, `type`, or `const` for trait-item declaration
   --> $DIR/issue-40006.rs:20:21

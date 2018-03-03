@@ -2806,7 +2806,7 @@ impl<'tcx> DtorckConstraint<'tcx> {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable)]
 pub struct SymbolName {
     // FIXME: we don't rely on interning or equality here - better have
     // this be a `&'tcx str`.
@@ -2817,6 +2817,14 @@ impl_stable_hash_for!(struct self::SymbolName {
     name
 });
 
+impl SymbolName {
+    pub fn new(name: &str) -> SymbolName {
+        SymbolName {
+            name: Symbol::intern(name).as_str()
+        }
+    }
+}
+
 impl Deref for SymbolName {
     type Target = str;
 
@@ -2824,6 +2832,12 @@ impl Deref for SymbolName {
 }
 
 impl fmt::Display for SymbolName {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self.name, fmt)
+    }
+}
+
+impl fmt::Debug for SymbolName {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self.name, fmt)
     }
