@@ -740,8 +740,6 @@ impl<T: ?Sized> *const T {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(pointer_methods)]
-    ///
     /// let s: &str = "123";
     /// let ptr: *const u8 = s.as_ptr();
     ///
@@ -750,7 +748,7 @@ impl<T: ?Sized> *const T {
     ///     println!("{}", *ptr.add(2) as char);
     /// }
     /// ```
-    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn add(self, count: usize) -> Self
         where T: Sized,
@@ -799,8 +797,6 @@ impl<T: ?Sized> *const T {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(pointer_methods)]
-    ///
     /// let s: &str = "123";
     ///
     /// unsafe {
@@ -809,7 +805,7 @@ impl<T: ?Sized> *const T {
     ///     println!("{}", *end.sub(2) as char);
     /// }
     /// ```
-    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn sub(self, count: usize) -> Self
         where T: Sized,
@@ -836,8 +832,6 @@ impl<T: ?Sized> *const T {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(pointer_methods)]
-    ///
     /// // Iterate using a raw pointer in increments of two elements
     /// let data = [1u8, 2, 3, 4, 5];
     /// let mut ptr: *const u8 = data.as_ptr();
@@ -852,7 +846,7 @@ impl<T: ?Sized> *const T {
     ///     ptr = ptr.wrapping_add(step);
     /// }
     /// ```
-    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub fn wrapping_add(self, count: usize) -> Self
         where T: Sized,
@@ -879,8 +873,6 @@ impl<T: ?Sized> *const T {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(pointer_methods)]
-    ///
     /// // Iterate using a raw pointer in increments of two elements (backwards)
     /// let data = [1u8, 2, 3, 4, 5];
     /// let mut ptr: *const u8 = data.as_ptr();
@@ -895,7 +887,7 @@ impl<T: ?Sized> *const T {
     ///     ptr = ptr.wrapping_sub(step);
     /// }
     /// ```
-    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub fn wrapping_sub(self, count: usize) -> Self
         where T: Sized,
@@ -922,8 +914,6 @@ impl<T: ?Sized> *const T {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(pointer_methods)]
-    ///
     /// let x = 12;
     /// let y = &x as *const i32;
     ///
@@ -931,7 +921,7 @@ impl<T: ?Sized> *const T {
     ///     assert_eq!(y.read(), 12);
     /// }
     /// ```
-    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn read(self) -> T
         where T: Sized,
@@ -974,8 +964,6 @@ impl<T: ?Sized> *const T {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(pointer_methods)]
-    ///
     /// let x = 12;
     /// let y = &x as *const i32;
     ///
@@ -983,7 +971,7 @@ impl<T: ?Sized> *const T {
     ///     assert_eq!(y.read_volatile(), 12);
     /// }
     /// ```
-    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn read_volatile(self) -> T
         where T: Sized,
@@ -1010,8 +998,6 @@ impl<T: ?Sized> *const T {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(pointer_methods)]
-    ///
     /// let x = 12;
     /// let y = &x as *const i32;
     ///
@@ -1019,7 +1005,7 @@ impl<T: ?Sized> *const T {
     ///     assert_eq!(y.read_unaligned(), 12);
     /// }
     /// ```
-    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn read_unaligned(self) -> T
         where T: Sized,
@@ -1046,8 +1032,6 @@ impl<T: ?Sized> *const T {
     /// Efficiently create a Rust vector from an unsafe buffer:
     ///
     /// ```
-    /// #![feature(pointer_methods)]
-    ///
     /// # #[allow(dead_code)]
     /// unsafe fn from_buf_raw<T: Copy>(ptr: *const T, elts: usize) -> Vec<T> {
     ///     let mut dst = Vec::with_capacity(elts);
@@ -1056,7 +1040,7 @@ impl<T: ?Sized> *const T {
     ///     dst
     /// }
     /// ```
-    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn copy_to(self, dest: *mut T, count: usize)
         where T: Sized,
@@ -1085,8 +1069,6 @@ impl<T: ?Sized> *const T {
     /// Efficiently create a Rust vector from an unsafe buffer:
     ///
     /// ```
-    /// #![feature(pointer_methods)]
-    ///
     /// # #[allow(dead_code)]
     /// unsafe fn from_buf_raw<T: Copy>(ptr: *const T, elts: usize) -> Vec<T> {
     ///     let mut dst = Vec::with_capacity(elts);
@@ -1095,7 +1077,7 @@ impl<T: ?Sized> *const T {
     ///     dst
     /// }
     /// ```
-    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn copy_to_nonoverlapping(self, dest: *mut T, count: usize)
         where T: Sized,
@@ -1443,8 +1425,6 @@ impl<T: ?Sized> *mut T {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(pointer_methods)]
-    ///
     /// let s: &str = "123";
     /// let ptr: *const u8 = s.as_ptr();
     ///
@@ -1453,7 +1433,7 @@ impl<T: ?Sized> *mut T {
     ///     println!("{}", *ptr.add(2) as char);
     /// }
     /// ```
-    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn add(self, count: usize) -> Self
         where T: Sized,
@@ -1502,8 +1482,6 @@ impl<T: ?Sized> *mut T {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(pointer_methods)]
-    ///
     /// let s: &str = "123";
     ///
     /// unsafe {
@@ -1512,7 +1490,7 @@ impl<T: ?Sized> *mut T {
     ///     println!("{}", *end.sub(2) as char);
     /// }
     /// ```
-    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn sub(self, count: usize) -> Self
         where T: Sized,
@@ -1539,8 +1517,6 @@ impl<T: ?Sized> *mut T {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(pointer_methods)]
-    ///
     /// // Iterate using a raw pointer in increments of two elements
     /// let data = [1u8, 2, 3, 4, 5];
     /// let mut ptr: *const u8 = data.as_ptr();
@@ -1555,7 +1531,7 @@ impl<T: ?Sized> *mut T {
     ///     ptr = ptr.wrapping_add(step);
     /// }
     /// ```
-    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub fn wrapping_add(self, count: usize) -> Self
         where T: Sized,
@@ -1582,8 +1558,6 @@ impl<T: ?Sized> *mut T {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(pointer_methods)]
-    ///
     /// // Iterate using a raw pointer in increments of two elements (backwards)
     /// let data = [1u8, 2, 3, 4, 5];
     /// let mut ptr: *const u8 = data.as_ptr();
@@ -1598,7 +1572,7 @@ impl<T: ?Sized> *mut T {
     ///     ptr = ptr.wrapping_sub(step);
     /// }
     /// ```
-    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub fn wrapping_sub(self, count: usize) -> Self
         where T: Sized,
@@ -1625,8 +1599,6 @@ impl<T: ?Sized> *mut T {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(pointer_methods)]
-    ///
     /// let x = 12;
     /// let y = &x as *const i32;
     ///
@@ -1634,7 +1606,7 @@ impl<T: ?Sized> *mut T {
     ///     assert_eq!(y.read(), 12);
     /// }
     /// ```
-    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn read(self) -> T
         where T: Sized,
@@ -1668,7 +1640,7 @@ impl<T: ?Sized> *mut T {
     /// Beyond accepting a raw pointer, this is unsafe because it semantically
     /// moves the value out of `self` without preventing further usage of `self`.
     /// If `T` is not `Copy`, then care must be taken to ensure that the value at
-    /// `src` is not used before the data is overwritten again (e.g. with `write`,
+    /// `self` is not used before the data is overwritten again (e.g. with `write`,
     /// `write_bytes`, or `copy`). Note that `*self = foo` counts as a use
     /// because it will attempt to drop the value previously at `*self`.
     ///
@@ -1677,8 +1649,6 @@ impl<T: ?Sized> *mut T {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(pointer_methods)]
-    ///
     /// let x = 12;
     /// let y = &x as *const i32;
     ///
@@ -1686,7 +1656,7 @@ impl<T: ?Sized> *mut T {
     ///     assert_eq!(y.read_volatile(), 12);
     /// }
     /// ```
-    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn read_volatile(self) -> T
         where T: Sized,
@@ -1713,8 +1683,6 @@ impl<T: ?Sized> *mut T {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(pointer_methods)]
-    ///
     /// let x = 12;
     /// let y = &x as *const i32;
     ///
@@ -1722,7 +1690,7 @@ impl<T: ?Sized> *mut T {
     ///     assert_eq!(y.read_unaligned(), 12);
     /// }
     /// ```
-    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn read_unaligned(self) -> T
         where T: Sized,
@@ -1749,8 +1717,6 @@ impl<T: ?Sized> *mut T {
     /// Efficiently create a Rust vector from an unsafe buffer:
     ///
     /// ```
-    /// #![feature(pointer_methods)]
-    ///
     /// # #[allow(dead_code)]
     /// unsafe fn from_buf_raw<T: Copy>(ptr: *const T, elts: usize) -> Vec<T> {
     ///     let mut dst = Vec::with_capacity(elts);
@@ -1759,7 +1725,7 @@ impl<T: ?Sized> *mut T {
     ///     dst
     /// }
     /// ```
-    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn copy_to(self, dest: *mut T, count: usize)
         where T: Sized,
@@ -1788,8 +1754,6 @@ impl<T: ?Sized> *mut T {
     /// Efficiently create a Rust vector from an unsafe buffer:
     ///
     /// ```
-    /// #![feature(pointer_methods)]
-    ///
     /// # #[allow(dead_code)]
     /// unsafe fn from_buf_raw<T: Copy>(ptr: *const T, elts: usize) -> Vec<T> {
     ///     let mut dst = Vec::with_capacity(elts);
@@ -1798,7 +1762,7 @@ impl<T: ?Sized> *mut T {
     ///     dst
     /// }
     /// ```
-    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn copy_to_nonoverlapping(self, dest: *mut T, count: usize)
         where T: Sized,
@@ -1825,8 +1789,6 @@ impl<T: ?Sized> *mut T {
     /// Efficiently create a Rust vector from an unsafe buffer:
     ///
     /// ```
-    /// #![feature(pointer_methods)]
-    ///
     /// # #[allow(dead_code)]
     /// unsafe fn from_buf_raw<T: Copy>(ptr: *const T, elts: usize) -> Vec<T> {
     ///     let mut dst: Vec<T> = Vec::with_capacity(elts);
@@ -1835,7 +1797,7 @@ impl<T: ?Sized> *mut T {
     ///     dst
     /// }
     /// ```
-    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn copy_from(self, src: *const T, count: usize)
         where T: Sized,
@@ -1864,8 +1826,6 @@ impl<T: ?Sized> *mut T {
     /// Efficiently create a Rust vector from an unsafe buffer:
     ///
     /// ```
-    /// #![feature(pointer_methods)]
-    ///
     /// # #[allow(dead_code)]
     /// unsafe fn from_buf_raw<T: Copy>(ptr: *const T, elts: usize) -> Vec<T> {
     ///     let mut dst: Vec<T> = Vec::with_capacity(elts);
@@ -1874,7 +1834,7 @@ impl<T: ?Sized> *mut T {
     ///     dst
     /// }
     /// ```
-    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn copy_from_nonoverlapping(self, src: *const T, count: usize)
         where T: Sized,
@@ -1899,7 +1859,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// This has all the same safety problems as `ptr::read` with respect to
     /// invalid pointers, types, and double drops.
-    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn drop_in_place(self) {
         drop_in_place(self)
@@ -1929,8 +1889,6 @@ impl<T: ?Sized> *mut T {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(pointer_methods)]
-    ///
     /// let mut x = 0;
     /// let y = &mut x as *mut i32;
     /// let z = 12;
@@ -1940,7 +1898,7 @@ impl<T: ?Sized> *mut T {
     ///     assert_eq!(y.read(), 12);
     /// }
     /// ```
-    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn write(self, val: T)
         where T: Sized,
@@ -1954,8 +1912,6 @@ impl<T: ?Sized> *mut T {
     /// # Examples
     ///
     /// ```
-    /// #![feature(pointer_methods)]
-    ///
     /// let mut vec = vec![0; 4];
     /// unsafe {
     ///     let vec_ptr = vec.as_mut_ptr();
@@ -1963,7 +1919,7 @@ impl<T: ?Sized> *mut T {
     /// }
     /// assert_eq!(vec, [b'a', b'a', 0, 0]);
     /// ```
-    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn write_bytes(self, val: u8, count: usize)
         where T: Sized,
@@ -2008,8 +1964,6 @@ impl<T: ?Sized> *mut T {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(pointer_methods)]
-    ///
     /// let mut x = 0;
     /// let y = &mut x as *mut i32;
     /// let z = 12;
@@ -2019,7 +1973,7 @@ impl<T: ?Sized> *mut T {
     ///     assert_eq!(y.read_volatile(), 12);
     /// }
     /// ```
-    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn write_volatile(self, val: T)
         where T: Sized,
@@ -2040,8 +1994,8 @@ impl<T: ?Sized> *mut T {
     /// allocations or resources, so care must be taken not to overwrite an object
     /// that should be dropped.
     ///
-    /// Additionally, it does not drop `src`. Semantically, `src` is moved into the
-    /// location pointed to by `dst`.
+    /// Additionally, it does not drop `self`. Semantically, `self` is moved into the
+    /// location pointed to by `val`.
     ///
     /// This is appropriate for initializing uninitialized memory, or overwriting
     /// memory that has previously been `read` from.
@@ -2051,8 +2005,6 @@ impl<T: ?Sized> *mut T {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(pointer_methods)]
-    ///
     /// let mut x = 0;
     /// let y = &mut x as *mut i32;
     /// let z = 12;
@@ -2062,7 +2014,7 @@ impl<T: ?Sized> *mut T {
     ///     assert_eq!(y.read_unaligned(), 12);
     /// }
     /// ```
-    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn write_unaligned(self, val: T)
         where T: Sized,
@@ -2077,7 +2029,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// This is only unsafe because it accepts a raw pointer.
     /// Otherwise, this operation is identical to `mem::replace`.
-    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn replace(self, src: T) -> T
         where T: Sized,
@@ -2095,7 +2047,7 @@ impl<T: ?Sized> *mut T {
     /// as arguments.
     ///
     /// Ensure that these pointers are valid before calling `swap`.
-    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn swap(self, with: *mut T)
         where T: Sized,
