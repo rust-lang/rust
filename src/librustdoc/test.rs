@@ -434,7 +434,7 @@ fn partition_source(s: &str) -> (String, String) {
 pub struct Collector {
     pub tests: Vec<testing::TestDescAndFn>,
     // to be removed when hoedown will be definitely gone
-    pub old_tests: HashMap<String, Vec<String>>,
+    pub old_tests: HashMap<FileName, Vec<String>>,
 
     // The name of the test displayed to the user, separated by `::`.
     //
@@ -501,14 +501,8 @@ impl Collector {
         format!("{} - {} (line {})", filename, self.names.join("::"), line)
     }
 
-    // to be removed once hoedown is gone
-    fn generate_name_beginning(&self, filename: &FileName) -> String {
-        format!("{} - {} (line", filename, self.names.join("::"))
-    }
-
     pub fn add_old_test(&mut self, test: String, filename: FileName) {
-        let name_beg = self.generate_name_beginning(&filename);
-        let entry = self.old_tests.entry(name_beg)
+        let entry = self.old_tests.entry(filename.clone())
                                   .or_insert(Vec::new());
         entry.push(test.trim().to_owned());
     }
@@ -520,10 +514,9 @@ impl Collector {
         let name = self.generate_name(line, &filename);
         // to be removed when hoedown is removed
         if self.render_type == RenderType::Pulldown {
-            let name_beg = self.generate_name_beginning(&filename);
             let mut found = false;
             let test = test.trim().to_owned();
-            if let Some(entry) = self.old_tests.get_mut(&name_beg) {
+            if let Some(entry) = self.old_tests.get_mut(&filename) {
                 found = entry.remove_item(&test).is_some();
             }
             if !found {
