@@ -69,16 +69,18 @@ fn _print(w: &mut Write, format: PrintFormat) -> io::Result<()> {
         inline_context: 0,
     }; MAX_NB_FRAMES];
     let (nb_frames, context) = unwind_backtrace(&mut frames)?;
-    let (skipped_before, skipped_after) =
-        filter_frames(&frames[..nb_frames], format, &context);
-    if skipped_before + skipped_after > 0 {
+    let filtered_frames = filter_frames(&frames[..nb_frames], &context, format);
+    if filtered_frames.len() != nb_frames {
         writeln!(w, "note: Some details are omitted, \
                      run with `RUST_BACKTRACE=full` for a verbose backtrace.")?;
     }
     writeln!(w, "stack backtrace:")?;
 
-    let filtered_frames = &frames[..nb_frames - skipped_after];
-    for (index, frame) in filtered_frames.iter().skip(skipped_before).enumerate() {
+    for (index, frame, is_on_filter_edge) in filtered_frames {
+        // Don't use ANSI escape codes on windows, because most terminals on it don't support them
+        if is_on_filter_edge && cfg!(not(windows)) {
+            write!(w, "\x1B[2m")?;
+        }
         resolve_symname(*frame, |symname| {
             output(w, index, *frame, symname, format)
         }, &context)?;
@@ -88,43 +90,84 @@ fn _print(w: &mut Write, format: PrintFormat) -> io::Result<()> {
         if has_more_filenames {
             w.write_all(b" <... and possibly more>")?;
         }
+        if cfg!(not(windows)) {
+            write!(w, "\x1B[0m")?;
+        }
     }
 
     Ok(())
 }
 
-/// Returns a number of frames to remove at the beginning and at the end of the
-/// backtrace, according to the backtrace format.
-fn filter_frames(frames: &[Frame],
-                 format: PrintFormat,
-                 context: &BacktraceContext) -> (usize, usize)
+fn should_show_frame(frame: &Frame, context: &BacktraceContext) -> bool {
+    const FILTERED_SYMBOLS: &[&str] = &[
+        "main",
+        "rust_begin_unwind",
+    ];
+    const FILTERED_SYMBOL_PARTS: &[&str] = &[
+        "panic",
+        "sys",
+        "lang_start",
+    ];
+    let mut should_show = true;
+    let _ = resolve_symname(*frame, |symname| {
+        if let Some(mangled_symbol_name) = symname {
+            for filtered_symbol in FILTERED_SYMBOLS {
+                if mangled_symbol_name == *filtered_symbol {
+                    should_show = false;
+                    return Ok(());
+                }
+            }
+            for filtered_symbol_part in FILTERED_SYMBOL_PARTS {
+                if mangled_symbol_name.contains(filtered_symbol_part) {
+                    should_show = false;
+                    return Ok(());
+                }
+            }
+        }
+        Ok(())
+    }, context);
+    should_show
+}
+
+/// Returns the frames to show as a Vec.
+/// If the bool is true the frame is on the edge between showing and not showing.
+fn filter_frames<'a>(frames: &'a [Frame],
+                     context: &BacktraceContext,
+                     format: PrintFormat) -> Vec<(usize, &'a Frame, bool)>
 {
-    if format == PrintFormat::Full {
-        return (0, 0);
-    }
+    let mut frames_iter = frames.iter().enumerate().peekable();
+    let mut filtered_frames = Vec::new();
+    let mut show_prev_frame = false;
 
-    let skipped_before = 0;
-
-    let skipped_after = frames.len() - frames.iter().position(|frame| {
-        let mut is_marker = false;
+    while let Some((i, frame)) = frames_iter.next() {
+        let mut is_after_begin_short_backtrace = false;
         let _ = resolve_symname(*frame, |symname| {
             if let Some(mangled_symbol_name) = symname {
                 // Use grep to find the concerned functions
                 if mangled_symbol_name.contains("__rust_begin_short_backtrace") {
-                    is_marker = true;
+                    is_after_begin_short_backtrace = true;
                 }
             }
             Ok(())
         }, context);
-        is_marker
-    }).unwrap_or(frames.len());
+        if is_after_begin_short_backtrace && format != PrintFormat::Full {
+            break;
+        }
 
-    if skipped_before + skipped_after >= frames.len() {
-        // Avoid showing completely empty backtraces
-        return (0, 0);
+        let show_cur_frame = should_show_frame(frame, context);
+        let show_next_frame = frames_iter
+            .peek()
+            .map(|&(_, frame)| should_show_frame(frame, context))
+            .unwrap_or(false);
+        if show_cur_frame {
+            filtered_frames.push((i, frame, false));
+        } else if show_prev_frame || show_next_frame || format == PrintFormat::Full {
+            filtered_frames.push((i, frame, true));
+        }
+        show_prev_frame = show_cur_frame;
     }
 
-    (skipped_before, skipped_after)
+    filtered_frames
 }
 
 
