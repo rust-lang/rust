@@ -36,7 +36,7 @@ use self::Level::*;
 
 use emitter::{Emitter, EmitterWriter};
 
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{self, Lrc};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stable_hasher::StableHasher;
 
@@ -106,6 +106,8 @@ pub struct SubstitutionPart {
     pub snippet: String,
 }
 
+pub type CodeMapperDyn = CodeMapper + sync::Send + sync::Sync;
+
 pub trait CodeMapper {
     fn lookup_char_pos(&self, pos: BytePos) -> Loc;
     fn span_to_lines(&self, sp: Span) -> FileLinesResult;
@@ -119,7 +121,8 @@ pub trait CodeMapper {
 
 impl CodeSuggestion {
     /// Returns the assembled code suggestions and whether they should be shown with an underline.
-    pub fn splice_lines(&self, cm: &CodeMapper) -> Vec<(String, Vec<SubstitutionPart>)> {
+    pub fn splice_lines(&self, cm: &CodeMapperDyn)
+                        -> Vec<(String, Vec<SubstitutionPart>)> {
         use syntax_pos::{CharPos, Loc, Pos};
 
         fn push_trailing(buf: &mut String,
@@ -290,7 +293,7 @@ impl Handler {
     pub fn with_tty_emitter(color_config: ColorConfig,
                             can_emit_warnings: bool,
                             treat_err_as_bug: bool,
-                            cm: Option<Lrc<CodeMapper>>)
+                            cm: Option<Lrc<CodeMapperDyn>>)
                             -> Handler {
         Handler::with_tty_emitter_and_flags(
             color_config,
@@ -303,7 +306,7 @@ impl Handler {
     }
 
     pub fn with_tty_emitter_and_flags(color_config: ColorConfig,
-                                      cm: Option<Lrc<CodeMapper>>,
+                                      cm: Option<Lrc<CodeMapperDyn>>,
                                       flags: HandlerFlags)
                                       -> Handler {
         let emitter = Box::new(EmitterWriter::stderr(color_config, cm, false, false));
