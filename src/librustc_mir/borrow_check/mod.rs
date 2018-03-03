@@ -1536,8 +1536,15 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         is_local_mutation_allowed: LocalMutationIsAllowed,
     ) -> bool {
         debug!(
+<<<<<<< HEAD
             "check_access_permissions({:?}, {:?}, {:?})",
             place, kind, is_local_mutation_allowed
+=======
+            " ({:?}, {:?}, {:?})",
+            place,
+            kind,
+            is_local_mutation_allowed
+>>>>>>> minor changes
         );
         let mut error_reported = false;
         match kind {
@@ -1573,13 +1580,15 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 if let Err(place_err) = self.is_mutable(place, is_local_mutation_allowed) {
                     error_reported = true;
 
-                    match *place{
-                        Place::Local(local) => {let locations = self.mir.find_assignments(local);
-                        
-                        for n in &locations{
-                            debug!("locations ={:?}", n);}
+                    let err_help = match *place {
+                        Place::Local(local) => {
+                            let locations = self.mir.find_assignments(local);
+                                Some((self.mir.source_info(locations[0]).span, "consider changing this to be a mutable reference: `&mut `"))
                         }
-                        _ => {}}
+                        _ => {
+                                None
+                            }
+                    };
 
                     let item_msg = if error_reported{
                         if let Some(name) = self.describe_place(place_err) {
@@ -1602,6 +1611,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     if place != place_err {
                         err.span_label(span, "cannot assign through `&`-reference");                        
                     }
+
+                    if !err_help.is_none(){
+                        let (err_help_span, err_help_stmt) = err_help.unwrap();
+                        err.span_help(err_help_span, err_help_stmt);}
                     err.emit();
                 }
             }

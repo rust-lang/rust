@@ -26,18 +26,19 @@ impl<'tcx> Visitor<'tcx> for FindLocalAssignmentVisitor {
                 self.locations.push(location);
             }
             PlaceContext::AsmOutput | PlaceContext::Drop| PlaceContext::Inspect |
-            PlaceContext::Borrow{..}| PlaceContext::Projection(..)| PlaceContext::Copy| 
+            PlaceContext::Borrow{..}| PlaceContext::Projection(..)| PlaceContext::Copy|
             PlaceContext::Move| PlaceContext::StorageLive| PlaceContext::StorageDead|
             PlaceContext::Validate => {
+                // self.super_local(local)
             }
         }
-
-        Visitor::visit_local(self,local,place_context,location)
     }
+
+    // fn super_local()
 }
 
 crate trait FindAssignments { 
-    fn find_assignments(&self, local: Local) -> Vec<Location>;                                         
+    fn find_assignments(&self, local: Local) -> Vec<Location>;                              
     }
     
 impl<'tcx> FindAssignments for Mir<'tcx>{
