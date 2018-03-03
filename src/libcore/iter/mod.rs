@@ -1045,6 +1045,11 @@ impl<A, B> Iterator for Zip<A, B> where A: Iterator, B: Iterator
     fn size_hint(&self) -> (usize, Option<usize>) {
         ZipImpl::size_hint(self)
     }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        ZipImpl::nth(self, n)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1065,6 +1070,14 @@ trait ZipImpl<A, B> {
     fn new(a: A, b: B) -> Self;
     fn next(&mut self) -> Option<Self::Item>;
     fn size_hint(&self) -> (usize, Option<usize>);
+    fn nth(&mut self, n: usize) -> Option<Self::Item>;
+    fn super_nth(&mut self, mut n: usize) -> Option<Self::Item> {
+        while let Some(x) = self.next() {
+            if n == 0 { return Some(x) }
+            n -= 1;
+        }
+        None
+    }
     fn next_back(&mut self) -> Option<Self::Item>
         where A: DoubleEndedIterator + ExactSizeIterator,
               B: DoubleEndedIterator + ExactSizeIterator;
@@ -1092,6 +1105,11 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
                 Some((x, y))
             })
         })
+    }
+
+    #[inline]
+    default fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        self.super_nth(n)
     }
 
     #[inline]
@@ -1172,6 +1190,24 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
     fn size_hint(&self) -> (usize, Option<usize>) {
         let len = self.len - self.index;
         (len, Some(len))
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        let delta = cmp::min(n, self.len - self.index);
+        let end = self.index + delta;
+        while self.index < end {
+            let i = self.index;
+            self.index += 1;
+            if A::may_have_side_effect() {
+                unsafe { self.a.get_unchecked(i); }
+            }
+            if B::may_have_side_effect() {
+                unsafe { self.b.get_unchecked(i); }
+            }
+        }
+
+        self.super_nth(n - delta)
     }
 
     #[inline]

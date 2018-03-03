@@ -145,6 +145,43 @@ fn test_iterator_chain_find() {
 }
 
 #[test]
+fn test_zip_nth() {
+    let xs = [0, 1, 2, 4, 5];
+    let ys = [10, 11, 12];
+
+    let mut it = xs.iter().zip(&ys);
+    assert_eq!(it.nth(0), Some((&0, &10)));
+    assert_eq!(it.nth(1), Some((&2, &12)));
+    assert_eq!(it.nth(0), None);
+
+    let mut it = xs.iter().zip(&ys);
+    assert_eq!(it.nth(3), None);
+
+    let mut it = ys.iter().zip(&xs);
+    assert_eq!(it.nth(3), None);
+}
+
+#[test]
+fn test_zip_nth_side_effects() {
+    let mut a = Vec::new();
+    let mut b = Vec::new();
+    let value = [1, 2, 3, 4, 5, 6].iter().cloned()
+        .map(|n| {
+            a.push(n);
+            n * 10
+        })
+        .zip([2, 3, 4, 5, 6, 7, 8].iter().cloned().map(|n| {
+            b.push(n * 100);
+            n * 1000
+        }))
+        .skip(1)
+        .nth(3);
+    assert_eq!(value, Some((50, 6000)));
+    assert_eq!(a, vec![1, 2, 3, 4, 5]);
+    assert_eq!(b, vec![200, 300, 400, 500, 600]);
+}
+
+#[test]
 fn test_iterator_step_by() {
     // Identity
     let mut it = (0..).step_by(1).take(3);
