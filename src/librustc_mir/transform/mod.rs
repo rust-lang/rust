@@ -161,7 +161,7 @@ pub macro run_passes($tcx:ident, $mir:ident, $def_id:ident, $suite_index:expr; $
             promoted
         };
         let mut index = 0;
-        let mut run_pass = |pass: &MirPass| {
+        let mut run_pass = |pass: &dyn MirPass| {
             let run_hooks = |mir: &_, index, is_after| {
                 dump_mir::on_mir_pass($tcx, &format_args!("{:03}-{:03}", suite_index, index),
                                       &pass.name(), source, mir, is_after);

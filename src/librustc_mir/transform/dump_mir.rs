@@ -49,7 +49,7 @@ impl fmt::Display for Disambiguator {
 
 
 pub fn on_mir_pass<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             pass_num: &fmt::Display,
+                             pass_num: &dyn fmt::Display,
                              pass_name: &str,
                              source: MirSource,
                              mir: &Mir<'tcx>,

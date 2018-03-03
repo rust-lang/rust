@@ -19,6 +19,8 @@ use dep_graph::{DepGraph, DepNode, DepKind, DepNodeIndex};
 
 use hir::def_id::{CRATE_DEF_INDEX, DefId, LocalDefId, DefIndexAddressSpace};
 
+use middle::cstore::CrateStore;
+
 use syntax::abi::Abi;
 use syntax::ast::{self, Name, NodeId, CRATE_NODE_ID};
 use syntax::codemap::Spanned;
@@ -1136,8 +1138,9 @@ impl Named for StructField { fn name(&self) -> Name { self.name } }
 impl Named for TraitItem { fn name(&self) -> Name { self.name } }
 impl Named for ImplItem { fn name(&self) -> Name { self.name } }
 
+
 pub fn map_crate<'hir>(sess: &::session::Session,
-                       cstore: &::middle::cstore::CrateStore,
+                       cstore: &dyn CrateStore,
                        forest: &'hir mut Forest,
                        definitions: &'hir Definitions)
                        -> Map<'hir> {

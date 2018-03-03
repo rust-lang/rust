@@ -277,7 +277,7 @@ pub struct RegionFolder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     skipped_regions: &'a mut bool,
     current_depth: u32,
-    fld_r: &'a mut (FnMut(ty::Region<'tcx>, u32) -> ty::Region<'tcx> + 'a),
+    fld_r: &'a mut (dyn FnMut(ty::Region<'tcx>, u32) -> ty::Region<'tcx> + 'a),
 }
 
 impl<'a, 'gcx, 'tcx> RegionFolder<'a, 'gcx, 'tcx> {
@@ -330,7 +330,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionFolder<'a, 'gcx, 'tcx> {
 struct RegionReplacer<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     current_depth: u32,
-    fld_r: &'a mut (FnMut(ty::BoundRegion) -> ty::Region<'tcx> + 'a),
+    fld_r: &'a mut (dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx> + 'a),
     map: BTreeMap<ty::BoundRegion, ty::Region<'tcx>>
 }
 

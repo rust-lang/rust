@@ -319,7 +319,7 @@ fn attempt_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<DependencyLis
 // also skip this step entirely.
 fn activate_injected_dep(injected: Option<CrateNum>,
                          list: &mut DependencyList,
-                         replaces_injected: &Fn(CrateNum) -> bool) {
+                         replaces_injected: &dyn Fn(CrateNum) -> bool) {
     for (i, slot) in list.iter().enumerate() {
         let cnum = CrateNum::new(i + 1);
         if !replaces_injected(cnum) {

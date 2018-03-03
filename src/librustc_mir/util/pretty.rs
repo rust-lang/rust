@@ -72,14 +72,14 @@ pub enum PassWhere {
 ///   or `typeck` and `bar` both appear in the name.
 pub fn dump_mir<'a, 'gcx, 'tcx, F>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    pass_num: Option<&Display>,
+    pass_num: Option<&dyn Display>,
     pass_name: &str,
-    disambiguator: &Display,
+    disambiguator: &dyn Display,
     source: MirSource,
     mir: &Mir<'tcx>,
     extra_data: F,
 ) where
-    F: FnMut(PassWhere, &mut Write) -> io::Result<()>,
+    F: FnMut(PassWhere, &mut dyn Write) -> io::Result<()>,
 {
     if !dump_enabled(tcx, pass_name, source) {
         return;
@@ -127,15 +127,15 @@ pub fn dump_enabled<'a, 'gcx, 'tcx>(
 
 fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    pass_num: Option<&Display>,
+    pass_num: Option<&dyn Display>,
     pass_name: &str,
     node_path: &str,
-    disambiguator: &Display,
+    disambiguator: &dyn Display,
     source: MirSource,
     mir: &Mir<'tcx>,
     mut extra_data: F,
 ) where
-    F: FnMut(PassWhere, &mut Write) -> io::Result<()>,
+    F: FnMut(PassWhere, &mut dyn Write) -> io::Result<()>,
 {
     let _: io::Result<()> = do catch {
         let mut file = create_dump_file(tcx, "mir", pass_num, pass_name, disambiguator, source)?;
@@ -169,9 +169,9 @@ fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(
 fn dump_path(
     tcx: TyCtxt<'_, '_, '_>,
     extension: &str,
-    pass_num: Option<&Display>,
+    pass_num: Option<&dyn Display>,
     pass_name: &str,
-    disambiguator: &Display,
+    disambiguator: &dyn Display,
     source: MirSource,
 ) -> PathBuf {
     let promotion_id = match source.promoted {
@@ -217,9 +217,9 @@ fn dump_path(
 pub(crate) fn create_dump_file(
     tcx: TyCtxt<'_, '_, '_>,
     extension: &str,
-    pass_num: Option<&Display>,
+    pass_num: Option<&dyn Display>,
     pass_name: &str,
-    disambiguator: &Display,
+    disambiguator: &dyn Display,
     source: MirSource,
 ) -> io::Result<fs::File> {
     let file_path = dump_path(tcx, extension, pass_num, pass_name, disambiguator, source);
@@ -233,7 +233,7 @@ pub(crate) fn create_dump_file(
 pub fn write_mir_pretty<'a, 'gcx, 'tcx>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     single: Option<DefId>,
-    w: &mut Write,
+    w: &mut dyn Write,
 ) -> io::Result<()> {
     writeln!(
         w,
@@ -274,10 +274,10 @@ pub fn write_mir_fn<'a, 'gcx, 'tcx, F>(
     src: MirSource,
     mir: &Mir<'tcx>,
     extra_data: &mut F,
-    w: &mut Write,
+    w: &mut dyn Write,
 ) -> io::Result<()>
 where
-    F: FnMut(PassWhere, &mut Write) -> io::Result<()>,
+    F: FnMut(PassWhere, &mut dyn Write) -> io::Result<()>,
 {
     write_mir_intro(tcx, src, mir, w)?;
     for block in mir.basic_blocks().indices() {
@@ -298,10 +298,10 @@ pub fn write_basic_block<'cx, 'gcx, 'tcx, F>(
     block: BasicBlock,
     mir: &Mir<'tcx>,
     extra_data: &mut F,
-    w: &mut Write,
+    w: &mut dyn Write,
 ) -> io::Result<()>
 where
-    F: FnMut(PassWhere, &mut Write) -> io::Result<()>,
+    F: FnMut(PassWhere, &mut dyn Write) -> io::Result<()>,
 {
     let data = &mir[block];
 
@@ -362,7 +362,7 @@ where
 /// a statement.
 fn write_extra<'cx, 'gcx, 'tcx, F>(
     tcx: TyCtxt<'cx, 'gcx, 'tcx>,
-    write: &mut Write,
+    write: &mut dyn Write,
     mut visit_op: F,
 ) -> io::Result<()>
 where
@@ -450,7 +450,7 @@ fn write_scope_tree(
     tcx: TyCtxt,
     mir: &Mir,
     scope_tree: &FxHashMap<VisibilityScope, Vec<VisibilityScope>>,
-    w: &mut Write,
+    w: &mut dyn Write,
     parent: VisibilityScope,
     depth: usize,
 ) -> io::Result<()> {
@@ -515,7 +515,7 @@ pub fn write_mir_intro<'a, 'gcx, 'tcx>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     src: MirSource,
     mir: &Mir,
-    w: &mut Write,
+    w: &mut dyn Write,
 ) -> io::Result<()> {
     write_mir_sig(tcx, src, mir, w)?;
     writeln!(w, "{{")?;
@@ -553,7 +553,7 @@ pub fn write_mir_intro<'a, 'gcx, 'tcx>(
     Ok(())
 }
 
-fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut Write) -> io::Result<()> {
+fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut dyn Write) -> io::Result<()> {
     let id = tcx.hir.as_local_node_id(src.def_id).unwrap();
     let body_owner_kind = tcx.hir.body_owner_kind(id);
     match (body_owner_kind, src.promoted) {
@@ -597,7 +597,7 @@ fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut Write) -> io::R
     Ok(())
 }
 
-fn write_temp_decls(mir: &Mir, w: &mut Write) -> io::Result<()> {
+fn write_temp_decls(mir: &Mir, w: &mut dyn Write) -> io::Result<()> {
     // Compiler-introduced temporary types.
     for temp in mir.temps_iter() {
         writeln!(

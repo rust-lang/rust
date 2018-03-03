@@ -176,7 +176,7 @@ impl<'gcx, 'tcx> UseFinder<'gcx, 'tcx> {
         None
     }
 
-    fn def_use(&self, location: Location, thing: &MirVisitable<'tcx>) -> (bool, bool) {
+    fn def_use(&self, location: Location, thing: &dyn MirVisitable<'tcx>) -> (bool, bool) {
         let mut visitor = DefUseVisitor {
             defined: false,
             used: false,
