@@ -48,4 +48,4 @@ LL |     fn qux() -> u16 { 5u16 }
 
 error: aborting due to 4 previous errors
 
-If you want more information on this error, try using "rustc --explain E0053"
+For more information about this error, try `rustc --explain E0053`.

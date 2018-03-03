@@ -8,5 +8,5 @@ LL | static B: u8 = { yield 3u8; 3u8};
 
 error: aborting due to 2 previous errors
 
-You've got a few errors: E0601, E0627
-If you want more information on an error, try using "rustc --explain E0601"
+Some errors occurred: E0601, E0627.
+For more information about an error, try `rustc --explain E0601`.

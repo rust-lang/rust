@@ -10,4 +10,4 @@ LL | impl<S> Into<S> for GenX<S> { //~ ERROR conflicting implementations
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0119"
+For more information about this error, try `rustc --explain E0119`.

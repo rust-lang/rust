@@ -63,4 +63,4 @@ LL |     fn method<G: Getter<usize>>(&self) {}
 
 error: aborting due to 7 previous errors
 
-If you want more information on this error, try using "rustc --explain E0276"
+For more information about this error, try `rustc --explain E0276`.

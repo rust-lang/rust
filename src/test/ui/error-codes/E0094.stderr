@@ -6,4 +6,4 @@ LL |     fn size_of<T, U>() -> usize; //~ ERROR E0094
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0094"
+For more information about this error, try `rustc --explain E0094`.

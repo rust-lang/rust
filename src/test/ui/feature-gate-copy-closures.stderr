@@ -10,4 +10,4 @@ LL |     let c = hello; //~ ERROR use of moved value: `hello` [E0382]
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0382"
+For more information about this error, try `rustc --explain E0382`.

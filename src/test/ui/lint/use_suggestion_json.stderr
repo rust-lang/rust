@@ -384,7 +384,6 @@ LL | use std::collections::hash_map::Iter;
    |
 and 8 other candidates
 
-If you want more information on this error, try using /"rustc --explain E0412/"
 "
 }
 {
@@ -395,5 +394,14 @@ If you want more information on this error, try using /"rustc --explain E0412/"
   "children": [],
   "rendered": "error: aborting due to previous error
 
+"
+}
+{
+  "message": "For more information about this error, try `rustc --explain E0412`.",
+  "code": null,
+  "level": "",
+  "spans": [],
+  "children": [],
+  "rendered": "For more information about this error, try `rustc --explain E0412`.
 "
 }

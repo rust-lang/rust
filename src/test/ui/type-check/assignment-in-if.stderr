@@ -57,4 +57,4 @@ LL |     if (if true { x = 4 } else { x = 5 }) {
 
 error: aborting due to 5 previous errors
 
-If you want more information on this error, try using "rustc --explain E0308"
+For more information about this error, try `rustc --explain E0308`.

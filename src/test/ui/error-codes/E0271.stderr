@@ -14,4 +14,4 @@ LL | fn foo<T>(t: T) where T: Trait<AssociatedType=u32> {
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0271"
+For more information about this error, try `rustc --explain E0271`.

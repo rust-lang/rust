@@ -6,4 +6,4 @@ LL | const CON : Box<i32> = box 0; //~ ERROR E0010
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0010"
+For more information about this error, try `rustc --explain E0010`.
