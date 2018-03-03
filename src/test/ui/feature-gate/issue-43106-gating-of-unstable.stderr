@@ -1,4 +1,4 @@
-error[E0601]: main function not found
+error[E0601]: main function not found in crate issue_43106_gating_of_unstable
 
 error: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-unstable.rs:17:1

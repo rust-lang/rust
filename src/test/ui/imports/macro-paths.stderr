@@ -36,7 +36,7 @@ LL | | }
    | |_^
    = note: macro-expanded items do not shadow when used in a macro invocation path
 
-error[E0601]: main function not found
+error[E0601]: main function not found in crate macro_paths
 
 error: aborting due to 3 previous errors
 

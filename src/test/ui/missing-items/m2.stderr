@@ -1,4 +1,4 @@
-error[E0601]: main function not found
+error[E0601]: main function not found in crate m2
 
 error[E0046]: not all trait items implemented, missing: `CONSTANT`, `Type`, `method`
   --> $DIR/m2.rs:19:1

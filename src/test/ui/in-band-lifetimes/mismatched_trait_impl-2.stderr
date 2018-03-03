@@ -1,4 +1,4 @@
-error[E0601]: main function not found
+error[E0601]: main function not found in crate mismatched_trait_impl_2
 
 error[E0495]: cannot infer an appropriate lifetime for lifetime parameter in generic type due to conflicting requirements
   --> $DIR/mismatched_trait_impl-2.rs:18:5

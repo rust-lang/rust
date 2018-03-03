@@ -1,4 +1,4 @@
-error[E0601]: main function not found
+error[E0601]: main function not found in crate issue_43106_gating_of_test
 
 error: aborting due to previous error
 

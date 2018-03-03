@@ -1,4 +1,4 @@
-error[E0601]: main function not found
+error[E0601]: main function not found in crate E0522
 
 error[E0522]: definition of an unknown language item: `cookie`
   --> $DIR/E0522.rs:13:1

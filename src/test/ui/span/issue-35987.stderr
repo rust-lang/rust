@@ -8,7 +8,7 @@ help: possible better candidate is found in another module, you can import it in
 LL | use std::ops::Add;
    |
 
-error[E0601]: main function not found
+error[E0601]: main function not found in crate issue_35987
 
 error: cannot continue compilation due to previous error
 

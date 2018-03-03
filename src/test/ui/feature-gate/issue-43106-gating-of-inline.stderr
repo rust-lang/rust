@@ -1,4 +1,4 @@
-error[E0601]: main function not found
+error[E0601]: main function not found in crate issue_43106_gating_of_inline
 
 error[E0518]: attribute should be applied to function
   --> $DIR/issue-43106-gating-of-inline.rs:21:1

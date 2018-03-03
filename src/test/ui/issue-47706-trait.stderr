@@ -1,4 +1,4 @@
-error[E0601]: main function not found
+error[E0601]: main function not found in crate issue_47706_trait
 
 error[E0593]: function is expected to take a single 0-tuple as argument, but it takes 2 distinct arguments
   --> $DIR/issue-47706-trait.rs:13:20

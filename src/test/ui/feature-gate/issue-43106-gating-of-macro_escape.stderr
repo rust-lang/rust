@@ -6,7 +6,7 @@ LL | #![macro_escape]
    |
    = help: consider an outer attribute, #[macro_use] mod ...
 
-error[E0601]: main function not found
+error[E0601]: main function not found in crate issue_43106_gating_of_macro_escape
 
 error: aborting due to previous error
 

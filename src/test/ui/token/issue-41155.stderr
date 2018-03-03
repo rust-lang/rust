@@ -12,7 +12,7 @@ error[E0412]: cannot find type `S` in this scope
 LL | impl S { //~ ERROR cannot find type
    |      ^ not found in this scope
 
-error[E0601]: main function not found
+error[E0601]: main function not found in crate issue_41155
 
 error: aborting due to 3 previous errors
 
