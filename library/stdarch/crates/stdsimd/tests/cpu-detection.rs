@@ -19,9 +19,17 @@ fn arm_linux() {
 #[test]
 #[cfg(all(target_arch = "aarch64", target_os = "linux"))]
 fn aarch64_linux() {
+    println!("fp: {}", is_target_feature_detected!("fp"));
+    println!("fp16: {}", is_target_feature_detected!("fp16"));
     println!("neon: {}", is_target_feature_detected!("neon"));
     println!("asimd: {}", is_target_feature_detected!("asimd"));
-    println!("pmull: {}", is_target_feature_detected!("pmull"));
+    println!("sve: {}", is_target_feature_detected!("sve"));
+    println!("crc: {}", is_target_feature_detected!("crc"));
+    println!("crypto: {}", is_target_feature_detected!("crypto"));
+    println!("lse: {}", is_target_feature_detected!("lse"));
+    println!("rdm: {}", is_target_feature_detected!("rdm"));
+    println!("rcpc: {}", is_target_feature_detected!("rcpc"));
+    println!("dotprod: {}", is_target_feature_detected!("dotprod"));
 }
 
 #[test]
