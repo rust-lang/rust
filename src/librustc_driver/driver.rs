@@ -20,7 +20,7 @@ use rustc::session::config::{self, Input, OutputFilenames, OutputType};
 use rustc::session::search_paths::PathKind;
 use rustc::lint;
 use rustc::middle::{self, reachable, resolve_lifetime, stability};
-use rustc::middle::cstore::CrateStore;
+use rustc::middle::cstore::CrateStoreDyn;
 use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, AllArenas, Resolutions, TyCtxt};
 use rustc::traits;
@@ -1047,7 +1047,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(
     trans: &TransCrate,
     control: &CompileController,
     sess: &'tcx Session,
-    cstore: &'tcx CrateStore,
+    cstore: &'tcx CrateStoreDyn,
     hir_map: hir_map::Map<'tcx>,
     mut analysis: ty::CrateAnalysis,
     resolutions: Resolutions,

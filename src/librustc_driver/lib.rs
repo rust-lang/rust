@@ -27,6 +27,8 @@
 #![feature(rustc_stack_internals)]
 #![feature(no_debug)]
 
+#![recursion_limit="256"]
+
 extern crate arena;
 extern crate getopts;
 extern crate graphviz;

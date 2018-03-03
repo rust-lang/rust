@@ -26,7 +26,7 @@ use lint::{self, Lint};
 use ich::{StableHashingContext, NodeIdHashingMode};
 use infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
 use infer::outlives::free_region_map::FreeRegionMap;
-use middle::cstore::{CrateStore, LinkMeta};
+use middle::cstore::{CrateStoreDyn, LinkMeta};
 use middle::cstore::EncodedMetadata;
 use middle::lang_items;
 use middle::resolve_lifetime::{self, ObjectLifetimeDefault};
@@ -852,7 +852,7 @@ pub struct GlobalCtxt<'tcx> {
     global_arenas: &'tcx GlobalArenas<'tcx>,
     global_interners: CtxtInterners<'tcx>,
 
-    cstore: &'tcx dyn CrateStore,
+    cstore: &'tcx CrateStoreDyn,
 
     pub sess: &'tcx Session,
 
@@ -1188,7 +1188,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// value (types, substs, etc.) can only be used while `ty::tls` has a valid
     /// reference to the context, to allow formatting values that need it.
     pub fn create_and_enter<F, R>(s: &'tcx Session,
-                                  cstore: &'tcx dyn CrateStore,
+                                  cstore: &'tcx CrateStoreDyn,
                                   local_providers: ty::maps::Providers<'tcx>,
                                   extern_providers: ty::maps::Providers<'tcx>,
                                   arenas: &'tcx AllArenas<'tcx>,
