@@ -3,6 +3,7 @@
 use std::borrow::Cow;
 use rustc::hir::*;
 use rustc::hir::map::NodeItem;
+use rustc::hir::QPath;
 use rustc::lint::*;
 use rustc::ty;
 use syntax::ast::NodeId;
@@ -214,20 +215,32 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId, opt_body_id: Option<
                     );
                 }
             } else if match_type(cx, ty, &paths::COW) {
-                let as_str = format!("{}", snippet_opt(cx, arg.span).unwrap());
-                let mut cc = as_str.chars();
-                cc.next();
-                let replacement: String = cc.collect();
-
-                span_lint_and_then(
-                    cx,
-                    PTR_ARG,
-                    arg.span,
-                    "using a reference to `Cow` is not recommended.",
-                    |db| {
-                        db.span_suggestion(arg.span, "change this to", replacement);
-                    },
-                );
+                if_chain! {
+                    if let TyRptr(_, MutTy { ref ty, ..} ) = arg.node;
+                    if let TyPath(ref path) = ty.node;
+                    if let QPath::Resolved(None, ref pp) = *path;
+                    if let [ref bx] = *pp.segments;
+                    if let Some(ref params) = bx.parameters;
+                    if !params.parenthesized;
+                    if let [ref inner] = *params.types;
+                    then {
+                        let replacement = snippet_opt(cx, inner.span);
+                        match replacement {
+                            Some(r) => {
+                                span_lint_and_then(
+                                    cx,
+                                    PTR_ARG,
+                                    arg.span,
+                                    "using a reference to `Cow` is not recommended.",
+                                    |db| {
+                                        db.span_suggestion(arg.span, "change this to", "&".to_owned() + &r);
+                                    },
+                                );
+                            },
+                            None => (),
+                        }
+                    }
+                }
             }
         }
     }
