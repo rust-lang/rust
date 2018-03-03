@@ -4764,9 +4764,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // variables. If the user provided some types, we may still need
         // to add defaults. If the user provided *too many* types, that's
         // a problem.
-        self.check_path_parameter_count(span, &mut type_segment, false);
-        self.check_path_parameter_count(span, &mut fn_segment, false);
-        self.check_impl_trait(span, &mut fn_segment);
+        let supress_mismatch = self.check_impl_trait(span, &mut fn_segment);
+        self.check_path_parameter_count(span, &mut type_segment, false, supress_mismatch);
+        self.check_path_parameter_count(span, &mut fn_segment, false, supress_mismatch);
 
         let (fn_start, has_self) = match (type_segment, fn_segment) {
             (_, Some((_, generics))) => {
@@ -4919,7 +4919,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn check_path_parameter_count(&self,
                                   span: Span,
                                   segment: &mut Option<(&hir::PathSegment, &ty::Generics)>,
-                                  is_method_call: bool) {
+                                  is_method_call: bool,
+                                  supress_mismatch_error: bool) {
         let (lifetimes, types, infer_types, bindings) = segment.map_or(
             (&[][..], &[][..], true, &[][..]),
             |(s, _)| s.parameters.as_ref().map_or(
@@ -4959,7 +4960,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // type parameters, we force instantiate_value_path to
             // use inference variables instead of the provided types.
             *segment = None;
-        } else if types.len() < required_len && !infer_types {
+        } else if types.len() < required_len && !infer_types && !supress_mismatch_error {
             let expected_text = count_type_params(required_len);
             let actual_text = count_type_params(types.len());
             struct_span_err!(self.tcx.sess, span, E0089,
@@ -5026,10 +5027,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// Report error if there is an explicit type parameter when using `impl Trait`.
     fn check_impl_trait(&self,
                         span: Span,
-                        segment: &mut Option<(&hir::PathSegment, &ty::Generics)>) {
+                        segment: &mut Option<(&hir::PathSegment, &ty::Generics)>)
+                        -> bool {
         use hir::SyntheticTyParamKind::*;
 
-        segment.map(|(path_segment, generics)| {
+        let segment = segment.map(|(path_segment, generics)| {
             let explicit = !path_segment.infer_types;
             let impl_trait = generics.types.iter()
                                            .any(|ty_param| {
@@ -5050,7 +5052,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 err.emit();
             }
+
+            impl_trait
         });
+
+        segment.unwrap_or(false)
     }
 
     // Resolves `typ` by a single level if `typ` is a type variable.
