@@ -117,7 +117,6 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                 assert!(!obligation.has_escaping_regions());
                 match obligation.predicate {
                     ty::Predicate::Trait(..) |
-                    ty::Predicate::Equate(..) |
                     ty::Predicate::Subtype(..) |
                     ty::Predicate::Projection(..) |
                     ty::Predicate::ClosureKind(..) |
@@ -204,7 +203,6 @@ pub fn explicit_outlives_bounds<'tcx>(
         .filter_map(move |predicate| match predicate {
             ty::Predicate::Projection(..) |
             ty::Predicate::Trait(..) |
-            ty::Predicate::Equate(..) |
             ty::Predicate::Subtype(..) |
             ty::Predicate::WellFormed(..) |
             ty::Predicate::ObjectSafe(..) |

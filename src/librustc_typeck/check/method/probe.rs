@@ -635,7 +635,6 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                             _ => None,
                         }
                     }
-                    ty::Predicate::Equate(..) |
                     ty::Predicate::Subtype(..) |
                     ty::Predicate::Projection(..) |
                     ty::Predicate::RegionOutlives(..) |

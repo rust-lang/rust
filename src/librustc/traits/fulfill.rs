@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use infer::{RegionObligation, InferCtxt, InferOk};
+use infer::{RegionObligation, InferCtxt};
 use ty::{self, Ty, TypeFoldable, ToPolyTraitRef, ToPredicate};
 use ty::error::ExpectedFound;
 use rustc_data_structures::obligation_forest::{ObligationForest, Error};
@@ -377,17 +377,6 @@ fn process_predicate<'a, 'gcx, 'tcx>(
 
                     Err(CodeSelectionError(selection_err))
                 }
-            }
-        }
-
-        ty::Predicate::Equate(ref binder) => {
-            match selcx.infcx().equality_predicate(&obligation.cause,
-                                                   obligation.param_env,
-                                                   binder) {
-                Ok(InferOk { obligations, value: () }) => {
-                    Ok(Some(obligations))
-                },
-                Err(_) => Err(CodeSelectionError(Unimplemented)),
             }
         }
 

@@ -204,9 +204,6 @@ pub enum ObligationCauseCode<'tcx> {
     /// Computing common supertype of an if expression with no else counter-part
     IfExpressionWithNoElse,
 
-    /// `where a == b`
-    EquatePredicate,
-
     /// `main` has wrong type
     MainFunctionType,
 

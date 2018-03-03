@@ -236,7 +236,6 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             }
             super::IfExpression => Some(super::IfExpression),
             super::IfExpressionWithNoElse => Some(super::IfExpressionWithNoElse),
-            super::EquatePredicate => Some(super::EquatePredicate),
             super::MainFunctionType => Some(super::MainFunctionType),
             super::StartFunctionType => Some(super::StartFunctionType),
             super::IntrinsicType => Some(super::IntrinsicType),
@@ -512,7 +511,6 @@ impl<'tcx> TypeFoldable<'tcx> for traits::ObligationCauseCode<'tcx> {
             super::MatchExpressionArm { arm_span: _, source: _ } |
             super::IfExpression |
             super::IfExpressionWithNoElse |
-            super::EquatePredicate |
             super::MainFunctionType |
             super::StartFunctionType |
             super::IntrinsicType |
@@ -561,7 +559,6 @@ impl<'tcx> TypeFoldable<'tcx> for traits::ObligationCauseCode<'tcx> {
             super::MatchExpressionArm { arm_span: _, source: _ } |
             super::IfExpression |
             super::IfExpressionWithNoElse |
-            super::EquatePredicate |
             super::MainFunctionType |
             super::StartFunctionType |
             super::IntrinsicType |

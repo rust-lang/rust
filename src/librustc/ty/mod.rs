@@ -912,9 +912,6 @@ pub enum Predicate<'tcx> {
     /// would be the type parameters.
     Trait(PolyTraitPredicate<'tcx>),
 
-    /// where `T1 == T2`.
-    Equate(PolyEquatePredicate<'tcx>),
-
     /// where 'a : 'b
     RegionOutlives(PolyRegionOutlivesPredicate<'tcx>),
 
@@ -1023,8 +1020,6 @@ impl<'a, 'gcx, 'tcx> Predicate<'tcx> {
         match *self {
             Predicate::Trait(ty::Binder(ref data)) =>
                 Predicate::Trait(ty::Binder(data.subst(tcx, substs))),
-            Predicate::Equate(ty::Binder(ref data)) =>
-                Predicate::Equate(ty::Binder(data.subst(tcx, substs))),
             Predicate::Subtype(ty::Binder(ref data)) =>
                 Predicate::Subtype(ty::Binder(data.subst(tcx, substs))),
             Predicate::RegionOutlives(ty::Binder(ref data)) =>
@@ -1071,10 +1066,6 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
         self.0.def_id()
     }
 }
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
-pub struct EquatePredicate<'tcx>(pub Ty<'tcx>, pub Ty<'tcx>); // `0 == 1`
-pub type PolyEquatePredicate<'tcx> = ty::Binder<EquatePredicate<'tcx>>;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct OutlivesPredicate<A,B>(pub A, pub B); // `A : B`
@@ -1166,12 +1157,6 @@ impl<'tcx> ToPredicate<'tcx> for PolyTraitRef<'tcx> {
     }
 }
 
-impl<'tcx> ToPredicate<'tcx> for PolyEquatePredicate<'tcx> {
-    fn to_predicate(&self) -> Predicate<'tcx> {
-        Predicate::Equate(self.clone())
-    }
-}
-
 impl<'tcx> ToPredicate<'tcx> for PolyRegionOutlivesPredicate<'tcx> {
     fn to_predicate(&self) -> Predicate<'tcx> {
         Predicate::RegionOutlives(self.clone())
@@ -1198,9 +1183,6 @@ impl<'tcx> Predicate<'tcx> {
         let vec: Vec<_> = match *self {
             ty::Predicate::Trait(ref data) => {
                 data.skip_binder().input_types().collect()
-            }
-            ty::Predicate::Equate(ty::Binder(ref data)) => {
-                vec![data.0, data.1]
             }
             ty::Predicate::Subtype(ty::Binder(SubtypePredicate { a, b, a_is_expected: _ })) => {
                 vec![a, b]
@@ -1242,7 +1224,6 @@ impl<'tcx> Predicate<'tcx> {
                 Some(t.to_poly_trait_ref())
             }
             Predicate::Projection(..) |
-            Predicate::Equate(..) |
             Predicate::Subtype(..) |
             Predicate::RegionOutlives(..) |
             Predicate::WellFormed(..) |
@@ -1262,7 +1243,6 @@ impl<'tcx> Predicate<'tcx> {
             }
             Predicate::Trait(..) |
             Predicate::Projection(..) |
-            Predicate::Equate(..) |
             Predicate::Subtype(..) |
             Predicate::RegionOutlives(..) |
             Predicate::WellFormed(..) |
