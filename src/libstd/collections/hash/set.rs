@@ -1097,7 +1097,7 @@ impl<'a, K> ExactSizeIterator for Iter<'a, K> {
         self.iter.len()
     }
 }
-#[stable(feature = "fused", since = "1.25.0")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, K> FusedIterator for Iter<'a, K> {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -1124,7 +1124,7 @@ impl<K> ExactSizeIterator for IntoIter<K> {
         self.iter.len()
     }
 }
-#[stable(feature = "fused", since = "1.25.0")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<K> FusedIterator for IntoIter<K> {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -1155,7 +1155,7 @@ impl<'a, K> ExactSizeIterator for Drain<'a, K> {
         self.iter.len()
     }
 }
-#[stable(feature = "fused", since = "1.25.0")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, K> FusedIterator for Drain<'a, K> {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -1208,7 +1208,7 @@ impl<'a, T, S> fmt::Debug for Intersection<'a, T, S>
     }
 }
 
-#[stable(feature = "fused", since = "1.25.0")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, T, S> FusedIterator for Intersection<'a, T, S>
     where T: Eq + Hash,
           S: BuildHasher
@@ -1244,7 +1244,7 @@ impl<'a, T, S> Iterator for Difference<'a, T, S>
     }
 }
 
-#[stable(feature = "fused", since = "1.25.0")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, T, S> FusedIterator for Difference<'a, T, S>
     where T: Eq + Hash,
           S: BuildHasher
@@ -1283,7 +1283,7 @@ impl<'a, T, S> Iterator for SymmetricDifference<'a, T, S>
     }
 }
 
-#[stable(feature = "fused", since = "1.25.0")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, T, S> FusedIterator for SymmetricDifference<'a, T, S>
     where T: Eq + Hash,
           S: BuildHasher
@@ -1307,7 +1307,7 @@ impl<'a, T, S> Clone for Union<'a, T, S> {
     }
 }
 
-#[stable(feature = "fused", since = "1.25.0")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, T, S> FusedIterator for Union<'a, T, S>
     where T: Eq + Hash,
           S: BuildHasher

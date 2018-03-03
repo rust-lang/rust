@@ -2254,5 +2254,5 @@ impl<'a> DoubleEndedIterator for Drain<'a> {
     }
 }
 
-#[stable(feature = "fused", since = "1.25.0")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a> FusedIterator for Drain<'a> {}
