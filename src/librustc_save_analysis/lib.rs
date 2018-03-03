@@ -15,6 +15,8 @@
 #![cfg_attr(stage0, feature(macro_lifetime_matcher))]
 #![allow(unused_attributes)]
 
+#![recursion_limit="256"]
+
 #[macro_use]
 extern crate rustc;
 

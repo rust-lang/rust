@@ -36,6 +36,8 @@
 #![feature(lang_items)]
 #![feature(optin_builtin_traits)]
 
+#![recursion_limit="256"]
+
 extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc_errors;
