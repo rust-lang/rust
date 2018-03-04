@@ -11,6 +11,7 @@ test = false
 
 [dependencies]
 bitflags = "1.0"
+cc = "1.0.1"
 flate2 = "1.0"
 jobserver = "0.1.5"
 libc = "0.2"
@@ -21,7 +22,6 @@ rustc-demangle = "0.1.4"
 rustc_allocator = { path = "../librustc_allocator" }
 rustc_apfloat = { path = "../librustc_apfloat" }
 rustc_back = { path = "../librustc_back" }
-rustc_binaryen = { path = "../librustc_binaryen" }
 rustc_const_math = { path = "../librustc_const_math" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }
@@ -34,9 +34,6 @@ serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
 tempdir = "0.3"
-
-[target."cfg(windows)".dependencies]
-cc = "1.0.1"
 
 [features]
 # Used to communicate the feature to `rustc_back` in the same manner that the

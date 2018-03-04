@@ -79,6 +79,9 @@ pub fn find(build: &mut Build) {
         let mut cfg = cc::Build::new();
         cfg.cargo_metadata(false).opt_level(0).warnings(false).debug(false)
            .target(&target).host(&build.build);
+        if target.contains("msvc") {
+            cfg.static_crt(true);
+        }
 
         let config = build.config.target_config.get(&target);
         if let Some(cc) = config.and_then(|c| c.cc.as_ref()) {

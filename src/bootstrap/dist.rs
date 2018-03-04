@@ -28,7 +28,7 @@ use build_helper::output;
 
 use {Build, Compiler, Mode};
 use channel;
-use util::{cp_r, libdir, is_dylib, cp_filtered, copy, replace_in_file};
+use util::{cp_r, libdir, is_dylib, cp_filtered, copy, replace_in_file, exe};
 use builder::{Builder, RunConfig, ShouldRun, Step};
 use compile;
 use native;
@@ -443,6 +443,22 @@ impl Step for Rustc {
             t!(fs::create_dir_all(&backends_dst));
             cp_r(&backends_src, &backends_dst);
 
+            // Copy over lld if it's there
+            if builder.config.lld_enabled {
+                let exe = exe("lld", &compiler.host);
+                let src = builder.sysroot_libdir(compiler, host)
+                    .parent()
+                    .unwrap()
+                    .join("bin")
+                    .join(&exe);
+                let dst = image.join("lib/rustlib")
+                    .join(&*host)
+                    .join("bin")
+                    .join(&exe);
+                t!(fs::create_dir_all(&dst.parent().unwrap()));
+                copy(&src, &dst);
+            }
+
             // Man pages
             t!(fs::create_dir_all(image.join("share/man/man1")));
             let man_src = build.src.join("src/doc/man");
@@ -590,8 +606,10 @@ impl Step for Std {
         let mut src = builder.sysroot_libdir(compiler, target).to_path_buf();
         src.pop(); // Remove the trailing /lib folder from the sysroot_libdir
         cp_filtered(&src, &dst, &|path| {
-            path.file_name().and_then(|s| s.to_str()) !=
-                Some(build.config.rust_codegen_backends_dir.as_str())
+            let name = path.file_name().and_then(|s| s.to_str());
+            name != Some(build.config.rust_codegen_backends_dir.as_str()) &&
+                name != Some("bin")
+
         });
 
         let mut cmd = rust_installer(builder);
