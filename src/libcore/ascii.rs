@@ -57,6 +57,8 @@ pub struct EscapeDefault {
 /// # Examples
 ///
 /// ```
+/// use core::ascii;
+///
 /// let escaped = ascii::escape_default(b'0').next().unwrap();
 /// assert_eq!(b'0', escaped);
 ///
@@ -98,7 +100,7 @@ pub struct EscapeDefault {
 /// assert_eq!(b'd', escaped.next().unwrap());
 /// ```
 #[unstable(feature = "core_ascii", issue = "46409")]
-pub fn escape_ascii(c: u8) -> EscapeDefault {
+pub fn escape_default(c: u8) -> EscapeDefault {
     let (data, len) = match c {
         b'\t' => ([b'\\', b't', 0, 0], 2),
         b'\r' => ([b'\\', b'r', 0, 0], 2),
