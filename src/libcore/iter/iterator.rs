@@ -2478,12 +2478,14 @@ pub trait Iterator {
     /// Basic usage on collection passed by value
     ///
     /// ```
+    /// #![feature(collect_into)]
     /// let result = (3..5).collect_into(vec![1, 2]);
     /// assert_eq!(vec![1, 2, 3, 4], result);
     /// ```
     /// More complex usage on collection passed by mutable reference
     ///
     /// ```
+    /// #![feature(collect_into)]
     /// let primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43];
     /// let mut vec_3 = vec![33, 53];
     /// let vec_103 = primes.into_iter()
@@ -2499,6 +2501,7 @@ pub trait Iterator {
     /// Collecting part of iterator into a vector with manually set capacity
     ///
     /// ```
+    /// #![feature(collect_into)]
     /// let mut iter = 1..5;
     /// let first_2 = iter.by_ref()
     ///     .take(2)
