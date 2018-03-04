@@ -2071,35 +2071,55 @@ impl str {
             return String::new();
         }
 
-        // n = 2^j + k (2^j > k)
+        // If `n` is larger than zero, it can be split as
+        // `n = 2^expn + rem (2^expn > rem, expn >= 0, rem >= 0)`.
+        // `2^expn` is the number represented by the leftmost '1' bit of `n`,
+        // and `rem` is the remaining part of `n`.
 
-        // 2^j:
-        let mut s = Vec::with_capacity(self.len() * n);
-        s.extend(self.as_bytes());
-        let mut m = n >> 1;
-        while m > 0 {
-            let len = s.len();
-            unsafe {
-                ptr::copy_nonoverlapping(s.as_ptr(), (s.as_mut_ptr() as *mut u8).add(len), len);
-                s.set_len(len * 2);
+        // Using `Vec` to access `set_len()`.
+        let mut buf = Vec::with_capacity(self.len() * n);
+
+        // `2^expn` repetition is done by doubling `buf` `expn`-times.
+        buf.extend(self.as_bytes());
+        {
+            let mut m = n >> 1;
+            // If `m > 0`, there are remaining bits up to the leftmost '1'.
+            while m > 0 {
+                // `buf.extend(buf)`:
+                unsafe {
+                    ptr::copy_nonoverlapping(
+                        buf.as_ptr(),
+                        (buf.as_mut_ptr() as *mut u8).add(buf.len()),
+                        buf.len(),
+                    );
+                    // `buf` has capacity of `self.len() * n`.
+                    let buf_len = buf.len();
+                    buf.set_len(buf_len * 2);
+                }
+
+                m >>= 1;
             }
-            m >>= 1;
         }
 
-        // k:
-        let res_len = n * self.len();
-        if res_len > s.len() {
+        // `rem` (`= n - 2^expn`) repetition is done by copying
+        // first `rem` repetitions from `buf` itself.
+        let rem_len = self.len() * n - buf.len(); // `self.len() * rem`
+        if rem_len > 0 {
+            // `buf.extend(buf[0 .. rem_len])`:
             unsafe {
+                // This is non-overlapping since `2^expn > rem`.
                 ptr::copy_nonoverlapping(
-                    s.as_ptr(),
-                    (s.as_mut_ptr() as *mut u8).add(s.len()),
-                    res_len - s.len(),
+                    buf.as_ptr(),
+                    (buf.as_mut_ptr() as *mut u8).add(buf.len()),
+                    rem_len,
                 );
-                s.set_len(res_len);
+                // `buf.len() + rem_len` equals to `buf.capacity()` (`self.len() * n`).
+                let buf_len = buf.len();
+                buf.set_len(buf_len + rem_len);
             }
         }
 
-        unsafe { String::from_utf8_unchecked(s) }
+        unsafe { String::from_utf8_unchecked(buf) }
     }
 
     /// Checks if all characters in this string are within the ASCII range.
