@@ -23,7 +23,7 @@ use attr::filter_inline_attrs;
 use codemap::LineRangeUtils;
 use comment::combine_strs_with_missing_comments;
 use imports::{path_to_imported_ident, rewrite_import};
-use items::{rewrite_extern_crate, rewrite_mod};
+use items::{is_mod_decl, rewrite_extern_crate, rewrite_mod};
 use lists::{itemize_list, write_list, ListFormatting};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
@@ -234,7 +234,7 @@ impl ReorderableItemKind {
         match item.node {
             _ if contains_macro_use_attr(item) => ReorderableItemKind::Other,
             ast::ItemKind::ExternCrate(..) => ReorderableItemKind::ExternCrate,
-            ast::ItemKind::Mod(..) => ReorderableItemKind::Mod,
+            ast::ItemKind::Mod(..) if is_mod_decl(item) => ReorderableItemKind::Mod,
             ast::ItemKind::Use(..) => ReorderableItemKind::Use,
             _ => ReorderableItemKind::Other,
         }
