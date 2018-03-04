@@ -24,5 +24,5 @@ LL |     s.x += 1; //~ ERROR cannot assign
 
 error: aborting due to 3 previous errors
 
-You've got a few errors: E0594, E0596
-If you want more information on an error, try using "rustc --explain E0594"
+Some errors occurred: E0594, E0596.
+For more information about an error, try `rustc --explain E0594`.

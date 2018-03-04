@@ -6,4 +6,4 @@ LL |     let x: typeof(92) = 92; //~ ERROR E0516
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0516"
+For more information about this error, try `rustc --explain E0516`.

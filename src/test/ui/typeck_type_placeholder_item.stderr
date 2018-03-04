@@ -204,4 +204,4 @@ LL |         fn clone_from(&mut self, other: _) { *self = FnTest9; }
 
 error: aborting due to 34 previous errors
 
-If you want more information on this error, try using "rustc --explain E0121"
+For more information about this error, try `rustc --explain E0121`.

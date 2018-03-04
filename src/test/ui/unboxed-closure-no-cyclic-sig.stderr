@@ -10,4 +10,4 @@ LL |     g(|_| {  }); //~ ERROR closure/generator type that references itself
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0644"
+For more information about this error, try `rustc --explain E0644`.

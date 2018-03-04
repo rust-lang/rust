@@ -48,4 +48,4 @@ LL |         &(u8,)::AssocItem => {}
 
 error: aborting due to 8 previous errors
 
-If you want more information on this error, try using "rustc --explain E0599"
+For more information about this error, try `rustc --explain E0599`.

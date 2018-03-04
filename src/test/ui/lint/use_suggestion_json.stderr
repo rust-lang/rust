@@ -384,7 +384,7 @@ LL | use std::collections::hash_map::Iter;
    |
 and 8 other candidates
 
-If you want more information on this error, try using /"rustc --explain E0412/"
+For more information about this error, try `rustc --explain E0412`.
 "
 }
 {

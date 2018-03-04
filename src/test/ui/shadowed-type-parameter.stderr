@@ -26,4 +26,4 @@ LL |     fn shadow_in_method<T>(&self) {}
 
 error: aborting due to 3 previous errors
 
-If you want more information on this error, try using "rustc --explain E0194"
+For more information about this error, try `rustc --explain E0194`.

@@ -64,4 +64,4 @@ LL |         OhNo, //~ ERROR enum discriminant overflowed [E0370]
 
 error: aborting due to 8 previous errors
 
-If you want more information on this error, try using "rustc --explain E0370"
+For more information about this error, try `rustc --explain E0370`.

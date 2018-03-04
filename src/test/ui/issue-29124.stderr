@@ -16,4 +16,4 @@ LL |     func.x();
 
 error: aborting due to 2 previous errors
 
-If you want more information on this error, try using "rustc --explain E0599"
+For more information about this error, try `rustc --explain E0599`.

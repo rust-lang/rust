@@ -30,4 +30,4 @@ LL |     Value(T), //~ ERROR the trait bound `T: std::marker::Sized` is not sati
 
 error: aborting due to 3 previous errors
 
-If you want more information on this error, try using "rustc --explain E0277"
+For more information about this error, try `rustc --explain E0277`.

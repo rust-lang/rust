@@ -6,4 +6,4 @@ LL | use a::{b1::{C1, C2}, B2};
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0432"
+For more information about this error, try `rustc --explain E0432`.

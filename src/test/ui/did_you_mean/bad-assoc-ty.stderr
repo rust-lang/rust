@@ -104,5 +104,5 @@ LL | type H = Fn(u8) -> (u8)::Output;
 
 error: aborting due to 15 previous errors
 
-You've got a few errors: E0121, E0223
-If you want more information on an error, try using "rustc --explain E0121"
+Some errors occurred: E0121, E0223.
+For more information about an error, try `rustc --explain E0121`.

@@ -127,18 +127,16 @@ impl Drop for EmitterWriter {
             if error_codes.len() > 1 {
                 let limit = if error_codes.len() > 9 { 9 } else { error_codes.len() };
                 writeln!(self.dst,
-                         "You've got a few errors: {}{}",
+                         "Some errors occurred: {}{}",
                          error_codes[..limit].join(", "),
-                         if error_codes.len() > 9 { "..." } else { "" }
+                         if error_codes.len() > 9 { "..." } else { "." }
                         ).expect("failed to give tips...");
                 writeln!(self.dst,
-                         "If you want more information on an error, try using \
-                          \"rustc --explain {}\"",
+                         "For more information about an error, try `rustc --explain {}`.",
                          &error_codes[0]).expect("failed to give tips...");
             } else {
                 writeln!(self.dst,
-                         "If you want more information on this error, try using \
-                          \"rustc --explain {}\"",
+                         "For more information about this error, try `rustc --explain {}`.",
                          &error_codes[0]).expect("failed to give tips...");
             }
             self.dst.flush().expect("failed to emit errors");

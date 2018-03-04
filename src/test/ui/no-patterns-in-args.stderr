@@ -30,5 +30,5 @@ LL | type A2 = fn(&arg: u8); //~ ERROR patterns aren't allowed in function point
 
 error: aborting due to 5 previous errors
 
-You've got a few errors: E0130, E0561
-If you want more information on an error, try using "rustc --explain E0130"
+Some errors occurred: E0130, E0561.
+For more information about an error, try `rustc --explain E0130`.
