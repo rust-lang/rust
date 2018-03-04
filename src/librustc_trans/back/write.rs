@@ -23,7 +23,6 @@ use rustc::session::config::{self, OutputFilenames, OutputType, Passes, SomePass
                              AllPasses, Sanitizer, Lto};
 use rustc::session::Session;
 use rustc::util::nodemap::FxHashMap;
-use rustc_back::LinkerFlavor;
 use time_graph::{self, TimeGraph, Timeline};
 use llvm;
 use llvm::{ModuleRef, TargetMachineRef, PassManagerRef, DiagnosticInfoRef};
@@ -344,9 +343,7 @@ pub struct CodegenContext {
     pub tm_factory: Arc<Fn() -> Result<TargetMachineRef, String> + Send + Sync>,
     pub msvc_imps_needed: bool,
     pub target_pointer_width: String,
-    binaryen_linker: bool,
     debuginfo: config::DebugInfoLevel,
-    wasm_import_memory: bool,
 
     // Number of cgus excluding the allocator/metadata modules
     pub total_cgus: usize,
@@ -639,13 +636,6 @@ unsafe fn codegen(cgcx: &CodegenContext,
         f(cpm)
     }
 
-    // If we're going to generate wasm code from the assembly that llvm
-    // generates then we'll be transitively affecting a ton of options below.
-    // This only happens on the wasm target now.
-    let asm2wasm = cgcx.binaryen_linker &&
-        !cgcx.crate_types.contains(&config::CrateTypeRlib) &&
-        mtrans.kind == ModuleKind::Regular;
-
     // If we don't have the integrated assembler, then we need to emit asm
     // from LLVM and use `gcc` to create the object file.
     let asm_to_obj = config.emit_obj && config.no_integrated_as;
@@ -654,10 +644,10 @@ unsafe fn codegen(cgcx: &CodegenContext,
     // just llvm bitcode. In that case write bitcode, and possibly
     // delete the bitcode if it wasn't requested. Don't generate the
     // machine code, instead copy the .o file from the .bc
-    let write_bc = config.emit_bc || (config.obj_is_bitcode && !asm2wasm);
-    let rm_bc = !config.emit_bc && config.obj_is_bitcode && !asm2wasm;
-    let write_obj = config.emit_obj && !config.obj_is_bitcode && !asm2wasm && !asm_to_obj;
-    let copy_bc_to_obj = config.emit_obj && config.obj_is_bitcode && !asm2wasm;
+    let write_bc = config.emit_bc || config.obj_is_bitcode;
+    let rm_bc = !config.emit_bc && config.obj_is_bitcode;
+    let write_obj = config.emit_obj && !config.obj_is_bitcode && !asm_to_obj;
+    let copy_bc_to_obj = config.emit_obj && config.obj_is_bitcode;
 
     let bc_out = cgcx.output_filenames.temp_path(OutputType::Bitcode, module_name);
     let obj_out = cgcx.output_filenames.temp_path(OutputType::Object, module_name);
@@ -736,13 +726,13 @@ unsafe fn codegen(cgcx: &CodegenContext,
             timeline.record("ir");
         }
 
-        if config.emit_asm || (asm2wasm && config.emit_obj) || asm_to_obj {
+        if config.emit_asm || asm_to_obj {
             let path = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
 
             // We can't use the same module for asm and binary output, because that triggers
             // various errors like invalid IR or broken binaries, so we might have to clone the
             // module to produce the asm output
-            let llmod = if config.emit_obj && !asm2wasm {
+            let llmod = if config.emit_obj {
                 llvm::LLVMCloneModule(llmod)
             } else {
                 llmod
@@ -751,24 +741,13 @@ unsafe fn codegen(cgcx: &CodegenContext,
                 write_output_file(diag_handler, tm, cpm, llmod, &path,
                                   llvm::FileType::AssemblyFile)
             })?;
-            if config.emit_obj && !asm2wasm {
+            if config.emit_obj {
                 llvm::LLVMDisposeModule(llmod);
             }
             timeline.record("asm");
         }
 
-        if asm2wasm && config.emit_obj {
-            let assembly = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
-            let suffix = ".wasm.map"; // FIXME use target suffix
-            let map = cgcx.output_filenames.path(OutputType::Exe)
-                .with_extension(&suffix[1..]);
-            binaryen_assemble(cgcx, diag_handler, &assembly, &obj_out, &map);
-            timeline.record("binaryen");
-
-            if !config.emit_asm {
-                drop(fs::remove_file(&assembly));
-            }
-        } else if write_obj {
+        if write_obj {
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
                 write_output_file(diag_handler, tm, cpm, llmod, &obj_out,
                                   llvm::FileType::ObjectFile)
@@ -806,49 +785,6 @@ unsafe fn codegen(cgcx: &CodegenContext,
                                    config.emit_bc,
                                    config.emit_bc_compressed,
                                    &cgcx.output_filenames))
-}
-
-/// Translates the LLVM-generated `assembly` on the filesystem into a wasm
-/// module using binaryen, placing the output at `object`.
-///
-/// In this case the "object" is actually a full and complete wasm module. We
-/// won't actually be doing anything else to the output for now. This is all
-/// pretty janky and will get removed as soon as a linker for wasm exists.
-fn binaryen_assemble(cgcx: &CodegenContext,
-                     handler: &Handler,
-                     assembly: &Path,
-                     object: &Path,
-                     map: &Path) {
-    use rustc_binaryen::{Module, ModuleOptions};
-
-    let input = fs::read(&assembly).and_then(|contents| {
-        Ok(CString::new(contents)?)
-    });
-    let mut options = ModuleOptions::new();
-    if cgcx.debuginfo != config::NoDebugInfo {
-        options.debuginfo(true);
-        let map_file_name = map.file_name().unwrap();
-        options.source_map_url(map_file_name.to_str().unwrap());
-    }
-
-    options.stack(1024 * 1024);
-    options.import_memory(cgcx.wasm_import_memory);
-    let assembled = input.and_then(|input| {
-        Module::new(&input, &options)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
-    });
-    let err = assembled.and_then(|binary| {
-        fs::write(&object, binary.data()).and_then(|()| {
-            if cgcx.debuginfo != config::NoDebugInfo {
-                fs::write(map, binary.source_map())
-            } else {
-                Ok(())
-            }
-        })
-    });
-    if let Err(e) = err {
-        handler.err(&format!("failed to run binaryen assembler: {}", e));
-    }
 }
 
 pub(crate) struct CompiledModules {
@@ -1431,12 +1367,9 @@ fn start_executing_work(tcx: TyCtxt,
         each_linked_rlib_for_lto.push((cnum, path.to_path_buf()));
     }));
 
-    let wasm_import_memory =
-        attr::contains_name(&tcx.hir.krate().attrs, "wasm_import_memory");
-
     let assembler_cmd = if modules_config.no_integrated_as {
         // HACK: currently we use linker (gcc) as our assembler
-        let (name, mut cmd, _) = get_linker(sess);
+        let (name, mut cmd) = get_linker(sess);
         cmd.args(&sess.target.target.options.asm_args);
         Some(Arc::new(AssemblerCommand {
             name,
@@ -1471,9 +1404,7 @@ fn start_executing_work(tcx: TyCtxt,
         total_cgus,
         msvc_imps_needed: msvc_imps_needed(tcx),
         target_pointer_width: tcx.sess.target.target.target_pointer_width.clone(),
-        binaryen_linker: tcx.sess.linker_flavor() == LinkerFlavor::Binaryen,
         debuginfo: tcx.sess.opts.debuginfo,
-        wasm_import_memory,
         assembler_cmd,
     };
 

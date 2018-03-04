@@ -50,7 +50,6 @@ pub mod unstable_book;
 
 fn filter_dirs(path: &Path) -> bool {
     let skip = [
-        "src/binaryen",
         "src/dlmalloc",
         "src/jemalloc",
         "src/llvm",
@@ -68,9 +67,11 @@ fn filter_dirs(path: &Path) -> bool {
         "src/tools/rust-installer",
         "src/tools/rustfmt",
         "src/tools/miri",
+        "src/tools/lld",
         "src/librustc/mir/interpret",
         "src/librustc_mir/interpret",
         "src/target",
+        "src/stdsimd",
     ];
     skip.iter().any(|p| path.ends_with(p))
 }

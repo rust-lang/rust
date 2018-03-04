@@ -514,7 +514,8 @@ fn rustc_cargo_env(build: &Build, cargo: &mut Command) {
     cargo.env("CFG_RELEASE", build.rust_release())
          .env("CFG_RELEASE_CHANNEL", &build.config.channel)
          .env("CFG_VERSION", build.rust_version())
-         .env("CFG_PREFIX", build.config.prefix.clone().unwrap_or_default());
+         .env("CFG_PREFIX", build.config.prefix.clone().unwrap_or_default())
+         .env("CFG_CODEGEN_BACKENDS_DIR", &build.config.rust_codegen_backends_dir);
 
     let libdir_relative = build.config.libdir_relative().unwrap_or(Path::new("lib"));
     cargo.env("CFG_LIBDIR_RELATIVE", libdir_relative);
@@ -746,6 +747,21 @@ fn copy_codegen_backends_to_sysroot(builder: &Builder,
     }
 }
 
+fn copy_lld_to_sysroot(builder: &Builder,
+                       target_compiler: Compiler,
+                       lld_install_root: &Path) {
+    let target = target_compiler.host;
+
+    let dst = builder.sysroot_libdir(target_compiler, target)
+        .parent()
+        .unwrap()
+        .join("bin");
+    t!(fs::create_dir_all(&dst));
+
+    let exe = exe("lld", &target);
+    copy(&lld_install_root.join("bin").join(&exe), &dst.join(&exe));
+}
+
 /// Cargo's output path for the standard library in a given stage, compiled
 /// by a particular compiler for the specified target.
 pub fn libstd_stamp(build: &Build, compiler: Compiler, target: Interned<String>) -> PathBuf {
@@ -895,6 +911,14 @@ impl Step for Assemble {
             }
         }
 
+        let lld_install = if build.config.lld_enabled && target_compiler.stage > 0 {
+            Some(builder.ensure(native::Lld {
+                target: target_compiler.host,
+            }))
+        } else {
+            None
+        };
+
         let stage = target_compiler.stage;
         let host = target_compiler.host;
         println!("Assembling stage{} compiler ({})", stage, host);
@@ -914,6 +938,9 @@ impl Step for Assemble {
         copy_codegen_backends_to_sysroot(builder,
                                          build_compiler,
                                          target_compiler);
+        if let Some(lld_install) = lld_install {
+            copy_lld_to_sysroot(builder, target_compiler, &lld_install);
+        }
 
         // Link the compiler binary itself into place
         let out_dir = build.cargo_out(build_compiler, Mode::Librustc, host);

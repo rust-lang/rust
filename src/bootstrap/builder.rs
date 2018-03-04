@@ -316,7 +316,7 @@ impl<'a> Builder<'a> {
                 tool::UnstableBookGen, tool::Tidy, tool::Linkchecker, tool::CargoTest,
                 tool::Compiletest, tool::RemoteTestServer, tool::RemoteTestClient,
                 tool::RustInstaller, tool::Cargo, tool::Rls, tool::Rustdoc, tool::Clippy,
-                native::Llvm, tool::Rustfmt, tool::Miri),
+                native::Llvm, tool::Rustfmt, tool::Miri, native::Lld),
             Kind::Check => describe!(check::Std, check::Test, check::Rustc),
             Kind::Test => describe!(test::Tidy, test::Bootstrap, test::Ui, test::RunPass,
                 test::CompileFail, test::ParseFail, test::RunFail, test::RunPassValgrind,
@@ -464,7 +464,7 @@ impl<'a> Builder<'a> {
 
     pub fn sysroot_codegen_backends(&self, compiler: Compiler) -> PathBuf {
         self.sysroot_libdir(compiler, compiler.host)
-            .with_file_name("codegen-backends")
+            .with_file_name(self.build.config.rust_codegen_backends_dir.clone())
     }
 
     /// Returns the compiler's libdir where it stores the dynamic libraries that
@@ -688,9 +688,25 @@ impl<'a> Builder<'a> {
         //
         // FIXME: the guard against msvc shouldn't need to be here
         if !target.contains("msvc") {
-            let cc = self.cc(target);
-            cargo.env(format!("CC_{}", target), cc)
-                 .env("CC", cc);
+            let ccache = self.config.ccache.as_ref();
+            let ccacheify = |s: &Path| {
+                let ccache = match ccache {
+                    Some(ref s) => s,
+                    None => return s.display().to_string(),
+                };
+                // FIXME: the cc-rs crate only recognizes the literal strings
+                // `ccache` and `sccache` when doing caching compilations, so we
+                // mirror that here. It should probably be fixed upstream to
+                // accept a new env var or otherwise work with custom ccache
+                // vars.
+                match &ccache[..] {
+                    "ccache" | "sccache" => format!("{} {}", ccache, s.display()),
+                    _ => s.display().to_string(),
+                }
+            };
+            let cc = ccacheify(&self.cc(target));
+            cargo.env(format!("CC_{}", target), &cc)
+                 .env("CC", &cc);
 
             let cflags = self.cflags(target).join(" ");
             cargo.env(format!("CFLAGS_{}", target), cflags.clone())
@@ -705,8 +721,9 @@ impl<'a> Builder<'a> {
             }
 
             if let Ok(cxx) = self.cxx(target) {
-                cargo.env(format!("CXX_{}", target), cxx)
-                     .env("CXX", cxx)
+                let cxx = ccacheify(&cxx);
+                cargo.env(format!("CXX_{}", target), &cxx)
+                     .env("CXX", &cxx)
                      .env(format!("CXXFLAGS_{}", target), cflags.clone())
                      .env("CXXFLAGS", cflags);
             }

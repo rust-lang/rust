@@ -224,7 +224,7 @@ fn main() {
                 // flesh out rpath support more fully in the future.
                 cmd.arg("-Z").arg("osx-rpath-install-name");
                 Some("-Wl,-rpath,@loader_path/../lib")
-            } else if !target.contains("windows") {
+            } else if !target.contains("windows") && !target.contains("wasm32") {
                 Some("-Wl,-rpath,$ORIGIN/../lib")
             } else {
                 None
