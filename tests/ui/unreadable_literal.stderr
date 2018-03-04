@@ -24,5 +24,11 @@ error: long literal lacking separators
 7 |     let bad = (0b10110_i64, 0x12345678901_usize, 12345_f32, 1.23456_f32);
   |                                                             ^^^^^^^^^^^ help: consider: `1.234_56_f32`
 
-error: aborting due to 4 previous errors
+error: long literal lacking separators
+ --> $DIR/unreadable_literal.rs:9:19
+  |
+9 |     let bad_sci = 1.12345e1;
+  |                   ^^^^^^^^^ help: consider: `1.123_45e1`
+
+error: aborting due to 5 previous errors
 
