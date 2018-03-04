@@ -2113,9 +2113,9 @@ impl str {
                     (buf.as_mut_ptr() as *mut u8).add(buf.len()),
                     rem_len,
                 );
-                // `buf.len() + rem_len` equals to `buf.capacity()` (`self.len() * n`).
-                let buf_len = buf.len();
-                buf.set_len(buf_len + rem_len);
+                // `buf.len() + rem_len` equals to `buf.capacity()` (`= self.len() * n`).
+                let buf_cap = buf.capacity();
+                buf.set_len(buf_cap);
             }
         }
 
