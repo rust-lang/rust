@@ -1098,38 +1098,26 @@ impl fmt::Display for ExitStatus {
 ///
 /// [RFC #1937]: https://github.com/rust-lang/rfcs/pull/1937
 #[derive(Clone, Copy, Debug)]
-#[unstable(feature = "process_exitcode_placeholder", issue = "43301")]
-pub struct ExitCode(pub i32);
+#[unstable(feature = "process_exitcode_placeholder", issue = "48711")]
+pub struct ExitCode(imp::ExitCode);
 
-#[cfg(target_arch = "wasm32")]
-mod rawexit {
-    pub const SUCCESS: i32 = 0;
-    pub const FAILURE: i32 = 1;
-}
-#[cfg(not(target_arch = "wasm32"))]
-mod rawexit {
-    use libc;
-    pub const SUCCESS: i32 = libc::EXIT_SUCCESS;
-    pub const FAILURE: i32 = libc::EXIT_FAILURE;
-}
-
-#[unstable(feature = "process_exitcode_placeholder", issue = "43301")]
+#[unstable(feature = "process_exitcode_placeholder", issue = "48711")]
 impl ExitCode {
     /// The canonical ExitCode for successful termination on this platform.
     ///
     /// Note that a `()`-returning `main` implicitly results in a successful
     /// termination, so there's no need to return this from `main` unless
     /// you're also returning other possible codes.
-    #[unstable(feature = "process_exitcode_placeholder", issue = "43301")]
-    pub const SUCCESS: ExitCode = ExitCode(rawexit::SUCCESS);
+    #[unstable(feature = "process_exitcode_placeholder", issue = "48711")]
+    pub const SUCCESS: ExitCode = ExitCode(imp::ExitCode::SUCCESS);
 
     /// The canonical ExitCode for unsuccessful termination on this platform.
     ///
     /// If you're only returning this and `SUCCESS` from `main`, consider
     /// instead returning `Err(_)` and `Ok(())` respectively, which will
     /// return the same codes (but will also `eprintln!` the error).
-    #[unstable(feature = "process_exitcode_placeholder", issue = "43301")]
-    pub const FAILURE: ExitCode = ExitCode(rawexit::FAILURE);
+    #[unstable(feature = "process_exitcode_placeholder", issue = "48711")]
+    pub const FAILURE: ExitCode = ExitCode(imp::ExitCode::FAILURE);
 }
 
 impl Child {
@@ -1494,8 +1482,7 @@ impl<E: fmt::Debug> Termination for Result<!, E> {
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
 impl Termination for ExitCode {
     fn report(self) -> i32 {
-        let ExitCode(code) = self;
-        code
+        self.0.as_i32()
     }
 }
 
