@@ -82,13 +82,11 @@ RUN sh /scripts/sccache.sh
 ENV HOSTS=i686-unknown-linux-gnu
 
 ENV RUST_CONFIGURE_ARGS \
-      --host=$HOSTS \
       --enable-extended \
       --enable-sanitizers \
       --enable-profiler \
-      --enable-emscripten \
-      --build=i686-unknown-linux-gnu
-ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS
+      --enable-emscripten
+ENV SCRIPT python2.7 ../x.py dist --build $HOSTS --host $HOSTS --target $HOSTS
 
 # This is the only builder which will create source tarballs
 ENV DIST_SRC 1

@@ -82,7 +82,6 @@ RUN sh /scripts/sccache.sh
 ENV HOSTS=x86_64-unknown-linux-gnu
 
 ENV RUST_CONFIGURE_ARGS \
-      --host=$HOSTS \
       --enable-extended \
       --enable-sanitizers \
       --enable-profiler \
