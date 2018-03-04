@@ -57,6 +57,7 @@ pub struct EscapeDefault {
 /// # Examples
 ///
 /// ```
+/// #![no_std]
 /// use core::ascii;
 ///
 /// let escaped = ascii::escape_default(b'0').next().unwrap();
