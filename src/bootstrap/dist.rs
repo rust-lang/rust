@@ -810,6 +810,7 @@ impl Step for Src {
             "src/libterm",
             "src/jemalloc",
             "src/libprofiler_builtins",
+            "src/stdsimd",
         ];
         let std_src_dirs_exclude = [
             "src/libcompiler_builtins/compiler-rt/test",
