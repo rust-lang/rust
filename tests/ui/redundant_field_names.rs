@@ -39,7 +39,7 @@ fn main() {
     let _ = ..=end;
     let _ = start..=end;
 
-    // TODO: the followings shoule be linted
+    // TODO: the following should be linted
     let _ = ::std::ops::RangeFrom { start: start };
     let _ = ::std::ops::RangeTo { end: end };
     let _ = ::std::ops::Range { start: start, end: end };
