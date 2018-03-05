@@ -72,6 +72,8 @@ pub struct RegionInferenceContext<'tcx> {
     universal_regions: UniversalRegions<'tcx>,
 }
 
+struct TrackCauses(bool);
+
 struct RegionDefinition<'tcx> {
     /// Why we created this variable. Mostly these will be
     /// `RegionVariableOrigin::NLL`, but some variables get created
@@ -120,6 +122,10 @@ pub(crate) enum Cause {
         /// The span indicating why we added the outlives constraint.
         constraint_span: Span,
     },
+}
+
+pub(crate) struct RegionCausalInfo {
+    inferred_values: RegionValues,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -343,17 +349,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         inferred_values.contains(r.to_region_vid(), p)
     }
 
-    /// Returns the *reason* that the region `r` contains the given point.
-    pub(crate) fn why_region_contains_point<R>(&self, r: R, p: Location) -> Option<Rc<Cause>>
-    where
-        R: ToRegionVid,
-    {
-        let inferred_values = self.inferred_values
-            .as_ref()
-            .expect("region values not yet inferred");
-        inferred_values.cause(r.to_region_vid(), p)
-    }
-
     /// Returns access to the value of `r` for debugging purposes.
     pub(super) fn region_value_str(&self, r: RegionVid) -> String {
         let inferred_values = self.inferred_values
@@ -444,13 +439,25 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
     }
 
+    /// Re-execute the region inference, this time tracking causal information.
+    /// This is significantly slower, so it is done only when an error is being reported.
+    pub(super) fn compute_causal_info(&self, mir: &Mir<'tcx>) -> RegionCausalInfo {
+        let inferred_values = self.compute_region_values(mir, TrackCauses(true));
+        RegionCausalInfo { inferred_values }
+    }
+
     /// Propagate the region constraints: this will grow the values
     /// for each region variable until all the constraints are
     /// satisfied. Note that some values may grow **too** large to be
     /// feasible, but we check this later.
     fn propagate_constraints(&mut self, mir: &Mir<'tcx>) {
-        debug!("propagate_constraints()");
-        debug!("propagate_constraints: constraints={:#?}", {
+        let inferred_values = self.compute_region_values(mir, TrackCauses(false));
+        self.inferred_values = Some(inferred_values);
+    }
+
+    fn compute_region_values(&self, mir: &Mir<'tcx>, track_causes: TrackCauses) -> RegionValues {
+        debug!("compute_region_values()");
+        debug!("compute_region_values: constraints={:#?}", {
             let mut constraints: Vec<_> = self.constraints.iter().collect();
             constraints.sort();
             constraints
@@ -458,7 +465,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // The initial values for each region are derived from the liveness
         // constraints we have accumulated.
-        let mut inferred_values = self.liveness_constraints.clone();
+        let mut inferred_values = self.liveness_constraints.duplicate(track_causes);
 
         let dependency_map = self.build_dependency_map();
 
@@ -502,7 +509,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             debug!("\n");
         }
 
-        self.inferred_values = Some(inferred_values);
+        inferred_values
     }
 
     /// Builds up a map from each region variable X to a vector with the
@@ -1089,6 +1096,16 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
 
         result_set
+    }
+}
+
+impl RegionCausalInfo {
+    /// Returns the *reason* that the region `r` contains the given point.
+    pub(super) fn why_region_contains_point<R>(&self, r: R, p: Location) -> Option<Rc<Cause>>
+    where
+        R: ToRegionVid,
+    {
+        self.inferred_values.cause(r.to_region_vid(), p)
     }
 }
 

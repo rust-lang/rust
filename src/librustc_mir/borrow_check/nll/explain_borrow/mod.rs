@@ -18,16 +18,26 @@ use rustc_errors::DiagnosticBuilder;
 use util::liveness::{self, DefUse, LivenessMode};
 
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
+    /// Adds annotations to `err` explaining *why* the borrow contains the
+    /// point from `context`. This is key for the "3-point errors"
+    /// [described in the NLL RFC][d].
+    ///
+    /// [d]: https://rust-lang.github.io/rfcs/2094-nll.html#leveraging-intuition-framing-errors-in-terms-of-points
     pub(in borrow_check) fn explain_why_borrow_contains_point(
-        &self,
+        &mut self,
         context: Context,
         borrow: &BorrowData<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
     ) {
         if let Some(regioncx) = &self.nonlexical_regioncx {
-            if let Some(cause) = regioncx.why_region_contains_point(borrow.region, context.loc) {
-                let mir = self.mir;
+            let mir = self.mir;
 
+            if self.nonlexical_cause_info.is_none() {
+                self.nonlexical_cause_info = Some(regioncx.compute_causal_info(mir));
+            }
+
+            let cause_info = self.nonlexical_cause_info.as_ref().unwrap();
+            if let Some(cause) = cause_info.why_region_contains_point(borrow.region, context.loc) {
                 match *cause.root_cause() {
                     Cause::LiveVar(local, location) => {
                         match find_regular_use(&mir, regioncx, borrow, location, local) {

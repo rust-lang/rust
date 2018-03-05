@@ -10,7 +10,7 @@
 
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
-use borrow_check::nll::region_infer::RegionInferenceContext;
+use borrow_check::nll::region_infer::{RegionInferenceContext, RegionCausalInfo};
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::definitions::DefPathData;
@@ -231,6 +231,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         access_place_error_reported: FxHashSet(),
         reservation_error_reported: FxHashSet(),
         nonlexical_regioncx: opt_regioncx.clone(),
+        nonlexical_cause_info: None,
     };
 
     let borrows = Borrows::new(tcx, mir, opt_regioncx, def_id, body_id);
@@ -311,6 +312,7 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     /// contains the results from region inference and lets us e.g.
     /// find out which CFG points are contained in each borrow region.
     nonlexical_regioncx: Option<Rc<RegionInferenceContext<'tcx>>>,
+    nonlexical_cause_info: Option<RegionCausalInfo>,
 }
 
 // Check that:
