@@ -15,7 +15,7 @@ use monomorphize::Instance;
 use rustc::hir;
 use rustc::hir::def_id::CrateNum;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-use rustc::middle::exported_symbols::{SymbolExportLevel, ExportedSymbol};
+use rustc::middle::exported_symbols::{SymbolExportLevel, ExportedSymbol, metadata_symbol_name};
 use rustc::session::config;
 use rustc::ty::{TyCtxt, SymbolName};
 use rustc::ty::maps::Providers;
@@ -30,12 +30,6 @@ pub type ExportedSymbols = FxHashMap<
 
 pub fn threshold(tcx: TyCtxt) -> SymbolExportLevel {
     crates_export_threshold(&tcx.sess.crate_types.borrow())
-}
-
-pub fn metadata_symbol_name(tcx: TyCtxt) -> String {
-    format!("rust_metadata_{}_{}",
-            tcx.crate_name(LOCAL_CRATE),
-            tcx.crate_disambiguator(LOCAL_CRATE).to_fingerprint().to_hex())
 }
 
 fn crate_export_threshold(crate_type: config::CrateType) -> SymbolExportLevel {

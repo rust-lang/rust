@@ -20,11 +20,12 @@ use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId, LOCAL_CRATE
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::ich::Fingerprint;
 use rustc::middle::dependency_format::Linkage;
-use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
+use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel,
+                                      metadata_symbol_name};
 use rustc::middle::lang_items;
 use rustc::mir;
 use rustc::traits::specialization_graph;
-use rustc::ty::{self, Ty, TyCtxt, ReprOptions};
+use rustc::ty::{self, Ty, TyCtxt, ReprOptions, SymbolName};
 use rustc::ty::codec::{self as ty_codec, TyEncoder};
 
 use rustc::session::config::{self, CrateTypeProcMacro};
@@ -1392,7 +1393,22 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
     fn encode_exported_symbols(&mut self,
                                exported_symbols: &[(ExportedSymbol, SymbolExportLevel)])
                                -> LazySeq<(ExportedSymbol, SymbolExportLevel)> {
-        self.lazy_seq(exported_symbols.iter().cloned())
+
+        // The metadata symbol name is special. It should not show up in
+        // downstream crates.
+        let metadata_symbol_name = SymbolName::new(&metadata_symbol_name(self.tcx));
+
+        self.lazy_seq(exported_symbols
+            .iter()
+            .filter(|&&(ref exported_symbol, _)| {
+                match *exported_symbol {
+                    ExportedSymbol::NoDefId(symbol_name) => {
+                        symbol_name != metadata_symbol_name
+                    },
+                    _ => true,
+                }
+            })
+            .cloned())
     }
 
     fn encode_dylib_dependency_formats(&mut self, _: ()) -> LazySeq<Option<LinkagePreference>> {

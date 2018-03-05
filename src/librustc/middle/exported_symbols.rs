@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use hir::def_id::DefId;
+use hir::def_id::{DefId, LOCAL_CRATE};
 use std::cmp;
 use ty;
 
@@ -87,3 +87,9 @@ impl_stable_hash_for!(enum self::ExportedSymbol {
     NonGeneric(def_id),
     NoDefId(symbol_name)
 });
+
+pub fn metadata_symbol_name(tcx: ty::TyCtxt) -> String {
+    format!("rust_metadata_{}_{}",
+            tcx.original_crate_name(LOCAL_CRATE),
+            tcx.crate_disambiguator(LOCAL_CRATE).to_fingerprint().to_hex())
+}
