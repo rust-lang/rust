@@ -546,24 +546,14 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             // to normalize `A::B`, we will want to check the
             // where-clauses in scope. So we will try to unify `A::B`
             // with `A::B`, which can trigger a recursive
-            // normalization. In that case, I think we will want this code:
-            //
-            // ```
-            // let ty = selcx.tcx().mk_projection(projection_ty.item_def_id,
-            //                                    projection_ty.substs;
-            // return Some(NormalizedTy { value: v, obligations: vec![] });
-            // ```
+            // normalization.
 
             debug!("opt_normalize_projection_type: \
                     found cache entry: in-progress");
 
-            // But for now, let's classify this as an overflow:
-            let recursion_limit = selcx.tcx().sess.recursion_limit.get();
-            let obligation = Obligation::with_depth(cause.clone(),
-                                                    recursion_limit,
-                                                    param_env,
-                                                    projection_ty);
-            selcx.infcx().report_overflow_error(&obligation, false);
+            let ty = selcx.tcx().mk_projection(projection_ty.item_def_id,
+                                               projection_ty.substs);
+            return Some(NormalizedTy { value: ty, obligations: vec![] });
         }
         Err(ProjectionCacheEntry::NormalizedTy(mut ty)) => {
             // If we find the value in the cache, then return it along
