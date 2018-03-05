@@ -14,8 +14,7 @@
 //! [wiki]: https://en.wikipedia.org/wiki/Advanced_Vector_Extensions
 
 use coresimd::simd_llvm::*;
-use coresimd::v128::*;
-use coresimd::v256::*;
+use coresimd::simd::*;
 use coresimd::x86::*;
 use intrinsics;
 use mem;

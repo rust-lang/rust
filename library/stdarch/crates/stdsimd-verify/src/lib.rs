@@ -241,7 +241,8 @@ fn find_target_feature(attrs: &[syn::Attribute]) -> Option<syn::Lit> {
 }
 
 fn find_required_const(attrs: &[syn::Attribute]) -> Vec<usize> {
-    attrs.iter()
+    attrs
+        .iter()
         .filter(|a| a.path.segments[0].ident == "rustc_args_required_const")
         .map(|a| a.tts.clone())
         .map(|a| syn::parse::<RustcArgsRequiredConst>(a.into()).unwrap())

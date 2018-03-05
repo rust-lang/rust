@@ -11,8 +11,7 @@
                   shadow_reuse, print_stdout))]
 
 extern crate stdsimd;
-use self::stdsimd::simd;
-use simd::f64x2;
+use stdsimd::simd::*;
 
 const PI: f64 = std::f64::consts::PI;
 const SOLAR_MASS: f64 = 4.0 * PI * PI;
@@ -31,17 +30,16 @@ impl Frsqrt for f64x2 {
             use stdsimd::arch::x86::*;
             #[cfg(target_arch = "x86_64")]
             use stdsimd::arch::x86_64::*;
+            let t: f32x2 = (*self).into();
 
-            let t = self.as_f32x2();
-
-            let u = unsafe {
+            let u: f64x4 = unsafe {
                 let res = _mm_rsqrt_ps(_mm_setr_ps(
                     t.extract(0),
                     t.extract(1),
                     0.,
                     0.,
                 ));
-                std::mem::transmute::<_, simd::f32x4>(res).as_f64x4()
+                f32x4::from_bits(res).into()
             };
             Self::new(u.extract(0), u.extract(1))
         }
@@ -53,7 +51,7 @@ impl Frsqrt for f64x2 {
             #[cfg(target_arch = "aarch64")]
             use stdsimd::arch::aarch64::*;
 
-            unsafe { vrsqrte_f32(self.as_f32x2()).as_f64x2() }
+            unsafe { vrsqrte_f32((*self).into()).into() }
         }
         #[cfg(not(any(all(any(target_arch = "x86",
                               target_arch = "x86_64"),
@@ -84,7 +82,7 @@ impl Body {
             x: [x0, x1, x2],
             _fill: 0.0,
             v: [v0, v1, v2],
-            mass: mass,
+            mass,
         }
     }
 }
@@ -133,7 +131,7 @@ fn advance(bodies: &mut [Body; N_BODIES], dt: f64) {
                     * (distance * distance)
         }
         dmag = f64x2::splat(dt) / dsquared * distance;
-        dmag.store(&mut mag, i);
+        dmag.store_unaligned(&mut mag[i..]);
 
         i += 2;
     }

@@ -5,7 +5,7 @@
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 use coresimd::simd_llvm::simd_add;
-use coresimd::v128::f64x2;
+use coresimd::simd::*;
 
 /// Vector add.
 #[inline]

@@ -6,7 +6,7 @@
 use stdsimd_test::assert_instr;
 
 use coresimd::simd_llvm::*;
-use coresimd::v128::*;
+use coresimd::simd::*;
 use coresimd::x86::*;
 
 /// String contains unsigned 8-bit characters *(Default)*

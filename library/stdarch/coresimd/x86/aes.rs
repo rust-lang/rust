@@ -60,7 +60,7 @@ pub unsafe fn _mm_aesenclast_si128(a: __m128i, round_key: __m128i) -> __m128i {
     aesenclast(a, round_key)
 }
 
-/// Perform the “InvMixColumns” transformation on `a`.
+/// Perform the `InvMixColumns` transformation on `a`.
 #[inline]
 #[target_feature(enable = "aes")]
 #[cfg_attr(test, assert_instr(aesimc))]

@@ -359,42 +359,42 @@ pub(crate) trait m128iExt: Sized {
     fn as_m128i(self) -> __m128i;
 
     #[inline]
-    fn as_u8x16(self) -> ::coresimd::v128::u8x16 {
+    fn as_u8x16(self) -> ::coresimd::simd::u8x16 {
         unsafe { mem::transmute(self.as_m128i()) }
     }
 
     #[inline]
-    fn as_u16x8(self) -> ::coresimd::v128::u16x8 {
+    fn as_u16x8(self) -> ::coresimd::simd::u16x8 {
         unsafe { mem::transmute(self.as_m128i()) }
     }
 
     #[inline]
-    fn as_u32x4(self) -> ::coresimd::v128::u32x4 {
+    fn as_u32x4(self) -> ::coresimd::simd::u32x4 {
         unsafe { mem::transmute(self.as_m128i()) }
     }
 
     #[inline]
-    fn as_u64x2(self) -> ::coresimd::v128::u64x2 {
+    fn as_u64x2(self) -> ::coresimd::simd::u64x2 {
         unsafe { mem::transmute(self.as_m128i()) }
     }
 
     #[inline]
-    fn as_i8x16(self) -> ::coresimd::v128::i8x16 {
+    fn as_i8x16(self) -> ::coresimd::simd::i8x16 {
         unsafe { mem::transmute(self.as_m128i()) }
     }
 
     #[inline]
-    fn as_i16x8(self) -> ::coresimd::v128::i16x8 {
+    fn as_i16x8(self) -> ::coresimd::simd::i16x8 {
         unsafe { mem::transmute(self.as_m128i()) }
     }
 
     #[inline]
-    fn as_i32x4(self) -> ::coresimd::v128::i32x4 {
+    fn as_i32x4(self) -> ::coresimd::simd::i32x4 {
         unsafe { mem::transmute(self.as_m128i()) }
     }
 
     #[inline]
-    fn as_i64x2(self) -> ::coresimd::v128::i64x2 {
+    fn as_i64x2(self) -> ::coresimd::simd::i64x2 {
         unsafe { mem::transmute(self.as_m128i()) }
     }
 }
@@ -412,42 +412,42 @@ pub(crate) trait m256iExt: Sized {
     fn as_m256i(self) -> __m256i;
 
     #[inline]
-    fn as_u8x32(self) -> ::coresimd::v256::u8x32 {
+    fn as_u8x32(self) -> ::coresimd::simd::u8x32 {
         unsafe { mem::transmute(self.as_m256i()) }
     }
 
     #[inline]
-    fn as_u16x16(self) -> ::coresimd::v256::u16x16 {
+    fn as_u16x16(self) -> ::coresimd::simd::u16x16 {
         unsafe { mem::transmute(self.as_m256i()) }
     }
 
     #[inline]
-    fn as_u32x8(self) -> ::coresimd::v256::u32x8 {
+    fn as_u32x8(self) -> ::coresimd::simd::u32x8 {
         unsafe { mem::transmute(self.as_m256i()) }
     }
 
     #[inline]
-    fn as_u64x4(self) -> ::coresimd::v256::u64x4 {
+    fn as_u64x4(self) -> ::coresimd::simd::u64x4 {
         unsafe { mem::transmute(self.as_m256i()) }
     }
 
     #[inline]
-    fn as_i8x32(self) -> ::coresimd::v256::i8x32 {
+    fn as_i8x32(self) -> ::coresimd::simd::i8x32 {
         unsafe { mem::transmute(self.as_m256i()) }
     }
 
     #[inline]
-    fn as_i16x16(self) -> ::coresimd::v256::i16x16 {
+    fn as_i16x16(self) -> ::coresimd::simd::i16x16 {
         unsafe { mem::transmute(self.as_m256i()) }
     }
 
     #[inline]
-    fn as_i32x8(self) -> ::coresimd::v256::i32x8 {
+    fn as_i32x8(self) -> ::coresimd::simd::i32x8 {
         unsafe { mem::transmute(self.as_m256i()) }
     }
 
     #[inline]
-    fn as_i64x4(self) -> ::coresimd::v256::i64x4 {
+    fn as_i64x4(self) -> ::coresimd::simd::i64x4 {
         unsafe { mem::transmute(self.as_m256i()) }
     }
 }
@@ -459,6 +459,99 @@ impl m256iExt for __m256i {
     }
 }
 
+use coresimd::simd::{b8x32, b8x16, b8x8, 
+                     f32x4, f32x8, f64x2, f64x4, i16x16,
+                     i16x4, i16x8, i32x2, i32x4, i32x8, i64x2, i64x4, i8x16,
+                     i8x32, i8x8, u16x16, u16x4, u16x8, u32x2, u32x4, u32x8,
+                     u64x2, u64x4, u8x16, u8x32, u8x8};
+
+impl_from_bits_!(
+    __m64: u32x2,
+    i32x2,
+    u16x4,
+    i16x4,
+    u8x8,
+    i8x8,
+    b8x8
+);
+impl_from_bits_!(
+    __m128: u64x2,
+    i64x2,
+    f64x2,
+    u32x4,
+    i32x4,
+    f32x4,
+    u16x8,
+    i16x8,
+    u8x16,
+    i8x16,
+    b8x16
+);
+impl_from_bits_!(
+    __m128i: u64x2,
+    i64x2,
+    f64x2,
+    u32x4,
+    i32x4,
+    f32x4,
+    u16x8,
+    i16x8,
+    u8x16,
+    i8x16,
+    b8x16
+);
+impl_from_bits_!(
+    __m128d: u64x2,
+    i64x2,
+    f64x2,
+    u32x4,
+    i32x4,
+    f32x4,
+    u16x8,
+    i16x8,
+    u8x16,
+    i8x16,
+    b8x16
+);
+impl_from_bits_!(
+    __m256: u64x4,
+    i64x4,
+    f64x4,
+    u32x8,
+    i32x8,
+    f32x8,
+    u16x16,
+    i16x16,
+    u8x32,
+    i8x32,
+    b8x32
+);
+impl_from_bits_!(
+    __m256i: u64x4,
+    i64x4,
+    f64x4,
+    u32x8,
+    i32x8,
+    f32x8,
+    u16x16,
+    i16x16,
+    u8x32,
+    i8x32,
+    b8x32
+);
+impl_from_bits_!(
+    __m256d: u64x4,
+    i64x4,
+    f64x4,
+    u32x8,
+    i32x8,
+    f32x8,
+    u16x16,
+    i16x16,
+    u8x32,
+    i8x32,
+    b8x32
+);
 
 mod eflags;
 pub use self::eflags::*;

@@ -4,8 +4,8 @@
 use stdsimd_test::assert_instr;
 
 use coresimd::simd_llvm::simd_add;
-use coresimd::v64::*;
-use coresimd::v128::*;
+use coresimd::simd::*;
+use convert::From;
 
 /// Vector add.
 #[inline]
@@ -140,8 +140,8 @@ pub unsafe fn vaddq_f32(a: f32x4, b: f32x4) -> f32x4 {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(saddl))]
 pub unsafe fn vaddl_s8(a: i8x8, b: i8x8) -> i16x8 {
-    let a = a.as_i16x8();
-    let b = b.as_i16x8();
+    let a = i16x8::from(a);
+    let b = i16x8::from(b);
     simd_add(a, b)
 }
 
@@ -150,8 +150,8 @@ pub unsafe fn vaddl_s8(a: i8x8, b: i8x8) -> i16x8 {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(saddl))]
 pub unsafe fn vaddl_s16(a: i16x4, b: i16x4) -> i32x4 {
-    let a = a.as_i32x4();
-    let b = b.as_i32x4();
+    let a = i32x4::from(a);
+    let b = i32x4::from(b);
     simd_add(a, b)
 }
 
@@ -160,8 +160,8 @@ pub unsafe fn vaddl_s16(a: i16x4, b: i16x4) -> i32x4 {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(saddl))]
 pub unsafe fn vaddl_s32(a: i32x2, b: i32x2) -> i64x2 {
-    let a = a.as_i64x2();
-    let b = b.as_i64x2();
+    let a = i64x2::from(a);
+    let b = i64x2::from(b);
     simd_add(a, b)
 }
 
@@ -170,8 +170,8 @@ pub unsafe fn vaddl_s32(a: i32x2, b: i32x2) -> i64x2 {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uaddl))]
 pub unsafe fn vaddl_u8(a: u8x8, b: u8x8) -> u16x8 {
-    let a = a.as_u16x8();
-    let b = b.as_u16x8();
+    let a = u16x8::from(a);
+    let b = u16x8::from(b);
     simd_add(a, b)
 }
 
@@ -180,8 +180,8 @@ pub unsafe fn vaddl_u8(a: u8x8, b: u8x8) -> u16x8 {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uaddl))]
 pub unsafe fn vaddl_u16(a: u16x4, b: u16x4) -> u32x4 {
-    let a = a.as_u32x4();
-    let b = b.as_u32x4();
+    let a = u32x4::from(a);
+    let b = u32x4::from(b);
     simd_add(a, b)
 }
 
@@ -190,8 +190,8 @@ pub unsafe fn vaddl_u16(a: u16x4, b: u16x4) -> u32x4 {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uaddl))]
 pub unsafe fn vaddl_u32(a: u32x2, b: u32x2) -> u64x2 {
-    let a = a.as_u64x2();
-    let b = b.as_u64x2();
+    let a = u64x2::from(a);
+    let b = u64x2::from(b);
     simd_add(a, b)
 }
 

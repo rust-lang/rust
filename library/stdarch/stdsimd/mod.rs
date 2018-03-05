@@ -1,10 +1,12 @@
+//! `stdsimd`
+
 /// SIMD and vendor intrinsics module.
 ///
-/// This module is intended to be the gateway to architecture-specific intrinsic
-/// functions, typically related to SIMD (but not always!). Each architecture
-/// that Rust compiles to may contain a submodule here, which means that this is
-/// not a portable module! If you're writing a portable library take care when
-/// using these APIs!
+/// This module is intended to be the gateway to architecture-specific
+/// intrinsic functions, typically related to SIMD (but not always!). Each
+/// architecture that Rust compiles to may contain a submodule here, which
+/// means that this is not a portable module! If you're writing a portable
+/// library take care when using these APIs!
 ///
 /// Under this module you'll find an architecture-named module, such as
 /// `x86_64`. Each `#[cfg(target_arch)]` that Rust can compile to may have a
@@ -42,13 +44,13 @@
 ///
 /// # CPU Feature Detection
 ///
-/// In order to call these APIs in a safe fashion there's a number of mechanisms
-/// available to ensure that the correct CPU feature is available to call an
-/// intrinsic. Let's consider, for example, the `_mm256_add_epi64` intrinsics on
-/// the `x86` and `x86_64` architectures. This function requires the AVX2
-/// feature as [documented by Intel][intel-dox] so to correctly call this
-/// function we need to (a) guarantee we only call it on x86/x86_64 and (b)
-/// ensure that the CPU feature is available
+/// In order to call these APIs in a safe fashion there's a number of
+/// mechanisms available to ensure that the correct CPU feature is available
+/// to call an intrinsic. Let's consider, for example, the `_mm256_add_epi64`
+/// intrinsics on the `x86` and `x86_64` architectures. This function requires
+/// the AVX2 feature as [documented by Intel][intel-dox] so to correctly call
+/// this function we need to (a) guarantee we only call it on `x86`/`x86_64` and
+/// (b) ensure that the CPU feature is available
 ///
 /// [intel-dox]: https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_add_epi64&expand=100
 ///
@@ -80,9 +82,9 @@
 /// `#[cfg]` to only compile the code in situations where the safety guarantees
 /// are upheld.
 ///
-/// Statically enabling a feature is typically done with the `-C target-feature`
-/// or `-C target-cpu` flags to the compiler. For example if your local CPU
-/// supports AVX2 then you can compile the above function with:
+/// Statically enabling a feature is typically done with the `-C
+/// target-feature` or `-C target-cpu` flags to the compiler. For example if
+/// your local CPU supports AVX2 then you can compile the above function with:
 ///
 /// ```sh
 /// $ RUSTFLAGS='-C target-cpu=native' cargo build
@@ -107,8 +109,8 @@
 /// sections more optimized for different CPUs.
 ///
 /// Taking our previous example from before, we're going to compile our binary
-/// *without* AVX2 support, but we'd like to enable it for just one function. We
-/// can do that in a manner like:
+/// *without* AVX2 support, but we'd like to enable it for just one function.
+/// We can do that in a manner like:
 ///
 /// ```ignore
 /// fn foo() {
@@ -141,14 +143,15 @@
 ///   the standard library, this macro will perform necessary runtime detection
 ///   to determine whether the CPU the program is running on supports the
 ///   specified feature. In this case the macro will expand to a boolean
-///   expression evaluating to whether the local CPU has the AVX2 feature or not.
+/// expression evaluating to whether the local CPU has the AVX2 feature or
+/// not.
 ///
 ///   Note that this macro, like the `arch` module, is platform-specific. The
 ///   name of the macro is the same across platforms, but the arguments to the
 ///   macro are only the features for the current platform. For example calling
 ///   `is_target_feature_detected!("avx2")` on ARM will be a compile time
 ///   error. To ensure we don't hit this error a statement level `#[cfg]` is
-///   used to only compile usage of the macro on x86/x86_64.
+///   used to only compile usage of the macro on `x86`/`x86_64`.
 ///
 /// * Next up we see our AVX2-enabled function, `foo_avx2`. This function is
 ///   decorated with the `#[target_feature]` attribute which enables a CPU
@@ -166,9 +169,9 @@
 ///
 /// # Ergonomics
 ///
-/// It's important to note that using the `arch` module is not the easiest thing
-/// in the world, so if you're curious to try it out you may want to brace
-/// yourself for some wordiness!
+/// It's important to note that using the `arch` module is not the easiest
+/// thing in the world, so if you're curious to try it out you may want to
+/// brace yourself for some wordiness!
 ///
 /// The primary purpose of this module is to enable stable crates on crates.io
 /// to build up much more ergonomic abstractions which end up using SIMD under
@@ -181,15 +184,15 @@
 /// This documentation is only for one particular architecture, you can find
 /// others at:
 ///
-/// * [x86]
-/// * [x86_64]
-/// * [arm]
-/// * [aarch64]
+/// * [`x86`]
+/// * [`x86_64`]
+/// * [`arm`]
+/// * [`aarch64`]
 ///
-/// [x86]: https://rust-lang-nursery.github.io/stdsimd/i686/stdsimd/arch/x86/index.html
-/// [x86_64]: https://rust-lang-nursery.github.io/stdsimd/x86_64/stdsimd/arch/x86_64/index.html
-/// [arm]: https://rust-lang-nursery.github.io/stdsimd/arm/stdsimd/arch/arm/index.html
-/// [aarch64]: https://rust-lang-nursery.github.io/stdsimd/aarch64/stdsimd/arch/aarch64/index.html
+/// [`x86`]: https://rust-lang-nursery.github.io/stdsimd/i686/stdsimd/arch/x86/index.html
+/// [`x86_64`]: https://rust-lang-nursery.github.io/stdsimd/x86_64/stdsimd/arch/x86_64/index.html
+/// [`arm`]: https://rust-lang-nursery.github.io/stdsimd/arm/stdsimd/arch/arm/index.html
+/// [`aarch64`]: https://rust-lang-nursery.github.io/stdsimd/aarch64/stdsimd/arch/aarch64/index.html
 ///
 /// # Examples
 ///
@@ -336,7 +339,6 @@
 ///     }
 /// }
 /// ```
-
 #[unstable(feature = "stdsimd", issue = "0")]
 pub mod arch {
     #[cfg(target_arch = "x86")]

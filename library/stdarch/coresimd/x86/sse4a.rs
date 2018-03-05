@@ -1,6 +1,6 @@
 //! `i686`'s Streaming SIMD Extensions 4a (`SSE4a`)
 
-use coresimd::v128::*;
+use coresimd::simd::*;
 use coresimd::x86::*;
 use mem;
 

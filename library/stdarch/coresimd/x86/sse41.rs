@@ -1,10 +1,7 @@
 //! Streaming SIMD Extensions 4.1 (SSE4.1)
 
 use coresimd::simd_llvm::*;
-use coresimd::v128::*;
-use coresimd::v64::*;
-use coresimd::v32::*;
-use coresimd::v16::*;
+use coresimd::simd::*;
 use coresimd::x86::*;
 use mem;
 

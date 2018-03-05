@@ -23,6 +23,7 @@ pub const fn test_bit(x: u64, bit: u32) -> bool {
 const CACHE_CAPACITY: u32 = 63;
 
 /// This type is used to initialize the cache
+#[derive(Copy, Clone)]
 pub struct Initializer(u64);
 
 impl Default for Initializer {

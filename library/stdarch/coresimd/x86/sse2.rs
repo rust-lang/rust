@@ -4,8 +4,7 @@
 use stdsimd_test::assert_instr;
 
 use coresimd::simd_llvm::*;
-use coresimd::v128::*;
-use coresimd::v64::*;
+use coresimd::simd::*;
 use coresimd::x86::*;
 use intrinsics;
 use mem;
@@ -319,6 +318,8 @@ pub unsafe fn _mm_slli_si128(a: __m128i, imm8: i32) -> __m128i {
     _mm_slli_si128_impl(a, imm8)
 }
 
+/// Implementation detail: converts the immediate argument of the
+/// `_mm_slli_si128` intrinsic into a compile-time constant.
 #[inline]
 #[target_feature(enable = "sse2")]
 unsafe fn _mm_slli_si128_impl(a: __m128i, imm8: i32) -> __m128i {
@@ -479,6 +480,8 @@ pub unsafe fn _mm_srli_si128(a: __m128i, imm8: i32) -> __m128i {
     _mm_srli_si128_impl(a, imm8)
 }
 
+/// Implementation detail: converts the immediate argument of the
+/// `_mm_srli_si128` intrinsic into a compile-time constant.
 #[inline]
 #[target_feature(enable = "sse2")]
 unsafe fn _mm_srli_si128_impl(a: __m128i, imm8: i32) -> __m128i {
@@ -2502,7 +2505,7 @@ mod tests {
     use stdsimd_test::simd_test;
     use test::black_box; // Used to inhibit constant-folding.
     use coresimd::x86::*;
-    use coresimd::v128::*;
+    use coresimd::simd::*;
 
     #[simd_test = "sse2"]
     unsafe fn test_mm_pause() {

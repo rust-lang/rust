@@ -312,7 +312,9 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
         if rust.arguments.len() != intel.parameters.len() {
             bail!("wrong number of arguments on {}", rust.name)
         }
-        for (i, (a, b)) in intel.parameters.iter().zip(rust.arguments).enumerate() {
+        for (i, (a, b)) in
+            intel.parameters.iter().zip(rust.arguments).enumerate()
+        {
             let is_const = rust.required_const.contains(&i);
             equate(b, &a.type_, &intel.name, is_const)?;
         }
@@ -353,15 +355,14 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
     Ok(())
 }
 
-fn equate(t: &Type,
-          intel: &str,
-          intrinsic: &str,
-          is_const: bool) -> Result<(), String> {
+fn equate(
+    t: &Type, intel: &str, intrinsic: &str, is_const: bool
+) -> Result<(), String> {
     let intel = intel.replace(" *", "*");
     let intel = intel.replace(" const*", "*");
     let require_const = || {
         if is_const {
-            return Ok(())
+            return Ok(());
         }
         Err(format!("argument required to be const but isn't"))
     };

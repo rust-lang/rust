@@ -1,4 +1,3 @@
-
 #![allow(dead_code)]
 
 use core::mem;
@@ -43,9 +42,10 @@ pub struct AuxVec {
 ///
 /// [auxvec_h]: https://github.com/torvalds/linux/blob/master/include/uapi/linux/auxvec.h
 /// [auxv_docs]: https://docs.rs/auxv/0.3.3/auxv/
+#[cfg_attr(feature = "cargo-clippy", allow(items_after_statements))]
 pub fn auxv() -> Result<AuxVec, ()> {
     if !cfg!(target_os = "linux") {
-        return Err(())
+        return Err(());
     }
     if let Ok(hwcap) = getauxval(AT_HWCAP) {
         #[cfg(target_arch = "aarch64")]
@@ -78,7 +78,10 @@ pub fn auxv() -> Result<AuxVec, ()> {
         pub type F = unsafe extern "C" fn(usize) -> usize;
 
         unsafe {
-            let ptr = libc::dlsym(libc::RTLD_DEFAULT, "getauxval\0".as_ptr() as *const _);
+            let ptr = libc::dlsym(
+                libc::RTLD_DEFAULT,
+                "getauxval\0".as_ptr() as *const _,
+            );
             if ptr.is_null() {
                 return Err(());
             }
@@ -97,7 +100,7 @@ fn auxv_from_file(file: &str) -> Result<AuxVec, ()> {
     // The auxiliary vector contains at most 32 (key,value) fields: from
     // `AT_EXECFN = 31` to `AT_NULL = 0`. That is, a buffer of
     // 2*32 `usize` elements is enough to read the whole vector.
-    let mut buf = [0usize; 64];
+    let mut buf = [0_usize; 64];
     {
         let raw: &mut [u8; 64 * mem::size_of::<usize>()] =
             unsafe { mem::transmute(&mut buf) };
@@ -128,15 +131,12 @@ fn auxv_from_buf(buf: &[usize; 64]) -> Result<AuxVec, ()> {
                 _ => (),
             }
         }
-        if hwcap.is_some() && hwcap2.is_some() {
-            return Ok(AuxVec {
-                hwcap: hwcap.unwrap(),
-                hwcap2: hwcap2.unwrap(),
-            });
+
+        if let (Some(hwcap), Some(hwcap2)) = (hwcap, hwcap2) {
+            return Ok(AuxVec { hwcap, hwcap2 });
         }
     }
 
-    drop(buf);
     Err(())
 }
 
@@ -147,9 +147,9 @@ pub struct CpuInfo {
 
 impl CpuInfo {
     /// Reads /proc/cpuinfo into CpuInfo.
-    pub fn new() -> Result<CpuInfo, io::Error> {
+    pub fn new() -> Result<Self, io::Error> {
         let mut file = File::open("/proc/cpuinfo")?;
-        let mut cpui = CpuInfo { raw: String::new() };
+        let mut cpui = Self { raw: String::new() };
         file.read_to_string(&mut cpui.raw)?;
         Ok(cpui)
     }
@@ -157,7 +157,7 @@ impl CpuInfo {
     pub fn field(&self, field: &str) -> CpuInfoField {
         for l in self.raw.lines() {
             if l.trim().starts_with(field) {
-                return CpuInfoField::new(l.split(": ").skip(1).next());
+                return CpuInfoField::new(l.split(": ").nth(1));
             }
         }
         CpuInfoField(None)
@@ -170,8 +170,8 @@ impl CpuInfo {
     }
 
     #[cfg(test)]
-    fn from_str(other: &str) -> Result<CpuInfo, ::std::io::Error> {
-        Ok(CpuInfo {
+    fn from_str(other: &str) -> Result<Self, ::std::io::Error> {
+        Ok(Self {
             raw: String::from(other),
         })
     }
@@ -184,7 +184,7 @@ pub struct CpuInfoField<'a>(Option<&'a str>);
 impl<'a> PartialEq<&'a str> for CpuInfoField<'a> {
     fn eq(&self, other: &&'a str) -> bool {
         match self.0 {
-            None => other.len() == 0,
+            None => other.is_empty(),
             Some(f) => f == other.trim(),
         }
     }
@@ -205,10 +205,10 @@ impl<'a> CpuInfoField<'a> {
     /// Does the field contain `other`?
     pub fn has(&self, other: &str) -> bool {
         match self.0 {
-            None => other.len() == 0,
+            None => other.is_empty(),
             Some(f) => {
                 let other = other.trim();
-                for v in f.split(" ") {
+                for v in f.split(' ') {
                     if v == other {
                         return true;
                     }
@@ -259,10 +259,10 @@ mod tests {
 
     #[test]
     fn auxv_crate() {
-        if cfg!(target_arch = "x86") ||
-            cfg!(target_arch = "x86_64") ||
-            cfg!(target_arch = "powerpc") {
-            return
+        if cfg!(target_arch = "x86") || cfg!(target_arch = "x86_64")
+            || cfg!(target_arch = "powerpc")
+        {
+            return;
         }
         let v = auxv();
         if let Some(hwcap) = auxv_crate_getauxval(AT_HWCAP) {
@@ -280,8 +280,9 @@ mod tests {
     #[cfg(target_arch = "arm")]
     #[test]
     fn linux_rpi3() {
-        let v = auxv_from_file("../../stdsimd/arch/detect/test_data/linux-rpi3.auxv")
-            .unwrap();
+        let v = auxv_from_file(
+            "../../stdsimd/arch/detect/test_data/linux-rpi3.auxv",
+        ).unwrap();
         assert_eq!(v.hwcap, 4174038);
         assert_eq!(v.hwcap2, 16);
     }
@@ -320,7 +321,7 @@ mod tests {
     #[test]
     fn auxv_crate_procfs() {
         if cfg!(target_arch = "x86") || cfg!(target_arch = "x86_64") {
-            return
+            return;
         }
         let v = auxv();
         if let Some(hwcap) = auxv_crate_getprocfs(AT_HWCAP) {

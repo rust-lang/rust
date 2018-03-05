@@ -1,7 +1,7 @@
 //! Streaming SIMD Extensions 3 (SSE3)
 
 use coresimd::simd_llvm::{simd_shuffle2, simd_shuffle4};
-use coresimd::v128::*;
+use coresimd::simd::*;
 use coresimd::x86::*;
 
 #[cfg(test)]

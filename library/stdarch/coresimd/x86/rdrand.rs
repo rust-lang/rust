@@ -1,6 +1,6 @@
 //! RDRAND and RDSEED instructions for returning random numbers from an Intel
-//! on-chip hardware random number generator which has been seeded by an on-chip
-//! entropy source.
+//! on-chip hardware random number generator which has been seeded by an
+//! on-chip entropy source.
 
 extern "platform-intrinsic" {
     fn x86_rdrand16_step() -> (u16, i32);
@@ -17,6 +17,7 @@ use stdsimd_test::assert_instr;
 #[inline]
 #[target_feature(enable = "rdrand")]
 #[cfg_attr(test, assert_instr(rdrand))]
+#[cfg_attr(feature = "cargo-clippy", allow(stutter))]
 pub unsafe fn _rdrand16_step(val: &mut u16) -> i32 {
     let (v, flag) = x86_rdrand16_step();
     *val = v;
@@ -28,6 +29,7 @@ pub unsafe fn _rdrand16_step(val: &mut u16) -> i32 {
 #[inline]
 #[target_feature(enable = "rdrand")]
 #[cfg_attr(test, assert_instr(rdrand))]
+#[cfg_attr(feature = "cargo-clippy", allow(stutter))]
 pub unsafe fn _rdrand32_step(val: &mut u32) -> i32 {
     let (v, flag) = x86_rdrand32_step();
     *val = v;
