@@ -1,16 +1,16 @@
 error[E0185]: method `from` has a `&self` declaration in the impl, but not in the trait
   --> $DIR/issue-48276.rs:21:5
    |
-15 |     fn from(a: A) -> Self;
+LL |     fn from(a: A) -> Self;
    |     ---------------------- trait method declared without `&self`
 ...
-21 |     fn from(self: &'a Self) -> &'b str {
+LL |     fn from(self: &'a Self) -> &'b str {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `&self` used in impl
 
 error[E0185]: method `from` has a `&self` declaration in the impl, but not in the trait
   --> $DIR/issue-48276.rs:30:5
    |
-30 |     fn from(&self) -> B {
+LL |     fn from(&self) -> B {
    |     ^^^^^^^^^^^^^^^^^^^ `&self` used in impl
    |
    = note: `from` from trait: `fn(T) -> Self`
@@ -18,10 +18,11 @@ error[E0185]: method `from` has a `&self` declaration in the impl, but not in th
 error[E0185]: method `from` has a `&self` declaration in the impl, but not in the trait
   --> $DIR/issue-48276.rs:37:5
    |
-37 |     fn from(&self) -> &'static str {
+LL |     fn from(&self) -> &'static str {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `&self` used in impl
    |
    = note: `from` from trait: `fn(T) -> Self`
 
 error: aborting due to 3 previous errors
 
+If you want more information on this error, try using "rustc --explain E0185"
