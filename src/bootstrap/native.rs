@@ -81,11 +81,14 @@ impl Step for Llvm {
 
         let (out_dir, llvm_config_ret_dir) = if emscripten {
             let dir = build.emscripten_llvm_out(target);
-            let config_dir = dir.join("build/bin");
+            let config_dir = dir.join("bin");
             (dir, config_dir)
         } else {
-            (build.llvm_out(target),
-                build.llvm_out(build.config.build).join("build/bin"))
+            let mut dir = build.llvm_out(build.config.build);
+            if !build.config.build.contains("msvc") || build.config.ninja {
+                dir.push("build");
+            }
+            (build.llvm_out(target), dir.join("bin"))
         };
         let done_stamp = out_dir.join("llvm-finished-building");
         let build_llvm_config = llvm_config_ret_dir
