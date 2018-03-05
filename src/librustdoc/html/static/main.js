@@ -240,12 +240,15 @@
     }
 
     function handleShortcut(ev) {
-        if (document.activeElement.tagName === "INPUT")
+        if (document.activeElement.tagName === "INPUT" &&
+                hasClass(document.getElementById('main'), "hidden")) {
             return;
+        }
 
         // Don't interfere with browser shortcuts
-        if (ev.ctrlKey || ev.altKey || ev.metaKey)
+        if (ev.ctrlKey || ev.altKey || ev.metaKey) {
             return;
+        }
 
         var help = document.getElementById("help");
         switch (getVirtualKey(ev)) {
@@ -1800,7 +1803,7 @@
         if (!next) {
             return;
         }
-        if (checkIfThereAreMethods(next.childNodes) &&
+        if ((checkIfThereAreMethods(next.childNodes) || hasClass(e, 'method')) &&
             (hasClass(next, 'docblock') ||
              hasClass(e, 'impl') ||
              (hasClass(next, 'stability') &&
