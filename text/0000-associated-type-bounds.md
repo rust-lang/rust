@@ -7,8 +7,9 @@
 [summary]: #summary
 
 Introduce the bound form `MyTrait<AssociatedType: Bounds>`, permitted anywhere
-a bound of the form `MyTrait<AssociatedType = T>` would be allowed. This form
-desugars to `MyTrait<AssociatedType = impl Bounds>`.
+a bound of the form `MyTrait<AssociatedType = T>` would be allowed. The bound
+`T: Trait<AssociatedType: Bounds>` desugars to the bounds `T: Trait` and
+`<T as Trait>::AssociatedType: Bounds`.
 
 # Motivation
 [motivation]: #motivation
@@ -85,21 +86,29 @@ impl<I: Clone + Iterator<Item: Clone>> Clone for Peekable<I> {
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-The surface syntax `Trait<AssociatedType: Bounds>` should desugar to
-`Trait<AssociatedType = impl Bounds>` anywhere it appears. This syntax
-does not introduce any new semantics that the availability of
-`impl Bounds` does not already introduce.
+The surface syntax `T: Trait<AssociatedType: Bounds>` should always desugar
+to a pair of bounds: `T: Trait` and `<T as Trait>::AssociatedType: Bounds`.
+Rust currently allows both of those bounds anywhere a bound can currently appear;
+the new syntax does not introduce any new semantics.
+
+Additionally, the surface syntax `impl Trait<AssociatedType: Bounds>` turns
+into a named type variable `T`, universal or existential depending on context,
+with the usual bound `T: Trait` along with the added bound
+`<T as Trait>::AssociatedType: Bounds`.
+
+Meanwhile, the surface syntax `dyn Trait<AssociatedType: Bounds>` desugars into
+`dyn Trait<AssociatedType = T>` where `T` is a named type variable `T` with the
+bound `T: Bounds`.
 
 # Drawbacks
 [drawbacks]: #drawbacks
 
-With the introduction of the `impl Trait` syntax, Rust code can already
-express this using the desugared form. This proposal just introduces a
-simpler surface syntax that parallels other uses of bounds. As always,
-when introducing new syntactic forms, an increased burden is put on
-developers to know about and understand those forms, and this proposal
-is no different. However, we believe that the parallel to the use of bounds
-elsewhere makes this new syntax immediately recognizable and understandable.
+Rust code can already express this using the desugared form. This proposal
+just introduces a simpler surface syntax that parallels other uses of bounds.
+As always, when introducing new syntactic forms, an increased burden is put on
+developers to know about and understand those forms, and this proposal is no
+different. However, we believe that the parallel to the use of bounds elsewhere
+makes this new syntax immediately recognizable and understandable.
 
 # Rationale and alternatives
 [alternatives]: #alternatives
@@ -114,3 +123,4 @@ The introduced form in this RFC is comparatively both shorter and clearer.
 [unresolved]: #unresolved-questions
 
 - Does allowing this for `dyn` trait objects introduce any unforseen issues?
+  This can be resolved during stabilization.
