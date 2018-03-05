@@ -1,16 +1,58 @@
 error: redundant field names in struct initialization
-  --> $DIR/redundant_field_names.rs:23:9
+  --> $DIR/redundant_field_names.rs:26:9
    |
-23 |         gender: gender,
+26 |         gender: gender,
    |         ^^^^^^^^^^^^^^ help: replace it with: `gender`
    |
    = note: `-D redundant-field-names` implied by `-D warnings`
 
 error: redundant field names in struct initialization
-  --> $DIR/redundant_field_names.rs:24:9
+  --> $DIR/redundant_field_names.rs:27:9
    |
-24 |         age: age,
+27 |         age: age,
    |         ^^^^^^^^ help: replace it with: `age`
 
-error: aborting due to 2 previous errors
+error: redundant field names in struct initialization
+  --> $DIR/redundant_field_names.rs:45:25
+   |
+45 |     let _ = RangeFrom { start: start };
+   |                         ^^^^^^^^^^^^ help: replace it with: `start`
+
+error: redundant field names in struct initialization
+  --> $DIR/redundant_field_names.rs:46:23
+   |
+46 |     let _ = RangeTo { end: end };
+   |                       ^^^^^^^^ help: replace it with: `end`
+
+error: redundant field names in struct initialization
+  --> $DIR/redundant_field_names.rs:47:21
+   |
+47 |     let _ = Range { start: start, end: end };
+   |                     ^^^^^^^^^^^^ help: replace it with: `start`
+
+error: redundant field names in struct initialization
+  --> $DIR/redundant_field_names.rs:47:35
+   |
+47 |     let _ = Range { start: start, end: end };
+   |                                   ^^^^^^^^ help: replace it with: `end`
+
+error: redundant field names in struct initialization
+  --> $DIR/redundant_field_names.rs:48:30
+   |
+48 |     let _ = RangeInclusive { start: start, end: end };
+   |                              ^^^^^^^^^^^^ help: replace it with: `start`
+
+error: redundant field names in struct initialization
+  --> $DIR/redundant_field_names.rs:48:44
+   |
+48 |     let _ = RangeInclusive { start: start, end: end };
+   |                                            ^^^^^^^^ help: replace it with: `end`
+
+error: redundant field names in struct initialization
+  --> $DIR/redundant_field_names.rs:49:32
+   |
+49 |     let _ = RangeToInclusive { end: end };
+   |                                ^^^^^^^^ help: replace it with: `end`
+
+error: aborting due to 9 previous errors
 

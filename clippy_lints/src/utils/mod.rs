@@ -64,6 +64,16 @@ pub fn in_macro(span: Span) -> bool {
     })
 }
 
+/// Returns true if `expn_info` was expanded by range expressions.
+pub fn is_range_expression(span: Span) -> bool {
+    span.ctxt().outer().expn_info().map_or(false, |info| {
+        match info.callee.format {
+            ExpnFormat::CompilerDesugaring(CompilerDesugaringKind::DotFill) => true,
+            _ => false,
+        }
+    })
+}
+
 /// Returns true if the macro that expanded the crate was outside of the
 /// current crate or was a
 /// compiler plugin.

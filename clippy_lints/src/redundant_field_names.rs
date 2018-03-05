@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::hir::*;
-use utils::{span_lint_and_sugg, match_var};
+use utils::{is_range_expression, match_var, span_lint_and_sugg};
 
 /// **What it does:** Checks for fields in struct literals where shorthands
 /// could be used.
@@ -36,9 +36,16 @@ impl LintPass for RedundantFieldNames {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantFieldNames {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let ExprStruct(_, ref fields, _) = expr.node {
+        if let ExprStruct(ref path, ref fields, _) = expr.node {
             for field in fields {
                 let name = field.name.node;
+
+                // Do not care about range expressions.
+                // They could have redundant field name when desugared to structs.
+                // e.g. `start..end` is desugared to `Range { start: start, end: end }`
+                if is_range_expression(expr.span) {
+                    continue;
+                }
 
                 if match_var(&field.expr, name) && !field.is_shorthand {
                     span_lint_and_sugg (
