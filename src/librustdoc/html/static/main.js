@@ -1776,22 +1776,33 @@
         referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
     }
 
+    function checkIfThereAreMethods(elems) {
+        var areThereMethods = false;
+
+        onEach(elems, function(e) {
+            if (hasClass(e, "method")) {
+                areThereMethods = true;
+                return true;
+            }
+        });
+        return areThereMethods;
+    }
+
     var toggle = document.createElement('a');
     toggle.href = 'javascript:void(0)';
     toggle.className = 'collapse-toggle';
-    toggle.innerHTML = "[<span class='inner'>"+labelForToggleButton(false)+"</span>]";
+    toggle.innerHTML = "[<span class='inner'>" + labelForToggleButton(false) + "</span>]";
 
     var func = function(e) {
         var next = e.nextElementSibling;
         if (!next) {
             return;
         }
-        if (hasClass(next, 'docblock') ||
-            (hasClass(next, 'stability') &&
-             hasClass(next.nextElementSibling, 'docblock'))) {
-            insertAfter(toggle.cloneNode(true), e.childNodes[e.childNodes.length - 1]);
-        }
-        if (hasClass(e, 'impl')) {
+        if (checkIfThereAreMethods(next.childNodes) &&
+            (hasClass(next, 'docblock') ||
+             hasClass(e, 'impl') ||
+             (hasClass(next, 'stability') &&
+              hasClass(next.nextElementSibling, 'docblock')))) {
             insertAfter(toggle.cloneNode(true), e.childNodes[e.childNodes.length - 1]);
         }
     }
