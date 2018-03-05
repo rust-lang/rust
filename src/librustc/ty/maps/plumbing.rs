@@ -936,6 +936,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::TargetFeaturesEnabled => { force!(target_features_enabled, def_id!()); }
 
         DepKind::GetSymbolExportLevel => { force!(symbol_export_level, def_id!()); }
+        DepKind::Features => { force!(features_query, LOCAL_CRATE); }
     }
 
     true

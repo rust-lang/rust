@@ -17,7 +17,6 @@ use symbol::keywords;
 use syntax_pos::{BytePos, Span, DUMMY_SP};
 use tokenstream;
 
-use std::cell::RefCell;
 use std::iter::Peekable;
 use rustc_data_structures::sync::Lrc;
 
@@ -183,7 +182,7 @@ pub fn parse(
     input: tokenstream::TokenStream,
     expect_matchers: bool,
     sess: &ParseSess,
-    features: &RefCell<Features>,
+    features: &Features,
     attrs: &[ast::Attribute],
 ) -> Vec<TokenTree> {
     // Will contain the final collection of `self::TokenTree`
@@ -251,7 +250,7 @@ fn parse_tree<I>(
     trees: &mut Peekable<I>,
     expect_matchers: bool,
     sess: &ParseSess,
-    features: &RefCell<Features>,
+    features: &Features,
     attrs: &[ast::Attribute],
 ) -> TokenTree
 where
@@ -382,7 +381,7 @@ fn parse_sep_and_kleene_op<I>(
     input: &mut Peekable<I>,
     span: Span,
     sess: &ParseSess,
-    features: &RefCell<Features>,
+    features: &Features,
     attrs: &[ast::Attribute],
 ) -> (Option<token::Token>, KleeneOp)
 where
@@ -415,7 +414,7 @@ where
                 match parse_kleene_op(input, span) {
                     // #2 is a KleeneOp (this is the only valid option) :)
                     Ok(Ok(op)) if op == KleeneOp::ZeroOrOne => {
-                        if !features.borrow().macro_at_most_once_rep
+                        if !features.macro_at_most_once_rep
                             && !attr::contains_name(attrs, "allow_internal_unstable")
                         {
                             let explain = feature_gate::EXPLAIN_MACRO_AT_MOST_ONCE_REP;
@@ -438,7 +437,7 @@ where
                     Err(span) => span,
                 }
             } else {
-                if !features.borrow().macro_at_most_once_rep
+                if !features.macro_at_most_once_rep
                     && !attr::contains_name(attrs, "allow_internal_unstable")
                 {
                     let explain = feature_gate::EXPLAIN_MACRO_AT_MOST_ONCE_REP;
@@ -460,7 +459,7 @@ where
         Ok(Err((tok, span))) => match parse_kleene_op(input, span) {
             // #2 is a KleeneOp :D
             Ok(Ok(op)) if op == KleeneOp::ZeroOrOne => {
-                if !features.borrow().macro_at_most_once_rep
+                if !features.macro_at_most_once_rep
                     && !attr::contains_name(attrs, "allow_internal_unstable")
                 {
                     let explain = feature_gate::EXPLAIN_MACRO_AT_MOST_ONCE_REP;
@@ -487,7 +486,7 @@ where
         Err(span) => span,
     };
 
-    if !features.borrow().macro_at_most_once_rep
+    if !features.macro_at_most_once_rep
         && !attr::contains_name(attrs, "allow_internal_unstable")
     {
         sess.span_diagnostic

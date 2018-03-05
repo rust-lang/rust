@@ -41,7 +41,7 @@ fn expand_mbe_matches(cx: &mut ExtCtxt, _: Span, args: &[TokenTree])
     let mbe_matcher = quoted::parse(mbe_matcher.into_iter().collect(),
                                     true,
                                     cx.parse_sess,
-                                    &RefCell::new(Features::new()),
+                                    &Features::new(),
                                     &[]);
     let map = match TokenTree::parse(cx, &mbe_matcher, args.iter().cloned().collect()) {
         Success(map) => map,

@@ -201,7 +201,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
     }
 
     fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
-        if self.tcx.sess.features.borrow().never_type {
+        if self.tcx.features().never_type {
             self.tcx.is_ty_uninhabited_from(self.module, ty)
         } else {
             false
@@ -227,7 +227,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
                               substs: &'tcx ty::subst::Substs<'tcx>)
                               -> bool
     {
-        if self.tcx.sess.features.borrow().never_type {
+        if self.tcx.features().never_type {
             self.tcx.is_enum_variant_uninhabited_from(self.module, variant, substs)
         } else {
             false
