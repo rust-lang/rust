@@ -102,5 +102,11 @@ error: single-character string constant used as pattern
 37 |     x.trim_right_matches("x");
    |     ---------------------^^^- help: try using a char instead: `x.trim_right_matches('x')`
 
-error: aborting due to 17 previous errors
+error: single-character string constant used as pattern
+  --> $DIR/single_char_pattern.rs:39:13
+   |
+39 |     x.split("/n");
+   |     --------^^^^- help: try using a char instead: `x.split('/n')`
+
+error: aborting due to 18 previous errors
 

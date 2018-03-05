@@ -35,6 +35,8 @@ fn main() {
     x.rmatch_indices("x");
     x.trim_left_matches("x");
     x.trim_right_matches("x");
+    // Make sure we escape characters correctly.
+    x.split("\n");
 
     let h = HashSet::<String>::new();
     h.contains("X"); // should not warn
