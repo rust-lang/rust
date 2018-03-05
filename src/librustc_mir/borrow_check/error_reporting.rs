@@ -18,7 +18,7 @@ use rustc_data_structures::sync::Lrc;
 
 use super::{Context, MirBorrowckCtxt};
 use super::{InitializationRequiringAction, PrefixSet};
-use dataflow::{ActiveBorrows, BorrowData, FlowAtLocation, MovingOutStatements};
+use dataflow::{Borrows, BorrowData, FlowAtLocation, MovingOutStatements};
 use dataflow::move_paths::MovePathIndex;
 use util::borrowck_errors::{BorrowckErrors, Origin};
 
@@ -372,10 +372,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         context: Context,
         borrow: &BorrowData<'tcx>,
         drop_span: Span,
-        borrows: &ActiveBorrows<'cx, 'gcx, 'tcx>,
+        borrows: &Borrows<'cx, 'gcx, 'tcx>
     ) {
         let end_span = borrows.opt_region_end_span(&borrow.region);
-        let scope_tree = borrows.0.scope_tree();
+        let scope_tree = borrows.scope_tree();
         let root_place = self.prefixes(&borrow.borrowed_place, PrefixSet::All)
             .last()
             .unwrap();
