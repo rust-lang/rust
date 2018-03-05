@@ -40,7 +40,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             if let Some(cause) = cause_info.why_region_contains_point(borrow.region, context.loc) {
                 match *cause.root_cause() {
                     Cause::LiveVar(local, location) => {
-                        match find_regular_use(&mir, regioncx, borrow, location, local) {
+                        match find_regular_use(mir, regioncx, borrow, location, local) {
                             Some(p) => {
                                 err.span_label(
                                     mir.source_info(p).span,
@@ -58,9 +58,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     }
 
                     Cause::DropVar(local, location) => {
-                        match find_drop_use(&mir, regioncx, borrow, location, local) {
+                        match find_drop_use(mir, regioncx, borrow, location, local) {
                             Some(p) => {
-                                let local_name = &mir.local_decls[local].name.unwrap();
+                                let local_name = mir.local_decls[local].name.unwrap();
 
                                 err.span_label(
                                     mir.source_info(p).span,
