@@ -26,10 +26,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use fmt;
-use ops::Range;
-use iter::FusedIterator;
-
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::ascii::{EscapeDefault, escape_default};
 
