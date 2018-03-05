@@ -1,6 +1,8 @@
 #![warn(redundant_field_names)]
 #![allow(unused_variables)]
-#![feature(inclusive_range,inclusive_range_syntax)]
+#![feature(inclusive_range, inclusive_range_syntax)]
+
+use std::ops::{Range, RangeFrom, RangeTo, RangeInclusive, RangeToInclusive};
 
 mod foo {
     pub const BAR: u8 = 0;
@@ -29,7 +31,7 @@ fn main() {
         foo: foo::BAR, //should be ok
     };
 
-    // Range syntax
+    // Range expressions
     let (start, end) = (0, 0);
 
     let _ = start..;
@@ -39,10 +41,10 @@ fn main() {
     let _ = ..=end;
     let _ = start..=end;
 
-    // TODO: the following should be linted
-    let _ = ::std::ops::RangeFrom { start: start };
-    let _ = ::std::ops::RangeTo { end: end };
-    let _ = ::std::ops::Range { start: start, end: end };
-    let _ = ::std::ops::RangeInclusive { start: start, end: end };
-    let _ = ::std::ops::RangeToInclusive { end: end };
+    // hand-written Range family structs are linted
+    let _ = RangeFrom { start: start };
+    let _ = RangeTo { end: end };
+    let _ = Range { start: start, end: end };
+    let _ = RangeInclusive { start: start, end: end };
+    let _ = RangeToInclusive { end: end };
 }
