@@ -206,11 +206,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
     // Step 2: Mark all symbols that the symbols on the worklist touch.
     fn propagate(&mut self) {
         let mut scanned = FxHashSet();
-        loop {
-            let search_item = match self.worklist.pop() {
-                Some(item) => item,
-                None => break,
-            };
+        while let Some(search_item) = self.worklist.pop() {
             if !scanned.insert(search_item) {
                 continue
             }

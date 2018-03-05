@@ -732,18 +732,13 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
     let mut parser = parse::Parser::new(fmt_str);
     let mut pieces = vec![];
 
-    loop {
-        match parser.next() {
-            Some(mut piece) => {
-                if !parser.errors.is_empty() {
-                    break;
-                }
-                cx.verify_piece(&piece);
-                cx.resolve_name_inplace(&mut piece);
-                pieces.push(piece);
-            }
-            None => break,
+    while let Some(mut piece) = parser.next() {
+        if !parser.errors.is_empty() {
+            break;
         }
+        cx.verify_piece(&piece);
+        cx.resolve_name_inplace(&mut piece);
+        pieces.push(piece);
     }
 
     let numbered_position_args = pieces.iter().any(|arg: &parse::Piece| {
