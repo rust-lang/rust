@@ -111,7 +111,9 @@ impl<'a, 'gcx, 'tcx> ActiveBorrows<'a, 'gcx, 'tcx> {
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct BorrowData<'tcx> {
-    pub(crate) location: Location,
+    /// Location where the borrow reservation starts.
+    /// In many cases, this will be equal to the activation location but not always.
+    pub(crate) reserve_location: Location,
     pub(crate) kind: mir::BorrowKind,
     pub(crate) region: Region<'tcx>,
     pub(crate) borrowed_place: mir::Place<'tcx>,
@@ -209,7 +211,8 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                     if is_unsafe_place(self.tcx, self.mir, borrowed_place) { return; }
 
                     let borrow = BorrowData {
-                        location, kind, region,
+                        reserve_location: location,
+                        kind, region,
                         borrowed_place: borrowed_place.clone(),
                         assigned_place: assigned_place.clone(),
                     };
@@ -245,7 +248,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                     let mut found_it = false;
                     for idx in &self.region_map[region] {
                         let bd = &self.idx_vec[*idx];
-                        if bd.location == location &&
+                        if bd.reserve_location == location &&
                             bd.kind == kind &&
                             bd.region == region &&
                             bd.borrowed_place == *place
@@ -277,7 +280,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
     pub fn scope_tree(&self) -> &Lrc<region::ScopeTree> { &self.scope_tree }
 
     pub fn location(&self, idx: BorrowIndex) -> &Location {
-        &self.borrows[idx].location
+        &self.borrows[idx].reserve_location
     }
 
     /// Add all borrows to the kill set, if those borrows are out of scope at `location`.

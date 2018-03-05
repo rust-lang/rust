@@ -250,7 +250,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         let new_closure_span = self.find_closure_span(span, context.loc);
         let span = new_closure_span.map(|(args, _)| args).unwrap_or(span);
-        let old_closure_span = self.find_closure_span(issued_span, issued_borrow.location);
+        let old_closure_span = self.find_closure_span(issued_span, issued_borrow.reserve_location);
         let issued_span = old_closure_span
             .map(|(args, _)| args)
             .unwrap_or(issued_span);
@@ -380,7 +380,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             .last()
             .unwrap();
 
-        let borrow_span = self.mir.source_info(borrow.location).span;
+        let borrow_span = self.mir.source_info(borrow.reserve_location).span;
         let proper_span = match *root_place {
             Place::Local(local) => self.mir.local_decls[local].source_info.span,
             _ => drop_span,
@@ -817,7 +817,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
     // Retrieve span of given borrow from the current MIR representation
     pub fn retrieve_borrow_span(&self, borrow: &BorrowData) -> Span {
-        self.mir.source_info(borrow.location).span
+        self.mir.source_info(borrow.reserve_location).span
     }
 
     // Retrieve type of a place for the current MIR representation
