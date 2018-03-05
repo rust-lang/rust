@@ -828,6 +828,19 @@ impl Attributes {
             })
         }).collect();
 
+        // treat #[target_feature(enable = "feat")] attributes as if they were
+        // #[doc(cfg(target_feature = "feat"))] attributes as well
+        for attr in attrs.lists("target_feature") {
+            if attr.check_name("enable") {
+                if let Some(feat) = attr.value_str() {
+                    let meta = attr::mk_name_value_item_str("target_feature".into(), feat);
+                    if let Ok(feat_cfg) = Cfg::parse(&meta) {
+                        cfg &= feat_cfg;
+                    }
+                }
+            }
+        }
+
         Attributes {
             doc_strings,
             other_attrs,
