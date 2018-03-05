@@ -617,9 +617,12 @@ impl Rewrite for ast::Ty {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         match self.node {
             ast::TyKind::TraitObject(ref bounds, tobj_syntax) => {
-                let res = bounds.rewrite(context, shape)?;
                 // we have to consider 'dyn' keyword is used or not!!!
-                if tobj_syntax == ast::TraitObjectSyntax::Dyn {
+                let is_dyn = tobj_syntax == ast::TraitObjectSyntax::Dyn;
+                // 4 is length of 'dyn '
+                let shape = if is_dyn { shape.offset_left(4)? } else { shape };
+                let res = bounds.rewrite(context, shape)?;
+                if is_dyn {
                     Some(format!("dyn {}", res))
                 } else {
                     Some(res)
