@@ -286,7 +286,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     pub(super) fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_sized(self.tcx, self.param_env, DUMMY_SP)
+        ty.is_sized(self.tcx.at(DUMMY_SP), self.param_env)
     }
 
     pub fn load_mir(
