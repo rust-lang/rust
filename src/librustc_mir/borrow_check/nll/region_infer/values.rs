@@ -17,7 +17,7 @@ use rustc::mir::{BasicBlock, Location, Mir};
 use rustc::ty::RegionVid;
 use syntax::codemap::Span;
 
-use super::{Cause, CauseExt, TrackCauses};
+use super::{Cause, CauseExt};
 
 /// Maps between the various kinds of elements of a region value to
 /// the internal indices that w use.
@@ -202,7 +202,6 @@ impl RegionValues {
     pub(super) fn new(
         elements: &Rc<RegionValueElements>,
         num_region_variables: usize,
-        track_causes: TrackCauses,
     ) -> Self {
         assert!(
             elements.num_universal_regions <= num_region_variables,
@@ -215,11 +214,7 @@ impl RegionValues {
                 RegionVid::new(num_region_variables),
                 RegionElementIndex::new(elements.num_elements()),
             ),
-            causes: if track_causes.0 {
-                Some(CauseMap::default())
-            } else {
-                None
-            },
+            causes: Some(CauseMap::default()),
         }
     }
 

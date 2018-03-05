@@ -6,6 +6,9 @@ LL |         let mref = &mut u.s.a;
 ...
 LL |         let nref = &u.z.c;
    |                    ^^^^^^ immutable borrow occurs here
+LL |         //~^ ERROR cannot borrow `u.z.c` as immutable because it is also borrowed as mutable [E0502]
+LL |         println!("{} {}", mref, nref)
+   |                           ---- borrow later used here
 
 error[E0502]: cannot borrow `u.s.a` as mutable because it is also borrowed as immutable
   --> $DIR/issue-45157.rs:39:27
@@ -14,7 +17,9 @@ LL |         let nref = &u.z.c;
    |                    ------ immutable borrow occurs here
 LL |         //~^ ERROR cannot borrow `u.z.c` as immutable because it is also borrowed as mutable [E0502]
 LL |         println!("{} {}", mref, nref)
-   |                           ^^^^ mutable borrow occurs here
+   |                           ^^^^  ---- borrow later used here
+   |                           |
+   |                           mutable borrow occurs here
 
 error: aborting due to 2 previous errors
 

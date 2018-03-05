@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Znll-dump-cause
-
 #![feature(nll)]
 
 fn gimme(x: &(u32,)) -> &u32 {

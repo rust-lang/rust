@@ -72,8 +72,6 @@ pub struct RegionInferenceContext<'tcx> {
     universal_regions: UniversalRegions<'tcx>,
 }
 
-struct TrackCauses(bool);
-
 struct RegionDefinition<'tcx> {
     /// Why we created this variable. Mostly these will be
     /// `RegionVariableOrigin::NLL`, but some variables get created
@@ -250,15 +248,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .map(|origin| RegionDefinition::new(origin))
             .collect();
 
-        let nll_dump_cause = ty::tls::with(|tcx| tcx.sess.nll_dump_cause());
-
         let mut result = Self {
             definitions,
             elements: elements.clone(),
             liveness_constraints: RegionValues::new(
                 elements,
                 num_region_variables,
-                TrackCauses(nll_dump_cause),
             ),
             inferred_values: None,
             constraints: Vec::new(),

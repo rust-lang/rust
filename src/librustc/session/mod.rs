@@ -476,13 +476,6 @@ impl Session {
         *(self.features.borrow_mut()) = Some(features);
     }
 
-    /// If true, we should gather causal information during NLL
-    /// checking. This will eventually be the normal thing, but right
-    /// now it is too unoptimized.
-    pub fn nll_dump_cause(&self) -> bool {
-        self.opts.debugging_opts.nll_dump_cause
-    }
-
     /// Calculates the flavor of LTO to use for this compilation.
     pub fn lto(&self) -> config::Lto {
         // If our target has codegen requirements ignore the command line
