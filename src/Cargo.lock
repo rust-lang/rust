@@ -1912,9 +1912,11 @@ dependencies = [
 name = "rustc_errors"
 version = "0.0.0"
 dependencies = [
+ "atty 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_data_structures 0.0.0",
  "serialize 0.0.0",
  "syntax_pos 0.0.0",
+ "termcolor 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "unicode-width 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

@@ -8,24 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Checks the signature of the implicitly generated native main()
-// entry point. It must match C's `int main(int, char **)`.
+// no-prefer-dynamic
 
-// This test is for targets with 16bit c_int only.
-// ignore-aarch64
-// ignore-arm
-// ignore-asmjs
-// ignore-hexagon
-// ignore-mips
-// ignore-powerpc
-// ignore-s390x
-// ignore-sparc
-// ignore-wasm32
-// ignore-x86
-// ignore-x86_64
-// ignore-xcore
+#![crate_type = "proc-macro"]
 
-fn main() {
+extern crate proc_macro;
+
+use proc_macro::TokenStream;
+
+#[proc_macro_derive(Example)]
+pub fn example(input: TokenStream) -> TokenStream {
+    assert!(input.to_string().contains("i32"));
+    "".parse().unwrap()
 }
-
-// CHECK: define i16 @main(i16, i8**)
