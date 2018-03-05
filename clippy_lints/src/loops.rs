@@ -1624,7 +1624,8 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
         if_chain! {
             // a range index op
             if let ExprMethodCall(ref meth, _, ref args) = expr.node;
-            if meth.name == "index" || meth.name == "index_mut";
+            if (meth.name == "index" && match_trait_method(self.cx, expr, &paths::INDEX))
+                || (meth.name == "index_mut" && match_trait_method(self.cx, expr, &paths::INDEX_MUT));
             if !self.check(&args[1], &args[0], expr);
             then { return }
         }

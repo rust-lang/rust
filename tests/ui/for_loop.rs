@@ -556,3 +556,18 @@ pub fn manual_copy_same_destination(dst: &mut [i32], d: usize, s: usize) {
         dst[d + i] = dst[s + i];
     }
 }
+
+mod issue_2496 {
+    pub trait Handle {
+        fn new_for_index(index: usize) -> Self;
+        fn index(&self) -> usize;
+    }
+
+    pub fn test<H: Handle>() -> H {
+        for x in 0..5 {
+            let next_handle = H::new_for_index(x);
+            println!("{}", next_handle.index());
+        }
+        unimplemented!()
+    }
+}
