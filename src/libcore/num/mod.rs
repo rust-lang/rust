@@ -3848,7 +3848,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
 ///
 /// # Potential causes
 ///
-/// Among other causes, `ParseIntError` can be thrown because of leading or trailing whitespaces
+/// Among other causes, `ParseIntError` can be thrown because of leading or trailing whitespace
 /// in the string e.g. when it is obtained from the standard input.
 /// Using the [`str.trim()`] method ensures that no whitespace remains before parsing.
 ///
