@@ -362,6 +362,7 @@ impl<'sess> OnDiskCache<'sess> {
             cnum_map: cnum_map.as_ref().unwrap(),
             file_index_to_file: &self.file_index_to_file,
             file_index_to_stable_id: &self.file_index_to_stable_id,
+            synthetic_expansion_infos: &self.synthetic_expansion_infos,
             interpret_alloc_cache: FxHashMap::default(),
         };
 

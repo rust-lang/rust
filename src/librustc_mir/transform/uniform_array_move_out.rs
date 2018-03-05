@@ -203,7 +203,7 @@ impl MirPass for RestoreSubsliceArrayMoveOut {
                         let opt_size = opt_src_place.and_then(|src_place| {
                             let src_ty = src_place.ty(mir, tcx).to_ty(tcx);
                             if let ty::TyArray(_, ref size_o) = src_ty.sty {
-                                size_o.val.to_const_int().and_then(|v| v.to_u64())
+                                size_o.val.to_raw_bits().map(|n| n as u64)
                             } else {
                                 None
                             }

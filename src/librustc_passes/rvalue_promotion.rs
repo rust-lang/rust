@@ -32,7 +32,7 @@ use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::maps::{queries, Providers};
+use rustc::ty::maps::Providers;
 use rustc::ty::subst::Substs;
 use rustc::traits::Reveal;
 use rustc::util::nodemap::{ItemLocalSet, NodeSet};
@@ -325,16 +325,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
                         // Don't peek inside trait associated constants.
                         false
                     } else {
-                        queries::const_is_rvalue_promotable_to_static::try_get(v.tcx, e.span, did)
-                            .unwrap_or_else(|mut err| {
-                                // A cycle between constants ought to be reported elsewhere.
-                                err.cancel();
-                                v.tcx.sess.delay_span_bug(
-                                    e.span,
-                                    &format!("cycle encountered during const qualification: {:?}",
-                                             did));
-                                false
-                            })
+                        v.tcx.at(e.span).const_is_rvalue_promotable_to_static(did)
                     };
 
                     // Just in case the type is more specific than the definition,

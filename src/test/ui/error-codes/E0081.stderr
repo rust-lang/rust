@@ -1,10 +1,10 @@
-error[E0081]: discriminant value `3isize` already exists
+error[E0081]: discriminant value `3` already exists
   --> $DIR/E0081.rs:13:9
    |
 LL |     P = 3,
-   |         - first use of `3isize`
+   |         - first use of `3`
 LL |     X = 3,
-   |         ^ enum already has `3isize`
+   |         ^ enum already has `3`
 
 error: aborting due to previous error
 

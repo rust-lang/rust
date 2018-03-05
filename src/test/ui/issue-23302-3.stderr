@@ -1,20 +1,30 @@
 error[E0391]: cyclic dependency detected
-  --> $DIR/issue-23302-3.rs:11:16
-   |
-LL | const A: i32 = B; //~ ERROR E0391
-   |                ^ cyclic reference
-   |
-note: the cycle begins when processing `B`...
-  --> $DIR/issue-23302-3.rs:13:1
-   |
-LL | const B: i32 = A;
-   | ^^^^^^^^^^^^^^^^^
-note: ...which then requires processing `A`...
   --> $DIR/issue-23302-3.rs:13:16
    |
-LL | const B: i32 = A;
+LL | const B: i32 = A; //~ ERROR cyclic dependency detected
+   |                ^ cyclic reference
+   |
+note: the cycle begins when const checking if rvalue is promotable to static `A`...
+  --> $DIR/issue-23302-3.rs:11:1
+   |
+LL | const A: i32 = B;
+   | ^^^^^^^^^^^^^^^^^
+note: ...which then requires checking which parts of `A` are promotable to static...
+  --> $DIR/issue-23302-3.rs:11:1
+   |
+LL | const A: i32 = B;
+   | ^^^^^^^^^^^^^^^^^
+note: ...which then requires const checking if rvalue is promotable to static `B`...
+  --> $DIR/issue-23302-3.rs:11:16
+   |
+LL | const A: i32 = B;
    |                ^
-   = note: ...which then again requires processing `B`, completing the cycle.
+note: ...which then requires checking which parts of `B` are promotable to static...
+  --> $DIR/issue-23302-3.rs:13:1
+   |
+LL | const B: i32 = A; //~ ERROR cyclic dependency detected
+   | ^^^^^^^^^^^^^^^^^
+   = note: ...which then again requires const checking if rvalue is promotable to static `A`, completing the cycle.
 
 error: aborting due to previous error
 

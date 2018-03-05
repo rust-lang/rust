@@ -373,13 +373,17 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                      PatternKind::Constant { value: hi }) => {
                         use std::cmp::Ordering;
                         match (end, compare_const_vals(&lo.val, &hi.val, ty).unwrap()) {
-                            (RangeEnd::Excluded, Ordering::Less) => {},
-                            (RangeEnd::Excluded, _) => span_err!(
-                                self.tcx.sess,
-                                lo_expr.span,
-                                E0579,
-                                "lower range bound must be less than upper",
-                            ),
+                            (RangeEnd::Excluded, Ordering::Less) =>
+                                PatternKind::Range { lo, hi, end },
+                            (RangeEnd::Excluded, _) => {
+                                span_err!(
+                                    self.tcx.sess,
+                                    lo_expr.span,
+                                    E0579,
+                                    "lower range bound must be less than upper",
+                                );
+                                PatternKind::Wild
+                            },
                             (RangeEnd::Included, Ordering::Greater) => {
                                 let mut err = struct_span_err!(
                                     self.tcx.sess,
@@ -399,10 +403,10 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                               to be less than or equal to the end of the range.");
                                 }
                                 err.emit();
+                                PatternKind::Wild
                             },
-                            (RangeEnd::Included, _) => {}
+                            (RangeEnd::Included, _) => PatternKind::Range { lo, hi, end },
                         }
-                        PatternKind::Range { lo, hi, end }
                     }
                     _ => PatternKind::Wild
                 }

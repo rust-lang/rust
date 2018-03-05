@@ -1090,8 +1090,7 @@ fn collect_miri<'a, 'tcx>(
         let instance = Instance::mono(tcx, did);
         if should_monomorphize_locally(tcx, &instance) {
             trace!("collecting static {:?}", did);
-            let node_id = tcx.hir.as_local_node_id(did).unwrap();
-            output.push(MonoItem::Static(node_id));
+            output.push(MonoItem::Static(did));
         }
     } else if let Some(alloc) = tcx.interpret_interner.get_alloc(alloc_id) {
         trace!("collecting {:?} with {:#?}", alloc_id, alloc);

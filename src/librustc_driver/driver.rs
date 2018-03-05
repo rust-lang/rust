@@ -36,7 +36,7 @@ use rustc_typeck as typeck;
 use rustc_privacy;
 use rustc_plugin::registry::Registry;
 use rustc_plugin as plugin;
-use rustc_passes::{self, ast_validation, loops, consts, hir_stats};
+use rustc_passes::{self, ast_validation, loops, rvalue_promotion, hir_stats};
 use super::Compilation;
 
 use serialize::json;
