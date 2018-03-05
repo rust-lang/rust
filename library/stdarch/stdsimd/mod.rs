@@ -164,7 +164,7 @@
 /// across all machines and it'll use the optimized AVX2 implementation on
 /// machines where support is detected.
 ///
-/// # Ergnomics
+/// # Ergonomics
 ///
 /// It's important to note that using the `arch` module is not the easiest thing
 /// in the world, so if you're curious to try it out you may want to brace
