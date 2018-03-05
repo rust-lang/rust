@@ -1,6 +1,8 @@
+use syntax::ast::Name;
 use rustc::lint::*;
 use rustc::hir::*;
-use utils::{span_lint_and_sugg, match_var};
+use utils::{match_qpath, match_var, span_lint_and_sugg};
+use utils::paths;
 
 /// **What it does:** Checks for fields in struct literals where shorthands
 /// could be used.
@@ -36,9 +38,13 @@ impl LintPass for RedundantFieldNames {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantFieldNames {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let ExprStruct(_, ref fields, _) = expr.node {
+        if let ExprStruct(ref path, ref fields, _) = expr.node {
             for field in fields {
                 let name = field.name.node;
+
+                if is_range_struct_field(path, &name) {
+                    continue;
+                }
 
                 if match_var(&field.expr, name) && !field.is_shorthand {
                     span_lint_and_sugg (
@@ -52,5 +58,29 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantFieldNames {
                 }
             }
         }
+    }
+}
+
+/// ```rust
+/// let start = 0;
+/// let _ = start..;
+///
+/// let end = 0;
+/// let _ = ..end;
+///
+/// let _ = start..end;
+/// ```
+fn is_range_struct_field(path: &QPath, name: &Name) -> bool {
+    match name.as_str().as_ref() {
+        "start" => {
+            match_qpath(path, &paths::RANGE_STD) || match_qpath(path, &paths::RANGE_FROM_STD)
+                || match_qpath(path, &paths::RANGE_INCLUSIVE_STD)
+        },
+        "end" => {
+            match_qpath(path, &paths::RANGE_STD) || match_qpath(path, &paths::RANGE_TO_STD)
+                || match_qpath(path, &paths::RANGE_INCLUSIVE_STD)
+                || match_qpath(path, &paths::RANGE_TO_INCLUSIVE_STD)
+        },
+        _ => false,
     }
 }
