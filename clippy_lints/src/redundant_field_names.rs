@@ -36,7 +36,7 @@ impl LintPass for RedundantFieldNames {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantFieldNames {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let ExprStruct(ref path, ref fields, _) = expr.node {
+        if let ExprStruct(_, ref fields, _) = expr.node {
             for field in fields {
                 let name = field.name.node;
 
