@@ -263,13 +263,13 @@ Confirmation is where an error would be reported because the impl specified
 that `Target` would be `usize`, but the obligation reported `char`. Hence the
 result of selection would be an error.
 
-Note that the candidate impl is chosen base on the `Self` type, but
+Note that the candidate impl is chosen based on the `Self` type, but
 confirmation is done based on (in this case) the `Target` type parameter.
 
 ### Selection during translation
 
 As mentioned above, during type checking, we do not store the results of trait
-selection. At trans time, repeat the trait selection to choose a particular
+selection. At trans time, we repeat the trait selection to choose a particular
 impl for each method call. In this second selection, we do not consider any
 where-clauses to be in scope because we know that each resolution will resolve
 to a particular impl.

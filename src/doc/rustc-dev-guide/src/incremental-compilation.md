@@ -114,7 +114,7 @@ This can lead to ICEs and other problems in the compiler.
 
 ## Improvements to the basic algorithm
 
-In the description basic algorithm, we said that at the end of
+In the description of the basic algorithm, we said that at the end of
 compilation we would save the results of all the queries that were
 performed.  In practice, this can be quite wasteful – many of those
 results are very cheap to recompute, and serializing and deserializing

@@ -39,7 +39,7 @@ for some fresh `'cx` and `'tcx` – the latter corresponds to the lifetime of
 this temporary arena, and the `'cx` is the lifetime of the `InferCtxt` itself.
 (Again, see the [`ty` chapter][ty-ch] for more details on this setup.)
 
-The `tcx.infer_ctxt` method actually returns a build, which means
+The `tcx.infer_ctxt` method actually returns a builder, which means
 there are some kinds of configuration you can do before the `infcx` is
 created. See `InferCtxtBuilder` for more information.
 
