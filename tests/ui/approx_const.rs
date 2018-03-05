@@ -2,7 +2,7 @@
 
 
 #[warn(approx_constant)]
-#[allow(unused, shadow_unrelated, similar_names)]
+#[allow(unused, shadow_unrelated, similar_names, unreadable_literal)]
 fn main() {
     let my_e = 2.7182;
     let almost_e = 2.718;
