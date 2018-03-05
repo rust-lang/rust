@@ -616,7 +616,15 @@ impl Rewrite for ast::TraitRef {
 impl Rewrite for ast::Ty {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         match self.node {
-            ast::TyKind::TraitObject(ref bounds, ..) => bounds.rewrite(context, shape),
+            ast::TyKind::TraitObject(ref bounds, tobj_syntax) => {
+                let res = bounds.rewrite(context, shape)?;
+                // we have to consider 'dyn' keyword is used or not!!!
+                if tobj_syntax == ast::TraitObjectSyntax::Dyn {
+                    Some(format!("dyn {}", res))
+                } else {
+                    Some(res)
+                }
+            }
             ast::TyKind::Ptr(ref mt) => {
                 let prefix = match mt.mutbl {
                     Mutability::Mutable => "*mut ",
