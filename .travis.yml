@@ -301,6 +301,12 @@ notifications:
 cache:
   directories:
     - $HOME/docker
+    - build/x86_64-unknown-linux-gnu/stage0
+    - build/x86_64-unknown-linux-gnu/stage0-rustc
+    - build/x86_64-unknown-linux-gnu/stage0-std
+    - build/x86_64-unknown-linux-gnu/stage0-sysroot
+    - build/x86_64-unknown-linux-gnu/stage0-test
+    - build/x86_64-unknown-linux-gnu/stage0-tools
 
 before_deploy:
   - mkdir -p deploy/$TRAVIS_COMMIT
