@@ -94,8 +94,22 @@ fn used_immutable() {
     }
 }
 
+use std::cell::Cell;
+
+fn maybe_i_mutate(i: &Cell<bool>) { unimplemented!() }
+
+fn internally_mutable() {
+    let b = Cell::new(true);
+
+    while b.get() {       // b cannot be silently coerced to `bool`
+        maybe_i_mutate(&b);
+        println!("OK - Method call within condition");
+    }
+}
+
 fn main() {
     immutable_condition();
     unused_var();
     used_immutable();
+    internally_mutable();
 }
