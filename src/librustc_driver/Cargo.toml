@@ -12,7 +12,7 @@ crate-type = ["dylib"]
 arena = { path = "../libarena" }
 graphviz = { path = "../libgraphviz" }
 log = "0.4"
-env_logger = { version = "0.4", default-features = false }
+env_logger = { version = "0.5", default-features = false }
 rustc = { path = "../librustc" }
 rustc_allocator = { path = "../librustc_allocator" }
 rustc_back = { path = "../librustc_back" }
