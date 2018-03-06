@@ -58,7 +58,7 @@ mod traits {
     pub trait PubTr {}
 
     pub type Alias<T: PrivTr> = T; //~ ERROR private trait `traits::PrivTr` in public interface
-    //~^ WARNING bounds on generic type parameters are ignored
+    //~^ WARNING bounds on generic parameters are ignored
     //~| WARNING hard error
     pub trait Tr1: PrivTr {} //~ ERROR private trait `traits::PrivTr` in public interface
     //~^ WARNING hard error

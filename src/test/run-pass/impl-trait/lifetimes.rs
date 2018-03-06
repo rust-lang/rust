@@ -69,8 +69,8 @@ fn foo(x: &impl Debug) -> &impl Debug { x }
 fn foo_explicit_lifetime<'a>(x: &'a impl Debug) -> &'a impl Debug { x }
 fn foo_explicit_arg<T: Debug>(x: &T) -> &impl Debug { x }
 
-fn mixed_lifetimes<'a>() -> impl for<'b: 'a> Fn(&'b u32) { |_| () }
-fn mixed_as_static() -> impl Fn(&'static u32) { mixed_lifetimes() }
+fn mixed_lifetimes<'a>() -> impl for<'b> Fn(&'b &'a u32) { |_| () }
+fn mixed_as_static() -> impl Fn(&'static &'static u32) { mixed_lifetimes() }
 
 trait MultiRegionTrait<'a, 'b>: Debug {}
 

@@ -8,17 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// must-compile-successfully
 #![allow(dead_code, non_camel_case_types)]
 
 use std::rc::Rc;
 
 type SVec<T: Send+Send> = Vec<T>;
-//~^ WARN bounds on generic type parameters are ignored in type aliases
+//~^ WARN bounds on generic parameters are ignored in type aliases
 type VVec<'b, 'a: 'b+'b> = Vec<&'a i32>;
-//~^ WARN bounds on generic lifetime parameters are ignored in type aliases
+//~^ WARN bounds on generic parameters are ignored in type aliases
 type WVec<'b, T: 'b+'b> = Vec<T>;
-//~^ WARN bounds on generic type parameters are ignored in type aliases
+//~^ WARN bounds on generic parameters are ignored in type aliases
 type W2Vec<'b, T> where T: 'b, T: 'b = Vec<T>;
 //~^ WARN where clauses are ignored in type aliases
 
@@ -40,8 +39,8 @@ fn foo<'a>(y: &'a i32) {
 fn bar1<'a, 'b>(
     x: &'a i32,
     y: &'b i32,
-    f: for<'xa, 'xb: 'xa> fn(&'xa i32, &'xb i32) -> &'xa i32)
-    //~^ WARN bounds on generic lifetime parameters are ignored in higher-ranked function types
+    f: for<'xa, 'xb: 'xa+'xa> fn(&'xa i32, &'xb i32) -> &'xa i32)
+    //~^ ERROR lifetime bounds cannot be used in this context
 {
     // If the bound in f's type would matter, the call below would (have to)
     // be rejected.
@@ -49,7 +48,7 @@ fn bar1<'a, 'b>(
 }
 
 fn bar2<'a, 'b, F: for<'xa, 'xb: 'xa> Fn(&'xa i32, &'xb i32) -> &'xa i32>(
-    //~^ WARN bounds on generic lifetime parameters are ignored in higher-ranked trait bounds
+    //~^ ERROR lifetime bounds cannot be used in this context
     x: &'a i32,
     y: &'b i32,
     f: F)
@@ -64,7 +63,7 @@ fn bar3<'a, 'b, F>(
     y: &'b i32,
     f: F)
     where F: for<'xa, 'xb: 'xa> Fn(&'xa i32, &'xb i32) -> &'xa i32
-    //~^ WARN bounds on generic lifetime parameters are ignored in higher-ranked trait bounds
+    //~^ ERROR lifetime bounds cannot be used in this context
 {
     // If the bound in f's type would matter, the call below would (have to)
     // be rejected.
@@ -76,7 +75,7 @@ fn bar4<'a, 'b, F>(
     y: &'b i32,
     f: F)
     where for<'xa, 'xb: 'xa> F: Fn(&'xa i32, &'xb i32) -> &'xa i32
-    //~^ WARN bounds on generic lifetime parameters are ignored in higher-ranked trait bounds
+    //~^ ERROR lifetime bounds cannot be used in this context
 {
     // If the bound in f's type would matter, the call below would (have to)
     // be rejected.
@@ -84,21 +83,21 @@ fn bar4<'a, 'b, F>(
 }
 
 struct S1<F: for<'xa, 'xb: 'xa> Fn(&'xa i32, &'xb i32) -> &'xa i32>(F);
-//~^ WARN bounds on generic lifetime parameters are ignored in higher-ranked trait bounds
+//~^ ERROR lifetime bounds cannot be used in this context
 struct S2<F>(F) where F: for<'xa, 'xb: 'xa> Fn(&'xa i32, &'xb i32) -> &'xa i32;
-//~^ WARN bounds on generic lifetime parameters are ignored in higher-ranked trait bounds
+//~^ ERROR lifetime bounds cannot be used in this context
 struct S3<F>(F) where for<'xa, 'xb: 'xa> F: Fn(&'xa i32, &'xb i32) -> &'xa i32;
-//~^ WARN bounds on generic lifetime parameters are ignored in higher-ranked trait bounds
+//~^ ERROR lifetime bounds cannot be used in this context
 
 struct S_fnty(for<'xa, 'xb: 'xa> fn(&'xa i32, &'xb i32) -> &'xa i32);
-//~^ WARN bounds on generic lifetime parameters are ignored in higher-ranked function types
+//~^ ERROR lifetime bounds cannot be used in this context
 
 type T1 = Box<for<'xa, 'xb: 'xa> Fn(&'xa i32, &'xb i32) -> &'xa i32>;
-//~^ WARN bounds on generic lifetime parameters are ignored in higher-ranked trait bounds
+//~^ ERROR lifetime bounds cannot be used in this context
 
 fn main() {
     let _ : Option<for<'xa, 'xb: 'xa> fn(&'xa i32, &'xb i32) -> &'xa i32> = None;
-    //~^ WARN bounds on generic lifetime parameters are ignored in higher-ranked function types
+    //~^ ERROR lifetime bounds cannot be used in this context
     let _ : Option<Box<for<'xa, 'xb: 'xa> Fn(&'xa i32, &'xb i32) -> &'xa i32>> = None;
-    //~^ WARN bounds on generic lifetime parameters are ignored in higher-ranked trait bounds
+    //~^ ERROR lifetime bounds cannot be used in this context
 }

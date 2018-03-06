@@ -8,16 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only -Z continue-parse-after-error
-
-struct S<
-    T: 'a + Tr, // OK
-    T: Tr + 'a, // OK
-    T: 'a, // OK
-    T:, // OK
-    T: ?for<'a> Trait, // OK
-    T: Tr +, // OK
-    T: ?'a, //~ ERROR `?` may only modify trait bounds, not lifetime bounds
->;
+type A = for<'b, 'a: 'b> fn(); //~ ERROR lifetime bounds cannot be used in this context
+type B = for<'b, 'a: 'b,> fn(); //~ ERROR lifetime bounds cannot be used in this context
+type C = for<'b, 'a: 'b +> fn(); //~ ERROR lifetime bounds cannot be used in this context
+type D = for<'a, T> fn(); //~ ERROR only lifetime parameters can be used in this context
+type E = for<T> Fn(); //~ ERROR only lifetime parameters can be used in this context
 
 fn main() {}

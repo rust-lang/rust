@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(ignored_generic_bounds)]
-
 pub enum Expr<'var, VAR> {
     Let(Box<Expr<'var, VAR>>,
-        Box<for<'v: 'var> Fn(Expr<'v, VAR>) -> Expr<'v, VAR> + 'var>)
+        Box<for<'v> Fn(Expr<'v, VAR>) -> Expr<'v, VAR> + 'var>)
 }
 
 pub fn add<'var, VAR>
@@ -20,7 +18,7 @@ pub fn add<'var, VAR>
     loop {}
 }
 
-pub fn let_<'var, VAR, F: for<'v: 'var> Fn(Expr<'v, VAR>) -> Expr<'v, VAR>>
+pub fn let_<'var, VAR, F: for<'v> Fn(Expr<'v, VAR>) -> Expr<'v, VAR>>
                        (a: Expr<'var, VAR>, b: F) -> Expr<'var, VAR> {
     loop {}
 }

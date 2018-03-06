@@ -1404,79 +1404,32 @@ impl LintPass for IgnoredGenericBounds {
     }
 }
 
-impl IgnoredGenericBounds {
-    fn ensure_no_param_bounds(
-        cx: &EarlyContext,
-        generics: &Vec<ast::GenericParam>,
-        thing: &'static str,
-    ) {
-        for param in generics.iter() {
-            match param {
-                &ast::GenericParam::Lifetime(ref lifetime) => {
-                    if !lifetime.bounds.is_empty() {
-                        let spans : Vec<_> = lifetime.bounds.iter().map(|b| b.span).collect();
-                        cx.span_lint(
-                            IGNORED_GENERIC_BOUNDS,
-                            spans,
-                            format!("bounds on generic lifetime parameters are ignored in {}",
-                                thing).as_ref()
-                        );
-                    }
-                }
-                &ast::GenericParam::Type(ref ty) => {
-                    if !ty.bounds.is_empty() {
-                        let spans : Vec<_> = ty.bounds.iter().map(|b| b.span()).collect();
-                        cx.span_lint(
-                            IGNORED_GENERIC_BOUNDS,
-                            spans,
-                            format!("bounds on generic type parameters are ignored in {}", thing)
-                                .as_ref()
-                        );
-                    }
-                }
-            }
-        }
-    }
-}
-
 impl EarlyLintPass for IgnoredGenericBounds {
     fn check_item(&mut self, cx: &EarlyContext, item: &ast::Item) {
-        match item.node {
-            ast::ItemKind::Ty(_, ref generics) => {
-                if !generics.where_clause.predicates.is_empty() {
-                    let spans : Vec<_> = generics.where_clause.predicates.iter()
-                        .map(|pred| pred.span()).collect();
-                    cx.span_lint(IGNORED_GENERIC_BOUNDS, spans,
-                        "where clauses are ignored in type aliases");
-                }
-                IgnoredGenericBounds::ensure_no_param_bounds(cx, &generics.params,
-                    "type aliases");
-            }
-            _ => {}
+        let type_alias_generics = match item.node {
+            ast::ItemKind::Ty(_, ref generics) => generics,
+            _ => return,
+        };
+        // There must not be a where clause
+        if !type_alias_generics.where_clause.predicates.is_empty() {
+            let spans : Vec<_> = type_alias_generics.where_clause.predicates.iter()
+                .map(|pred| pred.span()).collect();
+            cx.span_lint(IGNORED_GENERIC_BOUNDS, spans,
+                "where clauses are ignored in type aliases");
         }
-    }
-
-    fn check_where_predicate(&mut self, cx: &EarlyContext, p: &ast::WherePredicate) {
-        if let &ast::WherePredicate::BoundPredicate(ref bound_predicate) = p {
-            // A type binding, eg `for<'c> Foo: Send+Clone+'c`
-            IgnoredGenericBounds::ensure_no_param_bounds(cx,
-                &bound_predicate.bound_generic_params, "higher-ranked trait bounds (i.e., `for`)");
-        }
-    }
-
-    fn check_poly_trait_ref(&mut self, cx: &EarlyContext, t: &ast::PolyTraitRef,
-                            _: &ast::TraitBoundModifier) {
-        IgnoredGenericBounds::ensure_no_param_bounds(cx, &t.bound_generic_params,
-            "higher-ranked trait bounds (i.e., `for`)");
-    }
-
-    fn check_ty(&mut self, cx: &EarlyContext, ty: &ast::Ty) {
-        match ty.node {
-            ast::TyKind::BareFn(ref fn_ty) => {
-                IgnoredGenericBounds::ensure_no_param_bounds(cx, &fn_ty.generic_params,
-                    "higher-ranked function types (i.e., `for`)");
+        // The parameters must not have bounds
+        for param in type_alias_generics.params.iter() {
+            let spans : Vec<_> = match param {
+                &ast::GenericParam::Lifetime(ref l) => l.bounds.iter().map(|b| b.span).collect(),
+                &ast::GenericParam::Type(ref ty) => ty.bounds.iter().map(|b| b.span()).collect(),
+            };
+            if !spans.is_empty() {
+                cx.span_lint(
+                    IGNORED_GENERIC_BOUNDS,
+                    spans,
+                    "bounds on generic parameters are ignored in type aliases",
+                );
             }
-            _ => {}
         }
     }
 }
