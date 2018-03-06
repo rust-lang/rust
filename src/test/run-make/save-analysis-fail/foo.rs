@@ -462,4 +462,7 @@ fn new(f: u32) -> Rls699 {
 
 fn invalid_tuple_struct_access() {
     bar.0;
+
+    struct S;
+    S.0;
 }
