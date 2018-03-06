@@ -4827,6 +4827,7 @@ impl<'a> Parser<'a> {
                         }
                     ));
                 // FIXME: Decide what should be used here, `=` or `==`.
+                // FIXME: We are just dropping the binders in lifetime_defs on the floor here.
                 } else if self.eat(&token::Eq) || self.eat(&token::EqEq) {
                     let rhs_ty = self.parse_ty()?;
                     where_clause.predicates.push(ast::WherePredicate::EqPredicate(
