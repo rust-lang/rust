@@ -322,12 +322,7 @@ impl Span {
     pub fn macro_backtrace(mut self) -> Vec<MacroBacktrace> {
         let mut prev_span = DUMMY_SP;
         let mut result = vec![];
-        loop {
-            let info = match self.ctxt().outer().expn_info() {
-                Some(info) => info,
-                None => break,
-            };
-
+        while let Some(info) = self.ctxt().outer().expn_info() {
             let (pre, post) = match info.callee.format {
                 ExpnFormat::MacroAttribute(..) => ("#[", "]"),
                 ExpnFormat::MacroBang(..) => ("", "!"),
