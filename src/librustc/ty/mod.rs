@@ -68,7 +68,7 @@ pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};
 pub use self::sty::{ExistentialProjection, PolyExistentialProjection, Const};
 pub use self::sty::{BoundRegion, EarlyBoundRegion, FreeRegion, Region};
 pub use self::sty::RegionKind;
-pub use self::sty::{TyVid, IntVid, FloatVid, RegionVid};
+pub use self::sty::{TyVid, IntVid, FloatVid, RegionVid, SkolemizedRegionVid};
 pub use self::sty::BoundRegion::*;
 pub use self::sty::InferTy::*;
 pub use self::sty::RegionKind::*;
@@ -1332,7 +1332,7 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
 /// type name in a non-zero universe is a skolemized type -- an
 /// idealized representative of "types in general" that we use for
 /// checking generic functions.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct UniverseIndex(u32);
 
 impl UniverseIndex {
@@ -1352,19 +1352,7 @@ impl UniverseIndex {
     /// region `'a`, but that region was not nameable from `U` because
     /// it was not in scope there.
     pub fn subuniverse(self) -> UniverseIndex {
-        UniverseIndex(self.0.checked_add(1).unwrap())
-    }
-
-    pub fn from(v: u32) -> UniverseIndex {
-        UniverseIndex(v)
-    }
-
-    pub fn as_u32(&self) -> u32 {
-        self.0
-    }
-
-    pub fn as_usize(&self) -> usize {
-        self.0 as usize
+        UniverseIndex(self.0 + 1)
     }
 
     /// Gets the "depth" of this universe in the universe tree. This
