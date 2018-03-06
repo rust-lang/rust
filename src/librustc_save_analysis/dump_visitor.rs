@@ -1675,7 +1675,10 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                         }
                     }
                     ty::TyTuple(..) => {}
-                    _ => span_bug!(ex.span, "Expected struct or tuple type, found {:?}", ty),
+                    _ => {
+                        debug!("Expected struct or tuple type, found {:?}", ty);
+                        return;
+                    }
                 }
             }
             ast::ExprKind::Closure(_, _, ref decl, ref body, _fn_decl_span) => {
