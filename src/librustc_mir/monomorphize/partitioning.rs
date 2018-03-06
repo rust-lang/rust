@@ -328,7 +328,8 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let mut can_be_internalized = true;
         let default_visibility = |id: DefId| {
             if tcx.sess.target.target.options.default_hidden_visibility &&
-                tcx.symbol_export_level(id) != SymbolExportLevel::C
+               tcx.reachable_non_generics(id.krate).get(&id).cloned() !=
+                    Some(SymbolExportLevel::C)
             {
                 Visibility::Hidden
             } else {

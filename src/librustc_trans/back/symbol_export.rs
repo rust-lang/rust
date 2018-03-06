@@ -146,7 +146,7 @@ fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     SymbolExportLevel::Rust
                 }
             } else {
-                tcx.symbol_export_level(def_id)
+                symbol_export_level(tcx, def_id)
             };
             debug!("EXPORTED SYMBOL (local): {} ({:?})",
                    tcx.symbol_name(Instance::mono(tcx, def_id)),
@@ -314,17 +314,15 @@ pub fn provide(providers: &mut Providers) {
     providers.reachable_non_generics = reachable_non_generics_provider;
     providers.is_reachable_non_generic = is_reachable_non_generic_provider_local;
     providers.exported_symbols = exported_symbols_provider_local;
-    providers.symbol_export_level = symbol_export_level_provider;
     providers.upstream_monomorphizations = upstream_monomorphizations_provider;
 }
 
 pub fn provide_extern(providers: &mut Providers) {
     providers.is_reachable_non_generic = is_reachable_non_generic_provider_extern;
-    providers.symbol_export_level = symbol_export_level_provider;
     providers.upstream_monomorphizations_for = upstream_monomorphizations_for_provider;
 }
 
-fn symbol_export_level_provider(tcx: TyCtxt, sym_def_id: DefId) -> SymbolExportLevel {
+fn symbol_export_level(tcx: TyCtxt, sym_def_id: DefId) -> SymbolExportLevel {
     // We export anything that's not mangled at the "C" layer as it probably has
     // to do with ABI concerns. We do not, however, apply such treatment to
     // special symbols in the standard library for various plumbing between
