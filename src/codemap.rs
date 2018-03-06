@@ -22,6 +22,7 @@ pub trait SpanUtils {
     fn span_after_last(&self, original: Span, needle: &str) -> BytePos;
     fn span_before(&self, original: Span, needle: &str) -> BytePos;
     fn opt_span_after(&self, original: Span, needle: &str) -> Option<BytePos>;
+    fn opt_span_before(&self, original: Span, needle: &str) -> Option<BytePos>;
 }
 
 pub trait LineRangeUtils {
@@ -35,10 +36,7 @@ pub trait LineRangeUtils {
 
 impl<'a> SpanUtils for SnippetProvider<'a> {
     fn span_after(&self, original: Span, needle: &str) -> BytePos {
-        let snippet = self.span_to_snippet(original).expect("Bad snippet");
-        let offset = snippet.find_uncommented(needle).expect("Bad offset") + needle.len();
-
-        original.lo() + BytePos(offset as u32)
+        self.opt_span_after(original, needle).expect("bad span")
     }
 
     fn span_after_last(&self, original: Span, needle: &str) -> BytePos {
@@ -53,15 +51,17 @@ impl<'a> SpanUtils for SnippetProvider<'a> {
     }
 
     fn span_before(&self, original: Span, needle: &str) -> BytePos {
-        let snippet = self.span_to_snippet(original).unwrap();
-        let offset = snippet.find_uncommented(needle).unwrap();
-
-        original.lo() + BytePos(offset as u32)
+        self.opt_span_before(original, needle).expect("bad span")
     }
 
     fn opt_span_after(&self, original: Span, needle: &str) -> Option<BytePos> {
+        self.opt_span_before(original, needle)
+            .map(|bytepos| bytepos + BytePos(needle.len() as u32))
+    }
+
+    fn opt_span_before(&self, original: Span, needle: &str) -> Option<BytePos> {
         let snippet = self.span_to_snippet(original)?;
-        let offset = snippet.find_uncommented(needle)? + needle.len();
+        let offset = snippet.find_uncommented(needle)?;
 
         Some(original.lo() + BytePos(offset as u32))
     }
