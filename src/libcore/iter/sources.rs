@@ -41,7 +41,7 @@ impl<A: Clone> DoubleEndedIterator for Repeat<A> {
     fn next_back(&mut self) -> Option<A> { Some(self.element.clone()) }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<A: Clone> FusedIterator for Repeat<A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
@@ -135,7 +135,7 @@ impl<A, F: FnMut() -> A> DoubleEndedIterator for RepeatWith<F> {
     fn next_back(&mut self) -> Option<A> { self.next() }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[unstable(feature = "iterator_repeat_with", issue = "48169")]
 impl<A, F: FnMut() -> A> FusedIterator for RepeatWith<F> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
@@ -259,7 +259,7 @@ impl<T> ExactSizeIterator for Empty<T> {
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<T> TrustedLen for Empty<T> {}
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for Empty<T> {}
 
 // not #[derive] because that adds a Clone bound on T,
@@ -340,7 +340,7 @@ impl<T> ExactSizeIterator for Once<T> {
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<T> TrustedLen for Once<T> {}
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for Once<T> {}
 
 /// Creates an iterator that yields an element exactly once.
