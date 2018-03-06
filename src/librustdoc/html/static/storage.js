@@ -41,7 +41,9 @@ function getCurrentValue(name) {
 }
 
 function switchTheme(styleElem, mainStyleElem, newTheme) {
-    var newHref = mainStyleElem.href.replace("rustdoc.css", newTheme + ".css");
+    var fullBasicCss = "rustdoc" + resourcesSuffix + ".css";
+    var fullNewTheme = newTheme + resourcesSuffix + ".css";
+    var newHref = mainStyleElem.href.replace(fullBasicCss, fullNewTheme);
     var found = false;
 
     if (savedHref.length === 0) {
