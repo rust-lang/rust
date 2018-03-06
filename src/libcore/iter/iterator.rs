@@ -1180,19 +1180,19 @@ pub trait Iterator {
     ///
     /// // this iterator sequence is complex.
     /// let sum = a.iter()
-    ///             .cloned()
-    ///             .filter(|&x| x % 2 == 0)
-    ///             .fold(0, |sum, i| sum + i);
+    ///     .cloned()
+    ///     .filter(|x| x % 2 == 0)
+    ///     .fold(0, |sum, i| sum + i);
     ///
     /// println!("{}", sum);
     ///
     /// // let's add some inspect() calls to investigate what's happening
     /// let sum = a.iter()
-    ///             .cloned()
-    ///             .inspect(|x| println!("about to filter: {}", x))
-    ///             .filter(|&x| x % 2 == 0)
-    ///             .inspect(|x| println!("made it through filter: {}", x))
-    ///             .fold(0, |sum, i| sum + i);
+    ///     .cloned()
+    ///     .inspect(|x| println!("about to filter: {}", x))
+    ///     .filter(|x| x % 2 == 0)
+    ///     .inspect(|x| println!("made it through filter: {}", x))
+    ///     .fold(0, |sum, i| sum + i);
     ///
     /// println!("{}", sum);
     /// ```
@@ -1200,6 +1200,7 @@ pub trait Iterator {
     /// This will print:
     ///
     /// ```text
+    /// 6
     /// about to filter: 1
     /// about to filter: 4
     /// made it through filter: 4
@@ -1230,8 +1231,7 @@ pub trait Iterator {
     ///
     /// let iter = a.into_iter();
     ///
-    /// let sum: i32 = iter.take(5)
-    ///                    .fold(0, |acc, &i| acc + i );
+    /// let sum: i32 = iter.take(5).fold(0, |acc, i| acc + i );
     ///
     /// assert_eq!(sum, 6);
     ///
@@ -1245,9 +1245,7 @@ pub trait Iterator {
     /// let mut iter = a.into_iter();
     ///
     /// // instead, we add in a .by_ref()
-    /// let sum: i32 = iter.by_ref()
-    ///                    .take(2)
-    ///                    .fold(0, |acc, &i| acc + i );
+    /// let sum: i32 = iter.by_ref().take(2).fold(0, |acc, i| acc + i );
     ///
     /// assert_eq!(sum, 3);
     ///
@@ -1304,9 +1302,7 @@ pub trait Iterator {
     ///
     /// let a = [1, 2, 3];
     ///
-    /// let doubled: VecDeque<i32> = a.iter()
-    ///                               .map(|&x| x * 2)
-    ///                               .collect();
+    /// let doubled: VecDeque<i32> = a.iter().map(|&x| x * 2).collect();
     ///
     /// assert_eq!(2, doubled[0]);
     /// assert_eq!(4, doubled[1]);
@@ -1318,9 +1314,7 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3];
     ///
-    /// let doubled = a.iter()
-    ///                .map(|&x| x * 2)
-    ///                .collect::<Vec<i32>>();
+    /// let doubled = a.iter().map(|x| x * 2).collect::<Vec<i32>>();
     ///
     /// assert_eq!(vec![2, 4, 6], doubled);
     /// ```
@@ -1331,9 +1325,7 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3];
     ///
-    /// let doubled = a.iter()
-    ///                .map(|&x| x * 2)
-    ///                .collect::<Vec<_>>();
+    /// let doubled = a.iter().map(|x| x * 2).collect::<Vec<_>>();
     ///
     /// assert_eq!(vec![2, 4, 6], doubled);
     /// ```
@@ -1344,9 +1336,9 @@ pub trait Iterator {
     /// let chars = ['g', 'd', 'k', 'k', 'n'];
     ///
     /// let hello: String = chars.iter()
-    ///                          .map(|&x| x as u8)
-    ///                          .map(|x| (x + 1) as char)
-    ///                          .collect();
+    ///     .map(|&x| x as u8)
+    ///     .map(|x| (x + 1) as char)
+    ///     .collect();
     ///
     /// assert_eq!("hello", hello);
     /// ```
@@ -1393,8 +1385,9 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3];
     ///
-    /// let (even, odd): (Vec<i32>, Vec<i32>) = a.into_iter()
-    ///                                          .partition(|&n| n % 2 == 0);
+    /// let (even, odd): (Vec<i32>, Vec<i32>) = a
+    ///     .into_iter()
+    ///     .partition(|&n| n % 2 == 0);
     ///
     /// assert_eq!(even, vec![2]);
     /// assert_eq!(odd, vec![1, 3]);
@@ -1457,8 +1450,7 @@ pub trait Iterator {
     /// let a = [1, 2, 3];
     ///
     /// // the checked sum of all of the elements of the array
-    /// let sum = a.iter()
-    ///            .try_fold(0i8, |acc, &x| acc.checked_add(x));
+    /// let sum = a.iter().try_fold(0i8, |acc, &x| acc.checked_add(x));
     ///
     /// assert_eq!(sum, Some(6));
     /// ```
@@ -1556,8 +1548,7 @@ pub trait Iterator {
     /// let a = [1, 2, 3];
     ///
     /// // the sum of all of the elements of the array
-    /// let sum = a.iter()
-    ///            .fold(0, |acc, &x| acc + x);
+    /// let sum = a.iter().fold(0, |acc, x| acc + x);
     ///
     /// assert_eq!(sum, 6);
     /// ```

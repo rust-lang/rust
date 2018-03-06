@@ -77,19 +77,12 @@ impl Lower128Bit {
                 };
 
                 let bin_statement = block.statements.pop().unwrap();
-                let (source_info, place, lhs, mut rhs) = match bin_statement {
-                    Statement {
-                        source_info,
-                        kind: StatementKind::Assign(
-                            place,
-                            Rvalue::BinaryOp(_, lhs, rhs))
-                    } => (source_info, place, lhs, rhs),
-                    Statement {
-                        source_info,
-                        kind: StatementKind::Assign(
-                            place,
-                            Rvalue::CheckedBinaryOp(_, lhs, rhs))
-                    } => (source_info, place, lhs, rhs),
+                let source_info = bin_statement.source_info;
+                let (place, lhs, mut rhs) = match bin_statement.kind {
+                    StatementKind::Assign(place, Rvalue::BinaryOp(_, lhs, rhs))
+                    | StatementKind::Assign(place, Rvalue::CheckedBinaryOp(_, lhs, rhs)) => {
+                        (place, lhs, rhs)
+                    }
                     _ => bug!("Statement doesn't match pattern any more?"),
                 };
 
