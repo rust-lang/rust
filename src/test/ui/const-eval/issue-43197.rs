@@ -15,8 +15,10 @@ const fn foo(x: u32) -> u32 {
 }
 
 fn main() {
-    const X: u32 = 0-1; //~ ERROR constant evaluation error
-    const Y: u32 = foo(0-1); //~ ERROR constant evaluation error
+    const X: u32 = 0-1;
+    //~^ WARN attempt to subtract with overflow
+    const Y: u32 = foo(0-1);
+    //~^ WARN attempt to subtract with overflow
     println!("{} {}", X, Y);
     //~^ ERROR constant evaluation error
     //~| ERROR constant evaluation error

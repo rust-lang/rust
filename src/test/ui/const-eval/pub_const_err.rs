@@ -8,27 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo {
-    const AMT: usize;
-}
+#![deny(const_err)]
 
-enum Bar<A, B> {
-    First(A),
-    Second(B),
-}
+#![crate_type = "lib"]
 
-impl<A: Foo, B: Foo> Foo for Bar<A, B> {
-    const AMT: usize = [A::AMT][(A::AMT > B::AMT) as usize];
-}
-
-impl Foo for u8 {
-    const AMT: usize = 1;
-}
-
-impl Foo for u16 {
-    const AMT: usize = 2;
-}
-
-fn main() {
-    println!("{}", <Bar<u16, u8> as Foo>::AMT); //~ E0080
-}
+pub const Z: u32 = 0 - 1;
+//~^ ERROR attempt to subtract with overflow

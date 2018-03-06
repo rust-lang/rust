@@ -25,46 +25,54 @@ const VALS_I8: (i8,) =
     (
      i8::MIN - 1,
      //~^ ERROR constant evaluation error
+     //~| ERROR attempt to subtract with overflow
      );
 
 const VALS_I16: (i16,) =
     (
      i16::MIN - 1,
      //~^ ERROR constant evaluation error
+     //~| ERROR attempt to subtract with overflow
      );
 
 const VALS_I32: (i32,) =
     (
      i32::MIN - 1,
      //~^ ERROR constant evaluation error
+     //~| ERROR attempt to subtract with overflow
      );
 
 const VALS_I64: (i64,) =
     (
      i64::MIN - 1,
      //~^ ERROR constant evaluation error
+     //~| ERROR attempt to subtract with overflow
      );
 
 const VALS_U8: (u8,) =
     (
      u8::MIN - 1,
      //~^ ERROR constant evaluation error
+     //~| ERROR attempt to subtract with overflow
      );
 
 const VALS_U16: (u16,) = (
      u16::MIN - 1,
      //~^ ERROR constant evaluation error
+     //~| ERROR attempt to subtract with overflow
      );
 
 const VALS_U32: (u32,) = (
      u32::MIN - 1,
      //~^ ERROR constant evaluation error
+     //~| ERROR attempt to subtract with overflow
      );
 
 const VALS_U64: (u64,) =
     (
      u64::MIN - 1,
      //~^ ERROR constant evaluation error
+     //~| ERROR attempt to subtract with overflow
      );
 
 fn main() {

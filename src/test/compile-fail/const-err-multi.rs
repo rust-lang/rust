@@ -12,8 +12,8 @@
 
 pub const A: i8 = -std::i8::MIN;
 //~^ ERROR E0080
-//~| ERROR const_err
-//~| ERROR const_err
+//~| ERROR attempt to negate with overflow
+//~| ERROR constant evaluation error
 pub const B: i8 = A;
 //~^ ERROR E0080
 pub const C: u8 = A as u8;

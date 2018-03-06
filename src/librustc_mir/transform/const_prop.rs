@@ -12,10 +12,10 @@
 //! assertion failures
 
 
-
+use rustc::hir::def::Def;
 use rustc::mir::{Constant, Literal, Location, Place, Mir, Operand, Rvalue, Local};
 use rustc::mir::{NullOp, StatementKind, Statement, BasicBlock, LocalKind};
-use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp};
+use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp, ProjectionElem};
 use rustc::mir::visit::{Visitor, PlaceContext};
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{TyCtxt, self, Instance};
@@ -26,6 +26,10 @@ use syntax::codemap::Span;
 use rustc::ty::subst::Substs;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::ty::ParamEnv;
+use rustc::ty::layout::{
+    LayoutOf, TyLayout, LayoutError,
+    HasTyCtxt, TargetDataLayout, HasDataLayout,
+};
 
 pub struct ConstProp;
 
@@ -34,6 +38,15 @@ impl MirPass for ConstProp {
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           source: MirSource,
                           mir: &mut Mir<'tcx>) {
+        // will be evaluated by miri and produce its errors there
+        if source.promoted.is_some() {
+            return;
+        }
+        match tcx.describe_def(source.def_id) {
+            // skip statics because they'll be evaluated by miri anyway
+            Some(Def::Static(..)) => return,
+            _ => {},
+        }
         trace!("ConstProp starting for {:?}", source.def_id);
 
         // FIXME(oli-obk, eddyb) Optimize locals (or even local paths) to hold
@@ -57,6 +70,28 @@ struct ConstPropagator<'b, 'a, 'tcx:'a+'b> {
     places: IndexVec<Local, Option<Const<'tcx>>>,
     can_const_prop: IndexVec<Local, bool>,
     param_env: ParamEnv<'tcx>,
+}
+
+impl<'a, 'b, 'tcx> LayoutOf<ty::Ty<'tcx>> for &'a ConstPropagator<'a, 'b, 'tcx> {
+    type TyLayout = Result<TyLayout<'tcx>, LayoutError<'tcx>>;
+
+    fn layout_of(self, ty: ty::Ty<'tcx>) -> Self::TyLayout {
+        self.tcx.layout_of(self.param_env.and(ty))
+    }
+}
+
+impl<'a, 'b, 'tcx> HasDataLayout for &'a ConstPropagator<'a, 'b, 'tcx> {
+    #[inline]
+    fn data_layout(&self) -> &TargetDataLayout {
+        &self.tcx.data_layout
+    }
+}
+
+impl<'a, 'b, 'tcx> HasTyCtxt<'tcx> for &'a ConstPropagator<'a, 'b, 'tcx> {
+    #[inline]
+    fn tcx<'c>(&'c self) -> TyCtxt<'c, 'tcx, 'tcx> {
+        self.tcx
+    }
 }
 
 impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
@@ -134,15 +169,43 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
         }
     }
 
+    fn eval_place(&mut self, place: &Place<'tcx>) -> Option<Const<'tcx>> {
+        match *place {
+            Place::Local(loc) => self.places[loc].clone(),
+            Place::Projection(ref proj) => match proj.elem {
+                ProjectionElem::Field(field, _) => {
+                    trace!("field proj on {:?}", proj.base);
+                    let (base, ty, span) = self.eval_place(&proj.base)?;
+                    match base {
+                        Value::ByValPair(a, b) => {
+                            trace!("by val pair: {:?}, {:?}", a, b);
+                            let base_layout = self.tcx.layout_of(self.param_env.and(ty)).ok()?;
+                            trace!("layout computed");
+                            use rustc_data_structures::indexed_vec::Idx;
+                            let field_index = field.index();
+                            let val = if field_index == 0 {
+                                a
+                            } else {
+                                assert_eq!(field_index, 1);
+                                b
+                            };
+                            let field = base_layout.field(&*self, field_index).ok()?;
+                            trace!("projection resulted in: {:?}", val);
+                            Some((Value::ByVal(val), field.ty, span))
+                        },
+                        _ => None,
+                    }
+                },
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
     fn eval_operand(&mut self, op: &Operand<'tcx>) -> Option<Const<'tcx>> {
         match *op {
             Operand::Constant(ref c) => self.eval_constant(c),
-            Operand::Move(ref place) | Operand::Copy(ref place) => match *place {
-                Place::Local(loc) => self.places[loc].clone(),
-                // FIXME(oli-obk): field and index projections
-                Place::Projection(_) => None,
-                _ => None,
-            },
+            Operand::Move(ref place) | Operand::Copy(ref place) => self.eval_place(place),
         }
     }
 
@@ -235,18 +298,24 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                 let r = ecx.value_to_primval(ValTy { value: right.0, ty: right.1 }).ok()?;
                 if op == BinOp::Shr || op == BinOp::Shl {
                     let param_env = self.tcx.param_env(self.source.def_id);
-                    let bits = self.tcx.layout_of(param_env.and(place_ty)).unwrap().size.bits();
+                    let left_ty = left.ty(self.mir, self.tcx);
+                    let bits = self.tcx.layout_of(param_env.and(left_ty)).unwrap().size.bits();
                     if r.to_bytes().ok().map_or(false, |b| b >= bits as u128) {
                         let scope_info = match self.mir.visibility_scope_info {
                             ClearCrossCrate::Set(ref data) => data,
                             ClearCrossCrate::Clear => return None,
+                        };
+                        let dir = if op == BinOp::Shr {
+                            "right"
+                        } else {
+                            "left"
                         };
                         let node_id = scope_info[source_info.scope].lint_root;
                         self.tcx.lint_node(
                             ::rustc::lint::builtin::EXCEEDING_BITSHIFTS,
                             node_id,
                             span,
-                            "bitshift exceeds the type's number of bits");
+                            &format!("attempt to shift {} with overflow", dir));
                         return None;
                     }
                 }
@@ -334,6 +403,7 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
             Copy | Move |
             StorageDead | StorageLive |
             Validate |
+            Projection(_) |
             Inspect => {},
             _ => self.can_const_prop[local] = false,
         }
@@ -364,6 +434,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                 .to_ty(self.tcx);
             if let Some(value) = self.const_prop(rval, place_ty, statement.source_info) {
                 if let Place::Local(local) = *place {
+                    trace!("checking whether {:?} can be stored to {:?}", value, local);
                     if self.can_const_prop[local] {
                         trace!("storing {:?} to {:?}", value, local);
                         assert!(self.places[local].is_none());
@@ -384,7 +455,22 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
         self.super_terminator_kind(block, kind, location);
         if let TerminatorKind::Assert { expected, msg, cond, .. } = kind {
             if let Some(value) = self.eval_operand(cond) {
+                trace!("assertion on {:?} should be {:?}", value, expected);
                 if Value::ByVal(PrimVal::from_bool(*expected)) != value.0 {
+                    // poison all places this operand references so that further code
+                    // doesn't use the invalid value
+                    match cond {
+                        Operand::Move(ref place) | Operand::Copy(ref place) => {
+                            let mut place = place;
+                            while let Place::Projection(ref proj) = *place {
+                                place = &proj.base;
+                            }
+                            if let Place::Local(local) = *place {
+                                self.places[local] = None;
+                            }
+                        },
+                        Operand::Constant(_) => {}
+                    }
                     let span = self.mir[block]
                         .terminator
                         .as_ref()
@@ -396,21 +482,12 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                         .hir
                         .as_local_node_id(self.source.def_id)
                         .expect("some part of a failing const eval must be local");
-                    let mut lint = self.tcx.struct_span_lint_node(
-                        ::rustc::lint::builtin::CONST_ERR,
-                        node_id,
-                        span,
-                        "constant evaluation error",
-                    );
                     use rustc::mir::AssertMessage::*;
-                    match msg {
+                    let msg = match msg {
                         // Need proper const propagator for these
                         GeneratorResumedAfterReturn |
-                        GeneratorResumedAfterPanic => {
-                            lint.cancel();
-                            return;
-                        },
-                        Math(ref err) => lint.span_label(span, err.description()),
+                        GeneratorResumedAfterPanic => return,
+                        Math(ref err) => err.description().to_owned(),
                         BoundsCheck { ref len, ref index } => {
                             let len = self.eval_operand(len).expect("len must be const");
                             let len = match len.0 {
@@ -424,17 +501,20 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                                 Value::ByVal(PrimVal::Bytes(n)) => n,
                                 _ => bug!("const index not primitive: {:?}", index),
                             };
-                            lint.span_label(
-                                span,
-                                format!(
-                                    "index out of bounds: \
-                                    the len is {} but the index is {}",
-                                    len,
-                                    index,
-                                ),
+                            format!(
+                                "index out of bounds: \
+                                the len is {} but the index is {}",
+                                len,
+                                index,
                             )
                         },
-                    }.emit();
+                    };
+                    self.tcx.lint_node(
+                        ::rustc::lint::builtin::CONST_ERR,
+                        node_id,
+                        span,
+                        &msg,
+                    );
                 }
             }
         }
