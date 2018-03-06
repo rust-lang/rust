@@ -730,7 +730,7 @@ struct ControlFlow<'a> {
     block: &'a ast::Block,
     else_block: Option<&'a ast::Expr>,
     label: Option<ast::Label>,
-    pat: Option<&'a ast::Pat>,
+    pats: Option<Vec<&'a ast::Pat>>,
     keyword: &'a str,
     matcher: &'a str,
     connector: &'a str,
@@ -754,7 +754,7 @@ fn to_control_flow(expr: &ast::Expr, expr_type: ExprType) -> Option<ControlFlow>
         ast::ExprKind::IfLet(ref pat, ref cond, ref if_block, ref else_block) => {
             Some(ControlFlow::new_if(
                 cond,
-                Some(pat),
+                Some(ptr_vec_to_ref_vec(pat)),
                 if_block,
                 else_block.as_ref().map(|e| &**e),
                 expr_type == ExprType::SubExpression,
@@ -772,7 +772,7 @@ fn to_control_flow(expr: &ast::Expr, expr_type: ExprType) -> Option<ControlFlow>
             Some(ControlFlow::new_while(None, cond, block, label, expr.span))
         }
         ast::ExprKind::WhileLet(ref pat, ref cond, ref block, label) => Some(
-            ControlFlow::new_while(Some(pat), cond, block, label, expr.span),
+            ControlFlow::new_while(Some(ptr_vec_to_ref_vec(pat)), cond, block, label, expr.span),
         ),
         _ => None,
     }
@@ -781,24 +781,25 @@ fn to_control_flow(expr: &ast::Expr, expr_type: ExprType) -> Option<ControlFlow>
 impl<'a> ControlFlow<'a> {
     fn new_if(
         cond: &'a ast::Expr,
-        pat: Option<&'a ast::Pat>,
+        pats: Option<Vec<&'a ast::Pat>>,
         block: &'a ast::Block,
         else_block: Option<&'a ast::Expr>,
         allow_single_line: bool,
         nested_if: bool,
         span: Span,
     ) -> ControlFlow<'a> {
+        let matcher = match pats {
+            Some(..) => "let",
+            None => "",
+        };
         ControlFlow {
             cond: Some(cond),
             block,
             else_block,
             label: None,
-            pat,
+            pats,
             keyword: "if",
-            matcher: match pat {
-                Some(..) => "let",
-                None => "",
-            },
+            matcher,
             connector: " =",
             allow_single_line,
             nested_if,
@@ -812,7 +813,7 @@ impl<'a> ControlFlow<'a> {
             block,
             else_block: None,
             label,
-            pat: None,
+            pats: None,
             keyword: "loop",
             matcher: "",
             connector: "",
@@ -823,23 +824,24 @@ impl<'a> ControlFlow<'a> {
     }
 
     fn new_while(
-        pat: Option<&'a ast::Pat>,
+        pats: Option<Vec<&'a ast::Pat>>,
         cond: &'a ast::Expr,
         block: &'a ast::Block,
         label: Option<ast::Label>,
         span: Span,
     ) -> ControlFlow<'a> {
+        let matcher = match pats {
+            Some(..) => "let",
+            None => "",
+        };
         ControlFlow {
             cond: Some(cond),
             block,
             else_block: None,
             label,
-            pat,
+            pats,
             keyword: "while",
-            matcher: match pat {
-                Some(..) => "let",
-                None => "",
-            },
+            matcher,
             connector: " =",
             allow_single_line: false,
             nested_if: false,
@@ -859,7 +861,7 @@ impl<'a> ControlFlow<'a> {
             block,
             else_block: None,
             label,
-            pat: Some(pat),
+            pats: Some(vec![pat]),
             keyword: "for",
             matcher: "",
             connector: " in",
@@ -914,6 +916,46 @@ impl<'a> ControlFlow<'a> {
 }
 
 impl<'a> ControlFlow<'a> {
+    fn rewrite_pat_expr(
+        &self,
+        context: &RewriteContext,
+        expr: &ast::Expr,
+        shape: Shape,
+        offset: usize,
+    ) -> Option<String> {
+        debug!("rewrite_pat_expr {:?} {:?} {:?}", shape, self.pats, expr);
+
+        let cond_shape = shape.offset_left(offset)?;
+        if let Some(ref pat) = self.pats {
+            let matcher = if self.matcher.is_empty() {
+                self.matcher.to_owned()
+            } else {
+                format!("{} ", self.matcher)
+            };
+            let pat_shape = cond_shape
+                .offset_left(matcher.len())?
+                .sub_width(self.connector.len())?;
+            let pat_string = rewrite_multiple_patterns(context, pat, pat_shape)?;
+            let result = format!("{}{}{}", matcher, pat_string, self.connector);
+            return rewrite_assign_rhs(context, result, expr, cond_shape);
+        }
+
+        let expr_rw = expr.rewrite(context, cond_shape);
+        // The expression may (partially) fit on the current line.
+        // We do not allow splitting between `if` and condition.
+        if self.keyword == "if" || expr_rw.is_some() {
+            return expr_rw;
+        }
+
+        // The expression won't fit on the current line, jump to next.
+        let nested_shape = shape
+            .block_indent(context.config.tab_spaces())
+            .with_max_width(context.config);
+        let nested_indent_str = nested_shape.indent.to_string_with_newline(context.config);
+        expr.rewrite(context, nested_shape)
+            .map(|expr_rw| format!("{}{}", nested_indent_str, expr_rw))
+    }
+
     fn rewrite_cond(
         &self,
         context: &RewriteContext,
@@ -922,11 +964,7 @@ impl<'a> ControlFlow<'a> {
     ) -> Option<(String, usize)> {
         // Do not take the rhs overhead from the upper expressions into account
         // when rewriting pattern.
-        let new_width = context
-            .config
-            .max_width()
-            .checked_sub(shape.used_width())
-            .unwrap_or(0);
+        let new_width = context.budget(shape.used_width());
         let fresh_shape = Shape {
             width: new_width,
             ..shape
@@ -944,16 +982,7 @@ impl<'a> ControlFlow<'a> {
         let offset = self.keyword.len() + label_string.len() + 1;
 
         let pat_expr_string = match self.cond {
-            Some(cond) => rewrite_pat_expr(
-                context,
-                self.pat,
-                cond,
-                self.matcher,
-                self.connector,
-                self.keyword,
-                constr_shape,
-                offset,
-            )?,
+            Some(cond) => self.rewrite_pat_expr(context, cond, constr_shape, offset)?,
             None => String::new(),
         };
 
@@ -1007,9 +1036,9 @@ impl<'a> ControlFlow<'a> {
             context
                 .snippet_provider
                 .span_after(mk_sp(lo, self.span.hi()), self.keyword.trim()),
-            self.pat.map_or(cond_span.lo(), |p| {
+            self.pats.as_ref().map_or(cond_span.lo(), |p| {
                 if self.matcher.is_empty() {
-                    p.span.lo()
+                    p[0].span.lo()
                 } else {
                     context
                         .snippet_provider
@@ -1102,7 +1131,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
                 ast::ExprKind::IfLet(ref pat, ref cond, ref if_block, ref next_else_block) => {
                     ControlFlow::new_if(
                         cond,
-                        Some(pat),
+                        Some(ptr_vec_to_ref_vec(pat)),
                         if_block,
                         next_else_block.as_ref().map(|e| &**e),
                         false,
@@ -1455,7 +1484,7 @@ fn rewrite_match_arm(
     };
     let pats_str = rewrite_match_pattern(
         context,
-        &arm.pats,
+        &ptr_vec_to_ref_vec(&arm.pats),
         &arm.guard,
         beginning_vert.is_some(),
         shape,
@@ -1513,7 +1542,7 @@ fn is_short_pattern_inner(pat: &ast::Pat) -> bool {
 
 fn rewrite_match_pattern(
     context: &RewriteContext,
-    pats: &[ptr::P<ast::Pat>],
+    pats: &[&ast::Pat],
     guard: &Option<ptr::P<ast::Expr>>,
     has_beginning_vert: bool,
     shape: Shape,
@@ -1524,36 +1553,7 @@ fn rewrite_match_pattern(
     let pat_shape = shape
         .sub_width(5)?
         .offset_left(if has_beginning_vert { 2 } else { 0 })?;
-
-    let pat_strs = pats.iter()
-        .map(|p| p.rewrite(context, pat_shape))
-        .collect::<Option<Vec<_>>>()?;
-
-    let use_mixed_layout = pats.iter()
-        .zip(pat_strs.iter())
-        .all(|(pat, pat_str)| is_short_pattern(pat, pat_str));
-    let items: Vec<_> = pat_strs.into_iter().map(ListItem::from_str).collect();
-    let tactic = if use_mixed_layout {
-        DefinitiveListTactic::Mixed
-    } else {
-        definitive_tactic(
-            &items,
-            ListTactic::HorizontalVertical,
-            Separator::VerticalBar,
-            pat_shape.width,
-        )
-    };
-    let fmt = ListFormatting {
-        tactic,
-        separator: " |",
-        trailing_separator: SeparatorTactic::Never,
-        separator_place: context.config.binop_separator(),
-        shape: pat_shape,
-        ends_with_newline: false,
-        preserve_newline: false,
-        config: context.config,
-    };
-    let pats_str = write_list(&items, &fmt)?;
+    let pats_str = rewrite_multiple_patterns(context, pats, pat_shape)?;
     let beginning_vert = if has_beginning_vert { "| " } else { "" };
 
     // Guard
@@ -1749,48 +1749,40 @@ fn rewrite_guard(
     }
 }
 
-fn rewrite_pat_expr(
+fn rewrite_multiple_patterns(
     context: &RewriteContext,
-    pat: Option<&ast::Pat>,
-    expr: &ast::Expr,
-    matcher: &str,
-    // Connecting piece between pattern and expression,
-    // *without* trailing space.
-    connector: &str,
-    keyword: &str,
+    pats: &[&ast::Pat],
     shape: Shape,
-    offset: usize,
 ) -> Option<String> {
-    debug!("rewrite_pat_expr {:?} {:?} {:?}", shape, pat, expr);
-    let cond_shape = shape.offset_left(offset)?;
-    if let Some(pat) = pat {
-        let matcher = if matcher.is_empty() {
-            matcher.to_owned()
-        } else {
-            format!("{} ", matcher)
-        };
-        let pat_shape = cond_shape
-            .offset_left(matcher.len())?
-            .sub_width(connector.len())?;
-        let pat_string = pat.rewrite(context, pat_shape)?;
-        let result = format!("{}{}{}", matcher, pat_string, connector);
-        return rewrite_assign_rhs(context, result, expr, cond_shape);
-    }
+    let pat_strs = pats.iter()
+        .map(|p| p.rewrite(context, shape))
+        .collect::<Option<Vec<_>>>()?;
 
-    let expr_rw = expr.rewrite(context, cond_shape);
-    // The expression may (partially) fit on the current line.
-    // We do not allow splitting between `if` and condition.
-    if keyword == "if" || expr_rw.is_some() {
-        return expr_rw;
-    }
-
-    // The expression won't fit on the current line, jump to next.
-    let nested_shape = shape
-        .block_indent(context.config.tab_spaces())
-        .with_max_width(context.config);
-    let nested_indent_str = nested_shape.indent.to_string_with_newline(context.config);
-    expr.rewrite(context, nested_shape)
-        .map(|expr_rw| format!("{}{}", nested_indent_str, expr_rw))
+    let use_mixed_layout = pats.iter()
+        .zip(pat_strs.iter())
+        .all(|(pat, pat_str)| is_short_pattern(pat, pat_str));
+    let items: Vec<_> = pat_strs.into_iter().map(ListItem::from_str).collect();
+    let tactic = if use_mixed_layout {
+        DefinitiveListTactic::Mixed
+    } else {
+        definitive_tactic(
+            &items,
+            ListTactic::HorizontalVertical,
+            Separator::VerticalBar,
+            shape.width,
+        )
+    };
+    let fmt = ListFormatting {
+        tactic,
+        separator: " |",
+        trailing_separator: SeparatorTactic::Never,
+        separator_place: context.config.binop_separator(),
+        shape: shape,
+        ends_with_newline: false,
+        preserve_newline: false,
+        config: context.config,
+    };
+    write_list(&items, &fmt)
 }
 
 fn can_extend_match_arm_body(body: &ast::Expr) -> bool {
