@@ -90,7 +90,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             let signed = left_layout.abi.is_signed();
             let mut r = r as u32;
             let size = left_layout.size.bits() as u32;
-            let oflo = r > size;
+            let oflo = r >= size;
             if oflo {
                 r %= size;
             }
