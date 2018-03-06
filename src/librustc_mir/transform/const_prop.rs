@@ -183,12 +183,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                             trace!("layout computed");
                             use rustc_data_structures::indexed_vec::Idx;
                             let field_index = field.index();
-                            let val = if field_index == 0 {
-                                a
-                            } else {
-                                assert_eq!(field_index, 1);
-                                b
-                            };
+                            let val = [a, b][field_index];
                             let field = base_layout.field(&*self, field_index).ok()?;
                             trace!("projection resulted in: {:?}", val);
                             Some((Value::ByVal(val), field.ty, span))
