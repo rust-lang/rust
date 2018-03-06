@@ -38,10 +38,11 @@ use hir::def_id::{CrateNum, LOCAL_CRATE};
 use hir::intravisit::{self, FnKind};
 use hir;
 use lint::builtin::BuiltinLintDiagnostics;
-use session::{config, Session, DiagnosticMessageId};
+use session::{Session, DiagnosticMessageId};
 use std::hash;
 use syntax::ast;
 use syntax::codemap::MultiSpan;
+use syntax::epoch::Epoch;
 use syntax::symbol::Symbol;
 use syntax::visit as ast_visit;
 use syntax_pos::Span;
@@ -77,7 +78,7 @@ pub struct Lint {
     pub desc: &'static str,
 
     /// Deny lint after this epoch
-    pub epoch_deny: Option<config::Epoch>,
+    pub epoch_deny: Option<Epoch>,
 }
 
 impl Lint {

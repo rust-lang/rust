@@ -47,6 +47,7 @@ use rustc::session;
 use rustc::util;
 
 use session::Session;
+use syntax::epoch::Epoch;
 use lint::LintId;
 use lint::FutureIncompatibleInfo;
 
@@ -279,7 +280,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
          FutureIncompatibleInfo {
              id: LintId::of(lint::builtin::BARE_TRAIT_OBJECT),
              reference: "issue #48457 <https://github.com/rust-lang/rust/issues/48457>",
-             epoch: Some(session::config::Epoch::Epoch2018),
+             epoch: Some(Epoch::Epoch2018),
          }
         ]);
 
