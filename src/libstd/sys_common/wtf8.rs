@@ -428,20 +428,15 @@ impl fmt::Debug for Wtf8 {
 
         formatter.write_str("\"")?;
         let mut pos = 0;
-        loop {
-            match self.next_surrogate(pos) {
-                None => break,
-                Some((surrogate_pos, surrogate)) => {
-                    write_str_escaped(
-                        formatter,
-                        unsafe { str::from_utf8_unchecked(
-                            &self.bytes[pos .. surrogate_pos]
-                        )},
-                    )?;
-                    write!(formatter, "\\u{{{:x}}}", surrogate)?;
-                    pos = surrogate_pos + 3;
-                }
-            }
+        while let Some((surrogate_pos, surrogate)) = self.next_surrogate(pos) {
+            write_str_escaped(
+                formatter,
+                unsafe { str::from_utf8_unchecked(
+                    &self.bytes[pos .. surrogate_pos]
+                )},
+            )?;
+            write!(formatter, "\\u{{{:x}}}", surrogate)?;
+            pos = surrogate_pos + 3;
         }
         write_str_escaped(
             formatter,
