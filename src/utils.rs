@@ -12,7 +12,7 @@ use std::borrow::Cow;
 
 use syntax::{abi, ptr};
 use syntax::ast::{self, Attribute, CrateSugar, MetaItem, MetaItemKind, NestedMetaItem,
-                  NestedMetaItemKind, Path, Visibility};
+                  NestedMetaItemKind, Path, Visibility, VisibilityKind};
 use syntax::codemap::{BytePos, Span, NO_EXPANSION};
 
 use config::Color;
@@ -35,12 +35,12 @@ pub fn extra_offset(text: &str, shape: Shape) -> usize {
 
 // Uses Cow to avoid allocating in the common cases.
 pub fn format_visibility(vis: &Visibility) -> Cow<'static, str> {
-    match *vis {
-        Visibility::Public => Cow::from("pub "),
-        Visibility::Inherited => Cow::from(""),
-        Visibility::Crate(_, CrateSugar::PubCrate) => Cow::from("pub(crate) "),
-        Visibility::Crate(_, CrateSugar::JustCrate) => Cow::from("crate "),
-        Visibility::Restricted { ref path, .. } => {
+    match vis.node {
+        VisibilityKind::Public => Cow::from("pub "),
+        VisibilityKind::Inherited => Cow::from(""),
+        VisibilityKind::Crate(CrateSugar::PubCrate) => Cow::from("pub(crate) "),
+        VisibilityKind::Crate(CrateSugar::JustCrate) => Cow::from("crate "),
+        VisibilityKind::Restricted { ref path, .. } => {
             let Path { ref segments, .. } = **path;
             let mut segments_iter = segments.iter().map(|seg| seg.identifier.name.to_string());
             if path.is_global() {
