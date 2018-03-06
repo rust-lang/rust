@@ -344,7 +344,7 @@ pub use self::sources::{Once, once};
 pub use self::traits::{FromIterator, IntoIterator, DoubleEndedIterator, Extend};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::traits::{ExactSizeIterator, Sum, Product};
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 pub use self::traits::FusedIterator;
 #[unstable(feature = "trusted_len", issue = "37572")]
 pub use self::traits::TrustedLen;
@@ -506,7 +506,7 @@ impl<I> ExactSizeIterator for Rev<I>
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<I> FusedIterator for Rev<I>
     where I: FusedIterator + DoubleEndedIterator {}
 
@@ -589,7 +589,7 @@ impl<'a, I, T: 'a> ExactSizeIterator for Cloned<I>
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, I, T: 'a> FusedIterator for Cloned<I>
     where I: FusedIterator<Item=&'a T>, T: Clone
 {}
@@ -662,7 +662,7 @@ impl<I> Iterator for Cycle<I> where I: Clone + Iterator {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<I> FusedIterator for Cycle<I> where I: Clone + Iterator {}
 
 /// An iterator for stepping iterators by a custom amount.
@@ -1002,7 +1002,7 @@ impl<A, B> DoubleEndedIterator for Chain<A, B> where
 }
 
 // Note: *both* must be fused to handle double-ended iterators.
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<A, B> FusedIterator for Chain<A, B>
     where A: FusedIterator,
           B: FusedIterator<Item=A::Item>,
@@ -1262,7 +1262,7 @@ unsafe impl<A, B> TrustedRandomAccess for Zip<A, B>
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<A, B> FusedIterator for Zip<A, B>
     where A: FusedIterator, B: FusedIterator, {}
 
@@ -1404,7 +1404,7 @@ impl<B, I: ExactSizeIterator, F> ExactSizeIterator for Map<I, F>
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<B, I: FusedIterator, F> FusedIterator for Map<I, F>
     where F: FnMut(I::Item) -> B {}
 
@@ -1553,7 +1553,7 @@ impl<I: DoubleEndedIterator, P> DoubleEndedIterator for Filter<I, P>
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<I: FusedIterator, P> FusedIterator for Filter<I, P>
     where P: FnMut(&I::Item) -> bool {}
 
@@ -1663,7 +1663,7 @@ impl<B, I: DoubleEndedIterator, F> DoubleEndedIterator for FilterMap<I, F>
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<B, I: FusedIterator, F> FusedIterator for FilterMap<I, F>
     where F: FnMut(I::Item) -> Option<B> {}
 
@@ -1818,7 +1818,7 @@ unsafe impl<I> TrustedRandomAccess for Enumerate<I>
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<I> FusedIterator for Enumerate<I> where I: FusedIterator {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
@@ -1938,7 +1938,7 @@ impl<I: Iterator> Iterator for Peekable<I> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I: ExactSizeIterator> ExactSizeIterator for Peekable<I> {}
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<I: FusedIterator> FusedIterator for Peekable<I> {}
 
 impl<I: Iterator> Peekable<I> {
@@ -2072,7 +2072,7 @@ impl<I: Iterator, P> Iterator for SkipWhile<I, P>
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<I, P> FusedIterator for SkipWhile<I, P>
     where I: FusedIterator, P: FnMut(&I::Item) -> bool {}
 
@@ -2151,7 +2151,7 @@ impl<I: Iterator, P> Iterator for TakeWhile<I, P>
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<I, P> FusedIterator for TakeWhile<I, P>
     where I: FusedIterator, P: FnMut(&I::Item) -> bool {}
 
@@ -2290,7 +2290,7 @@ impl<I> DoubleEndedIterator for Skip<I> where I: DoubleEndedIterator + ExactSize
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<I> FusedIterator for Skip<I> where I: FusedIterator {}
 
 /// An iterator that only iterates over the first `n` iterations of `iter`.
@@ -2371,7 +2371,7 @@ impl<I> Iterator for Take<I> where I: Iterator{
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I> ExactSizeIterator for Take<I> where I: ExactSizeIterator {}
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<I> FusedIterator for Take<I> where I: FusedIterator {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
@@ -2517,7 +2517,7 @@ impl<I: DoubleEndedIterator, U, F> DoubleEndedIterator for FlatMap<I, U, F>
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<I, U, F> FusedIterator for FlatMap<I, U, F>
     where I: FusedIterator, U: IntoIterator, F: FnMut(I::Item) -> U {}
 
@@ -2605,7 +2605,7 @@ impl<I, U> DoubleEndedIterator for Flatten<I>
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<I, U> FusedIterator for Flatten<I>
     where I: FusedIterator, U: Iterator,
           I::Item: IntoIterator<IntoIter = U, Item = U::Item> {}
@@ -2765,7 +2765,7 @@ pub struct Fuse<I> {
     done: bool
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<I> FusedIterator for Fuse<I> where I: Iterator {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2896,7 +2896,7 @@ unsafe impl<I> TrustedRandomAccess for Fuse<I>
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<I> Iterator for Fuse<I> where I: FusedIterator {
     #[inline]
     fn next(&mut self) -> Option<<I as Iterator>::Item> {
@@ -2938,7 +2938,7 @@ impl<I> Iterator for Fuse<I> where I: FusedIterator {
     }
 }
 
-#[unstable(feature = "fused", reason = "recently added", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<I> DoubleEndedIterator for Fuse<I>
     where I: DoubleEndedIterator + FusedIterator
 {
@@ -3082,6 +3082,6 @@ impl<I: ExactSizeIterator, F> ExactSizeIterator for Inspect<I, F>
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<I: FusedIterator, F> FusedIterator for Inspect<I, F>
     where F: FnMut(&I::Item) {}

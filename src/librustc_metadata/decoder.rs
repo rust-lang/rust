@@ -18,6 +18,7 @@ use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc::hir;
 use rustc::middle::cstore::{LinkagePreference, ExternConstBody,
                             ExternBodyNestedBodies};
+use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex,
                          CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -27,7 +28,6 @@ use rustc::mir;
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::codec::TyDecoder;
-use rustc::util::nodemap::DefIdSet;
 use rustc::mir::Mir;
 
 use std::cell::Ref;
@@ -1006,10 +1006,10 @@ impl<'a, 'tcx> CrateMetadata {
         arg_names.decode(self).collect()
     }
 
-    pub fn get_exported_symbols(&self) -> DefIdSet {
-        self.exported_symbols
-            .iter()
-            .map(|&index| self.local_def_id(index))
+    pub fn exported_symbols(&self) -> Vec<(ExportedSymbol, SymbolExportLevel)> {
+        self.root
+            .exported_symbols
+            .decode(self)
             .collect()
     }
 

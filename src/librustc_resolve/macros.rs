@@ -744,7 +744,7 @@ impl<'a> Resolver<'a> {
 
         let def_id = self.definitions.local_def_id(item.id);
         let ext = Lrc::new(macro_rules::compile(&self.session.parse_sess,
-                                               &self.session.features,
+                                               &self.session.features_untracked(),
                                                item));
         self.macro_map.insert(def_id, ext);
 
@@ -838,7 +838,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn gate_legacy_custom_derive(&mut self, name: Symbol, span: Span) {
-        if !self.session.features.borrow().custom_derive {
+        if !self.session.features_untracked().custom_derive {
             let sess = &self.session.parse_sess;
             let explain = feature_gate::EXPLAIN_CUSTOM_DERIVE;
             emit_feature_err(sess, "custom_derive", span, GateIssue::Language, explain);

@@ -528,6 +528,7 @@ impl Step for Tidy {
         println!("tidy check ({})", host);
         let mut cmd = builder.tool_cmd(Tool::Tidy);
         cmd.arg(build.src.join("src"));
+        cmd.arg(&build.initial_cargo);
         if !build.config.vendor {
             cmd.arg("--no-vendor");
         }

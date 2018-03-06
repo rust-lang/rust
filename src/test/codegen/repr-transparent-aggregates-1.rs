@@ -14,7 +14,6 @@
 // ignore-mips
 // ignore-mips64
 // ignore-powerpc
-// ignore-powerpc64
 // See repr-transparent.rs
 
 #![crate_type="lib"]

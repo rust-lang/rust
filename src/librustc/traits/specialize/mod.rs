@@ -164,7 +164,7 @@ pub(super) fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // The feature gate should prevent introducing new specializations, but not
     // taking advantage of upstream ones.
-    if !tcx.sess.features.borrow().specialization &&
+    if !tcx.features().specialization &&
         (impl1_def_id.is_local() || impl2_def_id.is_local()) {
         return false;
     }

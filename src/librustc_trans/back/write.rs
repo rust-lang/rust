@@ -1332,20 +1332,31 @@ fn start_executing_work(tcx: TyCtxt,
     let coordinator_send = tcx.tx_to_llvm_workers.clone();
     let sess = tcx.sess;
 
-    let exported_symbols = match sess.lto() {
-        Lto::No => None,
-        Lto::ThinLocal => {
-            let mut exported_symbols = FxHashMap();
-            exported_symbols.insert(LOCAL_CRATE, tcx.exported_symbols(LOCAL_CRATE));
-            Some(Arc::new(exported_symbols))
-        }
-        Lto::Yes | Lto::Fat | Lto::Thin => {
-            let mut exported_symbols = FxHashMap();
-            exported_symbols.insert(LOCAL_CRATE, tcx.exported_symbols(LOCAL_CRATE));
-            for &cnum in tcx.crates().iter() {
-                exported_symbols.insert(cnum, tcx.exported_symbols(cnum));
+    // Compute the set of symbols we need to retain when doing LTO (if we need to)
+    let exported_symbols = {
+        let mut exported_symbols = FxHashMap();
+
+        let copy_symbols = |cnum| {
+            let symbols = tcx.exported_symbols(cnum)
+                             .iter()
+                             .map(|&(s, lvl)| (s.symbol_name(tcx).to_string(), lvl))
+                             .collect();
+            Arc::new(symbols)
+        };
+
+        match sess.lto() {
+            Lto::No => None,
+            Lto::ThinLocal => {
+                exported_symbols.insert(LOCAL_CRATE, copy_symbols(LOCAL_CRATE));
+                Some(Arc::new(exported_symbols))
             }
-            Some(Arc::new(exported_symbols))
+            Lto::Yes | Lto::Fat | Lto::Thin => {
+                exported_symbols.insert(LOCAL_CRATE, copy_symbols(LOCAL_CRATE));
+                for &cnum in tcx.crates().iter() {
+                    exported_symbols.insert(cnum, copy_symbols(cnum));
+                }
+                Some(Arc::new(exported_symbols))
+            }
         }
     };
 

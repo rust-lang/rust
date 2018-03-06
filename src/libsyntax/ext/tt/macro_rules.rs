@@ -26,7 +26,6 @@ use parse::token::Token::*;
 use symbol::Symbol;
 use tokenstream::{TokenStream, TokenTree};
 
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 
@@ -184,7 +183,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
 // Holy self-referential!
 
 /// Converts a `macro_rules!` invocation into a syntax extension.
-pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) -> SyntaxExtension {
+pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item) -> SyntaxExtension {
     let lhs_nm = ast::Ident::with_empty_ctxt(Symbol::gensym("lhs"));
     let rhs_nm = ast::Ident::with_empty_ctxt(Symbol::gensym("rhs"));
 
@@ -296,7 +295,7 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
 }
 
 fn check_lhs_nt_follows(sess: &ParseSess,
-                        features: &RefCell<Features>,
+                        features: &Features,
                         attrs: &[ast::Attribute],
                         lhs: &quoted::TokenTree) -> bool {
     // lhs is going to be like TokenTree::Delimited(...), where the
@@ -353,7 +352,7 @@ fn check_rhs(sess: &ParseSess, rhs: &quoted::TokenTree) -> bool {
 }
 
 fn check_matcher(sess: &ParseSess,
-                 features: &RefCell<Features>,
+                 features: &Features,
                  attrs: &[ast::Attribute],
                  matcher: &[quoted::TokenTree]) -> bool {
     let first_sets = FirstSets::new(matcher);
@@ -601,7 +600,7 @@ impl TokenSet {
 // Requires that `first_sets` is pre-computed for `matcher`;
 // see `FirstSets::new`.
 fn check_matcher_core(sess: &ParseSess,
-                      features: &RefCell<Features>,
+                      features: &Features,
                       attrs: &[ast::Attribute],
                       first_sets: &FirstSets,
                       matcher: &[quoted::TokenTree],
@@ -869,7 +868,7 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> Result<bool, (String, &'
 }
 
 fn has_legal_fragment_specifier(sess: &ParseSess,
-                                features: &RefCell<Features>,
+                                features: &Features,
                                 attrs: &[ast::Attribute],
                                 tok: &quoted::TokenTree) -> Result<(), String> {
     debug!("has_legal_fragment_specifier({:?})", tok);
@@ -884,7 +883,7 @@ fn has_legal_fragment_specifier(sess: &ParseSess,
 }
 
 fn is_legal_fragment_specifier(sess: &ParseSess,
-                               features: &RefCell<Features>,
+                               features: &Features,
                                attrs: &[ast::Attribute],
                                frag_name: &str,
                                frag_span: Span) -> bool {
@@ -892,7 +891,7 @@ fn is_legal_fragment_specifier(sess: &ParseSess,
         "item" | "block" | "stmt" | "expr" | "pat" |
         "path" | "ty" | "ident" | "meta" | "tt" | "" => true,
         "lifetime" => {
-            if !features.borrow().macro_lifetime_matcher &&
+            if !features.macro_lifetime_matcher &&
                !attr::contains_name(attrs, "allow_internal_unstable") {
                 let explain = feature_gate::EXPLAIN_LIFETIME_MATCHER;
                 emit_feature_err(sess,
@@ -904,7 +903,7 @@ fn is_legal_fragment_specifier(sess: &ParseSess,
             true
         },
         "vis" => {
-            if !features.borrow().macro_vis_matcher &&
+            if !features.macro_vis_matcher &&
                !attr::contains_name(attrs, "allow_internal_unstable") {
                 let explain = feature_gate::EXPLAIN_VIS_MATCHER;
                 emit_feature_err(sess,

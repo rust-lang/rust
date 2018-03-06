@@ -61,8 +61,6 @@ LL |       }
 LL | 
 LL |       deref(p);
    |             - borrow later used here
-   |
-   = note: borrowed value must be valid for lifetime '_#4r...
 
 error: aborting due to previous error
 

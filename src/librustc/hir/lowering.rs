@@ -550,7 +550,7 @@ impl<'a> LoweringContext<'a> {
     {
         assert!(!self.is_collecting_in_band_lifetimes);
         assert!(self.lifetimes_to_define.is_empty());
-        self.is_collecting_in_band_lifetimes = self.sess.features.borrow().in_band_lifetimes;
+        self.is_collecting_in_band_lifetimes = self.sess.features_untracked().in_band_lifetimes;
 
         assert!(self.in_band_ty_params.is_empty());
 
@@ -964,7 +964,7 @@ impl<'a> LoweringContext<'a> {
                 let span = t.span;
                 match itctx {
                     ImplTraitContext::Existential => {
-                        let has_feature = self.sess.features.borrow().conservative_impl_trait;
+                        let has_feature = self.sess.features_untracked().conservative_impl_trait;
                         if !t.span.allows_unstable() && !has_feature {
                             emit_feature_err(&self.sess.parse_sess, "conservative_impl_trait",
                                              t.span, GateIssue::Language,
@@ -988,7 +988,7 @@ impl<'a> LoweringContext<'a> {
                         }, lifetimes)
                     },
                     ImplTraitContext::Universal(def_id) => {
-                        let has_feature = self.sess.features.borrow().universal_impl_trait;
+                        let has_feature = self.sess.features_untracked().universal_impl_trait;
                         if !t.span.allows_unstable() && !has_feature {
                             emit_feature_err(&self.sess.parse_sess, "universal_impl_trait",
                                              t.span, GateIssue::Language,
@@ -3713,7 +3713,7 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn maybe_lint_bare_trait(&self, span: Span, id: NodeId, is_global: bool) {
-        if self.sess.features.borrow().dyn_trait {
+        if self.sess.features_untracked().dyn_trait {
             self.sess.buffer_lint_with_diagnostic(
                 builtin::BARE_TRAIT_OBJECT, id, span,
                 "trait objects without an explicit `dyn` are deprecated",

@@ -146,7 +146,7 @@ impl<'a, 'tcx> Collector<'a, 'tcx> {
                 None => self.tcx.sess.err(msg),
             }
         }
-        if lib.cfg.is_some() && !self.tcx.sess.features.borrow().link_cfg {
+        if lib.cfg.is_some() && !self.tcx.features().link_cfg {
             feature_gate::emit_feature_err(&self.tcx.sess.parse_sess,
                                            "link_cfg",
                                            span.unwrap(),
@@ -154,7 +154,7 @@ impl<'a, 'tcx> Collector<'a, 'tcx> {
                                            "is feature gated");
         }
         if lib.kind == cstore::NativeStaticNobundle &&
-           !self.tcx.sess.features.borrow().static_nobundle {
+           !self.tcx.features().static_nobundle {
             feature_gate::emit_feature_err(&self.tcx.sess.parse_sess,
                                            "static_nobundle",
                                            span.unwrap(),

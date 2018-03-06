@@ -247,8 +247,7 @@ impl TransCrate for MetadataOnlyTransCrate {
         tcx.sess.abort_if_errors();
 
         let link_meta = build_link_meta(tcx.crate_hash(LOCAL_CRATE));
-        let exported_symbols = ::find_exported_symbols(tcx);
-        let metadata = tcx.encode_metadata(&link_meta, &exported_symbols);
+        let metadata = tcx.encode_metadata(&link_meta);
 
         box OngoingCrateTranslation {
             metadata: metadata,

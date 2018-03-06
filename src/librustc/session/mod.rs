@@ -20,7 +20,7 @@ use lint::builtin::BuiltinLintDiagnostics;
 use middle::allocator::AllocatorKind;
 use middle::dependency_format;
 use session::search_paths::PathKind;
-use session::config::{BorrowckMode, DebugInfoLevel, OutputType, Epoch};
+use session::config::{DebugInfoLevel, OutputType, Epoch};
 use ty::tls;
 use util::nodemap::{FxHashMap, FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
@@ -93,7 +93,8 @@ pub struct Session {
     /// multiple crates with the same name to coexist. See the
     /// trans::back::symbol_names module for more information.
     pub crate_disambiguator: RefCell<Option<CrateDisambiguator>>,
-    pub features: RefCell<feature_gate::Features>,
+
+    features: RefCell<Option<feature_gate::Features>>,
 
     /// The maximum recursion limit for potentially infinitely recursive
     /// operations such as auto-dereference and monomorphization.
@@ -194,6 +195,7 @@ impl Session {
             None => bug!("accessing disambiguator before initialization"),
         }
     }
+
     pub fn struct_span_warn<'a, S: Into<MultiSpan>>(&'a self,
                                                     sp: S,
                                                     msg: &str)
@@ -456,16 +458,22 @@ impl Session {
         self.opts.debugging_opts.print_llvm_passes
     }
 
-    /// If true, we should use NLL-style region checking instead of
-    /// lexical style.
-    pub fn nll(&self) -> bool {
-        self.features.borrow().nll || self.opts.debugging_opts.nll
+    /// Get the features enabled for the current compilation session.
+    /// DO NOT USE THIS METHOD if there is a TyCtxt available, as it circumvents
+    /// dependency tracking. Use tcx.features() instead.
+    #[inline]
+    pub fn features_untracked(&self) -> cell::Ref<feature_gate::Features> {
+        let features = self.features.borrow();
+
+        if features.is_none() {
+            bug!("Access to Session::features before it is initialized");
+        }
+
+        cell::Ref::map(features, |r| r.as_ref().unwrap())
     }
 
-    /// If true, we should use the MIR-based borrowck (we may *also* use
-    /// the AST-based borrowck).
-    pub fn use_mir(&self) -> bool {
-        self.borrowck_mode().use_mir()
+    pub fn init_features(&self, features: feature_gate::Features) {
+        *(self.features.borrow_mut()) = Some(features);
     }
 
     /// If true, we should gather causal information during NLL
@@ -473,42 +481,6 @@ impl Session {
     /// now it is too unoptimized.
     pub fn nll_dump_cause(&self) -> bool {
         self.opts.debugging_opts.nll_dump_cause
-    }
-
-    /// If true, we should enable two-phase borrows checks. This is
-    /// done with either `-Ztwo-phase-borrows` or with
-    /// `#![feature(nll)]`.
-    pub fn two_phase_borrows(&self) -> bool {
-        self.features.borrow().nll || self.opts.debugging_opts.two_phase_borrows
-    }
-
-    /// What mode(s) of borrowck should we run? AST? MIR? both?
-    /// (Also considers the `#![feature(nll)]` setting.)
-    pub fn borrowck_mode(&self) -> BorrowckMode {
-        match self.opts.borrowck_mode {
-            mode @ BorrowckMode::Mir |
-            mode @ BorrowckMode::Compare => mode,
-
-            mode @ BorrowckMode::Ast => {
-                if self.nll() {
-                    BorrowckMode::Mir
-                } else {
-                    mode
-                }
-            }
-
-        }
-    }
-
-    /// Should we emit EndRegion MIR statements? These are consumed by
-    /// MIR borrowck, but not when NLL is used. They are also consumed
-    /// by the validation stuff.
-    pub fn emit_end_regions(&self) -> bool {
-        // FIXME(#46875) -- we should not emit end regions when NLL is enabled,
-        // but for now we can't stop doing so because it causes false positives
-        self.opts.debugging_opts.emit_end_regions ||
-            self.opts.debugging_opts.mir_emit_validate > 0 ||
-            self.use_mir()
     }
 
     /// Calculates the flavor of LTO to use for this compilation.
@@ -1029,7 +1001,7 @@ pub fn build_session_(sopts: config::Options,
         crate_types: RefCell::new(Vec::new()),
         dependency_formats: RefCell::new(FxHashMap()),
         crate_disambiguator: RefCell::new(None),
-        features: RefCell::new(feature_gate::Features::new()),
+        features: RefCell::new(None),
         recursion_limit: Cell::new(64),
         type_length_limit: Cell::new(1048576),
         next_node_id: Cell::new(NodeId::new(1)),

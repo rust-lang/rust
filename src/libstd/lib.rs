@@ -266,7 +266,6 @@
 #![feature(float_from_str_radix)]
 #![feature(fn_traits)]
 #![feature(fnbox)]
-#![feature(fused)]
 #![feature(generic_param_attrs)]
 #![feature(hashmap_hasher)]
 #![feature(heap_api)]

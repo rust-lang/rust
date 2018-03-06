@@ -70,7 +70,7 @@ impl Iterator for ToLowercase {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl FusedIterator for ToLowercase {}
 
 /// Returns an iterator that yields the uppercase equivalent of a `char`.
@@ -92,7 +92,7 @@ impl Iterator for ToUppercase {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl FusedIterator for ToUppercase {}
 
 #[derive(Debug, Clone)]
