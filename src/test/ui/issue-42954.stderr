@@ -5,7 +5,7 @@ LL |         $i as u32 < 0 //~ `<` is interpreted as a start of generic argument
    |         --------- ^ - interpreted as generic arguments
    |         |         |
    |         |         not interpreted as comparison
-   |         help: try comparing the casted value: `($i as u32)`
+   |         help: try comparing the cast value: `($i as u32)`
 ...
 LL |     is_plainly_printable!(c);
    |     ------------------------- in this macro invocation
