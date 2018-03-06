@@ -319,9 +319,14 @@ define_maps! { <'tcx>
     //
     // Does not include external symbols that don't have a corresponding DefId,
     // like the compiler-generated `main` function and so on.
-    [] fn reachable_non_generics: ReachableNonGenerics(CrateNum) -> Lrc<DefIdSet>,
+    [] fn reachable_non_generics: ReachableNonGenerics(CrateNum)
+        -> Lrc<DefIdMap<SymbolExportLevel>>,
     [] fn is_reachable_non_generic: IsReachableNonGeneric(DefId) -> bool,
 
+    [] fn upstream_monomorphizations: UpstreamMonomorphizations(CrateNum)
+        -> Lrc<DefIdMap<Lrc<FxHashMap<&'tcx Substs<'tcx>, CrateNum>>>>,
+    [] fn upstream_monomorphizations_for: UpstreamMonomorphizationsFor(DefId)
+        -> Option<Lrc<FxHashMap<&'tcx Substs<'tcx>, CrateNum>>>,
 
     [] fn native_libraries: NativeLibraries(CrateNum) -> Lrc<Vec<NativeLibrary>>,
 

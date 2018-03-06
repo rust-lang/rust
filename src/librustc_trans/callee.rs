@@ -148,13 +148,18 @@ pub fn get_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         unsafe {
             llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::ExternalLinkage);
 
-            if cx.tcx.is_translated_item(instance_def_id) {
-                if instance_def_id.is_local() {
-                    if !cx.tcx.is_reachable_non_generic(instance_def_id) {
+            if cx.tcx.share_generics() && instance.substs.types().next().is_some() {
+                // If this is a generic function and we are sharing generics
+                // it will always have Visibility::Default
+            } else {
+                if cx.tcx.is_translated_item(instance_def_id) {
+                    if instance_def_id.is_local() {
+                        if !cx.tcx.is_reachable_non_generic(instance_def_id) {
+                            llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
+                        }
+                    } else {
                         llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
                     }
-                } else {
-                    llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
                 }
             }
         }

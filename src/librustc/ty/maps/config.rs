@@ -131,6 +131,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::coherent_trait<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription<'tcx> for queries::upstream_monomorphizations<'tcx> {
+    fn describe(_: TyCtxt, k: CrateNum) -> String {
+        format!("collecting available upstream monomorphizations `{:?}`", k)
+    }
+}
+
 impl<'tcx> QueryDescription<'tcx> for queries::crate_inherent_impls<'tcx> {
     fn describe(_: TyCtxt, k: CrateNum) -> String {
         format!("all inherent impls defined in crate `{:?}`", k)

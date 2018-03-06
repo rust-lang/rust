@@ -657,6 +657,9 @@ define_dep_nodes!( <'tcx>
     [] ProgramClausesFor(DefId),
     [] WasmImportModuleMap(CrateNum),
     [] ForeignModules(CrateNum),
+
+    [] UpstreamMonomorphizations(CrateNum),
+    [] UpstreamMonomorphizationsFor(DefId),
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {

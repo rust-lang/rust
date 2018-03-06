@@ -20,6 +20,7 @@ use rustc::middle::exported_symbols::{SymbolExportLevel, ExportedSymbol, metadat
 use rustc::session::config;
 use rustc::ty::{TyCtxt, SymbolName};
 use rustc::ty::maps::Providers;
+use rustc::ty::subst::Substs;
 use rustc::util::nodemap::{FxHashMap, DefIdMap};
 use rustc_allocator::ALLOCATOR_METHODS;
 
@@ -240,6 +241,30 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         symbols.push((exported_symbol, SymbolExportLevel::Rust));
     }
 
+    if tcx.share_generics() {
+        use rustc::mir::mono::{Linkage, Visibility, MonoItem};
+        use rustc::ty::InstanceDef;
+
+        let (_, cgus) = tcx.collect_and_partition_translation_items(LOCAL_CRATE);
+
+        for (mono_item, &(linkage, visibility)) in cgus.iter()
+                                                       .flat_map(|cgu| cgu.items().iter()) {
+            if linkage == Linkage::External {
+                if let &MonoItem::Fn(Instance {
+                    def: InstanceDef::Item(def_id),
+                    substs,
+                }) = mono_item {
+                    if substs.types().next().is_some() {
+                        assert!(tcx.lang_items().start_fn() == Some(def_id) ||
+                                visibility == Visibility::Default);
+                        symbols.push((ExportedSymbol::Generic(def_id, substs),
+                                      SymbolExportLevel::Rust));
+                    }
+                }
+            }
+        }
+    }
+
     // Sort so we get a stable incr. comp. hash.
     symbols.sort_unstable_by(|&(ref symbol1, ..), &(ref symbol2, ..)| {
         symbol1.compare_stable(tcx, symbol2)
@@ -248,16 +273,55 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     Arc::new(symbols)
 }
 
+fn upstream_monomorphizations_provider<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    cnum: CrateNum)
+    -> Lrc<DefIdMap<Lrc<FxHashMap<&'tcx Substs<'tcx>, CrateNum>>>>
+{
+    debug_assert!(cnum == LOCAL_CRATE);
+
+    let cnums = tcx.all_crate_nums(LOCAL_CRATE);
+
+    let mut instances = DefIdMap();
+
+    for &cnum in cnums.iter() {
+        for &(ref exported_symbol, _) in tcx.exported_symbols(cnum).iter() {
+            if let &ExportedSymbol::Generic(def_id, substs) = exported_symbol {
+                instances.entry(def_id)
+                         .or_insert_with(|| FxHashMap())
+                         .insert(substs, cnum);
+            }
+        }
+    }
+
+    Lrc::new(instances.into_iter()
+                      .map(|(key, value)| (key, Lrc::new(value)))
+                      .collect())
+}
+
+fn upstream_monomorphizations_for_provider<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    def_id: DefId)
+    -> Option<Lrc<FxHashMap<&'tcx Substs<'tcx>, CrateNum>>>
+{
+    debug_assert!(!def_id.is_local());
+    tcx.upstream_monomorphizations(LOCAL_CRATE)
+       .get(&def_id)
+       .cloned()
+}
+
 pub fn provide(providers: &mut Providers) {
     providers.reachable_non_generics = reachable_non_generics_provider;
     providers.is_reachable_non_generic = is_reachable_non_generic_provider_local;
     providers.exported_symbols = exported_symbols_provider_local;
     providers.symbol_export_level = symbol_export_level_provider;
+    providers.upstream_monomorphizations = upstream_monomorphizations_provider;
 }
 
 pub fn provide_extern(providers: &mut Providers) {
     providers.is_reachable_non_generic = is_reachable_non_generic_provider_extern;
     providers.symbol_export_level = symbol_export_level_provider;
+    providers.upstream_monomorphizations_for = upstream_monomorphizations_for_provider;
 }
 
 fn symbol_export_level_provider(tcx: TyCtxt, sym_def_id: DefId) -> SymbolExportLevel {

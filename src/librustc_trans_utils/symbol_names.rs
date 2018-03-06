@@ -100,7 +100,7 @@
 use rustc::middle::weak_lang_items;
 use rustc_mir::monomorphize::Instance;
 use rustc_mir::monomorphize::item::{MonoItem, MonoItemExt, InstantiationMode};
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::map as hir_map;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::fold::TypeVisitor;
@@ -170,32 +170,45 @@ fn get_symbol_hash<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         assert!(!substs.needs_subst());
         substs.visit_with(&mut hasher);
 
-        let mut avoid_cross_crate_conflicts = false;
+        let is_generic = substs.types().next().is_some();
+        let avoid_cross_crate_conflicts =
+            // If this is an instance of a generic function, we also hash in
+            // the ID of the instantiating crate. This avoids symbol conflicts
+            // in case the same instances is emitted in two crates of the same
+            // project.
+            is_generic ||
 
-        // If this is an instance of a generic function, we also hash in
-        // the ID of the instantiating crate. This avoids symbol conflicts
-        // in case the same instances is emitted in two crates of the same
-        // project.
-        if substs.types().next().is_some() {
-            avoid_cross_crate_conflicts = true;
-        }
-
-        // If we're dealing with an instance of a function that's inlined from
-        // another crate but we're marking it as globally shared to our
-        // compliation (aka we're not making an internal copy in each of our
-        // codegen units) then this symbol may become an exported (but hidden
-        // visibility) symbol. This means that multiple crates may do the same
-        // and we want to be sure to avoid any symbol conflicts here.
-        match MonoItem::Fn(instance).instantiation_mode(tcx) {
-            InstantiationMode::GloballyShared { may_conflict: true } => {
-                avoid_cross_crate_conflicts = true;
-            }
-            _ => {}
-        }
+            // If we're dealing with an instance of a function that's inlined from
+            // another crate but we're marking it as globally shared to our
+            // compliation (aka we're not making an internal copy in each of our
+            // codegen units) then this symbol may become an exported (but hidden
+            // visibility) symbol. This means that multiple crates may do the same
+            // and we want to be sure to avoid any symbol conflicts here.
+            match MonoItem::Fn(instance).instantiation_mode(tcx) {
+                InstantiationMode::GloballyShared { may_conflict: true } => true,
+                _ => false,
+            };
 
         if avoid_cross_crate_conflicts {
-            hasher.hash(tcx.crate_name.as_str());
-            hasher.hash(tcx.sess.local_crate_disambiguator());
+            let instantiating_crate = if is_generic {
+                if !def_id.is_local() && tcx.share_generics() {
+                    // If we are re-using a monomorphization from another crate,
+                    // we have to compute the symbol hash accordingly.
+                    let upstream_monomorphizations =
+                        tcx.upstream_monomorphizations_for(def_id);
+
+                    upstream_monomorphizations.and_then(|monos| monos.get(&substs)
+                                                                     .cloned())
+                                              .unwrap_or(LOCAL_CRATE)
+                } else {
+                    LOCAL_CRATE
+                }
+            } else {
+                LOCAL_CRATE
+            };
+
+            hasher.hash(&tcx.original_crate_name(instantiating_crate).as_str()[..]);
+            hasher.hash(&tcx.crate_disambiguator(instantiating_crate));
         }
     });
 

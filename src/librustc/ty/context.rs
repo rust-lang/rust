@@ -1499,6 +1499,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             self.sess.opts.debugging_opts.mir_emit_validate > 0 ||
             self.use_mir()
     }
+
+    #[inline]
+    pub fn share_generics(self) -> bool {
+        match self.sess.opts.debugging_opts.share_generics {
+            Some(true) => true,
+            Some(false) | None => false,
+        }
+    }
 }
 
 impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {

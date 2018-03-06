@@ -1094,6 +1094,13 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::WasmCustomSections => { force!(wasm_custom_sections, krate!()); }
         DepKind::WasmImportModuleMap => { force!(wasm_import_module_map, krate!()); }
         DepKind::ForeignModules => { force!(foreign_modules, krate!()); }
+
+        DepKind::UpstreamMonomorphizations => {
+            force!(upstream_monomorphizations, krate!());
+        }
+        DepKind::UpstreamMonomorphizationsFor => {
+            force!(upstream_monomorphizations_for, def_id!());
+        }
     }
 
     true

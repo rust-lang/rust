@@ -301,6 +301,7 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut codegen_units = FxHashMap();
     let is_incremental_build = tcx.sess.opts.incremental.is_some();
     let mut internalization_candidates = FxHashSet();
+    let share_generics = tcx.share_generics();
 
     for trans_item in trans_items {
         match trans_item.instantiation_mode(tcx) {
@@ -362,6 +363,13 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 if tcx.lang_items().start_fn() == Some(def_id) {
                                     can_be_internalized = false;
                                     Visibility::Hidden
+                                } else if instance.substs.types().next().is_some() {
+                                    if share_generics {
+                                        can_be_internalized = false;
+                                        Visibility::Default
+                                    } else {
+                                        Visibility::Hidden
+                                    }
                                 } else if def_id.is_local() {
                                     if tcx.is_reachable_non_generic(def_id) {
                                         can_be_internalized = false;

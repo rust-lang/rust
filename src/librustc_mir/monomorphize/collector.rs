@@ -569,7 +569,9 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     ty::TyClosure(def_id, substs) => {
                         let instance = monomorphize::resolve_closure(
                             self.tcx, def_id, substs, ty::ClosureKind::FnOnce);
-                        self.output.push(create_fn_mono_item(instance));
+                        if should_monomorphize_locally(self.tcx, &instance) {
+                            self.output.push(create_fn_mono_item(instance));
+                        }
                     }
                     _ => bug!(),
                 }
@@ -731,14 +733,16 @@ fn should_monomorphize_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: 
         ty::InstanceDef::Intrinsic(_) |
         ty::InstanceDef::CloneShim(..) => return true
     };
-    match tcx.hir.get_if_local(def_id) {
+
+    return match tcx.hir.get_if_local(def_id) {
         Some(hir_map::NodeForeignItem(..)) => {
             false // foreign items are linked against, not translated.
         }
         Some(_) => true,
         None => {
             if tcx.is_reachable_non_generic(def_id) ||
-                tcx.is_foreign_item(def_id)
+                tcx.is_foreign_item(def_id) ||
+                is_available_upstream_generic(tcx, def_id, instance.substs)
             {
                 // We can link to the item in question, no instance needed
                 // in this crate
@@ -750,6 +754,25 @@ fn should_monomorphize_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: 
                 true
             }
         }
+    };
+
+    fn is_available_upstream_generic<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                               def_id: DefId,
+                                               substs: &'tcx Substs<'tcx>)
+                                               -> bool {
+        debug_assert!(!def_id.is_local());
+
+        if !tcx.share_generics() {
+            return false
+        }
+
+        if substs.types().next().is_none() {
+            return false
+        }
+
+        tcx.upstream_monomorphizations_for(def_id)
+           .map(|set| set.contains_key(substs))
+           .unwrap_or(false)
     }
 }
 
