@@ -1231,23 +1231,43 @@ pub fn is_unsafe_block(block: &ast::Block) -> bool {
     }
 }
 
-// A simple wrapper type against ast::Arm. Used inside write_list().
+/// A simple wrapper type against ast::Arm. Used inside write_list().
 struct ArmWrapper<'a> {
     pub arm: &'a ast::Arm,
-    // True if the arm is the last one in match expression. Used to decide on whether we should add
-    // trailing comma to the match arm when `config.trailing_comma() == Never`.
+    /// True if the arm is the last one in match expression. Used to decide on whether we should add
+    /// trailing comma to the match arm when `config.trailing_comma() == Never`.
     pub is_last: bool,
+    /// Holds a byte position of `|` at the beginning of the arm pattern, if available.
+    pub beginning_vert: Option<BytePos>,
 }
 
 impl<'a> ArmWrapper<'a> {
-    pub fn new(arm: &'a ast::Arm, is_last: bool) -> ArmWrapper<'a> {
-        ArmWrapper { arm, is_last }
+    pub fn new(
+        arm: &'a ast::Arm,
+        is_last: bool,
+        beginning_vert: Option<BytePos>,
+    ) -> ArmWrapper<'a> {
+        ArmWrapper {
+            arm,
+            is_last,
+            beginning_vert,
+        }
+    }
+}
+
+impl<'a> Spanned for ArmWrapper<'a> {
+    fn span(&self) -> Span {
+        if let Some(lo) = self.beginning_vert {
+            mk_sp(lo, self.arm.span().hi())
+        } else {
+            self.arm.span()
+        }
     }
 }
 
 impl<'a> Rewrite for ArmWrapper<'a> {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        rewrite_match_arm(context, self.arm, shape, self.is_last)
+        rewrite_match_arm(context, self.arm, shape, self.is_last, self.beginning_vert)
     }
 }
 
@@ -1344,6 +1364,23 @@ fn arm_comma(config: &Config, body: &ast::Expr, is_last: bool) -> &'static str {
     }
 }
 
+/// Collect a byte position of the beginning `|` for each arm, if available.
+fn collect_beginning_verts(
+    context: &RewriteContext,
+    arms: &[ast::Arm],
+    span: Span,
+) -> Vec<Option<BytePos>> {
+    let mut beginning_verts = Vec::with_capacity(arms.len());
+    let mut lo = context.snippet_provider.span_after(span, "{");
+    for arm in arms {
+        let hi = arm.pats[0].span.lo();
+        let missing_span = mk_sp(lo, hi);
+        beginning_verts.push(context.snippet_provider.opt_span_before(missing_span, "|"));
+        lo = arm.span().hi();
+    }
+    beginning_verts
+}
+
 fn rewrite_match_arms(
     context: &RewriteContext,
     arms: &[ast::Arm],
@@ -1359,15 +1396,17 @@ fn rewrite_match_arms(
     let is_last_iter = repeat(false)
         .take(arm_len.checked_sub(1).unwrap_or(0))
         .chain(repeat(true));
+    let beginning_verts = collect_beginning_verts(context, arms, span);
     let items = itemize_list(
         context.snippet_provider,
         arms.iter()
             .zip(is_last_iter)
-            .map(|(arm, is_last)| ArmWrapper::new(arm, is_last)),
+            .zip(beginning_verts.into_iter())
+            .map(|((arm, is_last), beginning_vert)| ArmWrapper::new(arm, is_last, beginning_vert)),
         "}",
         "|",
-        |arm| arm.arm.span().lo(),
-        |arm| arm.arm.span().hi(),
+        |arm| arm.span().lo(),
+        |arm| arm.span().hi(),
         |arm| arm.rewrite(context, arm_shape),
         open_brace_pos,
         span.hi(),
@@ -1394,6 +1433,7 @@ fn rewrite_match_arm(
     arm: &ast::Arm,
     shape: Shape,
     is_last: bool,
+    beginning_vert: Option<BytePos>,
 ) -> Option<String> {
     let (missing_span, attrs_str) = if !arm.attrs.is_empty() {
         if contains_skip(&arm.attrs) {
@@ -1417,7 +1457,7 @@ fn rewrite_match_arm(
         context,
         &arm.pats,
         &arm.guard,
-        arm.beginning_vert.is_some(),
+        beginning_vert.is_some(),
         shape,
     ).and_then(|pats_str| {
         combine_strs_with_missing_comments(
