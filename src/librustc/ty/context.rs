@@ -15,6 +15,7 @@ use dep_graph::{DepNode, DepConstructor};
 use errors::DiagnosticBuilder;
 use session::Session;
 use session::config::{BorrowckMode, OutputFilenames, OptLevel};
+use session::config::CrateType::*;
 use middle;
 use hir::{TraitCandidate, HirId, ItemLocalId};
 use hir::def::{Def, Export};
@@ -1516,6 +1517,20 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }
             }
         }
+    }
+
+    #[inline]
+    pub fn local_crate_exports_generics(self) -> bool {
+        self.sess.crate_types.borrow().iter().any(|crate_type| {
+            match crate_type {
+                CrateTypeExecutable |
+                CrateTypeStaticlib  |
+                CrateTypeProcMacro  |
+                CrateTypeCdylib     => false,
+                CrateTypeRlib       |
+                CrateTypeDylib      => true,
+            }
+        })
     }
 }
 

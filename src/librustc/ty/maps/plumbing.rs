@@ -1003,6 +1003,9 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::ImplParent => { force!(impl_parent, def_id!()); }
         DepKind::TraitOfItem => { force!(trait_of_item, def_id!()); }
         DepKind::IsReachableNonGeneric => { force!(is_reachable_non_generic, def_id!()); }
+        DepKind::IsUnreachableLocalDefinition => {
+            force!(is_unreachable_local_definition, def_id!());
+        }
         DepKind::IsMirAvailable => { force!(is_mir_available, def_id!()); }
         DepKind::ItemAttrs => { force!(item_attrs, def_id!()); }
         DepKind::TransFnAttrs => { force!(trans_fn_attrs, def_id!()); }

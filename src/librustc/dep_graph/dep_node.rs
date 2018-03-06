@@ -561,6 +561,7 @@ define_dep_nodes!( <'tcx>
     [] ImplParent(DefId),
     [] TraitOfItem(DefId),
     [] IsReachableNonGeneric(DefId),
+    [] IsUnreachableLocalDefinition(DefId),
     [] IsMirAvailable(DefId),
     [] ItemAttrs(DefId),
     [] TransFnAttrs(DefId),

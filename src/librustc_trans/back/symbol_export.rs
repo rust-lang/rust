@@ -241,7 +241,7 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         symbols.push((exported_symbol, SymbolExportLevel::Rust));
     }
 
-    if tcx.share_generics() {
+    if tcx.share_generics() && tcx.local_crate_exports_generics() {
         use rustc::mir::mono::{Linkage, Visibility, MonoItem};
         use rustc::ty::InstanceDef;
 
@@ -249,14 +249,12 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         for (mono_item, &(linkage, visibility)) in cgus.iter()
                                                        .flat_map(|cgu| cgu.items().iter()) {
-            if linkage == Linkage::External {
+            if linkage == Linkage::External && visibility == Visibility::Default {
                 if let &MonoItem::Fn(Instance {
                     def: InstanceDef::Item(def_id),
                     substs,
                 }) = mono_item {
                     if substs.types().next().is_some() {
-                        assert!(tcx.lang_items().start_fn() == Some(def_id) ||
-                                visibility == Visibility::Default);
                         symbols.push((ExportedSymbol::Generic(def_id, substs),
                                       SymbolExportLevel::Rust));
                     }
@@ -310,11 +308,21 @@ fn upstream_monomorphizations_for_provider<'a, 'tcx>(
        .cloned()
 }
 
+fn is_unreachable_local_definition_provider(tcx: TyCtxt, def_id: DefId) -> bool {
+    if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
+        !tcx.reachable_set(LOCAL_CRATE).0.contains(&node_id)
+    } else {
+        bug!("is_unreachable_local_definition called with non-local DefId: {:?}",
+              def_id)
+    }
+}
+
 pub fn provide(providers: &mut Providers) {
     providers.reachable_non_generics = reachable_non_generics_provider;
     providers.is_reachable_non_generic = is_reachable_non_generic_provider_local;
     providers.exported_symbols = exported_symbols_provider_local;
     providers.upstream_monomorphizations = upstream_monomorphizations_provider;
+    providers.is_unreachable_local_definition = is_unreachable_local_definition_provider;
 }
 
 pub fn provide_extern(providers: &mut Providers) {

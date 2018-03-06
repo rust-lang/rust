@@ -301,7 +301,8 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut codegen_units = FxHashMap();
     let is_incremental_build = tcx.sess.opts.incremental.is_some();
     let mut internalization_candidates = FxHashSet();
-    let share_generics = tcx.share_generics();
+    let export_generics = tcx.share_generics() &&
+                          tcx.local_crate_exports_generics();
 
     for trans_item in trans_items {
         match trans_item.instantiation_mode(tcx) {
@@ -326,14 +327,27 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                             .or_insert_with(make_codegen_unit);
 
         let mut can_be_internalized = true;
-        let default_visibility = |id: DefId| {
-            if tcx.sess.target.target.options.default_hidden_visibility &&
-               tcx.reachable_non_generics(id.krate).get(&id).cloned() !=
-                    Some(SymbolExportLevel::C)
-            {
-                Visibility::Hidden
-            } else {
+        let default_visibility = |id: DefId, is_generic: bool| {
+            if !tcx.sess.target.target.options.default_hidden_visibility {
+                return Visibility::Default
+            }
+
+            // Generic functions never have export level C
+            if is_generic {
+                return Visibility::Hidden
+            }
+
+            // Things with export level C don't get instantiated in downstream
+            // crates
+            if !id.is_local() {
+                return Visibility::Hidden
+            }
+
+            if let Some(&SymbolExportLevel::C) = tcx.reachable_non_generics(id.krate)
+                                                    .get(&id) {
                 Visibility::Default
+            } else {
+                Visibility::Hidden
             }
         };
         let (linkage, mut visibility) = match trans_item.explicit_linkage(tcx) {
@@ -343,6 +357,11 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     MonoItem::Fn(ref instance) => {
                         let visibility = match instance.def {
                             InstanceDef::Item(def_id) => {
+                                let is_generic = instance.substs
+                                                         .types()
+                                                         .next()
+                                                         .is_some();
+
                                 // The `start_fn` lang item is actually a
                                 // monomorphized instance of a function in the
                                 // standard library, used for the `main`
@@ -364,22 +383,46 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 if tcx.lang_items().start_fn() == Some(def_id) {
                                     can_be_internalized = false;
                                     Visibility::Hidden
-                                } else if instance.substs.types().next().is_some() {
-                                    if share_generics {
-                                        can_be_internalized = false;
-                                        Visibility::Default
-                                    } else {
-                                        Visibility::Hidden
-                                    }
                                 } else if def_id.is_local() {
-                                    if tcx.is_reachable_non_generic(def_id) {
-                                        can_be_internalized = false;
-                                        default_visibility(def_id)
+                                    if is_generic {
+                                        if export_generics {
+                                            if tcx.is_unreachable_local_definition(def_id) {
+                                                // This instance cannot be used
+                                                // from another crate.
+                                                Visibility::Hidden
+                                            } else {
+                                                // This instance might be useful in
+                                                // a downstream crate.
+                                                can_be_internalized = false;
+                                                default_visibility(def_id, true)
+                                            }
+                                        } else {
+                                            // We are not exporting generics or
+                                            // the definition is not reachable
+                                            // for downstream crates, we can
+                                            // internalize its instantiations.
+                                            Visibility::Hidden
+                                        }
                                     } else {
-                                        Visibility::Hidden
+                                        // This isn't a generic function.
+                                        if tcx.is_reachable_non_generic(def_id) {
+                                            can_be_internalized = false;
+                                            debug_assert!(!is_generic);
+                                            default_visibility(def_id, false)
+                                        } else {
+                                            Visibility::Hidden
+                                        }
                                     }
                                 } else {
-                                    Visibility::Hidden
+                                    // This is an upstream DefId.
+                                    if export_generics && is_generic {
+                                        // If it is a upstream monomorphization
+                                        // and we export generics, we must make
+                                        // it available to downstream crates.
+                                        default_visibility(def_id, true)
+                                    } else {
+                                        Visibility::Hidden
+                                    }
                                 }
                             }
                             InstanceDef::FnPtrShim(..) |
@@ -396,7 +439,7 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     MonoItem::Static(def_id) => {
                         let visibility = if tcx.is_reachable_non_generic(def_id) {
                             can_be_internalized = false;
-                            default_visibility(def_id)
+                            default_visibility(def_id, false)
                         } else {
                             Visibility::Hidden
                         };
@@ -406,7 +449,7 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         let def_id = tcx.hir.local_def_id(node_id);
                         let visibility = if tcx.is_reachable_non_generic(def_id) {
                             can_be_internalized = false;
-                            default_visibility(def_id)
+                            default_visibility(def_id, false)
                         } else {
                             Visibility::Hidden
                         };

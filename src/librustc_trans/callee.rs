@@ -148,16 +148,53 @@ pub fn get_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         unsafe {
             llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::ExternalLinkage);
 
-            if cx.tcx.share_generics() && instance.substs.types().next().is_some() {
-                // If this is a generic function and we are sharing generics
-                // it will always have Visibility::Default
-            } else {
-                if cx.tcx.is_translated_item(instance_def_id) {
+            let is_generic = instance.substs.types().next().is_some();
+
+            if is_generic {
+                if cx.tcx.share_generics() {
+                    // We are in share_generics mode.
+
                     if instance_def_id.is_local() {
+                        // This is a definition from the current crate. If the
+                        // definition is unreachable for downstream crates or
+                        // the current crate does not re-export generics, the
+                        // instance has been hidden
+                        if cx.tcx.is_unreachable_local_definition(instance_def_id) ||
+                           !cx.tcx.local_crate_exports_generics() {
+                            llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
+                        }
+                    } else {
+                        if cx.tcx.upstream_monomorphizations_for(instance_def_id)
+                                 .map(|set| set.contains_key(instance.substs))
+                                 .unwrap_or(false) {
+                            // This is instantiated in another crate. It cannot be hidden
+                        } else {
+                            // This is a local instantiation of an upstream definition.
+                            // If the current crate does not re-export it, it is hidden.
+                            if !cx.tcx.local_crate_exports_generics() {
+                                llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
+                            }
+                        }
+                    }
+                } else {
+                    // When not sharing generics, all instances are in the same
+                    // crate and have hidden visibility
+                    llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
+                }
+            } else {
+                // This is a non-generic function
+                if cx.tcx.is_translated_item(instance_def_id) {
+                    // This is a function that is instantiated in the local crate
+
+                    if instance_def_id.is_local() {
+                        // This is function that is defined in the local crate.
+                        // If it is not reachable, it is hidden.
                         if !cx.tcx.is_reachable_non_generic(instance_def_id) {
                             llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
                         }
                     } else {
+                        // This is a function from an upstream crate that has
+                        // been instantiated here. These are always hidden.
                         llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
                     }
                 }

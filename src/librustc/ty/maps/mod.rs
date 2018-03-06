@@ -322,6 +322,7 @@ define_maps! { <'tcx>
     [] fn reachable_non_generics: ReachableNonGenerics(CrateNum)
         -> Lrc<DefIdMap<SymbolExportLevel>>,
     [] fn is_reachable_non_generic: IsReachableNonGeneric(DefId) -> bool,
+    [] fn is_unreachable_local_definition: IsUnreachableLocalDefinition(DefId) -> bool,
 
     [] fn upstream_monomorphizations: UpstreamMonomorphizations(CrateNum)
         -> Lrc<DefIdMap<Lrc<FxHashMap<&'tcx Substs<'tcx>, CrateNum>>>>,
