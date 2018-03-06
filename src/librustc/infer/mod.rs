@@ -837,22 +837,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         })
     }
 
-    pub fn next_ty_var_id(&self,
-                          universe: ty::UniverseIndex,
-                          diverging: bool,
-                          origin: TypeVariableOrigin)
-                          -> TyVid {
+    pub fn next_ty_var_id(&self, diverging: bool, origin: TypeVariableOrigin) -> TyVid {
         self.type_variables
             .borrow_mut()
-            .new_var(universe, diverging, origin)
+            .new_var(diverging, origin)
     }
 
-    pub fn next_ty_var(&self, universe: ty::UniverseIndex, origin: TypeVariableOrigin) -> Ty<'tcx> {
-        self.tcx.mk_var(self.next_ty_var_id(universe, false, origin))
+    pub fn next_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
+        self.tcx.mk_var(self.next_ty_var_id(false, origin))
     }
 
-    pub fn next_diverging_ty_var(&self, universe: ty::UniverseIndex, origin: TypeVariableOrigin) -> Ty<'tcx> {
-        self.tcx.mk_var(self.next_ty_var_id(universe, true, origin))
+    pub fn next_diverging_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
+        self.tcx.mk_var(self.next_ty_var_id(true, origin))
     }
 
     pub fn next_int_var_id(&self) -> IntVid {
@@ -907,14 +903,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// use an inference variable for `C` with `[T, U]`
     /// as the substitutions for the default, `(T, U)`.
     pub fn type_var_for_def(&self,
-                            universe: ty::UniverseIndex,
                             span: Span,
                             def: &ty::TypeParameterDef)
                             -> Ty<'tcx> {
         let ty_var_id = self.type_variables
                             .borrow_mut()
-                            .new_var(universe,
-                                     false,
+                            .new_var(false,
                                      TypeVariableOrigin::TypeParameterDefinition(span, def.name));
 
         self.tcx.mk_var(ty_var_id)
@@ -923,14 +917,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// Given a set of generics defined on a type or impl, returns a substitution mapping each
     /// type/region parameter to a fresh inference variable.
     pub fn fresh_substs_for_item(&self,
-                                 universe: ty::UniverseIndex,
                                  span: Span,
                                  def_id: DefId)
                                  -> &'tcx Substs<'tcx> {
         Substs::for_item(self.tcx, def_id, |def, _| {
             self.region_var_for_def(span, def)
         }, |def, _| {
-            self.type_var_for_def(universe, span, def)
+            self.type_var_for_def(span, def)
         })
     }
 

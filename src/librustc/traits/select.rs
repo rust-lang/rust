@@ -3045,8 +3045,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             snapshot);
         let skol_obligation_trait_ref = skol_obligation.trait_ref;
 
-        let impl_substs = self.infcx.fresh_substs_for_item(obligation.param_env.universe,
-                                                           obligation.cause.span,
+        let impl_substs = self.infcx.fresh_substs_for_item(obligation.cause.span,
                                                            impl_def_id);
 
         let impl_trait_ref = impl_trait_ref.subst(self.tcx(),
