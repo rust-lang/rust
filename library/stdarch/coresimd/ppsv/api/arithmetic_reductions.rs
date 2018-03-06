@@ -40,7 +40,6 @@ macro_rules! test_arithmetic_reductions {
             let v = $id::splat(1 as $elem_ty);
             assert_eq!(v.sum(), $id::lanes() as $elem_ty);
             let v = alternating(2);
-            eprintln!("{:?}", v);
             assert_eq!(v.sum(), ($id::lanes() / 2 + $id::lanes()) as $elem_ty);
         }
         #[test]
@@ -57,7 +56,6 @@ macro_rules! test_arithmetic_reductions {
                 _ => 2,
             };
             let v = alternating(f);
-            eprintln!("{:?}", v);
             assert_eq!(v.product(), (2_usize.pow(($id::lanes() / f) as u32) as $elem_ty));
         }
     }

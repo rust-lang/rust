@@ -99,21 +99,16 @@ macro_rules! test_cmp {
 
             let r = a.lt(b);
             let e = $bool_ty::splat(true);
-            eprintln!("0| a: {:?}, b: {:?}, r: {:?}, e: {:?}", a, b, r, e);
             assert!(r == e);
             let r = a.le(b);
-            eprintln!("1| a: {:?}, b: {:?}, r: {:?}, e: {:?}", a, b, r, e);
             assert!(r == e);
 
             let e = $bool_ty::splat(false);
             let r = a.gt(b);
-            eprintln!("2| a: {:?}, b: {:?}, r: {:?}, e: {:?}", a, b, r, e);
             assert!(r == e);
             let r = a.ge(b);
-            eprintln!("3| a: {:?}, b: {:?}, r: {:?}, e: {:?}", a, b, r, e);
             assert!(r == e);
             let r = a.eq(b);
-            eprintln!("4| a: {:?}, b: {:?}, r: {:?}, e: {:?}", a, b, r, e);
             assert!(r == e);
 
             let mut a = a;
@@ -131,7 +126,6 @@ macro_rules! test_cmp {
                 }
             }
             let r = a.lt(b);
-            eprintln!("5| a: {:?}, b: {:?}, r: {:?}, e: {:?}", a, b, r, e);
             assert!(r == e);
         }
     }
