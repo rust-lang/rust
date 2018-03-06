@@ -1488,7 +1488,11 @@ pub fn in_rustc_thread<F, R>(f: F) -> Result<R, Box<Any + Send>>
         }
     };
 
-    #[cfg(not(unix))]
+    // We set the stack size at link time. See src/rustc/rustc.rs.
+    #[cfg(windows)]
+    let spawn_thread = false;
+
+    #[cfg(not(any(windows,unix)))]
     let spawn_thread = true;
 
     // The or condition is added from backward compatibility.
