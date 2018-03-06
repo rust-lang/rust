@@ -81,8 +81,7 @@ where
     where
         F: FnMut(BD::Idx),
     {
-        self.curr_state
-            .each_bit(self.base_results.operator().bits_per_block(), f)
+        self.curr_state.iter().for_each(f)
     }
 
     /// Iterate over each `gen` bit in the current effect (invoke
@@ -92,8 +91,7 @@ where
     where
         F: FnMut(BD::Idx),
     {
-        self.stmt_gen
-            .each_bit(self.base_results.operator().bits_per_block(), f)
+        self.stmt_gen.iter().for_each(f)
     }
 
     pub fn new(results: DataflowResults<BD>) -> Self {

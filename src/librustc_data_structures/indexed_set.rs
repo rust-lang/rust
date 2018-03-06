@@ -225,12 +225,6 @@ impl<T: Idx> IdxSet<T> {
         }
     }
 
-    /// Calls `f` on each index value held in this set, up to the
-    /// bound `max_bits` on the size of universe of indexes.
-    pub fn each_bit<F>(&self, max_bits: usize, f: F) where F: FnMut(T) {
-        each_bit(self, max_bits, f)
-    }
-
     pub fn elems(&self, universe_size: usize) -> Elems<T> {
         Elems { i: 0, set: self, universe_size: universe_size }
     }
@@ -256,33 +250,6 @@ impl<'a, T: Idx> Iterator for Elems<'a, T> {
         }
     }
 }
-
-fn each_bit<T: Idx, F>(words: &IdxSet<T>, max_bits: usize, mut f: F) where F: FnMut(T) {
-    let usize_bits: usize = mem::size_of::<usize>() * 8;
-
-    for (word_index, &word) in words.words().iter().enumerate() {
-        if word != 0 {
-            let base_index = word_index * usize_bits;
-            for offset in 0..usize_bits {
-                let bit = 1 << offset;
-                if (word & bit) != 0 {
-                    // NB: we round up the total number of bits
-                    // that we store in any given bit set so that
-                    // it is an even multiple of usize::BITS. This
-                    // means that there may be some stray bits at
-                    // the end that do not correspond to any
-                    // actual value; that's why we first check
-                    // that we are in range of bits_per_block.
-                    let bit_index = base_index + offset as usize;
-                    if bit_index >= max_bits {
-                        return;
-                    } else {
-                        f(Idx::new(bit_index));
-                    }
-                }
-            }
-        }
-    }
 }
 
 pub struct Iter<'a, T: Idx> {
