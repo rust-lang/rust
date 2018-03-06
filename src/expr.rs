@@ -1536,7 +1536,9 @@ fn is_short_pattern_inner(pat: &ast::Pat) -> bool {
         ast::PatKind::TupleStruct(ref path, ref subpats, _) => {
             path.segments.len() <= 1 && subpats.len() <= 1
         }
-        ast::PatKind::Box(ref p) | ast::PatKind::Ref(ref p, _) => is_short_pattern_inner(&*p),
+        ast::PatKind::Box(ref p) | ast::PatKind::Ref(ref p, _) | ast::PatKind::Paren(ref p) => {
+            is_short_pattern_inner(&*p)
+        }
     }
 }
 
