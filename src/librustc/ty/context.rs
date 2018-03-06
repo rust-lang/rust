@@ -46,7 +46,7 @@ use ty::layout::{LayoutDetails, TargetDataLayout};
 use ty::maps;
 use ty::steal::Steal;
 use ty::BindingMode;
-use util::nodemap::{NodeMap, NodeSet, DefIdSet, ItemLocalMap};
+use util::nodemap::{NodeMap, DefIdSet, ItemLocalMap};
 use util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
@@ -1417,10 +1417,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
-    pub fn encode_metadata(self, link_meta: &LinkMeta, reachable: &NodeSet)
+    pub fn encode_metadata(self, link_meta: &LinkMeta)
         -> EncodedMetadata
     {
-        self.cstore.encode_metadata(self, link_meta, reachable)
+        self.cstore.encode_metadata(self, link_meta)
     }
 }
 
@@ -2459,5 +2459,13 @@ pub fn provide(providers: &mut ty::maps::Providers) {
     providers.features_query = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         Lrc::new(tcx.sess.features_untracked().clone())
+    };
+    providers.is_panic_runtime = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        attr::contains_name(tcx.hir.krate_attrs(), "panic_runtime")
+    };
+    providers.is_compiler_builtins = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        attr::contains_name(tcx.hir.krate_attrs(), "compiler_builtins")
     };
 }

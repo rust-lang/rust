@@ -26,7 +26,7 @@ use middle::region;
 use middle::resolve_lifetime::{ResolveLifetimes, Region, ObjectLifetimeDefault};
 use middle::stability::{self, DeprecationEntry};
 use middle::lang_items::{LanguageItems, LangItem};
-use middle::exported_symbols::SymbolExportLevel;
+use middle::exported_symbols::{SymbolExportLevel, ExportedSymbol};
 use mir::mono::{CodegenUnit, Stats};
 use mir;
 use session::{CompileResult, CrateDisambiguator};
@@ -238,7 +238,6 @@ define_maps! { <'tcx>
     [] fn fn_arg_names: FnArgNames(DefId) -> Vec<ast::Name>,
     [] fn impl_parent: ImplParent(DefId) -> Option<DefId>,
     [] fn trait_of_item: TraitOfItem(DefId) -> Option<DefId>,
-    [] fn is_exported_symbol: IsExportedSymbol(DefId) -> bool,
     [] fn item_body_nested_bodies: ItemBodyNestedBodies(DefId) -> ExternBodyNestedBodies,
     [] fn const_is_rvalue_promotable_to_static: ConstIsRvaluePromotableToStatic(DefId) -> bool,
     [] fn rvalue_promotable_map: RvaluePromotableMap(DefId) -> Lrc<ItemLocalSet>,
@@ -290,7 +289,23 @@ define_maps! { <'tcx>
     [] fn lint_levels: lint_levels_node(CrateNum) -> Lrc<lint::LintLevelMap>,
 
     [] fn impl_defaultness: ImplDefaultness(DefId) -> hir::Defaultness,
-    [] fn exported_symbol_ids: ExportedSymbolIds(CrateNum) -> Lrc<DefIdSet>,
+
+    // The DefIds of all non-generic functions and statics in the given crate
+    // that can be reached from outside the crate.
+    //
+    // We expect this items to be available for being linked to.
+    //
+    // This query can also be called for LOCAL_CRATE. In this case it will
+    // compute which items will be reachable to other crates, taking into account
+    // the kind of crate that is currently compiled. Crates with only a
+    // C interface have fewer reachable things.
+    //
+    // Does not include external symbols that don't have a corresponding DefId,
+    // like the compiler-generated `main` function and so on.
+    [] fn reachable_non_generics: ReachableNonGenerics(CrateNum) -> Lrc<DefIdSet>,
+    [] fn is_reachable_non_generic: IsReachableNonGeneric(DefId) -> bool,
+
+
     [] fn native_libraries: NativeLibraries(CrateNum) -> Lrc<Vec<NativeLibrary>>,
     [] fn plugin_registrar_fn: PluginRegistrarFn(CrateNum) -> Option<DefId>,
     [] fn derive_registrar_fn: DeriveRegistrarFn(CrateNum) -> Option<DefId>,
@@ -343,7 +358,7 @@ define_maps! { <'tcx>
     [] fn all_crate_nums: all_crate_nums_node(CrateNum) -> Lrc<Vec<CrateNum>>,
 
     [] fn exported_symbols: ExportedSymbols(CrateNum)
-        -> Arc<Vec<(String, Option<DefId>, SymbolExportLevel)>>,
+        -> Arc<Vec<(ExportedSymbol, SymbolExportLevel)>>,
     [] fn collect_and_partition_translation_items:
         collect_and_partition_translation_items_node(CrateNum)
         -> (Arc<DefIdSet>, Arc<Vec<Arc<CodegenUnit<'tcx>>>>),

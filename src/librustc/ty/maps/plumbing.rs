@@ -851,7 +851,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::RvaluePromotableMap => { force!(rvalue_promotable_map, def_id!()); }
         DepKind::ImplParent => { force!(impl_parent, def_id!()); }
         DepKind::TraitOfItem => { force!(trait_of_item, def_id!()); }
-        DepKind::IsExportedSymbol => { force!(is_exported_symbol, def_id!()); }
+        DepKind::IsReachableNonGeneric => { force!(is_reachable_non_generic, def_id!()); }
         DepKind::IsMirAvailable => { force!(is_mir_available, def_id!()); }
         DepKind::ItemAttrs => { force!(item_attrs, def_id!()); }
         DepKind::FnArgNames => { force!(fn_arg_names, def_id!()); }
@@ -868,7 +868,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::GetPanicStrategy => { force!(panic_strategy, krate!()); }
         DepKind::IsNoBuiltins => { force!(is_no_builtins, krate!()); }
         DepKind::ImplDefaultness => { force!(impl_defaultness, def_id!()); }
-        DepKind::ExportedSymbolIds => { force!(exported_symbol_ids, krate!()); }
+        DepKind::ReachableNonGenerics => { force!(reachable_non_generics, krate!()); }
         DepKind::NativeLibraries => { force!(native_libraries, krate!()); }
         DepKind::PluginRegistrarFn => { force!(plugin_registrar_fn, krate!()); }
         DepKind::DeriveRegistrarFn => { force!(derive_registrar_fn, krate!()); }
