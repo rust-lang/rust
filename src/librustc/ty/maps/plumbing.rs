@@ -998,4 +998,5 @@ impl_load_from_cache!(
     GenericsOfItem => generics_of,
     PredicatesOfItem => predicates_of,
     UsedTraitImports => used_trait_imports,
+    TransFnAttrs => trans_fn_attrs,
 );
