@@ -1389,7 +1389,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
               nightly_options::is_unstable_enabled(&matches));
         return None;
     }
-    
+
     // Handle the special case of -Wall.
     let wall = matches.opt_strs("W");
     if wall.iter().any(|x| *x == "all") {
