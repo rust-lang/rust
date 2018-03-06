@@ -231,11 +231,6 @@ impl<T: Idx> IdxSet<T> {
         each_bit(self, max_bits, f)
     }
 
-    /// Removes all elements from this set.
-    pub fn reset_to_empty(&mut self) {
-        for word in self.words_mut() { *word = 0; }
-    }
-
     pub fn elems(&self, universe_size: usize) -> Elems<T> {
         Elems { i: 0, set: self, universe_size: universe_size }
     }
