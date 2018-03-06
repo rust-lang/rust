@@ -78,18 +78,15 @@ const fn fib(n: u128) -> u128 {
 A loop in MIR is a cyclic graph of `BasicBlock`s. Evaluating such a loop is no
 different from evaluating a linear sequence of `BasicBlock`s, except that
 termination is not guaranteed. To ensure that the compiler never hangs
-indefinitely, we count the number of terminators processed and once we reach a
-fixed limit, we report an error mentioning that we aborted constant evaluation,
-because we could not guarantee that it'll terminate.
+indefinitely, we count the number of terminators processed and whenever we reach
+a fixed limit, we report a lint mentioning that we cannot guarantee that the
+evaluation will terminate and reset the counter to zero. This lint should recur
+in a non-annoying amount of time (e.g. at least 30 seconds between occurrences).
 
 # Drawbacks
 [drawbacks]: #drawbacks
 
-* Loops are not guaranteed to terminate
-    * We catch this already by having a maximum number of basic blocks that we
-      can evaluate.
-* A guaranteed to terminate, non looping constant might trigger the limit, if it
-  has too much code.
+* Infinite loops will hang the compiler if the lint is not denied
 
 # Rationale and alternatives
 [alternatives]: #alternatives
@@ -98,3 +95,9 @@ because we could not guarantee that it'll terminate.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
+
+* Should we add a true recursion check that hashes the interpreter state and
+  detects if it has reached the same state again?
+    * This will slow down const evaluation enormously and for complex iterations
+      is essentially useless because it'll take forever (e.g. counting from 0 to
+      `u64::max_value()`)
