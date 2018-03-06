@@ -12,7 +12,7 @@
 //! locations.
 
 use rustc::mir::{BasicBlock, Location};
-use rustc_data_structures::indexed_set::{self, IdxSetBuf};
+use rustc_data_structures::indexed_set::{IdxSetBuf, Iter};
 use rustc_data_structures::indexed_vec::Idx;
 
 use dataflow::{BitDenotation, BlockSets, DataflowResults};
@@ -117,23 +117,21 @@ where
     }
 
     /// Returns an iterator over the elements present in the current state.
-    pub fn elems_incoming(&self) -> iter::Peekable<indexed_set::Elems<BD::Idx>> {
-        let univ = self.base_results.sets().bits_per_block();
-        self.curr_state.elems(univ).peekable()
+    pub fn iter_incoming(&self) -> iter::Peekable<Iter<BD::Idx>> {
+        self.curr_state.iter().peekable()
     }
 
     /// Creates a clone of the current state and applies the local
     /// effects to the clone (leaving the state of self intact).
     /// Invokes `f` with an iterator over the resulting state.
-    pub fn with_elems_outgoing<F>(&self, f: F)
+    pub fn with_iter_outgoing<F>(&self, f: F)
     where
-        F: FnOnce(indexed_set::Elems<BD::Idx>),
+        F: FnOnce(Iter<BD::Idx>),
     {
         let mut curr_state = self.curr_state.clone();
         curr_state.union(&self.stmt_gen);
         curr_state.subtract(&self.stmt_kill);
-        let univ = self.base_results.sets().bits_per_block();
-        f(curr_state.elems(univ));
+        f(curr_state.iter());
     }
 }
 
