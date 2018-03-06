@@ -1,34 +1,34 @@
 error: long literal lacking separators
  --> $DIR/unreadable_literal.rs:7:16
   |
-7 |     let bad = (0b10110_i64, 0x12345678901_usize, 12345_f32, 1.23456_f32);
-  |                ^^^^^^^^^^^ help: consider: `0b1_0110_i64`
+7 |     let bad = (0b110110_i64, 0x12345678901_usize, 123456_f32, 1.234567_f32);
+  |                ^^^^^^^^^^^^ help: consider: `0b11_0110_i64`
   |
   = note: `-D unreadable-literal` implied by `-D warnings`
 
 error: long literal lacking separators
- --> $DIR/unreadable_literal.rs:7:29
+ --> $DIR/unreadable_literal.rs:7:30
   |
-7 |     let bad = (0b10110_i64, 0x12345678901_usize, 12345_f32, 1.23456_f32);
-  |                             ^^^^^^^^^^^^^^^^^^^ help: consider: `0x123_4567_8901_usize`
+7 |     let bad = (0b110110_i64, 0x12345678901_usize, 123456_f32, 1.234567_f32);
+  |                              ^^^^^^^^^^^^^^^^^^^ help: consider: `0x123_4567_8901_usize`
 
 error: long literal lacking separators
- --> $DIR/unreadable_literal.rs:7:50
+ --> $DIR/unreadable_literal.rs:7:51
   |
-7 |     let bad = (0b10110_i64, 0x12345678901_usize, 12345_f32, 1.23456_f32);
-  |                                                  ^^^^^^^^^ help: consider: `12_345_f32`
+7 |     let bad = (0b110110_i64, 0x12345678901_usize, 123456_f32, 1.234567_f32);
+  |                                                   ^^^^^^^^^^ help: consider: `123_456_f32`
 
 error: long literal lacking separators
- --> $DIR/unreadable_literal.rs:7:61
+ --> $DIR/unreadable_literal.rs:7:63
   |
-7 |     let bad = (0b10110_i64, 0x12345678901_usize, 12345_f32, 1.23456_f32);
-  |                                                             ^^^^^^^^^^^ help: consider: `1.234_56_f32`
+7 |     let bad = (0b110110_i64, 0x12345678901_usize, 123456_f32, 1.234567_f32);
+  |                                                               ^^^^^^^^^^^^ help: consider: `1.234_567_f32`
 
 error: long literal lacking separators
  --> $DIR/unreadable_literal.rs:9:19
   |
-9 |     let bad_sci = 1.12345e1;
-  |                   ^^^^^^^^^ help: consider: `1.123_45e1`
+9 |     let bad_sci = 1.123456e1;
+  |                   ^^^^^^^^^^ help: consider: `1.123_456e1`
 
 error: aborting due to 5 previous errors
 
