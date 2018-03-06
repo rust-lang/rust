@@ -375,7 +375,7 @@ impl LiteralDigitGrouping {
 
         if underscore_positions.is_empty() {
             // Check if literal needs underscores.
-            if digits.len() > 4 {
+            if digits.len() > 5 {
                 Err(WarningType::UnreadableLiteral)
             } else {
                 Ok(0)
