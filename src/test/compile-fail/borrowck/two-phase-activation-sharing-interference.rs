@@ -53,7 +53,6 @@ fn not_ok() {
     *y += 1;
     //[lxl_beyond]~^   ERROR cannot borrow `x` as mutable because it is also borrowed as immutable
     //[nll_beyond]~^^  ERROR cannot borrow `x` as mutable because it is also borrowed as immutable
-    //[nll_target]~^^^ ERROR cannot borrow `x` as mutable because it is also borrowed as immutable
     read(z);
 }
 

@@ -450,8 +450,10 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
 
                 // Perform the DFS.
                 // `stack` is the stack of locations still under consideration
+                // `visited` is the set of points we have already visited
                 // `found_use` is an Option that becomes Some when we find a use
                 let mut stack = vec![start_location];
+                let mut visited = FxHashSet();
                 let mut found_use = None;
                 while let Some(curr_loc) = stack.pop() {
                     let block_data = &self.mir.basic_blocks()
@@ -464,6 +466,11 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                         // No need to process this statement.
                         // It's either an EndRegion (and thus couldn't use assigned_place) or not
                         // contained in the NLL region and thus a use would be invalid
+                        continue;
+                    }
+
+                    if !visited.insert(curr_loc) {
+                        debug!("  Already visited {:?}", curr_loc);
                         continue;
                     }
 
@@ -529,19 +536,6 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
     fn kill_loans_out_of_scope_at_location(&self,
                                            sets: &mut BlockSets<ReserveOrActivateIndex>,
                                            location: Location) {
-        /*
-         XXX: bob_twinkles  reintroduce this
-        let block_data = &self.mir[location.block];
-        if location.statement_index != block_data.statements.len() {
-            let statement = &block_data.statements[location.statement_index];
-            if let mir::StatementKind::EndRegion(region_scope) = statement.kind {
-                for &borrow_index in &self.region_map[&ReScope(region_scope)] {
-                    sets.kill(&ReserveOrActivateIndex::reserved(borrow_index));
-                    sets.kill(&ReserveOrActivateIndex::active(borrow_index));
-                }
-            }
-        }
-        */
         if let Some(ref regioncx) = self.nonlexical_regioncx {
             // NOTE: The state associated with a given `location`
             // reflects the dataflow on entry to the statement. If it
@@ -575,6 +569,20 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                           .map(|b| ReserveOrActivateIndex::active(*b)));
         }
     }
+
+    /// Performs the activations for a given location
+    fn perform_activations_at_location(&self,
+                                       sets: &mut BlockSets<ReserveOrActivateIndex>,
+                                       location: Location) {
+        // Handle activations
+        match self.activation_map.get(&location) {
+            Some(&activated) => {
+                debug!("activating borrow {:?}", activated);
+                sets.gen(&ReserveOrActivateIndex::active(activated))
+            }
+            None => {}
+        }
+    }
 }
 
 impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
@@ -605,13 +613,8 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
             panic!("could not find statement at location {:?}");
         });
 
-        // Handle activations
-        match self.activation_map.get(&location) {
-            Some(&activated) => {
-                sets.gen(&ReserveOrActivateIndex::active(activated))
-            }
-            None => {}
-        }
+        self.perform_activations_at_location(sets, location);
+        self.kill_loans_out_of_scope_at_location(sets, location);
 
         match stmt.kind {
             // EndRegion kills any borrows (reservations and active borrows both)
@@ -643,15 +646,17 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
 
                 if let mir::Rvalue::Ref(region, _, ref place) = *rhs {
                     if is_unsafe_place(self.tcx, self.mir, place) { return; }
-                    if let RegionKind::ReEmpty = region {
-                        // If the borrowed value is dead, the region for it
-                        // can be empty. Don't track the borrow in that case.
-                        return
-                    }
-
                     let index = self.location_map.get(&location).unwrap_or_else(|| {
                         panic!("could not find BorrowIndex for location {:?}", location);
                     });
+
+                    if let RegionKind::ReEmpty = region {
+                        // If the borrowed value dies before the borrow is used, the region for
+                        // the borrow can be empty. Don't track the borrow in that case.
+                        sets.kill(&ReserveOrActivateIndex::active(*index));
+                        return
+                    }
+
                     assert!(self.region_map.get(region).unwrap_or_else(|| {
                         panic!("could not find BorrowIndexs for region {:?}", region);
                     }).contains(&index));
@@ -714,14 +719,9 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
         });
 
         let term = block.terminator();
+        self.perform_activations_at_location(sets, location);
+        self.kill_loans_out_of_scope_at_location(sets, location);
 
-        // Handle activations
-        match self.activation_map.get(&location) {
-            Some(&activated) => {
-                sets.gen(&ReserveOrActivateIndex::active(activated))
-            }
-            None => {}
-        }
 
         match term.kind {
             mir::TerminatorKind::Resume |
