@@ -851,10 +851,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.tcx.mk_var(self.next_ty_var_id(universe, false, origin))
     }
 
-    pub fn next_diverging_ty_var(&self,
-                                 universe: ty::UniverseIndex,
-                                 origin: TypeVariableOrigin)
-                                 -> Ty<'tcx> {
+    pub fn next_diverging_ty_var(&self, universe: ty::UniverseIndex, origin: TypeVariableOrigin) -> Ty<'tcx> {
         self.tcx.mk_var(self.next_ty_var_id(universe, true, origin))
     }
 
