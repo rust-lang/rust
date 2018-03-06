@@ -590,7 +590,7 @@ impl DoubleEndedIterator for EscapeDefault {
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ExactSizeIterator for EscapeDefault {}
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl FusedIterator for EscapeDefault {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]

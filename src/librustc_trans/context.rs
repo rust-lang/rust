@@ -597,6 +597,12 @@ fn declare_intrinsic(cx: &CodegenCx, key: &str) -> Option<ValueRef> {
     ifn!("llvm.bswap.i64", fn(t_i64) -> t_i64);
     ifn!("llvm.bswap.i128", fn(t_i128) -> t_i128);
 
+    ifn!("llvm.bitreverse.i8", fn(t_i8) -> t_i8);
+    ifn!("llvm.bitreverse.i16", fn(t_i16) -> t_i16);
+    ifn!("llvm.bitreverse.i32", fn(t_i32) -> t_i32);
+    ifn!("llvm.bitreverse.i64", fn(t_i64) -> t_i64);
+    ifn!("llvm.bitreverse.i128", fn(t_i128) -> t_i128);
+
     ifn!("llvm.sadd.with.overflow.i8", fn(t_i8, t_i8) -> mk_struct!{t_i8, i1});
     ifn!("llvm.sadd.with.overflow.i16", fn(t_i16, t_i16) -> mk_struct!{t_i16, i1});
     ifn!("llvm.sadd.with.overflow.i32", fn(t_i32, t_i32) -> mk_struct!{t_i32, i1});

@@ -875,6 +875,8 @@ impl CStr {
     ///   `ptr`.
     /// * There is no guarantee that the memory pointed to by `ptr` contains a
     ///   valid nul terminator byte at the end of the string.
+    /// * It is not guaranteed that the memory pointed by `ptr` won't change
+    ///   before the `CStr` has been destroyed.
     ///
     /// > **Note**: This operation is intended to be a 0-cost cast but it is
     /// > currently implemented with an up-front calculation of the length of

@@ -295,7 +295,7 @@ impl<A: Step> DoubleEndedIterator for ops::Range<A> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<A: Step> FusedIterator for ops::Range<A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -322,7 +322,7 @@ impl<A: Step> Iterator for ops::RangeFrom<A> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<A: Step> FusedIterator for ops::RangeFrom<A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
@@ -463,5 +463,5 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<A: Step> FusedIterator for ops::RangeInclusive<A> {}

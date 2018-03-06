@@ -287,8 +287,8 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
             ], None)
         },
         "ctlz" | "ctlz_nonzero" | "cttz" | "cttz_nonzero" | "ctpop" | "bswap" |
-        "add_with_overflow" | "sub_with_overflow" | "mul_with_overflow" |
-        "overflowing_add" | "overflowing_sub" | "overflowing_mul" |
+        "bitreverse" | "add_with_overflow" | "sub_with_overflow" |
+        "mul_with_overflow" | "overflowing_add" | "overflowing_sub" | "overflowing_mul" |
         "unchecked_div" | "unchecked_rem" | "unchecked_shl" | "unchecked_shr" => {
             let ty = arg_tys[0];
             match int_type_width_signed(ty, cx) {
@@ -314,6 +314,10 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
                                 bx.call(cx.get_intrinsic(&format!("llvm.bswap.i{}", width)),
                                         &[args[0].immediate()], None)
                             }
+                        }
+                        "bitreverse" => {
+                            bx.call(cx.get_intrinsic(&format!("llvm.bitreverse.i{}", width)),
+                                &[args[0].immediate()], None)
                         }
                         "add_with_overflow" | "sub_with_overflow" | "mul_with_overflow" => {
                             let intrinsic = format!("llvm.{}{}.with.overflow.i{}",
