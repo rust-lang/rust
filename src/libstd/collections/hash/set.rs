@@ -724,7 +724,7 @@ impl<T, S> HashSet<T, S>
     /// use std::collections::HashSet;
     ///
     /// let xs = [1,2,3,4,5,6];
-    /// let mut set: HashSet<isize> = xs.iter().cloned().collect();
+    /// let mut set: HashSet<i32> = xs.iter().cloned().collect();
     /// set.retain(|&k| k % 2 == 0);
     /// assert_eq!(set.len(), 3);
     /// ```
@@ -1745,7 +1745,7 @@ mod test_set {
     #[test]
     fn test_retain() {
         let xs = [1, 2, 3, 4, 5, 6];
-        let mut set: HashSet<isize> = xs.iter().cloned().collect();
+        let mut set: HashSet<i32> = xs.iter().cloned().collect();
         set.retain(|&k| k % 2 == 0);
         assert_eq!(set.len(), 3);
         assert!(set.contains(&2));
