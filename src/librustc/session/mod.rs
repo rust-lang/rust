@@ -658,8 +658,11 @@ impl Session {
     }
 
     pub fn must_not_eliminate_frame_pointers(&self) -> bool {
-        self.opts.debuginfo != DebugInfoLevel::NoDebugInfo
-            || !self.target.target.options.eliminate_frame_pointer
+        if let Some(x) = self.opts.cg.force_frame_pointers {
+            x
+        } else {
+            !self.target.target.options.eliminate_frame_pointer
+        }
     }
 
     /// Returns the symbol name for the registrar function,
