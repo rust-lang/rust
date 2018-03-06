@@ -111,7 +111,7 @@ impl<'a, 'tcx, MWF, P> dot::Labeller<'a> for Graph<'a, 'tcx, MWF, P>
         // |         |                                  |                  | bb11[0]: active  |
         // +---------+----------------------------------+------------------+------------------+
         // | [00-00] | _7 = const Foo::twiddle(move _8) | [0c-00]          | [f3-0f]          |
-        // +---------+----------------------------------+------------------+------------------+ 
+        // +---------+----------------------------------+------------------+------------------+
         let mut v = Vec::new();
         self.node_label_internal(n, &mut v, *n, self.mbcx.mir()).unwrap();
         dot::LabelText::html(String::from_utf8(v).unwrap())
@@ -140,7 +140,7 @@ where MWF: MirWithFlowState<'tcx>,
                                          block: BasicBlock,
                                          mir: &Mir) -> io::Result<()> {
         // Header rows
-        const HDRS: [&'static str; 4] = ["ENTRY", "MIR", "GEN", "KILL"];
+        const HDRS: [&'static str; 4] = ["ENTRY", "MIR", "BLOCK GENS", "BLOCK KILLS"];
         const HDR_FMT: &'static str = "bgcolor=\"grey\"";
         write!(w, "<table><tr><td rowspan=\"{}\">", HDRS.len())?;
         write!(w, "{:?}", block.index())?;

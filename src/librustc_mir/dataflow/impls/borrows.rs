@@ -272,17 +272,6 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             }
         }
 
-        /// Represents what kind of usage we've seen.
-        enum PlaceUsageType {
-            /// No usage seen
-            None,
-            /// Has been seen as the argument to a StorageDead statement. This is required to
-            /// gracefully handle cases where user code has an unneeded 
-            StorageKilled,
-            /// Has been used in borrow-activating context
-            BorrowActivateUsage
-        }
-
         /// A MIR visitor that determines if a specific place is used in a two-phase activating
         /// manner in a given chunk of MIR.
         struct ContainsUseOfPlace<'b, 'tcx: 'b> {
@@ -404,7 +393,8 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                     let stmt = &block_data.statements[location.statement_index];
                     if let mir::StatementKind::EndRegion(region_scope) = stmt.kind {
                         if &ReScope(region_scope) == region {
-                            // We encountered an EndRegion statement that terminates the provided region
+                            // We encountered an EndRegion statement that terminates the provided
+                            // region
                             return true;
                         }
                     }
@@ -430,7 +420,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             /// See
             ///   - https://github.com/rust-lang/rust/issues/48431
             /// for detailed design notes.
-            /// See the TODO in the body of the function for notes on extending support to more
+            /// See the FIXME in the body of the function for notes on extending support to more
             /// general two-phased borrows.
             fn compute_activation_location(&self,
                                            start_location: Location,
@@ -473,7 +463,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                     }
 
                     if self.location_contains_use(curr_loc, assigned_place) {
-                        // TODO: Handle this case a little more gracefully. Perhaps collect
+                        // FIXME: Handle this case a little more gracefully. Perhaps collect
                         // all uses in a vector, and find the point in the CFG that dominates
                         // all of them?
                         // Right now this is sufficient though since there should only be exactly
@@ -596,7 +586,9 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
         // `_sets`.
     }
 
-    fn before_statement_effect(&self, sets: &mut BlockSets<ReserveOrActivateIndex>, location: Location) {
+    fn before_statement_effect(&self,
+                               sets: &mut BlockSets<ReserveOrActivateIndex>,
+                               location: Location) {
         debug!("Borrows::before_statement_effect sets: {:?} location: {:?}", sets, location);
         self.kill_loans_out_of_scope_at_location(sets, location);
     }
@@ -662,7 +654,6 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
 
                     // Issue #46746: Two-phase borrows handles
                     // stmts of form `Tmp = &mut Borrow` ...
-                    // XXX bob_twinkles experiment with removing this
                     match lhs {
                         Place::Local(..) | Place::Static(..) => {} // okay
                         Place::Projection(..) => {
@@ -704,7 +695,9 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn before_terminator_effect(&self, sets: &mut BlockSets<ReserveOrActivateIndex>, location: Location) {
+    fn before_terminator_effect(&self,
+                                sets: &mut BlockSets<ReserveOrActivateIndex>,
+                                location: Location) {
         debug!("Borrows::before_terminator_effect sets: {:?} location: {:?}", sets, location);
         self.kill_loans_out_of_scope_at_location(sets, location);
     }
