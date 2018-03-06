@@ -357,7 +357,7 @@ pub trait Extend<A> {
     fn extend<T: IntoIterator<Item=A>>(&mut self, iter: T);
 }
 
-#[unstable(feature = "collect_into", issue = "0")]
+#[stable(feature = "rust1", since = "1.26.0")]
 impl <'a, A, E: Extend<A>> Extend<A> for &'a mut E {
     fn extend<T: IntoIterator<Item=A>>(&mut self, iter: T) {
         (*self).extend(iter)
