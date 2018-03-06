@@ -2208,13 +2208,8 @@ impl<'a> State<'a> {
         if self.next_comment().is_none() {
             self.s.hardbreak()?;
         }
-        loop {
-            match self.next_comment() {
-                Some(ref cmnt) => {
-                    self.print_comment(cmnt)?;
-                }
-                _ => break,
-            }
+        while let Some(ref cmnt) = self.next_comment() {
+            self.print_comment(cmnt)?
         }
         Ok(())
     }
