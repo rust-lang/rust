@@ -10,11 +10,13 @@ filetime = "0.1"
 getopts = "0.2"
 log = "0.4"
 regex = "0.2"
-rustc-serialize = "0.3"
+serde = "1.0"
+serde_json = "1.0"
+serde_derive = "1.0"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 
 [target.'cfg(windows)'.dependencies]
-miow = "0.2"
-winapi = "0.2"
+miow = "0.3"
+winapi = { version = "0.3", features = ["winerror"] }
