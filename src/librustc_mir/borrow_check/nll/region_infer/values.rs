@@ -201,10 +201,7 @@ impl RegionValues {
     /// Creates a new set of "region values" that tracks causal information.
     /// Each of the regions in num_region_variables will be initialized with an
     /// empty set of points and no causal information.
-    pub(super) fn new(
-        elements: &Rc<RegionValueElements>,
-        num_region_variables: usize,
-    ) -> Self {
+    pub(super) fn new(elements: &Rc<RegionValueElements>, num_region_variables: usize) -> Self {
         assert!(
             elements.num_universal_regions <= num_region_variables,
             "universal regions are a subset of the region variables"

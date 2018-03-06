@@ -268,8 +268,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             "mutable",
         ) {
             (BorrowKind::Shared, lft, _, BorrowKind::Mut { .. }, _, rgt)
-            | (BorrowKind::Mut { .. }, _, lft, BorrowKind::Shared, rgt, _) => tcx
-                .cannot_reborrow_already_borrowed(
+            | (BorrowKind::Mut { .. }, _, lft, BorrowKind::Shared, rgt, _) => {
+                tcx.cannot_reborrow_already_borrowed(
                     span,
                     &desc_place,
                     "",
@@ -280,10 +280,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     "",
                     end_issued_loan_span,
                     Origin::Mir,
-                ),
+                )
+            }
 
-            (BorrowKind::Mut { .. }, _, _, BorrowKind::Mut { .. }, _, _) => tcx
-                .cannot_mutably_borrow_multiply(
+            (BorrowKind::Mut { .. }, _, _, BorrowKind::Mut { .. }, _, _) => {
+                tcx.cannot_mutably_borrow_multiply(
                     span,
                     &desc_place,
                     "",
@@ -291,16 +292,18 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     "",
                     end_issued_loan_span,
                     Origin::Mir,
-                ),
+                )
+            }
 
-            (BorrowKind::Unique, _, _, BorrowKind::Unique, _, _) => tcx
-                .cannot_uniquely_borrow_by_two_closures(
+            (BorrowKind::Unique, _, _, BorrowKind::Unique, _, _) => {
+                tcx.cannot_uniquely_borrow_by_two_closures(
                     span,
                     &desc_place,
                     issued_span,
                     end_issued_loan_span,
                     Origin::Mir,
-                ),
+                )
+            }
 
             (BorrowKind::Unique, _, _, _, _, _) => tcx.cannot_uniquely_borrow_by_one_closure(
                 span,
@@ -313,8 +316,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 Origin::Mir,
             ),
 
-            (BorrowKind::Shared, lft, _, BorrowKind::Unique, _, _) => tcx
-                .cannot_reborrow_already_uniquely_borrowed(
+            (BorrowKind::Shared, lft, _, BorrowKind::Unique, _, _) => {
+                tcx.cannot_reborrow_already_uniquely_borrowed(
                     span,
                     &desc_place,
                     "",
@@ -323,10 +326,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     "",
                     end_issued_loan_span,
                     Origin::Mir,
-                ),
+                )
+            }
 
-            (BorrowKind::Mut { .. }, _, lft, BorrowKind::Unique, _, _) => tcx
-                .cannot_reborrow_already_uniquely_borrowed(
+            (BorrowKind::Mut { .. }, _, lft, BorrowKind::Unique, _, _) => {
+                tcx.cannot_reborrow_already_uniquely_borrowed(
                     span,
                     &desc_place,
                     "",
@@ -335,7 +339,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     "",
                     end_issued_loan_span,
                     Origin::Mir,
-                ),
+                )
+            }
 
             (BorrowKind::Shared, _, _, BorrowKind::Shared, _, _) => unreachable!(),
         };
@@ -470,11 +475,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         end_span: Option<Span>,
     ) {
         let tcx = self.tcx;
-        let mut err = tcx.path_does_not_live_long_enough(
-            borrow_span,
-            &format!("`{}`", name),
-            Origin::Mir,
-        );
+        let mut err =
+            tcx.path_does_not_live_long_enough(borrow_span, &format!("`{}`", name), Origin::Mir);
         err.span_label(borrow_span, "borrowed value does not live long enough");
         err.span_label(
             drop_span,
@@ -532,11 +534,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         );
 
         let tcx = self.tcx;
-        let mut err = tcx.path_does_not_live_long_enough(
-            borrow_span,
-            &format!("`{}`", name),
-            Origin::Mir,
-        );
+        let mut err =
+            tcx.path_does_not_live_long_enough(borrow_span, &format!("`{}`", name), Origin::Mir);
         err.span_label(borrow_span, "borrowed value does not live long enough");
         err.span_label(drop_span, "borrowed value only lives until here");
 
