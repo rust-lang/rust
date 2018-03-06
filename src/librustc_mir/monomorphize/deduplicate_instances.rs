@@ -9,9 +9,10 @@
 // except according to those terms.
 
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc::ty::{self, TyCtxt, Ty, ParamTy, TypeFoldable, Instance};
+use rustc::ty::{self, TyCtxt, Ty, TypeVariants, ParamTy, TypeFoldable, Instance, ParamEnv};
 use rustc::ty::fold::TypeFolder;
 use rustc::ty::subst::{Kind, UnpackedKind};
+use rustc::ty::layout::{LayoutCx, LayoutOf};
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::{Mir, Rvalue, Location};
 use rustc::mir::visit::{Visitor, TyContext};
@@ -42,7 +43,6 @@ pub(crate) fn collapse_interchangable_instances<'a, 'tcx>(
     }
     match instance.ty(tcx).sty {
         ty::TyFnDef(def_id, _) => {
-            //let attrs = tcx.item_attrs(def_id);
             if tcx.lang_items().items().iter().find(|l|**l == Some(def_id)).is_some() {
                 return instance; // Lang items dont work otherwise
             }
@@ -51,7 +51,7 @@ pub(crate) fn collapse_interchangable_instances<'a, 'tcx>(
     }
 
     let used_substs = used_substs_for_instance(tcx, instance);
-    instance.substs = tcx._intern_substs(&instance.substs.into_iter().enumerate().map(|(i, subst)| {
+    instance.substs = tcx.intern_substs(&instance.substs.into_iter().enumerate().map(|(i, subst)| {
         if let UnpackedKind::Type(ty) = subst.unpack() {
             let ty = match used_substs.parameters[ParamIdx(i as u32)] {
                 ParamUsage::Unused => {
@@ -89,7 +89,16 @@ pub(crate) fn collapse_interchangable_instances<'a, 'tcx>(
                         tcx.mk_ty(ty::TyNever)
                     }
                 }
-                ParamUsage::LayoutUsed | ParamUsage::Used => ty.into(),
+                ParamUsage::LayoutUsed => {
+                    let layout_cx = LayoutCx {
+                        tcx,
+                        param_env: ParamEnv::reveal_all(),
+                    };
+                    let layout = layout_cx.layout_of(ty).unwrap();
+                    let (size, align) = layout.size_and_align();
+                    tcx.mk_ty(TypeVariants::TyLayoutOnlyParam(size, align))
+                }
+                ParamUsage::Used => ty.into(),
             };
             Kind::from(ty)
         } else {

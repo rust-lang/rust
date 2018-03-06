@@ -373,7 +373,7 @@ pub fn characteristic_def_id_of_type(ty: Ty) -> Option<DefId> {
         ty::TyProjection(_) |
         ty::TyParam(_) |
         ty::TyAnon(..) |
-        ty::TyUnusedParam |
+        ty::TyUnusedParam | ty::TyLayoutOnlyParam(_, _) |
         ty::TyInfer(_) |
         ty::TyError |
         ty::TyGeneratorWitness(..) |

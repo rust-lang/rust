@@ -1044,7 +1044,7 @@ define_print! {
                 TyInfer(infer_ty) => write!(f, "{}", infer_ty),
                 TyError => write!(f, "[type error]"),
                 TyParam(ref param_ty) => write!(f, "{}", param_ty),
-                TyUnusedParam => write!(f, "[unused type param]"),
+                TyUnusedParam | ty::TyLayoutOnlyParam(_, _) => write!(f, "[unused type param]"),
                 TyAdt(def, substs) => cx.parameterized(f, substs, def.did, &[]),
                 TyDynamic(data, r) => {
                     data.print(f, cx)?;

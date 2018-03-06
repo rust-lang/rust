@@ -834,7 +834,7 @@ for ty::TypeVariants<'gcx>
             TyStr   |
             TyError |
             TyNever |
-            TyUnusedParam => {
+            TyUnusedParam | ty::TyLayoutOnlyParam(_, _) => {
                 // Nothing more to hash.
             }
             TyInt(int_ty) => {

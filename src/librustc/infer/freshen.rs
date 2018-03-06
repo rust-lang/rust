@@ -200,7 +200,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
             ty::TyAnon(..) => {
                 t.super_fold_with(self)
             }
-            ty::TyUnusedParam => bug!("Unexpected TyUnusedParam in TypeFreshener"),
+            ty::TyUnusedParam | ty::TyLayoutOnlyParam(_, _) => bug!("Unexpected TyUnusedParam in TypeFreshener"),
         }
     }
 }

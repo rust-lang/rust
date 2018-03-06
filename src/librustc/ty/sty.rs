@@ -18,6 +18,7 @@ use rustc_data_structures::indexed_vec::Idx;
 use ty::subst::{Substs, Subst, Kind, UnpackedKind};
 use ty::{self, AdtDef, TypeFlags, Ty, TyCtxt, TypeFoldable};
 use ty::{Slice, TyS};
+use ty::layout::{Size, Align};
 use util::captures::Captures;
 
 use std::iter;
@@ -166,6 +167,9 @@ pub enum TypeVariants<'tcx> {
 
     /// Substitution for a unused type parameter; see rustc_mir::monomorphize::deduplicate_instances
     TyUnusedParam,
+
+    /// Substitution for a type parameter whose size and layout is the onlything that matters
+    TyLayoutOnlyParam(Size, Align),
 
     /// A type variable used during type-checking.
     TyInfer(InferTy),
@@ -1636,7 +1640,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             TyTuple(..) |
             TyForeign(..) |
             TyParam(_) |
-            TyUnusedParam |
+            TyUnusedParam | ty::TyLayoutOnlyParam(_, _) |
             TyInfer(_) |
             TyError => {
                 vec![]

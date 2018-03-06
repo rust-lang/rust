@@ -1829,7 +1829,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             self,
             TyAdt, TyArray, TySlice, TyRawPtr, TyRef, TyFnDef, TyFnPtr,
             TyGenerator, TyGeneratorWitness, TyDynamic, TyClosure, TyTuple,
-            TyParam, TyInfer, TyProjection, TyAnon, TyForeign);
+            TyParam, TyLayoutOnlyParam, TyInfer, TyProjection, TyAnon, TyForeign);
 
         println!("Substs interner: #{}", self.interners.substs.borrow().len());
         println!("Region interner: #{}", self.interners.region.borrow().len());

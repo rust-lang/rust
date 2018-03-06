@@ -334,7 +334,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // types, where we use TyError as the Self type
             }
 
-            ty::TyUnusedParam |
+            ty::TyUnusedParam | ty::TyLayoutOnlyParam(_, _) |
             ty::TyGeneratorWitness(..) |
             ty::TyInfer(..) => {
                 bug!("unexpected type encountered in \

@@ -635,7 +635,8 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
             | ty::TyForeign(..)
             | ty::TyParam(..)
             | ty::TyAnon(..)
-            | ty::TyUnusedParam => {
+            | ty::TyUnusedParam
+            | ty::TyLayoutOnlyParam(..) => {
                 if t.flags.intersects(self.needs_canonical_flags) {
                     t.super_fold_with(self)
                 } else {

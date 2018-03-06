@@ -2836,7 +2836,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
 
             ty::TyClosure(..) | ty::TyGenerator(..) => Tuple(vec![]), // FIXME(pcwalton)
 
-            ty::TyUnusedParam => panic!("TyUnusedParam"),
+            ty::TyUnusedParam | ty::TyLayoutOnlyParam(_, _) => panic!("TyUnusedParam"),
             ty::TyGeneratorWitness(..) => panic!("TyGeneratorWitness"),
             ty::TyInfer(..) => panic!("TyInfer"),
             ty::TyError => panic!("TyError"),

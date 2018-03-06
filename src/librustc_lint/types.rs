@@ -705,7 +705,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             ty::TyForeign(..) => FfiSafe,
 
             ty::TyParam(..) |
-            ty::TyUnusedParam |
+            ty::TyUnusedParam | ty::TyLayoutOnlyParam(_, _) |
             ty::TyInfer(..) |
             ty::TyError |
             ty::TyClosure(..) |

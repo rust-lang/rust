@@ -262,6 +262,8 @@ fn trivial_dropck_outlives<'cx, 'tcx>(tcx: TyCtxt<'cx, '_, 'tcx>, ty: Ty<'tcx>) 
         | ty::TyInfer(_)
         | ty::TyGenerator(..) => false,
 
-        ty::TyUnusedParam => bug!("Unexpected TyUnusedParam in trivial_dropck_outlives"),
+        ty::TyUnusedParam | ty::TyLayoutOnlyParam(_, _) => {
+            bug!("Unexpected {:?} in trivial_dropck_outlives", ty)
+        }
     }
 }
