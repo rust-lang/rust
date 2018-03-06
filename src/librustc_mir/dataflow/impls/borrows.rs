@@ -93,8 +93,6 @@ pub struct BorrowData<'tcx> {
     /// Location where the borrow reservation starts.
     /// In many cases, this will be equal to the activation location but not always.
     pub(crate) reserve_location: Location,
-    /// Point where the borrow is activated.
-    pub(crate) activate_location: Location,
     /// What kind of borrow this is
     pub(crate) kind: mir::BorrowKind,
     /// The region for which this borrow is live
@@ -205,7 +203,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                                                                              region,
                                                                              kind);
                     let borrow = BorrowData {
-                        activate_location, kind, region,
+                        kind, region,
                         reserve_location: location,
                         borrowed_place: borrowed_place.clone(),
                         assigned_place: assigned_place.clone(),
