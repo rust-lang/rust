@@ -20,7 +20,7 @@ use rustc::middle::exported_symbols::{SymbolExportLevel, ExportedSymbol, metadat
 use rustc::session::config;
 use rustc::ty::{TyCtxt, SymbolName};
 use rustc::ty::maps::Providers;
-use rustc::util::nodemap::{FxHashMap, DefIdSet};
+use rustc::util::nodemap::{FxHashMap, DefIdMap};
 use rustc_allocator::ALLOCATOR_METHODS;
 
 pub type ExportedSymbols = FxHashMap<
@@ -56,51 +56,12 @@ pub fn crates_export_threshold(crate_types: &[config::CrateType])
 
 fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                              cnum: CrateNum)
-                                             -> Lrc<DefIdSet>
+                                             -> Lrc<DefIdMap<SymbolExportLevel>>
 {
     assert_eq!(cnum, LOCAL_CRATE);
 
     if !tcx.sess.opts.output_types.should_trans() {
-        return Lrc::new(DefIdSet())
-    }
-
-    let export_threshold = threshold(tcx);
-
-    // We already collect all potentially reachable non-generic items for
-    // `exported_symbols`. Now we just filter them down to what is actually
-    // exported for the given crate we are compiling.
-    let reachable_non_generics = tcx
-        .exported_symbols(LOCAL_CRATE)
-        .iter()
-        .filter_map(|&(exported_symbol, level)| {
-            if let ExportedSymbol::NonGeneric(def_id) = exported_symbol {
-                if level.is_below_threshold(export_threshold) {
-                    return Some(def_id)
-                }
-            }
-
-            None
-        })
-        .collect();
-
-    Lrc::new(reachable_non_generics)
-}
-
-fn is_reachable_non_generic_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                               def_id: DefId)
-                                               -> bool {
-    tcx.reachable_non_generics(def_id.krate).contains(&def_id)
-}
-
-fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                             cnum: CrateNum)
-                                             -> Arc<Vec<(ExportedSymbol<'tcx>,
-                                                         SymbolExportLevel)>>
-{
-    assert_eq!(cnum, LOCAL_CRATE);
-
-    if !tcx.sess.opts.output_types.should_trans() {
-        return Arc::new(vec![])
+        return Lrc::new(DefIdMap())
     }
 
     // Check to see if this crate is a "special runtime crate". These
@@ -113,7 +74,7 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let special_runtime_crate = tcx.is_panic_runtime(LOCAL_CRATE) ||
         tcx.is_compiler_builtins(LOCAL_CRATE);
 
-    let reachable_non_generics: DefIdSet = tcx.reachable_set(LOCAL_CRATE).0
+    let mut reachable_non_generics: DefIdMap<_> = tcx.reachable_set(LOCAL_CRATE).0
         .iter()
         .filter_map(|&node_id| {
             // We want to ignore some FFI functions that are not exposed from
@@ -166,11 +127,7 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 _ => None
             }
         })
-        .collect();
-
-    let mut symbols: Vec<_> = reachable_non_generics
-        .iter()
-        .map(|&def_id| {
+        .map(|def_id| {
             let export_level = if special_runtime_crate {
                 let name = tcx.symbol_name(Instance::mono(tcx, def_id));
                 // We can probably do better here by just ensuring that
@@ -193,19 +150,58 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             debug!("EXPORTED SYMBOL (local): {} ({:?})",
                    tcx.symbol_name(Instance::mono(tcx, def_id)),
                    export_level);
-            (ExportedSymbol::NonGeneric(def_id), export_level)
+            (def_id, export_level)
         })
         .collect();
 
     if let Some(id) = tcx.sess.derive_registrar_fn.get() {
         let def_id = tcx.hir.local_def_id(id);
-        symbols.push((ExportedSymbol::NonGeneric(def_id), SymbolExportLevel::C));
+        reachable_non_generics.insert(def_id, SymbolExportLevel::C);
     }
 
     if let Some(id) = tcx.sess.plugin_registrar_fn.get() {
         let def_id = tcx.hir.local_def_id(id);
-        symbols.push((ExportedSymbol::NonGeneric(def_id), SymbolExportLevel::C));
+        reachable_non_generics.insert(def_id, SymbolExportLevel::C);
     }
+
+    Lrc::new(reachable_non_generics)
+}
+
+fn is_reachable_non_generic_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                                     def_id: DefId)
+                                                     -> bool {
+    let export_threshold = threshold(tcx);
+
+    if let Some(&level) = tcx.reachable_non_generics(def_id.krate).get(&def_id) {
+        level.is_below_threshold(export_threshold)
+    } else {
+        false
+    }
+}
+
+fn is_reachable_non_generic_provider_extern<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                                      def_id: DefId)
+                                                      -> bool {
+    tcx.reachable_non_generics(def_id.krate).contains_key(&def_id)
+}
+
+fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                             cnum: CrateNum)
+                                             -> Arc<Vec<(ExportedSymbol<'tcx>,
+                                                         SymbolExportLevel)>>
+{
+    assert_eq!(cnum, LOCAL_CRATE);
+
+    if !tcx.sess.opts.output_types.should_trans() {
+        return Arc::new(vec![])
+    }
+
+    let mut symbols: Vec<_> = tcx.reachable_non_generics(LOCAL_CRATE)
+                                 .iter()
+                                 .map(|(&def_id, &level)| {
+                                    (ExportedSymbol::NonGeneric(def_id), level)
+                                 })
+                                 .collect();
 
     if let Some(_) = *tcx.sess.entry_fn.borrow() {
         let symbol_name = "main".to_string();
@@ -254,13 +250,13 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 pub fn provide(providers: &mut Providers) {
     providers.reachable_non_generics = reachable_non_generics_provider;
-    providers.is_reachable_non_generic = is_reachable_non_generic_provider;
+    providers.is_reachable_non_generic = is_reachable_non_generic_provider_local;
     providers.exported_symbols = exported_symbols_provider_local;
     providers.symbol_export_level = symbol_export_level_provider;
 }
 
 pub fn provide_extern(providers: &mut Providers) {
-    providers.is_reachable_non_generic = is_reachable_non_generic_provider;
+    providers.is_reachable_non_generic = is_reachable_non_generic_provider_extern;
     providers.symbol_export_level = symbol_export_level_provider;
 }
 
