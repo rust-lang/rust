@@ -8,10 +8,12 @@ use super::linux;
 #[unstable(feature = "stdsimd", issue = "0")]
 macro_rules! is_arm_feature_detected {
     ("neon") => {
-        $crate::arch::detect::check_for($crate::arch::detect::Feature::neon)
+        cfg!(target_feature = "neon") ||
+            $crate::arch::detect::check_for($crate::arch::detect::Feature::neon)
     };
     ("pmull") => {
-        $crate::arch::detect::check_for($crate::arch::detect::Feature::pmull)
+        cfg!(target_feature = "pmull") ||
+            $crate::arch::detect::check_for($crate::arch::detect::Feature::pmull)
     };
     ($t:tt) => { compile_error!(concat!("unknown arm target feature: ", $t)) };
 }

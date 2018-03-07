@@ -9,40 +9,52 @@ use super::linux;
 macro_rules! is_aarch64_feature_detected {
     ("neon") => {
         // FIXME: this should be removed once we rename Aarch64 neon to asimd
-        $crate::arch::detect::check_for($crate::arch::detect::Feature::asimd)
+        cfg!(target_feature = "neon") ||
+            $crate::arch::detect::check_for($crate::arch::detect::Feature::asimd)
     };
     ("asimd") => {
-        $crate::arch::detect::check_for($crate::arch::detect::Feature::asimd)
+        cfg!(target_feature = "neon") ||
+            $crate::arch::detect::check_for($crate::arch::detect::Feature::asimd)
     };
     ("pmull") => {
-        $crate::arch::detect::check_for($crate::arch::detect::Feature::pmull)
+        cfg!(target_feature = "pmull") ||
+            $crate::arch::detect::check_for($crate::arch::detect::Feature::pmull)
     };
     ("fp") => {
-        $crate::arch::detect::check_for($crate::arch::detect::Feature::fp)
+        cfg!(target_feature = "fp") ||
+            $crate::arch::detect::check_for($crate::arch::detect::Feature::fp)
     };
     ("fp16") => {
-        $crate::arch::detect::check_for($crate::arch::detect::Feature::fp16)
+        cfg!(target_feature = "fp16") ||
+            $crate::arch::detect::check_for($crate::arch::detect::Feature::fp16)
     };
     ("sve") => {
-        $crate::arch::detect::check_for($crate::arch::detect::Feature::sve)
+        cfg!(target_feature = "sve") ||
+            $crate::arch::detect::check_for($crate::arch::detect::Feature::sve)
     };
     ("crc") => {
-        $crate::arch::detect::check_for($crate::arch::detect::Feature::crc)
+        cfg!(target_feature = "crc") ||
+            $crate::arch::detect::check_for($crate::arch::detect::Feature::crc)
     };
     ("crypto") => {
-        $crate::arch::detect::check_for($crate::arch::detect::Feature::crypto)
+        cfg!(target_feature = "crypto") ||
+            $crate::arch::detect::check_for($crate::arch::detect::Feature::crypto)
     };
     ("lse") => {
-        $crate::arch::detect::check_for($crate::arch::detect::Feature::lse)
+        cfg!(target_feature = "lse") ||
+            $crate::arch::detect::check_for($crate::arch::detect::Feature::lse)
     };
     ("rdm") => {
-        $crate::arch::detect::check_for($crate::arch::detect::Feature::rdm)
+        cfg!(target_feature = "rdm") ||
+            $crate::arch::detect::check_for($crate::arch::detect::Feature::rdm)
     };
     ("rcpc") => {
-        $crate::arch::detect::check_for($crate::arch::detect::Feature::rcpc)
+        cfg!(target_feature = "rcpc") ||
+            $crate::arch::detect::check_for($crate::arch::detect::Feature::rcpc)
     };
     ("dotprod") => {
-        $crate::arch::detect::check_for($crate::arch::detect::Feature::dotprod)
+        cfg!(target_feature = "dotprot") ||
+            $crate::arch::detect::check_for($crate::arch::detect::Feature::dotprod)
     };
     ("ras") => {
         compile_error!("\"ras\" feature cannot be detected at run-time")

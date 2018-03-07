@@ -7,13 +7,16 @@ use super::linux;
 #[unstable(feature = "stdsimd", issue = "0")]
 macro_rules! is_powerpc64_feature_detected {
     ("altivec") => {
-        $crate::arch::detect::check_for($crate::arch::detect::Feature::altivec)
+        cfg!(target_feature = "altivec") ||
+            $crate::arch::detect::check_for($crate::arch::detect::Feature::altivec)
     };
     ("vsx") => {
-        $crate::arch::detect::check_for($crate::arch::detect::Feature::vsx)
+        cfg!(target_feature = "vsx") ||
+            $crate::arch::detect::check_for($crate::arch::detect::Feature::vsx)
     };
     ("power8") => {
-        $crate::arch::detect::check_for($crate::arch::detect::Feature::power8)
+        cfg!(target_feature = "power8") ||
+            $crate::arch::detect::check_for($crate::arch::detect::Feature::power8)
     };
     ($t:tt) => { compile_error!(concat!("unknown arm target feature: ", $t)) };
 }
