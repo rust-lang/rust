@@ -5,7 +5,7 @@ use stdsimd_test::assert_instr;
 
 use coresimd::simd_llvm::simd_add;
 use coresimd::simd::*;
-use convert::From;
+use convert::{From, Into};
 
 /// Vector add.
 #[inline]
@@ -211,6 +211,108 @@ pub unsafe fn vrsqrte_f32(a: f32x2) -> f32x2 {
     frsqrte_v2f32(a)
 }
 
+/// Vector narrow integer.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(xtn))]
+pub unsafe fn vmovn_s16(a: i16x8) -> i8x8 {
+    a.into()
+}
+
+/// Vector narrow integer.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(xtn))]
+pub unsafe fn vmovn_s32(a: i32x4) -> i16x4 {
+    a.into()
+}
+
+/// Vector narrow integer.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(xtn))]
+pub unsafe fn vmovn_s64(a: i64x2) -> i32x2 {
+    a.into()
+}
+
+/// Vector narrow integer.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(xtn))]
+pub unsafe fn vmovn_u16(a: u16x8) -> u8x8 {
+    a.into()
+}
+
+/// Vector narrow integer.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(xtn))]
+pub unsafe fn vmovn_u32(a: u32x4) -> u16x4 {
+    a.into()
+}
+
+/// Vector narrow integer.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(xtn))]
+pub unsafe fn vmovn_u64(a: u64x2) -> u32x2 {
+    a.into()
+}
+
+/// Vector long move.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(sshll))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sxtl))]
+pub unsafe fn vmovl_s8(a: i8x8) -> i16x8 {
+    a.into()
+}
+
+/// Vector long move.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(sshll))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sxtl))]
+pub unsafe fn vmovl_s16(a: i16x4) -> i32x4 {
+    a.into()
+}
+
+/// Vector long move.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(sshll))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sxtl))]
+pub unsafe fn vmovl_s32(a: i32x2) -> i64x2 {
+    a.into()
+}
+
+/// Vector long move.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(sshll))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uxtl))]
+pub unsafe fn vmovl_u8(a: u8x8) -> u16x8 {
+    a.into()
+}
+
+/// Vector long move.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(sshll))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uxtl))]
+pub unsafe fn vmovl_u16(a: u16x4) -> u32x4 {
+    a.into()
+}
+
+/// Vector long move.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(sshll))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uxtl))]
+pub unsafe fn vmovl_u32(a: u32x2) -> u64x2 {
+    a.into()
+}
+
 #[cfg(test)]
 mod tests {
     use stdsimd_test::simd_test;
@@ -408,6 +510,102 @@ mod tests {
         let a = f32x2::new(1.0, 2.0);
         let e = f32x2::new(0.9980469, 0.7050781);
         let r = neon::vrsqrte_f32(a);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "neon"]
+    unsafe fn vmovn_s16() {
+        let a = i16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let e = i8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let r = neon::vmovn_s16(a);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "neon"]
+    unsafe fn vmovn_s32() {
+        let a = i32x4::new(1, 2, 3, 4);
+        let e = i16x4::new(1, 2, 3, 4);
+        let r = neon::vmovn_s32(a);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "neon"]
+    unsafe fn vmovn_s64() {
+        let a = i64x2::new(1, 2);
+        let e = i32x2::new(1, 2);
+        let r = neon::vmovn_s64(a);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "neon"]
+    unsafe fn vmovn_u16() {
+        let a = u16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let e = u8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let r = neon::vmovn_u16(a);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "neon"]
+    unsafe fn vmovn_u32() {
+        let a = u32x4::new(1, 2, 3, 4);
+        let e = u16x4::new(1, 2, 3, 4);
+        let r = neon::vmovn_u32(a);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "neon"]
+    unsafe fn vmovn_u64() {
+        let a = u64x2::new(1, 2);
+        let e = u32x2::new(1, 2);
+        let r = neon::vmovn_u64(a);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "neon"]
+    unsafe fn vmovl_s8() {
+        let e = i16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let a = i8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let r = neon::vmovl_s8(a);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "neon"]
+    unsafe fn vmovl_s16() {
+        let e = i32x4::new(1, 2, 3, 4);
+        let a = i16x4::new(1, 2, 3, 4);
+        let r = neon::vmovl_s16(a);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "neon"]
+    unsafe fn vmovl_s32() {
+        let e = i64x2::new(1, 2);
+        let a = i32x2::new(1, 2);
+        let r = neon::vmovl_s32(a);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "neon"]
+    unsafe fn vmovl_u8() {
+        let e = u16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let a = u8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let r = neon::vmovl_u8(a);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "neon"]
+    unsafe fn vmovl_u16() {
+        let e = u32x4::new(1, 2, 3, 4);
+        let a = u16x4::new(1, 2, 3, 4);
+        let r = neon::vmovl_u16(a);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "neon"]
+    unsafe fn vmovl_u32() {
+        let e = u64x2::new(1, 2);
+        let a = u32x2::new(1, 2);
+        let r = neon::vmovl_u32(a);
         assert_eq!(r, e);
     }
 }
