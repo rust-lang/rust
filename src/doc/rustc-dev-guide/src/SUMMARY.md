@@ -9,6 +9,7 @@
     - [Using `compiletest` + commands to control test execution](./compiletest.md)
 - [Walkthrough: a typical contribution](./walkthrough.md)
 - [High-level overview of the compiler source](./high-level-overview.md)
+- [The Rustc Driver](./rustc-driver.md)
 - [Queries: demand-driven compilation](./query.md)
     - [Incremental compilation](./incremental-compilation.md)
 - [The parser](./the-parser.md)
