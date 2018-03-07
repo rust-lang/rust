@@ -1,4 +1,4 @@
-error: all variables in condition are immutable. This might lead to infinite loops.
+error: all variables in condition are immutable. This either leads to an infinite or to a never running loop.
   --> $DIR/infinite_loop.rs:10:11
    |
 10 |     while y < 10 {
@@ -6,19 +6,19 @@ error: all variables in condition are immutable. This might lead to infinite loo
    |
    = note: `-D while-immutable-condition` implied by `-D warnings`
 
-error: all variables in condition are immutable. This might lead to infinite loops.
+error: all variables in condition are immutable. This either leads to an infinite or to a never running loop.
   --> $DIR/infinite_loop.rs:15:11
    |
 15 |     while y < 10 && x < 3 {
    |           ^^^^^^^^^^^^^^^
 
-error: all variables in condition are immutable. This might lead to infinite loops.
+error: all variables in condition are immutable. This either leads to an infinite or to a never running loop.
   --> $DIR/infinite_loop.rs:22:11
    |
 22 |     while !cond {
    |           ^^^^^
 
-error: Variable in the condition are not mutated in the loop body. This might lead to infinite loops.
+error: Variable in the condition are not mutated in the loop body. This either leads to an infinite or to a never running loop.
   --> $DIR/infinite_loop.rs:52:5
    |
 52 | /     while i < 3 {
@@ -27,7 +27,7 @@ error: Variable in the condition are not mutated in the loop body. This might le
 55 | |     }
    | |_____^
 
-error: Variable in the condition are not mutated in the loop body. This might lead to infinite loops.
+error: Variable in the condition are not mutated in the loop body. This either leads to an infinite or to a never running loop.
   --> $DIR/infinite_loop.rs:57:5
    |
 57 | /     while i < 3 && j > 0 {
@@ -35,7 +35,7 @@ error: Variable in the condition are not mutated in the loop body. This might le
 59 | |     }
    | |_____^
 
-error: Variable in the condition are not mutated in the loop body. This might lead to infinite loops.
+error: Variable in the condition are not mutated in the loop body. This either leads to an infinite or to a never running loop.
   --> $DIR/infinite_loop.rs:61:5
    |
 61 | /     while i < 3 {
@@ -45,7 +45,7 @@ error: Variable in the condition are not mutated in the loop body. This might le
 65 | |     }
    | |_____^
 
-error: Variable in the condition are not mutated in the loop body. This might lead to infinite loops.
+error: Variable in the condition are not mutated in the loop body. This either leads to an infinite or to a never running loop.
   --> $DIR/infinite_loop.rs:76:5
    |
 76 | /     while i < 3 {
@@ -54,7 +54,7 @@ error: Variable in the condition are not mutated in the loop body. This might le
 79 | |     }
    | |_____^
 
-error: Variable in the condition are not mutated in the loop body. This might lead to infinite loops.
+error: Variable in the condition are not mutated in the loop body. This either leads to an infinite or to a never running loop.
   --> $DIR/infinite_loop.rs:81:5
    |
 81 | /     while i < 3 {
