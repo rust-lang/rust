@@ -104,7 +104,7 @@ else
     travis_fold start "make-$1"
     travis_time_start
     echo "make -j $ncpus $1"
-    make -j $ncpus "$1"
+    make -j $ncpus $1
     local retval=$?
     travis_fold end "make-$1"
     travis_time_finish

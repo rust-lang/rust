@@ -60,6 +60,7 @@ check-aux:
 		src/test/run-pass-valgrind/pretty \
 		src/test/run-pass-fulldeps/pretty \
 		src/test/run-fail-fulldeps/pretty \
+		$(AUX_ARGS) \
 		$(BOOTSTRAP_ARGS)
 check-bootstrap:
 	$(Q)$(CFG_PYTHON) $(CFG_SRC_DIR)src/bootstrap/bootstrap_test.py
