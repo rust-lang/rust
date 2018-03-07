@@ -410,6 +410,9 @@ that it introduces new syntax whereby making the surface language more complex.
 However, the RFC may equally be said to simplify the surface language since
 it removes exceptional cases especially in the users mental model.
 
+Using `Self` in a type definition makes it harder to search for all positions
+in which a pattern can appear in an AST.
+
 # Rationale and alternatives
 [alternatives]: #alternatives
 
