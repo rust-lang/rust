@@ -1068,7 +1068,6 @@ fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                    def_id_to_string(tcx, impl_def_id));
 
             if let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) {
-                let callee_substs = tcx.erase_regions(&trait_ref.substs);
                 let overridden_methods: FxHashSet<_> =
                     impl_item_refs.iter()
                                   .map(|iiref| iiref.name)
@@ -1082,10 +1081,15 @@ fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         continue;
                     }
 
+                    let substs = Substs::for_item(tcx,
+                                                  method.def_id,
+                                                  |_, _| tcx.types.re_erased,
+                                                  |def, _| trait_ref.substs.type_for_def(def));
+
                     let instance = ty::Instance::resolve(tcx,
                                                          ty::ParamEnv::reveal_all(),
                                                          method.def_id,
-                                                         callee_substs).unwrap();
+                                                         substs).unwrap();
 
                     let mono_item = create_fn_mono_item(instance);
                     if mono_item.is_instantiable(tcx)
