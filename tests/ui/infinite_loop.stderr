@@ -1,0 +1,67 @@
+error: all variables in condition are immutable. This might lead to infinite loops.
+  --> $DIR/infinite_loop.rs:10:11
+   |
+10 |     while y < 10 {
+   |           ^^^^^^
+   |
+   = note: `-D while-immutable-condition` implied by `-D warnings`
+
+error: all variables in condition are immutable. This might lead to infinite loops.
+  --> $DIR/infinite_loop.rs:15:11
+   |
+15 |     while y < 10 && x < 3 {
+   |           ^^^^^^^^^^^^^^^
+
+error: all variables in condition are immutable. This might lead to infinite loops.
+  --> $DIR/infinite_loop.rs:22:11
+   |
+22 |     while !cond {
+   |           ^^^^^
+
+error: Variable in the condition are not mutated in the loop body. This might lead to infinite loops.
+  --> $DIR/infinite_loop.rs:52:5
+   |
+52 | /     while i < 3 {
+53 | |         j = 3;
+54 | |         println!("KO - i not mentionned");
+55 | |     }
+   | |_____^
+
+error: Variable in the condition are not mutated in the loop body. This might lead to infinite loops.
+  --> $DIR/infinite_loop.rs:57:5
+   |
+57 | /     while i < 3 && j > 0 {
+58 | |         println!("KO - i and j not mentionned");
+59 | |     }
+   | |_____^
+
+error: Variable in the condition are not mutated in the loop body. This might lead to infinite loops.
+  --> $DIR/infinite_loop.rs:61:5
+   |
+61 | /     while i < 3 {
+62 | |         let mut i = 5;
+63 | |         fn_mutref(&mut i);
+64 | |         println!("KO - shadowed");
+65 | |     }
+   | |_____^
+
+error: Variable in the condition are not mutated in the loop body. This might lead to infinite loops.
+  --> $DIR/infinite_loop.rs:76:5
+   |
+76 | /     while i < 3 {
+77 | |         fn_constref(&i);
+78 | |         println!("KO - const reference");
+79 | |     }
+   | |_____^
+
+error: Variable in the condition are not mutated in the loop body. This might lead to infinite loops.
+  --> $DIR/infinite_loop.rs:81:5
+   |
+81 | /     while i < 3 {
+82 | |         fn_val(i);
+83 | |         println!("KO - passed by value");
+84 | |     }
+   | |_____^
+
+error: aborting due to 8 previous errors
+

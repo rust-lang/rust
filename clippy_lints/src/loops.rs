@@ -343,6 +343,27 @@ declare_lint! {
     "for loop over a range where one of the bounds is a mutable variable"
 }
 
+/// **What it does:** Checks whether variables used within while loop condition
+/// can be (and are) mutated in the body.
+///
+/// **Why is this bad?** If the condition is unchanged, entering the body of the loop
+/// will lead to an infinite loop.
+///
+/// **Known problems:** None
+///
+/// **Example:**
+/// ```rust
+/// let i = 0;
+/// while i > 10 {
+///    println!("let me loop forever!");
+/// }
+/// ```
+declare_lint! {
+    pub WHILE_IMMUTABLE_CONDITION,
+    Warn,
+    "variables used within while expression are not mutated in the body"
+}
+
 #[derive(Copy, Clone)]
 pub struct Pass;
 
@@ -364,7 +385,8 @@ impl LintPass for Pass {
             WHILE_LET_ON_ITERATOR,
             FOR_KV_MAP,
             NEVER_LOOP,
-            MUT_RANGE_BOUND
+            MUT_RANGE_BOUND,
+            WHILE_IMMUTABLE_CONDITION,
         )
     }
 }
@@ -468,6 +490,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     );
                 }
             }
+        }
+
+        // check for while loops which conditions never change
+        if let ExprWhile(ref cond, ref block, _) = expr.node {
+            check_infinite_loop(cx, cond, block, expr);
         }
     }
 
@@ -1372,14 +1399,14 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
     }
 }
 
-struct MutateDelegate {
+struct MutatePairDelegate {
     node_id_low: Option<NodeId>,
     node_id_high: Option<NodeId>,
     span_low: Option<Span>,
     span_high: Option<Span>,
 }
 
-impl<'tcx> Delegate<'tcx> for MutateDelegate {
+impl<'tcx> Delegate<'tcx> for MutatePairDelegate {
     fn consume(&mut self, _: NodeId, _: Span, _: cmt<'tcx>, _: ConsumeMode) {}
 
     fn matched_pat(&mut self, _: &Pat, _: cmt<'tcx>, _: MatchMode) {}
@@ -1413,7 +1440,7 @@ impl<'tcx> Delegate<'tcx> for MutateDelegate {
     fn decl_without_init(&mut self, _: NodeId, _: Span) {}
 }
 
-impl<'tcx> MutateDelegate {
+impl<'tcx> MutatePairDelegate {
     fn mutation_span(&self) -> (Option<Span>, Option<Span>) {
         (self.span_low, self.span_high)
     }
@@ -1472,7 +1499,7 @@ fn check_for_mutability(cx: &LateContext, bound: &Expr) -> Option<NodeId> {
 }
 
 fn check_for_mutation(cx: &LateContext, body: &Expr, bound_ids: &[Option<NodeId>]) -> (Option<Span>, Option<Span>) {
-    let mut delegate = MutateDelegate {
+    let mut delegate = MutatePairDelegate {
         node_id_low: bound_ids[0],
         node_id_high: bound_ids[1],
         span_low: None,
@@ -2112,4 +2139,107 @@ fn path_name(e: &Expr) -> Option<Name> {
         }
     };
     None
+}
+
+fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, block: &'tcx Block, expr: &'tcx Expr) {
+    let mut mut_var_visitor = MutableVarsVisitor {
+        cx,
+        ids: HashMap::new(),
+        skip: false,
+    };
+    walk_expr(&mut mut_var_visitor, expr);
+    if mut_var_visitor.skip {
+        return;
+    }
+
+    if mut_var_visitor.ids.len() == 0 {
+        span_lint(
+            cx,
+            WHILE_IMMUTABLE_CONDITION,
+            cond.span,
+            "all variables in condition are immutable. This might lead to infinite loops.",
+        );
+        return;
+    }
+
+
+    let mut delegate = MutVarsDelegate {
+        mut_spans: mut_var_visitor.ids,
+    };
+    let def_id = def_id::DefId::local(block.hir_id.owner);
+    let region_scope_tree = &cx.tcx.region_scope_tree(def_id);
+    ExprUseVisitor::new(&mut delegate, cx.tcx, cx.param_env, region_scope_tree, cx.tables, None).walk_expr(expr);
+
+    if !delegate.mut_spans.iter().any(|(_, v)| v.is_some()) {
+        span_lint(
+            cx,
+            WHILE_IMMUTABLE_CONDITION,
+            expr.span,
+            "Variable in the condition are not mutated in the loop body. This might lead to infinite loops.",
+        );
+    }
+}
+
+/// Collects the set of mutable variable in an expression
+/// Stops analysis if a function call is found
+struct MutableVarsVisitor<'a, 'tcx: 'a> {
+    cx: &'a LateContext<'a, 'tcx>,
+    ids: HashMap<NodeId, Option<Span>>,
+    skip: bool,
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for MutableVarsVisitor<'a, 'tcx> {
+    fn visit_expr(&mut self, ex: &'tcx Expr) {
+        match ex.node {
+            ExprPath(_) => if let Some(node_id) = check_for_mutability(self.cx, &ex) {
+                self.ids.insert(node_id, None);
+            },
+
+            // If there is any fuction/method call… we just stop analysis
+            ExprCall(..) | ExprMethodCall(..) => self.skip = true,
+
+            _ => walk_expr(self, ex),
+        }
+    }
+
+    fn visit_block(&mut self, _b: &'tcx Block) {}
+
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
+    }
+}
+
+struct MutVarsDelegate {
+    mut_spans: HashMap<NodeId, Option<Span>>,
+}
+
+impl<'tcx> MutVarsDelegate {
+    fn update(&mut self, cat: &'tcx Categorization, sp: Span) {
+        if let &Categorization::Local(id) = cat {
+            if let Some(span) = self.mut_spans.get_mut(&id) {    
+                *span = Some(sp)
+            }
+        }
+    }
+}
+
+
+impl<'tcx> Delegate<'tcx> for MutVarsDelegate {
+    fn consume(&mut self, _: NodeId, _: Span, _: cmt<'tcx>, _: ConsumeMode) {}
+
+    fn matched_pat(&mut self, _: &Pat, _: cmt<'tcx>, _: MatchMode) {}
+
+    fn consume_pat(&mut self, _: &Pat, _: cmt<'tcx>, _: ConsumeMode) {}
+
+    fn borrow(&mut self, _: NodeId, sp: Span, cmt: cmt<'tcx>, _: ty::Region, bk: ty::BorrowKind, _: LoanCause) {
+        if let ty::BorrowKind::MutBorrow = bk {
+            self.update(&cmt.cat, sp)
+        }
+    }
+
+    fn mutate(&mut self, _: NodeId, sp: Span, cmt: cmt<'tcx>, _: MutateMode) {
+            self.update(&cmt.cat, sp)
+    }
+
+    fn decl_without_init(&mut self, _: NodeId, _: Span) {}
 }
