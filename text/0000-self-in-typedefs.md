@@ -309,34 +309,6 @@ error[E0072]: recursive type `List` has infinite size
   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `List` representable
 ```
 
-## Migration advice
-[migration advice]: #migration-advice
-
-Since the new introduced syntax is often clearer and shorter, especially when
-dealing with long type names with many generic parameters, tools like `clippy`
-should add new lints that mention the new syntax and ask users to migrate to it.
-
-Such a lint in `clippy` could be called `use_self_in_typedef`
-and emit the following warning:
-
-```
-warning: the `Self` should be used for clarity in recursive types instead of mentioning the type again
- --> src/main.rs:
-  |
-1 | /    enum List<T> {
-2 | |        Nil,
-3 | |        Cons(T, List<T>)
-4 | |    }
-  | |----^
-  |
-  = note: #[warn(use_self_in_typedef)] on by default
-  = help: for further information visit https://rust-lang-nursery.github.io/rust-clippy/<version>/index.html#use_self_in_typedef
-help: consider using `Self` instead of `List<T>`
-  |
-3 |          Cons(T, List<T>)
-  |                  ^^^^^^^
-```
-
 ## Teaching the contents of this RFC
 
 [LRWETMLL]: http://cglab.ca/~abeinges/blah/too-many-lists/book/first-layout.html
