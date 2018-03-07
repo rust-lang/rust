@@ -23,3 +23,18 @@ fn impl_trait_fn_2<E>() -> impl Future<Item=&'a i64,Error=E> {}
 fn issue_1234() {
     do_parse!(name: take_while1!(is_token) >> (Header))
 }
+
+// #2510
+impl CombineTypes {
+    pub fn pop_callback(
+        &self,
+        query_id: Uuid,
+    ) -> Option<
+        (
+            ProjectId,
+            Box<FnMut(&ProjectState, serde_json::Value, bool) -> () + Sync + Send>,
+        ),
+    > {
+        self.query_callbacks()(&query_id)
+    }
+}

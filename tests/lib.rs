@@ -330,26 +330,28 @@ fn check_files(files: Vec<PathBuf>) -> (Vec<FormatReport>, u32, u32) {
 }
 
 fn print_mismatches_default_message(result: HashMap<PathBuf, Vec<Mismatch>>) {
-    let mut t = term::stdout().unwrap();
     for (file_name, diff) in result {
         let mismatch_msg_formatter =
             |line_num| format!("\nMismatch at {}:{}:", file_name.display(), line_num);
         print_diff(diff, &mismatch_msg_formatter, Color::Auto);
     }
 
-    t.reset().unwrap();
+    if let Some(mut t) = term::stdout() {
+        t.reset().unwrap_or(());
+    }
 }
 
 fn print_mismatches<T: Fn(u32) -> String>(
     result: HashMap<PathBuf, Vec<Mismatch>>,
     mismatch_msg_formatter: T,
 ) {
-    let mut t = term::stdout().unwrap();
     for (_file_name, diff) in result {
         print_diff(diff, &mismatch_msg_formatter, Color::Auto);
     }
 
-    t.reset().unwrap();
+    if let Some(mut t) = term::stdout() {
+        t.reset().unwrap_or(());
+    }
 }
 
 fn read_config(filename: &Path) -> Config {
