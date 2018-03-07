@@ -27,7 +27,7 @@ environment:
 
   # MSVC aux tests
   - MSYS_BITS: 64
-    RUST_CHECK_TARGET: check-aux AUX_ARGS="--exclude src/tools/cargotest --exclude src/tools/cargo"
+    RUST_CHECK_TARGET: check-aux EXCLUDE_CARGO=1
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
   - MSYS_BITS: 64
     SCRIPT: python x.py test src/tools/cargotest src/tools/cargo
