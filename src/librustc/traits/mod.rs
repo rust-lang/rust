@@ -851,19 +851,6 @@ impl<'tcx, N> Vtable<'tcx, N> {
         }
     }
 
-    fn nested_obligations_mut(&mut self) -> &mut Vec<N> {
-        match self {
-            &mut VtableImpl(ref mut i) => &mut i.nested,
-            &mut VtableParam(ref mut n) => n,
-            &mut VtableBuiltin(ref mut i) => &mut i.nested,
-            &mut VtableAutoImpl(ref mut d) => &mut d.nested,
-            &mut VtableGenerator(ref mut c) => &mut c.nested,
-            &mut VtableClosure(ref mut c) => &mut c.nested,
-            &mut VtableObject(ref mut d) => &mut d.nested,
-            &mut VtableFnPointer(ref mut d) => &mut d.nested,
-        }
-    }
-
     pub fn map<M, F>(self, f: F) -> Vtable<'tcx, M> where F: FnMut(N) -> M {
         match self {
             VtableImpl(i) => VtableImpl(VtableImplData {
