@@ -26,6 +26,8 @@ use shape::{Indent, Shape};
 use spanned::Spanned;
 use utils::{self, contains_skip, count_newlines, inner_attributes, mk_sp, ptr_vec_to_ref_vec};
 
+use std::cell::RefCell;
+
 /// Creates a string slice corresponding to the specified span.
 pub struct SnippetProvider<'a> {
     /// A pointer to the content of the file we are formatting.
@@ -691,9 +693,9 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             codemap: self.codemap,
             config: self.config,
             inside_macro: false,
-            use_block: false,
+            use_block: RefCell::new(false),
             is_if_else_block: false,
-            force_one_line_chain: false,
+            force_one_line_chain: RefCell::new(false),
             snippet_provider: self.snippet_provider,
         }
     }
