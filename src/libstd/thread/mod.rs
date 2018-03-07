@@ -1267,6 +1267,7 @@ impl<T> JoinInner<T> {
 /// [`Clone`]: ../../std/clone/trait.Clone.html
 /// [`thread::spawn`]: fn.spawn.html
 /// [`thread::Builder::spawn`]: struct.Builder.html#method.spawn
+#[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct JoinHandle<T>(JoinInner<T>);
 
