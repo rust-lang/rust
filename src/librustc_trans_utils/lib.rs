@@ -37,16 +37,14 @@ extern crate rustc;
 extern crate rustc_back;
 extern crate rustc_mir;
 extern crate rustc_incremental;
-#[macro_use]
 extern crate syntax;
 extern crate syntax_pos;
-extern crate rustc_data_structures;
+#[macro_use] extern crate rustc_data_structures;
 
 pub extern crate rustc as __rustc;
 
 use rustc::ty::TyCtxt;
 
-pub mod diagnostics;
 pub mod link;
 pub mod trans_crate;
 pub mod symbol_names;

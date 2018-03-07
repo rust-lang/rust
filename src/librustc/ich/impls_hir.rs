@@ -19,6 +19,7 @@ use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
                                            StableHasher, StableHasherResult};
 use std::mem;
 use syntax::ast;
+use syntax::attr;
 
 impl<'gcx> HashStable<StableHashingContext<'gcx>> for DefId {
     #[inline]
@@ -1138,6 +1139,43 @@ impl<'gcx> ToStableHashKey<StableHashingContext<'gcx>> for hir::TraitCandidate {
     }
 }
 
+impl<'hir> HashStable<StableHashingContext<'hir>> for hir::TransFnAttrs
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'hir>,
+                                          hasher: &mut StableHasher<W>) {
+        let hir::TransFnAttrs {
+            flags,
+            inline,
+            export_name,
+            ref target_features,
+            linkage,
+        } = *self;
+
+        flags.hash_stable(hcx, hasher);
+        inline.hash_stable(hcx, hasher);
+        export_name.hash_stable(hcx, hasher);
+        target_features.hash_stable(hcx, hasher);
+        linkage.hash_stable(hcx, hasher);
+    }
+}
+
+impl<'hir> HashStable<StableHashingContext<'hir>> for hir::TransFnAttrFlags
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'hir>,
+                                          hasher: &mut StableHasher<W>) {
+        self.bits().hash_stable(hcx, hasher);
+    }
+}
+
+impl<'hir> HashStable<StableHashingContext<'hir>> for attr::InlineAttr {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'hir>,
+                                          hasher: &mut StableHasher<W>) {
+        mem::discriminant(self).hash_stable(hcx, hasher);
+    }
+}
 
 impl_stable_hash_for!(struct hir::Freevar {
     def,

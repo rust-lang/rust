@@ -188,7 +188,7 @@
 //! this is not implemented however: a mono item will be produced
 //! regardless of whether it is actually needed or not.
 
-use rustc::hir;
+use rustc::hir::{self, TransFnAttrFlags};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 
 use rustc::hir::map as hir_map;
@@ -210,8 +210,6 @@ use rustc::util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
 use monomorphize::item::{MonoItemExt, DefPathBasedNames, InstantiationMode};
 
 use rustc_data_structures::bitvec::BitVector;
-
-use syntax::attr;
 
 use std::iter;
 
@@ -796,7 +794,7 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let ptr_vtable = |inner_source: Ty<'tcx>, inner_target: Ty<'tcx>| {
         let type_has_metadata = |ty: Ty<'tcx>| -> bool {
             use syntax_pos::DUMMY_SP;
-            if ty.is_sized(tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP) {
+            if ty.is_sized(tcx.at(DUMMY_SP), ty::ParamEnv::empty(traits::Reveal::All)) {
                 return false;
             }
             let tail = tcx.struct_tail(ty);
@@ -985,8 +983,8 @@ impl<'b, 'a, 'v> RootCollector<'b, 'a, 'v> {
             MonoItemCollectionMode::Lazy => {
                 self.entry_fn == Some(def_id) ||
                 self.tcx.is_reachable_non_generic(def_id) ||
-                attr::contains_name(&self.tcx.get_attrs(def_id),
-                                    "rustc_std_internal_symbol")
+                self.tcx.trans_fn_attrs(def_id).flags.contains(
+                    TransFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
             }
         }
     }

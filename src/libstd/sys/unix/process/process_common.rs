@@ -13,7 +13,7 @@ use os::unix::prelude::*;
 use ffi::{OsString, OsStr, CString, CStr};
 use fmt;
 use io;
-use libc::{self, c_int, gid_t, uid_t, c_char};
+use libc::{self, c_int, gid_t, uid_t, c_char, EXIT_SUCCESS, EXIT_FAILURE};
 use ptr;
 use sys::fd::FileDesc;
 use sys::fs::{File, OpenOptions};
@@ -390,6 +390,18 @@ impl fmt::Display for ExitStatus {
             let signal = self.signal().unwrap();
             write!(f, "signal: {}", signal)
         }
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub struct ExitCode(u8);
+
+impl ExitCode {
+    pub const SUCCESS: ExitCode = ExitCode(EXIT_SUCCESS as _);
+    pub const FAILURE: ExitCode = ExitCode(EXIT_FAILURE as _);
+
+    pub fn as_i32(&self) -> i32 {
+        self.0 as i32
     }
 }
 

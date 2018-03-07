@@ -177,7 +177,7 @@ cfg_if! {
         macro_rules! rustc_erase_owner {
             ($v:expr) => {{
                 let v = $v;
-                ::rustc_data_structures::sync::assert_send_sync_val(&v);
+                ::rustc_data_structures::sync::assert_send_val(&v);
                 v.erase_send_sync_owner()
             }}
         }
@@ -262,6 +262,7 @@ cfg_if! {
 }
 
 pub fn assert_sync<T: ?Sized + Sync>() {}
+pub fn assert_send_val<T: ?Sized + Send>(_t: &T) {}
 pub fn assert_send_sync_val<T: ?Sized + Sync + Send>(_t: &T) {}
 
 #[macro_export]

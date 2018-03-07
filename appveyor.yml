@@ -19,12 +19,18 @@ environment:
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
     SCRIPT: python x.py test
   - MSYS_BITS: 32
-    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc --target=i686-pc-windows-msvc
-    SCRIPT: python x.py test --host i686-pc-windows-msvc --target i686-pc-windows-msvc
+    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
+    SCRIPT: python x.py test --exclude src/test/run-pass --exclude src/test/compile-fail
+  - MSYS_BITS: 32
+    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
+    SCRIPT: python x.py test src/test/run-pass src/test/compile-fail
 
   # MSVC aux tests
   - MSYS_BITS: 64
-    RUST_CHECK_TARGET: check-aux
+    RUST_CHECK_TARGET: check-aux EXCLUDE_CARGO=1
+    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
+  - MSYS_BITS: 64
+    SCRIPT: python x.py test src/tools/cargotest src/tools/cargo
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
 
   # MSVC tools tests

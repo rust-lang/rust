@@ -1665,17 +1665,23 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                         if !self.span.filter_generated(sub_span, ex.span) {
                             let span =
                                 self.span_from_span(sub_span.expect("No span found for var ref"));
-                            let ref_id =
-                                ::id_from_def_id(def.non_enum_variant().fields[idx.node].did);
-                            self.dumper.dump_ref(Ref {
-                                kind: RefKind::Variable,
-                                span,
-                                ref_id,
-                            });
+                            if let Some(field) = def.non_enum_variant().fields.get(idx.node) {
+                                let ref_id = ::id_from_def_id(field.did);
+                                self.dumper.dump_ref(Ref {
+                                    kind: RefKind::Variable,
+                                    span,
+                                    ref_id,
+                                });
+                            } else {
+                                return;
+                            }
                         }
                     }
                     ty::TyTuple(..) => {}
-                    _ => span_bug!(ex.span, "Expected struct or tuple type, found {:?}", ty),
+                    _ => {
+                        debug!("Expected struct or tuple type, found {:?}", ty);
+                        return;
+                    }
                 }
             }
             ast::ExprKind::Closure(_, _, ref decl, ref body, _fn_decl_span) => {

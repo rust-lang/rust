@@ -16,6 +16,12 @@ Q := @
 BOOTSTRAP_ARGS :=
 endif
 
+ifdef EXCLUDE_CARGO
+AUX_ARGS := src/tools/cargo src/tools/cargotest
+else
+AUX_ARGS :=
+endif
+
 BOOTSTRAP := $(CFG_PYTHON) $(CFG_SRC_DIR)src/bootstrap/bootstrap.py
 
 all:
@@ -52,14 +58,13 @@ check:
 	$(Q)$(BOOTSTRAP) test $(BOOTSTRAP_ARGS)
 check-aux:
 	$(Q)$(BOOTSTRAP) test \
-		src/tools/cargo \
-		src/tools/cargotest \
 		src/test/pretty \
 		src/test/run-pass/pretty \
 		src/test/run-fail/pretty \
 		src/test/run-pass-valgrind/pretty \
 		src/test/run-pass-fulldeps/pretty \
 		src/test/run-fail-fulldeps/pretty \
+		$(AUX_ARGS) \
 		$(BOOTSTRAP_ARGS)
 check-bootstrap:
 	$(Q)$(CFG_PYTHON) $(CFG_SRC_DIR)src/bootstrap/bootstrap_test.py

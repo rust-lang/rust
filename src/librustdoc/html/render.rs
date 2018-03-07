@@ -32,6 +32,7 @@
 //! for creating the corresponding search index and source file renderings.
 //! These threads are not parallelized (they haven't been a bottleneck yet), and
 //! both occur before the crate is rendered.
+
 pub use self::ExternalLocation::*;
 
 use std::borrow::Cow;
@@ -128,6 +129,9 @@ pub struct SharedContext {
     pub sort_modules_alphabetically: bool,
     /// Additional themes to be added to the generated docs.
     pub themes: Vec<PathBuf>,
+    /// Suffix to be added on resource files (if suffix is "-v2" then "main.css" becomes
+    /// "main-v2.css").
+    pub resource_suffix: String,
 }
 
 impl SharedContext {
@@ -492,6 +496,7 @@ pub fn run(mut krate: clean::Crate,
            external_html: &ExternalHtml,
            playground_url: Option<String>,
            dst: PathBuf,
+           resource_suffix: String,
            passes: FxHashSet<String>,
            css_file_extension: Option<PathBuf>,
            renderinfo: RenderInfo,
@@ -520,6 +525,7 @@ pub fn run(mut krate: clean::Crate,
         created_dirs: RefCell::new(FxHashSet()),
         sort_modules_alphabetically,
         themes,
+        resource_suffix,
     };
 
     // If user passed in `--playground-url` arg, we fill in crate name here
@@ -734,7 +740,7 @@ fn write_shared(cx: &Context,
     // Add all the static files. These may already exist, but we just
     // overwrite them anyway to make sure that they're fresh and up-to-date.
 
-    write(cx.dst.join("rustdoc.css"),
+    write(cx.dst.join(&format!("rustdoc{}.css", cx.shared.resource_suffix)),
           include_bytes!("static/rustdoc.css"))?;
 
     // To avoid "main.css" to be overwritten, we'll first run over the received themes and only
@@ -746,16 +752,19 @@ fn write_shared(cx: &Context,
 
         let mut f = try_err!(File::open(&entry), &entry);
         try_err!(f.read_to_end(&mut content), &entry);
-        write(cx.dst.join(try_none!(entry.file_name(), &entry)), content.as_slice())?;
-        themes.insert(try_none!(try_none!(entry.file_stem(), &entry).to_str(), &entry).to_owned());
+        let theme = try_none!(try_none!(entry.file_stem(), &entry).to_str(), &entry);
+        let extension = try_none!(try_none!(entry.extension(), &entry).to_str(), &entry);
+        write(cx.dst.join(format!("{}{}.{}", theme, cx.shared.resource_suffix, extension)),
+              content.as_slice())?;
+        themes.insert(theme.to_owned());
     }
 
-    write(cx.dst.join("brush.svg"),
+    write(cx.dst.join(&format!("brush{}.svg", cx.shared.resource_suffix)),
           include_bytes!("static/brush.svg"))?;
-    write(cx.dst.join("main.css"),
+    write(cx.dst.join(&format!("main{}.css", cx.shared.resource_suffix)),
           include_bytes!("static/themes/main.css"))?;
     themes.insert("main".to_owned());
-    write(cx.dst.join("dark.css"),
+    write(cx.dst.join(&format!("dark{}.css", cx.shared.resource_suffix)),
           include_bytes!("static/themes/dark.css"))?;
     themes.insert("dark".to_owned());
 
@@ -763,7 +772,8 @@ fn write_shared(cx: &Context,
     themes.sort();
     // To avoid theme switch latencies as much as possible, we put everything theme related
     // at the beginning of the html files into another js file.
-    write(cx.dst.join("theme.js"), format!(
+    write(cx.dst.join(&format!("theme{}.js", cx.shared.resource_suffix)),
+          format!(
 r#"var themes = document.getElementById("theme-choices");
 var themePicker = document.getElementById("theme-picker");
 themePicker.onclick = function() {{
@@ -785,19 +795,28 @@ themePicker.onclick = function() {{
     }};
     themes.appendChild(but);
 }});
-"#, themes.iter()
-          .map(|s| format!("\"{}\"", s))
-          .collect::<Vec<String>>()
-          .join(",")).as_bytes())?;
+"#,
+                 themes.iter()
+                       .map(|s| format!("\"{}\"", s))
+                       .collect::<Vec<String>>()
+                       .join(",")).as_bytes(),
+    )?;
 
-    write(cx.dst.join("main.js"), include_bytes!("static/main.js"))?;
-    write(cx.dst.join("storage.js"), include_bytes!("static/storage.js"))?;
+    write(cx.dst.join(&format!("main{}.js", cx.shared.resource_suffix)),
+                      include_bytes!("static/main.js"))?;
+
+    {
+        let mut data = format!("var resourcesSuffix = \"{}\";\n",
+                               cx.shared.resource_suffix).into_bytes();
+        data.extend_from_slice(include_bytes!("static/storage.js"));
+        write(cx.dst.join(&format!("storage{}.js", cx.shared.resource_suffix)), &data)?;
+    }
 
     if let Some(ref css) = cx.shared.css_file_extension {
-        let out = cx.dst.join("theme.css");
+        let out = cx.dst.join(&format!("theme{}.css", cx.shared.resource_suffix));
         try_err!(fs::copy(css, out), css);
     }
-    write(cx.dst.join("normalize.css"),
+    write(cx.dst.join(&format!("normalize{}.css", cx.shared.resource_suffix)),
           include_bytes!("static/normalize.css"))?;
     write(cx.dst.join("FiraSans-Regular.woff"),
           include_bytes!("static/FiraSans-Regular.woff"))?;
@@ -1084,6 +1103,7 @@ impl<'a> SourceCollector<'a> {
             root_path: &root_path,
             description: &desc,
             keywords: BASIC_KEYWORDS,
+            resource_suffix: &self.scx.resource_suffix,
         };
         layout::render(&mut w, &self.scx.layout,
                        &page, &(""), &Source(contents),
@@ -1446,6 +1466,7 @@ impl Context {
             title: &title,
             description: &desc,
             keywords: &keywords,
+            resource_suffix: &self.shared.resource_suffix,
         };
 
         reset_ids(true);

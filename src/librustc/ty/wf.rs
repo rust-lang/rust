@@ -77,10 +77,6 @@ pub fn predicate_obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
         ty::Predicate::Trait(ref t) => {
             wf.compute_trait_ref(&t.skip_binder().trait_ref, Elaborate::None); // (*)
         }
-        ty::Predicate::Equate(ref t) => {
-            wf.compute(t.skip_binder().0);
-            wf.compute(t.skip_binder().1);
-        }
         ty::Predicate::RegionOutlives(..) => {
         }
         ty::Predicate::TypeOutlives(ref t) => {

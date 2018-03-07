@@ -28,7 +28,7 @@ use std::fs::File;
 use std::path::Path;
 use std::sync::mpsc;
 
-use rustc_data_structures::owning_ref::{ErasedBoxRef, OwningRef};
+use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::sync::Lrc;
 use ar::{Archive, Builder, Header};
 use flate2::Compression;
@@ -44,8 +44,11 @@ use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::cstore::MetadataLoader;
 use rustc::dep_graph::DepGraph;
 use rustc_back::target::Target;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_mir::monomorphize::collector;
 use link::{build_link_meta, out_filename};
+
+pub use rustc_data_structures::sync::MetadataRef;
 
 pub trait TransCrate {
     fn init(&self, _sess: &Session) {}
@@ -119,7 +122,7 @@ impl MetadataLoader for DummyMetadataLoader {
         &self,
         _target: &Target,
         _filename: &Path
-    ) -> Result<ErasedBoxRef<[u8]>, String> {
+    ) -> Result<MetadataRef, String> {
         bug!("DummyMetadataLoader::get_rlib_metadata");
     }
 
@@ -127,7 +130,7 @@ impl MetadataLoader for DummyMetadataLoader {
         &self,
         _target: &Target,
         _filename: &Path
-    ) -> Result<ErasedBoxRef<[u8]>, String> {
+    ) -> Result<MetadataRef, String> {
         bug!("DummyMetadataLoader::get_dylib_metadata");
     }
 }
@@ -135,7 +138,7 @@ impl MetadataLoader for DummyMetadataLoader {
 pub struct NoLlvmMetadataLoader;
 
 impl MetadataLoader for NoLlvmMetadataLoader {
-    fn get_rlib_metadata(&self, _: &Target, filename: &Path) -> Result<ErasedBoxRef<[u8]>, String> {
+    fn get_rlib_metadata(&self, _: &Target, filename: &Path) -> Result<MetadataRef, String> {
         let file = File::open(filename)
             .map_err(|e| format!("metadata file open err: {:?}", e))?;
         let mut archive = Archive::new(file);
@@ -147,7 +150,7 @@ impl MetadataLoader for NoLlvmMetadataLoader {
                 let mut buf = Vec::new();
                 io::copy(&mut entry, &mut buf).unwrap();
                 let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf).into();
-                return Ok(buf.map_owner_box().erase_owner());
+                return Ok(rustc_erase_owner!(buf.map_owner_box()));
             }
         }
 
@@ -158,7 +161,7 @@ impl MetadataLoader for NoLlvmMetadataLoader {
         &self,
         _target: &Target,
         _filename: &Path,
-    ) -> Result<ErasedBoxRef<[u8]>, String> {
+    ) -> Result<MetadataRef, String> {
         // FIXME: Support reading dylibs from llvm enabled rustc
         self.get_rlib_metadata(_target, _filename)
     }
@@ -198,8 +201,9 @@ impl TransCrate for MetadataOnlyTransCrate {
 
     fn provide(&self, providers: &mut Providers) {
         ::symbol_names::provide(providers);
-        providers.target_features_enabled = |_tcx, _id| {
-            Lrc::new(Vec::new()) // Just a dummy
+
+        providers.target_features_whitelist = |_tcx, _cnum| {
+            Lrc::new(FxHashSet()) // Just a dummy
         };
     }
     fn provide_extern(&self, _providers: &mut Providers) {}
@@ -233,12 +237,8 @@ impl TransCrate for MetadataOnlyTransCrate {
                 MonoItem::Fn(inst) => {
                     let def_id = inst.def_id();
                     if def_id.is_local()  {
-                        let _ = tcx.export_name(def_id);
-                        let _ = tcx.contains_extern_indicator(def_id);
                         let _ = inst.def.is_inline(tcx);
-                        let attrs = inst.def.attrs(tcx);
-                        let _ =
-                            ::syntax::attr::find_inline_attr(Some(tcx.sess.diagnostic()), &attrs);
+                        let _ = tcx.trans_fn_attrs(def_id);
                     }
                 }
                 _ => {}

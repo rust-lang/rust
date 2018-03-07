@@ -282,14 +282,6 @@ impl<'a, 'tcx> Lift<'tcx> for ty::TraitPredicate<'a> {
     }
 }
 
-impl<'a, 'tcx> Lift<'tcx> for ty::EquatePredicate<'a> {
-    type Lifted = ty::EquatePredicate<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>)
-                             -> Option<ty::EquatePredicate<'tcx>> {
-        tcx.lift(&(self.0, self.1)).map(|(a, b)| ty::EquatePredicate(a, b))
-    }
-}
-
 impl<'a, 'tcx> Lift<'tcx> for ty::SubtypePredicate<'a> {
     type Lifted = ty::SubtypePredicate<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>)
@@ -354,9 +346,6 @@ impl<'a, 'tcx> Lift<'tcx> for ty::Predicate<'a> {
         match *self {
             ty::Predicate::Trait(ref binder) => {
                 tcx.lift(binder).map(ty::Predicate::Trait)
-            }
-            ty::Predicate::Equate(ref binder) => {
-                tcx.lift(binder).map(ty::Predicate::Equate)
             }
             ty::Predicate::Subtype(ref binder) => {
                 tcx.lift(binder).map(ty::Predicate::Subtype)
@@ -1049,8 +1038,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
         match *self {
             ty::Predicate::Trait(ref a) =>
                 ty::Predicate::Trait(a.fold_with(folder)),
-            ty::Predicate::Equate(ref binder) =>
-                ty::Predicate::Equate(binder.fold_with(folder)),
             ty::Predicate::Subtype(ref binder) =>
                 ty::Predicate::Subtype(binder.fold_with(folder)),
             ty::Predicate::RegionOutlives(ref binder) =>
@@ -1073,7 +1060,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         match *self {
             ty::Predicate::Trait(ref a) => a.visit_with(visitor),
-            ty::Predicate::Equate(ref binder) => binder.visit_with(visitor),
             ty::Predicate::Subtype(ref binder) => binder.visit_with(visitor),
             ty::Predicate::RegionOutlives(ref binder) => binder.visit_with(visitor),
             ty::Predicate::TypeOutlives(ref binder) => binder.visit_with(visitor),
@@ -1108,16 +1094,6 @@ BraceStructTypeFoldableImpl! {
 BraceStructTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for ty::InstantiatedPredicates<'tcx> {
         predicates
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for ty::EquatePredicate<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        ty::EquatePredicate(self.0.fold_with(folder), self.1.fold_with(folder))
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.0.visit_with(visitor) || self.1.visit_with(visitor)
     }
 }
 

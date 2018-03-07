@@ -221,6 +221,8 @@ pub struct ObjectFile {
     pub llof: ObjectFileRef,
 }
 
+unsafe impl Send for ObjectFile {}
+
 impl ObjectFile {
     // This will take ownership of llmb
     pub fn new(llmb: MemoryBufferRef) -> Option<ObjectFile> {

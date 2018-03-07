@@ -73,7 +73,7 @@ pub struct CodegenUnit<'tcx> {
     size_estimate: Option<usize>,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum Linkage {
     External,
     AvailableExternally,

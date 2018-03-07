@@ -3705,6 +3705,98 @@ match r {
 ```
 "##,
 
+E0534: r##"
+The `inline` attribute was malformed.
+
+Erroneous code example:
+
+```ignore (compile_fail not working here; see Issue #43707)
+#[inline()] // error: expected one argument
+pub fn something() {}
+
+fn main() {}
+```
+
+The parenthesized `inline` attribute requires the parameter to be specified:
+
+```
+#[inline(always)]
+fn something() {}
+```
+
+or:
+
+```
+#[inline(never)]
+fn something() {}
+```
+
+Alternatively, a paren-less version of the attribute may be used to hint the
+compiler about inlining opportunity:
+
+```
+#[inline]
+fn something() {}
+```
+
+For more information about the inline attribute, read:
+https://doc.rust-lang.org/reference.html#inline-attributes
+"##,
+
+E0535: r##"
+An unknown argument was given to the `inline` attribute.
+
+Erroneous code example:
+
+```ignore (compile_fail not working here; see Issue #43707)
+#[inline(unknown)] // error: invalid argument
+pub fn something() {}
+
+fn main() {}
+```
+
+The `inline` attribute only supports two arguments:
+
+ * always
+ * never
+
+All other arguments given to the `inline` attribute will return this error.
+Example:
+
+```
+#[inline(never)] // ok!
+pub fn something() {}
+
+fn main() {}
+```
+
+For more information about the inline attribute, https:
+read://doc.rust-lang.org/reference.html#inline-attributes
+"##,
+
+E0558: r##"
+The `export_name` attribute was malformed.
+
+Erroneous code example:
+
+```ignore (error-emitted-at-codegen-which-cannot-be-handled-by-compile_fail)
+#[export_name] // error: export_name attribute has invalid format
+pub fn something() {}
+
+fn main() {}
+```
+
+The `export_name` attribute expects a string in order to determine the name of
+the exported symbol. Example:
+
+```
+#[export_name = "some_function"] // ok!
+pub fn something() {}
+
+fn main() {}
+```
+"##,
+
 E0559: r##"
 An unknown field was specified into an enum's structure variant.
 

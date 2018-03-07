@@ -47,7 +47,7 @@ struct CheckAttrVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
     /// Check any attribute.
     fn check_attributes(&self, item: &hir::Item, target: Target) {
-        self.tcx.target_features_enabled(self.tcx.hir.local_def_id(item.id));
+        self.tcx.trans_fn_attrs(self.tcx.hir.local_def_id(item.id));
 
         for attr in &item.attrs {
             if let Some(name) = attr.name() {

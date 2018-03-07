@@ -11,6 +11,7 @@
 //! Inlining pass for MIR functions
 
 use rustc::hir;
+use rustc::hir::TransFnAttrFlags;
 use rustc::hir::def_id::DefId;
 
 use rustc_data_structures::bitvec::BitVector;
@@ -206,10 +207,9 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             return false;
         }
 
-        let attrs = tcx.get_attrs(callsite.callee);
-        let hint = attr::find_inline_attr(None, &attrs[..]);
+        let trans_fn_attrs = tcx.trans_fn_attrs(callsite.callee);
 
-        let hinted = match hint {
+        let hinted = match trans_fn_attrs.inline {
             // Just treat inline(always) as a hint for now,
             // there are cases that prevent inlining that we
             // need to check for first.
@@ -239,7 +239,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         };
 
         // Significantly lower the threshold for inlining cold functions
-        if attr::contains_name(&attrs[..], "cold") {
+        if trans_fn_attrs.flags.contains(TransFnAttrFlags::COLD) {
             threshold /= 5;
         }
 
@@ -344,7 +344,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             }
         }
 
-        if let attr::InlineAttr::Always = hint {
+        if let attr::InlineAttr::Always = trans_fn_attrs.inline {
             debug!("INLINING {:?} because inline(always) [cost={}]", callsite, cost);
             true
         } else {

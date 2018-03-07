@@ -20,6 +20,7 @@ use traits::{self, Reveal};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 use ty::fold::TypeVisitor;
 use ty::subst::{Subst, UnpackedKind};
+use ty::maps::TyCtxtAt;
 use ty::TypeVariants::*;
 use util::common::ErrorReported;
 use middle::lang_items;
@@ -385,7 +386,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 match predicate {
                     ty::Predicate::Projection(..) |
                     ty::Predicate::Trait(..) |
-                    ty::Predicate::Equate(..) |
                     ty::Predicate::Subtype(..) |
                     ty::Predicate::WellFormed(..) |
                     ty::Predicate::ObjectSafe(..) |
@@ -864,11 +864,10 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
     }
 
     pub fn is_sized(&'tcx self,
-                    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    param_env: ty::ParamEnv<'tcx>,
-                    span: Span)-> bool
+                    tcx_at: TyCtxtAt<'a, 'tcx, 'tcx>,
+                    param_env: ty::ParamEnv<'tcx>)-> bool
     {
-        tcx.at(span).is_sized_raw(param_env.and(self))
+        tcx_at.is_sized_raw(param_env.and(self))
     }
 
     pub fn is_freeze(&'tcx self,
