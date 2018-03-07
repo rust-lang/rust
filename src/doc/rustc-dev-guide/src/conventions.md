@@ -132,7 +132,7 @@ we do not currently run rustfmt all the time, that can introduce a lot
 of noise into your commit. Please isolate that into its own
 commit. This also makes rebases a lot less painful, since rustfmt
 tends to cause a lot of merge conflicts, and having those isolated
-into their own commit makes htem easier to resolve.
+into their own commit makes them easier to resolve.
 
 **No merges.** We do not allow merge commits into our history, other
 than those by bors. If you get a merge conflict, rebase instead via a
