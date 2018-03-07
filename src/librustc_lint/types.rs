@@ -21,7 +21,7 @@ use lint::{LintPass, LateLintPass};
 use std::cmp;
 use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 
-use syntax::ast;
+use syntax::{ast, attr};
 use syntax::abi::Abi;
 use syntax_pos::Span;
 use syntax::codemap;
@@ -365,12 +365,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
         ) {
             let (t, actually) = match ty {
                 ty::TyInt(t) => {
-                    let bits = int_ty_bits(t, cx.sess().target.isize_ty);
+                    let ity = attr::IntType::SignedInt(t);
+                    let bits = layout::Integer::from_attr(cx.tcx, ity).size().bits();
                     let actually = (val << (128 - bits)) as i128 >> (128 - bits);
                     (format!("{:?}", t), actually.to_string())
                 }
                 ty::TyUint(t) => {
-                    let bits = uint_ty_bits(t, cx.sess().target.usize_ty);
+                    let ity = attr::IntType::UnsignedInt(t);
+                    let bits = layout::Integer::from_attr(cx.tcx, ity).size().bits();
                     let actually = (val << (128 - bits)) >> (128 - bits);
                     (format!("{:?}", t), actually.to_string())
                 }
