@@ -42,7 +42,7 @@ The overall flow of the borrow checker is as follows:
   include references to the new regions that we are computing.
 - We then invoke `nll::replace_regions_in_mir` to modify this copy C.
   Among other things, this function will replace all of the regions in
-  the MIR with fresh [inference variables](glossary.html).
+  the MIR with fresh [inference variables](./appendix-glossary.html).
   - (More details can be found in [the regionck section](./mir-regionck.html).)
 - Next, we perform a number of [dataflow analyses](./appendix-background.html#dataflow)
   that compute what data is moved and when. The results of these analyses

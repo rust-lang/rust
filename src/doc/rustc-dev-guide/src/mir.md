@@ -239,4 +239,4 @@ but [you can read about those below](#promoted)).
 [mir]: https://github.com/rust-lang/rust/tree/master/src/librustc/mir
 [mirmanip]: https://github.com/rust-lang/rust/tree/master/src/librustc_mir
 [mir]: https://github.com/rust-lang/rust/tree/master/src/librustc/mir
-[newtype'd]: glossary.html
+[newtype'd]: appendix-glossary.html
