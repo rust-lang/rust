@@ -37,3 +37,13 @@ lazy_static! {
         }
     };
 }
+
+lazy_static! {
+    static ref FOO: HashMap<
+        String,
+        (
+            &'static str,
+            fn(Foo) -> Result<Box<Bar>, Either<FooError, BarError>>
+        ),
+    > = HashMap::new();
+}
