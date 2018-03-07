@@ -2643,3 +2643,13 @@ impl<'a> ToExpr for MacroArg {
         }
     }
 }
+
+impl ToExpr for ast::GenericParam {
+    fn to_expr(&self) -> Option<&ast::Expr> {
+        None
+    }
+
+    fn can_be_overflowed(&self, _: &RewriteContext, _: usize) -> bool {
+        false
+    }
+}
