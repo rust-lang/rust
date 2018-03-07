@@ -233,7 +233,11 @@ pub fn rewrite_macro(
                 shape,
                 mac.span,
                 context.config.width_heuristics().fn_call_width,
-                trailing_comma,
+                if trailing_comma {
+                    Some(SeparatorTactic::Always)
+                } else {
+                    Some(SeparatorTactic::Never)
+                },
             ).map(|rw| match position {
                 MacroPosition::Item => format!("{};", rw),
                 _ => rw,

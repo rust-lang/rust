@@ -343,7 +343,11 @@ fn rewrite_tuple_pat(
         shape,
         span,
         context.config.max_width(),
-        add_comma,
+        if add_comma {
+            Some(SeparatorTactic::Always)
+        } else {
+            None
+        },
     )
 }
 

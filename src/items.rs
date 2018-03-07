@@ -1290,7 +1290,7 @@ fn format_tuple_struct(
             shape,
             span,
             context.config.width_heuristics().fn_call_width,
-            false,
+            None,
         )?;
     }
 

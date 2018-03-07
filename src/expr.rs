@@ -1936,9 +1936,13 @@ pub fn rewrite_call(
         span,
         context.config.width_heuristics().fn_call_width,
         if context.inside_macro {
-            span_ends_with_comma(context, span)
+            if span_ends_with_comma(context, span) {
+                Some(SeparatorTactic::Always)
+            } else {
+                Some(SeparatorTactic::Never)
+            }
         } else {
-            false
+            None
         },
     )
 }
@@ -2422,10 +2426,18 @@ where
     debug!("rewrite_tuple {:?}", shape);
     if context.use_block_indent() {
         // We use the same rule as function calls for rewriting tuples.
-        let force_trailing_comma = if context.inside_macro {
-            span_ends_with_comma(context, span)
+        let force_tactic = if context.inside_macro {
+            if span_ends_with_comma(context, span) {
+                Some(SeparatorTactic::Always)
+            } else {
+                Some(SeparatorTactic::Never)
+            }
         } else {
-            items.len() == 1
+            if items.len() == 1 {
+                Some(SeparatorTactic::Always)
+            } else {
+                None
+            }
         };
         overflow::rewrite_with_parens(
             context,
@@ -2434,7 +2446,7 @@ where
             shape,
             span,
             context.config.width_heuristics().fn_call_width,
-            force_trailing_comma,
+            force_tactic,
         )
     } else {
         rewrite_tuple_in_visual_indent_style(context, items, span, shape)

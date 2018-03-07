@@ -33,7 +33,7 @@ pub fn rewrite_with_parens<T>(
     shape: Shape,
     span: Span,
     item_max_width: usize,
-    force_trailing_comma: bool,
+    force_separator_tactic: Option<SeparatorTactic>,
 ) -> Option<String>
 where
     T: Rewrite + ToExpr + Spanned,
@@ -47,7 +47,7 @@ where
         "(",
         ")",
         item_max_width,
-        force_trailing_comma,
+        force_separator_tactic,
     ).rewrite(shape)
 }
 
@@ -70,7 +70,7 @@ where
         "<",
         ">",
         context.config.max_width(),
-        false,
+        None,
     ).rewrite(shape)
 }
 
@@ -85,7 +85,7 @@ struct Context<'a, T: 'a> {
     span: Span,
     item_max_width: usize,
     one_line_width: usize,
-    force_trailing_comma: bool,
+    force_separator_tactic: Option<SeparatorTactic>,
 }
 
 impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
@@ -98,7 +98,7 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
         prefix: &'static str,
         suffix: &'static str,
         item_max_width: usize,
-        force_trailing_comma: bool,
+        force_separator_tactic: Option<SeparatorTactic>,
     ) -> Context<'a, T> {
         // 2 = `( `, 1 = `(`
         let paren_overhead = if context.config.spaces_within_parens_and_brackets() {
@@ -134,7 +134,7 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
             suffix,
             item_max_width,
             one_line_width,
-            force_trailing_comma,
+            force_separator_tactic,
         }
     }
 
@@ -336,9 +336,9 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
         let fmt = ListFormatting {
             tactic,
             separator: ",",
-            trailing_separator: if self.force_trailing_comma {
-                SeparatorTactic::Always
-            } else if self.context.inside_macro || !self.context.use_block_indent() {
+            trailing_separator: if let Some(tactic) = self.force_separator_tactic {
+                tactic
+            } else if !self.context.use_block_indent() {
                 SeparatorTactic::Never
             } else {
                 self.context.config.trailing_comma()
