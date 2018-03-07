@@ -1,7 +1,7 @@
-- Feature Name: const_locals
+- Feature Name: `const_locals`
 - Start Date: 2018-01-11
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#2341](https://github.com/rust-lang/rfcs/pull/2341)
+- Rust Issue: [rust-lang/rust#48821](https://github.com/rust-lang/rust/issues/48821)
 
 # Summary
 [summary]: #summary
