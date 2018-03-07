@@ -74,6 +74,7 @@ mod lists;
 mod macros;
 mod missed_spans;
 pub mod modules;
+mod overflow;
 mod patterns;
 mod reorder;
 mod rewrite;

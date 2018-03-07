@@ -15,11 +15,12 @@ use syntax::ptr;
 
 use codemap::SpanUtils;
 use comment::FindUncommented;
-use expr::{can_be_overflowed_expr, rewrite_call_inner, rewrite_pair, rewrite_unary_prefix,
-           wrap_struct_field, PairParts};
+use expr::{can_be_overflowed_expr, rewrite_pair, rewrite_unary_prefix, wrap_struct_field,
+           PairParts};
 use lists::{itemize_list, shape_for_tactic, struct_lit_formatting, struct_lit_shape,
             struct_lit_tactic, write_list};
 use macros::{rewrite_macro, MacroPosition};
+use overflow;
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use spanned::Spanned;
@@ -335,13 +336,13 @@ fn rewrite_tuple_pat(
         pat_ref_vec.push(pat);
     }
 
-    rewrite_call_inner(
+    overflow::rewrite_with_parens(
         &context,
         &path_str,
         &pat_ref_vec[..],
-        span,
         shape,
-        shape.width,
+        span,
+        context.config.max_width(),
         add_comma,
     )
 }

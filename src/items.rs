@@ -23,10 +23,10 @@ use codemap::{LineRangeUtils, SpanUtils};
 use comment::{combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
               recover_missing_comment_in_span, rewrite_missing_comment, FindUncommented};
 use config::{BraceStyle, Config, Density, IndentStyle};
-use expr::{format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs,
-           rewrite_call_inner, ExprType};
+use expr::{format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs, ExprType};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
 use rewrite::{Rewrite, RewriteContext};
+use overflow;
 use shape::{Indent, Shape};
 use spanned::Spanned;
 use types::join_bounds;
@@ -1309,8 +1309,15 @@ fn format_tuple_struct(
     } else {
         let shape = Shape::indented(offset, context.config).sub_width(1)?;
         let fields = &fields.iter().collect::<Vec<_>>()[..];
-        let one_line_width = context.config.width_heuristics().fn_call_width;
-        result = rewrite_call_inner(context, &result, fields, span, shape, one_line_width, false)?;
+        result = overflow::rewrite_with_parens(
+            context,
+            &result,
+            fields,
+            shape,
+            span,
+            context.config.width_heuristics().fn_call_width,
+            false,
+        )?;
     }
 
     if !where_clause_str.is_empty() && !where_clause_str.contains('\n')

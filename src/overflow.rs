@@ -1,0 +1,491 @@
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
+//! Rewrite a list some items with overflow.
+// FIXME: Replace `ToExpr` with some enum.
+
+use config::lists::*;
+use syntax::ast;
+use syntax::codemap::Span;
+
+use closures;
+use codemap::SpanUtils;
+use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
+use rewrite::{Rewrite, RewriteContext};
+use expr::{is_nested_call, maybe_get_args_offset, ToExpr};
+use shape::Shape;
+use spanned::Spanned;
+use utils::{count_newlines, extra_offset, first_line_width, last_line_width, mk_sp, paren_overhead};
+
+use std::cmp::min;
+
+pub fn rewrite_with_parens<T>(
+    context: &RewriteContext,
+    ident: &str,
+    items: &[&T],
+    shape: Shape,
+    span: Span,
+    item_max_width: usize,
+    force_trailing_comma: bool,
+) -> Option<String>
+where
+    T: Rewrite + ToExpr + Spanned,
+{
+    Context::new(
+        context,
+        items,
+        ident,
+        shape,
+        span,
+        "(",
+        ")",
+        item_max_width,
+        force_trailing_comma,
+    ).rewrite(shape)
+}
+
+pub fn rewrite_with_angle_brackets<T>(
+    context: &RewriteContext,
+    ident: &str,
+    items: &[&T],
+    shape: Shape,
+    span: Span,
+) -> Option<String>
+where
+    T: Rewrite + ToExpr + Spanned,
+{
+    Context::new(
+        context,
+        items,
+        ident,
+        shape,
+        span,
+        "<",
+        ">",
+        context.config.max_width(),
+        false,
+    ).rewrite(shape)
+}
+
+struct Context<'a, T: 'a> {
+    context: &'a RewriteContext<'a>,
+    items: &'a [&'a T],
+    ident: &'a str,
+    prefix: &'static str,
+    suffix: &'static str,
+    one_line_shape: Shape,
+    nested_shape: Shape,
+    span: Span,
+    item_max_width: usize,
+    one_line_width: usize,
+    force_trailing_comma: bool,
+}
+
+impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
+    pub fn new(
+        context: &'a RewriteContext,
+        items: &'a [&'a T],
+        ident: &'a str,
+        shape: Shape,
+        span: Span,
+        prefix: &'static str,
+        suffix: &'static str,
+        item_max_width: usize,
+        force_trailing_comma: bool,
+    ) -> Context<'a, T> {
+        // 2 = `( `, 1 = `(`
+        let paren_overhead = if context.config.spaces_within_parens_and_brackets() {
+            2
+        } else {
+            1
+        };
+        let used_width = extra_offset(ident, shape);
+        let one_line_width = shape
+            .width
+            .checked_sub(used_width + 2 * paren_overhead)
+            .unwrap_or(0);
+
+        // 1 = "(" or ")"
+        let one_line_shape = shape
+            .offset_left(last_line_width(ident) + 1)
+            .and_then(|shape| shape.sub_width(1))
+            .unwrap_or(Shape { width: 0, ..shape });
+        let nested_shape = shape_from_indent_style(
+            context,
+            shape,
+            used_width + 2 * paren_overhead,
+            used_width + paren_overhead,
+        );
+        Context {
+            context,
+            items,
+            ident,
+            one_line_shape,
+            nested_shape,
+            span,
+            prefix,
+            suffix,
+            item_max_width,
+            one_line_width,
+            force_trailing_comma,
+        }
+    }
+
+    fn last_item(&self) -> Option<&&T> {
+        self.items.last()
+    }
+
+    fn items_span(&self) -> Span {
+        let span_lo = self.context
+            .snippet_provider
+            .span_after(self.span, self.prefix);
+        mk_sp(span_lo, self.span.hi())
+    }
+
+    fn rewrite_last_item_with_overflow(
+        &self,
+        last_list_item: &mut ListItem,
+        shape: Shape,
+    ) -> Option<String> {
+        let last_item = self.last_item()?;
+        let rewrite = if let Some(expr) = last_item.to_expr() {
+            match expr.node {
+                // When overflowing the closure which consists of a single control flow expression,
+                // force to use block if its condition uses multi line.
+                ast::ExprKind::Closure(..) => {
+                    // If the argument consists of multiple closures, we do not overflow
+                    // the last closure.
+                    if closures::args_have_many_closure(self.items) {
+                        None
+                    } else {
+                        closures::rewrite_last_closure(self.context, expr, shape)
+                    }
+                }
+                _ => expr.rewrite(self.context, shape),
+            }
+        } else {
+            last_item.rewrite(self.context, shape)
+        };
+
+        if let Some(rewrite) = rewrite {
+            let rewrite_first_line = Some(rewrite[..first_line_width(&rewrite)].to_owned());
+            last_list_item.item = rewrite_first_line;
+            Some(rewrite)
+        } else {
+            None
+        }
+    }
+
+    fn try_overflow_last_item(&self, list_items: &mut Vec<ListItem>) -> DefinitiveListTactic {
+        // 1 = "("
+        let combine_arg_with_callee = self.items.len() == 1 && self.items[0].to_expr().is_some()
+            && self.ident.len() + 1 <= self.context.config.tab_spaces();
+        let overflow_last = combine_arg_with_callee || can_be_overflowed(self.context, self.items);
+
+        // Replace the last item with its first line to see if it fits with
+        // first arguments.
+        let placeholder = if overflow_last {
+            let old_value = *self.context.force_one_line_chain.borrow();
+            if !combine_arg_with_callee {
+                if let Some(expr) = self.last_item().and_then(|item| item.to_expr()) {
+                    if let ast::ExprKind::MethodCall(..) = expr.node {
+                        self.context.force_one_line_chain.replace(true);
+                    }
+                }
+            }
+            let result = last_item_shape(
+                self.items,
+                list_items,
+                self.one_line_shape,
+                self.item_max_width,
+            ).and_then(|arg_shape| {
+                self.rewrite_last_item_with_overflow(
+                    &mut list_items[self.items.len() - 1],
+                    arg_shape,
+                )
+            });
+            self.context.force_one_line_chain.replace(old_value);
+            result
+        } else {
+            None
+        };
+
+        let mut tactic = definitive_tactic(
+            &*list_items,
+            ListTactic::LimitedHorizontalVertical(self.item_max_width),
+            Separator::Comma,
+            self.one_line_width,
+        );
+
+        // Replace the stub with the full overflowing last argument if the rewrite
+        // succeeded and its first line fits with the other arguments.
+        match (overflow_last, tactic, placeholder) {
+            (true, DefinitiveListTactic::Horizontal, Some(ref overflowed))
+                if self.items.len() == 1 =>
+            {
+                // When we are rewriting a nested function call, we restrict the
+                // bugdet for the inner function to avoid them being deeply nested.
+                // However, when the inner function has a prefix or a suffix
+                // (e.g. `foo() as u32`), this budget reduction may produce poorly
+                // formatted code, where a prefix or a suffix being left on its own
+                // line. Here we explicitlly check those cases.
+                if count_newlines(overflowed) == 1 {
+                    let rw = self.items
+                        .last()
+                        .and_then(|last_item| last_item.rewrite(self.context, self.nested_shape));
+                    let no_newline = rw.as_ref().map_or(false, |s| !s.contains('\n'));
+                    if no_newline {
+                        list_items[self.items.len() - 1].item = rw;
+                    } else {
+                        list_items[self.items.len() - 1].item = Some(overflowed.to_owned());
+                    }
+                } else {
+                    list_items[self.items.len() - 1].item = Some(overflowed.to_owned());
+                }
+            }
+            (true, DefinitiveListTactic::Horizontal, placeholder @ Some(..)) => {
+                list_items[self.items.len() - 1].item = placeholder;
+            }
+            _ if self.items.len() >= 1 => {
+                list_items[self.items.len() - 1].item = self.items
+                    .last()
+                    .and_then(|last_item| last_item.rewrite(self.context, self.nested_shape));
+
+                let default_tactic = || {
+                    definitive_tactic(
+                        &*list_items,
+                        ListTactic::LimitedHorizontalVertical(self.item_max_width),
+                        Separator::Comma,
+                        self.one_line_width,
+                    )
+                };
+
+                // Use horizontal layout for a function with a single argument as long as
+                // everything fits in a single line.
+                if self.items.len() == 1
+                && self.one_line_width != 0 // Vertical layout is forced.
+                && !list_items[0].has_comment()
+                    && !list_items[0].inner_as_ref().contains('\n')
+                    && ::lists::total_item_width(&list_items[0]) <= self.one_line_width
+                {
+                    tactic = DefinitiveListTactic::Horizontal;
+                } else {
+                    tactic = default_tactic();
+
+                    if tactic == DefinitiveListTactic::Vertical {
+                        if let Some((all_simple, num_args_before)) =
+                            maybe_get_args_offset(self.ident, self.items)
+                        {
+                            let one_line = all_simple
+                                && definitive_tactic(
+                                    &list_items[..num_args_before],
+                                    ListTactic::HorizontalVertical,
+                                    Separator::Comma,
+                                    self.nested_shape.width,
+                                )
+                                    == DefinitiveListTactic::Horizontal
+                                && definitive_tactic(
+                                    &list_items[num_args_before + 1..],
+                                    ListTactic::HorizontalVertical,
+                                    Separator::Comma,
+                                    self.nested_shape.width,
+                                )
+                                    == DefinitiveListTactic::Horizontal;
+
+                            if one_line {
+                                tactic = DefinitiveListTactic::SpecialMacro(num_args_before);
+                            };
+                        }
+                    }
+                }
+            }
+            _ => (),
+        }
+
+        tactic
+    }
+
+    fn rewrite_items(&self) -> Option<(bool, String)> {
+        let span = self.items_span();
+        let items = itemize_list(
+            self.context.snippet_provider,
+            self.items.iter(),
+            self.suffix,
+            ",",
+            |item| item.span().lo(),
+            |item| item.span().hi(),
+            |item| item.rewrite(self.context, self.nested_shape),
+            span.lo(),
+            span.hi(),
+            true,
+        );
+        let mut list_items: Vec<_> = items.collect();
+
+        // Try letting the last argument overflow to the next line with block
+        // indentation. If its first line fits on one line with the other arguments,
+        // we format the function arguments horizontally.
+        let tactic = self.try_overflow_last_item(&mut list_items);
+
+        let fmt = ListFormatting {
+            tactic,
+            separator: ",",
+            trailing_separator: if self.force_trailing_comma {
+                SeparatorTactic::Always
+            } else if self.context.inside_macro || !self.context.use_block_indent() {
+                SeparatorTactic::Never
+            } else {
+                self.context.config.trailing_comma()
+            },
+            separator_place: SeparatorPlace::Back,
+            shape: self.nested_shape,
+            ends_with_newline: self.context.use_block_indent()
+                && tactic == DefinitiveListTactic::Vertical,
+            preserve_newline: false,
+            config: self.context.config,
+        };
+
+        write_list(&list_items, &fmt)
+            .map(|items_str| (tactic == DefinitiveListTactic::Horizontal, items_str))
+    }
+
+    fn wrap_items(&self, items_str: &str, shape: Shape, is_extendable: bool) -> String {
+        let shape = Shape {
+            width: shape
+                .width
+                .checked_sub(last_line_width(self.ident))
+                .unwrap_or(0),
+            ..shape
+        };
+
+        let paren_overhead = paren_overhead(self.context);
+        let fits_one_line = items_str.len() + paren_overhead <= shape.width;
+        let extend_width = if items_str.is_empty() {
+            paren_overhead
+        } else {
+            paren_overhead / 2
+        };
+        let nested_indent_str = self.nested_shape
+            .indent
+            .to_string_with_newline(self.context.config);
+        let indent_str = shape
+            .block()
+            .indent
+            .to_string_with_newline(self.context.config);
+        let mut result = String::with_capacity(
+            self.ident.len() + items_str.len() + 2 + indent_str.len() + nested_indent_str.len(),
+        );
+        result.push_str(self.ident);
+        result.push_str(self.prefix);
+        if !self.context.use_block_indent()
+            || (self.context.inside_macro && !items_str.contains('\n') && fits_one_line)
+            || (is_extendable && extend_width <= shape.width)
+        {
+            if self.context.config.spaces_within_parens_and_brackets() && !items_str.is_empty() {
+                result.push(' ');
+                result.push_str(items_str);
+                result.push(' ');
+            } else {
+                result.push_str(items_str);
+            }
+        } else {
+            if !items_str.is_empty() {
+                result.push_str(&nested_indent_str);
+                result.push_str(items_str);
+            }
+            result.push_str(&indent_str);
+        }
+        result.push_str(self.suffix);
+        result
+    }
+
+    fn rewrite(&self, shape: Shape) -> Option<String> {
+        let (extendable, items_str) = self.rewrite_items()?;
+
+        // If we are using visual indent style and failed to format, retry with block indent.
+        if !self.context.use_block_indent() && need_block_indent(&items_str, self.nested_shape)
+            && !extendable
+        {
+            self.context.use_block.replace(true);
+            let result = self.rewrite(shape);
+            self.context.use_block.replace(false);
+            return result;
+        }
+
+        Some(self.wrap_items(&items_str, shape, extendable))
+    }
+}
+
+fn need_block_indent(s: &str, shape: Shape) -> bool {
+    s.lines().skip(1).any(|s| {
+        s.find(|c| !char::is_whitespace(c))
+            .map_or(false, |w| w + 1 < shape.indent.width())
+    })
+}
+
+fn can_be_overflowed<'a, T>(context: &RewriteContext, items: &[&T]) -> bool
+where
+    T: Rewrite + Spanned + ToExpr + 'a,
+{
+    items
+        .last()
+        .map_or(false, |x| x.can_be_overflowed(context, items.len()))
+}
+
+/// Returns a shape for the last argument which is going to be overflowed.
+fn last_item_shape<T>(
+    lists: &[&T],
+    items: &[ListItem],
+    shape: Shape,
+    args_max_width: usize,
+) -> Option<Shape>
+where
+    T: Rewrite + Spanned + ToExpr,
+{
+    let is_nested_call = lists
+        .iter()
+        .next()
+        .and_then(|item| item.to_expr())
+        .map_or(false, is_nested_call);
+    if items.len() == 1 && !is_nested_call {
+        return Some(shape);
+    }
+    let offset = items.iter().rev().skip(1).fold(0, |acc, i| {
+        // 2 = ", "
+        acc + 2 + i.inner_as_ref().len()
+    });
+    Shape {
+        width: min(args_max_width, shape.width),
+        ..shape
+    }.offset_left(offset)
+}
+
+fn shape_from_indent_style(
+    context: &RewriteContext,
+    shape: Shape,
+    overhead: usize,
+    offset: usize,
+) -> Shape {
+    if context.use_block_indent() {
+        // 1 = ","
+        shape
+            .block()
+            .block_indent(context.config.tab_spaces())
+            .with_max_width(context.config)
+            .sub_width(1)
+            .unwrap()
+    } else {
+        let shape = shape.visual_indent(offset);
+        if let Some(shape) = shape.sub_width(overhead) {
+            shape
+        } else {
+            Shape { width: 0, ..shape }
+        }
+    }
+}

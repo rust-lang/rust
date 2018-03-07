@@ -384,14 +384,18 @@ where
         FunctionRetTy::Default(..) => String::new(),
     };
 
-    let extendable = (!list_str.contains('\n') || list_str.is_empty()) && !output.contains('\n');
-    let args = wrap_args_with_parens(
-        context,
-        &list_str,
-        extendable,
-        shape.sub_width(first_line_width(&output))?,
-        Shape::indented(offset, context.config),
-    );
+    let args = if (!list_str.contains('\n') || list_str.is_empty()) && !output.contains('\n')
+        || !context.use_block_indent()
+    {
+        format!("({})", list_str)
+    } else {
+        format!(
+            "({}{}{})",
+            offset.to_string_with_newline(context.config),
+            list_str,
+            shape.block().indent.to_string_with_newline(context.config),
+        )
+    };
     if last_line_width(&args) + first_line_width(&output) <= shape.width {
         Some(format!("{}{}", args, output))
     } else {

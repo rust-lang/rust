@@ -34,8 +34,9 @@ use syntax::util::ThinVec;
 
 use codemap::SpanUtils;
 use comment::{contains_comment, remove_trailing_white_spaces, FindUncommented};
-use expr::{rewrite_array, rewrite_call_inner};
+use expr::rewrite_array;
 use lists::{itemize_list, write_list, ListFormatting};
+use overflow;
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
 use utils::{format_visibility, mk_sp, wrap_str};
@@ -223,14 +224,14 @@ pub fn rewrite_macro(
 
     match style {
         MacroStyle::Parens => {
-            // Format macro invocation as function call, forcing no trailing
+            // Format macro invocation as function call, preserve the trailing
             // comma because not all macros support them.
-            rewrite_call_inner(
+            overflow::rewrite_with_parens(
                 context,
                 &macro_name,
                 &arg_vec.iter().map(|e| &*e).collect::<Vec<_>>()[..],
-                mac.span,
                 shape,
+                mac.span,
                 context.config.width_heuristics().fn_call_width,
                 trailing_comma,
             ).map(|rw| match position {
