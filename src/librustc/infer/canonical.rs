@@ -29,6 +29,7 @@
 use infer::{InferCtxt, InferOk, InferResult, RegionVariableOrigin, TypeVariableOrigin};
 use rustc_data_structures::indexed_vec::Idx;
 use std::fmt::Debug;
+use std::ops::Index;
 use syntax::codemap::Span;
 use traits::{Obligation, ObligationCause, PredicateObligation};
 use ty::{self, CanonicalVar, Lift, Region, Slice, Ty, TyCtxt, TypeFlags};
@@ -395,27 +396,26 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                 .collect(),
         };
 
-        // Apply the result substitution to the query.
-        let QueryResult {
-            var_values: query_values,
-            region_constraints: query_region_constraints,
-            certainty: _,
-            value: user_result,
-        } = query_result.substitute(self.tcx, result_subst);
-
         // Unify the original values for the canonical variables in
         // the input with the value found in the query
         // post-substitution. Often, but not always, this is a no-op,
         // because we already found the mapping in the first step.
+        let substituted_values = |index: CanonicalVar| -> Kind<'tcx> {
+            query_result.substitute_projected(self.tcx, result_subst, |v| &v.var_values[index])
+        };
         let mut obligations =
-            self.unify_canonical_vars(cause, param_env, original_values, &query_values)?
+            self.unify_canonical_vars(cause, param_env, original_values, substituted_values)?
                 .into_obligations();
 
         obligations.extend(self.query_region_constraints_into_obligations(
             cause,
             param_env,
-            query_region_constraints,
+            &query_result.value.region_constraints,
+            result_subst,
         ));
+
+        let user_result: R =
+            query_result.substitute_projected(self.tcx, result_subst, |q_r| &q_r.value);
 
         Ok(InferOk {
             value: user_result,
@@ -426,17 +426,20 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// Converts the region constraints resulting from a query into an
     /// iterator of obligations.
     fn query_region_constraints_into_obligations<'a>(
-        &self,
+        &'a self,
         cause: &'a ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        query_region_constraints: QueryRegionConstraints<'tcx>,
+        unsubstituted_region_constraints: &'a QueryRegionConstraints<'tcx>,
+        result_subst: &'a CanonicalVarValues<'tcx>,
     ) -> impl Iterator<Item = PredicateObligation<'tcx>> + 'a {
         let QueryRegionConstraints {
             region_outlives,
             ty_outlives,
-        } = query_region_constraints;
+        } = unsubstituted_region_constraints;
 
-        let region_obligations = region_outlives.into_iter().map(move |(r1, r2)| {
+        let region_obligations = region_outlives.iter().map(move |(r1, r2)| {
+            let r1 = substitute_value(self.tcx, result_subst, r1);
+            let r2 = substitute_value(self.tcx, result_subst, r2);
             Obligation::new(
                 cause.clone(),
                 param_env,
@@ -444,7 +447,9 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             )
         });
 
-        let ty_obligations = ty_outlives.into_iter().map(move |(t1, r2)| {
+        let ty_obligations = ty_outlives.iter().map(move |(t1, r2)| {
+            let t1 = substitute_value(self.tcx, result_subst, t1);
+            let r2 = substitute_value(self.tcx, result_subst, r2);
             Obligation::new(
                 cause.clone(),
                 param_env,
@@ -456,17 +461,19 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     }
 
     /// Given two sets of values for the same set of canonical variables, unify them.
-    pub fn unify_canonical_vars(
+    /// The second set is produced lazilly by supplying indices from the first set.
+    fn unify_canonical_vars(
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         variables1: &CanonicalVarValues<'tcx>,
-        variables2: &CanonicalVarValues<'tcx>,
+        variables2: impl Fn(CanonicalVar) -> Kind<'tcx>,
     ) -> InferResult<'tcx, ()> {
-        assert_eq!(variables1.var_values.len(), variables2.var_values.len());
         self.commit_if_ok(|_| {
             let mut obligations = vec![];
-            for (value1, value2) in variables1.var_values.iter().zip(&variables2.var_values) {
+            for (index, value1) in variables1.var_values.iter_enumerated() {
+                let value2 = variables2(index);
+
                 match (value1.unpack(), value2.unpack()) {
                     (UnpackedKind::Type(v1), UnpackedKind::Type(v2)) => {
                         obligations
@@ -724,7 +731,9 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
                     value: out_value,
                 },
             );
-            let values = CanonicalVarValues { var_values: IndexVec::default() };
+            let values = CanonicalVarValues {
+                var_values: IndexVec::default(),
+            };
             return (canon_value, values);
         }
 
@@ -810,13 +819,50 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
 impl<'tcx, V> Canonical<'tcx, V> {
     /// Instantiate the wrapped value, replacing each canonical value
     /// with the value given in `var_values`.
-    pub fn substitute(&self, tcx: TyCtxt<'_, '_, 'tcx>, var_values: &CanonicalVarValues<'tcx>) -> V
+    fn substitute(&self, tcx: TyCtxt<'_, '_, 'tcx>, var_values: &CanonicalVarValues<'tcx>) -> V
     where
         V: TypeFoldable<'tcx>,
     {
+        self.substitute_projected(tcx, var_values, |value| value)
+    }
+
+    /// Invoke `projection_fn` with `self.value` to get a value V that
+    /// is expressed in terms of the same canonical variables bound in
+    /// `self`. Apply the substitution `var_values` to this value V,
+    /// replacing each of the canonical variables.
+    fn substitute_projected<T>(
+        &self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        var_values: &CanonicalVarValues<'tcx>,
+        projection_fn: impl FnOnce(&V) -> &T,
+    ) -> T
+    where
+        T: TypeFoldable<'tcx>,
+    {
         assert_eq!(self.variables.len(), var_values.var_values.len());
-        self.value
-            .fold_with(&mut CanonicalVarValuesSubst { tcx, var_values })
+        let value = projection_fn(&self.value);
+        substitute_value(tcx, var_values, value)
+    }
+}
+
+/// Substitute the values from `var_values` into `value`. `var_values`
+/// must be values for the set of cnaonical variables that appear in
+/// `value`.
+fn substitute_value<'a, 'tcx, T>(
+    tcx: TyCtxt<'_, '_, 'tcx>,
+    var_values: &CanonicalVarValues<'tcx>,
+    value: &'a T,
+) -> T
+where
+    T: TypeFoldable<'tcx>,
+{
+    if var_values.var_values.is_empty() {
+        debug_assert!(!value.has_type_flags(TypeFlags::HAS_CANONICAL_VARS));
+        value.clone()
+    } else if !value.has_type_flags(TypeFlags::HAS_CANONICAL_VARS) {
+        value.clone()
+    } else {
+        value.fold_with(&mut CanonicalVarValuesSubst { tcx, var_values })
     }
 }
 
@@ -838,7 +884,13 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for CanonicalVarValuesSubst<'cx, 'g
                     r => bug!("{:?} is a type but value is {:?}", c, r),
                 }
             }
-            _ => t.super_fold_with(self),
+            _ => {
+                if !t.has_type_flags(TypeFlags::HAS_CANONICAL_VARS) {
+                    t
+                } else {
+                    t.super_fold_with(self)
+                }
+            }
         }
     }
 
@@ -925,4 +977,12 @@ BraceStructLiftImpl! {
         type Lifted = QueryResult<'tcx, R::Lifted>;
         var_values, region_constraints, certainty, value
     } where R: Lift<'tcx>
+}
+
+impl<'tcx> Index<CanonicalVar> for CanonicalVarValues<'tcx> {
+    type Output = Kind<'tcx>;
+
+    fn index(&self, value: CanonicalVar) -> &Kind<'tcx> {
+        &self.var_values[value]
+    }
 }
