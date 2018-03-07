@@ -1203,7 +1203,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 }
 
                 let pointee = tcx.normalize_associated_type_in_env(&pointee, param_env);
-                if pointee.is_sized(tcx, param_env, DUMMY_SP) {
+                if pointee.is_sized(tcx.at(DUMMY_SP), param_env) {
                     return Ok(tcx.intern_layout(LayoutDetails::scalar(self, data_ptr)));
                 }
 
@@ -1428,7 +1428,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                         let param_env = tcx.param_env(def.did);
                         let last_field = def.variants[v].fields.last().unwrap();
                         let always_sized = tcx.type_of(last_field.did)
-                          .is_sized(tcx, param_env, DUMMY_SP);
+                          .is_sized(tcx.at(DUMMY_SP), param_env);
                         if !always_sized { StructKind::MaybeUnsized }
                         else { StructKind::AlwaysSized }
                     };

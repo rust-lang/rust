@@ -796,7 +796,7 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let ptr_vtable = |inner_source: Ty<'tcx>, inner_target: Ty<'tcx>| {
         let type_has_metadata = |ty: Ty<'tcx>| -> bool {
             use syntax_pos::DUMMY_SP;
-            if ty.is_sized(tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP) {
+            if ty.is_sized(tcx.at(DUMMY_SP), ty::ParamEnv::empty(traits::Reveal::All)) {
                 return false;
             }
             let tail = tcx.struct_tail(ty);

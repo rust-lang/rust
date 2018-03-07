@@ -435,7 +435,7 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
 
     pub fn type_has_metadata(&self, ty: Ty<'tcx>) -> bool {
         use syntax_pos::DUMMY_SP;
-        if ty.is_sized(self.tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP) {
+        if ty.is_sized(self.tcx.at(DUMMY_SP), ty::ParamEnv::empty(traits::Reveal::All)) {
             return false;
         }
 
