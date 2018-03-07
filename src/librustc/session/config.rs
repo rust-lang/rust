@@ -2391,6 +2391,7 @@ mod tests {
     use super::{Externs, OutputType, OutputTypes};
     use rustc_back::{PanicStrategy, RelroLevel};
     use syntax::symbol::Symbol;
+    use syntax;
 
     fn optgroups() -> getopts::Options {
         let mut opts = getopts::Options::new();
@@ -2411,45 +2412,50 @@ mod tests {
     // When the user supplies --test we should implicitly supply --cfg test
     #[test]
     fn test_switch_implies_cfg_test() {
-        let matches = &match optgroups().parse(&["--test".to_string()]) {
-            Ok(m) => m,
-            Err(f) => panic!("test_switch_implies_cfg_test: {}", f),
-        };
-        let registry = errors::registry::Registry::new(&[]);
-        let (sessopts, cfg) = build_session_options_and_crate_config(matches);
-        let sess = build_session(sessopts, None, registry);
-        let cfg = build_configuration(&sess, cfg);
-        assert!(cfg.contains(&(Symbol::intern("test"), None)));
+        syntax::with_globals(|| {
+            let matches = &match optgroups().parse(&["--test".to_string()]) {
+                Ok(m) => m,
+                Err(f) => panic!("test_switch_implies_cfg_test: {}", f),
+            };
+            let registry = errors::registry::Registry::new(&[]);
+            let (sessopts, cfg) = build_session_options_and_crate_config(matches);
+            let sess = build_session(sessopts, None, registry);
+            let cfg = build_configuration(&sess, cfg);
+            assert!(cfg.contains(&(Symbol::intern("test"), None)));
+        });
     }
 
     // When the user supplies --test and --cfg test, don't implicitly add
     // another --cfg test
     #[test]
     fn test_switch_implies_cfg_test_unless_cfg_test() {
-        let matches = &match optgroups().parse(&["--test".to_string(), "--cfg=test".to_string()]) {
-            Ok(m) => m,
-            Err(f) => panic!("test_switch_implies_cfg_test_unless_cfg_test: {}", f),
-        };
-        let registry = errors::registry::Registry::new(&[]);
-        let (sessopts, cfg) = build_session_options_and_crate_config(matches);
-        let sess = build_session(sessopts, None, registry);
-        let cfg = build_configuration(&sess, cfg);
-        let mut test_items = cfg.iter().filter(|&&(name, _)| name == "test");
-        assert!(test_items.next().is_some());
-        assert!(test_items.next().is_none());
+        syntax::with_globals(|| {
+            let matches = &match optgroups().parse(&["--test".to_string(),
+                                                     "--cfg=test".to_string()]) {
+                Ok(m) => m,
+                Err(f) => panic!("test_switch_implies_cfg_test_unless_cfg_test: {}", f),
+            };
+            let registry = errors::registry::Registry::new(&[]);
+            let (sessopts, cfg) = build_session_options_and_crate_config(matches);
+            let sess = build_session(sessopts, None, registry);
+            let cfg = build_configuration(&sess, cfg);
+            let mut test_items = cfg.iter().filter(|&&(name, _)| name == "test");
+            assert!(test_items.next().is_some());
+            assert!(test_items.next().is_none());
+        });
     }
 
     #[test]
     fn test_can_print_warnings() {
-        {
+        syntax::with_globals(|| {
             let matches = optgroups().parse(&["-Awarnings".to_string()]).unwrap();
             let registry = errors::registry::Registry::new(&[]);
             let (sessopts, _) = build_session_options_and_crate_config(&matches);
             let sess = build_session(sessopts, None, registry);
             assert!(!sess.diagnostic().flags.can_emit_warnings);
-        }
+        });
 
-        {
+        syntax::with_globals(|| {
             let matches = optgroups()
                 .parse(&["-Awarnings".to_string(), "-Dwarnings".to_string()])
                 .unwrap();
@@ -2457,15 +2463,15 @@ mod tests {
             let (sessopts, _) = build_session_options_and_crate_config(&matches);
             let sess = build_session(sessopts, None, registry);
             assert!(sess.diagnostic().flags.can_emit_warnings);
-        }
+        });
 
-        {
+        syntax::with_globals(|| {
             let matches = optgroups().parse(&["-Adead_code".to_string()]).unwrap();
             let registry = errors::registry::Registry::new(&[]);
             let (sessopts, _) = build_session_options_and_crate_config(&matches);
             let sess = build_session(sessopts, None, registry);
             assert!(sess.diagnostic().flags.can_emit_warnings);
-        }
+        });
     }
 
     #[test]

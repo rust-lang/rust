@@ -102,7 +102,9 @@ pub fn main() {
     const STACK_SIZE: usize = 32_000_000; // 32MB
     env_logger::init();
     let res = std::thread::Builder::new().stack_size(STACK_SIZE).spawn(move || {
-        get_args().map(|args| main_args(&args)).unwrap_or(1)
+        syntax::with_globals(move || {
+            get_args().map(|args| main_args(&args)).unwrap_or(1)
+        })
     }).unwrap().join().unwrap_or(101);
     process::exit(res as i32);
 }
@@ -554,7 +556,8 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
     });
 
     let (tx, rx) = channel();
-    rustc_driver::monitor(move || {
+
+    rustc_driver::monitor(move || syntax::with_globals(move || {
         use rustc::session::config::Input;
 
         let (mut krate, renderinfo) =
@@ -623,7 +626,7 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
         let krate = pm.run_plugins(krate);
 
         tx.send(f(Output { krate: krate, renderinfo: renderinfo, passes: passes })).unwrap();
-    });
+    }));
     rx.recv().unwrap()
 }
 

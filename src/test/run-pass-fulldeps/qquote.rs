@@ -21,6 +21,10 @@ use syntax::symbol::Symbol;
 use syntax_pos::DUMMY_SP;
 
 fn main() {
+    syntax::with_globals(|| run());
+}
+
+fn run() {
     let ps = syntax::parse::ParseSess::new(FilePathMapping::empty());
     let mut resolver = syntax::ext::base::DummyResolver;
     let mut cx = syntax::ext::base::ExtCtxt::new(

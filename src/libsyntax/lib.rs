@@ -39,8 +39,11 @@ extern crate std_unicode;
 pub extern crate rustc_errors as errors;
 extern crate syntax_pos;
 extern crate rustc_data_structures;
+#[macro_use] extern crate scoped_tls;
 
 extern crate serialize as rustc_serialize; // used by deriving
+
+use rustc_data_structures::sync::Lock;
 
 // A variant of 'try!' that panics on an Err. This is used as a crutch on the
 // way towards a non-panic!-prone parser. It should be used for fatal parsing
@@ -71,6 +74,33 @@ macro_rules! unwrap_or {
         }
     }
 }
+
+struct Globals {
+    used_attrs: Lock<Vec<u64>>,
+    known_attrs: Lock<Vec<u64>>,
+    syntax_pos_globals: syntax_pos::Globals,
+}
+
+impl Globals {
+    fn new() -> Globals {
+        Globals {
+            used_attrs: Lock::new(Vec::new()),
+            known_attrs: Lock::new(Vec::new()),
+            syntax_pos_globals: syntax_pos::Globals::new(),
+        }
+    }
+}
+
+pub fn with_globals<F, R>(f: F) -> R
+    where F: FnOnce() -> R
+{
+    let globals = Globals::new();
+    GLOBALS.set(&globals, || {
+        syntax_pos::GLOBALS.set(&globals.syntax_pos_globals, f)
+    })
+}
+
+scoped_thread_local!(static GLOBALS: Globals);
 
 #[macro_use]
 pub mod diagnostics {
