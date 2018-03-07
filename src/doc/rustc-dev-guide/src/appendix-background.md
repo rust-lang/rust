@@ -1,4 +1,4 @@
-# Background topics
+# Appendix B: Background topics
 
 This section covers a numbers of common compiler terms that arise in
 this guide. We try to give the general definition while providing some

@@ -26,7 +26,7 @@ Some of the key characteristics of MIR are:
 - It does not have nested expressions.
 - All types in MIR are fully explicit.
 
-[cfg]: ./background.html#cfg
+[cfg]: ./appendix-background.html#cfg
 
 ## Key MIR vocabulary
 

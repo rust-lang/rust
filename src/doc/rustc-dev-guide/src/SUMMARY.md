@@ -46,6 +46,10 @@
     - [miri const evaluator](./miri.md)
 - [Parameter Environments](./param_env.md)
 - [Generating LLVM IR](./trans.md)
-- [Background material](./background.md)
-- [Glossary](./glossary.md)
-- [Code Index](./code-index.md)
+
+---
+
+- [Appendix A: Stupid Stats](./appendix-stupid-stats.md)
+- [Appendix B: Background material](./appendix-background.md)
+- [Appendix C: Glossary](./appendix-glossary.md)
+- [Appendix D: Code Index](./appendix-code-index.md)
