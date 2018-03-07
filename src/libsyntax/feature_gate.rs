@@ -30,7 +30,7 @@ use ast::{self, NodeId, PatKind, RangeEnd, RangeSyntax};
 use attr;
 use epoch::Epoch;
 use codemap::Spanned;
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 use errors::{DiagnosticBuilder, Handler, FatalError};
 use visit::{self, FnKind, Visitor};
 use parse::ParseSess;
@@ -59,7 +59,8 @@ macro_rules! declare_features {
         /// Represents active features that are currently being implemented or
         /// currently being considered for addition/removal.
         const ACTIVE_FEATURES:
-                &'static [(&'static str, &'static str, Option<u32>, Option<Epoch>, fn(&mut Features, Span))] =
+                &'static [(&'static str, &'static str, Option<u32>,
+                           Option<Epoch>, fn(&mut Features, Span))] =
             &[$((stringify!($feature), $ver, $issue, $epoch, set!($feature))),+];
 
         /// A set of features to be used by later passes.
@@ -408,7 +409,7 @@ declare_features! (
     (active, match_default_bindings, "1.22.0", Some(42640), None),
 
     // Trait object syntax with `dyn` prefix
-    (active, dyn_trait, "1.22.0", Some(44662), None),
+    (active, dyn_trait, "1.22.0", Some(44662), Some(Epoch::Epoch2018)),
 
     // `crate` as visibility modifier, synonymous to `pub(crate)`
     (active, crate_visibility_modifier, "1.23.0", Some(45388), None),
@@ -1794,10 +1795,21 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 }
 
-pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute]) -> Features {
+pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
+                    epoch: Epoch) -> Features {
     let mut features = Features::new();
 
     let mut feature_checker = FeatureChecker::default();
+
+    for &(.., f_epoch, set) in ACTIVE_FEATURES.iter() {
+        if let Some(f_epoch) = f_epoch {
+            if epoch >= f_epoch {
+                // FIXME(Manishearth) there is currently no way to set
+                // lang features by epoch
+                set(&mut features, DUMMY_SP);
+            }
+        }
+    }
 
     for attr in krate_attrs {
         if !attr.check_name("feature") {
