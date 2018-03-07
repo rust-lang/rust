@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::env;
 
@@ -31,12 +30,6 @@ pub use errors::*;
 // Maximum width of any line in an extended error description (inclusive).
 const MAX_DESCRIPTION_WIDTH: usize = 80;
 
-thread_local! {
-    static REGISTERED_DIAGNOSTICS: RefCell<ErrorMap> = {
-        RefCell::new(BTreeMap::new())
-    }
-}
-
 /// Error information type.
 pub struct ErrorInfo {
     pub description: Option<Name>,
@@ -45,14 +38,6 @@ pub struct ErrorInfo {
 
 /// Mapping from error codes to metadata.
 pub type ErrorMap = BTreeMap<Name, ErrorInfo>;
-
-fn with_registered_diagnostics<T, F>(f: F) -> T where
-    F: FnOnce(&mut ErrorMap) -> T,
-{
-    REGISTERED_DIAGNOSTICS.with(move |slot| {
-        f(&mut *slot.borrow_mut())
-    })
-}
 
 pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,
                                    span: Span,
@@ -63,7 +48,7 @@ pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,
         _ => unreachable!()
     };
 
-    with_registered_diagnostics(|diagnostics| {
+    ecx.parse_sess.registered_diagnostics.with_lock(|diagnostics| {
         match diagnostics.get_mut(&code.name) {
             // Previously used errors.
             Some(&mut ErrorInfo { description: _, use_site: Some(previous_span) }) => {
@@ -132,7 +117,7 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
         }
     });
     // Add the error to the map.
-    with_registered_diagnostics(|diagnostics| {
+    ecx.parse_sess.registered_diagnostics.with_lock(|diagnostics| {
         let info = ErrorInfo {
             description,
             use_site: None
@@ -174,7 +159,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
 
     // Output error metadata to `tmp/extended-errors/<target arch>/<crate name>.json`
     if let Ok(target_triple) = env::var("CFG_COMPILER_HOST_TRIPLE") {
-        with_registered_diagnostics(|diagnostics| {
+        ecx.parse_sess.registered_diagnostics.with_lock(|diagnostics| {
             if let Err(e) = output_metadata(ecx,
                                             &target_triple,
                                             &crate_name.name.as_str(),
@@ -194,7 +179,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
 
     // Construct the output expression.
     let (count, expr) =
-        with_registered_diagnostics(|diagnostics| {
+        ecx.parse_sess.registered_diagnostics.with_lock(|diagnostics| {
             let descriptions: Vec<P<ast::Expr>> =
                 diagnostics.iter().filter_map(|(&code, info)| {
                     info.description.map(|description| {
