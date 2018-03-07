@@ -38,11 +38,16 @@ impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
     pub fn dropck_outlives(&self, ty: Ty<'tcx>) -> InferOk<'tcx, Vec<Kind<'tcx>>> {
         debug!(
             "dropck_outlives(ty={:?}, param_env={:?})",
-            ty,
-            self.param_env,
+            ty, self.param_env,
         );
 
+        // Quick check: there are a number of cases that we know do not require
+        // any destructor.
         let tcx = self.infcx.tcx;
+        if trivial_dropck_outlives(tcx, ty) {
+            return InferOk { value: vec![], obligations: vec![] };
+        }
+
         let gcx = tcx.global_tcx();
         let (c_ty, orig_values) = self.infcx.canonicalize_query(&self.param_env.and(ty));
         let span = self.cause.span;
@@ -192,3 +197,68 @@ impl_stable_hash_for!(struct DtorckConstraint<'tcx> {
     dtorck_types,
     overflows
 });
+
+/// This returns true if the type `ty` is "trivial" for
+/// dropck-outlives -- that is, if it doesn't require any types to
+/// outlive. This is similar but not *quite* the same as the
+/// `needs_drop` test in the compiler already -- that is, for every
+/// type T for which this function return true, needs-drop would
+/// return false. But the reverse does not hold: in particular,
+/// `needs_drop` returns false for `PhantomData`, but it is not
+/// trivial for dropck-outlives.
+///
+/// Note also that `needs_drop` requires a "global" type (i.e., one
+/// with erased regions), but this funtcion does not.
+fn trivial_dropck_outlives<'cx, 'tcx>(tcx: TyCtxt<'cx, '_, 'tcx>, ty: Ty<'tcx>) -> bool {
+    match ty.sty {
+        // None of these types have a destructor and hence they do not
+        // require anything in particular to outlive the dtor's
+        // execution.
+        ty::TyInfer(ty::FreshIntTy(_))
+        | ty::TyInfer(ty::FreshFloatTy(_))
+        | ty::TyBool
+        | ty::TyInt(_)
+        | ty::TyUint(_)
+        | ty::TyFloat(_)
+        | ty::TyNever
+        | ty::TyFnDef(..)
+        | ty::TyFnPtr(_)
+        | ty::TyChar
+        | ty::TyGeneratorWitness(..)
+        | ty::TyRawPtr(_)
+        | ty::TyRef(..)
+        | ty::TyStr
+        | ty::TyForeign(..)
+        | ty::TyError => true,
+
+        // [T; N] and [T] have same properties as T.
+        ty::TyArray(ty, _) | ty::TySlice(ty) => trivial_dropck_outlives(tcx, ty),
+
+        // (T1..Tn) and closures have same properties as T1..Tn --
+        // check if *any* of those are trivial.
+        ty::TyTuple(ref tys, _) => tys.iter().cloned().all(|t| trivial_dropck_outlives(tcx, t)),
+        ty::TyClosure(def_id, ref substs) => substs
+            .upvar_tys(def_id, tcx)
+            .all(|t| trivial_dropck_outlives(tcx, t)),
+
+        ty::TyAdt(def, _) => {
+            if def.is_union() {
+                // Unions never run have a dtor.
+                true
+            } else {
+                // Other types might. Moreover, PhantomData doesn't
+                // have a dtor, but it is considered to own its
+                // content, so it is non-trivial.
+                false
+            }
+        }
+
+        // The following *might* require a destructor: it would deeper inspection to tell.
+        ty::TyDynamic(..)
+        | ty::TyProjection(..)
+        | ty::TyParam(_)
+        | ty::TyAnon(..)
+        | ty::TyInfer(_)
+        | ty::TyGenerator(..) => false,
+    }
+}
