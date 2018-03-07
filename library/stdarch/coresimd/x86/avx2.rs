@@ -2127,7 +2127,7 @@ pub unsafe fn _mm256_shuffle_epi8(a: __m256i, b: __m256i) -> __m256i {
 /// use std::arch::x86_64::*;
 ///
 /// # fn main() {
-/// #     if is_target_feature_detected!("avx2") {
+/// #     if is_x86_feature_detected!("avx2") {
 /// #         #[target_feature(enable = "avx2")]
 /// #         unsafe fn worker() {
 /// let a = _mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7);
@@ -2736,7 +2736,7 @@ pub unsafe fn _mm256_subs_epu8(a: __m256i, b: __m256i) -> __m256i {
 /// use std::arch::x86_64::*;
 ///
 /// # fn main() {
-/// #     if is_target_feature_detected!("avx2") {
+/// #     if is_x86_feature_detected!("avx2") {
 /// #         #[target_feature(enable = "avx2")]
 /// #         unsafe fn worker() {
 /// let a = _mm256_setr_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
@@ -2788,7 +2788,7 @@ pub unsafe fn _mm256_unpackhi_epi8(a: __m256i, b: __m256i) -> __m256i {
 /// use std::arch::x86_64::*;
 ///
 /// # fn main() {
-/// #     if is_target_feature_detected!("avx2") {
+/// #     if is_x86_feature_detected!("avx2") {
 /// #         #[target_feature(enable = "avx2")]
 /// #         unsafe fn worker() {
 /// let a = _mm256_setr_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
@@ -2839,7 +2839,7 @@ pub unsafe fn _mm256_unpacklo_epi8(a: __m256i, b: __m256i) -> __m256i {
 /// use std::arch::x86_64::*;
 ///
 /// # fn main() {
-/// #     if is_target_feature_detected!("avx2") {
+/// #     if is_x86_feature_detected!("avx2") {
 /// #         #[target_feature(enable = "avx2")]
 /// #         unsafe fn worker() {
 /// let a = _mm256_setr_epi16(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
@@ -2886,7 +2886,7 @@ pub unsafe fn _mm256_unpackhi_epi16(a: __m256i, b: __m256i) -> __m256i {
 /// use std::arch::x86_64::*;
 ///
 /// # fn main() {
-/// #     if is_target_feature_detected!("avx2") {
+/// #     if is_x86_feature_detected!("avx2") {
 /// #         #[target_feature(enable = "avx2")]
 /// #         unsafe fn worker() {
 ///
@@ -2934,7 +2934,7 @@ pub unsafe fn _mm256_unpacklo_epi16(a: __m256i, b: __m256i) -> __m256i {
 /// use std::arch::x86_64::*;
 ///
 /// # fn main() {
-/// #     if is_target_feature_detected!("avx2") {
+/// #     if is_x86_feature_detected!("avx2") {
 /// #         #[target_feature(enable = "avx2")]
 /// #         unsafe fn worker() {
 /// let a = _mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7);
@@ -2980,7 +2980,7 @@ pub unsafe fn _mm256_unpackhi_epi32(a: __m256i, b: __m256i) -> __m256i {
 /// use std::arch::x86_64::*;
 ///
 /// # fn main() {
-/// #     if is_target_feature_detected!("avx2") {
+/// #     if is_x86_feature_detected!("avx2") {
 /// #         #[target_feature(enable = "avx2")]
 /// #         unsafe fn worker() {
 /// let a = _mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7);
@@ -3023,7 +3023,7 @@ pub unsafe fn _mm256_unpacklo_epi32(a: __m256i, b: __m256i) -> __m256i {
 /// use std::arch::x86_64::*;
 ///
 /// # fn main() {
-/// #     if is_target_feature_detected!("avx2") {
+/// #     if is_x86_feature_detected!("avx2") {
 /// #         #[target_feature(enable = "avx2")]
 /// #         unsafe fn worker() {
 /// let a = _mm256_setr_epi64x(0, 1, 2, 3);
@@ -3065,7 +3065,7 @@ pub unsafe fn _mm256_unpackhi_epi64(a: __m256i, b: __m256i) -> __m256i {
 /// use std::arch::x86_64::*;
 ///
 /// # fn main() {
-/// #     if is_target_feature_detected!("avx2") {
+/// #     if is_x86_feature_detected!("avx2") {
 /// #         #[target_feature(enable = "avx2")]
 /// #         unsafe fn worker() {
 /// let a = _mm256_setr_epi64x(0, 1, 2, 3);

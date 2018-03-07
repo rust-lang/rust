@@ -881,7 +881,7 @@ pub unsafe fn _mm_movemask_ps(a: __m128) -> i32 {
 /// #
 /// # // The real main function
 /// # fn main() {
-/// #     if is_target_feature_detected!("sse") {
+/// #     if is_x86_feature_detected!("sse") {
 /// #         #[target_feature(enable = "sse")]
 /// #         unsafe fn worker() {
 /// #
@@ -936,7 +936,7 @@ pub unsafe fn _mm_loadh_pi(a: __m128, p: *const __m64) -> __m128 {
 ///
 /// # // The real main function
 /// # fn main() {
-/// #     if is_target_feature_detected!("sse") {
+/// #     if is_x86_feature_detected!("sse") {
 /// #         #[target_feature(enable = "sse")]
 /// #         unsafe fn worker() {
 /// #

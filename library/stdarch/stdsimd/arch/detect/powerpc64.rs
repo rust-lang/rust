@@ -5,7 +5,7 @@ use super::linux;
 
 #[macro_export]
 #[unstable(feature = "stdsimd", issue = "0")]
-macro_rules! is_target_feature_detected {
+macro_rules! is_powerpc64_feature_detected {
     ("altivec") => {
         $crate::arch::detect::check_for($crate::arch::detect::Feature::altivec)
     };

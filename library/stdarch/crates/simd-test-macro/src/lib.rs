@@ -10,6 +10,8 @@ extern crate proc_macro2;
 #[macro_use]
 extern crate quote;
 
+use std::env;
+
 use proc_macro2::{Term, TokenNode, TokenStream, TokenTree};
 use proc_macro2::Literal;
 
@@ -53,12 +55,22 @@ pub fn simd_test(
 
     let name: TokenStream = name.as_str().parse().unwrap();
 
+    let target = env::var("TARGET").unwrap();
+    let macro_test = match target.split('-').next().unwrap() {
+        "i686" | "x86_64" | "i586" => "is_x86_feature_detected",
+        "arm" => "is_arm_feature_detected",
+        "aarch64" => "is_aarch64_feature_detected",
+        "powerpc64" => "is_powerpc64_feature_detected",
+        t => panic!("unknown target: {}", t),
+    };
+    let macro_test = proc_macro2::Term::intern(macro_test);
+
     let mut cfg_target_features = quote::Tokens::new();
     use quote::ToTokens;
     for feature in target_features {
         let q = quote_spanned! {
             proc_macro2::Span::call_site() =>
-            is_target_feature_detected!(#feature) &&
+            #macro_test!(#feature) &&
         };
         q.to_tokens(&mut cfg_target_features);
     }

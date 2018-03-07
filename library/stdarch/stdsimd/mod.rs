@@ -116,7 +116,7 @@
 /// fn foo() {
 ///     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 ///     {
-///         if is_target_feature_detected!("avx2") {
+///         if is_x86_feature_detected!("avx2") {
 ///             return unsafe { foo_avx2() };
 ///         }
 ///     }
@@ -139,7 +139,7 @@
 /// There's a couple of components in play here, so let's go through them in
 /// detail!
 ///
-/// * First up we notice the `is_target_feature_detected!` macro. Provided by
+/// * First up we notice the `is_x86_feature_detected!` macro. Provided by
 ///   the standard library, this macro will perform necessary runtime detection
 ///   to determine whether the CPU the program is running on supports the
 ///   specified feature. In this case the macro will expand to a boolean
@@ -149,7 +149,7 @@
 ///   Note that this macro, like the `arch` module, is platform-specific. The
 ///   name of the macro is the same across platforms, but the arguments to the
 ///   macro are only the features for the current platform. For example calling
-///   `is_target_feature_detected!("avx2")` on ARM will be a compile time
+///   `is_x86_feature_detected!("avx2")` on ARM will be a compile time
 ///   error. To ensure we don't hit this error a statement level `#[cfg]` is
 ///   used to only compile usage of the macro on `x86`/`x86_64`.
 ///
@@ -218,7 +218,7 @@
 ///     {
 ///         // Note that this `unsafe` block is safe because we're testing
 ///         // that the `avx2` feature is indeed available on our CPU.
-///         if is_target_feature_detected!("avx2") {
+///         if is_x86_feature_detected!("avx2") {
 ///             return unsafe { add_quickly_avx2(a, b, c) }
 ///         }
 ///     }
@@ -270,7 +270,7 @@
 ///
 ///     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 ///     {
-///         if is_target_feature_detected!("sse4.1") {
+///         if is_x86_feature_detected!("sse4.1") {
 ///             return unsafe { hex_encode_sse41(src, dst) };
 ///         }
 ///     }

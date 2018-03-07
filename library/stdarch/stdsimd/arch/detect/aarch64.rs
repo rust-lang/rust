@@ -6,7 +6,7 @@ use super::linux;
 
 #[macro_export]
 #[unstable(feature = "stdsimd", issue = "0")]
-macro_rules! is_target_feature_detected {
+macro_rules! is_aarch64_feature_detected {
     ("neon") => {
         // FIXME: this should be removed once we rename Aarch64 neon to asimd
         $crate::arch::detect::check_for($crate::arch::detect::Feature::asimd)

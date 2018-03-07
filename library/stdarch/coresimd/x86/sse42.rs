@@ -115,7 +115,7 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// use std::arch::x86_64::*;
 ///
 /// # fn main() {
-/// #     if is_target_feature_detected!("sse4.2") {
+/// #     if is_x86_feature_detected!("sse4.2") {
 /// #         #[target_feature(enable = "sse4.2")]
 /// #         unsafe fn worker() {
 /// let haystack = b"This is a long string of text data\r\n\tthat extends
@@ -162,7 +162,7 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// use std::arch::x86_64::*;
 ///
 /// # fn main() {
-/// #     if is_target_feature_detected!("sse4.2") {
+/// #     if is_x86_feature_detected!("sse4.2") {
 /// #         #[target_feature(enable = "sse4.2")]
 /// #         unsafe fn worker() {
 /// // Ensure your input is 16 byte aligned
@@ -208,7 +208,7 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// use std::arch::x86_64::*;
 ///
 /// # fn main() {
-/// #     if is_target_feature_detected!("sse4.2") {
+/// #     if is_x86_feature_detected!("sse4.2") {
 /// #         #[target_feature(enable = "sse4.2")]
 /// #         unsafe fn worker() {
 /// # let b = b":;<=>?@[\\]^_`abc";
@@ -254,7 +254,7 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// use std::arch::x86_64::*;
 ///
 /// # fn main() {
-/// #     if is_target_feature_detected!("sse4.2") {
+/// #     if is_x86_feature_detected!("sse4.2") {
 /// #         #[target_feature(enable = "sse4.2")]
 /// #         unsafe fn worker() {
 /// # let mut some_utf16_words = [0u16; 8];
@@ -452,7 +452,7 @@ pub unsafe fn _mm_cmpestrm(
 /// use std::arch::x86_64::*;
 ///
 /// # fn main() {
-/// #     if is_target_feature_detected!("sse4.2") {
+/// #     if is_x86_feature_detected!("sse4.2") {
 /// #         #[target_feature(enable = "sse4.2")]
 /// #         unsafe fn worker() {
 ///
