@@ -50,7 +50,7 @@ extern crate rustc_allocator;
 extern crate rustc_apfloat;
 extern crate rustc_back;
 extern crate rustc_const_math;
-extern crate rustc_data_structures;
+#[macro_use] extern crate rustc_data_structures;
 extern crate rustc_demangle;
 extern crate rustc_incremental;
 extern crate rustc_llvm as llvm;

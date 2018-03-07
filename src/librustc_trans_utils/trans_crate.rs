@@ -28,7 +28,7 @@ use std::fs::File;
 use std::path::Path;
 use std::sync::mpsc;
 
-use rustc_data_structures::owning_ref::{ErasedBoxRef, OwningRef};
+use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::sync::Lrc;
 use ar::{Archive, Builder, Header};
 use flate2::Compression;
@@ -46,6 +46,8 @@ use rustc::dep_graph::DepGraph;
 use rustc_back::target::Target;
 use rustc_mir::monomorphize::collector;
 use link::{build_link_meta, out_filename};
+
+pub use rustc_data_structures::sync::MetadataRef;
 
 pub trait TransCrate {
     fn init(&self, _sess: &Session) {}
@@ -119,7 +121,7 @@ impl MetadataLoader for DummyMetadataLoader {
         &self,
         _target: &Target,
         _filename: &Path
-    ) -> Result<ErasedBoxRef<[u8]>, String> {
+    ) -> Result<MetadataRef, String> {
         bug!("DummyMetadataLoader::get_rlib_metadata");
     }
 
@@ -127,7 +129,7 @@ impl MetadataLoader for DummyMetadataLoader {
         &self,
         _target: &Target,
         _filename: &Path
-    ) -> Result<ErasedBoxRef<[u8]>, String> {
+    ) -> Result<MetadataRef, String> {
         bug!("DummyMetadataLoader::get_dylib_metadata");
     }
 }
@@ -135,7 +137,7 @@ impl MetadataLoader for DummyMetadataLoader {
 pub struct NoLlvmMetadataLoader;
 
 impl MetadataLoader for NoLlvmMetadataLoader {
-    fn get_rlib_metadata(&self, _: &Target, filename: &Path) -> Result<ErasedBoxRef<[u8]>, String> {
+    fn get_rlib_metadata(&self, _: &Target, filename: &Path) -> Result<MetadataRef, String> {
         let file = File::open(filename)
             .map_err(|e| format!("metadata file open err: {:?}", e))?;
         let mut archive = Archive::new(file);
@@ -147,7 +149,7 @@ impl MetadataLoader for NoLlvmMetadataLoader {
                 let mut buf = Vec::new();
                 io::copy(&mut entry, &mut buf).unwrap();
                 let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf).into();
-                return Ok(buf.map_owner_box().erase_owner());
+                return Ok(rustc_erase_owner!(buf.map_owner_box()));
             }
         }
 
@@ -158,7 +160,7 @@ impl MetadataLoader for NoLlvmMetadataLoader {
         &self,
         _target: &Target,
         _filename: &Path,
-    ) -> Result<ErasedBoxRef<[u8]>, String> {
+    ) -> Result<MetadataRef, String> {
         // FIXME: Support reading dylibs from llvm enabled rustc
         self.get_rlib_metadata(_target, _filename)
     }
