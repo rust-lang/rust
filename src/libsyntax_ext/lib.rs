@@ -26,6 +26,7 @@ extern crate proc_macro;
 extern crate rustc_data_structures;
 extern crate rustc_errors as errors;
 
+mod assert;
 mod asm;
 mod cfg;
 mod compile_error;
@@ -111,6 +112,7 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
         log_syntax: log_syntax::expand_syntax_ext,
         trace_macros: trace_macros::expand_trace_macros,
         compile_error: compile_error::expand_compile_error,
+        assert: assert::expand_assert,
     }
 
     // format_args uses `unstable` things internally.
