@@ -18,7 +18,6 @@ use errors::DiagnosticBuilder;
 use lint::{LintPass, LateLintPass, LintArray};
 use session::Session;
 use syntax::codemap::Span;
-use syntax::epoch::Epoch;
 
 declare_lint! {
     pub EXCEEDING_BITSHIFTS,
@@ -264,9 +263,8 @@ declare_lint! {
 
 declare_lint! {
     pub BARE_TRAIT_OBJECT,
-    Warn,
-    "suggest using `dyn Trait` for trait objects",
-    Epoch::Epoch2018
+    Allow,
+    "suggest using `dyn Trait` for trait objects"
 }
 
 declare_lint! {
