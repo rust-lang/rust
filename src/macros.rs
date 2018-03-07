@@ -916,7 +916,7 @@ fn format_lazy_static(context: &RewriteContext, shape: Shape, ts: &TokenStream) 
             "{}static ref {}: {} =",
             vis,
             id,
-            ty.rewrite(context, shape)?
+            ty.rewrite(context, nested_shape)?
         ));
         result.push_str(&::expr::rewrite_assign_rhs(
             context,

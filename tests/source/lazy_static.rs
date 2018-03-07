@@ -35,3 +35,11 @@ let ptr = :: remacs_sys :: xmalloc (
 remacs_sys :: Lisp_Subr ; :: std :: ptr :: copy_nonoverlapping (
 & subr , ptr , 1 ) ; :: std :: mem :: forget ( subr ) ; :: lisp :: ExternalPtr
 :: new ( ptr ) } } ; }
+
+
+lazy_static! {
+static ref FOO: HashMap<String,
+(&'static str,
+fn(Foo) -> Result<Box<Bar>, Either<FooError, BarError>>
+),> = HashMap::new();
+}
