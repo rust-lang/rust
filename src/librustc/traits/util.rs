@@ -25,9 +25,6 @@ fn anonymize_predicate<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         ty::Predicate::Trait(ref data) =>
             ty::Predicate::Trait(tcx.anonymize_late_bound_regions(data)),
 
-        ty::Predicate::Equate(ref data) =>
-            ty::Predicate::Equate(tcx.anonymize_late_bound_regions(data)),
-
         ty::Predicate::RegionOutlives(ref data) =>
             ty::Predicate::RegionOutlives(tcx.anonymize_late_bound_regions(data)),
 
@@ -162,11 +159,6 @@ impl<'cx, 'gcx, 'tcx> Elaborator<'cx, 'gcx, 'tcx> {
             ty::Predicate::ObjectSafe(..) => {
                 // Currently, we do not elaborate object-safe
                 // predicates.
-            }
-            ty::Predicate::Equate(..) => {
-                // Currently, we do not "elaborate" predicates like
-                // `X == Y`, though conceivably we might. For example,
-                // `&X == &Y` implies that `X == Y`.
             }
             ty::Predicate::Subtype(..) => {
                 // Currently, we do not "elaborate" predicates like `X

@@ -631,16 +631,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         span_bug!(span, "subtype requirement gave wrong error: `{:?}`", predicate)
                     }
 
-                    ty::Predicate::Equate(ref predicate) => {
-                        let predicate = self.resolve_type_vars_if_possible(predicate);
-                        let err = self.equality_predicate(&obligation.cause,
-                                                          obligation.param_env,
-                                                          &predicate).err().unwrap();
-                        struct_span_err!(self.tcx.sess, span, E0278,
-                            "the requirement `{}` is not satisfied (`{}`)",
-                            predicate, err)
-                    }
-
                     ty::Predicate::RegionOutlives(ref predicate) => {
                         let predicate = self.resolve_type_vars_if_possible(predicate);
                         let err = self.region_outlives_predicate(&obligation.cause,
@@ -1270,7 +1260,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             ObligationCauseCode::MatchExpressionArm { .. } |
             ObligationCauseCode::IfExpression |
             ObligationCauseCode::IfExpressionWithNoElse |
-            ObligationCauseCode::EquatePredicate |
             ObligationCauseCode::MainFunctionType |
             ObligationCauseCode::StartFunctionType |
             ObligationCauseCode::IntrinsicType |

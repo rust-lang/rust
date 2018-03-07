@@ -943,23 +943,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.borrow_region_constraints().make_subregion(origin, a, b);
     }
 
-    pub fn equality_predicate(&self,
-                              cause: &ObligationCause<'tcx>,
-                              param_env: ty::ParamEnv<'tcx>,
-                              predicate: &ty::PolyEquatePredicate<'tcx>)
-        -> InferResult<'tcx, ()>
-    {
-        self.commit_if_ok(|snapshot| {
-            let (ty::EquatePredicate(a, b), skol_map) =
-                self.skolemize_late_bound_regions(predicate, snapshot);
-            let cause_span = cause.span;
-            let eqty_ok = self.at(cause, param_env).eq(b, a)?;
-            self.leak_check(false, cause_span, &skol_map, snapshot)?;
-            self.pop_skolemized(skol_map, snapshot);
-            Ok(eqty_ok.unit())
-        })
-    }
-
     pub fn subtype_predicate(&self,
                              cause: &ObligationCause<'tcx>,
                              param_env: ty::ParamEnv<'tcx>,
