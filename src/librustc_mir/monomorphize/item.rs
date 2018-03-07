@@ -21,40 +21,13 @@ use rustc::session::config::OptLevel;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
 use syntax::ast;
-use syntax::attr::{self, InlineAttr};
+use syntax::attr::InlineAttr;
 use std::fmt::{self, Write};
 use std::iter;
 use rustc::mir::mono::Linkage;
 use syntax_pos::symbol::Symbol;
 use syntax::codemap::Span;
 pub use rustc::mir::mono::MonoItem;
-
-pub fn linkage_by_name(name: &str) -> Option<Linkage> {
-    use rustc::mir::mono::Linkage::*;
-
-    // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
-    // applicable to variable declarations and may not really make sense for
-    // Rust code in the first place but whitelist them anyway and trust that
-    // the user knows what s/he's doing. Who knows, unanticipated use cases
-    // may pop up in the future.
-    //
-    // ghost, dllimport, dllexport and linkonce_odr_autohide are not supported
-    // and don't have to be, LLVM treats them as no-ops.
-    match name {
-        "appending" => Some(Appending),
-        "available_externally" => Some(AvailableExternally),
-        "common" => Some(Common),
-        "extern_weak" => Some(ExternalWeak),
-        "external" => Some(External),
-        "internal" => Some(Internal),
-        "linkonce" => Some(LinkOnceAny),
-        "linkonce_odr" => Some(LinkOnceODR),
-        "private" => Some(Private),
-        "weak" => Some(WeakAny),
-        "weak_odr" => Some(WeakODR),
-        _ => None,
-    }
-}
 
 /// Describes how a translation item will be instantiated in object files.
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
@@ -141,8 +114,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
                 // creating one copy of this `#[inline]` function which may
                 // conflict with upstream crates as it could be an exported
                 // symbol.
-                let attrs = instance.def.attrs(tcx);
-                match attr::find_inline_attr(Some(tcx.sess.diagnostic()), &attrs) {
+                match tcx.trans_fn_attrs(instance.def_id()).inline {
                     InlineAttr::Always => InstantiationMode::LocalCopy,
                     _ => {
                         InstantiationMode::GloballyShared  { may_conflict: true }
@@ -165,21 +137,8 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
             MonoItem::GlobalAsm(..) => return None,
         };
 
-        let attributes = tcx.get_attrs(def_id);
-        if let Some(name) = attr::first_attr_value_str_by_name(&attributes, "linkage") {
-            if let Some(linkage) = linkage_by_name(&name.as_str()) {
-                Some(linkage)
-            } else {
-                let span = tcx.hir.span_if_local(def_id);
-                if let Some(span) = span {
-                    tcx.sess.span_fatal(span, "invalid linkage specified")
-                } else {
-                    tcx.sess.fatal(&format!("invalid linkage specified: {}", name))
-                }
-            }
-        } else {
-            None
-        }
+        let trans_fn_attrs = tcx.trans_fn_attrs(def_id);
+        trans_fn_attrs.linkage
     }
 
     /// Returns whether this instance is instantiable - whether it has no unsatisfied

@@ -44,6 +44,7 @@ use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::cstore::MetadataLoader;
 use rustc::dep_graph::DepGraph;
 use rustc_back::target::Target;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_mir::monomorphize::collector;
 use link::{build_link_meta, out_filename};
 
@@ -200,8 +201,9 @@ impl TransCrate for MetadataOnlyTransCrate {
 
     fn provide(&self, providers: &mut Providers) {
         ::symbol_names::provide(providers);
-        providers.target_features_enabled = |_tcx, _id| {
-            Lrc::new(Vec::new()) // Just a dummy
+
+        providers.target_features_whitelist = |_tcx, _cnum| {
+            Lrc::new(FxHashSet()) // Just a dummy
         };
     }
     fn provide_extern(&self, _providers: &mut Providers) {}
@@ -235,12 +237,8 @@ impl TransCrate for MetadataOnlyTransCrate {
                 MonoItem::Fn(inst) => {
                     let def_id = inst.def_id();
                     if def_id.is_local()  {
-                        let _ = tcx.export_name(def_id);
-                        let _ = tcx.contains_extern_indicator(def_id);
                         let _ = inst.def.is_inline(tcx);
-                        let attrs = inst.def.attrs(tcx);
-                        let _ =
-                            ::syntax::attr::find_inline_attr(Some(tcx.sess.diagnostic()), &attrs);
+                        let _ = tcx.trans_fn_attrs(def_id);
                     }
                 }
                 _ => {}

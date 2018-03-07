@@ -559,6 +559,7 @@ define_dep_nodes!( <'tcx>
     [] IsReachableNonGeneric(DefId),
     [] IsMirAvailable(DefId),
     [] ItemAttrs(DefId),
+    [] TransFnAttrs(DefId),
     [] FnArgNames(DefId),
     [] DylibDepFormats(CrateNum),
     [] IsPanicRuntime(CrateNum),
@@ -626,8 +627,6 @@ define_dep_nodes!( <'tcx>
     [input] AllCrateNums,
     [] ExportedSymbols(CrateNum),
     [eval_always] CollectAndPartitionTranslationItems,
-    [] ExportName(DefId),
-    [] ContainsExternIndicator(DefId),
     [] IsTranslatedItem(DefId),
     [] CodegenUnit(InternedString),
     [] CompileCodegenUnit(InternedString),
@@ -637,7 +636,6 @@ define_dep_nodes!( <'tcx>
     [] SubstituteNormalizeAndTestPredicates { key: (DefId, &'tcx Substs<'tcx>) },
 
     [input] TargetFeaturesWhitelist,
-    [] TargetFeaturesEnabled(DefId),
 
     [] InstanceDefSizeEstimate { instance_def: InstanceDef<'tcx> },
 

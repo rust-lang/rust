@@ -96,7 +96,6 @@ impl<'tcx> InstanceDef<'tcx> {
         &self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>
     ) -> bool {
-        use syntax::attr::requests_inline;
         if self.is_inline(tcx) {
             return true
         }
@@ -106,8 +105,8 @@ impl<'tcx> InstanceDef<'tcx> {
             // available to normal end-users.
             return true
         }
-        requests_inline(&self.attrs(tcx)[..]) ||
-            tcx.is_const_fn(self.def_id())
+        let trans_fn_attrs = tcx.trans_fn_attrs(self.def_id());
+        trans_fn_attrs.requests_inline() || tcx.is_const_fn(self.def_id())
     }
 }
 

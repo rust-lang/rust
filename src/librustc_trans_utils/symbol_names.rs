@@ -120,29 +120,6 @@ pub fn provide(providers: &mut Providers) {
         def_symbol_name,
         symbol_name,
 
-        export_name: |tcx, id| {
-            tcx.get_attrs(id).iter().fold(None, |ia, attr| {
-                if attr.check_name("export_name") {
-                    if let s @ Some(_) = attr.value_str() {
-                        s
-                    } else {
-                        struct_span_err!(tcx.sess, attr.span, E0558,
-                                         "export_name attribute has invalid format")
-                            .span_label(attr.span, "did you mean #[export_name=\"*\"]?")
-                            .emit();
-                        None
-                    }
-                } else {
-                    ia
-                }
-            })
-        },
-
-        contains_extern_indicator: |tcx, id| {
-            attr::contains_name(&tcx.get_attrs(id), "no_mangle") ||
-                tcx.export_name(id).is_some()
-        },
-
         ..*providers
     };
 }
@@ -287,7 +264,7 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
         return tcx.item_name(def_id).to_string();
     }
 
-    if let Some(name) = tcx.export_name(def_id) {
+    if let Some(name) = tcx.trans_fn_attrs(def_id).export_name {
         // Use provided name
         return name.to_string();
     }

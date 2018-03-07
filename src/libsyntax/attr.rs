@@ -520,49 +520,12 @@ pub fn find_crate_name(attrs: &[Attribute]) -> Option<Symbol> {
     first_attr_value_str_by_name(attrs, "crate_name")
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, Hash, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum InlineAttr {
     None,
     Hint,
     Always,
     Never,
-}
-
-/// Determine what `#[inline]` attribute is present in `attrs`, if any.
-pub fn find_inline_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> InlineAttr {
-    attrs.iter().fold(InlineAttr::None, |ia, attr| {
-        if attr.path != "inline" {
-            return ia;
-        }
-        let meta = match attr.meta() {
-            Some(meta) => meta.node,
-            None => return ia,
-        };
-        match meta {
-            MetaItemKind::Word => {
-                mark_used(attr);
-                InlineAttr::Hint
-            }
-            MetaItemKind::List(ref items) => {
-                mark_used(attr);
-                if items.len() != 1 {
-                    diagnostic.map(|d|{ span_err!(d, attr.span, E0534, "expected one argument"); });
-                    InlineAttr::None
-                } else if list_contains_name(&items[..], "always") {
-                    InlineAttr::Always
-                } else if list_contains_name(&items[..], "never") {
-                    InlineAttr::Never
-                } else {
-                    diagnostic.map(|d| {
-                        span_err!(d, items[0].span, E0535, "invalid argument");
-                    });
-
-                    InlineAttr::None
-                }
-            }
-            _ => ia,
-        }
-    })
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -610,13 +573,6 @@ pub fn find_unwind_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> Op
     })
 }
 
-/// True if `#[inline]` or `#[inline(always)]` is present in `attrs`.
-pub fn requests_inline(attrs: &[Attribute]) -> bool {
-    match find_inline_attr(None, attrs) {
-        InlineAttr::Hint | InlineAttr::Always => true,
-        InlineAttr::None | InlineAttr::Never => false,
-    }
-}
 
 /// Tests if a cfg-pattern matches the cfg set
 pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Features>) -> bool {

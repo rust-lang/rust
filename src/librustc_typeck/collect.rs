@@ -30,25 +30,29 @@ use constrained_type_params as ctp;
 use middle::lang_items::SizedTraitLangItem;
 use middle::const_val::ConstVal;
 use middle::resolve_lifetime as rl;
+use rustc::mir::mono::Linkage;
 use rustc::traits::Reveal;
 use rustc::ty::subst::Substs;
 use rustc::ty::{ToPredicate, ReprOptions};
 use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::ty::util::IntTypeExt;
+use rustc::util::nodemap::FxHashSet;
 use util::nodemap::FxHashMap;
 
 use rustc_const_math::ConstInt;
 
 use syntax::{abi, ast};
+use syntax::ast::MetaItemKind;
+use syntax::attr::{InlineAttr, list_contains_name, mark_used};
 use syntax::codemap::Spanned;
 use syntax::symbol::{Symbol, keywords};
 use syntax_pos::{Span, DUMMY_SP};
 
-use rustc::hir::{self, map as hir_map};
+use rustc::hir::{self, map as hir_map, TransFnAttrs, TransFnAttrFlags, Unsafety};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::def::{Def, CtorKind};
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 
 ///////////////////////////////////////////////////////////////////////////
 // Main entry point
@@ -71,6 +75,7 @@ pub fn provide(providers: &mut Providers) {
         impl_trait_ref,
         impl_polarity,
         is_foreign_item,
+        trans_fn_attrs,
         ..*providers
     };
 }
@@ -1722,4 +1727,187 @@ fn is_foreign_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         Some(_) => false,
         _ => bug!("is_foreign_item applied to non-local def-id {:?}", def_id)
     }
+}
+
+fn from_target_feature(
+    tcx: TyCtxt,
+    attr: &ast::Attribute,
+    whitelist: &FxHashSet<String>,
+    target_features: &mut Vec<Symbol>,
+) {
+    let list = match attr.meta_item_list() {
+        Some(list) => list,
+        None => {
+            let msg = "#[target_feature] attribute must be of the form \
+                       #[target_feature(..)]";
+            tcx.sess.span_err(attr.span, &msg);
+            return
+        }
+    };
+
+    for item in list {
+        if !item.check_name("enable") {
+            let msg = "#[target_feature(..)] only accepts sub-keys of `enable` \
+                       currently";
+            tcx.sess.span_err(item.span, &msg);
+            continue
+        }
+        let value = match item.value_str() {
+            Some(list) => list,
+            None => {
+                let msg = "#[target_feature] attribute must be of the form \
+                           #[target_feature(enable = \"..\")]";
+                tcx.sess.span_err(item.span, &msg);
+                continue
+            }
+        };
+        let value = value.as_str();
+        for feature in value.split(',') {
+            if whitelist.contains(feature) {
+                target_features.push(Symbol::intern(feature));
+                continue
+            }
+
+            let msg = format!("the feature named `{}` is not valid for \
+                               this target", feature);
+            let mut err = tcx.sess.struct_span_err(item.span, &msg);
+
+            if feature.starts_with("+") {
+                let valid = whitelist.contains(&feature[1..]);
+                if valid {
+                    err.help("consider removing the leading `+` in the feature name");
+                }
+            }
+            err.emit();
+        }
+    }
+}
+
+fn linkage_by_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, name: &str) -> Linkage {
+    use rustc::mir::mono::Linkage::*;
+
+    // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
+    // applicable to variable declarations and may not really make sense for
+    // Rust code in the first place but whitelist them anyway and trust that
+    // the user knows what s/he's doing. Who knows, unanticipated use cases
+    // may pop up in the future.
+    //
+    // ghost, dllimport, dllexport and linkonce_odr_autohide are not supported
+    // and don't have to be, LLVM treats them as no-ops.
+    match name {
+        "appending" => Appending,
+        "available_externally" => AvailableExternally,
+        "common" => Common,
+        "extern_weak" => ExternalWeak,
+        "external" => External,
+        "internal" => Internal,
+        "linkonce" => LinkOnceAny,
+        "linkonce_odr" => LinkOnceODR,
+        "private" => Private,
+        "weak" => WeakAny,
+        "weak_odr" => WeakODR,
+        _ => {
+            let span = tcx.hir.span_if_local(def_id);
+            if let Some(span) = span {
+                tcx.sess.span_fatal(span, "invalid linkage specified")
+            } else {
+                tcx.sess.fatal(&format!("invalid linkage specified: {}", name))
+            }
+        }
+    }
+}
+
+fn trans_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> TransFnAttrs {
+    let attrs = tcx.get_attrs(id);
+
+    let mut trans_fn_attrs = TransFnAttrs::new();
+
+    let whitelist = tcx.target_features_whitelist(LOCAL_CRATE);
+
+    for attr in attrs.iter() {
+        if attr.check_name("cold") {
+            trans_fn_attrs.flags |= TransFnAttrFlags::COLD;
+        } else if attr.check_name("allocator") {
+            trans_fn_attrs.flags |= TransFnAttrFlags::ALLOCATOR;
+        } else if attr.check_name("unwind") {
+            trans_fn_attrs.flags |= TransFnAttrFlags::UNWIND;
+        } else if attr.check_name("rustc_allocator_nounwind") {
+            trans_fn_attrs.flags |= TransFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND;
+        } else if attr.check_name("naked") {
+            trans_fn_attrs.flags |= TransFnAttrFlags::NAKED;
+        } else if attr.check_name("no_mangle") {
+            trans_fn_attrs.flags |= TransFnAttrFlags::NO_MANGLE;
+        } else if attr.check_name("rustc_std_internal_symbol") {
+            trans_fn_attrs.flags |= TransFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
+        } else if attr.check_name("inline") {
+            trans_fn_attrs.inline = attrs.iter().fold(InlineAttr::None, |ia, attr| {
+                if attr.path != "inline" {
+                    return ia;
+                }
+                let meta = match attr.meta() {
+                    Some(meta) => meta.node,
+                    None => return ia,
+                };
+                match meta {
+                    MetaItemKind::Word => {
+                        mark_used(attr);
+                        InlineAttr::Hint
+                    }
+                    MetaItemKind::List(ref items) => {
+                        mark_used(attr);
+                        if items.len() != 1 {
+                            span_err!(tcx.sess.diagnostic(), attr.span, E0534,
+                                        "expected one argument");
+                            InlineAttr::None
+                        } else if list_contains_name(&items[..], "always") {
+                            InlineAttr::Always
+                        } else if list_contains_name(&items[..], "never") {
+                            InlineAttr::Never
+                        } else {
+                            span_err!(tcx.sess.diagnostic(), items[0].span, E0535,
+                                        "invalid argument");
+
+                            InlineAttr::None
+                        }
+                    }
+                    _ => ia,
+                }
+            });
+        } else if attr.check_name("export_name") {
+            if let s @ Some(_) = attr.value_str() {
+                trans_fn_attrs.export_name = s;
+            } else {
+                struct_span_err!(tcx.sess, attr.span, E0558,
+                                    "export_name attribute has invalid format")
+                    .span_label(attr.span, "did you mean #[export_name=\"*\"]?")
+                    .emit();
+            }
+        } else if attr.check_name("target_feature") {
+            if let Some(val) = attr.value_str() {
+                for feat in val.as_str().split(",").map(|f| f.trim()) {
+                    if !feat.is_empty() && !feat.contains('\0') {
+                        trans_fn_attrs.target_features.push(Symbol::intern(feat));
+                    }
+                }
+                let msg = "#[target_feature = \"..\"] is deprecated and will \
+                           eventually be removed, use \
+                           #[target_feature(enable = \"..\")] instead";
+                tcx.sess.span_warn(attr.span, &msg);
+                continue
+            }
+
+            if tcx.fn_sig(id).unsafety() == Unsafety::Normal {
+                let msg = "#[target_feature(..)] can only be applied to \
+                           `unsafe` function";
+                tcx.sess.span_err(attr.span, msg);
+            }
+            from_target_feature(tcx, attr, &whitelist, &mut trans_fn_attrs.target_features);
+        } else if attr.check_name("linkage") {
+            if let Some(val) = attr.value_str() {
+                trans_fn_attrs.linkage = Some(linkage_by_name(tcx, id, &val.as_str()));
+            }
+        }
+    }
+
+    trans_fn_attrs
 }

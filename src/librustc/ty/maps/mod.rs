@@ -12,7 +12,7 @@ use dep_graph::{DepConstructor, DepNode};
 use errors::DiagnosticBuilder;
 use hir::def_id::{CrateNum, DefId, DefIndex};
 use hir::def::{Def, Export};
-use hir::{self, TraitCandidate, ItemLocalId};
+use hir::{self, TraitCandidate, ItemLocalId, TransFnAttrs};
 use hir::svh::Svh;
 use lint;
 use middle::borrowck::BorrowCheckResult;
@@ -235,6 +235,7 @@ define_maps! { <'tcx>
     [] fn lookup_stability: LookupStability(DefId) -> Option<&'tcx attr::Stability>,
     [] fn lookup_deprecation_entry: LookupDeprecationEntry(DefId) -> Option<DeprecationEntry>,
     [] fn item_attrs: ItemAttrs(DefId) -> Lrc<[ast::Attribute]>,
+    [] fn trans_fn_attrs: trans_fn_attrs(DefId) -> TransFnAttrs,
     [] fn fn_arg_names: FnArgNames(DefId) -> Vec<ast::Name>,
     [] fn impl_parent: ImplParent(DefId) -> Option<DefId>,
     [] fn trait_of_item: TraitOfItem(DefId) -> Option<DefId>,
@@ -362,8 +363,6 @@ define_maps! { <'tcx>
     [] fn collect_and_partition_translation_items:
         collect_and_partition_translation_items_node(CrateNum)
         -> (Arc<DefIdSet>, Arc<Vec<Arc<CodegenUnit<'tcx>>>>),
-    [] fn export_name: ExportName(DefId) -> Option<Symbol>,
-    [] fn contains_extern_indicator: ContainsExternIndicator(DefId) -> bool,
     [] fn symbol_export_level: GetSymbolExportLevel(DefId) -> SymbolExportLevel,
     [] fn is_translated_item: IsTranslatedItem(DefId) -> bool,
     [] fn codegen_unit: CodegenUnit(InternedString) -> Arc<CodegenUnit<'tcx>>,
@@ -385,7 +384,6 @@ define_maps! { <'tcx>
 
     [] fn target_features_whitelist:
         target_features_whitelist_node(CrateNum) -> Lrc<FxHashSet<String>>,
-    [] fn target_features_enabled: TargetFeaturesEnabled(DefId) -> Lrc<Vec<String>>,
 
     // Get an estimate of the size of an InstanceDef based on its MIR for CGU partitioning.
     [] fn instance_def_size_estimate: instance_def_size_estimate_dep_node(ty::InstanceDef<'tcx>)
@@ -401,6 +399,10 @@ define_maps! { <'tcx>
 
 fn features_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::Features
+}
+
+fn trans_fn_attrs<'tcx>(id: DefId) -> DepConstructor<'tcx> {
+    DepConstructor::TransFnAttrs { 0: id }
 }
 
 fn erase_regions_ty<'tcx>(ty: Ty<'tcx>) -> DepConstructor<'tcx> {

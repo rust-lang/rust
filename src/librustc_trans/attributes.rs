@@ -11,19 +11,16 @@
 
 use std::ffi::{CStr, CString};
 
-use rustc::hir::Unsafety;
+use rustc::hir::TransFnAttrFlags;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::session::config::Sanitizer;
-use rustc::ty::TyCtxt;
 use rustc::ty::maps::Providers;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 
 use llvm::{self, Attribute, ValueRef};
 use llvm::AttributePlace::Function;
 use llvm_util;
 pub use syntax::attr::{self, InlineAttr};
-use syntax::ast;
 use context::CodegenCx;
 
 /// Mark LLVM function to use provided inline heuristic.
@@ -102,31 +99,42 @@ pub fn set_probestack(cx: &CodegenCx, llfn: ValueRef) {
 /// Composite function which sets LLVM attributes for function depending on its AST (#[attribute])
 /// attributes.
 pub fn from_fn_attrs(cx: &CodegenCx, llfn: ValueRef, id: DefId) {
-    use syntax::attr::*;
-    let attrs = cx.tcx.get_attrs(id);
-    inline(llfn, find_inline_attr(Some(cx.sess().diagnostic()), &attrs));
+    let trans_fn_attrs = cx.tcx.trans_fn_attrs(id);
+
+    inline(llfn, trans_fn_attrs.inline);
 
     set_frame_pointer_elimination(cx, llfn);
     set_probestack(cx, llfn);
 
-    for attr in attrs.iter() {
-        if attr.check_name("cold") {
-            Attribute::Cold.apply_llfn(Function, llfn);
-        } else if attr.check_name("naked") {
-            naked(llfn, true);
-        } else if attr.check_name("allocator") {
-            Attribute::NoAlias.apply_llfn(
-                llvm::AttributePlace::ReturnValue, llfn);
-        } else if attr.check_name("unwind") {
-            unwind(llfn, true);
-        } else if attr.check_name("rustc_allocator_nounwind") {
-            unwind(llfn, false);
-        }
+    if trans_fn_attrs.flags.contains(TransFnAttrFlags::COLD) {
+        Attribute::Cold.apply_llfn(Function, llfn);
+    }
+    if trans_fn_attrs.flags.contains(TransFnAttrFlags::NAKED) {
+        naked(llfn, true);
+    }
+    if trans_fn_attrs.flags.contains(TransFnAttrFlags::ALLOCATOR) {
+        Attribute::NoAlias.apply_llfn(
+            llvm::AttributePlace::ReturnValue, llfn);
+    }
+    if trans_fn_attrs.flags.contains(TransFnAttrFlags::UNWIND) {
+        unwind(llfn, true);
+    }
+    if trans_fn_attrs.flags.contains(TransFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND) {
+        unwind(llfn, false);
     }
 
-    let target_features = cx.tcx.target_features_enabled(id);
-    if !target_features.is_empty() {
-        let val = CString::new(target_features.join(",")).unwrap();
+    let features =
+        trans_fn_attrs.target_features
+        .iter()
+        .map(|f| {
+            let feature = &*f.as_str();
+            format!("+{}", llvm_util::to_llvm_feature(cx.tcx.sess, feature))
+        })
+        .collect::<Vec<String>>()
+        .join(",");
+
+    if !features.is_empty() {
+        let val = CString::new(features).unwrap();
         llvm::AddFunctionAttrStringValue(
             llfn, llvm::AttributePlace::Function,
             cstr("target-features\0"), &val);
@@ -145,89 +153,4 @@ pub fn provide(providers: &mut Providers) {
             .map(|c| c.to_string())
             .collect())
     };
-
-    providers.target_features_enabled = |tcx, id| {
-        let whitelist = tcx.target_features_whitelist(LOCAL_CRATE);
-        let mut target_features = Vec::new();
-        for attr in tcx.get_attrs(id).iter() {
-            if !attr.check_name("target_feature") {
-                continue
-            }
-            if let Some(val) = attr.value_str() {
-                for feat in val.as_str().split(",").map(|f| f.trim()) {
-                    if !feat.is_empty() && !feat.contains('\0') {
-                        target_features.push(feat.to_string());
-                    }
-                }
-                let msg = "#[target_feature = \"..\"] is deprecated and will \
-                           eventually be removed, use \
-                           #[target_feature(enable = \"..\")] instead";
-                tcx.sess.span_warn(attr.span, &msg);
-                continue
-            }
-
-            if tcx.fn_sig(id).unsafety() == Unsafety::Normal {
-                let msg = "#[target_feature(..)] can only be applied to \
-                           `unsafe` function";
-                tcx.sess.span_err(attr.span, msg);
-            }
-            from_target_feature(tcx, attr, &whitelist, &mut target_features);
-        }
-        Lrc::new(target_features)
-    };
-}
-
-fn from_target_feature(
-    tcx: TyCtxt,
-    attr: &ast::Attribute,
-    whitelist: &FxHashSet<String>,
-    target_features: &mut Vec<String>,
-) {
-    let list = match attr.meta_item_list() {
-        Some(list) => list,
-        None => {
-            let msg = "#[target_feature] attribute must be of the form \
-                       #[target_feature(..)]";
-            tcx.sess.span_err(attr.span, &msg);
-            return
-        }
-    };
-
-    for item in list {
-        if !item.check_name("enable") {
-            let msg = "#[target_feature(..)] only accepts sub-keys of `enable` \
-                       currently";
-            tcx.sess.span_err(item.span, &msg);
-            continue
-        }
-        let value = match item.value_str() {
-            Some(list) => list,
-            None => {
-                let msg = "#[target_feature] attribute must be of the form \
-                           #[target_feature(enable = \"..\")]";
-                tcx.sess.span_err(item.span, &msg);
-                continue
-            }
-        };
-        let value = value.as_str();
-        for feature in value.split(',') {
-            if whitelist.contains(feature) {
-                let llvm_feature = llvm_util::to_llvm_feature(&tcx.sess, feature);
-                target_features.push(format!("+{}", llvm_feature));
-                continue
-            }
-
-            let msg = format!("the feature named `{}` is not valid for \
-                               this target", feature);
-            let mut err = tcx.sess.struct_span_err(item.span, &msg);
-
-            if feature.starts_with("+") {
-                let valid = whitelist.contains(&feature[1..]);
-                if valid {
-                    err.help("consider removing the leading `+` in the feature name");
-                }
-            }
-            err.emit();
-        }
-    }
 }

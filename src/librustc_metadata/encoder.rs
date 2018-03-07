@@ -832,7 +832,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         } else if let hir::ImplItemKind::Method(ref sig, body) = ast_item.node {
             let generics = self.tcx.generics_of(def_id);
             let types = generics.parent_types as usize + generics.types.len();
-            let needs_inline = types > 0 || attr::requests_inline(&ast_item.attrs);
+            let needs_inline = types > 0 || tcx.trans_fn_attrs(def_id).requests_inline();
             let is_const_fn = sig.constness == hir::Constness::Const;
             let ast = if is_const_fn { Some(body) } else { None };
             let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
@@ -1123,7 +1123,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 hir::ItemConst(..) => self.encode_optimized_mir(def_id),
                 hir::ItemFn(_, _, constness, _, ref generics, _) => {
                     let has_tps = generics.ty_params().next().is_some();
-                    let needs_inline = has_tps || attr::requests_inline(&item.attrs);
+                    let needs_inline = has_tps || tcx.trans_fn_attrs(def_id).requests_inline();
                     let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
                     if needs_inline || constness == hir::Constness::Const || always_encode_mir {
                         self.encode_optimized_mir(def_id)
