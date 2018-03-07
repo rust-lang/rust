@@ -26,11 +26,6 @@
 //!
 //! `MTLock` is a mutex which disappears if cfg!(parallel_queries) is false.
 //!
-//! `rustc_global!` gives us a way to declare variables which are intended to be
-//! global for the current rustc session. This currently maps to thread-locals,
-//! since rustdoc uses the rustc libraries in multiple threads.
-//! These globals should eventually be moved into the `Session` structure.
-//!
 //! `rustc_erase_owner!` erases a OwningRef owner into Erased or Erased + Send + Sync
 //! depending on the value of cfg!(parallel_queries).
 
@@ -227,31 +222,6 @@ cfg_if! {
 pub fn assert_sync<T: ?Sized + Sync>() {}
 pub fn assert_send_val<T: ?Sized + Send>(_t: &T) {}
 pub fn assert_send_sync_val<T: ?Sized + Sync + Send>(_t: &T) {}
-
-#[macro_export]
-#[allow_internal_unstable]
-macro_rules! rustc_global {
-    // empty (base case for the recursion)
-    () => {};
-
-    // process multiple declarations
-    ($(#[$attr:meta])* $vis:vis static $name:ident: $t:ty = $init:expr; $($rest:tt)*) => (
-        thread_local!($(#[$attr])* $vis static $name: $t = $init);
-        rustc_global!($($rest)*);
-    );
-
-    // handle a single declaration
-    ($(#[$attr:meta])* $vis:vis static $name:ident: $t:ty = $init:expr) => (
-        thread_local!($(#[$attr])* $vis static $name: $t = $init);
-    );
-}
-
-#[macro_export]
-macro_rules! rustc_access_global {
-    ($name:path, $callback:expr) => {
-        $name.with($callback)
-    }
-}
 
 impl<T: Copy + Debug> Debug for LockCell<T> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
