@@ -40,7 +40,7 @@ types! {
     /// * `i16x4` - four `i16` variables packed together
     /// * `i32x2` - two `i32` variables packed together
     ///
-    /// (as well as unsgined versions). Each intrinsic may interpret the
+    /// (as well as unsigned versions). Each intrinsic may interpret the
     /// internal bits differently, check the documentation of the intrinsic
     /// to see how it's being used.
     ///
@@ -91,7 +91,7 @@ types! {
     /// * `i32x4` - four `i32` variables packed together
     /// * `i64x2` - two `i64` variables packed together
     ///
-    /// (as well as unsgined versions). Each intrinsic may interpret the
+    /// (as well as unsigned versions). Each intrinsic may interpret the
     /// internal bits differently, check the documentation of the intrinsic
     /// to see how it's being used.
     ///
@@ -227,7 +227,7 @@ types! {
     /// * `i32x8` - eight `i32` variables packed together
     /// * `i64x4` - four `i64` variables packed together
     ///
-    /// (as well as unsgined versions). Each intrinsic may interpret the
+    /// (as well as unsigned versions). Each intrinsic may interpret the
     /// internal bits differently, check the documentation of the intrinsic
     /// to see how it's being used.
     ///
