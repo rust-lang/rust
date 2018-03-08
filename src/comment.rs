@@ -395,7 +395,7 @@ fn rewrite_comment_inner(
 
             continue;
         } else {
-            inside_code_block = line.starts_with("```");
+            inside_code_block = line.starts_with("```rust");
 
             if result == opener {
                 let force_leading_whitespace = opener == "/* " && count_newlines(orig) == 0;
