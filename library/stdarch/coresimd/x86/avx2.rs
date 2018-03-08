@@ -833,7 +833,7 @@ pub unsafe fn _mm256_hadds_epi16(a: __m256i, b: __m256i) -> __m256i {
     mem::transmute(phaddsw(a.as_i16x16(), b.as_i16x16()))
 }
 
-/// Horizontally substract adjacent pairs of 16-bit integers in `a` and `b`.
+/// Horizontally subtract adjacent pairs of 16-bit integers in `a` and `b`.
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vphsubw))]
@@ -841,7 +841,7 @@ pub unsafe fn _mm256_hsub_epi16(a: __m256i, b: __m256i) -> __m256i {
     mem::transmute(phsubw(a.as_i16x16(), b.as_i16x16()))
 }
 
-/// Horizontally substract adjacent pairs of 32-bit integers in `a` and `b`.
+/// Horizontally subtract adjacent pairs of 32-bit integers in `a` and `b`.
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vphsubd))]
