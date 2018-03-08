@@ -275,7 +275,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         FutureIncompatibleInfo {
             id: LintId::of(TYVAR_BEHIND_RAW_POINTER),
             reference: "issue #46906 <https://github.com/rust-lang/rust/issues/46906>",
-            epoch: None,
+            epoch: Some(Epoch::Epoch2018),
         },
          FutureIncompatibleInfo {
              id: LintId::of(lint::builtin::BARE_TRAIT_OBJECT),
