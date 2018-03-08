@@ -10,7 +10,7 @@
 
 use borrow::Borrow;
 use fmt;
-use hash::{Hash, BuildHasher};
+use hash::{Hash, Hasher, BuildHasher};
 use iter::{Chain, FromIterator, FusedIterator};
 use ops::{BitOr, BitAnd, BitXor, Sub};
 
@@ -755,6 +755,16 @@ impl<T, S> Eq for HashSet<T, S>
     where T: Eq + Hash,
           S: BuildHasher
 {
+}
+
+#[unstable(feature = "hashmap_hash", issue = "0")]
+impl<T, S> Hash for HashSet<T, S>
+    where T: Eq + Hash,
+          S: BuildHasher
+{
+    fn hash<H: Hasher>(&self, hasher: &mut H) {
+        self.map.hash(hasher);
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

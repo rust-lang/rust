@@ -1370,6 +1370,38 @@ impl<K, V, S> Eq for HashMap<K, V, S>
 {
 }
 
+#[unstable(feature = "hashmap_hash", issue = "0")]
+impl<K, V, S> Hash for HashMap<K, V, S>
+    where K: Eq + Hash,
+          V: Hash,
+          S: BuildHasher
+{
+    fn hash<H: Hasher>(&self, hasher: &mut H) {
+        // We must preserve:  x == y -> hash(x) == hash(y).
+        // HashMaps have no order, so we must combine the elements with an
+        // associative and commutative operation • so that the order does not
+        // matter. In other words, (u64, •, 0) must form a commutative monoid.
+        // This is satisfied by • = u64::wrapping_add.
+        //
+        // We must further ensure that the hashing of individual elements does
+        // not depend on the state of the given Hasher. So we ensure that
+        // hashing each individual element starts with the same state.
+        //
+        // Unfortunately, we can't .clone() the hasher since we can't add more
+        // constraints than H being a Hasher. With some sort of ConstraintKinds
+        // we might be able do so in the future.
+        hasher.write_u64(
+            self.iter()
+                .map(|kv| {
+                    let mut h = DefaultHasher::new();
+                    kv.hash(&mut h);
+                    h.finish()
+                })
+                .fold(0, u64::wrapping_add)
+        );
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V, S> Debug for HashMap<K, V, S>
     where K: Eq + Hash + Debug,
