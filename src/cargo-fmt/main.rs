@@ -249,9 +249,9 @@ fn get_targets(strategy: &CargoFmtStrategy) -> Result<HashSet<Target>, io::Error
 
 fn get_targets_root_only(targets: &mut HashSet<Target>) -> Result<(), io::Error> {
     let metadata = get_cargo_metadata(None)?;
-    let current_dir = env::current_dir()?;
+    let current_dir = env::current_dir()?.canonicalize()?;
     let current_dir_manifest = current_dir.join("Cargo.toml");
-    let workspace_root_path = PathBuf::from(&metadata.workspace_root);
+    let workspace_root_path = PathBuf::from(&metadata.workspace_root).canonicalize()?;
     let in_workspace_root = workspace_root_path == current_dir;
 
     for package in metadata.packages {
