@@ -1866,6 +1866,7 @@ fn trans_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> TransFnAt
                     .emit();
             }
         } else if attr.check_name("target_feature") {
+            // handle deprecated #[target_feature = "..."]
             if let Some(val) = attr.value_str() {
                 for feat in val.as_str().split(",").map(|f| f.trim()) {
                     if !feat.is_empty() && !feat.contains('\0') {
