@@ -28,5 +28,14 @@ error: #[target_feature(..)] can only be applied to `unsafe` function
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: attribute should be applied to a function
+  --> $DIR/target-feature-wrong.rs:32:1
+   |
+LL | #[target_feature(enable = "sse2")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | //~^ ERROR: should be applied to a function
+LL | mod another {}
+   | -------------- not a function
+
+error: aborting due to 5 previous errors
 

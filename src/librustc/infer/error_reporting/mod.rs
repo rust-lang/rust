@@ -138,9 +138,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 self.explain_span(scope_decorated_tag, span)
             }
 
-            ty::ReEarlyBound(_) | ty::ReFree(_) => self.msg_span_from_free_region(region),
-
-            ty::ReStatic => ("the static lifetime".to_owned(), None),
+            ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic => {
+                self.msg_span_from_free_region(region)
+            }
 
             ty::ReEmpty => ("the empty lifetime".to_owned(), None),
 
@@ -175,6 +175,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn msg_span_from_free_region(self, region: ty::Region<'tcx>) -> (String, Option<Span>) {
+        match *region {
+            ty::ReEarlyBound(_) | ty::ReFree(_)  => {
+                self.msg_span_from_early_bound_and_free_regions(region)
+            },
+            ty::ReStatic => ("the static lifetime".to_owned(), None),
+            _ => bug!(),
+        }
+    }
+
+    fn msg_span_from_early_bound_and_free_regions(
+        self,
+        region: ty::Region<'tcx>,
+    ) -> (String, Option<Span>) {
         let scope = region.free_region_binding_scope(self);
         let node = self.hir.as_local_node_id(scope).unwrap_or(DUMMY_NODE_ID);
         let unknown;

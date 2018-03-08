@@ -6,6 +6,8 @@ LL |     let t = &mut *s; // this borrow should last for the entire function
 LL |     let x = &t.0;
 LL |     *s = (2,); //~ ERROR cannot assign to `*s`
    |     ^^^^^^^^^ assignment to borrowed `*s` occurs here
+LL |     *x
+   |     -- borrow later used here
 
 error[E0621]: explicit lifetime required in the type of `s`
   --> $DIR/guarantor-issue-46974.rs:25:5

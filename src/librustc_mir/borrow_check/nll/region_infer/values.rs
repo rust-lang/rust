@@ -184,7 +184,6 @@ impl ToElementIndex for RegionElementIndex {
 /// compact `SparseBitMatrix` representation, with one row per region
 /// variable. The columns consist of either universal regions or
 /// points in the CFG.
-#[derive(Clone)]
 pub(super) struct RegionValues {
     elements: Rc<RegionValueElements>,
     matrix: SparseBitMatrix<RegionVid, RegionElementIndex>,
@@ -199,11 +198,10 @@ pub(super) struct RegionValues {
 type CauseMap = FxHashMap<(RegionVid, RegionElementIndex), Rc<Cause>>;
 
 impl RegionValues {
-    pub(super) fn new(
-        elements: &Rc<RegionValueElements>,
-        num_region_variables: usize,
-        track_causes: TrackCauses,
-    ) -> Self {
+    /// Creates a new set of "region values" that tracks causal information.
+    /// Each of the regions in num_region_variables will be initialized with an
+    /// empty set of points and no causal information.
+    pub(super) fn new(elements: &Rc<RegionValueElements>, num_region_variables: usize) -> Self {
         assert!(
             elements.num_universal_regions <= num_region_variables,
             "universal regions are a subset of the region variables"
@@ -215,8 +213,22 @@ impl RegionValues {
                 RegionVid::new(num_region_variables),
                 RegionElementIndex::new(elements.num_elements()),
             ),
+            causes: Some(CauseMap::default()),
+        }
+    }
+
+    /// Duplicates the region values. If track_causes is false, then the
+    /// resulting value will not track causal information (and any existing
+    /// causal information is dropped). Otherwise, the causal information is
+    /// preserved and maintained. Tracking the causal information makes region
+    /// propagation significantly slower, so we prefer not to do it until an
+    /// error is reported.
+    pub(super) fn duplicate(&self, track_causes: TrackCauses) -> Self {
+        Self {
+            elements: self.elements.clone(),
+            matrix: self.matrix.clone(),
             causes: if track_causes.0 {
-                Some(CauseMap::default())
+                self.causes.clone()
             } else {
                 None
             },

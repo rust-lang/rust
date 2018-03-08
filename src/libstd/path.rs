@@ -87,6 +87,7 @@ use io;
 use iter::{self, FusedIterator};
 use ops::{self, Deref};
 use rc::Rc;
+use str::FromStr;
 use sync::Arc;
 
 use ffi::{OsStr, OsString};
@@ -1438,6 +1439,32 @@ impl From<PathBuf> for OsString {
 impl From<String> for PathBuf {
     fn from(s: String) -> PathBuf {
         PathBuf::from(OsString::from(s))
+    }
+}
+
+/// Error returned from [`PathBuf::from_str`][`from_str`].
+///
+/// Note that parsing a path will never fail. This error is just a placeholder
+/// for implementing `FromStr` for `PathBuf`.
+///
+/// [`from_str`]: struct.PathBuf.html#method.from_str
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[stable(feature = "path_from_str", since = "1.26.0")]
+pub enum ParsePathError {}
+
+#[stable(feature = "path_from_str", since = "1.26.0")]
+impl fmt::Display for ParsePathError {
+    fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result {
+        match *self {}
+    }
+}
+
+#[stable(feature = "path_from_str", since = "1.26.0")]
+impl FromStr for PathBuf {
+    type Err = ParsePathError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(PathBuf::from(s))
     }
 }
 

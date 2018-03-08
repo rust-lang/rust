@@ -1764,6 +1764,8 @@ mod tests {
     use std::collections::HashSet;
     use std::io;
     use std::path::PathBuf;
+    use diagnostics::plugin::ErrorMap;
+    use rustc_data_structures::sync::Lock;
     fn mk_sess(cm: Lrc<CodeMap>) -> ParseSess {
         let emitter = errors::emitter::EmitterWriter::new(Box::new(io::sink()),
                                                           Some(cm.clone()),
@@ -1776,6 +1778,7 @@ mod tests {
             included_mod_stack: RefCell::new(Vec::new()),
             code_map: cm,
             missing_fragment_specifiers: RefCell::new(HashSet::new()),
+            registered_diagnostics: Lock::new(ErrorMap::new()),
             non_modrs_mods: RefCell::new(vec![]),
         }
     }

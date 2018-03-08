@@ -10,7 +10,7 @@
 
 //! The main parser interface
 
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{Lrc, Lock};
 use ast::{self, CrateConfig};
 use codemap::{CodeMap, FilePathMapping};
 use syntax_pos::{self, Span, FileMap, NO_EXPANSION, FileName};
@@ -21,6 +21,7 @@ use ptr::P;
 use str::char_at;
 use symbol::Symbol;
 use tokenstream::{TokenStream, TokenTree};
+use diagnostics::plugin::ErrorMap;
 
 use std::cell::RefCell;
 use std::collections::HashSet;
@@ -47,6 +48,8 @@ pub struct ParseSess {
     pub unstable_features: UnstableFeatures,
     pub config: CrateConfig,
     pub missing_fragment_specifiers: RefCell<HashSet<Span>>,
+    /// The registered diagnostics codes
+    pub registered_diagnostics: Lock<ErrorMap>,
     // Spans where a `mod foo;` statement was included in a non-mod.rs file.
     // These are used to issue errors if the non_modrs_mods feature is not enabled.
     pub non_modrs_mods: RefCell<Vec<(ast::Ident, Span)>>,
@@ -71,6 +74,7 @@ impl ParseSess {
             unstable_features: UnstableFeatures::from_environment(),
             config: HashSet::new(),
             missing_fragment_specifiers: RefCell::new(HashSet::new()),
+            registered_diagnostics: Lock::new(ErrorMap::new()),
             included_mod_stack: RefCell::new(vec![]),
             code_map,
             non_modrs_mods: RefCell::new(vec![]),
