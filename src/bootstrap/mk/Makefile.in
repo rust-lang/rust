@@ -17,9 +17,9 @@ BOOTSTRAP_ARGS :=
 endif
 
 ifdef EXCLUDE_CARGO
-AUX_ARGS := src/tools/cargo src/tools/cargotest
-else
 AUX_ARGS :=
+else
+AUX_ARGS := src/tools/cargo src/tools/cargotest
 endif
 
 BOOTSTRAP := $(CFG_PYTHON) $(CFG_SRC_DIR)src/bootstrap/bootstrap.py
