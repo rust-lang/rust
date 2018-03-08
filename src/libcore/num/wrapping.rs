@@ -606,10 +606,23 @@ macro_rules! wrapping_int_impl {
             /// let x: Wrapping<i32> = Wrapping(2); // or any other integer type
             ///
             /// assert_eq!(x.pow(4), Wrapping(16));
+            /// ```
+            ///
+            /// Results that are too large are wrapped:
+            ///
+            /// ```
+            /// #![feature(wrapping_int_impl)]
+            /// use std::num::Wrapping;
+            ///
+            /// // 5 ^ 4 = 625, which is too big for a u8
+            /// let x: Wrapping<u8> = Wrapping(5);
+            ///
+            /// assert_eq!(x.pow(4).0, 113);
+            /// ```
             #[inline]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub fn pow(self, exp: u32) -> Self {
-                Wrapping(self.0.pow(exp))
+                Wrapping(self.0.wrapping_pow(exp))
             }
         }
     )*)
@@ -651,6 +664,3 @@ mod shift_max {
     pub const u64: u32 = i64;
     pub use self::platform::usize;
 }
-
-
-
