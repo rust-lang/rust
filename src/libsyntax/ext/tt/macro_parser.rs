@@ -765,8 +765,7 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
             Token::DotDotDot |                  // range pattern (future compat)
             Token::ModSep |                     // path
             Token::Lt |                         // path (UFCS constant)
-            Token::BinOp(token::Shl) |          // path (double UFCS)
-            Token::Underscore => true,          // placeholder
+            Token::BinOp(token::Shl) => true,   // path (double UFCS)
             Token::Interpolated(ref nt) => may_be_ident(&nt.0),
             _ => false,
         },

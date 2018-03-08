@@ -214,7 +214,7 @@ impl LifetimeName {
         use self::LifetimeName::*;
         match *self {
             Implicit => keywords::Invalid.name(),
-            Underscore => Symbol::intern("'_"),
+            Underscore => keywords::UnderscoreLifetime.name(),
             Static => keywords::StaticLifetime.name(),
             Name(name) => name,
         }

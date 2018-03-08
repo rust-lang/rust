@@ -287,7 +287,6 @@ fn hash_token<'a, 'gcx, W: StableHasherResult>(
         token::Token::Pound |
         token::Token::Dollar |
         token::Token::Question |
-        token::Token::Underscore |
         token::Token::Whitespace |
         token::Token::Comment |
         token::Token::Eof => {}

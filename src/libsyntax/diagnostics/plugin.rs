@@ -19,7 +19,7 @@ use ext::base::{ExtCtxt, MacEager, MacResult};
 use ext::build::AstBuilder;
 use parse::token;
 use ptr::P;
-use symbol::Symbol;
+use symbol::{keywords, Symbol};
 use tokenstream::{TokenTree};
 use util::small_vector::SmallVector;
 
@@ -192,7 +192,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
             (descriptions.len(), ecx.expr_vec(span, descriptions))
         });
 
-    let static_ = ecx.lifetime(span, Ident::from_str("'static"));
+    let static_ = ecx.lifetime(span, keywords::StaticLifetime.ident());
     let ty_str = ecx.ty_rptr(
         span,
         ecx.ty_ident(span, ecx.ident_of("str")),

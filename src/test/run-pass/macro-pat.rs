@@ -71,4 +71,6 @@ pub fn main() {
         let ident_pat!(x) = 2;
         x+1
     });
+
+    let ident_pat!(_) = 2; // OK
 }
