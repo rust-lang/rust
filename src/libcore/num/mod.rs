@@ -3900,6 +3900,13 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
 /// This error is used as the error type for the `from_str_radix()` functions
 /// on the primitive integer types, such as [`i8::from_str_radix`].
 ///
+/// # Potential causes
+///
+/// Among other causes, `ParseIntError` can be thrown because of leading or trailing whitespace
+/// in the string e.g. when it is obtained from the standard input.
+/// Using the [`str.trim()`] method ensures that no whitespace remains before parsing.
+///
+/// [`str.trim()`]: ../../std/primitive.str.html#method.trim
 /// [`i8::from_str_radix`]: ../../std/primitive.i8.html#method.from_str_radix
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
