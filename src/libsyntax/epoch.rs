@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::fmt;
 use std::str::FromStr;
 
 /// The epoch of the compiler (RFC 2052)
@@ -37,12 +38,13 @@ pub enum Epoch {
 // must be in order from oldest to newest
 pub const ALL_EPOCHS: &[Epoch] = &[Epoch::Epoch2015, Epoch::Epoch2018];
 
-impl ToString for Epoch {
-    fn to_string(&self) -> String {
-        match *self {
-            Epoch::Epoch2015 => "2015".into(),
-            Epoch::Epoch2018 => "2018".into(),
-        }
+impl fmt::Display for Epoch {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let s = match *self {
+            Epoch::Epoch2015 => "2015",
+            Epoch::Epoch2018 => "2018",
+        };
+        write!(f, "{}", s)
     }
 }
 

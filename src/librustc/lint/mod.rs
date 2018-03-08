@@ -493,9 +493,14 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
     // Check for future incompatibility lints and issue a stronger warning.
     let lints = sess.lint_store.borrow();
     if let Some(future_incompatible) = lints.future_incompatible(LintId::of(lint)) {
+        let future = if let Some(epoch) = future_incompatible.epoch {
+            format!("the {} epoch", epoch)
+        } else {
+            "a future release".to_owned()
+        };
         let explanation = format!("this was previously accepted by the compiler \
                                    but is being phased out; \
-                                   it will become a hard error in a future release!");
+                                   it will become a hard error in {}!", future);
         let citation = format!("for more information, see {}",
                                future_incompatible.reference);
         err.warn(&explanation);
