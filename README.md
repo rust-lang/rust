@@ -41,6 +41,36 @@ to run on a cargo project in the current working directory:
 cargo fmt
 ```
 
+
+## Limitations
+
+Rustfmt tries to work on as much Rust code as possible, sometimes, the code
+doesn't even need to compile! As we approach a 1.0 release we are also looking
+to limit areas of instability; in particular, post-1.0, the formatting of most
+code should not change as Rustfmt improves. However, there are some things that
+Rustfmt can't do or can't do well (and thus where formatting might change
+significantly, even post-1.0). We would like to reduce the list of limitations
+over time.
+
+The following list enumerates areas where Rustfmt does not work or where the
+stability guarantees do not apply (we don't make a distinction between the two
+because in the future Rustfmt might work on code where it currently does not):
+
+* a program where any part of the program does not parse (parsing is an early
+  stage of compilation and in Rust includes macro expansion).
+* Macro declarations and uses (current status: some macro declarations and uses
+  are formatted).
+* Comments, including any AST node with a comment 'inside' (Rustfmt does not
+  currently attempt to format comments, it does format code with comments inside, but that formatting may change in the future).
+* Rust code in code blocks in comments.
+* Any fragment of a program (i.e., stability guarantees only apply to whole
+  programs, even where fragments of a program can be formatted today).
+* Code containing non-ascii unicode characters (we believe Rustfmt mostly works
+  here, but do not have the test coverage or experience to be 100% sure).
+* Bugs in Rustfmt (like any software, Rustfmt has bugs, we do not consider bug
+  fixes to break our stability guarantees).
+
+
 ## Installation
 
 ```
