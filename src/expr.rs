@@ -79,7 +79,7 @@ pub fn format_expr(
             let callee_str = callee.rewrite(context, shape)?;
             rewrite_call(context, &callee_str, args, inner_span, shape)
         }
-        ast::ExprKind::Paren(ref subexpr) => rewrite_paren(context, subexpr, shape),
+        ast::ExprKind::Paren(ref subexpr) => rewrite_paren(context, subexpr, shape, expr.span),
         ast::ExprKind::Binary(ref op, ref lhs, ref rhs) => {
             // FIXME: format comments between operands and operator
             rewrite_pair(
@@ -2425,8 +2425,36 @@ fn span_ends_with_comma(context: &RewriteContext, span: Span) -> bool {
     result
 }
 
-fn rewrite_paren(context: &RewriteContext, subexpr: &ast::Expr, shape: Shape) -> Option<String> {
+fn rewrite_paren(
+    context: &RewriteContext,
+    mut subexpr: &ast::Expr,
+    shape: Shape,
+    mut span: Span,
+) -> Option<String> {
     debug!("rewrite_paren, shape: {:?}", shape);
+
+    // Extract comments within parens.
+    let mut pre_comment;
+    let mut post_comment;
+    loop {
+        // 1 = "(" or ")"
+        let pre_span = mk_sp(span.lo() + BytePos(1), subexpr.span.lo());
+        let post_span = mk_sp(subexpr.span.hi(), span.hi() - BytePos(1));
+        pre_comment = rewrite_missing_comment(pre_span, shape, context)?;
+        post_comment = rewrite_missing_comment(post_span, shape, context)?;
+
+        // Remove nested parens if there are no comments.
+        if let ast::ExprKind::Paren(ref subsubexpr) = subexpr.node {
+            if pre_comment.is_empty() && post_comment.is_empty() {
+                span = subexpr.span;
+                subexpr = subsubexpr;
+                continue;
+            }
+        }
+
+        break;
+    }
+
     let total_paren_overhead = paren_overhead(context);
     let paren_overhead = total_paren_overhead / 2;
     let sub_shape = shape
@@ -2435,9 +2463,9 @@ fn rewrite_paren(context: &RewriteContext, subexpr: &ast::Expr, shape: Shape) ->
 
     let paren_wrapper = |s: &str| {
         if context.config.spaces_within_parens_and_brackets() && !s.is_empty() {
-            format!("( {} )", s)
+            format!("( {}{}{} )", pre_comment, s, post_comment)
         } else {
-            format!("({})", s)
+            format!("({}{}{})", pre_comment, s, post_comment)
         }
     };
 
