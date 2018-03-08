@@ -1378,14 +1378,14 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         // method yet. So create fresh variables here for those too,
         // if there are any.
         let generics = self.tcx.generics_of(method);
-        assert_eq!(substs.types().count(), generics.parent_types as usize);
-        assert_eq!(substs.regions().count(), generics.parent_regions as usize);
+        assert_eq!(substs.regions().count(), generics.parent_lifetimes() as usize);
+        assert_eq!(substs.types().count(), generics.parent_types() as usize);
 
         // Erase any late-bound regions from the method and substitute
         // in the values from the substitution.
         let xform_fn_sig = self.erase_late_bound_regions(&fn_sig);
 
-        if generics.types.is_empty() && generics.regions.is_empty() {
+        if generics.parameters.is_empty() {
             xform_fn_sig.subst(self.tcx, substs)
         } else {
             let substs = Substs::for_item(self.tcx, method, |def, _| {

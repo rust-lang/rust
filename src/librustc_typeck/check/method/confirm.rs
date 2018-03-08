@@ -332,7 +332,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                 parent_substs.type_at(i)
             } else if let Some(ast_ty)
                 = provided.as_ref().and_then(|p| {
-                    p.types.get(i - parent_substs.len() - method_generics.regions.len())
+                    p.types.get(i - parent_substs.len() - method_generics.lifetimes().len())
                 })
             {
                 self.to_ty(ast_ty)

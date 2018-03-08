@@ -735,10 +735,8 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::Generics {
                                           hasher: &mut StableHasher<W>) {
         let ty::Generics {
             parent,
-            parent_regions,
-            parent_types,
-            ref regions,
-            ref types,
+            ref parent_parameters,
+            ref parameters,
 
             // Reverse map to each `TypeParameterDef`'s `index` field, from
             // `def_id.index` (`def_id.krate` is the same as the item's).
@@ -748,14 +746,17 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::Generics {
         } = *self;
 
         parent.hash_stable(hcx, hasher);
-        parent_regions.hash_stable(hcx, hasher);
-        parent_types.hash_stable(hcx, hasher);
-        regions.hash_stable(hcx, hasher);
-        types.hash_stable(hcx, hasher);
+        parent_parameters.hash_stable(hcx, hasher);
+        parameters.hash_stable(hcx, hasher);
         has_self.hash_stable(hcx, hasher);
         has_late_bound_regions.hash_stable(hcx, hasher);
     }
 }
+
+impl_stable_hash_for!(enum ty::GenericParameterDef {
+    Lifetime(lt),
+    Type(ty)
+});
 
 impl<'a> HashStable<StableHashingContext<'a>>
 for ty::RegionParameterDef {

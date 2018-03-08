@@ -1461,7 +1461,7 @@ impl<'a> LoweringContext<'a> {
                         assert!(!def_id.is_local());
                         let n = self.cstore
                             .item_generics_cloned_untracked(def_id, self.sess)
-                            .regions
+                            .lifetimes()
                             .len();
                         self.type_def_lifetime_params.insert(def_id, n);
                         n

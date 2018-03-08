@@ -641,12 +641,12 @@ fn report_bivariance<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn reject_shadowing_type_parameters(tcx: TyCtxt, def_id: DefId) {
     let generics = tcx.generics_of(def_id);
     let parent = tcx.generics_of(generics.parent.unwrap());
-    let impl_params: FxHashMap<_, _> = parent.types
-                                       .iter()
-                                       .map(|tp| (tp.name, tp.def_id))
-                                       .collect();
+    let impl_params: FxHashMap<_, _> = parent.types()
+                                             .iter()
+                                             .map(|tp| (tp.name, tp.def_id))
+                                             .collect();
 
-    for method_param in &generics.types {
+    for method_param in generics.types() {
         if impl_params.contains_key(&method_param.name) {
             // Tighten up the span to focus on only the shadowing type
             let type_span = tcx.def_span(method_param.def_id);

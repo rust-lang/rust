@@ -284,7 +284,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
 
         // We can't monomorphize things like `fn foo<A>(...)`.
-        if !self.generics_of(method.def_id).types.is_empty() {
+        if !self.generics_of(method.def_id).types().is_empty() {
             return Some(MethodViolationCode::Generic);
         }
 

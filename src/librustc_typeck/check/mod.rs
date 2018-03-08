@@ -1239,7 +1239,7 @@ pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item
         } else {
             for item in &m.items {
                 let generics = tcx.generics_of(tcx.hir.local_def_id(item.id));
-                if !generics.types.is_empty() {
+                if !generics.types().is_empty() {
                     let mut err = struct_span_err!(tcx.sess, item.span, E0044,
                         "foreign items may not have type parameters");
                     err.span_label(item.span, "can't have type parameters");
@@ -4799,7 +4799,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             // Skip over the lifetimes in the same segment.
             if let Some((_, generics)) = segment {
-                i -= generics.regions.len();
+                i -= generics.lifetimes().len();
             }
 
             if let Some(ast_ty) = types.get(i) {
@@ -4918,11 +4918,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         // Check provided type parameters.
-        let type_defs = segment.map_or(&[][..], |(_, generics)| {
+        let type_defs = segment.map_or(vec![], |(_, generics)| {
             if generics.parent.is_none() {
-                &generics.types[generics.has_self as usize..]
+                generics.types()[generics.has_self as usize..].to_vec()
             } else {
-                &generics.types
+                generics.types()
             }
         });
         let required_len = type_defs.iter().take_while(|d| !d.has_default).count();
@@ -4957,7 +4957,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
 
         // Check provided lifetime parameters.
-        let lifetime_defs = segment.map_or(&[][..], |(_, generics)| &generics.regions);
+        let lifetime_defs = segment.map_or(vec![], |(_, generics)| generics.lifetimes());
         let required_len = lifetime_defs.len();
 
         // Prohibit explicit lifetime arguments if late bound lifetime parameters are present.
@@ -5014,13 +5014,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let segment = segment.map(|(path_segment, generics)| {
             let explicit = !path_segment.infer_types;
-            let impl_trait = generics.types.iter()
-                                           .any(|ty_param| {
-                                               match ty_param.synthetic {
-                                                   Some(ImplTrait) => true,
-                                                   _ => false,
-                                               }
-                                           });
+            let impl_trait = generics.types().iter()
+                                             .any(|ty_param| {
+                                                 match ty_param.synthetic {
+                                                     Some(ImplTrait) => true,
+                                                     _ => false,
+                                                 }
+                                             });
 
             if explicit && impl_trait {
                 let mut err = struct_span_err! {

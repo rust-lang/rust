@@ -310,10 +310,10 @@ impl PrintContext {
             if let Some(def_id) = generics.parent {
                 // Methods.
                 assert!(is_value_path);
-                child_types = generics.types.len();
+                child_types = generics.types().len();
                 generics = tcx.generics_of(def_id);
-                num_regions = generics.regions.len();
-                num_types = generics.types.len();
+                num_regions = generics.lifetimes().len();
+                num_types = generics.types().len();
 
                 if has_self {
                     print!(f, self, write("<"), print_display(substs.type_at(0)), write(" as "))?;
@@ -328,16 +328,16 @@ impl PrintContext {
                     assert_eq!(has_self, false);
                 } else {
                     // Types and traits.
-                    num_regions = generics.regions.len();
-                    num_types = generics.types.len();
+                    num_regions = generics.lifetimes().len();
+                    num_types = generics.types().len();
                 }
             }
 
             if !verbose {
-                if generics.types.last().map_or(false, |def| def.has_default) {
+                if generics.types().last().map_or(false, |def| def.has_default) {
                     if let Some(substs) = tcx.lift(&substs) {
                         let tps = substs.types().rev().skip(child_types);
-                        for (def, actual) in generics.types.iter().rev().zip(tps) {
+                        for (def, actual) in generics.types().iter().rev().zip(tps) {
                             if !def.has_default {
                                 break;
                             }

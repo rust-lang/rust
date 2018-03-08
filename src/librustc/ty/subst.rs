@@ -242,24 +242,31 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     where FR: FnMut(&ty::RegionParameterDef, &[Kind<'tcx>]) -> ty::Region<'tcx>,
           FT: FnMut(&ty::TypeParameterDef, &[Kind<'tcx>]) -> Ty<'tcx> {
         // Handle Self first, before all regions.
-        let mut types = defs.types.iter();
-        if defs.parent.is_none() && defs.has_self {
+        let types = defs.types();
+        let mut types = types.iter();
+        let mut skip_self = defs.parent.is_none() && defs.has_self;
+        if skip_self {
             let def = types.next().unwrap();
             let ty = mk_type(def, substs);
             assert_eq!(def.index as usize, substs.len());
             substs.push(ty.into());
         }
 
-        for def in &defs.regions {
-            let region = mk_region(def, substs);
-            assert_eq!(def.index as usize, substs.len());
-            substs.push(Kind::from(region));
-        }
-
-        for def in types {
-            let ty = mk_type(def, substs);
-            assert_eq!(def.index as usize, substs.len());
-            substs.push(Kind::from(ty));
+        for def in &defs.parameters {
+            let param = match def {
+                ty::GenericParameterDef::Lifetime(ref lt) => {
+                    UnpackedKind::Lifetime(mk_region(lt, substs))
+                }
+                ty::GenericParameterDef::Type(ref ty) => {
+                    if skip_self {
+                        skip_self = false;
+                        continue
+                    }
+                    UnpackedKind::Type(mk_type(ty, substs))
+                }
+            };
+            assert_eq!(def.index() as usize, substs.len());
+            substs.push(param.pack());
         }
     }
 

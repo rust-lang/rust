@@ -313,7 +313,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // `['a]` for the first impl trait and `'b` for the
         // second.
         let mut least_region = None;
-        for region_def in &abstract_type_generics.regions {
+        for region_def in abstract_type_generics.lifetimes() {
             // Find the index of this region in the list of substitutions.
             let index = region_def.index as usize;
 
