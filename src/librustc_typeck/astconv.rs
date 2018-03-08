@@ -1143,7 +1143,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         assert_eq!(substs.len(), generics.parent_count);
 
         // Fill in our own generics with the resolved lifetimes
-        assert_eq!(lifetimes.len(), generics.own_count());
+        assert_eq!(lifetimes.len(), generics.params.len());
         substs.extend(lifetimes.iter().map(|lt| Kind::from(self.ast_region_to_region(lt, None))));
 
         debug!("impl_trait_ty_to_ty: final substs = {:?}", substs);

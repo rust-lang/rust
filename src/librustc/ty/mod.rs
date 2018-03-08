@@ -795,12 +795,8 @@ pub struct Generics {
 }
 
 impl<'a, 'gcx, 'tcx> Generics {
-    pub fn own_count(&self) -> usize {
-        self.params.len()
-    }
-
     pub fn count(&self) -> usize {
-        self.parent_count + self.own_count()
+        self.parent_count + self.params.len()
     }
 
     pub fn lifetimes(&self) -> impl DoubleEndedIterator<Item = &RegionParameterDef> {

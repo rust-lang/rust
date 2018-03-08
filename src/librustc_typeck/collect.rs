@@ -971,10 +971,10 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    .collect();
 
     let lifetimes: Vec<ty::GenericParam> =
-        regions.into_iter().map(|lt| ty::GenericParam::Lifetime(lt)).collect();
+        regions.into_iter().map(|lt| ty::GenericParam::Lifetime(lt));
     let types: Vec<ty::GenericParam> =
-        types.into_iter().map(|ty| ty::GenericParam::Type(ty)).collect();
-    let params = lifetimes.into_iter().chain(types.into_iter()).collect();
+        types.into_iter().map(|ty| ty::GenericParam::Type(ty));
+    let params = lifetimes.chain(types).collect();
 
     tcx.alloc_generics(ty::Generics {
         parent: parent_def_id,

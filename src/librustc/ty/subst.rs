@@ -252,20 +252,20 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         }
 
         for def in &defs.params {
+            assert_eq!(def.index() as usize, substs.len());
             let param = match def {
                 ty::GenericParam::Lifetime(ref lt) => {
-                    UnpackedKind::Lifetime(mk_region(lt, substs))
+                    mk_region(lt, substs).into()
                 }
                 ty::GenericParam::Type(ref ty) => {
                     if skip_self {
                         skip_self = false;
                         continue
                     }
-                    UnpackedKind::Type(mk_type(ty, substs))
+                    mk_type(ty, substs).into()
                 }
             };
-            assert_eq!(def.index() as usize, substs.len());
-            substs.push(param.pack());
+            substs.push(param);
         }
     }
 
@@ -333,7 +333,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                        target_substs: &Substs<'tcx>)
                        -> &'tcx Substs<'tcx> {
         let defs = tcx.generics_of(source_ancestor);
-        tcx.mk_substs(target_substs.iter().chain(&self[defs.own_count()..]).cloned())
+        tcx.mk_substs(target_substs.iter().chain(&self[defs.params.len()..]).cloned())
     }
 
     pub fn truncate_to(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, generics: &ty::Generics)
@@ -586,7 +586,7 @@ impl<'a, 'gcx, 'tcx> ty::TraitRef<'tcx> {
 
         ty::TraitRef {
             def_id: trait_id,
-            substs: tcx.intern_substs(&substs[..defs.own_count()])
+            substs: tcx.intern_substs(&substs[..defs.params.len()])
         }
     }
 }

@@ -4754,7 +4754,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 (generics.parent_count, generics.has_self)
             }
             (Some((_, generics)), None) => {
-                (generics.own_count(), generics.has_self)
+                (generics.params.len(), generics.has_self)
             }
             (None, None) => (0, false)
         };
