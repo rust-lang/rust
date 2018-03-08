@@ -36,9 +36,7 @@
 //! non-zero exit code.
 //!
 //! When the main thread of a Rust program terminates, the entire program shuts
-//! down, even if other threads are still running. However, this module provides
-//! convenient facilities for automatically waiting for the termination of a
-//! child thread (i.e., join).
+//! down, even if other threads are still running.
 //!
 //! ## Spawning a thread
 //!
@@ -1267,7 +1265,8 @@ impl<T> JoinInner<T> {
 /// [`Clone`]: ../../std/clone/trait.Clone.html
 /// [`thread::spawn`]: fn.spawn.html
 /// [`thread::Builder::spawn`]: struct.Builder.html#method.spawn
-#[must_use]
+#[must_use = "spawned thread must be joined, or else it could be abruptly terminated when the main \
+              thread ends"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct JoinHandle<T>(JoinInner<T>);
 
