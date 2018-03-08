@@ -695,7 +695,7 @@ impl IntoRawFd for net::UdpSocket {
 ///     match stream {
 ///         Ok(stream) => {
 ///             /* connection succeeded */
-///             thread::spawn(|| handle_client(stream));
+///             let _t = thread::spawn(|| handle_client(stream));
 ///         }
 ///         Err(err) => {
 ///             /* connection failed */
@@ -873,7 +873,7 @@ impl UnixListener {
     /// for stream in listener.incoming() {
     ///     match stream {
     ///         Ok(stream) => {
-    ///             thread::spawn(|| handle_client(stream));
+    ///             let _t = thread::spawn(|| handle_client(stream));
     ///         }
     ///         Err(err) => {
     ///             break;
@@ -940,7 +940,7 @@ impl<'a> IntoIterator for &'a UnixListener {
 /// for stream in listener.incoming() {
 ///     match stream {
 ///         Ok(stream) => {
-///             thread::spawn(|| handle_client(stream));
+///             let _t = thread::spawn(|| handle_client(stream));
 ///         }
 ///         Err(err) => {
 ///             break;

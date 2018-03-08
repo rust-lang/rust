@@ -234,8 +234,8 @@ macro_rules! eprintln {
 /// let (tx1, rx1) = mpsc::channel();
 /// let (tx2, rx2) = mpsc::channel();
 ///
-/// thread::spawn(move|| { long_running_thread(); tx1.send(()).unwrap(); });
-/// thread::spawn(move|| { tx2.send(calculate_the_answer()).unwrap(); });
+/// let _t = thread::spawn(move || { long_running_thread(); tx1.send(()).unwrap(); });
+/// let _t = thread::spawn(move || { tx2.send(calculate_the_answer()).unwrap(); });
 ///
 /// select! {
 ///     _ = rx1.recv() => println!("the long running thread finished first"),

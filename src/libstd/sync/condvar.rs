@@ -45,7 +45,7 @@ impl WaitTimeoutResult {
     /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
     /// let pair2 = pair.clone();
     ///
-    /// thread::spawn(move|| {
+    /// let _t = thread::spawn(move|| {
     ///     let &(ref lock, ref cvar) = &*pair2;
     ///
     ///     // Let's wait 20 milliseconds before notifying the condvar.
@@ -103,7 +103,7 @@ impl WaitTimeoutResult {
 /// let pair2 = pair.clone();
 ///
 /// // Inside of our lock, spawn a new thread, and then wait for it to start.
-/// thread::spawn(move|| {
+/// let _t = thread::spawn(move|| {
 ///     let &(ref lock, ref cvar) = &*pair2;
 ///     let mut started = lock.lock().unwrap();
 ///     *started = true;
@@ -189,7 +189,7 @@ impl Condvar {
     /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
     /// let pair2 = pair.clone();
     ///
-    /// thread::spawn(move|| {
+    /// let _t = thread::spawn(move|| {
     ///     let &(ref lock, ref cvar) = &*pair2;
     ///     let mut started = lock.lock().unwrap();
     ///     *started = true;
@@ -254,7 +254,7 @@ impl Condvar {
     /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
     /// let pair2 = pair.clone();
     ///
-    /// thread::spawn(move|| {
+    /// let _t = thread::spawn(move|| {
     ///     let &(ref lock, ref cvar) = &*pair2;
     ///     let mut started = lock.lock().unwrap();
     ///     *started = true;
@@ -310,7 +310,7 @@ impl Condvar {
     /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
     /// let pair2 = pair.clone();
     ///
-    /// thread::spawn(move|| {
+    /// let _t = thread::spawn(move|| {
     ///     let &(ref lock, ref cvar) = &*pair2;
     ///     let mut started = lock.lock().unwrap();
     ///     *started = true;
@@ -383,7 +383,7 @@ impl Condvar {
     /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
     /// let pair2 = pair.clone();
     ///
-    /// thread::spawn(move|| {
+    /// let _t = thread::spawn(move|| {
     ///     let &(ref lock, ref cvar) = &*pair2;
     ///     let mut started = lock.lock().unwrap();
     ///     *started = true;
@@ -458,7 +458,7 @@ impl Condvar {
     /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
     /// let pair2 = pair.clone();
     ///
-    /// thread::spawn(move|| {
+    /// let _t = thread::spawn(move|| {
     ///     let &(ref lock, ref cvar) = &*pair2;
     ///     let mut started = lock.lock().unwrap();
     ///     *started = true;
@@ -517,7 +517,7 @@ impl Condvar {
     /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
     /// let pair2 = pair.clone();
     ///
-    /// thread::spawn(move|| {
+    /// let _t = thread::spawn(move|| {
     ///     let &(ref lock, ref cvar) = &*pair2;
     ///     let mut started = lock.lock().unwrap();
     ///     *started = true;
@@ -557,7 +557,7 @@ impl Condvar {
     /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
     /// let pair2 = pair.clone();
     ///
-    /// thread::spawn(move|| {
+    /// let _t = thread::spawn(move|| {
     ///     let &(ref lock, ref cvar) = &*pair2;
     ///     let mut started = lock.lock().unwrap();
     ///     *started = true;

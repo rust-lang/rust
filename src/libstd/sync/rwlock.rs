@@ -183,7 +183,7 @@ impl<T: ?Sized> RwLock<T> {
     /// let n = lock.read().unwrap();
     /// assert_eq!(*n, 1);
     ///
-    /// thread::spawn(move || {
+    /// let _t = thread::spawn(move || {
     ///     let r = c_lock.read();
     ///     assert!(r.is_ok());
     /// }).join().unwrap();

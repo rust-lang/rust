@@ -68,7 +68,7 @@
 //!
 //! // Create a simple streaming channel
 //! let (tx, rx) = channel();
-//! thread::spawn(move|| {
+//! let _t = thread::spawn(move|| {
 //!     tx.send(10).unwrap();
 //! });
 //! assert_eq!(rx.recv().unwrap(), 10);
@@ -86,7 +86,7 @@
 //! let (tx, rx) = channel();
 //! for i in 0..10 {
 //!     let tx = tx.clone();
-//!     thread::spawn(move|| {
+//!     let _t = thread::spawn(move|| {
 //!         tx.send(i).unwrap();
 //!     });
 //! }
@@ -116,7 +116,7 @@
 //! use std::sync::mpsc::sync_channel;
 //!
 //! let (tx, rx) = sync_channel::<i32>(0);
-//! thread::spawn(move|| {
+//! let _t = thread::spawn(move|| {
 //!     // This will wait for the parent thread to start receiving
 //!     tx.send(53).unwrap();
 //! });
@@ -317,7 +317,7 @@ mod cache_aligned;
 ///
 /// let (send, recv) = channel();
 ///
-/// thread::spawn(move || {
+/// let _t = thread::spawn(move || {
 ///     send.send("Hello world!").unwrap();
 ///     thread::sleep(Duration::from_secs(2)); // block for two seconds
 ///     send.send("Delayed for 2 seconds").unwrap();
@@ -359,7 +359,7 @@ impl<T> !Sync for Receiver<T> { }
 ///
 /// let (send, recv) = channel();
 ///
-/// thread::spawn(move || {
+/// let _t = thread::spawn(move || {
 ///     send.send(1u8).unwrap();
 ///     send.send(2u8).unwrap();
 ///     send.send(3u8).unwrap();
@@ -401,7 +401,7 @@ pub struct Iter<'a, T: 'a> {
 /// assert!(receiver.try_iter().next().is_none());
 /// println!("Nothing in the buffer...");
 ///
-/// thread::spawn(move || {
+/// let _t = thread::spawn(move || {
 ///     sender.send(1).unwrap();
 ///     sender.send(2).unwrap();
 ///     sender.send(3).unwrap();
@@ -439,7 +439,7 @@ pub struct TryIter<'a, T: 'a> {
 ///
 /// let (send, recv) = channel();
 ///
-/// thread::spawn(move || {
+/// let _t = thread::spawn(move || {
 ///     send.send(1u8).unwrap();
 ///     send.send(2u8).unwrap();
 ///     send.send(3u8).unwrap();
@@ -473,12 +473,12 @@ pub struct IntoIter<T> {
 /// let sender2 = sender.clone();
 ///
 /// // First thread owns sender
-/// thread::spawn(move || {
+/// let _t = thread::spawn(move || {
 ///     sender.send(1).unwrap();
 /// });
 ///
 /// // Second thread owns sender2
-/// thread::spawn(move || {
+/// let _t = thread::spawn(move || {
 ///     sender2.send(2).unwrap();
 /// });
 ///
@@ -521,13 +521,13 @@ impl<T> !Sync for Sender<T> { }
 /// let sync_sender2 = sync_sender.clone();
 ///
 /// // First thread owns sync_sender
-/// thread::spawn(move || {
+/// let _t = thread::spawn(move || {
 ///     sync_sender.send(1).unwrap();
 ///     sync_sender.send(2).unwrap();
 /// });
 ///
 /// // Second thread owns sync_sender2
-/// thread::spawn(move || {
+/// let _t = thread::spawn(move || {
 ///     sync_sender2.send(3).unwrap();
 ///     // thread will now block since the buffer is full
 ///     println!("Thread unblocked!");
@@ -710,7 +710,7 @@ impl<T> UnsafeFlavor<T> for Receiver<T> {
 /// let (sender, receiver) = channel();
 ///
 /// // Spawn off an expensive computation
-/// thread::spawn(move|| {
+/// let _t = thread::spawn(move || {
 /// #   fn expensive_computation() {}
 ///     sender.send(expensive_computation()).unwrap();
 /// });
@@ -765,7 +765,7 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
 /// // this returns immediately
 /// sender.send(1).unwrap();
 ///
-/// thread::spawn(move|| {
+/// let _t = thread::spawn(move|| {
 ///     // this will block until the previous message has been received
 ///     sender.send(2).unwrap();
 /// });
@@ -962,7 +962,7 @@ impl<T> SyncSender<T> {
     /// // Create a rendezvous sync_channel with buffer size 0
     /// let (sync_sender, receiver) = sync_channel(0);
     ///
-    /// thread::spawn(move || {
+    /// let _t = thread::spawn(move || {
     ///    println!("sending message...");
     ///    sync_sender.send(1).unwrap();
     ///    // Thread is now blocked until the message is received
@@ -1001,14 +1001,14 @@ impl<T> SyncSender<T> {
     /// let sync_sender2 = sync_sender.clone();
     ///
     /// // First thread owns sync_sender
-    /// thread::spawn(move || {
+    /// let _t = thread::spawn(move || {
     ///     sync_sender.send(1).unwrap();
     ///     sync_sender.send(2).unwrap();
     ///     // Thread blocked
     /// });
     ///
     /// // Second thread owns sync_sender2
-    /// thread::spawn(move || {
+    /// let _t = thread::spawn(move || {
     ///     // This will return an error and send
     ///     // no message if the buffer is full
     ///     sync_sender2.try_send(3).is_err();
@@ -1258,7 +1258,7 @@ impl<T> Receiver<T> {
     ///
     /// let (send, recv) = mpsc::channel();
     ///
-    /// thread::spawn(move || {
+    /// let _t = thread::spawn(move || {
     ///     send.send('a').unwrap();
     /// });
     ///
@@ -1277,7 +1277,7 @@ impl<T> Receiver<T> {
     ///
     /// let (send, recv) = mpsc::channel();
     ///
-    /// thread::spawn(move || {
+    /// let _t = thread::spawn(move || {
     ///     thread::sleep(Duration::from_millis(800));
     ///     send.send('a').unwrap();
     /// });
@@ -1331,7 +1331,7 @@ impl<T> Receiver<T> {
     ///
     /// let (send, recv) = mpsc::channel();
     ///
-    /// thread::spawn(move || {
+    /// let _t = thread::spawn(move || {
     ///     send.send('a').unwrap();
     /// });
     ///
@@ -1351,7 +1351,7 @@ impl<T> Receiver<T> {
     ///
     /// let (send, recv) = mpsc::channel();
     ///
-    /// thread::spawn(move || {
+    /// let _t = thread::spawn(move || {
     ///     thread::sleep(Duration::from_millis(800));
     ///     send.send('a').unwrap();
     /// });
@@ -1427,7 +1427,7 @@ impl<T> Receiver<T> {
     ///
     /// let (send, recv) = channel();
     ///
-    /// thread::spawn(move || {
+    /// let _t = thread::spawn(move || {
     ///     send.send(1).unwrap();
     ///     send.send(2).unwrap();
     ///     send.send(3).unwrap();
@@ -1463,7 +1463,7 @@ impl<T> Receiver<T> {
     /// // nothing is in the buffer yet
     /// assert!(receiver.try_iter().next().is_none());
     ///
-    /// thread::spawn(move || {
+    /// let _t = thread::spawn(move || {
     ///     thread::sleep(Duration::from_secs(1));
     ///     sender.send(1).unwrap();
     ///     sender.send(2).unwrap();

@@ -47,7 +47,7 @@
 //! ```rust
 //! use std::thread;
 //!
-//! thread::spawn(move || {
+//! let _t = thread::spawn(move || {
 //!     // some work here
 //! });
 //! ```
@@ -1385,7 +1385,7 @@ mod tests {
     #[test]
     fn test_run_basic() {
         let (tx, rx) = channel();
-        thread::spawn(move|| {
+        let _t = thread::spawn(move || {
             tx.send(()).unwrap();
         });
         rx.recv().unwrap();

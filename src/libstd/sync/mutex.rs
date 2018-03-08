@@ -70,7 +70,7 @@ use sys_common::poison::{self, TryLockError, TryLockResult, LockResult};
 /// let (tx, rx) = channel();
 /// for _ in 0..N {
 ///     let (data, tx) = (data.clone(), tx.clone());
-///     thread::spawn(move || {
+///     let _t = thread::spawn(move || {
 ///         // The shared state can only be accessed once the lock is held.
 ///         // Our non-atomic increment is safe because we're the only thread
 ///         // which can access the shared state when the lock is held.
