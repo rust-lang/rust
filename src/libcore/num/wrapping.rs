@@ -525,7 +525,7 @@ macro_rules! wrapping_int_impl {
             /// use std::num::Wrapping;
             ///
             /// let n: Wrapping<i64> = Wrapping(0x0123456789ABCDEF);
-            /// 
+            ///
             /// if cfg!(target_endian = "little") {
             ///     assert_eq!(Wrapping::<i64>::from_le(n), n);
             /// } else {
