@@ -22,6 +22,8 @@ use syntax::codemap::Span;
 use utils::sugg;
 use utils::const_to_u64;
 
+use consts::constant;
+
 use utils::{get_enclosing_block, get_parent_expr, higher, in_external_macro, is_integer_literal, is_refutable,
             last_path_segment, match_trait_method, match_type, match_var, multispan_sugg, snippet, snippet_opt,
             span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then};
@@ -2142,6 +2144,11 @@ fn path_name(e: &Expr) -> Option<Name> {
 }
 
 fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, block: &'tcx Block, expr: &'tcx Expr) {
+    if constant(cx, cond).is_some() {
+        // A pure constant condition (e.g. while false) is not linted.
+        return;
+    }
+
     let mut mut_var_visitor = MutableVarsVisitor {
         cx,
         ids: HashMap::new(),
@@ -2152,12 +2159,12 @@ fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, b
         return;
     }
 
-    if mut_var_visitor.ids.len() == 0 {
+    if mut_var_visitor.ids.is_empty() {
         span_lint(
             cx,
             WHILE_IMMUTABLE_CONDITION,
             cond.span,
-            "all variables in condition are immutable. This might lead to infinite loops.",
+            "all variables in condition are immutable. This either leads to an infinite or to a never running loop.",
         );
         return;
     }
@@ -2175,7 +2182,7 @@ fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, b
             cx,
             WHILE_IMMUTABLE_CONDITION,
             expr.span,
-            "Variable in the condition are not mutated in the loop body. This might lead to infinite loops.",
+            "Variable in the condition are not mutated in the loop body. This either leads to an infinite or to a never running loop.",
         );
     }
 }

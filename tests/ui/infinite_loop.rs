@@ -94,6 +94,23 @@ fn used_immutable() {
     }
 }
 
+const N: i32 = 5;
+const B: bool = false;
+
+fn consts() {
+    while false {
+        println!("Constants are not linted");
+    }
+
+    while B {
+        println!("Constants are not linted");
+    }
+
+    while N > 0 {
+        println!("Constants are not linted");
+    }
+}
+
 use std::cell::Cell;
 
 fn maybe_i_mutate(i: &Cell<bool>) { unimplemented!() }
