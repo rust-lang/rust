@@ -26,7 +26,7 @@ pub fn target() -> TargetResult {
 
         options: TargetOptions {
             cpu: "mips32r2".to_string(),
-            features: "+mips32r2".to_string(),
+            features: "+mips32r2,+fpxx,+nooddspreg".to_string(),
             max_atomic_width: Some(32),
 
             // see #36994
