@@ -1161,26 +1161,42 @@ impl<'a, T: ?Sized + fmt::Display> fmt::Display for RefMut<'a, T> {
 /// The `UnsafeCell<T>` type is the only legal way to obtain aliasable data that is considered
 /// mutable. In general, transmuting an `&T` type into an `&mut T` is considered undefined behavior.
 ///
-/// The compiler makes optimizations based on the knowledge that `&T` is not mutably aliased or
-/// mutated, and that `&mut T` is unique. When building abstractions like `Cell`, `RefCell`,
-/// `Mutex`, etc, you need to turn these optimizations off. `UnsafeCell` is the only legal way
-/// to do this. When `UnsafeCell<T>` itself is immutably aliased, it is still safe to obtain
-/// a mutable reference to its interior and/or to mutate the interior. However, the abstraction
-/// designer must ensure that any active mutable references to the interior obtained this way does
-/// not co-exist with other active references to the interior, either mutable or not. This is often
-/// done via runtime checks. Naturally, several active immutable references to the interior can
-/// co-exits with each other (but not with a mutable reference).
+/// If you have a reference `&SomeStruct`, then normally in Rust all fields of `SomeStruct` are
+/// immutable. The compiler makes optimizations based on the knowledge that `&T` is not mutably
+/// aliased or mutated, and that `&mut T` is unique. `UnsafeCel<T>` is the only core language
+/// feature to work around this restriction. All other types that allow internal mutability, such as
+/// `Cell<T>` and `RefCell<T>` use `UnsafeCell` to wrap their internal data.
 ///
-/// To put it in other words, if a mutable reference to the contents is active, no other references
-/// can be active at the same time, and if an immutable reference to the contents is active, then
-/// only other immutable reference may be active.
+/// The `UnsafeCell` API itself is technically very simple: it gives you a raw pointer `*mut T` to 
+/// its contents. It is up to _you_ as the abstraction designer to use that raw pointer correctly.
+///
+/// The precise Rust aliasing rules are somewhat in flux, but the main points are not contentious:
+///
+/// - If you create a safe reference with lifetime `'a` (either a `&T` or `&mut T` reference) that
+/// is accessible by safe code (for example, because you returned it), then you must not access
+/// the data in any way that contradicts that reference for the remainder of `'a`. For example, that
+/// means that if you take the `*mut T` from an `UnsafeCell<T>` and case it to an `&T`, then until
+/// that reference's lifetime expires, the data in `T` must remain immutable (modulo any 
+/// `UnsafeCell` data found within `T`, of course). Similarly, if you create an `&mut T` reference
+/// that is released to safe code, then you must not access the data within the `UnsafeCell` until
+/// that reference expires. 
+///
+/// - At all times, you must avoid data races, meaning that if multiple threads have access to
+/// the same `UnsafeCell`, then any writes must have a proper happens-before relation to all other 
+/// accesses (or use atomics).
+///
+/// To assist with proper design, the following scenarios are explicitly declared legal
+/// for single-threaded code:
+///
+/// 1. A `&T` reference can be released to safe code and there it can co-exit with other `&T`
+/// references, but not with a `&mut T` 
+///
+/// 2. A `&mut T` reference may be released to safe code, provided neither other `&mut T` nor `&T`
+/// co-exist with it. A `&mut T` must always be unique.
 ///
 /// Note that while mutating or mutably aliasing the contents of an `& UnsafeCell<T>` is
 /// okay (provided you enforce the invariants some other way), it is still undefined behavior
 /// to have multiple `&mut UnsafeCell<T>` aliases.
-///
-///
-/// Types like `Cell<T>` and `RefCell<T>` use this type to wrap their internal data.
 ///
 /// # Examples
 ///
