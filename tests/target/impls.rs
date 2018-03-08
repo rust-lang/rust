@@ -217,3 +217,14 @@ impl Foo {
         1
     }
 }
+
+// #2491
+impl<'a, 'b, 'c> SomeThing<Something>
+    for (
+        &'a mut SomethingLong,
+        &'b mut SomethingLong,
+        &'c mut SomethingLong,
+    )
+{
+    fn foo() {}
+}
