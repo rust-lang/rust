@@ -28,7 +28,6 @@ use rustc::hir;
 
 pub struct CheckTypeWellFormedVisitor<'a, 'tcx:'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    code: ObligationCauseCode<'tcx>,
 }
 
 /// Helper type of a temporary returned by .for_item(...).
@@ -36,7 +35,6 @@ pub struct CheckTypeWellFormedVisitor<'a, 'tcx:'a> {
 /// F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(FnCtxt<'b, 'gcx, 'tcx>).
 struct CheckWfFcxBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     inherited: super::InheritedBuilder<'a, 'gcx, 'tcx>,
-    code: ObligationCauseCode<'gcx>,
     id: ast::NodeId,
     span: Span,
     param_env: ty::ParamEnv<'tcx>,
@@ -47,7 +45,6 @@ impl<'a, 'gcx, 'tcx> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
         F: for<'b> FnOnce(&FnCtxt<'b, 'gcx, 'tcx>,
                           &mut CheckTypeWellFormedVisitor<'b, 'gcx>) -> Vec<Ty<'tcx>>
     {
-        let code = self.code.clone();
         let id = self.id;
         let span = self.span;
         let param_env = self.param_env;
@@ -55,7 +52,6 @@ impl<'a, 'gcx, 'tcx> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
             let fcx = FnCtxt::new(&inh, param_env, id);
             let wf_tys = f(&fcx, &mut CheckTypeWellFormedVisitor {
                 tcx: fcx.tcx.global_tcx(),
-                code,
             });
             fcx.select_all_obligations_or_error();
             fcx.regionck_item(id, span, &wf_tys);
@@ -68,7 +64,6 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                -> CheckTypeWellFormedVisitor<'a, 'gcx> {
         CheckTypeWellFormedVisitor {
             tcx,
-            code: ObligationCauseCode::MiscObligation
         }
     }
 
@@ -165,7 +160,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                              item_id: ast::NodeId,
                              span: Span,
                              sig_if_method: Option<&hir::MethodSig>) {
-        let code = self.code.clone();
+        let code = ObligationCauseCode::MiscObligation;
         self.for_id(item_id, span).with_fcx(|fcx, this| {
             let item = fcx.tcx.associated_item(fcx.tcx.hir.local_def_id(item_id));
 
@@ -213,7 +208,6 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
         let def_id = self.tcx.hir.local_def_id(id);
         CheckWfFcxBuilder {
             inherited: Inherited::build(self.tcx, def_id),
-            code: self.code.clone(),
             id,
             span,
             param_env: self.tcx.param_env(def_id),
@@ -265,7 +259,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
 
                 // All field types must be well-formed.
                 for field in &variant.fields {
-                    fcx.register_wf_obligation(field.ty, field.span, this.code.clone())
+                    fcx.register_wf_obligation(field.ty, field.span, ObligationCauseCode::MiscObligation)
                 }
             }
 
@@ -300,11 +294,11 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
     {
         debug!("check_item_type: {:?}", item);
 
-        self.for_item(item).with_fcx(|fcx, this| {
+        self.for_item(item).with_fcx(|fcx, _this| {
             let ty = fcx.tcx.type_of(fcx.tcx.hir.local_def_id(item.id));
             let item_ty = fcx.normalize_associated_types_in(item.span, &ty);
 
-            fcx.register_wf_obligation(item_ty, item.span, this.code.clone());
+            fcx.register_wf_obligation(item_ty, item.span, ObligationCauseCode::MiscObligation);
 
             vec![] // no implied bounds in a const etc
         });
@@ -339,7 +333,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                 None => {
                     let self_ty = fcx.tcx.type_of(item_def_id);
                     let self_ty = fcx.normalize_associated_types_in(item.span, &self_ty);
-                    fcx.register_wf_obligation(self_ty, ast_self_ty.span, this.code.clone());
+                    fcx.register_wf_obligation(self_ty, ast_self_ty.span, ObligationCauseCode::MiscObligation);
                 }
             }
 
@@ -374,7 +368,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
             // parameter includes another (e.g., <T, U = T>). In those cases, we can't
             // be sure if it will error or not as user might always specify the other.
             if !ty.needs_subst() {
-                fcx.register_wf_obligation(ty, fcx.tcx.def_span(d), self.code.clone());
+                fcx.register_wf_obligation(ty, fcx.tcx.def_span(d), ObligationCauseCode::MiscObligation);
             }
         }
 
@@ -458,11 +452,11 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
         let sig = fcx.tcx.liberate_late_bound_regions(def_id, &sig);
 
         for input_ty in sig.inputs() {
-            fcx.register_wf_obligation(&input_ty, span, self.code.clone());
+            fcx.register_wf_obligation(&input_ty, span, ObligationCauseCode::MiscObligation);
         }
         implied_bounds.extend(sig.inputs());
 
-        fcx.register_wf_obligation(sig.output(), span, self.code.clone());
+        fcx.register_wf_obligation(sig.output(), span, ObligationCauseCode::MiscObligation);
 
         // FIXME(#25759) return types should not be implied bounds
         implied_bounds.push(sig.output());
