@@ -373,6 +373,24 @@ impl fmt::Display for CannotReallocInPlace {
     }
 }
 
+/// Augments `AllocErr` with a CapacityOverflow variant.
+#[derive(Clone, PartialEq, Eq, Debug)]
+#[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
+pub enum CollectionAllocErr {
+    /// Error due to the computed capacity exceeding the collection's maximum
+    /// (usually `isize::MAX` bytes).
+    CapacityOverflow,
+    /// Error due to the allocator (see the `AllocErr` type's docs).
+    AllocErr(AllocErr),
+}
+
+#[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
+impl From<AllocErr> for CollectionAllocErr {
+    fn from(err: AllocErr) -> Self {
+        CollectionAllocErr::AllocErr(err)
+    }
+}
+
 /// An implementation of `Alloc` can allocate, reallocate, and
 /// deallocate arbitrary blocks of data described via `Layout`.
 ///
