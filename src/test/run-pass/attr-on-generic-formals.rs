@@ -17,7 +17,7 @@
 // using `rustc_attrs` feature. There is a separate compile-fail/ test
 // ensuring that the attribute feature-gating works in this context.)
 
-#![feature(generic_param_attrs, rustc_attrs)]
+#![feature(rustc_attrs)]
 #![allow(dead_code)]
 
 struct StLt<#[rustc_lt_struct] 'a>(&'a u32);

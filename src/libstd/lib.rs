@@ -266,7 +266,7 @@
 #![feature(float_from_str_radix)]
 #![feature(fn_traits)]
 #![feature(fnbox)]
-#![feature(generic_param_attrs)]
+#![cfg_attr(stage0, feature(generic_param_attrs))]
 #![feature(hashmap_internals)]
 #![feature(heap_api)]
 #![cfg_attr(stage0, feature(i128_type, i128))]
