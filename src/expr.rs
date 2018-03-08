@@ -730,7 +730,7 @@ struct ControlFlow<'a> {
     block: &'a ast::Block,
     else_block: Option<&'a ast::Expr>,
     label: Option<ast::Label>,
-    pats: Option<Vec<&'a ast::Pat>>,
+    pats: Vec<&'a ast::Pat>,
     keyword: &'a str,
     matcher: &'a str,
     connector: &'a str,
@@ -744,7 +744,7 @@ fn to_control_flow(expr: &ast::Expr, expr_type: ExprType) -> Option<ControlFlow>
     match expr.node {
         ast::ExprKind::If(ref cond, ref if_block, ref else_block) => Some(ControlFlow::new_if(
             cond,
-            None,
+            vec![],
             if_block,
             else_block.as_ref().map(|e| &**e),
             expr_type == ExprType::SubExpression,
@@ -754,7 +754,7 @@ fn to_control_flow(expr: &ast::Expr, expr_type: ExprType) -> Option<ControlFlow>
         ast::ExprKind::IfLet(ref pat, ref cond, ref if_block, ref else_block) => {
             Some(ControlFlow::new_if(
                 cond,
-                Some(ptr_vec_to_ref_vec(pat)),
+                ptr_vec_to_ref_vec(pat),
                 if_block,
                 else_block.as_ref().map(|e| &**e),
                 expr_type == ExprType::SubExpression,
@@ -768,30 +768,39 @@ fn to_control_flow(expr: &ast::Expr, expr_type: ExprType) -> Option<ControlFlow>
         ast::ExprKind::Loop(ref block, label) => {
             Some(ControlFlow::new_loop(block, label, expr.span))
         }
-        ast::ExprKind::While(ref cond, ref block, label) => {
-            Some(ControlFlow::new_while(None, cond, block, label, expr.span))
-        }
+        ast::ExprKind::While(ref cond, ref block, label) => Some(ControlFlow::new_while(
+            vec![],
+            cond,
+            block,
+            label,
+            expr.span,
+        )),
         ast::ExprKind::WhileLet(ref pat, ref cond, ref block, label) => Some(
-            ControlFlow::new_while(Some(ptr_vec_to_ref_vec(pat)), cond, block, label, expr.span),
+            ControlFlow::new_while(ptr_vec_to_ref_vec(pat), cond, block, label, expr.span),
         ),
         _ => None,
+    }
+}
+
+fn choose_matcher(pats: &[&ast::Pat]) -> &'static str {
+    if pats.is_empty() {
+        ""
+    } else {
+        "let"
     }
 }
 
 impl<'a> ControlFlow<'a> {
     fn new_if(
         cond: &'a ast::Expr,
-        pats: Option<Vec<&'a ast::Pat>>,
+        pats: Vec<&'a ast::Pat>,
         block: &'a ast::Block,
         else_block: Option<&'a ast::Expr>,
         allow_single_line: bool,
         nested_if: bool,
         span: Span,
     ) -> ControlFlow<'a> {
-        let matcher = match pats {
-            Some(..) => "let",
-            None => "",
-        };
+        let matcher = choose_matcher(&pats);
         ControlFlow {
             cond: Some(cond),
             block,
@@ -813,7 +822,7 @@ impl<'a> ControlFlow<'a> {
             block,
             else_block: None,
             label,
-            pats: None,
+            pats: vec![],
             keyword: "loop",
             matcher: "",
             connector: "",
@@ -824,16 +833,13 @@ impl<'a> ControlFlow<'a> {
     }
 
     fn new_while(
-        pats: Option<Vec<&'a ast::Pat>>,
+        pats: Vec<&'a ast::Pat>,
         cond: &'a ast::Expr,
         block: &'a ast::Block,
         label: Option<ast::Label>,
         span: Span,
     ) -> ControlFlow<'a> {
-        let matcher = match pats {
-            Some(..) => "let",
-            None => "",
-        };
+        let matcher = choose_matcher(&pats);
         ControlFlow {
             cond: Some(cond),
             block,
@@ -861,7 +867,7 @@ impl<'a> ControlFlow<'a> {
             block,
             else_block: None,
             label,
-            pats: Some(vec![pat]),
+            pats: vec![pat],
             keyword: "for",
             matcher: "",
             connector: " in",
@@ -926,7 +932,7 @@ impl<'a> ControlFlow<'a> {
         debug!("rewrite_pat_expr {:?} {:?} {:?}", shape, self.pats, expr);
 
         let cond_shape = shape.offset_left(offset)?;
-        if let Some(ref pat) = self.pats {
+        if !self.pats.is_empty() {
             let matcher = if self.matcher.is_empty() {
                 self.matcher.to_owned()
             } else {
@@ -935,7 +941,7 @@ impl<'a> ControlFlow<'a> {
             let pat_shape = cond_shape
                 .offset_left(matcher.len())?
                 .sub_width(self.connector.len())?;
-            let pat_string = rewrite_multiple_patterns(context, pat, pat_shape)?;
+            let pat_string = rewrite_multiple_patterns(context, &self.pats, pat_shape)?;
             let result = format!("{}{}{}", matcher, pat_string, self.connector);
             return rewrite_assign_rhs(context, result, expr, cond_shape);
         }
@@ -1036,15 +1042,17 @@ impl<'a> ControlFlow<'a> {
             context
                 .snippet_provider
                 .span_after(mk_sp(lo, self.span.hi()), self.keyword.trim()),
-            self.pats.as_ref().map_or(cond_span.lo(), |p| {
+            if self.pats.is_empty() {
+                cond_span.lo()
+            } else {
                 if self.matcher.is_empty() {
-                    p[0].span.lo()
+                    self.pats[0].span.lo()
                 } else {
                     context
                         .snippet_provider
                         .span_before(self.span, self.matcher.trim())
                 }
-            }),
+            },
         );
 
         let between_kwd_cond_comment = extract_comment(between_kwd_cond, context, shape);
@@ -1131,7 +1139,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
                 ast::ExprKind::IfLet(ref pat, ref cond, ref if_block, ref next_else_block) => {
                     ControlFlow::new_if(
                         cond,
-                        Some(ptr_vec_to_ref_vec(pat)),
+                        ptr_vec_to_ref_vec(pat),
                         if_block,
                         next_else_block.as_ref().map(|e| &**e),
                         false,
@@ -1142,7 +1150,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
                 ast::ExprKind::If(ref cond, ref if_block, ref next_else_block) => {
                     ControlFlow::new_if(
                         cond,
-                        None,
+                        vec![],
                         if_block,
                         next_else_block.as_ref().map(|e| &**e),
                         false,
