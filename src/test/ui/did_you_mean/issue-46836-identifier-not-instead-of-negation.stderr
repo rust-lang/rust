@@ -1,0 +1,68 @@
+error: expected one of `,` or `}`, found `!`
+  --> $DIR/issue-46836-identifier-not-instead-of-negation.rs:15:16
+   |
+LL |         println!("I couldn't");
+   |                ^ expected one of `,` or `}` here
+
+error: expected `{`, found `for_you`
+  --> $DIR/issue-46836-identifier-not-instead-of-negation.rs:13:12
+   |
+LL |     if not for_you {
+   |     --     ^^^^^^^
+   |     |
+   |     this `if` statement has a condition, but no block
+help: try placing this code inside a block
+   |
+LL |     if not { for_you{println,}; }
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+help: try replacing identifier `not` with the negation operator
+   |
+LL |     if ! for_you {
+   |        ^
+
+error: expected one of `!`, `.`, `::`, `?`, `{`, or an operator, found `the_worst`
+  --> $DIR/issue-46836-identifier-not-instead-of-negation.rs:22:15
+   |
+LL |     while not the_worst {
+   |           --- ^^^^^^^^^ expected one of `!`, `.`, `::`, `?`, `{`, or an operator here
+   |           |
+   |           help: try replacing identifier `not` with the negation operator: `!`
+
+error: expected one of `,` or `}`, found `!`
+  --> $DIR/issue-46836-identifier-not-instead-of-negation.rs:33:16
+   |
+LL |         println!("pass");
+   |                ^ expected one of `,` or `}` here
+
+error: expected `{`, found `department`
+  --> $DIR/issue-46836-identifier-not-instead-of-negation.rs:31:16
+   |
+LL |       if not::my department {
+   |       --         -^^^^^^^^^
+   |  _____|__________|
+   | |     |
+   | |     this `if` statement has a condition, but no block
+LL | |         //~^ ERROR expected `{`
+LL | |         println!("pass");
+LL | |         //~^ ERROR expected one of
+LL | |     }
+   | |_____- help: try placing this code inside a block: `{ department{println,}; }`
+
+error: expected `{`, found `println`
+  --> $DIR/issue-46836-identifier-not-instead-of-negation.rs:41:9
+   |
+LL |     if not  // lack of braces is [sic]
+   |     -- this `if` statement has a condition, but no block
+LL |         println!("Then when?");
+   |         ^^^^^^^
+help: try placing this code inside a block
+   |
+LL |         { println!("Then when?") }
+   |
+help: try replacing identifier `not` with the negation operator
+   |
+LL |     if !  // lack of braces is [sic]
+   |        ^
+
+error: aborting due to 6 previous errors
+
