@@ -2115,3 +2115,23 @@ Enable unstable featuers on stable channel.
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
 - **Stable**: Yes
+
+## `license_template_path`
+
+Check whether beginnings of files match a license template.
+
+- **Default value**: `""``
+- **Possible values**: path to a license template file
+- **Stable**: No
+
+A license template is a plain text file which is matched literally against the
+beginning of each source file, except for `{}`-delimited blocks, which are
+matched as regular expressions. The following license template therefore
+matches strings like `// Copyright 2017 The Rust Project Developers.`, `//
+Copyright 2018 The Rust Project Developers.`, etc.:
+
+```
+// Copyright {\d+} The Rust Project Developers.
+```
+
+`\{`, `\}` and `\\` match literal braces / backslashes.

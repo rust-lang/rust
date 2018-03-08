@@ -99,6 +99,8 @@ pub enum ErrorKind {
     TrailingWhitespace,
     // TO-DO or FIX-ME item without an issue number
     BadIssue(Issue),
+    // License check has failed
+    LicenseCheck,
 }
 
 impl fmt::Display for ErrorKind {
@@ -111,6 +113,7 @@ impl fmt::Display for ErrorKind {
             ),
             ErrorKind::TrailingWhitespace => write!(fmt, "left behind trailing whitespace"),
             ErrorKind::BadIssue(issue) => write!(fmt, "found {}", issue),
+            ErrorKind::LicenseCheck => write!(fmt, "license check failed"),
         }
     }
 }
@@ -127,7 +130,9 @@ pub struct FormattingError {
 impl FormattingError {
     fn msg_prefix(&self) -> &str {
         match self.kind {
-            ErrorKind::LineOverflow(..) | ErrorKind::TrailingWhitespace => "error:",
+            ErrorKind::LineOverflow(..)
+            | ErrorKind::TrailingWhitespace
+            | ErrorKind::LicenseCheck => "error:",
             ErrorKind::BadIssue(_) => "WARNING:",
         }
     }
@@ -406,7 +411,6 @@ fn should_report_error(
 }
 
 // Formatting done on a char by char or line by line basis.
-// FIXME(#209) warn on bad license
 // FIXME(#20) other stuff for parity with make tidy
 fn format_lines(
     text: &mut String,
@@ -415,7 +419,6 @@ fn format_lines(
     config: &Config,
     report: &mut FormatReport,
 ) {
-    // Iterate over the chars in the file map.
     let mut trims = vec![];
     let mut last_wspace: Option<usize> = None;
     let mut line_len = 0;
@@ -428,6 +431,20 @@ fn format_lines(
     let mut format_line = config.file_lines().contains_line(name, cur_line);
     let allow_issue_seek = !issue_seeker.is_disabled();
 
+    // Check license.
+    if let Some(ref license_template) = config.license_template {
+        if !license_template.is_match(text) {
+            errors.push(FormattingError {
+                line: cur_line,
+                kind: ErrorKind::LicenseCheck,
+                is_comment: false,
+                is_string: false,
+                line_buffer: String::new(),
+            });
+        }
+    }
+
+    // Iterate over the chars in the file map.
     for (kind, (b, c)) in CharClasses::new(text.chars().enumerate()) {
         if c == '\r' {
             continue;

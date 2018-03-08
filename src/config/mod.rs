@@ -15,6 +15,8 @@ use std::fs::File;
 use std::io::{Error, ErrorKind, Read};
 use std::path::{Path, PathBuf};
 
+use regex::Regex;
+
 #[macro_use]
 mod config_type;
 #[macro_use]
@@ -23,6 +25,7 @@ mod options;
 pub mod file_lines;
 pub mod lists;
 pub mod summary;
+pub mod license;
 
 use config::config_type::ConfigType;
 use config::file_lines::FileLines;
@@ -50,6 +53,7 @@ create_config! {
     comment_width: usize, 80, false,
         "Maximum length of comments. No effect unless wrap_comments = true";
     normalize_comments: bool, false, true, "Convert /* */ comments to // comments where possible";
+    license_template_path: String, String::default(), false, "Beginning of file must match license template";
 
     // Single line expressions and items.
     empty_item_single_line: bool, true, false,
