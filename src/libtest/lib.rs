@@ -1441,7 +1441,7 @@ pub fn run_test(
         let supports_threads = !cfg!(target_os = "emscripten") && !cfg!(target_arch = "wasm32");
         if supports_threads {
             let cfg = thread::Builder::new().name(name.as_slice().to_owned());
-            cfg.spawn(runtest).unwrap();
+            let _handle = cfg.spawn(runtest).unwrap();
         } else {
             runtest();
         }

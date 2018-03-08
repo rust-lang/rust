@@ -22,7 +22,7 @@ pub fn begin() {
     use std::sync::mpsc::{channel};
     let (tx, rx) = channel();
     if profq_set_chan(tx) {
-        thread::spawn(move||profile_queries_thread(rx));
+        let _handle = thread::spawn(move||profile_queries_thread(rx));
     }
 }
 
