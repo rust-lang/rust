@@ -5,15 +5,14 @@ use syntax::codemap::Span;
 use syntax::abi::Abi;
 
 use rustc::mir::interpret::{EvalResult, PrimVal, Value};
-use super::{EvalContext, eval_context,
-            Place, Machine, ValTy};
+use super::{EvalContext, Place, Machine, ValTy};
 
 use rustc_data_structures::indexed_vec::Idx;
 use interpret::memory::HasMemory;
 
 mod drop;
 
-impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     pub fn goto_block(&mut self, target: mir::BasicBlock) {
         self.frame_mut().block = target;
         self.frame_mut().stmt = 0;
@@ -45,8 +44,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 // Branch to the `otherwise` case by default, if no match is found.
                 let mut target_block = targets[targets.len() - 1];
 
-                for (index, const_int) in values.iter().enumerate() {
-                    let prim = PrimVal::Bytes(const_int.to_u128_unchecked());
+                for (index, &const_int) in values.iter().enumerate() {
+                    let prim = PrimVal::Bytes(const_int);
                     if discr_prim.to_bytes()? == prim.to_bytes()? {
                         target_block = targets[index];
                         break;
@@ -72,10 +71,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     ty::TyFnPtr(sig) => {
                         let fn_ptr = self.value_to_primval(func)?.to_ptr()?;
                         let instance = self.memory.get_fn(fn_ptr)?;
-                        let instance_ty = instance.ty(self.tcx);
+                        let instance_ty = instance.ty(*self.tcx);
                         match instance_ty.sty {
                             ty::TyFnDef(..) => {
-                                let real_sig = instance_ty.fn_sig(self.tcx);
+                                let real_sig = instance_ty.fn_sig(*self.tcx);
                                 let sig = self.tcx.erase_late_bound_regions_and_normalize(&sig);
                                 let real_sig = self.tcx.erase_late_bound_regions_and_normalize(&real_sig);
                                 if !self.check_sig_compat(sig, real_sig)? {
@@ -88,7 +87,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     }
                     ty::TyFnDef(def_id, substs) => (
                         self.resolve(def_id, substs)?,
-                        func.ty.fn_sig(self.tcx),
+                        func.ty.fn_sig(*self.tcx),
                     ),
                     _ => {
                         let msg = format!("can't handle callee of type {:?}", func.ty);
@@ -117,7 +116,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 let ty = self.tcx.trans_apply_param_substs(self.substs(), &ty);
                 trace!("TerminatorKind::drop: {:?}, type {}", location, ty);
 
-                let instance = eval_context::resolve_drop_in_place(self.tcx, ty);
+                let instance = ::monomorphize::resolve_drop_in_place(*self.tcx, ty);
                 self.drop_place(
                     place,
                     instance,
@@ -402,7 +401,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 let ptr_size = self.memory.pointer_size();
                 let ptr_align = self.tcx.data_layout.pointer_align;
                 let (ptr, vtable) = self.into_ptr_vtable_pair(args[0].value)?;
-                let fn_ptr = self.memory.read_ptr_sized_unsigned(
+                let fn_ptr = self.memory.read_ptr_sized(
                     vtable.offset(ptr_size * (idx as u64 + 3), &self)?,
                     ptr_align
                 )?.to_ptr()?;

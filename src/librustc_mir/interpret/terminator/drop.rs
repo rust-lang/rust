@@ -5,7 +5,7 @@ use syntax::codemap::Span;
 use rustc::mir::interpret::{EvalResult, PrimVal, Value};
 use interpret::{Machine, ValTy, EvalContext, Place, PlaceExtra};
 
-impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     pub(crate) fn drop_place(
         &mut self,
         place: Place,

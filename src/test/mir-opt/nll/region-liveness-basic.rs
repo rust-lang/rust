@@ -41,7 +41,7 @@ fn main() {
 //            | Live variables on entry to bb2[0]: [_1, _3]
 //        _2 = &'_#2r _1[_3];
 //            | Live variables on entry to bb2[1]: [_2]
-//        switchInt(const true) -> [0u8: bb4, otherwise: bb3];
+//        switchInt(const true) -> [false: bb4, otherwise: bb3];
 //    }
 // END rustc.main.nll.0.mir
 // START rustc.main.nll.0.mir

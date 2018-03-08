@@ -664,6 +664,16 @@ extern "C" {
     pub fn LLVMConstShl(LHSConstant: ValueRef, RHSConstant: ValueRef) -> ValueRef;
     pub fn LLVMConstLShr(LHSConstant: ValueRef, RHSConstant: ValueRef) -> ValueRef;
     pub fn LLVMConstAShr(LHSConstant: ValueRef, RHSConstant: ValueRef) -> ValueRef;
+    pub fn LLVMConstGEP(
+        ConstantVal: ValueRef,
+        ConstantIndices: *const ValueRef,
+        NumIndices: c_uint,
+    ) -> ValueRef;
+    pub fn LLVMConstInBoundsGEP(
+        ConstantVal: ValueRef,
+        ConstantIndices: *const ValueRef,
+        NumIndices: c_uint,
+    ) -> ValueRef;
     pub fn LLVMConstTrunc(ConstantVal: ValueRef, ToType: TypeRef) -> ValueRef;
     pub fn LLVMConstZExt(ConstantVal: ValueRef, ToType: TypeRef) -> ValueRef;
     pub fn LLVMConstUIToFP(ConstantVal: ValueRef, ToType: TypeRef) -> ValueRef;

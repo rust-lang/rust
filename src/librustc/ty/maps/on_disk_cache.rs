@@ -15,7 +15,7 @@ use hir::def_id::{CrateNum, DefIndex, DefId, LocalDefId,
                   RESERVED_FOR_INCR_COMP_CACHE, LOCAL_CRATE};
 use hir::map::definitions::DefPathHash;
 use ich::{CachingCodemapView, Fingerprint};
-use mir;
+use mir::{self, interpret};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
@@ -187,6 +187,7 @@ impl<'sess> OnDiskCache<'sess> {
                 type_shorthands: FxHashMap(),
                 predicate_shorthands: FxHashMap(),
                 expn_info_shorthands: FxHashMap(),
+                interpret_alloc_shorthands: FxHashMap(),
                 codemap: CachingCodemapView::new(tcx.sess.codemap()),
                 file_to_file_index,
             };
@@ -362,6 +363,7 @@ impl<'sess> OnDiskCache<'sess> {
             file_index_to_file: &self.file_index_to_file,
             file_index_to_stable_id: &self.file_index_to_stable_id,
             synthetic_expansion_infos: &self.synthetic_expansion_infos,
+            interpret_alloc_cache: FxHashMap::default(),
         };
 
         match decode_tagged(&mut decoder, dep_node_index) {
@@ -423,6 +425,7 @@ struct CacheDecoder<'a, 'tcx: 'a, 'x> {
     synthetic_expansion_infos: &'x RefCell<FxHashMap<AbsoluteBytePos, SyntaxContext>>,
     file_index_to_file: &'x RefCell<FxHashMap<FileMapIndex, Lrc<FileMap>>>,
     file_index_to_stable_id: &'x FxHashMap<FileMapIndex, StableFilemapId>,
+    interpret_alloc_cache: FxHashMap<usize, interpret::AllocId>,
 }
 
 impl<'a, 'tcx, 'x> CacheDecoder<'a, 'tcx, 'x> {
@@ -542,6 +545,50 @@ impl<'a, 'tcx: 'a, 'x> ty_codec::TyDecoder<'a, 'tcx> for CacheDecoder<'a, 'tcx, 
 
 implement_ty_decoder!( CacheDecoder<'a, 'tcx, 'x> );
 
+impl<'a, 'tcx, 'x> SpecializedDecoder<interpret::AllocId> for CacheDecoder<'a, 'tcx, 'x> {
+    fn specialized_decode(&mut self) -> Result<interpret::AllocId, Self::Error> {
+        const MAX1: usize = usize::max_value() - 1;
+        let tcx = self.tcx;
+        let pos = TyDecoder::position(self);
+        match usize::decode(self)? {
+            ::std::usize::MAX => {
+                let alloc_id = tcx.interpret_interner.reserve();
+                trace!("creating alloc id {:?} at {}", alloc_id, pos);
+                // insert early to allow recursive allocs
+                self.interpret_alloc_cache.insert(pos, alloc_id);
+
+                let allocation = interpret::Allocation::decode(self)?;
+                trace!("decoded alloc {:?} {:#?}", alloc_id, allocation);
+                let allocation = self.tcx.intern_const_alloc(allocation);
+                tcx.interpret_interner.intern_at_reserved(alloc_id, allocation);
+
+                if let Some(glob) = Option::<DefId>::decode(self)? {
+                    tcx.interpret_interner.cache(glob, alloc_id);
+                }
+
+                Ok(alloc_id)
+            },
+            MAX1 => {
+                trace!("creating fn alloc id at {}", pos);
+                let instance = ty::Instance::decode(self)?;
+                trace!("decoded fn alloc instance: {:?}", instance);
+                let id = tcx.interpret_interner.create_fn_alloc(instance);
+                trace!("created fn alloc id: {:?}", id);
+                self.interpret_alloc_cache.insert(pos, id);
+                Ok(id)
+            },
+            shorthand => {
+                trace!("loading shorthand {}", shorthand);
+                if let Some(&alloc_id) = self.interpret_alloc_cache.get(&shorthand) {
+                    return Ok(alloc_id);
+                }
+                trace!("shorthand {} not cached, loading entire allocation", shorthand);
+                // need to load allocation
+                self.with_position(shorthand, |this| interpret::AllocId::decode(this))
+            },
+        }
+    }
+}
 impl<'a, 'tcx, 'x> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx, 'x> {
     fn specialized_decode(&mut self) -> Result<Span, Self::Error> {
         let tag: u8 = Decodable::decode(self)?;
@@ -703,6 +750,7 @@ struct CacheEncoder<'enc, 'a, 'tcx, E>
     type_shorthands: FxHashMap<ty::Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
     expn_info_shorthands: FxHashMap<Mark, AbsoluteBytePos>,
+    interpret_alloc_shorthands: FxHashMap<interpret::AllocId, usize>,
     codemap: CachingCodemapView<'tcx>,
     file_to_file_index: FxHashMap<*const FileMap, FileMapIndex>,
 }
@@ -732,6 +780,37 @@ impl<'enc, 'a, 'tcx, E> CacheEncoder<'enc, 'a, 'tcx, E>
 
         let end_pos = self.position();
         ((end_pos - start_pos) as u64).encode(self)
+    }
+}
+
+impl<'enc, 'a, 'tcx, E> SpecializedEncoder<interpret::AllocId> for CacheEncoder<'enc, 'a, 'tcx, E>
+    where E: 'enc + ty_codec::TyEncoder
+{
+    fn specialized_encode(&mut self, alloc_id: &interpret::AllocId) -> Result<(), Self::Error> {
+        trace!("encoding {:?} at {}", alloc_id, self.position());
+        if let Some(shorthand) = self.interpret_alloc_shorthands.get(alloc_id).cloned() {
+            trace!("encoding {:?} as shorthand to {}", alloc_id, shorthand);
+            return shorthand.encode(self);
+        }
+        let start = self.position();
+        // cache the allocation shorthand now, because the allocation itself might recursively
+        // point to itself.
+        self.interpret_alloc_shorthands.insert(*alloc_id, start);
+        if let Some(alloc) = self.tcx.interpret_interner.get_alloc(*alloc_id) {
+            trace!("encoding {:?} with {:#?}", alloc_id, alloc);
+            usize::max_value().encode(self)?;
+            alloc.encode(self)?;
+            self.tcx.interpret_interner
+                .get_corresponding_static_def_id(*alloc_id)
+                .encode(self)?;
+        } else if let Some(fn_instance) = self.tcx.interpret_interner.get_fn(*alloc_id) {
+            trace!("encoding {:?} with {:#?}", alloc_id, fn_instance);
+            (usize::max_value() - 1).encode(self)?;
+            fn_instance.encode(self)?;
+        } else {
+            bug!("alloc id without corresponding allocation: {}", alloc_id);
+        }
+        Ok(())
     }
 }
 

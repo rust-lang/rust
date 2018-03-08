@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use _match::{MatchCheckCtxt, Matrix, expand_pattern, is_useful};
-use _match::Usefulness::*;
-use _match::WitnessPreference::*;
+use super::_match::{MatchCheckCtxt, Matrix, expand_pattern, is_useful};
+use super::_match::Usefulness::*;
+use super::_match::WitnessPreference::*;
 
-use pattern::{Pattern, PatternContext, PatternError, PatternKind};
+use super::{Pattern, PatternContext, PatternError, PatternKind};
 
 use rustc::middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor};
 use rustc::middle::expr_use_visitor::{LoanCause, MutateMode};
@@ -138,8 +138,18 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 PatternError::AssociatedConstInPattern(span) => {
                     self.span_e0158(span, "associated consts cannot be referenced in patterns")
                 }
-                PatternError::ConstEval(ref err) => {
-                    err.report(self.tcx, pat_span, "pattern");
+                PatternError::FloatBug => {
+                    // FIXME(#31407) this is only necessary because float parsing is buggy
+                    ::rustc::middle::const_val::struct_error(
+                        self.tcx, pat_span,
+                        "could not evaluate float literal (see issue #31407)",
+                    ).emit();
+                }
+                PatternError::NonConstPath(span) => {
+                    ::rustc::middle::const_val::struct_error(
+                        self.tcx, span,
+                        "runtime values cannot be referenced in patterns",
+                    ).emit();
                 }
             }
         }

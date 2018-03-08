@@ -16,22 +16,22 @@
 
 use hair::*;
 
-use rustc::middle::const_val::{ConstEvalErr, ConstVal};
-use rustc_const_eval::ConstContext;
+use rustc::middle::const_val::ConstVal;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::middle::region;
 use rustc::infer::InferCtxt;
 use rustc::ty::subst::Subst;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, layout};
 use rustc::ty::subst::Substs;
-use syntax::ast;
+use syntax::ast::{self, LitKind};
 use syntax::attr;
 use syntax::symbol::Symbol;
 use rustc::hir;
-use rustc_const_math::{ConstInt, ConstUsize};
+use rustc_const_math::ConstFloat;
 use rustc_data_structures::sync::Lrc;
+use rustc::mir::interpret::{Value, PrimVal};
 
 #[derive(Clone)]
 pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
@@ -115,16 +115,11 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     }
 
     pub fn usize_literal(&mut self, value: u64) -> Literal<'tcx> {
-        match ConstUsize::new(value, self.tcx.sess.target.usize_ty) {
-            Ok(val) => {
-                Literal::Value {
-                    value: self.tcx.mk_const(ty::Const {
-                        val: ConstVal::Integral(ConstInt::Usize(val)),
-                        ty: self.tcx.types.usize
-                    })
-                }
-            }
-            Err(_) => bug!("usize literal out of range for target"),
+        Literal::Value {
+            value: self.tcx.mk_const(ty::Const {
+                val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(value as u128))),
+                ty: self.tcx.types.usize
+            })
         }
     }
 
@@ -139,7 +134,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     pub fn true_literal(&mut self) -> Literal<'tcx> {
         Literal::Value {
             value: self.tcx.mk_const(ty::Const {
-                val: ConstVal::Bool(true),
+                val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(1))),
                 ty: self.tcx.types.bool
             })
         }
@@ -148,20 +143,104 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     pub fn false_literal(&mut self) -> Literal<'tcx> {
         Literal::Value {
             value: self.tcx.mk_const(ty::Const {
-                val: ConstVal::Bool(false),
+                val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(0))),
                 ty: self.tcx.types.bool
             })
         }
     }
 
-    pub fn const_eval_literal(&mut self, e: &hir::Expr) -> Literal<'tcx> {
+    pub fn integer_bit_width(
+        &self,
+        ty: Ty,
+    ) -> u64 {
+        let ty = match ty.sty {
+            ty::TyInt(ity) => attr::IntType::SignedInt(ity),
+            ty::TyUint(uty) => attr::IntType::UnsignedInt(uty),
+            _ => bug!("{} is not an integer", ty),
+        };
+        layout::Integer::from_attr(self.tcx, ty).size().bits()
+    }
+
+    pub fn const_eval_literal(
+        &mut self,
+        lit: &'tcx ast::LitKind,
+        ty: Ty<'tcx>,
+        sp: Span,
+        neg: bool,
+    ) -> Literal<'tcx> {
+        trace!("const_eval_literal: {:#?}, {:?}, {:?}, {:?}", lit, ty, sp, neg);
         let tcx = self.tcx.global_tcx();
-        let const_cx = ConstContext::new(tcx,
-                                         self.param_env.and(self.identity_substs),
-                                         self.tables());
-        match const_cx.eval(tcx.hir.expect_expr(e.id)) {
-            Ok(value) => Literal::Value { value },
-            Err(s) => self.fatal_const_eval_err(&s, e.span, "expression")
+
+        let parse_float = |num: &str, fty| -> ConstFloat {
+            ConstFloat::from_str(num, fty).unwrap_or_else(|_| {
+                // FIXME(#31407) this is only necessary because float parsing is buggy
+                tcx.sess.span_fatal(sp, "could not evaluate float literal (see issue #31407)");
+            })
+        };
+
+        let clamp = |n| {
+            let size = self.integer_bit_width(ty);
+            trace!("clamp {} with size {} and amt {}", n, size, 128 - size);
+            let amt = 128 - size;
+            let result = (n << amt) >> amt;
+            trace!("clamp result: {}", result);
+            result
+        };
+
+        use rustc::mir::interpret::*;
+        let lit = match *lit {
+            LitKind::Str(ref s, _) => {
+                let s = s.as_str();
+                let id = self.tcx.allocate_cached(s.as_bytes());
+                let ptr = MemoryPointer::new(id, 0);
+                Value::ByValPair(
+                    PrimVal::Ptr(ptr),
+                    PrimVal::from_u128(s.len() as u128),
+                )
+            },
+            LitKind::ByteStr(ref data) => {
+                let id = self.tcx.allocate_cached(data);
+                let ptr = MemoryPointer::new(id, 0);
+                Value::ByVal(PrimVal::Ptr(ptr))
+            },
+            LitKind::Byte(n) => Value::ByVal(PrimVal::Bytes(n as u128)),
+            LitKind::Int(n, _) if neg => {
+                let n = n as i128;
+                let n = n.overflowing_neg().0;
+                let n = clamp(n as u128);
+                Value::ByVal(PrimVal::Bytes(n))
+            },
+            LitKind::Int(n, _) => Value::ByVal(PrimVal::Bytes(clamp(n))),
+            LitKind::Float(n, fty) => {
+                let n = n.as_str();
+                let mut f = parse_float(&n, fty);
+                if neg {
+                    f = -f;
+                }
+                let bits = f.bits;
+                Value::ByVal(PrimVal::Bytes(bits))
+            }
+            LitKind::FloatUnsuffixed(n) => {
+                let fty = match ty.sty {
+                    ty::TyFloat(fty) => fty,
+                    _ => bug!()
+                };
+                let n = n.as_str();
+                let mut f = parse_float(&n, fty);
+                if neg {
+                    f = -f;
+                }
+                let bits = f.bits;
+                Value::ByVal(PrimVal::Bytes(bits))
+            }
+            LitKind::Bool(b) => Value::ByVal(PrimVal::Bytes(b as u128)),
+            LitKind::Char(c) => Value::ByVal(PrimVal::Bytes(c as u128)),
+        };
+        Literal::Value {
+            value: self.tcx.mk_const(ty::Const {
+                val: ConstVal::Value(lit),
+                ty,
+            }),
         }
     }
 
@@ -175,17 +254,6 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                           self.param_env.and(self.identity_substs),
                           self.tables(),
                           p)
-    }
-
-    pub fn fatal_const_eval_err(&mut self,
-        err: &ConstEvalErr<'tcx>,
-        primary_span: Span,
-        primary_kind: &str)
-        -> !
-    {
-        err.report(self.tcx, primary_span, primary_kind);
-        self.tcx.sess.abort_if_errors();
-        unreachable!()
     }
 
     pub fn trait_method(&mut self,
@@ -203,7 +271,8 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                 return (method_ty,
                         Literal::Value {
                             value: self.tcx.mk_const(ty::Const {
-                                val: ConstVal::Function(item.def_id, substs),
+                                // ZST function type
+                                val: ConstVal::Value(Value::ByVal(PrimVal::Undef)),
                                 ty: method_ty
                             }),
                         });

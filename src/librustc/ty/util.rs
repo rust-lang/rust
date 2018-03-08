@@ -22,58 +22,96 @@ use ty::fold::TypeVisitor;
 use ty::subst::{Subst, UnpackedKind};
 use ty::maps::TyCtxtAt;
 use ty::TypeVariants::*;
+use ty::layout::Integer;
 use util::common::ErrorReported;
 use middle::lang_items;
+use mir::interpret::{Value, PrimVal};
 
-use rustc_const_math::{ConstInt, ConstIsize, ConstUsize};
 use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
                                            HashStable};
 use rustc_data_structures::fx::FxHashMap;
-use std::cmp;
+use std::{cmp, fmt};
 use std::hash::Hash;
 use std::intrinsics;
 use syntax::ast::{self, Name};
 use syntax::attr::{self, SignedInt, UnsignedInt};
 use syntax_pos::{Span, DUMMY_SP};
 
-type Disr = ConstInt;
+#[derive(Copy, Clone, Debug)]
+pub struct Discr<'tcx> {
+    pub val: u128,
+    pub ty: Ty<'tcx>
+}
+
+impl<'tcx> fmt::Display for Discr<'tcx> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        if self.ty.is_signed() {
+            write!(fmt, "{}", self.val as i128)
+        } else {
+            write!(fmt, "{}", self.val)
+        }
+    }
+}
+
+impl<'tcx> Discr<'tcx> {
+    /// Adds 1 to the value and wraps around if the maximum for the type is reached
+    pub fn wrap_incr<'a, 'gcx>(self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Self {
+        self.checked_add(tcx, 1).0
+    }
+    pub fn checked_add<'a, 'gcx>(self, tcx: TyCtxt<'a, 'gcx, 'tcx>, n: u128) -> (Self, bool) {
+        let (int, signed) = match self.ty.sty {
+            TyInt(ity) => (Integer::from_attr(tcx, SignedInt(ity)), true),
+            TyUint(uty) => (Integer::from_attr(tcx, UnsignedInt(uty)), false),
+            _ => bug!("non integer discriminant"),
+        };
+        if signed {
+            let (min, max) = match int {
+                Integer::I8 => (i8::min_value() as i128, i8::max_value() as i128),
+                Integer::I16 => (i16::min_value() as i128, i16::max_value() as i128),
+                Integer::I32 => (i32::min_value() as i128, i32::max_value() as i128),
+                Integer::I64 => (i64::min_value() as i128, i64::max_value() as i128),
+                Integer::I128 => (i128::min_value(), i128::max_value()),
+            };
+            let val = self.val as i128;
+            let n = n as i128;
+            let oflo = val > max - n;
+            let val = if oflo {
+                min + (n - (max - val) - 1)
+            } else {
+                val + n
+            };
+            (Self {
+                val: val as u128,
+                ty: self.ty,
+            }, oflo)
+        } else {
+            let (min, max) = match int {
+                Integer::I8 => (u8::min_value() as u128, u8::max_value() as u128),
+                Integer::I16 => (u16::min_value() as u128, u16::max_value() as u128),
+                Integer::I32 => (u32::min_value() as u128, u32::max_value() as u128),
+                Integer::I64 => (u64::min_value() as u128, u64::max_value() as u128),
+                Integer::I128 => (u128::min_value(), u128::max_value()),
+            };
+            let val = self.val;
+            let oflo = val > max - n;
+            let val = if oflo {
+                min + (n - (max - val) - 1)
+            } else {
+                val + n
+            };
+            (Self {
+                val: val,
+                ty: self.ty,
+            }, oflo)
+        }
+    }
+}
 
 pub trait IntTypeExt {
     fn to_ty<'a, 'gcx, 'tcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx>;
-    fn disr_incr<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, val: Option<Disr>)
-                           -> Option<Disr>;
-    fn assert_ty_matches(&self, val: Disr);
-    fn initial_discriminant<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Disr;
-}
-
-
-macro_rules! typed_literal {
-    ($tcx:expr, $ty:expr, $lit:expr) => {
-        match $ty {
-            SignedInt(ast::IntTy::I8)    => ConstInt::I8($lit),
-            SignedInt(ast::IntTy::I16)   => ConstInt::I16($lit),
-            SignedInt(ast::IntTy::I32)   => ConstInt::I32($lit),
-            SignedInt(ast::IntTy::I64)   => ConstInt::I64($lit),
-            SignedInt(ast::IntTy::I128)   => ConstInt::I128($lit),
-            SignedInt(ast::IntTy::Isize) => match $tcx.sess.target.isize_ty {
-                ast::IntTy::I16 => ConstInt::Isize(ConstIsize::Is16($lit)),
-                ast::IntTy::I32 => ConstInt::Isize(ConstIsize::Is32($lit)),
-                ast::IntTy::I64 => ConstInt::Isize(ConstIsize::Is64($lit)),
-                _ => bug!(),
-            },
-            UnsignedInt(ast::UintTy::U8)  => ConstInt::U8($lit),
-            UnsignedInt(ast::UintTy::U16) => ConstInt::U16($lit),
-            UnsignedInt(ast::UintTy::U32) => ConstInt::U32($lit),
-            UnsignedInt(ast::UintTy::U64) => ConstInt::U64($lit),
-            UnsignedInt(ast::UintTy::U128) => ConstInt::U128($lit),
-            UnsignedInt(ast::UintTy::Usize) => match $tcx.sess.target.usize_ty {
-                ast::UintTy::U16 => ConstInt::Usize(ConstUsize::Us16($lit)),
-                ast::UintTy::U32 => ConstInt::Usize(ConstUsize::Us32($lit)),
-                ast::UintTy::U64 => ConstInt::Usize(ConstUsize::Us64($lit)),
-                _ => bug!(),
-            },
-        }
-    }
+    fn disr_incr<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, val: Option<Discr<'tcx>>)
+                           -> Option<Discr<'tcx>>;
+    fn initial_discriminant<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Discr<'tcx>;
 }
 
 impl IntTypeExt for attr::IntType {
@@ -94,33 +132,26 @@ impl IntTypeExt for attr::IntType {
         }
     }
 
-    fn initial_discriminant<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Disr {
-        typed_literal!(tcx, *self, 0)
-    }
-
-    fn assert_ty_matches(&self, val: Disr) {
-        match (*self, val) {
-            (SignedInt(ast::IntTy::I8), ConstInt::I8(_)) => {},
-            (SignedInt(ast::IntTy::I16), ConstInt::I16(_)) => {},
-            (SignedInt(ast::IntTy::I32), ConstInt::I32(_)) => {},
-            (SignedInt(ast::IntTy::I64), ConstInt::I64(_)) => {},
-            (SignedInt(ast::IntTy::I128), ConstInt::I128(_)) => {},
-            (SignedInt(ast::IntTy::Isize), ConstInt::Isize(_)) => {},
-            (UnsignedInt(ast::UintTy::U8), ConstInt::U8(_)) => {},
-            (UnsignedInt(ast::UintTy::U16), ConstInt::U16(_)) => {},
-            (UnsignedInt(ast::UintTy::U32), ConstInt::U32(_)) => {},
-            (UnsignedInt(ast::UintTy::U64), ConstInt::U64(_)) => {},
-            (UnsignedInt(ast::UintTy::U128), ConstInt::U128(_)) => {},
-            (UnsignedInt(ast::UintTy::Usize), ConstInt::Usize(_)) => {},
-            _ => bug!("disr type mismatch: {:?} vs {:?}", self, val),
+    fn initial_discriminant<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Discr<'tcx> {
+        Discr {
+            val: 0,
+            ty: self.to_ty(tcx)
         }
     }
 
-    fn disr_incr<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, val: Option<Disr>)
-                           -> Option<Disr> {
+    fn disr_incr<'a, 'tcx>(
+        &self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        val: Option<Discr<'tcx>>,
+    ) -> Option<Discr<'tcx>> {
         if let Some(val) = val {
-            self.assert_ty_matches(val);
-            (val + typed_literal!(tcx, *self, 1)).ok()
+            assert_eq!(self.to_ty(tcx), val.ty);
+            let (new, oflo) = val.checked_add(tcx, 1);
+            if oflo {
+                None
+            } else {
+                Some(new)
+            }
         } else {
             Some(self.initial_discriminant(tcx))
         }
@@ -681,31 +712,32 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         })
     }
 
-    pub fn const_usize(&self, val: u16) -> ConstInt {
-        match self.sess.target.usize_ty {
-            ast::UintTy::U16 => ConstInt::Usize(ConstUsize::Us16(val as u16)),
-            ast::UintTy::U32 => ConstInt::Usize(ConstUsize::Us32(val as u32)),
-            ast::UintTy::U64 => ConstInt::Usize(ConstUsize::Us64(val as u64)),
-            _ => bug!(),
-        }
-    }
-
-    /// Check if the node pointed to by def_id is a mutable static item
-    pub fn is_static_mut(&self, def_id: DefId) -> bool {
+    /// Return whether the node pointed to by def_id is a static item, and its mutability
+    pub fn is_static(&self, def_id: DefId) -> Option<hir::Mutability> {
         if let Some(node) = self.hir.get_if_local(def_id) {
             match node {
                 Node::NodeItem(&hir::Item {
-                    node: hir::ItemStatic(_, hir::MutMutable, _), ..
-                }) => true,
+                    node: hir::ItemStatic(_, mutbl, _), ..
+                }) => Some(mutbl),
                 Node::NodeForeignItem(&hir::ForeignItem {
-                    node: hir::ForeignItemStatic(_, mutbl), ..
-                }) => mutbl,
-                _ => false
+                    node: hir::ForeignItemStatic(_, is_mutbl), ..
+                }) =>
+                    Some(if is_mutbl {
+                        hir::Mutability::MutMutable
+                    } else {
+                        hir::Mutability::MutImmutable
+                    }),
+                _ => None
             }
         } else {
             match self.describe_def(def_id) {
-                Some(Def::Static(_, mutbl)) => mutbl,
-                _ => false
+                Some(Def::Static(_, is_mutbl)) =>
+                    Some(if is_mutbl {
+                        hir::Mutability::MutMutable
+                    } else {
+                        hir::Mutability::MutImmutable
+                    }),
+                _ => None
             }
         }
     }
@@ -764,7 +796,7 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
             TyArray(_, n) => {
                 self.hash_discriminant_u8(&n.val);
                 match n.val {
-                    ConstVal::Integral(x) => self.hash(x.to_u64().unwrap()),
+                    ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))) => self.hash(b),
                     ConstVal::Unevaluated(def_id, _) => self.def_id(def_id),
                     _ => bug!("arrays should not have {:?} as length", n)
                 }

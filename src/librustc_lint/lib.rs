@@ -39,11 +39,10 @@ extern crate syntax;
 extern crate rustc;
 #[macro_use]
 extern crate log;
-extern crate rustc_const_eval;
+extern crate rustc_mir;
 extern crate syntax_pos;
 
 use rustc::lint;
-use rustc::middle;
 use rustc::session;
 use rustc::util;
 
@@ -107,7 +106,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                        UnusedParens,
                        UnusedImportBraces,
                        AnonymousParameters,
-                       IllegalFloatLiteralPattern,
                        UnusedDocComment,
                        );
 

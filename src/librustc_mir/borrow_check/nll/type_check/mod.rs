@@ -24,7 +24,6 @@ use rustc::traits::{self, FulfillmentContext};
 use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeVariants};
-use rustc::middle::const_val::ConstVal;
 use rustc::mir::*;
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{PlaceContext, Visitor};
@@ -258,7 +257,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 // constraints on `'a` and `'b`. These constraints
                 // would be lost if we just look at the normalized
                 // value.
-                if let ConstVal::Function(def_id, ..) = value.val {
+                if let ty::TyFnDef(def_id, substs) = value.ty.sty {
                     let tcx = self.tcx();
                     let type_checker = &mut self.cx;
 
@@ -271,17 +270,6 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                     // are transitioning to the miri-based system, we
                     // don't have a handy function for that, so for
                     // now we just ignore `value.val` regions.
-                    let substs = match value.ty.sty {
-                        ty::TyFnDef(ty_def_id, substs) => {
-                            assert_eq!(def_id, ty_def_id);
-                            substs
-                        }
-                        _ => span_bug!(
-                            self.last_span,
-                            "unexpected type for constant function: {:?}",
-                            value.ty
-                        ),
-                    };
 
                     let instantiated_predicates =
                         tcx.predicates_of(def_id).instantiate(tcx, substs);
@@ -436,7 +424,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             ProjectionElem::Subslice { from, to } => PlaceTy::Ty {
                 ty: match base_ty.sty {
                     ty::TyArray(inner, size) => {
-                        let size = size.val.to_const_int().unwrap().to_u64().unwrap();
+                        let size = size.val.unwrap_u64();
                         let min_size = (from as u64) + (to as u64);
                         if let Some(rest_size) = size.checked_sub(min_size) {
                             tcx.mk_array(inner, rest_size)
@@ -1013,19 +1001,13 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     }
 
     fn is_box_free(&self, operand: &Operand<'tcx>) -> bool {
-        match operand {
-            &Operand::Constant(box Constant {
-                literal:
-                    Literal::Value {
-                        value:
-                            &ty::Const {
-                                val: ConstVal::Function(def_id, _),
-                                ..
-                            },
-                        ..
-                    },
-                ..
-            }) => Some(def_id) == self.tcx().lang_items().box_free_fn(),
+        match *operand {
+            Operand::Constant(ref c) => match c.ty.sty {
+                ty::TyFnDef(ty_def_id, _) => {
+                    Some(ty_def_id) == self.tcx().lang_items().box_free_fn()
+                }
+                _ => false,
+            },
             _ => false,
         }
     }
@@ -1284,7 +1266,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 self.check_aggregate_rvalue(mir, rvalue, ak, ops, location)
             }
 
-            Rvalue::Repeat(operand, const_usize) => if const_usize.as_u64() > 1 {
+            Rvalue::Repeat(operand, len) => if *len > 1 {
                 let operand_ty = operand.ty(mir, tcx);
 
                 let trait_ref = ty::TraitRef {

@@ -13,8 +13,7 @@
 
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use rustc::middle::const_val::ConstVal;
-use rustc::mir::{self, Location, TerminatorKind, Literal};
+use rustc::mir::{self, Location, TerminatorKind};
 use rustc::mir::visit::{Visitor, PlaceContext};
 use rustc::mir::traversal;
 use rustc::ty;
@@ -109,15 +108,18 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
                              block: mir::BasicBlock,
                              kind: &mir::TerminatorKind<'tcx>,
                              location: Location) {
-        match *kind {
+        let check = match *kind {
             mir::TerminatorKind::Call {
-                func: mir::Operand::Constant(box mir::Constant {
-                    literal: Literal::Value {
-                        value: &ty::Const { val: ConstVal::Function(def_id, _), .. }, ..
-                    }, ..
-                }),
+                func: mir::Operand::Constant(ref c),
                 ref args, ..
-            } if Some(def_id) == self.fx.cx.tcx.lang_items().box_free_fn() => {
+            } => match c.ty.sty {
+                ty::TyFnDef(did, _) => Some((did, args)),
+                _ => None,
+            },
+            _ => None,
+        };
+        if let Some((def_id, args)) = check {
+            if Some(def_id) == self.fx.cx.tcx.lang_items().box_free_fn() {
                 // box_free(x) shares with `drop x` the property that it
                 // is not guaranteed to be statically dominated by the
                 // definition of x, so x must always be in an alloca.
@@ -125,7 +127,6 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
                     self.visit_place(place, PlaceContext::Drop, location);
                 }
             }
-            _ => {}
         }
 
         self.super_terminator_kind(block, kind, location);

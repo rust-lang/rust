@@ -1,8 +1,8 @@
-warning: constant evaluation error: attempt to add with overflow
+warning: attempt to add with overflow
   --> $DIR/const-eval-overflow-4.rs:23:13
    |
 LL |     : [u32; (i8::MAX as i8 + 1i8) as usize]
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |             ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: #[warn(const_err)] on by default
 

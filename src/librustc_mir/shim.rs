@@ -16,7 +16,7 @@ use rustc::mir::*;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::ty::maps::Providers;
-use rustc_const_math::{ConstInt, ConstUsize};
+use rustc::mir::interpret::{Value, PrimVal};
 
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
@@ -303,7 +303,7 @@ fn build_clone_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     match self_ty.sty {
         _ if is_copy => builder.copy_shim(),
         ty::TyArray(ty, len) => {
-            let len = len.val.to_const_int().unwrap().to_u64().unwrap();
+            let len = len.val.unwrap_u64();
             builder.array_shim(dest, src, ty, len)
         }
         ty::TyClosure(def_id, substs) => {
@@ -443,7 +443,8 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             ty: func_ty,
             literal: Literal::Value {
                 value: tcx.mk_const(ty::Const {
-                    val: ConstVal::Function(self.def_id, substs),
+                    // ZST function type
+                    val: ConstVal::Value(Value::ByVal(PrimVal::Undef)),
                     ty: func_ty
                 }),
             },
@@ -501,13 +502,12 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
     }
 
     fn make_usize(&self, value: u64) -> Box<Constant<'tcx>> {
-        let value = ConstUsize::new(value, self.tcx.sess.target.usize_ty).unwrap();
         box Constant {
             span: self.span,
             ty: self.tcx.types.usize,
             literal: Literal::Value {
                 value: self.tcx.mk_const(ty::Const {
-                    val: ConstVal::Integral(ConstInt::Usize(value)),
+                    val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(value.into()))),
                     ty: self.tcx.types.usize,
                 })
             }
@@ -739,8 +739,8 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 ty,
                 literal: Literal::Value {
                     value: tcx.mk_const(ty::Const {
-                        val: ConstVal::Function(def_id,
-                            Substs::identity_for_item(tcx, def_id)),
+                        // ZST function type
+                        val: ConstVal::Value(Value::ByVal(PrimVal::Undef)),
                         ty
                     }),
                 },

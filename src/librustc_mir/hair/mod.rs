@@ -14,7 +14,6 @@
 //! unit-tested and separated from the Rust source and compiler data
 //! structures.
 
-use rustc_const_math::ConstUsize;
 use rustc::mir::{BinOp, BorrowKind, Field, Literal, UnOp};
 use rustc::hir::def_id::DefId;
 use rustc::middle::region;
@@ -27,7 +26,8 @@ use self::cx::Cx;
 
 pub mod cx;
 
-pub use rustc_const_eval::pattern::{BindingMode, Pattern, PatternKind, FieldPattern};
+pub mod pattern;
+pub use self::pattern::{BindingMode, Pattern, PatternKind, FieldPattern};
 
 #[derive(Copy, Clone, Debug)]
 pub enum LintLevel {
@@ -246,7 +246,7 @@ pub enum ExprKind<'tcx> {
     },
     Repeat {
         value: ExprRef<'tcx>,
-        count: ConstUsize,
+        count: u64,
     },
     Array {
         fields: Vec<ExprRef<'tcx>>,

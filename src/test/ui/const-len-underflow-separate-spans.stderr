@@ -1,4 +1,4 @@
-warning: constant evaluation error: attempt to subtract with overflow
+warning: attempt to subtract with overflow
   --> $DIR/const-len-underflow-separate-spans.rs:17:20
    |
 LL | const LEN: usize = ONE - TWO;
@@ -11,13 +11,13 @@ error[E0080]: constant evaluation error
    |
 LL | const LEN: usize = ONE - TWO;
    |                    ^^^^^^^^^ attempt to subtract with overflow
-   |
-note: for constant expression here
-  --> $DIR/const-len-underflow-separate-spans.rs:22:12
+
+error[E0080]: constant evaluation error
+  --> $DIR/const-len-underflow-separate-spans.rs:22:17
    |
 LL |     let a: [i8; LEN] = unimplemented!();
-   |            ^^^^^^^^^
+   |                 ^^^ referenced constant has errors
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
 If you want more information on this error, try using "rustc --explain E0080"

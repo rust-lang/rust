@@ -8,10 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use eval;
+//! Code to validate patterns/matches
 
-use rustc::middle::const_val::{ConstEvalErr, ConstVal};
+mod _match;
+mod check_match;
+
+pub use self::check_match::check_crate;
+pub(crate) use self::check_match::check_match;
+
+use interpret::{const_val_field, const_discr};
+
+use rustc::middle::const_val::ConstVal;
 use rustc::mir::{Field, BorrowKind, Mutability};
+use rustc::mir::interpret::{GlobalId, Value, PrimVal};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty, Region};
 use rustc::ty::subst::{Substs, Kind};
 use rustc::hir::{self, PatKind, RangeEnd};
@@ -19,17 +28,20 @@ use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 
 use rustc_data_structures::indexed_vec::Idx;
+use rustc_const_math::ConstFloat;
 
+use std::cmp::Ordering;
 use std::fmt;
 use syntax::ast;
 use syntax::ptr::P;
 use syntax_pos::Span;
 
 #[derive(Clone, Debug)]
-pub enum PatternError<'tcx> {
+pub enum PatternError {
     AssociatedConstInPattern(Span),
     StaticInPattern(Span),
-    ConstEval(ConstEvalErr<'tcx>),
+    FloatBug,
+    NonConstPath(Span),
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -110,18 +122,23 @@ pub enum PatternKind<'tcx> {
     },
 }
 
-fn print_const_val(value: &ConstVal, f: &mut fmt::Formatter) -> fmt::Result {
-    match *value {
-        ConstVal::Float(ref x) => write!(f, "{}", x),
-        ConstVal::Integral(ref i) => write!(f, "{}", i),
-        ConstVal::Str(ref s) => write!(f, "{:?}", &s[..]),
-        ConstVal::ByteStr(b) => write!(f, "{:?}", b.data),
-        ConstVal::Bool(b) => write!(f, "{:?}", b),
-        ConstVal::Char(c) => write!(f, "{:?}", c),
-        ConstVal::Variant(_) |
-        ConstVal::Function(..) |
-        ConstVal::Aggregate(_) |
+fn print_const_val(value: &ty::Const, f: &mut fmt::Formatter) -> fmt::Result {
+    match value.val {
+        ConstVal::Value(v) => print_miri_value(v, value.ty, f),
         ConstVal::Unevaluated(..) => bug!("{:?} not printable in a pattern", value)
+    }
+}
+
+fn print_miri_value(value: Value, ty: Ty, f: &mut fmt::Formatter) -> fmt::Result {
+    use rustc::ty::TypeVariants::*;
+    match (value, &ty.sty) {
+        (Value::ByVal(PrimVal::Bytes(0)), &TyBool) => write!(f, "false"),
+        (Value::ByVal(PrimVal::Bytes(1)), &TyBool) => write!(f, "true"),
+        (Value::ByVal(PrimVal::Bytes(n)), &TyUint(..)) => write!(f, "{:?}", n),
+        (Value::ByVal(PrimVal::Bytes(n)), &TyInt(..)) => write!(f, "{:?}", n as i128),
+        (Value::ByVal(PrimVal::Bytes(n)), &TyChar) =>
+            write!(f, "{:?}", ::std::char::from_u32(n as u32).unwrap()),
+        _ => bug!("{:?}: {} not printable in a pattern", value, ty),
     }
 }
 
@@ -232,15 +249,15 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                 write!(f, "{}", subpattern)
             }
             PatternKind::Constant { value } => {
-                print_const_val(&value.val, f)
+                print_const_val(value, f)
             }
             PatternKind::Range { lo, hi, end } => {
-                print_const_val(&lo.val, f)?;
+                print_const_val(lo, f)?;
                 match end {
                     RangeEnd::Included => write!(f, "...")?,
                     RangeEnd::Excluded => write!(f, "..")?,
                 }
-                print_const_val(&hi.val, f)
+                print_const_val(hi, f)
             }
             PatternKind::Slice { ref prefix, ref slice, ref suffix } |
             PatternKind::Array { ref prefix, ref slice, ref suffix } => {
@@ -272,7 +289,7 @@ pub struct PatternContext<'a, 'tcx: 'a> {
     pub param_env: ty::ParamEnv<'tcx>,
     pub tables: &'a ty::TypeckTables<'tcx>,
     pub substs: &'tcx Substs<'tcx>,
-    pub errors: Vec<PatternError<'tcx>>,
+    pub errors: Vec<PatternError>,
 }
 
 impl<'a, 'tcx> Pattern<'tcx> {
@@ -350,18 +367,53 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
             PatKind::Lit(ref value) => self.lower_lit(value),
 
-            PatKind::Range(ref lo, ref hi, end) => {
-                match (self.lower_lit(lo), self.lower_lit(hi)) {
+            PatKind::Range(ref lo_expr, ref hi_expr, end) => {
+                match (self.lower_lit(lo_expr), self.lower_lit(hi_expr)) {
                     (PatternKind::Constant { value: lo },
                      PatternKind::Constant { value: hi }) => {
-                        PatternKind::Range { lo, hi, end }
+                        use std::cmp::Ordering;
+                        match (end, compare_const_vals(&lo.val, &hi.val, ty).unwrap()) {
+                            (RangeEnd::Excluded, Ordering::Less) =>
+                                PatternKind::Range { lo, hi, end },
+                            (RangeEnd::Excluded, _) => {
+                                span_err!(
+                                    self.tcx.sess,
+                                    lo_expr.span,
+                                    E0579,
+                                    "lower range bound must be less than upper",
+                                );
+                                PatternKind::Wild
+                            },
+                            (RangeEnd::Included, Ordering::Greater) => {
+                                let mut err = struct_span_err!(
+                                    self.tcx.sess,
+                                    lo_expr.span,
+                                    E0030,
+                                    "lower range bound must be less than or equal to upper"
+                                );
+                                err.span_label(
+                                    lo_expr.span,
+                                    "lower bound larger than upper bound",
+                                );
+                                if self.tcx.sess.teach(&err.get_code().unwrap()) {
+                                    err.note("When matching against a range, the compiler \
+                                              verifies that the range is non-empty. Range \
+                                              patterns include both end-points, so this is \
+                                              equivalent to requiring the start of the range \
+                                              to be less than or equal to the end of the range.");
+                                }
+                                err.emit();
+                                PatternKind::Wild
+                            },
+                            (RangeEnd::Included, _) => PatternKind::Range { lo, hi, end },
+                        }
                     }
                     _ => PatternKind::Wild
                 }
             }
 
             PatKind::Path(ref qpath) => {
-                return self.lower_path(qpath, pat.hir_id, pat.id, pat.span);
+                return self.lower_path(qpath, pat.hir_id, pat.span);
             }
 
             PatKind::Ref(ref subpattern, _) |
@@ -471,7 +523,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                        pattern: self.lower_pattern(field),
                                    })
                                    .collect();
-                self.lower_variant_or_leaf(def, ty, subpatterns)
+                self.lower_variant_or_leaf(def, pat.span, ty, subpatterns)
             }
 
             PatKind::Struct(ref qpath, ref fields, _) => {
@@ -503,7 +555,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                           })
                           .collect();
 
-                self.lower_variant_or_leaf(def, ty, subpatterns)
+                self.lower_variant_or_leaf(def, pat.span, ty, subpatterns)
             }
         };
 
@@ -580,7 +632,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
             ty::TyArray(_, len) => {
                 // fixed-length array
-                let len = len.val.to_const_int().unwrap().to_u64().unwrap();
+                let len = len.val.unwrap_u64();
                 assert!(len >= prefix.len() as u64 + suffix.len() as u64);
                 PatternKind::Array { prefix: prefix, slice: slice, suffix: suffix }
             }
@@ -594,6 +646,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     fn lower_variant_or_leaf(
         &mut self,
         def: Def,
+        span: Span,
         ty: Ty<'tcx>,
         subpatterns: Vec<FieldPattern<'tcx>>)
         -> PatternKind<'tcx>
@@ -624,14 +677,19 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 PatternKind::Leaf { subpatterns: subpatterns }
             }
 
-            _ => bug!()
+            _ => {
+                self.errors.push(PatternError::NonConstPath(span));
+                PatternKind::Wild
+            }
         }
     }
 
+    /// Takes a HIR Path. If the path is a constant, evaluates it and feeds
+    /// it to `const_to_pat`. Any other path (like enum variants without fields)
+    /// is converted to the corresponding pattern via `lower_variant_or_leaf`
     fn lower_path(&mut self,
                   qpath: &hir::QPath,
                   id: hir::HirId,
-                  pat_id: ast::NodeId,
                   span: Span)
                   -> Pattern<'tcx> {
         let ty = self.tables.node_id_to_type(id);
@@ -643,23 +701,27 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         let kind = match def {
             Def::Const(def_id) | Def::AssociatedConst(def_id) => {
                 let substs = self.tables.node_substs(id);
-                match eval::lookup_const_by_id(self.tcx, self.param_env.and((def_id, substs))) {
-                    Some((def_id, substs)) => {
-                        // Enter the inlined constant's tables&substs temporarily.
-                        let old_tables = self.tables;
-                        let old_substs = self.substs;
-                        self.tables = self.tcx.typeck_tables_of(def_id);
-                        self.substs = substs;
-                        let body = if let Some(id) = self.tcx.hir.as_local_node_id(def_id) {
-                            self.tcx.hir.body(self.tcx.hir.body_owned_by(id))
-                        } else {
-                            self.tcx.extern_const_body(def_id).body
+                match ty::Instance::resolve(
+                    self.tcx,
+                    self.param_env,
+                    def_id,
+                    substs,
+                ) {
+                    Some(instance) => {
+                        let cid = GlobalId {
+                            instance,
+                            promoted: None,
                         };
-                        let pat = self.lower_const_expr(&body.value, pat_id, span);
-                        self.tables = old_tables;
-                        self.substs = old_substs;
-                        return pat;
-                    }
+                        match self.tcx.at(span).const_eval(self.param_env.and(cid)) {
+                            Ok(value) => {
+                                return self.const_to_pat(instance, value, id, span)
+                            },
+                            Err(err) => {
+                                err.report(self.tcx, span, "pattern");
+                                PatternKind::Wild
+                            },
+                        }
+                    },
                     None => {
                         self.errors.push(if is_associated_const {
                             PatternError::AssociatedConstInPattern(span)
@@ -667,10 +729,10 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                             PatternError::StaticInPattern(span)
                         });
                         PatternKind::Wild
-                    }
+                    },
                 }
             }
-            _ => self.lower_variant_or_leaf(def, ty, vec![]),
+            _ => self.lower_variant_or_leaf(def, span, ty, vec![]),
         };
 
         Pattern {
@@ -680,138 +742,167 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         }
     }
 
+    /// Converts literals, paths and negation of literals to patterns.
+    /// The special case for negation exists to allow things like -128i8
+    /// which would overflow if we tried to evaluate 128i8 and then negate
+    /// afterwards.
     fn lower_lit(&mut self, expr: &'tcx hir::Expr) -> PatternKind<'tcx> {
-        let const_cx = eval::ConstContext::new(self.tcx,
-                                               self.param_env.and(self.substs),
-                                               self.tables);
-        match const_cx.eval(expr) {
-            Ok(value) => {
-                if let ConstVal::Variant(def_id) = value.val {
-                    let ty = self.tables.expr_ty(expr);
-                    self.lower_variant_or_leaf(Def::Variant(def_id), ty, vec![])
-                } else {
-                    PatternKind::Constant { value }
+        match expr.node {
+            hir::ExprLit(ref lit) => {
+                let ty = self.tables.expr_ty(expr);
+                match lit_to_const(&lit.node, self.tcx, ty, false) {
+                    Ok(val) => {
+                        let instance = ty::Instance::new(
+                            self.tables.local_id_root.expect("literal outside any scope"),
+                            self.substs,
+                        );
+                        let cv = self.tcx.mk_const(ty::Const { val, ty });
+                        *self.const_to_pat(instance, cv, expr.hir_id, lit.span).kind
+                    },
+                    Err(()) => {
+                        self.errors.push(PatternError::FloatBug);
+                        PatternKind::Wild
+                    },
+                }
+            },
+            hir::ExprPath(ref qpath) => *self.lower_path(qpath, expr.hir_id, expr.span).kind,
+            hir::ExprUnary(hir::UnNeg, ref expr) => {
+                let ty = self.tables.expr_ty(expr);
+                let lit = match expr.node {
+                    hir::ExprLit(ref lit) => lit,
+                    _ => span_bug!(expr.span, "not a literal: {:?}", expr),
+                };
+                match lit_to_const(&lit.node, self.tcx, ty, true) {
+                    Ok(val) => {
+                        let instance = ty::Instance::new(
+                            self.tables.local_id_root.expect("literal outside any scope"),
+                            self.substs,
+                        );
+                        let cv = self.tcx.mk_const(ty::Const { val, ty });
+                        *self.const_to_pat(instance, cv, expr.hir_id, lit.span).kind
+                    },
+                    Err(()) => {
+                        self.errors.push(PatternError::FloatBug);
+                        PatternKind::Wild
+                    },
                 }
             }
-            Err(e) => {
-                self.errors.push(PatternError::ConstEval(e));
-                PatternKind::Wild
-            }
+            _ => span_bug!(expr.span, "not a literal: {:?}", expr),
         }
     }
 
-    fn lower_const_expr(&mut self,
-                        expr: &'tcx hir::Expr,
-                        pat_id: ast::NodeId,
-                        span: Span)
-                        -> Pattern<'tcx> {
-        let pat_ty = self.tables.expr_ty(expr);
-        debug!("expr={:?} pat_ty={:?} pat_id={}", expr, pat_ty, pat_id);
-        match pat_ty.sty {
+    /// Converts an evaluated constant to a pattern (if possible).
+    /// This means aggregate values (like structs and enums) are converted
+    /// to a pattern that matches the value (as if you'd compare via eq).
+    fn const_to_pat(
+        &self,
+        instance: ty::Instance<'tcx>,
+        cv: &'tcx ty::Const<'tcx>,
+        id: hir::HirId,
+        span: Span,
+    ) -> Pattern<'tcx> {
+        debug!("const_to_pat: cv={:#?}", cv);
+        let adt_subpattern = |i, variant_opt| {
+            let field = Field::new(i);
+            let val = match cv.val {
+                ConstVal::Value(miri) => const_val_field(
+                    self.tcx, self.param_env, instance,
+                    variant_opt, field, miri, cv.ty,
+                ).unwrap(),
+                _ => bug!("{:#?} is not a valid adt", cv),
+            };
+            self.const_to_pat(instance, val, id, span)
+        };
+        let adt_subpatterns = |n, variant_opt| {
+            (0..n).map(|i| {
+                let field = Field::new(i);
+                FieldPattern {
+                    field,
+                    pattern: adt_subpattern(i, variant_opt),
+                }
+            }).collect::<Vec<_>>()
+        };
+        let kind = match cv.ty.sty {
             ty::TyFloat(_) => {
-                self.tcx.sess.span_err(span, "floating point constants cannot be used in patterns");
-            }
+                let id = self.tcx.hir.hir_to_node_id(id);
+                self.tcx.lint_node(
+                    ::rustc::lint::builtin::ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
+                    id,
+                    span,
+                    "floating-point types cannot be used in patterns",
+                );
+                PatternKind::Constant {
+                    value: cv,
+                }
+            },
             ty::TyAdt(adt_def, _) if adt_def.is_union() => {
                 // Matching on union fields is unsafe, we can't hide it in constants
                 self.tcx.sess.span_err(span, "cannot use unions in constant patterns");
+                PatternKind::Wild
             }
-            ty::TyAdt(adt_def, _) => {
-                if !self.tcx.has_attr(adt_def.did, "structural_match") {
-                    let msg = format!("to use a constant of type `{}` in a pattern, \
-                                       `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
-                                      self.tcx.item_path_str(adt_def.did),
-                                      self.tcx.item_path_str(adt_def.did));
-                    self.tcx.sess.span_err(span, &msg);
-                }
-            }
-            _ => { }
-        }
-        let kind = match expr.node {
-            hir::ExprTup(ref exprs) => {
-                PatternKind::Leaf {
-                    subpatterns: exprs.iter().enumerate().map(|(i, expr)| {
-                        FieldPattern {
-                            field: Field::new(i),
-                            pattern: self.lower_const_expr(expr, pat_id, span)
+            ty::TyAdt(adt_def, _) if !self.tcx.has_attr(adt_def.did, "structural_match") => {
+                let msg = format!("to use a constant of type `{}` in a pattern, \
+                                    `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
+                                    self.tcx.item_path_str(adt_def.did),
+                                    self.tcx.item_path_str(adt_def.did));
+                self.tcx.sess.span_err(span, &msg);
+                PatternKind::Wild
+            },
+            ty::TyAdt(adt_def, substs) if adt_def.is_enum() => {
+                match cv.val {
+                    ConstVal::Value(val) => {
+                        let discr = const_discr(
+                            self.tcx, self.param_env, instance, val, cv.ty
+                        ).unwrap();
+                        let variant_index = adt_def
+                            .discriminants(self.tcx)
+                            .position(|var| var.val == discr)
+                            .unwrap();
+                        let subpatterns = adt_subpatterns(
+                            adt_def.variants[variant_index].fields.len(),
+                            Some(variant_index),
+                        );
+                        PatternKind::Variant {
+                            adt_def,
+                            substs,
+                            variant_index,
+                            subpatterns,
                         }
-                    }).collect()
+                    },
+                    ConstVal::Unevaluated(..) =>
+                        span_bug!(span, "{:#?} is not a valid enum constant", cv),
+                }
+            },
+            ty::TyAdt(adt_def, _) => {
+                let struct_var = adt_def.non_enum_variant();
+                PatternKind::Leaf {
+                    subpatterns: adt_subpatterns(struct_var.fields.len(), None),
                 }
             }
-
-            hir::ExprCall(ref callee, ref args) => {
-                let qpath = match callee.node {
-                    hir::ExprPath(ref qpath) => qpath,
-                    _ => bug!()
-                };
-                let ty = self.tables.node_id_to_type(callee.hir_id);
-                let def = self.tables.qpath_def(qpath, callee.hir_id);
-                match def {
-                    Def::Fn(..) | Def::Method(..) => self.lower_lit(expr),
-                    _ => {
-                        let subpatterns = args.iter().enumerate().map(|(i, expr)| {
-                            FieldPattern {
-                                field: Field::new(i),
-                                pattern: self.lower_const_expr(expr, pat_id, span)
-                            }
-                        }).collect();
-                        self.lower_variant_or_leaf(def, ty, subpatterns)
-                    }
+            ty::TyTuple(fields, _) => {
+                PatternKind::Leaf {
+                    subpatterns: adt_subpatterns(fields.len(), None),
                 }
             }
-
-            hir::ExprStruct(ref qpath, ref fields, None) => {
-                let def = self.tables.qpath_def(qpath, expr.hir_id);
-                let adt_def = match pat_ty.sty {
-                    ty::TyAdt(adt_def, _) => adt_def,
-                    _ => {
-                        span_bug!(
-                            expr.span,
-                            "struct expr without ADT type");
-                    }
-                };
-                let variant_def = adt_def.variant_of_def(def);
-
-                let subpatterns =
-                    fields.iter()
-                          .map(|field| {
-                              let index = variant_def.index_of_field_named(field.name.node);
-                              let index = index.unwrap_or_else(|| {
-                                  span_bug!(
-                                      expr.span,
-                                      "no field with name {:?}",
-                                      field.name);
-                              });
-                              FieldPattern {
-                                  field: Field::new(index),
-                                  pattern: self.lower_const_expr(&field.expr, pat_id, span),
-                              }
-                          })
-                          .collect();
-
-                self.lower_variant_or_leaf(def, pat_ty, subpatterns)
-            }
-
-            hir::ExprArray(ref exprs) => {
-                let pats = exprs.iter()
-                                .map(|expr| self.lower_const_expr(expr, pat_id, span))
-                                .collect();
+            ty::TyArray(_, n) => {
                 PatternKind::Array {
-                    prefix: pats,
+                    prefix: (0..n.val.unwrap_u64())
+                        .map(|i| adt_subpattern(i as usize, None))
+                        .collect(),
                     slice: None,
-                    suffix: vec![]
+                    suffix: Vec::new(),
                 }
             }
-
-            hir::ExprPath(ref qpath) => {
-                return self.lower_path(qpath, expr.hir_id, pat_id, span);
-            }
-
-            _ => self.lower_lit(expr)
+            _ => {
+                PatternKind::Constant {
+                    value: cv,
+                }
+            },
         };
 
         Pattern {
             span,
-            ty: pat_ty,
+            ty: cv.ty,
             kind: Box::new(kind),
         }
     }
@@ -974,4 +1065,128 @@ impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
             },
         }
     }
+}
+
+pub fn compare_const_vals(a: &ConstVal, b: &ConstVal, ty: Ty) -> Option<Ordering> {
+    use rustc_const_math::ConstFloat;
+    trace!("compare_const_vals: {:?}, {:?}", a, b);
+    use rustc::mir::interpret::{Value, PrimVal};
+    match (a, b) {
+        (&ConstVal::Value(Value::ByVal(PrimVal::Bytes(a))),
+         &ConstVal::Value(Value::ByVal(PrimVal::Bytes(b)))) => {
+            match ty.sty {
+                ty::TyFloat(ty) => {
+                    let l = ConstFloat {
+                        bits: a,
+                        ty,
+                    };
+                    let r = ConstFloat {
+                        bits: b,
+                        ty,
+                    };
+                    // FIXME(oli-obk): report cmp errors?
+                    l.try_cmp(r).ok()
+                },
+                ty::TyInt(_) => Some((a as i128).cmp(&(b as i128))),
+                _ => Some(a.cmp(&b)),
+            }
+        },
+        _ if a == b => Some(Ordering::Equal),
+        _ => None,
+    }
+}
+
+fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          ty: Ty<'tcx>,
+                          neg: bool)
+                          -> Result<ConstVal<'tcx>, ()> {
+    use syntax::ast::*;
+
+    use rustc::mir::interpret::*;
+    let lit = match *lit {
+        LitKind::Str(ref s, _) => {
+            let s = s.as_str();
+            let id = tcx.allocate_cached(s.as_bytes());
+            let ptr = MemoryPointer::new(id, 0);
+            Value::ByValPair(
+                PrimVal::Ptr(ptr),
+                PrimVal::from_u128(s.len() as u128),
+            )
+        },
+        LitKind::ByteStr(ref data) => {
+            let id = tcx.allocate_cached(data);
+            let ptr = MemoryPointer::new(id, 0);
+            Value::ByVal(PrimVal::Ptr(ptr))
+        },
+        LitKind::Byte(n) => Value::ByVal(PrimVal::Bytes(n as u128)),
+        LitKind::Int(n, _) => {
+            enum Int {
+                Signed(IntTy),
+                Unsigned(UintTy),
+            }
+            let ty = match ty.sty {
+                ty::TyInt(IntTy::Isize) => Int::Signed(tcx.sess.target.isize_ty),
+                ty::TyInt(other) => Int::Signed(other),
+                ty::TyUint(UintTy::Usize) => Int::Unsigned(tcx.sess.target.usize_ty),
+                ty::TyUint(other) => Int::Unsigned(other),
+                _ => bug!(),
+            };
+            let n = match ty {
+                // FIXME(oli-obk): are these casts correct?
+                Int::Signed(IntTy::I8) if neg =>
+                    (n as i128 as i8).overflowing_neg().0 as i128 as u128,
+                Int::Signed(IntTy::I16) if neg =>
+                    (n as i128 as i16).overflowing_neg().0 as i128 as u128,
+                Int::Signed(IntTy::I32) if neg =>
+                    (n as i128 as i32).overflowing_neg().0 as i128 as u128,
+                Int::Signed(IntTy::I64) if neg =>
+                    (n as i128 as i64).overflowing_neg().0 as i128 as u128,
+                Int::Signed(IntTy::I128) if neg =>
+                    (n as i128).overflowing_neg().0 as u128,
+                Int::Signed(IntTy::I8) => n as i128 as i8 as i128 as u128,
+                Int::Signed(IntTy::I16) => n as i128 as i16 as i128 as u128,
+                Int::Signed(IntTy::I32) => n as i128 as i32 as i128 as u128,
+                Int::Signed(IntTy::I64) => n as i128 as i64 as i128 as u128,
+                Int::Signed(IntTy::I128) => n,
+                Int::Unsigned(UintTy::U8) => n as u8 as u128,
+                Int::Unsigned(UintTy::U16) => n as u16 as u128,
+                Int::Unsigned(UintTy::U32) => n as u32 as u128,
+                Int::Unsigned(UintTy::U64) => n as u64 as u128,
+                Int::Unsigned(UintTy::U128) => n,
+                _ => bug!(),
+            };
+            Value::ByVal(PrimVal::Bytes(n))
+        },
+        LitKind::Float(n, fty) => {
+            let n = n.as_str();
+            let mut f = parse_float(&n, fty)?;
+            if neg {
+                f = -f;
+            }
+            let bits = f.bits;
+            Value::ByVal(PrimVal::Bytes(bits))
+        }
+        LitKind::FloatUnsuffixed(n) => {
+            let fty = match ty.sty {
+                ty::TyFloat(fty) => fty,
+                _ => bug!()
+            };
+            let n = n.as_str();
+            let mut f = parse_float(&n, fty)?;
+            if neg {
+                f = -f;
+            }
+            let bits = f.bits;
+            Value::ByVal(PrimVal::Bytes(bits))
+        }
+        LitKind::Bool(b) => Value::ByVal(PrimVal::Bytes(b as u128)),
+        LitKind::Char(c) => Value::ByVal(PrimVal::Bytes(c as u128)),
+    };
+    Ok(ConstVal::Value(lit))
+}
+
+fn parse_float<'tcx>(num: &str, fty: ast::FloatTy)
+                     -> Result<ConstFloat, ()> {
+    ConstFloat::from_str(num, fty).map_err(|_| ())
 }

@@ -14,19 +14,6 @@
 // Each message should start and end with a new line, and be wrapped to 80 characters.
 // In vim you can `:set tw=80` and use `gq` to wrap paragraphs. Use `:set tw=0` to disable.
 register_long_diagnostics! {
-E0020: r##"
-This error indicates that an attempt was made to divide by zero (or take the
-remainder of a zero divisor) in a static or constant expression. Erroneous
-code example:
-
-```compile_fail
-#[deny(const_err)]
-
-const X: i32 = 42 / 0;
-// error: attempt to divide by zero in a constant expression
-```
-"##,
-
 E0038: r##"
 Trait objects like `Box<Trait>` can only be constructed when certain
 requirements are satisfied by the trait in question.

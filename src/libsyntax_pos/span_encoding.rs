@@ -19,15 +19,36 @@ use hygiene::SyntaxContext;
 
 use rustc_data_structures::fx::FxHashMap;
 use std::cell::RefCell;
+use std::hash::{Hash, Hasher};
 
 /// A compressed span.
 /// Contains either fields of `SpanData` inline if they are small, or index into span interner.
 /// The primary goal of `Span` is to be as small as possible and fit into other structures
 /// (that's why it uses `packed` as well). Decoding speed is the second priority.
 /// See `SpanData` for the info on span fields in decoded representation.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(packed)]
 pub struct Span(u32);
+
+impl Copy for Span {}
+impl Clone for Span {
+    fn clone(&self) -> Span {
+        *self
+    }
+}
+impl PartialEq for Span {
+    fn eq(&self, other: &Span) -> bool {
+        let a = self.0;
+        let b = other.0;
+        a == b
+    }
+}
+impl Eq for Span {}
+impl Hash for Span {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let a = self.0;
+        a.hash(state)
+    }
+}
 
 /// Dummy span, both position and length are zero, syntax context is zero as well.
 /// This span is kept inline and encoded with format 0.

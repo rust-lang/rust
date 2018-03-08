@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::const_val::{ConstVal, ConstAggregate};
+use middle::const_val::ConstVal;
 use ty::subst::Substs;
 use ty::{self, Ty, TypeFlags, TypeFoldable};
 
@@ -218,30 +218,7 @@ impl FlagComputation {
     fn add_const(&mut self, constant: &ty::Const) {
         self.add_ty(constant.ty);
         match constant.val {
-            ConstVal::Integral(_) |
-            ConstVal::Float(_) |
-            ConstVal::Str(_) |
-            ConstVal::ByteStr(_) |
-            ConstVal::Bool(_) |
-            ConstVal::Char(_) |
-            ConstVal::Variant(_) => {}
-            ConstVal::Function(_, substs) => {
-                self.add_substs(substs);
-            }
-            ConstVal::Aggregate(ConstAggregate::Struct(fields)) => {
-                for &(_, v) in fields {
-                    self.add_const(v);
-                }
-            }
-            ConstVal::Aggregate(ConstAggregate::Tuple(fields)) |
-            ConstVal::Aggregate(ConstAggregate::Array(fields)) => {
-                for v in fields {
-                    self.add_const(v);
-                }
-            }
-            ConstVal::Aggregate(ConstAggregate::Repeat(v, _)) => {
-                self.add_const(v);
-            }
+            ConstVal::Value(_) => {}
             ConstVal::Unevaluated(_, substs) => {
                 self.add_flags(TypeFlags::HAS_PROJECTION);
                 self.add_substs(substs);

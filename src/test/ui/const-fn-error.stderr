@@ -1,37 +1,32 @@
-warning: constant evaluation error: non-constant path in constant expression
-  --> $DIR/const-fn-error.rs:27:19
-   |
-LL |     let a : [i32; f(X)];
-   |                   ^^^^
-   |
-   = note: #[warn(const_err)] on by default
-
 error[E0016]: blocks in constant functions are limited to items and tail expressions
   --> $DIR/const-fn-error.rs:16:19
    |
-LL |     let mut sum = 0; //~ ERROR blocks in constant functions are limited
+LL |     let mut sum = 0;
    |                   ^
 
 error[E0015]: calls in constant functions are limited to constant functions, struct and enum constructors
-  --> $DIR/const-fn-error.rs:17:14
+  --> $DIR/const-fn-error.rs:18:14
    |
-LL |     for i in 0..x { //~ ERROR calls in constant functions
+LL |     for i in 0..x {
    |              ^^^^
 
 error[E0019]: constant function contains unimplemented expression type
-  --> $DIR/const-fn-error.rs:17:14
+  --> $DIR/const-fn-error.rs:18:14
    |
-LL |     for i in 0..x { //~ ERROR calls in constant functions
+LL |     for i in 0..x {
    |              ^^^^
 
 error[E0080]: constant evaluation error
-  --> $DIR/const-fn-error.rs:21:5
+  --> $DIR/const-fn-error.rs:18:14
    |
-LL |     sum //~ ERROR E0080
-   |     ^^^ non-constant path in constant expression
+LL |     for i in 0..x {
+   |              ^^^^ calling non-const fn `<I as std::iter::IntoIterator><std::ops::Range<usize>>::into_iter`
+...
+LL |     let a : [i32; f(X)];
+   |                   ---- inside call to `f`
    |
 note: for constant expression here
-  --> $DIR/const-fn-error.rs:27:13
+  --> $DIR/const-fn-error.rs:29:13
    |
 LL |     let a : [i32; f(X)];
    |             ^^^^^^^^^^^

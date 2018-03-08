@@ -12,7 +12,7 @@
 
 #![crate_type = "lib"]
 
-// CHECK: @VAR1 = constant i32 1, section ".test_one"
+// CHECK: @VAR1 = constant <{ [4 x i8] }> <{ [4 x i8] c"\01\00\00\00" }>, section ".test_one"
 #[no_mangle]
 #[link_section = ".test_one"]
 pub static VAR1: u32 = 1;

@@ -21,14 +21,15 @@ use rustc::middle::cstore::{LinkagePreference, ExternConstBody,
 use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex,
-                         CRATE_DEF_INDEX, LOCAL_CRATE};
+                         CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId};
 use rustc::ich::Fingerprint;
 use rustc::middle::lang_items;
-use rustc::mir;
+use rustc::mir::{self, interpret};
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::codec::TyDecoder;
 use rustc::mir::Mir;
+use rustc::util::nodemap::FxHashMap;
 
 use std::cell::Ref;
 use std::collections::BTreeMap;
@@ -54,6 +55,9 @@ pub struct DecodeContext<'a, 'tcx: 'a> {
     last_filemap_index: usize,
 
     lazy_state: LazyState,
+
+    // interpreter allocation cache
+    interpret_alloc_cache: FxHashMap<usize, interpret::AllocId>,
 }
 
 /// Abstract over the various ways one can create metadata decoders.
@@ -72,6 +76,7 @@ pub trait Metadata<'a, 'tcx>: Copy {
             tcx,
             last_filemap_index: 0,
             lazy_state: LazyState::NoNode,
+            interpret_alloc_cache: FxHashMap::default(),
         }
     }
 }
@@ -265,6 +270,58 @@ impl<'a, 'tcx> SpecializedDecoder<DefIndex> for DecodeContext<'a, 'tcx> {
     #[inline]
     fn specialized_decode(&mut self) -> Result<DefIndex, Self::Error> {
         Ok(DefIndex::from_raw_u32(self.read_u32()?))
+    }
+}
+
+impl<'a, 'tcx> SpecializedDecoder<LocalDefId> for DecodeContext<'a, 'tcx> {
+    #[inline]
+    fn specialized_decode(&mut self) -> Result<LocalDefId, Self::Error> {
+        self.specialized_decode().map(|i| LocalDefId::from_def_id(i))
+    }
+}
+
+impl<'a, 'tcx> SpecializedDecoder<interpret::AllocId> for DecodeContext<'a, 'tcx> {
+    fn specialized_decode(&mut self) -> Result<interpret::AllocId, Self::Error> {
+        const MAX1: usize = usize::max_value() - 1;
+        let tcx = self.tcx.unwrap();
+        let pos = self.position();
+        match usize::decode(self)? {
+            ::std::usize::MAX => {
+                let alloc_id = tcx.interpret_interner.reserve();
+                trace!("creating alloc id {:?} at {}", alloc_id, pos);
+                // insert early to allow recursive allocs
+                self.interpret_alloc_cache.insert(pos, alloc_id);
+
+                let allocation = interpret::Allocation::decode(self)?;
+                trace!("decoded alloc {:?} {:#?}", alloc_id, allocation);
+                let allocation = self.tcx.unwrap().intern_const_alloc(allocation);
+                tcx.interpret_interner.intern_at_reserved(alloc_id, allocation);
+
+                if let Some(glob) = Option::<DefId>::decode(self)? {
+                    tcx.interpret_interner.cache(glob, alloc_id);
+                }
+
+                Ok(alloc_id)
+            },
+            MAX1 => {
+                trace!("creating fn alloc id at {}", pos);
+                let instance = ty::Instance::decode(self)?;
+                trace!("decoded fn alloc instance: {:?}", instance);
+                let id = tcx.interpret_interner.create_fn_alloc(instance);
+                trace!("created fn alloc id: {:?}", id);
+                self.interpret_alloc_cache.insert(pos, id);
+                Ok(id)
+            },
+            shorthand => {
+                trace!("loading shorthand {}", shorthand);
+                if let Some(&alloc_id) = self.interpret_alloc_cache.get(&shorthand) {
+                    return Ok(alloc_id);
+                }
+                trace!("shorthand {} not cached, loading entire allocation", shorthand);
+                // need to load allocation
+                self.with_position(shorthand, |this| interpret::AllocId::decode(this))
+            },
+        }
     }
 }
 

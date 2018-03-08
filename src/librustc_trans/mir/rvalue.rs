@@ -30,7 +30,6 @@ use type_of::LayoutLlvmExt;
 use value::Value;
 
 use super::{FunctionCx, LocalRef};
-use super::constant::const_scalar_checked_binop;
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
 
@@ -122,7 +121,6 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                     }
                 }
 
-                let count = count.as_u64();
                 let count = C_usize(bx.cx, count);
                 let end = dest.project_index(&bx, count).llval;
 
@@ -497,7 +495,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         if let mir::Place::Local(index) = *place {
             if let LocalRef::Operand(Some(op)) = self.locals[index] {
                 if let ty::TyArray(_, n) = op.layout.ty.sty {
-                    let n = n.val.to_const_int().unwrap().to_u64().unwrap();
+                    let n = n.val.unwrap_u64();
                     return common::C_usize(bx.cx, n);
                 }
             }
@@ -643,14 +641,6 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         if !bx.cx.check_overflow {
             let val = self.trans_scalar_binop(bx, op, lhs, rhs, input_ty);
             return OperandValue::Pair(val, C_bool(bx.cx, false));
-        }
-
-        // First try performing the operation on constants, which
-        // will only succeed if both operands are constant.
-        // This is necessary to determine when an overflow Assert
-        // will always panic at runtime, and produce a warning.
-        if let Some((val, of)) = const_scalar_checked_binop(bx.tcx(), op, lhs, rhs, input_ty) {
-            return OperandValue::Pair(val, C_bool(bx.cx, of));
         }
 
         let (val, of) = match op {

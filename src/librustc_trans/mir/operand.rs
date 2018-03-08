@@ -9,12 +9,15 @@
 // except according to those terms.
 
 use llvm::ValueRef;
-use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
+use rustc::middle::const_val::ConstEvalErr;
 use rustc::mir;
+use rustc::mir::interpret::Value as MiriValue;
+use rustc::ty;
+use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
 use rustc_data_structures::indexed_vec::Idx;
 
 use base;
-use common::{self, CodegenCx, C_undef, C_usize};
+use common::{self, CodegenCx, C_null, C_undef, C_usize};
 use builder::Builder;
 use value::Value;
 use type_of::LayoutLlvmExt;
@@ -24,6 +27,7 @@ use std::fmt;
 use std::ptr;
 
 use super::{FunctionCx, LocalRef};
+use super::constant::{primval_to_llvm};
 use super::place::PlaceRef;
 
 /// The representation of a Rust value. The enum variant is in fact
@@ -87,6 +91,70 @@ impl<'a, 'tcx> OperandRef<'tcx> {
             val: OperandValue::Immediate(C_undef(layout.immediate_llvm_type(cx))),
             layout
         }
+    }
+
+    pub fn from_const(bx: &Builder<'a, 'tcx>,
+                      miri_val: MiriValue,
+                      ty: ty::Ty<'tcx>)
+                      -> Result<OperandRef<'tcx>, ConstEvalErr<'tcx>> {
+        let layout = bx.cx.layout_of(ty);
+
+        if layout.is_zst() {
+            return Ok(OperandRef::new_zst(bx.cx, layout));
+        }
+
+        let val = match miri_val {
+            MiriValue::ByVal(x) => {
+                let scalar = match layout.abi {
+                    layout::Abi::Scalar(ref x) => x,
+                    _ => bug!("from_const: invalid ByVal layout: {:#?}", layout)
+                };
+                let llval = primval_to_llvm(
+                    bx.cx,
+                    x,
+                    scalar,
+                    layout.immediate_llvm_type(bx.cx),
+                );
+                OperandValue::Immediate(llval)
+            },
+            MiriValue::ByValPair(a, b) => {
+                let (a_scalar, b_scalar) = match layout.abi {
+                    layout::Abi::ScalarPair(ref a, ref b) => (a, b),
+                    _ => bug!("from_const: invalid ByValPair layout: {:#?}", layout)
+                };
+                let a_llval = primval_to_llvm(
+                    bx.cx,
+                    a,
+                    a_scalar,
+                    layout.scalar_pair_element_llvm_type(bx.cx, 0),
+                );
+                let b_llval = primval_to_llvm(
+                    bx.cx,
+                    b,
+                    b_scalar,
+                    layout.scalar_pair_element_llvm_type(bx.cx, 1),
+                );
+                OperandValue::Pair(a_llval, b_llval)
+            },
+            MiriValue::ByRef(ptr, align) => {
+                let scalar = layout::Scalar {
+                    value: layout::Primitive::Pointer,
+                    valid_range: 0..=!0
+                };
+                let ptr = primval_to_llvm(
+                    bx.cx,
+                    ptr.into_inner_primval(),
+                    &scalar,
+                    layout.llvm_type(bx.cx).ptr_to(),
+                );
+                return Ok(PlaceRef::new_sized(ptr, layout, align).load(bx));
+            },
+        };
+
+        Ok(OperandRef {
+            val,
+            layout
+        })
     }
 
     /// Asserts that this operand refers to a scalar and returns
@@ -327,14 +395,19 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
             }
 
             mir::Operand::Constant(ref constant) => {
-                let val = self.trans_constant(&bx, constant);
-                let operand = val.to_operand(bx.cx);
-                if let OperandValue::Ref(ptr, align) = operand.val {
-                    // If this is a OperandValue::Ref to an immediate constant, load it.
-                    PlaceRef::new_sized(ptr, operand.layout, align).load(bx)
-                } else {
-                    operand
-                }
+                let ty = self.monomorphize(&constant.ty);
+                self.mir_constant_to_miri_value(bx, constant)
+                    .and_then(|c| OperandRef::from_const(bx, c, ty))
+                    .unwrap_or_else(|err| {
+                        err.report(bx.tcx(), constant.span, "const operand");
+                        // We've errored, so we don't have to produce working code.
+                        let layout = bx.cx.layout_of(ty);
+                        PlaceRef::new_sized(
+                            C_null(layout.llvm_type(bx.cx).ptr_to()),
+                            layout,
+                            layout.align,
+                        ).load(bx)
+                    })
             }
         }
     }

@@ -195,7 +195,7 @@ pub fn unsized_info<'cx, 'tcx>(cx: &CodegenCx<'cx, 'tcx>,
     let (source, target) = cx.tcx.struct_lockstep_tails(source, target);
     match (&source.sty, &target.sty) {
         (&ty::TyArray(_, len), &ty::TySlice(_)) => {
-            C_usize(cx, len.val.to_const_int().unwrap().to_u64().unwrap())
+            C_usize(cx, len.val.unwrap_u64())
         }
         (&ty::TyDynamic(..), &ty::TyDynamic(..)) => {
             // For now, upcasts are limited to changes in marker
@@ -332,14 +332,6 @@ pub fn cast_shift_expr_rhs(
     cx: &Builder, op: hir::BinOp_, lhs: ValueRef, rhs: ValueRef
 ) -> ValueRef {
     cast_shift_rhs(op, lhs, rhs, |a, b| cx.trunc(a, b), |a, b| cx.zext(a, b))
-}
-
-pub fn cast_shift_const_rhs(op: hir::BinOp_, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    cast_shift_rhs(op,
-                   lhs,
-                   rhs,
-                   |a, b| unsafe { llvm::LLVMConstTrunc(a, b.to_ref()) },
-                   |a, b| unsafe { llvm::LLVMConstZExt(a, b.to_ref()) })
 }
 
 fn cast_shift_rhs<F, G>(op: hir::BinOp_,
@@ -979,6 +971,8 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
         time(time_passes, "translation item collection", || {
             collector::collect_crate_mono_items(tcx, collection_mode)
     });
+
+    tcx.sess.abort_if_errors();
 
     ::rustc_mir::monomorphize::assert_symbols_are_distinct(tcx, items.iter());
 

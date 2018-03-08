@@ -70,7 +70,7 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
                 PlaceTy::Ty {
                     ty: match ty.sty {
                         ty::TyArray(inner, size) => {
-                            let size = size.val.to_const_int().unwrap().to_u64().unwrap();
+                            let size = size.val.unwrap_u64();
                             let len = size - (from as u64) - (to as u64);
                             tcx.mk_array(inner, len)
                         }
@@ -149,7 +149,7 @@ impl<'tcx> Rvalue<'tcx> {
         match *self {
             Rvalue::Use(ref operand) => operand.ty(local_decls, tcx),
             Rvalue::Repeat(ref operand, count) => {
-                tcx.mk_array_const_usize(operand.ty(local_decls, tcx), count)
+                tcx.mk_array(operand.ty(local_decls, tcx), count)
             }
             Rvalue::Ref(reg, bk, ref place) => {
                 let place_ty = place.ty(local_decls, tcx).to_ty(tcx);

@@ -16,14 +16,14 @@ use schema::*;
 use rustc::middle::cstore::{LinkMeta, LinkagePreference, NativeLibrary,
                             EncodedMetadata};
 use rustc::hir::def::CtorKind;
-use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId, LOCAL_CRATE};
+use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId, LocalDefId, LOCAL_CRATE};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::ich::Fingerprint;
 use rustc::middle::dependency_format::Linkage;
 use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel,
                                       metadata_symbol_name};
 use rustc::middle::lang_items;
-use rustc::mir;
+use rustc::mir::{self, interpret};
 use rustc::traits::specialization_graph;
 use rustc::ty::{self, Ty, TyCtxt, ReprOptions, SymbolName};
 use rustc::ty::codec::{self as ty_codec, TyEncoder};
@@ -59,6 +59,7 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     lazy_state: LazyState,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
+    interpret_alloc_shorthands: FxHashMap<interpret::AllocId, usize>,
 
     // This is used to speed up Span encoding.
     filemap_cache: Lrc<FileMap>,
@@ -180,9 +181,45 @@ impl<'a, 'tcx> SpecializedEncoder<Span> for EncodeContext<'a, 'tcx> {
     }
 }
 
+impl<'a, 'tcx> SpecializedEncoder<LocalDefId> for EncodeContext<'a, 'tcx> {
+    #[inline]
+    fn specialized_encode(&mut self, def_id: &LocalDefId) -> Result<(), Self::Error> {
+        self.specialized_encode(&def_id.to_def_id())
+    }
+}
+
 impl<'a, 'tcx> SpecializedEncoder<Ty<'tcx>> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, ty: &Ty<'tcx>) -> Result<(), Self::Error> {
         ty_codec::encode_with_shorthand(self, ty, |ecx| &mut ecx.type_shorthands)
+    }
+}
+
+impl<'a, 'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'a, 'tcx> {
+    fn specialized_encode(&mut self, alloc_id: &interpret::AllocId) -> Result<(), Self::Error> {
+        trace!("encoding {:?} at {}", alloc_id, self.position());
+        if let Some(shorthand) = self.interpret_alloc_shorthands.get(alloc_id).cloned() {
+            trace!("encoding {:?} as shorthand to {}", alloc_id, shorthand);
+            return shorthand.encode(self);
+        }
+        let start = self.position();
+        // cache the allocation shorthand now, because the allocation itself might recursively
+        // point to itself.
+        self.interpret_alloc_shorthands.insert(*alloc_id, start);
+        if let Some(alloc) = self.tcx.interpret_interner.get_alloc(*alloc_id) {
+            trace!("encoding {:?} with {:#?}", alloc_id, alloc);
+            usize::max_value().encode(self)?;
+            alloc.encode(self)?;
+            self.tcx.interpret_interner
+                .get_corresponding_static_def_id(*alloc_id)
+                .encode(self)?;
+        } else if let Some(fn_instance) = self.tcx.interpret_interner.get_fn(*alloc_id) {
+            trace!("encoding {:?} with {:#?}", alloc_id, fn_instance);
+            (usize::max_value() - 1).encode(self)?;
+            fn_instance.encode(self)?;
+        } else {
+            bug!("alloc id without corresponding allocation: {}", alloc_id);
+        }
+        Ok(())
     }
 }
 
@@ -1117,7 +1154,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 _ => None,
             },
             mir: match item.node {
-                hir::ItemStatic(..) if self.tcx.sess.opts.debugging_opts.always_encode_mir => {
+                hir::ItemStatic(..) => {
                     self.encode_optimized_mir(def_id)
                 }
                 hir::ItemConst(..) => self.encode_optimized_mir(def_id),
@@ -1699,6 +1736,7 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             type_shorthands: Default::default(),
             predicate_shorthands: Default::default(),
             filemap_cache: tcx.sess.codemap().files()[0].clone(),
+            interpret_alloc_shorthands: Default::default(),
         };
 
         // Encode the rustc version string in a predictable location.

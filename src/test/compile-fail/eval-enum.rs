@@ -8,12 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum test {
-    div_zero = 1/0, //~ ERROR E0080
-                    //~| attempt to divide by zero
-    rem_zero = 1%0,
-    //~^ ERROR E0080
-    //~| attempt to calculate the remainder with a divisor of zero
+enum Test {
+    DivZero = 1/0,
+    //~^ attempt to divide by zero
+    //~| ERROR constant evaluation error
+    //~| WARN constant evaluation error
+    RemZero = 1%0,
+    //~^ attempt to calculate the remainder with a divisor of zero
+    //~| ERROR constant evaluation error
+    //~| WARN constant evaluation error
 }
 
 fn main() {}

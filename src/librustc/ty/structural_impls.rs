@@ -13,11 +13,12 @@
 //! hand, though we've recently added some macros (e.g.,
 //! `BraceStructLiftImpl!`) to help with the tedium.
 
-use middle::const_val::{self, ConstVal, ConstAggregate, ConstEvalErr};
+use middle::const_val::{self, ConstVal, ConstEvalErr};
 use ty::{self, Lift, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use mir::interpret;
 
 use std::rc::Rc;
 
@@ -56,6 +57,7 @@ CopyImpls! {
     ::syntax::abi::Abi,
     ::hir::def_id::DefId,
     ::mir::Local,
+    ::mir::Promoted,
     ::traits::Reveal,
     ::syntax_pos::Span,
 }
@@ -576,11 +578,117 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
 impl<'a, 'tcx> Lift<'tcx> for ConstEvalErr<'a> {
     type Lifted = ConstEvalErr<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(&self.kind).map(|kind| {
+        tcx.lift(&*self.kind).map(|kind| {
             ConstEvalErr {
                 span: self.span,
-                kind,
+                kind: Rc::new(kind),
             }
+        })
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for interpret::EvalError<'a> {
+    type Lifted = interpret::EvalError<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        use ::mir::interpret::EvalErrorKind::*;
+        let kind = match self.kind {
+            MachineError(ref err) => MachineError(err.clone()),
+            FunctionPointerTyMismatch(a, b) => FunctionPointerTyMismatch(
+                tcx.lift(&a)?,
+                tcx.lift(&b)?,
+            ),
+            NoMirFor(ref s) => NoMirFor(s.clone()),
+            UnterminatedCString(ptr) => UnterminatedCString(ptr),
+            DanglingPointerDeref => DanglingPointerDeref,
+            DoubleFree => DoubleFree,
+            InvalidMemoryAccess => InvalidMemoryAccess,
+            InvalidFunctionPointer => InvalidFunctionPointer,
+            InvalidBool => InvalidBool,
+            InvalidDiscriminant => InvalidDiscriminant,
+            PointerOutOfBounds {
+                ptr,
+                access,
+                allocation_size,
+            } => PointerOutOfBounds { ptr, access, allocation_size },
+            InvalidNullPointerUsage => InvalidNullPointerUsage,
+            ReadPointerAsBytes => ReadPointerAsBytes,
+            ReadBytesAsPointer => ReadBytesAsPointer,
+            InvalidPointerMath => InvalidPointerMath,
+            ReadUndefBytes => ReadUndefBytes,
+            DeadLocal => DeadLocal,
+            InvalidBoolOp(bop) => InvalidBoolOp(bop),
+            Unimplemented(ref s) => Unimplemented(s.clone()),
+            DerefFunctionPointer => DerefFunctionPointer,
+            ExecuteMemory => ExecuteMemory,
+            ArrayIndexOutOfBounds(sp, a, b) => ArrayIndexOutOfBounds(sp, a, b),
+            Math(sp, ref err) => Math(sp, err.clone()),
+            Intrinsic(ref s) => Intrinsic(s.clone()),
+            OverflowingMath => OverflowingMath,
+            InvalidChar(c) => InvalidChar(c),
+            ExecutionTimeLimitReached => ExecutionTimeLimitReached,
+            StackFrameLimitReached => StackFrameLimitReached,
+            OutOfTls => OutOfTls,
+            TlsOutOfBounds => TlsOutOfBounds,
+            AbiViolation(ref s) => AbiViolation(s.clone()),
+            AlignmentCheckFailed {
+                required,
+                has,
+            } => AlignmentCheckFailed { required, has },
+            MemoryLockViolation {
+                ptr,
+                len,
+                frame,
+                access,
+                ref lock,
+            } => MemoryLockViolation { ptr, len, frame, access, lock: lock.clone() },
+            MemoryAcquireConflict {
+                ptr,
+                len,
+                kind,
+                ref lock,
+            } => MemoryAcquireConflict { ptr, len, kind, lock: lock.clone() },
+            InvalidMemoryLockRelease {
+                ptr,
+                len,
+                frame,
+                ref lock,
+            } => InvalidMemoryLockRelease { ptr, len, frame, lock: lock.clone() },
+            DeallocatedLockedMemory {
+                ptr,
+                ref lock,
+            } => DeallocatedLockedMemory { ptr, lock: lock.clone() },
+            ValidationFailure(ref s) => ValidationFailure(s.clone()),
+            CalledClosureAsFunction => CalledClosureAsFunction,
+            VtableForArgumentlessMethod => VtableForArgumentlessMethod,
+            ModifiedConstantMemory => ModifiedConstantMemory,
+            AssumptionNotHeld => AssumptionNotHeld,
+            InlineAsm => InlineAsm,
+            TypeNotPrimitive(ty) => TypeNotPrimitive(tcx.lift(&ty)?),
+            ReallocatedWrongMemoryKind(ref a, ref b) => {
+                ReallocatedWrongMemoryKind(a.clone(), b.clone())
+            },
+            DeallocatedWrongMemoryKind(ref a, ref b) => {
+                DeallocatedWrongMemoryKind(a.clone(), b.clone())
+            },
+            ReallocateNonBasePtr => ReallocateNonBasePtr,
+            DeallocateNonBasePtr => DeallocateNonBasePtr,
+            IncorrectAllocationInformation(a, b, c, d) => {
+                IncorrectAllocationInformation(a, b, c, d)
+            },
+            Layout(lay) => Layout(tcx.lift(&lay)?),
+            HeapAllocZeroBytes => HeapAllocZeroBytes,
+            HeapAllocNonPowerOfTwoAlignment(n) => HeapAllocNonPowerOfTwoAlignment(n),
+            Unreachable => Unreachable,
+            Panic => Panic,
+            ReadFromReturnPointer => ReadFromReturnPointer,
+            PathNotFound(ref v) => PathNotFound(v.clone()),
+            UnimplementedTraitSelection => UnimplementedTraitSelection,
+            TypeckError => TypeckError,
+            ReferencedConstant => ReferencedConstant,
+        };
+        Some(interpret::EvalError {
+            kind: kind,
+            backtrace: self.backtrace.clone(),
         })
     }
 }
@@ -591,29 +699,18 @@ impl<'a, 'tcx> Lift<'tcx> for const_val::ErrKind<'a> {
         use middle::const_val::ErrKind::*;
 
         Some(match *self {
-            CannotCast => CannotCast,
-            MissingStructField => MissingStructField,
             NonConstPath => NonConstPath,
             UnimplementedConstVal(s) => UnimplementedConstVal(s),
-            ExpectedConstTuple => ExpectedConstTuple,
-            ExpectedConstStruct => ExpectedConstStruct,
-            IndexedNonVec => IndexedNonVec,
-            IndexNotUsize => IndexNotUsize,
             IndexOutOfBounds { len, index } => IndexOutOfBounds { len, index },
-            MiscBinaryOp => MiscBinaryOp,
-            MiscCatchAll => MiscCatchAll,
-            IndexOpFeatureGated => IndexOpFeatureGated,
             Math(ref e) => Math(e.clone()),
 
             LayoutError(ref e) => {
                 return tcx.lift(e).map(LayoutError)
             }
-            ErroneousReferencedConstant(ref e) => {
-                return tcx.lift(e).map(ErroneousReferencedConstant)
-            }
 
             TypeckError => TypeckError,
             CheckMatchError => CheckMatchError,
+            Miri(ref e, ref frames) => return tcx.lift(e).map(|e| Miri(e, frames.clone())),
         })
     }
 }
@@ -629,6 +726,42 @@ impl<'a, 'tcx> Lift<'tcx> for ty::layout::LayoutError<'a> {
                 tcx.lift(ty).map(ty::layout::LayoutError::SizeOverflow)
             }
         }
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for ty::InstanceDef<'a> {
+    type Lifted = ty::InstanceDef<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        match *self {
+            ty::InstanceDef::Item(def_id) =>
+                Some(ty::InstanceDef::Item(def_id)),
+            ty::InstanceDef::Intrinsic(def_id) =>
+                Some(ty::InstanceDef::Intrinsic(def_id)),
+            ty::InstanceDef::FnPtrShim(def_id, ref ty) =>
+                Some(ty::InstanceDef::FnPtrShim(def_id, tcx.lift(ty)?)),
+            ty::InstanceDef::Virtual(def_id, n) =>
+                Some(ty::InstanceDef::Virtual(def_id, n)),
+            ty::InstanceDef::ClosureOnceShim { call_once } =>
+                Some(ty::InstanceDef::ClosureOnceShim { call_once }),
+            ty::InstanceDef::DropGlue(def_id, ref ty) =>
+                Some(ty::InstanceDef::DropGlue(def_id, tcx.lift(ty)?)),
+            ty::InstanceDef::CloneShim(def_id, ref ty) =>
+                Some(ty::InstanceDef::CloneShim(def_id, tcx.lift(ty)?)),
+        }
+    }
+}
+
+BraceStructLiftImpl! {
+    impl<'a, 'tcx> Lift<'tcx> for ty::Instance<'a> {
+        type Lifted = ty::Instance<'tcx>;
+        def, substs
+    }
+}
+
+BraceStructLiftImpl! {
+    impl<'a, 'tcx> Lift<'tcx> for interpret::GlobalId<'a> {
+        type Lifted = interpret::GlobalId<'tcx>;
+        instance, promoted
     }
 }
 
@@ -775,6 +908,74 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Slice<Ty<'tcx>> {
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.iter().any(|t| t.visit_with(visitor))
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        use ty::InstanceDef::*;
+        Self {
+            substs: self.substs.fold_with(folder),
+            def: match self.def {
+                Item(did) => Item(did.fold_with(folder)),
+                Intrinsic(did) => Intrinsic(did.fold_with(folder)),
+                FnPtrShim(did, ty) => FnPtrShim(
+                    did.fold_with(folder),
+                    ty.fold_with(folder),
+                ),
+                Virtual(did, i) => Virtual(
+                    did.fold_with(folder),
+                    i,
+                ),
+                ClosureOnceShim { call_once } => ClosureOnceShim {
+                    call_once: call_once.fold_with(folder),
+                },
+                DropGlue(did, ty) => DropGlue(
+                    did.fold_with(folder),
+                    ty.fold_with(folder),
+                ),
+                CloneShim(did, ty) => CloneShim(
+                    did.fold_with(folder),
+                    ty.fold_with(folder),
+                ),
+            },
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        use ty::InstanceDef::*;
+        self.substs.visit_with(visitor) ||
+        match self.def {
+            Item(did) => did.visit_with(visitor),
+            Intrinsic(did) => did.visit_with(visitor),
+            FnPtrShim(did, ty) => {
+                did.visit_with(visitor) ||
+                ty.visit_with(visitor)
+            },
+            Virtual(did, _) => did.visit_with(visitor),
+            ClosureOnceShim { call_once } => call_once.visit_with(visitor),
+            DropGlue(did, ty) => {
+                did.visit_with(visitor) ||
+                ty.visit_with(visitor)
+            },
+            CloneShim(did, ty) => {
+                did.visit_with(visitor) ||
+                ty.visit_with(visitor)
+            },
+        }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for interpret::GlobalId<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        Self {
+            instance: self.instance.fold_with(folder),
+            promoted: self.promoted
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.instance.visit_with(visitor)
     }
 }
 
@@ -1243,53 +1444,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::error::TypeError<'tcx> {
 impl<'tcx> TypeFoldable<'tcx> for ConstVal<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
-            ConstVal::Integral(i) => ConstVal::Integral(i),
-            ConstVal::Float(f) => ConstVal::Float(f),
-            ConstVal::Str(s) => ConstVal::Str(s),
-            ConstVal::ByteStr(b) => ConstVal::ByteStr(b),
-            ConstVal::Bool(b) => ConstVal::Bool(b),
-            ConstVal::Char(c) => ConstVal::Char(c),
-            ConstVal::Variant(def_id) => ConstVal::Variant(def_id),
-            ConstVal::Function(def_id, substs) => {
-                ConstVal::Function(def_id, substs.fold_with(folder))
-            }
-            ConstVal::Aggregate(ConstAggregate::Struct(fields)) => {
-                let new_fields: Vec<_> = fields.iter().map(|&(name, v)| {
-                    (name, v.fold_with(folder))
-                }).collect();
-                let fields = if new_fields == fields {
-                    fields
-                } else {
-                    folder.tcx().alloc_name_const_slice(&new_fields)
-                };
-                ConstVal::Aggregate(ConstAggregate::Struct(fields))
-            }
-            ConstVal::Aggregate(ConstAggregate::Tuple(fields)) => {
-                let new_fields: Vec<_> = fields.iter().map(|v| {
-                    v.fold_with(folder)
-                }).collect();
-                let fields = if new_fields == fields {
-                    fields
-                } else {
-                    folder.tcx().alloc_const_slice(&new_fields)
-                };
-                ConstVal::Aggregate(ConstAggregate::Tuple(fields))
-            }
-            ConstVal::Aggregate(ConstAggregate::Array(fields)) => {
-                let new_fields: Vec<_> = fields.iter().map(|v| {
-                    v.fold_with(folder)
-                }).collect();
-                let fields = if new_fields == fields {
-                    fields
-                } else {
-                    folder.tcx().alloc_const_slice(&new_fields)
-                };
-                ConstVal::Aggregate(ConstAggregate::Array(fields))
-            }
-            ConstVal::Aggregate(ConstAggregate::Repeat(v, count)) => {
-                let v = v.fold_with(folder);
-                ConstVal::Aggregate(ConstAggregate::Repeat(v, count))
-            }
+            ConstVal::Value(v) => ConstVal::Value(v),
             ConstVal::Unevaluated(def_id, substs) => {
                 ConstVal::Unevaluated(def_id, substs.fold_with(folder))
             }
@@ -1298,24 +1453,7 @@ impl<'tcx> TypeFoldable<'tcx> for ConstVal<'tcx> {
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         match *self {
-            ConstVal::Integral(_) |
-            ConstVal::Float(_) |
-            ConstVal::Str(_) |
-            ConstVal::ByteStr(_) |
-            ConstVal::Bool(_) |
-            ConstVal::Char(_) |
-            ConstVal::Variant(_) => false,
-            ConstVal::Function(_, substs) => substs.visit_with(visitor),
-            ConstVal::Aggregate(ConstAggregate::Struct(fields)) => {
-                fields.iter().any(|&(_, v)| v.visit_with(visitor))
-            }
-            ConstVal::Aggregate(ConstAggregate::Tuple(fields)) |
-            ConstVal::Aggregate(ConstAggregate::Array(fields)) => {
-                fields.iter().any(|v| v.visit_with(visitor))
-            }
-            ConstVal::Aggregate(ConstAggregate::Repeat(v, _)) => {
-                v.visit_with(visitor)
-            }
+            ConstVal::Value(_) => false,
             ConstVal::Unevaluated(_, substs) => substs.visit_with(visitor),
         }
     }

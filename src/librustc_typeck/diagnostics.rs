@@ -1020,41 +1020,6 @@ Here `X` will have already been specified the discriminant 0 by the time `Y` is
 encountered, so a conflict occurs.
 "##,
 
-E0082: r##"
-#### Note: this error code is no longer emitted by the compiler.
-
-When you specify enum discriminants with `=`, the compiler expects `isize`
-values by default. Or you can add the `repr` attibute to the enum declaration
-for an explicit choice of the discriminant type. In either cases, the
-discriminant values must fall within a valid range for the expected type;
-otherwise this error is raised. For example:
-
-```compile_fail
-# #![deny(overflowing_literals)]
-#[repr(u8)]
-enum Thing {
-    A = 1024,
-    B = 5,
-}
-```
-
-Here, 1024 lies outside the valid range for `u8`, so the discriminant for `A` is
-invalid. Here is another, more subtle example which depends on target word size:
-
-```compile_fail,E0080
-# #[repr(i32)]
-enum DependsOnPointerSize {
-    A = 1 << 32,
-}
-```
-
-Here, `1 << 32` is interpreted as an `isize` value. So it is invalid for 32 bit
-target (`target_pointer_width = "32"`) but valid for 64 bit target.
-
-You may want to change representation types to fix this, or else change invalid
-discriminant values so that they fit within the existing type.
-"##,
-
 E0084: r##"
 An unsupported representation was attempted on a zero-variant enum.
 

@@ -13,21 +13,19 @@ use self::Usefulness::*;
 use self::WitnessPreference::*;
 
 use rustc::middle::const_val::ConstVal;
-use eval::{compare_const_vals};
-
-use rustc_const_math::ConstInt;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 
-use pattern::{FieldPattern, Pattern, PatternKind};
-use pattern::{PatternFoldable, PatternFolder};
+use super::{FieldPattern, Pattern, PatternKind};
+use super::{PatternFoldable, PatternFolder, compare_const_vals};
 
 use rustc::hir::def_id::DefId;
 use rustc::hir::RangeEnd;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 
 use rustc::mir::Field;
+use rustc::mir::interpret::{Value, PrimVal};
 use rustc::util::common::ErrorReported;
 
 use syntax_pos::{Span, DUMMY_SP};
@@ -182,18 +180,38 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
         self.byte_array_map.entry(pat).or_insert_with(|| {
             match pat.kind {
                 box PatternKind::Constant {
-                    value: &ty::Const { val: ConstVal::ByteStr(b), .. }
+                    value: &ty::Const { val: ConstVal::Value(b), ty }
                 } => {
-                    b.data.iter().map(|&b| &*pattern_arena.alloc(Pattern {
-                        ty: tcx.types.u8,
-                        span: pat.span,
-                        kind: box PatternKind::Constant {
-                            value: tcx.mk_const(ty::Const {
-                                val: ConstVal::Integral(ConstInt::U8(b)),
-                                ty: tcx.types.u8
-                            })
-                        }
-                    })).collect()
+                    match b {
+                        Value::ByVal(PrimVal::Ptr(ptr)) => {
+                            let is_array_ptr = ty
+                                .builtin_deref(true)
+                                .and_then(|t| t.ty.builtin_index())
+                                .map_or(false, |t| t == tcx.types.u8);
+                            assert!(is_array_ptr);
+                            let alloc = tcx
+                                .interpret_interner
+                                .get_alloc(ptr.alloc_id)
+                                .unwrap();
+                            assert_eq!(ptr.offset, 0);
+                            // FIXME: check length
+                            alloc.bytes.iter().map(|b| {
+                                &*pattern_arena.alloc(Pattern {
+                                    ty: tcx.types.u8,
+                                    span: pat.span,
+                                    kind: box PatternKind::Constant {
+                                        value: tcx.mk_const(ty::Const {
+                                            val: ConstVal::Value(Value::ByVal(
+                                                PrimVal::Bytes(*b as u128),
+                                            )),
+                                            ty: tcx.types.u8
+                                        })
+                                    }
+                                })
+                            }).collect()
+                        },
+                        _ => bug!("not a byte str: {:?}", b),
+                    }
                 }
                 _ => span_bug!(pat.span, "unexpected byte array pattern {:?}", pat)
             }
@@ -422,13 +440,13 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         ty::TyBool => {
             [true, false].iter().map(|&b| {
                 ConstantValue(cx.tcx.mk_const(ty::Const {
-                    val: ConstVal::Bool(b),
+                    val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(b as u128))),
                     ty: cx.tcx.types.bool
                 }))
             }).collect()
         }
-        ty::TyArray(ref sub_ty, len) if len.val.to_const_int().is_some() => {
-            let len = len.val.to_const_int().unwrap().to_u64().unwrap();
+        ty::TyArray(ref sub_ty, len) if len.val.to_raw_bits().is_some() => {
+            let len = len.val.unwrap_u64();
             if len != 0 && cx.is_uninhabited(sub_ty) {
                 vec![]
             } else {
@@ -461,7 +479,7 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
 }
 
 fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
-    _cx: &mut MatchCheckCtxt<'a, 'tcx>,
+    cx: &mut MatchCheckCtxt<'a, 'tcx>,
     patterns: I) -> u64
     where I: Iterator<Item=&'p Pattern<'tcx>>
 {
@@ -535,8 +553,23 @@ fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
 
     for row in patterns {
         match *row.kind {
-            PatternKind::Constant { value: &ty::Const { val: ConstVal::ByteStr(b), .. } } => {
-                max_fixed_len = cmp::max(max_fixed_len, b.data.len() as u64);
+            PatternKind::Constant {
+                value: &ty::Const {
+                    val: ConstVal::Value(Value::ByVal(PrimVal::Ptr(ptr))),
+                    ty,
+                }
+            } => {
+                let is_array_ptr = ty
+                    .builtin_deref(true)
+                    .and_then(|t| t.ty.builtin_index())
+                    .map_or(false, |t| t == cx.tcx.types.u8);
+                if is_array_ptr {
+                    let alloc = cx.tcx
+                        .interpret_interner
+                        .get_alloc(ptr.alloc_id)
+                        .unwrap();
+                    max_fixed_len = cmp::max(max_fixed_len, alloc.bytes.len() as u64);
+                }
             }
             PatternKind::Slice { ref prefix, slice: None, ref suffix } => {
                 let fixed_len = prefix.len() as u64 + suffix.len() as u64;
@@ -581,7 +614,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                                        witness: WitnessPreference)
                                        -> Usefulness<'tcx> {
     let &Matrix(ref rows) = matrix;
-    debug!("is_useful({:?}, {:?})", matrix, v);
+    debug!("is_useful({:#?}, {:#?})", matrix, v);
 
     // The base case. We are pattern-matching on () and the return value is
     // based on whether our matrix has a row or not.
@@ -626,10 +659,10 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         max_slice_length: max_slice_length(cx, rows.iter().map(|r| r[0]).chain(Some(v[0])))
     };
 
-    debug!("is_useful_expand_first_col: pcx={:?}, expanding {:?}", pcx, v[0]);
+    debug!("is_useful_expand_first_col: pcx={:#?}, expanding {:#?}", pcx, v[0]);
 
     if let Some(constructors) = pat_constructors(cx, v[0], pcx) {
-        debug!("is_useful - expanding constructors: {:?}", constructors);
+        debug!("is_useful - expanding constructors: {:#?}", constructors);
         constructors.into_iter().map(|c|
             is_useful_specialized(cx, matrix, v, c.clone(), pcx.ty, witness)
         ).find(|result| result.is_useful()).unwrap_or(NotUseful)
@@ -639,9 +672,9 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         let used_ctors: Vec<Constructor> = rows.iter().flat_map(|row| {
             pat_constructors(cx, row[0], pcx).unwrap_or(vec![])
         }).collect();
-        debug!("used_ctors = {:?}", used_ctors);
+        debug!("used_ctors = {:#?}", used_ctors);
         let all_ctors = all_constructors(cx, pcx);
-        debug!("all_ctors = {:?}", all_ctors);
+        debug!("all_ctors = {:#?}", all_ctors);
         let missing_ctors: Vec<Constructor> = all_ctors.iter().filter(|c| {
             !used_ctors.contains(*c)
         }).cloned().collect();
@@ -669,7 +702,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
             all_ctors.is_empty() && !cx.is_uninhabited(pcx.ty);
         let is_declared_nonexhaustive =
             cx.is_non_exhaustive_enum(pcx.ty) && !cx.is_local(pcx.ty);
-        debug!("missing_ctors={:?} is_privately_empty={:?} is_declared_nonexhaustive={:?}",
+        debug!("missing_ctors={:#?} is_privately_empty={:#?} is_declared_nonexhaustive={:#?}",
                missing_ctors, is_privately_empty, is_declared_nonexhaustive);
 
         // For privately empty and non-exhaustive enums, we work as if there were an "extra"
@@ -769,7 +802,7 @@ fn is_useful_specialized<'p, 'a:'p, 'tcx: 'a>(
     lty: Ty<'tcx>,
     witness: WitnessPreference) -> Usefulness<'tcx>
 {
-    debug!("is_useful_specialized({:?}, {:?}, {:?})", v, ctor, lty);
+    debug!("is_useful_specialized({:#?}, {:#?}, {:?})", v, ctor, lty);
     let sub_pat_tys = constructor_sub_pattern_tys(cx, &ctor, lty);
     let wild_patterns_owned: Vec<_> = sub_pat_tys.iter().map(|ty| {
         Pattern {
@@ -821,7 +854,7 @@ fn pat_constructors<'tcx>(_cx: &mut MatchCheckCtxt,
             Some(vec![ConstantRange(lo, hi, end)]),
         PatternKind::Array { .. } => match pcx.ty.sty {
             ty::TyArray(_, length) => Some(vec![
-                Slice(length.val.to_const_int().unwrap().to_u64().unwrap())
+                Slice(length.val.unwrap_u64())
             ]),
             _ => span_bug!(pat.span, "bad ty {:?} for array pattern", pcx.ty)
         },
@@ -842,7 +875,7 @@ fn pat_constructors<'tcx>(_cx: &mut MatchCheckCtxt,
 /// For instance, a tuple pattern (_, 42, Some([])) has the arity of 3.
 /// A struct pattern's arity is the number of fields it contains, etc.
 fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> u64 {
-    debug!("constructor_arity({:?}, {:?})", ctor, ty);
+    debug!("constructor_arity({:#?}, {:?})", ctor, ty);
     match ty.sty {
         ty::TyTuple(ref fs, _) => fs.len() as u64,
         ty::TySlice(..) | ty::TyArray(..) => match *ctor {
@@ -866,7 +899,7 @@ fn constructor_sub_pattern_tys<'a, 'tcx: 'a>(cx: &MatchCheckCtxt<'a, 'tcx>,
                                              ctor: &Constructor,
                                              ty: Ty<'tcx>) -> Vec<Ty<'tcx>>
 {
-    debug!("constructor_sub_pattern_tys({:?}, {:?})", ctor, ty);
+    debug!("constructor_sub_pattern_tys({:#?}, {:?})", ctor, ty);
     match ty.sty {
         ty::TyTuple(ref fs, _) => fs.into_iter().map(|t| *t).collect(),
         ty::TySlice(ty) | ty::TyArray(ty, _) => match *ctor {
@@ -901,14 +934,28 @@ fn constructor_sub_pattern_tys<'a, 'tcx: 'a>(cx: &MatchCheckCtxt<'a, 'tcx>,
     }
 }
 
-fn slice_pat_covered_by_constructor(_tcx: TyCtxt, _span: Span,
+fn slice_pat_covered_by_constructor(tcx: TyCtxt, _span: Span,
                                     ctor: &Constructor,
                                     prefix: &[Pattern],
                                     slice: &Option<Pattern>,
                                     suffix: &[Pattern])
                                     -> Result<bool, ErrorReported> {
-    let data = match *ctor {
-        ConstantValue(&ty::Const { val: ConstVal::ByteStr(b), .. }) => b.data,
+    let data: &[u8] = match *ctor {
+        ConstantValue(&ty::Const { val: ConstVal::Value(
+            Value::ByVal(PrimVal::Ptr(ptr))
+        ), ty }) => {
+            let is_array_ptr = ty
+                .builtin_deref(true)
+                .and_then(|t| t.ty.builtin_index())
+                .map_or(false, |t| t == tcx.types.u8);
+            assert!(is_array_ptr);
+            tcx
+                .interpret_interner
+                .get_alloc(ptr.alloc_id)
+                .unwrap()
+                .bytes
+                .as_ref()
+        }
         _ => bug!()
     };
 
@@ -923,11 +970,12 @@ fn slice_pat_covered_by_constructor(_tcx: TyCtxt, _span: Span,
     {
         match pat.kind {
             box PatternKind::Constant { value } => match value.val {
-                ConstVal::Integral(ConstInt::U8(u)) => {
-                    if u != *ch {
+                ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))) => {
+                    assert_eq!(b as u8 as u128, b);
+                    if b as u8 != *ch {
                         return Ok(false);
                     }
-                },
+                }
                 _ => span_bug!(pat.span, "bad const u8 {:?}", value)
             },
             _ => {}
@@ -937,31 +985,41 @@ fn slice_pat_covered_by_constructor(_tcx: TyCtxt, _span: Span,
     Ok(true)
 }
 
-fn constructor_covered_by_range(tcx: TyCtxt, span: Span,
-                                ctor: &Constructor,
+fn constructor_covered_by_range(ctor: &Constructor,
                                 from: &ConstVal, to: &ConstVal,
-                                end: RangeEnd)
+                                end: RangeEnd,
+                                ty: Ty)
                                 -> Result<bool, ErrorReported> {
-    let cmp_from = |c_from| Ok(compare_const_vals(tcx, span, c_from, from)? != Ordering::Less);
-    let cmp_to = |c_to| compare_const_vals(tcx, span, c_to, to);
+    trace!("constructor_covered_by_range {:#?}, {:#?}, {:#?}, {}", ctor, from, to, ty);
+    let cmp_from = |c_from| compare_const_vals(c_from, from, ty)
+        .map(|res| res != Ordering::Less);
+    let cmp_to = |c_to| compare_const_vals(c_to, to, ty);
+    macro_rules! some_or_ok {
+        ($e:expr) => {
+            match $e {
+                Some(to) => to,
+                None => return Ok(false), // not char or int
+            }
+        };
+    }
     match *ctor {
         ConstantValue(value) => {
-            let to = cmp_to(&value.val)?;
+            let to = some_or_ok!(cmp_to(&value.val));
             let end = (to == Ordering::Less) ||
                       (end == RangeEnd::Included && to == Ordering::Equal);
-            Ok(cmp_from(&value.val)? && end)
+            Ok(some_or_ok!(cmp_from(&value.val)) && end)
         },
         ConstantRange(from, to, RangeEnd::Included) => {
-            let to = cmp_to(&to.val)?;
+            let to = some_or_ok!(cmp_to(&to.val));
             let end = (to == Ordering::Less) ||
                       (end == RangeEnd::Included && to == Ordering::Equal);
-            Ok(cmp_from(&from.val)? && end)
+            Ok(some_or_ok!(cmp_from(&from.val)) && end)
         },
         ConstantRange(from, to, RangeEnd::Excluded) => {
-            let to = cmp_to(&to.val)?;
+            let to = some_or_ok!(cmp_to(&to.val));
             let end = (to == Ordering::Less) ||
                       (end == RangeEnd::Excluded && to == Ordering::Equal);
-            Ok(cmp_from(&from.val)? && end)
+            Ok(some_or_ok!(cmp_from(&from.val)) && end)
         }
         Single => Ok(true),
         _ => bug!(),
@@ -979,7 +1037,7 @@ fn patterns_for_variant<'p, 'a: 'p, 'tcx: 'a>(
         result[subpat.field.index()] = &subpat.pattern;
     }
 
-    debug!("patterns_for_variant({:?}, {:?}) = {:?}", subpatterns, wild_patterns, result);
+    debug!("patterns_for_variant({:#?}, {:#?}) = {:#?}", subpatterns, wild_patterns, result);
     result
 }
 
@@ -994,7 +1052,7 @@ fn patterns_for_variant<'p, 'a: 'p, 'tcx: 'a>(
 fn specialize<'p, 'a: 'p, 'tcx: 'a>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
     r: &[&'p Pattern<'tcx>],
-    constructor: &Constructor,
+    constructor: &Constructor<'tcx>,
     wild_patterns: &[&'p Pattern<'tcx>])
     -> Option<Vec<&'p Pattern<'tcx>>>
 {
@@ -1024,8 +1082,19 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
         PatternKind::Constant { value } => {
             match *constructor {
                 Slice(..) => match value.val {
-                    ConstVal::ByteStr(b) => {
-                        if wild_patterns.len() == b.data.len() {
+                    ConstVal::Value(Value::ByVal(PrimVal::Ptr(ptr))) => {
+                        let is_array_ptr = value.ty
+                            .builtin_deref(true)
+                            .and_then(|t| t.ty.builtin_index())
+                            .map_or(false, |t| t == cx.tcx.types.u8);
+                        assert!(is_array_ptr);
+                        let data_len = cx.tcx
+                            .interpret_interner
+                            .get_alloc(ptr.alloc_id)
+                            .unwrap()
+                            .bytes
+                            .len();
+                        if wild_patterns.len() == data_len {
                             Some(cx.lower_byte_str_pattern(pat))
                         } else {
                             None
@@ -1036,7 +1105,8 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                 },
                 _ => {
                     match constructor_covered_by_range(
-                        cx.tcx, pat.span, constructor, &value.val, &value.val, RangeEnd::Included
+                        constructor, &value.val, &value.val, RangeEnd::Included,
+                        value.ty,
                             ) {
                         Ok(true) => Some(vec![]),
                         Ok(false) => None,
@@ -1048,7 +1118,7 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
 
         PatternKind::Range { lo, hi, ref end } => {
             match constructor_covered_by_range(
-                cx.tcx, pat.span, constructor, &lo.val, &hi.val, end.clone()
+                constructor, &lo.val, &hi.val, end.clone(), lo.ty,
             ) {
                 Ok(true) => Some(vec![]),
                 Ok(false) => None,
@@ -1092,7 +1162,7 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
             }
         }
     };
-    debug!("specialize({:?}, {:?}) = {:?}", r[0], wild_patterns, head);
+    debug!("specialize({:#?}, {:#?}) = {:#?}", r[0], wild_patterns, head);
 
     head.map(|mut head| {
         head.extend_from_slice(&r[1 ..]);

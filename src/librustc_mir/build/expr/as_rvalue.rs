@@ -10,8 +10,6 @@
 
 //! See docs in build/expr/mod.rs
 
-use std;
-
 use rustc_const_math::{ConstMathErr, Op};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
@@ -19,12 +17,11 @@ use rustc_data_structures::indexed_vec::Idx;
 use build::{BlockAnd, BlockAndExtension, Builder};
 use build::expr::category::{Category, RvalueFunc};
 use hair::*;
-use rustc_const_math::{ConstInt, ConstIsize};
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::region;
 use rustc::ty::{self, Ty};
 use rustc::mir::*;
-use syntax::ast;
+use rustc::mir::interpret::{Value, PrimVal};
 use syntax_pos::Span;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
@@ -203,7 +200,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         ty: this.hir.tcx().types.u32,
                         literal: Literal::Value {
                             value: this.hir.tcx().mk_const(ty::Const {
-                                val: ConstVal::Integral(ConstInt::U32(0)),
+                                val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(0))),
                                 ty: this.hir.tcx().types.u32
                             }),
                         },
@@ -384,31 +381,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     // Helper to get a `-1` value of the appropriate type
     fn neg_1_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
-        let literal = match ty.sty {
-            ty::TyInt(ity) => {
-                let val = match ity {
-                    ast::IntTy::I8  => ConstInt::I8(-1),
-                    ast::IntTy::I16 => ConstInt::I16(-1),
-                    ast::IntTy::I32 => ConstInt::I32(-1),
-                    ast::IntTy::I64 => ConstInt::I64(-1),
-                    ast::IntTy::I128 => ConstInt::I128(-1),
-                    ast::IntTy::Isize => {
-                        let int_ty = self.hir.tcx().sess.target.isize_ty;
-                        let val = ConstIsize::new(-1, int_ty).unwrap();
-                        ConstInt::Isize(val)
-                    }
-                };
-
-                Literal::Value {
-                    value: self.hir.tcx().mk_const(ty::Const {
-                        val: ConstVal::Integral(val),
-                        ty
-                    })
-                }
-            }
-            _ => {
-                span_bug!(span, "Invalid type for neg_1_literal: `{:?}`", ty)
-            }
+        let bits = self.hir.integer_bit_width(ty);
+        let n = (!0u128) >> (128 - bits);
+        let literal = Literal::Value {
+            value: self.hir.tcx().mk_const(ty::Const {
+                val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(n))),
+                ty
+            })
         };
 
         self.literal_operand(span, ty, literal)
@@ -416,37 +395,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     // Helper to get the minimum value of the appropriate type
     fn minval_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
-        let literal = match ty.sty {
-            ty::TyInt(ity) => {
-                let val = match ity {
-                    ast::IntTy::I8  => ConstInt::I8(i8::min_value()),
-                    ast::IntTy::I16 => ConstInt::I16(i16::min_value()),
-                    ast::IntTy::I32 => ConstInt::I32(i32::min_value()),
-                    ast::IntTy::I64 => ConstInt::I64(i64::min_value()),
-                    ast::IntTy::I128 => ConstInt::I128(i128::min_value()),
-                    ast::IntTy::Isize => {
-                        let int_ty = self.hir.tcx().sess.target.isize_ty;
-                        let min = match int_ty {
-                            ast::IntTy::I16 => std::i16::MIN as i64,
-                            ast::IntTy::I32 => std::i32::MIN as i64,
-                            ast::IntTy::I64 => std::i64::MIN,
-                            _ => unreachable!()
-                        };
-                        let val = ConstIsize::new(min, int_ty).unwrap();
-                        ConstInt::Isize(val)
-                    }
-                };
-
-                Literal::Value {
-                    value: self.hir.tcx().mk_const(ty::Const {
-                        val: ConstVal::Integral(val),
-                        ty
-                    })
-                }
-            }
-            _ => {
-                span_bug!(span, "Invalid type for minval_literal: `{:?}`", ty)
-            }
+        assert!(ty.is_signed());
+        let bits = self.hir.integer_bit_width(ty);
+        let n = 1 << (bits - 1);
+        let literal = Literal::Value {
+            value: self.hir.tcx().mk_const(ty::Const {
+                val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(n))),
+                ty
+            })
         };
 
         self.literal_operand(span, ty, literal)

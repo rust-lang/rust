@@ -10,7 +10,7 @@ mod value;
 
 pub use self::error::{EvalError, EvalResult, EvalErrorKind};
 
-pub use self::value::{PrimVal, PrimValKind, Value, Pointer, bytes_to_f32, bytes_to_f64};
+pub use self::value::{PrimVal, PrimValKind, Value, Pointer};
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -19,6 +19,7 @@ use ty;
 use ty::layout::{self, Align, HasDataLayout};
 use middle::region;
 use std::iter;
+use syntax::ast::Mutability;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Lock {
@@ -41,7 +42,7 @@ pub enum AccessKind {
 }
 
 /// Uniquely identifies a specific constant or static.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 pub struct GlobalId<'tcx> {
     /// For a constant or static, the `Instance` of the item itself.
     /// For a promoted global, the `Instance` of the function they belong to.
@@ -101,7 +102,7 @@ pub trait PointerArithmetic: layout::HasDataLayout {
 impl<T: layout::HasDataLayout> PointerArithmetic for T {}
 
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Hash)]
 pub struct MemoryPointer {
     pub alloc_id: AllocId,
     pub offset: u64,
@@ -148,13 +149,16 @@ impl<'tcx> MemoryPointer {
 #[derive(Copy, Clone, Default, Eq, Hash, Ord, PartialEq, PartialOrd, Debug)]
 pub struct AllocId(pub u64);
 
+impl ::rustc_serialize::UseSpecializedEncodable for AllocId {}
+impl ::rustc_serialize::UseSpecializedDecodable for AllocId {}
+
 impl fmt::Display for AllocId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Hash)]
+#[derive(Debug, Eq, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 pub struct Allocation {
     /// The actual bytes of the allocation.
     /// Note that the bytes of a pointer represent the offset of the pointer
@@ -166,6 +170,10 @@ pub struct Allocation {
     pub undef_mask: UndefMask,
     /// The alignment of the allocation to detect unaligned reads.
     pub align: Align,
+    /// Whether the allocation (of a static) should be put into mutable memory when translating
+    ///
+    /// Only happens for `static mut` or `static` with interior mutability
+    pub runtime_mutability: Mutability,
 }
 
 impl Allocation {
@@ -177,6 +185,7 @@ impl Allocation {
             relocations: BTreeMap::new(),
             undef_mask,
             align: Align::from_bytes(1, 1).unwrap(),
+            runtime_mutability: Mutability::Immutable,
         }
     }
 }
@@ -188,11 +197,13 @@ impl Allocation {
 type Block = u64;
 const BLOCK_SIZE: u64 = 64;
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 pub struct UndefMask {
     blocks: Vec<Block>,
     len: u64,
 }
+
+impl_stable_hash_for!(struct mir::interpret::UndefMask{blocks, len});
 
 impl UndefMask {
     pub fn new(size: u64) -> Self {

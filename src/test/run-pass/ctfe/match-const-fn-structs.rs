@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const ARR: [usize; 1] = [2];
-const ARR2: [i32; ARR[0]] = [5, 6]; //~ ERROR E0080
-                                    //~| unstable
+// https://github.com/rust-lang/rust/issues/46114
+
+#![feature(const_fn)]
+
+#[derive(Eq, PartialEq)]
+struct A { value: u32 }
+
+const fn new(value: u32) -> A {
+    A { value }
+}
+
+const A_1: A = new(1);
+const A_2: A = new(2);
 
 fn main() {
+    let a_str = match new(42) {
+        A_1 => "A 1",
+        A_2 => "A 2",
+        _ => "Unknown A",
+    };
 }

@@ -68,7 +68,6 @@ use rustc::ty::{self, TyCtxt, AdtDef, Ty, GeneratorInterior};
 use rustc::ty::subst::Substs;
 use util::dump_mir;
 use util::liveness::{self, LivenessMode};
-use rustc_const_math::ConstInt;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use std::collections::HashMap;
@@ -80,6 +79,7 @@ use transform::simplify;
 use transform::no_landing_pads::no_landing_pads;
 use dataflow::{do_dataflow, DebugFormatted, state_for_location};
 use dataflow::{MaybeStorageLive, HaveBeenBorrowedLocals};
+use rustc::mir::interpret::{Value, PrimVal};
 
 pub struct StateTransform;
 
@@ -181,7 +181,7 @@ impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
             ty: self.tcx.types.u32,
             literal: Literal::Value {
                 value: self.tcx.mk_const(ty::Const {
-                    val: ConstVal::Integral(ConstInt::U32(state_disc)),
+                    val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(state_disc.into()))),
                     ty: self.tcx.types.u32
                 }),
             },
@@ -534,7 +534,7 @@ fn insert_switch<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let switch = TerminatorKind::SwitchInt {
         discr: Operand::Copy(transform.make_field(transform.state_field, tcx.types.u32)),
         switch_ty: tcx.types.u32,
-        values: Cow::from(cases.iter().map(|&(i, _)| ConstInt::U32(i)).collect::<Vec<_>>()),
+        values: Cow::from(cases.iter().map(|&(i, _)| i.into()).collect::<Vec<_>>()),
         targets: cases.iter().map(|&(_, d)| d).chain(once(default_block)).collect(),
     };
 
@@ -698,7 +698,7 @@ fn insert_panic_block<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             ty: tcx.types.bool,
             literal: Literal::Value {
                 value: tcx.mk_const(ty::Const {
-                    val: ConstVal::Bool(false),
+                    val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(0))),
                     ty: tcx.types.bool
                 }),
             },

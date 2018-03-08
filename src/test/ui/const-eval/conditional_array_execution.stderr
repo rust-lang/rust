@@ -1,0 +1,17 @@
+warning: attempt to subtract with overflow
+  --> $DIR/conditional_array_execution.rs:13:19
+   |
+LL | const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];
+   |                   ^^^^^
+   |
+   = note: #[warn(const_err)] on by default
+
+error[E0080]: constant evaluation error
+  --> $DIR/conditional_array_execution.rs:17:20
+   |
+LL |     println!("{}", FOO); //~ E0080
+   |                    ^^^ referenced constant has errors
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0080"

@@ -32,7 +32,6 @@ use hir;
 use hir::def_id::DefId;
 use infer::{self, InferCtxt};
 use infer::type_variable::TypeVariableOrigin;
-use middle::const_val;
 use std::fmt;
 use syntax::ast;
 use session::DiagnosticMessageId;
@@ -776,7 +775,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
 
             ConstEvalFailure(ref err) => {
-                if let const_val::ErrKind::TypeckError = err.kind {
+                if let ::middle::const_val::ErrKind::TypeckError = *err.kind {
                     return;
                 }
                 err.struct_error(self.tcx, span, "constant expression")

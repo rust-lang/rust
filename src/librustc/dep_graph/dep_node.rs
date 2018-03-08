@@ -60,15 +60,15 @@
 //! user of the `DepNode` API of having to know how to compute the expected
 //! fingerprint for a given set of node parameters.
 
+use mir::interpret::{GlobalId};
 use hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
 use hir::map::DefPathHash;
 use hir::{HirId, ItemLocalId};
 
-use ich::Fingerprint;
+use ich::{Fingerprint, StableHashingContext};
+use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 use ty::{TyCtxt, Instance, InstanceDef, ParamEnv, ParamEnvAnd, PolyTraitRef, Ty};
 use ty::subst::Substs;
-use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
-use ich::StableHashingContext;
 use std::fmt;
 use std::hash::Hash;
 use syntax_pos::symbol::InternedString;
@@ -518,7 +518,7 @@ define_dep_nodes!( <'tcx>
     [] TypeckTables(DefId),
     [] UsedTraitImports(DefId),
     [] HasTypeckTables(DefId),
-    [] ConstEval { param_env: ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)> },
+    [] ConstEval { param_env: ParamEnvAnd<'tcx, GlobalId<'tcx>> },
     [] CheckMatch(DefId),
     [] SymbolName(DefId),
     [] InstanceSymbolName { instance: Instance<'tcx> },
@@ -661,7 +661,7 @@ trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {
 }
 
 impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a, T> DepNodeParams<'a, 'gcx, 'tcx> for T
-    where T: HashStable<StableHashingContext<'gcx>> + fmt::Debug
+    where T: HashStable<StableHashingContext<'a>> + fmt::Debug
 {
     default const CAN_RECONSTRUCT_QUERY_KEY: bool = false;
 

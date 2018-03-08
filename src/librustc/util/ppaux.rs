@@ -21,12 +21,12 @@ use ty::{TyClosure, TyGenerator, TyGeneratorWitness, TyForeign, TyProjection, Ty
 use ty::{TyDynamic, TyInt, TyUint, TyInfer};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 use util::nodemap::FxHashSet;
+use mir::interpret::{Value, PrimVal};
 
 use std::cell::Cell;
 use std::fmt;
 use std::usize;
 
-use rustc_const_math::ConstInt;
 use rustc_data_structures::indexed_vec::Idx;
 use syntax::abi::Abi;
 use syntax::ast::CRATE_NODE_ID;
@@ -1165,7 +1165,7 @@ define_print! {
                 TyArray(ty, sz) => {
                     print!(f, cx, write("["), print(ty), write("; "))?;
                     match sz.val {
-                        ConstVal::Integral(ConstInt::Usize(sz)) => {
+                        ConstVal::Value(Value::ByVal(PrimVal::Bytes(sz))) => {
                             write!(f, "{}", sz)?;
                         }
                         ConstVal::Unevaluated(_def_id, substs) => {

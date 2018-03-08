@@ -28,19 +28,15 @@ use astconv::{AstConv, Bounds};
 use lint;
 use constrained_type_params as ctp;
 use middle::lang_items::SizedTraitLangItem;
-use middle::const_val::ConstVal;
 use middle::resolve_lifetime as rl;
 use rustc::mir::mono::Linkage;
-use rustc::traits::Reveal;
 use rustc::ty::subst::Substs;
 use rustc::ty::{ToPredicate, ReprOptions};
 use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::ty::util::IntTypeExt;
-use rustc::util::nodemap::FxHashSet;
-use util::nodemap::FxHashMap;
-
-use rustc_const_math::ConstInt;
+use rustc::util::nodemap::{FxHashSet, FxHashMap};
+use rustc::ty::util::Discr;
 
 use syntax::{abi, ast};
 use syntax::ast::MetaItemKind;
@@ -512,30 +508,17 @@ fn convert_variant_ctor<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn convert_enum_variant_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         def_id: DefId,
                                         variants: &[hir::Variant]) {
-    let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
     let def = tcx.adt_def(def_id);
     let repr_type = def.repr.discr_type();
     let initial = repr_type.initial_discriminant(tcx);
-    let mut prev_discr = None::<ConstInt>;
+    let mut prev_discr = None::<Discr<'tcx>>;
 
     // fill the discriminant values and field types
     for variant in variants {
-        let wrapped_discr = prev_discr.map_or(initial, |d| d.wrap_incr());
+        let wrapped_discr = prev_discr.map_or(initial, |d| d.wrap_incr(tcx));
         prev_discr = Some(if let Some(e) = variant.node.disr_expr {
             let expr_did = tcx.hir.local_def_id(e.node_id);
-            let substs = Substs::identity_for_item(tcx, expr_did);
-            let result = tcx.at(variant.span).const_eval(param_env.and((expr_did, substs)));
-
-            // enum variant evaluation happens before the global constant check
-            // so we need to report the real error
-            if let Err(ref err) = result {
-                err.report(tcx, variant.span, "enum discriminant");
-            }
-
-            match result {
-                Ok(&ty::Const { val: ConstVal::Integral(x), .. }) => Some(x),
-                _ => None
-            }
+            def.eval_explicit_discr(tcx, expr_did)
         } else if let Some(discr) = repr_type.disr_incr(tcx, prev_discr) {
             Some(discr)
         } else {

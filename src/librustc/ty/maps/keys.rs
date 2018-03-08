@@ -14,6 +14,7 @@ use hir::def_id::{CrateNum, DefId, LOCAL_CRATE, DefIndex};
 use ty::{self, Ty, TyCtxt};
 use ty::subst::Substs;
 use ty::fast_reject::SimplifiedType;
+use mir;
 
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -49,6 +50,16 @@ impl<'tcx> Key for ty::Instance<'tcx> {
 
     fn default_span(&self, tcx: TyCtxt) -> Span {
         tcx.def_span(self.def_id())
+    }
+}
+
+impl<'tcx> Key for mir::interpret::GlobalId<'tcx> {
+    fn map_crate(&self) -> CrateNum {
+        self.instance.map_crate()
+    }
+
+    fn default_span(&self, tcx: TyCtxt) -> Span {
+        self.instance.default_span(tcx)
     }
 }
 

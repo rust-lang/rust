@@ -30,7 +30,8 @@ use middle::cstore::EncodedMetadata;
 use middle::lang_items;
 use middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use middle::stability;
-use mir::{Mir, interpret};
+use mir::{self, Mir, interpret};
+use mir::interpret::{Value, PrimVal};
 use ty::subst::{Kind, Substs};
 use ty::ReprOptions;
 use ty::Instance;
@@ -53,7 +54,6 @@ use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
                                            StableHasher, StableHasherResult,
                                            StableVec};
 use arena::{TypedArena, DroplessArena};
-use rustc_const_math::{ConstInt, ConstUsize};
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::Lrc;
 use std::any::Any;
@@ -675,9 +675,9 @@ impl<'tcx> TypeckTables<'tcx> {
     }
 }
 
-impl<'gcx> HashStable<StableHashingContext<'gcx>> for TypeckTables<'gcx> {
+impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         let ty::TypeckTables {
             local_id_root,
@@ -868,7 +868,7 @@ pub struct GlobalCtxt<'tcx> {
 
     stability_interner: RefCell<FxHashSet<&'tcx attr::Stability>>,
 
-    pub interpret_interner: RefCell<InterpretInterner<'tcx>>,
+    pub interpret_interner: InterpretInterner<'tcx>,
 
     layout_interner: RefCell<FxHashSet<&'tcx LayoutDetails>>,
 
@@ -892,6 +892,11 @@ pub struct GlobalCtxt<'tcx> {
 /// Everything needed to efficiently work with interned allocations
 #[derive(Debug, Default)]
 pub struct InterpretInterner<'tcx> {
+    inner: RefCell<InterpretInternerInner<'tcx>>,
+}
+
+#[derive(Debug, Default)]
+struct InterpretInternerInner<'tcx> {
     /// Stores the value of constants (and deduplicates the actual memory)
     allocs: FxHashSet<&'tcx interpret::Allocation>,
 
@@ -905,12 +910,18 @@ pub struct InterpretInterner<'tcx> {
     /// Allows obtaining const allocs via a unique identifier
     alloc_by_id: FxHashMap<interpret::AllocId, &'tcx interpret::Allocation>,
 
+    /// Reverse map of `alloc_cache`
+    global_cache: FxHashMap<interpret::AllocId, DefId>,
+
     /// The AllocId to assign to the next new regular allocation.
     /// Always incremented, never gets smaller.
     next_id: interpret::AllocId,
 
-    /// Allows checking whether a constant already has an allocation
-    alloc_cache: FxHashMap<interpret::GlobalId<'tcx>, interpret::AllocId>,
+    /// Allows checking whether a static already has an allocation
+    ///
+    /// This is only important for detecting statics referring to themselves
+    // FIXME(oli-obk) move it to the EvalContext?
+    alloc_cache: FxHashMap<DefId, interpret::AllocId>,
 
     /// A cache for basic byte allocations keyed by their contents. This is used to deduplicate
     /// allocations for string and bytestring literals.
@@ -918,14 +929,15 @@ pub struct InterpretInterner<'tcx> {
 }
 
 impl<'tcx> InterpretInterner<'tcx> {
-    pub fn create_fn_alloc(&mut self, instance: Instance<'tcx>) -> interpret::AllocId {
-        if let Some(&alloc_id) = self.function_cache.get(&instance) {
+    pub fn create_fn_alloc(&self, instance: Instance<'tcx>) -> interpret::AllocId {
+        if let Some(&alloc_id) = self.inner.borrow().function_cache.get(&instance) {
             return alloc_id;
         }
         let id = self.reserve();
         debug!("creating fn ptr: {}", id);
-        self.functions.insert(id, instance);
-        self.function_cache.insert(instance, id);
+        let mut inner = self.inner.borrow_mut();
+        inner.functions.insert(id, instance);
+        inner.function_cache.insert(instance, id);
         id
     }
 
@@ -933,39 +945,48 @@ impl<'tcx> InterpretInterner<'tcx> {
         &self,
         id: interpret::AllocId,
     ) -> Option<Instance<'tcx>> {
-        self.functions.get(&id).cloned()
+        self.inner.borrow().functions.get(&id).cloned()
     }
 
     pub fn get_alloc(
         &self,
         id: interpret::AllocId,
     ) -> Option<&'tcx interpret::Allocation> {
-        self.alloc_by_id.get(&id).cloned()
+        self.inner.borrow().alloc_by_id.get(&id).cloned()
     }
 
     pub fn get_cached(
         &self,
-        global_id: interpret::GlobalId<'tcx>,
+        static_id: DefId,
     ) -> Option<interpret::AllocId> {
-        self.alloc_cache.get(&global_id).cloned()
+        self.inner.borrow().alloc_cache.get(&static_id).cloned()
     }
 
     pub fn cache(
-        &mut self,
-        global_id: interpret::GlobalId<'tcx>,
-        ptr: interpret::AllocId,
+        &self,
+        static_id: DefId,
+        alloc_id: interpret::AllocId,
     ) {
-        if let Some(old) = self.alloc_cache.insert(global_id, ptr) {
-            bug!("tried to cache {:?}, but was already existing as {:#?}", global_id, old);
+        let mut inner = self.inner.borrow_mut();
+        inner.global_cache.insert(alloc_id, static_id);
+        if let Some(old) = inner.alloc_cache.insert(static_id, alloc_id) {
+            bug!("tried to cache {:?}, but was already existing as {:#?}", static_id, old);
         }
     }
 
+    pub fn get_corresponding_static_def_id(
+        &self,
+        ptr: interpret::AllocId,
+    ) -> Option<DefId> {
+        self.inner.borrow().global_cache.get(&ptr).cloned()
+    }
+
     pub fn intern_at_reserved(
-        &mut self,
+        &self,
         id: interpret::AllocId,
         alloc: &'tcx interpret::Allocation,
     ) {
-        if let Some(old) = self.alloc_by_id.insert(id, alloc) {
+        if let Some(old) = self.inner.borrow_mut().alloc_by_id.insert(id, alloc) {
             bug!("tried to intern allocation at {}, but was already existing as {:#?}", id, old);
         }
     }
@@ -973,10 +994,11 @@ impl<'tcx> InterpretInterner<'tcx> {
     /// obtains a new allocation ID that can be referenced but does not
     /// yet have an allocation backing it.
     pub fn reserve(
-        &mut self,
+        &self,
     ) -> interpret::AllocId {
-        let next = self.next_id;
-        self.next_id.0 = self.next_id.0
+        let mut inner = self.inner.borrow_mut();
+        let next = inner.next_id;
+        inner.next_id.0 = inner.next_id.0
             .checked_add(1)
             .expect("You overflowed a u64 by incrementing by 1... \
                      You've just earned yourself a free drink if we ever meet. \
@@ -1056,12 +1078,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self,
         alloc: interpret::Allocation,
     ) -> &'gcx interpret::Allocation {
-        if let Some(alloc) = self.interpret_interner.borrow().allocs.get(&alloc) {
+        if let Some(alloc) = self.interpret_interner.inner.borrow().allocs.get(&alloc) {
             return alloc;
         }
 
         let interned = self.global_arenas.const_allocs.alloc(alloc);
-        if let Some(prev) = self.interpret_interner.borrow_mut().allocs.replace(interned) {
+        if let Some(prev) = self.interpret_interner.inner.borrow_mut().allocs.replace(interned) {
             bug!("Tried to overwrite interned Allocation: {:#?}", prev)
         }
         interned
@@ -1070,20 +1092,20 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Allocates a byte or string literal for `mir::interpret`
     pub fn allocate_cached(self, bytes: &[u8]) -> interpret::AllocId {
         // check whether we already allocated this literal or a constant with the same memory
-        if let Some(&alloc_id) = self.interpret_interner.borrow().literal_alloc_cache.get(bytes) {
+        if let Some(&alloc_id) = self.interpret_interner.inner.borrow()
+                                     .literal_alloc_cache.get(bytes) {
             return alloc_id;
         }
         // create an allocation that just contains these bytes
         let alloc = interpret::Allocation::from_bytes(bytes);
         let alloc = self.intern_const_alloc(alloc);
 
-        let mut int = self.interpret_interner.borrow_mut();
         // the next unique id
-        let id = int.reserve();
+        let id = self.interpret_interner.reserve();
         // make the allocation identifiable
-        int.alloc_by_id.insert(id, alloc);
+        self.interpret_interner.inner.borrow_mut().alloc_by_id.insert(id, alloc);
         // cache it for the future
-        int.literal_alloc_cache.insert(bytes.to_owned(), id);
+        self.interpret_interner.inner.borrow_mut().literal_alloc_cache.insert(bytes.to_owned(), id);
         id
     }
 
@@ -1248,6 +1270,40 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.get_lang_items(LOCAL_CRATE)
     }
 
+    /// Due to missing llvm support for lowering 128 bit math to software emulation
+    /// (on some targets), the lowering can be done in MIR.
+    ///
+    /// This function only exists until said support is implemented.
+    pub fn is_binop_lang_item(&self, def_id: DefId) -> Option<(mir::BinOp, bool)> {
+        let items = self.lang_items();
+        let def_id = Some(def_id);
+        if items.i128_add_fn() == def_id { Some((mir::BinOp::Add, false)) }
+        else if items.u128_add_fn() == def_id { Some((mir::BinOp::Add, false)) }
+        else if items.i128_sub_fn() == def_id { Some((mir::BinOp::Sub, false)) }
+        else if items.u128_sub_fn() == def_id { Some((mir::BinOp::Sub, false)) }
+        else if items.i128_mul_fn() == def_id { Some((mir::BinOp::Mul, false)) }
+        else if items.u128_mul_fn() == def_id { Some((mir::BinOp::Mul, false)) }
+        else if items.i128_div_fn() == def_id { Some((mir::BinOp::Div, false)) }
+        else if items.u128_div_fn() == def_id { Some((mir::BinOp::Div, false)) }
+        else if items.i128_rem_fn() == def_id { Some((mir::BinOp::Rem, false)) }
+        else if items.u128_rem_fn() == def_id { Some((mir::BinOp::Rem, false)) }
+        else if items.i128_shl_fn() == def_id { Some((mir::BinOp::Shl, false)) }
+        else if items.u128_shl_fn() == def_id { Some((mir::BinOp::Shl, false)) }
+        else if items.i128_shr_fn() == def_id { Some((mir::BinOp::Shr, false)) }
+        else if items.u128_shr_fn() == def_id { Some((mir::BinOp::Shr, false)) }
+        else if items.i128_addo_fn() == def_id { Some((mir::BinOp::Add, true)) }
+        else if items.u128_addo_fn() == def_id { Some((mir::BinOp::Add, true)) }
+        else if items.i128_subo_fn() == def_id { Some((mir::BinOp::Sub, true)) }
+        else if items.u128_subo_fn() == def_id { Some((mir::BinOp::Sub, true)) }
+        else if items.i128_mulo_fn() == def_id { Some((mir::BinOp::Mul, true)) }
+        else if items.u128_mulo_fn() == def_id { Some((mir::BinOp::Mul, true)) }
+        else if items.i128_shlo_fn() == def_id { Some((mir::BinOp::Shl, true)) }
+        else if items.u128_shlo_fn() == def_id { Some((mir::BinOp::Shl, true)) }
+        else if items.i128_shro_fn() == def_id { Some((mir::BinOp::Shr, true)) }
+        else if items.u128_shro_fn() == def_id { Some((mir::BinOp::Shr, true)) }
+        else { None }
+    }
+
     pub fn stability(self) -> Lrc<stability::Index<'tcx>> {
         self.stability_index(LOCAL_CRATE)
     }
@@ -1321,7 +1377,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.cstore.crate_data_as_rc_any(cnum)
     }
 
-    pub fn create_stable_hashing_context(self) -> StableHashingContext<'gcx> {
+    pub fn create_stable_hashing_context(self) -> StableHashingContext<'a> {
         let krate = self.dep_graph.with_ignore(|| self.gcx.hir.krate());
 
         StableHashingContext::new(self.sess,
@@ -1731,7 +1787,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         println!("Substs interner: #{}", self.interners.substs.borrow().len());
         println!("Region interner: #{}", self.interners.region.borrow().len());
         println!("Stability interner: #{}", self.stability_interner.borrow().len());
-        println!("Interpret interner: #{}", self.interpret_interner.borrow().allocs.len());
+        println!("Interpret interner: #{}", self.interpret_interner.inner.borrow().allocs.len());
         println!("Layout interner: #{}", self.layout_interner.borrow().len());
     }
 }
@@ -2043,13 +2099,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_array(self, ty: Ty<'tcx>, n: u64) -> Ty<'tcx> {
-        let n = ConstUsize::new(n, self.sess.target.usize_ty).unwrap();
-        self.mk_array_const_usize(ty, n)
-    }
-
-    pub fn mk_array_const_usize(self, ty: Ty<'tcx>, n: ConstUsize) -> Ty<'tcx> {
         self.mk_ty(TyArray(ty, self.mk_const(ty::Const {
-            val: ConstVal::Integral(ConstInt::Usize(n)),
+            val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(n.into()))),
             ty: self.types.usize
         })))
     }

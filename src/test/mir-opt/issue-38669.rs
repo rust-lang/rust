@@ -36,7 +36,7 @@ fn main() {
 //     bb3: {
 //         StorageLive(_4);
 //         _4 = _1;
-//         switchInt(move _4) -> [0u8: bb5, otherwise: bb4];
+//         switchInt(move _4) -> [false: bb5, otherwise: bb4];
 //     }
 //     bb4: {
 //         _0 = ();

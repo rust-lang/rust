@@ -93,13 +93,14 @@ use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin};
 use rustc::infer::anon_types::AnonTypeDecl;
 use rustc::infer::type_variable::{TypeVariableOrigin};
 use rustc::middle::region;
+use rustc::mir::interpret::{GlobalId};
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::{self, FulfillmentContext, ObligationCause, ObligationCauseCode};
 use rustc::ty::{self, Ty, TyCtxt, Visibility, ToPredicate};
 use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::maps::Providers;
-use rustc::ty::util::{Representability, IntTypeExt};
+use rustc::ty::util::{Representability, IntTypeExt, Discr};
 use errors::{DiagnosticBuilder, DiagnosticId};
 
 use require_c_abi_if_variadic;
@@ -132,7 +133,6 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::map::Node;
 use rustc::hir::{self, PatKind};
 use rustc::middle::lang_items;
-use rustc_const_math::ConstInt;
 
 mod autoderef;
 pub mod dropck;
@@ -1631,10 +1631,10 @@ pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    let mut disr_vals: Vec<ConstInt> = Vec::new();
+    let mut disr_vals: Vec<Discr<'tcx>> = Vec::new();
     for (discr, v) in def.discriminants(tcx).zip(vs) {
         // Check for duplicate discriminant values
-        if let Some(i) = disr_vals.iter().position(|&x| x == discr) {
+        if let Some(i) = disr_vals.iter().position(|&x| x.val == discr.val) {
             let variant_i_node_id = tcx.hir.as_local_node_id(def.variants[i].did).unwrap();
             let variant_i = tcx.hir.expect_variant(variant_i_node_id);
             let i_span = match variant_i.node.disr_expr {
@@ -3999,10 +3999,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let count_def_id = tcx.hir.body_owner_def_id(count);
             let param_env = ty::ParamEnv::empty(traits::Reveal::UserFacing);
             let substs = Substs::identity_for_item(tcx.global_tcx(), count_def_id);
-            let count = tcx.const_eval(param_env.and((count_def_id, substs)));
+            let instance = ty::Instance::resolve(
+                tcx.global_tcx(),
+                param_env,
+                count_def_id,
+                substs,
+            ).unwrap();
+            let global_id = GlobalId {
+                instance,
+                promoted: None
+            };
+            let count = tcx.const_eval(param_env.and(global_id));
 
             if let Err(ref err) = count {
-               err.report(tcx, tcx.def_span(count_def_id), "constant expression");
+                err.report(tcx, tcx.def_span(count_def_id), "constant expression");
             }
 
             let uty = match expected {
@@ -4029,9 +4039,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             };
 
             if let Ok(count) = count {
-                let zero_or_one = count.val.to_const_int().and_then(|count| {
-                    count.to_u64().map(|count| count <= 1)
-                }).unwrap_or(false);
+                let zero_or_one = count.val.to_raw_bits().map_or(false, |count| count <= 1);
                 if !zero_or_one {
                     // For [foo, ..n] where n > 1, `foo` must have
                     // Copy type:

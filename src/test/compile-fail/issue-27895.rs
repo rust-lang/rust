@@ -14,8 +14,7 @@ fn main() {
 
     match i {
         0...index => println!("winner"),
-        //~^ ERROR constant evaluation error
-        //~| non-constant path in constant expression
+        //~^ ERROR runtime values cannot be referenced in patterns
         _ => println!("hello"),
     }
 }

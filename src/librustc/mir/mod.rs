@@ -15,7 +15,7 @@
 use graphviz::IntoCow;
 use middle::const_val::ConstVal;
 use middle::region;
-use rustc_const_math::{ConstUsize, ConstInt, ConstMathErr};
+use rustc_const_math::ConstMathErr;
 use rustc_data_structures::sync::{Lrc};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::control_flow_graph::dominators::{Dominators, dominators};
@@ -25,13 +25,14 @@ use rustc_serialize as serialize;
 use hir::def::CtorKind;
 use hir::def_id::DefId;
 use mir::visit::MirVisitable;
+use mir::interpret::{Value, PrimVal};
 use ty::subst::{Subst, Substs};
 use ty::{self, AdtDef, ClosureSubsts, Region, Ty, TyCtxt, GeneratorInterior};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
+use ty::TypeAndMut;
 use util::ppaux;
 use std::slice;
 use hir::{self, InlineAsm};
-use std::ascii;
 use std::borrow::{Cow};
 use std::cell::Ref;
 use std::fmt::{self, Debug, Formatter, Write};
@@ -707,7 +708,7 @@ pub enum TerminatorKind<'tcx> {
 
         /// Possible values. The locations to branch to in each case
         /// are found in the corresponding indices from the `targets` vector.
-        values: Cow<'tcx, [ConstInt]>,
+        values: Cow<'tcx, [u128]>,
 
         /// Possible branch sites. The last element of this vector is used
         /// for the otherwise branch, so targets.len() == values.len() + 1
@@ -858,7 +859,7 @@ impl<'tcx> Terminator<'tcx> {
 impl<'tcx> TerminatorKind<'tcx> {
     pub fn if_<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>, cond: Operand<'tcx>,
                          t: BasicBlock, f: BasicBlock) -> TerminatorKind<'tcx> {
-        static BOOL_SWITCH_FALSE: &'static [ConstInt] = &[ConstInt::U8(0)];
+        static BOOL_SWITCH_FALSE: &'static [u128] = &[0];
         TerminatorKind::SwitchInt {
             discr: cond,
             switch_ty: tcx.types.bool,
@@ -1144,12 +1145,16 @@ impl<'tcx> TerminatorKind<'tcx> {
         match *self {
             Return | Resume | Abort | Unreachable | GeneratorDrop => vec![],
             Goto { .. } => vec!["".into()],
-            SwitchInt { ref values, .. } => {
+            SwitchInt { ref values, switch_ty, .. } => {
                 values.iter()
-                      .map(|const_val| {
-                          let mut buf = String::new();
-                          fmt_const_val(&mut buf, &ConstVal::Integral(*const_val)).unwrap();
-                          buf.into()
+                      .map(|&u| {
+                          let mut s = String::new();
+                          print_miri_value(
+                              Value::ByVal(PrimVal::Bytes(u)),
+                              switch_ty,
+                              &mut s,
+                          ).unwrap();
+                          s.into()
                       })
                       .chain(iter::once(String::from("otherwise").into()))
                       .collect()
@@ -1533,7 +1538,8 @@ impl<'tcx> Operand<'tcx> {
             ty,
             literal: Literal::Value {
                 value: tcx.mk_const(ty::Const {
-                    val: ConstVal::Function(def_id, substs),
+                    // ZST function type
+                    val: ConstVal::Value(Value::ByVal(PrimVal::Undef)),
                     ty
                 })
             },
@@ -1557,7 +1563,7 @@ pub enum Rvalue<'tcx> {
     Use(Operand<'tcx>),
 
     /// [x; 32]
-    Repeat(Operand<'tcx>, ConstUsize),
+    Repeat(Operand<'tcx>, u64),
 
     /// &x or &mut x
     Ref(Region<'tcx>, BorrowKind, Place<'tcx>),
@@ -1853,7 +1859,7 @@ impl<'tcx> Debug for Literal<'tcx> {
         match *self {
             Value { value } => {
                 write!(fmt, "const ")?;
-                fmt_const_val(fmt, &value.val)
+                fmt_const_val(fmt, value)
             }
             Promoted { index } => {
                 write!(fmt, "{:?}", index)
@@ -1863,25 +1869,47 @@ impl<'tcx> Debug for Literal<'tcx> {
 }
 
 /// Write a `ConstVal` in a way closer to the original source code than the `Debug` output.
-fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ConstVal) -> fmt::Result {
+fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ty::Const) -> fmt::Result {
     use middle::const_val::ConstVal::*;
-    match *const_val {
-        Float(f) => write!(fmt, "{:?}", f),
-        Integral(n) => write!(fmt, "{}", n),
-        Str(s) => write!(fmt, "{:?}", s),
-        ByteStr(bytes) => {
-            let escaped: String = bytes.data
-                .iter()
-                .flat_map(|&ch| ascii::escape_default(ch).map(|c| c as char))
-                .collect();
-            write!(fmt, "b\"{}\"", escaped)
-        }
-        Bool(b) => write!(fmt, "{:?}", b),
-        Char(c) => write!(fmt, "{:?}", c),
-        Variant(def_id) |
-        Function(def_id, _) => write!(fmt, "{}", item_path_str(def_id)),
-        Aggregate(_) => bug!("`ConstVal::{:?}` should not be in MIR", const_val),
-        Unevaluated(..) => write!(fmt, "{:?}", const_val)
+    match const_val.val {
+        Unevaluated(..) => write!(fmt, "{:?}", const_val),
+        Value(val) => print_miri_value(val, const_val.ty, fmt),
+    }
+}
+
+pub fn print_miri_value<W: Write>(value: Value, ty: Ty, f: &mut W) -> fmt::Result {
+    use ty::TypeVariants::*;
+    use rustc_const_math::ConstFloat;
+    match (value, &ty.sty) {
+        (Value::ByVal(PrimVal::Bytes(0)), &TyBool) => write!(f, "false"),
+        (Value::ByVal(PrimVal::Bytes(1)), &TyBool) => write!(f, "true"),
+        (Value::ByVal(PrimVal::Bytes(bits)), &TyFloat(fty)) =>
+            write!(f, "{}", ConstFloat { bits, ty: fty }),
+        (Value::ByVal(PrimVal::Bytes(n)), &TyUint(ui)) => write!(f, "{:?}{}", n, ui),
+        (Value::ByVal(PrimVal::Bytes(n)), &TyInt(i)) => write!(f, "{:?}{}", n as i128, i),
+        (Value::ByVal(PrimVal::Bytes(n)), &TyChar) =>
+            write!(f, "{:?}", ::std::char::from_u32(n as u32).unwrap()),
+        (Value::ByVal(PrimVal::Undef), &TyFnDef(did, _)) =>
+            write!(f, "{}", item_path_str(did)),
+        (Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::Bytes(len)), &TyRef(_, TypeAndMut {
+            ty: &ty::TyS { sty: TyStr, .. }, ..
+        })) => {
+            ty::tls::with(|tcx| {
+                let alloc = tcx
+                    .interpret_interner
+                    .get_alloc(ptr.alloc_id);
+                if let Some(alloc) = alloc {
+                    assert_eq!(len as usize as u128, len);
+                    let slice = &alloc.bytes[(ptr.offset as usize)..][..(len as usize)];
+                    let s = ::std::str::from_utf8(slice)
+                        .expect("non utf8 str from miri");
+                    write!(f, "{:?}", s)
+                } else {
+                    write!(f, "pointer to erroneous constant {:?}, {:?}", ptr, len)
+                }
+            })
+        },
+        _ => write!(f, "{:?}:{}", value, ty),
     }
 }
 
@@ -2464,6 +2492,15 @@ impl<'tcx, B, V, T> TypeFoldable<'tcx> for Projection<'tcx, B, V, T>
                 Index(ref v) => v.visit_with(visitor),
                 _ => false
             }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for Field {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, _: &mut F) -> Self {
+        *self
+    }
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> bool {
+        false
     }
 }
 

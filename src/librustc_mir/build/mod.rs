@@ -11,7 +11,7 @@
 
 use build;
 use hair::cx::Cx;
-use hair::LintLevel;
+use hair::{LintLevel, BindingMode, PatternKind};
 use rustc::hir;
 use rustc::hir::def_id::{DefId, LocalDefId};
 use rustc::middle::region;
@@ -21,7 +21,6 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
 use rustc::util::nodemap::NodeMap;
 use rustc_back::PanicStrategy;
-use rustc_const_eval::pattern::{BindingMode, PatternKind};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use shim;
 use std::mem;

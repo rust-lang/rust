@@ -690,7 +690,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             _ => false
                         }
                     } else if let ty::TyArray(_, len) = ty.sty {
-                        len.val.to_const_int().unwrap().to_u64().unwrap() == 0 &&
+                        len.val.unwrap_u64() == 0 &&
                             self.mode == Mode::Fn
                     } else {
                         false

@@ -20,6 +20,7 @@ use ty::subst::{UnpackedKind, Substs};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 use ty::fold::{TypeVisitor, TypeFolder};
 use ty::error::{ExpectedFound, TypeError};
+use mir::interpret::{GlobalId, Value, PrimVal};
 use util::common::ErrorReported;
 use std::rc::Rc;
 use std::iter;
@@ -482,19 +483,35 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             assert_eq!(sz_b.ty, tcx.types.usize);
             let to_u64 = |x: &'tcx ty::Const<'tcx>| -> Result<u64, ErrorReported> {
                 match x.val {
-                    ConstVal::Integral(x) => Ok(x.to_u64().unwrap()),
+                    ConstVal::Value(Value::ByVal(prim)) => Ok(prim.to_u64().unwrap()),
                     ConstVal::Unevaluated(def_id, substs) => {
                         // FIXME(eddyb) get the right param_env.
                         let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
                         match tcx.lift_to_global(&substs) {
                             Some(substs) => {
-                                match tcx.const_eval(param_env.and((def_id, substs))) {
-                                    Ok(&ty::Const { val: ConstVal::Integral(x), .. }) => {
-                                        return Ok(x.to_u64().unwrap());
+                                let instance = ty::Instance::resolve(
+                                    tcx.global_tcx(),
+                                    param_env,
+                                    def_id,
+                                    substs,
+                                );
+                                if let Some(instance) = instance {
+                                    let cid = GlobalId {
+                                        instance,
+                                        promoted: None
+                                    };
+                                    match tcx.const_eval(param_env.and(cid)) {
+                                        Ok(&ty::Const {
+                                            val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))),
+                                            ..
+                                        }) => {
+                                            assert_eq!(b as u64 as u128, b);
+                                            return Ok(b as u64);
+                                        }
+                                        _ => {}
                                     }
-                                    _ => {}
                                 }
-                            }
+                            },
                             None => {}
                         }
                         tcx.sess.delay_span_bug(tcx.def_span(def_id),

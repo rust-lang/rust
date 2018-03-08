@@ -328,7 +328,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
                 let ptr = self.project_field(bx, 0);
                 let to = self.layout.ty.ty_adt_def().unwrap()
                     .discriminant_for_variant(bx.tcx(), variant_index)
-                    .to_u128_unchecked() as u64;
+                    .val as u64;
                 bx.store(C_int(ptr.layout.llvm_type(bx.cx), to as i64),
                     ptr.llval, ptr.align);
             }

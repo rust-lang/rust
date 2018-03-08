@@ -194,15 +194,17 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
 use rustc::middle::const_val::ConstVal;
+use rustc::mir::interpret::{Value, PrimVal, AllocId, Pointer};
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem, StartFnLangItem};
 use rustc::traits;
 use rustc::ty::subst::{Substs, Kind};
 use rustc::ty::{self, TypeFoldable, Ty, TyCtxt};
 use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::session::config;
-use rustc::mir::{self, Location};
+use rustc::mir::{self, Location, Promoted};
 use rustc::mir::visit::Visitor as MirVisitor;
 use rustc::mir::mono::MonoItem;
+use rustc::mir::interpret::GlobalId;
 
 use monomorphize::{self, Instance};
 use rustc::util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
@@ -377,7 +379,19 @@ fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             recursion_depth_reset = None;
 
-            collect_neighbours(tcx, instance, true, &mut neighbors);
+            let cid = GlobalId {
+                instance,
+                promoted: None,
+            };
+            let param_env = ty::ParamEnv::empty(traits::Reveal::All);
+
+            match tcx.const_eval(param_env.and(cid)) {
+                Ok(val) => collect_const(tcx, val, instance.substs, &mut neighbors),
+                Err(err) => {
+                    let span = tcx.def_span(def_id);
+                    err.report(tcx, span, "static");
+                }
+            }
         }
         MonoItem::Fn(instance) => {
             // Sanity check whether this ended up being collected accidentally
@@ -389,7 +403,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                                recursion_depths));
             check_type_length_limit(tcx, instance);
 
-            collect_neighbours(tcx, instance, false, &mut neighbors);
+            collect_neighbours(tcx, instance, &mut neighbors);
         }
         MonoItem::GlobalAsm(..) => {
             recursion_depth_reset = None;
@@ -498,7 +512,6 @@ struct MirNeighborCollector<'a, 'tcx: 'a> {
     mir: &'a mir::Mir<'tcx>,
     output: &'a mut Vec<MonoItem<'tcx>>,
     param_substs: &'tcx Substs<'tcx>,
-    const_context: bool,
 }
 
 impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
@@ -568,15 +581,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
     fn visit_const(&mut self, constant: &&'tcx ty::Const<'tcx>, location: Location) {
         debug!("visiting const {:?} @ {:?}", *constant, location);
 
-        if let ConstVal::Unevaluated(def_id, substs) = constant.val {
-            let substs = self.tcx.trans_apply_param_substs(self.param_substs,
-                                                           &substs);
-            let instance = ty::Instance::resolve(self.tcx,
-                                                 ty::ParamEnv::empty(traits::Reveal::All),
-                                                 def_id,
-                                                 substs).unwrap();
-            collect_neighbours(self.tcx, instance, true, self.output);
-        }
+        collect_const(self.tcx, constant, self.param_substs, self.output);
 
         self.super_const(constant);
     }
@@ -592,30 +597,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             mir::TerminatorKind::Call { ref func, .. } => {
                 let callee_ty = func.ty(self.mir, tcx);
                 let callee_ty = tcx.trans_apply_param_substs(self.param_substs, &callee_ty);
-
-                let constness = match (self.const_context, &callee_ty.sty) {
-                    (true, &ty::TyFnDef(def_id, substs)) if self.tcx.is_const_fn(def_id) => {
-                        let instance =
-                            ty::Instance::resolve(self.tcx,
-                                                  ty::ParamEnv::empty(traits::Reveal::All),
-                                                  def_id,
-                                                  substs).unwrap();
-                        Some(instance)
-                    }
-                    _ => None
-                };
-
-                if let Some(const_fn_instance) = constness {
-                    // If this is a const fn, called from a const context, we
-                    // have to visit its body in order to find any fn reifications
-                    // it might contain.
-                    collect_neighbours(self.tcx,
-                                       const_fn_instance,
-                                       true,
-                                       self.output);
-                } else {
-                    visit_fn_use(self.tcx, callee_ty, true, &mut self.output);
-                }
+                visit_fn_use(self.tcx, callee_ty, true, &mut self.output);
             }
             mir::TerminatorKind::Drop { ref location, .. } |
             mir::TerminatorKind::DropAndReplace { ref location, .. } => {
@@ -1098,26 +1080,59 @@ fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
+/// Scan the miri alloc in order to find function calls, closures, and drop-glue
+fn collect_miri<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    alloc_id: AllocId,
+    output: &mut Vec<MonoItem<'tcx>>,
+) {
+    if let Some(did) = tcx.interpret_interner.get_corresponding_static_def_id(alloc_id) {
+        let instance = Instance::mono(tcx, did);
+        if should_monomorphize_locally(tcx, &instance) {
+            trace!("collecting static {:?}", did);
+            output.push(MonoItem::Static(did));
+        }
+    } else if let Some(alloc) = tcx.interpret_interner.get_alloc(alloc_id) {
+        trace!("collecting {:?} with {:#?}", alloc_id, alloc);
+        for &inner in alloc.relocations.values() {
+            collect_miri(tcx, inner, output);
+        }
+    } else if let Some(fn_instance) = tcx.interpret_interner.get_fn(alloc_id) {
+        if should_monomorphize_locally(tcx, &fn_instance) {
+            trace!("collecting {:?} with {:#?}", alloc_id, fn_instance);
+            output.push(create_fn_mono_item(fn_instance));
+        }
+    } else {
+        bug!("alloc id without corresponding allocation: {}", alloc_id);
+    }
+}
+
 /// Scan the MIR in order to find function calls, closures, and drop-glue
 fn collect_neighbours<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 instance: Instance<'tcx>,
-                                const_context: bool,
                                 output: &mut Vec<MonoItem<'tcx>>)
 {
     let mir = tcx.instance_mir(instance.def);
 
-    let mut visitor = MirNeighborCollector {
+    MirNeighborCollector {
         tcx,
         mir: &mir,
         output,
         param_substs: instance.substs,
-        const_context,
-    };
-
-    visitor.visit_mir(&mir);
-    for promoted in &mir.promoted {
-        visitor.mir = promoted;
-        visitor.visit_mir(promoted);
+    }.visit_mir(&mir);
+    let param_env = ty::ParamEnv::empty(traits::Reveal::All);
+    for (i, promoted) in mir.promoted.iter().enumerate() {
+        use rustc_data_structures::indexed_vec::Idx;
+        let cid = GlobalId {
+            instance,
+            promoted: Some(Promoted::new(i)),
+        };
+        match tcx.const_eval(param_env.and(cid)) {
+            Ok(val) => collect_const(tcx, val, instance.substs, output),
+            Err(err) => {
+                err.report(tcx, promoted.span, "promoted");
+            }
+        }
     }
 }
 
@@ -1128,4 +1143,61 @@ fn def_id_to_string<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let printer = DefPathBasedNames::new(tcx, false, false);
     printer.push_def_path(def_id, &mut output);
     output
+}
+
+fn collect_const<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    constant: &ty::Const<'tcx>,
+    param_substs: &'tcx Substs<'tcx>,
+    output: &mut Vec<MonoItem<'tcx>>,
+) {
+    debug!("visiting const {:?}", *constant);
+
+    let val = match constant.val {
+        ConstVal::Unevaluated(def_id, substs) => {
+            let param_env = ty::ParamEnv::empty(traits::Reveal::All);
+            let substs = tcx.trans_apply_param_substs(param_substs,
+                                                        &substs);
+            let instance = ty::Instance::resolve(tcx,
+                                                param_env,
+                                                def_id,
+                                                substs).unwrap();
+
+            let cid = GlobalId {
+                instance,
+                promoted: None,
+            };
+            match tcx.const_eval(param_env.and(cid)) {
+                Ok(val) => val.val,
+                Err(err) => {
+                    let span = tcx.def_span(def_id);
+                    err.report(tcx, span, "constant");
+                    return;
+                }
+            }
+        },
+        _ => constant.val,
+    };
+    match val {
+        ConstVal::Unevaluated(..) => bug!("const eval yielded unevaluated const"),
+        ConstVal::Value(Value::ByValPair(PrimVal::Ptr(a), PrimVal::Ptr(b))) => {
+            collect_miri(tcx, a.alloc_id, output);
+            collect_miri(tcx, b.alloc_id, output);
+        }
+        ConstVal::Value(Value::ByValPair(_, PrimVal::Ptr(ptr))) |
+        ConstVal::Value(Value::ByValPair(PrimVal::Ptr(ptr), _)) |
+        ConstVal::Value(Value::ByVal(PrimVal::Ptr(ptr))) =>
+            collect_miri(tcx, ptr.alloc_id, output),
+        ConstVal::Value(Value::ByRef(Pointer { primval: PrimVal::Ptr(ptr) }, _)) => {
+            // by ref should only collect the inner allocation, not the value itself
+            let alloc = tcx
+                .interpret_interner
+                .get_alloc(ptr.alloc_id)
+                .expect("ByRef to extern static is not allowed");
+            for &inner in alloc.relocations.values() {
+                collect_miri(tcx, inner, output);
+            }
+        }
+        _ => {},
+    }
 }

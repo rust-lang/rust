@@ -49,7 +49,7 @@ fn main() {
 //         _3 = &'23_1rs _2;
 //         StorageLive(_5);
 //         _5 = _2;
-//         switchInt(move _5) -> [0u8: bb5, otherwise: bb4];
+//         switchInt(move _5) -> [false: bb5, otherwise: bb4];
 //     }
 //     bb3: {
 //         ...

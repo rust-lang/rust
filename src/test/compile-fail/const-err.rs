@@ -26,26 +26,5 @@ const FOO: u8 = [5u8][1];
 //~| index out of bounds: the len is 1 but the index is 1
 
 fn main() {
-    let a = -std::i8::MIN;
-    //~^ WARN this expression will panic at run-time
-    //~| attempt to negate with overflow
-    let b = 200u8 + 200u8 + 200u8;
-    //~^ WARN this expression will panic at run-time
-    //~^^ WARN this expression will panic at run-time
-    //~| attempt to add with overflow
-    let c = 200u8 * 4;
-    //~^ WARN this expression will panic at run-time
-    //~| attempt to multiply with overflow
-    let d = 42u8 - (42u8 + 1);
-    //~^ WARN this expression will panic at run-time
-    //~| attempt to subtract with overflow
-    let _e = [5u8][1];
-    //~^ WARN this expression will panic at run-time
-    //~| index out of bounds: the len is 1 but the index is 1
-    black_box(a);
-    black_box(b);
-    black_box(c);
-    black_box(d);
-
     black_box((FOO, FOO));
 }

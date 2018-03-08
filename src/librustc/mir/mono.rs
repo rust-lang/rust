@@ -41,9 +41,9 @@ impl<'tcx> MonoItem<'tcx> {
     }
 }
 
-impl<'tcx> HashStable<StableHashingContext<'tcx>> for MonoItem<'tcx> {
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for MonoItem<'tcx> {
     fn hash_stable<W: StableHasherResult>(&self,
-                                           hcx: &mut StableHashingContext<'tcx>,
+                                           hcx: &mut StableHashingContext<'a>,
                                            hasher: &mut StableHasher<W>) {
         ::std::mem::discriminant(self).hash_stable(hcx, hasher);
 
@@ -171,9 +171,9 @@ impl<'tcx> CodegenUnit<'tcx> {
     }
 }
 
-impl<'tcx> HashStable<StableHashingContext<'tcx>> for CodegenUnit<'tcx> {
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for CodegenUnit<'tcx> {
     fn hash_stable<W: StableHasherResult>(&self,
-                                           hcx: &mut StableHashingContext<'tcx>,
+                                           hcx: &mut StableHashingContext<'a>,
                                            hasher: &mut StableHasher<W>) {
         let CodegenUnit {
             ref items,

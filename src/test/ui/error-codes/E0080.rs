@@ -10,9 +10,12 @@
 
 enum Enum {
     X = (1 << 500), //~ ERROR E0080
-    //~| WARNING shift left with overflow
+    //~| shift left with overflow
     Y = (1 / 0) //~ ERROR E0080
-    //~| WARNING divide by zero
+    //~| const_err
+    //~| const_err
+    //~| const_err
+    //~| divide by zero
 }
 
 fn main() {

@@ -9,16 +9,12 @@
 // except according to those terms.
 
 use hir::def_id::DefId;
-use middle::const_val::ConstVal;
 use ty::{self, BoundRegion, Region, Ty, TyCtxt};
-
 use std::fmt;
 use syntax::abi;
 use syntax::ast;
 use errors::DiagnosticBuilder;
 use syntax_pos::Span;
-
-use rustc_const_math::ConstInt;
 
 use hir;
 
@@ -186,10 +182,9 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             ty::TyAdt(def, _) => format!("{} `{}`", def.descr(), tcx.item_path_str(def.did)),
             ty::TyForeign(def_id) => format!("extern type `{}`", tcx.item_path_str(def_id)),
             ty::TyArray(_, n) => {
-                if let ConstVal::Integral(ConstInt::Usize(n)) = n.val {
-                    format!("array of {} elements", n)
-                } else {
-                    "array".to_string()
+                match n.val.to_raw_bits() {
+                    Some(n) => format!("array of {} elements", n),
+                    None => "array".to_string(),
                 }
             }
             ty::TySlice(_) => "slice".to_string(),

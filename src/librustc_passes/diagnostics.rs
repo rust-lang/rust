@@ -31,23 +31,6 @@ const FOO2: i32 = { 0 }; // but brackets are useless here
 ```
 "##,
 */
-E0030: r##"
-When matching against a range, the compiler verifies that the range is
-non-empty.  Range patterns include both end-points, so this is equivalent to
-requiring the start of the range to be less than or equal to the end of the
-range.
-
-For example:
-
-```compile_fail
-match 5u32 {
-    // This range is ok, albeit pointless.
-    1 ... 1 => {}
-    // This range is empty, and the compiler can tell.
-    1000 ... 5 => {}
-}
-```
-"##,
 
 E0130: r##"
 You declared a pattern as an argument in a foreign function declaration.
@@ -227,24 +210,6 @@ impl Foo for Bar {
 ```
 "##,
 
-
-E0579: r##"
-When matching against an exclusive range, the compiler verifies that the range
-is non-empty. Exclusive range patterns include the start point but not the end
-point, so this is equivalent to requiring the start of the range to be less
-than the end of the range.
-
-For example:
-
-```compile_fail
-match 5u32 {
-    // This range is ok, albeit pointless.
-    1 .. 2 => {}
-    // This range is empty, and the compiler can tell.
-    5 .. 5 => {}
-}
-```
-"##,
 
 E0590: r##"
 `break` or `continue` must include a label when used in the condition of a

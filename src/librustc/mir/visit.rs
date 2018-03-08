@@ -12,7 +12,6 @@ use hir::def_id::DefId;
 use ty::subst::Substs;
 use ty::{ClosureSubsts, Region, Ty, GeneratorInterior};
 use mir::*;
-use rustc_const_math::ConstUsize;
 use syntax_pos::Span;
 
 // # The MIR Visitor
@@ -243,18 +242,6 @@ macro_rules! make_mir_visitor {
                 self.super_generator_interior(interior);
             }
 
-            fn visit_const_int(&mut self,
-                               const_int: &ConstInt,
-                               _: Location) {
-                self.super_const_int(const_int);
-            }
-
-            fn visit_const_usize(&mut self,
-                                 const_usize: & $($mutability)* ConstUsize,
-                                 _: Location) {
-                self.super_const_usize(const_usize);
-            }
-
             fn visit_local_decl(&mut self,
                                 local: Local,
                                 local_decl: & $($mutability)* LocalDecl<'tcx>) {
@@ -426,13 +413,10 @@ macro_rules! make_mir_visitor {
 
                     TerminatorKind::SwitchInt { ref $($mutability)* discr,
                                                 ref $($mutability)* switch_ty,
-                                                ref values,
+                                                values: _,
                                                 ref targets } => {
                         self.visit_operand(discr, source_location);
                         self.visit_ty(switch_ty, TyContext::Location(source_location));
-                        for value in &values[..] {
-                            self.visit_const_int(value, source_location);
-                        }
                         for &target in targets {
                             self.visit_branch(block, target);
                         }
@@ -538,10 +522,8 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(operand, location);
                     }
 
-                    Rvalue::Repeat(ref $($mutability)* value,
-                                   ref $($mutability)* length) => {
+                    Rvalue::Repeat(ref $($mutability)* value, _) => {
                         self.visit_operand(value, location);
-                        self.visit_const_usize(length, location);
                     }
 
                     Rvalue::Ref(ref $($mutability)* r, bk, ref $($mutability)* path) => {
@@ -796,12 +778,6 @@ macro_rules! make_mir_visitor {
 
             fn super_closure_substs(&mut self,
                                     _substs: & $($mutability)* ClosureSubsts<'tcx>) {
-            }
-
-            fn super_const_int(&mut self, _const_int: &ConstInt) {
-            }
-
-            fn super_const_usize(&mut self, _const_usize: & $($mutability)* ConstUsize) {
             }
 
             // Convenience methods

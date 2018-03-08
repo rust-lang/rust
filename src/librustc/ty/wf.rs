@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use hir::def_id::DefId;
-use middle::const_val::{ConstVal, ConstAggregate};
+use middle::const_val::ConstVal;
 use infer::InferCtxt;
 use ty::subst::Substs;
 use traits;
@@ -217,28 +217,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
     fn compute_const(&mut self, constant: &'tcx ty::Const<'tcx>) {
         self.require_sized(constant.ty, traits::ConstSized);
         match constant.val {
-            ConstVal::Integral(_) |
-            ConstVal::Float(_) |
-            ConstVal::Str(_) |
-            ConstVal::ByteStr(_) |
-            ConstVal::Bool(_) |
-            ConstVal::Char(_) |
-            ConstVal::Variant(_) |
-            ConstVal::Function(..) => {}
-            ConstVal::Aggregate(ConstAggregate::Struct(fields)) => {
-                for &(_, v) in fields {
-                    self.compute_const(v);
-                }
-            }
-            ConstVal::Aggregate(ConstAggregate::Tuple(fields)) |
-            ConstVal::Aggregate(ConstAggregate::Array(fields)) => {
-                for v in fields {
-                    self.compute_const(v);
-                }
-            }
-            ConstVal::Aggregate(ConstAggregate::Repeat(v, _)) => {
-                self.compute_const(v);
-            }
+            ConstVal::Value(_) => {}
             ConstVal::Unevaluated(def_id, substs) => {
                 let obligations = self.nominal_obligations(def_id, substs);
                 self.out.extend(obligations);

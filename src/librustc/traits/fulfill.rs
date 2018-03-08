@@ -9,12 +9,14 @@
 // except according to those terms.
 
 use infer::{RegionObligation, InferCtxt};
+use mir::interpret::GlobalId;
 use ty::{self, Ty, TypeFoldable, ToPolyTraitRef, ToPredicate};
 use ty::error::ExpectedFound;
 use rustc_data_structures::obligation_forest::{ObligationForest, Error};
 use rustc_data_structures::obligation_forest::{ForestObligation, ObligationProcessor};
 use std::marker::PhantomData;
 use hir::def_id::DefId;
+use middle::const_val::{ConstEvalErr, ErrKind};
 
 use super::CodeAmbiguity;
 use super::CodeProjectionError;
@@ -514,16 +516,34 @@ fn process_predicate<'a, 'gcx, 'tcx>(
                 }
                 Some(param_env) => {
                     match selcx.tcx().lift_to_global(&substs) {
+                        Some(substs) => {
+                            let instance = ty::Instance::resolve(
+                                selcx.tcx().global_tcx(),
+                                param_env,
+                                def_id,
+                                substs,
+                            );
+                            if let Some(instance) = instance {
+                                let cid = GlobalId {
+                                    instance,
+                                    promoted: None,
+                                };
+                                match selcx.tcx().at(obligation.cause.span)
+                                                 .const_eval(param_env.and(cid)) {
+                                    Ok(_) => Ok(Some(vec![])),
+                                    Err(err) => Err(CodeSelectionError(ConstEvalFailure(err)))
+                                }
+                            } else {
+                                Err(CodeSelectionError(ConstEvalFailure(ConstEvalErr {
+                                    span: obligation.cause.span,
+                                    kind: ErrKind::UnimplementedConstVal("could not resolve")
+                                        .into(),
+                                })))
+                            }
+                        },
                         None => {
                             pending_obligation.stalled_on = substs.types().collect();
                             Ok(None)
-                        }
-                        Some(substs) => {
-                            match selcx.tcx().at(obligation.cause.span)
-                                             .const_eval(param_env.and((def_id, substs))) {
-                                Ok(_) => Ok(Some(vec![])),
-                                Err(e) => Err(CodeSelectionError(ConstEvalFailure(e)))
-                            }
                         }
                     }
                 }

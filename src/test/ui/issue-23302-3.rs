@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const A: i32 = B; //~ ERROR E0391
+const A: i32 = B;
 
-const B: i32 = A;
+const B: i32 = A; //~ ERROR cyclic dependency detected
 
 fn main() { }
