@@ -13,8 +13,8 @@ use target::{Target, TargetResult};
 
 pub fn target() -> TargetResult {
     let mut base = super::linux_musl_base::opts();
-    base.cpu = "mips32".to_string();
-    base.features = "+mips32,+soft-float".to_string();
+    base.cpu = "mips32r2".to_string();
+    base.features = "+mips32r2,+soft-float".to_string();
     base.max_atomic_width = Some(32);
     // see #36994
     base.exe_allocation_crate = None;
