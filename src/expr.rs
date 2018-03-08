@@ -1044,14 +1044,12 @@ impl<'a> ControlFlow<'a> {
                 .span_after(mk_sp(lo, self.span.hi()), self.keyword.trim()),
             if self.pats.is_empty() {
                 cond_span.lo()
+            } else if self.matcher.is_empty() {
+                self.pats[0].span.lo()
             } else {
-                if self.matcher.is_empty() {
-                    self.pats[0].span.lo()
-                } else {
-                    context
-                        .snippet_provider
-                        .span_before(self.span, self.matcher.trim())
-                }
+                context
+                    .snippet_provider
+                    .span_before(self.span, self.matcher.trim())
             },
         );
 
@@ -1268,7 +1266,7 @@ pub fn is_unsafe_block(block: &ast::Block) -> bool {
     }
 }
 
-/// A simple wrapper type against ast::Arm. Used inside write_list().
+/// A simple wrapper type against `ast::Arm`. Used inside `write_list()`.
 struct ArmWrapper<'a> {
     pub arm: &'a ast::Arm,
     /// True if the arm is the last one in match expression. Used to decide on whether we should add
@@ -1787,7 +1785,7 @@ fn rewrite_multiple_patterns(
         separator: " |",
         trailing_separator: SeparatorTactic::Never,
         separator_place: context.config.binop_separator(),
-        shape: shape,
+        shape,
         ends_with_newline: false,
         preserve_newline: false,
         config: context.config,

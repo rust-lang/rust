@@ -184,7 +184,7 @@ impl Config {
 }
 
 fn main() {
-    let _ = env_logger::init();
+    env_logger::init();
 
     let opts = make_opts();
     let matches = opts.parse(env::args().skip(1))

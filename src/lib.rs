@@ -798,7 +798,7 @@ pub fn get_modified_lines(
 
     let mut config = config.clone();
     config.set().write_mode(config::WriteMode::Modified);
-    let (summary, filemap, formatreport) = format_input(input, &config, Some(&mut data))?;
+    let (summary, filemap, report) = format_input(input, &config, Some(&mut data))?;
 
     let mut lines = data.lines();
     let mut chunks = Vec::new();
@@ -823,9 +823,9 @@ pub fn get_modified_lines(
         });
     }
     Ok(ModifiedLinesResult {
-        summary: summary,
-        filemap: filemap,
-        report: formatreport,
+        summary,
+        filemap,
+        report,
         modified_lines: ModifiedLines { chunks },
     })
 }

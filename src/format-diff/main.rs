@@ -81,7 +81,7 @@ impl From<io::Error> for FormatDiffError {
 }
 
 fn main() {
-    let _ = env_logger::init();
+    env_logger::init();
 
     let mut opts = getopts::Options::new();
     opts.optflag("h", "help", "show this message");
