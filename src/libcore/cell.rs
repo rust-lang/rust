@@ -1176,10 +1176,10 @@ impl<'a, T: ?Sized + fmt::Display> fmt::Display for RefMut<'a, T> {
 /// is accessible by safe code (for example, because you returned it), then you must not access
 /// the data in any way that contradicts that reference for the remainder of `'a`. For example, that
 /// means that if you take the `*mut T` from an `UnsafeCell<T>` and case it to an `&T`, then until
-/// that reference's lifetime expires, the data in `T` must remain immutable (modulo any 
+/// that reference's lifetime expires, the data in `T` must remain immutable (modulo any
 /// `UnsafeCell` data found within `T`, of course). Similarly, if you create an `&mut T` reference
 /// that is released to safe code, then you must not access the data within the `UnsafeCell` until
-/// that reference expires. 
+/// that reference expires.
 ///
 /// - At all times, you must avoid data races, meaning that if multiple threads have access to
 /// the same `UnsafeCell`, then any writes must have a proper happens-before relation to all other
@@ -1189,7 +1189,7 @@ impl<'a, T: ?Sized + fmt::Display> fmt::Display for RefMut<'a, T> {
 /// for single-threaded code:
 ///
 /// 1. A `&T` reference can be released to safe code and there it can co-exit with other `&T`
-/// references, but not with a `&mut T` 
+/// references, but not with a `&mut T`
 ///
 /// 2. A `&mut T` reference may be released to safe code, provided neither other `&mut T` nor `&T`
 /// co-exist with it. A `&mut T` must always be unique.
