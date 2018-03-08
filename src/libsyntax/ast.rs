@@ -621,6 +621,22 @@ pub enum BindingMode {
     ByValue(Mutability),
 }
 
+impl BindingMode {
+    pub fn is_by_ref(&self) -> bool {
+        match *self {
+            BindingMode::ByRef(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_by_value(&self) -> bool {
+        match *self {
+            BindingMode::ByValue(..) => true,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum RangeEnd {
     Included(RangeSyntax),

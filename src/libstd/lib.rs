@@ -322,6 +322,7 @@
 #![feature(doc_cfg)]
 #![feature(doc_masked)]
 #![feature(doc_spotlight)]
+#![feature(generic_assert_internals)]
 #![cfg_attr(test, feature(update_panic_count))]
 #![cfg_attr(windows, feature(used))]
 #![cfg_attr(stage0, feature(never_type))]
@@ -536,3 +537,6 @@ pub use stdsimd::arch;
 // the rustdoc documentation for primitive types. Using `include!`
 // because rustdoc only looks for these modules at the crate level.
 include!("primitive_docs.rs");
+
+#[unstable(feature = "generic_assert_internals", issue = "44838")]
+pub use core::assert_helper;

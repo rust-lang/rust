@@ -28,6 +28,8 @@ extern crate rustc_data_structures;
 extern crate rustc_errors as errors;
 
 mod assert;
+#[cfg(test)]
+mod assert_tests;
 mod asm;
 mod cfg;
 mod compile_error;
@@ -114,10 +116,9 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
         log_syntax: log_syntax::expand_syntax_ext,
         trace_macros: trace_macros::expand_trace_macros,
         compile_error: compile_error::expand_compile_error,
-        assert: assert::expand_assert,
     }
 
-    // format_args uses `unstable` things internally.
+    // uses `unstable` things internally.
     register(Symbol::intern("format_args"),
              NormalTT {
                 expander: Box::new(format::expand_format_args),
@@ -126,6 +127,14 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
                 allow_internal_unsafe: false,
                 unstable_feature: None
             });
+    register(Symbol::intern("assert"),
+        NormalTT {
+            expander: Box::new(assert::expand_assert),
+            def_info: None,
+            allow_internal_unstable: true,
+            allow_internal_unsafe: false,
+            unstable_feature: None
+        });
 
     for (name, ext) in user_exts {
         register(name, ext);
