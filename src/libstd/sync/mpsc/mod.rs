@@ -1949,7 +1949,7 @@ mod tests {
 
         for _ in 0..NTHREADS {
             let tx = tx.clone();
-            thread::spawn(move|| {
+            let _handle = thread::spawn(move|| {
                 for _ in 0..AMT { tx.send(1).unwrap(); }
             });
         }
@@ -2148,14 +2148,14 @@ mod tests {
     fn oneshot_multi_thread_recv_close_stress() {
         for _ in 0..stress_factor() {
             let (tx, rx) = channel::<i32>();
-            thread::spawn(move|| {
+            let _t = thread::spawn(move|| {
                 let res = thread::spawn(move|| {
                     rx.recv().unwrap();
                 }).join();
                 assert!(res.is_err());
             });
             let _t = thread::spawn(move|| {
-                thread::spawn(move|| {
+                let _t = thread::spawn(move|| {
                     drop(tx);
                 });
             });
@@ -2184,7 +2184,7 @@ mod tests {
             fn send(tx: Sender<Box<i32>>, i: i32) {
                 if i == 10 { return }
 
-                thread::spawn(move|| {
+                let _t = thread::spawn(move|| {
                     tx.send(box i).unwrap();
                     send(tx, i + 1);
                 });
@@ -2193,7 +2193,7 @@ mod tests {
             fn recv(rx: Receiver<Box<i32>>, i: i32) {
                 if i == 10 { return }
 
-                thread::spawn(move|| {
+                let _t = thread::spawn(move|| {
                     assert!(*rx.recv().unwrap() == i);
                     recv(rx, i + 1);
                 });
@@ -2217,7 +2217,7 @@ mod tests {
         let stress = stress_factor() + 100;
         let timeout = Duration::from_millis(100);
 
-        thread::spawn(move || {
+        let _t = thread::spawn(move || {
             for i in 0..stress {
                 if i % 2 == 0 {
                     thread::sleep(timeout * 2);
@@ -2259,7 +2259,7 @@ mod tests {
 
         for i in 0..stress {
             let tx = tx.clone();
-            thread::spawn(move || {
+            let _t = thread::spawn(move || {
                 thread::sleep(Duration::from_millis(i as u64 * 10));
                 tx.send(1usize).unwrap();
             });
@@ -2296,7 +2296,7 @@ mod tests {
         let total = 5;
         for _ in 0..total {
             let tx = tx.clone();
-            thread::spawn(move|| {
+            let _t = thread::spawn(move|| {
                 tx.send(()).unwrap();
             });
         }
@@ -2314,7 +2314,7 @@ mod tests {
         let total = stress_factor() + 100;
         for _ in 0..total {
             let tx = tx.clone();
-            thread::spawn(move|| {
+            let _t = thread::spawn(move|| {
                 tx.send(()).unwrap();
             });
         }
@@ -2586,7 +2586,7 @@ mod sync_tests {
     #[test]
     fn chan_gone_concurrent() {
         let (tx, rx) = sync_channel::<i32>(0);
-        thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             tx.send(1).unwrap();
             tx.send(1).unwrap();
         });
@@ -2596,7 +2596,7 @@ mod sync_tests {
     #[test]
     fn stress() {
         let (tx, rx) = sync_channel::<i32>(0);
-        thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             for _ in 0..10000 { tx.send(1).unwrap(); }
         });
         for _ in 0..10000 {
@@ -2608,7 +2608,7 @@ mod sync_tests {
     fn stress_recv_timeout_two_threads() {
         let (tx, rx) = sync_channel::<i32>(0);
 
-        thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             for _ in 0..10000 { tx.send(1).unwrap(); }
         });
 
@@ -2634,7 +2634,7 @@ mod sync_tests {
         let (tx, rx) = sync_channel::<i32>(0);
         let (dtx, drx) = sync_channel::<()>(0);
 
-        thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             let mut recv_count = 0;
             loop {
                 match rx.recv_timeout(Duration::from_millis(10)) {
@@ -2655,7 +2655,7 @@ mod sync_tests {
 
         for _ in 0..NTHREADS {
             let tx = tx.clone();
-            thread::spawn(move|| {
+            let _t = thread::spawn(move|| {
                 for _ in 0..AMT { tx.send(1).unwrap(); }
             });
         }
@@ -2672,7 +2672,7 @@ mod sync_tests {
         let (tx, rx) = sync_channel::<i32>(0);
         let (dtx, drx) = sync_channel::<()>(0);
 
-        thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             for _ in 0..AMT * NTHREADS {
                 assert_eq!(rx.recv().unwrap(), 1);
             }
@@ -2685,7 +2685,7 @@ mod sync_tests {
 
         for _ in 0..NTHREADS {
             let tx = tx.clone();
-            thread::spawn(move|| {
+            let _t = thread::spawn(move|| {
                 for _ in 0..AMT { tx.send(1).unwrap(); }
             });
         }
@@ -2856,7 +2856,7 @@ mod sync_tests {
                 assert!(res.is_err());
             });
             let _t = thread::spawn(move|| {
-                thread::spawn(move|| {
+                let _t = thread::spawn(move|| {
                     drop(tx);
                 });
             });
@@ -2885,7 +2885,7 @@ mod sync_tests {
             fn send(tx: SyncSender<Box<i32>>, i: i32) {
                 if i == 10 { return }
 
-                thread::spawn(move|| {
+                let _t = thread::spawn(move|| {
                     tx.send(box i).unwrap();
                     send(tx, i + 1);
                 });
@@ -2894,7 +2894,7 @@ mod sync_tests {
             fn recv(rx: Receiver<Box<i32>>, i: i32) {
                 if i == 10 { return }
 
-                thread::spawn(move|| {
+                let _t = thread::spawn(move|| {
                     assert!(*rx.recv().unwrap() == i);
                     recv(rx, i + 1);
                 });
@@ -2916,7 +2916,7 @@ mod sync_tests {
         let total = stress_factor() + 100;
         for _ in 0..total {
             let tx = tx.clone();
-            thread::spawn(move|| {
+            let _t = thread::spawn(move|| {
                 tx.send(()).unwrap();
             });
         }

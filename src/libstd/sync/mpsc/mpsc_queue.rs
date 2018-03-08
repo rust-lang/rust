@@ -158,7 +158,7 @@ mod tests {
         for _ in 0..nthreads {
             let tx = tx.clone();
             let q = q.clone();
-            thread::spawn(move|| {
+            let _handle = thread::spawn(move || {
                 for i in 0..nmsgs {
                     q.push(i);
                 }

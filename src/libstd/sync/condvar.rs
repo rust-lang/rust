@@ -663,7 +663,7 @@ mod tests {
         for _ in 0..N {
             let data = data.clone();
             let tx = tx.clone();
-            thread::spawn(move|| {
+            let _t = thread::spawn(move|| {
                 let &(ref lock, ref cond) = &*data;
                 let mut cnt = lock.lock().unwrap();
                 *cnt += 1;
@@ -697,7 +697,7 @@ mod tests {
         let pair2 = pair.clone();
 
         // Inside of our lock, spawn a new thread, and then wait for it to start.
-        thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             let &(ref lock, ref cvar) = &*pair2;
             let mut started = lock.lock().unwrap();
             *started = true;

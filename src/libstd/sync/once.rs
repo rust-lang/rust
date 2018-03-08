@@ -490,7 +490,7 @@ mod tests {
         let (tx, rx) = channel();
         for _ in 0..10 {
             let tx = tx.clone();
-            thread::spawn(move|| {
+            let _t = thread::spawn(move || {
                 for _ in 0..4 { thread::yield_now() }
                 unsafe {
                     O.call_once(|| {

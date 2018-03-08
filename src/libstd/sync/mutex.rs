@@ -519,10 +519,10 @@ mod tests {
         for _ in 0..K {
             let tx2 = tx.clone();
             let m2 = m.clone();
-            thread::spawn(move|| { inc(&m2); tx2.send(()).unwrap(); });
+            let _ = thread::spawn(move || { inc(&m2); tx2.send(()).unwrap(); });
             let tx2 = tx.clone();
             let m2 = m.clone();
-            thread::spawn(move|| { inc(&m2); tx2.send(()).unwrap(); });
+            let _ = thread::spawn(move || { inc(&m2); tx2.send(()).unwrap(); });
         }
 
         drop(tx);
