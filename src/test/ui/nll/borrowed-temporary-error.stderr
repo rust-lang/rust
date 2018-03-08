@@ -1,5 +1,5 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/borrowed-temporary-error.rs:22:10
+  --> $DIR/borrowed-temporary-error.rs:20:10
    |
 LL |         &(v,)
    |          ^^^^ temporary value does not live long enough

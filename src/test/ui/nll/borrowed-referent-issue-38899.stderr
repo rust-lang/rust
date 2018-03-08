@@ -6,6 +6,9 @@ LL |     let x = &mut block;
 LL |     println!("{}", x.current);
 LL |     let p: &'a u8 = &*block.current;
    |                     ^^^^^^^^^^^^^^^ immutable borrow occurs here
+LL |     //~^ ERROR cannot borrow `*block.current` as immutable because it is also borrowed as mutable
+LL |     drop(x);
+   |          - borrow later used here
 
 error: aborting due to previous error
 

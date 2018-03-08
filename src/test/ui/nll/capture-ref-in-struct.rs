@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-Znll-dump-cause
-
 // Test that a structure which tries to store a pointer to `y` into
 // `p` (indirectly) fails to compile.
 

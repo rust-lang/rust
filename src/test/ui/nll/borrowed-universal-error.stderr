@@ -1,5 +1,5 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/borrowed-universal-error.rs:22:12
+  --> $DIR/borrowed-universal-error.rs:20:12
    |
 LL |     gimme(&(v,))
    |            ^^^^ temporary value does not live long enough
@@ -7,8 +7,8 @@ LL |     //~^ ERROR borrowed value does not live long enough [E0597]
 LL | }
    | - temporary value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 20:1...
-  --> $DIR/borrowed-universal-error.rs:20:1
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 18:1...
+  --> $DIR/borrowed-universal-error.rs:18:1
    |
 LL | fn foo<'a>(x: &'a (u32,)) -> &'a u32 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
