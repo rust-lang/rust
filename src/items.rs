@@ -16,8 +16,7 @@ use std::cmp::min;
 use config::lists::*;
 use regex::Regex;
 use syntax::{abi, ast, ptr, symbol};
-use syntax::ast::{CrateSugar, ImplItem};
-use syntax::codemap::{BytePos, Span};
+use syntax::codemap::{self, BytePos, Span};
 use syntax::visit;
 
 use codemap::{LineRangeUtils, SpanUtils};
@@ -38,6 +37,11 @@ use utils::{colon_spaces, contains_skip, first_line_width, format_abi, format_co
             semicolon_for_expr, starts_with_newline, stmt_expr, trimmed_last_line_width};
 use vertical::rewrite_with_alignment;
 use visitor::FmtVisitor;
+
+const DEFAULT_VISIBILITY: ast::Visibility = codemap::Spanned {
+    node: ast::VisibilityKind::Inherited,
+    span: codemap::DUMMY_SP,
+};
 
 fn type_annotation_separator(config: &Config) -> &str {
     colon_spaces(config.space_before_colon(), config.space_after_colon())
@@ -191,7 +195,7 @@ impl<'a> FnSig<'a> {
             abi: method_sig.abi,
             decl: &*method_sig.decl,
             generics,
-            visibility: ast::Visibility::Inherited,
+            visibility: DEFAULT_VISIBILITY,
         }
     }
 
@@ -680,7 +684,7 @@ pub fn format_impl(
 
 fn is_impl_single_line(
     context: &RewriteContext,
-    items: &[ImplItem],
+    items: &[ast::ImplItem],
     result: &str,
     where_clause_str: &str,
     item: &ast::Item,
@@ -869,7 +873,7 @@ impl<'a> StructParts<'a> {
         StructParts {
             prefix: "",
             ident: variant.node.name,
-            vis: &ast::Visibility::Inherited,
+            vis: &DEFAULT_VISIBILITY,
             def: &variant.node.data,
             generics: None,
             span: variant.span,
@@ -1208,21 +1212,9 @@ pub fn format_struct_struct(
     }
 }
 
-/// Returns a bytepos that is after that of `(` in `pub(..)`. If the given visibility does not
-/// contain `pub(..)`, then return the `lo` of the `defualt_span`. Yeah, but for what? Well, we need
-/// to bypass the `(` in the visibility when creating a span of tuple's body or fn's args.
-fn get_bytepos_after_visibility(
-    context: &RewriteContext,
-    vis: &ast::Visibility,
-    default_span: Span,
-    terminator: &str,
-) -> BytePos {
-    match *vis {
-        ast::Visibility::Crate(s, CrateSugar::PubCrate) => context
-            .snippet_provider
-            .span_after(mk_sp(s.hi(), default_span.hi()), terminator),
-        ast::Visibility::Crate(s, CrateSugar::JustCrate) => s.hi(),
-        ast::Visibility::Restricted { ref path, .. } => path.span.hi(),
+fn get_bytepos_after_visibility(vis: &ast::Visibility, default_span: Span) -> BytePos {
+    match vis.node {
+        ast::VisibilityKind::Crate(..) | ast::VisibilityKind::Restricted { .. } => vis.span.hi(),
         _ => default_span.lo(),
     }
 }
@@ -1240,7 +1232,7 @@ fn format_tuple_struct(
     result.push_str(&header_str);
 
     let body_lo = if fields.is_empty() {
-        let lo = get_bytepos_after_visibility(context, struct_parts.vis, span, ")");
+        let lo = get_bytepos_after_visibility(struct_parts.vis, span);
         context
             .snippet_provider
             .span_after(mk_sp(lo, span.hi()), "(")
@@ -1522,7 +1514,7 @@ impl<'a> StaticParts<'a> {
         };
         StaticParts {
             prefix: "const",
-            vis: &ast::Visibility::Inherited,
+            vis: &DEFAULT_VISIBILITY,
             ident: ti.ident,
             ty,
             mutability: ast::Mutability::Immutable,
@@ -1874,7 +1866,7 @@ fn rewrite_fn_base(
     }
 
     // Skip `pub(crate)`.
-    let lo_after_visibility = get_bytepos_after_visibility(context, &fn_sig.visibility, span, ")");
+    let lo_after_visibility = get_bytepos_after_visibility(&fn_sig.visibility, span);
     // A conservative estimation, to goal is to be over all parens in generics
     let args_start = fn_sig
         .generics

@@ -730,7 +730,7 @@ struct ControlFlow<'a> {
     block: &'a ast::Block,
     else_block: Option<&'a ast::Expr>,
     label: Option<ast::Label>,
-    pat: Option<&'a ast::Pat>,
+    pats: Vec<&'a ast::Pat>,
     keyword: &'a str,
     matcher: &'a str,
     connector: &'a str,
@@ -744,7 +744,7 @@ fn to_control_flow(expr: &ast::Expr, expr_type: ExprType) -> Option<ControlFlow>
     match expr.node {
         ast::ExprKind::If(ref cond, ref if_block, ref else_block) => Some(ControlFlow::new_if(
             cond,
-            None,
+            vec![],
             if_block,
             else_block.as_ref().map(|e| &**e),
             expr_type == ExprType::SubExpression,
@@ -754,7 +754,7 @@ fn to_control_flow(expr: &ast::Expr, expr_type: ExprType) -> Option<ControlFlow>
         ast::ExprKind::IfLet(ref pat, ref cond, ref if_block, ref else_block) => {
             Some(ControlFlow::new_if(
                 cond,
-                Some(pat),
+                ptr_vec_to_ref_vec(pat),
                 if_block,
                 else_block.as_ref().map(|e| &**e),
                 expr_type == ExprType::SubExpression,
@@ -768,37 +768,47 @@ fn to_control_flow(expr: &ast::Expr, expr_type: ExprType) -> Option<ControlFlow>
         ast::ExprKind::Loop(ref block, label) => {
             Some(ControlFlow::new_loop(block, label, expr.span))
         }
-        ast::ExprKind::While(ref cond, ref block, label) => {
-            Some(ControlFlow::new_while(None, cond, block, label, expr.span))
-        }
+        ast::ExprKind::While(ref cond, ref block, label) => Some(ControlFlow::new_while(
+            vec![],
+            cond,
+            block,
+            label,
+            expr.span,
+        )),
         ast::ExprKind::WhileLet(ref pat, ref cond, ref block, label) => Some(
-            ControlFlow::new_while(Some(pat), cond, block, label, expr.span),
+            ControlFlow::new_while(ptr_vec_to_ref_vec(pat), cond, block, label, expr.span),
         ),
         _ => None,
+    }
+}
+
+fn choose_matcher(pats: &[&ast::Pat]) -> &'static str {
+    if pats.is_empty() {
+        ""
+    } else {
+        "let"
     }
 }
 
 impl<'a> ControlFlow<'a> {
     fn new_if(
         cond: &'a ast::Expr,
-        pat: Option<&'a ast::Pat>,
+        pats: Vec<&'a ast::Pat>,
         block: &'a ast::Block,
         else_block: Option<&'a ast::Expr>,
         allow_single_line: bool,
         nested_if: bool,
         span: Span,
     ) -> ControlFlow<'a> {
+        let matcher = choose_matcher(&pats);
         ControlFlow {
             cond: Some(cond),
             block,
             else_block,
             label: None,
-            pat,
+            pats,
             keyword: "if",
-            matcher: match pat {
-                Some(..) => "let",
-                None => "",
-            },
+            matcher,
             connector: " =",
             allow_single_line,
             nested_if,
@@ -812,7 +822,7 @@ impl<'a> ControlFlow<'a> {
             block,
             else_block: None,
             label,
-            pat: None,
+            pats: vec![],
             keyword: "loop",
             matcher: "",
             connector: "",
@@ -823,23 +833,21 @@ impl<'a> ControlFlow<'a> {
     }
 
     fn new_while(
-        pat: Option<&'a ast::Pat>,
+        pats: Vec<&'a ast::Pat>,
         cond: &'a ast::Expr,
         block: &'a ast::Block,
         label: Option<ast::Label>,
         span: Span,
     ) -> ControlFlow<'a> {
+        let matcher = choose_matcher(&pats);
         ControlFlow {
             cond: Some(cond),
             block,
             else_block: None,
             label,
-            pat,
+            pats,
             keyword: "while",
-            matcher: match pat {
-                Some(..) => "let",
-                None => "",
-            },
+            matcher,
             connector: " =",
             allow_single_line: false,
             nested_if: false,
@@ -859,7 +867,7 @@ impl<'a> ControlFlow<'a> {
             block,
             else_block: None,
             label,
-            pat: Some(pat),
+            pats: vec![pat],
             keyword: "for",
             matcher: "",
             connector: " in",
@@ -914,6 +922,46 @@ impl<'a> ControlFlow<'a> {
 }
 
 impl<'a> ControlFlow<'a> {
+    fn rewrite_pat_expr(
+        &self,
+        context: &RewriteContext,
+        expr: &ast::Expr,
+        shape: Shape,
+        offset: usize,
+    ) -> Option<String> {
+        debug!("rewrite_pat_expr {:?} {:?} {:?}", shape, self.pats, expr);
+
+        let cond_shape = shape.offset_left(offset)?;
+        if !self.pats.is_empty() {
+            let matcher = if self.matcher.is_empty() {
+                self.matcher.to_owned()
+            } else {
+                format!("{} ", self.matcher)
+            };
+            let pat_shape = cond_shape
+                .offset_left(matcher.len())?
+                .sub_width(self.connector.len())?;
+            let pat_string = rewrite_multiple_patterns(context, &self.pats, pat_shape)?;
+            let result = format!("{}{}{}", matcher, pat_string, self.connector);
+            return rewrite_assign_rhs(context, result, expr, cond_shape);
+        }
+
+        let expr_rw = expr.rewrite(context, cond_shape);
+        // The expression may (partially) fit on the current line.
+        // We do not allow splitting between `if` and condition.
+        if self.keyword == "if" || expr_rw.is_some() {
+            return expr_rw;
+        }
+
+        // The expression won't fit on the current line, jump to next.
+        let nested_shape = shape
+            .block_indent(context.config.tab_spaces())
+            .with_max_width(context.config);
+        let nested_indent_str = nested_shape.indent.to_string_with_newline(context.config);
+        expr.rewrite(context, nested_shape)
+            .map(|expr_rw| format!("{}{}", nested_indent_str, expr_rw))
+    }
+
     fn rewrite_cond(
         &self,
         context: &RewriteContext,
@@ -922,11 +970,7 @@ impl<'a> ControlFlow<'a> {
     ) -> Option<(String, usize)> {
         // Do not take the rhs overhead from the upper expressions into account
         // when rewriting pattern.
-        let new_width = context
-            .config
-            .max_width()
-            .checked_sub(shape.used_width())
-            .unwrap_or(0);
+        let new_width = context.budget(shape.used_width());
         let fresh_shape = Shape {
             width: new_width,
             ..shape
@@ -944,16 +988,7 @@ impl<'a> ControlFlow<'a> {
         let offset = self.keyword.len() + label_string.len() + 1;
 
         let pat_expr_string = match self.cond {
-            Some(cond) => rewrite_pat_expr(
-                context,
-                self.pat,
-                cond,
-                self.matcher,
-                self.connector,
-                self.keyword,
-                constr_shape,
-                offset,
-            )?,
+            Some(cond) => self.rewrite_pat_expr(context, cond, constr_shape, offset)?,
             None => String::new(),
         };
 
@@ -1007,15 +1042,17 @@ impl<'a> ControlFlow<'a> {
             context
                 .snippet_provider
                 .span_after(mk_sp(lo, self.span.hi()), self.keyword.trim()),
-            self.pat.map_or(cond_span.lo(), |p| {
+            if self.pats.is_empty() {
+                cond_span.lo()
+            } else {
                 if self.matcher.is_empty() {
-                    p.span.lo()
+                    self.pats[0].span.lo()
                 } else {
                     context
                         .snippet_provider
                         .span_before(self.span, self.matcher.trim())
                 }
-            }),
+            },
         );
 
         let between_kwd_cond_comment = extract_comment(between_kwd_cond, context, shape);
@@ -1102,7 +1139,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
                 ast::ExprKind::IfLet(ref pat, ref cond, ref if_block, ref next_else_block) => {
                     ControlFlow::new_if(
                         cond,
-                        Some(pat),
+                        ptr_vec_to_ref_vec(pat),
                         if_block,
                         next_else_block.as_ref().map(|e| &**e),
                         false,
@@ -1113,7 +1150,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
                 ast::ExprKind::If(ref cond, ref if_block, ref next_else_block) => {
                     ControlFlow::new_if(
                         cond,
-                        None,
+                        vec![],
                         if_block,
                         next_else_block.as_ref().map(|e| &**e),
                         false,
@@ -1231,23 +1268,43 @@ pub fn is_unsafe_block(block: &ast::Block) -> bool {
     }
 }
 
-// A simple wrapper type against ast::Arm. Used inside write_list().
+/// A simple wrapper type against ast::Arm. Used inside write_list().
 struct ArmWrapper<'a> {
     pub arm: &'a ast::Arm,
-    // True if the arm is the last one in match expression. Used to decide on whether we should add
-    // trailing comma to the match arm when `config.trailing_comma() == Never`.
+    /// True if the arm is the last one in match expression. Used to decide on whether we should add
+    /// trailing comma to the match arm when `config.trailing_comma() == Never`.
     pub is_last: bool,
+    /// Holds a byte position of `|` at the beginning of the arm pattern, if available.
+    pub beginning_vert: Option<BytePos>,
 }
 
 impl<'a> ArmWrapper<'a> {
-    pub fn new(arm: &'a ast::Arm, is_last: bool) -> ArmWrapper<'a> {
-        ArmWrapper { arm, is_last }
+    pub fn new(
+        arm: &'a ast::Arm,
+        is_last: bool,
+        beginning_vert: Option<BytePos>,
+    ) -> ArmWrapper<'a> {
+        ArmWrapper {
+            arm,
+            is_last,
+            beginning_vert,
+        }
+    }
+}
+
+impl<'a> Spanned for ArmWrapper<'a> {
+    fn span(&self) -> Span {
+        if let Some(lo) = self.beginning_vert {
+            mk_sp(lo, self.arm.span().hi())
+        } else {
+            self.arm.span()
+        }
     }
 }
 
 impl<'a> Rewrite for ArmWrapper<'a> {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        rewrite_match_arm(context, self.arm, shape, self.is_last)
+        rewrite_match_arm(context, self.arm, shape, self.is_last, self.beginning_vert)
     }
 }
 
@@ -1344,6 +1401,23 @@ fn arm_comma(config: &Config, body: &ast::Expr, is_last: bool) -> &'static str {
     }
 }
 
+/// Collect a byte position of the beginning `|` for each arm, if available.
+fn collect_beginning_verts(
+    context: &RewriteContext,
+    arms: &[ast::Arm],
+    span: Span,
+) -> Vec<Option<BytePos>> {
+    let mut beginning_verts = Vec::with_capacity(arms.len());
+    let mut lo = context.snippet_provider.span_after(span, "{");
+    for arm in arms {
+        let hi = arm.pats[0].span.lo();
+        let missing_span = mk_sp(lo, hi);
+        beginning_verts.push(context.snippet_provider.opt_span_before(missing_span, "|"));
+        lo = arm.span().hi();
+    }
+    beginning_verts
+}
+
 fn rewrite_match_arms(
     context: &RewriteContext,
     arms: &[ast::Arm],
@@ -1359,15 +1433,17 @@ fn rewrite_match_arms(
     let is_last_iter = repeat(false)
         .take(arm_len.checked_sub(1).unwrap_or(0))
         .chain(repeat(true));
+    let beginning_verts = collect_beginning_verts(context, arms, span);
     let items = itemize_list(
         context.snippet_provider,
         arms.iter()
             .zip(is_last_iter)
-            .map(|(arm, is_last)| ArmWrapper::new(arm, is_last)),
+            .zip(beginning_verts.into_iter())
+            .map(|((arm, is_last), beginning_vert)| ArmWrapper::new(arm, is_last, beginning_vert)),
         "}",
         "|",
-        |arm| arm.arm.span().lo(),
-        |arm| arm.arm.span().hi(),
+        |arm| arm.span().lo(),
+        |arm| arm.span().hi(),
         |arm| arm.rewrite(context, arm_shape),
         open_brace_pos,
         span.hi(),
@@ -1394,6 +1470,7 @@ fn rewrite_match_arm(
     arm: &ast::Arm,
     shape: Shape,
     is_last: bool,
+    beginning_vert: Option<BytePos>,
 ) -> Option<String> {
     let (missing_span, attrs_str) = if !arm.attrs.is_empty() {
         if contains_skip(&arm.attrs) {
@@ -1415,9 +1492,9 @@ fn rewrite_match_arm(
     };
     let pats_str = rewrite_match_pattern(
         context,
-        &arm.pats,
+        &ptr_vec_to_ref_vec(&arm.pats),
         &arm.guard,
-        arm.beginning_vert.is_some(),
+        beginning_vert.is_some(),
         shape,
     ).and_then(|pats_str| {
         combine_strs_with_missing_comments(
@@ -1467,13 +1544,15 @@ fn is_short_pattern_inner(pat: &ast::Pat) -> bool {
         ast::PatKind::TupleStruct(ref path, ref subpats, _) => {
             path.segments.len() <= 1 && subpats.len() <= 1
         }
-        ast::PatKind::Box(ref p) | ast::PatKind::Ref(ref p, _) => is_short_pattern_inner(&*p),
+        ast::PatKind::Box(ref p) | ast::PatKind::Ref(ref p, _) | ast::PatKind::Paren(ref p) => {
+            is_short_pattern_inner(&*p)
+        }
     }
 }
 
 fn rewrite_match_pattern(
     context: &RewriteContext,
-    pats: &[ptr::P<ast::Pat>],
+    pats: &[&ast::Pat],
     guard: &Option<ptr::P<ast::Expr>>,
     has_beginning_vert: bool,
     shape: Shape,
@@ -1484,36 +1563,7 @@ fn rewrite_match_pattern(
     let pat_shape = shape
         .sub_width(5)?
         .offset_left(if has_beginning_vert { 2 } else { 0 })?;
-
-    let pat_strs = pats.iter()
-        .map(|p| p.rewrite(context, pat_shape))
-        .collect::<Option<Vec<_>>>()?;
-
-    let use_mixed_layout = pats.iter()
-        .zip(pat_strs.iter())
-        .all(|(pat, pat_str)| is_short_pattern(pat, pat_str));
-    let items: Vec<_> = pat_strs.into_iter().map(ListItem::from_str).collect();
-    let tactic = if use_mixed_layout {
-        DefinitiveListTactic::Mixed
-    } else {
-        definitive_tactic(
-            &items,
-            ListTactic::HorizontalVertical,
-            Separator::VerticalBar,
-            pat_shape.width,
-        )
-    };
-    let fmt = ListFormatting {
-        tactic,
-        separator: " |",
-        trailing_separator: SeparatorTactic::Never,
-        separator_place: context.config.binop_separator(),
-        shape: pat_shape,
-        ends_with_newline: false,
-        preserve_newline: false,
-        config: context.config,
-    };
-    let pats_str = write_list(&items, &fmt)?;
+    let pats_str = rewrite_multiple_patterns(context, pats, pat_shape)?;
     let beginning_vert = if has_beginning_vert { "| " } else { "" };
 
     // Guard
@@ -1709,48 +1759,40 @@ fn rewrite_guard(
     }
 }
 
-fn rewrite_pat_expr(
+fn rewrite_multiple_patterns(
     context: &RewriteContext,
-    pat: Option<&ast::Pat>,
-    expr: &ast::Expr,
-    matcher: &str,
-    // Connecting piece between pattern and expression,
-    // *without* trailing space.
-    connector: &str,
-    keyword: &str,
+    pats: &[&ast::Pat],
     shape: Shape,
-    offset: usize,
 ) -> Option<String> {
-    debug!("rewrite_pat_expr {:?} {:?} {:?}", shape, pat, expr);
-    let cond_shape = shape.offset_left(offset)?;
-    if let Some(pat) = pat {
-        let matcher = if matcher.is_empty() {
-            matcher.to_owned()
-        } else {
-            format!("{} ", matcher)
-        };
-        let pat_shape = cond_shape
-            .offset_left(matcher.len())?
-            .sub_width(connector.len())?;
-        let pat_string = pat.rewrite(context, pat_shape)?;
-        let result = format!("{}{}{}", matcher, pat_string, connector);
-        return rewrite_assign_rhs(context, result, expr, cond_shape);
-    }
+    let pat_strs = pats.iter()
+        .map(|p| p.rewrite(context, shape))
+        .collect::<Option<Vec<_>>>()?;
 
-    let expr_rw = expr.rewrite(context, cond_shape);
-    // The expression may (partially) fit on the current line.
-    // We do not allow splitting between `if` and condition.
-    if keyword == "if" || expr_rw.is_some() {
-        return expr_rw;
-    }
-
-    // The expression won't fit on the current line, jump to next.
-    let nested_shape = shape
-        .block_indent(context.config.tab_spaces())
-        .with_max_width(context.config);
-    let nested_indent_str = nested_shape.indent.to_string_with_newline(context.config);
-    expr.rewrite(context, nested_shape)
-        .map(|expr_rw| format!("{}{}", nested_indent_str, expr_rw))
+    let use_mixed_layout = pats.iter()
+        .zip(pat_strs.iter())
+        .all(|(pat, pat_str)| is_short_pattern(pat, pat_str));
+    let items: Vec<_> = pat_strs.into_iter().map(ListItem::from_str).collect();
+    let tactic = if use_mixed_layout {
+        DefinitiveListTactic::Mixed
+    } else {
+        definitive_tactic(
+            &items,
+            ListTactic::HorizontalVertical,
+            Separator::VerticalBar,
+            shape.width,
+        )
+    };
+    let fmt = ListFormatting {
+        tactic,
+        separator: " |",
+        trailing_separator: SeparatorTactic::Never,
+        separator_place: context.config.binop_separator(),
+        shape: shape,
+        ends_with_newline: false,
+        preserve_newline: false,
+        config: context.config,
+    };
+    write_list(&items, &fmt)
 }
 
 fn can_extend_match_arm_body(body: &ast::Expr) -> bool {
