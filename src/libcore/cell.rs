@@ -1167,7 +1167,7 @@ impl<'a, T: ?Sized + fmt::Display> fmt::Display for RefMut<'a, T> {
 /// feature to work around this restriction. All other types that allow internal mutability, such as
 /// `Cell<T>` and `RefCell<T>` use `UnsafeCell` to wrap their internal data.
 ///
-/// The `UnsafeCell` API itself is technically very simple: it gives you a raw pointer `*mut T` to 
+/// The `UnsafeCell` API itself is technically very simple: it gives you a raw pointer `*mut T` to
 /// its contents. It is up to _you_ as the abstraction designer to use that raw pointer correctly.
 ///
 /// The precise Rust aliasing rules are somewhat in flux, but the main points are not contentious:
@@ -1182,7 +1182,7 @@ impl<'a, T: ?Sized + fmt::Display> fmt::Display for RefMut<'a, T> {
 /// that reference expires. 
 ///
 /// - At all times, you must avoid data races, meaning that if multiple threads have access to
-/// the same `UnsafeCell`, then any writes must have a proper happens-before relation to all other 
+/// the same `UnsafeCell`, then any writes must have a proper happens-before relation to all other
 /// accesses (or use atomics).
 ///
 /// To assist with proper design, the following scenarios are explicitly declared legal
