@@ -63,8 +63,8 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 }
 
 /// Compare packed strings with implicit lengths in `a` and `b` using the
-/// control in `imm8`, and return the generated index. Similar to
-/// [`_mm_cmpestri`] with the excception that [`_mm_cmpestri`] requires the
+/// control in `imm8` and return the generated index. Similar to
+/// [`_mm_cmpestri`] with the exception that [`_mm_cmpestri`] requires the
 /// lengths of `a` and `b` to be explicitly specified.
 ///
 /// # Control modes
@@ -404,8 +404,8 @@ pub unsafe fn _mm_cmpestrm(
 }
 
 /// Compare packed strings `a` and `b` with lengths `la` and `lb` using the
-/// control in `imm8`, and return the generated index. Similar to
-/// [`_mm_cmpistri`] with the excception that [`_mm_cmpistri`] implicityly
+/// control in `imm8` and return the generated index. Similar to
+/// [`_mm_cmpistri`] with the exception that [`_mm_cmpistri`] implicitly
 /// determines the length of `a` and `b`.
 ///
 /// # Control modes
