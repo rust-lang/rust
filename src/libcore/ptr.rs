@@ -2420,11 +2420,6 @@ impl<'a, T: ?Sized> From<NonNull<T>> for Unique<T> {
     }
 }
 
-/// Previous name of `NonNull`.
-#[rustc_deprecated(since = "1.25.0", reason = "renamed to `NonNull`")]
-#[unstable(feature = "shared", issue = "27730")]
-pub type Shared<T> = NonNull<T>;
-
 /// `*mut T` but non-zero and covariant.
 ///
 /// This is often the correct thing to use when building data structures using
