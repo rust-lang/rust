@@ -20,7 +20,7 @@ use chains::rewrite_chain;
 use closures;
 use codemap::{LineRangeUtils, SpanUtils};
 use comment::{combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
-              rewrite_comment, rewrite_missing_comment, FindUncommented};
+              rewrite_comment, rewrite_missing_comment, CharClasses, FindUncommented};
 use config::{Config, ControlBraceStyle, IndentStyle};
 use lists::{definitive_tactic, itemize_list, shape_for_tactic, struct_lit_formatting,
             struct_lit_shape, struct_lit_tactic, write_list, ListFormatting, ListItem, Separator};
@@ -2411,20 +2411,20 @@ pub fn wrap_args_with_parens(
 /// trailing comma. This function is used when rewriting macro, as adding or removing a trailing
 /// comma from macro can potentially break the code.
 fn span_ends_with_comma(context: &RewriteContext, span: Span) -> bool {
-    let mut encountered_closing_paren = false;
-    for c in context.snippet(span).chars().rev() {
+    let mut result: bool = Default::default();
+    let mut prev_char: char = Default::default();
+
+    for (kind, c) in CharClasses::new(context.snippet(span).chars()) {
         match c {
-            ',' => return true,
-            ')' => if encountered_closing_paren {
-                return false;
-            } else {
-                encountered_closing_paren = true;
-            },
-            _ if c.is_whitespace() => continue,
-            _ => return false,
+            _ if kind.is_comment() || c.is_whitespace() => continue,
+            ')' | '}' => result = result && prev_char != c,
+            ',' => result = true,
+            _ => result = false,
         }
+        prev_char = c;
     }
-    false
+
+    result
 }
 
 fn rewrite_paren(context: &RewriteContext, subexpr: &ast::Expr, shape: Shape) -> Option<String> {
@@ -2608,7 +2608,20 @@ fn rewrite_struct_lit<'a>(
 
         let tactic = struct_lit_tactic(h_shape, context, &item_vec);
         let nested_shape = shape_for_tactic(tactic, h_shape, v_shape);
-        let fmt = struct_lit_formatting(nested_shape, tactic, context, base.is_some());
+
+        let ends_with_comma = span_ends_with_comma(context, span);
+        let force_no_trailing_comma = if context.inside_macro && !ends_with_comma {
+            true
+        } else {
+            false
+        };
+
+        let fmt = struct_lit_formatting(
+            nested_shape,
+            tactic,
+            context,
+            force_no_trailing_comma || base.is_some(),
+        );
 
         write_list(&item_vec, &fmt)?
     };
