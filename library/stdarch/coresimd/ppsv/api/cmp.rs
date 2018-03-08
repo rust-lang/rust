@@ -84,7 +84,6 @@ macro_rules! impl_bool_cmp {
     }
 }
 
-
 #[cfg(test)]
 #[macro_export]
 macro_rules! test_cmp {

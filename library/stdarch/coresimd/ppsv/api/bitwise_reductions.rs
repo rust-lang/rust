@@ -44,7 +44,6 @@ macro_rules! impl_bool_bitwise_reductions {
     }
 }
 
-
 #[cfg(test)]
 macro_rules! test_bitwise_reductions {
     ($id:ident, $true:expr) => {

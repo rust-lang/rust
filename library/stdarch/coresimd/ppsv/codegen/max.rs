@@ -1,5 +1,5 @@
 //! Code generation for the max reduction.
-use ::coresimd::simd::*;
+use coresimd::simd::*;
 
 /// LLVM intrinsics used in the max reduction
 #[allow(improper_ctypes)]
@@ -174,7 +174,7 @@ red_max!(f32x16, f32, reduce_fmax_f32x16);
 #[cfg(test)]
 mod tests {
     use super::ReduceMax;
-    use ::coresimd::simd::*;
+    use coresimd::simd::*;
 
     // note: these are tested in the portable vector API tests
 

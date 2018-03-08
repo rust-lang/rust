@@ -1,5 +1,5 @@
 //! Code generation for the product reduction.
-use ::coresimd::simd::*;
+use coresimd::simd::*;
 
 /// LLVM intrinsics used in the product reduction
 #[allow(improper_ctypes)]
@@ -188,7 +188,7 @@ red_fmul!(f32x16, f32, reduce_fmul_f32x16);
 #[cfg(test)]
 mod tests {
     use super::ReduceMul;
-    use ::coresimd::simd::*;
+    use coresimd::simd::*;
 
     // note: these are tested in the portable vector API tests
 

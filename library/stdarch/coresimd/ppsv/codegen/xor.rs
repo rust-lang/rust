@@ -1,5 +1,5 @@
 //! Code generation for the xor reduction.
-use ::coresimd::simd::*;
+use coresimd::simd::*;
 
 /// LLVM intrinsics used in the xor reduction
 #[allow(improper_ctypes)]
@@ -156,7 +156,7 @@ red_xor!(b8x64, i8, reduce_xor_i8x64);
 #[cfg(test)]
 mod tests {
     use super::ReduceXor;
-    use ::coresimd::simd::*;
+    use coresimd::simd::*;
 
     // note: these are tested in the portable vector API tests
 

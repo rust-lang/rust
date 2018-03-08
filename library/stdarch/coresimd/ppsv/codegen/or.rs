@@ -1,5 +1,5 @@
 //! Code generation for the or reduction.
-use ::coresimd::simd::*;
+use coresimd::simd::*;
 
 /// LLVM intrinsics used in the or reduction
 #[allow(improper_ctypes)]
@@ -156,7 +156,7 @@ red_or!(b8x64, i8, reduce_or_i8x64);
 #[cfg(test)]
 mod tests {
     use super::ReduceOr;
-    use ::coresimd::simd::*;
+    use coresimd::simd::*;
 
     // note: these are tested in the portable vector API tests
 

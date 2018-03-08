@@ -59,14 +59,8 @@ fn x86_all() {
     println!("avx512bw {:?}", is_x86_feature_detected!("avx512bw"));
     println!("avx512dq {:?}", is_x86_feature_detected!("avx512dq"));
     println!("avx512vl {:?}", is_x86_feature_detected!("avx512vl"));
-    println!(
-        "avx512_ifma {:?}",
-        is_x86_feature_detected!("avx512ifma")
-    );
-    println!(
-        "avx512_vbmi {:?}",
-        is_x86_feature_detected!("avx512vbmi")
-    );
+    println!("avx512_ifma {:?}", is_x86_feature_detected!("avx512ifma"));
+    println!("avx512_vbmi {:?}", is_x86_feature_detected!("avx512vbmi"));
     println!(
         "avx512_vpopcntdq {:?}",
         is_x86_feature_detected!("avx512vpopcntdq")

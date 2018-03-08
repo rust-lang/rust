@@ -104,4 +104,3 @@ guarding it behind a cfg(target_arch) as follows:
 "#)
     };
 }
-

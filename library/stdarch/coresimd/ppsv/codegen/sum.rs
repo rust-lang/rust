@@ -1,5 +1,5 @@
 //! Code generation for the sum reduction.
-use ::coresimd::simd::*;
+use coresimd::simd::*;
 
 /// LLVM intrinsics used in the sum reduction
 #[allow(improper_ctypes)]
@@ -188,7 +188,7 @@ red_fadd!(f32x16, f32, reduce_fadd_f32x16);
 #[cfg(test)]
 mod tests {
     use super::ReduceAdd;
-    use ::coresimd::simd::*;
+    use coresimd::simd::*;
 
     // note: these are tested in the portable vector API tests
 

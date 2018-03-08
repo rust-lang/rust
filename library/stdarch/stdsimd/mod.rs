@@ -49,8 +49,8 @@
 /// to call an intrinsic. Let's consider, for example, the `_mm256_add_epi64`
 /// intrinsics on the `x86` and `x86_64` architectures. This function requires
 /// the AVX2 feature as [documented by Intel][intel-dox] so to correctly call
-/// this function we need to (a) guarantee we only call it on `x86`/`x86_64` and
-/// (b) ensure that the CPU feature is available
+/// this function we need to (a) guarantee we only call it on `x86`/`x86_64`
+/// and (b) ensure that the CPU feature is available
 ///
 /// [intel-dox]: https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_add_epi64&expand=100
 ///

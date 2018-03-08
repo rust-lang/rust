@@ -2,7 +2,7 @@
 
 simd_api_imports!();
 
-use ::coresimd::simd::{b8x16, b8x8, b8x4};
+use coresimd::simd::{b8x16, b8x4, b8x8};
 
 simd_i_ty! {
     i8x32: 32, i8, b8x32, i8x32_tests |

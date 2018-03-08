@@ -1,5 +1,5 @@
 //! Code generation for the and reduction.
-use ::coresimd::simd::*;
+use coresimd::simd::*;
 
 /// LLVM intrinsics used in the and reduction
 #[allow(improper_ctypes)]
@@ -156,7 +156,7 @@ red_and!(b8x64, i8, reduce_and_i8x64);
 #[cfg(test)]
 mod tests {
     use super::ReduceAnd;
-    use ::coresimd::simd::*;
+    use coresimd::simd::*;
 
     // note: these are tested in the portable vector API tests
 

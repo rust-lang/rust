@@ -1,7 +1,7 @@
 //! 32-bit wide portable packed vector types.
 
 simd_api_imports!();
-use ::coresimd::simd::{b8x2};
+use coresimd::simd::b8x2;
 
 simd_i_ty! {
     i16x2: 2, i16, b8x2, i16x2_tests |
