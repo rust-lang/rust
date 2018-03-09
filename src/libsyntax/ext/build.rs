@@ -329,9 +329,13 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             None
         };
         segments.push(ast::PathSegment { identifier: last_identifier, span, parameters });
-        let path = ast::Path { span, segments };
-
-        if global { path.default_to_global() } else { path }
+        let mut path = ast::Path { span, segments };
+        if global {
+            if let Some(seg) = path.make_root() {
+                path.segments.insert(0, seg);
+            }
+        }
+        path
     }
 
     /// Constructs a qualified path.

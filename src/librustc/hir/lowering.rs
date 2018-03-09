@@ -1355,17 +1355,11 @@ impl<'a> LoweringContext<'a> {
                         id: NodeId,
                         p: &Path,
                         name: Option<Name>,
-                        param_mode: ParamMode,
-                        defaults_to_global: bool)
+                        param_mode: ParamMode)
                         -> hir::Path {
-        let mut segments = p.segments.iter();
-        if defaults_to_global && p.is_global() {
-            segments.next();
-        }
-
         hir::Path {
             def: self.expect_full_def(id),
-            segments: segments.map(|segment| {
+            segments: p.segments.iter().map(|segment| {
                 self.lower_path_segment(p.span, segment, param_mode, 0,
                                         ParenthesizedGenericArgs::Err,
                                         ImplTraitContext::Disallowed)
@@ -1378,10 +1372,9 @@ impl<'a> LoweringContext<'a> {
     fn lower_path(&mut self,
                   id: NodeId,
                   p: &Path,
-                  param_mode: ParamMode,
-                  defaults_to_global: bool)
+                  param_mode: ParamMode)
                   -> hir::Path {
-        self.lower_path_extra(id, p, None, param_mode, defaults_to_global)
+        self.lower_path_extra(id, p, None, param_mode)
     }
 
     fn lower_path_segment(&mut self,
@@ -2069,7 +2062,7 @@ impl<'a> LoweringContext<'a> {
                     }
                 }
 
-                let path = P(self.lower_path(id, &path, ParamMode::Explicit, true));
+                let path = P(self.lower_path(id, &path, ParamMode::Explicit));
                 hir::ItemUse(path, hir::UseKind::Single)
             }
             UseTreeKind::Glob => {
@@ -2080,7 +2073,7 @@ impl<'a> LoweringContext<'a> {
                         .cloned()
                         .collect(),
                     span: path.span,
-                }, ParamMode::Explicit, true));
+                }, ParamMode::Explicit));
                 hir::ItemUse(path, hir::UseKind::Glob)
             }
             UseTreeKind::Nested(ref trees) => {
@@ -2136,7 +2129,7 @@ impl<'a> LoweringContext<'a> {
                 // Privatize the degenerate import base, used only to check
                 // the stability of `use a::{};`, to avoid it showing up as
                 // a re-export by accident when `pub`, e.g. in documentation.
-                let path = P(self.lower_path(id, &prefix, ParamMode::Explicit, true));
+                let path = P(self.lower_path(id, &prefix, ParamMode::Explicit));
                 *vis = hir::Inherited;
                 hir::ItemUse(path, hir::UseKind::ListStem)
             }
@@ -3379,7 +3372,7 @@ impl<'a> LoweringContext<'a> {
             VisibilityKind::Crate(..) => hir::Visibility::Crate,
             VisibilityKind::Restricted { ref path, id, .. } => {
                 hir::Visibility::Restricted {
-                    path: P(self.lower_path(id, path, ParamMode::Explicit, true)),
+                    path: P(self.lower_path(id, path, ParamMode::Explicit)),
                     id: if let Some(owner) = explicit_owner {
                         self.lower_node_id_with_owner(id, owner).node_id
                     } else {

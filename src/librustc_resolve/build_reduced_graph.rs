@@ -245,9 +245,9 @@ impl<'a> Resolver<'a> {
 
         match item.node {
             ItemKind::Use(ref use_tree) => {
-                // Just an empty prefix to start out
+                // Imports are resolved as global by default, add starting root segment.
                 let prefix = ast::Path {
-                    segments: vec![],
+                    segments: use_tree.prefix.make_root().into_iter().collect(),
                     span: use_tree.span,
                 };
 

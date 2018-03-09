@@ -2164,8 +2164,9 @@ impl<'a> Resolver<'a> {
             }
 
             ItemKind::Use(ref use_tree) => {
+                // Imports are resolved as global by default, add starting root segment.
                 let path = Path {
-                    segments: vec![],
+                    segments: use_tree.prefix.make_root().into_iter().collect(),
                     span: use_tree.span,
                 };
                 self.resolve_use_tree(item.id, use_tree, &path);
@@ -2300,7 +2301,6 @@ impl<'a> Resolver<'a> {
                 None,
                 &path,
                 trait_ref.path.span,
-                trait_ref.path.segments.last().unwrap().span,
                 PathSource::Trait(AliasPossibility::No)
             ).base_def();
             if def != Def::Err {
@@ -2731,8 +2731,7 @@ impl<'a> Resolver<'a> {
         let segments = &path.segments.iter()
             .map(|seg| respan(seg.span, seg.identifier))
             .collect::<Vec<_>>();
-        let ident_span = path.segments.last().map_or(path.span, |seg| seg.span);
-        self.smart_resolve_path_fragment(id, qself, segments, path.span, ident_span, source)
+        self.smart_resolve_path_fragment(id, qself, segments, path.span, source)
     }
 
     fn smart_resolve_path_fragment(&mut self,
@@ -2740,9 +2739,9 @@ impl<'a> Resolver<'a> {
                                    qself: Option<&QSelf>,
                                    path: &[SpannedIdent],
                                    span: Span,
-                                   ident_span: Span,
                                    source: PathSource)
                                    -> PathResolution {
+        let ident_span = path.last().map_or(span, |ident| ident.span);
         let ns = source.namespace();
         let is_expected = &|def| source.is_expected(def);
         let is_enum_variant = &|def| if let Def::Variant(..) = def { true } else { false };
@@ -3090,7 +3089,7 @@ impl<'a> Resolver<'a> {
             // Make sure `A::B` in `<T as A>::B::C` is a trait item.
             let ns = if qself.position + 1 == path.len() { ns } else { TypeNS };
             let res = self.smart_resolve_path_fragment(id, None, &path[..qself.position + 1],
-                                                       span, span, PathSource::TraitItem(ns));
+                                                       span, PathSource::TraitItem(ns));
             return Some(PathResolution::with_unresolved_segments(
                 res.base_def(), res.unresolved_segments() + path.len() - qself.position - 1
             ));
@@ -3941,8 +3940,12 @@ impl<'a> Resolver<'a> {
                 ty::Visibility::Restricted(self.current_module.normal_ancestor_id)
             }
             ast::VisibilityKind::Restricted { ref path, id, .. } => {
-                let def = self.smart_resolve_path(id, None, path,
-                                                  PathSource::Visibility).base_def();
+                // Visibilities are resolved as global by default, add starting root segment.
+                let segments = path.make_root().iter().chain(path.segments.iter())
+                    .map(|seg| respan(seg.span, seg.identifier))
+                    .collect::<Vec<_>>();
+                let def = self.smart_resolve_path_fragment(id, None, &segments, path.span,
+                                                           PathSource::Visibility).base_def();
                 if def == Def::Err {
                     ty::Visibility::Public
                 } else {

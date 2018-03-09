@@ -362,6 +362,7 @@ impl Token {
                         id.name == keywords::SelfType.name() ||
                         id.name == keywords::Extern.name() ||
                         id.name == keywords::Crate.name() ||
+                        id.name == keywords::CrateRoot.name() ||
                         id.name == keywords::DollarCrate.name(),
             None => false,
         }

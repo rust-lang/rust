@@ -5869,7 +5869,7 @@ impl<'a> Parser<'a> {
                 // `pub(in path)`
                 self.bump(); // `(`
                 self.bump(); // `in`
-                let path = self.parse_path(PathStyle::Mod)?.default_to_global(); // `path`
+                let path = self.parse_path(PathStyle::Mod)?; // `path`
                 self.expect(&token::CloseDelim(token::Paren))?; // `)`
                 let vis = respan(lo.to(self.prev_span), VisibilityKind::Restricted {
                     path: P(path),
@@ -5882,7 +5882,7 @@ impl<'a> Parser<'a> {
             {
                 // `pub(self)` or `pub(super)`
                 self.bump(); // `(`
-                let path = self.parse_path(PathStyle::Mod)?.default_to_global(); // `super`/`self`
+                let path = self.parse_path(PathStyle::Mod)?; // `super`/`self`
                 self.expect(&token::CloseDelim(token::Paren))?; // `)`
                 let vis = respan(lo.to(self.prev_span), VisibilityKind::Restricted {
                     path: P(path),
@@ -6480,7 +6480,7 @@ impl<'a> Parser<'a> {
 
         if self.eat_keyword(keywords::Use) {
             // USE ITEM
-            let item_ = ItemKind::Use(P(self.parse_use_tree(false)?));
+            let item_ = ItemKind::Use(P(self.parse_use_tree()?));
             self.expect(&token::Semi)?;
 
             let prev_span = self.prev_span;
@@ -6984,7 +6984,7 @@ impl<'a> Parser<'a> {
     ///            PATH `::` `*` |
     ///            PATH `::` `{` USE_TREE_LIST `}` |
     ///            PATH [`as` IDENT]
-    fn parse_use_tree(&mut self, nested: bool) -> PResult<'a, UseTree> {
+    fn parse_use_tree(&mut self) -> PResult<'a, UseTree> {
         let lo = self.span;
 
         let mut prefix = ast::Path {
@@ -6998,8 +6998,6 @@ impl<'a> Parser<'a> {
             // Remove the first `::`
             if self.eat(&token::ModSep) {
                 prefix.segments.push(PathSegment::crate_root(self.prev_span));
-            } else if !nested {
-                prefix.segments.push(PathSegment::crate_root(self.span));
             }
 
             if self.eat(&token::BinOp(token::Star)) {
@@ -7014,9 +7012,6 @@ impl<'a> Parser<'a> {
         } else {
             // `use path::...;`
             let mut parsed = self.parse_path(PathStyle::Mod)?;
-            if !nested {
-                parsed = parsed.default_to_global();
-            }
 
             prefix.segments.append(&mut parsed.segments);
             prefix.span = prefix.span.to(parsed.span);
@@ -7051,7 +7046,7 @@ impl<'a> Parser<'a> {
         self.parse_unspanned_seq(&token::OpenDelim(token::Brace),
                                  &token::CloseDelim(token::Brace),
                                  SeqSep::trailing_allowed(token::Comma), |this| {
-            Ok((this.parse_use_tree(true)?, ast::DUMMY_NODE_ID))
+            Ok((this.parse_use_tree()?, ast::DUMMY_NODE_ID))
         })
     }
 

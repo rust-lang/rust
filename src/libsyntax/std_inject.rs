@@ -79,7 +79,7 @@ pub fn maybe_inject_crates_ref(mut krate: ast::Crate, alt_std_name: Option<&str>
         vis: respan(span.empty(), ast::VisibilityKind::Inherited),
         node: ast::ItemKind::Use(P(ast::UseTree {
             prefix: ast::Path {
-                segments: ["{{root}}", name, "prelude", "v1"].into_iter().map(|name| {
+                segments: [name, "prelude", "v1"].into_iter().map(|name| {
                     ast::PathSegment::from_ident(ast::Ident::from_str(name), DUMMY_SP)
                 }).collect(),
                 span,
