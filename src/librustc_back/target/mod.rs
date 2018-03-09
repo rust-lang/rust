@@ -514,7 +514,7 @@ impl Default for TargetOptions {
             has_rpath: false,
             no_default_libraries: true,
             position_independent_executables: false,
-            relro_level: RelroLevel::Off,
+            relro_level: RelroLevel::None,
             pre_link_objects_exe: Vec::new(),
             pre_link_objects_dll: Vec::new(),
             post_link_objects: Vec::new(),
