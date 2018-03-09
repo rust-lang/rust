@@ -12,6 +12,7 @@
 
 use std::{self, iter, borrow::Cow};
 
+use itertools::{multipeek, MultiPeek};
 use syntax::codemap::Span;
 
 use config::Config;
@@ -684,7 +685,7 @@ where
     T: Iterator,
     T::Item: RichChar,
 {
-    base: iter::Peekable<T>,
+    base: MultiPeek<T>,
     status: CharClassesStatus,
 }
 
@@ -776,7 +777,7 @@ where
 {
     pub fn new(base: T) -> CharClasses<T> {
         CharClasses {
-            base: base.peekable(),
+            base: multipeek(base),
             status: CharClassesStatus::Normal,
         }
     }
@@ -820,7 +821,21 @@ where
                     char_kind = FullCodeCharKind::InString;
                     CharClassesStatus::LitString
                 }
-                '\'' => CharClassesStatus::LitChar,
+                '\'' => {
+                    // HACK: Work around mut borrow.
+                    match self.base.peek() {
+                        Some(next) if next.get_char() == '\\' => {
+                            self.status = CharClassesStatus::LitChar;
+                            return Some((char_kind, item));
+                        }
+                        _ => (),
+                    }
+
+                    match self.base.peek() {
+                        Some(next) if next.get_char() == '\'' => CharClassesStatus::LitChar,
+                        _ => CharClassesStatus::Normal,
+                    }
+                }
                 '/' => match self.base.peek() {
                     Some(next) if next.get_char() == '*' => {
                         self.status = CharClassesStatus::BlockCommentOpening(1);

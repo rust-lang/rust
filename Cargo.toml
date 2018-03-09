@@ -35,6 +35,7 @@ cargo-fmt = []
 rustfmt-format-diff = []
 
 [dependencies]
+itertools = "0.7"
 toml = "0.4"
 serde = "1.0"
 serde_derive = "1.0"
