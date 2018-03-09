@@ -33,6 +33,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::io::{self, stdout, BufRead, Write};
 use std::iter::repeat;
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::Duration;
@@ -537,41 +538,46 @@ fn parse_input<'sess>(
     input: Input,
     parse_session: &'sess ParseSess,
     config: &Config,
-) -> Result<ast::Crate, Option<DiagnosticBuilder<'sess>>> {
-    let result = match input {
-        Input::File(file) => {
-            let mut parser = parse::new_parser_from_file(parse_session, &file);
-            parser.cfg_mods = false;
-            if config.skip_children() {
-                parser.recurse_into_file_modules = false;
-            }
-            parser.parse_crate_mod()
-        }
-        Input::Text(text) => {
-            let mut parser = parse::new_parser_from_source_str(
-                parse_session,
-                FileName::Custom("stdin".to_owned()),
-                text,
-            );
-            parser.cfg_mods = false;
-            if config.skip_children() {
-                parser.recurse_into_file_modules = false;
-            }
-            parser.parse_crate_mod()
-        }
+) -> Result<ast::Crate, ParseError<'sess>> {
+    let mut parser = match input {
+        Input::File(file) => parse::new_parser_from_file(parse_session, &file),
+        Input::Text(text) => parse::new_parser_from_source_str(
+            parse_session,
+            FileName::Custom("stdin".to_owned()),
+            text,
+        ),
     };
 
+    parser.cfg_mods = false;
+    if config.skip_children() {
+        parser.recurse_into_file_modules = false;
+    }
+
+    let mut parser = AssertUnwindSafe(parser);
+    let result = catch_unwind(move || parser.0.parse_crate_mod());
+
     match result {
-        Ok(c) => {
+        Ok(Ok(c)) => {
             if parse_session.span_diagnostic.has_errors() {
                 // Bail out if the parser recovered from an error.
-                Err(None)
+                Err(ParseError::Recovered)
             } else {
                 Ok(c)
             }
         }
-        Err(e) => Err(Some(e)),
+        Ok(Err(e)) => Err(ParseError::Error(e)),
+        Err(_) => Err(ParseError::Panic),
     }
+}
+
+/// All the ways that parsing can fail.
+enum ParseError<'sess> {
+    /// There was an error, but the parser recovered.
+    Recovered,
+    /// There was an error (supplied) and parsing failed.
+    Error(DiagnosticBuilder<'sess>),
+    /// The parser panicked.
+    Panic,
 }
 
 /// Format the given snippet. The snippet is expected to be *complete* code.
@@ -682,9 +688,18 @@ pub fn format_input<T: Write>(
 
     let krate = match parse_input(input, &parse_session, config) {
         Ok(krate) => krate,
-        Err(diagnostic) => {
-            if let Some(mut diagnostic) = diagnostic {
-                diagnostic.emit();
+        Err(err) => {
+            match err {
+                ParseError::Error(mut diagnostic) => diagnostic.emit(),
+                ParseError::Panic => {
+                    // Note that if you see this message and want more information,
+                    // then go to `parse_input` and run the parse function without
+                    // `catch_unwind` so rustfmt panics and you can get a backtrace.
+                    should_emit_verbose(&main_file, config, || {
+                        println!("The Rust parser panicked")
+                    });
+                }
+                ParseError::Recovered => {}
             }
             summary.add_parsing_error();
             return Ok((summary, FileMap::new(), FormatReport::new()));
@@ -692,10 +707,6 @@ pub fn format_input<T: Write>(
     };
 
     summary.mark_parse_time();
-
-    if parse_session.span_diagnostic.has_errors() {
-        summary.add_parsing_error();
-    }
 
     // Suppress error output after parsing.
     let silent_emitter = Box::new(EmitterWriter::new(
