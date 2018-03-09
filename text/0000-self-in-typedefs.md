@@ -609,6 +609,32 @@ that it refers to `_Bar` and not `Foo`. To be consistent with the desugared
 form, the sugared variant should have the same meaning and so `Self` refers
 to `Bar` there.
 
+Let's now consider an alternative possible syntax:
+
+```rust
+impl Trait for Foo {
+    type Bar = struct /* there is no ident here */ {
+        outer: Option<Box<Self>>,
+        inner: Option<Box<Self::Item>>,
+    }
+}
+```
+
+Notice here in particular that there is no identifier after the keyword
+`struct`. Because of this, it is reasonable to say that the `struct`
+assigned to the associated type `Bar` is not directly nameable as `Bar`.
+Instead, a user must qualify `Bar` with `Self::Bar`. With this in mind,
+we arrive at the following interpretation:
+
+```rust
+impl Trait for Foo {
+    type Bar = struct /* there is no ident here */ {
+        outer: Option<Box<Foo>>,
+        inner: Option<Box<Foo::Bar>>,
+    }
+}
+```
+
 ### Conclusion
 
 We've now examined a few cases and seen that indeed, the meaning of `Self` is
@@ -696,4 +722,8 @@ is preferred.
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-There are no unresolved questions.
++ This syntax creates ambiguity if we ever permit types to be declared directly
+within impls (for example, as the value for an associated type). Do we ever want
+to support that, and if so, how should we resolve the ambiguity? **A** possible,
+interpretation and way to solve the ambiguity consistently is discussed in the
+rationale.
