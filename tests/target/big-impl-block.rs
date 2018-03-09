@@ -52,7 +52,8 @@ impl<ExcessivelyLongGenericName, ExcessivelyLongGenericName, AnotherExcessivelyL
         ExcessivelyLongGenericName,
         ExcessivelyLongGenericName,
         AnotherExcessivelyLongGenericName,
-    > {
+    >
+{
     fn foo() {}
 }
 impl Foo<ExcessivelyLongGenericName, ExcessivelyLongGenericName, AnotherExcessivelyLongGenericName>
@@ -60,7 +61,8 @@ impl Foo<ExcessivelyLongGenericName, ExcessivelyLongGenericName, AnotherExcessiv
         ExcessivelyLongGenericName,
         ExcessivelyLongGenericName,
         AnotherExcessivelyLongGenericName,
-    > {
+    >
+{
     fn foo() {}
 }
 impl<
@@ -72,7 +74,8 @@ impl<
         ExcessivelyLongGenericName,
         ExcessivelyLongGenericName,
         AnotherExcessivelyLongGenericName,
-    > {
+    >
+{
     fn foo() {}
 }
 
