@@ -119,7 +119,8 @@ impl<'a> Resolver<'a> {
             .collect();
 
         match use_tree.kind {
-            ast::UseTreeKind::Simple(mut ident) => {
+            ast::UseTreeKind::Simple(rename) => {
+                let mut ident = use_tree.ident();
                 let mut source = module_path.pop().unwrap().node;
                 let mut type_ns_only = false;
 
@@ -142,7 +143,7 @@ impl<'a> Resolver<'a> {
                         // Replace `use foo::self;` with `use foo;`
                         let _ = module_path.pop();
                         source = last_segment.node;
-                        if ident.name == keywords::SelfValue.name() {
+                        if rename.is_none() {
                             ident = last_segment.node;
                         }
                     }
@@ -162,7 +163,7 @@ impl<'a> Resolver<'a> {
                             ModuleKind::Block(..) => unreachable!(),
                         };
                         source.name = crate_name;
-                        if ident.name == keywords::DollarCrate.name() {
+                        if rename.is_none() {
                             ident.name = crate_name;
                         }
 
@@ -206,8 +207,8 @@ impl<'a> Resolver<'a> {
 
                 // Ensure there is at most one `self` in the list
                 let self_spans = items.iter().filter_map(|&(ref use_tree, _)| {
-                    if let ast::UseTreeKind::Simple(ident) = use_tree.kind {
-                        if ident.name == keywords::SelfValue.name() {
+                    if let ast::UseTreeKind::Simple(..) = use_tree.kind {
+                        if use_tree.ident().name == keywords::SelfValue.name() {
                             return Some(use_tree.span);
                         }
                     }

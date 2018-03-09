@@ -78,7 +78,7 @@ pub fn modify_for_testing(sess: &ParseSess,
                           span_diagnostic: &errors::Handler,
                           features: &Features) -> ast::Crate {
     // Check for #[reexport_test_harness_main = "some_name"] which
-    // creates a `use some_name = __test::main;`. This needs to be
+    // creates a `use __test::main as some_name;`. This needs to be
     // unconditional, so that the attribute is still marked as used in
     // non-test builds.
     let reexport_test_harness_main =
@@ -240,7 +240,8 @@ fn mk_reexport_mod(cx: &mut TestCtxt,
                                   cx.ext_cx.path(DUMMY_SP, vec![super_, r]))
     }).chain(tested_submods.into_iter().map(|(r, sym)| {
         let path = cx.ext_cx.path(DUMMY_SP, vec![super_, r, sym]);
-        cx.ext_cx.item_use_simple_(DUMMY_SP, dummy_spanned(ast::VisibilityKind::Public), r, path)
+        cx.ext_cx.item_use_simple_(DUMMY_SP, dummy_spanned(ast::VisibilityKind::Public),
+                                   Some(r), path)
     })).collect();
 
     let reexport_mod = ast::Mod {
@@ -502,7 +503,7 @@ fn mk_std(cx: &TestCtxt) -> P<ast::Item> {
         (ast::ItemKind::Use(P(ast::UseTree {
             span: DUMMY_SP,
             prefix: path_node(vec![id_test]),
-            kind: ast::UseTreeKind::Simple(id_test),
+            kind: ast::UseTreeKind::Simple(None),
         })),
          ast::VisibilityKind::Public, keywords::Invalid.ident())
     } else {
@@ -590,13 +591,13 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<P<ast::Item>>) {
         tokens: None,
     })).pop().unwrap();
     let reexport = cx.reexport_test_harness_main.map(|s| {
-        // building `use <ident> = __test::main`
-        let reexport_ident = Ident::with_empty_ctxt(s);
+        // building `use __test::main as <ident>;`
+        let rename = Ident::with_empty_ctxt(s);
 
         let use_path = ast::UseTree {
             span: DUMMY_SP,
             prefix: path_node(vec![mod_ident, Ident::from_str("main")]),
-            kind: ast::UseTreeKind::Simple(reexport_ident),
+            kind: ast::UseTreeKind::Simple(Some(rename)),
         };
 
         expander.fold_item(P(ast::Item {

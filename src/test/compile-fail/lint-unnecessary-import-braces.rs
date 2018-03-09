@@ -9,12 +9,12 @@
 // except according to those terms.
 
 #![deny(unused_import_braces)]
-#![allow(dead_code)]
-#![allow(unused_imports)]
 
 use test::{A}; //~ ERROR braces around A is unnecessary
 
 mod test {
+    use test::{self}; // OK
+    use test::{self as rename}; // OK
     pub struct A;
 }
 

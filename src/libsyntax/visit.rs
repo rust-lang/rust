@@ -354,10 +354,11 @@ pub fn walk_use_tree<'a, V: Visitor<'a>>(
     visitor: &mut V, use_tree: &'a UseTree, id: NodeId,
 ) {
     visitor.visit_path(&use_tree.prefix, id);
-
     match use_tree.kind {
-        UseTreeKind::Simple(ident) => {
-            visitor.visit_ident(use_tree.span, ident);
+        UseTreeKind::Simple(rename) => {
+            if let Some(rename) = rename {
+                visitor.visit_ident(use_tree.span, rename);
+            }
         }
         UseTreeKind::Glob => {},
         UseTreeKind::Nested(ref use_trees) => {

@@ -2949,13 +2949,12 @@ impl<'a> State<'a> {
 
     pub fn print_use_tree(&mut self, tree: &ast::UseTree) -> io::Result<()> {
         match tree.kind {
-            ast::UseTreeKind::Simple(ref ident) => {
+            ast::UseTreeKind::Simple(rename) => {
                 self.print_path(&tree.prefix, false, 0, true)?;
-
-                if tree.prefix.segments.last().unwrap().identifier.name != ident.name {
+                if let Some(rename) = rename {
                     self.s.space()?;
                     self.word_space("as")?;
-                    self.print_ident(*ident)?;
+                    self.print_ident(rename)?;
                 }
             }
             ast::UseTreeKind::Glob => {

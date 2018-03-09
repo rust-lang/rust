@@ -1880,16 +1880,27 @@ pub type Variant = Spanned<Variant_>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum UseTreeKind {
-    Simple(Ident),
-    Glob,
+    Simple(Option<Ident>),
     Nested(Vec<(UseTree, NodeId)>),
+    Glob,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct UseTree {
-    pub kind: UseTreeKind,
     pub prefix: Path,
+    pub kind: UseTreeKind,
     pub span: Span,
+}
+
+impl UseTree {
+    pub fn ident(&self) -> Ident {
+        match self.kind {
+            UseTreeKind::Simple(Some(rename)) => rename,
+            UseTreeKind::Simple(None) =>
+                self.prefix.segments.last().expect("empty prefix in a simple import").identifier,
+            _ => panic!("`UseTree::ident` can only be used on a simple import"),
+        }
+    }
 }
 
 /// Distinguishes between Attributes that decorate items and Attributes that

@@ -7033,9 +7033,7 @@ impl<'a> Parser<'a> {
                 }
             } else {
                 // `use path::foo;` or `use path::foo as bar;`
-                let rename = self.parse_rename()?.
-                                  unwrap_or(prefix.segments.last().unwrap().identifier);
-                UseTreeKind::Simple(rename)
+                UseTreeKind::Simple(self.parse_rename()?)
             }
         };
 

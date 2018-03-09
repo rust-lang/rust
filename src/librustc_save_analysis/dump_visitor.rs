@@ -1342,7 +1342,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             .map(::id_from_def_id);
 
         match use_tree.kind {
-            ast::UseTreeKind::Simple(ident) => {
+            ast::UseTreeKind::Simple(..) => {
+                let ident = use_tree.ident();
                 let path = ast::Path {
                     segments: prefix.segments
                         .iter()

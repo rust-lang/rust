@@ -2047,8 +2047,8 @@ impl<'a> LoweringContext<'a> {
         let path = &tree.prefix;
 
         match tree.kind {
-            UseTreeKind::Simple(ident) => {
-                *name = ident.name;
+            UseTreeKind::Simple(rename) => {
+                *name = tree.ident().name;
 
                 // First apply the prefix to the path
                 let mut path = Path {
@@ -2064,7 +2064,7 @@ impl<'a> LoweringContext<'a> {
                 if path.segments.len() > 1 &&
                    path.segments.last().unwrap().identifier.name == keywords::SelfValue.name() {
                     let _ = path.segments.pop();
-                    if ident.name == keywords::SelfValue.name() {
+                    if rename.is_none() {
                         *name = path.segments.last().unwrap().identifier.name;
                     }
                 }
