@@ -34,6 +34,7 @@ use std::ffi::OsString;
 use std::str::FromStr;
 use std::path::PathBuf;
 use std::process::{Command, ExitStatus};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 fn main() {
     let mut args = env::args_os().skip(1).collect::<Vec<_>>();
@@ -104,6 +105,7 @@ fn main() {
         .env(bootstrap::util::dylib_path_var(),
              env::join_paths(&dylib_path).unwrap());
 
+    let mut crate_name_opt = None;
     if let Some(target) = target {
         // The stage0 compiler has a special sysroot distinct from what we
         // actually downloaded, so we just always pass the `--sysroot` option.
@@ -134,6 +136,7 @@ fn main() {
             .find(|a| &*a[0] == "--crate-name")
             .unwrap();
         let crate_name = &*crate_name[1];
+        crate_name_opt = crate_name.to_str();
 
         // If we're compiling specifically the `panic_abort` crate then we pass
         // the `-C panic=abort` option. Note that we do not do this for any
@@ -282,9 +285,26 @@ fn main() {
         eprintln!("rustc command: {:?}", cmd);
     }
 
+    let do_timing = crate_name_opt.is_some() &&
+        true; // env::var("BOOTSTRAP_TIMING") == Ok("true".to_string());
+    if do_timing {
+        let dur = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+        eprintln!("(BOOTSTRAP_TIMING start stage{} {} at {:?})",
+            stage, crate_name_opt.unwrap(), dur);
+    }
+    let after = || {
+        if do_timing {
+            let dur = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+            eprintln!("(BOOTSTRAP_TIMING finish stage{} {} at {:?})",
+                stage, crate_name_opt.unwrap(), dur);
+        }
+    };
+
     // Actually run the compiler!
     std::process::exit(if let Some(ref mut on_fail) = on_fail {
-        match cmd.status() {
+        let st = cmd.status();
+        after();
+        match st {
             Ok(s) if s.success() => 0,
             _ => {
                 println!("\nDid not run successfully:\n{:?}\n-------------", cmd);
@@ -293,7 +313,15 @@ fn main() {
             }
         }
     } else {
-        std::process::exit(match exec_cmd(&mut cmd) {
+        let st =
+            if do_timing {
+                let st = cmd.status();
+                after();
+                st
+            } else {
+                exec_cmd(&mut cmd)
+            };
+        std::process::exit(match st {
             Ok(s) => s.code().unwrap_or(0xfe),
             Err(e) => panic!("\n\nfailed to run {:?}: {}\n\n", cmd, e),
         })
