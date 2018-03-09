@@ -319,7 +319,7 @@ enum BuiltinImplConditions<'tcx> {
 ///     all the "potential success" candidates can potentially succeed,
 ///     so they are no-ops when unioned with a definite error, and within
 ///     the categories it's easy to see that the unions are correct.
-enum EvaluationResult {
+pub enum EvaluationResult {
     /// Evaluation successful
     EvaluatedToOk,
     /// Evaluation is known to be ambiguous - it *might* hold for some
@@ -385,7 +385,7 @@ enum EvaluationResult {
 }
 
 impl EvaluationResult {
-    fn may_apply(self) -> bool {
+    pub fn may_apply(self) -> bool {
         match self {
             EvaluatedToOk |
             EvaluatedToAmbig |
@@ -408,10 +408,18 @@ impl EvaluationResult {
     }
 }
 
+impl_stable_hash_for!(enum self::EvaluationResult {
+    EvaluatedToOk,
+    EvaluatedToAmbig,
+    EvaluatedToUnknown,
+    EvaluatedToRecur,
+    EvaluatedToErr
+});
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 /// Indicates that trait evaluation caused overflow. Stores the obligation
 /// that hit the recursion limit.
-pub struct OverflowError<'tcx>(TraitObligation<'tcx>);
+pub struct OverflowError<'tcx>(pub TraitObligation<'tcx>);
 
 impl<'tcx> From<OverflowError<'tcx>> for SelectionError<'tcx> {
     fn from(OverflowError(o): OverflowError<'tcx>) -> SelectionError<'tcx> {
@@ -574,9 +582,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         debug!("evaluate_obligation({:?})",
                obligation);
 
-        match self.probe(|this, _| {
-            this.evaluate_predicate_recursively(TraitObligationStackList::empty(), obligation)
-        }) {
+        match self.evaluate_obligation_recursively(obligation) {
             Ok(result) => result.may_apply(),
             Err(OverflowError(o)) => self.infcx().report_overflow_error(&o, true)
         }
@@ -592,12 +598,21 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         debug!("evaluate_obligation_conservatively({:?})",
                obligation);
 
-        match self.probe(|this, _| {
-            this.evaluate_predicate_recursively(TraitObligationStackList::empty(), obligation)
-        }) {
+        match self.evaluate_obligation_recursively(obligation) {
             Ok(result) => result == EvaluatedToOk,
             Err(OverflowError(o)) => self.infcx().report_overflow_error(&o, true)
         }
+    }
+
+    /// Evaluates whether the obligation `obligation` can be satisfied and returns
+    /// an `EvaluationResult`.
+    pub fn evaluate_obligation_recursively(&mut self,
+                                           obligation: &PredicateObligation<'tcx>)
+                                           -> Result<EvaluationResult, OverflowError<'tcx>>
+    {
+        self.probe(|this, _| {
+            this.evaluate_predicate_recursively(TraitObligationStackList::empty(), obligation)
+        })
     }
 
     /// Evaluates the predicates in `predicates` recursively. Note that

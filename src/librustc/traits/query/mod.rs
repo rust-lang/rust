@@ -19,6 +19,7 @@ use infer::canonical::Canonical;
 use ty::{self, Ty};
 
 pub mod dropck_outlives;
+pub mod evaluate_obligation;
 pub mod normalize;
 pub mod normalize_erasing_regions;
 
@@ -26,6 +27,9 @@ pub type CanonicalProjectionGoal<'tcx> =
     Canonical<'tcx, ty::ParamEnvAnd<'tcx, ty::ProjectionTy<'tcx>>>;
 
 pub type CanonicalTyGoal<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, Ty<'tcx>>>;
+
+pub type CanonicalPredicateGoal<'tcx> =
+    Canonical<'tcx, ty::ParamEnvAnd<'tcx, ty::Predicate<'tcx>>>;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct NoSolution;
