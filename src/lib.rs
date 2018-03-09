@@ -596,14 +596,23 @@ pub fn format_snippet(snippet: &str, config: &Config) -> Option<String> {
     }
 }
 
+const FN_MAIN_PREFIX: &str = "fn main() {\n";
+
+fn enclose_in_main_block(s: &str, config: &Config) -> String {
+    let indent = Indent::from_width(config, config.tab_spaces());
+    FN_MAIN_PREFIX.to_owned() + &indent.to_string(config)
+        + &s.lines()
+            .collect::<Vec<_>>()
+            .join(&indent.to_string_with_newline(config)) + "\n}"
+}
+
 /// Format the given code block. Mainly targeted for code block in comment.
 /// The code block may be incomplete (i.e. parser may be unable to parse it).
 /// To avoid panic in parser, we wrap the code block with a dummy function.
 /// The returned code block does *not* end with newline.
 pub fn format_code_block(code_snippet: &str, config: &Config) -> Option<String> {
     // Wrap the given code block with `fn main()` if it does not have one.
-    let fn_main_prefix = "fn main() {\n";
-    let snippet = fn_main_prefix.to_owned() + code_snippet + "\n}";
+    let snippet = enclose_in_main_block(code_snippet, config);
     let mut result = String::with_capacity(snippet.len());
     let mut is_first = true;
 
@@ -612,7 +621,7 @@ pub fn format_code_block(code_snippet: &str, config: &Config) -> Option<String> 
     let formatted = format_snippet(&snippet, config)?;
     // 2 = "}\n"
     let block_len = formatted.len().checked_sub(2).unwrap_or(0);
-    for line in formatted[fn_main_prefix.len()..block_len].lines() {
+    for line in formatted[FN_MAIN_PREFIX.len()..block_len].lines() {
         if !is_first {
             result.push('\n');
         } else {
