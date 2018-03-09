@@ -6291,23 +6291,17 @@ impl<'a> Parser<'a> {
                                lo: Span,
                                visibility: Visibility,
                                attrs: Vec<Attribute>)
-                                -> PResult<'a, P<Item>> {
-
-        let crate_name = self.parse_ident()?;
-        let (maybe_path, ident) = if let Some(ident) = self.parse_rename()? {
-            (Some(crate_name.name), ident)
+                               -> PResult<'a, P<Item>> {
+        let orig_name = self.parse_ident()?;
+        let (item_name, orig_name) = if let Some(rename) = self.parse_rename()? {
+            (rename, Some(orig_name.name))
         } else {
-            (None, crate_name)
+            (orig_name, None)
         };
         self.expect(&token::Semi)?;
 
-        let prev_span = self.prev_span;
-
-        Ok(self.mk_item(lo.to(prev_span),
-                        ident,
-                        ItemKind::ExternCrate(maybe_path),
-                        visibility,
-                        attrs))
+        let span = lo.to(self.prev_span);
+        Ok(self.mk_item(span, item_name, ItemKind::ExternCrate(orig_name), visibility, attrs))
     }
 
     /// Parse `extern` for foreign ABIs

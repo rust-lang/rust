@@ -886,7 +886,7 @@ pub fn noop_fold_block<T: Folder>(b: P<Block>, folder: &mut T) -> P<Block> {
 
 pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
     match i {
-        ItemKind::ExternCrate(string) => ItemKind::ExternCrate(string),
+        ItemKind::ExternCrate(orig_name) => ItemKind::ExternCrate(orig_name),
         ItemKind::Use(use_tree) => {
             ItemKind::Use(use_tree.map(|tree| folder.fold_use_tree(tree)))
         }

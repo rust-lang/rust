@@ -1904,7 +1904,7 @@ impl<'a> LoweringContext<'a> {
                        i: &ItemKind)
                        -> hir::Item_ {
         match *i {
-            ItemKind::ExternCrate(string) => hir::ItemExternCrate(string),
+            ItemKind::ExternCrate(orig_name) => hir::ItemExternCrate(orig_name),
             ItemKind::Use(ref use_tree) => {
                 // Start with an empty prefix
                 let prefix = Path {

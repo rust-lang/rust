@@ -213,9 +213,9 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
     visitor.visit_vis(&item.vis);
     visitor.visit_ident(item.span, item.ident);
     match item.node {
-        ItemKind::ExternCrate(opt_name) => {
-            if let Some(name) = opt_name {
-                visitor.visit_name(item.span, name);
+        ItemKind::ExternCrate(orig_name) => {
+            if let Some(orig_name) = orig_name {
+                visitor.visit_name(item.span, orig_name);
             }
         }
         ItemKind::Use(ref use_tree) => {

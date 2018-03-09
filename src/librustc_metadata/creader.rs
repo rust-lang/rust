@@ -1052,12 +1052,14 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
 
     fn process_item(&mut self, item: &ast::Item, definitions: &Definitions) {
         match item.node {
-            ast::ItemKind::ExternCrate(rename) => {
-                debug!("resolving extern crate stmt. ident: {} rename: {:?}", item.ident, rename);
-                let rename = match rename {
-                    Some(rename) => {
-                        validate_crate_name(Some(self.sess), &rename.as_str(), Some(item.span));
-                        rename
+            ast::ItemKind::ExternCrate(orig_name) => {
+                debug!("resolving extern crate stmt. ident: {} orig_name: {:?}",
+                       item.ident, orig_name);
+                let orig_name = match orig_name {
+                    Some(orig_name) => {
+                        validate_crate_name(Some(self.sess), &orig_name.as_str(),
+                                            Some(item.span));
+                        orig_name
                     }
                     None => item.ident.name,
                 };
@@ -1068,7 +1070,7 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
                 };
 
                 let (cnum, ..) = self.resolve_crate(
-                    &None, item.ident.name, rename, None, item.span, PathKind::Crate, dep_kind,
+                    &None, item.ident.name, orig_name, None, item.span, PathKind::Crate, dep_kind,
                 );
 
                 let def_id = definitions.opt_local_def_id(item.id).unwrap();

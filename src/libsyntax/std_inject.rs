@@ -43,7 +43,7 @@ thread_local! {
     static INJECTED_CRATE_NAME: Cell<Option<&'static str>> = Cell::new(None);
 }
 
-pub fn maybe_inject_crates_ref(mut krate: ast::Crate, alt_std_name: Option<String>) -> ast::Crate {
+pub fn maybe_inject_crates_ref(mut krate: ast::Crate, alt_std_name: Option<&str>) -> ast::Crate {
     let name = if attr::contains_name(&krate.attrs, "no_core") {
         return krate;
     } else if attr::contains_name(&krate.attrs, "no_std") {
@@ -54,14 +54,12 @@ pub fn maybe_inject_crates_ref(mut krate: ast::Crate, alt_std_name: Option<Strin
 
     INJECTED_CRATE_NAME.with(|opt_name| opt_name.set(Some(name)));
 
-    let crate_name = Symbol::intern(&alt_std_name.unwrap_or_else(|| name.to_string()));
-
     krate.module.items.insert(0, P(ast::Item {
         attrs: vec![attr::mk_attr_outer(DUMMY_SP,
                                         attr::mk_attr_id(),
                                         attr::mk_word_item(Symbol::intern("macro_use")))],
         vis: dummy_spanned(ast::VisibilityKind::Inherited),
-        node: ast::ItemKind::ExternCrate(Some(crate_name)),
+        node: ast::ItemKind::ExternCrate(alt_std_name.map(Symbol::intern)),
         ident: ast::Ident::from_str(name),
         id: ast::DUMMY_NODE_ID,
         span: DUMMY_SP,
