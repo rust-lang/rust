@@ -13,16 +13,16 @@ matrix:
   include:
     # Images used in testing PR and try-build should be run first.
     - env: IMAGE=x86_64-gnu-llvm-3.9 RUST_BACKTRACE=1
-      if: type = pull_request OR branch = auto
+      if: branch = auto
 
     - env: IMAGE=dist-x86_64-linux DEPLOY=1
-      if: branch = try OR branch = auto
+      if: branch = auto
 
     # "alternate" deployments, these are "nightlies" but have LLVM assertions
     # turned on, they're deployed to a different location primarily for
     # additional testing.
     - env: IMAGE=dist-x86_64-linux DEPLOY_ALT=1
-      if: branch = try OR branch = auto
+      if: branch = auto
 
     - env: >
         RUST_CHECK_TARGET=dist
@@ -36,7 +36,7 @@ matrix:
         NO_DEBUG_ASSERTIONS=1
       os: osx
       osx_image: xcode7.3
-      if: branch = auto
+      if: branch = try
 
     # macOS builders. These are placed near the beginning because they are very
     # slow to run.
@@ -105,7 +105,7 @@ matrix:
         NO_DEBUG_ASSERTIONS=1
       os: osx
       osx_image: xcode7.3
-      if: branch = auto
+      if: branch = try
 
     # Linux builders, remaining docker images
     - env: IMAGE=arm-android
@@ -248,19 +248,13 @@ before_script:
 script:
   - >
       date && (curl -fs --head https://google.com | grep ^Date: | sed 's/Date: //g' || true)
-  - stamp sh -x -c "$RUN_SCRIPT"
+  - stamp sh -x -c "$RUN_SCRIPT" || true
   - >
       date && (curl -fs --head https://google.com | grep ^Date: | sed 's/Date: //g' || true)
 
 after_success:
   - >
       echo "#### Build successful; Disk usage after running script:";
-      df -h;
-      du . | sort -nr | head -n100
-
-after_failure:
-  - >
-      echo "#### Build failed; Disk usage after running script:";
       df -h;
       du . | sort -nr | head -n100
 
@@ -273,13 +267,14 @@ after_failure:
   # Random attempt at debugging currently. Just poking around in here to see if
   # anything shows up.
   - ls -lat $HOME/Library/Logs/DiagnosticReports/
-  - find $HOME/Library/Logs/DiagnosticReports
+  - find $HOME/Library/Logs/DiagnosticReports/*.crash
       -type f
       -not -name '*.stage2-*.crash'
       -not -name 'com.apple.CoreSimulator.CoreSimulatorService-*.crash'
       -exec printf travis_fold":start:crashlog\n\033[31;1m%s\033[0m\n" {} \;
       -exec head -750 {} \;
       -exec echo travis_fold":"end:crashlog \;
+      || true
 
   # attempt to debug anything killed by the oom killer on linux, just to see if
   # it happened
