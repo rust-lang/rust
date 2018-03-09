@@ -81,11 +81,14 @@ fn disassemble_myself() -> HashMap<String, Vec<Function>> {
     } else {
         let objdump =
             env::var("OBJDUMP").unwrap_or_else(|_| "objdump".to_string());
-        let output = Command::new(objdump)
+        let output = Command::new(objdump.clone())
             .arg("--disassemble")
             .arg(&me)
             .output()
-            .expect("failed to execute objdump");
+            .expect(&format!(
+                "failed to execute objdump. OBJDUMP={}",
+                objdump
+            ));
         println!(
             "{}\n{}",
             output.status,

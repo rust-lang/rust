@@ -38,6 +38,9 @@ case ${TARGET} in
     i686-* | i586-*)
         export RUSTFLAGS="${RUSTFLAGS} -C relocation-model=static"
         ;;
+    *android*)
+        export STDSIMD_DISABLE_ASSERT_INSTR=1
+        ;;
     *)
         ;;
 esac
@@ -46,6 +49,7 @@ echo "RUSTFLAGS=${RUSTFLAGS}"
 echo "FEATURES=${FEATURES}"
 echo "OBJDUMP=${OBJDUMP}"
 echo "STDSIMD_DISABLE_ASSERT_INSTR=${STDSIMD_DISABLE_ASSERT_INSTR}"
+echo "STDSIMD_TEST_EVERYTHING=${STDSIMD_TEST_EVERYTHING}"
 
 cargo_test() {
     cmd="cargo test --target=$TARGET $1"

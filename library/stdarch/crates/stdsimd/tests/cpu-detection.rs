@@ -19,14 +19,16 @@
 extern crate stdsimd;
 
 #[test]
-#[cfg(all(target_arch = "arm", target_os = "linux"))]
+#[cfg(all(target_arch = "arm",
+          any(target_os = "linux", target_os = "android")))]
 fn arm_linux() {
     println!("neon: {}", is_arm_feature_detected!("neon"));
     println!("pmull: {}", is_arm_feature_detected!("pmull"));
 }
 
 #[test]
-#[cfg(all(target_arch = "aarch64", target_os = "linux"))]
+#[cfg(all(target_arch = "aarch64",
+          any(target_os = "linux", target_os = "android")))]
 fn aarch64_linux() {
     println!("fp: {}", is_aarch64_feature_detected!("fp"));
     println!("fp16: {}", is_aarch64_feature_detected!("fp16"));
@@ -60,6 +62,12 @@ fn powerpc64_linux() {
 #[test]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 fn x86_all() {
+    println!("aes: {:?}", is_x86_feature_detected!("aes"));
+    println!("pcmulqdq: {:?}", is_x86_feature_detected!("pclmulqdq"));
+    println!("rdrand: {:?}", is_x86_feature_detected!("rdrand"));
+    println!("rdseed: {:?}", is_x86_feature_detected!("rdseed"));
+    println!("tsc: {:?}", is_x86_feature_detected!("tsc"));
+    println!("mmx: {:?}", is_x86_feature_detected!("mmx"));
     println!("sse: {:?}", is_x86_feature_detected!("sse"));
     println!("sse2: {:?}", is_x86_feature_detected!("sse2"));
     println!("sse3: {:?}", is_x86_feature_detected!("sse3"));
@@ -84,12 +92,12 @@ fn x86_all() {
         is_x86_feature_detected!("avx512vpopcntdq")
     );
     println!("fma: {:?}", is_x86_feature_detected!("fma"));
-    println!("abm: {:?}", is_x86_feature_detected!("abm"));
-    println!("bmi: {:?}", is_x86_feature_detected!("bmi1"));
+    println!("bmi1: {:?}", is_x86_feature_detected!("bmi1"));
     println!("bmi2: {:?}", is_x86_feature_detected!("bmi2"));
+    println!("abm: {:?}", is_x86_feature_detected!("abm"));
+    println!("lzcnt: {:?}", is_x86_feature_detected!("lzcnt"));
     println!("tbm: {:?}", is_x86_feature_detected!("tbm"));
     println!("popcnt: {:?}", is_x86_feature_detected!("popcnt"));
-    println!("lzcnt: {:?}", is_x86_feature_detected!("lzcnt"));
     println!("fxsr: {:?}", is_x86_feature_detected!("fxsr"));
     println!("xsave: {:?}", is_x86_feature_detected!("xsave"));
     println!("xsaveopt: {:?}", is_x86_feature_detected!("xsaveopt"));

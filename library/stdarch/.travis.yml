@@ -9,13 +9,16 @@ matrix:
     - env: TARGET=i686-unknown-linux-gnu
     - env: TARGET=x86_64-unknown-linux-gnu NO_ADD=1
     - env: TARGET=x86_64-unknown-linux-gnu-emulated NO_ADD=1 STDSIMD_TEST_EVERYTHING=1
+    - env: TARGET=x86_64-linux-android
     - env: TARGET=arm-unknown-linux-gnueabihf
+    - env: TARGET=arm-linux-androideabi
     - env: TARGET=armv7-unknown-linux-gnueabihf
     - env: TARGET=aarch64-unknown-linux-gnu
     - env: TARGET=mips-unknown-linux-gnu NORUN=1
     - env: TARGET=mipsel-unknown-linux-gnu NORUN=1
     - env: TARGET=mips64-unknown-linux-gnuabi64 NORUN=1
     - env: TARGET=mips64el-unknown-linux-gnuabi64 NORUN=1
+    - env: TARGET=aarch64-linux-android
     - env: TARGET=powerpc-unknown-linux-gnu
     - env: TARGET=powerpc64-unknown-linux-gnu
     - env: TARGET=powerpc64le-unknown-linux-gnu
@@ -56,6 +59,7 @@ matrix:
   allow_failures:
     - env: CLIPPY=On TARGET=x86_64-unknown-linux-gnu NO_ADD=1
     - env: RUSTFMT=On TARGET=x86_64-unknown-linux-gnu NO_ADD=1
+    - env: TARGET=x86_64-linux-android
 
 before_install:
   # FIXME (travis-ci/travis-ci#8920) shouldn't be necessary...

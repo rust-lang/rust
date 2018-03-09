@@ -5,7 +5,7 @@ set -ex
 
 run() {
     echo "Building docker container for TARGET=${1}"
-    docker build -t stdsimd ci/docker/$1
+    docker build -t stdsimd -f ci/docker/$1/Dockerfile ci/
     mkdir -p target
     target=$(echo $1 | sed 's/-emulated//')
     echo "Running docker"
@@ -18,6 +18,7 @@ run() {
       --volume `rustc --print sysroot`:/rust:ro \
       --env TARGET=$target \
       --env STDSIMD_TEST_EVERYTHING \
+      --env STDSIMD_ASSERT_INSTR_IGNORE \
       --volume `pwd`:/checkout:ro \
       --volume `pwd`/target:/checkout/target \
       --workdir /checkout \
