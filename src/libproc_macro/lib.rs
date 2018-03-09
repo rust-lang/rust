@@ -471,11 +471,17 @@ impl fmt::Display for Literal {
 }
 
 macro_rules! int_literals {
-    ($($int_kind:ident),*) => {$(
+    ($($int_kind:ident => $signed:ident,)*) => {$(
         /// Integer literal.
         #[unstable(feature = "proc_macro", issue = "38356")]
-        pub fn $int_kind(n: $int_kind) -> Literal {
-            Literal::typed_integer(n as i128, stringify!($int_kind))
+        pub fn $int_kind(n: $signed) -> Literal {
+            Literal::typed_integer(n as u128, stringify!($int_kind))
+        }
+
+        /// Integer literal.
+        #[unstable(feature = "proc_macro", issue = "38356")]
+        pub fn $signed(n: $signed) -> Literal {
+            Literal::typed_integer(n as u128, stringify!($signed))
         }
     )*}
 }
@@ -483,12 +489,19 @@ macro_rules! int_literals {
 impl Literal {
     /// Integer literal
     #[unstable(feature = "proc_macro", issue = "38356")]
-    pub fn integer(n: i128) -> Literal {
+    pub fn integer(n: u128) -> Literal {
         Literal(token::Literal(token::Lit::Integer(Symbol::intern(&n.to_string())), None))
     }
 
-    int_literals!(u8, i8, u16, i16, u32, i32, u64, i64, usize, isize);
-    fn typed_integer(n: i128, kind: &'static str) -> Literal {
+    int_literals!(
+        i8 => u8,
+        i16 => u16,
+        i32 => u32,
+        i64 => u64,
+        isize => usize,
+    );
+
+    fn typed_integer(n: u128, kind: &'static str) -> Literal {
         Literal(token::Literal(token::Lit::Integer(Symbol::intern(&n.to_string())),
                                Some(Symbol::intern(kind))))
     }
@@ -499,6 +512,9 @@ impl Literal {
         if !n.is_finite() {
             panic!("Invalid float literal {}", n);
         }
+        if n.is_sign_negative() {
+            panic!("float literal cannot be negative {}", n);
+        }
         Literal(token::Literal(token::Lit::Float(Symbol::intern(&n.to_string())), None))
     }
 
@@ -507,6 +523,9 @@ impl Literal {
     pub fn f32(n: f32) -> Literal {
         if !n.is_finite() {
             panic!("Invalid f32 literal {}", n);
+        }
+        if n.is_sign_negative() {
+            panic!("f32 literal cannot be negative {}", n);
         }
         Literal(token::Literal(token::Lit::Float(Symbol::intern(&n.to_string())),
                                Some(Symbol::intern("f32"))))
@@ -517,6 +536,9 @@ impl Literal {
     pub fn f64(n: f64) -> Literal {
         if !n.is_finite() {
             panic!("Invalid f64 literal {}", n);
+        }
+        if n.is_sign_negative() {
+            panic!("f64 literal cannot be negative {}", n);
         }
         Literal(token::Literal(token::Lit::Float(Symbol::intern(&n.to_string())),
                                Some(Symbol::intern("f64"))))
