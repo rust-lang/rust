@@ -4,7 +4,7 @@
 the process of being implemented; this chapter serves as a kind of
 in-progress design document. If you would prefer to read about how the
 current trait solver works, check out
-[this chapter](./trait-resolution.html).🚧
+[this other chapter](./trait-resolution.html).🚧
 
 Trait solving is based around a few key ideas:
 
