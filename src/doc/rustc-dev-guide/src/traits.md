@@ -13,11 +13,21 @@ instructions for getting involved in the
 
 Trait solving is based around a few key ideas:
 
-- [Canonicalization](./traits-canonicalization.html), which allows us to
-  extract types that contain inference variables in them from their
-  inference context, work with them, and then bring the results back
-  into the original context.
 - [Lowering to logic](./traits-lowering-to-logic.html), which expresses
   Rust traits in terms of standard logical terms.
-
-*more to come*
+  - The [goals and clauses](./traits-goals-and-clauses.html) chapter
+    describes the precise lowering rules we use.
+- [Canonical queries](./traits-canonicalization.html), which allow us
+  to solve trait problems (like "is `Foo` implemented for the type
+  `Bar`?") once, and then apply that same result independently in many
+  different inference contexts.
+- [Lazy normalization](./traits-associated-types.html), which is the
+  technique we use to accommodate associated types when figuring out
+  whether types are equal.
+- [Region constraints](./traits-regions.md), which are accumulated
+  during trait solving but mostly ignored. This means that trait
+  solving effectively ignores the precise regions involved, always --
+  but we still remember the constraints on them so that those
+  constraints can be checked by thet type checker.
+  
+Note: this is not a complete list of topics. See the sidebar for more.

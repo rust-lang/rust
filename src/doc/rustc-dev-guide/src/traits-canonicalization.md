@@ -24,8 +24,9 @@ they are repeated.
 We use this to improve caching as well as to detect cycles and other
 things during trait resolution. Roughly speaking, the idea is that if
 two trait queries have the same canonicalize form, then they will get
-the same answer -- modulo the precise identities of the variables
-involved.
+the same answer. That answer will be expressed in terms of the
+canonical variables (`?0`, `?1`), which we can then map back to the
+original variables (`?T`, `?U`).
 
 To see how it works, imagine that we are asking to solve the following
 trait query: `?A: Foo<'static, ?B>`, where `?A` and `?B` are unbound.
