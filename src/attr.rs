@@ -98,13 +98,16 @@ fn take_while_with_pred<'a, P>(
 where
     P: Fn(&ast::Attribute) -> bool,
 {
-    let mut last_index = 0;
-    let mut iter = attrs.iter().enumerate().peekable();
-    while let Some((i, attr)) = iter.next() {
-        if !pred(attr) {
+    let mut len = 0;
+    let mut iter = attrs.iter().peekable();
+
+    while let Some(attr) = iter.next() {
+        if pred(attr) {
+            len += 1;
+        } else {
             break;
         }
-        if let Some(&(_, next_attr)) = iter.peek() {
+        if let Some(next_attr) = iter.peek() {
             // Extract comments between two attributes.
             let span_between_attr = mk_sp(attr.span.hi(), next_attr.span.lo());
             let snippet = context.snippet(span_between_attr);
@@ -112,13 +115,9 @@ where
                 break;
             }
         }
-        last_index = i;
     }
-    if last_index == 0 {
-        &[]
-    } else {
-        &attrs[..last_index + 1]
-    }
+
+    &attrs[..len]
 }
 
 /// Rewrite the same kind of attributes at the same time. This includes doc
