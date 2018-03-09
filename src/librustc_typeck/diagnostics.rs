@@ -1489,26 +1489,6 @@ static BAR: _ = "test"; // error, explicitly write out the type instead
 ```
 "##,
 
-E0122: r##"
-An attempt was made to add a generic constraint to a type alias. This constraint
-is entirely ignored. For backwards compatibility, Rust still allows this with a
-warning. Consider the example below:
-
-```
-trait Foo{}
-
-type MyType<R: Foo> = (R, ());
-
-fn main() {
-    let t: MyType<u32>;
-}
-```
-
-We're able to declare a variable of type `MyType<u32>`, despite the fact that
-`u32` does not implement `Foo`. As a result, one should avoid using generic
-constraints in concert with type aliases.
-"##,
-
 E0124: r##"
 You declared two fields of a struct with the same name. Erroneous code
 example:
@@ -4815,6 +4795,7 @@ register_diagnostics! {
 //  E0086,
 //  E0103,
 //  E0104,
+//  E0122, // bounds in type aliases are ignored, turned into proper lint
 //  E0123,
 //  E0127,
 //  E0129,

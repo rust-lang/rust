@@ -181,6 +181,9 @@ pub trait LateLintPass<'a, 'tcx>: LintPass {
     fn check_ty(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Ty) { }
     fn check_generic_param(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::GenericParam) { }
     fn check_generics(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Generics) { }
+    fn check_where_predicate(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::WherePredicate) { }
+    fn check_poly_trait_ref(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::PolyTraitRef,
+                            _: hir::TraitBoundModifier) { }
     fn check_fn(&mut self,
                 _: &LateContext<'a, 'tcx>,
                 _: FnKind<'tcx>,
@@ -253,6 +256,9 @@ pub trait EarlyLintPass: LintPass {
     fn check_ty(&mut self, _: &EarlyContext, _: &ast::Ty) { }
     fn check_generic_param(&mut self, _: &EarlyContext, _: &ast::GenericParam) { }
     fn check_generics(&mut self, _: &EarlyContext, _: &ast::Generics) { }
+    fn check_where_predicate(&mut self, _: &EarlyContext, _: &ast::WherePredicate) { }
+    fn check_poly_trait_ref(&mut self, _: &EarlyContext, _: &ast::PolyTraitRef,
+                            _: &ast::TraitBoundModifier) { }
     fn check_fn(&mut self, _: &EarlyContext,
         _: ast_visit::FnKind, _: &ast::FnDecl, _: Span, _: ast::NodeId) { }
     fn check_fn_post(&mut self, _: &EarlyContext,

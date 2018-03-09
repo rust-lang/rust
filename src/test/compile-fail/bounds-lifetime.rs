@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type Foo<T: std::ops::Add> = T; //~ WARNING E0122
+type A = for<'b, 'a: 'b> fn(); //~ ERROR lifetime bounds cannot be used in this context
+type B = for<'b, 'a: 'b,> fn(); //~ ERROR lifetime bounds cannot be used in this context
+type C = for<'b, 'a: 'b +> fn(); //~ ERROR lifetime bounds cannot be used in this context
+type D = for<'a, T> fn(); //~ ERROR only lifetime parameters can be used in this context
+type E = for<T> Fn(); //~ ERROR only lifetime parameters can be used in this context
 
-type Bar<T> where T: std::ops::Add = T; //~ WARNING E0122
+fn main() {}

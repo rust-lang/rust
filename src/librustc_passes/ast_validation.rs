@@ -136,6 +136,33 @@ impl<'a> AstValidator<'a> {
                                                          in patterns")
         }
     }
+
+    fn check_late_bound_lifetime_defs(&self, params: &Vec<GenericParam>) {
+        // Check: Only lifetime parameters
+        let non_lifetime_param_spans : Vec<_> = params.iter()
+            .filter_map(|param| match *param {
+                GenericParam::Lifetime(_) => None,
+                GenericParam::Type(ref t) => Some(t.span),
+            }).collect();
+        if !non_lifetime_param_spans.is_empty() {
+            self.err_handler().span_err(non_lifetime_param_spans,
+                "only lifetime parameters can be used in this context");
+        }
+
+        // Check: No bounds on lifetime parameters
+        for param in params.iter() {
+            match *param {
+                GenericParam::Lifetime(ref l) => {
+                    if !l.bounds.is_empty() {
+                        let spans : Vec<_> = l.bounds.iter().map(|b| b.span).collect();
+                        self.err_handler().span_err(spans,
+                            "lifetime bounds cannot be used in this context");
+                    }
+                }
+                GenericParam::Type(_) => {}
+            }
+        }
+    }
 }
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
@@ -157,6 +184,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     struct_span_err!(self.session, span, E0561,
                                      "patterns aren't allowed in function pointer types").emit();
                 });
+                self.check_late_bound_lifetime_defs(&bfty.generic_params);
             }
             TyKind::TraitObject(ref bounds, ..) => {
                 let mut any_lifetime_bounds = false;
@@ -416,6 +444,19 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         }
 
         visit::walk_pat(self, pat)
+    }
+
+    fn visit_where_predicate(&mut self, p: &'a WherePredicate) {
+        if let &WherePredicate::BoundPredicate(ref bound_predicate) = p {
+            // A type binding, eg `for<'c> Foo: Send+Clone+'c`
+            self.check_late_bound_lifetime_defs(&bound_predicate.bound_generic_params);
+        }
+        visit::walk_where_predicate(self, p);
+    }
+
+    fn visit_poly_trait_ref(&mut self, t: &'a PolyTraitRef, m: &'a TraitBoundModifier) {
+        self.check_late_bound_lifetime_defs(&t.bound_generic_params);
+        visit::walk_poly_trait_ref(self, t, m);
     }
 }
 

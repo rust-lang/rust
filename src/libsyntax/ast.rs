@@ -294,6 +294,15 @@ pub enum TyParamBound {
     RegionTyParamBound(Lifetime)
 }
 
+impl TyParamBound {
+    pub fn span(&self) -> Span {
+        match self {
+            &TraitTyParamBound(ref t, ..) => t.span,
+            &RegionTyParamBound(ref l) => l.span,
+        }
+    }
+}
+
 /// A modifier on a bound, currently this is only used for `?Sized`, where the
 /// modifier is `Maybe`. Negative bounds should also be handled here.
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -402,6 +411,16 @@ pub enum WherePredicate {
     RegionPredicate(WhereRegionPredicate),
     /// An equality predicate (unsupported)
     EqPredicate(WhereEqPredicate),
+}
+
+impl WherePredicate {
+    pub fn span(&self) -> Span {
+        match self {
+            &WherePredicate::BoundPredicate(ref p) => p.span,
+            &WherePredicate::RegionPredicate(ref p) => p.span,
+            &WherePredicate::EqPredicate(ref p) => p.span,
+        }
+    }
 }
 
 /// A type bound.

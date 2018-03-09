@@ -1,18 +1,94 @@
-warning[E0122]: generic bounds are ignored in type aliases
-  --> $DIR/param-bounds-ignored.rs:15:1
+error: lifetime bounds cannot be used in this context
+  --> $DIR/param-bounds-ignored.rs:42:22
    |
-LL | type SVec<T: Send> = Vec<T>;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     f: for<'xa, 'xb: 'xa+'xa> fn(&'xa i32, &'xb i32) -> &'xa i32)
+   |                      ^^^ ^^^
 
-warning[E0122]: generic bounds are ignored in type aliases
-  --> $DIR/param-bounds-ignored.rs:16:1
+error: lifetime bounds cannot be used in this context
+  --> $DIR/param-bounds-ignored.rs:50:34
    |
-LL | type VVec<'b, 'a: 'b> = Vec<&'a i32>;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn bar2<'a, 'b, F: for<'xa, 'xb: 'xa> Fn(&'xa i32, &'xb i32) -> &'xa i32>(
+   |                                  ^^^
 
-warning[E0122]: generic bounds are ignored in type aliases
-  --> $DIR/param-bounds-ignored.rs:17:1
+error: lifetime bounds cannot be used in this context
+  --> $DIR/param-bounds-ignored.rs:65:28
    |
-LL | type WVec<'b, T: 'b> = Vec<T>;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     where F: for<'xa, 'xb: 'xa> Fn(&'xa i32, &'xb i32) -> &'xa i32
+   |                            ^^^
+
+error: lifetime bounds cannot be used in this context
+  --> $DIR/param-bounds-ignored.rs:77:25
+   |
+LL |     where for<'xa, 'xb: 'xa> F: Fn(&'xa i32, &'xb i32) -> &'xa i32
+   |                         ^^^
+
+error: lifetime bounds cannot be used in this context
+  --> $DIR/param-bounds-ignored.rs:85:28
+   |
+LL | struct S1<F: for<'xa, 'xb: 'xa> Fn(&'xa i32, &'xb i32) -> &'xa i32>(F);
+   |                            ^^^
+
+error: lifetime bounds cannot be used in this context
+  --> $DIR/param-bounds-ignored.rs:87:40
+   |
+LL | struct S2<F>(F) where F: for<'xa, 'xb: 'xa> Fn(&'xa i32, &'xb i32) -> &'xa i32;
+   |                                        ^^^
+
+error: lifetime bounds cannot be used in this context
+  --> $DIR/param-bounds-ignored.rs:89:37
+   |
+LL | struct S3<F>(F) where for<'xa, 'xb: 'xa> F: Fn(&'xa i32, &'xb i32) -> &'xa i32;
+   |                                     ^^^
+
+error: lifetime bounds cannot be used in this context
+  --> $DIR/param-bounds-ignored.rs:92:29
+   |
+LL | struct S_fnty(for<'xa, 'xb: 'xa> fn(&'xa i32, &'xb i32) -> &'xa i32);
+   |                             ^^^
+
+error: lifetime bounds cannot be used in this context
+  --> $DIR/param-bounds-ignored.rs:95:29
+   |
+LL | type T1 = Box<for<'xa, 'xb: 'xa> Fn(&'xa i32, &'xb i32) -> &'xa i32>;
+   |                             ^^^
+
+error: lifetime bounds cannot be used in this context
+  --> $DIR/param-bounds-ignored.rs:99:34
+   |
+LL |     let _ : Option<for<'xa, 'xb: 'xa> fn(&'xa i32, &'xb i32) -> &'xa i32> = None;
+   |                                  ^^^
+
+error: lifetime bounds cannot be used in this context
+  --> $DIR/param-bounds-ignored.rs:101:38
+   |
+LL |     let _ : Option<Box<for<'xa, 'xb: 'xa> Fn(&'xa i32, &'xb i32) -> &'xa i32>> = None;
+   |                                      ^^^
+
+warning: bounds on generic parameters are ignored in type aliases
+  --> $DIR/param-bounds-ignored.rs:15:14
+   |
+LL | type SVec<T: Send+Send> = Vec<T>;
+   |              ^^^^ ^^^^
+   |
+   = note: #[warn(ignored_generic_bounds)] on by default
+
+warning: bounds on generic parameters are ignored in type aliases
+  --> $DIR/param-bounds-ignored.rs:17:19
+   |
+LL | type VVec<'b, 'a: 'b+'b> = Vec<&'a i32>;
+   |                   ^^ ^^
+
+warning: bounds on generic parameters are ignored in type aliases
+  --> $DIR/param-bounds-ignored.rs:19:18
+   |
+LL | type WVec<'b, T: 'b+'b> = Vec<T>;
+   |                  ^^ ^^
+
+warning: where clauses are ignored in type aliases
+  --> $DIR/param-bounds-ignored.rs:21:25
+   |
+LL | type W2Vec<'b, T> where T: 'b, T: 'b = Vec<T>;
+   |                         ^^^^^  ^^^^^
+
+error: aborting due to 11 previous errors
 

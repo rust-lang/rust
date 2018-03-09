@@ -4951,6 +4951,7 @@ impl<'a> Parser<'a> {
                         }
                     ));
                 // FIXME: Decide what should be used here, `=` or `==`.
+                // FIXME: We are just dropping the binders in lifetime_defs on the floor here.
                 } else if self.eat(&token::Eq) || self.eat(&token::EqEq) {
                     let rhs_ty = self.parse_ty()?;
                     where_clause.predicates.push(ast::WherePredicate::EqPredicate(
@@ -5608,18 +5609,8 @@ impl<'a> Parser<'a> {
             self.expect_lt()?;
             let params = self.parse_generic_params()?;
             self.expect_gt()?;
-
-            let first_non_lifetime_param_span = params.iter()
-                .filter_map(|param| match *param {
-                    ast::GenericParam::Lifetime(_) => None,
-                    ast::GenericParam::Type(ref t) => Some(t.span),
-                })
-                .next();
-
-            if let Some(span) = first_non_lifetime_param_span {
-                self.span_err(span, "only lifetime parameters can be used in this context");
-            }
-
+            // We rely on AST validation to rule out invalid cases: There must not be type
+            // parameters, and the lifetime parameters must not have bounds.
             Ok(params)
         } else {
             Ok(Vec::new())

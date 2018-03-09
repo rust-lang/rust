@@ -824,6 +824,17 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
         hir_visit::walk_generics(self, g);
     }
 
+    fn visit_where_predicate(&mut self, p: &'tcx hir::WherePredicate) {
+        run_lints!(self, check_where_predicate, late_passes, p);
+        hir_visit::walk_where_predicate(self, p);
+    }
+
+    fn visit_poly_trait_ref(&mut self, t: &'tcx hir::PolyTraitRef,
+                            m: hir::TraitBoundModifier) {
+        run_lints!(self, check_poly_trait_ref, late_passes, t, m);
+        hir_visit::walk_poly_trait_ref(self, t, m);
+    }
+
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
         let generics = self.generics.take();
         self.generics = Some(&trait_item.generics);
@@ -984,6 +995,16 @@ impl<'a> ast_visit::Visitor<'a> for EarlyContext<'a> {
     fn visit_generics(&mut self, g: &'a ast::Generics) {
         run_lints!(self, check_generics, early_passes, g);
         ast_visit::walk_generics(self, g);
+    }
+
+    fn visit_where_predicate(&mut self, p: &'a ast::WherePredicate) {
+        run_lints!(self, check_where_predicate, early_passes, p);
+        ast_visit::walk_where_predicate(self, p);
+    }
+
+    fn visit_poly_trait_ref(&mut self, t: &'a ast::PolyTraitRef, m: &'a ast::TraitBoundModifier) {
+        run_lints!(self, check_poly_trait_ref, early_passes, t, m);
+        ast_visit::walk_poly_trait_ref(self, t, m);
     }
 
     fn visit_trait_item(&mut self, trait_item: &'a ast::TraitItem) {

@@ -1315,3 +1315,50 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnreachablePub {
         self.perform_lint(cx, "item", impl_item.id, &impl_item.vis, impl_item.span, false);
     }
 }
+
+/// Lint for trait and lifetime bounds that are (accidentally) accepted by the parser, but
+/// ignored later.
+
+pub struct IgnoredGenericBounds;
+
+declare_lint! {
+    IGNORED_GENERIC_BOUNDS,
+    Warn,
+    "these generic bounds are ignored"
+}
+
+impl LintPass for IgnoredGenericBounds {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(IGNORED_GENERIC_BOUNDS)
+    }
+}
+
+impl EarlyLintPass for IgnoredGenericBounds {
+    fn check_item(&mut self, cx: &EarlyContext, item: &ast::Item) {
+        let type_alias_generics = match item.node {
+            ast::ItemKind::Ty(_, ref generics) => generics,
+            _ => return,
+        };
+        // There must not be a where clause
+        if !type_alias_generics.where_clause.predicates.is_empty() {
+            let spans : Vec<_> = type_alias_generics.where_clause.predicates.iter()
+                .map(|pred| pred.span()).collect();
+            cx.span_lint(IGNORED_GENERIC_BOUNDS, spans,
+                "where clauses are ignored in type aliases");
+        }
+        // The parameters must not have bounds
+        for param in type_alias_generics.params.iter() {
+            let spans : Vec<_> = match param {
+                &ast::GenericParam::Lifetime(ref l) => l.bounds.iter().map(|b| b.span).collect(),
+                &ast::GenericParam::Type(ref ty) => ty.bounds.iter().map(|b| b.span()).collect(),
+            };
+            if !spans.is_empty() {
+                cx.span_lint(
+                    IGNORED_GENERIC_BOUNDS,
+                    spans,
+                    "bounds on generic parameters are ignored in type aliases",
+                );
+            }
+        }
+    }
+}
