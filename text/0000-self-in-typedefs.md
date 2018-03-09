@@ -10,9 +10,12 @@ The special `Self` identifier is now permitted in `struct`, `enum`, and `union`
 type definitions. A simple example `struct` is:
 
 ```rust
-enum List<T> {
+enum List<T>
+where
+    Self: PartialOrd<Self> // <-- Notice the `Self` instead of `List<T>`
+{
     Nil,
-    Cons(T, Box<Self>) // <-- Notice the `Self` instead of `List<T>`
+    Cons(T, Box<Self>) // <-- And here.
 }
 ```
 
@@ -41,9 +44,9 @@ impl Foo<Self> for Quux {
 }
 ```
 
-But this is not currently possible inside type definitions. This makes the
-language less consistent with respect to what is allowed in type positions
-than what it could be.
+But this is not currently possible inside both fields and where clauses of
+type definitions. This makes the language less consistent with respect to what
+is allowed in type positions than what it could be.
 
 ## Principle of least surprise
 
@@ -190,6 +193,69 @@ struct NonEmptyList<T> {
 
 This also extends to `union`s.
 
+## `where`-clauses
+
+In today's Rust, it is possible to define a type such as:
+
+```rust
+struct Foo<T>
+where
+    Foo<T>: SomeTrait
+{
+    // Some fields..
+}
+```
+
+and with some `impl`s:
+
+```rust
+trait SomeTrait { ... }
+
+impl SomeTrait for Foo<u32> { ... }
+impl SomeTrait for Foo<String> { ... }
+```
+
+this idiom bounds the types that the type parameter `T` can be of but also
+avoids defining an `Auxiliary` trait which one bound `T` with as in:
+
+```rust
+struct Foo<T: Auxiliary> {
+    // Some fields..
+}
+```
+
+You could also have the type on the right hand side of the bound in the `where`
+clause as in:
+
+```rust
+struct Bar<T>
+where
+    T: PartialEq<Bar<T>>
+{
+    // Some fields..
+}
+```
+
+with this RFC, you can now redefine `Foo<T>` and `Bar<T>` as:
+
+```rust
+struct Foo<T>
+where
+    Self: SomeTrait // <-- Notice `Self`!
+{
+    // Some fields..
+}
+
+struct Bar<T>
+where
+    T: PartialEq<Self> // <-- Notice `Self`!
+{
+    // Some fields..
+}
+```
+
+This makes the bound involving `Self` slightly more clear.
+
 ## When `Self` can **not** be used
 
 Consider the following small expression language:
@@ -321,8 +387,10 @@ is the [*"Learning Rust With Entirely Too Many Linked Lists"* guide][LRWETMLL].
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-The identifier `Self` is (now) allowed in type contexts in
-fields of `struct`s, `union`s, and the variants of `enum`s.
+The identifier `Self` is (now) allowed in type contexts in fields of `struct`s,
+`union`s, and the variants of `enum`s. The identifier `Self` is also allowed
+as the left hand side of a bound in a `where` clause and as a type argument
+to a trait bound on the right hand side of a `where` clause.
 
 ## Desugaring
 
@@ -354,6 +422,28 @@ Note in particular that the source code is **not** desugared into:
 enum StackList<'a, T: 'a + InterestingTrait> {
     Nil,
     Cons(T, &'a StackList<'a, T: 'a + InterestingTrait>)
+}
+```
+
+An example of `Self` in `where` bounds is:
+
+```rust
+struct Foo<T>
+where
+    Self: PartialEq<Self>
+{
+    // Some fields..
+}
+```
+
+which desugars into:
+
+```rust
+struct Foo<T>
+where
+    Foo<T>: PartialEq<Foo<T>>
+{
+    // Some fields..
 }
 ```
 
@@ -594,6 +684,9 @@ for in a more noticeable way. Further, while there is an expectation from
 some users that `Self` already works, as discussed in the [motivation],
 the expectation that this alternative already works has not been brought
 forth by anyone as far as this RFC's author is aware.
+
+It is also unclear how internal scoped type aliases would syntactically work
+with `where` bounds.
 
 Strictly speaking, this particular alternative is not in conflict with this
 RFC in that both can be supported technically. The alternative should be
