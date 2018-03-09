@@ -280,6 +280,12 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
              id: LintId::of(lint::builtin::BARE_TRAIT_OBJECT),
              reference: "issue #48457 <https://github.com/rust-lang/rust/issues/48457>",
              epoch: Some(session::config::Epoch::Epoch2018),
+         },
+
+         FutureIncompatibleInfo {
+             id: LintId::of(lint::builtin::UNREACHABLE_PUB),
+             reference: "issue #48457 <https://github.com/rust-lang/rust/issues/48457>",
+             epoch: Some(session::config::Epoch::Epoch2018),
          }
         ]);
 
