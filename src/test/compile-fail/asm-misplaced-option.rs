@@ -15,6 +15,8 @@
 // ignore-emscripten
 // ignore-powerpc
 // ignore-sparc
+// ignore-mips
+// ignore-mips64
 
 #![feature(asm, rustc_attrs)]
 
