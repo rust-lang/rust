@@ -16,7 +16,6 @@
 use dep_graph::{DepKind, DepTrackingMapConfig};
 use std::marker::PhantomData;
 use syntax_pos::DUMMY_SP;
-use hir::def_id::DefId;
 use infer::InferCtxt;
 use syntax_pos::Span;
 use traits::{FulfillmentContext, Obligation, ObligationCause, SelectionContext, Vtable};
@@ -88,42 +87,29 @@ pub fn trans_fulfill_obligation<'a, 'tcx>(ty: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
-    /// Monomorphizes a type from the AST by first applying the in-scope
-    /// substitutions and then normalizing any associated types.
-    pub fn trans_apply_param_substs<T>(self,
-                                       param_substs: &Substs<'tcx>,
-                                       value: &T)
-                                       -> T
-        where T: TypeFoldable<'tcx>
-    {
-        debug!("apply_param_substs(param_substs={:?}, value={:?})", param_substs, value);
-        let substituted = value.subst(self, param_substs);
-        self.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substituted)
-    }
-
-    pub fn trans_apply_param_substs_env<T>(
+    /// Monomorphizes a type from the AST by first applying the
+    /// in-scope substitutions and then normalizing any associated
+    /// types.
+    pub fn subst_and_normalize_erasing_regions<T>(
         self,
         param_substs: &Substs<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        value: &T,
+        value: &T
     ) -> T
     where
         T: TypeFoldable<'tcx>,
     {
         debug!(
-            "apply_param_substs_env(param_substs={:?}, value={:?}, param_env={:?})",
+            "subst_and_normalize_erasing_regions(\
+             param_substs={:?}, \
+             value={:?}, \
+             param_env={:?})",
             param_substs,
             value,
             param_env,
         );
         let substituted = value.subst(self, param_substs);
         self.normalize_erasing_regions(param_env, substituted)
-    }
-
-    pub fn trans_impl_self_ty(&self, def_id: DefId, substs: &'tcx Substs<'tcx>)
-                              -> Ty<'tcx>
-    {
-        self.trans_apply_param_substs(substs, &self.type_of(def_id))
     }
 }
 

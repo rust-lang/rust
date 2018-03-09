@@ -429,7 +429,11 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         let self_type = cx.tcx.impl_of_method(instance.def_id()).and_then(|impl_def_id| {
             // If the method does *not* belong to a trait, proceed
             if cx.tcx.trait_id_of_impl(impl_def_id).is_none() {
-                let impl_self_ty = cx.tcx.trans_impl_self_ty(impl_def_id, instance.substs);
+                let impl_self_ty = cx.tcx.subst_and_normalize_erasing_regions(
+                    instance.substs,
+                    ty::ParamEnv::reveal_all(),
+                    &cx.tcx.type_of(impl_def_id),
+                );
 
                 // Only "class" methods are generally understood by LLVM,
                 // so avoid methods on other types (e.g. `<*mut T>::null`).

@@ -51,7 +51,11 @@ impl<'a, 'tcx> Instance<'tcx> {
               -> Ty<'tcx>
     {
         let ty = tcx.type_of(self.def.def_id());
-        tcx.trans_apply_param_substs(self.substs, &ty)
+        tcx.subst_and_normalize_erasing_regions(
+            self.substs,
+            ty::ParamEnv::reveal_all(),
+            &ty,
+        )
     }
 }
 
@@ -184,7 +188,11 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
             resolve_associated_item(tcx, &item, param_env, trait_def_id, substs)
         } else {
             let ty = tcx.type_of(def_id);
-            let item_type = tcx.trans_apply_param_substs_env(substs, param_env, &ty);
+            let item_type = tcx.subst_and_normalize_erasing_regions(
+                substs,
+                param_env,
+                &ty,
+            );
 
             let def = match item_type.sty {
                 ty::TyFnDef(..) if {

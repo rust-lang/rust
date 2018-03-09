@@ -122,7 +122,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 // FIXME(CTFE): forbid drop in const eval
                 let place = self.eval_place(location)?;
                 let ty = self.place_ty(location);
-                let ty = self.tcx.trans_apply_param_substs(self.substs(), &ty);
+                let ty = self.tcx.subst_and_normalize_erasing_regions(
+                    self.substs(),
+                    ty::ParamEnv::reveal_all(),
+                    &ty,
+                );
                 trace!("TerminatorKind::drop: {:?}, type {}", location, ty);
 
                 let instance = ::monomorphize::resolve_drop_in_place(*self.tcx, ty);

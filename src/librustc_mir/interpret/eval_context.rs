@@ -249,7 +249,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         trace!("resolve: {:?}, {:#?}", def_id, substs);
         trace!("substs: {:#?}", self.substs());
         trace!("param_env: {:#?}", self.param_env);
-        let substs = self.tcx.trans_apply_param_substs_env(self.substs(), self.param_env, &substs);
+        let substs = self.tcx.subst_and_normalize_erasing_regions(
+            self.substs(),
+            self.param_env,
+            &substs,
+        );
         ty::Instance::resolve(
             *self.tcx,
             self.param_env,
@@ -722,7 +726,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     ClosureFnPointer => {
                         match self.eval_operand(operand)?.ty.sty {
                             ty::TyClosure(def_id, substs) => {
-                                let substs = self.tcx.trans_apply_param_substs(self.substs(), &substs);
+                                let substs = self.tcx.subst_and_normalize_erasing_regions(
+                                    self.substs(),
+                                    ty::ParamEnv::reveal_all(),
+                                    &substs,
+                                );
                                 let instance = ty::Instance::resolve_closure(
                                     *self.tcx,
                                     def_id,

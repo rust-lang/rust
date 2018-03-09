@@ -109,7 +109,11 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     pub fn monomorphize<T>(&self, value: &T) -> T
         where T: TypeFoldable<'tcx>
     {
-        self.cx.tcx.trans_apply_param_substs(self.param_substs, value)
+        self.cx.tcx.subst_and_normalize_erasing_regions(
+            self.param_substs,
+            ty::ParamEnv::reveal_all(),
+            value,
+        )
     }
 
     pub fn set_debug_loc(&mut self, bx: &Builder, source_info: mir::SourceInfo) {
