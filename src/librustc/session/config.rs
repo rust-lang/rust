@@ -28,6 +28,7 @@ use middle::cstore;
 
 use syntax::ast::{self, IntTy, UintTy};
 use syntax::codemap::{FileName, FilePathMapping};
+use syntax::epoch::Epoch;
 use syntax::parse::token;
 use syntax::parse;
 use syntax::symbol::Symbol;
@@ -111,59 +112,6 @@ pub enum OutputType {
     DepInfo,
 }
 
-/// The epoch of the compiler (RFC 2052)
-#[derive(Clone, Copy, Hash, PartialOrd, Ord, Eq, PartialEq, Debug)]
-#[non_exhaustive]
-pub enum Epoch {
-    // epochs must be kept in order, newest to oldest
-    /// The 2015 epoch
-    Epoch2015,
-    /// The 2018 epoch
-    Epoch2018,
-    // when adding new epochs, be sure to update:
-    //
-    // - the list in the `parse_epoch` static
-    // - the match in the `parse_epoch` function
-    // - add a `rust_####()` function to the session
-    // - update the enum in Cargo's sources as well
-    //
-    // When -Zepoch becomes --epoch, there will
-    // also be a check for the epoch being nightly-only
-    // somewhere. That will need to be updated
-    // whenever we're stabilizing/introducing a new epoch
-    // as well as changing the default Cargo template.
-}
-
-pub const ALL_EPOCHS: &[Epoch] = &[Epoch::Epoch2015, Epoch::Epoch2018];
-
-impl ToString for Epoch {
-    fn to_string(&self) -> String {
-        match *self {
-            Epoch::Epoch2015 => "2015".into(),
-            Epoch::Epoch2018 => "2018".into(),
-        }
-    }
-}
-
-impl Epoch {
-    pub fn lint_name(&self) -> &'static str {
-        match *self {
-            Epoch::Epoch2015 => "epoch_2015",
-            Epoch::Epoch2018 => "epoch_2018",
-        }
-    }
-}
-
-impl str::FromStr for Epoch {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, ()> {
-        match s {
-            "2015" => Ok(Epoch::Epoch2015),
-            "2018" => Ok(Epoch::Epoch2018),
-            _ => Err(()),
-        }
-    }
-}
 
 impl_stable_hash_for!(enum self::OutputType {
     Bitcode,
@@ -829,9 +777,10 @@ macro_rules! options {
 
     #[allow(dead_code)]
     mod $mod_set {
-        use super::{$struct_name, Passes, SomePasses, AllPasses, Sanitizer, Lto, Epoch};
+        use super::{$struct_name, Passes, SomePasses, AllPasses, Sanitizer, Lto};
         use rustc_back::{LinkerFlavor, PanicStrategy, RelroLevel};
         use std::path::PathBuf;
+        use syntax::epoch::Epoch;
 
         $(
             pub fn $opt(cg: &mut $struct_name, v: Option<&str>) -> bool {
