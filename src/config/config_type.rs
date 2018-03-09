@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use config::file_lines::FileLines;
-use config::options::WidthHeuristics;
+use config::options::{IgnoreList, WidthHeuristics};
 
 /// Trait for types that can be used in `Config`.
 pub trait ConfigType: Sized {
@@ -51,6 +51,12 @@ impl ConfigType for FileLines {
 impl ConfigType for WidthHeuristics {
     fn doc_hint() -> String {
         String::new()
+    }
+}
+
+impl ConfigType for IgnoreList {
+    fn doc_hint() -> String {
+        String::from("[<string>,..]")
     }
 }
 
@@ -176,7 +182,7 @@ macro_rules! create_config {
                 ConfigWasSet(self)
             }
 
-            fn fill_from_parsed_config(mut self, parsed: PartialConfig) -> Config {
+            fn fill_from_parsed_config(mut self, parsed: PartialConfig, dir: &Path) -> Config {
             $(
                 if let Some(val) = parsed.$i {
                     if self.$i.3 {
@@ -195,6 +201,7 @@ macro_rules! create_config {
             )+
                 self.set_heuristics();
                 self.set_license_template();
+                self.set_ignore(dir);
                 self
             }
 
@@ -216,7 +223,7 @@ macro_rules! create_config {
                 }
             }
 
-            pub fn from_toml(toml: &str) -> Result<Config, String> {
+            pub fn from_toml(toml: &str, dir: &Path) -> Result<Config, String> {
                 let parsed: ::toml::Value =
                     toml.parse().map_err(|e| format!("Could not parse TOML: {}", e))?;
                 let mut err: String = String::new();
@@ -236,7 +243,7 @@ macro_rules! create_config {
                         if !err.is_empty() {
                             eprint!("{}", err);
                         }
-                        Ok(Config::default().fill_from_parsed_config(parsed_config))
+                        Ok(Config::default().fill_from_parsed_config(parsed_config, dir: &Path))
                     }
                     Err(e) => {
                         err.push_str("Error: Decoding config file failed:\n");
@@ -300,7 +307,8 @@ macro_rules! create_config {
                 let mut file = File::open(&file_path)?;
                 let mut toml = String::new();
                 file.read_to_string(&mut toml)?;
-                Config::from_toml(&toml).map_err(|err| Error::new(ErrorKind::InvalidData, err))
+                Config::from_toml(&toml, file_path.parent().unwrap())
+                    .map_err(|err| Error::new(ErrorKind::InvalidData, err))
             }
 
             /// Resolve the config for input in `dir`.
@@ -400,6 +408,10 @@ macro_rules! create_config {
                                               lt_path, msg),
                     }
                 }
+            }
+
+            fn set_ignore(&mut self, dir: &Path) {
+                self.ignore.2.add_prefix(dir);
             }
         }
 

@@ -293,7 +293,7 @@ fn format_lines_errors_are_reported() {
 fn format_lines_errors_are_reported_with_tabs() {
     let long_identifier = String::from_utf8(vec![b'a'; 97]).unwrap();
     let input = Input::Text(format!("fn a() {{\n\t{}\n}}", long_identifier));
-    let config = Config::from_toml("hard_tabs = true").unwrap();
+    let config = Config::from_toml("hard_tabs = true", Path::new("")).unwrap();
     let (error_summary, _file_map, _report) =
         format_input::<io::Stdout>(input, &config, None).unwrap();
     assert!(error_summary.has_formatting_errors());
@@ -433,7 +433,7 @@ fn get_config(config_file: Option<&Path>) -> Config {
         .read_to_string(&mut def_config)
         .expect("Couldn't read config");
 
-    Config::from_toml(&def_config).expect("Invalid toml")
+    Config::from_toml(&def_config, Path::new("tests/config/")).expect("Invalid toml")
 }
 
 // Reads significant comments of the form: // rustfmt-key: value

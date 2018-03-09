@@ -8,8 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use syntax::codemap::FileName;
+
 use config::config_type::ConfigType;
 use config::lists::*;
+
+use std::collections::HashSet;
+use std::path::{Path, PathBuf};
 
 /// Macro for deriving implementations of Serialize/Deserialize for enums
 #[macro_export]
@@ -242,5 +247,70 @@ impl ::std::str::FromStr for WidthHeuristics {
 
     fn from_str(_: &str) -> Result<Self, Self::Err> {
         Err("WidthHeuristics is not parsable")
+    }
+}
+
+/// A set of directories, files and modules that rustfmt should ignore.
+#[derive(Default, Deserialize, Serialize, Clone, Debug)]
+pub struct IgnoreList {
+    directories: Option<HashSet<PathBuf>>,
+    files: Option<HashSet<PathBuf>>,
+}
+
+impl IgnoreList {
+    fn add_prefix_inner(set: &HashSet<PathBuf>, dir: &Path) -> HashSet<PathBuf> {
+        set.iter()
+            .map(|s| {
+                if s.has_root() {
+                    s.clone()
+                } else {
+                    let mut path = PathBuf::from(dir);
+                    path.push(s);
+                    path
+                }
+            })
+            .collect()
+    }
+
+    pub fn add_prefix(&mut self, dir: &Path) {
+        macro add_prefix_inner_with ($($field: ident),* $(,)*) {
+            $(if let Some(set) = self.$field.as_mut() {
+                *set = IgnoreList::add_prefix_inner(set, dir);
+            })*
+        }
+
+        add_prefix_inner_with!(directories, files);
+    }
+
+    fn is_ignore_file(&self, path: &Path) -> bool {
+        self.files.as_ref().map_or(false, |set| set.contains(path))
+    }
+
+    fn is_under_ignore_dir(&self, path: &Path) -> bool {
+        if let Some(ref dirs) = self.directories {
+            for dir in dirs {
+                if path.starts_with(dir) {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+
+    pub fn skip_file(&self, file: &FileName) -> bool {
+        if let FileName::Real(ref path) = file {
+            self.is_ignore_file(path) || self.is_under_ignore_dir(path)
+        } else {
+            false
+        }
+    }
+}
+
+impl ::std::str::FromStr for IgnoreList {
+    type Err = &'static str;
+
+    fn from_str(_: &str) -> Result<Self, Self::Err> {
+        Err("IgnoreList is not parsable")
     }
 }

@@ -141,6 +141,8 @@ create_config! {
         "Report all, none or unnumbered occurrences of TODO in source file comments";
     report_fixme: ReportTactic, ReportTactic::Never, false,
         "Report all, none or unnumbered occurrences of FIXME in source file comments";
+    ignore: IgnoreList, IgnoreList::default(), false,
+        "Skip formatting the specified files and directories.";
 
     // Not user-facing.
     verbose: bool, false, false, "Use verbose output";
@@ -208,7 +210,8 @@ mod test {
 
     #[test]
     fn test_was_set() {
-        let config = Config::from_toml("hard_tabs = true").unwrap();
+        use std::path::Path;
+        let config = Config::from_toml("hard_tabs = true", Path::new("")).unwrap();
 
         assert_eq!(config.was_set().hard_tabs(), true);
         assert_eq!(config.was_set().verbose(), false);
