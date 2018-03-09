@@ -391,6 +391,15 @@ fn rewrite_comment_inner(
             } else {
                 code_block_buffer.push_str(line);
                 code_block_buffer.push('\n');
+
+                if is_last {
+                    // There is an code block that is not properly enclosed by backticks.
+                    // We will leave them untouched.
+                    result.push_str(&comment_line_separator);
+                    result.push_str(&join_code_block_with_comment_line_separator(
+                        &code_block_buffer,
+                    ));
+                }
             }
 
             continue;

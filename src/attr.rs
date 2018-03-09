@@ -21,8 +21,6 @@ use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use utils::{count_newlines, mk_sp};
 
-use std::cmp;
-
 /// Returns attributes on the given statement.
 pub fn get_attrs_from_stmt(stmt: &ast::Stmt) -> &[ast::Attribute] {
     match stmt.node {
@@ -98,13 +96,16 @@ fn take_while_with_pred<'a, P>(
 where
     P: Fn(&ast::Attribute) -> bool,
 {
-    let mut last_index = 0;
-    let mut iter = attrs.iter().enumerate().peekable();
-    while let Some((i, attr)) = iter.next() {
-        if !pred(attr) {
+    let mut len = 0;
+    let mut iter = attrs.iter().peekable();
+
+    while let Some(attr) = iter.next() {
+        if pred(attr) {
+            len += 1;
+        } else {
             break;
         }
-        if let Some(&(_, next_attr)) = iter.peek() {
+        if let Some(next_attr) = iter.peek() {
             // Extract comments between two attributes.
             let span_between_attr = mk_sp(attr.span.hi(), next_attr.span.lo());
             let snippet = context.snippet(span_between_attr);
@@ -112,13 +113,9 @@ where
                 break;
             }
         }
-        last_index = i;
     }
-    if last_index == 0 {
-        &[]
-    } else {
-        &attrs[..last_index + 1]
-    }
+
+    &attrs[..len]
 }
 
 /// Rewrite the same kind of attributes at the same time. This includes doc
@@ -141,7 +138,7 @@ fn rewrite_first_group_attrs(
             .join("\n");
         return Some((
             sugared_docs.len(),
-            rewrite_doc_comment(&snippet, shape, context.config)?,
+            rewrite_doc_comment(&snippet, shape.comment(context.config), context.config)?,
         ));
     }
     // Rewrite `#[derive(..)]`s.
@@ -250,13 +247,7 @@ impl Rewrite for ast::Attribute {
         };
         let snippet = context.snippet(self.span);
         if self.is_sugared_doc {
-            let doc_shape = Shape {
-                width: cmp::min(shape.width, context.config.comment_width())
-                    .checked_sub(shape.indent.width())
-                    .unwrap_or(0),
-                ..shape
-            };
-            rewrite_doc_comment(snippet, doc_shape, context.config)
+            rewrite_doc_comment(snippet, shape.comment(context.config), context.config)
         } else {
             if contains_comment(snippet) {
                 return Some(snippet.to_owned());

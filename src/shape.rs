@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::borrow::Cow;
+use std::cmp::min;
 use std::ops::{Add, Sub};
 
 use Config;
@@ -275,6 +276,17 @@ impl Shape {
             .max_width()
             .checked_sub(self.used_width() + self.width)
             .unwrap_or(0)
+    }
+
+    pub fn comment(&self, config: &Config) -> Shape {
+        let width = min(
+            self.width,
+            config
+                .comment_width()
+                .checked_sub(self.indent.width())
+                .unwrap_or(0),
+        );
+        Shape { width, ..*self }
     }
 }
 
