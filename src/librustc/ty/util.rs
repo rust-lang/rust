@@ -1126,7 +1126,9 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 |variant| variant.fields.iter().any(
                     |field| needs_drop(field.ty(tcx, substs)))),
 
-        ty::TyUnusedParam | ty::TyLayoutOnlyParam(_, _) => bug!("Unexpected TyUnusedParam in needs_drop_raw"),
+        ty::TyUnusedParam | ty::TyLayoutOnlyParam(_, _) => {
+            bug!("Unexpected type {:?} in needs_drop_raw", ty);
+        }
     }
 }
 

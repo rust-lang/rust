@@ -2037,7 +2037,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 ))
             }
 
-            ty::TyProjection(_) | ty::TyParam(_) | ty::TyUnusedParam | ty::TyLayoutOnlyParam(_, _) | ty::TyAnon(..) => None,
+            ty::TyProjection(_) | ty::TyParam(_) | ty::TyUnusedParam |
+            ty::TyLayoutOnlyParam(_, _) | ty::TyAnon(..) => None,
             ty::TyInfer(ty::TyVar(_)) => Ambiguous,
 
             ty::TyInfer(ty::CanonicalTy(_)) |
@@ -2114,7 +2115,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 bug!("asked to assemble builtin bounds of unexpected type: {:?}",
                      self_ty);
             }
-            ty::TyUnusedParam | ty::TyLayoutOnlyParam(_, _) => bug!("Unexpected TyUnusedParam in copy_clone_conditions"),
+            ty::TyUnusedParam | ty::TyLayoutOnlyParam(_, _) => {
+                bug!("Unexpected {:?} in copy_clone_conditions", self_ty);
+            }
         }
     }
 

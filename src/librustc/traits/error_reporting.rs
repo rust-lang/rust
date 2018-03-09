@@ -264,7 +264,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 ty::TyForeign(..) => Some(19),
                 ty::TyGeneratorWitness(..) => Some(20),
                 ty::TyInfer(..) | ty::TyError => None,
-                ty::TyUnusedParam | ty::TyLayoutOnlyParam(_, _) => bug!("unexpected TyUnusedParam in fuzzy_match_tys"),
+                ty::TyUnusedParam | ty::TyLayoutOnlyParam(_, _) => {
+                    bug!("unexpected {:?} in fuzzy_match_tys", t);
+                }
             }
         }
 

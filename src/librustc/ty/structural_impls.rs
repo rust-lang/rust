@@ -865,7 +865,8 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::TyAnon(did, substs) => ty::TyAnon(did, substs.fold_with(folder)),
             ty::TyBool | ty::TyChar | ty::TyStr | ty::TyInt(_) |
             ty::TyUint(_) | ty::TyFloat(_) | ty::TyError | ty::TyInfer(_) |
-            ty::TyParam(..) | ty::TyUnusedParam | ty::TyLayoutOnlyParam(_, _) | ty::TyNever | ty::TyForeign(..) => return self
+            ty::TyParam(..) | ty::TyUnusedParam | ty::TyLayoutOnlyParam(_, _) |
+            ty::TyNever | ty::TyForeign(..) => return self
         };
 
         if self.sty == sty {
@@ -900,7 +901,8 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::TyAnon(_, ref substs) => substs.visit_with(visitor),
             ty::TyBool | ty::TyChar | ty::TyStr | ty::TyInt(_) |
             ty::TyUint(_) | ty::TyFloat(_) | ty::TyError | ty::TyInfer(_) |
-            ty::TyParam(..) | ty::TyUnusedParam | ty::TyLayoutOnlyParam(_, _) | ty::TyNever | ty::TyForeign(..) => false,
+            ty::TyParam(..) | ty::TyUnusedParam | ty::TyLayoutOnlyParam(_, _) |
+            ty::TyNever | ty::TyForeign(..) => false,
         }
     }
 

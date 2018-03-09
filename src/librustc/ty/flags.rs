@@ -190,7 +190,9 @@ impl FlagComputation {
             &ty::TyFnPtr(f) => {
                 self.add_fn_sig(f);
             }
-            &ty::TyUnusedParam | ty::TyLayoutOnlyParam(_, _) => bug!("Unexpected TyUnusedParam in FlagComputation::for_sty"),
+            &ty::TyUnusedParam | ty::TyLayoutOnlyParam(_, _) => {
+                bug!("Unexpected {:?} in FlagComputation::for_sty", st);
+            }
         }
     }
 
