@@ -86,7 +86,6 @@ pub struct Config {
     // rust codegen options
     pub rust_optimize: bool,
     pub rust_codegen_units: Option<u32>,
-    pub rust_thinlto: bool,
     pub rust_debug_assertions: bool,
     pub rust_debuginfo: bool,
     pub rust_debuginfo_lines: bool,
@@ -269,7 +268,6 @@ impl Default for StringOrBool {
 struct Rust {
     optimize: Option<bool>,
     codegen_units: Option<u32>,
-    thinlto: Option<bool>,
     debug_assertions: Option<bool>,
     debuginfo: Option<bool>,
     debuginfo_lines: Option<bool>,
@@ -427,7 +425,6 @@ impl Config {
 
         // Store off these values as options because if they're not provided
         // we'll infer default values for them later
-        let mut thinlto = None;
         let mut llvm_assertions = None;
         let mut debuginfo_lines = None;
         let mut debuginfo_only_std = None;
@@ -471,7 +468,6 @@ impl Config {
             optimize = rust.optimize;
             ignore_git = rust.ignore_git;
             debug_jemalloc = rust.debug_jemalloc;
-            thinlto = rust.thinlto;
             set(&mut config.rust_optimize_tests, rust.optimize_tests);
             set(&mut config.rust_debuginfo_tests, rust.debuginfo_tests);
             set(&mut config.codegen_tests, rust.codegen_tests);
@@ -559,7 +555,6 @@ impl Config {
             "stable" | "beta" | "nightly" => true,
             _ => false,
         };
-        config.rust_thinlto = thinlto.unwrap_or(true);
         config.rust_debuginfo_lines = debuginfo_lines.unwrap_or(default);
         config.rust_debuginfo_only_std = debuginfo_only_std.unwrap_or(default);
 
