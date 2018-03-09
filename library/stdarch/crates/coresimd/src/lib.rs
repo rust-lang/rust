@@ -13,7 +13,8 @@
            simd_ffi, target_feature, cfg_target_feature, i128_type, asm,
            integer_atomics, stmt_expr_attributes, core_intrinsics,
            crate_in_paths, no_core, attr_literals, rustc_attrs, stdsimd,
-           staged_api, fn_must_use, core_float, core_slice_ext, align_offset)]
+           staged_api, fn_must_use, core_float, core_slice_ext, align_offset,
+           doc_cfg)]
 #![cfg_attr(test,
             feature(proc_macro, test, attr_literals, abi_vectorcall,
                     untagged_unions))]

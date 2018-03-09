@@ -341,16 +341,16 @@
 /// ```
 #[unstable(feature = "stdsimd", issue = "0")]
 pub mod arch {
-    #[cfg(target_arch = "x86")]
+    #[cfg(all(not(dox), target_arch = "x86"))]
     pub use coresimd::arch::x86;
 
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(all(not(dox), target_arch = "x86_64"))]
     pub use coresimd::arch::x86_64;
 
-    #[cfg(target_arch = "arm")]
+    #[cfg(all(not(dox), target_arch = "arm"))]
     pub use coresimd::arch::arm;
 
-    #[cfg(target_arch = "aarch64")]
+    #[cfg(all(not(dox), target_arch = "aarch64"))]
     pub use coresimd::arch::aarch64;
 
     #[cfg(target_arch = "wasm32")]
@@ -358,6 +358,46 @@ pub mod arch {
 
     #[doc(hidden)] // unstable implementation detail
     pub mod detect;
+
+    /// Platform-specific intrinsics for the `x86` platform.
+    ///
+    /// The documentation with the full listing of `x86` intrinsics is available in [libcore], but
+    /// the module is re-exported here in std as well.
+    ///
+    /// [libcore]: ../../../core/arch/x86/index.html
+    #[cfg(dox)]
+    #[doc(cfg(target_arch = "x86"))]
+    pub mod x86 {}
+
+    /// Platform-specific intrinsics for the `x86_64` platform.
+    ///
+    /// The documentation with the full listing of `x86_64` intrinsics is available in [libcore],
+    /// but the module is re-exported here in std as well.
+    ///
+    /// [libcore]: ../../../core/arch/x86_64/index.html
+    #[cfg(dox)]
+    #[doc(cfg(target_arch = "x86_64"))]
+    pub mod x86_64 {}
+
+    /// Platform-specific intrinsics for the `arm` platform.
+    ///
+    /// The documentation with the full listing of `arm` intrinsics is available in [libcore], but
+    /// the module is re-exported here in std as well.
+    ///
+    /// [libcore]: ../../../core/arch/arm/index.html
+    #[cfg(dox)]
+    #[doc(cfg(target_arch = "arm"))]
+    pub mod arm {}
+
+    /// Platform-specific intrinsics for the `aarch64` platform.
+    ///
+    /// The documentation with the full listing of `aarch64` intrinsics is available in [libcore],
+    /// but the module is re-exported here in std as well.
+    ///
+    /// [libcore]: ../../../core/arch/aarch64/index.html
+    #[cfg(dox)]
+    #[doc(cfg(target_arch = "aarch64"))]
+    pub mod aarch64 {}
 }
 
 #[unstable(feature = "stdsimd", issue = "0")]

@@ -39,7 +39,8 @@ pub mod arch {
     /// Platform-specific intrinsics for the `x86` platform.
     ///
     /// See the [module documentation](../index.html) for more details.
-    #[cfg(target_arch = "x86")]
+    #[cfg(any(target_arch = "x86", dox))]
+    #[doc(cfg(target_arch = "x86"))]
     pub mod x86 {
         pub use coresimd::x86::*;
     }
@@ -47,7 +48,8 @@ pub mod arch {
     /// Platform-specific intrinsics for the `x86_64` platform.
     ///
     /// See the [module documentation](../index.html) for more details.
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(any(target_arch = "x86_64", dox))]
+    #[doc(cfg(target_arch = "x86_64"))]
     pub mod x86_64 {
         pub use coresimd::x86::*;
         pub use coresimd::x86_64::*;
@@ -56,7 +58,8 @@ pub mod arch {
     /// Platform-specific intrinsics for the `arm` platform.
     ///
     /// See the [module documentation](../index.html) for more details.
-    #[cfg(target_arch = "arm")]
+    #[cfg(any(target_arch = "arm", dox))]
+    #[doc(cfg(target_arch = "arm"))]
     pub mod arm {
         pub use coresimd::arm::*;
     }
@@ -64,7 +67,8 @@ pub mod arch {
     /// Platform-specific intrinsics for the `aarch64` platform.
     ///
     /// See the [module documentation](../index.html) for more details.
-    #[cfg(target_arch = "aarch64")]
+    #[cfg(any(target_arch = "aarch64", dox))]
+    #[doc(cfg(target_arch = "aarch64"))]
     pub mod aarch64 {
         pub use coresimd::arm::*;
         pub use coresimd::aarch64::*;
@@ -81,14 +85,14 @@ pub mod arch {
 
 mod simd_llvm;
 
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#[cfg(any(target_arch = "x86", target_arch = "x86_64", dox))]
 mod x86;
-#[cfg(target_arch = "x86_64")]
+#[cfg(any(target_arch = "x86_64", dox))]
 mod x86_64;
 
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+#[cfg(any(target_arch = "arm", target_arch = "aarch64", dox))]
 mod arm;
-#[cfg(target_arch = "aarch64")]
+#[cfg(any(target_arch = "aarch64", dox))]
 mod aarch64;
 #[cfg(target_arch = "wasm32")]
 mod wasm32;
