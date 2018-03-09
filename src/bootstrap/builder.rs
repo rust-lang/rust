@@ -444,10 +444,11 @@ impl<'a> Builder<'a> {
 
             fn run(self, builder: &Builder) -> Interned<PathBuf> {
                 let compiler = self.compiler;
-                let lib = if compiler.stage >= 1 && builder.build.config.libdir.is_some() {
-                    builder.build.config.libdir.clone().unwrap()
+                let config = &builder.build.config;
+                let lib = if compiler.stage >= 1 && config.libdir_relative().is_some() {
+                    builder.build.config.libdir_relative().unwrap()
                 } else {
-                    PathBuf::from("lib")
+                    Path::new("lib")
                 };
                 let sysroot = builder.sysroot(self.compiler).join(lib)
                     .join("rustlib").join(self.target).join("lib");

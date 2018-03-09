@@ -20,9 +20,10 @@ mod save;
 mod work_product;
 mod file_format;
 
-pub use self::fs::prepare_session_directory;
 pub use self::fs::finalize_session_directory;
+pub use self::fs::garbage_collect_session_directories;
 pub use self::fs::in_incr_comp_dir;
+pub use self::fs::prepare_session_directory;
 pub use self::load::dep_graph_tcx_init;
 pub use self::load::load_dep_graph;
 pub use self::load::load_query_result_cache;

@@ -17,7 +17,7 @@ use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process;
 use std::cmp;
 
@@ -562,6 +562,17 @@ impl Config {
         config.ignore_git = ignore_git.unwrap_or(default);
 
         config
+    }
+
+    /// Try to find the relative path of `libdir`.
+    pub fn libdir_relative(&self) -> Option<&Path> {
+        let libdir = self.libdir.as_ref()?;
+        if libdir.is_relative() {
+            Some(libdir)
+        } else {
+            // Try to make it relative to the prefix.
+            libdir.strip_prefix(self.prefix.as_ref()?).ok()
+        }
     }
 
     pub fn verbose(&self) -> bool {
