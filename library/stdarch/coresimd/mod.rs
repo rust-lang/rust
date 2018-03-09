@@ -69,6 +69,14 @@ pub mod arch {
         pub use coresimd::arm::*;
         pub use coresimd::aarch64::*;
     }
+
+    /// Platform-specific intrinsics for the `wasm32` platform.
+    ///
+    /// See the [module documentation](../index.html) for more details.
+    #[cfg(target_arch = "wasm32")]
+    pub mod wasm32 {
+        pub use coresimd::wasm32::*;
+    }
 }
 
 mod simd_llvm;
@@ -82,5 +90,7 @@ mod x86_64;
 mod arm;
 #[cfg(target_arch = "aarch64")]
 mod aarch64;
+#[cfg(target_arch = "wasm32")]
+mod wasm32;
 
 mod nvptx;

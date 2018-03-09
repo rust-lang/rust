@@ -1,6 +1,8 @@
 //! Caches run-time feature detection so that it only needs to be computed
 //! once.
 
+#![allow(dead_code)] // not used on all platforms
+
 use core::sync::atomic::Ordering;
 
 #[cfg(target_pointer_width = "64")]

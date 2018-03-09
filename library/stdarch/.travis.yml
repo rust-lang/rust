@@ -26,6 +26,19 @@ matrix:
       script: ci/dox.sh
     - script: cargo test --manifest-path crates/stdsimd-verify/Cargo.toml
       install: true
+    - env: TARGET=wasm32-unknown-unknown
+      before_script:
+        - git clone --recursive https://github.com/WebAssembly/wabt
+        - (cd wabt && make -j4)
+        - export PATH=$PATH:$PWD/wabt/bin
+      script:
+        - cargo build --target wasm32-unknown-unknown -p stdsimd
+        - cargo build --target wasm32-unknown-unknown -p stdsimd --release
+        - cargo rustc --target wasm32-unknown-unknown -p stdsimd --release --example wasm -- -C lto
+        - wasm2wat target/wasm32-unknown-unknown/release/examples/wasm.wasm -o wasm.wat
+        - cat wasm.wat
+        - grep current_memory wasm.wat
+        - grep grow_memory wasm.wat
     - env: RUSTFMT=On TARGET=x86_64-unknown-linux-gnu NO_ADD=1
       before_script:
       - rustup component add rustfmt-preview

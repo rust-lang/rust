@@ -353,6 +353,9 @@ pub mod arch {
     #[cfg(target_arch = "aarch64")]
     pub use coresimd::arch::aarch64;
 
+    #[cfg(target_arch = "wasm32")]
+    pub use coresimd::arch::wasm32;
+
     #[doc(hidden)] // unstable implementation detail
     pub mod detect;
 }
