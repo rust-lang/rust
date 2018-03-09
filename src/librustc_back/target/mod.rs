@@ -473,6 +473,9 @@ pub struct TargetOptions {
     /// The default visibility for symbols in this target should be "hidden"
     /// rather than "default"
     pub default_hidden_visibility: bool,
+
+    /// Whether or not bitcode is embedded in object files
+    pub embed_bitcode: bool,
 }
 
 impl Default for TargetOptions {
@@ -544,6 +547,7 @@ impl Default for TargetOptions {
             i128_lowering: false,
             codegen_backend: "llvm".to_string(),
             default_hidden_visibility: false,
+            embed_bitcode: false,
         }
     }
 }
@@ -792,6 +796,7 @@ impl Target {
         key!(no_builtins, bool);
         key!(codegen_backend);
         key!(default_hidden_visibility, bool);
+        key!(embed_bitcode, bool);
 
         if let Some(array) = obj.find("abi-blacklist").and_then(Json::as_array) {
             for name in array.iter().filter_map(|abi| abi.as_string()) {
@@ -990,6 +995,7 @@ impl ToJson for Target {
         target_option_val!(no_builtins);
         target_option_val!(codegen_backend);
         target_option_val!(default_hidden_visibility);
+        target_option_val!(embed_bitcode);
 
         if default.abi_blacklist != self.options.abi_blacklist {
             d.insert("abi-blacklist".to_string(), self.options.abi_blacklist.iter()

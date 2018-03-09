@@ -1288,6 +1288,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "run `dsymutil` and delete intermediate object files"),
     ui_testing: bool = (false, parse_bool, [UNTRACKED],
           "format compiler diagnostics in a way that's better suitable for UI testing"),
+    embed_bitcode: bool = (false, parse_bool, [TRACKED],
+          "embed LLVM bitcode in object files"),
 }
 
 pub fn default_lib_output() -> CrateType {
