@@ -82,7 +82,7 @@ pub use self::on_disk_cache::OnDiskCache;
 // the driver creates (using several `rustc_*` crates).
 //
 // The result of query must implement Clone. They must also implement ty::maps::values::Value
-// which produces an appropiate error value if the query resulted in a query cycle.
+// which produces an appropriate error value if the query resulted in a query cycle.
 // Queries marked with `fatal_cycle` do not need that implementation
 // as they will raise an fatal error on query cycles instead.
 define_maps! { <'tcx>
