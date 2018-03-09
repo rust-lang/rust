@@ -35,7 +35,7 @@ matrix:
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
       os: osx
-      osx_image: xcode7.3
+      osx_image: xcode9.3-moar
       if: branch = auto
 
     # macOS builders. These are placed near the beginning because they are very
@@ -90,7 +90,7 @@ matrix:
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
       os: osx
-      osx_image: xcode7.3
+      osx_image: xcode9.3-moar
       if: branch = auto
 
     - env: >
@@ -104,7 +104,7 @@ matrix:
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
       os: osx
-      osx_image: xcode7.3
+      osx_image: xcode9.3-moar
       if: branch = auto
 
     # Linux builders, remaining docker images
