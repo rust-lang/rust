@@ -505,27 +505,23 @@ impl Step for RustdocJS {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Tidy {
-    host: Interned<String>,
-}
+pub struct Tidy;
 
 impl Step for Tidy {
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
-    const ONLY_BUILD: bool = true;
 
-    /// Runs the `tidy` tool as compiled in `stage` by the `host` compiler.
+    /// Runs the `tidy` tool.
     ///
     /// This tool in `src/tools` checks up on various bits and pieces of style and
     /// otherwise just implements a few lint-like checks that are specific to the
     /// compiler itself.
     fn run(self, builder: &Builder) {
         let build = builder.build;
-        let host = self.host;
 
         let _folder = build.fold_output(|| "tidy");
-        println!("tidy check ({})", host);
+        println!("tidy check");
         let mut cmd = builder.tool_cmd(Tool::Tidy);
         cmd.arg(build.src.join("src"));
         cmd.arg(&build.initial_cargo);
@@ -543,9 +539,7 @@ impl Step for Tidy {
     }
 
     fn make_run(run: RunConfig) {
-        run.builder.ensure(Tidy {
-            host: run.builder.build.build,
-        });
+        run.builder.ensure(Tidy);
     }
 }
 
@@ -1610,7 +1604,6 @@ pub struct Distcheck;
 
 impl Step for Distcheck {
     type Output = ();
-    const ONLY_BUILD: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         run.path("distcheck")
@@ -1676,7 +1669,6 @@ impl Step for Bootstrap {
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
-    const ONLY_BUILD: bool = true;
 
     /// Test the build system itself
     fn run(self, builder: &Builder) {
