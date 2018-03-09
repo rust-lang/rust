@@ -25,8 +25,6 @@
 // ignore-mips64
 // ignore-mips64el
 // ignore-msp430
-// ignore-powerpc64
-// ignore-powerpc64le
 // ignore-powerpc
 // ignore-r600
 // ignore-amdgcn

@@ -32,7 +32,7 @@ pub fn is_node_local_to_unit(cx: &CodegenCx, def_id: DefId) -> bool
     // visible). It might better to use the `exported_items` set from
     // `driver::CrateAnalysis` in the future, but (atm) this set is not
     // available in the translation pass.
-    !cx.tcx.is_exported_symbol(def_id)
+    !cx.tcx.is_reachable_non_generic(def_id)
 }
 
 #[allow(non_snake_case)]

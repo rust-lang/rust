@@ -722,7 +722,7 @@ impl<I: ExactSizeIterator + ?Sized> ExactSizeIterator for Box<I> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<I: FusedIterator + ?Sized> FusedIterator for Box<I> {}
 
 

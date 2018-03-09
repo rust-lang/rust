@@ -150,11 +150,23 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
 
                                 // Detect literal value out of range [min, max] inclusive
                                 // avoiding use of -min to prevent overflow/panic
-                                if (negative && v > max + 1) ||
-                                   (!negative && v > max) {
-                                    cx.span_lint(OVERFLOWING_LITERALS,
-                                                 e.span,
-                                                 &format!("literal out of range for {:?}", t));
+                                if (negative && v > max + 1) || (!negative && v > max) {
+                                    if let Some(repr_str) = get_bin_hex_repr(cx, lit) {
+                                        report_bin_hex_error(
+                                            cx,
+                                            e,
+                                            ty::TyInt(t),
+                                            repr_str,
+                                            v,
+                                            negative,
+                                        );
+                                        return;
+                                    }
+                                    cx.span_lint(
+                                        OVERFLOWING_LITERALS,
+                                        e.span,
+                                        &format!("literal out of range for {:?}", t),
+                                    );
                                     return;
                                 }
                             }
@@ -182,7 +194,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                         let mut err = cx.struct_span_lint(
                                                              OVERFLOWING_LITERALS,
                                                              parent_expr.span,
-                                                             "only u8 can be casted into char");
+                                                             "only u8 can be cast into char");
                                         err.span_suggestion(parent_expr.span,
                                                             &"use a char literal instead",
                                                             format!("'\\u{{{:X}}}'", lit_val));
@@ -191,9 +203,22 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                     }
                                 }
                             }
-                            cx.span_lint(OVERFLOWING_LITERALS,
-                                         e.span,
-                                         &format!("literal out of range for {:?}", t));
+                            if let Some(repr_str) = get_bin_hex_repr(cx, lit) {
+                                report_bin_hex_error(
+                                    cx,
+                                    e,
+                                    ty::TyUint(t),
+                                    repr_str,
+                                    lit_val,
+                                    false,
+                                );
+                                return;
+                            }
+                            cx.span_lint(
+                                OVERFLOWING_LITERALS,
+                                e.span,
+                                &format!("literal out of range for {:?}", t),
+                            );
                         }
                     }
                     ty::TyFloat(t) => {
@@ -337,6 +362,120 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                 hir::BiEq | hir::BiLt | hir::BiLe | hir::BiNe | hir::BiGe | hir::BiGt => true,
                 _ => false,
             }
+        }
+
+        fn get_bin_hex_repr(cx: &LateContext, lit: &ast::Lit) -> Option<String> {
+            let src = cx.sess().codemap().span_to_snippet(lit.span).ok()?;
+            let firstch = src.chars().next()?;
+
+            if firstch == '0' {
+                match src.chars().nth(1) {
+                    Some('x') | Some('b') => return Some(src),
+                    _ => return None,
+                }
+            }
+
+            None
+        }
+
+        // This function finds the next fitting type and generates a suggestion string.
+        // It searches for fitting types in the following way (`X < Y`):
+        //  - `iX`: if literal fits in `uX` => `uX`, else => `iY`
+        //  - `-iX` => `iY`
+        //  - `uX` => `uY`
+        //
+        // No suggestion for: `isize`, `usize`.
+        fn get_type_suggestion<'a>(
+            t: &ty::TypeVariants,
+            val: u128,
+            negative: bool,
+        ) -> Option<String> {
+            use syntax::ast::IntTy::*;
+            use syntax::ast::UintTy::*;
+            macro_rules! find_fit {
+                ($ty:expr, $val:expr, $negative:expr,
+                 $($type:ident => [$($utypes:expr),*] => [$($itypes:expr),*]),+) => {
+                    {
+                        let _neg = if negative { 1 } else { 0 };
+                        match $ty {
+                            $($type => {
+                                $(if !negative && val <= uint_ty_range($utypes).1 {
+                                    return Some(format!("{:?}", $utypes))
+                                })*
+                                $(if val <= int_ty_range($itypes).1 as u128 + _neg {
+                                    return Some(format!("{:?}", $itypes))
+                                })*
+                                None
+                            },)*
+                            _ => None
+                        }
+                    }
+                }
+            }
+            match t {
+                &ty::TyInt(i) => find_fit!(i, val, negative,
+                              I8 => [U8] => [I16, I32, I64, I128],
+                              I16 => [U16] => [I32, I64, I128],
+                              I32 => [U32] => [I64, I128],
+                              I64 => [U64] => [I128],
+                              I128 => [U128] => []),
+                &ty::TyUint(u) => find_fit!(u, val, negative,
+                              U8 => [U8, U16, U32, U64, U128] => [],
+                              U16 => [U16, U32, U64, U128] => [],
+                              U32 => [U32, U64, U128] => [],
+                              U64 => [U64, U128] => [],
+                              U128 => [U128] => []),
+                _ => None,
+            }
+        }
+
+        fn report_bin_hex_error(
+            cx: &LateContext,
+            expr: &hir::Expr,
+            ty: ty::TypeVariants,
+            repr_str: String,
+            val: u128,
+            negative: bool,
+        ) {
+            let (t, actually) = match ty {
+                ty::TyInt(t) => {
+                    let bits = int_ty_bits(t, cx.sess().target.isize_ty);
+                    let actually = (val << (128 - bits)) as i128 >> (128 - bits);
+                    (format!("{:?}", t), actually.to_string())
+                }
+                ty::TyUint(t) => {
+                    let bits = uint_ty_bits(t, cx.sess().target.usize_ty);
+                    let actually = (val << (128 - bits)) >> (128 - bits);
+                    (format!("{:?}", t), actually.to_string())
+                }
+                _ => bug!(),
+            };
+            let mut err = cx.struct_span_lint(
+                OVERFLOWING_LITERALS,
+                expr.span,
+                &format!("literal out of range for {}", t),
+            );
+            err.note(&format!(
+                "the literal `{}` (decimal `{}`) does not fit into \
+                 an `{}` and will become `{}{}`",
+                repr_str, val, t, actually, t
+            ));
+            if let Some(sugg_ty) =
+                get_type_suggestion(&cx.tables.node_id_to_type(expr.hir_id).sty, val, negative)
+            {
+                if let Some(pos) = repr_str.chars().position(|c| c == 'i' || c == 'u') {
+                    let (sans_suffix, _) = repr_str.split_at(pos);
+                    err.span_suggestion(
+                        expr.span,
+                        &format!("consider using `{}` instead", sugg_ty),
+                        format!("{}{}", sans_suffix, sugg_ty),
+                    );
+                } else {
+                    err.help(&format!("consider using `{}` instead", sugg_ty));
+                }
+            }
+
+            err.emit();
         }
     }
 }

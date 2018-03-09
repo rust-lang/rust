@@ -768,9 +768,9 @@ fn exported_symbols(tcx: TyCtxt, crate_type: CrateType) -> Vec<String> {
     let mut symbols = Vec::new();
 
     let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
-    for &(ref name, _, level) in tcx.exported_symbols(LOCAL_CRATE).iter() {
+    for &(symbol, level) in tcx.exported_symbols(LOCAL_CRATE).iter() {
         if level.is_below_threshold(export_threshold) {
-            symbols.push(name.clone());
+            symbols.push(symbol.symbol_name(tcx).to_string());
         }
     }
 
@@ -782,9 +782,9 @@ fn exported_symbols(tcx: TyCtxt, crate_type: CrateType) -> Vec<String> {
         // For each dependency that we are linking to statically ...
         if *dep_format == Linkage::Static {
             // ... we add its symbol list to our export list.
-            for &(ref name, _, level) in tcx.exported_symbols(cnum).iter() {
+            for &(symbol, level) in tcx.exported_symbols(cnum).iter() {
                 if level.is_below_threshold(export_threshold) {
-                    symbols.push(name.clone());
+                    symbols.push(symbol.symbol_name(tcx).to_string());
                 }
             }
         }

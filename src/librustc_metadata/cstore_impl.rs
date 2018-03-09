@@ -18,6 +18,7 @@ use rustc::ty::maps::QueryConfig;
 use rustc::middle::cstore::{CrateStore, DepKind,
                             MetadataLoader, LinkMeta,
                             LoadedMacro, EncodedMetadata, NativeLibraryKind};
+use rustc::middle::exported_symbols::ExportedSymbol;
 use rustc::middle::stability::DeprecationEntry;
 use rustc::hir::def;
 use rustc::session::{CrateDisambiguator, Session};
@@ -27,10 +28,11 @@ use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, CRATE_DEF_INDEX};
 use rustc::hir::map::{DefKey, DefPath, DefPathHash};
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::hir::map::definitions::DefPathTable;
-use rustc::util::nodemap::{NodeSet, DefIdMap};
+use rustc::util::nodemap::DefIdMap;
 
 use std::any::Any;
 use rustc_data_structures::sync::Lrc;
+use std::sync::Arc;
 
 use syntax::ast;
 use syntax::attr;
@@ -160,9 +162,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     fn_arg_names => { cdata.get_fn_arg_names(def_id.index) }
     impl_parent => { cdata.get_parent_impl(def_id.index) }
     trait_of_item => { cdata.get_trait_of_item(def_id.index) }
-    is_exported_symbol => {
-        cdata.exported_symbols.contains(&def_id.index)
-    }
     item_body_nested_bodies => { cdata.item_body_nested_bodies(def_id.index) }
     const_is_rvalue_promotable_to_static => {
         cdata.const_is_rvalue_promotable_to_static(def_id.index)
@@ -179,7 +178,21 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     extern_crate => { Lrc::new(cdata.extern_crate.get()) }
     is_no_builtins => { cdata.is_no_builtins(tcx.sess) }
     impl_defaultness => { cdata.get_impl_defaultness(def_id.index) }
-    exported_symbol_ids => { Lrc::new(cdata.get_exported_symbols()) }
+    reachable_non_generics => {
+        let reachable_non_generics = tcx
+            .exported_symbols(cdata.cnum)
+            .iter()
+            .filter_map(|&(exported_symbol, _)| {
+                if let ExportedSymbol::NonGeneric(def_id) = exported_symbol {
+                    return Some(def_id)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        Lrc::new(reachable_non_generics)
+    }
     native_libraries => { Lrc::new(cdata.get_native_libraries(tcx.sess)) }
     plugin_registrar_fn => {
         cdata.root.plugin_registrar_fn.map(|index| {
@@ -238,6 +251,19 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
     has_copy_closures => { cdata.has_copy_closures(tcx.sess) }
     has_clone_closures => { cdata.has_clone_closures(tcx.sess) }
+
+    exported_symbols => {
+        let cnum = cdata.cnum;
+        assert!(cnum != LOCAL_CRATE);
+
+        // If this crate is a custom derive crate, then we're not even going to
+        // link those in so we skip those crates.
+        if cdata.root.macro_derive_registrar.is_some() {
+            return Arc::new(Vec::new())
+        }
+
+        Arc::new(cdata.exported_symbols())
+    }
 }
 
 pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
@@ -520,11 +546,10 @@ impl CrateStore for cstore::CStore {
 
     fn encode_metadata<'a, 'tcx>(&self,
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 link_meta: &LinkMeta,
-                                 reachable: &NodeSet)
+                                 link_meta: &LinkMeta)
                                  -> EncodedMetadata
     {
-        encoder::encode_metadata(tcx, link_meta, reachable)
+        encoder::encode_metadata(tcx, link_meta)
     }
 
     fn metadata_encoding_version(&self) -> &[u8]

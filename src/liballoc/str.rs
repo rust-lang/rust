@@ -43,6 +43,7 @@ use core::str as core_str;
 use core::str::pattern::Pattern;
 use core::str::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 use core::mem;
+use core::ptr;
 use core::iter::FusedIterator;
 use std_unicode::str::{UnicodeStr, Utf16Encoder};
 
@@ -171,7 +172,7 @@ impl<'a> Iterator for EncodeUtf16<'a> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a> FusedIterator for EncodeUtf16<'a> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2066,9 +2067,59 @@ impl str {
     /// ```
     #[stable(feature = "repeat_str", since = "1.16.0")]
     pub fn repeat(&self, n: usize) -> String {
-        let mut s = String::with_capacity(self.len() * n);
-        s.extend((0..n).map(|_| self));
-        s
+        if n == 0 {
+            return String::new();
+        }
+
+        // If `n` is larger than zero, it can be split as
+        // `n = 2^expn + rem (2^expn > rem, expn >= 0, rem >= 0)`.
+        // `2^expn` is the number represented by the leftmost '1' bit of `n`,
+        // and `rem` is the remaining part of `n`.
+
+        // Using `Vec` to access `set_len()`.
+        let mut buf = Vec::with_capacity(self.len() * n);
+
+        // `2^expn` repetition is done by doubling `buf` `expn`-times.
+        buf.extend(self.as_bytes());
+        {
+            let mut m = n >> 1;
+            // If `m > 0`, there are remaining bits up to the leftmost '1'.
+            while m > 0 {
+                // `buf.extend(buf)`:
+                unsafe {
+                    ptr::copy_nonoverlapping(
+                        buf.as_ptr(),
+                        (buf.as_mut_ptr() as *mut u8).add(buf.len()),
+                        buf.len(),
+                    );
+                    // `buf` has capacity of `self.len() * n`.
+                    let buf_len = buf.len();
+                    buf.set_len(buf_len * 2);
+                }
+
+                m >>= 1;
+            }
+        }
+
+        // `rem` (`= n - 2^expn`) repetition is done by copying
+        // first `rem` repetitions from `buf` itself.
+        let rem_len = self.len() * n - buf.len(); // `self.len() * rem`
+        if rem_len > 0 {
+            // `buf.extend(buf[0 .. rem_len])`:
+            unsafe {
+                // This is non-overlapping since `2^expn > rem`.
+                ptr::copy_nonoverlapping(
+                    buf.as_ptr(),
+                    (buf.as_mut_ptr() as *mut u8).add(buf.len()),
+                    rem_len,
+                );
+                // `buf.len() + rem_len` equals to `buf.capacity()` (`= self.len() * n`).
+                let buf_cap = buf.capacity();
+                buf.set_len(buf_cap);
+            }
+        }
+
+        unsafe { String::from_utf8_unchecked(buf) }
     }
 
     /// Checks if all characters in this string are within the ASCII range.

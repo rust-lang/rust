@@ -20,14 +20,16 @@ use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId, LOCAL_CRATE
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::ich::Fingerprint;
 use rustc::middle::dependency_format::Linkage;
+use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel,
+                                      metadata_symbol_name};
 use rustc::middle::lang_items;
 use rustc::mir;
 use rustc::traits::specialization_graph;
-use rustc::ty::{self, Ty, TyCtxt, ReprOptions};
+use rustc::ty::{self, Ty, TyCtxt, ReprOptions, SymbolName};
 use rustc::ty::codec::{self as ty_codec, TyEncoder};
 
 use rustc::session::config::{self, CrateTypeProcMacro};
-use rustc::util::nodemap::{FxHashMap, NodeSet};
+use rustc::util::nodemap::FxHashMap;
 
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_serialize::{Encodable, Encoder, SpecializedEncoder, opaque};
@@ -53,7 +55,6 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     opaque: opaque::Encoder<'a>,
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     link_meta: &'a LinkMeta,
-    exported_symbols: &'a NodeSet,
 
     lazy_state: LazyState,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
@@ -395,9 +396,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         // Encode exported symbols info.
         i = self.position();
+        let exported_symbols = self.tcx.exported_symbols(LOCAL_CRATE);
         let exported_symbols = self.tracked(
             IsolatedEncoder::encode_exported_symbols,
-            self.exported_symbols);
+            &exported_symbols);
         let exported_symbols_bytes = self.position() - i;
 
         // Encode and index the items.
@@ -1388,9 +1390,25 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
     // middle::reachable module but filters out items that either don't have a
     // symbol associated with them (they weren't translated) or if they're an FFI
     // definition (as that's not defined in this crate).
-    fn encode_exported_symbols(&mut self, exported_symbols: &NodeSet) -> LazySeq<DefIndex> {
-        let tcx = self.tcx;
-        self.lazy_seq(exported_symbols.iter().map(|&id| tcx.hir.local_def_id(id).index))
+    fn encode_exported_symbols(&mut self,
+                               exported_symbols: &[(ExportedSymbol, SymbolExportLevel)])
+                               -> LazySeq<(ExportedSymbol, SymbolExportLevel)> {
+
+        // The metadata symbol name is special. It should not show up in
+        // downstream crates.
+        let metadata_symbol_name = SymbolName::new(&metadata_symbol_name(self.tcx));
+
+        self.lazy_seq(exported_symbols
+            .iter()
+            .filter(|&&(ref exported_symbol, _)| {
+                match *exported_symbol {
+                    ExportedSymbol::NoDefId(symbol_name) => {
+                        symbol_name != metadata_symbol_name
+                    },
+                    _ => true,
+                }
+            })
+            .cloned())
     }
 
     fn encode_dylib_dependency_formats(&mut self, _: ()) -> LazySeq<Option<LinkagePreference>> {
@@ -1663,8 +1681,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'a, 'tcx> {
 // generated regardless of trailing bytes that end up in it.
 
 pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 link_meta: &LinkMeta,
-                                 exported_symbols: &NodeSet)
+                                 link_meta: &LinkMeta)
                                  -> EncodedMetadata
 {
     let mut cursor = Cursor::new(vec![]);
@@ -1678,7 +1695,6 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             opaque: opaque::Encoder::new(&mut cursor),
             tcx,
             link_meta,
-            exported_symbols,
             lazy_state: LazyState::NoNode,
             type_shorthands: Default::default(),
             predicate_shorthands: Default::default(),

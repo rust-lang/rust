@@ -6,8 +6,6 @@ LL |     let ref mut x = 1234543; //~ ERROR borrowed value does not live long en
 LL |     x
 LL | }
    | - temporary value only lives until here
-   |
-   = note: borrowed value must be valid for lifetime '_#2r...
 
 error: aborting due to previous error
 

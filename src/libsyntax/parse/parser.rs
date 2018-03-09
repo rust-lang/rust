@@ -3114,7 +3114,7 @@ impl<'a> Parser<'a> {
                         let expr_str = self.sess.codemap().span_to_snippet(expr.span)
                                                 .unwrap_or(pprust::expr_to_string(&expr));
                         err.span_suggestion(expr.span,
-                                            &format!("try {} the casted value", op_verb),
+                                            &format!("try {} the cast value", op_verb),
                                             format!("({})", expr_str));
                         err.emit();
 

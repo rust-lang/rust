@@ -415,7 +415,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         let trait_def = self.tcx().trait_def(trait_def_id);
 
-        if !self.tcx().sess.features.borrow().unboxed_closures &&
+        if !self.tcx().features().unboxed_closures &&
            trait_segment.with_parameters(|p| p.parenthesized) != trait_def.paren_sugar {
             // For now, require that parenthetical notation be used only with `Fn()` etc.
             let msg = if trait_def.paren_sugar {

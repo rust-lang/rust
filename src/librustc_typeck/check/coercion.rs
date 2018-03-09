@@ -586,7 +586,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
             }
         }
 
-        if has_unsized_tuple_coercion && !self.tcx.sess.features.borrow().unsized_tuple_coercion {
+        if has_unsized_tuple_coercion && !self.tcx.features().unsized_tuple_coercion {
             feature_gate::emit_feature_err(&self.tcx.sess.parse_sess,
                                            "unsized_tuple_coercion",
                                            self.cause.span,

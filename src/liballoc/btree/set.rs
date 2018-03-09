@@ -946,7 +946,7 @@ impl<'a, T> ExactSizeIterator for Iter<'a, T> {
     fn len(&self) -> usize { self.iter.len() }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, T> FusedIterator for Iter<'a, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -971,7 +971,7 @@ impl<T> ExactSizeIterator for IntoIter<T> {
     fn len(&self) -> usize { self.iter.len() }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for IntoIter<T> {}
 
 #[stable(feature = "btree_range", since = "1.17.0")]
@@ -997,7 +997,7 @@ impl<'a, T> DoubleEndedIterator for Range<'a, T> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, T> FusedIterator for Range<'a, T> {}
 
 /// Compare `x` and `y`, but return `short` if x is None and `long` if y is None
@@ -1044,7 +1044,7 @@ impl<'a, T: Ord> Iterator for Difference<'a, T> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, T: Ord> FusedIterator for Difference<'a, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1078,7 +1078,7 @@ impl<'a, T: Ord> Iterator for SymmetricDifference<'a, T> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, T: Ord> FusedIterator for SymmetricDifference<'a, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1116,7 +1116,7 @@ impl<'a, T: Ord> Iterator for Intersection<'a, T> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, T: Ord> FusedIterator for Intersection<'a, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1150,5 +1150,5 @@ impl<'a, T: Ord> Iterator for Union<'a, T> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, T: Ord> FusedIterator for Union<'a, T> {}

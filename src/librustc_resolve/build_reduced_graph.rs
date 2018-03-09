@@ -590,7 +590,7 @@ impl<'a> Resolver<'a> {
         };
 
         let ext = Lrc::new(macro_rules::compile(&self.session.parse_sess,
-                                               &self.session.features,
+                                               &self.session.features_untracked(),
                                                &macro_def));
         self.macro_map.insert(def_id, ext.clone());
         ext

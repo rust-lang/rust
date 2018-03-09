@@ -78,8 +78,6 @@ pub struct CrateMetadata {
     /// compilation support.
     pub def_path_table: Lrc<DefPathTable>,
 
-    pub exported_symbols: FxHashSet<DefIndex>,
-
     pub trait_impls: FxHashMap<(u32, DefIndex), schema::LazySeq<DefIndex>>,
 
     pub dep_kind: Cell<DepKind>,

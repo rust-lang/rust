@@ -132,6 +132,18 @@ impl<'a> StringReader<'a> {
         self.advance_token()?;
         Ok(ret_val)
     }
+
+    fn fail_unterminated_raw_string(&self, pos: BytePos, hash_count: usize) {
+        let mut err = self.struct_span_fatal(pos, pos, "unterminated raw string");
+        err.span_label(self.mk_sp(pos, pos), "unterminated raw string");
+        if hash_count > 0 {
+            err.note(&format!("this raw string should be terminated with `\"{}`",
+                              "#".repeat(hash_count)));
+        }
+        err.emit();
+        FatalError.raise();
+    }
+
     fn fatal(&self, m: &str) -> FatalError {
         self.fatal_span(self.peek_span, m)
     }
@@ -269,6 +281,15 @@ impl<'a> StringReader<'a> {
         Self::push_escaped_char_for_msg(&mut m, c);
         self.fatal_span_(from_pos, to_pos, &m[..])
     }
+
+    fn struct_span_fatal(&self,
+                         from_pos: BytePos,
+                         to_pos: BytePos,
+                         m: &str)
+                         -> DiagnosticBuilder<'a> {
+        self.sess.span_diagnostic.struct_span_fatal(self.mk_sp(from_pos, to_pos), m)
+    }
+
     fn struct_fatal_span_char(&self,
                               from_pos: BytePos,
                               to_pos: BytePos,
@@ -1404,8 +1425,7 @@ impl<'a> StringReader<'a> {
                 }
 
                 if self.is_eof() {
-                    let last_bpos = self.pos;
-                    self.fatal_span_(start_bpos, last_bpos, "unterminated raw string").raise();
+                    self.fail_unterminated_raw_string(start_bpos, hash_count);
                 } else if !self.ch_is('"') {
                     let last_bpos = self.pos;
                     let curr_char = self.ch.unwrap();
@@ -1421,8 +1441,7 @@ impl<'a> StringReader<'a> {
                 let mut valid = true;
                 'outer: loop {
                     if self.is_eof() {
-                        let last_bpos = self.pos;
-                        self.fatal_span_(start_bpos, last_bpos, "unterminated raw string").raise();
+                        self.fail_unterminated_raw_string(start_bpos, hash_count);
                     }
                     // if self.ch_is('"') {
                     // content_end_bpos = self.pos;
@@ -1636,8 +1655,7 @@ impl<'a> StringReader<'a> {
         }
 
         if self.is_eof() {
-            let pos = self.pos;
-            self.fatal_span_(start_bpos, pos, "unterminated raw string").raise();
+            self.fail_unterminated_raw_string(start_bpos, hash_count);
         } else if !self.ch_is('"') {
             let pos = self.pos;
             let ch = self.ch.unwrap();
@@ -1653,8 +1671,7 @@ impl<'a> StringReader<'a> {
         'outer: loop {
             match self.ch {
                 None => {
-                    let pos = self.pos;
-                    self.fatal_span_(start_bpos, pos, "unterminated raw string").raise()
+                    self.fail_unterminated_raw_string(start_bpos, hash_count);
                 }
                 Some('"') => {
                     content_end_bpos = self.pos;

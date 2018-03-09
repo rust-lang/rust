@@ -363,7 +363,7 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     can_be_internalized = false;
                                     Visibility::Hidden
                                 } else if def_id.is_local() {
-                                    if tcx.is_exported_symbol(def_id) {
+                                    if tcx.is_reachable_non_generic(def_id) {
                                         can_be_internalized = false;
                                         default_visibility(def_id)
                                     } else {
@@ -385,7 +385,7 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         (Linkage::External, visibility)
                     }
                     MonoItem::Static(def_id) => {
-                        let visibility = if tcx.is_exported_symbol(def_id) {
+                        let visibility = if tcx.is_reachable_non_generic(def_id) {
                             can_be_internalized = false;
                             default_visibility(def_id)
                         } else {
@@ -395,7 +395,7 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     }
                     MonoItem::GlobalAsm(node_id) => {
                         let def_id = tcx.hir.local_def_id(node_id);
-                        let visibility = if tcx.is_exported_symbol(def_id) {
+                        let visibility = if tcx.is_reachable_non_generic(def_id) {
                             can_be_internalized = false;
                             default_visibility(def_id)
                         } else {
