@@ -52,6 +52,8 @@ pub use self::util::supertrait_def_ids;
 pub use self::util::SupertraitDefIds;
 pub use self::util::transitive_bounds;
 
+#[allow(dead_code)]
+pub mod auto_trait;
 mod coherence;
 pub mod error_reporting;
 mod engine;
