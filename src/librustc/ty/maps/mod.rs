@@ -424,6 +424,8 @@ define_maps! { <'tcx>
     [] fn features_query: features_node(CrateNum) -> Lrc<feature_gate::Features>,
 
     [] fn program_clauses_for: ProgramClausesFor(DefId) -> Lrc<Vec<Clause<'tcx>>>,
+
+    [] fn wasm_custom_sections: WasmCustomSections(CrateNum) -> Lrc<Vec<DefId>>,
 }
 
 //////////////////////////////////////////////////////////////////////

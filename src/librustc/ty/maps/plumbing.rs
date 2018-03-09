@@ -940,6 +940,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::Features => { force!(features_query, LOCAL_CRATE); }
 
         DepKind::ProgramClausesFor => { force!(program_clauses_for, def_id!()); }
+        DepKind::WasmCustomSections => { force!(wasm_custom_sections, krate!()); }
     }
 
     true

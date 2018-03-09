@@ -204,6 +204,7 @@ pub struct CrateRoot {
     pub def_path_table: Lazy<hir::map::definitions::DefPathTable>,
     pub impls: LazySeq<TraitImpls>,
     pub exported_symbols: LazySeq<(ExportedSymbol, SymbolExportLevel)>,
+    pub wasm_custom_sections: LazySeq<DefIndex>,
 
     pub index: LazySeq<index::Index>,
 }

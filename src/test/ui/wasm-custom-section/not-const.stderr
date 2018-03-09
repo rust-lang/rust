@@ -1,0 +1,38 @@
+error: only allowed on consts
+  --> $DIR/not-const.rs:13:1
+   |
+LL | #[wasm_custom_section = "foo"] //~ ERROR: only allowed on consts
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: only allowed on consts
+  --> $DIR/not-const.rs:16:1
+   |
+LL | #[wasm_custom_section = "foo"] //~ ERROR: only allowed on consts
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: only allowed on consts
+  --> $DIR/not-const.rs:19:1
+   |
+LL | #[wasm_custom_section = "foo"] //~ ERROR: only allowed on consts
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: only allowed on consts
+  --> $DIR/not-const.rs:22:1
+   |
+LL | #[wasm_custom_section = "foo"] //~ ERROR: only allowed on consts
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: only allowed on consts
+  --> $DIR/not-const.rs:25:1
+   |
+LL | #[wasm_custom_section = "foo"] //~ ERROR: only allowed on consts
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: only allowed on consts
+  --> $DIR/not-const.rs:28:1
+   |
+LL | #[wasm_custom_section = "foo"] //~ ERROR: only allowed on consts
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

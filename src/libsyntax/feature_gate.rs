@@ -451,6 +451,9 @@ declare_features! (
 
     // `use path as _;` and `extern crate c as _;`
     (active, underscore_imports, "1.26.0", Some(48216), None),
+
+    // The #[wasm_custom_section] attribute
+    (active, wasm_custom_section, "1.26.0", None, None),
 );
 
 declare_features! (
@@ -1003,6 +1006,11 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                  "rustc_attrs",
                                  "never will be stable",
                                  cfg_fn!(rustc_attrs))),
+
+    ("wasm_custom_section", Whitelisted, Gated(Stability::Unstable,
+                                 "wasm_custom_section",
+                                 "attribute is currently unstable",
+                                 cfg_fn!(wasm_custom_section))),
 
     // Crate level attributes
     ("crate_name", CrateLevel, Ungated),

@@ -25,6 +25,7 @@ enum Target {
     Struct,
     Union,
     Enum,
+    Const,
     Other,
 }
 
@@ -35,6 +36,7 @@ impl Target {
             hir::ItemStruct(..) => Target::Struct,
             hir::ItemUnion(..) => Target::Union,
             hir::ItemEnum(..) => Target::Enum,
+            hir::ItemConst(..) => Target::Const,
             _ => Target::Other,
         }
     }
@@ -59,6 +61,17 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
             if let Some(name) = attr.name() {
                 if name == "inline" {
                     self.check_inline(attr, item, target)
+                }
+
+                if name == "wasm_custom_section" {
+                    if target != Target::Const {
+                        self.tcx.sess.span_err(attr.span, "only allowed on consts");
+                    }
+
+                    if attr.value_str().is_none() {
+                        self.tcx.sess.span_err(attr.span, "must be of the form \
+                            #[wasm_custom_section = \"foo\"]");
+                    }
                 }
             }
         }

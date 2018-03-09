@@ -271,6 +271,8 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
         Arc::new(cdata.exported_symbols())
     }
+
+    wasm_custom_sections => { Lrc::new(cdata.wasm_custom_sections()) }
 }
 
 pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {

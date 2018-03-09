@@ -435,6 +435,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             &exported_symbols);
         let exported_symbols_bytes = self.position() - i;
 
+        // encode wasm custom sections
+        let wasm_custom_sections = self.tcx.wasm_custom_sections(LOCAL_CRATE);
+        let wasm_custom_sections = self.tracked(
+            IsolatedEncoder::encode_wasm_custom_sections,
+            &wasm_custom_sections);
+
         // Encode and index the items.
         i = self.position();
         let items = self.encode_info_for_items();
@@ -478,6 +484,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             def_path_table,
             impls,
             exported_symbols,
+            wasm_custom_sections,
             index,
         });
 
@@ -1442,6 +1449,11 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 }
             })
             .cloned())
+    }
+
+    fn encode_wasm_custom_sections(&mut self, statics: &[DefId]) -> LazySeq<DefIndex> {
+        info!("encoding custom wasm section constants {:?}", statics);
+        self.lazy_seq(statics.iter().map(|id| id.index))
     }
 
     fn encode_dylib_dependency_formats(&mut self, _: ()) -> LazySeq<Option<LinkagePreference>> {

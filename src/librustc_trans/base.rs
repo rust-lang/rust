@@ -74,6 +74,7 @@ use rustc::util::nodemap::{FxHashMap, FxHashSet, DefIdSet};
 use CrateInfo;
 
 use std::any::Any;
+use std::collections::BTreeMap;
 use std::ffi::CString;
 use std::str;
 use std::sync::Arc;
@@ -1070,7 +1071,23 @@ impl CrateInfo {
             used_crates_dynamic: cstore::used_crates(tcx, LinkagePreference::RequireDynamic),
             used_crates_static: cstore::used_crates(tcx, LinkagePreference::RequireStatic),
             used_crate_source: FxHashMap(),
+            wasm_custom_sections: BTreeMap::new(),
         };
+
+        let load_wasm_sections = tcx.sess.crate_types.borrow()
+            .iter()
+            .any(|c| *c != config::CrateTypeRlib) &&
+            tcx.sess.opts.target_triple == "wasm32-unknown-unknown";
+
+        if load_wasm_sections {
+            info!("attempting to load all wasm sections");
+            for &id in tcx.wasm_custom_sections(LOCAL_CRATE).iter() {
+                let (name, contents) = fetch_wasm_section(tcx, id);
+                info.wasm_custom_sections.entry(name)
+                    .or_insert(Vec::new())
+                    .extend(contents);
+            }
+        }
 
         for &cnum in tcx.crates().iter() {
             info.native_libraries.insert(cnum, tcx.native_libraries(cnum));
@@ -1090,6 +1107,14 @@ impl CrateInfo {
             }
             if tcx.is_no_builtins(cnum) {
                 info.is_no_builtins.insert(cnum);
+            }
+            if load_wasm_sections {
+                for &id in tcx.wasm_custom_sections(cnum).iter() {
+                    let (name, contents) = fetch_wasm_section(tcx, id);
+                    info.wasm_custom_sections.entry(name)
+                        .or_insert(Vec::new())
+                        .extend(contents);
+                }
             }
         }
 
@@ -1269,4 +1294,45 @@ mod temp_stable_hash_impls {
             // do nothing
         }
     }
+}
+
+fn fetch_wasm_section(tcx: TyCtxt, id: DefId) -> (String, Vec<u8>) {
+    use rustc::mir::interpret::{GlobalId, Value, PrimVal};
+    use rustc::middle::const_val::ConstVal;
+
+    info!("loading wasm section {:?}", id);
+
+    let section = tcx.get_attrs(id)
+        .iter()
+        .find(|a| a.check_name("wasm_custom_section"))
+        .expect("missing #[wasm_custom_section] attribute")
+        .value_str()
+        .expect("malformed #[wasm_custom_section] attribute");
+
+    let instance = ty::Instance::mono(tcx, id);
+    let cid = GlobalId {
+        instance,
+        promoted: None
+    };
+    let param_env = ty::ParamEnv::reveal_all();
+    let val = tcx.const_eval(param_env.and(cid)).unwrap();
+
+    let val = match val.val {
+        ConstVal::Value(val) => val,
+        ConstVal::Unevaluated(..) => bug!("should be evaluated"),
+    };
+    let val = match val {
+        Value::ByRef(ptr, _align) => ptr.into_inner_primval(),
+        ref v => bug!("should be ByRef, was {:?}", v),
+    };
+    let mem = match val {
+        PrimVal::Ptr(mem) => mem,
+        ref v => bug!("should be Ptr, was {:?}", v),
+    };
+    assert_eq!(mem.offset, 0);
+    let alloc = tcx
+        .interpret_interner
+        .get_alloc(mem.alloc_id)
+        .expect("miri allocation never successfully created");
+    (section.to_string(), alloc.bytes.clone())
 }
