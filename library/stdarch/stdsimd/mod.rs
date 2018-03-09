@@ -361,8 +361,9 @@ pub mod arch {
 
     /// Platform-specific intrinsics for the `x86` platform.
     ///
-    /// The documentation with the full listing of `x86` intrinsics is available in [libcore], but
-    /// the module is re-exported here in std as well.
+    /// The documentation with the full listing of `x86` intrinsics is
+    /// available in [libcore], but the module is re-exported here in std
+    /// as well.
     ///
     /// [libcore]: ../../../core/arch/x86/index.html
     #[cfg(dox)]
@@ -371,8 +372,9 @@ pub mod arch {
 
     /// Platform-specific intrinsics for the `x86_64` platform.
     ///
-    /// The documentation with the full listing of `x86_64` intrinsics is available in [libcore],
-    /// but the module is re-exported here in std as well.
+    /// The documentation with the full listing of `x86_64` intrinsics is
+    /// available in [libcore], but the module is re-exported here in std
+    /// as well.
     ///
     /// [libcore]: ../../../core/arch/x86_64/index.html
     #[cfg(dox)]
@@ -381,8 +383,9 @@ pub mod arch {
 
     /// Platform-specific intrinsics for the `arm` platform.
     ///
-    /// The documentation with the full listing of `arm` intrinsics is available in [libcore], but
-    /// the module is re-exported here in std as well.
+    /// The documentation with the full listing of `arm` intrinsics is
+    /// available in [libcore], but the module is re-exported here in std
+    /// as well.
     ///
     /// [libcore]: ../../../core/arch/arm/index.html
     #[cfg(dox)]
@@ -391,8 +394,9 @@ pub mod arch {
 
     /// Platform-specific intrinsics for the `aarch64` platform.
     ///
-    /// The documentation with the full listing of `aarch64` intrinsics is available in [libcore],
-    /// but the module is re-exported here in std as well.
+    /// The documentation with the full listing of `aarch64` intrinsics is
+    /// available in [libcore], but the module is re-exported here in std
+    /// as well.
     ///
     /// [libcore]: ../../../core/arch/aarch64/index.html
     #[cfg(dox)]
