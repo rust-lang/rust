@@ -3521,11 +3521,9 @@ impl<'a> fmt::Display for Sidebar<'a> {
         let cx = self.cx;
         let it = self.item;
         let parentlen = cx.current.len() - if it.is_mod() {1} else {0};
-        let mut should_close = false;
 
         if it.is_struct() || it.is_trait() || it.is_primitive() || it.is_union()
-            || it.is_enum() || it.is_mod() || it.is_typedef()
-        {
+            || it.is_enum() || it.is_mod() || it.is_typedef() {
             write!(fmt, "<p class='location'>")?;
             match it.inner {
                 clean::StructItem(..) => write!(fmt, "Struct ")?,
@@ -3544,30 +3542,29 @@ impl<'a> fmt::Display for Sidebar<'a> {
             }
             write!(fmt, "{}", it.name.as_ref().unwrap())?;
             write!(fmt, "</p>")?;
+        }
 
-            if it.is_crate() {
-                if let Some(ref version) = cache().crate_version {
-                    write!(fmt,
-                           "<div class='block version'>\
-                            <p>Version {}</p>\
-                            </div>",
-                           version)?;
-                }
+        if it.is_crate() {
+            if let Some(ref version) = cache().crate_version {
+                write!(fmt,
+                       "<div class='block version'>\
+                        <p>Version {}</p>\
+                        </div>",
+                       version)?;
             }
+        }
 
-            write!(fmt, "<div class=\"sidebar-elems\">")?;
-            should_close = true;
-            match it.inner {
-                clean::StructItem(ref s) => sidebar_struct(fmt, it, s)?,
-                clean::TraitItem(ref t) => sidebar_trait(fmt, it, t)?,
-                clean::PrimitiveItem(ref p) => sidebar_primitive(fmt, it, p)?,
-                clean::UnionItem(ref u) => sidebar_union(fmt, it, u)?,
-                clean::EnumItem(ref e) => sidebar_enum(fmt, it, e)?,
-                clean::TypedefItem(ref t, _) => sidebar_typedef(fmt, it, t)?,
-                clean::ModuleItem(ref m) => sidebar_module(fmt, it, &m.items)?,
-                clean::ForeignTypeItem => sidebar_foreign_type(fmt, it)?,
-                _ => (),
-            }
+        write!(fmt, "<div class=\"sidebar-elems\">")?;
+        match it.inner {
+            clean::StructItem(ref s) => sidebar_struct(fmt, it, s)?,
+            clean::TraitItem(ref t) => sidebar_trait(fmt, it, t)?,
+            clean::PrimitiveItem(ref p) => sidebar_primitive(fmt, it, p)?,
+            clean::UnionItem(ref u) => sidebar_union(fmt, it, u)?,
+            clean::EnumItem(ref e) => sidebar_enum(fmt, it, e)?,
+            clean::TypedefItem(ref t, _) => sidebar_typedef(fmt, it, t)?,
+            clean::ModuleItem(ref m) => sidebar_module(fmt, it, &m.items)?,
+            clean::ForeignTypeItem => sidebar_foreign_type(fmt, it)?,
+            _ => (),
         }
 
         // The sidebar is designed to display sibling functions, modules and
@@ -3607,10 +3604,8 @@ impl<'a> fmt::Display for Sidebar<'a> {
             write!(fmt, "<script defer src=\"{path}sidebar-items.js\"></script>",
                    path = relpath)?;
         }
-        if should_close {
-            // Closes sidebar-elems div.
-            write!(fmt, "</div>")?;
-        }
+        // Closes sidebar-elems div.
+        write!(fmt, "</div>")?;
 
         Ok(())
     }
