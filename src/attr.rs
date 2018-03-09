@@ -21,8 +21,6 @@ use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use utils::{count_newlines, mk_sp};
 
-use std::cmp;
-
 /// Returns attributes on the given statement.
 pub fn get_attrs_from_stmt(stmt: &ast::Stmt) -> &[ast::Attribute] {
     match stmt.node {
@@ -140,7 +138,7 @@ fn rewrite_first_group_attrs(
             .join("\n");
         return Some((
             sugared_docs.len(),
-            rewrite_doc_comment(&snippet, shape, context.config)?,
+            rewrite_doc_comment(&snippet, shape.comment(context.config), context.config)?,
         ));
     }
     // Rewrite `#[derive(..)]`s.
@@ -249,13 +247,7 @@ impl Rewrite for ast::Attribute {
         };
         let snippet = context.snippet(self.span);
         if self.is_sugared_doc {
-            let doc_shape = Shape {
-                width: cmp::min(shape.width, context.config.comment_width())
-                    .checked_sub(shape.indent.width())
-                    .unwrap_or(0),
-                ..shape
-            };
-            rewrite_doc_comment(snippet, doc_shape, context.config)
+            rewrite_doc_comment(snippet, shape.comment(context.config), context.config)
         } else {
             if contains_comment(snippet) {
                 return Some(snippet.to_owned());
