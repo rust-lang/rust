@@ -42,6 +42,7 @@ use util::nodemap::FxHashMap;
 use std::default::Default as StdDefault;
 use std::cell::{Ref, RefCell};
 use syntax::ast;
+use syntax::epoch;
 use syntax_pos::{MultiSpan, Span};
 use errors::DiagnosticBuilder;
 use hir;
@@ -105,7 +106,7 @@ pub struct FutureIncompatibleInfo {
     pub reference: &'static str,
     /// If this is an epoch fixing lint, the epoch in which
     /// this lint becomes obsolete
-    pub epoch: Option<config::Epoch>,
+    pub epoch: Option<epoch::Epoch>,
 }
 
 /// The target of the `by_name` map, which accounts for renaming/deprecation.
@@ -201,7 +202,7 @@ impl LintStore {
                                         sess: Option<&Session>,
                                         lints: Vec<FutureIncompatibleInfo>) {
 
-        for epoch in config::ALL_EPOCHS {
+        for epoch in epoch::ALL_EPOCHS {
             let lints = lints.iter().filter(|f| f.epoch == Some(*epoch)).map(|f| f.id)
                              .collect::<Vec<_>>();
             if !lints.is_empty() {

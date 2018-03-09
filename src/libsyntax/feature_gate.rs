@@ -28,8 +28,9 @@ use self::AttributeGate::*;
 use abi::Abi;
 use ast::{self, NodeId, PatKind, RangeEnd, RangeSyntax};
 use attr;
+use epoch::Epoch;
 use codemap::Spanned;
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 use errors::{DiagnosticBuilder, Handler, FatalError};
 use visit::{self, FnKind, Visitor};
 use parse::ParseSess;
@@ -54,12 +55,13 @@ macro_rules! set {
 }
 
 macro_rules! declare_features {
-    ($((active, $feature: ident, $ver: expr, $issue: expr),)+) => {
+    ($((active, $feature: ident, $ver: expr, $issue: expr, $epoch: expr),)+) => {
         /// Represents active features that are currently being implemented or
         /// currently being considered for addition/removal.
         const ACTIVE_FEATURES:
-                &'static [(&'static str, &'static str, Option<u32>, fn(&mut Features, Span))] =
-            &[$((stringify!($feature), $ver, $issue, set!($feature))),+];
+                &'static [(&'static str, &'static str, Option<u32>,
+                           Option<Epoch>, fn(&mut Features, Span))] =
+            &[$((stringify!($feature), $ver, $issue, $epoch, set!($feature))),+];
 
         /// A set of features to be used by later passes.
         #[derive(Clone)]
@@ -88,21 +90,21 @@ macro_rules! declare_features {
         }
     };
 
-    ($((removed, $feature: ident, $ver: expr, $issue: expr),)+) => {
+    ($((removed, $feature: ident, $ver: expr, $issue: expr, None),)+) => {
         /// Represents unstable features which have since been removed (it was once Active)
         const REMOVED_FEATURES: &'static [(&'static str, &'static str, Option<u32>)] = &[
             $((stringify!($feature), $ver, $issue)),+
         ];
     };
 
-    ($((stable_removed, $feature: ident, $ver: expr, $issue: expr),)+) => {
+    ($((stable_removed, $feature: ident, $ver: expr, $issue: expr, None),)+) => {
         /// Represents stable features which have since been removed (it was once Accepted)
         const STABLE_REMOVED_FEATURES: &'static [(&'static str, &'static str, Option<u32>)] = &[
             $((stringify!($feature), $ver, $issue)),+
         ];
     };
 
-    ($((accepted, $feature: ident, $ver: expr, $issue: expr),)+) => {
+    ($((accepted, $feature: ident, $ver: expr, $issue: expr, None),)+) => {
         /// Those language feature has since been Accepted (it was once Active)
         const ACCEPTED_FEATURES: &'static [(&'static str, &'static str, Option<u32>)] = &[
             $((stringify!($feature), $ver, $issue)),+
@@ -122,78 +124,78 @@ macro_rules! declare_features {
 // source, so take care when modifying it.
 
 declare_features! (
-    (active, asm, "1.0.0", Some(29722)),
-    (active, concat_idents, "1.0.0", Some(29599)),
-    (active, link_args, "1.0.0", Some(29596)),
-    (active, log_syntax, "1.0.0", Some(29598)),
-    (active, non_ascii_idents, "1.0.0", Some(28979)),
-    (active, plugin_registrar, "1.0.0", Some(29597)),
-    (active, thread_local, "1.0.0", Some(29594)),
-    (active, trace_macros, "1.0.0", Some(29598)),
+    (active, asm, "1.0.0", Some(29722), None),
+    (active, concat_idents, "1.0.0", Some(29599), None),
+    (active, link_args, "1.0.0", Some(29596), None),
+    (active, log_syntax, "1.0.0", Some(29598), None),
+    (active, non_ascii_idents, "1.0.0", Some(28979), None),
+    (active, plugin_registrar, "1.0.0", Some(29597), None),
+    (active, thread_local, "1.0.0", Some(29594), None),
+    (active, trace_macros, "1.0.0", Some(29598), None),
 
     // rustc internal, for now:
-    (active, intrinsics, "1.0.0", None),
-    (active, lang_items, "1.0.0", None),
+    (active, intrinsics, "1.0.0", None, None),
+    (active, lang_items, "1.0.0", None, None),
 
-    (active, link_llvm_intrinsics, "1.0.0", Some(29602)),
-    (active, linkage, "1.0.0", Some(29603)),
-    (active, quote, "1.0.0", Some(29601)),
+    (active, link_llvm_intrinsics, "1.0.0", Some(29602), None),
+    (active, linkage, "1.0.0", Some(29603), None),
+    (active, quote, "1.0.0", Some(29601), None),
 
 
     // rustc internal
-    (active, rustc_diagnostic_macros, "1.0.0", None),
-    (active, rustc_const_unstable, "1.0.0", None),
-    (active, advanced_slice_patterns, "1.0.0", Some(23121)),
-    (active, box_syntax, "1.0.0", Some(27779)),
-    (active, placement_in_syntax, "1.0.0", Some(27779)),
-    (active, unboxed_closures, "1.0.0", Some(29625)),
+    (active, rustc_diagnostic_macros, "1.0.0", None, None),
+    (active, rustc_const_unstable, "1.0.0", None, None),
+    (active, advanced_slice_patterns, "1.0.0", Some(23121), None),
+    (active, box_syntax, "1.0.0", Some(27779), None),
+    (active, placement_in_syntax, "1.0.0", Some(27779), None),
+    (active, unboxed_closures, "1.0.0", Some(29625), None),
 
-    (active, fundamental, "1.0.0", Some(29635)),
-    (active, main, "1.0.0", Some(29634)),
-    (active, needs_allocator, "1.4.0", Some(27389)),
-    (active, on_unimplemented, "1.0.0", Some(29628)),
-    (active, plugin, "1.0.0", Some(29597)),
-    (active, simd_ffi, "1.0.0", Some(27731)),
-    (active, start, "1.0.0", Some(29633)),
-    (active, structural_match, "1.8.0", Some(31434)),
-    (active, panic_runtime, "1.10.0", Some(32837)),
-    (active, needs_panic_runtime, "1.10.0", Some(32837)),
+    (active, fundamental, "1.0.0", Some(29635), None),
+    (active, main, "1.0.0", Some(29634), None),
+    (active, needs_allocator, "1.4.0", Some(27389), None),
+    (active, on_unimplemented, "1.0.0", Some(29628), None),
+    (active, plugin, "1.0.0", Some(29597), None),
+    (active, simd_ffi, "1.0.0", Some(27731), None),
+    (active, start, "1.0.0", Some(29633), None),
+    (active, structural_match, "1.8.0", Some(31434), None),
+    (active, panic_runtime, "1.10.0", Some(32837), None),
+    (active, needs_panic_runtime, "1.10.0", Some(32837), None),
 
     // OIBIT specific features
-    (active, optin_builtin_traits, "1.0.0", Some(13231)),
+    (active, optin_builtin_traits, "1.0.0", Some(13231), None),
 
     // macro re-export needs more discussion and stabilization
-    (active, macro_reexport, "1.0.0", Some(29638)),
+    (active, macro_reexport, "1.0.0", Some(29638), None),
 
     // Allows use of #[staged_api]
     // rustc internal
-    (active, staged_api, "1.0.0", None),
+    (active, staged_api, "1.0.0", None, None),
 
     // Allows using #![no_core]
-    (active, no_core, "1.3.0", Some(29639)),
+    (active, no_core, "1.3.0", Some(29639), None),
 
     // Allows using `box` in patterns; RFC 469
-    (active, box_patterns, "1.0.0", Some(29641)),
+    (active, box_patterns, "1.0.0", Some(29641), None),
 
     // Allows using the unsafe_destructor_blind_to_params attribute;
     // RFC 1238
-    (active, dropck_parametricity, "1.3.0", Some(28498)),
+    (active, dropck_parametricity, "1.3.0", Some(28498), None),
 
     // Allows using the may_dangle attribute; RFC 1327
-    (active, dropck_eyepatch, "1.10.0", Some(34761)),
+    (active, dropck_eyepatch, "1.10.0", Some(34761), None),
 
     // Allows the use of custom attributes; RFC 572
-    (active, custom_attribute, "1.0.0", Some(29642)),
+    (active, custom_attribute, "1.0.0", Some(29642), None),
 
     // Allows the use of #[derive(Anything)] as sugar for
     // #[derive_Anything].
-    (active, custom_derive, "1.0.0", Some(29644)),
+    (active, custom_derive, "1.0.0", Some(29644), None),
 
     // Allows the use of rustc_* attributes; RFC 572
-    (active, rustc_attrs, "1.0.0", Some(29642)),
+    (active, rustc_attrs, "1.0.0", Some(29642), None),
 
     // Allows the use of non lexical lifetimes; RFC 2094
-    (active, nll, "1.0.0", Some(43234)),
+    (active, nll, "1.0.0", Some(43234), None),
 
     // Allows the use of #[allow_internal_unstable]. This is an
     // attribute on macro_rules! and can't use the attribute handling
@@ -201,7 +203,7 @@ declare_features! (
     // macros disappear).
     //
     // rustc internal
-    (active, allow_internal_unstable, "1.0.0", None),
+    (active, allow_internal_unstable, "1.0.0", None, None),
 
     // Allows the use of #[allow_internal_unsafe]. This is an
     // attribute on macro_rules! and can't use the attribute handling
@@ -209,349 +211,349 @@ declare_features! (
     // macros disappear).
     //
     // rustc internal
-    (active, allow_internal_unsafe, "1.0.0", None),
+    (active, allow_internal_unsafe, "1.0.0", None, None),
 
     // #23121. Array patterns have some hazards yet.
-    (active, slice_patterns, "1.0.0", Some(23121)),
+    (active, slice_patterns, "1.0.0", Some(23121), None),
 
     // Allows the definition of `const fn` functions.
-    (active, const_fn, "1.2.0", Some(24111)),
+    (active, const_fn, "1.2.0", Some(24111), None),
 
     // Allows using #[prelude_import] on glob `use` items.
     //
     // rustc internal
-    (active, prelude_import, "1.2.0", None),
+    (active, prelude_import, "1.2.0", None, None),
 
     // Allows default type parameters to influence type inference.
-    (active, default_type_parameter_fallback, "1.3.0", Some(27336)),
+    (active, default_type_parameter_fallback, "1.3.0", Some(27336), None),
 
     // Allows associated type defaults
-    (active, associated_type_defaults, "1.2.0", Some(29661)),
+    (active, associated_type_defaults, "1.2.0", Some(29661), None),
 
     // allow `repr(simd)`, and importing the various simd intrinsics
-    (active, repr_simd, "1.4.0", Some(27731)),
+    (active, repr_simd, "1.4.0", Some(27731), None),
 
     // Allows cfg(target_feature = "...").
-    (active, cfg_target_feature, "1.4.0", Some(29717)),
+    (active, cfg_target_feature, "1.4.0", Some(29717), None),
 
     // allow `extern "platform-intrinsic" { ... }`
-    (active, platform_intrinsics, "1.4.0", Some(27731)),
+    (active, platform_intrinsics, "1.4.0", Some(27731), None),
 
     // allow `#[unwind(..)]`
     // rust runtime internal
-    (active, unwind_attributes, "1.4.0", None),
+    (active, unwind_attributes, "1.4.0", None, None),
 
     // allow the use of `#[naked]` on functions.
-    (active, naked_functions, "1.9.0", Some(32408)),
+    (active, naked_functions, "1.9.0", Some(32408), None),
 
     // allow `#[no_debug]`
-    (active, no_debug, "1.5.0", Some(29721)),
+    (active, no_debug, "1.5.0", Some(29721), None),
 
     // allow `#[omit_gdb_pretty_printer_section]`
     // rustc internal.
-    (active, omit_gdb_pretty_printer_section, "1.5.0", None),
+    (active, omit_gdb_pretty_printer_section, "1.5.0", None, None),
 
     // Allows cfg(target_vendor = "...").
-    (active, cfg_target_vendor, "1.5.0", Some(29718)),
+    (active, cfg_target_vendor, "1.5.0", Some(29718), None),
 
     // Allow attributes on expressions and non-item statements
-    (active, stmt_expr_attributes, "1.6.0", Some(15701)),
+    (active, stmt_expr_attributes, "1.6.0", Some(15701), None),
 
     // allow using type ascription in expressions
-    (active, type_ascription, "1.6.0", Some(23416)),
+    (active, type_ascription, "1.6.0", Some(23416), None),
 
     // Allows cfg(target_thread_local)
-    (active, cfg_target_thread_local, "1.7.0", Some(29594)),
+    (active, cfg_target_thread_local, "1.7.0", Some(29594), None),
 
     // rustc internal
-    (active, abi_vectorcall, "1.7.0", None),
+    (active, abi_vectorcall, "1.7.0", None, None),
 
     // a..=b and ..=b
-    (active, inclusive_range_syntax, "1.7.0", Some(28237)),
+    (active, inclusive_range_syntax, "1.7.0", Some(28237), None),
 
     // X..Y patterns
-    (active, exclusive_range_pattern, "1.11.0", Some(37854)),
+    (active, exclusive_range_pattern, "1.11.0", Some(37854), None),
 
     // impl specialization (RFC 1210)
-    (active, specialization, "1.7.0", Some(31844)),
+    (active, specialization, "1.7.0", Some(31844), None),
 
     // Allows cfg(target_has_atomic = "...").
-    (active, cfg_target_has_atomic, "1.9.0", Some(32976)),
+    (active, cfg_target_has_atomic, "1.9.0", Some(32976), None),
 
     // Allows `impl Trait` in function return types.
-    (active, conservative_impl_trait, "1.12.0", Some(34511)),
+    (active, conservative_impl_trait, "1.12.0", Some(34511), None),
 
     // Allows `impl Trait` in function arguments.
-    (active, universal_impl_trait, "1.23.0", Some(34511)),
+    (active, universal_impl_trait, "1.23.0", Some(34511), None),
 
     // The `!` type
-    (active, never_type, "1.13.0", Some(35121)),
+    (active, never_type, "1.13.0", Some(35121), None),
 
     // Allows all literals in attribute lists and values of key-value pairs.
-    (active, attr_literals, "1.13.0", Some(34981)),
+    (active, attr_literals, "1.13.0", Some(34981), None),
 
     // Allows untagged unions `union U { ... }`
-    (active, untagged_unions, "1.13.0", Some(32836)),
+    (active, untagged_unions, "1.13.0", Some(32836), None),
 
     // Used to identify the `compiler_builtins` crate
     // rustc internal
-    (active, compiler_builtins, "1.13.0", None),
+    (active, compiler_builtins, "1.13.0", None, None),
 
     // Allows attributes on lifetime/type formal parameters in generics (RFC 1327)
-    (active, generic_param_attrs, "1.11.0", Some(34761)),
+    (active, generic_param_attrs, "1.11.0", Some(34761), None),
 
     // Allows #[link(..., cfg(..))]
-    (active, link_cfg, "1.14.0", Some(37406)),
+    (active, link_cfg, "1.14.0", Some(37406), None),
 
-    (active, use_extern_macros, "1.15.0", Some(35896)),
+    (active, use_extern_macros, "1.15.0", Some(35896), None),
 
     // Allows #[target_feature(...)]
-    (active, target_feature, "1.15.0", None),
+    (active, target_feature, "1.15.0", None, None),
 
     // `extern "ptx-*" fn()`
-    (active, abi_ptx, "1.15.0", None),
+    (active, abi_ptx, "1.15.0", None, None),
 
     // The `i128` type
-    (active, i128_type, "1.16.0", Some(35118)),
+    (active, i128_type, "1.16.0", Some(35118), None),
 
     // The `repr(i128)` annotation for enums
-    (active, repr128, "1.16.0", Some(35118)),
+    (active, repr128, "1.16.0", Some(35118), None),
 
     // The `unadjusted` ABI. Perma unstable.
-    (active, abi_unadjusted, "1.16.0", None),
+    (active, abi_unadjusted, "1.16.0", None, None),
 
     // Procedural macros 2.0.
-    (active, proc_macro, "1.16.0", Some(38356)),
+    (active, proc_macro, "1.16.0", Some(38356), None),
 
     // Declarative macros 2.0 (`macro`).
-    (active, decl_macro, "1.17.0", Some(39412)),
+    (active, decl_macro, "1.17.0", Some(39412), None),
 
     // Allows #[link(kind="static-nobundle"...]
-    (active, static_nobundle, "1.16.0", Some(37403)),
+    (active, static_nobundle, "1.16.0", Some(37403), None),
 
     // `extern "msp430-interrupt" fn()`
-    (active, abi_msp430_interrupt, "1.16.0", Some(38487)),
+    (active, abi_msp430_interrupt, "1.16.0", Some(38487), None),
 
     // Used to identify crates that contain sanitizer runtimes
     // rustc internal
-    (active, sanitizer_runtime, "1.17.0", None),
+    (active, sanitizer_runtime, "1.17.0", None, None),
 
     // Used to identify crates that contain the profiler runtime
     // rustc internal
-    (active, profiler_runtime, "1.18.0", None),
+    (active, profiler_runtime, "1.18.0", None, None),
 
     // `extern "x86-interrupt" fn()`
-    (active, abi_x86_interrupt, "1.17.0", Some(40180)),
+    (active, abi_x86_interrupt, "1.17.0", Some(40180), None),
 
 
     // Allows the `catch {...}` expression
-    (active, catch_expr, "1.17.0", Some(31436)),
+    (active, catch_expr, "1.17.0", Some(31436), None),
 
     // Used to preserve symbols (see llvm.used)
-    (active, used, "1.18.0", Some(40289)),
+    (active, used, "1.18.0", Some(40289), None),
 
     // Allows module-level inline assembly by way of global_asm!()
-    (active, global_asm, "1.18.0", Some(35119)),
+    (active, global_asm, "1.18.0", Some(35119), None),
 
     // Allows overlapping impls of marker traits
-    (active, overlapping_marker_traits, "1.18.0", Some(29864)),
+    (active, overlapping_marker_traits, "1.18.0", Some(29864), None),
 
     // Allows use of the :vis macro fragment specifier
-    (active, macro_vis_matcher, "1.18.0", Some(41022)),
+    (active, macro_vis_matcher, "1.18.0", Some(41022), None),
 
     // rustc internal
-    (active, abi_thiscall, "1.19.0", None),
+    (active, abi_thiscall, "1.19.0", None, None),
 
     // Allows a test to fail without failing the whole suite
-    (active, allow_fail, "1.19.0", Some(42219)),
+    (active, allow_fail, "1.19.0", Some(42219), None),
 
     // Allows unsized tuple coercion.
-    (active, unsized_tuple_coercion, "1.20.0", Some(42877)),
+    (active, unsized_tuple_coercion, "1.20.0", Some(42877), None),
 
     // Generators
-    (active, generators, "1.21.0", None),
+    (active, generators, "1.21.0", None, None),
 
     // Trait aliases
-    (active, trait_alias, "1.24.0", Some(41517)),
+    (active, trait_alias, "1.24.0", Some(41517), None),
 
     // global allocators and their internals
-    (active, global_allocator, "1.20.0", None),
-    (active, allocator_internals, "1.20.0", None),
+    (active, global_allocator, "1.20.0", None, None),
+    (active, allocator_internals, "1.20.0", None, None),
 
     // #[doc(cfg(...))]
-    (active, doc_cfg, "1.21.0", Some(43781)),
+    (active, doc_cfg, "1.21.0", Some(43781), None),
     // #[doc(masked)]
-    (active, doc_masked, "1.21.0", Some(44027)),
+    (active, doc_masked, "1.21.0", Some(44027), None),
     // #[doc(spotlight)]
-    (active, doc_spotlight, "1.22.0", Some(45040)),
+    (active, doc_spotlight, "1.22.0", Some(45040), None),
     // #[doc(include="some-file")]
-    (active, external_doc, "1.22.0", Some(44732)),
+    (active, external_doc, "1.22.0", Some(44732), None),
 
     // allow `#[must_use]` on functions and comparison operators (RFC 1940)
-    (active, fn_must_use, "1.21.0", Some(43302)),
+    (active, fn_must_use, "1.21.0", Some(43302), None),
 
     // Future-proofing enums/structs with #[non_exhaustive] attribute (RFC 2008)
-    (active, non_exhaustive, "1.22.0", Some(44109)),
+    (active, non_exhaustive, "1.22.0", Some(44109), None),
 
     // Copy/Clone closures (RFC 2132)
-    (active, clone_closures, "1.22.0", Some(44490)),
-    (active, copy_closures, "1.22.0", Some(44490)),
+    (active, clone_closures, "1.22.0", Some(44490), None),
+    (active, copy_closures, "1.22.0", Some(44490), None),
 
     // allow `'_` placeholder lifetimes
-    (active, underscore_lifetimes, "1.22.0", Some(44524)),
+    (active, underscore_lifetimes, "1.22.0", Some(44524), None),
 
     // allow `..=` in patterns (RFC 1192)
-    (active, dotdoteq_in_patterns, "1.22.0", Some(28237)),
+    (active, dotdoteq_in_patterns, "1.22.0", Some(28237), None),
 
     // Default match binding modes (RFC 2005)
-    (active, match_default_bindings, "1.22.0", Some(42640)),
+    (active, match_default_bindings, "1.22.0", Some(42640), None),
 
     // Trait object syntax with `dyn` prefix
-    (active, dyn_trait, "1.22.0", Some(44662)),
+    (active, dyn_trait, "1.22.0", Some(44662), Some(Epoch::Epoch2018)),
 
     // `crate` as visibility modifier, synonymous to `pub(crate)`
-    (active, crate_visibility_modifier, "1.23.0", Some(45388)),
+    (active, crate_visibility_modifier, "1.23.0", Some(45388), None),
 
     // extern types
-    (active, extern_types, "1.23.0", Some(43467)),
+    (active, extern_types, "1.23.0", Some(43467), None),
 
     // Allow trait methods with arbitrary self types
-    (active, arbitrary_self_types, "1.23.0", Some(44874)),
+    (active, arbitrary_self_types, "1.23.0", Some(44874), None),
 
     // `crate` in paths
-    (active, crate_in_paths, "1.23.0", Some(45477)),
+    (active, crate_in_paths, "1.23.0", Some(45477), None),
 
     // In-band lifetime bindings (e.g. `fn foo(x: &'a u8) -> &'a u8`)
-    (active, in_band_lifetimes, "1.23.0", Some(44524)),
+    (active, in_band_lifetimes, "1.23.0", Some(44524), None),
 
     // generic associated types (RFC 1598)
-    (active, generic_associated_types, "1.23.0", Some(44265)),
+    (active, generic_associated_types, "1.23.0", Some(44265), None),
 
     // Resolve absolute paths as paths from other crates
-    (active, extern_absolute_paths, "1.24.0", Some(44660)),
+    (active, extern_absolute_paths, "1.24.0", Some(44660), None),
 
     // `foo.rs` as an alternative to `foo/mod.rs`
-    (active, non_modrs_mods, "1.24.0", Some(44660)),
+    (active, non_modrs_mods, "1.24.0", Some(44660), None),
 
     // Termination trait in main (RFC 1937)
-    (active, termination_trait, "1.24.0", Some(43301)),
+    (active, termination_trait, "1.24.0", Some(43301), None),
 
     // Allows use of the :lifetime macro fragment specifier
-    (active, macro_lifetime_matcher, "1.24.0", Some(46895)),
+    (active, macro_lifetime_matcher, "1.24.0", Some(46895), None),
 
     // `extern` in paths
-    (active, extern_in_paths, "1.23.0", Some(44660)),
+    (active, extern_in_paths, "1.23.0", Some(44660), None),
 
     // Allows `#[repr(transparent)]` attribute on newtype structs
-    (active, repr_transparent, "1.25.0", Some(43036)),
+    (active, repr_transparent, "1.25.0", Some(43036), None),
 
     // Use `?` as the Kleene "at most one" operator
-    (active, macro_at_most_once_rep, "1.25.0", Some(48075)),
+    (active, macro_at_most_once_rep, "1.25.0", Some(48075), None),
 
     // Multiple patterns with `|` in `if let` and `while let`
-    (active, if_while_or_patterns, "1.26.0", Some(48215)),
+    (active, if_while_or_patterns, "1.26.0", Some(48215), None),
 
     // Parentheses in patterns
-    (active, pattern_parentheses, "1.26.0", None),
+    (active, pattern_parentheses, "1.26.0", None, None),
 );
 
 declare_features! (
-    (removed, import_shadowing, "1.0.0", None),
-    (removed, managed_boxes, "1.0.0", None),
+    (removed, import_shadowing, "1.0.0", None, None),
+    (removed, managed_boxes, "1.0.0", None, None),
     // Allows use of unary negate on unsigned integers, e.g. -e for e: u8
-    (removed, negate_unsigned, "1.0.0", Some(29645)),
-    (removed, reflect, "1.0.0", Some(27749)),
+    (removed, negate_unsigned, "1.0.0", Some(29645), None),
+    (removed, reflect, "1.0.0", Some(27749), None),
     // A way to temporarily opt out of opt in copy. This will *never* be accepted.
-    (removed, opt_out_copy, "1.0.0", None),
-    (removed, quad_precision_float, "1.0.0", None),
-    (removed, struct_inherit, "1.0.0", None),
-    (removed, test_removed_feature, "1.0.0", None),
-    (removed, visible_private_types, "1.0.0", None),
-    (removed, unsafe_no_drop_flag, "1.0.0", None),
+    (removed, opt_out_copy, "1.0.0", None, None),
+    (removed, quad_precision_float, "1.0.0", None, None),
+    (removed, struct_inherit, "1.0.0", None, None),
+    (removed, test_removed_feature, "1.0.0", None, None),
+    (removed, visible_private_types, "1.0.0", None, None),
+    (removed, unsafe_no_drop_flag, "1.0.0", None, None),
     // Allows using items which are missing stability attributes
     // rustc internal
-    (removed, unmarked_api, "1.0.0", None),
-    (removed, pushpop_unsafe, "1.2.0", None),
-    (removed, allocator, "1.0.0", None),
+    (removed, unmarked_api, "1.0.0", None, None),
+    (removed, pushpop_unsafe, "1.2.0", None, None),
+    (removed, allocator, "1.0.0", None, None),
     // Allows the `#[simd]` attribute -- removed in favor of `#[repr(simd)]`
-    (removed, simd, "1.0.0", Some(27731)),
+    (removed, simd, "1.0.0", Some(27731), None),
 );
 
 declare_features! (
-    (stable_removed, no_stack_check, "1.0.0", None),
+    (stable_removed, no_stack_check, "1.0.0", None, None),
 );
 
 declare_features! (
-    (accepted, associated_types, "1.0.0", None),
+    (accepted, associated_types, "1.0.0", None, None),
     // allow overloading augmented assignment operations like `a += b`
-    (accepted, augmented_assignments, "1.8.0", Some(28235)),
+    (accepted, augmented_assignments, "1.8.0", Some(28235), None),
     // allow empty structs and enum variants with braces
-    (accepted, braced_empty_structs, "1.8.0", Some(29720)),
+    (accepted, braced_empty_structs, "1.8.0", Some(29720), None),
     // Allows indexing into constant arrays.
-    (accepted, const_indexing, "1.24.0", Some(29947)),
-    (accepted, default_type_params, "1.0.0", None),
-    (accepted, globs, "1.0.0", None),
-    (accepted, if_let, "1.0.0", None),
+    (accepted, const_indexing, "1.24.0", Some(29947), None),
+    (accepted, default_type_params, "1.0.0", None, None),
+    (accepted, globs, "1.0.0", None, None),
+    (accepted, if_let, "1.0.0", None, None),
     // A temporary feature gate used to enable parser extensions needed
     // to bootstrap fix for #5723.
-    (accepted, issue_5723_bootstrap, "1.0.0", None),
-    (accepted, macro_rules, "1.0.0", None),
+    (accepted, issue_5723_bootstrap, "1.0.0", None, None),
+    (accepted, macro_rules, "1.0.0", None, None),
     // Allows using #![no_std]
-    (accepted, no_std, "1.6.0", None),
-    (accepted, slicing_syntax, "1.0.0", None),
-    (accepted, struct_variant, "1.0.0", None),
+    (accepted, no_std, "1.6.0", None, None),
+    (accepted, slicing_syntax, "1.0.0", None, None),
+    (accepted, struct_variant, "1.0.0", None, None),
     // These are used to test this portion of the compiler, they don't actually
     // mean anything
-    (accepted, test_accepted_feature, "1.0.0", None),
-    (accepted, tuple_indexing, "1.0.0", None),
+    (accepted, test_accepted_feature, "1.0.0", None, None),
+    (accepted, tuple_indexing, "1.0.0", None, None),
     // Allows macros to appear in the type position.
-    (accepted, type_macros, "1.13.0", Some(27245)),
-    (accepted, while_let, "1.0.0", None),
+    (accepted, type_macros, "1.13.0", Some(27245), None),
+    (accepted, while_let, "1.0.0", None, None),
     // Allows `#[deprecated]` attribute
-    (accepted, deprecated, "1.9.0", Some(29935)),
+    (accepted, deprecated, "1.9.0", Some(29935), None),
     // `expr?`
-    (accepted, question_mark, "1.13.0", Some(31436)),
+    (accepted, question_mark, "1.13.0", Some(31436), None),
     // Allows `..` in tuple (struct) patterns
-    (accepted, dotdot_in_tuple_patterns, "1.14.0", Some(33627)),
-    (accepted, item_like_imports, "1.15.0", Some(35120)),
+    (accepted, dotdot_in_tuple_patterns, "1.14.0", Some(33627), None),
+    (accepted, item_like_imports, "1.15.0", Some(35120), None),
     // Allows using `Self` and associated types in struct expressions and patterns.
-    (accepted, more_struct_aliases, "1.16.0", Some(37544)),
+    (accepted, more_struct_aliases, "1.16.0", Some(37544), None),
     // elide `'static` lifetimes in `static`s and `const`s
-    (accepted, static_in_const, "1.17.0", Some(35897)),
+    (accepted, static_in_const, "1.17.0", Some(35897), None),
     // Allows field shorthands (`x` meaning `x: x`) in struct literal expressions.
-    (accepted, field_init_shorthand, "1.17.0", Some(37340)),
+    (accepted, field_init_shorthand, "1.17.0", Some(37340), None),
     // Allows the definition recursive static items.
-    (accepted, static_recursion, "1.17.0", Some(29719)),
+    (accepted, static_recursion, "1.17.0", Some(29719), None),
     // pub(restricted) visibilities (RFC 1422)
-    (accepted, pub_restricted, "1.18.0", Some(32409)),
+    (accepted, pub_restricted, "1.18.0", Some(32409), None),
     // The #![windows_subsystem] attribute
-    (accepted, windows_subsystem, "1.18.0", Some(37499)),
+    (accepted, windows_subsystem, "1.18.0", Some(37499), None),
     // Allows `break {expr}` with a value inside `loop`s.
-    (accepted, loop_break_value, "1.19.0", Some(37339)),
+    (accepted, loop_break_value, "1.19.0", Some(37339), None),
     // Permits numeric fields in struct expressions and patterns.
-    (accepted, relaxed_adts, "1.19.0", Some(35626)),
+    (accepted, relaxed_adts, "1.19.0", Some(35626), None),
     // Coerces non capturing closures to function pointers
-    (accepted, closure_to_fn_coercion, "1.19.0", Some(39817)),
+    (accepted, closure_to_fn_coercion, "1.19.0", Some(39817), None),
     // Allows attributes on struct literal fields.
-    (accepted, struct_field_attributes, "1.20.0", Some(38814)),
+    (accepted, struct_field_attributes, "1.20.0", Some(38814), None),
     // Allows the definition of associated constants in `trait` or `impl`
     // blocks.
-    (accepted, associated_consts, "1.20.0", Some(29646)),
+    (accepted, associated_consts, "1.20.0", Some(29646), None),
     // Usage of the `compile_error!` macro
-    (accepted, compile_error, "1.20.0", Some(40872)),
+    (accepted, compile_error, "1.20.0", Some(40872), None),
     // See rust-lang/rfcs#1414. Allows code like `let x: &'static u32 = &42` to work.
-    (accepted, rvalue_static_promotion, "1.21.0", Some(38865)),
+    (accepted, rvalue_static_promotion, "1.21.0", Some(38865), None),
     // Allow Drop types in constants (RFC 1440)
-    (accepted, drop_types_in_const, "1.22.0", Some(33156)),
+    (accepted, drop_types_in_const, "1.22.0", Some(33156), None),
     // Allows the sysV64 ABI to be specified on all platforms
     // instead of just the platforms on which it is the C ABI
-    (accepted, abi_sysv64, "1.24.0", Some(36167)),
+    (accepted, abi_sysv64, "1.24.0", Some(36167), None),
     // Allows `repr(align(16))` struct attribute (RFC 1358)
-    (accepted, repr_align, "1.25.0", Some(33626)),
+    (accepted, repr_align, "1.25.0", Some(33626), None),
     // allow '|' at beginning of match arms (RFC 1925)
-    (accepted, match_beginning_vert, "1.25.0", Some(44101)),
+    (accepted, match_beginning_vert, "1.25.0", Some(44101), None),
     // Nested groups in `use` (RFC 2128)
-    (accepted, use_nested_groups, "1.25.0", Some(44494)),
+    (accepted, use_nested_groups, "1.25.0", Some(44494), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -1793,10 +1795,21 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 }
 
-pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute]) -> Features {
+pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
+                    epoch: Epoch) -> Features {
     let mut features = Features::new();
 
     let mut feature_checker = FeatureChecker::default();
+
+    for &(.., f_epoch, set) in ACTIVE_FEATURES.iter() {
+        if let Some(f_epoch) = f_epoch {
+            if epoch >= f_epoch {
+                // FIXME(Manishearth) there is currently no way to set
+                // lang features by epoch
+                set(&mut features, DUMMY_SP);
+            }
+        }
+    }
 
     for attr in krate_attrs {
         if !attr.check_name("feature") {
@@ -1818,8 +1831,8 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute]) -> F
                         continue
                     };
 
-                    if let Some(&(_, _, _, set)) = ACTIVE_FEATURES.iter()
-                        .find(|& &(n, _, _, _)| name == n) {
+                    if let Some(&(_, _, _, _, set)) = ACTIVE_FEATURES.iter()
+                        .find(|& &(n, ..)| name == n) {
                         set(&mut features, mi.span);
                         feature_checker.collect(&features, mi.span);
                     }

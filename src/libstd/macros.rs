@@ -472,7 +472,7 @@ pub mod builtin {
     /// The expanded expression has type `u32` and is 1-based, so the first line
     /// in each file evaluates to 1, the second to 2, etc. This is consistent
     /// with error messages by common compilers or popular editors.
-    /// The returned line is not the invocation of the `line!` macro itself,
+    /// The returned line is *not necessarily* the line of the `line!` invocation itself,
     /// but rather the first macro invocation leading up to the invocation
     /// of the `line!` macro.
     ///
@@ -497,7 +497,7 @@ pub mod builtin {
     /// The expanded expression has type `u32` and is 1-based, so the first column
     /// in each line evaluates to 1, the second to 2, etc. This is consistent
     /// with error messages by common compilers or popular editors.
-    /// The returned column is not the invocation of the `column!` macro itself,
+    /// The returned column is *not necessarily* the line of the `column!` invocation itself,
     /// but rather the first macro invocation leading up to the invocation
     /// of the `column!` macro.
     ///

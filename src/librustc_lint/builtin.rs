@@ -1263,7 +1263,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnionsWithDropFields {
 pub struct UnreachablePub;
 
 declare_lint! {
-    UNREACHABLE_PUB,
+    pub UNREACHABLE_PUB,
     Allow,
     "`pub` items not reachable from crate root"
 }
