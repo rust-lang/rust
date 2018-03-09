@@ -2,13 +2,15 @@
 
 Canonicalization is the process of **isolating** an inference value
 from its context. It is really based on a very simple concept: every
-[inference variable](./type-inference.html#vars) is always in one of two
-states: either it is **unbound**, in which case we don't know yet what
-type it is, or it is **bound**, in which case we do. So to isolate
-some thing T from its environment, we just walk down and find the
-unbound variables that appear in T; those variables get renumbered in
-a canonical order (left to right, for the most part, but really it
-doesn't matter as long as it is consistent).
+[inference variable](./type-inference.html#vars) is always in one of
+two states: either it is **unbound**, in which case we don't know yet
+what type it is, or it is **bound**, in which case we do. So to
+isolate some data-structure T that contains types/regions from its
+environment, we just walk down and find the unbound variables that
+appear in T; those variables get replaced with "canonical variables",
+starting from zero and numbered in a fixed order (left to right, for
+the most part, but really it doesn't matter as long as it is
+consistent).
 
 So, for example, if we have the type `X = (?T, ?U)`, where `?T` and
 `?U` are distinct, unbound inference variables, then the canonical
