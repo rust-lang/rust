@@ -105,7 +105,7 @@ impl Step for Std {
         let out_dir = build.stage_out(compiler, Mode::Libstd);
         build.clear_if_dirty(&out_dir, &builder.rustc(compiler));
         let mut cargo = builder.cargo(compiler, Mode::Libstd, target, "build");
-        std_cargo(build, &compiler, target, &mut cargo);
+        std_cargo(builder, &compiler, target, &mut cargo);
         run_cargo(build,
                   &mut cargo,
                   &libstd_stamp(build, compiler, target),
@@ -135,7 +135,7 @@ fn copy_musl_third_party_objects(build: &Build,
 
 /// Configure cargo to compile the standard library, adding appropriate env vars
 /// and such.
-pub fn std_cargo(build: &Build,
+pub fn std_cargo(build: &Builder,
                  compiler: &Compiler,
                  target: Interned<String>,
                  cargo: &mut Command) {
@@ -162,7 +162,11 @@ pub fn std_cargo(build: &Build,
         // missing
         // We also only build the runtimes when --enable-sanitizers (or its
         // config.toml equivalent) is used
-        cargo.env("LLVM_CONFIG", build.llvm_config(target));
+        let llvm_config = build.ensure(native::Llvm {
+            target: build.config.build,
+            emscripten: false,
+        });
+        cargo.env("LLVM_CONFIG", llvm_config);
     }
 
     cargo.arg("--features").arg(features)

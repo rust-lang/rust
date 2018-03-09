@@ -481,7 +481,7 @@ impl Step for Std {
         t!(symlink_dir_force(&my_out, &out_dir));
 
         let mut cargo = builder.cargo(compiler, Mode::Libstd, target, "doc");
-        compile::std_cargo(build, &compiler, target, &mut cargo);
+        compile::std_cargo(builder, &compiler, target, &mut cargo);
 
         // We don't want to build docs for internal std dependencies unless
         // in compiler-docs mode. When not in that mode, we whitelist the crates

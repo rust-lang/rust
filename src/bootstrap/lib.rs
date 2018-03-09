@@ -532,20 +532,6 @@ impl Build {
         }
     }
 
-    /// Returns the path to `llvm-config` for the specified target.
-    ///
-    /// If a custom `llvm-config` was specified for target then that's returned
-    /// instead.
-    fn llvm_config(&self, target: Interned<String>) -> PathBuf {
-        let target_config = self.config.target_config.get(&target);
-        if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
-            s.clone()
-        } else {
-            self.llvm_out(self.config.build).join("bin")
-                .join(exe("llvm-config", &*target))
-        }
-    }
-
     /// Returns the path to `FileCheck` binary for the specified target
     fn llvm_filecheck(&self, target: Interned<String>) -> PathBuf {
         let target_config = self.config.target_config.get(&target);

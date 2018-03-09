@@ -915,7 +915,10 @@ impl Step for Compiletest {
         }
 
         if build.config.llvm_enabled {
-            let llvm_config = build.llvm_config(build.config.build);
+            let llvm_config = builder.ensure(native::Llvm {
+                target: build.config.build,
+                emscripten: false,
+            });
             let llvm_version = output(Command::new(&llvm_config).arg("--version"));
             cmd.arg("--llvm-version").arg(llvm_version);
             if !build.is_rust_llvm(target) {
@@ -1382,7 +1385,7 @@ impl Step for Crate {
         let mut cargo = builder.cargo(compiler, mode, target, test_kind.subcommand());
         match mode {
             Mode::Libstd => {
-                compile::std_cargo(build, &compiler, target, &mut cargo);
+                compile::std_cargo(builder, &compiler, target, &mut cargo);
             }
             Mode::Libtest => {
                 compile::test_cargo(build, &compiler, target, &mut cargo);
