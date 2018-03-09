@@ -52,6 +52,7 @@ extern crate test;
 
 mod any;
 mod array;
+mod ascii;
 mod atomic;
 mod cell;
 mod char;
