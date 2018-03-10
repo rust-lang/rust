@@ -276,9 +276,8 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         },
         FutureIncompatibleInfo {
             id: LintId::of(UNSTABLE_NAME_COLLISION),
-            reference: "pr #48552 <https://github.com/rust-lang/rust/pull/48552>",
+            reference: "issue #48919 <https://github.com/rust-lang/rust/issues/48919>",
             edition: None,
-            // FIXME: create a proper tracking issue.
             // Note: this item represents future incompatibility of all unstable functions in the
             //       standard library, and thus should never be removed or changed to an error.
         },
