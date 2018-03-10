@@ -298,6 +298,8 @@ define_maps! { <'tcx>
 
     [] fn impl_defaultness: ImplDefaultness(DefId) -> hir::Defaultness,
 
+    [] fn check_item_well_formed: CheckItemWellFormed(DefId) -> (),
+
     // The DefIds of all non-generic functions and statics in the given crate
     // that can be reached from outside the crate.
     //
