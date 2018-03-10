@@ -320,7 +320,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
     fn translate_predicate(&self, index_map: &HashMap<u32, DefId>, predicate: Predicate<'tcx>)
         -> Option<Predicate<'tcx>>
     {
-        use rustc::ty::{Binder, EquatePredicate, OutlivesPredicate, ProjectionPredicate,
+        use rustc::ty::{Binder, /*EquatePredicate,*/ OutlivesPredicate, ProjectionPredicate,
                         ProjectionTy, SubtypePredicate, TraitPredicate, TraitRef};
 
         Some(match predicate {
@@ -339,13 +339,13 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                     return None;
                 }))
             },
-            Predicate::Equate(equate_predicate) => {
+            /*Predicate::Equate(equate_predicate) => {
                 Predicate::Equate(equate_predicate.map_bound(|e_pred| {
                     let l = self.translate(index_map, &e_pred.0);
                     let r = self.translate(index_map, &e_pred.1);
                     EquatePredicate(l, r)
                 }))
-            },
+            },*/
             Predicate::RegionOutlives(region_outlives_predicate) => {
                 Predicate::RegionOutlives(region_outlives_predicate.map_bound(|r_pred| {
                     let l = self.translate_region(r_pred.0);

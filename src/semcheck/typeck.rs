@@ -5,7 +5,9 @@
 
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
-use rustc::traits::{FulfillmentContext, FulfillmentError, Obligation, ObligationCause};
+use rustc::traits::{auto_trait,
+                    FulfillmentContext, FulfillmentError,
+                    Obligation, ObligationCause};
 use rustc::ty::{ParamEnv, Predicate, TraitRef, Ty, TyCtxt, UniverseIndex};
 use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
@@ -267,9 +269,6 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
         let orig_param_env = self
             .forward_trans
             .translate_param_env(orig_def_id, tcx.param_env(orig_def_id));
-        let target_param_env = self
-            .backward_trans
-            .translate_param_env(target_def_id, tcx.param_env(target_def_id));
 
         let orig_param_env = if let Some(env) = orig_param_env {
             env
@@ -288,6 +287,10 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
                 changes.add_change(err_type, orig_def_id, None);
             }
         }
+
+        let target_param_env = self
+            .backward_trans
+            .translate_param_env(target_def_id, tcx.param_env(target_def_id));
 
         let target_param_env = if let Some(env) = target_param_env {
             env
