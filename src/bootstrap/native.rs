@@ -596,7 +596,7 @@ impl Step for Openssl {
         println!("Building openssl for {}", target);
         build.run_quiet(Command::new("make").arg("-j1").current_dir(&obj));
         println!("Installing openssl for {}", target);
-        build.run_quiet(Command::new("make").arg("install").current_dir(&obj));
+        build.run_quiet(Command::new("make").arg("install").arg("-j1").current_dir(&obj));
 
         let mut f = t!(File::create(&stamp));
         t!(f.write_all(OPENSSL_VERS.as_bytes()));
