@@ -81,17 +81,17 @@ struct AlwaysOnNextLine<LongLongTypename, LongTypename, A, B, C, D, E, F>
 
 pub trait SomeTrait<T>
     where T: Something
-                 + Sync
-                 + Send
-                 + Display
-                 + Debug
-                 + Copy
-                 + Hash
-                 + Debug
-                 + Display
-                 + Write
-                 + Read
-                 + FromStr
+              + Sync
+              + Send
+              + Display
+              + Debug
+              + Copy
+              + Hash
+              + Debug
+              + Display
+              + Write
+              + Read
+              + FromStr
 {
 }
 
