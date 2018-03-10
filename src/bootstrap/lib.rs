@@ -309,9 +309,8 @@ impl Build {
     ///
     /// By default all build output will be placed in the current directory.
     pub fn new(config: Config) -> Build {
-        let cwd = t!(env::current_dir());
         let src = config.src.clone();
-        let out = cwd.join("build");
+        let out = config.out.clone();
 
         let is_sudo = match env::var_os("SUDO_USER") {
             Some(sudo_user) => {

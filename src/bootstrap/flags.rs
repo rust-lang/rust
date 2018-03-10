@@ -33,12 +33,10 @@ pub struct Flags {
     pub on_fail: Option<String>,
     pub stage: Option<u32>,
     pub keep_stage: Option<u32>,
-    pub build: Option<Interned<String>>,
 
     pub host: Vec<Interned<String>>,
     pub target: Vec<Interned<String>>,
     pub config: Option<PathBuf>,
-    pub src: PathBuf,
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
     pub incremental: bool,
@@ -278,10 +276,6 @@ Arguments:
             _ => { }
         };
         // Get any optional paths which occur after the subcommand
-        let cwd = t!(env::current_dir());
-        let src = matches.opt_str("src").map(PathBuf::from)
-            .or_else(|| env::var_os("SRC").map(PathBuf::from))
-            .unwrap_or(cwd.clone());
         let paths = matches.free[1..].iter().map(|p| p.into()).collect::<Vec<PathBuf>>();
 
         let cfg_file = matches.opt_str("config").map(PathBuf::from).or_else(|| {
@@ -374,7 +368,6 @@ Arguments:
             on_fail: matches.opt_str("on-fail"),
             rustc_error_format: matches.opt_str("error-format"),
             keep_stage: matches.opt_str("keep-stage").map(|j| j.parse().unwrap()),
-            build: matches.opt_str("build").map(|s| INTERNER.intern_string(s)),
             host: split(matches.opt_strs("host"))
                 .into_iter().map(|x| INTERNER.intern_string(x)).collect::<Vec<_>>(),
             target: split(matches.opt_strs("target"))
@@ -385,7 +378,6 @@ Arguments:
             incremental: matches.opt_present("incremental"),
             exclude: split(matches.opt_strs("exclude"))
                 .into_iter().map(|p| p.into()).collect::<Vec<_>>(),
-            src,
         }
     }
 }

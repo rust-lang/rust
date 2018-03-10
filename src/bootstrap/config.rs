@@ -143,6 +143,7 @@ pub struct Config {
     // These are either the stage0 downloaded binaries or the locally installed ones.
     pub initial_cargo: PathBuf,
     pub initial_rustc: PathBuf,
+    pub out: PathBuf,
 }
 
 /// Per-target configuration stored in the global configuration structure.
@@ -344,7 +345,8 @@ impl Config {
         config.rustc_error_format = flags.rustc_error_format;
         config.on_fail = flags.on_fail;
         config.stage = flags.stage;
-        config.src = flags.src;
+        // set by bootstrap.py
+        config.src = env::var_os("SRC").map(PathBuf::from).expect("'SRC' to be set");
         config.jobs = flags.jobs;
         config.cmd = flags.cmd;
         config.incremental = flags.incremental;
@@ -368,12 +370,8 @@ impl Config {
         }).unwrap_or_else(|| TomlConfig::default());
 
         let build = toml.build.clone().unwrap_or(Build::default());
-        set(&mut config.build, build.build.clone().map(|x| INTERNER.intern_string(x)));
-        set(&mut config.build, flags.build);
-        if config.build.is_empty() {
-            // set by bootstrap.py
-            config.build = INTERNER.intern_str(&env::var("BUILD").unwrap());
-        }
+        // set by bootstrap.py
+        config.build = INTERNER.intern_str(&env::var("BUILD").unwrap());
         config.hosts.push(config.build.clone());
         for host in build.host.iter() {
             let host = INTERNER.intern_str(host);
@@ -514,13 +512,13 @@ impl Config {
                 let mut target = Target::default();
 
                 if let Some(ref s) = cfg.llvm_config {
-                    target.llvm_config = Some(env::current_dir().unwrap().join(s));
+                    target.llvm_config = Some(config.src.join(s));
                 }
                 if let Some(ref s) = cfg.jemalloc {
-                    target.jemalloc = Some(env::current_dir().unwrap().join(s));
+                    target.jemalloc = Some(config.src.join(s));
                 }
                 if let Some(ref s) = cfg.android_ndk {
-                    target.ndk = Some(env::current_dir().unwrap().join(s));
+                    target.ndk = Some(config.src.join(s));
                 }
                 target.cc = cfg.cc.clone().map(PathBuf::from);
                 target.cxx = cfg.cxx.clone().map(PathBuf::from);
@@ -541,8 +539,8 @@ impl Config {
             set(&mut config.rust_dist_src, t.src_tarball);
         }
 
-        let cwd = t!(env::current_dir());
-        let out = cwd.join("build");
+        let out = env::var_os("BUILD_DIR").map(PathBuf::from).expect("'BUILD_DIR' set");
+        config.out = out.clone();
 
         let stage0_root = out.join(&config.build).join("stage0/bin");
         config.initial_rustc = match build.rustc {
