@@ -56,7 +56,7 @@ matrix:
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
       os: osx
-      osx_image: xcode9.2
+      osx_image: xcode9.3-moar
       if: branch = auto
 
     - env: >
@@ -70,7 +70,7 @@ matrix:
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
       os: osx
-      osx_image: xcode9.2
+      osx_image: xcode9.3-moar
       if: branch = auto
 
     # OSX builders producing releases. These do not run the full test suite and
