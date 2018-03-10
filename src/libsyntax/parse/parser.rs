@@ -1990,7 +1990,7 @@ impl<'a> Parser<'a> {
         let lo = self.meta_var_span.unwrap_or(self.span);
         let mut segments = Vec::new();
         if self.eat(&token::ModSep) {
-            segments.push(PathSegment::crate_root(lo));
+            segments.push(PathSegment::crate_root(lo.shrink_to_lo()));
         }
         self.parse_path_segments(&mut segments, style, enable_warning)?;
 
@@ -2025,7 +2025,7 @@ impl<'a> Parser<'a> {
         loop {
             segments.push(self.parse_path_segment(style, enable_warning)?);
 
-            if self.is_import_coupler(false) || !self.eat(&token::ModSep) {
+            if self.is_import_coupler() || !self.eat(&token::ModSep) {
                 return Ok(());
             }
         }
@@ -6483,9 +6483,8 @@ impl<'a> Parser<'a> {
             let item_ = ItemKind::Use(P(self.parse_use_tree()?));
             self.expect(&token::Semi)?;
 
-            let prev_span = self.prev_span;
-            let invalid = keywords::Invalid.ident();
-            let item = self.mk_item(lo.to(prev_span), invalid, item_, visibility, attrs);
+            let span = lo.to(self.prev_span);
+            let item = self.mk_item(span, keywords::Invalid.ident(), item_, visibility, attrs);
             return Ok(Some(item));
         }
 
@@ -6960,83 +6959,53 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    /// `{` or `::{` or `*` or `::*`
-    /// `::{` or `::*` (also `{`  or `*` if unprefixed is true)
-    fn is_import_coupler(&mut self, unprefixed: bool) -> bool {
-        self.is_import_coupler_inner(&token::OpenDelim(token::Brace), unprefixed) ||
-            self.is_import_coupler_inner(&token::BinOp(token::Star), unprefixed)
-    }
-
-    fn is_import_coupler_inner(&mut self, token: &token::Token, unprefixed: bool) -> bool {
-        if self.check(&token::ModSep) {
-            self.look_ahead(1, |t| t == token)
-        } else if unprefixed {
-            self.check(token)
-        } else {
-            false
-        }
+    /// `::{` or `::*`
+    fn is_import_coupler(&mut self) -> bool {
+        self.check(&token::ModSep) &&
+            self.look_ahead(1, |t| *t == token::OpenDelim(token::Brace) ||
+                                   *t == token::BinOp(token::Star))
     }
 
     /// Parse UseTree
     ///
-    /// USE_TREE = `*` |
-    ///            `{` USE_TREE_LIST `}` |
+    /// USE_TREE = [`::`] `*` |
+    ///            [`::`] `{` USE_TREE_LIST `}` |
     ///            PATH `::` `*` |
     ///            PATH `::` `{` USE_TREE_LIST `}` |
     ///            PATH [`as` IDENT]
     fn parse_use_tree(&mut self) -> PResult<'a, UseTree> {
         let lo = self.span;
 
-        let mut prefix = ast::Path {
-            segments: vec![],
-            span: lo.to(self.span),
-        };
-
-        let kind = if self.is_import_coupler(true) {
-            // `use *;` or `use ::*;` or `use {...};` `use ::{...};`
-
-            // Remove the first `::`
+        let mut prefix = ast::Path { segments: Vec::new(), span: lo.shrink_to_lo() };
+        let kind = if self.check(&token::OpenDelim(token::Brace)) ||
+                      self.check(&token::BinOp(token::Star)) ||
+                      self.is_import_coupler() {
+            // `use *;` or `use ::*;` or `use {...};` or `use ::{...};`
             if self.eat(&token::ModSep) {
-                prefix.segments.push(PathSegment::crate_root(self.prev_span));
+                prefix.segments.push(PathSegment::crate_root(lo.shrink_to_lo()));
             }
 
             if self.eat(&token::BinOp(token::Star)) {
-                // `use *;`
                 UseTreeKind::Glob
-            } else if self.check(&token::OpenDelim(token::Brace)) {
-                // `use {...};`
-                UseTreeKind::Nested(self.parse_use_tree_list()?)
             } else {
-                return self.unexpected();
+                UseTreeKind::Nested(self.parse_use_tree_list()?)
             }
         } else {
-            // `use path::...;`
-            let mut parsed = self.parse_path(PathStyle::Mod)?;
-
-            prefix.segments.append(&mut parsed.segments);
-            prefix.span = prefix.span.to(parsed.span);
+            // `use path::*;` or `use path::{...};` or `use path;` or `use path as bar;`
+            prefix = self.parse_path(PathStyle::Mod)?;
 
             if self.eat(&token::ModSep) {
                 if self.eat(&token::BinOp(token::Star)) {
-                    // `use path::*;`
                     UseTreeKind::Glob
-                } else if self.check(&token::OpenDelim(token::Brace)) {
-                    // `use path::{...};`
-                    UseTreeKind::Nested(self.parse_use_tree_list()?)
                 } else {
-                    return self.unexpected();
+                    UseTreeKind::Nested(self.parse_use_tree_list()?)
                 }
             } else {
-                // `use path::foo;` or `use path::foo as bar;`
                 UseTreeKind::Simple(self.parse_rename()?)
             }
         };
 
-        Ok(UseTree {
-            span: lo.to(self.prev_span),
-            kind,
-            prefix,
-        })
+        Ok(UseTree { prefix, kind, span: lo.to(self.prev_span) })
     }
 
     /// Parse UseTreeKind::Nested(list)
