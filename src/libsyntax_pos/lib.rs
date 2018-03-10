@@ -27,7 +27,7 @@
 #![feature(specialization)]
 
 use std::borrow::Cow;
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::cmp::{self, Ordering};
 use std::fmt;
 use std::hash::{Hasher, Hash};
@@ -699,17 +699,17 @@ pub struct FileMap {
     pub src_hash: u128,
     /// The external source code (used for external crates, which will have a `None`
     /// value as `self.src`.
-    pub external_src: RefCell<ExternalSource>,
+    pub external_src: Lock<ExternalSource>,
     /// The start position of this source in the CodeMap
     pub start_pos: BytePos,
     /// The end position of this source in the CodeMap
     pub end_pos: BytePos,
     /// Locations of lines beginnings in the source code
-    pub lines: RefCell<Vec<BytePos>>,
+    pub lines: Lock<Vec<BytePos>>,
     /// Locations of multi-byte characters in the source code
-    pub multibyte_chars: RefCell<Vec<MultiByteChar>>,
+    pub multibyte_chars: Lock<Vec<MultiByteChar>>,
     /// Width of characters that are not narrow in the source code
-    pub non_narrow_chars: RefCell<Vec<NonNarrowChar>>,
+    pub non_narrow_chars: Lock<Vec<NonNarrowChar>>,
     /// A hash of the filename, used for speeding up the incr. comp. hashing.
     pub name_hash: u128,
 }
@@ -839,10 +839,10 @@ impl Decodable for FileMap {
                 end_pos,
                 src: None,
                 src_hash,
-                external_src: RefCell::new(ExternalSource::AbsentOk),
-                lines: RefCell::new(lines),
-                multibyte_chars: RefCell::new(multibyte_chars),
-                non_narrow_chars: RefCell::new(non_narrow_chars),
+                external_src: Lock::new(ExternalSource::AbsentOk),
+                lines: Lock::new(lines),
+                multibyte_chars: Lock::new(multibyte_chars),
+                non_narrow_chars: Lock::new(non_narrow_chars),
                 name_hash,
             })
         })
@@ -882,12 +882,12 @@ impl FileMap {
             crate_of_origin: 0,
             src: Some(Lrc::new(src)),
             src_hash,
-            external_src: RefCell::new(ExternalSource::Unneeded),
+            external_src: Lock::new(ExternalSource::Unneeded),
             start_pos,
             end_pos: Pos::from_usize(end_pos),
-            lines: RefCell::new(Vec::new()),
-            multibyte_chars: RefCell::new(Vec::new()),
-            non_narrow_chars: RefCell::new(Vec::new()),
+            lines: Lock::new(Vec::new()),
+            multibyte_chars: Lock::new(Vec::new()),
+            non_narrow_chars: Lock::new(Vec::new()),
             name_hash,
         }
     }
@@ -919,19 +919,24 @@ impl FileMap {
         if *self.external_src.borrow() == ExternalSource::AbsentOk {
             let src = get_src();
             let mut external_src = self.external_src.borrow_mut();
-            if let Some(src) = src {
-                let mut hasher: StableHasher<u128> = StableHasher::new();
-                hasher.write(src.as_bytes());
+            // Check that no-one else have provided the source while we were getting it
+            if *external_src == ExternalSource::AbsentOk {
+                if let Some(src) = src {
+                    let mut hasher: StableHasher<u128> = StableHasher::new();
+                    hasher.write(src.as_bytes());
 
-                if hasher.finish() == self.src_hash {
-                    *external_src = ExternalSource::Present(src);
-                    return true;
+                    if hasher.finish() == self.src_hash {
+                        *external_src = ExternalSource::Present(src);
+                        return true;
+                    }
+                } else {
+                    *external_src = ExternalSource::AbsentErr;
                 }
-            } else {
-                *external_src = ExternalSource::AbsentErr;
-            }
 
-            false
+                false
+            } else {
+                self.src.is_some() || external_src.get_source().is_some()
+            }
         } else {
             self.src.is_some() || self.external_src.borrow().get_source().is_some()
         }
@@ -951,14 +956,16 @@ impl FileMap {
             }
         }
 
-        let lines = self.lines.borrow();
-        let line = if let Some(line) = lines.get(line_number) {
-            line
-        } else {
-            return None;
+        let begin = {
+            let lines = self.lines.borrow();
+            let line = if let Some(line) = lines.get(line_number) {
+                line
+            } else {
+                return None;
+            };
+            let begin: BytePos = *line - self.start_pos;
+            begin.to_usize()
         };
-        let begin: BytePos = *line - self.start_pos;
-        let begin = begin.to_usize();
 
         if let Some(ref src) = self.src {
             Some(Cow::from(get_until_newline(src, begin)))
