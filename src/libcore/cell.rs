@@ -331,6 +331,7 @@ impl<T:Ord + Copy> Ord for Cell<T> {
 
 #[stable(feature = "cell_from", since = "1.12.0")]
 impl<T> From<T> for Cell<T> {
+    #[inline]
     fn from(t: T) -> Cell<T> {
         Cell::new(t)
     }
@@ -449,6 +450,7 @@ impl<T> Cell<T> {
     /// assert_eq!(cell.replace(10), 5);
     /// assert_eq!(cell.get(), 10);
     /// ```
+    #[inline]
     #[stable(feature = "move_cell", since = "1.17.0")]
     pub fn replace(&self, val: T) -> T {
         mem::replace(unsafe { &mut *self.value.get() }, val)
@@ -466,6 +468,7 @@ impl<T> Cell<T> {
     ///
     /// assert_eq!(five, 5);
     /// ```
+    #[inline]
     #[stable(feature = "move_cell", since = "1.17.0")]
     pub fn into_inner(self) -> T {
         self.value.into_inner()
@@ -486,6 +489,7 @@ impl<T: Default> Cell<T> {
     /// assert_eq!(five, 5);
     /// assert_eq!(c.into_inner(), 0);
     /// ```
+    #[inline]
     #[stable(feature = "move_cell", since = "1.17.0")]
     pub fn take(&self) -> T {
         self.replace(Default::default())
