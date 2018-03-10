@@ -25,7 +25,8 @@
 //! E.g., `let foo = { aaaa; bbb; ccc }.bar.baz();`, we would layout for the
 //! following values of `chain_indent`:
 //! Block:
-//! ```
+//!
+//! ```ignore
 //! let foo = {
 //!     aaaa;
 //!     bbb;
@@ -33,8 +34,10 @@
 //! }.bar
 //!     .baz();
 //! ```
+//!
 //! Visual:
-//! ```
+//!
+//! ```ignore
 //! let foo = {
 //!               aaaa;
 //!               bbb;
@@ -47,13 +50,16 @@
 //! If the first item in the chain is a block expression, we align the dots with
 //! the braces.
 //! Block:
-//! ```
+//!
+//! ```ignore
 //! let a = foo.bar
 //!     .baz()
 //!     .qux
 //! ```
+//!
 //! Visual:
-//! ```
+//!
+//! ```ignore
 //! let a = foo.bar
 //!            .baz()
 //!            .qux

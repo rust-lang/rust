@@ -10,9 +10,6 @@ license = "Apache-2.0/MIT"
 build = "build.rs"
 categories = ["development-tools"]
 
-[lib]
-doctest = false
-
 [[bin]]
 name = "rustfmt"
 path = "src/bin/main.rs"
