@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::ty;
 use rustc::ty::adjustment;
@@ -77,7 +78,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                 hir::ExprCall(ref callee, _) => {
                     match callee.node {
                         hir::ExprPath(ref qpath) => {
-                            Some(cx.tables.qpath_def(qpath, callee.hir_id))
+                            let def = cx.tables.qpath_def(qpath, callee.hir_id);
+                            if let Def::Fn(_) = def {
+                                Some(def)
+                            } else {  // `Def::Local` if it was a closure, for which we
+                                None  // do not currently support must-use linting
+                            }
                         },
                         _ => None
                     }
