@@ -1,0 +1,11 @@
+error[E0594]: cannot assign through `&`-reference `fancy_ref`
+  --> $DIR/issue-47388.rs:18:5
+   |
+LL |     let fancy_ref = &(&mut fancy);
+   |                     ------------- help: consider changing this to be a mutable reference: `&mut`
+LL |     fancy_ref.num = 6;
+   |     ^^^^^^^^^^^^^^^^^ cannot assign through `&`-reference
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0594"
