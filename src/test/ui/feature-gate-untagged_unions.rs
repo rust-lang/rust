@@ -32,4 +32,15 @@ impl Drop for U5 {
     fn drop(&mut self) {}
 }
 
+// the non-`Copy` error message has priority
+// replace this with unsized error message if
+// non-`Copy` unions are stabilized before unsized unions
+union U6<T: ?Sized> { //~ ERROR unions with non-`Copy` fields are unstable
+    a: T
+}
+
+union U6<T: Copy + ?Sized> { // ERROR unsized unions are unstable
+    a: T
+}
+
 fn main() {}
