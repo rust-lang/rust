@@ -10,21 +10,20 @@
 
 // Test ignored_generic_bounds lint warning about bounds in type aliases
 
-// must-compile-successfully
 #![allow(dead_code)]
 
 use std::rc::Rc;
 
 type SVec<T: Send+Send> = Vec<T>;
-//~^ WARN bounds on generic parameters are ignored in type aliases
+//~^ WARN bounds on generic parameters are not enforced in type aliases [type_alias_bounds]
 type S2Vec<T> where T: Send = Vec<T>;
-//~^ WARN where clauses are ignored in type aliases
+//~^ WARN where clauses are not enforced in type aliases [type_alias_bounds]
 type VVec<'b, 'a: 'b+'b> = (&'b u32, Vec<&'a i32>);
-//~^ WARN bounds on generic parameters are ignored in type aliases
+//~^ WARN bounds on generic parameters are not enforced in type aliases [type_alias_bounds]
 type WVec<'b, T: 'b+'b> = (&'b u32, Vec<T>);
-//~^ WARN bounds on generic parameters are ignored in type aliases
+//~^ WARN bounds on generic parameters are not enforced in type aliases [type_alias_bounds]
 type W2Vec<'b, T> where T: 'b, T: 'b = (&'b u32, Vec<T>);
-//~^ WARN where clauses are ignored in type aliases
+//~^ WARN where clauses are not enforced in type aliases [type_alias_bounds]
 
 static STATIC : u32 = 0;
 
@@ -47,5 +46,19 @@ fn foo<'a>(y: &'a i32) {
     let mut x : W2Vec<'static, &'a i32> = (&STATIC, Vec::new());
     x.1.push(y); // &'a i32: 'static does not hold
 }
+
+// Bounds are not checked either, i.e. the definition is not necessarily well-formed
+struct Sendable<T: Send>(T);
+type MySendable<T> = Sendable<T>; // no error here!
+
+// However, bounds *are* taken into account when accessing associated types
+trait Bound { type Assoc; }
+type T1<U: Bound> = U::Assoc;
+//~^ WARN bounds on generic parameters are not enforced in type aliases
+type T2<U> where U: Bound = U::Assoc;
+//~^ WARN where clauses are not enforced in type aliases
+type T3<U> = U::Assoc;
+//~^ ERROR associated type `Assoc` not found for `U`
+type T4<U> = <U as Bound>::Assoc;
 
 fn main() {}

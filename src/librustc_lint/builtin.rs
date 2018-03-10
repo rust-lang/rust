@@ -1316,24 +1316,25 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnreachablePub {
     }
 }
 
-/// Lint for trait and lifetime bounds that are (accidentally) accepted by the parser, but
-/// ignored later.
+/// Lint for trait and lifetime bounds in type aliases being mostly ignored:
+/// They are relevant when using associated types, but otherwise neither checked
+/// at definition site nor enforced at use site.
 
-pub struct IgnoredGenericBounds;
+pub struct TypeAliasBounds;
 
 declare_lint! {
-    IGNORED_GENERIC_BOUNDS,
+    TYPE_ALIAS_BOUNDS,
     Warn,
-    "these generic bounds are ignored"
+    "bounds in type aliases are not enforced"
 }
 
-impl LintPass for IgnoredGenericBounds {
+impl LintPass for TypeAliasBounds {
     fn get_lints(&self) -> LintArray {
-        lint_array!(IGNORED_GENERIC_BOUNDS)
+        lint_array!(TYPE_ALIAS_BOUNDS)
     }
 }
 
-impl EarlyLintPass for IgnoredGenericBounds {
+impl EarlyLintPass for TypeAliasBounds {
     fn check_item(&mut self, cx: &EarlyContext, item: &ast::Item) {
         let type_alias_generics = match item.node {
             ast::ItemKind::Ty(_, ref generics) => generics,
@@ -1343,8 +1344,8 @@ impl EarlyLintPass for IgnoredGenericBounds {
         if !type_alias_generics.where_clause.predicates.is_empty() {
             let spans : Vec<_> = type_alias_generics.where_clause.predicates.iter()
                 .map(|pred| pred.span()).collect();
-            cx.span_lint(IGNORED_GENERIC_BOUNDS, spans,
-                "where clauses are ignored in type aliases");
+            cx.span_lint(TYPE_ALIAS_BOUNDS, spans,
+                "where clauses are not enforced in type aliases");
         }
         // The parameters must not have bounds
         for param in type_alias_generics.params.iter() {
@@ -1354,9 +1355,9 @@ impl EarlyLintPass for IgnoredGenericBounds {
             };
             if !spans.is_empty() {
                 cx.span_lint(
-                    IGNORED_GENERIC_BOUNDS,
+                    TYPE_ALIAS_BOUNDS,
                     spans,
-                    "bounds on generic parameters are ignored in type aliases",
+                    "bounds on generic parameters are not enforced in type aliases",
                 );
             }
         }
