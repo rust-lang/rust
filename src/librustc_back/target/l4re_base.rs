@@ -34,7 +34,7 @@ pub fn opts() -> TargetOptions {
         has_elf_tls: false,
         exe_allocation_crate: None,
         panic_strategy: PanicStrategy::Abort,
-        linker: "ld".to_string(),
+        linker: Some("ld".to_string()),
         pre_link_args: args,
         target_family: Some("unix".to_string()),
         .. Default::default()
