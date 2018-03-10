@@ -53,9 +53,9 @@ impl<'tcx> Visitor<'tcx> for FindLocalAssignmentVisitor {
 }
 
 crate trait FindAssignments {
-    fn find_assignments(&self, local: Local) -> Vec<Location>;                              
+    fn find_assignments(&self, local: Local) -> Vec<Location>;
     }
-    
+
 impl<'tcx> FindAssignments for Mir<'tcx>{
     fn find_assignments(&self, local: Local) -> Vec<Location>{
             let mut visitor = FindLocalAssignmentVisitor{ needle: local, locations: vec![]};
