@@ -621,7 +621,8 @@ fn macro_style(mac: &ast::Mac, context: &RewriteContext) -> MacroStyle {
 
 /// Indent each line according to the specified `indent`.
 /// e.g.
-/// ```rust
+///
+/// ```rust,ignore
 /// foo!{
 /// x,
 /// y,
@@ -632,8 +633,10 @@ fn macro_style(mac: &ast::Mac, context: &RewriteContext) -> MacroStyle {
 /// ),
 /// }
 /// ```
+///
 /// will become
-/// ```rust
+///
+/// ```rust,ignore
 /// foo!{
 ///     x,
 ///     y,
@@ -864,7 +867,7 @@ impl MacroBranch {
 ///
 /// # Expected syntax
 ///
-/// ```
+/// ```ignore
 /// lazy_static! {
 ///     [pub] static ref NAME_1: TYPE_1 = EXPR_1;
 ///     [pub] static ref NAME_2: TYPE_2 = EXPR_2;
