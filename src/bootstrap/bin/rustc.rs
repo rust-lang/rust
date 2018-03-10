@@ -95,7 +95,7 @@ fn main() {
     let rustc = env::var_os(rustc).unwrap_or_else(|| panic!("{:?} was not set", rustc));
     let libdir = env::var_os(libdir).unwrap_or_else(|| panic!("{:?} was not set", libdir));
     let mut dylib_path = bootstrap::util::dylib_path();
-    dylib_path.insert(0, PathBuf::from(libdir));
+    dylib_path.insert(0, PathBuf::from(&libdir));
 
     let mut cmd = Command::new(rustc);
     cmd.args(&args)
@@ -107,7 +107,7 @@ fn main() {
     if let Some(target) = target {
         // The stage0 compiler has a special sysroot distinct from what we
         // actually downloaded, so we just always pass the `--sysroot` option.
-        cmd.arg("--sysroot").arg(sysroot);
+        cmd.arg("--sysroot").arg(&sysroot);
 
         // When we build Rust dylibs they're all intended for intermediate
         // usage, so make sure we pass the -Cprefer-dynamic flag instead of
@@ -280,6 +280,8 @@ fn main() {
 
     if verbose > 1 {
         eprintln!("rustc command: {:?}", cmd);
+        eprintln!("sysroot: {:?}", sysroot);
+        eprintln!("libdir: {:?}", libdir);
     }
 
     // Actually run the compiler!
