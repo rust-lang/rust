@@ -16,8 +16,10 @@ Trait solving is based around a few key ideas:
 - [Lowering to logic](./traits-lowering-to-logic.html), which expresses
   Rust traits in terms of standard logical terms.
   - The [goals and clauses](./traits-goals-and-clauses.html) chapter
-    describes the precise lowering rules we use.
-- [Canonical queries](./traits-canonicalization.html), which allow us
+    describes the precise form of rules we use, and
+    [lowering rules](./lowering-rules.html) gives the complete set of
+    lowering rules in a more reference-like form.
+- [Canonical queries](./traits-canonical-queries.html), which allow us
   to solve trait problems (like "is `Foo` implemented for the type
   `Bar`?") once, and then apply that same result independently in many
   different inference contexts.
