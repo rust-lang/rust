@@ -571,7 +571,8 @@ impl<'a> LoweringContext<'a> {
                         def_node_id,
                         DefPathData::LifetimeDef(name.as_str()),
                         DefIndexAddressSpace::High,
-                        Mark::root()
+                        Mark::root(),
+                        span
                     );
 
                     hir::GenericParam::Lifetime(hir::LifetimeDef {
@@ -1003,7 +1004,8 @@ impl<'a> LoweringContext<'a> {
                             def_node_id,
                             DefPathData::ImplTrait,
                             DefIndexAddressSpace::High,
-                            Mark::root()
+                            Mark::root(),
+                            span
                         );
 
                         let hir_bounds = self.lower_bounds(bounds, itctx);
@@ -1150,7 +1152,8 @@ impl<'a> LoweringContext<'a> {
                         def_node_id,
                         DefPathData::LifetimeDef(name.name().as_str()),
                         DefIndexAddressSpace::High,
-                        Mark::root()
+                        Mark::root(),
+                        lifetime.span
                     );
                     let def_lifetime = hir::Lifetime {
                         id: def_node_id,

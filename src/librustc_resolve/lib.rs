@@ -41,7 +41,7 @@ use rustc::ty;
 use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
 
-use syntax::codemap::{dummy_spanned, respan};
+use syntax::codemap::{dummy_spanned, respan, CodeMap};
 use syntax::ext::hygiene::{Mark, MarkKind, SyntaxContext};
 use syntax::ast::{self, Name, NodeId, Ident, SpannedIdent, FloatTy, IntTy, UintTy};
 use syntax::ext::base::SyntaxExtension;
@@ -123,7 +123,7 @@ impl Ord for BindingError {
 
 enum ResolutionError<'a> {
     /// error E0401: can't use type parameters from outer function
-    TypeParametersFromOuterFunction,
+    TypeParametersFromOuterFunction(Def),
     /// error E0403: the name is already used for a type parameter in this type parameter list
     NameAlreadyUsedInTypeParameterList(Name, &'a Span),
     /// error E0407: method is not a member of trait
@@ -173,13 +173,49 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
                                    resolution_error: ResolutionError<'a>)
                                    -> DiagnosticBuilder<'sess> {
     match resolution_error {
-        ResolutionError::TypeParametersFromOuterFunction => {
+        ResolutionError::TypeParametersFromOuterFunction(outer_def) => {
             let mut err = struct_span_err!(resolver.session,
                                            span,
                                            E0401,
-                                           "can't use type parameters from outer function; \
-                                           try using a local type parameter instead");
+                                           "can't use type parameters from outer function");
             err.span_label(span, "use of type variable from outer function");
+            match outer_def {
+                Def::SelfTy(_, maybe_impl_defid) => {
+                    if let Some(impl_span) = maybe_impl_defid.map_or(None,
+                            |def_id| resolver.definitions.opt_span(def_id)) {
+                        let cm = resolver.session.codemap();
+                        err.span_label(reduce_impl_span_to_impl_keyword(cm, impl_span),
+                                    "`Self` type implicitely declared here, on the `impl`");
+                    }
+                },
+                Def::TyParam(typaram_defid) => {
+                    if let Some(typaram_span) = resolver.definitions.opt_span(typaram_defid) {
+                        err.span_label(typaram_span, "type variable from outer function");
+                    }
+                },
+                Def::Mod(..) | Def::Struct(..) | Def::Union(..) | Def::Enum(..) | Def::Variant(..) |
+                Def::Trait(..) | Def::TyAlias(..) | Def::TyForeign(..) | Def::TraitAlias(..) |
+                Def::AssociatedTy(..) | Def::PrimTy(..) | Def::Fn(..) | Def::Const(..) |
+                Def::Static(..) | Def::StructCtor(..) | Def::VariantCtor(..) | Def::Method(..) |
+                Def::AssociatedConst(..) | Def::Local(..) | Def::Upvar(..) | Def::Label(..) |
+                Def::Macro(..) | Def::GlobalAsm(..) | Def::Err =>
+                    bug!("TypeParametersFromOuterFunction should only be used with Def::SelfTy or \
+                         Def::TyParam")
+            }
+
+            // Try to retrieve the span of the function signature and generate a new message with
+            // a local type parameter
+            let sugg_msg = "try using a local type parameter instead";
+            if let Some((sugg_span, new_snippet)) = generate_local_type_param_snippet(
+                                                        resolver.session.codemap(), span) {
+                // Suggest the modification to the user
+                err.span_suggestion(sugg_span,
+                                    sugg_msg,
+                                    new_snippet);
+            } else {
+                err.help("try using a local type parameter instead");
+            }
+
             err
         }
         ResolutionError::NameAlreadyUsedInTypeParameterList(name, first_use_span) => {
@@ -356,6 +392,86 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
             err
         }
     }
+}
+
+/// Adjust the impl span so that just the `impl` keyword is taken by removing
+/// everything after `<` (`"impl<T> Iterator for A<T> {}" -> "impl"`) and
+/// everything after the first whitespace (`"impl Iterator for A" -> "impl"`)
+///
+/// Attention: The method used is very fragile since it essentially duplicates the work of the
+/// parser. If you need to use this function or something similar, please consider updating the
+/// codemap functions and this function to something more robust.
+fn reduce_impl_span_to_impl_keyword(cm: &CodeMap, impl_span: Span) -> Span {
+    let impl_span = cm.span_until_char(impl_span, '<');
+    let impl_span = cm.span_until_whitespace(impl_span);
+    impl_span
+}
+
+/// Take the span of a type parameter in a function signature and try to generate a span for the
+/// function name (with generics) and a new snippet for this span with the pointed type parameter as
+/// a new local type parameter.
+///
+/// For instance:
+/// ```
+/// // Given span
+/// fn my_function(param: T)
+///                       ^ Original span
+///
+/// // Result
+/// fn my_function(param: T)
+///    ^^^^^^^^^^^ Generated span with snippet `my_function<T>`
+/// ```
+///
+/// Attention: The method used is very fragile since it essentially duplicates the work of the
+/// parser. If you need to use this function or something similar, please consider updating the
+/// codemap functions and this function to something more robust.
+fn generate_local_type_param_snippet(cm: &CodeMap, span: Span) -> Option<(Span, String)> {
+    // Try to extend the span to the previous "fn" keyword to retrieve the function
+    // signature
+    let sugg_span = cm.span_extend_to_prev_str(span, "fn");
+    if sugg_span != span {
+        if let Ok(snippet) = cm.span_to_snippet(sugg_span) {
+            use syntax::codemap::BytePos;
+
+            // Consume the function name
+            let mut offset = 0;
+            for c in snippet.chars().take_while(|c| c.is_ascii_alphanumeric() ||
+                                                    *c == '_') {
+                offset += c.len_utf8();
+            }
+
+            // Consume the generics part of the function signature
+            let mut bracket_counter = 0;
+            let mut last_char = None;
+            for c in snippet[offset..].chars() {
+                match c {
+                    '<' => bracket_counter += 1,
+                    '>' => bracket_counter -= 1,
+                    '(' => if bracket_counter == 0 { break; }
+                    _ => {}
+                }
+                offset += c.len_utf8();
+                last_char = Some(c);
+            }
+
+            // Adjust the suggestion span to encompass the function name with its generics
+            let sugg_span = sugg_span.with_hi(BytePos(sugg_span.lo().0 + offset as u32));
+
+            // Prepare the new suggested snippet to append the type parameter that triggered
+            // the error in the generics of the function signature
+            let mut new_snippet = if last_char == Some('>') {
+                format!("{}, ", &snippet[..(offset - '>'.len_utf8())])
+            } else {
+                format!("{}<", &snippet[..offset])
+            };
+            new_snippet.push_str(&cm.span_to_snippet(span).unwrap_or("T".to_string()));
+            new_snippet.push('>');
+
+            return Some((sugg_span, new_snippet));
+        }
+    }
+
+    None
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -3280,7 +3396,7 @@ impl<'a> Resolver<'a> {
                             // its scope.
                             if record_used {
                                 resolve_error(self, span,
-                                              ResolutionError::TypeParametersFromOuterFunction);
+                                    ResolutionError::TypeParametersFromOuterFunction(def));
                             }
                             return Def::Err;
                         }

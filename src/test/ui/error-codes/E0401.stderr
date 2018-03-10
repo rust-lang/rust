@@ -1,9 +1,35 @@
-error[E0401]: can't use type parameters from outer function; try using a local type parameter instead
-  --> $DIR/E0401.rs:12:15
+error[E0401]: can't use type parameters from outer function
+  --> $DIR/E0401.rs:14:38
    |
-LL |     fn bar(y: T) { //~ ERROR E0401
-   |               ^ use of type variable from outer function
+LL | fn foo<T>(x: T) {
+   |        - type variable from outer function
+LL |     fn bar<U, V: Baz<U>, W: Fn()>(y: T) { //~ ERROR E0401
+   |        --------------------------    ^ use of type variable from outer function
+   |        |
+   |        help: try using a local type parameter instead: `bar<U, V: Baz<U>, W: Fn(), T>`
 
-error: aborting due to previous error
+error[E0401]: can't use type parameters from outer function
+  --> $DIR/E0401.rs:19:16
+   |
+LL | fn foo<T>(x: T) {
+   |        - type variable from outer function
+...
+LL |            (y: T) { //~ ERROR E0401
+   |                ^ use of type variable from outer function
+   |
+   = help: try using a local type parameter instead
+
+error[E0401]: can't use type parameters from outer function
+  --> $DIR/E0401.rs:32:25
+   |
+LL | impl<T> Iterator for A<T> {
+   | ---- `Self` type implicitely declared here, on the `impl`
+...
+LL |         fn helper(sel: &Self) -> u8 { //~ ERROR E0401
+   |            ------       ^^^^ use of type variable from outer function
+   |            |
+   |            help: try using a local type parameter instead: `helper<Self>`
+
+error: aborting due to 3 previous errors
 
 If you want more information on this error, try using "rustc --explain E0401"

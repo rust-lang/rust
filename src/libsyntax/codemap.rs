@@ -533,7 +533,12 @@ impl CodeMap {
         Ok(FileLines {file: lo.file, lines: lines})
     }
 
-    pub fn span_to_snippet(&self, sp: Span) -> Result<String, SpanSnippetError> {
+    /// Extract the source surrounding the given `Span` using the `extract_source` function. The
+    /// extract function takes three arguments: a string slice containing the source, an index in
+    /// the slice for the beginning of the span and an index in the slice for the end of the span.
+    fn span_to_source<F>(&self, sp: Span, extract_source: F) -> Result<String, SpanSnippetError>
+        where F: Fn(&str, usize, usize) -> String
+    {
         if sp.lo() > sp.hi() {
             return Err(SpanSnippetError::IllFormedSpan(sp));
         }
@@ -567,15 +572,26 @@ impl CodeMap {
             }
 
             if let Some(ref src) = local_begin.fm.src {
-                return Ok((&src[start_index..end_index]).to_string());
+                return Ok(extract_source(src, start_index, end_index));
             } else if let Some(src) = local_begin.fm.external_src.borrow().get_source() {
-                return Ok((&src[start_index..end_index]).to_string());
+                return Ok(extract_source(src, start_index, end_index));
             } else {
                 return Err(SpanSnippetError::SourceNotAvailable {
                     filename: local_begin.fm.name.clone()
                 });
             }
         }
+    }
+
+    /// Return the source snippet as `String` corresponding to the given `Span`
+    pub fn span_to_snippet(&self, sp: Span) -> Result<String, SpanSnippetError> {
+        self.span_to_source(sp, |src, start_index, end_index| src[start_index..end_index]
+                                                                .to_string())
+    }
+
+    /// Return the source snippet as `String` before the given `Span`
+    pub fn span_to_prev_source(&self, sp: Span) -> Result<String, SpanSnippetError> {
+        self.span_to_source(sp, |src, start_index, _| src[..start_index].to_string())
     }
 
     /// Given a `Span`, try to get a shorter span ending before the first occurrence of `c` `char`
@@ -593,6 +609,32 @@ impl CodeMap {
         }
     }
 
+    /// Extend the given `Span` to just after the previous occurrence of `c`. Return the same span
+    /// if no character could be found or if an error occurred while retrieving the code snippet.
+    pub fn span_extend_to_prev_char(&self, sp: Span, c: char) -> Span {
+        if let Ok(prev_source) = self.span_to_prev_source(sp) {
+            let prev_source = prev_source.rsplit(c).nth(0).unwrap_or("").trim_left();
+            if !prev_source.is_empty() && !prev_source.contains('\n') {
+                return sp.with_lo(BytePos(sp.lo().0 - prev_source.len() as u32));
+            }
+        }
+
+        sp
+    }
+
+    /// Extend the given `Span` to just after the previous occurrence of `pat`. Return the same span
+    /// if no character could be found or if an error occurred while retrieving the code snippet.
+    pub fn span_extend_to_prev_str(&self, sp: Span, pat: &str) -> Span {
+        if let Ok(prev_source) = self.span_to_prev_source(sp) {
+            let prev_source = prev_source.rsplit(pat).nth(0).unwrap_or("").trim_left();
+            if !prev_source.is_empty() && !prev_source.contains('\n') {
+                return sp.with_lo(BytePos(sp.lo().0 - prev_source.len() as u32));
+            }
+        }
+
+        sp
+    }
+
     /// Given a `Span`, get a new `Span` covering the first token and all its trailing whitespace or
     /// the original `Span`.
     ///
@@ -606,6 +648,24 @@ impl CodeMap {
             }
             // get the bytes width of all the whitespace characters after that
             for c in snippet[offset..].chars().take_while(|c| c.is_whitespace()) {
+                offset += c.len_utf8();
+            }
+            if offset > 1 {
+                return sp.with_hi(BytePos(sp.lo().0 + offset as u32));
+            }
+        }
+        sp
+    }
+
+    /// Given a `Span`, get a new `Span` covering the first token without its trailing whitespace or
+    /// the original `Span` in case of error.
+    ///
+    /// If `sp` points to `"let mut x"`, then a span pointing at `"let"` will be returned.
+    pub fn span_until_whitespace(&self, sp: Span) -> Span {
+        if let Ok(snippet) = self.span_to_snippet(sp) {
+            let mut offset = 0;
+            // Get the bytes width of all the non-whitespace characters
+            for c in snippet.chars().take_while(|c| !c.is_whitespace()) {
                 offset += c.len_utf8();
             }
             if offset > 1 {
