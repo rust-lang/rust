@@ -27,7 +27,7 @@ that give more details.
 - [`ui`](./tests/adding.html#ui) -- tests that check the exact stdout/stderr from compilation
   and/or running the test
 - `run-pass` -- tests that are expected to compile and execute successfully (no panics)
-  - `run-pass-valgrind` -- tests that ought to run with valrind
+  - `run-pass-valgrind` -- tests that ought to run with valgrind
 - `run-fail` -- tests that are expected to compile but then panic during execution
 - `compile-fail` -- tests that are expected to fail compilation.
 - `parse-fail` -- tests that are expected to fail to parse
