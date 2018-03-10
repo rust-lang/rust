@@ -922,6 +922,23 @@ fn test_iterator_flatten() {
         i += 1;
     }
     assert_eq!(i, ys.len());
+
+    let aa = [ [1, 2, 3], [4, 5, 6], [7, 8, 9] ];
+    let mut i = aa.iter().flatten();
+    assert_eq!(i.size_hint(), (9, Some(9)));
+    // Ensure the frontiter and backiter are included
+    assert_eq!(i.next(), Some(&1));
+    assert_eq!(i.size_hint(), (8, Some(8)));
+    assert_eq!(i.next_back(), Some(&9));
+    assert_eq!(i.size_hint(), (7, Some(7)));
+
+    let vv = vec![ vec![1] ];
+    let mut i = vv.iter().flatten();
+    // Vec precludes a good static estimate
+    assert_eq!(i.size_hint(), (0, None));
+    i.next();
+    // Until it's empty, where we no longer need the estimate
+    assert_eq!(i.size_hint(), (0, Some(0)));
 }
 
 /// Test `Flatten::fold` with items already picked off the front and back,
@@ -1110,7 +1127,12 @@ fn test_iterator_size_hint() {
     assert_eq!(vi.clone().scan(0, |_,_| Some(0)).size_hint(), (0, Some(10)));
     assert_eq!(vi.clone().filter(|_| false).size_hint(), (0, Some(10)));
     assert_eq!(vi.clone().map(|&i| i+1).size_hint(), (10, Some(10)));
+    assert_eq!(vi.clone().filter_map(|_| Some(1)).size_hint(), (0, Some(10)));
+    assert_eq!(vi.clone().flat_map(|_| Some(1)).size_hint(), (0, Some(10)));
     assert_eq!(vi.filter_map(|_| Some(0)).size_hint(), (0, Some(10)));
+
+    let vv = [ [1, 2, 3], [4, 5, 6], [7, 8, 9] ];
+    assert_eq!(vv.iter().flatten().size_hint(), (9, Some(9)));
 }
 
 #[test]

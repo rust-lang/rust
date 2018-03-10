@@ -952,6 +952,8 @@ impl<T> IntoIterator for Option<T> {
     fn into_iter(self) -> IntoIter<T> {
         IntoIter { inner: Item { opt: self } }
     }
+
+    const SIZE_HINT: (usize, Option<usize>) = (0, Some(1));
 }
 
 #[stable(since = "1.4.0", feature = "option_iter")]
@@ -962,6 +964,8 @@ impl<'a, T> IntoIterator for &'a Option<T> {
     fn into_iter(self) -> Iter<'a, T> {
         self.iter()
     }
+
+    const SIZE_HINT: (usize, Option<usize>) = (0, Some(1));
 }
 
 #[stable(since = "1.4.0", feature = "option_iter")]
@@ -972,6 +976,8 @@ impl<'a, T> IntoIterator for &'a mut Option<T> {
     fn into_iter(self) -> IterMut<'a, T> {
         self.iter_mut()
     }
+
+    const SIZE_HINT: (usize, Option<usize>) = (0, Some(1));
 }
 
 #[stable(since = "1.12.0", feature = "option_from")]

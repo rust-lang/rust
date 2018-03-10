@@ -977,6 +977,8 @@ impl<T, E> IntoIterator for Result<T, E> {
     fn into_iter(self) -> IntoIter<T> {
         IntoIter { inner: self.ok() }
     }
+
+    const SIZE_HINT: (usize, Option<usize>) = (0, Some(1));
 }
 
 #[stable(since = "1.4.0", feature = "result_iter")]
@@ -987,6 +989,8 @@ impl<'a, T, E> IntoIterator for &'a Result<T, E> {
     fn into_iter(self) -> Iter<'a, T> {
         self.iter()
     }
+
+    const SIZE_HINT: (usize, Option<usize>) = (0, Some(1));
 }
 
 #[stable(since = "1.4.0", feature = "result_iter")]
@@ -997,6 +1001,8 @@ impl<'a, T, E> IntoIterator for &'a mut Result<T, E> {
     fn into_iter(self) -> IterMut<'a, T> {
         self.iter_mut()
     }
+
+    const SIZE_HINT: (usize, Option<usize>) = (0, Some(1));
 }
 
 /////////////////////////////////////////////////////////////////////////////
