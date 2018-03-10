@@ -198,7 +198,7 @@ use toolstate::ToolState;
 /// Each compiler has a `stage` that it is associated with and a `host` that
 /// corresponds to the platform the compiler runs on. This structure is used as
 /// a parameter to many methods below.
-#[derive(Eq, PartialEq, Clone, Copy, Hash, Debug)]
+#[derive(Eq, PartialOrd, Ord, PartialEq, Clone, Copy, Hash, Debug)]
 pub struct Compiler {
     stage: u32,
     host: Interned<String>,

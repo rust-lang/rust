@@ -61,7 +61,7 @@ fn rust_installer(builder: &Builder) -> Command {
     builder.tool_cmd(Tool::RustInstaller)
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Docs {
     pub stage: u32,
     pub host: Interned<String>,
@@ -320,9 +320,9 @@ fn make_win_dist(
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Mingw {
-    host: Interned<String>,
+    pub host: Interned<String>,
 }
 
 impl Step for Mingw {
@@ -378,7 +378,7 @@ impl Step for Mingw {
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Rustc {
     pub compiler: Compiler,
 }
@@ -607,7 +607,7 @@ impl Step for DebuggerScripts {
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Std {
     pub compiler: Compiler,
     pub target: Interned<String>,
@@ -800,7 +800,7 @@ fn copy_src_dirs(build: &Build, src_dirs: &[&str], exclude_dirs: &[&str], dst_di
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Src;
 
 impl Step for Src {
@@ -894,7 +894,7 @@ impl Step for Src {
 
 const CARGO_VENDOR_VERSION: &str = "0.1.4";
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct PlainSourceTarball;
 
 impl Step for PlainSourceTarball {
@@ -1048,7 +1048,7 @@ fn write_file(path: &Path, data: &[u8]) {
     t!(vf.write_all(data));
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Cargo {
     pub stage: u32,
     pub target: Interned<String>,
@@ -1135,7 +1135,7 @@ impl Step for Cargo {
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Rls {
     pub stage: u32,
     pub target: Interned<String>,
@@ -1216,7 +1216,7 @@ impl Step for Rls {
 }
 
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Rustfmt {
     pub stage: u32,
     pub target: Interned<String>,
@@ -1298,7 +1298,7 @@ impl Step for Rustfmt {
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Extended {
     stage: u32,
     host: Interned<String>,
@@ -1731,7 +1731,7 @@ fn add_env(build: &Build, cmd: &mut Command, target: Interned<String>) {
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct HashSign;
 
 impl Step for HashSign {

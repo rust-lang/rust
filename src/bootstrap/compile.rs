@@ -38,7 +38,7 @@ use tool;
 use cache::{INTERNER, Interned};
 use builder::{Step, RunConfig, ShouldRun, Builder};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialOrd, Ord, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
     pub target: Interned<String>,
     pub compiler: Compiler,
@@ -314,10 +314,10 @@ impl Step for StartupObjects {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialOrd, Ord, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Test {
-    pub compiler: Compiler,
     pub target: Interned<String>,
+    pub compiler: Compiler,
 }
 
 impl Step for Test {
@@ -430,10 +430,10 @@ impl Step for TestLink {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialOrd, Ord, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
-    pub compiler: Compiler,
     pub target: Interned<String>,
+    pub compiler: Compiler,
 }
 
 impl Step for Rustc {
@@ -840,7 +840,7 @@ impl Step for Sysroot {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, PartialOrd, Ord, Clone, PartialEq, Eq, Hash)]
 pub struct Assemble {
     /// The compiler which we will produce in this step. Assemble itself will
     /// take care of ensuring that the necessary prerequisites to do so exist,

@@ -21,6 +21,7 @@ use std::mem;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
+use std::cmp::{PartialOrd, Ord, Ordering};
 
 use builder::Step;
 
@@ -154,6 +155,19 @@ impl AsRef<OsStr> for Interned<String> {
     }
 }
 
+impl PartialOrd<Interned<String>> for Interned<String> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        let l = INTERNER.strs.lock().unwrap();
+        l.get(*self).partial_cmp(l.get(*other))
+    }
+}
+
+impl Ord for Interned<String> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        let l = INTERNER.strs.lock().unwrap();
+        l.get(*self).cmp(l.get(*other))
+    }
+}
 
 struct TyIntern<T> {
     items: Vec<T>,
