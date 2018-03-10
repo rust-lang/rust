@@ -284,18 +284,25 @@ pub trait BorrowckErrors {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn cannot_assign(&self, span: Span, desc: &str, o: Origin) -> DiagnosticBuilder
+    fn cannot_assign(&self, span: Span, desc: &str, o: Origin, is_reference:bool)
+                     -> DiagnosticBuilder
     {
+        let msg = if is_reference {
+            "through"
+        } else {
+            "to"
+        };
+
         let err = struct_span_err!(self, span, E0594,
-                                  "cannot assign to {}{OGN}",
-                                  desc, OGN=o);
+                                  "cannot assign {} {}{OGN}",
+                                  msg, desc, OGN=o);
         self.cancel_if_wrong_origin(err, o)
     }
 
     fn cannot_assign_static(&self, span: Span, desc: &str, o: Origin)
                             -> DiagnosticBuilder
     {
-        self.cannot_assign(span, &format!("immutable static item `{}`", desc), o)
+        self.cannot_assign(span, &format!("immutable static item `{}`", desc), o, false)
     }
 
     fn cannot_move_out_of(&self, move_from_span: Span, move_from_desc: &str, o: Origin)

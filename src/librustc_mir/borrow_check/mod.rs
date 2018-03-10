@@ -1422,6 +1422,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
     }
 
+    fn get_main_error_message(&self, place:&Place<'tcx>) -> String{
+        match self.describe_place(place) {
+            Some(name) => format!("immutable item `{}`", name),
+            None => "immutable item".to_owned(),
+        }
+    }
+
     /// Currently MoveData does not store entries for all places in
     /// the input MIR. For example it will currently filter out
     /// places that are Copy; thus we do not track places of shared
@@ -1536,15 +1543,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         is_local_mutation_allowed: LocalMutationIsAllowed,
     ) -> bool {
         debug!(
-<<<<<<< HEAD
             "check_access_permissions({:?}, {:?}, {:?})",
             place, kind, is_local_mutation_allowed
-=======
-            " ({:?}, {:?}, {:?})",
-            place,
-            kind,
-            is_local_mutation_allowed
->>>>>>> minor changes
         );
         let mut error_reported = false;
         match kind {
@@ -1559,11 +1559,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 self.is_mutable(place, is_local_mutation_allowed)
             {
                 error_reported = true;
-                let item_msg = match self.describe_place(place) {
-                    Some(name) => format!("immutable item `{}`", name),
-                    None => "immutable item".to_owned(),
-                };
-
+                let item_msg = self.get_main_error_message(place);
                 let mut err = self.tcx
                     .cannot_borrow_path_as_mutable(span, &item_msg, Origin::Mir);
                 err.span_label(span, "cannot borrow as mutable");
@@ -1580,42 +1576,61 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 if let Err(place_err) = self.is_mutable(place, is_local_mutation_allowed) {
                     error_reported = true;
 
-                    let err_help = match *place {
-                        Place::Local(local) => {
-                            let locations = self.mir.find_assignments(local);
-                                Some((self.mir.source_info(locations[0]).span, "consider changing this to be a mutable reference: `&mut `"))
-                        }
-                        _ => {
-                                None
+                    let err_info = match *place_err {
+                        Place::Projection(ref proj) => {
+                            match proj.elem {
+                                ProjectionElem::Deref => {
+                                    match proj.base {
+                                        Place::Local(local) => {
+                                            let locations = self.mir.find_assignments(local);
+                                            if locations.len() > 0 {
+                                                let item_msg = if error_reported {
+                                                    if let Some(name) =
+                                                            self.describe_place(place_err) {
+                                                        let var = str::replace(&name, "*", "");
+                                                        format!("`&`-reference `{}`", var)
+                                                    } else {
+                                                        self.get_main_error_message(place)
+                                                    }
+                                                } else {
+                                                    self.get_main_error_message(place)
+                                                };
+                                                Some((self.mir.source_info(locations[0]).span,
+                                                      "consider changing this to be a \
+                                                       mutable reference: `&mut`", item_msg,
+                                                       "cannot assign through `&`-reference"))
+                                            } else {
+                                                None
+                                            }
+                                        }
+                                        _ => None,
+                                    }
+                                }
+                                _ => None,
                             }
-                    };
-
-                    let item_msg = if error_reported{
-                        if let Some(name) = self.describe_place(place_err) {
-                            format!("`&`-reference {}", name)
-                        }else{
-                        match self.describe_place(place) {
-                            Some(name) => {format!("immutable item `{}`", name)}
-                            None => {"immutable item".to_owned()}
-                        } 
-                      }
-                    }else{
-                        match self.describe_place(place) {
-                            Some(name) => {format!("immutable item `{}`", name)}
-                            None => {"immutable item".to_owned()}
                         }
+                        _ => None,
                     };
 
-                    let mut err = self.tcx.cannot_assign(span, &item_msg, Origin::Mir);
-
-                    if place != place_err {
-                        err.span_label(span, "cannot assign through `&`-reference");                        
+                    if let Some((err_help_span, err_help_stmt, item_msg, sec_span)) = err_info {
+                        let mut err = self.tcx.cannot_assign(span, &item_msg, Origin::Mir, true);
+                        err.span_suggestion(err_help_span, err_help_stmt, format!(""));
+                        if place != place_err {
+                            err.span_label(span, sec_span);
+                        }
+                        err.emit()
+                    }else{
+                        let item_msg_ = self.get_main_error_message(place);
+                        let mut err = self.tcx.cannot_assign(span, &item_msg_, Origin::Mir, false);
+                        err.span_label(span, "cannot mutate");
+                        if place != place_err {
+                            if let Some(name) = self.describe_place(place_err) {
+                                err.note(&format!("Value not mutable causing this error: `{}`",
+                                                  name));
+                            }
+                        }
+                        err.emit();
                     }
-
-                    if !err_help.is_none(){
-                        let (err_help_span, err_help_stmt) = err_help.unwrap();
-                        err.span_help(err_help_span, err_help_stmt);}
-                    err.emit();
                 }
             }
             Reservation(WriteKind::Move)

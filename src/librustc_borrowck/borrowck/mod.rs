@@ -839,7 +839,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
                 let mut db = match err.cause {
                     MutabilityViolation => {
-                        let mut db = self.cannot_assign(error_span, &descr, Origin::Ast);
+                        let mut db = self.cannot_assign(error_span, &descr, Origin::Ast, false);
                         if let mc::NoteClosureEnv(upvar_id) = err.cmt.note {
                             let node_id = self.tcx.hir.hir_to_node_id(upvar_id.var_id);
                             let sp = self.tcx.hir.span(node_id);
