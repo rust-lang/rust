@@ -317,10 +317,319 @@ macro_rules! wrapping_impl {
         }
         forward_ref_unop! { impl Neg, neg for Wrapping<$t>,
                 #[stable(feature = "wrapping_ref", since = "1.14.0")] }
+
     )*)
 }
 
 wrapping_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
+
+macro_rules! wrapping_int_impl {
+    ($($t:ty)*) => ($(
+        impl Wrapping<$t> {
+            /// Returns the number of ones in the binary representation of
+            /// `self`.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(wrapping_int_impl)]
+            /// use std::num::Wrapping;
+            ///
+            /// let n: Wrapping<i8> = Wrapping(-0b1000_0000);
+            ///
+            /// assert_eq!(n.count_ones(), 1);
+            /// ```
+            #[inline]
+            #[unstable(feature = "wrapping_int_impl", issue = "32463")]
+            pub fn count_ones(self) -> u32 {
+                self.0.count_ones()
+            }
+
+            /// Returns the number of zeros in the binary representation of
+            /// `self`.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(wrapping_int_impl)]
+            /// use std::num::Wrapping;
+            ///
+            /// let n: Wrapping<i8> = Wrapping(-0b1000_0000);
+            ///
+            /// assert_eq!(n.count_zeros(), 7);
+            /// ```
+            #[inline]
+            #[unstable(feature = "wrapping_int_impl", issue = "32463")]
+            pub fn count_zeros(self) -> u32 {
+                self.0.count_zeros()
+            }
+
+            /// Returns the number of leading zeros in the binary representation
+            /// of `self`.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(wrapping_int_impl)]
+            /// use std::num::Wrapping;
+            ///
+            /// let n: Wrapping<i16> = Wrapping(-1);
+            ///
+            /// assert_eq!(n.leading_zeros(), 0);
+            /// ```
+            #[inline]
+            #[unstable(feature = "wrapping_int_impl", issue = "32463")]
+            pub fn leading_zeros(self) -> u32 {
+                self.0.leading_zeros()
+            }
+
+            /// Returns the number of trailing zeros in the binary representation
+            /// of `self`.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(wrapping_int_impl)]
+            /// use std::num::Wrapping;
+            ///
+            /// let n: Wrapping<i8> = Wrapping(-4);
+            ///
+            /// assert_eq!(n.trailing_zeros(), 2);
+            /// ```
+            #[inline]
+            #[unstable(feature = "wrapping_int_impl", issue = "32463")]
+            pub fn trailing_zeros(self) -> u32 {
+                self.0.trailing_zeros()
+            }
+
+            /// Shifts the bits to the left by a specified amount, `n`,
+            /// wrapping the truncated bits to the end of the resulting
+            /// integer.
+            ///
+            /// Please note this isn't the same operation as `>>`!
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(wrapping_int_impl)]
+            /// use std::num::Wrapping;
+            ///
+            /// let n: Wrapping<i64> = Wrapping(0x0123456789ABCDEF);
+            /// let m: Wrapping<i64> = Wrapping(-0x76543210FEDCBA99);
+            ///
+            /// assert_eq!(n.rotate_left(32), m);
+            /// ```
+            #[inline]
+            #[unstable(feature = "wrapping_int_impl", issue = "32463")]
+            pub fn rotate_left(self, n: u32) -> Self {
+                Wrapping(self.0.rotate_left(n))
+            }
+
+            /// Shifts the bits to the right by a specified amount, `n`,
+            /// wrapping the truncated bits to the beginning of the resulting
+            /// integer.
+            ///
+            /// Please note this isn't the same operation as `<<`!
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(wrapping_int_impl)]
+            /// use std::num::Wrapping;
+            ///
+            /// let n: Wrapping<i64> = Wrapping(0x0123456789ABCDEF);
+            /// let m: Wrapping<i64> = Wrapping(-0xFEDCBA987654322);
+            ///
+            /// assert_eq!(n.rotate_right(4), m);
+            /// ```
+            #[inline]
+            #[unstable(feature = "wrapping_int_impl", issue = "32463")]
+            pub fn rotate_right(self, n: u32) -> Self {
+                Wrapping(self.0.rotate_right(n))
+            }
+
+            /// Reverses the byte order of the integer.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(wrapping_int_impl)]
+            /// use std::num::Wrapping;
+            ///
+            /// let n: Wrapping<i16> = Wrapping(0b0000000_01010101);
+            /// assert_eq!(n, Wrapping(85));
+            ///
+            /// let m = n.swap_bytes();
+            ///
+            /// assert_eq!(m, Wrapping(0b01010101_00000000));
+            /// assert_eq!(m, Wrapping(21760));
+            /// ```
+            #[inline]
+            #[unstable(feature = "wrapping_int_impl", issue = "32463")]
+            pub fn swap_bytes(self) -> Self {
+                Wrapping(self.0.swap_bytes())
+            }
+
+            /// Converts an integer from big endian to the target's endianness.
+            ///
+            /// On big endian this is a no-op. On little endian the bytes are
+            /// swapped.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(wrapping_int_impl)]
+            /// use std::num::Wrapping;
+            ///
+            /// let n: Wrapping<i64> = Wrapping(0x0123456789ABCDEF);
+            ///
+            /// if cfg!(target_endian = "big") {
+            ///     assert_eq!(Wrapping::<i64>::from_be(n), n);
+            /// } else {
+            ///     assert_eq!(Wrapping::<i64>::from_be(n), n.swap_bytes());
+            /// }
+            /// ```
+            #[inline]
+            #[unstable(feature = "wrapping_int_impl", issue = "32463")]
+            pub fn from_be(x: Self) -> Self {
+                Wrapping(<$t>::from_be(x.0))
+            }
+
+            /// Converts an integer from little endian to the target's endianness.
+            ///
+            /// On little endian this is a no-op. On big endian the bytes are
+            /// swapped.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(wrapping_int_impl)]
+            /// use std::num::Wrapping;
+            ///
+            /// let n: Wrapping<i64> = Wrapping(0x0123456789ABCDEF);
+            ///
+            /// if cfg!(target_endian = "little") {
+            ///     assert_eq!(Wrapping::<i64>::from_le(n), n);
+            /// } else {
+            ///     assert_eq!(Wrapping::<i64>::from_le(n), n.swap_bytes());
+            /// }
+            /// ```
+            #[inline]
+            #[unstable(feature = "wrapping_int_impl", issue = "32463")]
+            pub fn from_le(x: Self) -> Self {
+                Wrapping(<$t>::from_le(x.0))
+            }
+
+            /// Converts `self` to big endian from the target's endianness.
+            ///
+            /// On big endian this is a no-op. On little endian the bytes are
+            /// swapped.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(wrapping_int_impl)]
+            /// use std::num::Wrapping;
+            ///
+            /// let n: Wrapping<i64> = Wrapping(0x0123456789ABCDEF);
+            ///
+            /// if cfg!(target_endian = "big") {
+            ///     assert_eq!(n.to_be(), n);
+            /// } else {
+            ///     assert_eq!(n.to_be(), n.swap_bytes());
+            /// }
+            /// ```
+            #[inline]
+            #[unstable(feature = "wrapping_int_impl", issue = "32463")]
+            pub fn to_be(self) -> Self {
+                Wrapping(self.0.to_be())
+            }
+
+            /// Converts `self` to little endian from the target's endianness.
+            ///
+            /// On little endian this is a no-op. On big endian the bytes are
+            /// swapped.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(wrapping_int_impl)]
+            /// use std::num::Wrapping;
+            ///
+            /// let n: Wrapping<i64> = Wrapping(0x0123456789ABCDEF);
+            ///
+            /// if cfg!(target_endian = "little") {
+            ///     assert_eq!(n.to_le(), n);
+            /// } else {
+            ///     assert_eq!(n.to_le(), n.swap_bytes());
+            /// }
+            /// ```
+            #[inline]
+            #[unstable(feature = "wrapping_int_impl", issue = "32463")]
+            pub fn to_le(self) -> Self {
+                Wrapping(self.0.to_le())
+            }
+
+            /// Raises self to the power of `exp`, using exponentiation by
+            /// squaring.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(wrapping_int_impl)]
+            /// use std::num::Wrapping;
+            ///
+            /// let x: Wrapping<i32> = Wrapping(2); // or any other integer type
+            ///
+            /// assert_eq!(x.pow(4), Wrapping(16));
+            /// ```
+            ///
+            /// Results that are too large are wrapped:
+            ///
+            /// ```
+            /// #![feature(wrapping_int_impl)]
+            /// use std::num::Wrapping;
+            ///
+            /// // 5 ^ 4 = 625, which is too big for a u8
+            /// let x: Wrapping<u8> = Wrapping(5);
+            ///
+            /// assert_eq!(x.pow(4).0, 113);
+            /// ```
+            #[inline]
+            #[unstable(feature = "wrapping_int_impl", issue = "32463")]
+            pub fn pow(self, exp: u32) -> Self {
+                Wrapping(self.0.wrapping_pow(exp))
+            }
+        }
+    )*)
+}
+
+wrapping_int_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
+
 
 mod shift_max {
     #![allow(non_upper_case_globals)]
