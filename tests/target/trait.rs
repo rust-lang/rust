@@ -106,7 +106,8 @@ trait MyTrait<
     BBBBBBBBBBBBBBBBBBBB,
     CCCCCCCCCCCCCCCCCCCC,
     DDDDDDDDDDDDDDDDDDDD,
-> {
+>
+{
     fn foo() {}
 }
 

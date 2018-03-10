@@ -183,7 +183,8 @@ pub trait Number
     + BitAnd<Self, Output = Self>
     + BitOr<Self, Output = Self>
     + BitAndAssign
-    + BitOrAssign {
+    + BitOrAssign
+{
     // test
     fn zero() -> Self;
 }
@@ -201,7 +202,8 @@ pub trait SomeTrait
     + Display
     + Write
     + Read
-    + FromStr {
+    + FromStr
+{
     // comment
 }
 
