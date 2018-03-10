@@ -60,7 +60,7 @@ result, we'll have an array of values for the canonical inputs. For
 example, the canonical result might be:
 
 ```
-for<2> {
+for<?0, ?1> {
     values = [ Vec<?0>, '1, ?0 ]
                    ^^   ^^  ^^ these are variables in the result!
     ...
