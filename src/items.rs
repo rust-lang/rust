@@ -934,45 +934,45 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
             )?;
         }
 
-        let where_density =
-            if context.config.indent_style() == IndentStyle::Block && result.is_empty() {
+        // Rewrite where clause.
+        if !generics.where_clause.predicates.is_empty() {
+            let where_density = if context.config.indent_style() == IndentStyle::Block {
                 Density::Compressed
             } else {
                 Density::Tall
             };
 
-        let where_budget = context.budget(last_line_width(&result));
-        let pos_before_where = if type_param_bounds.is_empty() {
-            generics.where_clause.span.lo()
+            let where_budget = context.budget(last_line_width(&result));
+            let pos_before_where = if type_param_bounds.is_empty() {
+                generics.where_clause.span.lo()
+            } else {
+                type_param_bounds[type_param_bounds.len() - 1].span().hi()
+            };
+            let option = WhereClauseOption::snuggled(&generics_str);
+            let where_clause_str = rewrite_where_clause(
+                context,
+                &generics.where_clause,
+                context.config.brace_style(),
+                Shape::legacy(where_budget, offset.block_only()),
+                where_density,
+                "{",
+                None,
+                pos_before_where,
+                option,
+                false,
+            )?;
+            // If the where clause cannot fit on the same line,
+            // put the where clause on a new line
+            if !where_clause_str.contains('\n')
+                && last_line_width(&result) + where_clause_str.len() + offset.width()
+                    > context.config.comment_width()
+            {
+                let width = offset.block_indent + context.config.tab_spaces() - 1;
+                let where_indent = Indent::new(0, width);
+                result.push_str(&where_indent.to_string_with_newline(context.config));
+            }
+            result.push_str(&where_clause_str);
         } else {
-            type_param_bounds[type_param_bounds.len() - 1].span().hi()
-        };
-        let option = WhereClauseOption::snuggled(&generics_str);
-        let where_clause_str = rewrite_where_clause(
-            context,
-            &generics.where_clause,
-            context.config.brace_style(),
-            Shape::legacy(where_budget, offset.block_only()),
-            where_density,
-            "{",
-            None,
-            pos_before_where,
-            option,
-            false,
-        )?;
-        // If the where clause cannot fit on the same line,
-        // put the where clause on a new line
-        if !where_clause_str.contains('\n')
-            && last_line_width(&result) + where_clause_str.len() + offset.width()
-                > context.config.comment_width()
-        {
-            let width = offset.block_indent + context.config.tab_spaces() - 1;
-            let where_indent = Indent::new(0, width);
-            result.push_str(&where_indent.to_string_with_newline(context.config));
-        }
-        result.push_str(&where_clause_str);
-
-        if generics.where_clause.predicates.is_empty() {
             let item_snippet = context.snippet(item.span);
             if let Some(lo) = item_snippet.chars().position(|c| c == '/') {
                 // 1 = `{`
@@ -995,7 +995,9 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         }
 
         match context.config.brace_style() {
-            _ if last_line_contains_single_line_comment(&result) => {
+            _ if last_line_contains_single_line_comment(&result)
+                || last_line_width(&result) + 2 > context.budget(offset.width()) =>
+            {
                 result.push_str(&offset.to_string_with_newline(context.config));
             }
             BraceStyle::AlwaysNextLine => {
@@ -1003,8 +1005,8 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
             }
             BraceStyle::PreferSameLine => result.push(' '),
             BraceStyle::SameLineWhere => {
-                if !where_clause_str.is_empty()
-                    && (!trait_items.is_empty() || result.contains('\n'))
+                if result.contains('\n')
+                    || (!generics.where_clause.predicates.is_empty() && !trait_items.is_empty())
                 {
                     result.push_str(&offset.to_string_with_newline(context.config));
                 } else {
