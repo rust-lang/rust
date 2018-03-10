@@ -1286,3 +1286,86 @@ impl_stable_hash_for!(struct infer::canonical::QueryRegionConstraints<'tcx> {
 impl_stable_hash_for!(enum infer::canonical::Certainty {
     Proven, Ambiguous
 });
+
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for traits::WhereClauseAtom<'tcx> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        use traits::WhereClauseAtom::*;
+
+        mem::discriminant(self).hash_stable(hcx, hasher);
+        match *self {
+            Implemented(ref trait_ref) => trait_ref.hash_stable(hcx, hasher),
+            ProjectionEq(ref projection) => projection.hash_stable(hcx, hasher),
+        }
+    }
+}
+
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for traits::DomainGoal<'tcx> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        use traits::DomainGoal::*;
+
+        mem::discriminant(self).hash_stable(hcx, hasher);
+        match *self {
+            Holds(ref where_clause) |
+            WellFormed(ref where_clause) |
+            FromEnv(ref where_clause) => where_clause.hash_stable(hcx, hasher),
+
+            WellFormedTy(ref ty) => ty.hash_stable(hcx, hasher),
+            FromEnvTy(ref ty) => ty.hash_stable(hcx, hasher),
+            RegionOutlives(ref predicate) => predicate.hash_stable(hcx, hasher),
+            TypeOutlives(ref predicate) => predicate.hash_stable(hcx, hasher),
+        }
+    }
+}
+
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for traits::LeafGoal<'tcx> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        use traits::LeafGoal::*;
+
+        mem::discriminant(self).hash_stable(hcx, hasher);
+        match *self {
+            DomainGoal(ref domain_goal) => domain_goal.hash_stable(hcx, hasher),
+        }
+    }
+}
+
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for traits::Goal<'tcx> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        use traits::Goal::*;
+
+        mem::discriminant(self).hash_stable(hcx, hasher);
+        match *self {
+            Implies(ref hypotheses, ref goal) => {
+                hypotheses.hash_stable(hcx, hasher);
+                goal.hash_stable(hcx, hasher);
+            },
+            And(ref goal1, ref goal2) => {
+                goal1.hash_stable(hcx, hasher);
+                goal2.hash_stable(hcx, hasher);
+            }
+            Not(ref goal) => goal.hash_stable(hcx, hasher),
+            Leaf(ref leaf_goal) => leaf_goal.hash_stable(hcx, hasher),
+            Quantified(quantifier, ref goal) => {
+                quantifier.hash_stable(hcx, hasher);
+                goal.hash_stable(hcx, hasher);
+            },
+        }
+    }
+}
+
+impl_stable_hash_for!(enum traits::QuantifierKind {
+    Universal,
+    Existential
+});
+
+impl_stable_hash_for!(struct traits::ProgramClause<'tcx> {
+    consequence,
+    conditions
+});

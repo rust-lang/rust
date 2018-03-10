@@ -38,6 +38,7 @@ use traits::query::{CanonicalProjectionGoal, CanonicalTyGoal, NoSolution};
 use traits::query::dropck_outlives::{DtorckConstraint, DropckOutlivesResult};
 use traits::query::normalize::NormalizationResult;
 use traits::specialization_graph;
+use traits::ProgramClause;
 use ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
 use ty::steal::Steal;
 use ty::subst::Substs;
@@ -417,6 +418,8 @@ define_maps! { <'tcx>
         -> usize,
 
     [] fn features_query: features_node(CrateNum) -> Lrc<feature_gate::Features>,
+
+    [] fn program_clauses_for: ProgramClausesFor(DefId) -> Lrc<Vec<ProgramClause<'tcx>>>,
 }
 
 //////////////////////////////////////////////////////////////////////

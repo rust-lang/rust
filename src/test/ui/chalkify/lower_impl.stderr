@@ -1,0 +1,8 @@
+error: Implemented(T: Foo) :- ProjectionEq(<T as std::iter::Iterator>::Item == i32), TypeOutlives(T : 'static), Implemented(T: std::iter::Iterator), Implemented(T: std::marker::Sized)
+  --> $DIR/lower_impl.rs:15:1
+   |
+LL | #[rustc_dump_program_clauses] //~ ERROR Implemented(T: Foo) :-
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

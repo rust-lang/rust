@@ -681,6 +681,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::generics_of<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription<'tcx> for queries::program_clauses_for<'tcx> {
+    fn describe(_tcx: TyCtxt, _: DefId) -> String {
+        format!("generating chalk-style clauses")
+    }
+}
+
 macro_rules! impl_disk_cacheable_query(
     ($query_name:ident, |$key:tt| $cond:expr) => {
         impl<'tcx> QueryDescription<'tcx> for queries::$query_name<'tcx> {

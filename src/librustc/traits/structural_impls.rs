@@ -425,3 +425,186 @@ BraceStructTypeFoldableImpl! {
         obligations
     } where T: TypeFoldable<'tcx>
 }
+
+impl<'tcx> fmt::Display for traits::WhereClauseAtom<'tcx> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use traits::WhereClauseAtom::*;
+        match *self {
+            Implemented(ref trait_ref) => write!(fmt, "Implemented({})", trait_ref),
+            ProjectionEq(ref projection) => write!(fmt, "ProjectionEq({})", projection),
+        }
+    }
+}
+
+impl<'tcx> fmt::Display for traits::DomainGoal<'tcx> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use traits::DomainGoal::*;
+        use traits::WhereClauseAtom::*;
+        match *self {
+            Holds(wc) => write!(fmt, "{}", wc),
+            WellFormed(Implemented(ref trait_ref)) => write!(fmt, "WellFormed({})", trait_ref),
+            WellFormed(ProjectionEq(ref projection)) => write!(fmt, "WellFormed({})", projection),
+            FromEnv(Implemented(ref trait_ref)) => write!(fmt, "FromEnv({})", trait_ref),
+            FromEnv(ProjectionEq(ref projection)) => write!(fmt, "FromEnv({})", projection),
+            WellFormedTy(ref ty) => write!(fmt, "WellFormed({})", ty),
+            FromEnvTy(ref ty) => write!(fmt, "FromEnv({})", ty),
+            RegionOutlives(ref predicate) => write!(fmt, "RegionOutlives({})", predicate),
+            TypeOutlives(ref predicate) => write!(fmt, "TypeOutlives({})", predicate),
+        }
+    }
+}
+
+impl fmt::Display for traits::QuantifierKind {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use traits::QuantifierKind::*;
+        match *self {
+            Universal => write!(fmt, "forall"),
+            Existential => write!(fmt, "exists"),
+        }
+    }
+}
+
+impl<'tcx> fmt::Display for traits::LeafGoal<'tcx> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use traits::LeafGoal::*;
+        match *self {
+            DomainGoal(ref domain_goal) => write!(fmt, "{}", domain_goal),
+        }
+    }
+}
+
+impl<'tcx> fmt::Display for traits::Goal<'tcx> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use traits::Goal::*;
+        match *self {
+            Implies(ref hypotheses, ref goal) => {
+                write!(fmt, "if (")?;
+                for (index, hyp) in hypotheses.iter().enumerate() {
+                    if index > 0 {
+                        write!(fmt, ", ")?;
+                    }
+                    write!(fmt, "{}", hyp)?;
+                }
+                write!(fmt, ") {{ {} }}", goal)
+            }
+            And(ref goal1, ref goal2) => write!(fmt, "({}, {})", goal1, goal2),
+            Not(ref goal) => write!(fmt, "not {{ {} }}", goal),
+            Leaf(ref goal) => write!(fmt, "{}", goal),
+            Quantified(qkind, ref goal) => {
+                // FIXME: appropriate binder names
+                write!(fmt, "{}<> {{ {} }}", qkind, goal.skip_binder())
+            }
+        }
+    }
+}
+
+impl<'tcx> fmt::Display for traits::ProgramClause<'tcx> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "{}", self.consequence)?;
+        if self.conditions.is_empty() {
+            write!(fmt, ".")?;
+        } else {
+            write!(fmt, " :- ")?;
+            for (index, condition) in self.conditions.iter().enumerate() {
+                if index > 0 {
+                    write!(fmt, ", ")?;
+                }
+                write!(fmt, "{}", condition)?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for traits::WhereClauseAtom<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        use traits::WhereClauseAtom::*;
+        match *self {
+            Implemented(ref trait_ref) => Implemented(trait_ref.fold_with(folder)),
+            ProjectionEq(ref projection) => ProjectionEq(projection.fold_with(folder)),
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        use traits::WhereClauseAtom::*;
+        match *self {
+            Implemented(ref trait_ref) => trait_ref.visit_with(visitor),
+            ProjectionEq(ref projection) => projection.visit_with(visitor),
+        }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for traits::DomainGoal<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        use traits::DomainGoal::*;
+        match *self {
+            Holds(ref wc) => Holds(wc.fold_with(folder)),
+            WellFormed(ref wc) => WellFormed(wc.fold_with(folder)),
+            FromEnv(ref wc) => FromEnv(wc.fold_with(folder)),
+            WellFormedTy(ref ty) => WellFormedTy(ty.fold_with(folder)),
+            FromEnvTy(ref ty) => FromEnvTy(ty.fold_with(folder)),
+            RegionOutlives(ref predicate) => RegionOutlives(predicate.fold_with(folder)),
+            TypeOutlives(ref predicate) => TypeOutlives(predicate.fold_with(folder)),
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        use traits::DomainGoal::*;
+        match *self {
+            Holds(ref wc) |
+            WellFormed(ref wc) |
+            FromEnv(ref wc) => wc.visit_with(visitor),
+            WellFormedTy(ref ty) |
+            FromEnvTy(ref ty) => ty.visit_with(visitor),
+            RegionOutlives(ref predicate) => predicate.visit_with(visitor),
+            TypeOutlives(ref predicate) => predicate.visit_with(visitor),
+        }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for traits::LeafGoal<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        use traits::LeafGoal::*;
+        match *self {
+            DomainGoal(ref domain_goal) => DomainGoal(domain_goal.fold_with(folder)),
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        use traits::LeafGoal::*;
+        match *self {
+            DomainGoal(ref domain_goal) => domain_goal.visit_with(visitor),
+        }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for traits::Goal<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        use traits::Goal::*;
+        match *self {
+            Implies(ref hypotheses, ref goal) => {
+                Implies(
+                    hypotheses.iter().map(|hyp| hyp.fold_with(folder)).collect(),
+                    goal.fold_with(folder)
+                )
+            },
+            And(ref goal1, ref goal2) => And(goal1.fold_with(folder), goal2.fold_with(folder)),
+            Not(ref goal) => Not(goal.fold_with(folder)),
+            Leaf(ref leaf_goal) => Leaf(leaf_goal.fold_with(folder)),
+            Quantified(qkind, ref goal) => Quantified(qkind, goal.fold_with(folder)),
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        use traits::Goal::*;
+        match *self {
+            Implies(ref hypotheses, ref goal) => {
+                hypotheses.iter().any(|hyp| hyp.visit_with(visitor)) || goal.visit_with(visitor)
+            }
+            And(ref goal1, ref goal2) => goal1.visit_with(visitor) || goal2.visit_with(visitor),
+            Not(ref goal) => goal.visit_with(visitor),
+            Leaf(ref leaf_goal) => leaf_goal.visit_with(visitor),
+            Quantified(_, ref goal) => goal.visit_with(visitor),
+        }
+    }
+}

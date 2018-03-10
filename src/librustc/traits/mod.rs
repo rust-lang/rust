@@ -29,6 +29,7 @@ use infer::{InferCtxt};
 
 use rustc_data_structures::sync::Lrc;
 use std::rc::Rc;
+use std::convert::From;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -62,6 +63,7 @@ mod specialize;
 mod structural_impls;
 pub mod trans;
 mod util;
+mod lowering;
 
 pub mod query;
 
@@ -243,6 +245,59 @@ pub struct DerivedObligationCause<'tcx> {
 pub type Obligations<'tcx, O> = Vec<Obligation<'tcx, O>>;
 pub type PredicateObligations<'tcx> = Vec<PredicateObligation<'tcx>>;
 pub type TraitObligations<'tcx> = Vec<TraitObligation<'tcx>>;
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum WhereClauseAtom<'tcx> {
+    Implemented(ty::PolyTraitPredicate<'tcx>),
+    ProjectionEq(ty::PolyProjectionPredicate<'tcx>),
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum DomainGoal<'tcx> {
+    Holds(WhereClauseAtom<'tcx>),
+    WellFormed(WhereClauseAtom<'tcx>),
+    FromEnv(WhereClauseAtom<'tcx>),
+    WellFormedTy(Ty<'tcx>),
+    FromEnvTy(Ty<'tcx>),
+    RegionOutlives(ty::PolyRegionOutlivesPredicate<'tcx>),
+    TypeOutlives(ty::PolyTypeOutlivesPredicate<'tcx>),
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum LeafGoal<'tcx> {
+    DomainGoal(DomainGoal<'tcx>),
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub enum QuantifierKind {
+    Universal,
+    Existential,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub enum Goal<'tcx> {
+    Implies(Vec<DomainGoal<'tcx>>, Box<Goal<'tcx>>),
+    And(Box<Goal<'tcx>>, Box<Goal<'tcx>>),
+    Not(Box<Goal<'tcx>>),
+    Leaf(LeafGoal<'tcx>),
+    Quantified(QuantifierKind, Box<ty::Binder<Goal<'tcx>>>)
+}
+
+impl<'tcx> From<DomainGoal<'tcx>> for Goal<'tcx> {
+    fn from(domain_goal: DomainGoal<'tcx>) -> Self {
+        Goal::Leaf(LeafGoal::DomainGoal(domain_goal))
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct ProgramClause<'tcx> {
+    pub consequence: DomainGoal<'tcx>,
+    pub conditions: Vec<Goal<'tcx>>,
+}
+
+pub fn dump_program_clauses<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+    lowering::dump_program_clauses(tcx)
+}
 
 pub type Selection<'tcx> = Vtable<'tcx, PredicateObligation<'tcx>>;
 
@@ -915,6 +970,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         specialization_graph_of: specialize::specialization_graph_provider,
         specializes: specialize::specializes,
         trans_fulfill_obligation: trans::trans_fulfill_obligation,
+        program_clauses_for: lowering::program_clauses_for,
         vtable_methods,
         substitute_normalize_and_test_predicates,
         ..*providers
