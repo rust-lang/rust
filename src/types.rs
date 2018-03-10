@@ -18,8 +18,8 @@ use syntax::symbol::keywords;
 
 use codemap::SpanUtils;
 use config::{IndentStyle, TypeDensity};
-use expr::{rewrite_assign_rhs, rewrite_pair, rewrite_tuple, rewrite_unary_prefix,
-           PairParts, ToExpr};
+use expr::{rewrite_assign_rhs, rewrite_pair, rewrite_tuple, rewrite_unary_prefix, PairParts,
+           ToExpr};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
 use macros::{rewrite_macro, MacroPosition};
 use overflow;
@@ -485,17 +485,13 @@ fn rewrite_bounded_lifetime(
     if bounds.len() == 0 {
         Some(result)
     } else {
-        let appendix = bounds
-            .iter()
-            .map(|b| b.rewrite(context, shape))
-            .collect::<Option<Vec<_>>>()?;
         let colon = type_bound_colon(context);
         let overhead = last_line_width(&result) + colon.len();
         let result = format!(
             "{}{}{}",
             result,
             colon,
-            join_bounds(context, shape.sub_width(overhead)?, bounds, &appendix, true)?
+            join_bounds(context, shape.sub_width(overhead)?, bounds, true)?
         );
         Some(result)
     }
@@ -529,20 +525,13 @@ pub struct TraitTyParamBounds<'a> {
 
 impl<'a> Rewrite for TraitTyParamBounds<'a> {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        let strs = self.inner
-            .iter()
-            .map(|b| b.rewrite(context, shape))
-            .collect::<Option<Vec<_>>>()?;
-        join_bounds(context, shape, self.inner, &strs, false)
+        join_bounds(context, shape, self.inner, false)
     }
 }
 
 impl Rewrite for ast::TyParamBounds {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        let strs = self.iter()
-            .map(|b| b.rewrite(context, shape))
-            .collect::<Option<Vec<_>>>()?;
-        join_bounds(context, shape, self, &strs, true)
+        join_bounds(context, shape, self, true)
     }
 }
 
@@ -779,7 +768,6 @@ fn join_bounds<T>(
     context: &RewriteContext,
     shape: Shape,
     items: &[T],
-    type_strs: &[String],
     need_indent: bool,
 ) -> Option<String>
 where
@@ -790,6 +778,10 @@ where
         TypeDensity::Compressed => "+",
         TypeDensity::Wide => " + ",
     };
+    let type_strs = items
+        .iter()
+        .map(|item| item.rewrite(context, shape))
+        .collect::<Option<Vec<_>>>()?;
     let result = type_strs.join(joiner);
     if items.len() == 1 || (!result.contains('\n') && result.len() <= shape.width) {
         return Some(result);
@@ -805,7 +797,7 @@ where
             .collect::<Option<Vec<_>>>()?;
         (type_strs, nested_shape.indent)
     } else {
-        (type_strs.to_vec(), shape.indent)
+        (type_strs, shape.indent)
     };
 
     let joiner = format!("{}+ ", offset.to_string_with_newline(context.config));

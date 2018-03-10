@@ -65,8 +65,7 @@ where
 {
 }
 
-trait FooBar<T>:
-    Tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt
+trait FooBar<T>: Tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt
 where
     J: Bar,
 {
