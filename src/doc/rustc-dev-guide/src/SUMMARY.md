@@ -25,6 +25,7 @@
     - [Lowering to logic](./traits-lowering-to-logic.md)
       - [Goals and clauses](./traits-goals-and-clauses.md)
       - [Equality and associated types](./traits-associated-types.md)
+      - [Implied bounds](./traits-implied-bounds.md)
       - [Region constraints](./traits-regions.md)
     - [Canonical queries](./traits-canonical-queries.md)
       - [Canonicalization](./traits-canonicalization.md)
