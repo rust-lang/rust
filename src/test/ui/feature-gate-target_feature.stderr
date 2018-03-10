@@ -1,0 +1,11 @@
+error[E0658]: the `#[target_feature]` attribute is an experimental feature
+  --> $DIR/feature-gate-target_feature.rs:11:1
+   |
+LL | #[target_feature = "+sse2"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(target_feature)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0658"

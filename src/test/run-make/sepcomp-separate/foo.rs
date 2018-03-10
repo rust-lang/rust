@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
+
 fn magic_fn() -> usize {
     1234
 }
@@ -24,4 +26,8 @@ mod b {
     }
 }
 
-fn main() { }
+fn main() {
+    magic_fn();
+    a::magic_fn();
+    b::magic_fn();
+}

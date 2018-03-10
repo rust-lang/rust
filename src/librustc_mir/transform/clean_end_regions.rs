@@ -22,10 +22,10 @@
 use rustc_data_structures::fx::FxHashSet;
 
 use rustc::middle::region;
-use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::{BasicBlock, Location, Mir, Rvalue, Statement, StatementKind};
 use rustc::mir::visit::{MutVisitor, Visitor, TyContext};
 use rustc::ty::{Ty, RegionKind, TyCtxt};
+use transform::{MirPass, MirSource};
 
 pub struct CleanEndRegions;
 
@@ -42,7 +42,7 @@ impl MirPass for CleanEndRegions {
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _source: MirSource,
                           mir: &mut Mir<'tcx>) {
-        if !tcx.sess.emit_end_regions() { return; }
+        if !tcx.emit_end_regions() { return; }
 
         let mut gather = GatherBorrowedRegions {
             seen_regions: FxHashSet()

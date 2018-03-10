@@ -26,7 +26,7 @@ pub struct DefCollector<'a> {
     definitions: &'a mut Definitions,
     parent_def: Option<DefIndex>,
     expansion: Mark,
-    pub visit_macro_invoc: Option<&'a mut FnMut(MacroInvocationData)>,
+    pub visit_macro_invoc: Option<&'a mut dyn FnMut(MacroInvocationData)>,
 }
 
 pub struct MacroInvocationData {
@@ -104,9 +104,9 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         // Pick the def data. This need not be unique, but the more
         // information we encapsulate into
         let def_data = match i.node {
-            ItemKind::AutoImpl(..) | ItemKind::Impl(..) =>
-                DefPathData::Impl,
-            ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) | ItemKind::Trait(..) |
+            ItemKind::Impl(..) => DefPathData::Impl,
+            ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) |
+            ItemKind::Trait(..) | ItemKind::TraitAlias(..) |
             ItemKind::ExternCrate(..) | ItemKind::ForeignMod(..) | ItemKind::Ty(..) =>
                 DefPathData::TypeNs(i.ident.name.as_str()),
             ItemKind::Mod(..) if i.ident == keywords::Invalid.ident() => {
@@ -118,21 +118,8 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             ItemKind::MacroDef(..) => DefPathData::MacroDef(i.ident.name.as_str()),
             ItemKind::Mac(..) => return self.visit_macro_invoc(i.id, false),
             ItemKind::GlobalAsm(..) => DefPathData::Misc,
-            ItemKind::Use(ref view_path) => {
-                match view_path.node {
-                    ViewPathGlob(..) => {}
-
-                    // FIXME(eddyb) Should use the real name. Which namespace?
-                    ViewPathSimple(..) => {}
-                    ViewPathList(_, ref imports) => {
-                        for import in imports {
-                            self.create_def(import.node.id,
-                                            DefPathData::Misc,
-                                            ITEM_LIKE_SPACE);
-                        }
-                    }
-                }
-                DefPathData::Misc
+            ItemKind::Use(..) => {
+                return visit::walk_item(self, i);
             }
         };
         let def = self.create_def(i.id, def_data, ITEM_LIKE_SPACE);
@@ -180,6 +167,11 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         });
     }
 
+    fn visit_use_tree(&mut self, use_tree: &'a UseTree, id: NodeId, _nested: bool) {
+        self.create_def(id, DefPathData::Misc, ITEM_LIKE_SPACE);
+        visit::walk_use_tree(self, use_tree, id);
+    }
+
     fn visit_foreign_item(&mut self, foreign_item: &'a ForeignItem) {
         let def = self.create_def(foreign_item.id,
                                   DefPathData::ValueNs(foreign_item.ident.name.as_str()),
@@ -190,14 +182,25 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         });
     }
 
-    fn visit_generics(&mut self, generics: &'a Generics) {
-        for ty_param in generics.ty_params.iter() {
-            self.create_def(ty_param.id,
-                            DefPathData::TypeParam(ty_param.ident.name.as_str()),
-                            REGULAR_SPACE);
+    fn visit_generic_param(&mut self, param: &'a GenericParam) {
+        match *param {
+            GenericParam::Lifetime(ref lifetime_def) => {
+                self.create_def(
+                    lifetime_def.lifetime.id,
+                    DefPathData::LifetimeDef(lifetime_def.lifetime.ident.name.as_str()),
+                    REGULAR_SPACE
+                );
+            }
+            GenericParam::Type(ref ty_param) => {
+                self.create_def(
+                    ty_param.id,
+                    DefPathData::TypeParam(ty_param.ident.name.as_str()),
+                    REGULAR_SPACE
+                );
+            }
         }
 
-        visit::walk_generics(self, generics);
+        visit::walk_generic_param(self, param);
     }
 
     fn visit_trait_item(&mut self, ti: &'a TraitItem) {
@@ -273,12 +276,6 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             _ => {}
         }
         visit::walk_ty(self, ty);
-    }
-
-    fn visit_lifetime_def(&mut self, def: &'a LifetimeDef) {
-        self.create_def(def.lifetime.id,
-                        DefPathData::LifetimeDef(def.lifetime.ident.name.as_str()),
-                        REGULAR_SPACE);
     }
 
     fn visit_stmt(&mut self, stmt: &'a Stmt) {

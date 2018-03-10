@@ -17,9 +17,11 @@ use hair::cx::to_ref::ToRef;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{self, AdtKind, VariantDef, Ty};
-use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
+use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::cast::CastKind as TyCastKind;
 use rustc::hir;
+use rustc::hir::def_id::LocalDefId;
+use rustc::mir::{BorrowKind};
 
 impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
     type Output = Expr<'tcx>;
@@ -110,17 +112,17 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 span,
                 kind: ExprKind::Borrow {
                     region: deref.region,
-                    borrow_kind: to_borrow_kind(deref.mutbl),
+                    borrow_kind: deref.mutbl.to_borrow_kind(),
                     arg: expr.to_ref(),
                 },
             };
 
-            overloaded_lvalue(cx, hir_expr, adjustment.target, Some(call), vec![expr.to_ref()])
+            overloaded_place(cx, hir_expr, adjustment.target, Some(call), vec![expr.to_ref()])
         }
         Adjust::Borrow(AutoBorrow::Ref(r, m)) => {
             ExprKind::Borrow {
                 region: r,
-                borrow_kind: to_borrow_kind(m),
+                borrow_kind: m.to_borrow_kind(),
                 arg: expr.to_ref(),
             }
         }
@@ -140,11 +142,43 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 span,
                 kind: ExprKind::Borrow {
                     region,
-                    borrow_kind: to_borrow_kind(m),
+                    borrow_kind: m.to_borrow_kind(),
                     arg: expr.to_ref(),
                 },
             };
-            ExprKind::Cast { source: expr.to_ref() }
+            let cast_expr = Expr {
+                temp_lifetime,
+                ty: adjustment.target,
+                span,
+                kind: ExprKind::Cast { source: expr.to_ref() }
+            };
+
+            // To ensure that both implicit and explicit coercions are
+            // handled the same way, we insert an extra layer of indirection here.
+            // For explicit casts (e.g. 'foo as *const T'), the source of the 'Use'
+            // will be an ExprKind::Hair with the appropriate cast expression. Here,
+            // we make our Use source the generated Cast from the original coercion.
+            //
+            // In both cases, this outer 'Use' ensures that the inner 'Cast' is handled by
+            // as_operand, not by as_rvalue - causing the cast result to be stored in a temporary.
+            // Ordinary, this is identical to using the cast directly as an rvalue. However, if the
+            // source of the cast was previously borrowed as mutable, storing the cast in a
+            // temporary gives the source a chance to expire before the cast is used. For
+            // structs with a self-referential *mut ptr, this allows assignment to work as
+            // expected.
+            //
+            // For example, consider the type 'struct Foo { field: *mut Foo }',
+            // The method 'fn bar(&mut self) { self.field = self }'
+            // triggers a coercion from '&mut self' to '*mut self'. In order
+            // for the assignment to be valid, the implicit borrow
+            // of 'self' involved in the coercion needs to end before the local
+            // containing the '*mut T' is assigned to 'self.field' - otherwise,
+            // we end up trying to assign to 'self.field' while we have another mutable borrow
+            // active.
+            //
+            // We only need to worry about this kind of thing for coercions from refs to ptrs,
+            // since they get rid of a borrow implicitly.
+            ExprKind::Use { source: cast_expr.to_ref() }
         }
         Adjust::Unsize => {
             ExprKind::Unsize { source: expr.to_ref() }
@@ -254,7 +288,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             };
             ExprKind::Borrow {
                 region,
-                borrow_kind: to_borrow_kind(mutbl),
+                borrow_kind: mutbl.to_borrow_kind(),
                 arg: expr.to_ref(),
             }
         }
@@ -334,7 +368,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
         hir::ExprIndex(ref lhs, ref index) => {
             if cx.tables().is_method_call(expr) {
-                overloaded_lvalue(cx, expr, expr_ty, None, vec![lhs.to_ref(), index.to_ref()])
+                overloaded_place(cx, expr, expr_ty, None, vec![lhs.to_ref(), index.to_ref()])
             } else {
                 ExprKind::Index {
                     lhs: lhs.to_ref(),
@@ -345,7 +379,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
         hir::ExprUnary(hir::UnOp::UnDeref, ref arg) => {
             if cx.tables().is_method_call(expr) {
-                overloaded_lvalue(cx, expr, expr_ty, None, vec![arg.to_ref()])
+                overloaded_place(cx, expr, expr_ty, None, vec![arg.to_ref()])
             } else {
                 ExprKind::Deref { arg: arg.to_ref() }
             }
@@ -609,10 +643,25 @@ fn method_callee<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     }
 }
 
-fn to_borrow_kind(m: hir::Mutability) -> BorrowKind {
-    match m {
-        hir::MutMutable => BorrowKind::Mut,
-        hir::MutImmutable => BorrowKind::Shared,
+trait ToBorrowKind { fn to_borrow_kind(&self) -> BorrowKind; }
+
+impl ToBorrowKind for AutoBorrowMutability {
+    fn to_borrow_kind(&self) -> BorrowKind {
+        match *self {
+            AutoBorrowMutability::Mutable { allow_two_phase_borrow } =>
+                BorrowKind::Mut { allow_two_phase_borrow },
+            AutoBorrowMutability::Immutable =>
+                BorrowKind::Shared,
+        }
+    }
+}
+
+impl ToBorrowKind for hir::Mutability {
+    fn to_borrow_kind(&self) -> BorrowKind {
+        match *self {
+            hir::MutMutable => BorrowKind::Mut { allow_two_phase_borrow: false },
+            hir::MutImmutable => BorrowKind::Shared,
+        }
     }
 }
 
@@ -712,8 +761,8 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             });
             let region = cx.tcx.mk_region(region);
 
-            let self_expr = if let ty::TyClosure(..) = closure_ty.sty {
-                match cx.tcx.closure_kind(closure_def_id) {
+            let self_expr = if let ty::TyClosure(_, closure_substs) = closure_ty.sty {
+                match cx.infcx.closure_kind(closure_def_id, closure_substs).unwrap() {
                     ty::ClosureKind::Fn => {
                         let ref_closure_ty = cx.tcx.mk_ref(region,
                                                            ty::TypeAndMut {
@@ -783,7 +832,7 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             // point we need an implicit deref
             let upvar_id = ty::UpvarId {
                 var_id: var_hir_id,
-                closure_expr_id: closure_def_id.index,
+                closure_expr_id: LocalDefId::from_def_id(closure_def_id),
             };
             match cx.tables().upvar_capture(upvar_id) {
                 ty::UpvarCapture::ByValue => field_kind,
@@ -843,15 +892,15 @@ fn overloaded_operator<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     }
 }
 
-fn overloaded_lvalue<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
+fn overloaded_place<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                      expr: &'tcx hir::Expr,
-                                     lvalue_ty: Ty<'tcx>,
+                                     place_ty: Ty<'tcx>,
                                      custom_callee: Option<(DefId, &'tcx Substs<'tcx>)>,
                                      args: Vec<ExprRef<'tcx>>)
                                      -> ExprKind<'tcx> {
     // For an overloaded *x or x[y] expression of type T, the method
     // call returns an &T and we must add the deref so that the types
-    // line up (this is because `*x` and `x[y]` represent lvalues):
+    // line up (this is because `*x` and `x[y]` represent places):
 
     let recv_ty = match args[0] {
         ExprRef::Hair(e) => cx.tables().expr_ty_adjusted(e),
@@ -863,10 +912,10 @@ fn overloaded_lvalue<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     // `Deref(Mut)::Deref(_mut)` and `Index(Mut)::index(_mut)`.
     let (region, mt) = match recv_ty.sty {
         ty::TyRef(region, mt) => (region, mt),
-        _ => span_bug!(expr.span, "overloaded_lvalue: receiver is not a reference"),
+        _ => span_bug!(expr.span, "overloaded_place: receiver is not a reference"),
     };
     let ref_ty = cx.tcx.mk_ref(region, ty::TypeAndMut {
-        ty: lvalue_ty,
+        ty: place_ty,
         mutbl: mt.mutbl,
     });
 
@@ -897,7 +946,7 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     let var_hir_id = cx.tcx.hir.node_to_hir_id(freevar.var_id());
     let upvar_id = ty::UpvarId {
         var_id: var_hir_id,
-        closure_expr_id: cx.tcx.hir.local_def_id(closure_expr.id).index,
+        closure_expr_id: cx.tcx.hir.local_def_id(closure_expr.id).to_local(),
     };
     let upvar_capture = cx.tables().upvar_capture(upvar_id);
     let temp_lifetime = cx.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);
@@ -914,7 +963,7 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             let borrow_kind = match upvar_borrow.kind {
                 ty::BorrowKind::ImmBorrow => BorrowKind::Shared,
                 ty::BorrowKind::UniqueImmBorrow => BorrowKind::Unique,
-                ty::BorrowKind::MutBorrow => BorrowKind::Mut,
+                ty::BorrowKind::MutBorrow => BorrowKind::Mut { allow_two_phase_borrow: false }
             };
             Expr {
                 temp_lifetime,

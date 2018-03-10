@@ -256,6 +256,28 @@ trait Foo {
 }
 ```
 
+### The trait cannot contain associated constants
+
+Just like static functions, associated constants aren't stored on the method
+table. If the trait or any subtrait contain an associated constant, they cannot
+be made into an object.
+
+```compile_fail,E0038
+trait Foo {
+    const X: i32;
+}
+
+impl Foo {}
+```
+
+A simple workaround is to use a helper method instead:
+
+```
+trait Foo {
+    fn x(&self) -> i32;
+}
+```
+
 ### The trait cannot use `Self` as a type parameter in the supertrait listing
 
 This is similar to the second sub-error, but subtler. It happens in situations
@@ -359,18 +381,21 @@ lifetime elision rules (see below).
 Here are some simple examples of where you'll run into this error:
 
 ```compile_fail,E0106
-struct Foo { x: &bool }        // error
-struct Foo<'a> { x: &'a bool } // correct
+struct Foo1 { x: &bool }
+              // ^ expected lifetime parameter
+struct Foo2<'a> { x: &'a bool } // correct
 
-struct Bar { x: Foo }
-               ^^^ expected lifetime parameter
-struct Bar<'a> { x: Foo<'a> } // correct
+struct Bar1 { x: Foo2 }
+              // ^^^^ expected lifetime parameter
+struct Bar2<'a> { x: Foo2<'a> } // correct
 
-enum Bar { A(u8), B(&bool), }        // error
-enum Bar<'a> { A(u8), B(&'a bool), } // correct
+enum Baz1 { A(u8), B(&bool), }
+                  // ^ expected lifetime parameter
+enum Baz2<'a> { A(u8), B(&'a bool), } // correct
 
-type MyStr = &str;        // error
-type MyStr<'a> = &'a str; // correct
+type MyStr1 = &str;
+           // ^ expected lifetime parameter
+type MyStr2<'a> = &'a str; // correct
 ```
 
 Lifetime elision is a special, limited kind of inference for lifetimes in
@@ -1641,14 +1666,14 @@ impl Foo {
 These attributes do not work on typedefs, since typedefs are just aliases.
 
 Representations like `#[repr(u8)]`, `#[repr(i64)]` are for selecting the
-discriminant size for C-like enums (when there is no associated data, e.g.
-`enum Color {Red, Blue, Green}`), effectively setting the size of the enum to
+discriminant size for enums with no data fields on any of the variants, e.g.
+`enum Color {Red, Blue, Green}`, effectively setting the size of the enum to
 the size of the provided type. Such an enum can be cast to a value of the same
 type as well. In short, `#[repr(u8)]` makes the enum behave like an integer
 with a constrained set of allowed values.
 
-Only C-like enums can be cast to numerical primitives, so this attribute will
-not apply to structs.
+Only field-less enums can be cast to numerical primitives, so this attribute
+will not apply to structs.
 
 `#[repr(packed)]` reduces padding to make the struct size smaller. The
 representation of enums isn't strictly defined in Rust, and this attribute
@@ -1770,6 +1795,46 @@ If you want to get command-line arguments, use `std::env::args`. To exit with a
 specified exit code, use `std::process::exit`.
 "##,
 
+E0562: r##"
+Abstract return types (written `impl Trait` for some trait `Trait`) are only
+allowed as function return types.
+
+Erroneous code example:
+
+```compile_fail,E0562
+#![feature(conservative_impl_trait)]
+
+fn main() {
+    let count_to_ten: impl Iterator<Item=usize> = 0..10;
+    // error: `impl Trait` not allowed outside of function and inherent method
+    //        return types
+    for i in count_to_ten {
+        println!("{}", i);
+    }
+}
+```
+
+Make sure `impl Trait` only appears in return-type position.
+
+```
+#![feature(conservative_impl_trait)]
+
+fn count_to_n(n: usize) -> impl Iterator<Item=usize> {
+    0..n
+}
+
+fn main() {
+    for i in count_to_n(10) {  // ok!
+        println!("{}", i);
+    }
+}
+```
+
+See [RFC 1522] for more details.
+
+[RFC 1522]: https://github.com/rust-lang/rfcs/blob/master/text/1522-conservative-impl-trait.md
+"##,
+
 E0591: r##"
 Per [RFC 401][rfc401], if you have a function declaration `foo`:
 
@@ -1826,7 +1891,7 @@ is a function pointer, which is not zero-sized.
 This pattern should be rewritten. There are a few possible ways to do this:
 
 - change the original fn declaration to match the expected signature,
-  and do the cast in the fn body (the prefered option)
+  and do the cast in the fn body (the preferred option)
 - cast the fn item fo a fn pointer before calling transmute, as shown here:
 
     ```
@@ -1929,6 +1994,99 @@ fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32 {
 ```
 "##,
 
+E0644: r##"
+A closure or generator was constructed that references its own type.
+
+Erroneous example:
+
+```compile-fail,E0644
+fn fix<F>(f: &F)
+  where F: Fn(&F)
+{
+  f(&f);
+}
+
+fn main() {
+  fix(&|y| {
+    // Here, when `x` is called, the parameter `y` is equal to `x`.
+  });
+}
+```
+
+Rust does not permit a closure to directly reference its own type,
+either through an argument (as in the example above) or by capturing
+itself through its environment. This restriction helps keep closure
+inference tractable.
+
+The easiest fix is to rewrite your closure into a top-level function,
+or into a method. In some cases, you may also be able to have your
+closure call itself by capturing a `&Fn()` object or `fn()` pointer
+that refers to itself. That is permitting, since the closure would be
+invoking itself via a virtual call, and hence does not directly
+reference its own *type*.
+
+"##,
+
+E0692: r##"
+A `repr(transparent)` type was also annotated with other, incompatible
+representation hints.
+
+Erroneous code example:
+
+```compile_fail,E0692
+#![feature(repr_transparent)]
+
+#[repr(transparent, C)] // error: incompatible representation hints
+struct Grams(f32);
+```
+
+A type annotated as `repr(transparent)` delegates all representation concerns to
+another type, so adding more representation hints is contradictory. Remove
+either the `transparent` hint or the other hints, like this:
+
+```
+#![feature(repr_transparent)]
+
+#[repr(transparent)]
+struct Grams(f32);
+```
+
+Alternatively, move the other attributes to the contained type:
+
+```
+#![feature(repr_transparent)]
+
+#[repr(C)]
+struct Foo {
+    x: i32,
+    // ...
+}
+
+#[repr(transparent)]
+struct FooWrapper(Foo);
+```
+
+Note that introducing another `struct` just to have a place for the other
+attributes may have unintended side effects on the representation:
+
+```
+#![feature(repr_transparent)]
+
+#[repr(transparent)]
+struct Grams(f32);
+
+#[repr(C)]
+struct Float(f32);
+
+#[repr(transparent)]
+struct Grams2(Float); // this is not equivalent to `Grams` above
+```
+
+Here, `Grams2` is a not equivalent to `Grams` -- the former transparently wraps
+a (non-transparent) struct containing a single float, while `Grams` is a
+transparent wrapper around a float. This can make a difference for the ABI.
+"##,
+
 }
 
 
@@ -1979,4 +2137,9 @@ register_diagnostics! {
     E0628, // generators cannot have explicit arguments
     E0631, // type mismatch in closure arguments
     E0637, // "'_" is not a valid lifetime bound
+    E0657, // `impl Trait` can only capture lifetimes bound at the fn level
+    E0687, // in-band lifetimes cannot be used in `fn`/`Fn` syntax
+    E0688, // in-band lifetimes cannot be mixed with explicit lifetime binders
+
+    E0906, // closures cannot be static
 }

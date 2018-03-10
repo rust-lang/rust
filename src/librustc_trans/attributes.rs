@@ -11,13 +11,17 @@
 
 use std::ffi::{CStr, CString};
 
+use rustc::hir::TransFnAttrFlags;
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::session::config::Sanitizer;
+use rustc::ty::maps::Providers;
+use rustc_data_structures::sync::Lrc;
 
 use llvm::{self, Attribute, ValueRef};
 use llvm::AttributePlace::Function;
+use llvm_util;
 pub use syntax::attr::{self, InlineAttr};
-use syntax::ast;
-use context::CrateContext;
+use context::CodegenCx;
 
 /// Mark LLVM function to use provided inline heuristic.
 #[inline]
@@ -60,27 +64,27 @@ pub fn naked(val: ValueRef, is_naked: bool) {
     Attribute::Naked.toggle_llfn(Function, val, is_naked);
 }
 
-pub fn set_frame_pointer_elimination(ccx: &CrateContext, llfn: ValueRef) {
+pub fn set_frame_pointer_elimination(cx: &CodegenCx, llfn: ValueRef) {
     // FIXME: #11906: Omitting frame pointers breaks retrieving the value of a
     // parameter.
-    if ccx.sess().must_not_eliminate_frame_pointers() {
+    if cx.sess().must_not_eliminate_frame_pointers() {
         llvm::AddFunctionAttrStringValue(
             llfn, llvm::AttributePlace::Function,
             cstr("no-frame-pointer-elim\0"), cstr("true\0"));
     }
 }
 
-pub fn set_probestack(ccx: &CrateContext, llfn: ValueRef) {
+pub fn set_probestack(cx: &CodegenCx, llfn: ValueRef) {
     // Only use stack probes if the target specification indicates that we
     // should be using stack probes
-    if !ccx.sess().target.target.options.stack_probes {
+    if !cx.sess().target.target.options.stack_probes {
         return
     }
 
     // Currently stack probes seem somewhat incompatible with the address
     // sanitizer. With asan we're already protected from stack overflow anyway
     // so we don't really need stack probes regardless.
-    match ccx.sess().opts.debugging_opts.sanitizer {
+    match cx.sess().opts.debugging_opts.sanitizer {
         Some(Sanitizer::Address) => return,
         _ => {}
     }
@@ -94,37 +98,43 @@ pub fn set_probestack(ccx: &CrateContext, llfn: ValueRef) {
 
 /// Composite function which sets LLVM attributes for function depending on its AST (#[attribute])
 /// attributes.
-pub fn from_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: ValueRef) {
-    use syntax::attr::*;
-    inline(llfn, find_inline_attr(Some(ccx.sess().diagnostic()), attrs));
+pub fn from_fn_attrs(cx: &CodegenCx, llfn: ValueRef, id: DefId) {
+    let trans_fn_attrs = cx.tcx.trans_fn_attrs(id);
 
-    set_frame_pointer_elimination(ccx, llfn);
-    set_probestack(ccx, llfn);
-    let mut target_features = vec![];
-    for attr in attrs {
-        if attr.check_name("target_feature") {
-            if let Some(val) = attr.value_str() {
-                for feat in val.as_str().split(",").map(|f| f.trim()) {
-                    if !feat.is_empty() && !feat.contains('\0') {
-                        target_features.push(feat.to_string());
-                    }
-                }
-            }
-        } else if attr.check_name("cold") {
-            Attribute::Cold.apply_llfn(Function, llfn);
-        } else if attr.check_name("naked") {
-            naked(llfn, true);
-        } else if attr.check_name("allocator") {
-            Attribute::NoAlias.apply_llfn(
-                llvm::AttributePlace::ReturnValue(), llfn);
-        } else if attr.check_name("unwind") {
-            unwind(llfn, true);
-        } else if attr.check_name("rustc_allocator_nounwind") {
-            unwind(llfn, false);
-        }
+    inline(llfn, trans_fn_attrs.inline);
+
+    set_frame_pointer_elimination(cx, llfn);
+    set_probestack(cx, llfn);
+
+    if trans_fn_attrs.flags.contains(TransFnAttrFlags::COLD) {
+        Attribute::Cold.apply_llfn(Function, llfn);
     }
-    if !target_features.is_empty() {
-        let val = CString::new(target_features.join(",")).unwrap();
+    if trans_fn_attrs.flags.contains(TransFnAttrFlags::NAKED) {
+        naked(llfn, true);
+    }
+    if trans_fn_attrs.flags.contains(TransFnAttrFlags::ALLOCATOR) {
+        Attribute::NoAlias.apply_llfn(
+            llvm::AttributePlace::ReturnValue, llfn);
+    }
+    if trans_fn_attrs.flags.contains(TransFnAttrFlags::UNWIND) {
+        unwind(llfn, true);
+    }
+    if trans_fn_attrs.flags.contains(TransFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND) {
+        unwind(llfn, false);
+    }
+
+    let features =
+        trans_fn_attrs.target_features
+        .iter()
+        .map(|f| {
+            let feature = &*f.as_str();
+            format!("+{}", llvm_util::to_llvm_feature(cx.tcx.sess, feature))
+        })
+        .collect::<Vec<String>>()
+        .join(",");
+
+    if !features.is_empty() {
+        let val = CString::new(features).unwrap();
         llvm::AddFunctionAttrStringValue(
             llfn, llvm::AttributePlace::Function,
             cstr("target-features\0"), &val);
@@ -133,4 +143,14 @@ pub fn from_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: ValueRe
 
 fn cstr(s: &'static str) -> &CStr {
     CStr::from_bytes_with_nul(s.as_bytes()).expect("null-terminated string")
+}
+
+pub fn provide(providers: &mut Providers) {
+    providers.target_features_whitelist = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        Lrc::new(llvm_util::target_feature_whitelist(tcx.sess)
+            .iter()
+            .map(|c| c.to_string())
+            .collect())
+    };
 }

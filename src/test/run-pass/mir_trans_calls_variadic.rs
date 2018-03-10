@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-wasm32-bare no libc to test ffi with
+
 #[link(name = "rust_test_helpers", kind = "static")]
 extern {
     fn rust_interesting_average(_: i64, ...) -> f64;

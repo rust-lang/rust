@@ -1,0 +1,51 @@
+error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Ast)
+  --> $DIR/get_default.rs:33:17
+   |
+LL |         match map.get() {
+   |               --- immutable borrow occurs here
+...
+LL |                 map.set(String::new()); // Just AST errors here
+   |                 ^^^ mutable borrow occurs here
+...
+LL | }
+   | - immutable borrow ends here
+
+error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Ast)
+  --> $DIR/get_default.rs:44:17
+   |
+LL |         match map.get() {
+   |               --- immutable borrow occurs here
+LL |             Some(v) => {
+LL |                 map.set(String::new()); // Both AST and MIR error here
+   |                 ^^^ mutable borrow occurs here
+...
+LL | }
+   | - immutable borrow ends here
+
+error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Ast)
+  --> $DIR/get_default.rs:50:17
+   |
+LL |         match map.get() {
+   |               --- immutable borrow occurs here
+...
+LL |                 map.set(String::new()); // Just AST errors here
+   |                 ^^^ mutable borrow occurs here
+...
+LL | }
+   | - immutable borrow ends here
+
+error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Mir)
+  --> $DIR/get_default.rs:44:17
+   |
+LL |         match map.get() {
+   |               --- immutable borrow occurs here
+LL |             Some(v) => {
+LL |                 map.set(String::new()); // Both AST and MIR error here
+   |                 ^^^ mutable borrow occurs here
+...
+LL |                 return v;
+   |                        - borrow later used here
+
+error: aborting due to 4 previous errors
+
+If you want more information on this error, try using "rustc --explain E0502"

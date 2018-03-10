@@ -28,34 +28,47 @@
 
 #![feature(box_syntax)]
 #![feature(const_fn)]
-#![feature(libc)]
-#![feature(rand)]
-#![cfg_attr(test, feature(rand))]
+#![feature(fs_read_write)]
 
 extern crate syntax;
-extern crate libc;
+extern crate rand;
 extern crate serialize;
 #[macro_use] extern crate log;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
-pub mod tempdir;
 pub mod target;
-pub mod slice;
-pub mod dynamic_lib;
 
 use std::str::FromStr;
 
 use serialize::json::{Json, ToJson};
 
-macro_rules! linker_flavor {
-    ($(($variant:ident, $string:expr),)+) => {
-        #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Hash,
-                 RustcEncodable, RustcDecodable)]
-        pub enum LinkerFlavor {
-            $($variant,)+
-        }
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Hash,
+         RustcEncodable, RustcDecodable)]
+pub enum LinkerFlavor {
+    Em,
+    Gcc,
+    Ld,
+    Msvc,
+    Lld(LldFlavor),
+}
 
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Hash,
+         RustcEncodable, RustcDecodable)]
+pub enum LldFlavor {
+    Wasm,
+    Ld64,
+    Ld,
+    Link,
+}
+
+impl ToJson for LinkerFlavor {
+    fn to_json(&self) -> Json {
+        self.desc().to_json()
+    }
+}
+macro_rules! flavor_mappings {
+    ($((($($flavor:tt)*), $string:expr),)*) => (
         impl LinkerFlavor {
             pub const fn one_of() -> &'static str {
                 concat!("one of: ", $($string, " ",)+)
@@ -63,31 +76,30 @@ macro_rules! linker_flavor {
 
             pub fn from_str(s: &str) -> Option<Self> {
                 Some(match s {
-                    $($string => LinkerFlavor::$variant,)+
+                    $($string => $($flavor)*,)+
                     _ => return None,
                 })
             }
 
             pub fn desc(&self) -> &str {
                 match *self {
-                    $(LinkerFlavor::$variant => $string,)+
+                    $($($flavor)* => $string,)+
                 }
             }
         }
-
-        impl ToJson for LinkerFlavor {
-            fn to_json(&self) -> Json {
-                self.desc().to_json()
-            }
-        }
-    }
+    )
 }
 
-linker_flavor! {
-    (Em, "em"),
-    (Gcc, "gcc"),
-    (Ld, "ld"),
-    (Msvc, "msvc"),
+
+flavor_mappings! {
+    ((LinkerFlavor::Em), "em"),
+    ((LinkerFlavor::Gcc), "gcc"),
+    ((LinkerFlavor::Ld), "ld"),
+    ((LinkerFlavor::Msvc), "msvc"),
+    ((LinkerFlavor::Lld(LldFlavor::Wasm)), "wasm-ld"),
+    ((LinkerFlavor::Lld(LldFlavor::Ld64)), "ld64.lld"),
+    ((LinkerFlavor::Lld(LldFlavor::Ld)), "ld.lld"),
+    ((LinkerFlavor::Lld(LldFlavor::Link)), "lld-link"),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]

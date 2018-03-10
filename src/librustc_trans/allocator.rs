@@ -19,7 +19,7 @@ use rustc_allocator::{ALLOCATOR_METHODS, AllocatorTy};
 use ModuleLlvm;
 use llvm::{self, False, True};
 
-pub unsafe fn trans(tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind) {
+pub(crate) unsafe fn trans(tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind) {
     let llcx = mods.llcx;
     let llmod = mods.llmod;
     let usize = match &tcx.sess.target.target.target_pointer_width[..] {
@@ -85,6 +85,10 @@ pub unsafe fn trans(tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind) {
         let llfn = llvm::LLVMRustGetOrInsertFunction(llmod,
                                                      name.as_ptr(),
                                                      ty);
+
+        if tcx.sess.target.target.options.default_hidden_visibility {
+            llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
+        }
 
         let callee = CString::new(kind.fn_name(method.name)).unwrap();
         let callee = llvm::LLVMRustGetOrInsertFunction(llmod,

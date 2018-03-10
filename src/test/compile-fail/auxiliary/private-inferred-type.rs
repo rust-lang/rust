@@ -11,6 +11,7 @@
 #![feature(decl_macro)]
 
 fn priv_fn() {}
+static PRIV_STATIC: u8 = 0;
 enum PrivEnum { Variant }
 pub enum PubEnum { Variant }
 trait PrivTrait { fn method() {} }
@@ -34,6 +35,7 @@ impl Pub<u8> {
 
 pub macro m() {
     priv_fn;
+    PRIV_STATIC;
     PrivEnum::Variant;
     PubEnum::Variant;
     <u8 as PrivTrait>::method;

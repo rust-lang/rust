@@ -49,5 +49,5 @@ fn f<'a>(_arena: &'a TypedArena<C<'a>>) {}
 fn main() {
     let arena: TypedArena<C> = TypedArena::new();
     f(&arena);
-} //~ ERROR `arena` does not live long enough
+} //~^ ERROR `arena` does not live long enough
 

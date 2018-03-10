@@ -32,7 +32,7 @@ mod foo {
         fn foo() {}
     }
 
-    // these are public so the parent can reexport them.
+    // these are public so the parent can re-export them.
     pub static reexported_a: isize = 0;
     pub fn reexported_b() {}
     pub struct reexported_c;

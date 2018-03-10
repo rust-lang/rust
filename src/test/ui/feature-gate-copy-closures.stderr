@@ -1,0 +1,13 @@
+error[E0382]: use of moved value: `hello`
+  --> $DIR/feature-gate-copy-closures.rs:18:9
+   |
+LL |     let b = hello;
+   |         - value moved here
+LL |     let c = hello; //~ ERROR use of moved value: `hello` [E0382]
+   |         ^ value used here after move
+   |
+   = note: move occurs because `hello` has type `[closure@$DIR/feature-gate-copy-closures.rs:13:17: 15:6 a:&i32]`, which does not implement the `Copy` trait
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0382"

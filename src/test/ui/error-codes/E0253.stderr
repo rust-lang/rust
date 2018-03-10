@@ -1,0 +1,9 @@
+error[E0253]: `do_something` is not directly importable
+  --> $DIR/E0253.rs:17:5
+   |
+LL | use foo::MyTrait::do_something;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot be imported directly
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0253"

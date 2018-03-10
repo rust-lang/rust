@@ -1,0 +1,40 @@
+note: No external requirements
+  --> $DIR/escape-argument.rs:36:38
+   |
+LL |         let mut closure = expect_sig(|p, y| *p = y);
+   |                                      ^^^^^^^^^^^^^
+   |
+   = note: defining type: DefId(0/1:9 ~ escape_argument[317d]::test[0]::{{closure}}[0]) with closure substs [
+               i16,
+               for<'r, 's> extern "rust-call" fn((&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 'r)) mut &ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 's)) i32, &ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 's)) i32))
+           ]
+
+note: No external requirements
+  --> $DIR/escape-argument.rs:30:1
+   |
+LL | / fn test() {
+LL | |     let x = 44;
+LL | |     let mut p = &x;
+LL | |
+...  |
+LL | |     deref(p);
+LL | | }
+   | |_^
+   |
+   = note: defining type: DefId(0/0:3 ~ escape_argument[317d]::test[0]) with substs []
+
+error[E0597]: `y` does not live long enough
+  --> $DIR/escape-argument.rs:37:25
+   |
+LL |         closure(&mut p, &y);
+   |                         ^^ borrowed value does not live long enough
+LL |         //~^ ERROR `y` does not live long enough [E0597]
+LL |     }
+   |     - borrowed value only lives until here
+LL | 
+LL |     deref(p);
+   |           - borrow later used here
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0597"

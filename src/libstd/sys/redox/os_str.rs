@@ -15,7 +15,10 @@ use borrow::Cow;
 use fmt;
 use str;
 use mem;
+use rc::Rc;
+use sync::Arc;
 use sys_common::{AsInner, IntoInner};
+use sys_common::bytestring::debug_fmt_bytestring;
 use std_unicode::lossy::Utf8Lossy;
 
 #[derive(Clone, Hash)]
@@ -29,7 +32,7 @@ pub struct Slice {
 
 impl fmt::Debug for Slice {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(&Utf8Lossy::from_bytes(&self.inner), formatter)
+        debug_fmt_bytestring(&self.inner, formatter)
     }
 }
 
@@ -123,6 +126,16 @@ impl Buf {
         let inner: Box<[u8]> = unsafe { mem::transmute(boxed) };
         Buf { inner: inner.into_vec() }
     }
+
+    #[inline]
+    pub fn into_arc(&self) -> Arc<Slice> {
+        self.as_slice().into_arc()
+    }
+
+    #[inline]
+    pub fn into_rc(&self) -> Rc<Slice> {
+        self.as_slice().into_rc()
+    }
 }
 
 impl Slice {
@@ -155,5 +168,17 @@ impl Slice {
     pub fn empty_box() -> Box<Slice> {
         let boxed: Box<[u8]> = Default::default();
         unsafe { mem::transmute(boxed) }
+    }
+
+    #[inline]
+    pub fn into_arc(&self) -> Arc<Slice> {
+        let arc: Arc<[u8]> = Arc::from(&self.inner);
+        unsafe { Arc::from_raw(Arc::into_raw(arc) as *const Slice) }
+    }
+
+    #[inline]
+    pub fn into_rc(&self) -> Rc<Slice> {
+        let rc: Rc<[u8]> = Rc::from(&self.inner);
+        unsafe { Rc::from_raw(Rc::into_raw(rc) as *const Slice) }
     }
 }

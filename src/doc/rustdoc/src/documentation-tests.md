@@ -38,17 +38,19 @@ function! Forcing you to write `main` for every example, no matter how small,
 adds friction. So `rustdoc` processes your examples slightly before
 running them. Here's the full algorithm rustdoc uses to preprocess examples:
 
-1. Any leading `#![foo]` attributes are left intact as crate attributes.
-2. Some common `allow` attributes are inserted, including
+1. Some common `allow` attributes are inserted, including
    `unused_variables`, `unused_assignments`, `unused_mut`,
    `unused_attributes`, and `dead_code`. Small examples often trigger
    these lints.
-3. If the example does not contain `extern crate`, then `extern crate
+2. Any attributes specified with `#![doc(test(attr(...)))]` are added.
+3. Any leading `#![foo]` attributes are left intact as crate attributes.
+4. If the example does not contain `extern crate`, and
+   `#![doc(test(no_crate_inject))]` was not specified, then `extern crate
    <mycrate>;` is inserted (note the lack of `#[macro_use]`).
-4. Finally, if the example does not contain `fn main`, the remainder of the
+5. Finally, if the example does not contain `fn main`, the remainder of the
    text is wrapped in `fn main() { your_code }`.
 
-For more about that caveat in rule 3, see "Documeting Macros" below.
+For more about that caveat in rule 4, see "Documenting Macros" below.
 
 ## Hiding portions of the example
 

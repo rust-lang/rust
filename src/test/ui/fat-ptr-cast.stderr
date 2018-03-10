@@ -1,0 +1,70 @@
+error[E0606]: casting `&[i32]` as `usize` is invalid
+  --> $DIR/fat-ptr-cast.rs:20:5
+   |
+LL |     a as usize; //~ ERROR casting
+   |     ^^^^^^^^^^
+   |
+   = help: cast through a raw pointer first
+
+error[E0606]: casting `&[i32]` as `isize` is invalid
+  --> $DIR/fat-ptr-cast.rs:21:5
+   |
+LL |     a as isize; //~ ERROR casting
+   |     ^^^^^^^^^^
+   |
+   = help: cast through a raw pointer first
+
+error[E0606]: casting `&[i32]` as `i16` is invalid
+  --> $DIR/fat-ptr-cast.rs:22:5
+   |
+LL |     a as i16; //~ ERROR casting `&[i32]` as `i16` is invalid
+   |     ^^^^^^^^
+   |
+   = help: cast through a raw pointer first
+
+error[E0606]: casting `&[i32]` as `u32` is invalid
+  --> $DIR/fat-ptr-cast.rs:23:5
+   |
+LL |     a as u32; //~ ERROR casting `&[i32]` as `u32` is invalid
+   |     ^^^^^^^^
+   |
+   = help: cast through a raw pointer first
+
+error[E0605]: non-primitive cast: `std::boxed::Box<[i32]>` as `usize`
+  --> $DIR/fat-ptr-cast.rs:24:5
+   |
+LL |     b as usize; //~ ERROR non-primitive cast
+   |     ^^^^^^^^^^
+   |
+   = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
+
+error[E0606]: casting `*const [i32]` as `usize` is invalid
+  --> $DIR/fat-ptr-cast.rs:25:5
+   |
+LL |     p as usize;
+   |     ^^^^^^^^^^
+   |
+   = help: cast through a thin pointer first
+
+error[E0607]: cannot cast thin pointer `*const i32` to fat pointer `*const [i32]`
+  --> $DIR/fat-ptr-cast.rs:29:5
+   |
+LL |     q as *const [i32]; //~ ERROR cannot cast
+   |     ^^^^^^^^^^^^^^^^^
+
+error[E0606]: casting `usize` as `*mut Trait + 'static` is invalid
+  --> $DIR/fat-ptr-cast.rs:32:37
+   |
+LL |     let t: *mut (Trait + 'static) = 0 as *mut _; //~ ERROR casting
+   |                                     ^^^^^^^^^^^
+
+error[E0606]: casting `usize` as `*const str` is invalid
+  --> $DIR/fat-ptr-cast.rs:33:32
+   |
+LL |     let mut fail: *const str = 0 as *const str; //~ ERROR casting
+   |                                ^^^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
+
+You've got a few errors: E0605, E0606, E0607
+If you want more information on an error, try using "rustc --explain E0605"

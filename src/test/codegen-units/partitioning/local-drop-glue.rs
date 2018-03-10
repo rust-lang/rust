@@ -15,7 +15,7 @@
 // compile-flags:-Zinline-in-all-cgus
 
 #![allow(dead_code)]
-#![crate_type="lib"]
+#![crate_type="rlib"]
 
 //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<local_drop_glue::Struct[0]> @@ local_drop_glue[Internal] local_drop_glue-mod1[Internal]
 struct Struct {
@@ -32,8 +32,8 @@ struct Outer {
     _a: Struct
 }
 
-//~ TRANS_ITEM fn local_drop_glue::user[0] @@ local_drop_glue[Internal]
-fn user()
+//~ TRANS_ITEM fn local_drop_glue::user[0] @@ local_drop_glue[External]
+pub fn user()
 {
     let _ = Outer {
         _a: Struct {
@@ -42,7 +42,7 @@ fn user()
     };
 }
 
-mod mod1
+pub mod mod1
 {
     use super::Struct;
 
@@ -53,8 +53,8 @@ mod mod1
         _b: (u32, Struct),
     }
 
-    //~ TRANS_ITEM fn local_drop_glue::mod1[0]::user[0] @@ local_drop_glue-mod1[Internal]
-    fn user()
+    //~ TRANS_ITEM fn local_drop_glue::mod1[0]::user[0] @@ local_drop_glue-mod1[External]
+    pub fn user()
     {
         let _ = Struct2 {
             _a: Struct { _a: 0 },

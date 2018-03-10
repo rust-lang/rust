@@ -13,9 +13,10 @@ use errors::Handler;
 use errors::emitter::EmitterWriter;
 use std::io;
 use std::io::prelude::*;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use std::str;
 use std::sync::{Arc, Mutex};
+use std::path::Path;
 use syntax_pos::{BytePos, NO_EXPANSION, Span, MultiSpan};
 
 /// Identify a position in the text by the Nth occurrence of a string.
@@ -47,8 +48,8 @@ impl<T: Write> Write for Shared<T> {
 fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &str) {
     let output = Arc::new(Mutex::new(Vec::new()));
 
-    let code_map = Rc::new(CodeMap::new(FilePathMapping::empty()));
-    code_map.new_filemap_and_lines("test.rs", &file_text);
+    let code_map = Lrc::new(CodeMap::new(FilePathMapping::empty()));
+    code_map.new_filemap_and_lines(Path::new("test.rs"), &file_text);
 
     let primary_span = make_span(&file_text, &span_labels[0].start, &span_labels[0].end);
     let mut msp = MultiSpan::from_span(primary_span);
@@ -61,6 +62,7 @@ fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &
 
     let emitter = EmitterWriter::new(Box::new(Shared { data: output.clone() }),
                                      Some(code_map.clone()),
+                                     false,
                                      false);
     let handler = Handler::with_emitter(true, false, Box::new(emitter));
     handler.span_err(msp, "foo");

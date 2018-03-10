@@ -13,16 +13,17 @@
 // This test is for *-windows-msvc only.
 // ignore-android
 // ignore-bitrig
-// ignore-macos
+// ignore-cloudabi
 // ignore-dragonfly
+// ignore-emscripten
 // ignore-freebsd
 // ignore-haiku
 // ignore-ios
 // ignore-linux
+// ignore-macos
 // ignore-netbsd
 // ignore-openbsd
 // ignore-solaris
-// ignore-emscripten
 
 // compile-flags: -C no-prepopulate-passes -C panic=abort -O
 

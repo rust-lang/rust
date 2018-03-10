@@ -22,6 +22,8 @@ pub struct ArchiveRO {
     ptr: ArchiveRef,
 }
 
+unsafe impl Send for ArchiveRO {}
+
 pub struct Iter<'a> {
     archive: &'a ArchiveRO,
     ptr: ::ArchiveIteratorRef,

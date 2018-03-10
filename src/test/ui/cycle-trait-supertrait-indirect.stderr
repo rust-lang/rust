@@ -1,0 +1,21 @@
+error[E0391]: cyclic dependency detected
+  --> $DIR/cycle-trait-supertrait-indirect.rs:20:1
+   |
+LL | trait C: B { }
+   | ^^^^^^^^^^ cyclic reference
+   |
+note: the cycle begins when computing the supertraits of `B`...
+  --> $DIR/cycle-trait-supertrait-indirect.rs:14:1
+   |
+LL | trait A: B {
+   | ^^^^^^^^^^
+note: ...which then requires computing the supertraits of `C`...
+  --> $DIR/cycle-trait-supertrait-indirect.rs:17:1
+   |
+LL | trait B: C {
+   | ^^^^^^^^^^
+   = note: ...which then again requires computing the supertraits of `B`, completing the cycle.
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0391"

@@ -1,0 +1,24 @@
+error[E0560]: union `U` has no field named `principle`
+  --> $DIR/union-suggest-field.rs:20:17
+   |
+LL |     let u = U { principle: 0 };
+   |                 ^^^^^^^^^ field does not exist - did you mean `principal`?
+
+error[E0609]: no field `principial` on type `U`
+  --> $DIR/union-suggest-field.rs:22:15
+   |
+LL |     let w = u.principial; //~ ERROR no field `principial` on type `U`
+   |               ^^^^^^^^^^ did you mean `principal`?
+
+error[E0615]: attempted to take value of method `calculate` on type `U`
+  --> $DIR/union-suggest-field.rs:25:15
+   |
+LL |     let y = u.calculate; //~ ERROR attempted to take value of method `calculate` on type `U`
+   |               ^^^^^^^^^
+   |
+   = help: maybe a `()` to call it is missing?
+
+error: aborting due to 3 previous errors
+
+You've got a few errors: E0560, E0609, E0615
+If you want more information on an error, try using "rustc --explain E0560"

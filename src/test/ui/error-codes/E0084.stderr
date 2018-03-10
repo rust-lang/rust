@@ -1,0 +1,11 @@
+error[E0084]: unsupported representation for zero-variant enum
+  --> $DIR/E0084.rs:11:1
+   |
+LL | #[repr(i32)] //~ ERROR: E0084
+   | ^^^^^^^^^^^^
+LL | enum Foo {}
+   | ----------- zero-variant enum
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0084"

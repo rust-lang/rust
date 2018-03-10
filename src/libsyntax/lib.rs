@@ -22,7 +22,10 @@
 
 #![feature(unicode)]
 #![feature(rustc_diagnostic_macros)]
+#![feature(match_default_bindings)]
 #![feature(i128_type)]
+#![feature(const_atomic_usize_new)]
+#![feature(rustc_attrs)]
 
 // See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
 #[allow(unused_extern_crates)]
@@ -52,7 +55,7 @@ macro_rules! panictry {
             Ok(e) => e,
             Err(mut e) => {
                 e.emit();
-                panic!(FatalError);
+                FatalError.raise()
             }
         }
     })

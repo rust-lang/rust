@@ -23,6 +23,8 @@ use sys::process::process_common::*;
 impl Command {
     pub fn spawn(&mut self, default: Stdio, needs_stdin: bool)
                  -> io::Result<(Process, StdioPipes)> {
+        let envp = self.capture_env();
+
         if self.saw_nul() {
             return Err(io::Error::new(io::ErrorKind::InvalidInput,
                                       "nul byte found in provided data"));
@@ -30,7 +32,7 @@ impl Command {
 
         let (ours, theirs) = self.setup_io(default, needs_stdin)?;
 
-        let process_handle = unsafe { self.do_exec(theirs)? };
+        let process_handle = unsafe { self.do_exec(theirs, envp.as_ref())? };
 
         Ok((Process { handle: Handle::new(process_handle) }, ours))
     }
@@ -50,13 +52,13 @@ impl Command {
         }
     }
 
-    unsafe fn do_exec(&mut self, stdio: ChildPipes)
+    unsafe fn do_exec(&mut self, stdio: ChildPipes, maybe_envp: Option<&CStringArray>)
                       -> io::Result<zx_handle_t> {
         use sys::process::zircon::*;
 
         let job_handle = zx_job_default();
-        let envp = match *self.get_envp() {
-            Some(ref envp) => envp.as_ptr(),
+        let envp = match maybe_envp {
+            Some(envp) => envp.as_ptr(),
             None => ptr::null(),
         };
 

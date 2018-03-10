@@ -26,10 +26,10 @@ use parse::token::Token::*;
 use symbol::Symbol;
 use tokenstream::{TokenStream, TokenTree};
 
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
-use std::rc::Rc;
+
+use rustc_data_structures::sync::Lrc;
 
 pub struct ParserAnyMacro<'a> {
     parser: Parser<'a>,
@@ -183,7 +183,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
 // Holy self-referential!
 
 /// Converts a `macro_rules!` invocation into a syntax extension.
-pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) -> SyntaxExtension {
+pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item) -> SyntaxExtension {
     let lhs_nm = ast::Ident::with_empty_ctxt(Symbol::gensym("lhs"));
     let rhs_nm = ast::Ident::with_empty_ctxt(Symbol::gensym("rhs"));
 
@@ -199,7 +199,7 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
     // ...quasiquoting this would be nice.
     // These spans won't matter, anyways
     let argument_gram = vec![
-        quoted::TokenTree::Sequence(DUMMY_SP, Rc::new(quoted::SequenceRepetition {
+        quoted::TokenTree::Sequence(DUMMY_SP, Lrc::new(quoted::SequenceRepetition {
             tts: vec![
                 quoted::TokenTree::MetaVarDecl(DUMMY_SP, lhs_nm, ast::Ident::from_str("tt")),
                 quoted::TokenTree::Token(DUMMY_SP, token::FatArrow),
@@ -210,7 +210,7 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
             num_captures: 2,
         })),
         // to phase into semicolon-termination instead of semicolon-separation
-        quoted::TokenTree::Sequence(DUMMY_SP, Rc::new(quoted::SequenceRepetition {
+        quoted::TokenTree::Sequence(DUMMY_SP, Lrc::new(quoted::SequenceRepetition {
             tts: vec![quoted::TokenTree::Token(DUMMY_SP, token::Semi)],
             separator: None,
             op: quoted::KleeneOp::ZeroOrMore,
@@ -222,10 +222,10 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
         Success(m) => m,
         Failure(sp, tok) => {
             let s = parse_failure_msg(tok);
-            panic!(sess.span_diagnostic.span_fatal(sp.substitute_dummy(def.span), &s));
+            sess.span_diagnostic.span_fatal(sp.substitute_dummy(def.span), &s).raise();
         }
         Error(sp, s) => {
-            panic!(sess.span_diagnostic.span_fatal(sp.substitute_dummy(def.span), &s));
+            sess.span_diagnostic.span_fatal(sp.substitute_dummy(def.span), &s).raise();
         }
     };
 
@@ -237,7 +237,8 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
             s.iter().map(|m| {
                 if let MatchedNonterminal(ref nt) = *m {
                     if let NtTT(ref tt) = **nt {
-                        let tt = quoted::parse(tt.clone().into(), true, sess).pop().unwrap();
+                        let tt = quoted::parse(tt.clone().into(), true, sess, features, &def.attrs)
+                            .pop().unwrap();
                         valid &= check_lhs_nt_follows(sess, features, &def.attrs, &tt);
                         return tt;
                     }
@@ -253,7 +254,8 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
             s.iter().map(|m| {
                 if let MatchedNonterminal(ref nt) = *m {
                     if let NtTT(ref tt) = **nt {
-                        return quoted::parse(tt.clone().into(), false, sess).pop().unwrap();
+                        return quoted::parse(tt.clone().into(), false, sess, features, &def.attrs)
+                            .pop().unwrap();
                     }
                 }
                 sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
@@ -293,7 +295,7 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
 }
 
 fn check_lhs_nt_follows(sess: &ParseSess,
-                        features: &RefCell<Features>,
+                        features: &Features,
                         attrs: &[ast::Attribute],
                         lhs: &quoted::TokenTree) -> bool {
     // lhs is going to be like TokenTree::Delimited(...), where the
@@ -350,7 +352,7 @@ fn check_rhs(sess: &ParseSess, rhs: &quoted::TokenTree) -> bool {
 }
 
 fn check_matcher(sess: &ParseSess,
-                 features: &RefCell<Features>,
+                 features: &Features,
                  attrs: &[ast::Attribute],
                  matcher: &[quoted::TokenTree]) -> bool {
     let first_sets = FirstSets::new(matcher);
@@ -598,7 +600,7 @@ impl TokenSet {
 // Requires that `first_sets` is pre-computed for `matcher`;
 // see `FirstSets::new`.
 fn check_matcher_core(sess: &ParseSess,
-                      features: &RefCell<Features>,
+                      features: &Features,
                       attrs: &[ast::Attribute],
                       first_sets: &FirstSets,
                       matcher: &[quoted::TokenTree],
@@ -768,10 +770,11 @@ fn token_can_be_followed_by_any(tok: &quoted::TokenTree) -> bool {
 /// ANYTHING without fear of future compatibility hazards).
 fn frag_can_be_followed_by_any(frag: &str) -> bool {
     match frag {
-        "item"  | // always terminated by `}` or `;`
-        "block" | // exactly one token tree
-        "ident" | // exactly one token tree
-        "meta"  | // exactly one token tree
+        "item"     | // always terminated by `}` or `;`
+        "block"    | // exactly one token tree
+        "ident"    | // exactly one token tree
+        "meta"     | // exactly one token tree
+        "lifetime" | // exactly one token tree
         "tt" =>   // exactly one token tree
             true,
 
@@ -832,8 +835,8 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> Result<bool, (String, &'
                 TokenTree::MetaVarDecl(_, _, frag) if frag.name == "block" => Ok(true),
                 _ => Ok(false),
             },
-            "ident" => {
-                // being a single token, idents are harmless
+            "ident" | "lifetime" => {
+                // being a single token, idents and lifetimes are harmless
                 Ok(true)
             },
             "meta" | "tt" => {
@@ -865,7 +868,7 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> Result<bool, (String, &'
 }
 
 fn has_legal_fragment_specifier(sess: &ParseSess,
-                                features: &RefCell<Features>,
+                                features: &Features,
                                 attrs: &[ast::Attribute],
                                 tok: &quoted::TokenTree) -> Result<(), String> {
     debug!("has_legal_fragment_specifier({:?})", tok);
@@ -880,16 +883,28 @@ fn has_legal_fragment_specifier(sess: &ParseSess,
 }
 
 fn is_legal_fragment_specifier(sess: &ParseSess,
-                               features: &RefCell<Features>,
+                               features: &Features,
                                attrs: &[ast::Attribute],
                                frag_name: &str,
                                frag_span: Span) -> bool {
     match frag_name {
         "item" | "block" | "stmt" | "expr" | "pat" |
         "path" | "ty" | "ident" | "meta" | "tt" | "" => true,
+        "lifetime" => {
+            if !features.macro_lifetime_matcher &&
+               !attr::contains_name(attrs, "allow_internal_unstable") {
+                let explain = feature_gate::EXPLAIN_LIFETIME_MATCHER;
+                emit_feature_err(sess,
+                                 "macro_lifetime_matcher",
+                                 frag_span,
+                                 GateIssue::Language,
+                                 explain);
+            }
+            true
+        },
         "vis" => {
-            if     !features.borrow().macro_vis_matcher
-                && !attr::contains_name(attrs, "allow_internal_unstable") {
+            if !features.macro_vis_matcher &&
+               !attr::contains_name(attrs, "allow_internal_unstable") {
                 let explain = feature_gate::EXPLAIN_VIS_MATCHER;
                 emit_feature_err(sess,
                                  "macro_vis_matcher",

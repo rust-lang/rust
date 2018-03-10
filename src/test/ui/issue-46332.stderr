@@ -1,0 +1,9 @@
+error[E0422]: cannot find struct, variant or union type `TyUInt` in this scope
+  --> $DIR/issue-46332.rs:19:5
+   |
+LL |     TyUInt {};
+   |     ^^^^^^ did you mean `TyUint`?
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0422"

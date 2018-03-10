@@ -14,18 +14,16 @@
 //! currently always a crate name.
 
 use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::env;
 use std::fs::{remove_file, create_dir_all, File};
 use std::io::Write;
+use std::path::PathBuf;
 use std::error::Error;
 use rustc_serialize::json::as_json;
 
-use syntax_pos::Span;
+use syntax_pos::{Span, FileName};
 use ext::base::ExtCtxt;
 use diagnostics::plugin::{ErrorMap, ErrorInfo};
-
-// Default metadata directory to use for extended error JSON.
-const ERROR_METADATA_PREFIX: &'static str = "tmp/extended-errors";
 
 /// JSON encodable/decodable version of `ErrorInfo`.
 #[derive(PartialEq, RustcDecodable, RustcEncodable)]
@@ -40,7 +38,7 @@ pub type ErrorMetadataMap = BTreeMap<String, ErrorMetadata>;
 /// JSON encodable error location type with filename and line number.
 #[derive(PartialEq, RustcDecodable, RustcEncodable)]
 pub struct ErrorLocation {
-    pub filename: String,
+    pub filename: FileName,
     pub line: usize
 }
 
@@ -59,7 +57,10 @@ impl ErrorLocation {
 ///
 /// See `output_metadata`.
 pub fn get_metadata_dir(prefix: &str) -> PathBuf {
-    PathBuf::from(ERROR_METADATA_PREFIX).join(prefix)
+    env::var_os("RUSTC_ERROR_METADATA_DST")
+        .map(PathBuf::from)
+        .expect("env var `RUSTC_ERROR_METADATA_DST` isn't set")
+        .join(prefix)
 }
 
 /// Map `name` to a path in the given directory: <directory>/<name>.json

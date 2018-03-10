@@ -8,7 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Operations and constants for 64-bits floats (`f64` type)
+//! This module provides constants which are specific to the implementation
+//! of the `f64` floating point data type.
+//!
+//! Mathematically significant numbers are provided in the `consts` sub-module.
+//!
+//! *[See also the `f64` primitive type](../../std/primitive.f64.html).*
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -140,6 +145,8 @@ pub mod consts {
            reason = "stable interface is via `impl f{32,64}` in later crates",
            issue = "32110")]
 impl Float for f64 {
+    type Bits = u64;
+
     /// Returns `true` if the number is NaN.
     #[inline]
     fn is_nan(self) -> bool {
@@ -171,7 +178,7 @@ impl Float for f64 {
         const EXP_MASK: u64 = 0x7ff0000000000000;
         const MAN_MASK: u64 = 0x000fffffffffffff;
 
-        let bits: u64 = unsafe { mem::transmute(self) };
+        let bits = self.to_bits();
         match (bits & MAN_MASK, bits & EXP_MASK) {
             (0, 0) => Fp::Zero,
             (_, 0) => Fp::Subnormal,
@@ -213,12 +220,7 @@ impl Float for f64 {
     /// negative sign bit and negative infinity.
     #[inline]
     fn is_sign_negative(self) -> bool {
-        #[repr(C)]
-        union F64Bytes {
-            f: f64,
-            b: u64
-        }
-        unsafe { F64Bytes { f: self }.b & 0x8000_0000_0000_0000 != 0 }
+        self.to_bits() & 0x8000_0000_0000_0000 != 0
     }
 
     /// Returns the reciprocal (multiplicative inverse) of the number.
@@ -235,6 +237,9 @@ impl Float for f64 {
     /// Converts to degrees, assuming the number is in radians.
     #[inline]
     fn to_degrees(self) -> f64 {
+        // The division here is correctly rounded with respect to the true
+        // value of 180/π. (This differs from f32, where a constant must be
+        // used to ensure a correctly rounded result.)
         self * (180.0f64 / consts::PI)
     }
 
@@ -256,7 +261,7 @@ impl Float for f64 {
         // Since we do not support sNaN in Rust yet, we do not need to handle them.
         // FIXME(nagisa): due to https://bugs.llvm.org/show_bug.cgi?id=33303 we canonicalize by
         // multiplying by 1.0. Should switch to the `canonicalize` when it works.
-        (if self < other || self.is_nan() { other } else { self }) * 1.0
+        (if self.is_nan() || self < other { other } else { self }) * 1.0
     }
 
     /// Returns the minimum of the two numbers.
@@ -270,6 +275,19 @@ impl Float for f64 {
         // Since we do not support sNaN in Rust yet, we do not need to handle them.
         // FIXME(nagisa): due to https://bugs.llvm.org/show_bug.cgi?id=33303 we canonicalize by
         // multiplying by 1.0. Should switch to the `canonicalize` when it works.
-        (if self < other || other.is_nan() { self } else { other }) * 1.0
+        (if other.is_nan() || self < other { self } else { other }) * 1.0
+    }
+
+    /// Raw transmutation to `u64`.
+    #[inline]
+    fn to_bits(self) -> u64 {
+        unsafe { mem::transmute(self) }
+    }
+
+    /// Raw transmutation from `u64`.
+    #[inline]
+    fn from_bits(v: u64) -> Self {
+        // It turns out the safety issues with sNaN were overblown! Hooray!
+        unsafe { mem::transmute(v) }
     }
 }

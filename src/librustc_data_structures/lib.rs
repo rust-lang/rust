@@ -21,7 +21,6 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![deny(warnings)]
 
-#![feature(shared)]
 #![feature(collections_range)]
 #![feature(nonzero)]
 #![feature(unboxed_closures)]
@@ -31,16 +30,25 @@
 #![feature(i128)]
 #![feature(conservative_impl_trait)]
 #![feature(specialization)]
+#![feature(optin_builtin_traits)]
+#![feature(underscore_lifetimes)]
+#![feature(macro_vis_matcher)]
+#![feature(allow_internal_unstable)]
 
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]
 
 extern crate core;
+extern crate ena;
 #[macro_use]
 extern crate log;
 extern crate serialize as rustc_serialize; // used by deriving
 #[cfg(unix)]
 extern crate libc;
+extern crate parking_lot;
+#[macro_use]
+extern crate cfg_if;
+extern crate stable_deref_trait;
 
 pub use rustc_serialize::hex::ToHex;
 
@@ -50,22 +58,22 @@ pub mod small_vec;
 pub mod base_n;
 pub mod bitslice;
 pub mod bitvec;
-pub mod blake2b;
 pub mod graph;
 pub mod indexed_set;
 pub mod indexed_vec;
 pub mod obligation_forest;
 pub mod sip128;
 pub mod snapshot_map;
-pub mod snapshot_vec;
+pub use ena::snapshot_vec;
 pub mod stable_hasher;
 pub mod transitive_relation;
-pub mod unify;
+pub use ena::unify;
 pub mod fx;
 pub mod tuple_slice;
-pub mod veccell;
 pub mod control_flow_graph;
 pub mod flock;
+pub mod sync;
+pub mod owning_ref;
 
 // See comments in src/librustc/lib.rs
 #[doc(hidden)]

@@ -1,0 +1,11 @@
+error[E0282]: type annotations needed
+  --> $DIR/vector-no-ann.rs:13:16
+   |
+LL |     let _foo = Vec::new();
+   |         ----   ^^^^^^^^ cannot infer type for `T`
+   |         |
+   |         consider giving `_foo` a type
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0282"

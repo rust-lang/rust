@@ -15,8 +15,6 @@
 use std::mem;
 use std::fmt::{self, Write};
 use std::ops;
-#[cfg(stage0)]
-use std::ascii::AsciiExt;
 
 use syntax::symbol::Symbol;
 use syntax::ast::{MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind, LitKind};
@@ -27,7 +25,7 @@ use syntax_pos::Span;
 
 use html::escape::Escape;
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug, PartialEq)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, PartialEq, Eq, Hash)]
 pub enum Cfg {
     /// Accepts all configurations.
     True,

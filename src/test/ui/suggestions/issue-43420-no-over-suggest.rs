@@ -15,5 +15,5 @@ fn foo(b: &[u16]) {}
 
 fn main() {
     let a: Vec<u8> = Vec::new();
-    foo(&a);
+    foo(&a); //~ ERROR mismatched types
 }

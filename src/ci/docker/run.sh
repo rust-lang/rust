@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
@@ -10,6 +10,8 @@
 # except according to those terms.
 
 set -e
+
+export MSYS_NO_PATHCONV=1
 
 script=`cd $(dirname $0) && pwd`/`basename $0`
 image=$1
@@ -25,12 +27,19 @@ travis_fold start build_docker
 travis_time_start
 
 if [ -f "$docker_dir/$image/Dockerfile" ]; then
+    dockerfile="$docker_dir/$image/Dockerfile"
+    if [ -x /usr/bin/cygpath ]; then
+        context="`cygpath -w $docker_dir`"
+        dockerfile="`cygpath -w $dockerfile`"
+    else
+        context="$docker_dir"
+    fi
     retry docker \
       build \
       --rm \
       -t rust-ci \
-      -f "$docker_dir/$image/Dockerfile" \
-      "$docker_dir"
+      -f "$dockerfile" \
+      "$context"
 elif [ -f "$docker_dir/disabled/$image/Dockerfile" ]; then
     if [ -n "$TRAVIS_OS_NAME" ]; then
         echo Cannot run disabled images on travis!
@@ -90,6 +99,7 @@ exec docker \
   --env LOCAL_USER_ID=`id -u` \
   --env TRAVIS \
   --env TRAVIS_BRANCH \
+  --env TOOLSTATE_REPO_ACCESS_TOKEN \
   --volume "$HOME/.cargo:/cargo" \
   --volume "$HOME/rustsrc:$HOME/rustsrc" \
   --init \

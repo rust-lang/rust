@@ -239,6 +239,12 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
         }
     }
 
+    // If there are no outputs, the inline assembly is executed just for its side effects,
+    // so ensure that it is volatile
+    if outputs.is_empty() {
+        volatile = true;
+    }
+
     MacEager::expr(P(ast::Expr {
         id: ast::DUMMY_NODE_ID,
         node: ast::ExprKind::InlineAsm(P(ast::InlineAsm {

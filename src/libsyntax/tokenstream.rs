@@ -286,12 +286,12 @@ impl TokenStream {
         TokenStream::concat(result)
     }
 
-    fn first_tree(&self) -> Option<TokenTree> {
+    fn first_tree_and_joint(&self) -> Option<(TokenTree, bool)> {
         match self.kind {
             TokenStreamKind::Empty => None,
-            TokenStreamKind::Tree(ref tree) |
-            TokenStreamKind::JointTree(ref tree) => Some(tree.clone()),
-            TokenStreamKind::Stream(ref stream) => stream.first().unwrap().first_tree(),
+            TokenStreamKind::Tree(ref tree) => Some((tree.clone(), false)),
+            TokenStreamKind::JointTree(ref tree) => Some((tree.clone(), true)),
+            TokenStreamKind::Stream(ref stream) => stream.first().unwrap().first_tree_and_joint(),
         }
     }
 
@@ -315,12 +315,18 @@ impl TokenStreamBuilder {
         let stream = stream.into();
         let last_tree_if_joint = self.0.last().and_then(TokenStream::last_tree_if_joint);
         if let Some(TokenTree::Token(last_span, last_tok)) = last_tree_if_joint {
-            if let Some(TokenTree::Token(span, tok)) = stream.first_tree() {
+            if let Some((TokenTree::Token(span, tok), is_joint)) = stream.first_tree_and_joint() {
                 if let Some(glued_tok) = last_tok.glue(tok) {
                     let last_stream = self.0.pop().unwrap();
                     self.push_all_but_last_tree(&last_stream);
                     let glued_span = last_span.to(span);
-                    self.0.push(TokenTree::Token(glued_span, glued_tok).into());
+                    let glued_tt = TokenTree::Token(glued_span, glued_tok);
+                    let glued_tokenstream = if is_joint {
+                        glued_tt.joint()
+                    } else {
+                        glued_tt.into()
+                    };
+                    self.0.push(glued_tokenstream);
                     self.push_all_but_first_tree(&stream);
                     return
                 }
@@ -669,4 +675,16 @@ mod tests {
         assert_eq!(test1.is_empty(), false);
         assert_eq!(test2.is_empty(), false);
     }
+
+    #[test]
+    fn test_dotdotdot() {
+        let mut builder = TokenStreamBuilder::new();
+        builder.push(TokenTree::Token(sp(0, 1), Token::Dot).joint());
+        builder.push(TokenTree::Token(sp(1, 2), Token::Dot).joint());
+        builder.push(TokenTree::Token(sp(2, 3), Token::Dot));
+        let stream = builder.build();
+        assert!(stream.eq_unspanned(&string_to_ts("...")));
+        assert_eq!(stream.trees().count(), 1);
+    }
+
 }

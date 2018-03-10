@@ -1,8 +1,9 @@
 error[E0404]: expected trait, found type alias `Bar`
   --> $DIR/two_files.rs:15:6
    |
-15 | impl Bar for Baz { }
+LL | impl Bar for Baz { } //~ ERROR expected trait, found type alias
    |      ^^^ type aliases cannot be used for traits
 
 error: cannot continue compilation due to previous error
 
+If you want more information on this error, try using "rustc --explain E0404"

@@ -1,0 +1,33 @@
+error[E0308]: mismatched types
+  --> $DIR/struct-path-self-type-mismatch.rs:17:23
+   |
+LL |         Self { inner: 1.5f32 }; //~ ERROR mismatched types
+   |                       ^^^^^^ expected i32, found f32
+
+error[E0308]: mismatched types
+  --> $DIR/struct-path-self-type-mismatch.rs:25:20
+   |
+LL |             inner: u
+   |                    ^ expected type parameter, found a different type parameter
+   |
+   = note: expected type `T`
+              found type `U`
+
+error[E0308]: mismatched types
+  --> $DIR/struct-path-self-type-mismatch.rs:23:9
+   |
+LL |       fn new<U>(u: U) -> Foo<U> {
+   |                          ------ expected `Foo<U>` because of return type
+LL | /         Self {
+LL | |         //~^ ERROR mismatched types
+LL | |             inner: u
+LL | |             //~^ ERROR mismatched types
+LL | |         }
+   | |_________^ expected type parameter, found a different type parameter
+   |
+   = note: expected type `Foo<U>`
+              found type `Foo<T>`
+
+error: aborting due to 3 previous errors
+
+If you want more information on this error, try using "rustc --explain E0308"

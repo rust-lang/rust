@@ -1,0 +1,52 @@
+error[E0666]: nested `impl Trait` is not allowed
+  --> $DIR/nested_impl_trait.rs:16:56
+   |
+LL | fn bad_in_ret_position(x: impl Into<u32>) -> impl Into<impl Debug> { x }
+   |                                              ----------^^^^^^^^^^-
+   |                                              |         |
+   |                                              |         nested `impl Trait` here
+   |                                              outer `impl Trait`
+
+error[E0666]: nested `impl Trait` is not allowed
+  --> $DIR/nested_impl_trait.rs:19:42
+   |
+LL | fn bad_in_fn_syntax(x: fn() -> impl Into<impl Debug>) {}
+   |                                ----------^^^^^^^^^^-
+   |                                |         |
+   |                                |         nested `impl Trait` here
+   |                                outer `impl Trait`
+
+error[E0666]: nested `impl Trait` is not allowed
+  --> $DIR/nested_impl_trait.rs:23:37
+   |
+LL | fn bad_in_arg_position(_: impl Into<impl Debug>) { }
+   |                           ----------^^^^^^^^^^-
+   |                           |         |
+   |                           |         nested `impl Trait` here
+   |                           outer `impl Trait`
+
+error[E0666]: nested `impl Trait` is not allowed
+  --> $DIR/nested_impl_trait.rs:28:44
+   |
+LL |     fn bad(x: impl Into<u32>) -> impl Into<impl Debug> { x }
+   |                                  ----------^^^^^^^^^^-
+   |                                  |         |
+   |                                  |         nested `impl Trait` here
+   |                                  outer `impl Trait`
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/nested_impl_trait.rs:19:32
+   |
+LL | fn bad_in_fn_syntax(x: fn() -> impl Into<impl Debug>) {}
+   |                                ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/nested_impl_trait.rs:36:42
+   |
+LL | fn allowed_in_ret_type() -> impl Fn() -> impl Into<u32> {
+   |                                          ^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+You've got a few errors: E0562, E0666
+If you want more information on an error, try using "rustc --explain E0562"

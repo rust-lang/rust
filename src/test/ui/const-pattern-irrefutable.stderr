@@ -1,0 +1,21 @@
+error[E0005]: refutable pattern in local binding: `_` not covered
+  --> $DIR/const-pattern-irrefutable.rs:22:9
+   |
+LL |     let a = 4; //~ ERROR refutable pattern in local binding: `_` not covered
+   |         ^ interpreted as a constant pattern, not new variable
+
+error[E0005]: refutable pattern in local binding: `_` not covered
+  --> $DIR/const-pattern-irrefutable.rs:23:9
+   |
+LL |     let c = 4; //~ ERROR refutable pattern in local binding: `_` not covered
+   |         ^ interpreted as a constant pattern, not new variable
+
+error[E0005]: refutable pattern in local binding: `_` not covered
+  --> $DIR/const-pattern-irrefutable.rs:24:9
+   |
+LL |     let d = 4; //~ ERROR refutable pattern in local binding: `_` not covered
+   |         ^ interpreted as a constant pattern, not new variable
+
+error: aborting due to 3 previous errors
+
+If you want more information on this error, try using "rustc --explain E0005"

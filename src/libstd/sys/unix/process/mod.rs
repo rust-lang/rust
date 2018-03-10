@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::process_common::{Command, ExitStatus, Stdio, StdioPipes};
+pub use self::process_common::{Command, ExitStatus, ExitCode, Stdio, StdioPipes};
 pub use self::process_inner::Process;
 
 mod process_common;

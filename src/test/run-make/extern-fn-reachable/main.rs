@@ -10,9 +10,9 @@
 
 #![feature(rustc_private)]
 
-extern crate rustc_back;
+extern crate rustc_metadata;
 
-use rustc_back::dynamic_lib::DynamicLibrary;
+use rustc_metadata::dynamic_lib::DynamicLibrary;
 use std::path::Path;
 
 pub fn main() {

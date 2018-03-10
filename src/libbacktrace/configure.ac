@@ -283,6 +283,12 @@ else
     AC_CHECK_FUNC(mmap, [have_mmap=yes], [have_mmap=no])
   fi
 fi
+
+case "${host_os}" in
+darwin*)
+  have_mmap=no ;;
+esac
+
 if test "$have_mmap" = "no"; then
   VIEW_FILE=read.lo
   ALLOC_FILE=alloc.lo

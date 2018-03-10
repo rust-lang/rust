@@ -29,6 +29,6 @@ fn main() {
 
     let xe1 = XEmpty1; //~ ERROR expected value, found struct `XEmpty1`
     let xe1 = XEmpty1(); //~ ERROR expected function, found struct `XEmpty1`
-    let xe3 = XE::Empty3; //~ ERROR no associated item named `Empty3` found for type
-    let xe3 = XE::Empty3(); //~ ERROR no associated item named `Empty3` found for type
+    let xe3 = XE::Empty3; //~ ERROR no variant named `Empty3` found for type
+    let xe3 = XE::Empty3(); //~ ERROR no variant named `Empty3` found for type
 }

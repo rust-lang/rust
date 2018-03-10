@@ -11,6 +11,9 @@ path = "lib.rs"
 core = { path = "../libcore" }
 std_unicode = { path = "../libstd_unicode" }
 
+[dev-dependencies]
+rand = "0.3"
+
 [[test]]
 name = "collectionstests"
 path = "../liballoc/tests/lib.rs"

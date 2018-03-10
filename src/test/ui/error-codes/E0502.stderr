@@ -1,0 +1,13 @@
+error[E0502]: cannot borrow `*a` as mutable because `a` is also borrowed as immutable
+  --> $DIR/E0502.rs:14:9
+   |
+LL |     let ref y = a;
+   |         ----- immutable borrow occurs here
+LL |     bar(a); //~ ERROR E0502
+   |         ^ mutable borrow occurs here
+LL | }
+   | - immutable borrow ends here
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0502"

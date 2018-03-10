@@ -1,0 +1,19 @@
+error[E0496]: lifetime name `'a` shadows a lifetime name that is already in scope
+  --> $DIR/shadowed-lifetime.rs:16:25
+   |
+LL | impl<'a> Foo<'a> {
+   |      -- first declared here
+LL |     fn shadow_in_method<'a>(&'a self) -> &'a isize {
+   |                         ^^ lifetime 'a already in scope
+
+error[E0496]: lifetime name `'b` shadows a lifetime name that is already in scope
+  --> $DIR/shadowed-lifetime.rs:22:20
+   |
+LL |     fn shadow_in_type<'b>(&'b self) -> &'b isize {
+   |                       -- first declared here
+LL |         let x: for<'b> fn(&'b isize) = panic!();
+   |                    ^^ lifetime 'b already in scope
+
+error: aborting due to 2 previous errors
+
+If you want more information on this error, try using "rustc --explain E0496"

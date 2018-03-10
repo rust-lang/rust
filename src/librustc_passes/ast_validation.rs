@@ -36,29 +36,36 @@ impl<'a> AstValidator<'a> {
         &self.session.parse_sess.span_diagnostic
     }
 
+    fn check_lifetime(&self, lifetime: &Lifetime) {
+        let valid_names = [keywords::StaticLifetime.name(), keywords::Invalid.name()];
+        if !valid_names.contains(&lifetime.ident.name) &&
+            token::Ident(lifetime.ident.without_first_quote()).is_reserved_ident() {
+            self.err_handler().span_err(lifetime.span, "lifetimes cannot use keyword names");
+        }
+    }
+
     fn check_label(&self, label: Ident, span: Span) {
-        if label.name == keywords::StaticLifetime.name() || label.name == "'_" {
+        if token::Ident(label.without_first_quote()).is_reserved_ident() || label.name == "'_" {
             self.err_handler().span_err(span, &format!("invalid label name `{}`", label.name));
         }
     }
 
     fn invalid_non_exhaustive_attribute(&self, variant: &Variant) {
-        let has_non_exhaustive = variant.node.attrs.iter()
-            .any(|attr| attr.check_name("non_exhaustive"));
+        let has_non_exhaustive = attr::contains_name(&variant.node.attrs, "non_exhaustive");
         if has_non_exhaustive {
             self.err_handler().span_err(variant.span,
                                         "#[non_exhaustive] is not yet supported on variants");
         }
     }
 
-    fn invalid_visibility(&self, vis: &Visibility, span: Span, note: Option<&str>) {
-        if vis != &Visibility::Inherited {
+    fn invalid_visibility(&self, vis: &Visibility, note: Option<&str>) {
+        if vis.node != VisibilityKind::Inherited {
             let mut err = struct_span_err!(self.session,
-                                           span,
+                                           vis.span,
                                            E0449,
                                            "unnecessary visibility qualifier");
-            if vis == &Visibility::Public {
-                err.span_label(span, "`pub` not needed here");
+            if vis.node == VisibilityKind::Public {
+                err.span_label(vis.span, "`pub` not needed here");
             }
             if let Some(note) = note {
                 err.note(note);
@@ -72,7 +79,8 @@ impl<'a> AstValidator<'a> {
             match arg.pat.node {
                 PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), _, None) |
                 PatKind::Wild => {}
-                PatKind::Ident(..) => report_err(arg.pat.span, true),
+                PatKind::Ident(BindingMode::ByValue(Mutability::Mutable), _, None) =>
+                    report_err(arg.pat.span, true),
                 _ => report_err(arg.pat.span, false),
             }
         }
@@ -133,13 +141,8 @@ impl<'a> AstValidator<'a> {
 impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_expr(&mut self, expr: &'a Expr) {
         match expr.node {
-            ExprKind::While(.., Some(ident)) |
-            ExprKind::Loop(_, Some(ident)) |
-            ExprKind::WhileLet(.., Some(ident)) |
-            ExprKind::ForLoop(.., Some(ident)) |
-            ExprKind::Break(Some(ident), _) |
-            ExprKind::Continue(Some(ident)) => {
-                self.check_label(ident.node, ident.span);
+            ExprKind::InlineAsm(..) if !self.session.target.target.options.allow_asm => {
+                span_err!(self.session, expr.span, E0472, "asm! is unsupported on this target");
             }
             _ => {}
         }
@@ -151,14 +154,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         match ty.node {
             TyKind::BareFn(ref bfty) => {
                 self.check_decl_no_pat(&bfty.decl, |span, _| {
-                    let mut err = struct_span_err!(self.session,
-                                                   span,
-                                                   E0561,
-                                                   "patterns aren't allowed in function pointer \
-                                                    types");
-                    err.span_note(span,
-                                  "this is a recent error, see issue #35203 for more details");
-                    err.emit();
+                    struct_span_err!(self.session, span, E0561,
+                                     "patterns aren't allowed in function pointer types").emit();
                 });
             }
             TyKind::TraitObject(ref bounds, ..) => {
@@ -187,72 +184,95 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         visit::walk_ty(self, ty)
     }
 
-    fn visit_path(&mut self, path: &'a Path, _: NodeId) {
-        if path.segments.len() >= 2 && path.is_global() {
-            let ident = path.segments[1].identifier;
-            if token::Ident(ident).is_path_segment_keyword() {
-                self.err_handler()
-                    .span_err(path.span, &format!("global paths cannot start with `{}`", ident));
-            }
-        }
+    fn visit_use_tree(&mut self, use_tree: &'a UseTree, id: NodeId, _nested: bool) {
+        // Check if the path in this `use` is not generic, such as `use foo::bar<T>;` While this
+        // can't happen normally thanks to the parser, a generic might sneak in if the `use` is
+        // built using a macro.
+        //
+        // macro_use foo {
+        //     ($p:path) => { use $p; }
+        // }
+        // foo!(bar::baz<T>);
+        use_tree.prefix.segments.iter().find(|segment| {
+            segment.parameters.is_some()
+        }).map(|segment| {
+            self.err_handler().span_err(segment.parameters.as_ref().unwrap().span(),
+                                        "generic arguments in import path");
+        });
 
-        visit::walk_path(self, path)
+        visit::walk_use_tree(self, use_tree, id);
+    }
+
+    fn visit_label(&mut self, label: &'a Label) {
+        self.check_label(label.ident, label.span);
+        visit::walk_label(self, label);
+    }
+
+    fn visit_lifetime(&mut self, lifetime: &'a Lifetime) {
+        self.check_lifetime(lifetime);
+        visit::walk_lifetime(self, lifetime);
     }
 
     fn visit_item(&mut self, item: &'a Item) {
         match item.node {
-            ItemKind::Use(ref view_path) => {
-                let path = view_path.node.path();
-                path.segments.iter().find(|segment| segment.parameters.is_some()).map(|segment| {
-                    self.err_handler().span_err(segment.parameters.as_ref().unwrap().span(),
-                                                "generic arguments in import path");
-                });
-            }
-            ItemKind::Impl(.., Some(..), _, ref impl_items) => {
-                self.invalid_visibility(&item.vis, item.span, None);
+            ItemKind::Impl(unsafety, polarity, _, _, Some(..), ref ty, ref impl_items) => {
+                self.invalid_visibility(&item.vis, None);
+                if ty.node == TyKind::Err {
+                    self.err_handler()
+                        .struct_span_err(item.span, "`impl Trait for .. {}` is an obsolete syntax")
+                        .help("use `auto trait Trait {}` instead").emit();
+                }
+                if unsafety == Unsafety::Unsafe && polarity == ImplPolarity::Negative {
+                    span_err!(self.session, item.span, E0198, "negative impls cannot be unsafe");
+                }
                 for impl_item in impl_items {
-                    self.invalid_visibility(&impl_item.vis, impl_item.span, None);
+                    self.invalid_visibility(&impl_item.vis, None);
                     if let ImplItemKind::Method(ref sig, _) = impl_item.node {
                         self.check_trait_fn_not_const(sig.constness);
                     }
                 }
             }
-            ItemKind::Impl(.., None, _, _) => {
+            ItemKind::Impl(unsafety, polarity, defaultness, _, None, _, _) => {
                 self.invalid_visibility(&item.vis,
-                                        item.span,
                                         Some("place qualifiers on individual impl items instead"));
-            }
-            ItemKind::AutoImpl(..) => {
-                self.invalid_visibility(&item.vis, item.span, None);
+                if unsafety == Unsafety::Unsafe {
+                    span_err!(self.session, item.span, E0197, "inherent impls cannot be unsafe");
+                }
+                if polarity == ImplPolarity::Negative {
+                    self.err_handler().span_err(item.span, "inherent impls cannot be negative");
+                }
+                if defaultness == Defaultness::Default {
+                    self.err_handler().span_err(item.span, "inherent impls cannot be default");
+                }
             }
             ItemKind::ForeignMod(..) => {
-                self.invalid_visibility(&item.vis,
-                                        item.span,
-                                        Some("place qualifiers on individual foreign items \
-                                              instead"));
+                self.invalid_visibility(
+                    &item.vis,
+                    Some("place qualifiers on individual foreign items instead"),
+                );
             }
             ItemKind::Enum(ref def, _) => {
                 for variant in &def.variants {
                     self.invalid_non_exhaustive_attribute(variant);
                     for field in variant.node.data.fields() {
-                        self.invalid_visibility(&field.vis, field.span, None);
+                        self.invalid_visibility(&field.vis, None);
                     }
                 }
             }
             ItemKind::Trait(is_auto, _, ref generics, ref bounds, ref trait_items) => {
                 if is_auto == IsAuto::Yes {
                     // Auto traits cannot have generics, super traits nor contain items.
-                    if !generics.ty_params.is_empty() {
-                        self.err_handler().span_err(item.span,
-                                                    "auto traits cannot have generics");
+                    if generics.is_parameterized() {
+                        struct_span_err!(self.session, item.span, E0567,
+                                        "auto traits cannot have generic parameters").emit();
                     }
                     if !bounds.is_empty() {
-                        self.err_handler().span_err(item.span,
-                                                    "auto traits cannot have super traits");
+                        struct_span_err!(self.session, item.span, E0568,
+                                        "auto traits cannot have super traits").emit();
                     }
                     if !trait_items.is_empty() {
-                        self.err_handler().span_err(item.span,
-                                                    "auto traits cannot contain items");
+                        struct_span_err!(self.session, item.span, E0380,
+                                "auto traits cannot have methods or associated items").emit();
                     }
                 }
                 self.no_questions_in_bounds(bounds, "supertraits", true);
@@ -260,13 +280,39 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     if let TraitItemKind::Method(ref sig, ref block) = trait_item.node {
                         self.check_trait_fn_not_const(sig.constness);
                         if block.is_none() {
-                            self.check_decl_no_pat(&sig.decl, |span, _| {
-                                self.session.buffer_lint(
-                                    lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY,
-                                    trait_item.id, span,
-                                    "patterns aren't allowed in methods \
-                                     without bodies");
+                            self.check_decl_no_pat(&sig.decl, |span, mut_ident| {
+                                if mut_ident {
+                                    self.session.buffer_lint(
+                                        lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY,
+                                        trait_item.id, span,
+                                        "patterns aren't allowed in methods without bodies");
+                                } else {
+                                    struct_span_err!(self.session, span, E0642,
+                                        "patterns aren't allowed in methods without bodies").emit();
+                                }
                             });
+                        }
+                    }
+                }
+            }
+            ItemKind::TraitAlias(Generics { ref params, .. }, ..) => {
+                for param in params {
+                    if let GenericParam::Type(TyParam {
+                        ref bounds,
+                        ref default,
+                        span,
+                        ..
+                    }) = *param
+                    {
+                        if !bounds.is_empty() {
+                            self.err_handler().span_err(span,
+                                                        "type parameters on the left side of a \
+                                                         trait alias cannot be bounded");
+                        }
+                        if !default.is_none() {
+                            self.err_handler().span_err(span,
+                                                        "type parameters on the left side of a \
+                                                         trait alias cannot have defaults");
                         }
                     }
                 }
@@ -274,7 +320,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ItemKind::Mod(_) => {
                 // Ensure that `path` attributes on modules are recorded as used (c.f. #35584).
                 attr::first_attr_value_str_by_name(&item.attrs, "path");
-                if item.attrs.iter().any(|attr| attr.check_name("warn_directory_ownership")) {
+                if attr::contains_name(&item.attrs, "warn_directory_ownership") {
                     let lint = lint::builtin::LEGACY_DIRECTORY_OWNERSHIP;
                     let msg = "cannot declare a new module at this location";
                     self.session.buffer_lint(lint, item.id, item.span, msg);
@@ -299,18 +345,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
         match fi.node {
             ForeignItemKind::Fn(ref decl, _) => {
-                self.check_decl_no_pat(decl, |span, is_recent| {
-                    let mut err = struct_span_err!(self.session,
-                                                   span,
-                                                   E0130,
-                                                   "patterns aren't allowed in foreign function \
-                                                    declarations");
-                    err.span_label(span, "pattern not allowed in foreign function");
-                    if is_recent {
-                        err.span_note(span,
-                                      "this is a recent error, see issue #35203 for more details");
-                    }
-                    err.emit();
+                self.check_decl_no_pat(decl, |span, _| {
+                    struct_span_err!(self.session, span, E0130,
+                                     "patterns aren't allowed in foreign function declarations")
+                        .span_label(span, "pattern not allowed in foreign function").emit();
                 });
             }
             ForeignItemKind::Static(..) | ForeignItemKind::Ty => {}
@@ -320,8 +358,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_vis(&mut self, vis: &'a Visibility) {
-        match *vis {
-            Visibility::Restricted { ref path, .. } => {
+        match vis.node {
+            VisibilityKind::Restricted { ref path, .. } => {
                 path.segments.iter().find(|segment| segment.parameters.is_some()).map(|segment| {
                     self.err_handler().span_err(segment.parameters.as_ref().unwrap().span(),
                                                 "generic arguments in visibility path");
@@ -334,9 +372,21 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_generics(&mut self, g: &'a Generics) {
+        let mut seen_non_lifetime_param = false;
         let mut seen_default = None;
-        for ty_param in &g.ty_params {
-            if ty_param.default.is_some() {
+        for param in &g.params {
+            match (param, seen_non_lifetime_param) {
+                (&GenericParam::Lifetime(ref ld), true) => {
+                    self.err_handler()
+                        .span_err(ld.lifetime.span, "lifetime parameters must be leading");
+                },
+                (&GenericParam::Lifetime(_), false) => {}
+                _ => {
+                    seen_non_lifetime_param = true;
+                }
+            }
+
+            if let GenericParam::Type(ref ty_param @ TyParam { default: Some(_), .. }) = *param {
                 seen_default = Some(ty_param.span);
             } else if let Some(span) = seen_default {
                 self.err_handler()
@@ -369,6 +419,141 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 }
 
+// Bans nested `impl Trait`, e.g. `impl Into<impl Debug>`.
+// Nested `impl Trait` _is_ allowed in associated type position,
+// e.g `impl Iterator<Item=impl Debug>`
+struct NestedImplTraitVisitor<'a> {
+    session: &'a Session,
+    outer_impl_trait: Option<Span>,
+}
+
+impl<'a> NestedImplTraitVisitor<'a> {
+    fn with_impl_trait<F>(&mut self, outer_impl_trait: Option<Span>, f: F)
+        where F: FnOnce(&mut NestedImplTraitVisitor<'a>)
+    {
+        let old_outer_impl_trait = self.outer_impl_trait;
+        self.outer_impl_trait = outer_impl_trait;
+        f(self);
+        self.outer_impl_trait = old_outer_impl_trait;
+    }
+}
+
+
+impl<'a> Visitor<'a> for NestedImplTraitVisitor<'a> {
+    fn visit_ty(&mut self, t: &'a Ty) {
+        if let TyKind::ImplTrait(_) = t.node {
+            if let Some(outer_impl_trait) = self.outer_impl_trait {
+                struct_span_err!(self.session, t.span, E0666,
+                                 "nested `impl Trait` is not allowed")
+                    .span_label(outer_impl_trait, "outer `impl Trait`")
+                    .span_label(t.span, "nested `impl Trait` here")
+                    .emit();
+
+            }
+            self.with_impl_trait(Some(t.span), |this| visit::walk_ty(this, t));
+        } else {
+            visit::walk_ty(self, t);
+        }
+    }
+    fn visit_path_parameters(&mut self, _: Span, path_parameters: &'a PathParameters) {
+        match *path_parameters {
+            PathParameters::AngleBracketed(ref params) => {
+                for type_ in &params.types {
+                    self.visit_ty(type_);
+                }
+                for type_binding in &params.bindings {
+                    // Type bindings such as `Item=impl Debug` in `Iterator<Item=Debug>`
+                    // are allowed to contain nested `impl Trait`.
+                    self.with_impl_trait(None, |this| visit::walk_ty(this, &type_binding.ty));
+                }
+            }
+            PathParameters::Parenthesized(ref params) => {
+                for type_ in &params.inputs {
+                    self.visit_ty(type_);
+                }
+                if let Some(ref type_) = params.output {
+                    // `-> Foo` syntax is essentially an associated type binding,
+                    // so it is also allowed to contain nested `impl Trait`.
+                    self.with_impl_trait(None, |this| visit::walk_ty(this, type_));
+                }
+            }
+        }
+    }
+}
+
+// Bans `impl Trait` in path projections like `<impl Iterator>::Item` or `Foo::Bar<impl Trait>`.
+struct ImplTraitProjectionVisitor<'a> {
+    session: &'a Session,
+    is_banned: bool,
+}
+
+impl<'a> ImplTraitProjectionVisitor<'a> {
+    fn with_ban<F>(&mut self, f: F)
+        where F: FnOnce(&mut ImplTraitProjectionVisitor<'a>)
+    {
+        let old_is_banned = self.is_banned;
+        self.is_banned = true;
+        f(self);
+        self.is_banned = old_is_banned;
+    }
+}
+
+impl<'a> Visitor<'a> for ImplTraitProjectionVisitor<'a> {
+    fn visit_ty(&mut self, t: &'a Ty) {
+        match t.node {
+            TyKind::ImplTrait(_) => {
+                if self.is_banned {
+                    struct_span_err!(self.session, t.span, E0667,
+                                 "`impl Trait` is not allowed in path parameters")
+                        .emit();
+                }
+            }
+            TyKind::Path(ref qself, ref path) => {
+                // We allow these:
+                //  - `Option<impl Trait>`
+                //  - `option::Option<impl Trait>`
+                //  - `option::Option<T>::Foo<impl Trait>
+                //
+                // But not these:
+                //  - `<impl Trait>::Foo`
+                //  - `option::Option<impl Trait>::Foo`.
+                //
+                // To implement this, we disallow `impl Trait` from `qself`
+                // (for cases like `<impl Trait>::Foo>`)
+                // but we allow `impl Trait` in `PathParameters`
+                // iff there are no more PathSegments.
+                if let Some(ref qself) = *qself {
+                    // `impl Trait` in `qself` is always illegal
+                    self.with_ban(|this| this.visit_ty(&qself.ty));
+                }
+
+                for (i, segment) in path.segments.iter().enumerate() {
+                    // Allow `impl Trait` iff we're on the final path segment
+                    if i == (path.segments.len() - 1) {
+                        visit::walk_path_segment(self, path.span, segment);
+                    } else {
+                        self.with_ban(|this|
+                            visit::walk_path_segment(this, path.span, segment));
+                    }
+                }
+            }
+            _ => visit::walk_ty(self, t),
+        }
+    }
+}
+
 pub fn check_crate(session: &Session, krate: &Crate) {
+    visit::walk_crate(
+        &mut NestedImplTraitVisitor {
+            session,
+            outer_impl_trait: None,
+        }, krate);
+
+    visit::walk_crate(
+        &mut ImplTraitProjectionVisitor {
+            session,
+            is_banned: false,
+        }, krate);
+
     visit::walk_crate(&mut AstValidator { session: session }, krate)
 }

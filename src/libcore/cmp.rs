@@ -343,7 +343,7 @@ impl Ordering {
 /// v.sort_by_key(|&num| (num > 3, Reverse(num)));
 /// assert_eq!(v, vec![3, 2, 1, 6, 5, 4]);
 /// ```
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone, Default, Hash)]
 #[stable(feature = "reverse_cmp_key", since = "1.19.0")]
 pub struct Reverse<T>(#[stable(feature = "reverse_cmp_key", since = "1.19.0")] pub T);
 
@@ -880,24 +880,24 @@ mod impls {
 
     ord_impl! { char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
-    #[unstable(feature = "never_type_impls", issue = "35121")]
+    #[unstable(feature = "never_type", issue = "35121")]
     impl PartialEq for ! {
         fn eq(&self, _: &!) -> bool {
             *self
         }
     }
 
-    #[unstable(feature = "never_type_impls", issue = "35121")]
+    #[unstable(feature = "never_type", issue = "35121")]
     impl Eq for ! {}
 
-    #[unstable(feature = "never_type_impls", issue = "35121")]
+    #[unstable(feature = "never_type", issue = "35121")]
     impl PartialOrd for ! {
         fn partial_cmp(&self, _: &!) -> Option<Ordering> {
             *self
         }
     }
 
-    #[unstable(feature = "never_type_impls", issue = "35121")]
+    #[unstable(feature = "never_type", issue = "35121")]
     impl Ord for ! {
         fn cmp(&self, _: &!) -> Ordering {
             *self

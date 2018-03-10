@@ -1,0 +1,19 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/region-lbr1-does-not-outlive-ebr2.rs:19:5
+   |
+LL |     &*x
+   |     ^^^
+
+error[E0623]: lifetime mismatch
+  --> $DIR/region-lbr1-does-not-outlive-ebr2.rs:19:5
+   |
+LL | fn foo<'a, 'b>(x: &'a u32, y: &'b u32) -> &'b u32 {
+   |                   -------                 -------
+   |                   |
+   |                   this parameter and the return type are declared with different lifetimes...
+LL |     &*x
+   |     ^^^ ...but data from `x` is returned here
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0623"

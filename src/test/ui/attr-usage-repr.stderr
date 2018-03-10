@@ -1,0 +1,43 @@
+error[E0517]: attribute should be applied to struct, enum or union
+  --> $DIR/attr-usage-repr.rs:14:8
+   |
+LL | #[repr(C)] //~ ERROR: attribute should be applied to struct, enum or union
+   |        ^
+LL | fn f() {}
+   | --------- not a struct, enum or union
+
+error[E0517]: attribute should be applied to enum
+  --> $DIR/attr-usage-repr.rs:26:8
+   |
+LL | #[repr(i8)] //~ ERROR: attribute should be applied to enum
+   |        ^^
+LL | struct SInt(f64, f64);
+   | ---------------------- not an enum
+
+error[E0517]: attribute should be applied to struct or union
+  --> $DIR/attr-usage-repr.rs:32:8
+   |
+LL | #[repr(align(8))] //~ ERROR: attribute should be applied to struct
+   |        ^^^^^^^^
+LL | enum EAlign { A, B }
+   | -------------------- not a struct or union
+
+error[E0517]: attribute should be applied to struct or union
+  --> $DIR/attr-usage-repr.rs:35:8
+   |
+LL | #[repr(packed)] //~ ERROR: attribute should be applied to struct
+   |        ^^^^^^
+LL | enum EPacked { A, B }
+   | --------------------- not a struct or union
+
+error[E0517]: attribute should be applied to struct
+  --> $DIR/attr-usage-repr.rs:38:8
+   |
+LL | #[repr(simd)] //~ ERROR: attribute should be applied to struct
+   |        ^^^^
+LL | enum ESimd { A, B }
+   | ------------------- not a struct
+
+error: aborting due to 5 previous errors
+
+If you want more information on this error, try using "rustc --explain E0517"

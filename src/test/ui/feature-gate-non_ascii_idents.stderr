@@ -1,0 +1,113 @@
+error[E0658]: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/feature-gate-non_ascii_idents.rs:11:1
+   |
+LL | extern crate core as bäz; //~ ERROR non-ascii idents
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error[E0658]: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/feature-gate-non_ascii_idents.rs:13:5
+   |
+LL | use föö::bar; //~ ERROR non-ascii idents
+   |     ^^^^^^^^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error[E0658]: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/feature-gate-non_ascii_idents.rs:15:1
+   |
+LL | mod föö { //~ ERROR non-ascii idents
+   | ^^^^^^^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error[E0658]: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/feature-gate-non_ascii_idents.rs:19:1
+   |
+LL | / fn bär( //~ ERROR non-ascii idents
+LL | |     bäz: isize //~ ERROR non-ascii idents
+LL | |     ) {
+LL | |     let _ö: isize; //~ ERROR non-ascii idents
+...  |
+LL | |     }
+LL | | }
+   | |_^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error[E0658]: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/feature-gate-non_ascii_idents.rs:20:5
+   |
+LL |     bäz: isize //~ ERROR non-ascii idents
+   |     ^^^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error[E0658]: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/feature-gate-non_ascii_idents.rs:22:9
+   |
+LL |     let _ö: isize; //~ ERROR non-ascii idents
+   |         ^^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error[E0658]: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/feature-gate-non_ascii_idents.rs:25:10
+   |
+LL |         (_ä, _) => {} //~ ERROR non-ascii idents
+   |          ^^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error[E0658]: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/feature-gate-non_ascii_idents.rs:29:1
+   |
+LL | struct Föö { //~ ERROR non-ascii idents
+   | ^^^^^^^^^^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error[E0658]: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/feature-gate-non_ascii_idents.rs:30:5
+   |
+LL |     föö: isize //~ ERROR non-ascii idents
+   |     ^^^^^^^^^^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error[E0658]: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/feature-gate-non_ascii_idents.rs:33:1
+   |
+LL | enum Bär { //~ ERROR non-ascii idents
+   | ^^^^^^^^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error[E0658]: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/feature-gate-non_ascii_idents.rs:34:5
+   |
+LL |     Bäz { //~ ERROR non-ascii idents
+   |     ^^^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error[E0658]: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/feature-gate-non_ascii_idents.rs:35:9
+   |
+LL |         qüx: isize //~ ERROR non-ascii idents
+   |         ^^^^^^^^^^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error[E0658]: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/feature-gate-non_ascii_idents.rs:40:5
+   |
+LL |     fn qüx();  //~ ERROR non-ascii idents
+   |     ^^^^^^^^^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error: aborting due to 13 previous errors
+
+If you want more information on this error, try using "rustc --explain E0658"

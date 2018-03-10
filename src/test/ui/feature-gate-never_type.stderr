@@ -1,0 +1,43 @@
+error[E0658]: The `!` type is experimental (see issue #35121)
+  --> $DIR/feature-gate-never_type.rs:17:17
+   |
+LL | type Ma = (u32, !, i32); //~ ERROR type is experimental
+   |                 ^
+   |
+   = help: add #![feature(never_type)] to the crate attributes to enable
+
+error[E0658]: The `!` type is experimental (see issue #35121)
+  --> $DIR/feature-gate-never_type.rs:18:20
+   |
+LL | type Meeshka = Vec<!>; //~ ERROR type is experimental
+   |                    ^
+   |
+   = help: add #![feature(never_type)] to the crate attributes to enable
+
+error[E0658]: The `!` type is experimental (see issue #35121)
+  --> $DIR/feature-gate-never_type.rs:19:16
+   |
+LL | type Mow = &fn(!) -> !; //~ ERROR type is experimental
+   |                ^
+   |
+   = help: add #![feature(never_type)] to the crate attributes to enable
+
+error[E0658]: The `!` type is experimental (see issue #35121)
+  --> $DIR/feature-gate-never_type.rs:20:19
+   |
+LL | type Skwoz = &mut !; //~ ERROR type is experimental
+   |                   ^
+   |
+   = help: add #![feature(never_type)] to the crate attributes to enable
+
+error[E0658]: The `!` type is experimental (see issue #35121)
+  --> $DIR/feature-gate-never_type.rs:23:16
+   |
+LL |     type Wub = !; //~ ERROR type is experimental
+   |                ^
+   |
+   = help: add #![feature(never_type)] to the crate attributes to enable
+
+error: aborting due to 5 previous errors
+
+If you want more information on this error, try using "rustc --explain E0658"

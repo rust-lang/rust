@@ -1,0 +1,12 @@
+error[E0599]: no variant named `PIE` found for type `Delicious` in the current scope
+  --> $DIR/issue-22933-2.rs:14:44
+   |
+LL | enum Delicious {
+   | -------------- variant `PIE` not found here
+...
+LL |     ApplePie = Delicious::Apple as isize | Delicious::PIE as isize,
+   |                                            ^^^^^^^^^^^^^^ variant not found in `Delicious`
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0599"

@@ -1,0 +1,38 @@
+error: `derive` may only be applied to structs, enums and unions
+  --> $DIR/issue-43106-gating-of-derive.rs:14:1
+   |
+LL | #![derive(Debug)]
+   | ^^^^^^^^^^^^^^^^^ help: try an outer attribute: `#[derive(Debug)]`
+
+error: `derive` may only be applied to structs, enums and unions
+  --> $DIR/issue-43106-gating-of-derive.rs:17:1
+   |
+LL | #[derive(Debug)]
+   | ^^^^^^^^^^^^^^^^
+
+error: `derive` may only be applied to structs, enums and unions
+  --> $DIR/issue-43106-gating-of-derive.rs:20:17
+   |
+LL |     mod inner { #![derive(Debug)] }
+   |                 ^^^^^^^^^^^^^^^^^ help: try an outer attribute: `#[derive(Debug)]`
+
+error: `derive` may only be applied to structs, enums and unions
+  --> $DIR/issue-43106-gating-of-derive.rs:23:5
+   |
+LL |     #[derive(Debug)]
+   |     ^^^^^^^^^^^^^^^^
+
+error: `derive` may only be applied to structs, enums and unions
+  --> $DIR/issue-43106-gating-of-derive.rs:36:5
+   |
+LL |     #[derive(Debug)]
+   |     ^^^^^^^^^^^^^^^^
+
+error: `derive` may only be applied to structs, enums and unions
+  --> $DIR/issue-43106-gating-of-derive.rs:40:5
+   |
+LL |     #[derive(Debug)]
+   |     ^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

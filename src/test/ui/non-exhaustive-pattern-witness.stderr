@@ -1,0 +1,45 @@
+error[E0004]: non-exhaustive patterns: `Foo { first: false, second: Some([_, _, _, _]) }` not covered
+  --> $DIR/non-exhaustive-pattern-witness.rs:20:11
+   |
+LL |     match (Foo { first: true, second: None }) {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pattern `Foo { first: false, second: Some([_, _, _, _]) }` not covered
+
+error[E0004]: non-exhaustive patterns: `Red` not covered
+  --> $DIR/non-exhaustive-pattern-witness.rs:36:11
+   |
+LL |     match Color::Red {
+   |           ^^^^^^^^^^ pattern `Red` not covered
+
+error[E0004]: non-exhaustive patterns: `East`, `South` and `West` not covered
+  --> $DIR/non-exhaustive-pattern-witness.rs:48:11
+   |
+LL |     match Direction::North {
+   |           ^^^^^^^^^^^^^^^^ patterns `East`, `South` and `West` not covered
+
+error[E0004]: non-exhaustive patterns: `Second`, `Third`, `Fourth` and 8 more not covered
+  --> $DIR/non-exhaustive-pattern-witness.rs:59:11
+   |
+LL |     match ExcessiveEnum::First {
+   |           ^^^^^^^^^^^^^^^^^^^^ patterns `Second`, `Third`, `Fourth` and 8 more not covered
+
+error[E0004]: non-exhaustive patterns: `CustomRGBA { a: true, .. }` not covered
+  --> $DIR/non-exhaustive-pattern-witness.rs:67:11
+   |
+LL |     match Color::Red {
+   |           ^^^^^^^^^^ pattern `CustomRGBA { a: true, .. }` not covered
+
+error[E0004]: non-exhaustive patterns: `[Second(true), Second(false)]` not covered
+  --> $DIR/non-exhaustive-pattern-witness.rs:83:11
+   |
+LL |     match *x {
+   |           ^^ pattern `[Second(true), Second(false)]` not covered
+
+error[E0004]: non-exhaustive patterns: `((), false)` not covered
+  --> $DIR/non-exhaustive-pattern-witness.rs:96:11
+   |
+LL |     match ((), false) {
+   |           ^^^^^^^^^^^ pattern `((), false)` not covered
+
+error: aborting due to 7 previous errors
+
+If you want more information on this error, try using "rustc --explain E0004"

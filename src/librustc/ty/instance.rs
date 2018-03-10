@@ -10,7 +10,7 @@
 
 use hir::def_id::DefId;
 use ty::{self, Ty, TypeFoldable, Substs, TyCtxt};
-use ty::subst::{Kind, Subst};
+use ty::subst::Kind;
 use traits;
 use syntax::abi::Abi;
 use util::ppaux;
@@ -28,7 +28,7 @@ pub enum InstanceDef<'tcx> {
     Item(DefId),
     Intrinsic(DefId),
 
-    /// <fn() as FnTrait>::call_*
+    /// \<fn() as FnTrait>::call_*
     /// def-id is FnTrait::call_*
     FnPtrShim(DefId, Ty<'tcx>),
 
@@ -43,6 +43,16 @@ pub enum InstanceDef<'tcx> {
 
     ///`<T as Clone>::clone` shim.
     CloneShim(DefId, Ty<'tcx>),
+}
+
+impl<'a, 'tcx> Instance<'tcx> {
+    pub fn ty(&self,
+              tcx: TyCtxt<'a, 'tcx, 'tcx>)
+              -> Ty<'tcx>
+    {
+        let ty = tcx.type_of(self.def.def_id());
+        tcx.trans_apply_param_substs(self.substs, &ty)
+    }
 }
 
 impl<'tcx> InstanceDef<'tcx> {
@@ -60,13 +70,43 @@ impl<'tcx> InstanceDef<'tcx> {
     }
 
     #[inline]
-    pub fn def_ty<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx> {
-        tcx.type_of(self.def_id())
-    }
-
-    #[inline]
     pub fn attrs<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::Attributes<'tcx> {
         tcx.get_attrs(self.def_id())
+    }
+
+    pub fn is_inline<'a>(
+        &self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>
+    ) -> bool {
+        use hir::map::DefPathData;
+        let def_id = match *self {
+            ty::InstanceDef::Item(def_id) => def_id,
+            ty::InstanceDef::DropGlue(_, Some(_)) => return false,
+            _ => return true
+        };
+        match tcx.def_key(def_id).disambiguated_data.data {
+            DefPathData::StructCtor |
+            DefPathData::EnumVariant(..) |
+            DefPathData::ClosureExpr => true,
+            _ => false
+        }
+    }
+
+    pub fn requires_local<'a>(
+        &self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>
+    ) -> bool {
+        if self.is_inline(tcx) {
+            return true
+        }
+        if let ty::InstanceDef::DropGlue(..) = *self {
+            // Drop glue wants to be instantiated at every translation
+            // unit, but without an #[inline] hint. We should make this
+            // available to normal end-users.
+            return true
+        }
+        let trans_fn_attrs = tcx.trans_fn_attrs(self.def_id());
+        trans_fn_attrs.requests_inline() || tcx.is_const_fn(self.def_id())
     }
 }
 
@@ -180,20 +220,20 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
         debug!("resolve(def_id={:?}, substs={:?}) = {:?}", def_id, substs, result);
         result
     }
-}
 
-fn resolve_closure<'a, 'tcx>(
-                   tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                   def_id: DefId,
-                   substs: ty::ClosureSubsts<'tcx>,
-                   requested_kind: ty::ClosureKind)
--> Instance<'tcx>
-{
-    let actual_kind = tcx.closure_kind(def_id);
+    pub fn resolve_closure(
+                    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                    def_id: DefId,
+                    substs: ty::ClosureSubsts<'tcx>,
+                    requested_kind: ty::ClosureKind)
+    -> Instance<'tcx>
+    {
+        let actual_kind = substs.closure_kind(def_id, tcx);
 
-    match needs_fn_once_adapter_shim(actual_kind, requested_kind) {
-        Ok(true) => fn_once_adapter_instance(tcx, def_id, substs),
-        _ => Instance::new(def_id, substs.substs)
+        match needs_fn_once_adapter_shim(actual_kind, requested_kind) {
+            Ok(true) => fn_once_adapter_instance(tcx, def_id, substs),
+            _ => Instance::new(def_id, substs.substs)
+        }
     }
 }
 
@@ -202,8 +242,8 @@ fn resolve_associated_item<'a, 'tcx>(
     trait_item: &ty::AssociatedItem,
     param_env: ty::ParamEnv<'tcx>,
     trait_id: DefId,
-    rcvr_substs: &'tcx Substs<'tcx>
-    ) -> Option<Instance<'tcx>> {
+    rcvr_substs: &'tcx Substs<'tcx>,
+) -> Option<Instance<'tcx>> {
     let def_id = trait_item.def_id;
     debug!("resolve_associated_item(trait_item={:?}, \
                                     trait_id={:?}, \
@@ -230,7 +270,7 @@ fn resolve_associated_item<'a, 'tcx>(
         }
         traits::VtableClosure(closure_data) => {
             let trait_closure_kind = tcx.lang_items().fn_trait_kind(trait_id).unwrap();
-            Some(resolve_closure(tcx, closure_data.closure_def_id, closure_data.substs,
+            Some(Instance::resolve_closure(tcx, closure_data.closure_def_id, closure_data.substs,
                                  trait_closure_kind))
         }
         traits::VtableFnPointer(ref data) => {
@@ -311,13 +351,10 @@ fn fn_once_adapter_instance<'a, 'tcx>(
     let self_ty = tcx.mk_closure_from_closure_substs(
         closure_did, substs);
 
-    let sig = tcx.fn_sig(closure_did).subst(tcx, substs.substs);
+    let sig = substs.closure_sig(closure_did, tcx);
     let sig = tcx.erase_late_bound_regions_and_normalize(&sig);
     assert_eq!(sig.inputs().len(), 1);
-    let substs = tcx.mk_substs([
-                               Kind::from(self_ty),
-                               Kind::from(sig.inputs()[0]),
-    ].iter().cloned());
+    let substs = tcx.mk_substs([Kind::from(self_ty), sig.inputs()[0].into()].iter().cloned());
 
     debug!("fn_once_adapter_shim: self_ty={:?} sig={:?}", self_ty, sig);
     Instance { def, substs }

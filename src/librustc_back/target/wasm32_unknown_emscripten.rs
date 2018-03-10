@@ -10,7 +10,6 @@
 
 use LinkerFlavor;
 use super::{LinkArgs, Target, TargetOptions};
-use super::emscripten_base::{cmd};
 
 pub fn target() -> Result<Target, String> {
     let mut post_link_args = LinkArgs::new();
@@ -21,8 +20,6 @@ pub fn target() -> Result<Target, String> {
                                "ERROR_ON_UNDEFINED_SYMBOLS=1".to_string()]);
 
     let opts = TargetOptions {
-        linker: cmd("emcc"),
-
         dynamic_linking: false,
         executables: true,
         // Today emcc emits two files - a .js file to bootstrap and
@@ -35,6 +32,7 @@ pub fn target() -> Result<Target, String> {
         max_atomic_width: Some(32),
         post_link_args,
         target_family: Some("unix".to_string()),
+        codegen_backend: "emscripten".to_string(),
         .. Default::default()
     };
     Ok(Target {

@@ -1,0 +1,11 @@
+error[E0658]: parentheses in patterns are unstable
+  --> $DIR/feature-gate-pattern_parentheses.rs:13:9
+   |
+LL |         (pat) => {} //~ ERROR parentheses in patterns are unstable
+   |         ^^^^^
+   |
+   = help: add #![feature(pattern_parentheses)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0658"

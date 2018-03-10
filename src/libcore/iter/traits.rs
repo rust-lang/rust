@@ -7,8 +7,10 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-use ops::{Mul, Add};
+use ops::{Mul, Add, Try};
 use num::Wrapping;
+
+use super::{AlwaysOk, LoopState};
 
 /// Conversion from an `Iterator`.
 ///
@@ -415,6 +417,52 @@ pub trait DoubleEndedIterator: Iterator {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn next_back(&mut self) -> Option<Self::Item>;
 
+    /// This is the reverse version of [`try_fold()`]: it takes elements
+    /// starting from the back of the iterator.
+    ///
+    /// [`try_fold()`]: trait.Iterator.html#method.try_fold
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iterator_try_fold)]
+    /// let a = ["1", "2", "3"];
+    /// let sum = a.iter()
+    ///     .map(|&s| s.parse::<i32>())
+    ///     .try_rfold(0, |acc, x| x.and_then(|y| Ok(acc + y)));
+    /// assert_eq!(sum, Ok(6));
+    /// ```
+    ///
+    /// Short-circuiting:
+    ///
+    /// ```
+    /// #![feature(iterator_try_fold)]
+    /// let a = ["1", "rust", "3"];
+    /// let mut it = a.iter();
+    /// let sum = it
+    ///     .by_ref()
+    ///     .map(|&s| s.parse::<i32>())
+    ///     .try_rfold(0, |acc, x| x.and_then(|y| Ok(acc + y)));
+    /// assert!(sum.is_err());
+    ///
+    /// // Because it short-circuited, the remaining elements are still
+    /// // available through the iterator.
+    /// assert_eq!(it.next_back(), Some(&"1"));
+    /// ```
+    #[inline]
+    #[unstable(feature = "iterator_try_fold", issue = "45594")]
+    fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R where
+        Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+    {
+        let mut accum = init;
+        while let Some(x) = self.next_back() {
+            accum = f(accum, x)?;
+        }
+        Try::from_ok(accum)
+    }
+
     /// An iterator method that reduces the iterator's elements to a single,
     /// final value, starting from the back.
     ///
@@ -470,13 +518,10 @@ pub trait DoubleEndedIterator: Iterator {
     /// ```
     #[inline]
     #[unstable(feature = "iter_rfold", issue = "44705")]
-    fn rfold<B, F>(mut self, mut accum: B, mut f: F) -> B where
+    fn rfold<B, F>(mut self, accum: B, mut f: F) -> B where
         Self: Sized, F: FnMut(B, Self::Item) -> B,
     {
-        while let Some(x) = self.next_back() {
-            accum = f(accum, x);
-        }
-        accum
+        self.try_rfold(accum, move |acc, x| AlwaysOk(f(acc, x))).0
     }
 
     /// Searches for an element of an iterator from the right that satisfies a predicate.
@@ -531,10 +576,10 @@ pub trait DoubleEndedIterator: Iterator {
         Self: Sized,
         P: FnMut(&Self::Item) -> bool
     {
-        while let Some(x) = self.next_back() {
-            if predicate(&x) { return Some(x) }
-        }
-        None
+        self.try_rfold((), move |(), x| {
+            if predicate(&x) { LoopState::Break(x) }
+            else { LoopState::Continue(()) }
+        }).break_value()
     }
 }
 
@@ -661,7 +706,7 @@ pub trait ExactSizeIterator: Iterator {
     /// ```
     /// #![feature(exact_size_is_empty)]
     ///
-    /// let mut one_element = 0..1;
+    /// let mut one_element = std::iter::once(0);
     /// assert!(!one_element.is_empty());
     ///
     /// assert_eq!(one_element.next(), Some(0));
@@ -914,10 +959,10 @@ impl<T, U, E> Product<Result<U, E>> for Result<T, E>
 /// [`None`]: ../../std/option/enum.Option.html#variant.None
 /// [`Iterator::fuse`]: ../../std/iter/trait.Iterator.html#method.fuse
 /// [`Fuse`]: ../../std/iter/struct.Fuse.html
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 pub trait FusedIterator: Iterator {}
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, I: FusedIterator + ?Sized> FusedIterator for &'a mut I {}
 
 /// An iterator that reports an accurate length using size_hint.
@@ -925,9 +970,11 @@ impl<'a, I: FusedIterator + ?Sized> FusedIterator for &'a mut I {}
 /// The iterator reports a size hint where it is either exact
 /// (lower bound is equal to upper bound), or the upper bound is [`None`].
 /// The upper bound must only be [`None`] if the actual iterator length is
-/// larger than [`usize::MAX`].
+/// larger than [`usize::MAX`]. In that case, the lower bound must be
+/// [`usize::MAX`], resulting in a [`.size_hint`] of `(usize::MAX, None)`.
 ///
-/// The iterator must produce exactly the number of elements it reported.
+/// The iterator must produce exactly the number of elements it reported
+/// or diverge before reaching the end.
 ///
 /// # Safety
 ///

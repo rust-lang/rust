@@ -1,0 +1,9 @@
+error[E0424]: expected value, found module `self`
+  --> $DIR/E0424.rs:17:9
+   |
+LL |         self.bar(); //~ ERROR E0424
+   |         ^^^^ `self` value is only available in methods with `self` parameter
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0424"

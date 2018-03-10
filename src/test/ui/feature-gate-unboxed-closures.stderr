@@ -1,0 +1,13 @@
+error[E0658]: rust-call ABI is subject to change (see issue #29625)
+  --> $DIR/feature-gate-unboxed-closures.rs:16:5
+   |
+LL | /     extern "rust-call" fn call_once(self, (a, b): (u32, u32)) -> u32 {
+LL | |         a + b
+LL | |     }
+   | |_____^
+   |
+   = help: add #![feature(unboxed_closures)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0658"

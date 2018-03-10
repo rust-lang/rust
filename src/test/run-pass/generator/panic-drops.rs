@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-wasm32-bare compiled as panic=abort by default
+
 #![feature(generators, generator_trait)]
 
 use std::ops::Generator;

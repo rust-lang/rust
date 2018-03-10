@@ -24,25 +24,21 @@ fn main() {
     // `x { ... }` should not be interpreted as a struct literal here
     if x = x {
         //~^ ERROR mismatched types
-        //~| HELP did you mean to compare equality?
         println!("{}", x);
     }
     // Explicit parentheses on the left should match behavior of above
     if (x = x) {
         //~^ ERROR mismatched types
-        //~| HELP did you mean to compare equality?
         println!("{}", x);
     }
     // The struct literal interpretation is fine with explicit parentheses on the right
     if y = (Foo { foo: x }) {
         //~^ ERROR mismatched types
-        //~| HELP did you mean to compare equality?
         println!("{}", x);
     }
     // "invalid left-hand side expression" error is suppresed
     if 3 = x {
         //~^ ERROR mismatched types
-        //~| HELP did you mean to compare equality?
         println!("{}", x);
     }
     if (if true { x = 4 } else { x = 5 }) {

@@ -68,16 +68,21 @@
 #![feature(allow_internal_unstable)]
 #![feature(asm)]
 #![feature(associated_type_defaults)]
+#![feature(attr_literals)]
 #![feature(cfg_target_feature)]
 #![feature(cfg_target_has_atomic)]
 #![feature(concat_idents)]
 #![feature(const_fn)]
 #![feature(custom_attribute)]
+#![feature(doc_spotlight)]
 #![feature(fundamental)]
 #![feature(i128_type)]
 #![feature(inclusive_range_syntax)]
 #![feature(intrinsics)]
+#![feature(iterator_flatten)]
+#![feature(iterator_repeat_with)]
 #![feature(lang_items)]
+#![feature(link_llvm_intrinsics)]
 #![feature(never_type)]
 #![feature(no_core)]
 #![feature(on_unimplemented)]
@@ -86,27 +91,16 @@
 #![feature(repr_simd, platform_intrinsics)]
 #![feature(rustc_attrs)]
 #![feature(rustc_const_unstable)]
+#![feature(simd_ffi)]
 #![feature(specialization)]
 #![feature(staged_api)]
+#![feature(stmt_expr_attributes)]
+#![feature(target_feature)]
 #![feature(unboxed_closures)]
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
-#![feature(const_min_value)]
-#![feature(const_max_value)]
-#![feature(const_atomic_bool_new)]
-#![feature(const_atomic_isize_new)]
-#![feature(const_atomic_usize_new)]
-#![feature(const_atomic_i8_new)]
-#![feature(const_atomic_u8_new)]
-#![feature(const_atomic_i16_new)]
-#![feature(const_atomic_u16_new)]
-#![feature(const_atomic_i32_new)]
-#![feature(const_atomic_u32_new)]
-#![feature(const_atomic_i64_new)]
-#![feature(const_atomic_u64_new)]
-#![feature(const_unsafe_cell_new)]
-#![feature(const_cell_new)]
-#![feature(const_nonzero_new)]
+
+#![cfg_attr(stage0, allow(unused_attributes))]
 
 #[prelude_import]
 #[allow(unused)]
@@ -174,6 +168,7 @@ pub mod array;
 pub mod sync;
 pub mod cell;
 pub mod char;
+pub mod panic;
 pub mod panicking;
 pub mod iter;
 pub mod option;
@@ -184,9 +179,28 @@ pub mod slice;
 pub mod str;
 pub mod hash;
 pub mod fmt;
+pub mod time;
 
 // note: does not need to be public
 mod char_private;
 mod iter_private;
 mod tuple;
 mod unit;
+
+// Pull in the the `coresimd` crate directly into libcore. This is where all the
+// architecture-specific (and vendor-specific) intrinsics are defined. AKA
+// things like SIMD and such. Note that the actual source for all this lies in a
+// different repository, rust-lang-nursery/stdsimd. That's why the setup here is
+// a bit wonky.
+#[path = "../stdsimd/coresimd/mod.rs"]
+#[allow(missing_docs, missing_debug_implementations, dead_code)]
+#[unstable(feature = "stdsimd", issue = "48556")]
+#[cfg(not(stage0))] // allow changes to how stdsimd works in stage0
+mod coresimd;
+
+#[unstable(feature = "stdsimd", issue = "48556")]
+#[cfg(not(stage0))]
+pub use coresimd::simd;
+#[unstable(feature = "stdsimd", issue = "48556")]
+#[cfg(not(stage0))]
+pub use coresimd::arch;

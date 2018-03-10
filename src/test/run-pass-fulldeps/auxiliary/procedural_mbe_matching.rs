@@ -18,6 +18,7 @@ extern crate syntax_pos;
 extern crate rustc;
 extern crate rustc_plugin;
 
+use syntax::feature_gate::Features;
 use syntax::parse::token::{NtExpr, NtPat};
 use syntax::ast::{Ident, Pat};
 use syntax::tokenstream::{TokenTree};
@@ -31,11 +32,17 @@ use syntax::ptr::P;
 use syntax_pos::Span;
 use rustc_plugin::Registry;
 
+use std::cell::RefCell;
+
 fn expand_mbe_matches(cx: &mut ExtCtxt, _: Span, args: &[TokenTree])
         -> Box<MacResult + 'static> {
 
     let mbe_matcher = quote_tokens!(cx, $$matched:expr, $$($$pat:pat)|+);
-    let mbe_matcher = quoted::parse(mbe_matcher.into_iter().collect(), true, cx.parse_sess);
+    let mbe_matcher = quoted::parse(mbe_matcher.into_iter().collect(),
+                                    true,
+                                    cx.parse_sess,
+                                    &Features::new(),
+                                    &[]);
     let map = match TokenTree::parse(cx, &mbe_matcher, args.iter().cloned().collect()) {
         Success(map) => map,
         Failure(_, tok) => {

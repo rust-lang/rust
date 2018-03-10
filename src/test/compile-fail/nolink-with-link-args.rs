@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // error-pattern:aFdEfSeVEE
+// compile-flags: -Z linker-flavor=ld
 
 /* We're testing that link_args are indeed passed when nolink is specified.
 So we try to compile with junk link_args and make sure they are visible in

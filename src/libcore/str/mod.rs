@@ -76,9 +76,12 @@ pub trait FromStr: Sized {
 
     /// Parses a string `s` to return a value of this type.
     ///
-    /// If parsing succeeds, return the value inside `Ok`, otherwise
+    /// If parsing succeeds, return the value inside [`Ok`], otherwise
     /// when the string is ill-formatted return an error specific to the
-    /// inside `Err`. The error type is specific to implementation of the trait.
+    /// inside [`Err`]. The error type is specific to implementation of the trait.
+    ///
+    /// [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
+    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
     ///
     /// # Examples
     ///
@@ -491,11 +494,10 @@ fn unwrap_or_0(opt: Option<&u8>) -> u8 {
 #[inline]
 pub fn next_code_point<'a, I: Iterator<Item = &'a u8>>(bytes: &mut I) -> Option<u32> {
     // Decode UTF-8
-    let x = match bytes.next() {
-        None => return None,
-        Some(&next_byte) if next_byte < 128 => return Some(next_byte as u32),
-        Some(&next_byte) => next_byte,
-    };
+    let x = *bytes.next()?;
+    if x < 128 {
+        return Some(x as u32)
+    }
 
     // Multibyte case follows
     // Decode from a byte combination out of: [[[x y] z] w]
@@ -607,7 +609,7 @@ impl<'a> DoubleEndedIterator for Chars<'a> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a> FusedIterator for Chars<'a> {}
 
 impl<'a> Chars<'a> {
@@ -700,7 +702,7 @@ impl<'a> DoubleEndedIterator for CharIndices<'a> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a> FusedIterator for CharIndices<'a> {}
 
 impl<'a> CharIndices<'a> {
@@ -815,7 +817,7 @@ impl<'a> ExactSizeIterator for Bytes<'a> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a> FusedIterator for Bytes<'a> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
@@ -975,10 +977,10 @@ macro_rules! generate_pattern_iterators {
             }
         }
 
-        #[unstable(feature = "fused", issue = "35602")]
+        #[stable(feature = "fused", since = "1.26.0")]
         impl<'a, P: Pattern<'a>> FusedIterator for $forward_iterator<'a, P> {}
 
-        #[unstable(feature = "fused", issue = "35602")]
+        #[stable(feature = "fused", since = "1.26.0")]
         impl<'a, P: Pattern<'a>> FusedIterator for $reverse_iterator<'a, P>
             where P::Searcher: ReverseSearcher<'a> {}
 
@@ -1335,7 +1337,7 @@ impl<'a> DoubleEndedIterator for Lines<'a> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a> FusedIterator for Lines<'a> {}
 
 /// Created with the method [`lines_any`].
@@ -1401,7 +1403,7 @@ impl<'a> DoubleEndedIterator for LinesAny<'a> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 #[allow(deprecated)]
 impl<'a> FusedIterator for LinesAny<'a> {}
 
@@ -1995,7 +1997,9 @@ mod traits {
         }
     }
 
-    #[stable(feature = "str_checked_slicing", since = "1.20.0")]
+    #[unstable(feature = "inclusive_range",
+               reason = "recently added, follows RFC",
+               issue = "28237")]
     impl SliceIndex<str> for ops::RangeInclusive<usize> {
         type Output = str;
         #[inline]
@@ -2038,7 +2042,9 @@ mod traits {
 
 
 
-    #[stable(feature = "str_checked_slicing", since = "1.20.0")]
+    #[unstable(feature = "inclusive_range",
+               reason = "recently added, follows RFC",
+               issue = "28237")]
     impl SliceIndex<str> for ops::RangeToInclusive<usize> {
         type Output = str;
         #[inline]

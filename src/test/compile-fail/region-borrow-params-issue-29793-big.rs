@@ -16,6 +16,10 @@
 // behavior (because the improperly accepted closure was actually
 // able to be invoked).
 
+// ignore-tidy-linelength
+// revisions: ast mir
+//[mir]compile-flags: -Z borrowck=mir
+
 struct WrapA<F>(Option<F>);
 
 impl<F> WrapA<F> {
@@ -75,8 +79,10 @@ impl<F, T> WrapA<F>
 fn main() {
     let mut w = WrapA::new().set(|x: usize, y: usize| {
         WrapB::new().set(|t: bool| if t { x } else { y }) // (separate errors for `x` vs `y`)
-            //~^ ERROR `x` does not live long enough
-            //~| ERROR `y` does not live long enough
+            //[ast]~^ ERROR `x` does not live long enough
+            //[ast]~| ERROR `y` does not live long enough
+            //[mir]~^^^ ERROR `x` does not live long enough
+            //[mir]~| ERROR `y` does not live long enough
     });
 
     w.handle(); // This works

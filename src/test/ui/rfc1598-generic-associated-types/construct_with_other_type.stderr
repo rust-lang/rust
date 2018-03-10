@@ -1,0 +1,9 @@
+error[E0110]: lifetime parameters are not allowed on this type
+  --> $DIR/construct_with_other_type.rs:25:37
+   |
+LL |     type Quux<'a> = <T as Foo>::Bar<'a, 'static>;
+   |                                     ^^ lifetime parameter not allowed on this type
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0110"

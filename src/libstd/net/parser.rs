@@ -170,11 +170,7 @@ impl<'a> Parser<'a> {
                 return None;
             }
 
-            let octet = self.read_number(10, 3, 0x100).map(|n| n as u8);
-            match octet {
-                Some(d) => bs[i] = d,
-                None => return None,
-            };
+            bs[i] = self.read_number(10, 3, 0x100).map(|n| n as u8)?;
             i += 1;
         }
         Some(Ipv4Addr::new(bs[0], bs[1], bs[2], bs[3]))
@@ -250,7 +246,9 @@ impl<'a> Parser<'a> {
         }
 
         let mut tail = [0; 8];
-        let (tail_size, _) = read_groups(self, &mut tail, 8 - head_size);
+        // `::` indicates one or more groups of 16 bits of zeros
+        let limit = 8 - (head_size + 1);
+        let (tail_size, _) = read_groups(self, &mut tail, limit);
         Some(ipv6_addr_from_head_tail(&head[..head_size], &tail[..tail_size]))
     }
 

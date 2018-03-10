@@ -1,0 +1,21 @@
+error[E0530]: function parameters cannot shadow statics
+  --> $DIR/issue-23716.rs:13:8
+   |
+LL | static foo: i32 = 0;
+   | -------------------- a static `foo` is defined here
+LL | 
+LL | fn bar(foo: i32) {}
+   |        ^^^ cannot be named the same as a static
+
+error[E0530]: function parameters cannot shadow statics
+  --> $DIR/issue-23716.rs:23:13
+   |
+LL | use self::submod::answer;
+   |     -------------------- a static `answer` is imported here
+LL | 
+LL | fn question(answer: i32) {}
+   |             ^^^^^^ cannot be named the same as a static
+
+error: aborting due to 2 previous errors
+
+If you want more information on this error, try using "rustc --explain E0530"

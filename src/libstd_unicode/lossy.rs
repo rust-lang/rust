@@ -38,6 +38,7 @@ impl Utf8Lossy {
 
 /// Iterator over lossy UTF-8 string
 #[unstable(feature = "str_internals", issue = "0")]
+#[allow(missing_debug_implementations)]
 pub struct Utf8LossyChunksIter<'a> {
     source: &'a [u8],
 }

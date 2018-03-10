@@ -67,16 +67,15 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                     }
                 }
 
-                // In addition to the above rules, we restrict impls of defaulted traits
+                // In addition to the above rules, we restrict impls of auto traits
                 // so that they can only be implemented on nominal types, such as structs,
                 // enums or foreign types. To see why this restriction exists, consider the
-                // following example (#22978). Imagine that crate A defines a defaulted trait
+                // following example (#22978). Imagine that crate A defines an auto trait
                 // `Foo` and a fn that operates on pairs of types:
                 //
                 // ```
                 // // Crate A
-                // trait Foo { }
-                // impl Foo for .. { }
+                // auto trait Foo { }
                 // fn two_foos<A:Foo,B:Foo>(..) {
                 //     one_foo::<(A,B)>(..)
                 // }
@@ -140,24 +139,6 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                         span_err!(self.tcx.sess, item.span, E0321, "{}", msg);
                         return;
                     }
-                }
-            }
-            hir::ItemAutoImpl(_, ref item_trait_ref) => {
-                // "Trait" impl
-                debug!("coherence2::orphan check: default trait impl {}",
-                       self.tcx.hir.node_to_string(item.id));
-                let trait_ref = self.tcx.impl_trait_ref(def_id).unwrap();
-                if !trait_ref.def_id.is_local() {
-                    struct_span_err!(self.tcx.sess,
-                                     item_trait_ref.path.span,
-                                     E0318,
-                                     "cannot create default implementations for traits outside \
-                                      the crate they're defined in; define a new trait instead")
-                        .span_label(item_trait_ref.path.span,
-                                    format!("`{}` trait not defined in this crate",
-                            self.tcx.hir.node_to_pretty_string(item_trait_ref.ref_id)))
-                        .emit();
-                    return;
                 }
             }
             _ => {

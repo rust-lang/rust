@@ -83,8 +83,11 @@ pub type Result = result::Result<(), Error>;
 /// some other means.
 ///
 /// An important thing to remember is that the type `fmt::Error` should not be
-/// confused with `std::io::Error` or `std::error::Error`, which you may also
+/// confused with [`std::io::Error`] or [`std::error::Error`], which you may also
 /// have in scope.
+///
+/// [`std::io::Error`]: ../../std/io/struct.Error.html
+/// [`std::error::Error`]: ../../std/error/trait.Error.html
 ///
 /// # Examples
 ///
@@ -261,6 +264,14 @@ pub struct Formatter<'a> {
 
 struct Void {
     _priv: (),
+    /// Erases all oibits, because `Void` erases the type of the object that
+    /// will be used to produce formatted output. Since we do not know what
+    /// oibits the real types have (and they can have any or none), we need to
+    /// take the most conservative approach and forbid all oibits.
+    ///
+    /// It was added after #45197 showed that one could share a `!Sync`
+    /// object across threads by passing it into `format_args!`.
+    _oibit_remover: PhantomData<*mut Fn()>,
 }
 
 /// This struct represents the generic "argument" which is taken by the Xprintf
@@ -519,12 +530,35 @@ impl<'a> Display for Arguments<'a> {
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented = "`{Self}` cannot be formatted using `:?`; if it is \
-                            defined in your crate, add `#[derive(Debug)]` or \
-                            manually implement it"]
+#[rustc_on_unimplemented(
+    on(crate_local, label="`{Self}` cannot be formatted using `:?`; \
+                            add `#[derive(Debug)]` or manually implement `{Debug}`"),
+    message="`{Self}` doesn't implement `{Debug}`",
+    label="`{Self}` cannot be formatted using `:?` because it doesn't implement `{Debug}`",
+)]
 #[lang = "debug_trait"]
 pub trait Debug {
     /// Formats the value using the given formatter.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Position {
+    ///     longitude: f32,
+    ///     latitude: f32,
+    /// }
+    ///
+    /// impl fmt::Debug for Position {
+    ///     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    ///         write!(f, "({:?}, {:?})", self.longitude, self.latitude)
+    ///     }
+    /// }
+    ///
+    /// assert_eq!("(1.987, 2.983)".to_owned(),
+    ///            format!("{:?}", Position { longitude: 1.987, latitude: 2.983, }));
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter) -> Result;
 }
@@ -562,9 +596,11 @@ pub trait Debug {
 ///
 /// println!("The origin is: {}", origin);
 /// ```
-#[rustc_on_unimplemented = "`{Self}` cannot be formatted with the default \
-                            formatter; try using `:?` instead if you are using \
-                            a format string"]
+#[rustc_on_unimplemented(
+    message="`{Self}` doesn't implement `{Display}`",
+    label="`{Self}` cannot be formatted with the default formatter; \
+           try using `:?` instead if you are using a format string",
+)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Display {
     /// Formats the value using the given formatter.
@@ -596,6 +632,9 @@ pub trait Display {
 ///
 /// The `Octal` trait should format its output as a number in base-8.
 ///
+/// For primitive signed integers (`i8` to `i128`, and `isize`),
+/// negative values are formatted as the two’s complement representation.
+///
 /// The alternate flag, `#`, adds a `0o` in front of the output.
 ///
 /// For more information on formatters, see [the module-level documentation][module].
@@ -611,6 +650,8 @@ pub trait Display {
 ///
 /// assert_eq!(format!("{:o}", x), "52");
 /// assert_eq!(format!("{:#o}", x), "0o52");
+///
+/// assert_eq!(format!("{:o}", -16), "37777777760");
 /// ```
 ///
 /// Implementing `Octal` on a type:
@@ -643,6 +684,9 @@ pub trait Octal {
 ///
 /// The `Binary` trait should format its output as a number in binary.
 ///
+/// For primitive signed integers (`i8` to `i128`, and `isize`),
+/// negative values are formatted as the two’s complement representation.
+///
 /// The alternate flag, `#`, adds a `0b` in front of the output.
 ///
 /// For more information on formatters, see [the module-level documentation][module].
@@ -658,6 +702,8 @@ pub trait Octal {
 ///
 /// assert_eq!(format!("{:b}", x), "101010");
 /// assert_eq!(format!("{:#b}", x), "0b101010");
+///
+/// assert_eq!(format!("{:b}", -16), "11111111111111111111111111110000");
 /// ```
 ///
 /// Implementing `Binary` on a type:
@@ -691,6 +737,9 @@ pub trait Binary {
 /// The `LowerHex` trait should format its output as a number in hexadecimal, with `a` through `f`
 /// in lower case.
 ///
+/// For primitive signed integers (`i8` to `i128`, and `isize`),
+/// negative values are formatted as the two’s complement representation.
+///
 /// The alternate flag, `#`, adds a `0x` in front of the output.
 ///
 /// For more information on formatters, see [the module-level documentation][module].
@@ -706,6 +755,8 @@ pub trait Binary {
 ///
 /// assert_eq!(format!("{:x}", x), "2a");
 /// assert_eq!(format!("{:#x}", x), "0x2a");
+///
+/// assert_eq!(format!("{:x}", -16), "fffffff0");
 /// ```
 ///
 /// Implementing `LowerHex` on a type:
@@ -739,6 +790,9 @@ pub trait LowerHex {
 /// The `UpperHex` trait should format its output as a number in hexadecimal, with `A` through `F`
 /// in upper case.
 ///
+/// For primitive signed integers (`i8` to `i128`, and `isize`),
+/// negative values are formatted as the two’s complement representation.
+///
 /// The alternate flag, `#`, adds a `0x` in front of the output.
 ///
 /// For more information on formatters, see [the module-level documentation][module].
@@ -754,6 +808,8 @@ pub trait LowerHex {
 ///
 /// assert_eq!(format!("{:X}", x), "2A");
 /// assert_eq!(format!("{:#X}", x), "0x2A");
+///
+/// assert_eq!(format!("{:X}", -16), "FFFFFFF0");
 /// ```
 ///
 /// Implementing `UpperHex` on a type:
@@ -932,7 +988,7 @@ pub trait UpperExp {
 /// assert_eq!(output, "Hello world!");
 /// ```
 ///
-/// Please note that using [`write!`] might be preferrable. Example:
+/// Please note that using [`write!`] might be preferable. Example:
 ///
 /// ```
 /// use std::fmt::Write;
@@ -986,6 +1042,27 @@ pub fn write(output: &mut Write, args: Arguments) -> Result {
 }
 
 impl<'a> Formatter<'a> {
+    fn wrap_buf<'b, 'c, F>(&'b mut self, wrap: F) -> Formatter<'c>
+        where 'b: 'c, F: FnOnce(&'b mut (Write+'b)) -> &'c mut (Write+'c)
+    {
+        Formatter {
+            // We want to change this
+            buf: wrap(self.buf),
+
+            // And preserve these
+            flags: self.flags,
+            fill: self.fill,
+            align: self.align,
+            width: self.width,
+            precision: self.precision,
+
+            // These only exist in the struct for the `run` method,
+            // which won’t be used together with this method.
+            curarg: self.curarg.clone(),
+            args: self.args,
+        }
+    }
+
     // First up is the collection of functions used to execute a format string
     // at runtime. This consumes all of the compile-time statics generated by
     // the format! syntax extension.
@@ -1277,6 +1354,9 @@ impl<'a> Formatter<'a> {
 
     /// Flags for formatting
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_deprecated(since = "1.24.0",
+                       reason = "use the `sign_plus`, `sign_minus`, `alternate`, \
+                                 or `sign_aware_zero_pad` methods instead")]
     pub fn flags(&self) -> u32 { self.flags }
 
     /// Character used as 'fill' whenever there is alignment
@@ -1495,14 +1575,14 @@ macro_rules! fmt_refs {
 
 fmt_refs! { Debug, Display, Octal, Binary, LowerHex, UpperHex, LowerExp, UpperExp }
 
-#[unstable(feature = "never_type_impls", issue = "35121")]
+#[unstable(feature = "never_type", issue = "35121")]
 impl Debug for ! {
     fn fmt(&self, _: &mut Formatter) -> Result {
         *self
     }
 }
 
-#[unstable(feature = "never_type_impls", issue = "35121")]
+#[unstable(feature = "never_type", issue = "35121")]
 impl Display for ! {
     fn fmt(&self, _: &mut Formatter) -> Result {
         *self
@@ -1511,6 +1591,7 @@ impl Display for ! {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for bool {
+    #[inline]
     fn fmt(&self, f: &mut Formatter) -> Result {
         Display::fmt(self, f)
     }
@@ -1673,6 +1754,7 @@ impl<T: Debug> Debug for [T] {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for () {
+    #[inline]
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.pad("()")
     }

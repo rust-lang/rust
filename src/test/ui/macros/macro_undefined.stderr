@@ -1,7 +1,7 @@
 error: cannot find macro `kl!` in this scope
   --> $DIR/macro_undefined.rs:22:5
    |
-22 |     kl!();
+LL |     kl!(); //~ ERROR cannot find
    |     ^^
    |
    = help: have you added the `#[macro_use]` on the module/import?
@@ -9,8 +9,8 @@ error: cannot find macro `kl!` in this scope
 error: cannot find macro `k!` in this scope
   --> $DIR/macro_undefined.rs:21:5
    |
-21 |     k!();
-   |     ^ help: you could try the macro: `kl!`
+LL |     k!(); //~ ERROR cannot find
+   |     ^ help: you could try the macro: `kl`
 
 error: aborting due to 2 previous errors
 

@@ -28,9 +28,9 @@ fn main() {
         columnline!()
     } else { (0, 0) };
     let cl = columnline!();
-    assert_eq!(closure(), (8, 25));
-    assert_eq!(iflet, (8, 28));
-    assert_eq!(cl, (13, 30));
+    assert_eq!(closure(), (9, 25));
+    assert_eq!(iflet, (9, 28));
+    assert_eq!(cl, (14, 30));
     let indirect = indirectcolumnline!();
-    assert_eq!(indirect, (19, 34));
+    assert_eq!(indirect, (20, 34));
 }

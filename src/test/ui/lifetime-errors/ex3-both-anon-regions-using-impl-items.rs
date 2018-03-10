@@ -12,7 +12,7 @@ trait Foo {
 }
 impl Foo for () {
     fn foo(x: &mut Vec<&u8>, y: &u8) {
-        x.push(y);
+        x.push(y); //~ ERROR lifetime mismatch
     }
 }
 fn main() {}

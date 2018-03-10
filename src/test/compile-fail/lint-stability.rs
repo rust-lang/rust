@@ -96,6 +96,10 @@ mod cross_crate {
         struct S1<T: TraitWithAssociatedTypes>(T::TypeUnstable);
         //~^ ERROR use of unstable library feature
         struct S2<T: TraitWithAssociatedTypes>(T::TypeDeprecated);
+        type A = TraitWithAssociatedTypes<
+            TypeUnstable = u8, //~ ERROR use of unstable library feature
+            TypeDeprecated = u16,
+        >;
 
         let _ = DeprecatedStruct {
             i: 0

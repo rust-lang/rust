@@ -43,6 +43,7 @@ use core::str as core_str;
 use core::str::pattern::Pattern;
 use core::str::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 use core::mem;
+use core::ptr;
 use core::iter::FusedIterator;
 use std_unicode::str::{UnicodeStr, Utf16Encoder};
 
@@ -171,7 +172,7 @@ impl<'a> Iterator for EncodeUtf16<'a> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a> FusedIterator for EncodeUtf16<'a> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -363,16 +364,16 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// let mut v = String::from("🗻∈🌏");
+    /// let v = String::from("🗻∈🌏");
     ///
     /// assert_eq!(Some("🗻"), v.get(0..4));
     ///
     /// // indices not on UTF-8 sequence boundaries
-    /// assert!(v.get_mut(1..).is_none());
-    /// assert!(v.get_mut(..8).is_none());
+    /// assert!(v.get(1..).is_none());
+    /// assert!(v.get(..8).is_none());
     ///
     /// // out of bounds
-    /// assert!(v.get_mut(..42).is_none());
+    /// assert!(v.get(..42).is_none());
     /// ```
     #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     #[inline]
@@ -719,12 +720,16 @@ impl str {
     /// Remember, [`char`]s may not match your human intuition about characters:
     ///
     /// ```
-    /// let y = "y̆";
+    /// let yes = "y̆es";
     ///
-    /// let mut char_indices = y.char_indices();
+    /// let mut char_indices = yes.char_indices();
     ///
     /// assert_eq!(Some((0, 'y')), char_indices.next()); // not (0, 'y̆')
     /// assert_eq!(Some((1, '\u{0306}')), char_indices.next());
+    ///
+    /// // note the 3 here - the last character took up two bytes
+    /// assert_eq!(Some((3, 'e')), char_indices.next());
+    /// assert_eq!(Some((4, 's')), char_indices.next());
     ///
     /// assert_eq!(None, char_indices.next());
     /// ```
@@ -1734,7 +1739,7 @@ impl str {
     /// A more complex pattern, using a closure:
     ///
     /// ```
-    /// assert_eq!("1fooX".trim_left_matches(|c| c == '1' || c == 'X'), "fooX");
+    /// assert_eq!("1fooX".trim_right_matches(|c| c == '1' || c == 'X'), "1foo");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn trim_right_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
@@ -2062,9 +2067,59 @@ impl str {
     /// ```
     #[stable(feature = "repeat_str", since = "1.16.0")]
     pub fn repeat(&self, n: usize) -> String {
-        let mut s = String::with_capacity(self.len() * n);
-        s.extend((0..n).map(|_| self));
-        s
+        if n == 0 {
+            return String::new();
+        }
+
+        // If `n` is larger than zero, it can be split as
+        // `n = 2^expn + rem (2^expn > rem, expn >= 0, rem >= 0)`.
+        // `2^expn` is the number represented by the leftmost '1' bit of `n`,
+        // and `rem` is the remaining part of `n`.
+
+        // Using `Vec` to access `set_len()`.
+        let mut buf = Vec::with_capacity(self.len() * n);
+
+        // `2^expn` repetition is done by doubling `buf` `expn`-times.
+        buf.extend(self.as_bytes());
+        {
+            let mut m = n >> 1;
+            // If `m > 0`, there are remaining bits up to the leftmost '1'.
+            while m > 0 {
+                // `buf.extend(buf)`:
+                unsafe {
+                    ptr::copy_nonoverlapping(
+                        buf.as_ptr(),
+                        (buf.as_mut_ptr() as *mut u8).add(buf.len()),
+                        buf.len(),
+                    );
+                    // `buf` has capacity of `self.len() * n`.
+                    let buf_len = buf.len();
+                    buf.set_len(buf_len * 2);
+                }
+
+                m >>= 1;
+            }
+        }
+
+        // `rem` (`= n - 2^expn`) repetition is done by copying
+        // first `rem` repetitions from `buf` itself.
+        let rem_len = self.len() * n - buf.len(); // `self.len() * rem`
+        if rem_len > 0 {
+            // `buf.extend(buf[0 .. rem_len])`:
+            unsafe {
+                // This is non-overlapping since `2^expn > rem`.
+                ptr::copy_nonoverlapping(
+                    buf.as_ptr(),
+                    (buf.as_mut_ptr() as *mut u8).add(buf.len()),
+                    rem_len,
+                );
+                // `buf.len() + rem_len` equals to `buf.capacity()` (`= self.len() * n`).
+                let buf_cap = buf.capacity();
+                buf.set_len(buf_cap);
+            }
+        }
+
+        unsafe { String::from_utf8_unchecked(buf) }
     }
 
     /// Checks if all characters in this string are within the ASCII range.
@@ -2078,7 +2133,7 @@ impl str {
     /// assert!(ascii.is_ascii());
     /// assert!(!non_ascii.is_ascii());
     /// ```
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn is_ascii(&self) -> bool {
         // We can treat each byte as character here: all multibyte characters
@@ -2108,9 +2163,8 @@ impl str {
     ///
     /// [`make_ascii_uppercase`]: #method.make_ascii_uppercase
     /// [`to_uppercase`]: #method.to_uppercase
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
-    #[cfg(not(stage0))]
     pub fn to_ascii_uppercase(&self) -> String {
         let mut bytes = self.as_bytes().to_vec();
         bytes.make_ascii_uppercase();
@@ -2139,9 +2193,8 @@ impl str {
     ///
     /// [`make_ascii_lowercase`]: #method.make_ascii_lowercase
     /// [`to_lowercase`]: #method.to_lowercase
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
-    #[cfg(not(stage0))]
     pub fn to_ascii_lowercase(&self) -> String {
         let mut bytes = self.as_bytes().to_vec();
         bytes.make_ascii_lowercase();
@@ -2161,9 +2214,8 @@ impl str {
     /// assert!("Ferrös".eq_ignore_ascii_case("FERRöS"));
     /// assert!(!"Ferrös".eq_ignore_ascii_case("FERRÖS"));
     /// ```
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
-    #[cfg(not(stage0))]
     pub fn eq_ignore_ascii_case(&self, other: &str) -> bool {
         self.as_bytes().eq_ignore_ascii_case(other.as_bytes())
     }
@@ -2177,8 +2229,7 @@ impl str {
     /// [`to_ascii_uppercase`].
     ///
     /// [`to_ascii_uppercase`]: #method.to_ascii_uppercase
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
-    #[cfg(not(stage0))]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     pub fn make_ascii_uppercase(&mut self) {
         let me = unsafe { self.as_bytes_mut() };
         me.make_ascii_uppercase()
@@ -2193,158 +2244,10 @@ impl str {
     /// [`to_ascii_lowercase`].
     ///
     /// [`to_ascii_lowercase`]: #method.to_ascii_lowercase
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
-    #[cfg(not(stage0))]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     pub fn make_ascii_lowercase(&mut self) {
         let me = unsafe { self.as_bytes_mut() };
         me.make_ascii_lowercase()
-    }
-
-    /// Checks if all characters of this string are ASCII alphabetic
-    /// characters:
-    ///
-    /// - U+0041 'A' ... U+005A 'Z', or
-    /// - U+0061 'a' ... U+007A 'z'.
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_alphabetic(&self) -> bool {
-        self.bytes().all(|b| b.is_ascii_alphabetic())
-    }
-
-    /// Checks if all characters of this string are ASCII uppercase characters:
-    /// U+0041 'A' ... U+005A 'Z'.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// #![feature(ascii_ctype)]
-    ///
-    /// // Only ascii uppercase characters
-    /// assert!("HELLO".is_ascii_uppercase());
-    ///
-    /// // While all characters are ascii, 'y' and 'e' are not uppercase
-    /// assert!(!"Bye".is_ascii_uppercase());
-    ///
-    /// // While all characters are uppercase, 'Ü' is not ascii
-    /// assert!(!"TSCHÜSS".is_ascii_uppercase());
-    /// ```
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_uppercase(&self) -> bool {
-        self.bytes().all(|b| b.is_ascii_uppercase())
-    }
-
-    /// Checks if all characters of this string are ASCII lowercase characters:
-    /// U+0061 'a' ... U+007A 'z'.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// #![feature(ascii_ctype)]
-    ///
-    /// // Only ascii uppercase characters
-    /// assert!("hello".is_ascii_lowercase());
-    ///
-    /// // While all characters are ascii, 'B' is not lowercase
-    /// assert!(!"Bye".is_ascii_lowercase());
-    ///
-    /// // While all characters are lowercase, 'Ü' is not ascii
-    /// assert!(!"tschüss".is_ascii_lowercase());
-    /// ```
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_lowercase(&self) -> bool {
-        self.bytes().all(|b| b.is_ascii_lowercase())
-    }
-
-    /// Checks if all characters of this string are ASCII alphanumeric
-    /// characters:
-    ///
-    /// - U+0041 'A' ... U+005A 'Z', or
-    /// - U+0061 'a' ... U+007A 'z', or
-    /// - U+0030 '0' ... U+0039 '9'.
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_alphanumeric(&self) -> bool {
-        self.bytes().all(|b| b.is_ascii_alphanumeric())
-    }
-
-    /// Checks if all characters of this string are ASCII decimal digit:
-    /// U+0030 '0' ... U+0039 '9'.
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_digit(&self) -> bool {
-        self.bytes().all(|b| b.is_ascii_digit())
-    }
-
-    /// Checks if all characters of this string are ASCII hexadecimal digits:
-    ///
-    /// - U+0030 '0' ... U+0039 '9', or
-    /// - U+0041 'A' ... U+0046 'F', or
-    /// - U+0061 'a' ... U+0066 'f'.
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_hexdigit(&self) -> bool {
-        self.bytes().all(|b| b.is_ascii_hexdigit())
-    }
-
-    /// Checks if all characters of this string are ASCII punctuation
-    /// characters:
-    ///
-    /// - U+0021 ... U+002F `! " # $ % & ' ( ) * + , - . /`, or
-    /// - U+003A ... U+0040 `: ; < = > ? @`, or
-    /// - U+005B ... U+0060 `[ \\ ] ^ _ \``, or
-    /// - U+007B ... U+007E `{ | } ~`
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_punctuation(&self) -> bool {
-        self.bytes().all(|b| b.is_ascii_punctuation())
-    }
-
-    /// Checks if all characters of this string are ASCII graphic characters:
-    /// U+0021 '@' ... U+007E '~'.
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_graphic(&self) -> bool {
-        self.bytes().all(|b| b.is_ascii_graphic())
-    }
-
-    /// Checks if all characters of this string are ASCII whitespace characters:
-    /// U+0020 SPACE, U+0009 HORIZONTAL TAB, U+000A LINE FEED,
-    /// U+000C FORM FEED, or U+000D CARRIAGE RETURN.
-    ///
-    /// Rust uses the WhatWG Infra Standard's [definition of ASCII
-    /// whitespace][infra-aw]. There are several other definitions in
-    /// wide use. For instance, [the POSIX locale][pct] includes
-    /// U+000B VERTICAL TAB as well as all the above characters,
-    /// but—from the very same specification—[the default rule for
-    /// "field splitting" in the Bourne shell][bfs] considers *only*
-    /// SPACE, HORIZONTAL TAB, and LINE FEED as whitespace.
-    ///
-    /// If you are writing a program that will process an existing
-    /// file format, check what that format's definition of whitespace is
-    /// before using this function.
-    ///
-    /// [infra-aw]: https://infra.spec.whatwg.org/#ascii-whitespace
-    /// [pct]: http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap07.html#tag_07_03_01
-    /// [bfs]: http://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_06_05
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_whitespace(&self) -> bool {
-        self.bytes().all(|b| b.is_ascii_whitespace())
-    }
-
-    /// Checks if all characters of this string are ASCII control characters:
-    ///
-    /// - U+0000 NUL ... U+001F UNIT SEPARATOR, or
-    /// - U+007F DELETE.
-    ///
-    /// Note that most ASCII whitespace characters are control
-    /// characters, but SPACE is not.
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_control(&self) -> bool {
-        self.bytes().all(|b| b.is_ascii_control())
     }
 }
 

@@ -233,11 +233,11 @@ impl<T> Option<T> {
     /// [`usize`]: ../../std/primitive.usize.html
     ///
     /// ```
-    /// let num_as_str: Option<String> = Some("10".to_string());
+    /// let text: Option<String> = Some("Hello, world!".to_string());
     /// // First, cast `Option<String>` to `Option<&String>` with `as_ref`,
-    /// // then consume *that* with `map`, leaving `num_as_str` on the stack.
-    /// let num_as_int: Option<usize> = num_as_str.as_ref().map(|n| n.len());
-    /// println!("still can print num_as_str: {:?}", num_as_str);
+    /// // then consume *that* with `map`, leaving `text` on the stack.
+    /// let text_length: Option<usize> = text.as_ref().map(|s| s.len());
+    /// println!("still can print text: {:?}", text);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -338,6 +338,12 @@ impl<T> Option<T> {
 
     /// Returns the contained value or a default.
     ///
+    /// Arguments passed to `unwrap_or` are eagerly evaluated; if you are passing
+    /// the result of a function call, it is recommended to use [`unwrap_or_else`],
+    /// which is lazily evaluated.
+    ///
+    /// [`unwrap_or_else`]: #method.unwrap_or_else
+    ///
     /// # Examples
     ///
     /// ```
@@ -401,9 +407,7 @@ impl<T> Option<T> {
     }
 
     /// Applies a function to the contained value (if any),
-    /// or returns a [`default`][] (if not).
-    ///
-    /// [`default`]: ../default/trait.Default.html#tymethod.default
+    /// or returns the provided default (if not).
     ///
     /// # Examples
     ///
@@ -424,9 +428,7 @@ impl<T> Option<T> {
     }
 
     /// Applies a function to the contained value (if any),
-    /// or computes a [`default`][] (if not).
-    ///
-    /// [`default`]: ../default/trait.Default.html#tymethod.default
+    /// or computes a default (if not).
     ///
     /// # Examples
     ///
@@ -451,11 +453,16 @@ impl<T> Option<T> {
     /// Transforms the `Option<T>` into a [`Result<T, E>`], mapping [`Some(v)`] to
     /// [`Ok(v)`] and [`None`] to [`Err(err)`].
     ///
+    /// Arguments passed to `ok_or` are eagerly evaluated; if you are passing the
+    /// result of a function call, it is recommended to use [`ok_or_else`], which is
+    /// lazily evaluated.
+    ///
     /// [`Result<T, E>`]: ../../std/result/enum.Result.html
     /// [`Ok(v)`]: ../../std/result/enum.Result.html#variant.Ok
     /// [`Err(err)`]: ../../std/result/enum.Result.html#variant.Err
     /// [`None`]: #variant.None
     /// [`Some(v)`]: #variant.Some
+    /// [`ok_or_else`]: #method.ok_or_else
     ///
     /// # Examples
     ///
@@ -607,7 +614,48 @@ impl<T> Option<T> {
         }
     }
 
+    /// Returns `None` if the option is `None`, otherwise calls `predicate`
+    /// with the wrapped value and returns:
+    ///
+    /// - `Some(t)` if `predicate` returns `true` (where `t` is the wrapped
+    ///   value), and
+    /// - `None` if `predicate` returns `false`.
+    ///
+    /// This function works similar to `Iterator::filter()`. You can imagine
+    /// the `Option<T>` being an iterator over one or zero elements. `filter()`
+    /// lets you decide which elements to keep.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(option_filter)]
+    ///
+    /// fn is_even(n: &i32) -> bool {
+    ///     n % 2 == 0
+    /// }
+    ///
+    /// assert_eq!(None.filter(is_even), None);
+    /// assert_eq!(Some(3).filter(is_even), None);
+    /// assert_eq!(Some(4).filter(is_even), Some(4));
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_filter", issue = "45860")]
+    pub fn filter<P: FnOnce(&T) -> bool>(self, predicate: P) -> Self {
+        if let Some(x) = self {
+            if predicate(&x) {
+                return Some(x)
+            }
+        }
+        None
+    }
+
     /// Returns the option if it contains a value, otherwise returns `optb`.
+    ///
+    /// Arguments passed to `or` are eagerly evaluated; if you are passing the
+    /// result of a function call, it is recommended to use [`or_else`], which is
+    /// lazily evaluated.
+    ///
+    /// [`or_else`]: #method.or_else
     ///
     /// # Examples
     ///
@@ -781,14 +829,13 @@ impl<'a, T: Clone> Option<&'a mut T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(option_ref_mut_cloned)]
     /// let mut x = 12;
     /// let opt_x = Some(&mut x);
     /// assert_eq!(opt_x, Some(&mut 12));
     /// let cloned = opt_x.cloned();
     /// assert_eq!(cloned, Some(12));
     /// ```
-    #[unstable(feature = "option_ref_mut_cloned", issue = "43738")]
+    #[stable(since = "1.26.0", feature = "option_ref_mut_cloned")]
     pub fn cloned(self) -> Option<T> {
         self.map(|t| t.clone())
     }
@@ -798,7 +845,7 @@ impl<T: Default> Option<T> {
     /// Returns the contained value or a default
     ///
     /// Consumes the `self` argument then, if [`Some`], returns the contained
-    /// value, otherwise if [`None`], returns the default value for that
+    /// value, otherwise if [`None`], returns the [default value] for that
     /// type.
     ///
     /// # Examples
@@ -820,6 +867,7 @@ impl<T: Default> Option<T> {
     ///
     /// [`Some`]: #variant.Some
     /// [`None`]: #variant.None
+    /// [default value]: ../default/trait.Default.html#tymethod.default
     /// [`parse`]: ../../std/primitive.str.html#method.parse
     /// [`FromStr`]: ../../std/str/trait.FromStr.html
     #[inline]
@@ -828,6 +876,35 @@ impl<T: Default> Option<T> {
         match self {
             Some(x) => x,
             None => Default::default(),
+        }
+    }
+}
+
+impl<T, E> Option<Result<T, E>> {
+    /// Transposes an `Option` of a `Result` into a `Result` of an `Option`.
+    ///
+    /// `None` will be mapped to `Ok(None)`.
+    /// `Some(Ok(_))` and `Some(Err(_))` will be mapped to `Ok(Some(_))` and `Err(_)`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(transpose_result)]
+    ///
+    /// #[derive(Debug, Eq, PartialEq)]
+    /// struct SomeErr;
+    ///
+    /// let x: Result<Option<i32>, SomeErr> = Ok(Some(5));
+    /// let y: Option<Result<i32, SomeErr>> = Some(Ok(5));
+    /// assert_eq!(x, y.transpose());
+    /// ```
+    #[inline]
+    #[unstable(feature = "transpose_result", issue = "47338")]
+    pub fn transpose(self) -> Result<Option<T>, E> {
+        match self {
+            Some(Ok(x)) => Ok(Some(x)),
+            Some(Err(e)) => Err(e),
+            None => Ok(None),
         }
     }
 }
@@ -973,7 +1050,7 @@ impl<'a, A> DoubleEndedIterator for Iter<'a, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, A> ExactSizeIterator for Iter<'a, A> {}
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, A> FusedIterator for Iter<'a, A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
@@ -1018,7 +1095,7 @@ impl<'a, A> DoubleEndedIterator for IterMut<'a, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, A> ExactSizeIterator for IterMut<'a, A> {}
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, A> FusedIterator for IterMut<'a, A> {}
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<'a, A> TrustedLen for IterMut<'a, A> {}
@@ -1055,7 +1132,7 @@ impl<A> DoubleEndedIterator for IntoIter<A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> ExactSizeIterator for IntoIter<A> {}
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<A> FusedIterator for IntoIter<A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]

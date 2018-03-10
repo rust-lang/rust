@@ -8,48 +8,50 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use abi::{align_up_to, FnType, ArgType, LayoutExt, Reg, Uniform};
-use context::CrateContext;
+use abi::{ArgType, FnType, LayoutExt, Reg, Uniform};
+use context::CodegenCx;
 
-use std::cmp;
+use rustc::ty::layout::Size;
 
-fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tcx>) {
+fn classify_ret_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
+                             ret: &mut ArgType<'tcx>,
+                             offset: &mut Size) {
     if !ret.layout.is_aggregate() {
         ret.extend_integer_width_to(32);
     } else {
-        ret.make_indirect(ccx);
+        ret.make_indirect();
+        *offset += cx.tcx.data_layout.pointer_size;
     }
 }
 
-fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType, offset: &mut u64) {
-    let size = arg.layout.size(ccx);
-    let mut align = arg.layout.align(ccx).abi();
-    align = cmp::min(cmp::max(align, 4), 8);
+fn classify_arg_ty(cx: &CodegenCx, arg: &mut ArgType, offset: &mut Size) {
+    let dl = &cx.tcx.data_layout;
+    let size = arg.layout.size;
+    let align = arg.layout.align.max(dl.i32_align).min(dl.i64_align);
 
     if arg.layout.is_aggregate() {
-        arg.cast_to(ccx, Uniform {
+        arg.cast_to(Uniform {
             unit: Reg::i32(),
             total: size
         });
-        if ((align - 1) & *offset) > 0 {
-            arg.pad_with(ccx, Reg::i32());
+        if !offset.is_abi_aligned(align) {
+            arg.pad_with(Reg::i32());
         }
     } else {
         arg.extend_integer_width_to(32);
     }
 
-    *offset = align_up_to(*offset, align);
-    *offset += align_up_to(size.bytes(), align);
+    *offset = offset.abi_align(align) + size.abi_align(align);
 }
 
-pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
+pub fn compute_abi_info<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, fty: &mut FnType<'tcx>) {
+    let mut offset = Size::from_bytes(0);
     if !fty.ret.is_ignore() {
-        classify_ret_ty(ccx, &mut fty.ret);
+        classify_ret_ty(cx, &mut fty.ret, &mut offset);
     }
 
-    let mut offset = if fty.ret.is_indirect() { 4 } else { 0 };
     for arg in &mut fty.args {
         if arg.is_ignore() { continue; }
-        classify_arg_ty(ccx, arg, &mut offset);
+        classify_arg_ty(cx, arg, &mut offset);
     }
 }

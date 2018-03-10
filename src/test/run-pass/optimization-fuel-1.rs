@@ -22,5 +22,3 @@ fn main() {
         +(size_of::<S2>() == 4) as usize;
     assert_eq!(optimized, 1);
 }
-
-

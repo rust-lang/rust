@@ -8,20 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use abi::{FnType, ArgType, ArgAttribute, LayoutExt, Uniform};
-use context::CrateContext;
+use abi::{FnType, ArgType, LayoutExt, Uniform};
+use context::CodegenCx;
 
 // Data layout: e-p:32:32-i64:64-v128:32:128-n32-S128
 
 // See the https://github.com/kripken/emscripten-fastcomp-clang repository.
 // The class `EmscriptenABIInfo` in `/lib/CodeGen/TargetInfo.cpp` contains the ABI definitions.
 
-fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tcx>) {
+fn classify_ret_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, ret: &mut ArgType<'tcx>) {
     if ret.layout.is_aggregate() {
-        if let Some(unit) = ret.layout.homogeneous_aggregate(ccx) {
-            let size = ret.layout.size(ccx);
+        if let Some(unit) = ret.layout.homogeneous_aggregate(cx) {
+            let size = ret.layout.size;
             if unit.size == size {
-                ret.cast_to(ccx, Uniform {
+                ret.cast_to(Uniform {
                     unit,
                     total: size
                 });
@@ -29,24 +29,23 @@ fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tc
             }
         }
 
-        ret.make_indirect(ccx);
+        ret.make_indirect();
     }
 }
 
-fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tcx>) {
+fn classify_arg_ty(arg: &mut ArgType) {
     if arg.layout.is_aggregate() {
-        arg.make_indirect(ccx);
-        arg.attrs.set(ArgAttribute::ByVal);
+        arg.make_indirect_byval();
     }
 }
 
-pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
+pub fn compute_abi_info<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, fty: &mut FnType<'tcx>) {
     if !fty.ret.is_ignore() {
-        classify_ret_ty(ccx, &mut fty.ret);
+        classify_ret_ty(cx, &mut fty.ret);
     }
 
     for arg in &mut fty.args {
         if arg.is_ignore() { continue; }
-        classify_arg_ty(ccx, arg);
+        classify_arg_ty(arg);
     }
 }

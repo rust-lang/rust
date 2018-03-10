@@ -1,0 +1,9 @@
+error[E0131]: main function is not allowed to have type parameters
+  --> $DIR/E0131.rs:11:8
+   |
+LL | fn main<T>() {
+   |        ^^^ main cannot have type parameters
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0131"

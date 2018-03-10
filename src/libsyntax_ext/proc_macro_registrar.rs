@@ -13,7 +13,8 @@ use std::mem;
 use errors;
 
 use syntax::ast::{self, Ident, NodeId};
-use syntax::codemap::{ExpnInfo, NameAndSpan, MacroAttribute};
+use syntax::attr;
+use syntax::codemap::{ExpnInfo, NameAndSpan, MacroAttribute, respan};
 use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
 use syntax::ext::expand::ExpansionConfig;
@@ -102,7 +103,7 @@ impl<'a> CollectProcMacros<'a> {
     fn check_not_pub_in_root(&self, vis: &ast::Visibility, sp: Span) {
         if self.is_proc_macro_crate &&
            self.in_root &&
-           *vis == ast::Visibility::Public {
+           vis.node == ast::VisibilityKind::Public {
             self.handler.span_err(sp,
                                   "`proc-macro` crate types cannot \
                                    export any items other than functions \
@@ -180,7 +181,7 @@ impl<'a> CollectProcMacros<'a> {
             Vec::new()
         };
 
-        if self.in_root && item.vis == ast::Visibility::Public {
+        if self.in_root && item.vis.node == ast::VisibilityKind::Public {
             self.derives.push(ProcMacroDerive {
                 span: item.span,
                 trait_name,
@@ -205,7 +206,7 @@ impl<'a> CollectProcMacros<'a> {
             return;
         }
 
-        if self.in_root && item.vis == ast::Visibility::Public {
+        if self.in_root && item.vis.node == ast::VisibilityKind::Public {
             self.attr_macros.push(ProcMacroDef {
                 span: item.span,
                 function_name: item.ident,
@@ -228,7 +229,7 @@ impl<'a> CollectProcMacros<'a> {
             return;
         }
 
-        if self.in_root && item.vis == ast::Visibility::Public {
+        if self.in_root && item.vis.node == ast::VisibilityKind::Public {
             self.bang_macros.push(ProcMacroDef {
                 span: item.span,
                 function_name: item.ident,
@@ -248,8 +249,7 @@ impl<'a> CollectProcMacros<'a> {
 impl<'a> Visitor<'a> for CollectProcMacros<'a> {
     fn visit_item(&mut self, item: &'a ast::Item) {
         if let ast::ItemKind::MacroDef(..) = item.node {
-            if self.is_proc_macro_crate &&
-               item.attrs.iter().any(|attr| attr.path == "macro_export") {
+            if self.is_proc_macro_crate && attr::contains_name(&item.attrs, "macro_export") {
                 let msg =
                     "cannot export macro_rules! macros from a `proc-macro` crate type currently";
                 self.handler.span_err(item.span, msg);
@@ -381,7 +381,7 @@ fn mk_registrar(cx: &mut ExtCtxt,
 
     let __internal = Ident::from_str("__internal");
     let registry = Ident::from_str("Registry");
-    let registrar = Ident::from_str("registrar");
+    let registrar = Ident::from_str("_registrar");
     let register_custom_derive = Ident::from_str("register_custom_derive");
     let register_attr_proc_macro = Ident::from_str("register_attr_proc_macro");
     let register_bang_proc_macro = Ident::from_str("register_bang_proc_macro");
@@ -439,12 +439,12 @@ fn mk_registrar(cx: &mut ExtCtxt,
     let derive_registrar = cx.attribute(span, derive_registrar);
     let func = func.map(|mut i| {
         i.attrs.push(derive_registrar);
-        i.vis = ast::Visibility::Public;
+        i.vis = respan(span, ast::VisibilityKind::Public);
         i
     });
     let ident = ast::Ident::with_empty_ctxt(Symbol::gensym("registrar"));
     let module = cx.item_mod(span, span, ident, Vec::new(), vec![krate, func]).map(|mut i| {
-        i.vis = ast::Visibility::Public;
+        i.vis = respan(span, ast::VisibilityKind::Public);
         i
     });
 

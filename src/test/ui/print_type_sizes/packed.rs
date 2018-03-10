@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // compile-flags: -Z print-type-sizes
+// must-compile-successfully
 
 // This file illustrates how packing is handled; it should cause
 // the elimination of padding that would normally be introduced
@@ -19,6 +20,7 @@
 // padding and overall computed sizes can be quite different.
 
 #![allow(dead_code)]
+#![feature(start)]
 
 #[derive(Default)]
 #[repr(packed)]
@@ -41,7 +43,9 @@ struct Padded {
     d: u8,
 }
 
-pub fn main() {
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize {
     let _c: Packed = Default::default();
     let _d: Padded = Default::default();
+    0
 }

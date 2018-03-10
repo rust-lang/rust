@@ -175,6 +175,10 @@ fn configure_main(this: &mut EntryContext) {
             err.emit();
             this.session.abort_if_errors();
         } else {
+            if this.session.teach(&err.get_code().unwrap()) {
+                err.note("If you don't know the basics of Rust, you can go look to the Rust Book \
+                          to get started: https://doc.rust-lang.org/book/");
+            }
             err.emit();
         }
     }

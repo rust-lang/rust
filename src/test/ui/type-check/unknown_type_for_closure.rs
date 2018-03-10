@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    let x = |_| {    };
+    let x = |_| {    }; //~ ERROR type annotations needed
 }

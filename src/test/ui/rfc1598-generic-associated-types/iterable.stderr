@@ -1,0 +1,21 @@
+error[E0110]: lifetime parameters are not allowed on this type
+  --> $DIR/iterable.rs:20:47
+   |
+LL |     type Iter<'a>: Iterator<Item = Self::Item<'a>>;
+   |                                               ^^ lifetime parameter not allowed on this type
+
+error[E0110]: lifetime parameters are not allowed on this type
+  --> $DIR/iterable.rs:25:48
+   |
+LL |     type Iter2<'a>: Deref<Target = <Self::Iter<'a> as Iterator>::Item>;
+   |                                                ^^ lifetime parameter not allowed on this type
+
+error[E0110]: lifetime parameters are not allowed on this type
+  --> $DIR/iterable.rs:28:41
+   |
+LL |     fn iter<'a>(&'a self) -> Self::Iter<'a>;
+   |                                         ^^ lifetime parameter not allowed on this type
+
+error: aborting due to 3 previous errors
+
+If you want more information on this error, try using "rustc --explain E0110"

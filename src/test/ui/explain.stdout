@@ -45,7 +45,7 @@ is a function pointer, which is not zero-sized.
 This pattern should be rewritten. There are a few possible ways to do this:
 
 - change the original fn declaration to match the expected signature,
-  and do the cast in the fn body (the prefered option)
+  and do the cast in the fn body (the preferred option)
 - cast the fn item fo a fn pointer before calling transmute, as shown here:
 
     ```

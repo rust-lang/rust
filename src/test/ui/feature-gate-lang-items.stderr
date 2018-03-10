@@ -1,0 +1,11 @@
+error[E0658]: language items are subject to change
+  --> $DIR/feature-gate-lang-items.rs:11:1
+   |
+LL | #[lang="foo"]   //~ ERROR language items are subject to change
+   | ^^^^^^^^^^^^^
+   |
+   = help: add #![feature(lang_items)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0658"

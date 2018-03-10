@@ -1,0 +1,62 @@
+error[E0379]: trait fns cannot be declared const
+  --> $DIR/feature-gate-const_fn.rs:16:5
+   |
+LL |     const fn foo() -> u32; //~ ERROR const fn is unstable
+   |     ^^^^^ trait fns cannot be const
+
+error[E0379]: trait fns cannot be declared const
+  --> $DIR/feature-gate-const_fn.rs:18:5
+   |
+LL |     const fn bar() -> u32 { 0 } //~ ERROR const fn is unstable
+   |     ^^^^^ trait fns cannot be const
+
+error[E0379]: trait fns cannot be declared const
+  --> $DIR/feature-gate-const_fn.rs:27:5
+   |
+LL |     const fn foo() -> u32 { 0 } //~ ERROR const fn is unstable
+   |     ^^^^^ trait fns cannot be const
+
+error[E0658]: const fn is unstable (see issue #24111)
+  --> $DIR/feature-gate-const_fn.rs:13:1
+   |
+LL | const fn foo() -> usize { 0 } //~ ERROR const fn is unstable
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(const_fn)] to the crate attributes to enable
+
+error[E0658]: const fn is unstable (see issue #24111)
+  --> $DIR/feature-gate-const_fn.rs:16:5
+   |
+LL |     const fn foo() -> u32; //~ ERROR const fn is unstable
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(const_fn)] to the crate attributes to enable
+
+error[E0658]: const fn is unstable (see issue #24111)
+  --> $DIR/feature-gate-const_fn.rs:18:5
+   |
+LL |     const fn bar() -> u32 { 0 } //~ ERROR const fn is unstable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(const_fn)] to the crate attributes to enable
+
+error[E0658]: const fn is unstable (see issue #24111)
+  --> $DIR/feature-gate-const_fn.rs:23:5
+   |
+LL |     const fn baz() -> u32 { 0 } //~ ERROR const fn is unstable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(const_fn)] to the crate attributes to enable
+
+error[E0658]: const fn is unstable (see issue #24111)
+  --> $DIR/feature-gate-const_fn.rs:27:5
+   |
+LL |     const fn foo() -> u32 { 0 } //~ ERROR const fn is unstable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(const_fn)] to the crate attributes to enable
+
+error: aborting due to 8 previous errors
+
+You've got a few errors: E0379, E0658
+If you want more information on an error, try using "rustc --explain E0379"

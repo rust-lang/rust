@@ -1,0 +1,17 @@
+error[E0597]: `ref_` does not live long enough
+  --> $DIR/dropck.rs:23:18
+   |
+LL |     gen = || {
+   |           -- capture occurs here
+LL |         // but the generator can use it to drop a `Ref<'a, i32>`.
+LL |         let _d = ref_.take(); //~ ERROR `ref_` does not live long enough
+   |                  ^^^^ borrowed value does not live long enough
+...
+LL | }
+   | - borrowed value dropped before borrower
+   |
+   = note: values in a scope are dropped in the opposite order they are created
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0597"

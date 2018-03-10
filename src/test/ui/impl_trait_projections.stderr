@@ -1,0 +1,36 @@
+error[E0667]: `impl Trait` is not allowed in path parameters
+  --> $DIR/impl_trait_projections.rs:23:51
+   |
+LL | fn projection_is_disallowed(x: impl Iterator) -> <impl Iterator>::Item {
+   |                                                   ^^^^^^^^^^^^^
+
+error[E0667]: `impl Trait` is not allowed in path parameters
+  --> $DIR/impl_trait_projections.rs:30:9
+   |
+LL |     -> <impl Iterator as Iterator>::Item
+   |         ^^^^^^^^^^^^^
+
+error[E0667]: `impl Trait` is not allowed in path parameters
+  --> $DIR/impl_trait_projections.rs:37:27
+   |
+LL |     -> <::std::ops::Range<impl Debug> as Iterator>::Item
+   |                           ^^^^^^^^^^
+
+error[E0667]: `impl Trait` is not allowed in path parameters
+  --> $DIR/impl_trait_projections.rs:44:29
+   |
+LL |     -> <dyn Iterator<Item = impl Debug> as Iterator>::Item
+   |                             ^^^^^^^^^^
+
+error[E0223]: ambiguous associated type
+  --> $DIR/impl_trait_projections.rs:23:50
+   |
+LL | fn projection_is_disallowed(x: impl Iterator) -> <impl Iterator>::Item {
+   |                                                  ^^^^^^^^^^^^^^^^^^^^^ ambiguous associated type
+   |
+   = note: specify the type using the syntax `<impl std::iter::Iterator as Trait>::Item`
+
+error: aborting due to 5 previous errors
+
+You've got a few errors: E0223, E0667
+If you want more information on an error, try using "rustc --explain E0223"

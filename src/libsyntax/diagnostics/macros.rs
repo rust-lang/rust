@@ -106,6 +106,14 @@ macro_rules! struct_span_err {
 }
 
 #[macro_export]
+macro_rules! stringify_error_code {
+    ($code:ident) => ({
+        __diagnostic_used!($code);
+        $crate::errors::DiagnosticId::Error(stringify!($code).to_owned())
+    })
+}
+
+#[macro_export]
 macro_rules! type_error_struct {
     ($session:expr, $span:expr, $typ:expr, $code:ident, $($message:tt)*) => ({
         if $typ.references_error() {

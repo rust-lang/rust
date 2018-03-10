@@ -1,0 +1,19 @@
+error[E0618]: expected function, found `i32`
+  --> $DIR/issue-10969.rs:12:5
+   |
+LL | fn func(i: i32) {
+   |         - `i32` defined here
+LL |     i(); //~ERROR expected function, found `i32`
+   |     ^^^ not a function
+
+error[E0618]: expected function, found `i32`
+  --> $DIR/issue-10969.rs:16:5
+   |
+LL |     let i = 0i32;
+   |         - `i32` defined here
+LL |     i(); //~ERROR expected function, found `i32`
+   |     ^^^ not a function
+
+error: aborting due to 2 previous errors
+
+If you want more information on this error, try using "rustc --explain E0618"

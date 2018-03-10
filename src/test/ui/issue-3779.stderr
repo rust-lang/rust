@@ -1,0 +1,14 @@
+error[E0072]: recursive type `S` has infinite size
+  --> $DIR/issue-3779.rs:11:1
+   |
+LL | struct S {
+   | ^^^^^^^^ recursive type has infinite size
+LL |     //~^ ERROR E0072
+LL |     element: Option<S>
+   |     ------------------ recursive without indirection
+   |
+   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `S` representable
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0072"

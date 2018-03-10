@@ -1052,10 +1052,7 @@ impl Json {
     pub fn find_path<'a>(&'a self, keys: &[&str]) -> Option<&'a Json>{
         let mut target = self;
         for key in keys {
-            match target.find(*key) {
-                Some(t) => { target = t; },
-                None => return None
-            }
+            target = target.find(*key)?;
         }
         Some(target)
     }

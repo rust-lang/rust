@@ -32,7 +32,7 @@ pub fn target() -> TargetResult {
             // to gcc to get object files. For this reason we have a hard
             // dependency on this specific gcc.
             asm_args: vec!["-mcpu=msp430".to_string()],
-            linker: "msp430-elf-gcc".to_string(),
+            linker: Some("msp430-elf-gcc".to_string()),
             no_integrated_as: true,
 
             // There are no atomic instructions available in the MSP430
@@ -52,6 +52,12 @@ pub fn target() -> TargetResult {
             // compatible with multiple codegen units, and plus we probably
             // don't want to invoke that many gcc instances.
             default_codegen_units: Some(1),
+
+            // Since MSP430 doesn't meaningfully support faulting on illegal
+            // instructions, LLVM generates a call to abort() function instead
+            // of a trap instruction. Such calls are 4 bytes long, and that is
+            // too much overhead for such small target.
+            trap_unreachable: false,
 
             .. Default::default( )
         }

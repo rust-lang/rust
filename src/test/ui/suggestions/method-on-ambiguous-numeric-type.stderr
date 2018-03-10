@@ -1,0 +1,23 @@
+error[E0689]: can't call method `powi` on ambiguous numeric type `{float}`
+  --> $DIR/method-on-ambiguous-numeric-type.rs:12:17
+   |
+LL |     let x = 2.0.powi(2);
+   |                 ^^^^
+help: you must specify a concrete type for this numeric value, like `f32`
+   |
+LL |     let x = 2.0_f32.powi(2);
+   |             ^^^^^^^
+
+error[E0689]: can't call method `powi` on ambiguous numeric type `{float}`
+  --> $DIR/method-on-ambiguous-numeric-type.rs:15:15
+   |
+LL |     let x = y.powi(2);
+   |               ^^^^
+help: you must specify a type for this binding, like `f32`
+   |
+LL |     let y: f32 = 2.0;
+   |         ^^^^^^
+
+error: aborting due to 2 previous errors
+
+If you want more information on this error, try using "rustc --explain E0689"

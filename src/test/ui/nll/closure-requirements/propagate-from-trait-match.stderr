@@ -1,0 +1,63 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/propagate-from-trait-match.rs:55:9
+   |
+LL |         require(value);
+   |         ^^^^^^^
+
+note: External requirements
+  --> $DIR/propagate-from-trait-match.rs:42:36
+   |
+LL |       establish_relationships(value, |value| {
+   |  ____________________________________^
+LL | |         //~^ ERROR the parameter type `T` may not live long enough
+LL | |
+LL | |         // This function call requires that
+...  |
+LL | |         //~^ WARNING not reporting region error due to -Znll
+LL | |     });
+   | |_____^
+   |
+   = note: defining type: DefId(0/1:16 ~ propagate_from_trait_match[317d]::supply[0]::{{closure}}[0]) with closure substs [
+               '_#1r,
+               T,
+               i32,
+               extern "rust-call" fn((T,))
+           ]
+   = note: number of external vids: 2
+   = note: where T: '_#1r
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/propagate-from-trait-match.rs:42:36
+   |
+LL |       establish_relationships(value, |value| {
+   |  ____________________________________^
+LL | |         //~^ ERROR the parameter type `T` may not live long enough
+LL | |
+LL | |         // This function call requires that
+...  |
+LL | |         //~^ WARNING not reporting region error due to -Znll
+LL | |     });
+   | |_____^
+   |
+   = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
+
+note: No external requirements
+  --> $DIR/propagate-from-trait-match.rs:38:1
+   |
+LL | / fn supply<'a, T>(value: T)
+LL | | where
+LL | |     T: Trait<'a>,
+LL | | {
+...  |
+LL | |     });
+LL | | }
+   | |_^
+   |
+   = note: defining type: DefId(0/0:6 ~ propagate_from_trait_match[317d]::supply[0]) with substs [
+               '_#1r,
+               T
+           ]
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0309"

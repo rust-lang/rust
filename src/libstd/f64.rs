@@ -9,10 +9,11 @@
 // except according to those terms.
 
 //! This module provides constants which are specific to the implementation
-//! of the `f64` floating point data type. Mathematically significant
-//! numbers are provided in the `consts` sub-module.
+//! of the `f64` floating point data type.
 //!
-//! *[See also the `f64` primitive type](../primitive.f64.html).*
+//! Mathematically significant numbers are provided in the `consts` sub-module.
+//!
+//! *[See also the `f64` primitive type](../../std/primitive.f64.html).*
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
@@ -23,6 +24,8 @@ use core::num;
 use intrinsics;
 #[cfg(not(test))]
 use num::FpCategory;
+#[cfg(not(test))]
+use sys::cmath;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f64::{RADIX, MANTISSA_DIGITS, DIGITS, EPSILON};
@@ -34,53 +37,6 @@ pub use core::f64::{MAX_10_EXP, NAN, INFINITY, NEG_INFINITY};
 pub use core::f64::{MIN, MIN_POSITIVE, MAX};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f64::consts;
-
-#[allow(dead_code)]
-mod cmath {
-    use libc::{c_double, c_int};
-
-    #[link_name = "m"]
-    extern {
-        pub fn acos(n: c_double) -> c_double;
-        pub fn asin(n: c_double) -> c_double;
-        pub fn atan(n: c_double) -> c_double;
-        pub fn atan2(a: c_double, b: c_double) -> c_double;
-        pub fn cbrt(n: c_double) -> c_double;
-        pub fn cosh(n: c_double) -> c_double;
-        pub fn erf(n: c_double) -> c_double;
-        pub fn erfc(n: c_double) -> c_double;
-        pub fn expm1(n: c_double) -> c_double;
-        pub fn fdim(a: c_double, b: c_double) -> c_double;
-        pub fn fmod(a: c_double, b: c_double) -> c_double;
-        pub fn frexp(n: c_double, value: &mut c_int) -> c_double;
-        pub fn ilogb(n: c_double) -> c_int;
-        pub fn ldexp(x: c_double, n: c_int) -> c_double;
-        pub fn logb(n: c_double) -> c_double;
-        pub fn log1p(n: c_double) -> c_double;
-        pub fn nextafter(x: c_double, y: c_double) -> c_double;
-        pub fn modf(n: c_double, iptr: &mut c_double) -> c_double;
-        pub fn sinh(n: c_double) -> c_double;
-        pub fn tan(n: c_double) -> c_double;
-        pub fn tanh(n: c_double) -> c_double;
-        pub fn tgamma(n: c_double) -> c_double;
-
-        // These are commonly only available for doubles
-
-        pub fn j0(n: c_double) -> c_double;
-        pub fn j1(n: c_double) -> c_double;
-        pub fn jn(i: c_int, n: c_double) -> c_double;
-
-        pub fn y0(n: c_double) -> c_double;
-        pub fn y1(n: c_double) -> c_double;
-        pub fn yn(i: c_int, n: c_double) -> c_double;
-
-        #[cfg_attr(all(windows, target_env = "msvc"), link_name = "__lgamma_r")]
-        pub fn lgamma_r(n: c_double, sign: &mut c_int) -> c_double;
-
-        #[cfg_attr(all(windows, target_env = "msvc"), link_name = "_hypot")]
-        pub fn hypot(x: c_double, y: c_double) -> c_double;
-    }
-}
 
 #[cfg(not(test))]
 #[lang = "f64"]
@@ -476,18 +432,17 @@ impl f64 {
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
     ///
+    /// The result may not be correctly rounded owing to implementation details;
+    /// `self.log2()` can produce more accurate results for base 2, and
+    /// `self.log10()` can produce more accurate results for base 10.
+    ///
     /// ```
-    /// let ten = 10.0_f64;
-    /// let two = 2.0_f64;
+    /// let five = 5.0_f64;
     ///
-    /// // log10(10) - 1 == 0
-    /// let abs_difference_10 = (ten.log(10.0) - 1.0).abs();
+    /// // log5(5) - 1 == 0
+    /// let abs_difference = (five.log(5.0) - 1.0).abs();
     ///
-    /// // log2(2) - 1 == 0
-    /// let abs_difference_2 = (two.log(2.0) - 1.0).abs();
-    ///
-    /// assert!(abs_difference_10 < 1e-10);
-    /// assert!(abs_difference_2 < 1e-10);
+    /// assert!(abs_difference < 1e-10);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -997,10 +952,13 @@ impl f64 {
 
     /// Raw transmutation to `u64`.
     ///
-    /// Converts the `f64` into its raw memory representation,
-    /// similar to the `transmute` function.
+    /// This is currently identical to `transmute::<f64, u64>(self)` on all platforms.
     ///
-    /// Note that this function is distinct from casting.
+    /// See `from_bits` for some discussion of the portability of this operation
+    /// (there are almost no issues).
+    ///
+    /// Note that this function is distinct from `as` casting, which attempts to
+    /// preserve the *numeric* value, and not the bitwise value.
     ///
     /// # Examples
     ///
@@ -1012,22 +970,38 @@ impl f64 {
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
     #[inline]
     pub fn to_bits(self) -> u64 {
-        unsafe { ::mem::transmute(self) }
+        num::Float::to_bits(self)
     }
 
     /// Raw transmutation from `u64`.
     ///
-    /// Converts the given `u64` containing the float's raw memory
-    /// representation into the `f64` type, similar to the
-    /// `transmute` function.
+    /// This is currently identical to `transmute::<u64, f64>(v)` on all platforms.
+    /// It turns out this is incredibly portable, for two reasons:
     ///
-    /// There is only one difference to a bare `transmute`:
-    /// Due to the implications onto Rust's safety promises being
-    /// uncertain, if the representation of a signaling NaN "sNaN" float
-    /// is passed to the function, the implementation is allowed to
-    /// return a quiet NaN instead.
+    /// * Floats and Ints have the same endianness on all supported platforms.
+    /// * IEEE-754 very precisely specifies the bit layout of floats.
     ///
-    /// Note that this function is distinct from casting.
+    /// However there is one caveat: prior to the 2008 version of IEEE-754, how
+    /// to interpret the NaN signaling bit wasn't actually specified. Most platforms
+    /// (notably x86 and ARM) picked the interpretation that was ultimately
+    /// standardized in 2008, but some didn't (notably MIPS). As a result, all
+    /// signaling NaNs on MIPS are quiet NaNs on x86, and vice-versa.
+    ///
+    /// Rather than trying to preserve signaling-ness cross-platform, this
+    /// implementation favours preserving the exact bits. This means that
+    /// any payloads encoded in NaNs will be preserved even if the result of
+    /// this method is sent over the network from an x86 machine to a MIPS one.
+    ///
+    /// If the results of this method are only manipulated by the same
+    /// architecture that produced them, then there is no portability concern.
+    ///
+    /// If the input isn't NaN, then there is no portability concern.
+    ///
+    /// If you don't care about signalingness (very likely), then there is no
+    /// portability concern.
+    ///
+    /// Note that this function is distinct from `as` casting, which attempts to
+    /// preserve the *numeric* value, and not the bitwise value.
     ///
     /// # Examples
     ///
@@ -1036,26 +1010,11 @@ impl f64 {
     /// let v = f64::from_bits(0x4029000000000000);
     /// let difference = (v - 12.5).abs();
     /// assert!(difference <= 1e-5);
-    /// // Example for a signaling NaN value:
-    /// let snan = 0x7FF0000000000001;
-    /// assert_ne!(f64::from_bits(snan).to_bits(), snan);
     /// ```
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
     #[inline]
-    pub fn from_bits(mut v: u64) -> Self {
-        const EXP_MASK: u64   = 0x7FF0000000000000;
-        const FRACT_MASK: u64 = 0x000FFFFFFFFFFFFF;
-        if v & EXP_MASK == EXP_MASK && v & FRACT_MASK != 0 {
-            // While IEEE 754-2008 specifies encodings for quiet NaNs
-            // and signaling ones, certain MIPS and PA-RISC
-            // CPUs treat signaling NaNs differently.
-            // Therefore to be safe, we pass a known quiet NaN
-            // if v is any kind of NaN.
-            // The check above only assumes IEEE 754-1985 to be
-            // valid.
-            v = unsafe { ::mem::transmute(NAN) };
-        }
-        unsafe { ::mem::transmute(v) }
+    pub fn from_bits(v: u64) -> Self {
+        num::Float::from_bits(v)
     }
 }
 
@@ -1641,5 +1600,15 @@ mod tests {
         assert_approx_eq!(f64::from_bits(0x4029000000000000), 12.5);
         assert_approx_eq!(f64::from_bits(0x4094e40000000000), 1337.0);
         assert_approx_eq!(f64::from_bits(0xc02c800000000000), -14.25);
+
+        // Check that NaNs roundtrip their bits regardless of signalingness
+        // 0xA is 0b1010; 0x5 is 0b0101 -- so these two together clobbers all the mantissa bits
+        let masked_nan1 = f64::NAN.to_bits() ^ 0x000A_AAAA_AAAA_AAAA;
+        let masked_nan2 = f64::NAN.to_bits() ^ 0x0005_5555_5555_5555;
+        assert!(f64::from_bits(masked_nan1).is_nan());
+        assert!(f64::from_bits(masked_nan2).is_nan());
+
+        assert_eq!(f64::from_bits(masked_nan1).to_bits(), masked_nan1);
+        assert_eq!(f64::from_bits(masked_nan2).to_bits(), masked_nan2);
     }
 }

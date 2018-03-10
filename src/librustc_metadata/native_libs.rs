@@ -92,9 +92,19 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for Collector<'a, 'tcx> {
             let cfg = items.iter().find(|k| {
                 k.check_name("cfg")
             }).and_then(|a| a.meta_item_list());
-            let cfg = cfg.map(|list| {
-                list[0].meta_item().unwrap().clone()
-            });
+            let cfg = if let Some(list) = cfg {
+                if list.is_empty() {
+                    self.tcx.sess.span_err(m.span(), "`cfg()` must have an argument");
+                    return;
+                } else if let cfg @ Some(..) = list[0].meta_item() {
+                    cfg.cloned()
+                } else {
+                    self.tcx.sess.span_err(list[0].span(), "invalid argument for `cfg(..)`");
+                    return;
+                }
+            } else {
+                None
+            };
             let foreign_items = fm.items.iter()
                 .map(|it| self.tcx.hir.local_def_id(it.id))
                 .collect();
@@ -136,7 +146,7 @@ impl<'a, 'tcx> Collector<'a, 'tcx> {
                 None => self.tcx.sess.err(msg),
             }
         }
-        if lib.cfg.is_some() && !self.tcx.sess.features.borrow().link_cfg {
+        if lib.cfg.is_some() && !self.tcx.features().link_cfg {
             feature_gate::emit_feature_err(&self.tcx.sess.parse_sess,
                                            "link_cfg",
                                            span.unwrap(),
@@ -144,7 +154,7 @@ impl<'a, 'tcx> Collector<'a, 'tcx> {
                                            "is feature gated");
         }
         if lib.kind == cstore::NativeStaticNobundle &&
-           !self.tcx.sess.features.borrow().static_nobundle {
+           !self.tcx.features().static_nobundle {
             feature_gate::emit_feature_err(&self.tcx.sess.parse_sess,
                                            "static_nobundle",
                                            span.unwrap(),

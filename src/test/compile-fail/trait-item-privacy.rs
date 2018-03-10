@@ -131,6 +131,16 @@ fn check_assoc_ty<T: assoc_ty::C>() {
     let _: T::A; //~ ERROR associated type `A` is private
     let _: T::B; // OK
     let _: T::C; // OK
+
+    // Associated types, bindings
+    let _: assoc_ty::B<
+        B = u8, // OK
+    >;
+    let _: C<
+        A = u8, //~ ERROR associated type `A` is private
+        B = u8, // OK
+        C = u8, // OK
+    >;
 }
 
 fn main() {}

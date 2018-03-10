@@ -15,7 +15,7 @@
 //!
 //! This library, like libcore, is not intended for general usage, but rather as
 //! a building block of other libraries. The types and interfaces in this
-//! library are reexported through the [standard library](../std/index.html),
+//! library are re-exported through the [standard library](../std/index.html),
 //! and should not be used through this library.
 //!
 //! ## Boxed values
@@ -52,7 +52,7 @@
 //! ## Collections
 //!
 //! Implementations of the most common general purpose data structures are
-//! defined in this library. They are reexported through the
+//! defined in this library. They are re-exported through the
 //! [standard collections library](../std/collections/index.html).
 //!
 //! ## Heap interfaces
@@ -79,11 +79,11 @@
 #![cfg_attr(test, feature(placement_in))]
 #![cfg_attr(not(test), feature(core_float))]
 #![cfg_attr(not(test), feature(exact_size_is_empty))]
-#![cfg_attr(not(test), feature(slice_rotate))]
 #![cfg_attr(not(test), feature(generator_trait))]
 #![cfg_attr(test, feature(rand, test))]
 #![feature(allow_internal_unstable)]
 #![feature(ascii_ctype)]
+#![feature(box_into_raw_non_null)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(cfg_target_has_atomic)]
@@ -96,7 +96,6 @@
 #![feature(fmt_internals)]
 #![feature(from_ref)]
 #![feature(fundamental)]
-#![feature(fused)]
 #![feature(generic_param_attrs)]
 #![feature(i128_type)]
 #![feature(inclusive_range)]
@@ -109,8 +108,8 @@
 #![feature(pattern)]
 #![feature(placement_in_syntax)]
 #![feature(placement_new_protocol)]
+#![feature(ptr_internals)]
 #![feature(rustc_attrs)]
-#![feature(shared)]
 #![feature(slice_get_slice)]
 #![feature(slice_patterns)]
 #![feature(slice_rsplit)]
@@ -120,12 +119,13 @@
 #![feature(trusted_len)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
-#![feature(unique)]
 #![feature(unsize)]
 #![feature(allocator_internals)]
 #![feature(on_unimplemented)]
+#![feature(exact_chunks)]
+#![feature(pointer_methods)]
 
-#![cfg_attr(not(test), feature(fused, fn_traits, placement_new_protocol, swap_with_slice, i128))]
+#![cfg_attr(not(test), feature(fn_traits, placement_new_protocol, swap_with_slice, i128))]
 #![cfg_attr(test, feature(test, box_heap))]
 
 // Allow testing this library
@@ -135,6 +135,8 @@
 extern crate std;
 #[cfg(test)]
 extern crate test;
+#[cfg(test)]
+extern crate rand;
 
 extern crate std_unicode;
 

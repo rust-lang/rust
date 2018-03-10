@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use deriving::path_std;
 use deriving::generic::*;
 use deriving::generic::ty::*;
-
 use syntax::ast::MetaItem;
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax_pos::Span;
@@ -28,15 +28,10 @@ pub fn expand_deriving_copy(cx: &mut ExtCtxt,
                             mitem: &MetaItem,
                             item: &Annotatable,
                             push: &mut FnMut(Annotatable)) {
-    let mut v = cx.crate_root.map(|s| vec![s]).unwrap_or(Vec::new());
-    v.push("marker");
-    v.push("Copy");
-    let path = Path::new(v);
-
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
-        path,
+        path: path_std!(cx, marker::Copy),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         is_unsafe: false,

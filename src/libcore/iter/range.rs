@@ -10,7 +10,7 @@
 
 use convert::TryFrom;
 use mem;
-use ops::{self, Add, Sub};
+use ops::{self, Add, Sub, Try};
 use usize;
 
 use super::{FusedIterator, TrustedLen};
@@ -251,6 +251,21 @@ impl<A: Step> Iterator for ops::Range<A> {
         self.start = self.end.clone();
         None
     }
+
+    #[inline]
+    fn last(mut self) -> Option<A> {
+        self.next_back()
+    }
+
+    #[inline]
+    fn min(mut self) -> Option<A> {
+        self.next()
+    }
+
+    #[inline]
+    fn max(mut self) -> Option<A> {
+        self.next_back()
+    }
 }
 
 // These macros generate `ExactSizeIterator` impls for various range types.
@@ -280,7 +295,7 @@ impl<A: Step> DoubleEndedIterator for ops::Range<A> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<A: Step> FusedIterator for ops::Range<A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -307,8 +322,11 @@ impl<A: Step> Iterator for ops::RangeFrom<A> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<A: Step> FusedIterator for ops::RangeFrom<A> {}
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<A: Step> TrustedLen for ops::RangeFrom<A> {}
 
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
 impl<A: Step> Iterator for ops::RangeInclusive<A> {
@@ -316,19 +334,17 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        use cmp::Ordering::*;
-
-        match self.start.partial_cmp(&self.end) {
-            Some(Less) => {
+        if self.start <= self.end {
+            if self.start < self.end {
                 let n = self.start.add_one();
                 Some(mem::replace(&mut self.start, n))
-            },
-            Some(Equal) => {
+            } else {
                 let last = self.start.replace_one();
                 self.end.replace_zero();
                 Some(last)
-            },
-            _ => None,
+            }
+        } else {
+            None
         }
     }
 
@@ -367,28 +383,85 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
         self.end.replace_zero();
         None
     }
+
+    #[inline]
+    fn last(mut self) -> Option<A> {
+        self.next_back()
+    }
+
+    #[inline]
+    fn min(mut self) -> Option<A> {
+        self.next()
+    }
+
+    #[inline]
+    fn max(mut self) -> Option<A> {
+        self.next_back()
+    }
+
+    #[inline]
+    fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R where
+        Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+    {
+        let mut accum = init;
+        if self.start <= self.end {
+            loop {
+                let (x, done) =
+                    if self.start < self.end {
+                        let n = self.start.add_one();
+                        (mem::replace(&mut self.start, n), false)
+                    } else {
+                        self.end.replace_zero();
+                        (self.start.replace_one(), true)
+                    };
+                accum = f(accum, x)?;
+                if done { break }
+            }
+        }
+        Try::from_ok(accum)
+    }
 }
 
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
 impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
-        use cmp::Ordering::*;
-
-        match self.start.partial_cmp(&self.end) {
-            Some(Less) => {
+        if self.start <= self.end {
+            if self.start < self.end {
                 let n = self.end.sub_one();
                 Some(mem::replace(&mut self.end, n))
-            },
-            Some(Equal) => {
+            } else {
                 let last = self.end.replace_zero();
                 self.start.replace_one();
                 Some(last)
-            },
-            _ => None,
+            }
+        } else {
+            None
         }
+    }
+
+    #[inline]
+    fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R where
+        Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+    {
+        let mut accum = init;
+        if self.start <= self.end {
+            loop {
+                let (x, done) =
+                    if self.start < self.end {
+                        let n = self.end.sub_one();
+                        (mem::replace(&mut self.end, n), false)
+                    } else {
+                        self.start.replace_one();
+                        (self.end.replace_zero(), true)
+                    };
+                accum = f(accum, x)?;
+                if done { break }
+            }
+        }
+        Try::from_ok(accum)
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<A: Step> FusedIterator for ops::RangeInclusive<A> {}

@@ -1,46 +1,47 @@
 error[E0597]: `c` does not live long enough
-  --> $DIR/dropck-eyepatch-extern-crate.rs:55:1
+  --> $DIR/dropck-eyepatch-extern-crate.rs:39:20
    |
-39 |     dt = Dt("dt", &c); //~ ERROR `c` does not live long enough
-   |                    - borrow occurs here
+LL |     dt = Dt("dt", &c);
+   |                    ^ borrowed value does not live long enough
 ...
-55 | }
-   | ^ `c` dropped here while still borrowed
+LL | }
+   | - `c` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c` does not live long enough
-  --> $DIR/dropck-eyepatch-extern-crate.rs:55:1
+  --> $DIR/dropck-eyepatch-extern-crate.rs:41:20
    |
-40 |     dr = Dr("dr", &c); //~ ERROR `c` does not live long enough
-   |                    - borrow occurs here
+LL |     dr = Dr("dr", &c);
+   |                    ^ borrowed value does not live long enough
 ...
-55 | }
-   | ^ `c` dropped here while still borrowed
+LL | }
+   | - `c` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c` does not live long enough
-  --> $DIR/dropck-eyepatch-extern-crate.rs:55:1
+  --> $DIR/dropck-eyepatch-extern-crate.rs:49:29
    |
-47 |     pt = Pt("pt", &c_long, &c); //~ ERROR `c` does not live long enough
-   |                             - borrow occurs here
+LL |     pt = Pt("pt", &c_long, &c);
+   |                             ^ borrowed value does not live long enough
 ...
-55 | }
-   | ^ `c` dropped here while still borrowed
+LL | }
+   | - `c` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c` does not live long enough
-  --> $DIR/dropck-eyepatch-extern-crate.rs:55:1
+  --> $DIR/dropck-eyepatch-extern-crate.rs:51:29
    |
-48 |     pr = Pr("pr", &c_long, &c); //~ ERROR `c` does not live long enough
-   |                             - borrow occurs here
+LL |     pr = Pr("pr", &c_long, &c);
+   |                             ^ borrowed value does not live long enough
 ...
-55 | }
-   | ^ `c` dropped here while still borrowed
+LL | }
+   | - `c` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error: aborting due to 4 previous errors
 
+If you want more information on this error, try using "rustc --explain E0597"

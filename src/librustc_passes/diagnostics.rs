@@ -82,20 +82,50 @@ extern {
 ```
 "##,
 
-E0265: r##"
-This error indicates that a static or constant references itself.
-All statics and constants need to resolve to a value in an acyclic manner.
+E0197: r##"
+Inherent implementations (one that do not implement a trait but provide
+methods associated with a type) are always safe because they are not
+implementing an unsafe trait. Removing the `unsafe` keyword from the inherent
+implementation will resolve this error.
 
-For example, neither of the following can be sensibly compiled:
+```compile_fail,E0197
+struct Foo;
 
-```compile_fail,E0265
-const X: u32 = X;
+// this will cause this error
+unsafe impl Foo { }
+// converting it to this will fix it
+impl Foo { }
+```
+"##,
+
+E0198: r##"
+A negative implementation is one that excludes a type from implementing a
+particular trait. Not being able to use a trait is always a safe operation,
+so negative implementations are always safe and never need to be marked as
+unsafe.
+
+```compile_fail
+#![feature(optin_builtin_traits)]
+
+struct Foo;
+
+// unsafe is unnecessary
+unsafe impl !Clone for Foo { }
 ```
 
-```compile_fail,E0265
-const X: u32 = Y;
-const Y: u32 = X;
+This will compile:
+
+```ignore (ignore auto_trait future compatibility warning)
+#![feature(optin_builtin_traits)]
+
+struct Foo;
+
+auto trait Enterprise {}
+
+impl !Enterprise for Foo { }
 ```
+
+Please note that negative impls are only allowed for auto traits.
 "##,
 
 E0267: r##"
@@ -148,6 +178,13 @@ Trait methods cannot be declared `const` by design. For more information, see
 [RFC 911].
 
 [RFC 911]: https://github.com/rust-lang/rfcs/pull/911
+"##,
+
+E0380: r##"
+Auto traits cannot have methods or associated items.
+For more information see the [opt-in builtin traits RFC][RFC 19].
+
+[RFC 19]: https://github.com/rust-lang/rfcs/blob/master/text/0019-opt-in-builtin-traits.md
 "##,
 
 E0449: r##"
@@ -264,4 +301,9 @@ register_diagnostics! {
     E0226, // only a single explicit lifetime bound is permitted
     E0472, // asm! is unsupported on this target
     E0561, // patterns aren't allowed in function pointer types
+    E0567, // auto traits can not have generic parameters
+    E0568, // auto traits can not have super traits
+    E0642, // patterns aren't allowed in methods without bodies
+    E0666, // nested `impl Trait` is illegal
+    E0667, // `impl Trait` in projections
 }

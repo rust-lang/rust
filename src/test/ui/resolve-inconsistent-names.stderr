@@ -1,0 +1,19 @@
+error[E0408]: variable `a` is not bound in all patterns
+  --> $DIR/resolve-inconsistent-names.rs:14:12
+   |
+LL |        a | b => {} //~  ERROR variable `a` is not bound in all patterns
+   |        -   ^ pattern doesn't bind `a`
+   |        |
+   |        variable not in all patterns
+
+error[E0408]: variable `b` is not bound in all patterns
+  --> $DIR/resolve-inconsistent-names.rs:14:8
+   |
+LL |        a | b => {} //~  ERROR variable `a` is not bound in all patterns
+   |        ^   - variable not in all patterns
+   |        |
+   |        pattern doesn't bind `b`
+
+error: aborting due to 2 previous errors
+
+If you want more information on this error, try using "rustc --explain E0408"

@@ -1,0 +1,27 @@
+error[E0392]: parameter `A` is never used
+  --> $DIR/variance-unused-type-param.rs:16:19
+   |
+LL | struct SomeStruct<A> { x: u32 }
+   |                   ^ unused type parameter
+   |
+   = help: consider removing `A` or using a marker such as `std::marker::PhantomData`
+
+error[E0392]: parameter `A` is never used
+  --> $DIR/variance-unused-type-param.rs:19:15
+   |
+LL | enum SomeEnum<A> { Nothing }
+   |               ^ unused type parameter
+   |
+   = help: consider removing `A` or using a marker such as `std::marker::PhantomData`
+
+error[E0392]: parameter `T` is never used
+  --> $DIR/variance-unused-type-param.rs:23:15
+   |
+LL | enum ListCell<T> {
+   |               ^ unused type parameter
+   |
+   = help: consider removing `T` or using a marker such as `std::marker::PhantomData`
+
+error: aborting due to 3 previous errors
+
+If you want more information on this error, try using "rustc --explain E0392"

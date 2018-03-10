@@ -11,9 +11,11 @@
 //! This module contains `HashStable` implementations for various data types
 //! from rustc::ty in no particular order.
 
-use ich::{StableHashingContext, NodeIdHashingMode};
+use ich::{Fingerprint, StableHashingContext, NodeIdHashingMode};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
                                            StableHasher, StableHasherResult};
+use std::cell::RefCell;
 use std::hash as std_hash;
 use std::mem;
 use middle::region;
@@ -26,7 +28,26 @@ for &'gcx ty::Slice<T>
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
-        (&self[..]).hash_stable(hcx, hasher);
+        thread_local! {
+            static CACHE: RefCell<FxHashMap<(usize, usize), Fingerprint>> =
+                RefCell::new(FxHashMap());
+        }
+
+        let hash = CACHE.with(|cache| {
+            let key = (self.as_ptr() as usize, self.len());
+            if let Some(&hash) = cache.borrow().get(&key) {
+                return hash;
+            }
+
+            let mut hasher = StableHasher::new();
+            (&self[..]).hash_stable(hcx, &mut hasher);
+
+            let hash: Fingerprint = hasher.finish();
+            cache.borrow_mut().insert(key, hash);
+            hash
+        });
+
+        hash.hash_stable(hcx, hasher);
     }
 }
 
@@ -35,8 +56,19 @@ for ty::subst::Kind<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
-        self.as_type().hash_stable(hcx, hasher);
-        self.as_region().hash_stable(hcx, hasher);
+        self.unpack().hash_stable(hcx, hasher);
+    }
+}
+
+impl<'gcx> HashStable<StableHashingContext<'gcx>>
+for ty::subst::UnpackedKind<'gcx> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        match self {
+            ty::subst::UnpackedKind::Lifetime(lt) => lt.hash_stable(hcx, hasher),
+            ty::subst::UnpackedKind::Type(ty) => ty.hash_stable(hcx, hasher),
+        }
     }
 }
 
@@ -75,12 +107,25 @@ for ty::RegionKind {
             ty::ReFree(ref free_region) => {
                 free_region.hash_stable(hcx, hasher);
             }
+            ty::ReClosureBound(vid) => {
+                vid.hash_stable(hcx, hasher);
+            }
             ty::ReLateBound(..) |
             ty::ReVar(..) |
             ty::ReSkolemized(..) => {
                 bug!("TypeIdHasher: unexpected region {:?}", *self)
             }
         }
+    }
+}
+
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for ty::RegionVid {
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        use rustc_data_structures::indexed_vec::Idx;
+        self.index().hash_stable(hcx, hasher);
     }
 }
 
@@ -128,6 +173,20 @@ for ty::adjustment::Adjust<'gcx> {
 impl_stable_hash_for!(struct ty::adjustment::Adjustment<'tcx> { kind, target });
 impl_stable_hash_for!(struct ty::adjustment::OverloadedDeref<'tcx> { region, mutbl });
 impl_stable_hash_for!(struct ty::UpvarBorrow<'tcx> { kind, region });
+
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for ty::adjustment::AutoBorrowMutability {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        mem::discriminant(self).hash_stable(hcx, hasher);
+        match *self {
+            ty::adjustment::AutoBorrowMutability::Mutable { ref allow_two_phase_borrow } => {
+                allow_two_phase_borrow.hash_stable(hcx, hasher);
+            }
+            ty::adjustment::AutoBorrowMutability::Immutable => {}
+        }
+    }
+}
 
 impl_stable_hash_for!(struct ty::UpvarId { var_id, closure_expr_id });
 
@@ -185,7 +244,6 @@ impl_stable_hash_for!(enum ty::Visibility {
 
 impl_stable_hash_for!(struct ty::TraitRef<'tcx> { def_id, substs });
 impl_stable_hash_for!(struct ty::TraitPredicate<'tcx> { trait_ref });
-impl_stable_hash_for!(tuple_struct ty::EquatePredicate<'tcx> { t1, t2 });
 impl_stable_hash_for!(struct ty::SubtypePredicate<'tcx> { a_is_expected, a, b });
 
 impl<'gcx, A, B> HashStable<StableHashingContext<'gcx>>
@@ -215,9 +273,6 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for ty::Predicate<'gcx> {
             ty::Predicate::Trait(ref pred) => {
                 pred.hash_stable(hcx, hasher);
             }
-            ty::Predicate::Equate(ref pred) => {
-                pred.hash_stable(hcx, hasher);
-            }
             ty::Predicate::Subtype(ref pred) => {
                 pred.hash_stable(hcx, hasher);
             }
@@ -236,8 +291,9 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for ty::Predicate<'gcx> {
             ty::Predicate::ObjectSafe(def_id) => {
                 def_id.hash_stable(hcx, hasher);
             }
-            ty::Predicate::ClosureKind(def_id, closure_kind) => {
+            ty::Predicate::ClosureKind(def_id, closure_substs, closure_kind) => {
                 def_id.hash_stable(hcx, hasher);
+                closure_substs.hash_stable(hcx, hasher);
                 closure_kind.hash_stable(hcx, hasher);
             }
             ty::Predicate::ConstEvaluatable(def_id, substs) => {
@@ -370,7 +426,8 @@ for ::middle::const_val::ErrKind<'gcx> {
             MiscBinaryOp |
             MiscCatchAll |
             IndexOpFeatureGated |
-            TypeckError => {
+            TypeckError |
+            CheckMatchError => {
                 // nothing to do
             }
             UnimplementedConstVal(s) => {
@@ -395,7 +452,7 @@ for ::middle::const_val::ErrKind<'gcx> {
 
 impl_stable_hash_for!(struct ty::ClosureSubsts<'tcx> { substs });
 
-impl_stable_hash_for!(struct ty::GeneratorInterior<'tcx> { witness });
+impl_stable_hash_for!(struct ty::GeneratorInterior<'tcx> { witness, movable });
 
 impl_stable_hash_for!(struct ty::GenericPredicates<'tcx> {
     parent,
@@ -492,10 +549,15 @@ for ::middle::resolve_lifetime::Set1<T>
     }
 }
 
+impl_stable_hash_for!(enum ::middle::resolve_lifetime::LifetimeDefOrigin {
+    Explicit,
+    InBand
+});
+
 impl_stable_hash_for!(enum ::middle::resolve_lifetime::Region {
     Static,
-    EarlyBound(index, decl),
-    LateBound(db_index, decl),
+    EarlyBound(index, decl, is_in_band),
+    LateBound(db_index, decl, is_in_band),
     LateBoundAnon(db_index, anon_index),
     Free(call_site_scope_data, decl)
 });
@@ -614,6 +676,9 @@ for ty::TypeVariants<'gcx>
                 def_id.hash_stable(hcx, hasher);
                 closure_substs.hash_stable(hcx, hasher);
                 interior.hash_stable(hcx, hasher);
+            }
+            TyGeneratorWitness(types) => {
+                types.hash_stable(hcx, hasher)
             }
             TyTuple(inner_tys, from_diverging_type_var) => {
                 inner_tys.hash_stable(hcx, hasher);
@@ -801,6 +866,7 @@ for ty::steal::Steal<T>
 
 impl_stable_hash_for!(struct ty::ParamEnv<'tcx> {
     caller_bounds,
+    universe,
     reveal
 });
 
@@ -968,5 +1034,14 @@ for traits::VtableGeneratorData<'gcx, N> where N: HashStable<StableHashingContex
         closure_def_id.hash_stable(hcx, hasher);
         substs.hash_stable(hcx, hasher);
         nested.hash_stable(hcx, hasher);
+    }
+}
+
+impl<'gcx> HashStable<StableHashingContext<'gcx>>
+for ty::UniverseIndex {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        self.depth().hash_stable(hcx, hasher);
     }
 }

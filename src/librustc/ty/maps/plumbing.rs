@@ -20,13 +20,13 @@ use ty::maps::config::QueryDescription;
 use ty::item_path;
 
 use rustc_data_structures::fx::{FxHashMap};
-use std::cell::RefMut;
+use std::cell::{Ref, RefMut};
 use std::marker::PhantomData;
 use std::mem;
 use syntax_pos::Span;
 
-pub(super) struct QueryMap<D: QueryDescription> {
-    phantom: PhantomData<D>,
+pub(super) struct QueryMap<'tcx, D: QueryDescription<'tcx>> {
+    phantom: PhantomData<(D, &'tcx ())>,
     pub(super) map: FxHashMap<D::Key, QueryValue<D::Value>>,
 }
 
@@ -46,13 +46,18 @@ impl<T> QueryValue<T> {
     }
 }
 
-impl<M: QueryDescription> QueryMap<M> {
-    pub(super) fn new() -> QueryMap<M> {
+impl<'tcx, M: QueryDescription<'tcx>> QueryMap<'tcx, M> {
+    pub(super) fn new() -> QueryMap<'tcx, M> {
         QueryMap {
             phantom: PhantomData,
             map: FxHashMap(),
         }
     }
+}
+
+pub(super) trait GetCacheInternal<'tcx>: QueryDescription<'tcx> + Sized {
+    fn get_cache_internal<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                              -> Ref<'a, QueryMap<'tcx, Self>>;
 }
 
 pub(super) struct CycleError<'a, 'tcx: 'a> {
@@ -76,17 +81,18 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // (And cycle errors around impls tend to occur during the
         // collect/coherence phases anyhow.)
         item_path::with_forced_impl_filename_line(|| {
+            let span = self.sess.codemap().def_span(span);
             let mut err =
                 struct_span_err!(self.sess, span, E0391,
-                                 "unsupported cyclic reference between types/traits detected");
+                                 "cyclic dependency detected");
             err.span_label(span, "cyclic reference");
 
-            err.span_note(stack[0].0, &format!("the cycle begins when {}...",
-                                               stack[0].1.describe(self)));
+            err.span_note(self.sess.codemap().def_span(stack[0].0),
+                          &format!("the cycle begins when {}...", stack[0].1.describe(self)));
 
             for &(span, ref query) in &stack[1..] {
-                err.span_note(span, &format!("...which then requires {}...",
-                                             query.describe(self)));
+                err.span_note(self.sess.codemap().def_span(span),
+                              &format!("...which then requires {}...", query.describe(self)));
             }
 
             err.note(&format!("...which then again requires {}, completing the cycle.",
@@ -139,9 +145,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 if !self.dep_graph.is_fully_enabled() {
                     return None;
                 }
-                match self.dep_graph.try_mark_green(self, &dep_node) {
+                match self.dep_graph.try_mark_green(self.global_tcx(), &dep_node) {
                     Some(dep_node_index) => {
-                        debug_assert!(self.dep_graph.is_green(dep_node_index));
+                        debug_assert!(self.dep_graph.is_green(&dep_node));
                         self.dep_graph.read_index(dep_node_index);
                         Some(dep_node_index)
                     }
@@ -175,6 +181,19 @@ macro_rules! profq_key {
             } else { None }
         } else { None }
     }
+}
+
+macro_rules! handle_cycle_error {
+    ([][$this: expr]) => {{
+        Value::from_cycle_error($this.global_tcx())
+    }};
+    ([fatal_cycle$(, $modifiers:ident)*][$this:expr]) => {{
+        $this.tcx.sess.abort_if_errors();
+        unreachable!();
+    }};
+    ([$other:ident$(, $modifiers:ident)*][$($args:tt)*]) => {
+        handle_cycle_error!([$($modifiers),*][$($args)*])
+    };
 }
 
 macro_rules! define_maps {
@@ -240,6 +259,13 @@ macro_rules! define_maps {
         $(impl<$tcx> QueryConfig for queries::$name<$tcx> {
             type Key = $K;
             type Value = $V;
+        }
+
+        impl<$tcx> GetCacheInternal<$tcx> for queries::$name<$tcx> {
+            fn get_cache_internal<'a>(tcx: TyCtxt<'a, $tcx, $tcx>)
+                                      -> ::std::cell::Ref<'a, QueryMap<$tcx, Self>> {
+                tcx.maps.$name.borrow()
+            }
         }
 
         impl<'a, $tcx, 'lcx> queries::$name<$tcx> {
@@ -327,7 +353,8 @@ macro_rules! define_maps {
                         return Self::load_from_disk_and_cache_in_memory(tcx,
                                                                         key,
                                                                         span,
-                                                                        dep_node_index)
+                                                                        dep_node_index,
+                                                                        &dep_node)
                     }
                 }
 
@@ -372,23 +399,77 @@ macro_rules! define_maps {
             fn load_from_disk_and_cache_in_memory(tcx: TyCtxt<'a, $tcx, 'lcx>,
                                                   key: $K,
                                                   span: Span,
-                                                  dep_node_index: DepNodeIndex)
+                                                  dep_node_index: DepNodeIndex,
+                                                  dep_node: &DepNode)
                                                   -> Result<$V, CycleError<'a, $tcx>>
             {
-                debug_assert!(tcx.dep_graph.is_green(dep_node_index));
+                debug_assert!(tcx.dep_graph.is_green(dep_node));
 
-                // We don't do any caching yet, so recompute.
-                // The diagnostics for this query have already been promoted to
-                // the current session during try_mark_green(), so we can ignore
-                // them here.
-                let (result, _) = tcx.cycle_check(span, Query::$name(key), || {
-                    tcx.sess.diagnostic().track_diagnostics(|| {
-                        // The dep-graph for this computation is already in place
-                        tcx.dep_graph.with_ignore(|| {
-                            Self::compute_result(tcx, key)
+                // First we try to load the result from the on-disk cache
+                let result = if Self::cache_on_disk(key) &&
+                                tcx.sess.opts.debugging_opts.incremental_queries {
+                    let prev_dep_node_index =
+                        tcx.dep_graph.prev_dep_node_index_of(dep_node);
+                    let result = Self::try_load_from_disk(tcx.global_tcx(),
+                                                          prev_dep_node_index);
+
+                    // We always expect to find a cached result for things that
+                    // can be forced from DepNode.
+                    debug_assert!(!dep_node.kind.can_reconstruct_query_key() ||
+                                  result.is_some(),
+                                  "Missing on-disk cache entry for {:?}",
+                                  dep_node);
+                    result
+                } else {
+                    // Some things are never cached on disk.
+                    None
+                };
+
+                let result = if let Some(result) = result {
+                    result
+                } else {
+                    // We could not load a result from the on-disk cache, so
+                    // recompute.
+                    let (result, _ ) = tcx.cycle_check(span, Query::$name(key), || {
+                        // The diagnostics for this query have already been
+                        // promoted to the current session during
+                        // try_mark_green(), so we can ignore them here.
+                        tcx.sess.diagnostic().track_diagnostics(|| {
+                            // The dep-graph for this computation is already in
+                            // place
+                            tcx.dep_graph.with_ignore(|| {
+                                Self::compute_result(tcx, key)
+                            })
                         })
-                    })
-                })?;
+                    })?;
+                    result
+                };
+
+                // If -Zincremental-verify-ich is specified, re-hash results from
+                // the cache and make sure that they have the expected fingerprint.
+                if tcx.sess.opts.debugging_opts.incremental_verify_ich {
+                    use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
+                    use ich::Fingerprint;
+
+                    assert!(Some(tcx.dep_graph.fingerprint_of(dep_node_index)) ==
+                            tcx.dep_graph.prev_fingerprint_of(dep_node),
+                            "Fingerprint for green query instance not loaded \
+                             from cache: {:?}", dep_node);
+
+                    debug!("BEGIN verify_ich({:?})", dep_node);
+                    let mut hcx = tcx.create_stable_hashing_context();
+                    let mut hasher = StableHasher::new();
+
+                    result.hash_stable(&mut hcx, &mut hasher);
+
+                    let new_hash: Fingerprint = hasher.finish();
+                    debug!("END verify_ich({:?})", dep_node);
+
+                    let old_hash = tcx.dep_graph.fingerprint_of(dep_node_index);
+
+                    assert!(new_hash == old_hash, "Found unstable fingerprints \
+                        for {:?}", dep_node);
+                }
 
                 if tcx.sess.opts.debugging_opts.query_dep_graph {
                     tcx.dep_graph.mark_loaded_from_cache(dep_node_index, true);
@@ -410,7 +491,7 @@ macro_rules! define_maps {
                      span: Span,
                      dep_node: DepNode)
                      -> Result<($V, DepNodeIndex), CycleError<'a, $tcx>> {
-                debug_assert!(tcx.dep_graph.node_color(&dep_node).is_none());
+                debug_assert!(!tcx.dep_graph.dep_node_exists(&dep_node));
 
                 profq_msg!(tcx, ProfileQueriesMsg::ProviderBegin);
                 let res = tcx.cycle_check(span, Query::$name(key), || {
@@ -496,7 +577,7 @@ macro_rules! define_maps {
             pub fn $name(self, key: $K) -> $V {
                 queries::$name::try_get(self.tcx, self.span, key).unwrap_or_else(|mut e| {
                     e.emit();
-                    Value::from_cycle_error(self.global_tcx())
+                    handle_cycle_error!([$($modifiers)*][self])
                 })
             })*
         }
@@ -515,11 +596,11 @@ macro_rules! define_maps {
 
 macro_rules! define_map_struct {
     (tcx: $tcx:tt,
-     input: ($(([$(modifiers:tt)*] [$($attr:tt)*] [$name:ident]))*)) => {
+     input: ($(([$($modifiers:tt)*] [$($attr:tt)*] [$name:ident]))*)) => {
         pub struct Maps<$tcx> {
             providers: IndexVec<CrateNum, Providers<$tcx>>,
             query_stack: RefCell<Vec<(Span, Query<$tcx>)>>,
-            $($(#[$attr])*  $name: RefCell<QueryMap<queries::$name<$tcx>>>,)*
+            $($(#[$attr])*  $name: RefCell<QueryMap<$tcx, queries::$name<$tcx>>>,)*
         }
     };
 }
@@ -692,11 +773,12 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::VtableMethods |
         DepKind::EraseRegionsTy |
         DepKind::NormalizeTy |
+        DepKind::SubstituteNormalizeAndTestPredicates |
+        DepKind::InstanceDefSizeEstimate |
 
-        // These are just odd
-        DepKind::Null |
-        DepKind::WorkProduct => {
-            bug!("force_from_dep_node() - Encountered {:?}", dep_node.kind)
+        // This one should never occur in this context
+        DepKind::Null => {
+            bug!("force_from_dep_node() - Encountered {:?}", dep_node)
         }
 
         // These are not queries
@@ -712,6 +794,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
             force!(crate_inherent_impls_overlap_check, LOCAL_CRATE)
         },
         DepKind::PrivacyAccessLevels => { force!(privacy_access_levels, LOCAL_CRATE); }
+        DepKind::MirBuilt => { force!(mir_built, def_id!()); }
         DepKind::MirConstQualif => { force!(mir_const_qualif, def_id!()); }
         DepKind::MirConst => { force!(mir_const, def_id!()); }
         DepKind::MirValidated => { force!(mir_validated, def_id!()); }
@@ -719,7 +802,8 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
 
         DepKind::BorrowCheck => { force!(borrowck, def_id!()); }
         DepKind::MirBorrowCheck => { force!(mir_borrowck, def_id!()); }
-        DepKind::UnsafetyViolations => { force!(unsafety_violations, def_id!()); }
+        DepKind::UnsafetyCheckResult => { force!(unsafety_check_result, def_id!()); }
+        DepKind::UnsafeDeriveOnReprPacked => { force!(unsafe_derive_on_repr_packed, def_id!()); }
         DepKind::Reachability => { force!(reachable_set, LOCAL_CRATE); }
         DepKind::MirKeys => { force!(mir_keys, LOCAL_CRATE); }
         DepKind::CrateVariances => { force!(crate_variances, LOCAL_CRATE); }
@@ -731,12 +815,9 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::SuperPredicatesOfItem => { force!(super_predicates_of, def_id!()); }
         DepKind::TraitDefOfItem => { force!(trait_def, def_id!()); }
         DepKind::AdtDefOfItem => { force!(adt_def, def_id!()); }
-        DepKind::IsAutoImpl => { force!(is_auto_impl, def_id!()); }
         DepKind::ImplTraitRef => { force!(impl_trait_ref, def_id!()); }
         DepKind::ImplPolarity => { force!(impl_polarity, def_id!()); }
-        DepKind::ClosureKind => { force!(closure_kind, def_id!()); }
         DepKind::FnSignature => { force!(fn_sig, def_id!()); }
-        DepKind::GenSignature => { force!(generator_sig, def_id!()); }
         DepKind::CoerceUnsizedInfo => { force!(coerce_unsized_info, def_id!()); }
         DepKind::ItemVariances => { force!(variances_of, def_id!()); }
         DepKind::IsConstFn => { force!(is_const_fn, def_id!()); }
@@ -754,6 +835,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::SpecializationGraph => { force!(specialization_graph_of, def_id!()); }
         DepKind::ObjectSafety => { force!(is_object_safe, def_id!()); }
         DepKind::TraitImpls => { force!(trait_impls_of, def_id!()); }
+        DepKind::CheckMatch => { force!(check_match, def_id!()); }
 
         DepKind::ParamEnv => { force!(param_env, def_id!()); }
         DepKind::DescribeDef => { force!(describe_def, def_id!()); }
@@ -769,9 +851,10 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::RvaluePromotableMap => { force!(rvalue_promotable_map, def_id!()); }
         DepKind::ImplParent => { force!(impl_parent, def_id!()); }
         DepKind::TraitOfItem => { force!(trait_of_item, def_id!()); }
-        DepKind::IsExportedSymbol => { force!(is_exported_symbol, def_id!()); }
+        DepKind::IsReachableNonGeneric => { force!(is_reachable_non_generic, def_id!()); }
         DepKind::IsMirAvailable => { force!(is_mir_available, def_id!()); }
         DepKind::ItemAttrs => { force!(item_attrs, def_id!()); }
+        DepKind::TransFnAttrs => { force!(trans_fn_attrs, def_id!()); }
         DepKind::FnArgNames => { force!(fn_arg_names, def_id!()); }
         DepKind::DylibDepFormats => { force!(dylib_dependency_formats, krate!()); }
         DepKind::IsPanicRuntime => { force!(is_panic_runtime, krate!()); }
@@ -786,7 +869,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::GetPanicStrategy => { force!(panic_strategy, krate!()); }
         DepKind::IsNoBuiltins => { force!(is_no_builtins, krate!()); }
         DepKind::ImplDefaultness => { force!(impl_defaultness, def_id!()); }
-        DepKind::ExportedSymbolIds => { force!(exported_symbol_ids, krate!()); }
+        DepKind::ReachableNonGenerics => { force!(reachable_non_generics, krate!()); }
         DepKind::NativeLibraries => { force!(native_libraries, krate!()); }
         DepKind::PluginRegistrarFn => { force!(plugin_registrar_fn, krate!()); }
         DepKind::DeriveRegistrarFn => { force!(derive_registrar_fn, krate!()); }
@@ -807,6 +890,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::NativeLibraryKind => { force!(native_library_kind, def_id!()); }
         DepKind::LinkArgs => { force!(link_args, LOCAL_CRATE); }
 
+        DepKind::ResolveLifetimes => { force!(resolve_lifetimes, krate!()); }
         DepKind::NamedRegion => { force!(named_region_map, def_id!().index); }
         DepKind::IsLateBound => { force!(is_late_bound_map, def_id!().index); }
         DepKind::ObjectLifetimeDefaults => {
@@ -842,14 +926,77 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::CollectAndPartitionTranslationItems => {
             force!(collect_and_partition_translation_items, LOCAL_CRATE);
         }
-        DepKind::ExportName => { force!(export_name, def_id!()); }
-        DepKind::ContainsExternIndicator => {
-            force!(contains_extern_indicator, def_id!());
-        }
-        DepKind::IsTranslatedFunction => { force!(is_translated_function, def_id!()); }
+        DepKind::IsTranslatedItem => { force!(is_translated_item, def_id!()); }
         DepKind::OutputFilenames => { force!(output_filenames, LOCAL_CRATE); }
+
+        DepKind::TargetFeaturesWhitelist => { force!(target_features_whitelist, LOCAL_CRATE); }
+
+        DepKind::GetSymbolExportLevel => { force!(symbol_export_level, def_id!()); }
+        DepKind::Features => { force!(features_query, LOCAL_CRATE); }
     }
 
     true
 }
 
+
+// FIXME(#45015): Another piece of boilerplate code that could be generated in
+//                a combined define_dep_nodes!()/define_maps!() macro.
+macro_rules! impl_load_from_cache {
+    ($($dep_kind:ident => $query_name:ident,)*) => {
+        impl DepNode {
+            // Check whether the query invocation corresponding to the given
+            // DepNode is eligible for on-disk-caching.
+            pub fn cache_on_disk(&self, tcx: TyCtxt) -> bool {
+                use ty::maps::queries;
+                use ty::maps::QueryDescription;
+
+                match self.kind {
+                    $(DepKind::$dep_kind => {
+                        let def_id = self.extract_def_id(tcx).unwrap();
+                        queries::$query_name::cache_on_disk(def_id)
+                    })*
+                    _ => false
+                }
+            }
+
+            // This is method will execute the query corresponding to the given
+            // DepNode. It is only expected to work for DepNodes where the
+            // above `cache_on_disk` methods returns true.
+            // Also, as a sanity check, it expects that the corresponding query
+            // invocation has been marked as green already.
+            pub fn load_from_on_disk_cache(&self, tcx: TyCtxt) {
+                match self.kind {
+                    $(DepKind::$dep_kind => {
+                        debug_assert!(tcx.dep_graph
+                                         .node_color(self)
+                                         .map(|c| c.is_green())
+                                         .unwrap_or(false));
+
+                        let def_id = self.extract_def_id(tcx).unwrap();
+                        let _ = tcx.$query_name(def_id);
+                    })*
+                    _ => {
+                        bug!()
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl_load_from_cache!(
+    TypeckTables => typeck_tables_of,
+    MirOptimized => optimized_mir,
+    UnsafetyCheckResult => unsafety_check_result,
+    BorrowCheck => borrowck,
+    MirBorrowCheck => mir_borrowck,
+    MirConstQualif => mir_const_qualif,
+    SymbolName => def_symbol_name,
+    ConstIsRvaluePromotableToStatic => const_is_rvalue_promotable_to_static,
+    CheckMatch => check_match,
+    TypeOfItem => type_of,
+    GenericsOfItem => generics_of,
+    PredicatesOfItem => predicates_of,
+    UsedTraitImports => used_trait_imports,
+    TransFnAttrs => trans_fn_attrs,
+);

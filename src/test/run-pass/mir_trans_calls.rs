@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(fn_traits)]
+#![feature(fn_traits, test)]
+
+extern crate test;
 
 fn test1(a: isize, b: (i32, i32), c: &[i32]) -> (isize, (i32, i32), &[i32]) {
     // Test passing a number of arguments including a fat pointer.
@@ -156,6 +158,16 @@ fn test_fn_nested_pair(x: &((f32, f32), u32)) -> (f32, f32) {
     (z.0, z.1)
 }
 
+fn test_fn_const_arg_by_ref(mut a: [u64; 4]) -> u64 {
+    // Mutate the by-reference argument, which won't work with
+    // a non-immediate constant unless it's copied to the stack.
+    let a = test::black_box(&mut a);
+    a[0] += a[1];
+    a[0] += a[2];
+    a[0] += a[3];
+    a[0]
+}
+
 fn main() {
     assert_eq!(test1(1, (2, 3), &[4, 5, 6]), (1, (2, 3), &[4, 5, 6][..]));
     assert_eq!(test2(98), 98);
@@ -182,4 +194,7 @@ fn main() {
     assert_eq!(test_fn_ignored_pair_0(), ());
     assert_eq!(test_fn_ignored_pair_named(), (Foo, Foo));
     assert_eq!(test_fn_nested_pair(&((1.0, 2.0), 0)), (1.0, 2.0));
+
+    const ARRAY: [u64; 4] = [1, 2, 3, 4];
+    assert_eq!(test_fn_const_arg_by_ref(ARRAY), 1 + 2 + 3 + 4);
 }

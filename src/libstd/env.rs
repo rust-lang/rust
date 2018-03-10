@@ -571,8 +571,11 @@ pub fn temp_dir() -> PathBuf {
 
 /// Returns the full filesystem path of the current running executable.
 ///
-/// The path returned is not necessarily a "real path" of the executable as
-/// there may be intermediate symlinks.
+/// # Platform-specific behavior
+///
+/// If the executable was invoked through a symbolic link, some platforms will
+/// return the path of the symbolic link and other platforms will return the
+/// path of the symbolic link’s target.
 ///
 /// # Errors
 ///
@@ -599,14 +602,14 @@ pub fn temp_dir() -> PathBuf {
 /// Ok("/home/alex/foo")
 /// ```
 ///
-/// And you make a symbolic link of the program:
+/// And you make a hard link of the program:
 ///
 /// ```bash
 /// $ ln foo bar
 /// ```
 ///
-/// When you run it, you won't get the original executable, you'll get the
-/// symlink:
+/// When you run it, you won’t get the path of the original executable, you’ll
+/// get the path of the hard link:
 ///
 /// ```bash
 /// $ ./bar
@@ -614,9 +617,9 @@ pub fn temp_dir() -> PathBuf {
 /// ```
 ///
 /// This sort of behavior has been known to [lead to privilege escalation] when
-/// used incorrectly, for example.
+/// used incorrectly.
 ///
-/// [lead to privilege escalation]: http://securityvulns.com/Wdocument183.html
+/// [lead to privilege escalation]: https://securityvulns.com/Wdocument183.html
 ///
 /// # Examples
 ///
@@ -625,7 +628,7 @@ pub fn temp_dir() -> PathBuf {
 ///
 /// match env::current_exe() {
 ///     Ok(exe_path) => println!("Path of this executable is: {}",
-///                               exe_path.display()),
+///                              exe_path.display()),
 ///     Err(e) => println!("failed to get current exe path: {}", e),
 /// };
 /// ```
@@ -720,6 +723,12 @@ pub fn args_os() -> ArgsOs {
     ArgsOs { inner: sys::args::args() }
 }
 
+#[stable(feature = "env_unimpl_send_sync", since = "1.25.0")]
+impl !Send for Args {}
+
+#[stable(feature = "env_unimpl_send_sync", since = "1.25.0")]
+impl !Sync for Args {}
+
 #[stable(feature = "env", since = "1.0.0")]
 impl Iterator for Args {
     type Item = String;
@@ -750,6 +759,12 @@ impl fmt::Debug for Args {
             .finish()
     }
 }
+
+#[stable(feature = "env_unimpl_send_sync", since = "1.25.0")]
+impl !Send for ArgsOs {}
+
+#[stable(feature = "env_unimpl_send_sync", since = "1.25.0")]
+impl !Sync for ArgsOs {}
 
 #[stable(feature = "env", since = "1.0.0")]
 impl Iterator for ArgsOs {
@@ -953,8 +968,7 @@ mod arch {
 mod tests {
     use super::*;
 
-    use ffi::OsStr;
-    use path::{Path, PathBuf};
+    use path::Path;
 
     #[test]
     #[cfg_attr(target_os = "emscripten", ignore)]
@@ -977,6 +991,8 @@ mod tests {
     #[test]
     #[cfg(windows)]
     fn split_paths_windows() {
+        use path::PathBuf;
+
         fn check_parse(unparsed: &str, parsed: &[&str]) -> bool {
             split_paths(unparsed).collect::<Vec<_>>() ==
                 parsed.iter().map(|s| PathBuf::from(*s)).collect::<Vec<_>>()
@@ -997,6 +1013,8 @@ mod tests {
     #[test]
     #[cfg(unix)]
     fn split_paths_unix() {
+        use path::PathBuf;
+
         fn check_parse(unparsed: &str, parsed: &[&str]) -> bool {
             split_paths(unparsed).collect::<Vec<_>>() ==
                 parsed.iter().map(|s| PathBuf::from(*s)).collect::<Vec<_>>()
@@ -1012,6 +1030,8 @@ mod tests {
     #[test]
     #[cfg(unix)]
     fn join_paths_unix() {
+        use ffi::OsStr;
+
         fn test_eq(input: &[&str], output: &str) -> bool {
             &*join_paths(input.iter().cloned()).unwrap() ==
                 OsStr::new(output)
@@ -1028,6 +1048,8 @@ mod tests {
     #[test]
     #[cfg(windows)]
     fn join_paths_windows() {
+        use ffi::OsStr;
+
         fn test_eq(input: &[&str], output: &str) -> bool {
             &*join_paths(input.iter().cloned()).unwrap() ==
                 OsStr::new(output)

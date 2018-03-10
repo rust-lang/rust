@@ -1,0 +1,11 @@
+error[E0054]: cannot cast as `bool`
+  --> $DIR/E0054.rs:13:24
+   |
+LL |     let x_is_nonzero = x as bool; //~ ERROR E0054
+   |                        ^^^^^^^^^ unsupported cast
+   |
+   = help: compare with zero instead
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0054"

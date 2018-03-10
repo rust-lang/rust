@@ -1,0 +1,30 @@
+error[E0658]: arbitrary `self` types are unstable (see issue #44874)
+  --> $DIR/feature-gate-arbitrary-self-types.rs:14:18
+   |
+LL |     fn foo(self: Rc<Box<Self>>); //~ ERROR arbitrary `self` types are unstable
+   |                  ^^^^^^^^^^^^^
+   |
+   = help: add #![feature(arbitrary_self_types)] to the crate attributes to enable
+   = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
+
+error[E0658]: arbitrary `self` types are unstable (see issue #44874)
+  --> $DIR/feature-gate-arbitrary-self-types.rs:20:18
+   |
+LL |     fn foo(self: Rc<Box<Self>>) {} //~ ERROR arbitrary `self` types are unstable
+   |                  ^^^^^^^^^^^^^
+   |
+   = help: add #![feature(arbitrary_self_types)] to the crate attributes to enable
+   = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
+
+error[E0658]: arbitrary `self` types are unstable (see issue #44874)
+  --> $DIR/feature-gate-arbitrary-self-types.rs:24:18
+   |
+LL |     fn bar(self: Box<Rc<Self>>) {} //~ ERROR arbitrary `self` types are unstable
+   |                  ^^^^^^^^^^^^^
+   |
+   = help: add #![feature(arbitrary_self_types)] to the crate attributes to enable
+   = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
+
+error: aborting due to 3 previous errors
+
+If you want more information on this error, try using "rustc --explain E0658"

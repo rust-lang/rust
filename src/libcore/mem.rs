@@ -189,6 +189,7 @@ pub fn forget<T>(t: T) {
 /// Type | size_of::\<Type>()
 /// ---- | ---------------
 /// () | 0
+/// bool | 1
 /// u8 | 1
 /// u16 | 2
 /// u32 | 4
@@ -311,7 +312,6 @@ pub fn forget<T>(t: T) {
 /// [alignment]: ./fn.align_of.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_size_of")]
 pub const fn size_of<T>() -> usize {
     unsafe { intrinsics::size_of::<T>() }
 }
@@ -403,7 +403,6 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_align_of")]
 pub const fn align_of<T>() -> usize {
     unsafe { intrinsics::min_align_of::<T>() }
 }
@@ -1026,7 +1025,7 @@ impl<T: ::fmt::Debug> ::fmt::Debug for ManuallyDrop<T> {
     }
 }
 
-#[stable(feature = "manually_drop", since = "1.20.0")]
+#[stable(feature = "manually_drop_impls", since = "1.22.0")]
 impl<T: Clone> Clone for ManuallyDrop<T> {
     fn clone(&self) -> Self {
         ManuallyDrop::new(self.deref().clone())
@@ -1037,14 +1036,14 @@ impl<T: Clone> Clone for ManuallyDrop<T> {
     }
 }
 
-#[stable(feature = "manually_drop", since = "1.20.0")]
+#[stable(feature = "manually_drop_impls", since = "1.22.0")]
 impl<T: Default> Default for ManuallyDrop<T> {
     fn default() -> Self {
         ManuallyDrop::new(Default::default())
     }
 }
 
-#[stable(feature = "manually_drop", since = "1.20.0")]
+#[stable(feature = "manually_drop_impls", since = "1.22.0")]
 impl<T: PartialEq> PartialEq for ManuallyDrop<T> {
     fn eq(&self, other: &Self) -> bool {
         self.deref().eq(other)
@@ -1055,10 +1054,10 @@ impl<T: PartialEq> PartialEq for ManuallyDrop<T> {
     }
 }
 
-#[stable(feature = "manually_drop", since = "1.20.0")]
+#[stable(feature = "manually_drop_impls", since = "1.22.0")]
 impl<T: Eq> Eq for ManuallyDrop<T> {}
 
-#[stable(feature = "manually_drop", since = "1.20.0")]
+#[stable(feature = "manually_drop_impls", since = "1.22.0")]
 impl<T: PartialOrd> PartialOrd for ManuallyDrop<T> {
     fn partial_cmp(&self, other: &Self) -> Option<::cmp::Ordering> {
         self.deref().partial_cmp(other)
@@ -1081,14 +1080,14 @@ impl<T: PartialOrd> PartialOrd for ManuallyDrop<T> {
     }
 }
 
-#[stable(feature = "manually_drop", since = "1.20.0")]
+#[stable(feature = "manually_drop_impls", since = "1.22.0")]
 impl<T: Ord> Ord for ManuallyDrop<T> {
     fn cmp(&self, other: &Self) -> ::cmp::Ordering {
         self.deref().cmp(other)
     }
 }
 
-#[stable(feature = "manually_drop", since = "1.20.0")]
+#[stable(feature = "manually_drop_impls", since = "1.22.0")]
 impl<T: ::hash::Hash> ::hash::Hash for ManuallyDrop<T> {
     fn hash<H: ::hash::Hasher>(&self, state: &mut H) {
         self.deref().hash(state);

@@ -1,0 +1,27 @@
+error[E0688]: cannot mix in-band and explicit lifetime definitions
+  --> $DIR/E0688.rs:14:28
+   |
+LL | fn foo<'a>(x: &'a u32, y: &'b u32) {} //~ ERROR cannot mix
+   |        --                  ^^ in-band lifetime definition here
+   |        |
+   |        explicit lifetime definition here
+
+error[E0688]: cannot mix in-band and explicit lifetime definitions
+  --> $DIR/E0688.rs:19:44
+   |
+LL |     fn bar<'b>(x: &'a u32, y: &'b u32, z: &'c u32) {} //~ ERROR cannot mix
+   |            --                              ^^ in-band lifetime definition here
+   |            |
+   |            explicit lifetime definition here
+
+error[E0688]: cannot mix in-band and explicit lifetime definitions
+  --> $DIR/E0688.rs:22:14
+   |
+LL | impl<'b> Foo<'a> { //~ ERROR cannot mix
+   |      --      ^^ in-band lifetime definition here
+   |      |
+   |      explicit lifetime definition here
+
+error: aborting due to 3 previous errors
+
+If you want more information on this error, try using "rustc --explain E0688"

@@ -1,0 +1,12 @@
+error[E0137]: multiple functions with a #[main] attribute
+  --> $DIR/E0137.rs:17:1
+   |
+LL | fn foo() {}
+   | ----------- first #[main] function
+...
+LL | fn f() {}
+   | ^^^^^^^^^ additional #[main] function
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0137"

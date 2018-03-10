@@ -964,7 +964,7 @@ impl<'a, T> ExactSizeIterator for Iter<'a, T> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, T> FusedIterator for Iter<'a, T> {}
 
 /// An owning iterator over the elements of a `BinaryHeap`.
@@ -1019,7 +1019,7 @@ impl<T> ExactSizeIterator for IntoIter<T> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for IntoIter<T> {}
 
 /// A draining iterator over the elements of a `BinaryHeap`.
@@ -1065,7 +1065,7 @@ impl<'a, T: 'a> ExactSizeIterator for Drain<'a, T> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, T: 'a> FusedIterator for Drain<'a, T> {}
 
 #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
@@ -1211,7 +1211,7 @@ where T: Clone + Ord {
 #[unstable(feature = "collection_placement",
            reason = "placement protocol is subject to change",
            issue = "30172")]
-impl<'a, T> Place<T> for BinaryHeapPlace<'a, T>
+unsafe impl<'a, T> Place<T> for BinaryHeapPlace<'a, T>
 where T: Clone + Ord {
     fn pointer(&mut self) -> *mut T {
         self.place.pointer()

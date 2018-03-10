@@ -13,6 +13,7 @@
 // compile-flags:-Zinline-in-all-cgus
 
 #![deny(dead_code)]
+#![feature(start)]
 
 //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<transitive_drop_glue::Root[0]> @@ transitive_drop_glue0[Internal]
 struct Root(Intermediate);
@@ -34,9 +35,9 @@ impl<T> Drop for LeafGen<T> {
     fn drop(&mut self) {}
 }
 
-//~ TRANS_ITEM fn transitive_drop_glue::main[0]
-fn main() {
-
+//~ TRANS_ITEM fn transitive_drop_glue::start[0]
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize {
     let _ = Root(Intermediate(Leaf));
 
     //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<transitive_drop_glue::RootGen[0]<u32>> @@ transitive_drop_glue0[Internal]
@@ -50,4 +51,6 @@ fn main() {
     //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<transitive_drop_glue::LeafGen[0]<i16>> @@ transitive_drop_glue0[Internal]
     //~ TRANS_ITEM fn transitive_drop_glue::{{impl}}[1]::drop[0]<i16>
     let _ = RootGen(IntermediateGen(LeafGen(0i16)));
+
+    0
 }

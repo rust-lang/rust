@@ -1,0 +1,11 @@
+error[E0658]: attributes of the form `#[derive_*]` are reserved for the compiler (see issue #29644)
+  --> $DIR/feature-gate-custom_derive.rs:11:1
+   |
+LL | #[derive_Clone]
+   | ^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_derive)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0658"

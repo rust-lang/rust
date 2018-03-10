@@ -1,8 +1,9 @@
 error[E0321]: cross-crate traits with a default impl, like `std::marker::Send`, can only be implemented for a struct/enum type, not `&'static main::Foo`
   --> $DIR/empty_span.rs:17:5
    |
-17 |     unsafe impl Send for &'static Foo { }
+LL |     unsafe impl Send for &'static Foo { } //~ ERROR cross-crate traits with a default impl
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0321"

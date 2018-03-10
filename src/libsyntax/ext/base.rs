@@ -13,7 +13,7 @@ pub use self::SyntaxExtension::*;
 use ast::{self, Attribute, Name, PatKind, MetaItem};
 use attr::HasAttrs;
 use codemap::{self, CodeMap, Spanned, respan};
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::{Span, MultiSpan, DUMMY_SP};
 use errors::DiagnosticBuilder;
 use ext::expand::{self, Expansion, Invocation};
 use ext::hygiene::{Mark, SyntaxContext};
@@ -21,12 +21,14 @@ use fold::{self, Folder};
 use parse::{self, parser, DirectoryOwnership};
 use parse::token;
 use ptr::P;
-use symbol::Symbol;
+use symbol::{keywords, Ident, Symbol};
 use util::small_vector::SmallVector;
 
 use std::collections::HashMap;
+use std::iter;
 use std::path::PathBuf;
 use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use std::default::Default;
 use tokenstream::{self, TokenStream};
 
@@ -84,15 +86,27 @@ impl Annotatable {
 
     pub fn expect_trait_item(self) -> ast::TraitItem {
         match self {
-            Annotatable::TraitItem(i) => i.unwrap(),
+            Annotatable::TraitItem(i) => i.into_inner(),
             _ => panic!("expected Item")
         }
     }
 
     pub fn expect_impl_item(self) -> ast::ImplItem {
         match self {
-            Annotatable::ImplItem(i) => i.unwrap(),
+            Annotatable::ImplItem(i) => i.into_inner(),
             _ => panic!("expected Item")
+        }
+    }
+
+    pub fn derive_allowed(&self) -> bool {
+        match *self {
+            Annotatable::Item(ref item) => match item.node {
+                ast::ItemKind::Struct(..) |
+                ast::ItemKind::Enum(..) |
+                ast::ItemKind::Union(..) => true,
+                _ => false,
+            },
+            _ => false,
         }
     }
 }
@@ -602,15 +616,15 @@ pub trait Resolver {
     fn is_whitelisted_legacy_custom_derive(&self, name: Name) -> bool;
 
     fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion, derives: &[Mark]);
-    fn add_builtin(&mut self, ident: ast::Ident, ext: Rc<SyntaxExtension>);
+    fn add_builtin(&mut self, ident: ast::Ident, ext: Lrc<SyntaxExtension>);
 
     fn resolve_imports(&mut self);
     // Resolves attribute and derive legacy macros from `#![plugin(..)]`.
     fn find_legacy_attr_invoc(&mut self, attrs: &mut Vec<Attribute>) -> Option<Attribute>;
     fn resolve_invoc(&mut self, invoc: &mut Invocation, scope: Mark, force: bool)
-                     -> Result<Option<Rc<SyntaxExtension>>, Determinacy>;
+                     -> Result<Option<Lrc<SyntaxExtension>>, Determinacy>;
     fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind, force: bool)
-                     -> Result<Rc<SyntaxExtension>, Determinacy>;
+                     -> Result<Lrc<SyntaxExtension>, Determinacy>;
     fn check_unused_macros(&self);
 }
 
@@ -629,16 +643,16 @@ impl Resolver for DummyResolver {
     fn is_whitelisted_legacy_custom_derive(&self, _name: Name) -> bool { false }
 
     fn visit_expansion(&mut self, _invoc: Mark, _expansion: &Expansion, _derives: &[Mark]) {}
-    fn add_builtin(&mut self, _ident: ast::Ident, _ext: Rc<SyntaxExtension>) {}
+    fn add_builtin(&mut self, _ident: ast::Ident, _ext: Lrc<SyntaxExtension>) {}
 
     fn resolve_imports(&mut self) {}
     fn find_legacy_attr_invoc(&mut self, _attrs: &mut Vec<Attribute>) -> Option<Attribute> { None }
     fn resolve_invoc(&mut self, _invoc: &mut Invocation, _scope: Mark, _force: bool)
-                     -> Result<Option<Rc<SyntaxExtension>>, Determinacy> {
+                     -> Result<Option<Lrc<SyntaxExtension>>, Determinacy> {
         Err(Determinacy::Determined)
     }
     fn resolve_macro(&mut self, _scope: Mark, _path: &ast::Path, _kind: MacroKind,
-                     _force: bool) -> Result<Rc<SyntaxExtension>, Determinacy> {
+                     _force: bool) -> Result<Lrc<SyntaxExtension>, Determinacy> {
         Err(Determinacy::Determined)
     }
     fn check_unused_macros(&self) {}
@@ -664,7 +678,7 @@ pub struct ExpansionData {
 pub struct ExtCtxt<'a> {
     pub parse_sess: &'a parse::ParseSess,
     pub ecfg: expand::ExpansionConfig<'a>,
-    pub crate_root: Option<&'static str>,
+    pub root_path: PathBuf,
     pub resolver: &'a mut Resolver,
     pub resolve_err_count: usize,
     pub current_expansion: ExpansionData,
@@ -679,14 +693,14 @@ impl<'a> ExtCtxt<'a> {
         ExtCtxt {
             parse_sess,
             ecfg,
-            crate_root: None,
+            root_path: PathBuf::new(),
             resolver,
             resolve_err_count: 0,
             current_expansion: ExpansionData {
                 mark: Mark::root(),
                 depth: 0,
                 module: Rc::new(ModuleData { mod_path: Vec::new(), directory: PathBuf::new() }),
-                directory_ownership: DirectoryOwnership::Owned,
+                directory_ownership: DirectoryOwnership::Owned { relative: None },
             },
             expansions: HashMap::new(),
         }
@@ -741,29 +755,30 @@ impl<'a> ExtCtxt<'a> {
         last_macro
     }
 
-    pub fn struct_span_warn(&self,
-                            sp: Span,
-                            msg: &str)
-                            -> DiagnosticBuilder<'a> {
+    pub fn struct_span_warn<S: Into<MultiSpan>>(&self,
+                                                sp: S,
+                                                msg: &str)
+                                                -> DiagnosticBuilder<'a> {
         self.parse_sess.span_diagnostic.struct_span_warn(sp, msg)
     }
-    pub fn struct_span_err(&self,
-                           sp: Span,
-                           msg: &str)
-                           -> DiagnosticBuilder<'a> {
+    pub fn struct_span_err<S: Into<MultiSpan>>(&self,
+                                               sp: S,
+                                               msg: &str)
+                                               -> DiagnosticBuilder<'a> {
         self.parse_sess.span_diagnostic.struct_span_err(sp, msg)
     }
-    pub fn struct_span_fatal(&self,
-                             sp: Span,
-                             msg: &str)
-                             -> DiagnosticBuilder<'a> {
+    pub fn struct_span_fatal<S: Into<MultiSpan>>(&self,
+                                                 sp: S,
+                                                 msg: &str)
+                                                 -> DiagnosticBuilder<'a> {
         self.parse_sess.span_diagnostic.struct_span_fatal(sp, msg)
     }
 
     /// Emit `msg` attached to `sp`, and stop compilation immediately.
     ///
     /// `span_err` should be strongly preferred where-ever possible:
-    /// this should *only* be used when
+    /// this should *only* be used when:
+    ///
     /// - continuing has a high risk of flow-on errors (e.g. errors in
     ///   declaring a macro would cause all uses of that macro to
     ///   complain about "undefined macro"), or
@@ -771,8 +786,8 @@ impl<'a> ExtCtxt<'a> {
     ///   in most cases one can construct a dummy expression/item to
     ///   substitute; we never hit resolve/type-checking so the dummy
     ///   value doesn't have to match anything)
-    pub fn span_fatal(&self, sp: Span, msg: &str) -> ! {
-        panic!(self.parse_sess.span_diagnostic.span_fatal(sp, msg));
+    pub fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
+        self.parse_sess.span_diagnostic.span_fatal(sp, msg).raise();
     }
 
     /// Emit `msg` attached to `sp`, without immediately stopping
@@ -780,20 +795,20 @@ impl<'a> ExtCtxt<'a> {
     ///
     /// Compilation will be stopped in the near future (at the end of
     /// the macro expansion phase).
-    pub fn span_err(&self, sp: Span, msg: &str) {
+    pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.parse_sess.span_diagnostic.span_err(sp, msg);
     }
-    pub fn mut_span_err(&self, sp: Span, msg: &str)
+    pub fn mut_span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str)
                         -> DiagnosticBuilder<'a> {
         self.parse_sess.span_diagnostic.mut_span_err(sp, msg)
     }
-    pub fn span_warn(&self, sp: Span, msg: &str) {
+    pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.parse_sess.span_diagnostic.span_warn(sp, msg);
     }
-    pub fn span_unimpl(&self, sp: Span, msg: &str) -> ! {
+    pub fn span_unimpl<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
         self.parse_sess.span_diagnostic.span_unimpl(sp, msg);
     }
-    pub fn span_bug(&self, sp: Span, msg: &str) -> ! {
+    pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
         self.parse_sess.span_diagnostic.span_bug(sp, msg);
     }
     pub fn trace_macros_diag(&mut self) {
@@ -820,12 +835,10 @@ impl<'a> ExtCtxt<'a> {
         ast::Ident::from_str(st)
     }
     pub fn std_path(&self, components: &[&str]) -> Vec<ast::Ident> {
-        let mut v = Vec::new();
-        if let Some(s) = self.crate_root {
-            v.push(self.ident_of(s));
-        }
-        v.extend(components.iter().map(|s| self.ident_of(s)));
-        v
+        let def_site = SyntaxContext::empty().apply_mark(self.current_expansion.mark);
+        iter::once(Ident { ctxt: def_site, ..keywords::DollarCrate.ident() })
+            .chain(components.iter().map(|s| self.ident_of(s)))
+            .collect()
     }
     pub fn name_of(&self, st: &str) -> ast::Name {
         Symbol::intern(st)
@@ -878,8 +891,8 @@ pub fn check_zero_tts(cx: &ExtCtxt,
     }
 }
 
-/// Extract the string literal from the first token of `tts`. If this
-/// is not a string literal, emit an error and return None.
+/// Interpreting `tts` as a comma-separated sequence of expressions,
+/// expect exactly one string literal, or emit an error and return None.
 pub fn get_single_str_from_tts(cx: &mut ExtCtxt,
                                sp: Span,
                                tts: &[tokenstream::TokenTree],
@@ -891,6 +904,8 @@ pub fn get_single_str_from_tts(cx: &mut ExtCtxt,
         return None
     }
     let ret = panictry!(p.parse_expr());
+    let _ = p.eat(&token::Comma);
+
     if p.token != token::Eof {
         cx.span_err(sp, &format!("{} takes 1 argument", name));
     }

@@ -134,7 +134,7 @@ macro_rules! radix {
     }
 }
 
-radix! { Binary,    2, "0b", x @  0 ...  2 => b'0' + x }
+radix! { Binary,    2, "0b", x @  0 ...  1 => b'0' + x }
 radix! { Octal,     8, "0o", x @  0 ...  7 => b'0' + x }
 radix! { Decimal,  10, "",   x @  0 ...  9 => b'0' + x }
 radix! { LowerHex, 16, "0x", x @  0 ...  9 => b'0' + x,
@@ -157,6 +157,7 @@ macro_rules! debug {
     ($T:ident) => {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl fmt::Debug for $T {
+            #[inline]
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 fmt::Display::fmt(self, f)
             }

@@ -27,6 +27,7 @@ use syntax::ast;
 use syntax::util::lev_distance::{lev_distance, find_best_match_for_name};
 use syntax_pos::Span;
 use rustc::hir;
+use rustc::lint;
 use std::mem;
 use std::ops::Deref;
 use std::rc::Rc;
@@ -77,6 +78,12 @@ impl<'a, 'gcx, 'tcx> Deref for ProbeContext<'a, 'gcx, 'tcx> {
 struct CandidateStep<'tcx> {
     self_ty: Ty<'tcx>,
     autoderefs: usize,
+    // true if the type results from a dereference of a raw pointer.
+    // when assembling candidates, we include these steps, but not when
+    // picking methods. This so that if we have `foo: *const Foo` and `Foo` has methods
+    // `fn by_raw_ptr(self: *const Self)` and `fn by_ref(&self)`, then
+    // `foo.by_raw_ptr()` will work and `foo.by_ref()` won't.
+    from_unsafe_deref: bool,
     unsize: bool,
 }
 
@@ -183,7 +190,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                scope_expr_id);
         let method_names =
             self.probe_op(span, mode, None, Some(return_type), IsSuggestion(true),
-                          self_ty, scope_expr_id, ProbeScope::TraitsInScope,
+                          self_ty, scope_expr_id, ProbeScope::AllTraits,
                           |probe_cx| Ok(probe_cx.candidate_method_names()))
                 .unwrap_or(vec![]);
          method_names
@@ -192,7 +199,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                  self.probe_op(
                      span, mode, Some(method_name), Some(return_type),
                      IsSuggestion(true), self_ty, scope_expr_id,
-                     ProbeScope::TraitsInScope, |probe_cx| probe_cx.pick()
+                     ProbeScope::AllTraits, |probe_cx| probe_cx.pick()
                  ).ok().map(|pick| pick.item)
              })
             .collect()
@@ -243,7 +250,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // think cause spurious errors. Really though this part should
         // take place in the `self.probe` below.
         let steps = if mode == Mode::MethodCall {
-            match self.create_steps(span, self_ty, is_suggestion) {
+            match self.create_steps(span, scope_expr_id, self_ty, is_suggestion) {
                 Some(steps) => steps,
                 None => {
                     return Err(MethodError::NoMatch(NoMatchData::new(Vec::new(),
@@ -257,6 +264,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             vec![CandidateStep {
                      self_ty,
                      autoderefs: 0,
+                     from_unsafe_deref: false,
                      unsize: false,
                  }]
         };
@@ -284,19 +292,27 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn create_steps(&self,
                     span: Span,
+                    scope_expr_id: ast::NodeId,
                     self_ty: Ty<'tcx>,
                     is_suggestion: IsSuggestion)
                     -> Option<Vec<CandidateStep<'tcx>>> {
         // FIXME: we don't need to create the entire steps in one pass
 
-        let mut autoderef = self.autoderef(span, self_ty);
+        let mut autoderef = self.autoderef(span, self_ty).include_raw_pointers();
+        let mut reached_raw_pointer = false;
         let mut steps: Vec<_> = autoderef.by_ref()
             .map(|(ty, d)| {
-                CandidateStep {
+                let step = CandidateStep {
                     self_ty: ty,
                     autoderefs: d,
+                    from_unsafe_deref: reached_raw_pointer,
                     unsize: false,
+                };
+                if let ty::TyRawPtr(_) = ty.sty {
+                    // all the subsequent steps will be from_unsafe_deref
+                    reached_raw_pointer = true;
                 }
+                step
             })
             .collect();
 
@@ -304,12 +320,30 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         match final_ty.sty {
             ty::TyInfer(ty::TyVar(_)) => {
                 // Ended in an inference variable. If we are doing
-                // a real method lookup, this is a hard error (it's an
-                // ambiguity and we can't make progress).
+                // a real method lookup, this is a hard error because it's
+                // possible that there will be multiple applicable methods.
                 if !is_suggestion.0 {
-                    let t = self.structurally_resolved_type(span, final_ty);
-                    assert_eq!(t, self.tcx.types.err);
-                    return None
+                    if reached_raw_pointer
+                    && !self.tcx.features().arbitrary_self_types {
+                        // this case used to be allowed by the compiler,
+                        // so we do a future-compat lint here for the 2015 epoch
+                        // (see https://github.com/rust-lang/rust/issues/46906)
+                        if self.tcx.sess.rust_2018() {
+                          span_err!(self.tcx.sess, span, E0908,
+                                    "the type of this value must be known \
+                                     to call a method on a raw pointer on it");
+                        } else {
+                            self.tcx.lint_node(
+                                lint::builtin::TYVAR_BEHIND_RAW_POINTER,
+                                scope_expr_id,
+                                span,
+                                &format!("type annotations needed"));
+                        }
+                    } else {
+                        let t = self.structurally_resolved_type(span, final_ty);
+                        assert_eq!(t, self.tcx.types.err);
+                        return None
+                    }
                 } else {
                     // If we're just looking for suggestions,
                     // though, ambiguity is no big thing, we can
@@ -322,6 +356,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 steps.push(CandidateStep {
                     self_ty: self.tcx.mk_slice(elem_ty),
                     autoderefs: dereferences,
+                    // this could be from an unsafe deref if we had
+                    // a *mut/const [T; N]
+                    from_unsafe_deref: reached_raw_pointer,
                     unsize: true,
                 });
             }
@@ -463,7 +500,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 let lang_def_id = lang_items.i128_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyInt(ast::IntTy::Is) => {
+            ty::TyInt(ast::IntTy::Isize) => {
                 let lang_def_id = lang_items.isize_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
@@ -487,7 +524,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 let lang_def_id = lang_items.u128_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyUint(ast::UintTy::Us) => {
+            ty::TyUint(ast::UintTy::Usize) => {
                 let lang_def_id = lang_items.usize_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
@@ -598,7 +635,6 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                             _ => None,
                         }
                     }
-                    ty::Predicate::Equate(..) |
                     ty::Predicate::Subtype(..) |
                     ty::Predicate::Projection(..) |
                     ty::Predicate::RegionOutlives(..) |
@@ -693,7 +729,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             Def::Method(def_id) => {
                 let fty = self.tcx.fn_sig(def_id);
                 self.probe(|_| {
-                    let substs = self.fresh_substs_for_item(self.span, method.def_id);
+                    let substs = self.fresh_substs_for_item(ty::UniverseIndex::ROOT,
+                                                            self.span,
+                                                            method.def_id);
                     let fty = fty.subst(self.tcx, substs);
                     let (fty, _) = self.replace_late_bound_regions_with_fresh_var(
                         self.span, infer::FnCall, &fty);
@@ -830,7 +868,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             .iter()
             .filter(|step| {
                 debug!("pick_core: step={:?}", step);
-                !step.self_ty.references_error()
+                // skip types that are from a type error or that would require dereferencing
+                // a raw pointer
+                !step.self_ty.references_error() && !step.from_unsafe_deref
             }).flat_map(|step| {
                 self.pick_by_value_method(step).or_else(|| {
                 self.pick_autorefd_method(step, hir::MutImmutable).or_else(|| {
@@ -1265,12 +1305,12 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                     // `impl_self_ty()` for an explanation.
                     self.tcx.types.re_erased
                 }
-            }, |def, cur_substs| {
+            }, |def, _cur_substs| {
                 let i = def.index as usize;
                 if i < substs.len() {
                     substs.type_at(i)
                 } else {
-                    self.type_var_for_def(self.span, def, cur_substs)
+                    self.type_var_for_def(ty::UniverseIndex::ROOT, self.span, def)
                 }
             });
             xform_fn_sig.subst(self.tcx, substs)
@@ -1287,6 +1327,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                          def_id,
                          |_, _| self.tcx.types.re_erased,
                          |_, _| self.next_ty_var(
+                             ty::UniverseIndex::ROOT,
                              TypeVariableOrigin::SubstitutionPlaceholder(
                                  self.tcx.def_span(def_id))))
     }

@@ -12,7 +12,7 @@
 
 struct SomeStruct;
 
-unsafe impl SomeStruct { //~ ERROR inherent impls cannot be declared as unsafe
+unsafe impl SomeStruct { //~ ERROR inherent impls cannot be unsafe
     fn foo(self) { }
 }
 

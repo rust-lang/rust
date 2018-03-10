@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-wasm32-bare compiled with panic=abort by default
+
 // Test that builtin implementations of `Clone` cleanup everything
 // in case of unwinding.
 

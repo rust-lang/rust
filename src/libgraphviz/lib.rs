@@ -306,7 +306,7 @@ pub enum LabelText<'a> {
     LabelStr(Cow<'a, str>),
 
     /// This kind of label uses the graphviz label escString type:
-    /// http://www.graphviz.org/content/attrs#kescString
+    /// <http://www.graphviz.org/content/attrs#kescString>
     ///
     /// Occurrences of backslashes (`\`) are not escaped; instead they
     /// are interpreted as initiating an escString escape sequence.
@@ -326,7 +326,7 @@ pub enum LabelText<'a> {
 }
 
 /// The style for a node or edge.
-/// See http://www.graphviz.org/doc/info/attrs.html#k:style for descriptions.
+/// See <http://www.graphviz.org/doc/info/attrs.html#k:style> for descriptions.
 /// Note that some of these are not valid for edges.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Style {
@@ -413,27 +413,14 @@ impl<'a> Id<'a> {
     /// quotes, ...) will return an empty `Err` value.
     pub fn new<Name: IntoCow<'a, str>>(name: Name) -> Result<Id<'a>, ()> {
         let name = name.into_cow();
-        {
-            let mut chars = name.chars();
-            match chars.next() {
-                Some(c) if is_letter_or_underscore(c) => {}
-                _ => return Err(()),
-            }
-            if !chars.all(is_constituent) {
-                return Err(());
-            }
+        match name.chars().next() {
+            Some(c) if c.is_ascii_alphabetic() || c == '_' => {}
+            _ => return Err(()),
+        }
+        if !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' ) {
+            return Err(());
         }
         return Ok(Id { name: name });
-
-        fn is_letter_or_underscore(c: char) -> bool {
-            in_range('a', c, 'z') || in_range('A', c, 'Z') || c == '_'
-        }
-        fn is_constituent(c: char) -> bool {
-            is_letter_or_underscore(c) || in_range('0', c, '9')
-        }
-        fn in_range(low: char, c: char, high: char) -> bool {
-            low as usize <= c as usize && c as usize <= high as usize
-        }
     }
 
     pub fn as_slice(&'a self) -> &'a str {
@@ -484,8 +471,7 @@ pub trait Labeller<'a> {
     /// Maps `e` to a label that will be used in the rendered output.
     /// The label need not be unique, and may be the empty string; the
     /// default is in fact the empty string.
-    fn edge_label(&'a self, e: &Self::Edge) -> LabelText<'a> {
-        let _ignored = e;
+    fn edge_label(&'a self, _e: &Self::Edge) -> LabelText<'a> {
         LabelStr("".into_cow())
     }
 
@@ -655,79 +641,58 @@ pub fn render_opts<'a, N, E, G, W>(g: &'a G,
           G: Labeller<'a, Node=N, Edge=E> + GraphWalk<'a, Node=N, Edge=E>,
           W: Write
 {
-    fn writeln<W: Write>(w: &mut W, arg: &[&str]) -> io::Result<()> {
-        for &s in arg {
-            w.write_all(s.as_bytes())?;
-        }
-        write!(w, "\n")
-    }
-
-    fn indent<W: Write>(w: &mut W) -> io::Result<()> {
-        w.write_all(b"    ")
-    }
-
-    writeln(w, &["digraph ", g.graph_id().as_slice(), " {"])?;
+    writeln!(w, "digraph {} {{", g.graph_id().as_slice())?;
     for n in g.nodes().iter() {
-        indent(w)?;
+        write!(w, "    ")?;
         let id = g.node_id(n);
 
         let escaped = &g.node_label(n).to_dot_string();
-        let shape;
 
-        let mut text = vec![id.as_slice()];
+        let mut text = Vec::new();
+        write!(text, "{}", id.as_slice()).unwrap();
 
         if !options.contains(&RenderOption::NoNodeLabels) {
-            text.push("[label=");
-            text.push(escaped);
-            text.push("]");
+            write!(text, "[label={}]", escaped).unwrap();
         }
 
         let style = g.node_style(n);
         if !options.contains(&RenderOption::NoNodeStyles) && style != Style::None {
-            text.push("[style=\"");
-            text.push(style.as_slice());
-            text.push("\"]");
+            write!(text, "[style=\"{}\"]", style.as_slice()).unwrap();
         }
 
         if let Some(s) = g.node_shape(n) {
-            shape = s.to_dot_string();
-            text.push("[shape=");
-            text.push(&shape);
-            text.push("]");
+            write!(text, "[shape={}]", &s.to_dot_string()).unwrap();
         }
 
-        text.push(";");
-        writeln(w, &text)?;
+        writeln!(text, ";").unwrap();
+        w.write_all(&text[..])?;
     }
 
     for e in g.edges().iter() {
         let escaped_label = &g.edge_label(e).to_dot_string();
-        indent(w)?;
+        write!(w, "    ")?;
         let source = g.source(e);
         let target = g.target(e);
         let source_id = g.node_id(&source);
         let target_id = g.node_id(&target);
 
-        let mut text = vec![source_id.as_slice(), " -> ", target_id.as_slice()];
+        let mut text = Vec::new();
+        write!(text, "{} -> {}", source_id.as_slice(), target_id.as_slice()).unwrap();
 
         if !options.contains(&RenderOption::NoEdgeLabels) {
-            text.push("[label=");
-            text.push(escaped_label);
-            text.push("]");
+            write!(text, "[label={}]", escaped_label).unwrap();
         }
 
         let style = g.edge_style(e);
         if !options.contains(&RenderOption::NoEdgeStyles) && style != Style::None {
-            text.push("[style=\"");
-            text.push(style.as_slice());
-            text.push("\"]");
+            write!(text, "[style=\"{}\"]", style.as_slice()).unwrap();
         }
 
-        text.push(";");
-        writeln(w, &text)?;
+        writeln!(text, ";").unwrap();
+        w.write_all(&text[..])?;
     }
 
-    writeln(w, &["}"])
+    writeln!(w, "}}")
 }
 
 pub trait IntoCow<'a, B: ?Sized> where B: ToOwned {

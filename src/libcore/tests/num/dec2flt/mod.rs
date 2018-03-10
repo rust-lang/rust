@@ -102,6 +102,12 @@ fn lonely_dot() {
 }
 
 #[test]
+fn exponentiated_dot() {
+    assert!(".e0".parse::<f32>().is_err());
+    assert!(".e0".parse::<f64>().is_err());
+}
+
+#[test]
 fn lonely_sign() {
     assert!("+".parse::<f32>().is_err());
     assert!("-".parse::<f64>().is_err());

@@ -60,22 +60,20 @@
 //! sort of a minor point so I've opted to leave it for later---after all
 //! we may want to adjust precisely when coercions occur.
 
-use check::{Diverges, FnCtxt};
+use check::{Diverges, FnCtxt, Needs};
 
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::infer::{Coercion, InferResult, InferOk};
 use rustc::infer::type_variable::TypeVariableOrigin;
+use rustc::lint;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
-use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
-use rustc::ty::{self, LvaluePreference, TypeAndMut,
-                Ty, ClosureSubsts};
+use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability};
+use rustc::ty::{self, TypeAndMut, Ty, ClosureSubsts};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::error::TypeError;
 use rustc::ty::relate::RelateResult;
-use rustc::ty::subst::Subst;
 use errors::DiagnosticBuilder;
-use syntax::abi;
 use syntax::feature_gate;
 use syntax::ptr::P;
 use syntax_pos;
@@ -179,6 +177,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                 // micro-optimization: no need for this if `b` is
                 // already resolved in some way.
                 let diverging_ty = self.next_diverging_ty_var(
+                    ty::UniverseIndex::ROOT,
                     TypeVariableOrigin::AdjustmentType(self.cause.span));
                 self.unify_and(&b, &diverging_ty, simple(Adjust::NeverToAny))
             } else {
@@ -411,9 +410,9 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
             return success(vec![], ty, obligations);
         }
 
-        let pref = LvaluePreference::from_mutbl(mt_b.mutbl);
+        let needs = Needs::maybe_mut_place(mt_b.mutbl);
         let InferOk { value: mut adjustments, obligations: o }
-            = autoderef.adjust_steps_as_infer_ok(pref);
+            = autoderef.adjust_steps_as_infer_ok(needs);
         obligations.extend(o);
         obligations.extend(autoderef.into_obligations());
 
@@ -423,8 +422,17 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
             ty::TyRef(r_borrow, _) => r_borrow,
             _ => span_bug!(span, "expected a ref type, got {:?}", ty),
         };
+        let mutbl = match mt_b.mutbl {
+            hir::MutImmutable => AutoBorrowMutability::Immutable,
+            hir::MutMutable => AutoBorrowMutability::Mutable {
+                // Deref-coercion is a case where we deliberately
+                // disallow two-phase borrows in its initial
+                // deployment; see discussion on PR #47489.
+                allow_two_phase_borrow: false,
+            }
+        };
         adjustments.push(Adjustment {
-            kind: Adjust::Borrow(AutoBorrow::Ref(r_borrow, mt_b.mutbl)),
+            kind: Adjust::Borrow(AutoBorrow::Ref(r_borrow, mutbl)),
             target: ty
         });
 
@@ -463,11 +471,17 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
                 let coercion = Coercion(self.cause.span);
                 let r_borrow = self.next_region_var(coercion);
+                let mutbl = match mt_b.mutbl {
+                    hir::MutImmutable => AutoBorrowMutability::Immutable,
+                    hir::MutMutable => AutoBorrowMutability::Mutable {
+                        allow_two_phase_borrow: false,
+                    }
+                };
                 Some((Adjustment {
                     kind: Adjust::Deref(None),
                     target: mt_a.ty
                 }, Adjustment {
-                    kind: Adjust::Borrow(AutoBorrow::Ref(r_borrow, mt_b.mutbl)),
+                    kind: Adjust::Borrow(AutoBorrow::Ref(r_borrow, mutbl)),
                     target:  self.tcx.mk_ref(r_borrow, ty::TypeAndMut {
                         mutbl: mt_b.mutbl,
                         ty: mt_a.ty
@@ -497,7 +511,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         // We only have the latter, so we use an inference variable
         // for the former and let type inference do the rest.
         let origin = TypeVariableOrigin::MiscVariable(self.cause.span);
-        let coerce_target = self.next_ty_var(origin);
+        let coerce_target = self.next_ty_var(ty::UniverseIndex::ROOT, origin);
         let mut coercion = self.unify_and(coerce_target, target, |target| {
             let unsize = Adjustment {
                 kind: Adjust::Unsize,
@@ -572,7 +586,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
             }
         }
 
-        if has_unsized_tuple_coercion && !self.tcx.sess.features.borrow().unsized_tuple_coercion {
+        if has_unsized_tuple_coercion && !self.tcx.features().unsized_tuple_coercion {
             feature_gate::emit_feature_err(&self.tcx.sess.parse_sess,
                                            "unsized_tuple_coercion",
                                            self.cause.span,
@@ -639,9 +653,18 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                     self.normalize_associated_types_in_as_infer_ok(self.cause.span, &a_sig);
 
                 let a_fn_pointer = self.tcx.mk_fn_ptr(a_sig);
-                let InferOk { value, obligations: o2 } =
-                    self.coerce_from_safe_fn(a_fn_pointer, a_sig, b,
-                        simple(Adjust::ReifyFnPointer), simple(Adjust::ReifyFnPointer))?;
+                let InferOk { value, obligations: o2 } = self.coerce_from_safe_fn(
+                    a_fn_pointer,
+                    a_sig,
+                    b,
+                    |unsafe_ty| {
+                        vec![
+                            Adjustment { kind: Adjust::ReifyFnPointer, target: a_fn_pointer },
+                            Adjustment { kind: Adjust::UnsafeFnPointer, target: unsafe_ty },
+                        ]
+                    },
+                    simple(Adjust::ReifyFnPointer)
+                )?;
 
                 obligations.extend(o2);
                 Ok(InferOk { value, obligations })
@@ -669,23 +692,8 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                 //     `extern "rust-call" fn((arg0,arg1,...)) -> _`
                 // to
                 //     `fn(arg0,arg1,...) -> _`
-                let sig = self.fn_sig(def_id_a).subst(self.tcx, substs_a.substs);
-                let converted_sig = sig.map_bound(|s| {
-                    let params_iter = match s.inputs()[0].sty {
-                        ty::TyTuple(params, _) => {
-                            params.into_iter().cloned()
-                        }
-                        _ => bug!(),
-                    };
-                    self.tcx.mk_fn_sig(
-                        params_iter,
-                        s.output(),
-                        s.variadic,
-                        hir::Unsafety::Normal,
-                        abi::Abi::Rust
-                    )
-                });
-                let pointer_ty = self.tcx.mk_fn_ptr(converted_sig);
+                let sig = self.closure_sig(def_id_a, substs_a);
+                let pointer_ty = self.tcx.coerce_closure_fn_ty(sig);
                 debug!("coerce_closure_to_fn(a={:?}, b={:?}, pty={:?})",
                        a, b, pointer_ty);
                 self.unify_and(pointer_ty, b, simple(Adjust::ClosureFnPointer))
@@ -754,7 +762,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // type, but only if the source expression diverges.
         if target.is_never() && expr_diverges.always() {
             debug!("permit coercion to `!` because expr diverges");
-            return Ok(target);
+            if self.can_eq(self.param_env, source, target).is_err() {
+                self.tcx.lint_node(
+                    lint::builtin::COERCE_NEVER,
+                    expr.id,
+                    expr.span,
+                    &format!("cannot coerce `{}` to !", source)
+                );
+                return Ok(target);
+            }
         }
 
         let cause = self.cause(expr.span, ObligationCauseCode::ExprAssignable);
@@ -871,6 +887,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 ] => {
                     match self.node_ty(expr.hir_id).sty {
                         ty::TyRef(_, mt_orig) => {
+                            let mutbl_adj: hir::Mutability = mutbl_adj.into();
                             // Reborrow that we can safely ignore, because
                             // the next adjustment can only be a Deref
                             // which will be merged into it.

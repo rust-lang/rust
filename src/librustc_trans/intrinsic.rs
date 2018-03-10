@@ -11,20 +11,19 @@
 #![allow(non_upper_case_globals)]
 
 use intrinsics::{self, Intrinsic};
-use libc;
 use llvm;
 use llvm::{ValueRef};
-use abi::{Abi, FnType};
-use adt;
-use mir::lvalue::{LvalueRef, Alignment};
+use abi::{Abi, FnType, PassMode};
+use mir::place::PlaceRef;
+use mir::operand::{OperandRef, OperandValue};
 use base::*;
 use common::*;
 use declare;
 use glue;
-use type_of;
-use machine;
 use type_::Type;
+use type_of::LayoutLlvmExt;
 use rustc::ty::{self, Ty};
+use rustc::ty::layout::{HasDataLayout, LayoutOf};
 use rustc::hir;
 use syntax::ast;
 use syntax::symbol::Symbol;
@@ -36,7 +35,7 @@ use syntax_pos::Span;
 use std::cmp::Ordering;
 use std::iter;
 
-fn get_simple_intrinsic(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
+fn get_simple_intrinsic(cx: &CodegenCx, name: &str) -> Option<ValueRef> {
     let llvm_name = match name {
         "sqrtf32" => "llvm.sqrt.f32",
         "sqrtf64" => "llvm.sqrt.f64",
@@ -80,20 +79,20 @@ fn get_simple_intrinsic(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
         "abort" => "llvm.trap",
         _ => return None
     };
-    Some(ccx.get_intrinsic(&llvm_name))
+    Some(cx.get_intrinsic(&llvm_name))
 }
 
 /// Remember to add all intrinsics here, in librustc_typeck/check/mod.rs,
 /// and in libcore/intrinsics.rs; if you need access to any llvm intrinsics,
 /// add them to librustc_trans/trans/context.rs
-pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
+pub fn trans_intrinsic_call<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
                                       callee_ty: Ty<'tcx>,
-                                      fn_ty: &FnType,
-                                      llargs: &[ValueRef],
+                                      fn_ty: &FnType<'tcx>,
+                                      args: &[OperandRef<'tcx>],
                                       llresult: ValueRef,
                                       span: Span) {
-    let ccx = bcx.ccx;
-    let tcx = ccx.tcx();
+    let cx = bx.cx;
+    let tcx = cx.tcx;
 
     let (def_id, substs) = match callee_ty.sty {
         ty::TyFnDef(def_id, substs) => (def_id, substs),
@@ -106,167 +105,173 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
     let ret_ty = sig.output();
     let name = &*tcx.item_name(def_id);
 
-    let llret_ty = type_of::type_of(ccx, ret_ty);
+    let llret_ty = cx.layout_of(ret_ty).llvm_type(cx);
+    let result = PlaceRef::new_sized(llresult, fn_ty.ret.layout, fn_ty.ret.layout.align);
 
-    let simple = get_simple_intrinsic(ccx, name);
+    let simple = get_simple_intrinsic(cx, name);
     let llval = match name {
         _ if simple.is_some() => {
-            bcx.call(simple.unwrap(), &llargs, None)
+            bx.call(simple.unwrap(),
+                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                     None)
         }
         "unreachable" => {
             return;
         },
         "likely" => {
-            let expect = ccx.get_intrinsic(&("llvm.expect.i1"));
-            bcx.call(expect, &[llargs[0], C_bool(ccx, true)], None)
+            let expect = cx.get_intrinsic(&("llvm.expect.i1"));
+            bx.call(expect, &[args[0].immediate(), C_bool(cx, true)], None)
         }
         "unlikely" => {
-            let expect = ccx.get_intrinsic(&("llvm.expect.i1"));
-            bcx.call(expect, &[llargs[0], C_bool(ccx, false)], None)
+            let expect = cx.get_intrinsic(&("llvm.expect.i1"));
+            bx.call(expect, &[args[0].immediate(), C_bool(cx, false)], None)
         }
         "try" => {
-            try_intrinsic(bcx, ccx, llargs[0], llargs[1], llargs[2], llresult);
-            C_nil(ccx)
+            try_intrinsic(bx, cx,
+                          args[0].immediate(),
+                          args[1].immediate(),
+                          args[2].immediate(),
+                          llresult);
+            return;
         }
         "breakpoint" => {
-            let llfn = ccx.get_intrinsic(&("llvm.debugtrap"));
-            bcx.call(llfn, &[], None)
+            let llfn = cx.get_intrinsic(&("llvm.debugtrap"));
+            bx.call(llfn, &[], None)
         }
         "size_of" => {
             let tp_ty = substs.type_at(0);
-            let lltp_ty = type_of::type_of(ccx, tp_ty);
-            C_usize(ccx, machine::llsize_of_alloc(ccx, lltp_ty))
+            C_usize(cx, cx.size_of(tp_ty).bytes())
         }
         "size_of_val" => {
             let tp_ty = substs.type_at(0);
-            if bcx.ccx.shared().type_is_sized(tp_ty) {
-                let lltp_ty = type_of::type_of(ccx, tp_ty);
-                C_usize(ccx, machine::llsize_of_alloc(ccx, lltp_ty))
-            } else if bcx.ccx.shared().type_has_metadata(tp_ty) {
+            if let OperandValue::Pair(_, meta) = args[0].val {
                 let (llsize, _) =
-                    glue::size_and_align_of_dst(bcx, tp_ty, llargs[1]);
+                    glue::size_and_align_of_dst(bx, tp_ty, meta);
                 llsize
             } else {
-                C_usize(ccx, 0u64)
+                C_usize(cx, cx.size_of(tp_ty).bytes())
             }
         }
         "min_align_of" => {
             let tp_ty = substs.type_at(0);
-            C_usize(ccx, ccx.align_of(tp_ty) as u64)
+            C_usize(cx, cx.align_of(tp_ty).abi())
         }
         "min_align_of_val" => {
             let tp_ty = substs.type_at(0);
-            if bcx.ccx.shared().type_is_sized(tp_ty) {
-                C_usize(ccx, ccx.align_of(tp_ty) as u64)
-            } else if bcx.ccx.shared().type_has_metadata(tp_ty) {
+            if let OperandValue::Pair(_, meta) = args[0].val {
                 let (_, llalign) =
-                    glue::size_and_align_of_dst(bcx, tp_ty, llargs[1]);
+                    glue::size_and_align_of_dst(bx, tp_ty, meta);
                 llalign
             } else {
-                C_usize(ccx, 1u64)
+                C_usize(cx, cx.align_of(tp_ty).abi())
             }
         }
         "pref_align_of" => {
             let tp_ty = substs.type_at(0);
-            let lltp_ty = type_of::type_of(ccx, tp_ty);
-            C_usize(ccx, machine::llalign_of_pref(ccx, lltp_ty) as u64)
+            C_usize(cx, cx.align_of(tp_ty).pref())
         }
         "type_name" => {
             let tp_ty = substs.type_at(0);
             let ty_name = Symbol::intern(&tp_ty.to_string()).as_str();
-            C_str_slice(ccx, ty_name)
+            C_str_slice(cx, ty_name)
         }
         "type_id" => {
-            C_u64(ccx, ccx.tcx().type_id_hash(substs.type_at(0)))
+            C_u64(cx, cx.tcx.type_id_hash(substs.type_at(0)))
         }
         "init" => {
             let ty = substs.type_at(0);
-            if !type_is_zero_size(ccx, ty) {
+            if !cx.layout_of(ty).is_zst() {
                 // Just zero out the stack slot.
                 // If we store a zero constant, LLVM will drown in vreg allocation for large data
                 // structures, and the generated code will be awful. (A telltale sign of this is
                 // large quantities of `mov [byte ptr foo],0` in the generated code.)
-                memset_intrinsic(bcx, false, ty, llresult, C_u8(ccx, 0), C_usize(ccx, 1));
+                memset_intrinsic(bx, false, ty, llresult, C_u8(cx, 0), C_usize(cx, 1));
             }
-            C_nil(ccx)
+            return;
         }
         // Effectively no-ops
         "uninit" => {
-            C_nil(ccx)
+            return;
         }
         "needs_drop" => {
             let tp_ty = substs.type_at(0);
 
-            C_bool(ccx, bcx.ccx.shared().type_needs_drop(tp_ty))
+            C_bool(cx, bx.cx.type_needs_drop(tp_ty))
         }
         "offset" => {
-            let ptr = llargs[0];
-            let offset = llargs[1];
-            bcx.inbounds_gep(ptr, &[offset])
+            let ptr = args[0].immediate();
+            let offset = args[1].immediate();
+            bx.inbounds_gep(ptr, &[offset])
         }
         "arith_offset" => {
-            let ptr = llargs[0];
-            let offset = llargs[1];
-            bcx.gep(ptr, &[offset])
+            let ptr = args[0].immediate();
+            let offset = args[1].immediate();
+            bx.gep(ptr, &[offset])
         }
 
         "copy_nonoverlapping" => {
-            copy_intrinsic(bcx, false, false, substs.type_at(0), llargs[1], llargs[0], llargs[2])
+            copy_intrinsic(bx, false, false, substs.type_at(0),
+                           args[1].immediate(), args[0].immediate(), args[2].immediate())
         }
         "copy" => {
-            copy_intrinsic(bcx, true, false, substs.type_at(0), llargs[1], llargs[0], llargs[2])
+            copy_intrinsic(bx, true, false, substs.type_at(0),
+                           args[1].immediate(), args[0].immediate(), args[2].immediate())
         }
         "write_bytes" => {
-            memset_intrinsic(bcx, false, substs.type_at(0), llargs[0], llargs[1], llargs[2])
+            memset_intrinsic(bx, false, substs.type_at(0),
+                             args[0].immediate(), args[1].immediate(), args[2].immediate())
         }
 
         "volatile_copy_nonoverlapping_memory" => {
-            copy_intrinsic(bcx, false, true, substs.type_at(0), llargs[0], llargs[1], llargs[2])
+            copy_intrinsic(bx, false, true, substs.type_at(0),
+                           args[0].immediate(), args[1].immediate(), args[2].immediate())
         }
         "volatile_copy_memory" => {
-            copy_intrinsic(bcx, true, true, substs.type_at(0), llargs[0], llargs[1], llargs[2])
+            copy_intrinsic(bx, true, true, substs.type_at(0),
+                           args[0].immediate(), args[1].immediate(), args[2].immediate())
         }
         "volatile_set_memory" => {
-            memset_intrinsic(bcx, true, substs.type_at(0), llargs[0], llargs[1], llargs[2])
+            memset_intrinsic(bx, true, substs.type_at(0),
+                             args[0].immediate(), args[1].immediate(), args[2].immediate())
         }
         "volatile_load" => {
             let tp_ty = substs.type_at(0);
-            let mut ptr = llargs[0];
-            if let Some(ty) = fn_ty.ret.cast {
-                ptr = bcx.pointercast(ptr, ty.ptr_to());
+            let mut ptr = args[0].immediate();
+            if let PassMode::Cast(ty) = fn_ty.ret.mode {
+                ptr = bx.pointercast(ptr, ty.llvm_type(cx).ptr_to());
             }
-            let load = bcx.volatile_load(ptr);
+            let load = bx.volatile_load(ptr);
             unsafe {
-                llvm::LLVMSetAlignment(load, ccx.align_of(tp_ty));
+                llvm::LLVMSetAlignment(load, cx.align_of(tp_ty).abi() as u32);
             }
-            to_immediate(bcx, load, tp_ty)
+            to_immediate(bx, load, cx.layout_of(tp_ty))
         },
         "volatile_store" => {
             let tp_ty = substs.type_at(0);
-            if type_is_fat_ptr(bcx.ccx, tp_ty) {
-                bcx.volatile_store(llargs[1], get_dataptr(bcx, llargs[0]));
-                bcx.volatile_store(llargs[2], get_meta(bcx, llargs[0]));
+            let dst = args[0].deref(bx.cx);
+            if let OperandValue::Pair(a, b) = args[1].val {
+                bx.volatile_store(a, dst.project_field(bx, 0).llval);
+                bx.volatile_store(b, dst.project_field(bx, 1).llval);
             } else {
-                let val = if fn_ty.args[1].is_indirect() {
-                    bcx.load(llargs[1], None)
+                let val = if let OperandValue::Ref(ptr, align) = args[1].val {
+                    bx.load(ptr, align)
                 } else {
-                    if !type_is_zero_size(ccx, tp_ty) {
-                        from_immediate(bcx, llargs[1])
-                    } else {
-                        C_nil(ccx)
+                    if dst.layout.is_zst() {
+                        return;
                     }
+                    from_immediate(bx, args[1].immediate())
                 };
-                let ptr = bcx.pointercast(llargs[0], val_ty(val).ptr_to());
-                let store = bcx.volatile_store(val, ptr);
+                let ptr = bx.pointercast(dst.llval, val_ty(val).ptr_to());
+                let store = bx.volatile_store(val, ptr);
                 unsafe {
-                    llvm::LLVMSetAlignment(store, ccx.align_of(tp_ty));
+                    llvm::LLVMSetAlignment(store, cx.align_of(tp_ty).abi() as u32);
                 }
             }
-            C_nil(ccx)
+            return;
         },
         "prefetch_read_data" | "prefetch_write_data" |
         "prefetch_read_instruction" | "prefetch_write_instruction" => {
-            let expect = ccx.get_intrinsic(&("llvm.prefetch"));
+            let expect = cx.get_intrinsic(&("llvm.prefetch"));
             let (rw, cache_type) = match name {
                 "prefetch_read_data" => (0, 1),
                 "prefetch_write_data" => (1, 1),
@@ -274,73 +279,88 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 "prefetch_write_instruction" => (1, 0),
                 _ => bug!()
             };
-            bcx.call(expect, &[llargs[0], C_i32(ccx, rw), llargs[1], C_i32(ccx, cache_type)], None)
+            bx.call(expect, &[
+                args[0].immediate(),
+                C_i32(cx, rw),
+                args[1].immediate(),
+                C_i32(cx, cache_type)
+            ], None)
         },
         "ctlz" | "ctlz_nonzero" | "cttz" | "cttz_nonzero" | "ctpop" | "bswap" |
-        "add_with_overflow" | "sub_with_overflow" | "mul_with_overflow" |
-        "overflowing_add" | "overflowing_sub" | "overflowing_mul" |
+        "bitreverse" | "add_with_overflow" | "sub_with_overflow" |
+        "mul_with_overflow" | "overflowing_add" | "overflowing_sub" | "overflowing_mul" |
         "unchecked_div" | "unchecked_rem" | "unchecked_shl" | "unchecked_shr" => {
-            let sty = &arg_tys[0].sty;
-            match int_type_width_signed(sty, ccx) {
+            let ty = arg_tys[0];
+            match int_type_width_signed(ty, cx) {
                 Some((width, signed)) =>
                     match name {
                         "ctlz" | "cttz" => {
-                            let y = C_bool(bcx.ccx, false);
-                            let llfn = ccx.get_intrinsic(&format!("llvm.{}.i{}", name, width));
-                            bcx.call(llfn, &[llargs[0], y], None)
+                            let y = C_bool(bx.cx, false);
+                            let llfn = cx.get_intrinsic(&format!("llvm.{}.i{}", name, width));
+                            bx.call(llfn, &[args[0].immediate(), y], None)
                         }
                         "ctlz_nonzero" | "cttz_nonzero" => {
-                            let y = C_bool(bcx.ccx, true);
+                            let y = C_bool(bx.cx, true);
                             let llvm_name = &format!("llvm.{}.i{}", &name[..4], width);
-                            let llfn = ccx.get_intrinsic(llvm_name);
-                            bcx.call(llfn, &[llargs[0], y], None)
+                            let llfn = cx.get_intrinsic(llvm_name);
+                            bx.call(llfn, &[args[0].immediate(), y], None)
                         }
-                        "ctpop" => bcx.call(ccx.get_intrinsic(&format!("llvm.ctpop.i{}", width)),
-                                        &llargs, None),
+                        "ctpop" => bx.call(cx.get_intrinsic(&format!("llvm.ctpop.i{}", width)),
+                                        &[args[0].immediate()], None),
                         "bswap" => {
                             if width == 8 {
-                                llargs[0] // byte swap a u8/i8 is just a no-op
+                                args[0].immediate() // byte swap a u8/i8 is just a no-op
                             } else {
-                                bcx.call(ccx.get_intrinsic(&format!("llvm.bswap.i{}", width)),
-                                        &llargs, None)
+                                bx.call(cx.get_intrinsic(&format!("llvm.bswap.i{}", width)),
+                                        &[args[0].immediate()], None)
                             }
+                        }
+                        "bitreverse" => {
+                            bx.call(cx.get_intrinsic(&format!("llvm.bitreverse.i{}", width)),
+                                &[args[0].immediate()], None)
                         }
                         "add_with_overflow" | "sub_with_overflow" | "mul_with_overflow" => {
                             let intrinsic = format!("llvm.{}{}.with.overflow.i{}",
                                                     if signed { 's' } else { 'u' },
                                                     &name[..3], width);
-                            let llfn = bcx.ccx.get_intrinsic(&intrinsic);
+                            let llfn = bx.cx.get_intrinsic(&intrinsic);
 
                             // Convert `i1` to a `bool`, and write it to the out parameter
-                            let val = bcx.call(llfn, &[llargs[0], llargs[1]], None);
-                            let result = bcx.extract_value(val, 0);
-                            let overflow = bcx.zext(bcx.extract_value(val, 1), Type::bool(ccx));
-                            bcx.store(result, bcx.struct_gep(llresult, 0), None);
-                            bcx.store(overflow, bcx.struct_gep(llresult, 1), None);
+                            let pair = bx.call(llfn, &[
+                                args[0].immediate(),
+                                args[1].immediate()
+                            ], None);
+                            let val = bx.extract_value(pair, 0);
+                            let overflow = bx.zext(bx.extract_value(pair, 1), Type::bool(cx));
 
-                            C_nil(bcx.ccx)
+                            let dest = result.project_field(bx, 0);
+                            bx.store(val, dest.llval, dest.align);
+                            let dest = result.project_field(bx, 1);
+                            bx.store(overflow, dest.llval, dest.align);
+
+                            return;
                         },
-                        "overflowing_add" => bcx.add(llargs[0], llargs[1]),
-                        "overflowing_sub" => bcx.sub(llargs[0], llargs[1]),
-                        "overflowing_mul" => bcx.mul(llargs[0], llargs[1]),
+                        "overflowing_add" => bx.add(args[0].immediate(), args[1].immediate()),
+                        "overflowing_sub" => bx.sub(args[0].immediate(), args[1].immediate()),
+                        "overflowing_mul" => bx.mul(args[0].immediate(), args[1].immediate()),
                         "unchecked_div" =>
                             if signed {
-                                bcx.sdiv(llargs[0], llargs[1])
+                                bx.sdiv(args[0].immediate(), args[1].immediate())
                             } else {
-                                bcx.udiv(llargs[0], llargs[1])
+                                bx.udiv(args[0].immediate(), args[1].immediate())
                             },
                         "unchecked_rem" =>
                             if signed {
-                                bcx.srem(llargs[0], llargs[1])
+                                bx.srem(args[0].immediate(), args[1].immediate())
                             } else {
-                                bcx.urem(llargs[0], llargs[1])
+                                bx.urem(args[0].immediate(), args[1].immediate())
                             },
-                        "unchecked_shl" => bcx.shl(llargs[0], llargs[1]),
+                        "unchecked_shl" => bx.shl(args[0].immediate(), args[1].immediate()),
                         "unchecked_shr" =>
                             if signed {
-                                bcx.ashr(llargs[0], llargs[1])
+                                bx.ashr(args[0].immediate(), args[1].immediate())
                             } else {
-                                bcx.lshr(llargs[0], llargs[1])
+                                bx.lshr(args[0].immediate(), args[1].immediate())
                             },
                         _ => bug!(),
                     },
@@ -348,8 +368,8 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                     span_invalid_monomorphization_error(
                         tcx.sess, span,
                         &format!("invalid monomorphization of `{}` intrinsic: \
-                                  expected basic integer type, found `{}`", name, sty));
-                        C_nil(ccx)
+                                  expected basic integer type, found `{}`", name, ty));
+                    return;
                 }
             }
 
@@ -359,11 +379,11 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             match float_type_width(sty) {
                 Some(_width) =>
                     match name {
-                        "fadd_fast" => bcx.fadd_fast(llargs[0], llargs[1]),
-                        "fsub_fast" => bcx.fsub_fast(llargs[0], llargs[1]),
-                        "fmul_fast" => bcx.fmul_fast(llargs[0], llargs[1]),
-                        "fdiv_fast" => bcx.fdiv_fast(llargs[0], llargs[1]),
-                        "frem_fast" => bcx.frem_fast(llargs[0], llargs[1]),
+                        "fadd_fast" => bx.fadd_fast(args[0].immediate(), args[1].immediate()),
+                        "fsub_fast" => bx.fsub_fast(args[0].immediate(), args[1].immediate()),
+                        "fmul_fast" => bx.fmul_fast(args[0].immediate(), args[1].immediate()),
+                        "fdiv_fast" => bx.fdiv_fast(args[0].immediate(), args[1].immediate()),
+                        "frem_fast" => bx.frem_fast(args[0].immediate(), args[1].immediate()),
                         _ => bug!(),
                     },
                 None => {
@@ -371,40 +391,37 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                         tcx.sess, span,
                         &format!("invalid monomorphization of `{}` intrinsic: \
                                   expected basic float type, found `{}`", name, sty));
-                        C_nil(ccx)
+                    return;
                 }
             }
 
         },
 
         "discriminant_value" => {
-            let val_ty = substs.type_at(0);
-            match val_ty.sty {
-                ty::TyAdt(adt, ..) if adt.is_enum() => {
-                    adt::trans_get_discr(bcx, val_ty, llargs[0], Alignment::AbiAligned,
-                                         Some(llret_ty), true)
-                }
-                _ => C_null(llret_ty)
-            }
+            args[0].deref(bx.cx).trans_get_discr(bx, ret_ty)
         }
 
         "align_offset" => {
             // `ptr as usize`
-            let ptr_val = bcx.ptrtoint(llargs[0], bcx.ccx.isize_ty());
+            let ptr_val = bx.ptrtoint(args[0].immediate(), bx.cx.isize_ty);
             // `ptr_val % align`
-            let offset = bcx.urem(ptr_val, llargs[1]);
-            let zero = C_null(bcx.ccx.isize_ty());
+            let align = args[1].immediate();
+            let offset = bx.urem(ptr_val, align);
+            let zero = C_null(bx.cx.isize_ty);
             // `offset == 0`
-            let is_zero = bcx.icmp(llvm::IntPredicate::IntEQ, offset, zero);
-            // `if offset == 0 { 0 } else { offset - align }`
-            bcx.select(is_zero, zero, bcx.sub(offset, llargs[1]))
+            let is_zero = bx.icmp(llvm::IntPredicate::IntEQ, offset, zero);
+            // `if offset == 0 { 0 } else { align - offset }`
+            bx.select(is_zero, zero, bx.sub(align, offset))
         }
         name if name.starts_with("simd_") => {
-            generic_simd_intrinsic(bcx, name,
-                                   callee_ty,
-                                   &llargs,
-                                   ret_ty, llret_ty,
-                                   span)
+            match generic_simd_intrinsic(bx, name,
+                                         callee_ty,
+                                         args,
+                                         ret_ty, llret_ty,
+                                         span) {
+                Ok(llval) => llval,
+                Err(()) => return
+            }
         }
         // This requires that atomic intrinsics follow a specific naming pattern:
         // "atomic_<operation>[_<ordering>]", and no ordering means SeqCst
@@ -426,69 +443,78 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                         (SequentiallyConsistent, Monotonic),
                     "failacq" if is_cxchg =>
                         (SequentiallyConsistent, Acquire),
-                    _ => ccx.sess().fatal("unknown ordering in atomic intrinsic")
+                    _ => cx.sess().fatal("unknown ordering in atomic intrinsic")
                 },
                 4 => match (split[2], split[3]) {
                     ("acq", "failrelaxed") if is_cxchg =>
                         (Acquire, Monotonic),
                     ("acqrel", "failrelaxed") if is_cxchg =>
                         (AcquireRelease, Monotonic),
-                    _ => ccx.sess().fatal("unknown ordering in atomic intrinsic")
+                    _ => cx.sess().fatal("unknown ordering in atomic intrinsic")
                 },
-                _ => ccx.sess().fatal("Atomic intrinsic not in correct format"),
+                _ => cx.sess().fatal("Atomic intrinsic not in correct format"),
             };
 
-            let invalid_monomorphization = |sty| {
+            let invalid_monomorphization = |ty| {
                 span_invalid_monomorphization_error(tcx.sess, span,
                     &format!("invalid monomorphization of `{}` intrinsic: \
-                              expected basic integer type, found `{}`", name, sty));
+                              expected basic integer type, found `{}`", name, ty));
             };
 
             match split[1] {
                 "cxchg" | "cxchgweak" => {
-                    let sty = &substs.type_at(0).sty;
-                    if int_type_width_signed(sty, ccx).is_some() {
+                    let ty = substs.type_at(0);
+                    if int_type_width_signed(ty, cx).is_some() {
                         let weak = if split[1] == "cxchgweak" { llvm::True } else { llvm::False };
-                        let val = bcx.atomic_cmpxchg(llargs[0], llargs[1], llargs[2], order,
-                            failorder, weak);
-                        let result = bcx.extract_value(val, 0);
-                        let success = bcx.zext(bcx.extract_value(val, 1), Type::bool(bcx.ccx));
-                        bcx.store(result, bcx.struct_gep(llresult, 0), None);
-                        bcx.store(success, bcx.struct_gep(llresult, 1), None);
+                        let pair = bx.atomic_cmpxchg(
+                            args[0].immediate(),
+                            args[1].immediate(),
+                            args[2].immediate(),
+                            order,
+                            failorder,
+                            weak);
+                        let val = bx.extract_value(pair, 0);
+                        let success = bx.zext(bx.extract_value(pair, 1), Type::bool(bx.cx));
+
+                        let dest = result.project_field(bx, 0);
+                        bx.store(val, dest.llval, dest.align);
+                        let dest = result.project_field(bx, 1);
+                        bx.store(success, dest.llval, dest.align);
+                        return;
                     } else {
-                        invalid_monomorphization(sty);
+                        return invalid_monomorphization(ty);
                     }
-                    C_nil(ccx)
                 }
 
                 "load" => {
-                    let sty = &substs.type_at(0).sty;
-                    if int_type_width_signed(sty, ccx).is_some() {
-                        bcx.atomic_load(llargs[0], order)
+                    let ty = substs.type_at(0);
+                    if int_type_width_signed(ty, cx).is_some() {
+                        let align = cx.align_of(ty);
+                        bx.atomic_load(args[0].immediate(), order, align)
                     } else {
-                        invalid_monomorphization(sty);
-                        C_nil(ccx)
+                        return invalid_monomorphization(ty);
                     }
                 }
 
                 "store" => {
-                    let sty = &substs.type_at(0).sty;
-                    if int_type_width_signed(sty, ccx).is_some() {
-                        bcx.atomic_store(llargs[1], llargs[0], order);
+                    let ty = substs.type_at(0);
+                    if int_type_width_signed(ty, cx).is_some() {
+                        let align = cx.align_of(ty);
+                        bx.atomic_store(args[1].immediate(), args[0].immediate(), order, align);
+                        return;
                     } else {
-                        invalid_monomorphization(sty);
+                        return invalid_monomorphization(ty);
                     }
-                    C_nil(ccx)
                 }
 
                 "fence" => {
-                    bcx.atomic_fence(order, llvm::SynchronizationScope::CrossThread);
-                    C_nil(ccx)
+                    bx.atomic_fence(order, llvm::SynchronizationScope::CrossThread);
+                    return;
                 }
 
                 "singlethreadfence" => {
-                    bcx.atomic_fence(order, llvm::SynchronizationScope::SingleThread);
-                    C_nil(ccx)
+                    bx.atomic_fence(order, llvm::SynchronizationScope::SingleThread);
+                    return;
                 }
 
                 // These are all AtomicRMW ops
@@ -505,18 +531,33 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                         "min"   => llvm::AtomicMin,
                         "umax"  => llvm::AtomicUMax,
                         "umin"  => llvm::AtomicUMin,
-                        _ => ccx.sess().fatal("unknown atomic operation")
+                        _ => cx.sess().fatal("unknown atomic operation")
                     };
 
-                    let sty = &substs.type_at(0).sty;
-                    if int_type_width_signed(sty, ccx).is_some() {
-                        bcx.atomic_rmw(atom_op, llargs[0], llargs[1], order)
+                    let ty = substs.type_at(0);
+                    if int_type_width_signed(ty, cx).is_some() {
+                        bx.atomic_rmw(atom_op, args[0].immediate(), args[1].immediate(), order)
                     } else {
-                        invalid_monomorphization(sty);
-                        C_nil(ccx)
+                        return invalid_monomorphization(ty);
                     }
                 }
             }
+        }
+
+        "nontemporal_store" => {
+            let tp_ty = substs.type_at(0);
+            let dst = args[0].deref(bx.cx);
+            let val = if let OperandValue::Ref(ptr, align) = args[1].val {
+                bx.load(ptr, align)
+            } else {
+                from_immediate(bx, args[1].immediate())
+            };
+            let ptr = bx.pointercast(dst.llval, val_ty(val).ptr_to());
+            let store = bx.nontemporal_store(val, ptr);
+            unsafe {
+                llvm::LLVMSetAlignment(store, cx.align_of(tp_ty).abi() as u32);
+            }
+            return
         }
 
         _ => {
@@ -528,46 +569,39 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 assert_eq!(x.len(), 1);
                 x.into_iter().next().unwrap()
             }
-            fn ty_to_type(ccx: &CrateContext, t: &intrinsics::Type,
-                          any_changes_needed: &mut bool) -> Vec<Type> {
+            fn ty_to_type(cx: &CodegenCx, t: &intrinsics::Type) -> Vec<Type> {
                 use intrinsics::Type::*;
                 match *t {
-                    Void => vec![Type::void(ccx)],
-                    Integer(_signed, width, llvm_width) => {
-                        *any_changes_needed |= width != llvm_width;
-                        vec![Type::ix(ccx, llvm_width as u64)]
+                    Void => vec![Type::void(cx)],
+                    Integer(_signed, _width, llvm_width) => {
+                        vec![Type::ix(cx, llvm_width as u64)]
                     }
                     Float(x) => {
                         match x {
-                            32 => vec![Type::f32(ccx)],
-                            64 => vec![Type::f64(ccx)],
+                            32 => vec![Type::f32(cx)],
+                            64 => vec![Type::f64(cx)],
                             _ => bug!()
                         }
                     }
                     Pointer(ref t, ref llvm_elem, _const) => {
-                        *any_changes_needed |= llvm_elem.is_some();
-
                         let t = llvm_elem.as_ref().unwrap_or(t);
-                        let elem = one(ty_to_type(ccx, t, any_changes_needed));
+                        let elem = one(ty_to_type(cx, t));
                         vec![elem.ptr_to()]
                     }
                     Vector(ref t, ref llvm_elem, length) => {
-                        *any_changes_needed |= llvm_elem.is_some();
-
                         let t = llvm_elem.as_ref().unwrap_or(t);
-                        let elem = one(ty_to_type(ccx, t, any_changes_needed));
+                        let elem = one(ty_to_type(cx, t));
                         vec![Type::vector(&elem, length as u64)]
                     }
                     Aggregate(false, ref contents) => {
                         let elems = contents.iter()
-                                            .map(|t| one(ty_to_type(ccx, t, any_changes_needed)))
+                                            .map(|t| one(ty_to_type(cx, t)))
                                             .collect::<Vec<_>>();
-                        vec![Type::struct_(ccx, &elems, false)]
+                        vec![Type::struct_(cx, &elems, false)]
                     }
                     Aggregate(true, ref contents) => {
-                        *any_changes_needed = true;
                         contents.iter()
-                                .flat_map(|t| ty_to_type(ccx, t, any_changes_needed))
+                                .flat_map(|t| ty_to_type(cx, t))
                                 .collect()
                     }
                 }
@@ -577,10 +611,9 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             // qux` to be converted into `foo, bar, baz, qux`, integer
             // arguments to be truncated as needed and pointers to be
             // cast.
-            fn modify_as_needed<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
+            fn modify_as_needed<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
                                           t: &intrinsics::Type,
-                                          arg_type: Ty<'tcx>,
-                                          llarg: ValueRef)
+                                          arg: &OperandRef<'tcx>)
                                           -> Vec<ValueRef>
             {
                 match *t {
@@ -591,63 +624,52 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                         // This assumes the type is "simple", i.e. no
                         // destructors, and the contents are SIMD
                         // etc.
-                        assert!(!bcx.ccx.shared().type_needs_drop(arg_type));
-                        let arg = LvalueRef::new_sized_ty(llarg, arg_type, Alignment::AbiAligned);
+                        assert!(!bx.cx.type_needs_drop(arg.layout.ty));
+                        let (ptr, align) = match arg.val {
+                            OperandValue::Ref(ptr, align) => (ptr, align),
+                            _ => bug!()
+                        };
+                        let arg = PlaceRef::new_sized(ptr, arg.layout, align);
                         (0..contents.len()).map(|i| {
-                            let (ptr, align) = arg.trans_field_ptr(bcx, i);
-                            bcx.load(ptr, align.to_align())
+                            arg.project_field(bx, i).load(bx).immediate()
                         }).collect()
                     }
                     intrinsics::Type::Pointer(_, Some(ref llvm_elem), _) => {
-                        let llvm_elem = one(ty_to_type(bcx.ccx, llvm_elem, &mut false));
-                        vec![bcx.pointercast(llarg, llvm_elem.ptr_to())]
+                        let llvm_elem = one(ty_to_type(bx.cx, llvm_elem));
+                        vec![bx.pointercast(arg.immediate(), llvm_elem.ptr_to())]
                     }
                     intrinsics::Type::Vector(_, Some(ref llvm_elem), length) => {
-                        let llvm_elem = one(ty_to_type(bcx.ccx, llvm_elem, &mut false));
-                        vec![bcx.bitcast(llarg, Type::vector(&llvm_elem, length as u64))]
+                        let llvm_elem = one(ty_to_type(bx.cx, llvm_elem));
+                        vec![bx.bitcast(arg.immediate(), Type::vector(&llvm_elem, length as u64))]
                     }
                     intrinsics::Type::Integer(_, width, llvm_width) if width != llvm_width => {
                         // the LLVM intrinsic uses a smaller integer
                         // size than the C intrinsic's signature, so
                         // we have to trim it down here.
-                        vec![bcx.trunc(llarg, Type::ix(bcx.ccx, llvm_width as u64))]
+                        vec![bx.trunc(arg.immediate(), Type::ix(bx.cx, llvm_width as u64))]
                     }
-                    _ => vec![llarg],
+                    _ => vec![arg.immediate()],
                 }
             }
 
 
-            let mut any_changes_needed = false;
             let inputs = intr.inputs.iter()
-                                    .flat_map(|t| ty_to_type(ccx, t, &mut any_changes_needed))
+                                    .flat_map(|t| ty_to_type(cx, t))
                                     .collect::<Vec<_>>();
 
-            let mut out_changes = false;
-            let outputs = one(ty_to_type(ccx, &intr.output, &mut out_changes));
-            // outputting a flattened aggregate is nonsense
-            assert!(!out_changes);
+            let outputs = one(ty_to_type(cx, &intr.output));
 
-            let llargs = if !any_changes_needed {
-                // no aggregates to flatten, so no change needed
-                llargs.to_vec()
-            } else {
-                // there are some aggregates that need to be flattened
-                // in the LLVM call, so we need to run over the types
-                // again to find them and extract the arguments
-                intr.inputs.iter()
-                           .zip(llargs)
-                           .zip(arg_tys)
-                           .flat_map(|((t, llarg), ty)| modify_as_needed(bcx, t, ty, *llarg))
-                           .collect()
-            };
+            let llargs: Vec<_> = intr.inputs.iter().zip(args).flat_map(|(t, arg)| {
+                modify_as_needed(bx, t, arg)
+            }).collect();
             assert_eq!(inputs.len(), llargs.len());
 
             let val = match intr.definition {
                 intrinsics::IntrinsicDef::Named(name) => {
-                    let f = declare::declare_cfn(ccx,
+                    let f = declare::declare_cfn(cx,
                                                  name,
                                                  Type::func(&inputs, &outputs));
-                    bcx.call(f, &llargs, None)
+                    bx.call(f, &llargs, None)
                 }
             };
 
@@ -657,42 +679,40 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                     assert!(!flatten);
 
                     for i in 0..elems.len() {
-                        let val = bcx.extract_value(val, i);
-                        let lval = LvalueRef::new_sized_ty(llresult, ret_ty,
-                                                           Alignment::AbiAligned);
-                        let (dest, align) = lval.trans_field_ptr(bcx, i);
-                        bcx.store(val, dest, align.to_align());
+                        let dest = result.project_field(bx, i);
+                        let val = bx.extract_value(val, i as u64);
+                        bx.store(val, dest.llval, dest.align);
                     }
-                    C_nil(ccx)
+                    return;
                 }
                 _ => val,
             }
         }
     };
 
-    if val_ty(llval) != Type::void(ccx) && machine::llsize_of_alloc(ccx, val_ty(llval)) != 0 {
-        if let Some(ty) = fn_ty.ret.cast {
-            let ptr = bcx.pointercast(llresult, ty.ptr_to());
-            bcx.store(llval, ptr, Some(ccx.align_of(ret_ty)));
+    if !fn_ty.ret.is_ignore() {
+        if let PassMode::Cast(ty) = fn_ty.ret.mode {
+            let ptr = bx.pointercast(result.llval, ty.llvm_type(cx).ptr_to());
+            bx.store(llval, ptr, result.align);
         } else {
-            store_ty(bcx, llval, llresult, Alignment::AbiAligned, ret_ty);
+            OperandRef::from_immediate_or_packed_pair(bx, llval, result.layout)
+                .val.store(bx, result);
         }
     }
 }
 
-fn copy_intrinsic<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
+fn copy_intrinsic<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
                             allow_overlap: bool,
                             volatile: bool,
-                            tp_ty: Ty<'tcx>,
+                            ty: Ty<'tcx>,
                             dst: ValueRef,
                             src: ValueRef,
                             count: ValueRef)
                             -> ValueRef {
-    let ccx = bcx.ccx;
-    let lltp_ty = type_of::type_of(ccx, tp_ty);
-    let align = C_i32(ccx, ccx.align_of(tp_ty) as i32);
-    let size = machine::llsize_of(ccx, lltp_ty);
-    let int_size = machine::llbitsize_of_real(ccx, ccx.isize_ty());
+    let cx = bx.cx;
+    let (size, align) = cx.size_and_align_of(ty);
+    let size = C_usize(cx, size.bytes());
+    let align = C_i32(cx, align.abi() as i32);
 
     let operation = if allow_overlap {
         "memmove"
@@ -700,52 +720,54 @@ fn copy_intrinsic<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         "memcpy"
     };
 
-    let name = format!("llvm.{}.p0i8.p0i8.i{}", operation, int_size);
+    let name = format!("llvm.{}.p0i8.p0i8.i{}", operation,
+                       cx.data_layout().pointer_size.bits());
 
-    let dst_ptr = bcx.pointercast(dst, Type::i8p(ccx));
-    let src_ptr = bcx.pointercast(src, Type::i8p(ccx));
-    let llfn = ccx.get_intrinsic(&name);
+    let dst_ptr = bx.pointercast(dst, Type::i8p(cx));
+    let src_ptr = bx.pointercast(src, Type::i8p(cx));
+    let llfn = cx.get_intrinsic(&name);
 
-    bcx.call(llfn,
+    bx.call(llfn,
         &[dst_ptr,
         src_ptr,
-        bcx.mul(size, count),
+        bx.mul(size, count),
         align,
-        C_bool(ccx, volatile)],
+        C_bool(cx, volatile)],
         None)
 }
 
 fn memset_intrinsic<'a, 'tcx>(
-    bcx: &Builder<'a, 'tcx>,
+    bx: &Builder<'a, 'tcx>,
     volatile: bool,
     ty: Ty<'tcx>,
     dst: ValueRef,
     val: ValueRef,
     count: ValueRef
 ) -> ValueRef {
-    let ccx = bcx.ccx;
-    let align = C_i32(ccx, ccx.align_of(ty) as i32);
-    let lltp_ty = type_of::type_of(ccx, ty);
-    let size = machine::llsize_of(ccx, lltp_ty);
-    let dst = bcx.pointercast(dst, Type::i8p(ccx));
-    call_memset(bcx, dst, val, bcx.mul(size, count), align, volatile)
+    let cx = bx.cx;
+    let (size, align) = cx.size_and_align_of(ty);
+    let size = C_usize(cx, size.bytes());
+    let align = C_i32(cx, align.abi() as i32);
+    let dst = bx.pointercast(dst, Type::i8p(cx));
+    call_memset(bx, dst, val, bx.mul(size, count), align, volatile)
 }
 
 fn try_intrinsic<'a, 'tcx>(
-    bcx: &Builder<'a, 'tcx>,
-    ccx: &CrateContext,
+    bx: &Builder<'a, 'tcx>,
+    cx: &CodegenCx,
     func: ValueRef,
     data: ValueRef,
     local_ptr: ValueRef,
     dest: ValueRef,
 ) {
-    if bcx.sess().no_landing_pads() {
-        bcx.call(func, &[data], None);
-        bcx.store(C_null(Type::i8p(&bcx.ccx)), dest, None);
-    } else if wants_msvc_seh(bcx.sess()) {
-        trans_msvc_try(bcx, ccx, func, data, local_ptr, dest);
+    if bx.sess().no_landing_pads() {
+        bx.call(func, &[data], None);
+        let ptr_align = bx.tcx().data_layout.pointer_align;
+        bx.store(C_null(Type::i8p(&bx.cx)), dest, ptr_align);
+    } else if wants_msvc_seh(bx.sess()) {
+        trans_msvc_try(bx, cx, func, data, local_ptr, dest);
     } else {
-        trans_gnu_try(bcx, ccx, func, data, local_ptr, dest);
+        trans_gnu_try(bx, cx, func, data, local_ptr, dest);
     }
 }
 
@@ -756,25 +778,25 @@ fn try_intrinsic<'a, 'tcx>(
 // instructions are meant to work for all targets, as of the time of this
 // writing, however, LLVM does not recommend the usage of these new instructions
 // as the old ones are still more optimized.
-fn trans_msvc_try<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
-                            ccx: &CrateContext,
+fn trans_msvc_try<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
+                            cx: &CodegenCx,
                             func: ValueRef,
                             data: ValueRef,
                             local_ptr: ValueRef,
                             dest: ValueRef) {
-    let llfn = get_rust_try_fn(ccx, &mut |bcx| {
-        let ccx = bcx.ccx;
+    let llfn = get_rust_try_fn(cx, &mut |bx| {
+        let cx = bx.cx;
 
-        bcx.set_personality_fn(bcx.ccx.eh_personality());
+        bx.set_personality_fn(bx.cx.eh_personality());
 
-        let normal = bcx.build_sibling_block("normal");
-        let catchswitch = bcx.build_sibling_block("catchswitch");
-        let catchpad = bcx.build_sibling_block("catchpad");
-        let caught = bcx.build_sibling_block("caught");
+        let normal = bx.build_sibling_block("normal");
+        let catchswitch = bx.build_sibling_block("catchswitch");
+        let catchpad = bx.build_sibling_block("catchpad");
+        let caught = bx.build_sibling_block("caught");
 
-        let func = llvm::get_param(bcx.llfn(), 0);
-        let data = llvm::get_param(bcx.llfn(), 1);
-        let local_ptr = llvm::get_param(bcx.llfn(), 2);
+        let func = llvm::get_param(bx.llfn(), 0);
+        let data = llvm::get_param(bx.llfn(), 1);
+        let local_ptr = llvm::get_param(bx.llfn(), 2);
 
         // We're generating an IR snippet that looks like:
         //
@@ -815,38 +837,42 @@ fn trans_msvc_try<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         //      }
         //
         // More information can be found in libstd's seh.rs implementation.
-        let i64p = Type::i64(ccx).ptr_to();
-        let slot = bcx.alloca(i64p, "slot", None);
-        bcx.invoke(func, &[data], normal.llbb(), catchswitch.llbb(),
+        let i64p = Type::i64(cx).ptr_to();
+        let ptr_align = bx.tcx().data_layout.pointer_align;
+        let slot = bx.alloca(i64p, "slot", ptr_align);
+        bx.invoke(func, &[data], normal.llbb(), catchswitch.llbb(),
             None);
 
-        normal.ret(C_i32(ccx, 0));
+        normal.ret(C_i32(cx, 0));
 
         let cs = catchswitch.catch_switch(None, None, 1);
         catchswitch.add_handler(cs, catchpad.llbb());
 
-        let tcx = ccx.tcx();
+        let tcx = cx.tcx;
         let tydesc = match tcx.lang_items().msvc_try_filter() {
-            Some(did) => ::consts::get_static(ccx, did),
+            Some(did) => ::consts::get_static(cx, did),
             None => bug!("msvc_try_filter not defined"),
         };
-        let tok = catchpad.catch_pad(cs, &[tydesc, C_i32(ccx, 0), slot]);
-        let addr = catchpad.load(slot, None);
-        let arg1 = catchpad.load(addr, None);
-        let val1 = C_i32(ccx, 1);
-        let arg2 = catchpad.load(catchpad.inbounds_gep(addr, &[val1]), None);
+        let tok = catchpad.catch_pad(cs, &[tydesc, C_i32(cx, 0), slot]);
+        let addr = catchpad.load(slot, ptr_align);
+
+        let i64_align = bx.tcx().data_layout.i64_align;
+        let arg1 = catchpad.load(addr, i64_align);
+        let val1 = C_i32(cx, 1);
+        let arg2 = catchpad.load(catchpad.inbounds_gep(addr, &[val1]), i64_align);
         let local_ptr = catchpad.bitcast(local_ptr, i64p);
-        catchpad.store(arg1, local_ptr, None);
-        catchpad.store(arg2, catchpad.inbounds_gep(local_ptr, &[val1]), None);
+        catchpad.store(arg1, local_ptr, i64_align);
+        catchpad.store(arg2, catchpad.inbounds_gep(local_ptr, &[val1]), i64_align);
         catchpad.catch_ret(tok, caught.llbb());
 
-        caught.ret(C_i32(ccx, 1));
+        caught.ret(C_i32(cx, 1));
     });
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    let ret = bcx.call(llfn, &[func, data, local_ptr], None);
-    bcx.store(ret, dest, None);
+    let ret = bx.call(llfn, &[func, data, local_ptr], None);
+    let i32_align = bx.tcx().data_layout.i32_align;
+    bx.store(ret, dest, i32_align);
 }
 
 // Definition of the standard "try" function for Rust using the GNU-like model
@@ -860,18 +886,18 @@ fn trans_msvc_try<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 // function calling it, and that function may already have other personality
 // functions in play. By calling a shim we're guaranteed that our shim will have
 // the right personality function.
-fn trans_gnu_try<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
-                           ccx: &CrateContext,
+fn trans_gnu_try<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
+                           cx: &CodegenCx,
                            func: ValueRef,
                            data: ValueRef,
                            local_ptr: ValueRef,
                            dest: ValueRef) {
-    let llfn = get_rust_try_fn(ccx, &mut |bcx| {
-        let ccx = bcx.ccx;
+    let llfn = get_rust_try_fn(cx, &mut |bx| {
+        let cx = bx.cx;
 
         // Translates the shims described above:
         //
-        //   bcx:
+        //   bx:
         //      invoke %func(%args...) normal %normal unwind %catch
         //
         //   normal:
@@ -886,14 +912,14 @@ fn trans_gnu_try<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         // expected to be `*mut *mut u8` for this to actually work, but that's
         // managed by the standard library.
 
-        let then = bcx.build_sibling_block("then");
-        let catch = bcx.build_sibling_block("catch");
+        let then = bx.build_sibling_block("then");
+        let catch = bx.build_sibling_block("catch");
 
-        let func = llvm::get_param(bcx.llfn(), 0);
-        let data = llvm::get_param(bcx.llfn(), 1);
-        let local_ptr = llvm::get_param(bcx.llfn(), 2);
-        bcx.invoke(func, &[data], then.llbb(), catch.llbb(), None);
-        then.ret(C_i32(ccx, 0));
+        let func = llvm::get_param(bx.llfn(), 0);
+        let data = llvm::get_param(bx.llfn(), 1);
+        let local_ptr = llvm::get_param(bx.llfn(), 2);
+        bx.invoke(func, &[data], then.llbb(), catch.llbb(), None);
+        then.ret(C_i32(cx, 0));
 
         // Type indicator for the exception being thrown.
         //
@@ -901,39 +927,41 @@ fn trans_gnu_try<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         // being thrown.  The second value is a "selector" indicating which of
         // the landing pad clauses the exception's type had been matched to.
         // rust_try ignores the selector.
-        let lpad_ty = Type::struct_(ccx, &[Type::i8p(ccx), Type::i32(ccx)],
+        let lpad_ty = Type::struct_(cx, &[Type::i8p(cx), Type::i32(cx)],
                                     false);
-        let vals = catch.landing_pad(lpad_ty, bcx.ccx.eh_personality(), 1, catch.llfn());
-        catch.add_clause(vals, C_null(Type::i8p(ccx)));
+        let vals = catch.landing_pad(lpad_ty, bx.cx.eh_personality(), 1);
+        catch.add_clause(vals, C_null(Type::i8p(cx)));
         let ptr = catch.extract_value(vals, 0);
-        catch.store(ptr, catch.bitcast(local_ptr, Type::i8p(ccx).ptr_to()), None);
-        catch.ret(C_i32(ccx, 1));
+        let ptr_align = bx.tcx().data_layout.pointer_align;
+        catch.store(ptr, catch.bitcast(local_ptr, Type::i8p(cx).ptr_to()), ptr_align);
+        catch.ret(C_i32(cx, 1));
     });
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    let ret = bcx.call(llfn, &[func, data, local_ptr], None);
-    bcx.store(ret, dest, None);
+    let ret = bx.call(llfn, &[func, data, local_ptr], None);
+    let i32_align = bx.tcx().data_layout.i32_align;
+    bx.store(ret, dest, i32_align);
 }
 
 // Helper function to give a Block to a closure to translate a shim function.
 // This is currently primarily used for the `try` intrinsic functions above.
-fn gen_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+fn gen_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                     name: &str,
                     inputs: Vec<Ty<'tcx>>,
                     output: Ty<'tcx>,
                     trans: &mut for<'b> FnMut(Builder<'b, 'tcx>))
                     -> ValueRef {
-    let rust_fn_ty = ccx.tcx().mk_fn_ptr(ty::Binder(ccx.tcx().mk_fn_sig(
+    let rust_fn_ty = cx.tcx.mk_fn_ptr(ty::Binder(cx.tcx.mk_fn_sig(
         inputs.into_iter(),
         output,
         false,
         hir::Unsafety::Unsafe,
         Abi::Rust
     )));
-    let llfn = declare::define_internal_fn(ccx, name, rust_fn_ty);
-    let bcx = Builder::new_block(ccx, llfn, "entry-block");
-    trans(bcx);
+    let llfn = declare::define_internal_fn(cx, name, rust_fn_ty);
+    let bx = Builder::new_block(cx, llfn, "entry-block");
+    trans(bx);
     llfn
 }
 
@@ -941,15 +969,15 @@ fn gen_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 // catch exceptions.
 //
 // This function is only generated once and is then cached.
-fn get_rust_try_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+fn get_rust_try_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                              trans: &mut for<'b> FnMut(Builder<'b, 'tcx>))
                              -> ValueRef {
-    if let Some(llfn) = ccx.rust_try_fn().get() {
+    if let Some(llfn) = cx.rust_try_fn.get() {
         return llfn;
     }
 
     // Define the type up front for the signature of the rust_try function.
-    let tcx = ccx.tcx();
+    let tcx = cx.tcx;
     let i8p = tcx.mk_mut_ptr(tcx.types.i8);
     let fn_ty = tcx.mk_fn_ptr(ty::Binder(tcx.mk_fn_sig(
         iter::once(i8p),
@@ -959,8 +987,8 @@ fn get_rust_try_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         Abi::Rust
     )));
     let output = tcx.types.i32;
-    let rust_try = gen_fn(ccx, "__rust_try", vec![fn_ty, i8p, i8p], output, trans);
-    ccx.rust_try_fn().set(Some(rust_try));
+    let rust_try = gen_fn(cx, "__rust_try", vec![fn_ty, i8p, i8p], output, trans);
+    cx.rust_try_fn.set(Some(rust_try));
     return rust_try
 }
 
@@ -969,14 +997,14 @@ fn span_invalid_monomorphization_error(a: &Session, b: Span, c: &str) {
 }
 
 fn generic_simd_intrinsic<'a, 'tcx>(
-    bcx: &Builder<'a, 'tcx>,
+    bx: &Builder<'a, 'tcx>,
     name: &str,
     callee_ty: Ty<'tcx>,
-    llargs: &[ValueRef],
+    args: &[OperandRef<'tcx>],
     ret_ty: Ty<'tcx>,
     llret_ty: Type,
     span: Span
-) -> ValueRef {
+) -> Result<ValueRef, ()> {
     // macros for error handling:
     macro_rules! emit_error {
         ($msg: tt) => {
@@ -984,7 +1012,7 @@ fn generic_simd_intrinsic<'a, 'tcx>(
         };
         ($msg: tt, $($fmt: tt)*) => {
             span_invalid_monomorphization_error(
-                bcx.sess(), span,
+                bx.sess(), span,
                 &format!(concat!("invalid monomorphization of `{}` intrinsic: ",
                                  $msg),
                          name, $($fmt)*));
@@ -994,7 +1022,7 @@ fn generic_simd_intrinsic<'a, 'tcx>(
         ($cond: expr, $($fmt: tt)*) => {
             if !$cond {
                 emit_error!($($fmt)*);
-                return C_nil(bcx.ccx)
+                return Err(());
             }
         }
     }
@@ -1006,7 +1034,7 @@ fn generic_simd_intrinsic<'a, 'tcx>(
 
 
 
-    let tcx = bcx.tcx();
+    let tcx = bx.tcx();
     let sig = tcx.erase_late_bound_regions_and_normalize(&callee_ty.fn_sig(tcx));
     let arg_tys = sig.inputs();
 
@@ -1040,12 +1068,12 @@ fn generic_simd_intrinsic<'a, 'tcx>(
                  ret_ty,
                  ret_ty.simd_type(tcx));
 
-        return compare_simd_types(bcx,
-                                  llargs[0],
-                                  llargs[1],
-                                  in_elem,
-                                  llret_ty,
-                                  cmp_op)
+        return Ok(compare_simd_types(bx,
+                                     args[0].immediate(),
+                                     args[1].immediate(),
+                                     in_elem,
+                                     llret_ty,
+                                     cmp_op))
     }
 
     if name.starts_with("simd_shuffle") {
@@ -1069,12 +1097,12 @@ fn generic_simd_intrinsic<'a, 'tcx>(
 
         let total_len = in_len as u128 * 2;
 
-        let vector = llargs[2];
+        let vector = args[2].immediate();
 
         let indices: Option<Vec<_>> = (0..n)
             .map(|i| {
                 let arg_idx = i;
-                let val = const_get_elt(vector, &[i as libc::c_uint]);
+                let val = const_get_elt(vector, i as u64);
                 match const_to_opt_u128(val, true) {
                     None => {
                         emit_error!("shuffle index #{} is not a constant", arg_idx);
@@ -1085,29 +1113,33 @@ fn generic_simd_intrinsic<'a, 'tcx>(
                                     arg_idx, total_len);
                         None
                     }
-                    Some(idx) => Some(C_i32(bcx.ccx, idx as i32)),
+                    Some(idx) => Some(C_i32(bx.cx, idx as i32)),
                 }
             })
             .collect();
         let indices = match indices {
             Some(i) => i,
-            None => return C_null(llret_ty)
+            None => return Ok(C_null(llret_ty))
         };
 
-        return bcx.shuffle_vector(llargs[0], llargs[1], C_vector(&indices))
+        return Ok(bx.shuffle_vector(args[0].immediate(),
+                                     args[1].immediate(),
+                                     C_vector(&indices)))
     }
 
     if name == "simd_insert" {
         require!(in_elem == arg_tys[2],
                  "expected inserted type `{}` (element of input `{}`), found `{}`",
                  in_elem, in_ty, arg_tys[2]);
-        return bcx.insert_element(llargs[0], llargs[2], llargs[1])
+        return Ok(bx.insert_element(args[0].immediate(),
+                                     args[2].immediate(),
+                                     args[1].immediate()))
     }
     if name == "simd_extract" {
         require!(ret_ty == in_elem,
                  "expected return type `{}` (element of input `{}`), found `{}`",
                  in_elem, in_ty, ret_ty);
-        return bcx.extract_element(llargs[0], llargs[1])
+        return Ok(bx.extract_element(args[0].immediate(), args[1].immediate()))
     }
 
     if name == "simd_cast" {
@@ -1121,7 +1153,7 @@ fn generic_simd_intrinsic<'a, 'tcx>(
         // casting cares about nominal type, not just structural type
         let out_elem = ret_ty.simd_type(tcx);
 
-        if in_elem == out_elem { return llargs[0]; }
+        if in_elem == out_elem { return Ok(args[0].immediate()); }
 
         enum Style { Float, Int(/* is signed? */ bool), Unsupported }
 
@@ -1142,36 +1174,36 @@ fn generic_simd_intrinsic<'a, 'tcx>(
 
         match (in_style, out_style) {
             (Style::Int(in_is_signed), Style::Int(_)) => {
-                return match in_width.cmp(&out_width) {
-                    Ordering::Greater => bcx.trunc(llargs[0], llret_ty),
-                    Ordering::Equal => llargs[0],
+                return Ok(match in_width.cmp(&out_width) {
+                    Ordering::Greater => bx.trunc(args[0].immediate(), llret_ty),
+                    Ordering::Equal => args[0].immediate(),
                     Ordering::Less => if in_is_signed {
-                        bcx.sext(llargs[0], llret_ty)
+                        bx.sext(args[0].immediate(), llret_ty)
                     } else {
-                        bcx.zext(llargs[0], llret_ty)
+                        bx.zext(args[0].immediate(), llret_ty)
                     }
-                }
+                })
             }
             (Style::Int(in_is_signed), Style::Float) => {
-                return if in_is_signed {
-                    bcx.sitofp(llargs[0], llret_ty)
+                return Ok(if in_is_signed {
+                    bx.sitofp(args[0].immediate(), llret_ty)
                 } else {
-                    bcx.uitofp(llargs[0], llret_ty)
-                }
+                    bx.uitofp(args[0].immediate(), llret_ty)
+                })
             }
             (Style::Float, Style::Int(out_is_signed)) => {
-                return if out_is_signed {
-                    bcx.fptosi(llargs[0], llret_ty)
+                return Ok(if out_is_signed {
+                    bx.fptosi(args[0].immediate(), llret_ty)
                 } else {
-                    bcx.fptoui(llargs[0], llret_ty)
-                }
+                    bx.fptoui(args[0].immediate(), llret_ty)
+                })
             }
             (Style::Float, Style::Float) => {
-                return match in_width.cmp(&out_width) {
-                    Ordering::Greater => bcx.fptrunc(llargs[0], llret_ty),
-                    Ordering::Equal => llargs[0],
-                    Ordering::Less => bcx.fpext(llargs[0], llret_ty)
-                }
+                return Ok(match in_width.cmp(&out_width) {
+                    Ordering::Greater => bx.fptrunc(args[0].immediate(), llret_ty),
+                    Ordering::Equal => args[0].immediate(),
+                    Ordering::Less => bx.fpext(args[0].immediate(), llret_ty)
+                })
             }
             _ => {/* Unsupported. Fallthrough. */}
         }
@@ -1182,28 +1214,26 @@ fn generic_simd_intrinsic<'a, 'tcx>(
     }
     macro_rules! arith {
         ($($name: ident: $($($p: ident),* => $call: ident),*;)*) => {
-            $(
-                if name == stringify!($name) {
-                    match in_elem.sty {
-                        $(
-                            $(ty::$p(_))|* => {
-                                return bcx.$call(llargs[0], llargs[1])
-                            }
-                            )*
-                        _ => {},
-                    }
-                    require!(false,
-                             "unsupported operation on `{}` with element `{}`",
-                             in_ty,
-                             in_elem)
-                })*
+            $(if name == stringify!($name) {
+                match in_elem.sty {
+                    $($(ty::$p(_))|* => {
+                        return Ok(bx.$call(args[0].immediate(), args[1].immediate()))
+                    })*
+                    _ => {},
+                }
+                require!(false,
+                            "unsupported operation on `{}` with element `{}`",
+                            in_ty,
+                            in_elem)
+            })*
         }
     }
     arith! {
         simd_add: TyUint, TyInt => add, TyFloat => fadd;
         simd_sub: TyUint, TyInt => sub, TyFloat => fsub;
         simd_mul: TyUint, TyInt => mul, TyFloat => fmul;
-        simd_div: TyFloat => fdiv;
+        simd_div: TyUint => udiv, TyInt => sdiv, TyFloat => fdiv;
+        simd_rem: TyUint => urem, TyInt => srem, TyFloat => frem;
         simd_shl: TyUint, TyInt => shl;
         simd_shr: TyUint => lshr, TyInt => ashr;
         simd_and: TyUint, TyInt => and;
@@ -1213,17 +1243,15 @@ fn generic_simd_intrinsic<'a, 'tcx>(
     span_bug!(span, "unknown SIMD intrinsic");
 }
 
-// Returns the width of an int TypeVariant, and if it's signed or not
+// Returns the width of an int Ty, and if it's signed or not
 // Returns None if the type is not an integer
 // FIXME: there’s multiple of this functions, investigate using some of the already existing
 // stuffs.
-fn int_type_width_signed<'tcx>(sty: &ty::TypeVariants<'tcx>, ccx: &CrateContext)
-        -> Option<(u64, bool)> {
-    use rustc::ty::{TyInt, TyUint};
-    match *sty {
-        TyInt(t) => Some((match t {
-            ast::IntTy::Is => {
-                match &ccx.tcx().sess.target.target.target_pointer_width[..] {
+fn int_type_width_signed(ty: Ty, cx: &CodegenCx) -> Option<(u64, bool)> {
+    match ty.sty {
+        ty::TyInt(t) => Some((match t {
+            ast::IntTy::Isize => {
+                match &cx.tcx.sess.target.target.target_pointer_width[..] {
                     "16" => 16,
                     "32" => 32,
                     "64" => 64,
@@ -1236,9 +1264,9 @@ fn int_type_width_signed<'tcx>(sty: &ty::TypeVariants<'tcx>, ccx: &CrateContext)
             ast::IntTy::I64 => 64,
             ast::IntTy::I128 => 128,
         }, true)),
-        TyUint(t) => Some((match t {
-            ast::UintTy::Us => {
-                match &ccx.tcx().sess.target.target.target_pointer_width[..] {
+        ty::TyUint(t) => Some((match t {
+            ast::UintTy::Usize => {
+                match &cx.tcx.sess.target.target.target_pointer_width[..] {
                     "16" => 16,
                     "32" => 32,
                     "64" => 64,

@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// revisions:lexical nll
+#![cfg_attr(nll, feature(nll))]
+
 #![feature(generators)]
 
 fn bar<'a>() {

@@ -1,0 +1,20 @@
+error[E0038]: the trait `Foo` cannot be made into an object
+  --> $DIR/arbitrary-self-types-not-object-safe.rs:40:33
+   |
+LL |     let x = Box::new(5usize) as Box<Foo>;
+   |                                 ^^^^^^^^ the trait `Foo` cannot be made into an object
+   |
+   = note: method `foo` has a non-standard `self` type
+
+error[E0038]: the trait `Foo` cannot be made into an object
+  --> $DIR/arbitrary-self-types-not-object-safe.rs:40:13
+   |
+LL |     let x = Box::new(5usize) as Box<Foo>;
+   |             ^^^^^^^^^^^^^^^^ the trait `Foo` cannot be made into an object
+   |
+   = note: method `foo` has a non-standard `self` type
+   = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<std::boxed::Box<Foo>>` for `std::boxed::Box<usize>`
+
+error: aborting due to 2 previous errors
+
+If you want more information on this error, try using "rustc --explain E0038"

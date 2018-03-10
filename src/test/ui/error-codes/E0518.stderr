@@ -1,0 +1,20 @@
+error[E0518]: attribute should be applied to function
+  --> $DIR/E0518.rs:11:1
+   |
+LL | #[inline(always)] //~ ERROR: E0518
+   | ^^^^^^^^^^^^^^^^^
+LL | struct Foo;
+   | ----------- not a function
+
+error[E0518]: attribute should be applied to function
+  --> $DIR/E0518.rs:14:1
+   |
+LL |   #[inline(never)] //~ ERROR: E0518
+   |   ^^^^^^^^^^^^^^^^
+LL | / impl Foo {
+LL | | }
+   | |_- not a function
+
+error: aborting due to 2 previous errors
+
+If you want more information on this error, try using "rustc --explain E0518"

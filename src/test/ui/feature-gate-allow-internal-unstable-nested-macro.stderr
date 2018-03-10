@@ -1,0 +1,14 @@
+error[E0658]: allow_internal_unstable side-steps feature gating and stability checks
+  --> $DIR/feature-gate-allow-internal-unstable-nested-macro.rs:18:9
+   |
+LL |         #[allow_internal_unstable] //~ ERROR allow_internal_unstable side-steps
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | bar!();
+   | ------- in this macro invocation
+   |
+   = help: add #![feature(allow_internal_unstable)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0658"

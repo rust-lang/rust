@@ -9,17 +9,13 @@
 // except according to those terms.
 
 // Ensure that OIBIT checks `T` when it encounters a `PhantomData<T>` field, instead of checking
-// the `PhantomData<T>` type itself (which almost always implements a "default" trait
-// (`impl Trait for ..`))
+// the `PhantomData<T>` type itself (which almost always implements an auto trait)
 
 #![feature(optin_builtin_traits)]
 
 use std::marker::{PhantomData};
 
-unsafe trait Zen {}
-
-#[allow(auto_impl)]
-unsafe impl Zen for .. {}
+unsafe auto trait Zen {}
 
 unsafe impl<'a, T: 'a> Zen for &'a T where T: Sync {}
 

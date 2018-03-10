@@ -1,0 +1,9 @@
+error[E0197]: inherent impls cannot be unsafe
+  --> $DIR/E0197.rs:13:1
+   |
+LL | unsafe impl Foo { } //~ ERROR E0197
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0197"

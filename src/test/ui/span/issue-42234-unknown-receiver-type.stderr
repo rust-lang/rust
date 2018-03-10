@@ -1,0 +1,18 @@
+error[E0282]: type annotations needed
+  --> $DIR/issue-42234-unknown-receiver-type.rs:17:5
+   |
+LL |     let x: Option<_> = None;
+   |         - consider giving `x` a type
+LL |     x.unwrap().method_that_could_exist_on_some_type();
+   |     ^^^^^^^^^^ cannot infer type for `T`
+
+error[E0282]: type annotations needed
+  --> $DIR/issue-42234-unknown-receiver-type.rs:22:5
+   |
+LL | /     data.iter() //~ ERROR 22:5: 23:20: type annotations needed
+LL | |         .sum::<_>()
+   | |___________________^ cannot infer type for `_`
+
+error: aborting due to 2 previous errors
+
+If you want more information on this error, try using "rustc --explain E0282"

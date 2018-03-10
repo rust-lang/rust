@@ -12,7 +12,7 @@ pub use self::CommentStyle::*;
 
 use ast;
 use codemap::CodeMap;
-use syntax_pos::{BytePos, CharPos, Pos};
+use syntax_pos::{BytePos, CharPos, Pos, FileName};
 use parse::lexer::{is_block_doc_comment, is_pattern_whitespace};
 use parse::lexer::{self, ParseSess, StringReader, TokenAndSpan};
 use print::pprust;
@@ -101,7 +101,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
                     break;
                 }
             }
-            if i > line.len() {
+            if i >= line.len() {
                 can_trim = false;
             }
             if !can_trim {
@@ -265,7 +265,7 @@ fn read_block_comment(rdr: &mut StringReader,
         while level > 0 {
             debug!("=== block comment level {}", level);
             if rdr.is_eof() {
-                panic!(rdr.fatal("unterminated block comment"));
+                rdr.fatal("unterminated block comment").raise();
             }
             if rdr.ch_is('\n') {
                 trim_whitespace_prefix_and_push_line(&mut lines, curr_line, col);
@@ -343,7 +343,7 @@ pub struct Literal {
 
 // it appears this function is called only from pprust... that's
 // probably not a good thing.
-pub fn gather_comments_and_literals(sess: &ParseSess, path: String, srdr: &mut Read)
+pub fn gather_comments_and_literals(sess: &ParseSess, path: FileName, srdr: &mut Read)
                                     -> (Vec<Comment>, Vec<Literal>) {
     let mut src = Vec::new();
     srdr.read_to_end(&mut src).unwrap();

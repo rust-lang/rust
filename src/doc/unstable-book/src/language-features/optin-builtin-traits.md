@@ -10,7 +10,7 @@ The `optin_builtin_traits` feature gate allows you to define auto traits.
 
 Auto traits, like [`Send`] or [`Sync`] in the standard library, are marker traits
 that are automatically implemented for every type, unless the type, or a type it contains, 
-has explictly opted out via a negative impl. 
+has explicitly opted out via a negative impl. 
 
 [`Send`]: https://doc.rust-lang.org/std/marker/trait.Send.html
 [`Sync`]: https://doc.rust-lang.org/std/marker/trait.Sync.html

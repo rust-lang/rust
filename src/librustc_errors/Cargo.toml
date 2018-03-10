@@ -12,3 +12,4 @@ crate-type = ["dylib"]
 serialize = { path = "../libserialize" }
 syntax_pos = { path = "../libsyntax_pos" }
 rustc_data_structures = { path = "../librustc_data_structures" }
+unicode-width = "0.1.4"

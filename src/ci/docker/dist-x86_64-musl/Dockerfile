@@ -17,14 +17,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   pkg-config
 
 WORKDIR /build/
-COPY dist-x86_64-musl/build-musl.sh /build/
-RUN sh /build/build-musl.sh && rm -rf /build
+
+COPY scripts/musl.sh /build/
+# We need to mitigate rust-lang/rust#34978 when compiling musl itself as well
+RUN CC=gcc \
+    CFLAGS="-Wa,-mrelax-relocations=no" \
+    CXX=g++ \
+    CXXFLAGS="-Wa,-mrelax-relocations=no" \
+    bash musl.sh x86_64 && rm -rf /build
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 ENV RUST_CONFIGURE_ARGS \
-      --target=x86_64-unknown-linux-musl \
       --musl-root-x86_64=/musl-x86_64 \
       --enable-extended
 

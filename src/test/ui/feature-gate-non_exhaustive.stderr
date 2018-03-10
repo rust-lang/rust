@@ -1,0 +1,11 @@
+error[E0658]: non exhaustive is an experimental feature (see issue #44109)
+  --> $DIR/feature-gate-non_exhaustive.rs:13:1
+   |
+LL | #[non_exhaustive] //~ERROR non exhaustive is an experimental feature (see issue #44109)
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(non_exhaustive)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0658"

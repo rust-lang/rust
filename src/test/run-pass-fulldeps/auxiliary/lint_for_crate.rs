@@ -23,26 +23,57 @@ use rustc_plugin::Registry;
 use rustc::hir;
 use syntax::attr;
 
-declare_lint!(CRATE_NOT_OKAY, Warn, "crate not marked with #![crate_okay]");
+macro_rules! fake_lint_pass {
+    ($struct:ident, $lints:expr, $($attr:expr),*) => {
+        struct $struct;
 
-struct Pass;
+        impl LintPass for $struct {
+            fn get_lints(&self) -> LintArray {
+                $lints
+            }
+        }
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(CRATE_NOT_OKAY)
+        impl<'a, 'tcx> LateLintPass<'a, 'tcx> for $struct {
+            fn check_crate(&mut self, cx: &LateContext, krate: &hir::Crate) {
+                $(
+                    if !attr::contains_name(&krate.attrs, $attr) {
+                        cx.span_lint(CRATE_NOT_OKAY, krate.span,
+                                     &format!("crate is not marked with #![{}]", $attr));
+                    }
+                )*
+            }
+        }
+
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
-    fn check_crate(&mut self, cx: &LateContext, krate: &hir::Crate) {
-        if !attr::contains_name(&krate.attrs, "crate_okay") {
-            cx.span_lint(CRATE_NOT_OKAY, krate.span,
-                         "crate is not marked with #![crate_okay]");
-        }
-    }
+declare_lint!(CRATE_NOT_OKAY, Warn, "crate not marked with #![crate_okay]");
+declare_lint!(CRATE_NOT_RED, Warn, "crate not marked with #![crate_red]");
+declare_lint!(CRATE_NOT_BLUE, Warn, "crate not marked with #![crate_blue]");
+declare_lint!(CRATE_NOT_GREY, Warn, "crate not marked with #![crate_grey]");
+declare_lint!(CRATE_NOT_GREEN, Warn, "crate not marked with #![crate_green]");
+
+fake_lint_pass! {
+    PassOkay,
+    lint_array!(CRATE_NOT_OKAY), // Single lint
+    "crate_okay"
+}
+
+fake_lint_pass! {
+    PassRedBlue,
+    lint_array!(CRATE_NOT_RED, CRATE_NOT_BLUE), // Multiple lints
+    "crate_red", "crate_blue"
+}
+
+fake_lint_pass! {
+    PassGreyGreen,
+    lint_array!(CRATE_NOT_GREY, CRATE_NOT_GREEN, ), // Trailing comma
+    "crate_grey", "crate_green"
 }
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_late_lint_pass(box Pass);
+    reg.register_late_lint_pass(box PassOkay);
+    reg.register_late_lint_pass(box PassRedBlue);
+    reg.register_late_lint_pass(box PassGreyGreen);
 }

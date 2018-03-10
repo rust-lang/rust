@@ -6,4 +6,4 @@ OUT=$(TMPDIR)/lib.s
 
 all:
 	$(RUSTC) --crate-type staticlib --emit asm lib.rs
-	grep Def $(OUT)
+	$(CGREP) Def < $(OUT)

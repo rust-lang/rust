@@ -17,12 +17,14 @@
 // compile-flags:-Zprint-trans-items=eager
 
 #![deny(dead_code)]
+#![feature(start)]
 
 // aux-build:cgu_extern_closures.rs
 extern crate cgu_extern_closures;
 
-//~ TRANS_ITEM fn cross_crate_closures::main[0]
-fn main() {
+//~ TRANS_ITEM fn cross_crate_closures::start[0]
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize {
 
     //~ TRANS_ITEM fn cgu_extern_closures::inlined_fn[0]
     //~ TRANS_ITEM fn cgu_extern_closures::inlined_fn[0]::{{closure}}[0]
@@ -35,6 +37,8 @@ fn main() {
     // Nothing should be generated for this call, we just link to the instance
     // in the extern crate.
     let _ = cgu_extern_closures::non_inlined_fn(6, 7);
+
+    0
 }
 
 //~ TRANS_ITEM drop-glue i8

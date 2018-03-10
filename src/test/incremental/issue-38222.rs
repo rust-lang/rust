@@ -18,7 +18,7 @@
 #![feature(rustc_attrs)]
 
 
-#![rustc_partition_translated(module="issue_38222-mod1", cfg="rpass2")]
+#![rustc_partition_reused(module="issue_38222-mod1", cfg="rpass2")]
 
 // If trans had added a dependency edge to the Krate dep-node, nothing would
 // be re-used, so checking that this module was re-used is sufficient.
@@ -33,10 +33,9 @@ pub fn main() {
 
 mod mod1 {
     pub fn some_fn() {
-        let _ = 1;
-    }
+        #[cfg(rpass2)]
+        {}
 
-    #[cfg(rpass2)]
-    fn _some_other_fn() {
+        let _ = 1;
     }
 }

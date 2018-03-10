@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// check that we link regions in mutable lvalue ops correctly - issue #41774
+// check that we link regions in mutable place ops correctly - issue #41774
 
 struct Data(i32);
 

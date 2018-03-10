@@ -1,0 +1,9 @@
+error[E0243]: wrong number of type arguments: expected 1, found 0
+  --> $DIR/issue-14092.rs:11:11
+   |
+LL | fn fn1(0: Box) {}
+   |           ^^^ expected 1 type argument
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0243"

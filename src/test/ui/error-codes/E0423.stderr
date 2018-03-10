@@ -1,0 +1,9 @@
+error[E0423]: expected function, found struct `Foo`
+  --> $DIR/E0423.rs:14:13
+   |
+LL |     let f = Foo(); //~ ERROR E0423
+   |             ^^^ did you mean `Foo { /* fields */ }`?
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0423"

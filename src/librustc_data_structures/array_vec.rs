@@ -12,7 +12,7 @@
 
 use std::marker::Unsize;
 use std::iter::Extend;
-use std::ptr::{self, drop_in_place, Shared};
+use std::ptr::{self, drop_in_place, NonNull};
 use std::ops::{Deref, DerefMut, Range};
 use std::hash::{Hash, Hasher};
 use std::slice;
@@ -111,7 +111,7 @@ impl<A: Array> ArrayVec<A> {
         // Memory safety
         //
         // When the Drain is first created, it shortens the length of
-        // the source vector to make sure no uninitalized or moved-from elements
+        // the source vector to make sure no uninitialized or moved-from elements
         // are accessible at all if the Drain's destructor never gets to run.
         //
         // Drain will ptr::read out the values to remove.
@@ -138,7 +138,7 @@ impl<A: Array> ArrayVec<A> {
             // Use the borrow in the IterMut to indicate borrowing behavior of the
             // whole Drain iterator (like &mut T).
             let range_slice = {
-                let arr = &mut self.values as &mut [ManuallyDrop<_>];
+                let arr = &mut self.values as &mut [ManuallyDrop<<A as Array>::Element>];
                 slice::from_raw_parts_mut(arr.as_mut_ptr().offset(start as isize),
                                           end - start)
             };
@@ -146,7 +146,7 @@ impl<A: Array> ArrayVec<A> {
                 tail_start: end,
                 tail_len: len - end,
                 iter: range_slice.iter(),
-                array_vec: Shared::from(self),
+                array_vec: NonNull::from(self),
             }
         }
     }
@@ -232,7 +232,7 @@ pub struct Drain<'a, A: Array>
     tail_start: usize,
     tail_len: usize,
     iter: slice::Iter<'a, ManuallyDrop<A::Element>>,
-    array_vec: Shared<ArrayVec<A>>,
+    array_vec: NonNull<ArrayVec<A>>,
 }
 
 impl<'a, A: Array> Iterator for Drain<'a, A> {
@@ -255,12 +255,13 @@ impl<'a, A: Array> Drop for Drain<'a, A> {
 
         if self.tail_len > 0 {
             unsafe {
-                let source_array_vec = self.array_vec.as_mut();
+                let source_array_vec: &mut ArrayVec<A> = self.array_vec.as_mut();
                 // memmove back untouched tail, update to new length
                 let start = source_array_vec.len();
                 let tail = self.tail_start;
                 {
-                    let arr = &mut source_array_vec.values as &mut [ManuallyDrop<_>];
+                    let arr =
+                        &mut source_array_vec.values as &mut [ManuallyDrop<<A as Array>::Element>];
                     let src = arr.as_ptr().offset(tail as isize);
                     let dst = arr.as_mut_ptr().offset(start as isize);
                     ptr::copy(src, dst, self.tail_len);

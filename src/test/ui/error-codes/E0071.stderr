@@ -1,0 +1,9 @@
+error[E0071]: expected struct, variant or union type, found enum `Foo`
+  --> $DIR/E0071.rs:15:13
+   |
+LL |     let u = FooAlias { value: 0 };
+   |             ^^^^^^^^ not a struct
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0071"

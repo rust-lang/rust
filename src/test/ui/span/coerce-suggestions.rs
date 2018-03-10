@@ -16,39 +16,17 @@ fn test2(_x: &mut i32) {}
 fn main() {
     let x: usize = String::new();
     //~^ ERROR E0308
-    //~| NOTE expected usize, found struct `std::string::String`
-    //~| NOTE expected type `usize`
-    //~| NOTE found type `std::string::String`
-    //~| HELP here are some functions which might fulfill your needs:
     let x: &str = String::new();
     //~^ ERROR E0308
-    //~| NOTE expected &str, found struct `std::string::String`
-    //~| NOTE expected type `&str`
-    //~| NOTE found type `std::string::String`
-    //~| HELP try with `&String::new()`
     let y = String::new();
     test(&y);
     //~^ ERROR E0308
-    //~| NOTE types differ in mutability
-    //~| NOTE expected type `&mut std::string::String`
-    //~| NOTE found type `&std::string::String`
     test2(&y);
     //~^ ERROR E0308
-    //~| NOTE types differ in mutability
-    //~| NOTE expected type `&mut i32`
-    //~| NOTE found type `&std::string::String`
     let f;
     f = box f;
     //~^ ERROR E0308
-    //~| NOTE cyclic type of infinite size
-    //~| NOTE expected type `_`
-    //~| NOTE found type `Box<_>`
 
     let s = &mut String::new();
     s = format!("foo");
-    //~^ ERROR E0308
-    //~| NOTE expected mutable reference, found struct `std::string::String`
-    //~| NOTE expected type `&mut std::string::String`
-    //~| HELP try with `&mut format!("foo")`
-    //~| NOTE this error originates in a macro outside of the current crate
 }

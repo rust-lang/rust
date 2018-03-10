@@ -37,75 +37,6 @@ More details can be found in [RFC 438].
 [RFC 438]: https://github.com/rust-lang/rfcs/pull/438
 "##,
 
-E0534: r##"
-The `inline` attribute was malformed.
-
-Erroneous code example:
-
-```ignore (compile_fail not working here; see Issue #43707)
-#[inline()] // error: expected one argument
-pub fn something() {}
-
-fn main() {}
-```
-
-The parenthesized `inline` attribute requires the parameter to be specified:
-
-```
-#[inline(always)]
-fn something() {}
-```
-
-or:
-
-```
-#[inline(never)]
-fn something() {}
-```
-
-Alternatively, a paren-less version of the attribute may be used to hint the
-compiler about inlining opportunity:
-
-```
-#[inline]
-fn something() {}
-```
-
-For more information about the inline attribute, read:
-https://doc.rust-lang.org/reference.html#inline-attributes
-"##,
-
-E0535: r##"
-An unknown argument was given to the `inline` attribute.
-
-Erroneous code example:
-
-```ignore (compile_fail not working here; see Issue #43707)
-#[inline(unknown)] // error: invalid argument
-pub fn something() {}
-
-fn main() {}
-```
-
-The `inline` attribute only supports two arguments:
-
- * always
- * never
-
-All other arguments given to the `inline` attribute will return this error.
-Example:
-
-```
-#[inline(never)] // ok!
-pub fn something() {}
-
-fn main() {}
-```
-
-For more information about the inline attribute, https:
-read://doc.rust-lang.org/reference.html#inline-attributes
-"##,
-
 E0536: r##"
 The `not` cfg-predicate was malformed.
 
@@ -315,6 +246,58 @@ fn main() {
     let x = &tmp[1..=3]; // ok!
 }
 ```
+"##,
+
+E0658: r##"
+An unstable feature was used.
+
+Erroneous code example:
+
+```compile_fail,E658
+let x = ::std::u128::MAX; // error: use of unstable library feature 'i128'
+```
+
+If you're using a stable or a beta version of rustc, you won't be able to use
+any unstable features. In order to do so, please switch to a nightly version of
+rustc (by using rustup).
+
+If you're using a nightly version of rustc, just add the corresponding feature
+to be able to use it:
+
+```
+#![feature(i128)]
+
+fn main() {
+    let x = ::std::u128::MAX; // ok!
+}
+```
+"##,
+
+E0633: r##"
+The `unwind` attribute was malformed.
+
+Erroneous code example:
+
+```ignore (compile_fail not working here; see Issue #43707)
+#[unwind()] // error: expected one argument
+pub extern fn something() {}
+
+fn main() {}
+```
+
+The `#[unwind]` attribute should be used as follows:
+
+- `#[unwind(aborts)]` -- specifies that if a non-Rust ABI function
+  should abort the process if it attempts to unwind. This is the safer
+  and preferred option.
+
+- `#[unwind(allowed)]` -- specifies that a non-Rust ABI function
+  should be allowed to unwind. This can easily result in Undefined
+  Behavior (UB), so be careful.
+
+NB. The default behavior here is "allowed", but this is unspecified
+and likely to change in the future.
+
 "##,
 
 }

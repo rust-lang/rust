@@ -82,7 +82,6 @@ impl<'a> From<&'a clean::Item> for ItemType {
             clean::PrimitiveItem(..)       => ItemType::Primitive,
             clean::AssociatedConstItem(..) => ItemType::AssociatedConst,
             clean::AssociatedTypeItem(..)  => ItemType::AssociatedType,
-            clean::AutoImplItem(..)        => ItemType::Impl,
             clean::ForeignTypeItem         => ItemType::ForeignType,
             clean::StrippedItem(..)        => unreachable!(),
         }
@@ -103,6 +102,7 @@ impl From<clean::TypeKind> for ItemType {
             clean::TypeKind::Variant  => ItemType::Variant,
             clean::TypeKind::Typedef  => ItemType::Typedef,
             clean::TypeKind::Foreign  => ItemType::ForeignType,
+            clean::TypeKind::Macro  => ItemType::Macro,
         }
     }
 }

@@ -12,7 +12,7 @@
 
 use llvm;
 
-use common::{C_bytes, CrateContext, C_i32};
+use common::{C_bytes, CodegenCx, C_i32};
 use builder::Builder;
 use declare;
 use type_::Type;
@@ -24,14 +24,14 @@ use syntax::attr;
 
 /// Inserts a side-effect free instruction sequence that makes sure that the
 /// .debug_gdb_scripts global is referenced, so it isn't removed by the linker.
-pub fn insert_reference_to_gdb_debug_scripts_section_global(ccx: &CrateContext, builder: &Builder) {
-    if needs_gdb_debug_scripts_section(ccx) {
-        let gdb_debug_scripts_section_global = get_or_insert_gdb_debug_scripts_section_global(ccx);
+pub fn insert_reference_to_gdb_debug_scripts_section_global(bx: &Builder) {
+    if needs_gdb_debug_scripts_section(bx.cx) {
+        let gdb_debug_scripts_section = get_or_insert_gdb_debug_scripts_section_global(bx.cx);
         // Load just the first byte as that's all that's necessary to force
         // LLVM to keep around the reference to the global.
-        let indices = [C_i32(ccx, 0), C_i32(ccx, 0)];
-        let element = builder.inbounds_gep(gdb_debug_scripts_section_global, &indices);
-        let volative_load_instruction = builder.volatile_load(element);
+        let indices = [C_i32(bx.cx, 0), C_i32(bx.cx, 0)];
+        let element = bx.inbounds_gep(gdb_debug_scripts_section, &indices);
+        let volative_load_instruction = bx.volatile_load(element);
         unsafe {
             llvm::LLVMSetAlignment(volative_load_instruction, 1);
         }
@@ -40,13 +40,13 @@ pub fn insert_reference_to_gdb_debug_scripts_section_global(ccx: &CrateContext, 
 
 /// Allocates the global variable responsible for the .debug_gdb_scripts binary
 /// section.
-pub fn get_or_insert_gdb_debug_scripts_section_global(ccx: &CrateContext)
+pub fn get_or_insert_gdb_debug_scripts_section_global(cx: &CodegenCx)
                                                   -> llvm::ValueRef {
     let c_section_var_name = "__rustc_debug_gdb_scripts_section__\0";
     let section_var_name = &c_section_var_name[..c_section_var_name.len()-1];
 
     let section_var = unsafe {
-        llvm::LLVMGetNamedGlobal(ccx.llmod(),
+        llvm::LLVMGetNamedGlobal(cx.llmod,
                                  c_section_var_name.as_ptr() as *const _)
     };
 
@@ -55,15 +55,15 @@ pub fn get_or_insert_gdb_debug_scripts_section_global(ccx: &CrateContext)
         let section_contents = b"\x01gdb_load_rust_pretty_printers.py\0";
 
         unsafe {
-            let llvm_type = Type::array(&Type::i8(ccx),
+            let llvm_type = Type::array(&Type::i8(cx),
                                         section_contents.len() as u64);
 
-            let section_var = declare::define_global(ccx, section_var_name,
+            let section_var = declare::define_global(cx, section_var_name,
                                                      llvm_type).unwrap_or_else(||{
                 bug!("symbol `{}` is already defined", section_var_name)
             });
             llvm::LLVMSetSection(section_var, section_name.as_ptr() as *const _);
-            llvm::LLVMSetInitializer(section_var, C_bytes(ccx, section_contents));
+            llvm::LLVMSetInitializer(section_var, C_bytes(cx, section_contents));
             llvm::LLVMSetGlobalConstant(section_var, llvm::True);
             llvm::LLVMSetUnnamedAddr(section_var, llvm::True);
             llvm::LLVMRustSetLinkage(section_var, llvm::Linkage::LinkOnceODRLinkage);
@@ -77,13 +77,13 @@ pub fn get_or_insert_gdb_debug_scripts_section_global(ccx: &CrateContext)
     }
 }
 
-pub fn needs_gdb_debug_scripts_section(ccx: &CrateContext) -> bool {
+pub fn needs_gdb_debug_scripts_section(cx: &CodegenCx) -> bool {
     let omit_gdb_pretty_printer_section =
-        attr::contains_name(&ccx.tcx().hir.krate_attrs(),
+        attr::contains_name(&cx.tcx.hir.krate_attrs(),
                             "omit_gdb_pretty_printer_section");
 
     !omit_gdb_pretty_printer_section &&
-    !ccx.sess().target.target.options.is_like_osx &&
-    !ccx.sess().target.target.options.is_like_windows &&
-    ccx.sess().opts.debuginfo != NoDebugInfo
+    !cx.sess().target.target.options.is_like_osx &&
+    !cx.sess().target.target.options.is_like_windows &&
+    cx.sess().opts.debuginfo != NoDebugInfo
 }

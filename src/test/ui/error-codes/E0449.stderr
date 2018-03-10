@@ -1,0 +1,23 @@
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/E0449.rs:17:1
+   |
+LL | pub impl Bar {} //~ ERROR E0449
+   | ^^^ `pub` not needed here
+   |
+   = note: place qualifiers on individual impl items instead
+
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/E0449.rs:19:1
+   |
+LL | pub impl Foo for Bar { //~ ERROR E0449
+   | ^^^ `pub` not needed here
+
+error[E0449]: unnecessary visibility qualifier
+  --> $DIR/E0449.rs:20:5
+   |
+LL |     pub fn foo() {} //~ ERROR E0449
+   |     ^^^ `pub` not needed here
+
+error: aborting due to 3 previous errors
+
+If you want more information on this error, try using "rustc --explain E0449"

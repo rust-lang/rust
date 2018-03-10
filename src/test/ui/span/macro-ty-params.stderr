@@ -1,26 +1,26 @@
 error: unexpected generic arguments in path
   --> $DIR/macro-ty-params.rs:20:8
    |
-20 |     m!(MyTrait<>);
+LL |     m!(MyTrait<>); //~ ERROR generic arguments in macro path
    |        ^^^^^^^^^
 
 error: generic arguments in macro path
   --> $DIR/macro-ty-params.rs:18:8
    |
-18 |     foo::<T>!();
+LL |     foo::<T>!(); //~ ERROR generic arguments in macro path
    |        ^^^^^
 
 error: generic arguments in macro path
   --> $DIR/macro-ty-params.rs:19:8
    |
-19 |     foo::<>!();
+LL |     foo::<>!(); //~ ERROR generic arguments in macro path
    |        ^^^^
 
 error: generic arguments in macro path
   --> $DIR/macro-ty-params.rs:20:15
    |
-20 |     m!(MyTrait<>);
+LL |     m!(MyTrait<>); //~ ERROR generic arguments in macro path
    |               ^^
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 

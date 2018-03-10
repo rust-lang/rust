@@ -35,20 +35,24 @@ The error levels that you can have are:
 ## Summary of Header Commands
 
 Header commands specify something about the entire test file as a
-whole, instead of just a few lines inside the test.
+whole. They are normally put right after the copyright comment, e.g.:
+
+```Rust
+// Copyright blah blah blah
+// except according to those terms.
+
+// ignore-test This doesn't actually work
+```
+
+### Ignoring tests
+
+These are used to ignore the test in some situations, which means the test won't
+be compiled or run.
 
 * `ignore-X` where `X` is a target detail or stage will ignore the test accordingly (see below)
 * `ignore-pretty` will not compile the pretty-printed test (this is done to test the pretty-printer, but might not always work)
 * `ignore-test` always ignores the test
-* `ignore-lldb` and `ignore-gdb` will skip the debuginfo tests
-* `min-{gdb,lldb}-version`
-* `should-fail` indicates that the test should fail; used for "meta testing",
-  where we test the compiletest program itself to check that it will generate
-  errors in appropriate scenarios. This header is ignored for pretty-printer tests.
-* `gate-test-X` where `X` is a feature marks the test as "gate test" for feature X.
-  Such tests are supposed to ensure that the compiler errors when usage of a gated
-  feature is attempted without the proper `#![feature(X)]` tag.
-  Each unstable lang feature is required to have a gate test.
+* `ignore-lldb` and `ignore-gdb` will skip a debuginfo test on that debugger.
 
 Some examples of `X` in `ignore-X`:
 
@@ -57,6 +61,22 @@ Some examples of `X` in `ignore-X`:
 * Environment (fourth word of the target triple): `gnu`, `msvc`, `musl`.
 * Pointer width: `32bit`, `64bit`.
 * Stage: `stage0`, `stage1`, `stage2`.
+
+### Other Header Commands
+
+* `min-{gdb,lldb}-version`
+* `min-llvm-version`
+* `must-compile-successfully` for UI tests, indicates that the test is supposed
+  to compile, as opposed to the default where the test is supposed to error out.
+* `compile-flags` passes extra command-line args to the compiler,
+  e.g. `compile-flags -g` which forces debuginfo to be enabled.
+* `should-fail` indicates that the test should fail; used for "meta testing",
+  where we test the compiletest program itself to check that it will generate
+  errors in appropriate scenarios. This header is ignored for pretty-printer tests.
+* `gate-test-X` where `X` is a feature marks the test as "gate test" for feature X.
+  Such tests are supposed to ensure that the compiler errors when usage of a gated
+  feature is attempted without the proper `#![feature(X)]` tag.
+  Each unstable lang feature is required to have a gate test.
 
 ## Revisions
 
@@ -106,8 +126,14 @@ result is then compared against reference files named
 those files doesn't exist, the output must be empty. If the test run
 fails, we will print out the current output, but it is also saved in
 `build/<target-triple>/test/ui/hello_world/main.stdout` (this path is
-printed as part of the test failure mesage), so you can run `diff` and
+printed as part of the test failure message), so you can run `diff` and
 so forth.
+
+Normally, the test-runner checks that UI tests fail compilation. If you want
+to do a UI test for code that *compiles* (e.g. to test warnings, or if you
+have a collection of tests, only some of which error out), you can use the
+`// must-compile-successfully` header command to have the test runner instead
+check that the test compiles successfully.
 
 ### Editing and updating the reference files
 
@@ -133,13 +159,15 @@ Sometimes these built-in normalizations are not enough. In such cases, you
 may provide custom normalization rules using the header commands, e.g.
 
 ```
-// normalize-stderr-32bit: "fn() (32 bits)" -> "fn() ($PTR bits)"
-// normalize-stderr-64bit: "fn() (64 bits)" -> "fn() ($PTR bits)"
+// normalize-stdout-test: "foo" -> "bar"
+// normalize-stderr-32bit: "fn\(\) \(32 bits\)" -> "fn\(\) \($$PTR bits\)"
+// normalize-stderr-64bit: "fn\(\) \(64 bits\)" -> "fn\(\) \($$PTR bits\)"
 ```
 
 This tells the test, on 32-bit platforms, whenever the compiler writes
 `fn() (32 bits)` to stderr, it should be normalized to read `fn() ($PTR bits)`
-instead. Similar for 64-bit.
+instead. Similar for 64-bit. The replacement is performed by regexes using
+default regex flavor provided by `regex` crate.
 
 The corresponding reference file will use the normalized output to test both
 32-bit and 64-bit platforms:
@@ -156,4 +184,5 @@ Please see `ui/transmute/main.rs` and `.stderr` for a concrete usage example.
 
 Besides `normalize-stderr-32bit` and `-64bit`, one may use any target
 information or stage supported by `ignore-X` here as well (e.g.
-`normalize-stderr-windows`).
+`normalize-stderr-windows` or simply `normalize-stderr-test` for unconditional
+replacement).

@@ -26,6 +26,7 @@ pub struct EarlyProps {
     pub ignore: bool,
     pub should_fail: bool,
     pub aux: Vec<String>,
+    pub revisions: Vec<String>,
 }
 
 impl EarlyProps {
@@ -34,20 +35,29 @@ impl EarlyProps {
             ignore: false,
             should_fail: false,
             aux: Vec::new(),
+            revisions: vec![],
         };
 
         iter_header(testfile,
                     None,
                     &mut |ln| {
+            // we should check if any only-<platform> exists and if it exists
+            // and does not matches the current platform, skip the test
             props.ignore =
                 props.ignore ||
                 config.parse_cfg_name_directive(ln, "ignore") ||
+                (config.has_cfg_prefix(ln, "only") &&
+                !config.parse_cfg_name_directive(ln, "only")) ||
                 ignore_gdb(config, ln) ||
                 ignore_lldb(config, ln) ||
                 ignore_llvm(config, ln);
 
             if let Some(s) = config.parse_aux_build(ln) {
                 props.aux.push(s);
+            }
+
+            if let Some(r) = config.parse_revisions(ln) {
+                props.revisions.extend(r);
             }
 
             props.should_fail = props.should_fail || config.parse_name_directive(ln, "should-fail");
@@ -150,6 +160,14 @@ impl EarlyProps {
                     // Ignore if actual version is smaller the minimum required
                     // version
                     &actual_version[..] < min_version
+                } else if line.starts_with("min-system-llvm-version") {
+                    let min_version = line.trim_right()
+                        .rsplit(' ')
+                        .next()
+                        .expect("Malformed llvm version directive");
+                    // Ignore if using system LLVM and actual version
+                    // is smaller the minimum required version
+                    config.system_llvm && &actual_version[..] < min_version
                 } else {
                     false
                 }
@@ -204,16 +222,18 @@ pub struct TestProps {
     // testing harness and used when generating compilation
     // arguments. (In particular, it propagates to the aux-builds.)
     pub incremental_dir: Option<PathBuf>,
-    // Specifies that a cfail test must actually compile without errors.
+    // Specifies that a test must actually compile without errors.
     pub must_compile_successfully: bool,
     // rustdoc will test the output of the `--test` option
     pub check_test_line_numbers_match: bool,
-    // The test must be compiled and run successfully. Only used in UI tests for
-    // now.
+    // The test must be compiled and run successfully. Only used in UI tests for now.
     pub run_pass: bool,
+    // Do not pass `-Z ui-testing` to UI tests
+    pub disable_ui_testing_normalization: bool,
     // customized normalization rules
     pub normalize_stdout: Vec<(String, String)>,
     pub normalize_stderr: Vec<(String, String)>,
+    pub failure_status: i32,
 }
 
 impl TestProps {
@@ -240,8 +260,10 @@ impl TestProps {
             must_compile_successfully: false,
             check_test_line_numbers_match: false,
             run_pass: false,
+            disable_ui_testing_normalization: false,
             normalize_stdout: vec![],
             normalize_stderr: vec![],
+            failure_status: 101,
         }
     }
 
@@ -259,9 +281,9 @@ impl TestProps {
         props
     }
 
-    pub fn from_file(testfile: &Path, config: &Config) -> Self {
+    pub fn from_file(testfile: &Path, cfg: Option<&str>, config: &Config) -> Self {
         let mut props = TestProps::new();
-        props.load_from(testfile, None, config);
+        props.load_from(testfile, cfg, config);
         props
     }
 
@@ -269,10 +291,10 @@ impl TestProps {
     /// tied to a particular revision `foo` (indicated by writing
     /// `//[foo]`), then the property is ignored unless `cfg` is
     /// `Some("foo")`.
-    pub fn load_from(&mut self,
-                     testfile: &Path,
-                     cfg: Option<&str>,
-                     config: &Config) {
+    fn load_from(&mut self,
+                 testfile: &Path,
+                 cfg: Option<&str>,
+                 config: &Config) {
         iter_header(testfile,
                     cfg,
                     &mut |ln| {
@@ -345,10 +367,6 @@ impl TestProps {
                 self.forbid_output.push(of);
             }
 
-            if !self.must_compile_successfully {
-                self.must_compile_successfully = config.parse_must_compile_successfully(ln);
-            }
-
             if !self.check_test_line_numbers_match {
                 self.check_test_line_numbers_match = config.parse_check_test_line_numbers_match(ln);
             }
@@ -357,11 +375,26 @@ impl TestProps {
                 self.run_pass = config.parse_run_pass(ln);
             }
 
+            if !self.must_compile_successfully {
+                // run-pass implies must_compile_sucessfully
+                self.must_compile_successfully =
+                    config.parse_must_compile_successfully(ln) || self.run_pass;
+            }
+
+            if !self.disable_ui_testing_normalization {
+                self.disable_ui_testing_normalization =
+                    config.parse_disable_ui_testing_normalization(ln);
+            }
+
             if let Some(rule) = config.parse_custom_normalization(ln, "normalize-stdout") {
                 self.normalize_stdout.push(rule);
             }
             if let Some(rule) = config.parse_custom_normalization(ln, "normalize-stderr") {
                 self.normalize_stderr.push(rule);
+            }
+
+            if let Some(code) = config.parse_failure_status(ln) {
+                self.failure_status = code;
             }
         });
 
@@ -468,8 +501,19 @@ impl Config {
         self.parse_name_directive(line, "pretty-compare-only")
     }
 
+    fn parse_failure_status(&self, line: &str) -> Option<i32> {
+        match self.parse_name_value_directive(line, "failure-status") {
+            Some(code) => code.trim().parse::<i32>().ok(),
+            _ => None,
+        }
+    }
+
     fn parse_must_compile_successfully(&self, line: &str) -> bool {
         self.parse_name_directive(line, "must-compile-successfully")
+    }
+
+    fn parse_disable_ui_testing_normalization(&self, line: &str) -> bool {
+        self.parse_name_directive(line, "disable-ui-testing-normalization")
     }
 
     fn parse_check_test_line_numbers_match(&self, line: &str) -> bool {
@@ -531,7 +575,7 @@ impl Config {
             let name = line[prefix.len()+1 ..].split(&[':', ' '][..]).next().unwrap();
 
             name == "test" ||
-                name == util::get_os(&self.target) ||               // target
+                util::matches_os(&self.target, name) ||             // target
                 name == util::get_arch(&self.target) ||             // architecture
                 name == util::get_pointer_width(&self.target) ||    // pointer width
                 name == self.stage_id.split('-').next().unwrap() || // stage
@@ -546,6 +590,13 @@ impl Config {
         } else {
             false
         }
+    }
+
+    fn has_cfg_prefix(&self, line: &str, prefix: &str) -> bool {
+        // returns whether this line contains this prefix or not. For prefix
+        // "ignore", returns true if line says "ignore-x86_64", "ignore-arch",
+        // "ignore-andorid" etc.
+        line.starts_with(prefix) && line.as_bytes().get(prefix.len()) == Some(&b'-')
     }
 
     fn parse_name_directive(&self, line: &str, directive: &str) -> bool {

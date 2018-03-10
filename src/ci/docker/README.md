@@ -22,6 +22,48 @@ Images will output artifacts in an `obj` dir at the root of a repository.
 - `scripts` contains files shared by docker images
 - `disabled` contains images that are not built on travis
 
+## Docker Toolbox on Windows
+
+For Windows before Windows 10, the docker images can be run on Windows via
+[Docker Toolbox]. There are several preparation needs to be made before running
+a Docker image.
+
+1. Stop the virtual machine from the terminal with `docker-machine stop`
+
+2. If your Rust source is placed outside of `C:\Users\**`, e.g. if you place the
+    repository in the `E:\rust` folder, please add a shared folder from
+    VirtualBox by:
+
+    1. Select the "default" virtual machine inside VirtualBox, then click
+        "Settings"
+    2. Go to "Shared Folders", click "Add shared folder" (the folder icon with
+        a plus sign), fill in the following information, then click "OK":
+
+        * Folder path: `E:\rust`
+        * Folder name: `e/rust`
+        * Read-only: ☐ *unchecked*
+        * Auto-mount: ☑ *checked*
+        * Make Permanent: ☑ *checked*
+
+3. VirtualBox might not support creating symbolic links inside a shared folder
+    by default. You can enable it manually by running these from `cmd.exe`:
+
+    ```bat
+    cd "C:\Program Files\Oracle\VirtualBox"
+    VBoxManage setextradata default VBoxInternal2/SharedFoldersEnableSymlinksCreate/e/rust 1
+    ::                                                                              ^~~~~~
+    ::                                                                              folder name
+    ```
+
+4. Restart the virtual machine from terminal with `docker-machine start`.
+
+To run the image,
+
+1. Launch the "Docker Quickstart Terminal".
+2. Execute `./src/ci/docker/run.sh $image_name` as explained at the beginning.
+
+[Docker Toolbox]: https://www.docker.com/products/docker-toolbox
+
 ## Cross toolchains
 
 A number of these images take quite a long time to compile as they're building
@@ -137,7 +179,7 @@ For targets: `armv7-unknown-linux-gnueabihf`
     libraries like jemalloc. See the mk/cfg/arm(v7)-uknown-linux-gnueabi{,hf}.mk
     file in Rust's source code.
 
-## `aarch64-linux-gnu.config`
+### `aarch64-linux-gnu.config`
 
 For targets: `aarch64-unknown-linux-gnu`
 
@@ -150,7 +192,7 @@ For targets: `aarch64-unknown-linux-gnu`
 - C compiler > gcc version = 5.2.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
-## `powerpc-linux-gnu.config`
+### `powerpc-linux-gnu.config`
 
 For targets: `powerpc-unknown-linux-gnu`
 
@@ -165,7 +207,7 @@ For targets: `powerpc-unknown-linux-gnu`
 - C compiler > gcc version = 4.9.3
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
-## `powerpc64-linux-gnu.config`
+### `powerpc64-linux-gnu.config`
 
 For targets: `powerpc64-unknown-linux-gnu`
 
@@ -184,7 +226,7 @@ For targets: `powerpc64-unknown-linux-gnu`
 
 (+) These CPU options match the configuration of the toolchains in RHEL6.
 
-## `s390x-linux-gnu.config`
+### `s390x-linux-gnu.config`
 
 For targets: `s390x-unknown-linux-gnu`
 

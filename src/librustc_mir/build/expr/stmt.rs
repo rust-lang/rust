@@ -41,14 +41,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // dropped.
                 if this.hir.needs_drop(lhs.ty) {
                     let rhs = unpack!(block = this.as_local_operand(block, rhs));
-                    let lhs = unpack!(block = this.as_lvalue(block, lhs));
+                    let lhs = unpack!(block = this.as_place(block, lhs));
                     unpack!(block = this.build_drop_and_replace(
                         block, lhs_span, lhs, rhs
                     ));
                     block.unit()
                 } else {
                     let rhs = unpack!(block = this.as_local_rvalue(block, rhs));
-                    let lhs = unpack!(block = this.as_lvalue(block, lhs));
+                    let lhs = unpack!(block = this.as_place(block, lhs));
                     this.cfg.push_assign(block, source_info, &lhs, rhs);
                     block.unit()
                 }
@@ -67,13 +67,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 // As above, RTL.
                 let rhs = unpack!(block = this.as_local_operand(block, rhs));
-                let lhs = unpack!(block = this.as_lvalue(block, lhs));
+                let lhs = unpack!(block = this.as_place(block, lhs));
 
                 // we don't have to drop prior contents or anything
                 // because AssignOp is only legal for Copy types
                 // (overloaded ops should be desugared into a call).
                 let result = unpack!(block = this.build_binary_op(block, op, expr_span, lhs_ty,
-                                                  Operand::Consume(lhs.clone()), rhs));
+                                                  Operand::Copy(lhs.clone()), rhs));
                 this.cfg.push_assign(block, source_info, &lhs, result);
 
                 block.unit()
@@ -107,12 +107,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Return { value } => {
                 block = match value {
                     Some(value) => {
-                        unpack!(this.into(&Lvalue::Local(RETURN_POINTER), block, value))
+                        unpack!(this.into(&Place::Local(RETURN_PLACE), block, value))
                     }
                     None => {
                         this.cfg.push_assign_unit(block,
                                                   source_info,
-                                                  &Lvalue::Local(RETURN_POINTER));
+                                                  &Place::Local(RETURN_PLACE));
                         block
                     }
                 };
@@ -123,7 +123,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
             ExprKind::InlineAsm { asm, outputs, inputs } => {
                 let outputs = outputs.into_iter().map(|output| {
-                    unpack!(block = this.as_lvalue(block, output))
+                    unpack!(block = this.as_place(block, output))
                 }).collect();
                 let inputs = inputs.into_iter().map(|input| {
                     unpack!(block = this.as_local_operand(block, input))

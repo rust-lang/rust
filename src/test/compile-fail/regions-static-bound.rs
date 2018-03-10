@@ -8,17 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// revisions: ll nll
+//[nll] compile-flags: -Znll -Zborrowck=mir
+
 fn static_id<'a,'b>(t: &'a ()) -> &'static ()
     where 'a: 'static { t }
 fn static_id_indirect<'a,'b>(t: &'a ()) -> &'static ()
     where 'a: 'b, 'b: 'static { t }
 fn static_id_wrong_way<'a>(t: &'a ()) -> &'static () where 'static: 'a {
-    t //~ ERROR E0312
+    t //[ll]~ ERROR E0312
+        //[nll]~^ WARNING not reporting region error due to -Znll
+        //[nll]~| ERROR free region `'a` does not outlive free region `'static`
 }
 
 fn error(u: &(), v: &()) {
-    static_id(&u); //~ ERROR cannot infer an appropriate lifetime
-    static_id_indirect(&v); //~ ERROR cannot infer an appropriate lifetime
+    static_id(&u); //[ll]~ ERROR explicit lifetime required in the type of `u` [E0621]
+    //[nll]~^ WARNING not reporting region error due to -Znll
+    //[nll]~| ERROR explicit lifetime required in the type of `u` [E0621]
+    static_id_indirect(&v); //[ll]~ ERROR explicit lifetime required in the type of `v` [E0621]
+    //[nll]~^ WARNING not reporting region error due to -Znll
+    //[nll]~| ERROR explicit lifetime required in the type of `v` [E0621]
 }
 
 fn main() {}

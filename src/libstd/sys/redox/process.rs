@@ -8,17 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use collections::hash_map::HashMap;
-use env::{self, split_paths};
+use env::{split_paths};
 use ffi::OsStr;
 use os::unix::ffi::OsStrExt;
 use fmt;
 use io::{self, Error, ErrorKind};
+use libc::{EXIT_SUCCESS, EXIT_FAILURE};
 use path::{Path, PathBuf};
 use sys::fd::FileDesc;
 use sys::fs::{File, OpenOptions};
 use sys::pipe::{self, AnonPipe};
 use sys::{cvt, syscall};
+use sys_common::process::{CommandEnv, DefaultEnvKey};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -44,7 +45,7 @@ pub struct Command {
     // other keys.
     program: String,
     args: Vec<String>,
-    env: HashMap<String, String>,
+    env: CommandEnv<DefaultEnvKey>,
 
     cwd: Option<String>,
     uid: Option<u32>,
@@ -90,7 +91,7 @@ impl Command {
         Command {
             program: program.to_str().unwrap().to_owned(),
             args: Vec::new(),
-            env: HashMap::new(),
+            env: Default::default(),
             cwd: None,
             uid: None,
             gid: None,
@@ -106,16 +107,8 @@ impl Command {
         self.args.push(arg.to_str().unwrap().to_owned());
     }
 
-    pub fn env(&mut self, key: &OsStr, val: &OsStr) {
-        self.env.insert(key.to_str().unwrap().to_owned(), val.to_str().unwrap().to_owned());
-    }
-
-    pub fn env_remove(&mut self, key: &OsStr) {
-        self.env.remove(key.to_str().unwrap());
-    }
-
-    pub fn env_clear(&mut self) {
-        self.env.clear();
+    pub fn env_mut(&mut self) -> &mut CommandEnv<DefaultEnvKey> {
+        &mut self.env
     }
 
     pub fn cwd(&mut self, dir: &OsStr) {
@@ -309,9 +302,7 @@ impl Command {
             args.push([arg.as_ptr() as usize, arg.len()]);
         }
 
-        for (key, val) in self.env.iter() {
-            env::set_var(key, val);
-        }
+        self.env.apply();
 
         let program = if self.program.contains(':') || self.program.contains('/') {
             Some(PathBuf::from(&self.program))
@@ -487,6 +478,18 @@ impl fmt::Display for ExitStatus {
             let signal = self.signal().unwrap();
             write!(f, "signal: {}", signal)
         }
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub struct ExitCode(u8);
+
+impl ExitCode {
+    pub const SUCCESS: ExitCode = ExitCode(EXIT_SUCCESS as _);
+    pub const FAILURE: ExitCode = ExitCode(EXIT_FAILURE as _);
+
+    pub fn as_i32(&self) -> i32 {
+        self.0 as i32
     }
 }
 

@@ -191,3 +191,9 @@ impl IntoRawFd for process::ChildStderr {
         self.into_inner().into_fd().into_raw()
     }
 }
+
+/// Returns the OS-assigned process identifier associated with this process's parent.
+#[unstable(feature = "unix_ppid", issue = "46104")]
+pub fn parent_id() -> u32 {
+    ::sys::os::getppid()
+}

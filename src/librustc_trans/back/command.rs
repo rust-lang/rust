@@ -14,22 +14,41 @@
 use std::ffi::{OsStr, OsString};
 use std::fmt;
 use std::io;
-use std::process::{self, Output, Child};
+use std::mem;
+use std::process::{self, Output};
 
+use rustc_back::LldFlavor;
+
+#[derive(Clone)]
 pub struct Command {
-    program: OsString,
+    program: Program,
     args: Vec<OsString>,
     env: Vec<(OsString, OsString)>,
 }
 
+#[derive(Clone)]
+enum Program {
+    Normal(OsString),
+    CmdBatScript(OsString),
+    Lld(OsString, LldFlavor)
+}
+
 impl Command {
     pub fn new<P: AsRef<OsStr>>(program: P) -> Command {
-        Command::_new(program.as_ref())
+        Command::_new(Program::Normal(program.as_ref().to_owned()))
     }
 
-    fn _new(program: &OsStr) -> Command {
+    pub fn bat_script<P: AsRef<OsStr>>(program: P) -> Command {
+        Command::_new(Program::CmdBatScript(program.as_ref().to_owned()))
+    }
+
+    pub fn lld<P: AsRef<OsStr>>(program: P, flavor: LldFlavor) -> Command {
+        Command::_new(Program::Lld(program.as_ref().to_owned(), flavor))
+    }
+
+    fn _new(program: Program) -> Command {
         Command {
-            program: program.to_owned(),
+            program,
             args: Vec::new(),
             env: Vec::new(),
         }
@@ -62,17 +81,6 @@ impl Command {
         self
     }
 
-    pub fn envs<I, K, V>(&mut self, envs: I) -> &mut Command
-        where I: IntoIterator<Item=(K, V)>,
-              K: AsRef<OsStr>,
-              V: AsRef<OsStr>
-    {
-        for (key, value) in envs {
-            self._env(key.as_ref(), value.as_ref());
-        }
-        self
-    }
-
     fn _env(&mut self, key: &OsStr, value: &OsStr) {
         self.env.push((key.to_owned(), value.to_owned()));
     }
@@ -81,12 +89,25 @@ impl Command {
         self.command().output()
     }
 
-    pub fn spawn(&mut self) -> io::Result<Child> {
-        self.command().spawn()
-    }
-
     pub fn command(&self) -> process::Command {
-        let mut ret = process::Command::new(&self.program);
+        let mut ret = match self.program {
+            Program::Normal(ref p) => process::Command::new(p),
+            Program::CmdBatScript(ref p) => {
+                let mut c = process::Command::new("cmd");
+                c.arg("/c").arg(p);
+                c
+            }
+            Program::Lld(ref p, flavor) => {
+                let mut c = process::Command::new(p);
+                c.arg("-flavor").arg(match flavor {
+                    LldFlavor::Wasm => "wasm",
+                    LldFlavor::Ld => "gnu",
+                    LldFlavor::Link => "link",
+                    LldFlavor::Ld64 => "darwin",
+                });
+                c
+            }
+        };
         ret.args(&self.args);
         ret.envs(self.env.clone());
         return ret
@@ -94,16 +115,49 @@ impl Command {
 
     // extensions
 
-    pub fn get_program(&self) -> &OsStr {
-        &self.program
-    }
-
     pub fn get_args(&self) -> &[OsString] {
         &self.args
     }
 
-    pub fn get_env(&self) -> &[(OsString, OsString)] {
-        &self.env
+    pub fn take_args(&mut self) -> Vec<OsString> {
+        mem::replace(&mut self.args, Vec::new())
+    }
+
+    /// Returns a `true` if we're pretty sure that this'll blow OS spawn limits,
+    /// or `false` if we should attempt to spawn and see what the OS says.
+    pub fn very_likely_to_exceed_some_spawn_limit(&self) -> bool {
+        // We mostly only care about Windows in this method, on Unix the limits
+        // can be gargantuan anyway so we're pretty unlikely to hit them
+        if cfg!(unix) {
+            return false
+        }
+
+        // Ok so on Windows to spawn a process is 32,768 characters in its
+        // command line [1]. Unfortunately we don't actually have access to that
+        // as it's calculated just before spawning. Instead we perform a
+        // poor-man's guess as to how long our command line will be. We're
+        // assuming here that we don't have to escape every character...
+        //
+        // Turns out though that `cmd.exe` has even smaller limits, 8192
+        // characters [2]. Linkers can often be batch scripts (for example
+        // Emscripten, Gecko's current build system) which means that we're
+        // running through batch scripts. These linkers often just forward
+        // arguments elsewhere (and maybe tack on more), so if we blow 8192
+        // bytes we'll typically cause them to blow as well.
+        //
+        // Basically as a result just perform an inflated estimate of what our
+        // command line will look like and test if it's > 8192 (we actually
+        // test against 6k to artificially inflate our estimate). If all else
+        // fails we'll fall back to the normal unix logic of testing the OS
+        // error code if we fail to spawn and automatically re-spawning the
+        // linker with smaller arguments.
+        //
+        // [1]: https://msdn.microsoft.com/en-us/library/windows/desktop/ms682425(v=vs.85).aspx
+        // [2]: https://blogs.msdn.microsoft.com/oldnewthing/20031210-00/?p=41553
+
+        let estimated_command_line_len =
+            self.args.iter().map(|a| a.len()).sum::<usize>();
+        estimated_command_line_len > 1024 * 6
     }
 }
 

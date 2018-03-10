@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // revisions: ast mir
-//[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
+//[mir]compile-flags: -Z borrowck=mir
 
 fn main() {
     let mut x: Option<isize> = None;
@@ -21,8 +21,7 @@ fn main() {
       Some(ref i) => {
           // But on this branch, `i` is an outstanding borrow
           x = Some(*i+1); //[ast]~ ERROR cannot assign to `x`
-                          //[mir]~^ ERROR cannot assign to `x` because it is borrowed (Ast)
-                          //[mir]~| ERROR cannot assign to `x` because it is borrowed (Mir)
+                          //[mir]~^ ERROR cannot assign to `x` because it is borrowed
       }
     }
     x.clone(); // just to prevent liveness warnings

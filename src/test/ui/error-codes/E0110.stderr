@@ -1,0 +1,9 @@
+error[E0110]: lifetime parameters are not allowed on this type
+  --> $DIR/E0110.rs:11:14
+   |
+LL | type X = u32<'static>; //~ ERROR E0110
+   |              ^^^^^^^ lifetime parameter not allowed on this type
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0110"

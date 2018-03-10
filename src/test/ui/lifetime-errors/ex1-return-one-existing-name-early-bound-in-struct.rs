@@ -18,7 +18,7 @@ impl<'a> Foo<'a> {
         match *self {
             Foo::Bar(s) => {
                 if s == "test" {
-                    other
+                    other //~ ERROR explicit lifetime
                 } else {
                     self.clone()
                 }

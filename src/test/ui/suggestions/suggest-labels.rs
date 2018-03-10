@@ -11,16 +11,16 @@
 #[allow(unreachable_code)]
 fn main() {
     'foo: loop {
-        break 'fo;
+        break 'fo; //~ ERROR use of undeclared label
     }
 
     'bar: loop {
-        continue 'bor;
+        continue 'bor; //~ ERROR use of undeclared label
     }
 
     'longlabel: loop {
         'longlabel1: loop {
-            break 'longlable;
+            break 'longlable; //~ ERROR use of undeclared label
         }
     }
 }

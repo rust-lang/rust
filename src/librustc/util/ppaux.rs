@@ -17,7 +17,7 @@ use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
 use ty::{TyBool, TyChar, TyAdt};
 use ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};
 use ty::{TyParam, TyRawPtr, TyRef, TyNever, TyTuple};
-use ty::{TyClosure, TyGenerator, TyForeign, TyProjection, TyAnon};
+use ty::{TyClosure, TyGenerator, TyGeneratorWitness, TyForeign, TyProjection, TyAnon};
 use ty::{TyDynamic, TyInt, TyUint, TyInfer};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 use util::nodemap::FxHashSet;
@@ -632,6 +632,22 @@ impl<'tcx> fmt::Debug for ty::UpvarBorrow<'tcx> {
 }
 
 define_print! {
+    ('tcx) &'tcx ty::Slice<Ty<'tcx>>, (self, f, cx) {
+        display {
+            write!(f, "{{")?;
+            let mut tys = self.iter();
+            if let Some(&ty) = tys.next() {
+                print!(f, cx, print(ty))?;
+                for &ty in tys {
+                    print!(f, cx, write(", "), print(ty))?;
+                }
+            }
+            write!(f, "}}")
+        }
+    }
+}
+
+define_print! {
     ('tcx) ty::TypeAndMut<'tcx>, (self, f, cx) {
         display {
             print!(f, cx,
@@ -726,13 +742,16 @@ define_print! {
                     }
                 }
                 ty::ReVar(region_vid) if cx.identify_regions => {
-                    write!(f, "'{}rv", region_vid.index)
+                    write!(f, "'{}rv", region_vid.index())
                 }
                 ty::ReScope(_) |
                 ty::ReVar(_) |
                 ty::ReErased => Ok(()),
                 ty::ReStatic => write!(f, "'static"),
                 ty::ReEmpty => write!(f, "'<empty>"),
+
+                // The user should never encounter these in unsubstituted form.
+                ty::ReClosureBound(vid) => write!(f, "{:?}", vid),
             }
         }
         debug {
@@ -741,6 +760,11 @@ define_print! {
                     write!(f, "ReEarlyBound({}, {})",
                            data.index,
                            data.name)
+                }
+
+                ty::ReClosureBound(ref vid) => {
+                    write!(f, "ReClosureBound({:?})",
+                           vid)
                 }
 
                 ty::ReLateBound(binder_id, ref bound_region) => {
@@ -762,7 +786,7 @@ define_print! {
                 }
 
                 ty::ReSkolemized(id, ref bound_region) => {
-                    write!(f, "ReSkolemized({}, {:?})", id.index, bound_region)
+                    write!(f, "ReSkolemized({:?}, {:?})", id, bound_region)
                 }
 
                 ty::ReEmpty => write!(f, "ReEmpty"),
@@ -850,20 +874,24 @@ impl fmt::Debug for ty::FloatVid {
 
 impl fmt::Debug for ty::RegionVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "'_#{}r", self.index)
+        write!(f, "'_#{}r", self.index())
     }
 }
 
 define_print! {
     () ty::InferTy, (self, f, cx) {
         display {
-            match *self {
-                ty::TyVar(_) => write!(f, "_"),
-                ty::IntVar(_) => write!(f, "{}", "{integer}"),
-                ty::FloatVar(_) => write!(f, "{}", "{float}"),
-                ty::FreshTy(v) => write!(f, "FreshTy({})", v),
-                ty::FreshIntTy(v) => write!(f, "FreshIntTy({})", v),
-                ty::FreshFloatTy(v) => write!(f, "FreshFloatTy({})", v)
+            if cx.is_verbose {
+                print!(f, cx, print_debug(self))
+            } else {
+                match *self {
+                    ty::TyVar(_) => write!(f, "_"),
+                    ty::IntVar(_) => write!(f, "{}", "{integer}"),
+                    ty::FloatVar(_) => write!(f, "{}", "{float}"),
+                    ty::FreshTy(v) => write!(f, "FreshTy({})", v),
+                    ty::FreshIntTy(v) => write!(f, "FreshIntTy({})", v),
+                    ty::FreshFloatTy(v) => write!(f, "FreshFloatTy({})", v)
+                }
             }
         }
         debug {
@@ -888,6 +916,12 @@ impl fmt::Debug for ty::IntVarValue {
     }
 }
 
+impl fmt::Debug for ty::FloatVarValue {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
 // The generic impl doesn't work yet because projections are not
 // normalized under HRTB.
 /*impl<T> fmt::Display for ty::Binder<T>
@@ -905,7 +939,6 @@ define_print_multi! {
     ('tcx) ty::Binder<ty::TraitRef<'tcx>>,
     ('tcx) ty::Binder<ty::FnSig<'tcx>>,
     ('tcx) ty::Binder<ty::TraitPredicate<'tcx>>,
-    ('tcx) ty::Binder<ty::EquatePredicate<'tcx>>,
     ('tcx) ty::Binder<ty::SubtypePredicate<'tcx>>,
     ('tcx) ty::Binder<ty::ProjectionPredicate<'tcx>>,
     ('tcx) ty::Binder<ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>>,
@@ -1015,6 +1048,10 @@ define_print! {
                 TyForeign(def_id) => parameterized(f, subst::Substs::empty(), def_id, &[]),
                 TyProjection(ref data) => data.print(f, cx),
                 TyAnon(def_id, substs) => {
+                    if cx.is_verbose {
+                        return write!(f, "TyAnon({:?}, {:?})", def_id, substs);
+                    }
+
                     ty::tls::with(|tcx| {
                         // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
                         // by looking up the projections associated with the def_id.
@@ -1050,7 +1087,11 @@ define_print! {
                 TyStr => write!(f, "str"),
                 TyGenerator(did, substs, interior) => ty::tls::with(|tcx| {
                     let upvar_tys = substs.upvar_tys(did, tcx);
-                    write!(f, "[generator")?;
+                    if interior.movable {
+                        write!(f, "[generator")?;
+                    } else {
+                        write!(f, "[static generator")?;
+                    }
 
                     if let Some(node_id) = tcx.hir.as_local_node_id(did) {
                         write!(f, "@{:?}", tcx.hir.span(node_id))?;
@@ -1081,6 +1122,9 @@ define_print! {
 
                     print!(f, cx, write(" "), print(interior), write("]"))
                 }),
+                TyGeneratorWitness(types) => {
+                    ty::tls::with(|tcx| cx.in_binder(f, tcx, &types, tcx.lift(&types)))
+                }
                 TyClosure(did, substs) => ty::tls::with(|tcx| {
                     let upvar_tys = substs.upvar_tys(did, tcx);
                     write!(f, "[closure")?;
@@ -1173,14 +1217,6 @@ define_print! {
 }
 
 define_print! {
-    ('tcx) ty::EquatePredicate<'tcx>, (self, f, cx) {
-        display {
-            print!(f, cx, print(self.0), write(" == "), print(self.1))
-        }
-    }
-}
-
-define_print! {
     ('tcx) ty::SubtypePredicate<'tcx>, (self, f, cx) {
         display {
             print!(f, cx, print(self.a), write(" <: "), print(self.b))
@@ -1247,7 +1283,6 @@ define_print! {
         display {
             match *self {
                 ty::Predicate::Trait(ref data) => data.print(f, cx),
-                ty::Predicate::Equate(ref predicate) => predicate.print(f, cx),
                 ty::Predicate::Subtype(ref predicate) => predicate.print(f, cx),
                 ty::Predicate::RegionOutlives(ref predicate) => predicate.print(f, cx),
                 ty::Predicate::TypeOutlives(ref predicate) => predicate.print(f, cx),
@@ -1257,7 +1292,7 @@ define_print! {
                     ty::tls::with(|tcx| {
                         write!(f, "the trait `{}` is object-safe", tcx.item_path_str(trait_def_id))
                     }),
-                ty::Predicate::ClosureKind(closure_def_id, kind) =>
+                ty::Predicate::ClosureKind(closure_def_id, _closure_substs, kind) =>
                     ty::tls::with(|tcx| {
                         write!(f, "the closure `{}` implements the trait `{}`",
                                tcx.item_path_str(closure_def_id), kind)
@@ -1272,7 +1307,6 @@ define_print! {
         debug {
             match *self {
                 ty::Predicate::Trait(ref a) => a.print(f, cx),
-                ty::Predicate::Equate(ref pair) => pair.print(f, cx),
                 ty::Predicate::Subtype(ref pair) => pair.print(f, cx),
                 ty::Predicate::RegionOutlives(ref pair) => pair.print(f, cx),
                 ty::Predicate::TypeOutlives(ref pair) => pair.print(f, cx),
@@ -1281,8 +1315,8 @@ define_print! {
                 ty::Predicate::ObjectSafe(trait_def_id) => {
                     write!(f, "ObjectSafe({:?})", trait_def_id)
                 }
-                ty::Predicate::ClosureKind(closure_def_id, kind) => {
-                    write!(f, "ClosureKind({:?}, {:?})", closure_def_id, kind)
+                ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind) => {
+                    write!(f, "ClosureKind({:?}, {:?}, {:?})", closure_def_id, closure_substs, kind)
                 }
                 ty::Predicate::ConstEvaluatable(def_id, substs) => {
                     write!(f, "ConstEvaluatable({:?}, {:?})", def_id, substs)

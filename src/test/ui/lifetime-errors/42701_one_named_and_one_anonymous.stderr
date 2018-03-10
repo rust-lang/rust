@@ -1,0 +1,12 @@
+error[E0621]: explicit lifetime required in the type of `x`
+  --> $DIR/42701_one_named_and_one_anonymous.rs:20:9
+   |
+LL | fn foo2<'a>(a: &'a Foo, x: &i32) -> &'a i32 {
+   |                         - consider changing the type of `x` to `&'a i32`
+...
+LL |         &*x //~ ERROR explicit lifetime
+   |         ^^^ lifetime `'a` required
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0621"

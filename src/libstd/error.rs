@@ -234,7 +234,7 @@ impl<'a> From<Cow<'a, str>> for Box<Error> {
     }
 }
 
-#[unstable(feature = "never_type_impls", issue = "35121")]
+#[unstable(feature = "never_type", issue = "35121")]
 impl Error for ! {
     fn description(&self) -> &str { *self }
 }

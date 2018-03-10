@@ -15,7 +15,7 @@
 fn main() {
     // these literals are just silly.
     ''';
-    //~^ ERROR: character constant must be escaped: \'
+    //~^ ERROR: character constant must be escaped: '
 
     // note that this is a literal "\n" byte
     '

@@ -1,0 +1,11 @@
+error[E0658]: yield syntax is experimental
+  --> $DIR/feature-gate-generators.rs:12:5
+   |
+LL |     yield true; //~ ERROR yield syntax is experimental
+   |     ^^^^^^^^^^
+   |
+   = help: add #![feature(generators)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0658"

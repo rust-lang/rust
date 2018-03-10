@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-wasm32-bare compiled with panic=abort by default
+
 #![allow(dead_code, unreachable_code)]
 
 use std::cell::RefCell;
@@ -65,7 +67,7 @@ fn test_drop_tuple() {
     panic::catch_unwind(|| {
         (PushOnDrop::new(2, cloned.clone()),
          PushOnDrop::new(1, cloned.clone()),
-         panic!("this panic is catched :D"));
+         panic!("this panic is caught :D"));
     }).err().unwrap();
     assert_eq!(*dropped_fields.borrow(), &[1, 2]);
 }
@@ -97,7 +99,7 @@ fn test_drop_struct() {
         TestStruct {
             x: PushOnDrop::new(2, cloned.clone()),
             y: PushOnDrop::new(1, cloned.clone()),
-            z: panic!("this panic is catched :D")
+            z: panic!("this panic is caught :D")
         };
     }).err().unwrap();
     assert_eq!(*dropped_fields.borrow(), &[1, 2]);
@@ -109,7 +111,7 @@ fn test_drop_struct() {
         TestStruct {
             y: PushOnDrop::new(2, cloned.clone()),
             x: PushOnDrop::new(1, cloned.clone()),
-            z: panic!("this panic is catched :D")
+            z: panic!("this panic is caught :D")
         };
     }).err().unwrap();
     assert_eq!(*dropped_fields.borrow(), &[1, 2]);
@@ -120,7 +122,7 @@ fn test_drop_struct() {
     panic::catch_unwind(|| {
         TestTupleStruct(PushOnDrop::new(2, cloned.clone()),
                         PushOnDrop::new(1, cloned.clone()),
-                        panic!("this panic is catched :D"));
+                        panic!("this panic is caught :D"));
     }).err().unwrap();
     assert_eq!(*dropped_fields.borrow(), &[1, 2]);
 }
@@ -152,7 +154,7 @@ fn test_drop_enum() {
         TestEnum::Struct {
             x: PushOnDrop::new(2, cloned.clone()),
             y: PushOnDrop::new(1, cloned.clone()),
-            z: panic!("this panic is catched :D")
+            z: panic!("this panic is caught :D")
         };
     }).err().unwrap();
     assert_eq!(*dropped_fields.borrow(), &[1, 2]);
@@ -164,7 +166,7 @@ fn test_drop_enum() {
         TestEnum::Struct {
             y: PushOnDrop::new(2, cloned.clone()),
             x: PushOnDrop::new(1, cloned.clone()),
-            z: panic!("this panic is catched :D")
+            z: panic!("this panic is caught :D")
         };
     }).err().unwrap();
     assert_eq!(*dropped_fields.borrow(), &[1, 2]);
@@ -175,7 +177,7 @@ fn test_drop_enum() {
     panic::catch_unwind(|| {
         TestEnum::Tuple(PushOnDrop::new(2, cloned.clone()),
                         PushOnDrop::new(1, cloned.clone()),
-                        panic!("this panic is catched :D"));
+                        panic!("this panic is caught :D"));
     }).err().unwrap();
     assert_eq!(*dropped_fields.borrow(), &[1, 2]);
 }
@@ -205,7 +207,7 @@ fn test_drop_list() {
         vec![
             PushOnDrop::new(2, cloned.clone()),
             PushOnDrop::new(1, cloned.clone()),
-            panic!("this panic is catched :D")
+            panic!("this panic is caught :D")
         ];
     }).err().unwrap();
     assert_eq!(*dropped_fields.borrow(), &[1, 2]);
@@ -217,7 +219,7 @@ fn test_drop_list() {
         [
             PushOnDrop::new(2, cloned.clone()),
             PushOnDrop::new(1, cloned.clone()),
-            panic!("this panic is catched :D")
+            panic!("this panic is caught :D")
         ];
     }).err().unwrap();
     assert_eq!(*dropped_fields.borrow(), &[1, 2]);

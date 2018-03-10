@@ -1,0 +1,107 @@
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/feature-gate-custom_attribute.rs:17:1
+   |
+LL | #[fake_attr] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/feature-gate-custom_attribute.rs:18:1
+   |
+LL | #[fake_attr(100)] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/feature-gate-custom_attribute.rs:19:1
+   |
+LL | #[fake_attr(1, 2, 3)] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/feature-gate-custom_attribute.rs:20:1
+   |
+LL | #[fake_attr("hello")] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/feature-gate-custom_attribute.rs:21:1
+   |
+LL | #[fake_attr(name = "hello")] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/feature-gate-custom_attribute.rs:22:1
+   |
+LL | #[fake_attr(1, "hi", key = 12, true, false)] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/feature-gate-custom_attribute.rs:23:1
+   |
+LL | #[fake_attr(key = "hello", val = 10)] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/feature-gate-custom_attribute.rs:24:1
+   |
+LL | #[fake_attr(key("hello"), val(10))] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/feature-gate-custom_attribute.rs:25:1
+   |
+LL | #[fake_attr(enabled = true, disabled = false)] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/feature-gate-custom_attribute.rs:26:1
+   |
+LL | #[fake_attr(true)] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/feature-gate-custom_attribute.rs:27:1
+   |
+LL | #[fake_attr(pi = 3.14159)] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: The attribute `fake_attr` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/feature-gate-custom_attribute.rs:28:1
+   |
+LL | #[fake_attr(b"hi")] //~ ERROR attribute `fake_attr` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: The attribute `fake_doc` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/feature-gate-custom_attribute.rs:29:1
+   |
+LL | #[fake_doc(r"doc")] //~ ERROR attribute `fake_doc` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error: aborting due to 13 previous errors
+
+If you want more information on this error, try using "rustc --explain E0658"

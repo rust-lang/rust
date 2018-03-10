@@ -1,0 +1,12 @@
+error[E0061]: this function takes 4 parameters but 3 parameters were supplied
+  --> $DIR/not-enough-arguments.rs:20:3
+   |
+LL | fn foo(a: isize, b: isize, c: isize, d:isize) {
+   | --------------------------------------------- defined here
+...
+LL |   foo(1, 2, 3);
+   |   ^^^^^^^^^^^^ expected 4 parameters
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0061"

@@ -17,7 +17,7 @@ extern crate syntax;
 use syntax::ast::*;
 use syntax::attr::*;
 use syntax::ast;
-use syntax::codemap::FilePathMapping;
+use syntax::codemap::{FilePathMapping, FileName};
 use syntax::parse;
 use syntax::parse::{ParseSess, PResult};
 use syntax::parse::new_parser_from_source_str;
@@ -32,7 +32,7 @@ use std::fmt;
 // Copied out of syntax::util::parser_testing
 
 pub fn string_to_parser<'a>(ps: &'a ParseSess, source_str: String) -> Parser<'a> {
-    new_parser_from_source_str(ps, "bogofile".to_string(), source_str)
+    new_parser_from_source_str(ps, FileName::Custom("bogofile".to_owned()), source_str)
 }
 
 fn with_error_checking_parse<'a, T, F>(s: String, ps: &'a ParseSess, f: F) -> PResult<'a, T> where

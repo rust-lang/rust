@@ -30,17 +30,11 @@
 #[lang = "sized"]
 trait Sized {}
 #[lang = "sync"]
-trait Sync {}
-#[allow(unknown_lints)]
-#[allow(auto_impl)]
-impl Sync for .. {}
+auto trait Sync {}
 #[lang = "copy"]
 trait Copy {}
 #[lang = "freeze"]
-trait Freeze {}
-#[allow(unknown_lints)]
-#[allow(auto_impl)]
-impl Freeze for .. {}
+auto trait Freeze {}
 
 #[lang = "drop_in_place"]
 #[inline]

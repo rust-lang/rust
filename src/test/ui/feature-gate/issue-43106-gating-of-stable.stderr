@@ -1,0 +1,47 @@
+error[E0601]: main function not found
+
+error: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-stable.rs:17:1
+   |
+LL | #![stable                     = "1300"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-stable.rs:20:1
+   |
+LL | #[stable = "1300"]
+   | ^^^^^^^^^^^^^^^^^^
+
+error: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-stable.rs:23:17
+   |
+LL |     mod inner { #![stable="1300"] }
+   |                 ^^^^^^^^^^^^^^^^^
+
+error: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-stable.rs:26:5
+   |
+LL |     #[stable = "1300"] fn f() { }
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-stable.rs:29:5
+   |
+LL |     #[stable = "1300"] struct S;
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-stable.rs:32:5
+   |
+LL |     #[stable = "1300"] type T = S;
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-stable.rs:35:5
+   |
+LL |     #[stable = "1300"] impl S { }
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+
+If you want more information on this error, try using "rustc --explain E0601"

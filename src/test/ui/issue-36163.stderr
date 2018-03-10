@@ -1,0 +1,21 @@
+error[E0391]: cyclic dependency detected
+  --> $DIR/issue-36163.rs:14:9
+   |
+LL |     B = A, //~ ERROR E0391
+   |         ^ cyclic reference
+   |
+note: the cycle begins when const-evaluating `Foo::B::{{initializer}}`...
+  --> $DIR/issue-36163.rs:14:5
+   |
+LL |     B = A, //~ ERROR E0391
+   |     ^^^^^
+note: ...which then requires const-evaluating `A`...
+  --> $DIR/issue-36163.rs:14:9
+   |
+LL |     B = A, //~ ERROR E0391
+   |         ^
+   = note: ...which then again requires const-evaluating `Foo::B::{{initializer}}`, completing the cycle.
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0391"

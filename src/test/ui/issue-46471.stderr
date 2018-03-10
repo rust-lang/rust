@@ -1,0 +1,25 @@
+error[E0597]: `x` does not live long enough (Ast)
+  --> $DIR/issue-46471.rs:15:6
+   |
+LL |     &x
+   |      ^ borrowed value does not live long enough
+...
+LL | }
+   | - borrowed value only lives until here
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error[E0597]: `x` does not live long enough (Mir)
+  --> $DIR/issue-46471.rs:15:5
+   |
+LL |     &x
+   |     ^^ borrowed value does not live long enough
+...
+LL | }
+   | - borrowed value only lives until here
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error: aborting due to 2 previous errors
+
+If you want more information on this error, try using "rustc --explain E0597"

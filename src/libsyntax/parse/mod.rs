@@ -10,9 +10,10 @@
 
 //! The main parser interface
 
+use rustc_data_structures::sync::Lrc;
 use ast::{self, CrateConfig};
 use codemap::{CodeMap, FilePathMapping};
-use syntax_pos::{self, Span, FileMap, NO_EXPANSION};
+use syntax_pos::{self, Span, FileMap, NO_EXPANSION, FileName};
 use errors::{Handler, ColorConfig, DiagnosticBuilder};
 use feature_gate::UnstableFeatures;
 use parse::parser::Parser;
@@ -25,7 +26,6 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::iter;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 use std::str;
 
 pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a>>;
@@ -47,14 +47,17 @@ pub struct ParseSess {
     pub unstable_features: UnstableFeatures,
     pub config: CrateConfig,
     pub missing_fragment_specifiers: RefCell<HashSet<Span>>,
+    // Spans where a `mod foo;` statement was included in a non-mod.rs file.
+    // These are used to issue errors if the non_modrs_mods feature is not enabled.
+    pub non_modrs_mods: RefCell<Vec<(ast::Ident, Span)>>,
     /// Used to determine and report recursive mod inclusions
     included_mod_stack: RefCell<Vec<PathBuf>>,
-    code_map: Rc<CodeMap>,
+    code_map: Lrc<CodeMap>,
 }
 
 impl ParseSess {
     pub fn new(file_path_mapping: FilePathMapping) -> Self {
-        let cm = Rc::new(CodeMap::new(file_path_mapping));
+        let cm = Lrc::new(CodeMap::new(file_path_mapping));
         let handler = Handler::with_tty_emitter(ColorConfig::Auto,
                                                 true,
                                                 false,
@@ -62,7 +65,7 @@ impl ParseSess {
         ParseSess::with_span_handler(handler, cm)
     }
 
-    pub fn with_span_handler(handler: Handler, code_map: Rc<CodeMap>) -> ParseSess {
+    pub fn with_span_handler(handler: Handler, code_map: Lrc<CodeMap>) -> ParseSess {
         ParseSess {
             span_diagnostic: handler,
             unstable_features: UnstableFeatures::from_environment(),
@@ -70,6 +73,7 @@ impl ParseSess {
             missing_fragment_specifiers: RefCell::new(HashSet::new()),
             included_mod_stack: RefCell::new(vec![]),
             code_map,
+            non_modrs_mods: RefCell::new(vec![]),
         }
     }
 
@@ -86,7 +90,10 @@ pub struct Directory {
 
 #[derive(Copy, Clone)]
 pub enum DirectoryOwnership {
-    Owned,
+    Owned {
+        // None if `mod.rs`, `Some("foo")` if we're in `foo.rs`
+        relative: Option<ast::Ident>,
+    },
     UnownedViaBlock,
     UnownedViaMod(bool /* legacy warnings? */),
 }
@@ -107,17 +114,17 @@ pub fn parse_crate_attrs_from_file<'a>(input: &Path, sess: &'a ParseSess)
     parser.parse_inner_attributes()
 }
 
-pub fn parse_crate_from_source_str(name: String, source: String, sess: &ParseSess)
+pub fn parse_crate_from_source_str(name: FileName, source: String, sess: &ParseSess)
                                        -> PResult<ast::Crate> {
     new_parser_from_source_str(sess, name, source).parse_crate_mod()
 }
 
-pub fn parse_crate_attrs_from_source_str(name: String, source: String, sess: &ParseSess)
+pub fn parse_crate_attrs_from_source_str(name: FileName, source: String, sess: &ParseSess)
                                              -> PResult<Vec<ast::Attribute>> {
     new_parser_from_source_str(sess, name, source).parse_inner_attributes()
 }
 
-pub fn parse_expr_from_source_str(name: String, source: String, sess: &ParseSess)
+pub fn parse_expr_from_source_str(name: FileName, source: String, sess: &ParseSess)
                                       -> PResult<P<ast::Expr>> {
     new_parser_from_source_str(sess, name, source).parse_expr()
 }
@@ -126,29 +133,29 @@ pub fn parse_expr_from_source_str(name: String, source: String, sess: &ParseSess
 ///
 /// Returns `Ok(Some(item))` when successful, `Ok(None)` when no item was found, and `Err`
 /// when a syntax error occurred.
-pub fn parse_item_from_source_str(name: String, source: String, sess: &ParseSess)
+pub fn parse_item_from_source_str(name: FileName, source: String, sess: &ParseSess)
                                       -> PResult<Option<P<ast::Item>>> {
     new_parser_from_source_str(sess, name, source).parse_item()
 }
 
-pub fn parse_meta_from_source_str(name: String, source: String, sess: &ParseSess)
+pub fn parse_meta_from_source_str(name: FileName, source: String, sess: &ParseSess)
                                       -> PResult<ast::MetaItem> {
     new_parser_from_source_str(sess, name, source).parse_meta_item()
 }
 
-pub fn parse_stmt_from_source_str(name: String, source: String, sess: &ParseSess)
+pub fn parse_stmt_from_source_str(name: FileName, source: String, sess: &ParseSess)
                                       -> PResult<Option<ast::Stmt>> {
     new_parser_from_source_str(sess, name, source).parse_stmt()
 }
 
-pub fn parse_stream_from_source_str(name: String, source: String, sess: &ParseSess,
+pub fn parse_stream_from_source_str(name: FileName, source: String, sess: &ParseSess,
                                     override_span: Option<Span>)
                                     -> TokenStream {
     filemap_to_stream(sess, sess.codemap().new_filemap(name, source), override_span)
 }
 
 // Create a new parser from a source string
-pub fn new_parser_from_source_str(sess: &ParseSess, name: String, source: String)
+pub fn new_parser_from_source_str(sess: &ParseSess, name: FileName, source: String)
                                       -> Parser {
     let mut parser = filemap_to_parser(sess, sess.codemap().new_filemap(name, source));
     parser.recurse_into_file_modules = false;
@@ -176,7 +183,7 @@ pub fn new_sub_parser_from_file<'a>(sess: &'a ParseSess,
 }
 
 /// Given a filemap and config, return a parser
-pub fn filemap_to_parser(sess: & ParseSess, filemap: Rc<FileMap>, ) -> Parser {
+pub fn filemap_to_parser(sess: & ParseSess, filemap: Lrc<FileMap>) -> Parser {
     let end_pos = filemap.end_pos;
     let mut parser = stream_to_parser(sess, filemap_to_stream(sess, filemap, None));
 
@@ -199,21 +206,21 @@ pub fn new_parser_from_tts(sess: &ParseSess, tts: Vec<TokenTree>) -> Parser {
 /// Given a session and a path and an optional span (for error reporting),
 /// add the path to the session's codemap and return the new filemap.
 fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
-                   -> Rc<FileMap> {
+                   -> Lrc<FileMap> {
     match sess.codemap().load_file(path) {
         Ok(filemap) => filemap,
         Err(e) => {
             let msg = format!("couldn't read {:?}: {}", path.display(), e);
             match spanopt {
-                Some(sp) => panic!(sess.span_diagnostic.span_fatal(sp, &msg)),
-                None => panic!(sess.span_diagnostic.fatal(&msg))
+                Some(sp) => sess.span_diagnostic.span_fatal(sp, &msg).raise(),
+                None => sess.span_diagnostic.fatal(&msg).raise()
             }
         }
     }
 }
 
 /// Given a filemap, produce a sequence of token-trees
-pub fn filemap_to_stream(sess: &ParseSess, filemap: Rc<FileMap>, override_span: Option<Span>)
+pub fn filemap_to_stream(sess: &ParseSess, filemap: Lrc<FileMap>, override_span: Option<Span>)
                          -> TokenStream {
     let mut srdr = lexer::StringReader::new(sess, filemap);
     srdr.override_span = override_span;
@@ -415,7 +422,7 @@ pub fn lit_token(lit: token::Lit, suf: Option<Symbol>, diag: Option<(Span, &Hand
             (true, Some(LitKind::ByteStr(byte_str_lit(&i.as_str()))))
         }
         token::ByteStrRaw(i, _) => {
-            (true, Some(LitKind::ByteStr(Rc::new(i.to_string().into_bytes()))))
+            (true, Some(LitKind::ByteStr(Lrc::new(i.to_string().into_bytes()))))
         }
     }
 }
@@ -489,7 +496,7 @@ pub fn byte_lit(lit: &str) -> (u8, usize) {
     }
 }
 
-pub fn byte_str_lit(lit: &str) -> Rc<Vec<u8>> {
+pub fn byte_str_lit(lit: &str) -> Lrc<Vec<u8>> {
     let mut res = Vec::with_capacity(lit.len());
 
     // FIXME #8372: This could be a for-loop if it didn't borrow the iterator
@@ -546,7 +553,7 @@ pub fn byte_str_lit(lit: &str) -> Rc<Vec<u8>> {
         }
     }
 
-    Rc::new(res)
+    Lrc::new(res)
 }
 
 pub fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
@@ -596,13 +603,13 @@ pub fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler
             err!(diag, |span, diag| diag.span_bug(span, "found empty literal suffix in Some"));
         }
         ty = match &*suf.as_str() {
-            "isize" => ast::LitIntType::Signed(ast::IntTy::Is),
+            "isize" => ast::LitIntType::Signed(ast::IntTy::Isize),
             "i8"  => ast::LitIntType::Signed(ast::IntTy::I8),
             "i16" => ast::LitIntType::Signed(ast::IntTy::I16),
             "i32" => ast::LitIntType::Signed(ast::IntTy::I32),
             "i64" => ast::LitIntType::Signed(ast::IntTy::I64),
             "i128" => ast::LitIntType::Signed(ast::IntTy::I128),
-            "usize" => ast::LitIntType::Unsigned(ast::UintTy::Us),
+            "usize" => ast::LitIntType::Unsigned(ast::UintTy::Usize),
             "u8"  => ast::LitIntType::Unsigned(ast::UintTy::U8),
             "u16" => ast::LitIntType::Unsigned(ast::UintTy::U16),
             "u32" => ast::LitIntType::Unsigned(ast::UintTy::U32),
@@ -657,7 +664,7 @@ pub fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler
 mod tests {
     use super::*;
     use syntax_pos::{self, Span, BytePos, Pos, NO_EXPANSION};
-    use codemap::Spanned;
+    use codemap::{respan, Spanned};
     use ast::{self, Ident, PatKind};
     use abi::Abi;
     use attr::first_attr_value_str_by_name;
@@ -898,9 +905,8 @@ mod tests {
                                         node: ast::Constness::NotConst,
                                     },
                                     Abi::Rust,
-                                    ast::Generics{ // no idea on either of these:
-                                        lifetimes: Vec::new(),
-                                        ty_params: Vec::new(),
+                                    ast::Generics{
+                                        params: Vec::new(),
                                         where_clause: ast::WhereClause {
                                             id: ast::DUMMY_NODE_ID,
                                             predicates: Vec::new(),
@@ -924,8 +930,9 @@ mod tests {
                                         id: ast::DUMMY_NODE_ID,
                                         rules: ast::BlockCheckMode::Default, // no idea
                                         span: sp(15,21),
+                                        recovered: false,
                                     })),
-                            vis: ast::Visibility::Inherited,
+                            vis: respan(sp(0, 0), ast::VisibilityKind::Inherited),
                             span: sp(0,21)})));
     }
 
@@ -1018,7 +1025,7 @@ mod tests {
     #[test] fn crlf_doc_comments() {
         let sess = ParseSess::new(FilePathMapping::empty());
 
-        let name = "<source>".to_string();
+        let name = FileName::Custom("source".to_string());
         let source = "/// doc comment\r\nfn foo() {}".to_string();
         let item = parse_item_from_source_str(name.clone(), source, &sess)
             .unwrap().unwrap();
@@ -1042,7 +1049,7 @@ mod tests {
     #[test]
     fn ttdelim_span() {
         let sess = ParseSess::new(FilePathMapping::empty());
-        let expr = parse::parse_expr_from_source_str("foo".to_string(),
+        let expr = parse::parse_expr_from_source_str(PathBuf::from("foo").into(),
             "foo!( fn main() { body } )".to_string(), &sess).unwrap();
 
         let tts: Vec<_> = match expr.node {
@@ -1065,7 +1072,7 @@ mod tests {
     fn out_of_line_mod() {
         let sess = ParseSess::new(FilePathMapping::empty());
         let item = parse_item_from_source_str(
-            "foo".to_owned(),
+            PathBuf::from("foo").into(),
             "mod foo { struct S; mod this_does_not_exist; }".to_owned(),
             &sess,
         ).unwrap().unwrap();

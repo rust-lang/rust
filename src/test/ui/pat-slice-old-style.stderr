@@ -1,0 +1,11 @@
+error[E0658]: non-reference pattern used to match a reference (see issue #42640)
+  --> $DIR/pat-slice-old-style.rs:19:9
+   |
+LL |         [a, b..] => {},
+   |         ^^^^^^^^ help: consider using a reference: `&[a, b..]`
+   |
+   = help: add #![feature(match_default_bindings)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0658"

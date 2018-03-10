@@ -1,0 +1,11 @@
+error[E0658]: non-reference pattern used to match a reference (see issue #42640)
+  --> $DIR/feature-gate-match_default_bindings.rs:13:9
+   |
+LL |         Some(n) => {},
+   |         ^^^^^^^ help: consider using a reference: `&Some(n)`
+   |
+   = help: add #![feature(match_default_bindings)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0658"

@@ -1,0 +1,12 @@
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/moves-based-on-type-block-bad.rs:34:19
+   |
+LL |             match hellothere.x { //~ ERROR cannot move out
+   |                   ^^^^^^^^^^ cannot move out of borrowed content
+...
+LL |                 box E::Bar(x) => println!("{}", x.to_string()),
+   |                            - hint: to prevent move, use `ref x` or `ref mut x`
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0507"

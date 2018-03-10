@@ -68,7 +68,7 @@ use core::marker::{self, Unsize};
 use core::mem;
 use core::ops::{CoerceUnsized, Deref, DerefMut, Generator, GeneratorState};
 use core::ops::{BoxPlace, Boxed, InPlace, Place, Placer};
-use core::ptr::{self, Unique};
+use core::ptr::{self, NonNull, Unique};
 use core::convert::From;
 use str::from_boxed_utf8_unchecked;
 
@@ -142,7 +142,7 @@ pub struct IntermediateBox<T: ?Sized> {
 #[unstable(feature = "placement_in",
            reason = "placement box design is still being worked out.",
            issue = "27779")]
-impl<T> Place<T> for IntermediateBox<T> {
+unsafe impl<T> Place<T> for IntermediateBox<T> {
     fn pointer(&mut self) -> *mut T {
         self.ptr as *mut T
     }
@@ -151,7 +151,7 @@ impl<T> Place<T> for IntermediateBox<T> {
 unsafe fn finalize<T>(b: IntermediateBox<T>) -> Box<T> {
     let p = b.ptr as *mut T;
     mem::forget(b);
-    mem::transmute(p)
+    Box::from_raw(p)
 }
 
 fn make_place<T>() -> IntermediateBox<T> {
@@ -269,38 +269,7 @@ impl<T: ?Sized> Box<T> {
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub unsafe fn from_raw(raw: *mut T) -> Self {
-        Box::from_unique(Unique::new_unchecked(raw))
-    }
-
-    /// Constructs a `Box` from a `Unique<T>` pointer.
-    ///
-    /// After calling this function, the memory is owned by a `Box` and `T` can
-    /// then be destroyed and released upon drop.
-    ///
-    /// # Safety
-    ///
-    /// A `Unique<T>` can be safely created via [`Unique::new`] and thus doesn't
-    /// necessarily own the data pointed to nor is the data guaranteed to live
-    /// as long as the pointer.
-    ///
-    /// [`Unique::new`]: ../../core/ptr/struct.Unique.html#method.new
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(unique)]
-    ///
-    /// fn main() {
-    ///     let x = Box::new(5);
-    ///     let ptr = Box::into_unique(x);
-    ///     let x = unsafe { Box::from_unique(ptr) };
-    /// }
-    /// ```
-    #[unstable(feature = "unique", reason = "needs an RFC to flesh out design",
-               issue = "27730")]
-    #[inline]
-    pub unsafe fn from_unique(u: Unique<T>) -> Self {
-        mem::transmute(u)
+        Box(Unique::new_unchecked(raw))
     }
 
     /// Consumes the `Box`, returning the wrapped raw pointer.
@@ -326,43 +295,95 @@ impl<T: ?Sized> Box<T> {
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub fn into_raw(b: Box<T>) -> *mut T {
-        Box::into_unique(b).as_ptr()
+        Box::into_raw_non_null(b).as_ptr()
     }
 
-    /// Consumes the `Box`, returning the wrapped pointer as `Unique<T>`.
+    /// Consumes the `Box`, returning the wrapped pointer as `NonNull<T>`.
     ///
     /// After calling this function, the caller is responsible for the
     /// memory previously managed by the `Box`. In particular, the
     /// caller should properly destroy `T` and release the memory. The
-    /// proper way to do so is to either convert the `Unique<T>` pointer:
-    ///
-    /// - Into a `Box` with the [`Box::from_unique`] function.
-    ///
-    /// - Into a raw pointer and back into a `Box` with the [`Box::from_raw`]
-    ///   function.
+    /// proper way to do so is to convert the `NonNull<T>` pointer
+    /// into a raw pointer and back into a `Box` with the [`Box::from_raw`]
+    /// function.
     ///
     /// Note: this is an associated function, which means that you have
-    /// to call it as `Box::into_unique(b)` instead of `b.into_unique()`. This
+    /// to call it as `Box::into_raw_non_null(b)`
+    /// instead of `b.into_raw_non_null()`. This
     /// is so that there is no conflict with a method on the inner type.
     ///
-    /// [`Box::from_unique`]: struct.Box.html#method.from_unique
     /// [`Box::from_raw`]: struct.Box.html#method.from_raw
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(unique)]
+    /// #![feature(box_into_raw_non_null)]
     ///
     /// fn main() {
     ///     let x = Box::new(5);
-    ///     let ptr = Box::into_unique(x);
+    ///     let ptr = Box::into_raw_non_null(x);
     /// }
     /// ```
-    #[unstable(feature = "unique", reason = "needs an RFC to flesh out design",
-               issue = "27730")]
+    #[unstable(feature = "box_into_raw_non_null", issue = "47336")]
+    #[inline]
+    pub fn into_raw_non_null(b: Box<T>) -> NonNull<T> {
+        Box::into_unique(b).into()
+    }
+
+    #[unstable(feature = "ptr_internals", issue = "0", reason = "use into_raw_non_null instead")]
     #[inline]
     pub fn into_unique(b: Box<T>) -> Unique<T> {
-        unsafe { mem::transmute(b) }
+        let unique = b.0;
+        mem::forget(b);
+        unique
+    }
+
+    /// Consumes and leaks the `Box`, returning a mutable reference,
+    /// `&'a mut T`. Here, the lifetime `'a` may be chosen to be `'static`.
+    ///
+    /// This function is mainly useful for data that lives for the remainder of
+    /// the program's life. Dropping the returned reference will cause a memory
+    /// leak. If this is not acceptable, the reference should first be wrapped
+    /// with the [`Box::from_raw`] function producing a `Box`. This `Box` can
+    /// then be dropped which will properly destroy `T` and release the
+    /// allocated memory.
+    ///
+    /// Note: this is an associated function, which means that you have
+    /// to call it as `Box::leak(b)` instead of `b.leak()`. This
+    /// is so that there is no conflict with a method on the inner type.
+    ///
+    /// [`Box::from_raw`]: struct.Box.html#method.from_raw
+    ///
+    /// # Examples
+    ///
+    /// Simple usage:
+    ///
+    /// ```
+    /// fn main() {
+    ///     let x = Box::new(41);
+    ///     let static_ref: &'static mut usize = Box::leak(x);
+    ///     *static_ref += 1;
+    ///     assert_eq!(*static_ref, 42);
+    /// }
+    /// ```
+    ///
+    /// Unsized data:
+    ///
+    /// ```
+    /// fn main() {
+    ///     let x = vec![1, 2, 3].into_boxed_slice();
+    ///     let static_ref = Box::leak(x);
+    ///     static_ref[0] = 4;
+    ///     assert_eq!(*static_ref, [4, 2, 3]);
+    /// }
+    /// ```
+    #[stable(feature = "box_leak", since = "1.26.0")]
+    #[inline]
+    pub fn leak<'a>(b: Box<T>) -> &'a mut T
+    where
+        T: 'a // Technically not needed, but kept to be explicit.
+    {
+        unsafe { &mut *Box::into_raw(b) }
     }
 }
 
@@ -627,7 +648,7 @@ impl Box<Any + Send> {
     pub fn downcast<T: Any>(self) -> Result<Box<T>, Box<Any + Send>> {
         <Box<Any>>::downcast(self).map_err(|s| unsafe {
             // reapply the Send marker
-            mem::transmute::<Box<Any>, Box<Any + Send>>(s)
+            Box::from_raw(Box::into_raw(s) as *mut (Any + Send))
         })
     }
 }
@@ -701,7 +722,7 @@ impl<I: ExactSizeIterator + ?Sized> ExactSizeIterator for Box<I> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<I: FusedIterator + ?Sized> FusedIterator for Box<I> {}
 
 

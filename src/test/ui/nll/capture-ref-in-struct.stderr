@@ -1,0 +1,15 @@
+error[E0597]: `y` does not live long enough
+  --> $DIR/capture-ref-in-struct.rs:33:16
+   |
+LL |             y: &y,
+   |                ^^ borrowed value does not live long enough
+...
+LL |     }
+   |     - borrowed value only lives until here
+LL | 
+LL |     deref(p);
+   |           - borrow later used here
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0597"

@@ -1,0 +1,15 @@
+error[E0261]: use of undeclared lifetime name `'test`
+  --> $DIR/no_in_band_in_struct.rs:15:9
+   |
+LL |     x: &'test u32, //~ ERROR undeclared lifetime
+   |         ^^^^^ undeclared lifetime
+
+error[E0261]: use of undeclared lifetime name `'test`
+  --> $DIR/no_in_band_in_struct.rs:19:10
+   |
+LL |     Baz(&'test u32), //~ ERROR undeclared lifetime
+   |          ^^^^^ undeclared lifetime
+
+error: aborting due to 2 previous errors
+
+If you want more information on this error, try using "rustc --explain E0261"

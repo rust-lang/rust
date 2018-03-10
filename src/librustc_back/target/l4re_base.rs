@@ -73,7 +73,6 @@ pub fn opts() -> Result<TargetOptions, String> {
         has_elf_tls: false,
         exe_allocation_crate: None,
         panic_strategy: PanicStrategy::Abort,
-        linker: "ld".to_string(),
         pre_link_args,
         post_link_args,
         target_family: Some("unix".to_string()),

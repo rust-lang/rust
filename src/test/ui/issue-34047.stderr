@@ -1,0 +1,12 @@
+error[E0530]: match bindings cannot shadow constants
+  --> $DIR/issue-34047.rs:15:13
+   |
+LL | const C: u8 = 0;
+   | ---------------- a constant `C` is defined here
+...
+LL |         mut C => {} //~ ERROR match bindings cannot shadow constants
+   |             ^ cannot be named the same as a constant
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0530"

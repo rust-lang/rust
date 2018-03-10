@@ -1,20 +1,35 @@
 error: unreachable expression
-  --> $DIR/expr_unary.rs:18:28
+  --> $DIR/expr_unary.rs:19:28
    |
-18 |     let x: ! = ! { return; 22 };
+LL |     let x: ! = ! { return; 22 }; //~ ERROR unreachable
    |                            ^^
    |
 note: lint level defined here
   --> $DIR/expr_unary.rs:14:9
    |
-14 | #![deny(unreachable_code)]
+LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
 
-error[E0600]: cannot apply unary operator `!` to type `!`
-  --> $DIR/expr_unary.rs:18:16
+error: cannot coerce `{integer}` to !
+  --> $DIR/expr_unary.rs:19:28
    |
-18 |     let x: ! = ! { return; 22 };
+LL |     let x: ! = ! { return; 22 }; //~ ERROR unreachable
+   |                            ^^
+   |
+note: lint level defined here
+  --> $DIR/expr_unary.rs:15:9
+   |
+LL | #![deny(coerce_never)]
+   |         ^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #46325 <https://github.com/rust-lang/rust/issues/46325>
+
+error[E0600]: cannot apply unary operator `!` to type `!`
+  --> $DIR/expr_unary.rs:19:16
+   |
+LL |     let x: ! = ! { return; 22 }; //~ ERROR unreachable
    |                ^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
+If you want more information on this error, try using "rustc --explain E0600"

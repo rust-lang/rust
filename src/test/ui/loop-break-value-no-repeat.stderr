@@ -1,8 +1,13 @@
 error[E0571]: `break` with value from a `for` loop
   --> $DIR/loop-break-value-no-repeat.rs:22:9
    |
-22 |         break 22
+LL |         break 22 //~ ERROR `break` with value from a `for` loop
    |         ^^^^^^^^ can only break with a value inside `loop`
+help: instead, use `break` on its own without a value inside this `for` loop
+   |
+LL |         break //~ ERROR `break` with value from a `for` loop
+   |         ^^^^^
 
 error: aborting due to previous error
 
+If you want more information on this error, try using "rustc --explain E0571"

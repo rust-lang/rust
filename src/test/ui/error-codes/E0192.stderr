@@ -1,0 +1,9 @@
+error[E0192]: negative impls are only allowed for auto traits (e.g., `Send` and `Sync`)
+  --> $DIR/E0192.rs:19:1
+   |
+LL | impl !Trait for Foo { } //~ ERROR E0192
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0192"

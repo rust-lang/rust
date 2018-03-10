@@ -27,6 +27,7 @@ extern "platform-intrinsic" {
     fn simd_sub<T>(x: T, y: T) -> T;
     fn simd_mul<T>(x: T, y: T) -> T;
     fn simd_div<T>(x: T, y: T) -> T;
+    fn simd_rem<T>(x: T, y: T) -> T;
     fn simd_shl<T>(x: T, y: T) -> T;
     fn simd_shr<T>(x: T, y: T) -> T;
     fn simd_and<T>(x: T, y: T) -> T;
@@ -49,8 +50,12 @@ fn main() {
         simd_mul(x, x);
         simd_mul(y, y);
         simd_mul(z, z);
-
+        simd_div(x, x);
+        simd_div(y, y);
         simd_div(z, z);
+        simd_rem(x, x);
+        simd_rem(y, y);
+        simd_rem(z, z);
 
         simd_shl(x, x);
         simd_shl(y, y);
@@ -84,10 +89,6 @@ fn main() {
         //~^ ERROR expected SIMD input type, found non-SIMD `i32`
 
 
-        simd_div(x, x);
-//~^ ERROR unsupported operation on `i32x4` with element `i32`
-        simd_div(y, y);
-//~^ ERROR unsupported operation on `u32x4` with element `u32`
         simd_shl(z, z);
 //~^ ERROR unsupported operation on `f32x4` with element `f32`
         simd_shr(z, z);

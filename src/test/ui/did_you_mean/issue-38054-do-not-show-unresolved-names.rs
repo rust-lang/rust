@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use Foo;
+use Foo; //~ ERROR unresolved
 
-use Foo1;
+use Foo1; //~ ERROR unresolved
 
 fn main() {}

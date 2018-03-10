@@ -1,0 +1,9 @@
+error[E0198]: negative impls cannot be unsafe
+  --> $DIR/E0198.rs:15:1
+   |
+LL | unsafe impl !Send for Foo { } //~ ERROR E0198
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0198"

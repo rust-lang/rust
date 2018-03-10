@@ -15,30 +15,32 @@
 //! closure.
 
 use attributes;
-use common::{self, CrateContext};
+use common::{self, CodegenCx};
 use consts;
 use declare;
 use llvm::{self, ValueRef};
 use monomorphize::Instance;
+use type_of::LayoutLlvmExt;
+
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, TypeFoldable};
+use rustc::ty::layout::LayoutOf;
 use rustc::traits;
 use rustc::ty::subst::Substs;
 use rustc_back::PanicStrategy;
-use type_of;
 
 /// Translates a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.
 ///
 /// # Parameters
 ///
-/// - `ccx`: the crate context
+/// - `cx`: the crate context
 /// - `instance`: the instance to be instantiated
-pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+pub fn get_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                         instance: Instance<'tcx>)
                         -> ValueRef
 {
-    let tcx = ccx.tcx();
+    let tcx = cx.tcx;
 
     debug!("get_fn(instance={:?})", instance);
 
@@ -46,8 +48,8 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     assert!(!instance.substs.has_escaping_regions());
     assert!(!instance.substs.has_param_types());
 
-    let fn_ty = common::instance_ty(ccx.tcx(), &instance);
-    if let Some(&llfn) = ccx.instances().borrow().get(&instance) {
+    let fn_ty = instance.ty(cx.tcx);
+    if let Some(&llfn) = cx.instances.borrow().get(&instance) {
         return llfn;
     }
 
@@ -55,10 +57,10 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     debug!("get_fn({:?}: {:?}) => {}", instance, fn_ty, sym);
 
     // Create a fn pointer with the substituted signature.
-    let fn_ptr_ty = tcx.mk_fn_ptr(common::ty_fn_sig(ccx, fn_ty));
-    let llptrty = type_of::type_of(ccx, fn_ptr_ty);
+    let fn_ptr_ty = tcx.mk_fn_ptr(common::ty_fn_sig(cx, fn_ty));
+    let llptrty = cx.layout_of(fn_ptr_ty).llvm_type(cx);
 
-    let llfn = if let Some(llfn) = declare::get_declared_value(ccx, &sym) {
+    let llfn = if let Some(llfn) = declare::get_declared_value(cx, &sym) {
         // This is subtle and surprising, but sometimes we have to bitcast
         // the resulting fn pointer.  The reason has to do with external
         // functions.  If you have two crates that both bind the same C
@@ -90,15 +92,14 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             llfn
         }
     } else {
-        let llfn = declare::declare_fn(ccx, &sym, fn_ty);
+        let llfn = declare::declare_fn(cx, &sym, fn_ty);
         assert_eq!(common::val_ty(llfn), llptrty);
         debug!("get_fn: not casting pointer!");
 
-        if common::is_inline_instance(tcx, &instance) {
+        if instance.def.is_inline(tcx) {
             attributes::inline(llfn, attributes::InlineAttr::Hint);
         }
-        let attrs = instance.def.attrs(ccx.tcx());
-        attributes::from_fn_attrs(ccx, &attrs, llfn);
+        attributes::from_fn_attrs(cx, llfn, instance.def.def_id());
 
         let instance_def_id = instance.def_id();
 
@@ -148,9 +149,9 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         unsafe {
             llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::ExternalLinkage);
 
-            if ccx.tcx().is_translated_function(instance_def_id) {
+            if cx.tcx.is_translated_item(instance_def_id) {
                 if instance_def_id.is_local() {
-                    if !ccx.tcx().is_exported_symbol(instance_def_id) {
+                    if !cx.tcx.is_reachable_non_generic(instance_def_id) {
                         llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
                     }
                 } else {
@@ -159,7 +160,7 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             }
         }
 
-        if ccx.use_dll_storage_attrs() &&
+        if cx.use_dll_storage_attrs &&
             tcx.is_dllimport_foreign_item(instance_def_id)
         {
             unsafe {
@@ -170,20 +171,20 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         llfn
     };
 
-    ccx.instances().borrow_mut().insert(instance, llfn);
+    cx.instances.borrow_mut().insert(instance, llfn);
 
     llfn
 }
 
-pub fn resolve_and_get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+pub fn resolve_and_get_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                     def_id: DefId,
                                     substs: &'tcx Substs<'tcx>)
                                     -> ValueRef
 {
     get_fn(
-        ccx,
+        cx,
         ty::Instance::resolve(
-            ccx.tcx(),
+            cx.tcx,
             ty::ParamEnv::empty(traits::Reveal::All),
             def_id,
             substs

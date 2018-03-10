@@ -12,7 +12,7 @@
 //!
 //! This module implements generation for all bits and pieces of documentation
 //! for the Rust project. This notably includes suites like the rust book, the
-//! nomicon, standalone documentation, etc.
+//! nomicon, rust by example, standalone documentation, etc.
 //!
 //! Everything here is basically just a shim around calling either `rustbook` or
 //! `rustdoc`.
@@ -69,6 +69,7 @@ book!(
     Nomicon, "src/doc/nomicon", "nomicon";
     Reference, "src/doc/reference", "reference";
     Rustdoc, "src/doc/rustdoc", "rustdoc";
+    RustByExample, "src/doc/rust-by-example", "rust-by-example";
 );
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -129,6 +130,52 @@ impl Step for UnstableBook {
             name: INTERNER.intern_str("unstable-book"),
             src: builder.build.md_doc_out(self.target),
         })
+    }
+}
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct CargoBook {
+    target: Interned<String>,
+    name: Interned<String>,
+}
+
+impl Step for CargoBook {
+    type Output = ();
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        let builder = run.builder;
+        run.path("src/tools/cargo/src/doc/book").default_condition(builder.build.config.docs)
+    }
+
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(CargoBook {
+            target: run.target,
+            name: INTERNER.intern_str("cargo"),
+        });
+    }
+
+    fn run(self, builder: &Builder) {
+        let build = builder.build;
+
+        let target = self.target;
+        let name = self.name;
+        let src = build.src.join("src/tools/cargo/src/doc");
+
+        let out = build.doc_out(target);
+        t!(fs::create_dir_all(&out));
+
+        let out = out.join(name);
+
+        println!("Cargo Book ({}) - {}", target, name);
+
+        let _ = fs::remove_dir_all(&out);
+
+        build.run(builder.tool_cmd(Tool::Rustbook)
+                       .arg("build")
+                       .arg(&src)
+                       .arg("-d")
+                       .arg(out));
     }
 }
 
@@ -205,10 +252,12 @@ impl Step for TheBook {
     ///
     /// * Book (first edition)
     /// * Book (second edition)
+    /// * Version info and CSS
     /// * Index page
     /// * Redirect pages
     fn run(self, builder: &Builder) {
         let build = builder.build;
+        let compiler = self.compiler;
         let target = self.target;
         let name = self.name;
         // build book first edition
@@ -223,10 +272,16 @@ impl Step for TheBook {
             name: INTERNER.intern_string(format!("{}/second-edition", name)),
         });
 
+        // build the version info page and CSS
+        builder.ensure(Standalone {
+            compiler,
+            target,
+        });
+
         // build the index page
         let index = format!("{}/index.md", name);
         println!("Documenting book index ({})", target);
-        invoke_rustdoc(builder, self.compiler, target, &index);
+        invoke_rustdoc(builder, compiler, target, &index);
 
         // build the redirect pages
         println!("Documenting book redirect pages ({})", target);
@@ -235,53 +290,8 @@ impl Step for TheBook {
             let path = file.path();
             let path = path.to_str().unwrap();
 
-            invoke_rustdoc(builder, self.compiler, target, path);
+            invoke_rustdoc(builder, compiler, target, path);
         }
-    }
-}
-
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct CargoBook {
-    target: Interned<String>,
-}
-
-impl Step for CargoBook {
-    type Output = ();
-    const DEFAULT: bool = true;
-
-    fn should_run(run: ShouldRun) -> ShouldRun {
-        let builder = run.builder;
-        run.path("src/doc/cargo").default_condition(builder.build.config.docs)
-    }
-
-    fn make_run(run: RunConfig) {
-        run.builder.ensure(CargoBook {
-            target: run.target,
-        });
-    }
-
-    /// Create a placeholder for the cargo documentation so that doc.rust-lang.org/cargo will
-    /// redirect to doc.crates.io. We want to publish doc.rust-lang.org/cargo in the paper
-    /// version of the book, but we don't want to rush the process of switching cargo's docs
-    /// over to mdbook and deploying them. When the cargo book is ready, this implementation
-    /// should build the mdbook instead of this redirect page.
-    fn run(self, builder: &Builder) {
-        let build = builder.build;
-        let out = build.doc_out(self.target);
-
-        let cargo_dir = out.join("cargo");
-        t!(fs::create_dir_all(&cargo_dir));
-
-        let index = cargo_dir.join("index.html");
-        let redirect_html = r#"
-            <html>
-                <head>
-                    <meta http-equiv="refresh" content="0; URL='http://doc.crates.io'" />
-                </head>
-            </html>"#;
-
-        println!("Creating cargo book redirect page");
-        t!(t!(File::create(&index)).write_all(redirect_html.as_bytes()));
     }
 }
 
@@ -293,34 +303,22 @@ fn invoke_rustdoc(builder: &Builder, compiler: Compiler, target: Interned<String
 
     let favicon = build.src.join("src/doc/favicon.inc");
     let footer = build.src.join("src/doc/footer.inc");
-
-    let version_input = build.src.join("src/doc/version_info.html.template");
     let version_info = out.join("version_info.html");
-
-    if !up_to_date(&version_input, &version_info) {
-        let mut info = String::new();
-        t!(t!(File::open(&version_input)).read_to_string(&mut info));
-        let info = info.replace("VERSION", &build.rust_release())
-                       .replace("SHORT_HASH", build.rust_info.sha_short().unwrap_or(""))
-                       .replace("STAMP", build.rust_info.sha().unwrap_or(""));
-        t!(t!(File::create(&version_info)).write_all(info.as_bytes()));
-    }
 
     let mut cmd = builder.rustdoc_cmd(compiler.host);
 
     let out = out.join("book");
 
-    t!(fs::copy(build.src.join("src/doc/rust.css"), out.join("rust.css")));
-
     cmd.arg("--html-after-content").arg(&footer)
         .arg("--html-before-content").arg(&version_info)
         .arg("--html-in-header").arg(&favicon)
+        .arg("--markdown-no-toc")
         .arg("--markdown-playground-url")
         .arg("https://play.rust-lang.org/")
         .arg("-o").arg(&out)
         .arg(&path)
         .arg("--markdown-css")
-        .arg("rust.css");
+        .arg("../rust.css");
 
     build.run(&mut cmd);
 }
@@ -422,8 +420,8 @@ impl Step for Standalone {
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Std {
-    stage: u32,
-    target: Interned<String>,
+    pub stage: u32,
+    pub target: Interned<String>,
 }
 
 impl Step for Std {
@@ -432,7 +430,7 @@ impl Step for Std {
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         let builder = run.builder;
-        run.krate("std").default_condition(builder.build.config.docs)
+        run.all_krates("std").default_condition(builder.build.config.docs)
     }
 
     fn make_run(run: RunConfig) {
@@ -620,7 +618,7 @@ impl Step for Rustc {
         t!(symlink_dir_force(&my_out, &out_dir));
 
         let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "doc");
-        compile::rustc_cargo(build, &compiler, target, &mut cargo);
+        compile::rustc_cargo(build, &mut cargo);
 
         if build.config.compiler_docs {
             // src/rustc/Cargo.toml contains a bin crate called rustc which
@@ -675,7 +673,8 @@ impl Step for ErrorIndex {
         index.arg(out.join("error-index.html"));
 
         // FIXME: shouldn't have to pass this env var
-        index.env("CFG_BUILD", &build.build);
+        index.env("CFG_BUILD", &build.build)
+             .env("RUSTC_ERROR_METADATA_DST", build.extended_error_dir());
 
         build.run(&mut index);
     }

@@ -74,7 +74,7 @@ pub fn add_derived_markers<T>(cx: &mut ExtCtxt, span: Span, traits: &[ast::Path]
             let meta = cx.meta_word(span, Symbol::intern("structural_match"));
             attrs.push(cx.attribute(span, meta));
         }
-        if names.contains(&Symbol::intern("Copy")) && names.contains(&Symbol::intern("Clone")) {
+        if names.contains(&Symbol::intern("Copy")) {
             let meta = cx.meta_word(span, Symbol::intern("rustc_copy_clone_marker"));
             attrs.push(cx.attribute(span, meta));
         }

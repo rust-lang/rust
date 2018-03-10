@@ -1,7 +1,7 @@
 # The `#[doc]` attribute
 
 The `#[doc]` attribute lets you control various aspects of how `rustdoc` does
-its job. 
+its job.
 
 The most basic function of `#[doc]` is to handle the actual documentation
 text. That is, `///` is syntax sugar for `#[doc]`. This means that these two
@@ -103,6 +103,26 @@ to it in the docs. But if you include this:
 
 it will not.
 
+### `test(no_crate_inject)`
+
+By default, `rustdoc` will automatically add a line with `extern crate my_crate;` into each doctest.
+But if you include this:
+
+```rust,ignore
+#![doc(test(no_crate_inject))]
+```
+
+it will not.
+
+### `test(attr(...))`
+
+This form of the `doc` attribute allows you to add arbitrary attributes to all your doctests. For
+example, if you want your doctests to fail if they produce any warnings, you could add this:
+
+```rust,ignore
+#![doc(test(attr(deny(warnings))))]
+```
+
 ## At the item level
 
 These forms of the `#[doc]` attribute are used on individual items, to control how
@@ -123,7 +143,7 @@ pub mod bar {
 }
 ```
 
-The documentation will generate a "Reexports" section, and say `pub use bar::Bar;`, where
+The documentation will generate a "Re-exports" section, and say `pub use bar::Bar;`, where
 `Bar` is a link to its page.
 
 If we change the `use` line like this:
@@ -164,7 +184,7 @@ mod bar {
 }
 ```
 
-Now we'll have a `Reexports` line, and `Bar` will not link to anywhere.
+Now we'll have a `Re-exports` line, and `Bar` will not link to anywhere.
 
 ## `#[doc(hidden)]`
 

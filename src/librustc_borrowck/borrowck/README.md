@@ -43,14 +43,14 @@ it is safe with respect to the in-scope loans.
 # Formal model
 
 Throughout the docs we'll consider a simple subset of Rust in which
-you can only borrow from lvalues, defined like so:
+you can only borrow from places, defined like so:
 
 ```text
-LV = x | LV.f | *LV
+P = x | P.f | *P
 ```
 
-Here `x` represents some variable, `LV.f` is a field reference,
-and `*LV` is a pointer dereference. There is no auto-deref or other
+Here `x` represents some variable, `P.f` is a field reference,
+and `*P` is a pointer dereference. There is no auto-deref or other
 niceties. This means that if you have a type like:
 
 ```rust
@@ -58,7 +58,7 @@ struct S { f: i32 }
 ```
 
 and a variable `a: Box<S>`, then the rust expression `a.f` would correspond
-to an `LV` of `(*a).f`.
+to an `P` of `(*a).f`.
 
 Here is the formal grammar for the types we'll consider:
 
@@ -99,7 +99,7 @@ this sort of thing.
 #### Loans and restrictions
 
 The way the borrow checker works is that it analyzes each borrow
-expression (in our simple model, that's stuff like `&LV`, though in
+expression (in our simple model, that's stuff like `&P`, though in
 real life there are a few other cases to consider). For each borrow
 expression, it computes a `Loan`, which is a data structure that
 records (1) the value being borrowed, (2) the mutability and scope of
@@ -108,29 +108,29 @@ struct defined in `middle::borrowck`. Formally, we define `LOAN` as
 follows:
 
 ```text
-LOAN = (LV, LT, MQ, RESTRICTION*)
-RESTRICTION = (LV, ACTION*)
+LOAN = (P, LT, MQ, RESTRICTION*)
+RESTRICTION = (P, ACTION*)
 ACTION = MUTATE | CLAIM | FREEZE
 ```
 
-Here the `LOAN` tuple defines the lvalue `LV` being borrowed; the
+Here the `LOAN` tuple defines the place `P` being borrowed; the
 lifetime `LT` of that borrow; the mutability `MQ` of the borrow; and a
 list of restrictions. The restrictions indicate actions which, if
 taken, could invalidate the loan and lead to type safety violations.
 
-Each `RESTRICTION` is a pair of a restrictive lvalue `LV` (which will
+Each `RESTRICTION` is a pair of a restrictive place `P` (which will
 either be the path that was borrowed or some prefix of the path that
 was borrowed) and a set of restricted actions.  There are three kinds
-of actions that may be restricted for the path `LV`:
+of actions that may be restricted for the path `P`:
 
-- `MUTATE` means that `LV` cannot be assigned to;
-- `CLAIM` means that the `LV` cannot be borrowed mutably;
-- `FREEZE` means that the `LV` cannot be borrowed immutably;
+- `MUTATE` means that `P` cannot be assigned to;
+- `CLAIM` means that the `P` cannot be borrowed mutably;
+- `FREEZE` means that the `P` cannot be borrowed immutably;
 
-Finally, it is never possible to move from an lvalue that appears in a
-restriction. This implies that the "empty restriction" `(LV, [])`,
+Finally, it is never possible to move from a place that appears in a
+restriction. This implies that the "empty restriction" `(P, [])`,
 which contains an empty set of actions, still has a purpose---it
-prevents moves from `LV`. I chose not to make `MOVE` a fourth kind of
+prevents moves from `P`. I chose not to make `MOVE` a fourth kind of
 action because that would imply that sometimes moves are permitted
 from restricted values, which is not the case.
 
@@ -239,22 +239,22 @@ live. (This is done via restrictions, read on.)
 
 We start with the `gather_loans` pass, which walks the AST looking for
 borrows.  For each borrow, there are three bits of information: the
-lvalue `LV` being borrowed and the mutability `MQ` and lifetime `LT`
+place `P` being borrowed and the mutability `MQ` and lifetime `LT`
 of the resulting pointer. Given those, `gather_loans` applies four
 validity tests:
 
-1. `MUTABILITY(LV, MQ)`: The mutability of the reference is
-compatible with the mutability of `LV` (i.e., not borrowing immutable
+1. `MUTABILITY(P, MQ)`: The mutability of the reference is
+compatible with the mutability of `P` (i.e., not borrowing immutable
 data as mutable).
 
-2. `ALIASABLE(LV, MQ)`: The aliasability of the reference is
-compatible with the aliasability of `LV`. The goal is to prevent
+2. `ALIASABLE(P, MQ)`: The aliasability of the reference is
+compatible with the aliasability of `P`. The goal is to prevent
 `&mut` borrows of aliasability data.
 
-3. `LIFETIME(LV, LT, MQ)`: The lifetime of the borrow does not exceed
+3. `LIFETIME(P, LT, MQ)`: The lifetime of the borrow does not exceed
 the lifetime of the value being borrowed.
 
-4. `RESTRICTIONS(LV, LT, ACTIONS) = RS`: This pass checks and computes the
+4. `RESTRICTIONS(P, LT, ACTIONS) = RS`: This pass checks and computes the
 restrictions to maintain memory safety. These are the restrictions
 that will go into the final loan. We'll discuss in more detail below.
 
@@ -263,7 +263,7 @@ that will go into the final loan. We'll discuss in more detail below.
 Checking mutability is fairly straightforward. We just want to prevent
 immutable data from being borrowed as mutable. Note that it is ok to borrow
 mutable data as immutable, since that is simply a freeze. The judgement
-`MUTABILITY(LV, MQ)` means the mutability of `LV` is compatible with a borrow
+`MUTABILITY(P, MQ)` means the mutability of `P` is compatible with a borrow
 of mutability `MQ`. The Rust code corresponding to this predicate is the
 function `check_mutability` in `middle::borrowck::gather_loans`.
 
@@ -288,15 +288,15 @@ MUTABILITY(X, imm)                  // M-Var-Imm
 
 Fields and boxes inherit their mutability from
 their base expressions, so both of their rules basically
-delegate the check to the base expression `LV`:
+delegate the check to the base expression `P`:
 
 ```text
-MUTABILITY(LV.f, MQ)                // M-Field
-  MUTABILITY(LV, MQ)
+MUTABILITY(P.f, MQ)                // M-Field
+  MUTABILITY(P, MQ)
 
-MUTABILITY(*LV, MQ)                 // M-Deref-Unique
-  TYPE(LV) = Box<Ty>
-  MUTABILITY(LV, MQ)
+MUTABILITY(*P, MQ)                 // M-Deref-Unique
+  TYPE(P) = Box<Ty>
+  MUTABILITY(P, MQ)
 ```
 
 ### Checking mutability of immutable pointer types
@@ -305,8 +305,8 @@ Immutable pointer types like `&T` can only
 be borrowed if MQ is immutable:
 
 ```text
-MUTABILITY(*LV, imm)               // M-Deref-Borrowed-Imm
-  TYPE(LV) = &Ty
+MUTABILITY(*P, imm)               // M-Deref-Borrowed-Imm
+  TYPE(P) = &Ty
 ```
 
 ### Checking mutability of mutable pointer types
@@ -314,15 +314,15 @@ MUTABILITY(*LV, imm)               // M-Deref-Borrowed-Imm
 `&mut T` can be frozen, so it is acceptable to borrow it as either imm or mut:
 
 ```text
-MUTABILITY(*LV, MQ)                 // M-Deref-Borrowed-Mut
-  TYPE(LV) = &mut Ty
+MUTABILITY(*P, MQ)                 // M-Deref-Borrowed-Mut
+  TYPE(P) = &mut Ty
 ```
 
 ## Checking aliasability
 
 The goal of the aliasability check is to ensure that we never permit `&mut`
-borrows of aliasable data. The judgement `ALIASABLE(LV, MQ)` means the
-aliasability of `LV` is compatible with a borrow of mutability `MQ`. The Rust
+borrows of aliasable data. The judgement `ALIASABLE(P, MQ)` means the
+aliasability of `P` is compatible with a borrow of mutability `MQ`. The Rust
 code corresponding to this predicate is the function `check_aliasability()` in
 `middle::borrowck::gather_loans`.
 
@@ -340,11 +340,11 @@ the stack frame.
 Owned content is aliasable if it is found in an aliasable location:
 
 ```text
-ALIASABLE(LV.f, MQ)                // M-Field
-  ALIASABLE(LV, MQ)
+ALIASABLE(P.f, MQ)                // M-Field
+  ALIASABLE(P, MQ)
 
-ALIASABLE(*LV, MQ)                 // M-Deref-Unique
-  ALIASABLE(LV, MQ)
+ALIASABLE(*P, MQ)                 // M-Deref-Unique
+  ALIASABLE(P, MQ)
 ```
 
 ### Checking aliasability of immutable pointer types
@@ -353,8 +353,8 @@ Immutable pointer types like `&T` are aliasable, and hence can only be
 borrowed immutably:
 
 ```text
-ALIASABLE(*LV, imm)                // M-Deref-Borrowed-Imm
-  TYPE(LV) = &Ty
+ALIASABLE(*P, imm)                // M-Deref-Borrowed-Imm
+  TYPE(P) = &Ty
 ```
 
 ### Checking aliasability of mutable pointer types
@@ -362,16 +362,16 @@ ALIASABLE(*LV, imm)                // M-Deref-Borrowed-Imm
 `&mut T` can be frozen, so it is acceptable to borrow it as either imm or mut:
 
 ```text
-ALIASABLE(*LV, MQ)                 // M-Deref-Borrowed-Mut
-  TYPE(LV) = &mut Ty
+ALIASABLE(*P, MQ)                 // M-Deref-Borrowed-Mut
+  TYPE(P) = &mut Ty
 ```
 
 ## Checking lifetime
 
 These rules aim to ensure that no data is borrowed for a scope that exceeds
 its lifetime. These two computations wind up being intimately related.
-Formally, we define a predicate `LIFETIME(LV, LT, MQ)`, which states that
-"the lvalue `LV` can be safely borrowed for the lifetime `LT` with mutability
+Formally, we define a predicate `LIFETIME(P, LT, MQ)`, which states that
+"the place `P` can be safely borrowed for the lifetime `LT` with mutability
 `MQ`". The Rust code corresponding to this predicate is the module
 `middle::borrowck::gather_loans::lifetime`.
 
@@ -391,12 +391,12 @@ The lifetime of a field or box is the same as the lifetime
 of its owner:
 
 ```text
-LIFETIME(LV.f, LT, MQ)              // L-Field
-  LIFETIME(LV, LT, MQ)
+LIFETIME(P.f, LT, MQ)              // L-Field
+  LIFETIME(P, LT, MQ)
 
-LIFETIME(*LV, LT, MQ)               // L-Deref-Send
-  TYPE(LV) = Box<Ty>
-  LIFETIME(LV, LT, MQ)
+LIFETIME(*P, LT, MQ)               // L-Deref-Send
+  TYPE(P) = Box<Ty>
+  LIFETIME(P, LT, MQ)
 ```
 
 ### Checking lifetime for derefs of references
@@ -408,8 +408,8 @@ of the borrow is shorter than the lifetime `LT'` of the pointer
 itself:
 
 ```text
-LIFETIME(*LV, LT, MQ)               // L-Deref-Borrowed
-  TYPE(LV) = &LT' Ty OR &LT' mut Ty
+LIFETIME(*P, LT, MQ)               // L-Deref-Borrowed
+  TYPE(P) = &LT' Ty OR &LT' mut Ty
   LT <= LT'
 ```
 
@@ -417,17 +417,17 @@ LIFETIME(*LV, LT, MQ)               // L-Deref-Borrowed
 
 The final rules govern the computation of *restrictions*, meaning that
 we compute the set of actions that will be illegal for the life of the
-loan. The predicate is written `RESTRICTIONS(LV, LT, ACTIONS) =
+loan. The predicate is written `RESTRICTIONS(P, LT, ACTIONS) =
 RESTRICTION*`, which can be read "in order to prevent `ACTIONS` from
-occurring on `LV`, the restrictions `RESTRICTION*` must be respected
+occurring on `P`, the restrictions `RESTRICTION*` must be respected
 for the lifetime of the loan".
 
 Note that there is an initial set of restrictions: these restrictions
 are computed based on the kind of borrow:
 
 ```text
-&mut LV =>   RESTRICTIONS(LV, LT, MUTATE|CLAIM|FREEZE)
-&LV =>       RESTRICTIONS(LV, LT, MUTATE|CLAIM)
+&mut P =>   RESTRICTIONS(P, LT, MUTATE|CLAIM|FREEZE)
+&P =>       RESTRICTIONS(P, LT, MUTATE|CLAIM)
 ```
 
 The reasoning here is that a mutable borrow must be the only writer,
@@ -451,8 +451,8 @@ Restricting a field is the same as restricting the owner of that
 field:
 
 ```text
-RESTRICTIONS(LV.f, LT, ACTIONS) = RS, (LV.f, ACTIONS)  // R-Field
-  RESTRICTIONS(LV, LT, ACTIONS) = RS
+RESTRICTIONS(P.f, LT, ACTIONS) = RS, (P.f, ACTIONS)  // R-Field
+  RESTRICTIONS(P, LT, ACTIONS) = RS
 ```
 
 The reasoning here is as follows. If the field must not be mutated,
@@ -467,16 +467,16 @@ origin of inherited mutability.
 Because the mutability of owned referents is inherited, restricting an
 owned referent is similar to restricting a field, in that it implies
 restrictions on the pointer. However, boxes have an important
-twist: if the owner `LV` is mutated, that causes the owned referent
-`*LV` to be freed! So whenever an owned referent `*LV` is borrowed, we
-must prevent the box `LV` from being mutated, which means
+twist: if the owner `P` is mutated, that causes the owned referent
+`*P` to be freed! So whenever an owned referent `*P` is borrowed, we
+must prevent the box `P` from being mutated, which means
 that we always add `MUTATE` and `CLAIM` to the restriction set imposed
-on `LV`:
+on `P`:
 
 ```text
-RESTRICTIONS(*LV, LT, ACTIONS) = RS, (*LV, ACTIONS)    // R-Deref-Send-Pointer
-  TYPE(LV) = Box<Ty>
-  RESTRICTIONS(LV, LT, ACTIONS|MUTATE|CLAIM) = RS
+RESTRICTIONS(*P, LT, ACTIONS) = RS, (*P, ACTIONS)    // R-Deref-Send-Pointer
+  TYPE(P) = Box<Ty>
+  RESTRICTIONS(P, LT, ACTIONS|MUTATE|CLAIM) = RS
 ```
 
 ### Restrictions for loans of immutable borrowed referents
@@ -484,15 +484,15 @@ RESTRICTIONS(*LV, LT, ACTIONS) = RS, (*LV, ACTIONS)    // R-Deref-Send-Pointer
 Immutable borrowed referents are freely aliasable, meaning that
 the compiler does not prevent you from copying the pointer.  This
 implies that issuing restrictions is useless. We might prevent the
-user from acting on `*LV` itself, but there could be another path
-`*LV1` that refers to the exact same memory, and we would not be
+user from acting on `*P` itself, but there could be another path
+`*P1` that refers to the exact same memory, and we would not be
 restricting that path. Therefore, the rule for `&Ty` pointers
 always returns an empty set of restrictions, and it only permits
 restricting `MUTATE` and `CLAIM` actions:
 
 ```text
-RESTRICTIONS(*LV, LT, ACTIONS) = []                    // R-Deref-Imm-Borrowed
-  TYPE(LV) = &LT' Ty
+RESTRICTIONS(*P, LT, ACTIONS) = []                    // R-Deref-Imm-Borrowed
+  TYPE(P) = &LT' Ty
   LT <= LT'                                            // (1)
   ACTIONS subset of [MUTATE, CLAIM]
 ```
@@ -546,7 +546,7 @@ This function is legal. The reason for this is that the inner pointer
 (`*point : &'b Point`) is enough to guarantee the memory is immutable
 and valid for the lifetime `'b`.  This is reflected in
 `RESTRICTIONS()` by the fact that we do not recurse (i.e., we impose
-no restrictions on `LV`, which in this particular case is the pointer
+no restrictions on `P`, which in this particular case is the pointer
 `point : &'a &'b Point`).
 
 #### Why both `LIFETIME()` and `RESTRICTIONS()`?
@@ -612,10 +612,10 @@ while the new claimant is live.
 The rule for mutable borrowed pointers is as follows:
 
 ```text
-RESTRICTIONS(*LV, LT, ACTIONS) = RS, (*LV, ACTIONS)    // R-Deref-Mut-Borrowed
-  TYPE(LV) = &LT' mut Ty
+RESTRICTIONS(*P, LT, ACTIONS) = RS, (*P, ACTIONS)    // R-Deref-Mut-Borrowed
+  TYPE(P) = &LT' mut Ty
   LT <= LT'                                            // (1)
-  RESTRICTIONS(LV, LT, ACTIONS) = RS                   // (2)
+  RESTRICTIONS(P, LT, ACTIONS) = RS                   // (2)
 ```
 
 Let's examine the two numbered clauses:
@@ -670,7 +670,7 @@ fn foo(t0: &mut i32) {
 
 Remember that `&mut` pointers are linear, and hence `let t1 = t0` is a
 move of `t0` -- or would be, if it were legal. Instead, we get an
-error, because clause (2) imposes restrictions on `LV` (`t0`, here),
+error, because clause (2) imposes restrictions on `P` (`t0`, here),
 and any restrictions on a path make it impossible to move from that
 path.
 
@@ -906,7 +906,7 @@ results of a dataflow computation.
 
 The `MovePath` tree tracks every path that is moved or assigned to.
 These paths have the same form as the `LoanPath` data structure, which
-in turn is the "real world version of the lvalues `LV` that we
+in turn is the "real world version of the places `P` that we
 introduced earlier. The difference between a `MovePath` and a `LoanPath`
 is that move paths are:
 
@@ -1132,7 +1132,7 @@ is implied by the relevant moves.
 While writing up these docs, I encountered some rules I believe to be
 stricter than necessary:
 
-- I think restricting the `&mut` LV against moves and `ALIAS` is sufficient,
+- I think restricting the `&mut` P against moves and `ALIAS` is sufficient,
   `MUTATE` and `CLAIM` are overkill. `MUTATE` was necessary when swap was
   a built-in operator, but as it is not, it is implied by `CLAIM`,
   and `CLAIM` is implied by `ALIAS`. The only net effect of this is an

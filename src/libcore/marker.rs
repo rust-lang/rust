@@ -39,16 +39,10 @@ use hash::Hasher;
 /// [arc]: ../../std/sync/struct.Arc.html
 /// [ub]: ../../reference/behavior-considered-undefined.html
 #[stable(feature = "rust1", since = "1.0.0")]
-#[lang = "send"]
 #[rustc_on_unimplemented = "`{Self}` cannot be sent between threads safely"]
-pub unsafe trait Send {
+pub unsafe auto trait Send {
     // empty.
 }
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[allow(unknown_lints)]
-#[allow(auto_impl)]
-unsafe impl Send for .. { }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> !Send for *const T { }
@@ -69,9 +63,13 @@ impl<T: ?Sized> !Send for *mut T { }
 /// struct BarUse(Bar<[i32]>); // OK
 /// ```
 ///
-/// The one exception is the implicit `Self` type of a trait, which does not
-/// get an implicit `Sized` bound. This is because a `Sized` bound prevents
-/// the trait from being used to form a [trait object]:
+/// The one exception is the implicit `Self` type of a trait. A trait does not
+/// have an implicit `Sized` bound as this is incompatible with [trait object]s
+/// where, by definition, the trait needs to work with all possible implementors,
+/// and thus could be any size.
+///
+/// Although Rust will let you bind `Sized` to a trait, you won't
+/// be able to use it to form a trait object later:
 ///
 /// ```
 /// # #![allow(unused_variables)]
@@ -314,7 +312,7 @@ pub trait Copy : Clone {
 ///
 /// For cases when one does need thread-safe interior mutability,
 /// Rust provides [atomic data types], as well as explicit locking via
-/// [`sync::Mutex`][mutex] and [`sync::RWLock`][rwlock]. These types
+/// [`sync::Mutex`][mutex] and [`sync::RwLock`][rwlock]. These types
 /// ensure that any mutation cannot cause data races, hence the types
 /// are `Sync`. Likewise, [`sync::Arc`][arc] provides a thread-safe
 /// analogue of [`Rc`][rc].
@@ -346,14 +344,9 @@ pub trait Copy : Clone {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "sync"]
 #[rustc_on_unimplemented = "`{Self}` cannot be shared between threads safely"]
-pub unsafe trait Sync {
+pub unsafe auto trait Sync {
     // Empty
 }
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[allow(unknown_lints)]
-#[allow(auto_impl)]
-unsafe impl Sync for .. { }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> !Sync for *const T { }
@@ -564,11 +557,7 @@ mod impls {
 /// This affects, for example, whether a `static` of that type is
 /// placed in read-only static memory or writable static memory.
 #[lang = "freeze"]
-unsafe trait Freeze {}
-
-#[allow(unknown_lints)]
-#[allow(auto_impl)]
-unsafe impl Freeze for .. {}
+unsafe auto trait Freeze {}
 
 impl<T: ?Sized> !Freeze for UnsafeCell<T> {}
 unsafe impl<T: ?Sized> Freeze for PhantomData<T> {}

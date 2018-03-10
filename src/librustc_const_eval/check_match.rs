@@ -24,12 +24,14 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
 use rustc::lint;
 use rustc_errors::DiagnosticBuilder;
+use rustc::util::common::ErrorReported;
 
 use rustc::hir::def::*;
-use rustc::hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
+use rustc::hir::def_id::DefId;
+use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::{self, Pat, PatKind};
 
-use rustc_back::slice;
+use std::slice;
 
 use syntax::ast;
 use syntax::ptr::P;
@@ -42,25 +44,37 @@ impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir)
     }
 
-    fn visit_fn(&mut self, fk: FnKind<'tcx>, fd: &'tcx hir::FnDecl,
-                b: hir::BodyId, s: Span, id: ast::NodeId) {
-        intravisit::walk_fn(self, fk, fd, b, s, id);
-
-        let def_id = self.tcx.hir.local_def_id(id);
-
-        MatchVisitor {
-            tcx: self.tcx,
-            tables: self.tcx.body_tables(b),
-            region_scope_tree: &self.tcx.region_scope_tree(def_id),
-            param_env: self.tcx.param_env(def_id),
-            identity_substs: Substs::identity_for_item(self.tcx, def_id),
-        }.visit_body(self.tcx.hir.body(b));
+    fn visit_body(&mut self, body: &'tcx hir::Body) {
+        intravisit::walk_body(self, body);
+        let def_id = self.tcx.hir.body_owner_def_id(body.id());
+        let _ = self.tcx.check_match(def_id);
     }
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.hir.krate().visit_all_item_likes(&mut OuterVisitor { tcx: tcx }.as_deep_visitor());
     tcx.sess.abort_if_errors();
+}
+
+pub(crate) fn check_match<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    def_id: DefId,
+) -> Result<(), ErrorReported> {
+    let body_id = if let Some(id) = tcx.hir.as_local_node_id(def_id) {
+        tcx.hir.body_owned_by(id)
+    } else {
+        return Ok(());
+    };
+
+    tcx.sess.track_errors(|| {
+        MatchVisitor {
+            tcx,
+            tables: tcx.body_tables(body_id),
+            region_scope_tree: &tcx.region_scope_tree(def_id),
+            param_env: tcx.param_env(def_id),
+            identity_substs: Substs::identity_for_item(tcx, def_id),
+        }.visit_body(tcx.hir.body(body_id));
+    })
 }
 
 fn create_e0004<'a>(sess: &'a Session, sp: Span, error_message: String) -> DiagnosticBuilder<'a> {
@@ -100,7 +114,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
         });
 
         // Check legality of move bindings and `@` patterns.
-        self.check_patterns(false, slice::ref_slice(&loc.pat));
+        self.check_patterns(false, slice::from_ref(&loc.pat));
     }
 
     fn visit_body(&mut self, body: &'tcx hir::Body) {
@@ -108,24 +122,31 @@ impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
 
         for arg in &body.arguments {
             self.check_irrefutable(&arg.pat, "function argument");
-            self.check_patterns(false, slice::ref_slice(&arg.pat));
+            self.check_patterns(false, slice::from_ref(&arg.pat));
         }
     }
 }
+
 
 impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     fn report_inlining_errors(&self, pat_span: Span) {
         for error in &self.errors {
             match *error {
                 PatternError::StaticInPattern(span) => {
-                    span_err!(self.tcx.sess, span, E0158,
-                              "statics cannot be referenced in patterns");
+                    self.span_e0158(span, "statics cannot be referenced in patterns")
+                }
+                PatternError::AssociatedConstInPattern(span) => {
+                    self.span_e0158(span, "associated consts cannot be referenced in patterns")
                 }
                 PatternError::ConstEval(ref err) => {
                     err.report(self.tcx, pat_span, "pattern");
                 }
             }
         }
+    }
+
+    fn span_e0158(&self, span: Span, text: &str) {
+        span_err!(self.tcx.sess, span, E0158, "{}", text)
     }
 }
 
@@ -191,7 +212,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             let pat_ty = self.tables.node_id_to_type(scrut.hir_id);
             let module = self.tcx.hir.get_module_parent(scrut.id);
             if inlined_arms.is_empty() {
-                let scrutinee_is_uninhabited = if self.tcx.sess.features.borrow().never_type {
+                let scrutinee_is_uninhabited = if self.tcx.features().never_type {
                     self.tcx.is_ty_uninhabited_from(module, pat_ty)
                 } else {
                     self.conservative_is_uninhabited(pat_ty)
@@ -260,7 +281,14 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                 "refutable pattern in {}: `{}` not covered",
                 origin, pattern_string
             );
-            diag.span_label(pat.span, format!("pattern `{}` not covered", pattern_string));
+            let label_msg = match pat.node {
+                PatKind::Path(hir::QPath::Resolved(None, ref path))
+                        if path.segments.len() == 1 && path.segments[0].parameters.is_none() => {
+                    format!("interpreted as a {} pattern, not new variable", path.def.kind_name())
+                }
+                _ => format!("pattern `{}` not covered", pattern_string),
+            };
+            diag.span_label(pat.span, label_msg);
             diag.emit();
         });
     }
@@ -372,8 +400,8 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                             );
                             // if we had a catchall pattern, hint at that
                             if let Some(catchall) = catchall {
-                                err.span_label(pat.span, "this is an unreachable pattern");
-                                err.span_note(catchall, "this pattern matches any value");
+                                err.span_label(pat.span, "unreachable pattern");
+                                err.span_label(catchall, "matches any value");
                             }
                             err.emit();
                         },

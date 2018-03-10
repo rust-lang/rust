@@ -97,15 +97,15 @@ use fmt;
 /// Save power or switch hyperthreads in a busy-wait spin-loop.
 ///
 /// This function is deliberately more primitive than
-/// `std::thread::yield_now` and does not directly yield to the
-/// system's scheduler.  In some cases it might be useful to use a
-/// combination of both functions.  Careful benchmarking is advised.
+/// [`std::thread::yield_now`](../../../std/thread/fn.yield_now.html) and
+/// does not directly yield to the system's scheduler.
+/// In some cases it might be useful to use a combination of both functions.
+/// Careful benchmarking is advised.
 ///
 /// On some platforms this function may not do anything at all.
 #[inline]
-#[unstable(feature = "hint_core_should_pause", issue = "41196")]
-pub fn hint_core_should_pause()
-{
+#[stable(feature = "spin_loop_hint", since = "1.24.0")]
+pub fn spin_loop_hint() {
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     unsafe {
         asm!("pause" ::: "memory" : "volatile");
@@ -243,7 +243,6 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_atomic_bool_new")]
     pub const fn new(v: bool) -> AtomicBool {
         AtomicBool { v: UnsafeCell::new(v as u8) }
     }
@@ -287,7 +286,7 @@ impl AtomicBool {
     #[inline]
     #[stable(feature = "atomic_access", since = "1.15.0")]
     pub fn into_inner(self) -> bool {
-        unsafe { self.v.into_inner() != 0 }
+        self.v.into_inner() != 0
     }
 
     /// Loads a value from the bool.
@@ -657,7 +656,6 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_atomic_ptr_new")]
     pub const fn new(p: *mut T) -> AtomicPtr<T> {
         AtomicPtr { p: UnsafeCell::new(p) }
     }
@@ -698,7 +696,7 @@ impl<T> AtomicPtr<T> {
     #[inline]
     #[stable(feature = "atomic_access", since = "1.15.0")]
     pub fn into_inner(self) -> *mut T {
-        unsafe { self.p.into_inner() }
+        self.p.into_inner()
     }
 
     /// Loads a value from the pointer.
@@ -927,6 +925,14 @@ impl<T> AtomicPtr<T> {
     }
 }
 
+#[cfg(target_has_atomic = "8")]
+#[stable(feature = "atomic_bool_from", since = "1.24.0")]
+impl From<bool> for AtomicBool {
+    #[inline]
+    fn from(b: bool) -> Self { Self::new(b) }
+}
+
+#[cfg(target_has_atomic = "ptr")]
 #[stable(feature = "atomic_from", since = "1.23.0")]
 impl<T> From<*mut T> for AtomicPtr<T> {
     #[inline]
@@ -935,10 +941,12 @@ impl<T> From<*mut T> for AtomicPtr<T> {
 
 #[cfg(target_has_atomic = "ptr")]
 macro_rules! atomic_int {
-    ($stable:meta, $const_unstable:meta,
+    ($stable:meta,
      $stable_cxchg:meta,
      $stable_debug:meta,
      $stable_access:meta,
+     $stable_from:meta,
+     $stable_nand:meta,
      $s_int_type:expr, $int_ref:expr,
      $int_type:ident $atomic_type:ident $atomic_init:ident) => {
         /// An integer type which can be safely shared between threads.
@@ -973,7 +981,7 @@ macro_rules! atomic_int {
             }
         }
 
-        #[stable(feature = "atomic_from", since = "1.23.0")]
+        #[$stable_from]
         impl From<$int_type> for $atomic_type {
             #[inline]
             fn from(v: $int_type) -> Self { Self::new(v) }
@@ -1004,7 +1012,6 @@ macro_rules! atomic_int {
             /// ```
             #[inline]
             #[$stable]
-            #[$const_unstable]
             pub const fn new(v: $int_type) -> Self {
                 $atomic_type {v: UnsafeCell::new(v)}
             }
@@ -1046,7 +1053,7 @@ macro_rules! atomic_int {
             #[inline]
             #[$stable_access]
             pub fn into_inner(self) -> $int_type {
-                unsafe { self.v.into_inner() }
+                self.v.into_inner()
             }
 
             /// Loads a value from the atomic integer.
@@ -1320,6 +1327,29 @@ macro_rules! atomic_int {
                 unsafe { atomic_and(self.v.get(), val, order) }
             }
 
+            /// Bitwise "nand" with the current value.
+            ///
+            /// Performs a bitwise "nand" operation on the current value and the argument `val`, and
+            /// sets the new value to the result.
+            ///
+            /// Returns the previous value.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// #![feature(atomic_nand)]
+            ///
+            /// use std::sync::atomic::{AtomicIsize, Ordering};
+            ///
+            /// let foo = AtomicIsize::new(0xf731);
+            /// assert_eq!(foo.fetch_nand(0x137f, Ordering::SeqCst), 0xf731);
+            /// assert_eq!(foo.load(Ordering::SeqCst), !(0xf731 & 0x137f));
+            #[inline]
+            #[$stable_nand]
+            pub fn fetch_nand(&self, val: $int_type, order: Ordering) -> $int_type {
+                unsafe { atomic_nand(self.v.get(), val, order) }
+            }
+
             /// Bitwise "or" with the current value.
             ///
             /// Performs a bitwise "or" operation on the current value and the argument `val`, and
@@ -1368,100 +1398,110 @@ macro_rules! atomic_int {
 #[cfg(target_has_atomic = "8")]
 atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
-    rustc_const_unstable(feature = "const_atomic_i8_new"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "atomic_nand", issue = "13226"),
     "i8", "../../../std/primitive.i8.html",
     i8 AtomicI8 ATOMIC_I8_INIT
 }
 #[cfg(target_has_atomic = "8")]
 atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
-    rustc_const_unstable(feature = "const_atomic_u8_new"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "atomic_nand", issue = "13226"),
     "u8", "../../../std/primitive.u8.html",
     u8 AtomicU8 ATOMIC_U8_INIT
 }
 #[cfg(target_has_atomic = "16")]
 atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
-    rustc_const_unstable(feature = "const_atomic_i16_new"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "atomic_nand", issue = "13226"),
     "i16", "../../../std/primitive.i16.html",
     i16 AtomicI16 ATOMIC_I16_INIT
 }
 #[cfg(target_has_atomic = "16")]
 atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
-    rustc_const_unstable(feature = "const_atomic_u16_new"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "atomic_nand", issue = "13226"),
     "u16", "../../../std/primitive.u16.html",
     u16 AtomicU16 ATOMIC_U16_INIT
 }
 #[cfg(target_has_atomic = "32")]
 atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
-    rustc_const_unstable(feature = "const_atomic_i32_new"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "atomic_nand", issue = "13226"),
     "i32", "../../../std/primitive.i32.html",
     i32 AtomicI32 ATOMIC_I32_INIT
 }
 #[cfg(target_has_atomic = "32")]
 atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
-    rustc_const_unstable(feature = "const_atomic_u32_new"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "atomic_nand", issue = "13226"),
     "u32", "../../../std/primitive.u32.html",
     u32 AtomicU32 ATOMIC_U32_INIT
 }
 #[cfg(target_has_atomic = "64")]
 atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
-    rustc_const_unstable(feature = "const_atomic_i64_new"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "atomic_nand", issue = "13226"),
     "i64", "../../../std/primitive.i64.html",
     i64 AtomicI64 ATOMIC_I64_INIT
 }
 #[cfg(target_has_atomic = "64")]
 atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
-    rustc_const_unstable(feature = "const_atomic_u64_new"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "atomic_nand", issue = "13226"),
     "u64", "../../../std/primitive.u64.html",
     u64 AtomicU64 ATOMIC_U64_INIT
 }
 #[cfg(target_has_atomic = "ptr")]
 atomic_int!{
     stable(feature = "rust1", since = "1.0.0"),
-    rustc_const_unstable(feature = "const_atomic_isize_new"),
     stable(feature = "extended_compare_and_swap", since = "1.10.0"),
     stable(feature = "atomic_debug", since = "1.3.0"),
     stable(feature = "atomic_access", since = "1.15.0"),
+    stable(feature = "atomic_from", since = "1.23.0"),
+    unstable(feature = "atomic_nand", issue = "13226"),
     "isize", "../../../std/primitive.isize.html",
     isize AtomicIsize ATOMIC_ISIZE_INIT
 }
 #[cfg(target_has_atomic = "ptr")]
 atomic_int!{
     stable(feature = "rust1", since = "1.0.0"),
-    rustc_const_unstable(feature = "const_atomic_usize_new"),
     stable(feature = "extended_compare_and_swap", since = "1.10.0"),
     stable(feature = "atomic_debug", since = "1.3.0"),
     stable(feature = "atomic_access", since = "1.15.0"),
+    stable(feature = "atomic_from", since = "1.23.0"),
+    unstable(feature = "atomic_nand", issue = "13226"),
     "usize", "../../../std/primitive.usize.html",
     usize AtomicUsize ATOMIC_USIZE_INIT
 }
@@ -1600,6 +1640,18 @@ unsafe fn atomic_and<T>(dst: *mut T, val: T, order: Ordering) -> T {
         AcqRel => intrinsics::atomic_and_acqrel(dst, val),
         Relaxed => intrinsics::atomic_and_relaxed(dst, val),
         SeqCst => intrinsics::atomic_and(dst, val),
+        __Nonexhaustive => panic!("invalid memory ordering"),
+    }
+}
+
+#[inline]
+unsafe fn atomic_nand<T>(dst: *mut T, val: T, order: Ordering) -> T {
+    match order {
+        Acquire => intrinsics::atomic_nand_acq(dst, val),
+        Release => intrinsics::atomic_nand_rel(dst, val),
+        AcqRel => intrinsics::atomic_nand_acqrel(dst, val),
+        Relaxed => intrinsics::atomic_nand_relaxed(dst, val),
+        SeqCst => intrinsics::atomic_nand(dst, val),
         __Nonexhaustive => panic!("invalid memory ordering"),
     }
 }
@@ -1823,5 +1875,13 @@ impl fmt::Debug for AtomicBool {
 impl<T> fmt::Debug for AtomicPtr<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("AtomicPtr").field(&self.load(Ordering::SeqCst)).finish()
+    }
+}
+
+#[cfg(target_has_atomic = "ptr")]
+#[stable(feature = "atomic_pointer", since = "1.24.0")]
+impl<T> fmt::Pointer for AtomicPtr<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Pointer::fmt(&self.load(Ordering::SeqCst), f)
     }
 }

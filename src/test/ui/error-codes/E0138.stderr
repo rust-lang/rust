@@ -1,0 +1,12 @@
+error[E0138]: multiple 'start' functions
+  --> $DIR/E0138.rs:17:1
+   |
+LL | fn foo(argc: isize, argv: *const *const u8) -> isize { 0 }
+   | ---------------------------------------------------------- previous `start` function here
+...
+LL | fn f(argc: isize, argv: *const *const u8) -> isize { 0 }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ multiple `start` functions
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0138"

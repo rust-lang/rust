@@ -1,0 +1,123 @@
+error[E0369]: binary operation `+` cannot be applied to type `A`
+  --> $DIR/issue-28837.rs:16:5
+   |
+LL |     a + a; //~ ERROR binary operation `+` cannot be applied to type `A`
+   |     ^^^^^
+   |
+   = note: an implementation of `std::ops::Add` might be missing for `A`
+
+error[E0369]: binary operation `-` cannot be applied to type `A`
+  --> $DIR/issue-28837.rs:18:5
+   |
+LL |     a - a; //~ ERROR binary operation `-` cannot be applied to type `A`
+   |     ^^^^^
+   |
+   = note: an implementation of `std::ops::Sub` might be missing for `A`
+
+error[E0369]: binary operation `*` cannot be applied to type `A`
+  --> $DIR/issue-28837.rs:20:5
+   |
+LL |     a * a; //~ ERROR binary operation `*` cannot be applied to type `A`
+   |     ^^^^^
+   |
+   = note: an implementation of `std::ops::Mul` might be missing for `A`
+
+error[E0369]: binary operation `/` cannot be applied to type `A`
+  --> $DIR/issue-28837.rs:22:5
+   |
+LL |     a / a; //~ ERROR binary operation `/` cannot be applied to type `A`
+   |     ^^^^^
+   |
+   = note: an implementation of `std::ops::Div` might be missing for `A`
+
+error[E0369]: binary operation `%` cannot be applied to type `A`
+  --> $DIR/issue-28837.rs:24:5
+   |
+LL |     a % a; //~ ERROR binary operation `%` cannot be applied to type `A`
+   |     ^^^^^
+   |
+   = note: an implementation of `std::ops::Rem` might be missing for `A`
+
+error[E0369]: binary operation `&` cannot be applied to type `A`
+  --> $DIR/issue-28837.rs:26:5
+   |
+LL |     a & a; //~ ERROR binary operation `&` cannot be applied to type `A`
+   |     ^^^^^
+   |
+   = note: an implementation of `std::ops::BitAnd` might be missing for `A`
+
+error[E0369]: binary operation `|` cannot be applied to type `A`
+  --> $DIR/issue-28837.rs:28:5
+   |
+LL |     a | a; //~ ERROR binary operation `|` cannot be applied to type `A`
+   |     ^^^^^
+   |
+   = note: an implementation of `std::ops::BitOr` might be missing for `A`
+
+error[E0369]: binary operation `<<` cannot be applied to type `A`
+  --> $DIR/issue-28837.rs:30:5
+   |
+LL |     a << a; //~ ERROR binary operation `<<` cannot be applied to type `A`
+   |     ^^^^^^
+   |
+   = note: an implementation of `std::ops::Shl` might be missing for `A`
+
+error[E0369]: binary operation `>>` cannot be applied to type `A`
+  --> $DIR/issue-28837.rs:32:5
+   |
+LL |     a >> a; //~ ERROR binary operation `>>` cannot be applied to type `A`
+   |     ^^^^^^
+   |
+   = note: an implementation of `std::ops::Shr` might be missing for `A`
+
+error[E0369]: binary operation `==` cannot be applied to type `A`
+  --> $DIR/issue-28837.rs:34:5
+   |
+LL |     a == a; //~ ERROR binary operation `==` cannot be applied to type `A`
+   |     ^^^^^^
+   |
+   = note: an implementation of `std::cmp::PartialEq` might be missing for `A`
+
+error[E0369]: binary operation `!=` cannot be applied to type `A`
+  --> $DIR/issue-28837.rs:36:5
+   |
+LL |     a != a; //~ ERROR binary operation `!=` cannot be applied to type `A`
+   |     ^^^^^^
+   |
+   = note: an implementation of `std::cmp::PartialEq` might be missing for `A`
+
+error[E0369]: binary operation `<` cannot be applied to type `A`
+  --> $DIR/issue-28837.rs:38:5
+   |
+LL |     a < a; //~ ERROR binary operation `<` cannot be applied to type `A`
+   |     ^^^^^
+   |
+   = note: an implementation of `std::cmp::PartialOrd` might be missing for `A`
+
+error[E0369]: binary operation `<=` cannot be applied to type `A`
+  --> $DIR/issue-28837.rs:40:5
+   |
+LL |     a <= a; //~ ERROR binary operation `<=` cannot be applied to type `A`
+   |     ^^^^^^
+   |
+   = note: an implementation of `std::cmp::PartialOrd` might be missing for `A`
+
+error[E0369]: binary operation `>` cannot be applied to type `A`
+  --> $DIR/issue-28837.rs:42:5
+   |
+LL |     a > a; //~ ERROR binary operation `>` cannot be applied to type `A`
+   |     ^^^^^
+   |
+   = note: an implementation of `std::cmp::PartialOrd` might be missing for `A`
+
+error[E0369]: binary operation `>=` cannot be applied to type `A`
+  --> $DIR/issue-28837.rs:44:5
+   |
+LL |     a >= a; //~ ERROR binary operation `>=` cannot be applied to type `A`
+   |     ^^^^^^
+   |
+   = note: an implementation of `std::cmp::PartialOrd` might be missing for `A`
+
+error: aborting due to 15 previous errors
+
+If you want more information on this error, try using "rustc --explain E0369"

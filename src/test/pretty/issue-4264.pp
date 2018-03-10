@@ -40,7 +40,7 @@ pub fn bar() ({
 
 
                   ((::fmt::format as
-                       for<'r> fn(std::fmt::Arguments<'r>) -> std::string::String {std::fmt::format})(((<::std::fmt::Arguments>::new_v1
+                       for<'r> fn(std::fmt::Arguments<'r>) -> std::string::String {std::fmt::format})(((<::fmt::Arguments>::new_v1
                                                                                                            as
                                                                                                            fn(&[&str], &[std::fmt::ArgumentV1<'_>]) -> std::fmt::Arguments<'_> {std::fmt::Arguments<'_>::new_v1})((&([("test"
                                                                                                                                                                                                                           as

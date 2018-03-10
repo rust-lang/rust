@@ -15,17 +15,18 @@ extern crate rustc_driver;
 extern crate rustc_lint;
 extern crate rustc_metadata;
 extern crate rustc_errors;
-extern crate rustc_trans;
+extern crate rustc_trans_utils;
 extern crate syntax;
 
 use rustc::session::{build_session, Session};
-use rustc::session::config::{basic_options, build_configuration, Input,
+use rustc::session::config::{basic_options, Input,
                              OutputType, OutputTypes};
-use rustc_driver::driver::{compile_input, CompileController, anon_src};
+use rustc_driver::driver::{compile_input, CompileController};
 use rustc_metadata::cstore::CStore;
 use rustc_errors::registry::Registry;
+use syntax::codemap::FileName;
+use rustc_trans_utils::trans_crate::TransCrate;
 
-use std::collections::HashSet;
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -51,25 +52,35 @@ fn main() {
     compile(src.to_string(), tmpdir.join("out"), sysroot.clone());
 }
 
-fn basic_sess(sysroot: PathBuf) -> (Session, Rc<CStore>) {
+fn basic_sess(sysroot: PathBuf) -> (Session, Rc<CStore>, Box<TransCrate>) {
     let mut opts = basic_options();
     opts.output_types = OutputTypes::new(&[(OutputType::Exe, None)]);
     opts.maybe_sysroot = Some(sysroot);
     if let Ok(linker) = std::env::var("RUSTC_LINKER") {
-        opts.cg.linker = Some(linker);
+        opts.cg.linker = Some(linker.into());
     }
 
     let descriptions = Registry::new(&rustc::DIAGNOSTICS);
-    let cstore = Rc::new(CStore::new(Box::new(rustc_trans::LlvmMetadataLoader)));
     let sess = build_session(opts, None, descriptions);
-    rustc_trans::init(&sess);
+    let trans = rustc_driver::get_trans(&sess);
+    let cstore = Rc::new(CStore::new(trans.metadata_loader()));
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
-    (sess, cstore)
+    (sess, cstore, trans)
 }
 
 fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
-    let (sess, cstore) = basic_sess(sysroot);
+    let (sess, cstore, trans) = basic_sess(sysroot);
     let control = CompileController::basic();
-    let input = Input::Str { name: anon_src(), input: code };
-    let _ = compile_input(&sess, &cstore, &input, &None, &Some(output), None, &control);
+    let input = Input::Str { name: FileName::Anon, input: code };
+    let _ = compile_input(
+        trans,
+        &sess,
+        &cstore,
+        &None,
+        &input,
+        &None,
+        &Some(output),
+        None,
+        &control
+    );
 }

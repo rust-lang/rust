@@ -365,7 +365,7 @@ with `#[derive(Clone)]`.
 Some types have no ownership semantics at all and are trivial to duplicate. An
 example is `i32` and the other number types. We don't have to call `.clone()` to
 clone them, because they are marked `Copy` in addition to `Clone`.  Implicit
-cloning is more convienient in this case. We can mark our own types `Copy` if
+cloning is more convenient in this case. We can mark our own types `Copy` if
 all their members also are marked `Copy`.
 
 In the example below, we implement a `Point` type. Because it only stores two
@@ -770,8 +770,6 @@ static B: &'static AtomicUsize = &A; // ok!
 You can also have this error while using a cell type:
 
 ```compile_fail,E0492
-#![feature(const_cell_new)]
-
 use std::cell::Cell;
 
 const A: Cell<usize> = Cell::new(1);
@@ -798,8 +796,6 @@ However, if you still wish to use these types, you can achieve this by an unsafe
 wrapper:
 
 ```
-#![feature(const_cell_new)]
-
 use std::cell::Cell;
 use std::marker::Sync;
 

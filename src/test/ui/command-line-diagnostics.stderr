@@ -1,0 +1,11 @@
+error[E0384]: cannot assign twice to immutable variable `x`
+  --> $DIR/command-line-diagnostics.rs:16:5
+   |
+LL |     let x = 42;
+   |         - first assignment to `x`
+LL |     x = 43;
+   |     ^^^^^^ cannot assign twice to immutable variable
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0384"

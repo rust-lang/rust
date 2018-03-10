@@ -367,7 +367,8 @@ impl TypeId {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn of<T: ?Sized + 'static>() -> TypeId {
+    #[rustc_const_unstable(feature="const_type_id")]
+    pub const fn of<T: ?Sized + 'static>() -> TypeId {
         TypeId {
             t: unsafe { intrinsics::type_id::<T>() },
         }

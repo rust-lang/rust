@@ -108,7 +108,8 @@ unsafe extern "C" fn rust_eh_personality(exceptionRecord: *mut c::EXCEPTION_RECO
 }
 
 #[lang = "eh_unwind_resume"]
-#[unwind]
+#[cfg_attr(stage0, unwind)]
+#[cfg_attr(not(stage0), unwind(allowed))]
 unsafe extern "C" fn rust_eh_unwind_resume(panic_ctx: c::LPVOID) -> ! {
     let params = [panic_ctx as c::ULONG_PTR];
     c::RaiseException(RUST_PANIC,

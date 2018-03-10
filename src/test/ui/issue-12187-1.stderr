@@ -1,0 +1,12 @@
+error[E0282]: type annotations needed
+  --> $DIR/issue-12187-1.rs:16:10
+   |
+LL |     let &v = new();
+   |         -^
+   |         ||
+   |         |cannot infer type for `_`
+   |         consider giving the pattern a type
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0282"

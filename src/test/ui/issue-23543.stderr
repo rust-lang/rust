@@ -1,0 +1,9 @@
+error[E0229]: associated type bindings are not allowed here
+  --> $DIR/issue-23543.rs:17:17
+   |
+LL |         where T<Bogus = Foo>: A;
+   |                 ^^^^^^^^^^^ associated type not allowed here
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0229"

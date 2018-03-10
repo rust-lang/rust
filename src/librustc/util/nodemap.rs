@@ -13,7 +13,7 @@
 #![allow(non_snake_case)]
 
 use hir::def_id::DefId;
-use hir::ItemLocalId;
+use hir::{HirId, ItemLocalId};
 use syntax::ast;
 
 pub use rustc_data_structures::fx::FxHashMap;
@@ -21,14 +21,18 @@ pub use rustc_data_structures::fx::FxHashSet;
 
 pub type NodeMap<T> = FxHashMap<ast::NodeId, T>;
 pub type DefIdMap<T> = FxHashMap<DefId, T>;
+pub type HirIdMap<T> = FxHashMap<HirId, T>;
 pub type ItemLocalMap<T> = FxHashMap<ItemLocalId, T>;
 
 pub type NodeSet = FxHashSet<ast::NodeId>;
 pub type DefIdSet = FxHashSet<DefId>;
+pub type HirIdSet = FxHashSet<HirId>;
+pub type ItemLocalSet = FxHashSet<ItemLocalId>;
 
 pub fn NodeMap<T>() -> NodeMap<T> { FxHashMap() }
 pub fn DefIdMap<T>() -> DefIdMap<T> { FxHashMap() }
 pub fn ItemLocalMap<T>() -> ItemLocalMap<T> { FxHashMap() }
 pub fn NodeSet() -> NodeSet { FxHashSet() }
 pub fn DefIdSet() -> DefIdSet { FxHashSet() }
+pub fn ItemLocalSet() -> ItemLocalSet { FxHashSet() }
 

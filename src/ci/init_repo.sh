@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
@@ -36,13 +36,24 @@ fi
 rm -rf "$CACHE_DIR"
 mkdir "$CACHE_DIR"
 
+# On the beta channel we'll be automatically calculating the prerelease version
+# via the git history, so unshallow our shallow clone from CI.
+if grep -q RUST_RELEASE_CHANNEL=beta src/ci/run.sh; then
+  git fetch origin --unshallow beta master
+fi
+
 travis_fold start update_cache
 travis_time_start
 
 # Update the cache (a pristine copy of the rust source master)
 retry sh -c "rm -rf $cache_src_dir && mkdir -p $cache_src_dir && \
     git clone --depth 1 https://github.com/rust-lang/rust.git $cache_src_dir"
-(cd $cache_src_dir && git rm src/llvm)
+if [ -d $cache_src_dir/src/llvm ]; then
+  (cd $cache_src_dir && git rm src/llvm)
+fi
+if [ -d $cache_src_dir/src/llvm-emscripten ]; then
+  (cd $cache_src_dir && git rm src/llvm-emscripten)
+fi
 retry sh -c "cd $cache_src_dir && \
     git submodule deinit -f . && git submodule sync && git submodule update --init"
 
@@ -58,14 +69,14 @@ travis_time_start
 # http://stackoverflow.com/questions/12641469/list-submodules-in-a-git-repository
 modules="$(git config --file .gitmodules --get-regexp '\.path$' | cut -d' ' -f2)"
 for module in $modules; do
-    if [ "$module" = src/llvm ]; then
-        commit="$(git ls-tree HEAD src/llvm | awk '{print $3}')"
-        git rm src/llvm
+    if [ "$module" = src/llvm ] || [ "$module" = src/llvm-emscripten ]; then
+        commit="$(git ls-tree HEAD $module | awk '{print $3}')"
+        git rm $module
         retry sh -c "rm -f $commit.tar.gz && \
             curl -sSL -O https://github.com/rust-lang/llvm/archive/$commit.tar.gz"
         tar -C src/ -xf "$commit.tar.gz"
         rm "$commit.tar.gz"
-        mv "src/llvm-$commit" src/llvm
+        mv "src/llvm-$commit" $module
         continue
     fi
     if [ ! -e "$cache_src_dir/$module/.git" ]; then

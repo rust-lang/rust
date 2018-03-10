@@ -31,7 +31,7 @@ use symbol::Symbol;
 use tokenstream::{TokenStream, TokenTree, Delimited};
 use util::ThinVec;
 
-use std::cell::{RefCell, Cell};
+use std::cell::RefCell;
 use std::iter;
 
 thread_local! {
@@ -371,11 +371,13 @@ impl Attribute {
             let meta = mk_name_value_item_str(
                 Symbol::intern("doc"),
                 Symbol::intern(&strip_doc_comment_decoration(&comment.as_str())));
-            if self.style == ast::AttrStyle::Outer {
-                f(&mk_attr_outer(self.span, self.id, meta))
+            let mut attr = if self.style == ast::AttrStyle::Outer {
+                mk_attr_outer(self.span, self.id, meta)
             } else {
-                f(&mk_attr_inner(self.span, self.id, meta))
-            }
+                mk_attr_inner(self.span, self.id, meta)
+            };
+            attr.is_sugared_doc = true;
+            f(&attr)
         } else {
             f(self)
         }
@@ -417,16 +419,14 @@ pub fn mk_spanned_word_item(sp: Span, name: Name) -> MetaItem {
     MetaItem { span: sp, name: name, node: MetaItemKind::Word }
 }
 
-
-
-thread_local! { static NEXT_ATTR_ID: Cell<usize> = Cell::new(0) }
-
 pub fn mk_attr_id() -> AttrId {
-    let id = NEXT_ATTR_ID.with(|slot| {
-        let r = slot.get();
-        slot.set(r + 1);
-        r
-    });
+    use std::sync::atomic::AtomicUsize;
+    use std::sync::atomic::Ordering;
+
+    static NEXT_ATTR_ID: AtomicUsize = AtomicUsize::new(0);
+
+    let id = NEXT_ATTR_ID.fetch_add(1, Ordering::SeqCst);
+    assert!(id != ::std::usize::MAX);
     AttrId(id)
 }
 
@@ -520,7 +520,7 @@ pub fn find_crate_name(attrs: &[Attribute]) -> Option<Symbol> {
     first_attr_value_str_by_name(attrs, "crate_name")
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, Hash, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum InlineAttr {
     None,
     Hint,
@@ -528,10 +528,24 @@ pub enum InlineAttr {
     Never,
 }
 
-/// Determine what `#[inline]` attribute is present in `attrs`, if any.
-pub fn find_inline_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> InlineAttr {
-    attrs.iter().fold(InlineAttr::None, |ia, attr| {
-        if attr.path != "inline" {
+#[derive(Copy, Clone, PartialEq)]
+pub enum UnwindAttr {
+    Allowed,
+    Aborts,
+}
+
+/// Determine what `#[unwind]` attribute is present in `attrs`, if any.
+pub fn find_unwind_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> Option<UnwindAttr> {
+    let syntax_error = |attr: &Attribute| {
+        mark_used(attr);
+        diagnostic.map(|d| {
+            span_err!(d, attr.span, E0633, "malformed `#[unwind]` attribute");
+        });
+        None
+    };
+
+    attrs.iter().fold(None, |ia, attr| {
+        if attr.path != "unwind" {
             return ia;
         }
         let meta = match attr.meta() {
@@ -540,24 +554,18 @@ pub fn find_inline_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> In
         };
         match meta {
             MetaItemKind::Word => {
-                mark_used(attr);
-                InlineAttr::Hint
+                syntax_error(attr)
             }
             MetaItemKind::List(ref items) => {
                 mark_used(attr);
                 if items.len() != 1 {
-                    diagnostic.map(|d|{ span_err!(d, attr.span, E0534, "expected one argument"); });
-                    InlineAttr::None
-                } else if list_contains_name(&items[..], "always") {
-                    InlineAttr::Always
-                } else if list_contains_name(&items[..], "never") {
-                    InlineAttr::Never
+                    syntax_error(attr)
+                } else if list_contains_name(&items[..], "allowed") {
+                    Some(UnwindAttr::Allowed)
+                } else if list_contains_name(&items[..], "aborts") {
+                    Some(UnwindAttr::Aborts)
                 } else {
-                    diagnostic.map(|d| {
-                        span_err!(d, items[0].span, E0535, "invalid argument");
-                    });
-
-                    InlineAttr::None
+                    syntax_error(attr)
                 }
             }
             _ => ia,
@@ -565,13 +573,6 @@ pub fn find_inline_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> In
     })
 }
 
-/// True if `#[inline]` or `#[inline(always)]` is present in `attrs`.
-pub fn requests_inline(attrs: &[Attribute]) -> bool {
-    match find_inline_attr(None, attrs) {
-        InlineAttr::Hint | InlineAttr::Always => true,
-        InlineAttr::None | InlineAttr::Never => false,
-    }
-}
 
 /// Tests if a cfg-pattern matches the cfg set
 pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Features>) -> bool {
@@ -992,7 +993,8 @@ pub fn find_deprecation(diagnostic: &Handler, attrs: &[Attribute],
 /// Valid repr contents: any of the primitive integral type names (see
 /// `int_type_of_word`, below) to specify enum discriminant type; `C`, to use
 /// the same discriminant size that the corresponding C enum would or C
-/// structure layout, and `packed` to remove padding.
+/// structure layout, `packed` to remove padding, and `transparent` to elegate representation
+/// concerns to the only non-ZST field.
 pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> {
     let mut acc = Vec::new();
     if attr.path == "repr" {
@@ -1008,10 +1010,10 @@ pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> 
                 if let Some(mi) = item.word() {
                     let word = &*mi.name().as_str();
                     let hint = match word {
-                        // Can't use "extern" because it's not a lexical identifier.
-                        "C" => Some(ReprExtern),
+                        "C" => Some(ReprC),
                         "packed" => Some(ReprPacked),
                         "simd" => Some(ReprSimd),
+                        "transparent" => Some(ReprTransparent),
                         _ => match int_type_of_word(word) {
                             Some(ity) => Some(ReprInt(ity)),
                             None => {
@@ -1071,8 +1073,8 @@ fn int_type_of_word(s: &str) -> Option<IntType> {
         "u64" => Some(UnsignedInt(ast::UintTy::U64)),
         "i128" => Some(SignedInt(ast::IntTy::I128)),
         "u128" => Some(UnsignedInt(ast::UintTy::U128)),
-        "isize" => Some(SignedInt(ast::IntTy::Is)),
-        "usize" => Some(UnsignedInt(ast::UintTy::Us)),
+        "isize" => Some(SignedInt(ast::IntTy::Isize)),
+        "usize" => Some(UnsignedInt(ast::UintTy::Usize)),
         _ => None
     }
 }
@@ -1080,9 +1082,10 @@ fn int_type_of_word(s: &str) -> Option<IntType> {
 #[derive(PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
 pub enum ReprAttr {
     ReprInt(IntType),
-    ReprExtern,
+    ReprC,
     ReprPacked,
     ReprSimd,
+    ReprTransparent,
     ReprAlign(u32),
 }
 
@@ -1121,10 +1124,7 @@ impl MetaItem {
             _ => return None,
         };
         let list_closing_paren_pos = tokens.peek().map(|tt| tt.span().hi());
-        let node = match MetaItemKind::from_tokens(tokens) {
-            Some(node) => node,
-            _ => return None,
-        };
+        let node = MetaItemKind::from_tokens(tokens)?;
         let hi = match node {
             MetaItemKind::NameValue(ref lit) => lit.span.hi(),
             MetaItemKind::List(..) => list_closing_paren_pos.unwrap_or(span.hi()),
@@ -1180,10 +1180,8 @@ impl MetaItemKind {
         let mut tokens = delimited.into_trees().peekable();
         let mut result = Vec::new();
         while let Some(..) = tokens.peek() {
-            match NestedMetaItemKind::from_tokens(&mut tokens) {
-                Some(item) => result.push(respan(item.span(), item)),
-                None => return None,
-            }
+            let item = NestedMetaItemKind::from_tokens(&mut tokens)?;
+            result.push(respan(item.span(), item));
             match tokens.next() {
                 None | Some(TokenTree::Token(_, Token::Comma)) => {}
                 _ => return None,

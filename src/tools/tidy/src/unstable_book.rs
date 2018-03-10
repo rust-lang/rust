@@ -49,7 +49,7 @@ pub fn collect_unstable_feature_names(features: &Features) -> BTreeSet<String> {
     features
         .iter()
         .filter(|&(_, ref f)| f.level == Status::Unstable)
-        .map(|(name, _)| name.to_owned())
+        .map(|(name, _)| name.replace('_', "-"))
         .collect()
 }
 
@@ -60,7 +60,7 @@ pub fn collect_unstable_book_section_file_names(dir: &path::Path) -> BTreeSet<St
         .map(|entry| entry.expect("could not read directory entry"))
         .filter(dir_entry_is_file)
         .map(|entry| entry.file_name().into_string().unwrap())
-        .map(|n| n.trim_right_matches(".md").replace('-', "_"))
+        .map(|n| n.trim_right_matches(".md").to_owned())
         .collect()
 }
 
@@ -87,7 +87,9 @@ pub fn check(path: &path::Path, bad: &mut bool) {
     // Library features
 
     let lang_features = collect_lang_features(path);
-    let lib_features = collect_lib_features(path);
+    let lib_features = collect_lib_features(path).into_iter().filter(|&(ref name, _)| {
+        !lang_features.contains_key(name)
+    }).collect();
 
     let unstable_lib_feature_names = collect_unstable_feature_names(&lib_features);
     let unstable_book_lib_features_section_file_names =

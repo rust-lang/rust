@@ -8,7 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Operations and constants for 32-bits floats (`f32` type)
+//! This module provides constants which are specific to the implementation
+//! of the `f32` floating point data type.
+//!
+//! Mathematically significant numbers are provided in the `consts` sub-module.
+//!
+//! *[See also the `f32` primitive type](../../std/primitive.f32.html).*
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -140,6 +145,8 @@ pub mod consts {
            reason = "stable interface is via `impl f{32,64}` in later crates",
            issue = "32110")]
 impl Float for f32 {
+    type Bits = u32;
+
     /// Returns `true` if the number is NaN.
     #[inline]
     fn is_nan(self) -> bool {
@@ -171,7 +178,7 @@ impl Float for f32 {
         const EXP_MASK: u32 = 0x7f800000;
         const MAN_MASK: u32 = 0x007fffff;
 
-        let bits: u32 = unsafe { mem::transmute(self) };
+        let bits = self.to_bits();
         match (bits & MAN_MASK, bits & EXP_MASK) {
             (0, 0) => Fp::Zero,
             (_, 0) => Fp::Subnormal,
@@ -215,12 +222,7 @@ impl Float for f32 {
     fn is_sign_negative(self) -> bool {
         // IEEE754 says: isSignMinus(x) is true if and only if x has negative sign. isSignMinus
         // applies to zeros and NaNs as well.
-        #[repr(C)]
-        union F32Bytes {
-            f: f32,
-            b: u32
-        }
-        unsafe { F32Bytes { f: self }.b & 0x8000_0000 != 0 }
+        self.to_bits() & 0x8000_0000 != 0
     }
 
     /// Returns the reciprocal (multiplicative inverse) of the number.
@@ -237,7 +239,9 @@ impl Float for f32 {
     /// Converts to degrees, assuming the number is in radians.
     #[inline]
     fn to_degrees(self) -> f32 {
-        self * (180.0f32 / consts::PI)
+        // Use a constant for better precision.
+        const PIS_IN_180: f32 = 57.2957795130823208767981548141051703_f32;
+        self * PIS_IN_180
     }
 
     /// Converts to radians, assuming the number is in degrees.
@@ -258,7 +262,7 @@ impl Float for f32 {
         // Since we do not support sNaN in Rust yet, we do not need to handle them.
         // FIXME(nagisa): due to https://bugs.llvm.org/show_bug.cgi?id=33303 we canonicalize by
         // multiplying by 1.0. Should switch to the `canonicalize` when it works.
-        (if self < other || self.is_nan() { other } else { self }) * 1.0
+        (if self.is_nan() || self < other { other } else { self }) * 1.0
     }
 
     /// Returns the minimum of the two numbers.
@@ -272,6 +276,19 @@ impl Float for f32 {
         // Since we do not support sNaN in Rust yet, we do not need to handle them.
         // FIXME(nagisa): due to https://bugs.llvm.org/show_bug.cgi?id=33303 we canonicalize by
         // multiplying by 1.0. Should switch to the `canonicalize` when it works.
-        (if self < other || other.is_nan() { self } else { other }) * 1.0
+        (if other.is_nan() || self < other { self } else { other }) * 1.0
+    }
+
+    /// Raw transmutation to `u32`.
+    #[inline]
+    fn to_bits(self) -> u32 {
+        unsafe { mem::transmute(self) }
+    }
+
+    /// Raw transmutation from `u32`.
+    #[inline]
+    fn from_bits(v: u32) -> Self {
+        // It turns out the safety issues with sNaN were overblown! Hooray!
+        unsafe { mem::transmute(v) }
     }
 }

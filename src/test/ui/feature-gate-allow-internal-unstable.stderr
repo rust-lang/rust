@@ -1,0 +1,11 @@
+error[E0658]: allow_internal_unstable side-steps feature gating and stability checks
+  --> $DIR/feature-gate-allow-internal-unstable.rs:13:1
+   |
+LL | #[allow_internal_unstable] //~ ERROR allow_internal_unstable side-steps
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(allow_internal_unstable)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0658"

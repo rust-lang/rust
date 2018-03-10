@@ -14,7 +14,7 @@
 // here is rather subtle. Issue #20232.
 
 // revisions: ast mir
-//[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
+//[mir]compile-flags: -Z borrowck=mir
 
 use std::ops::{Deref, Index};
 
@@ -43,8 +43,7 @@ fn main() {
     let i = &v[0].f;
     v = MyVec { x: MyPtr { x: Foo { f: 23 } } };
     //[ast]~^ ERROR cannot assign to `v`
-    //[mir]~^^ ERROR cannot assign to `v` because it is borrowed (Ast)
-    //[mir]~| ERROR cannot assign to `v` because it is borrowed (Mir)
+    //[mir]~^^ ERROR cannot assign to `v` because it is borrowed
     read(*i);
 }
 

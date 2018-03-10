@@ -1,0 +1,11 @@
+error[E0369]: binary operation `+` cannot be applied to type `T`
+  --> $DIR/missing_trait_impl.rs:15:13
+   |
+LL |     let z = x + y; //~ ERROR binary operation `+` cannot be applied to type `T`
+   |             ^^^^^
+   |
+   = note: `T` might need a bound for `std::ops::Add`
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0369"

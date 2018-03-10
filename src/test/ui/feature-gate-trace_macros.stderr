@@ -1,0 +1,11 @@
+error[E0658]: `trace_macros` is not stable enough for use and is subject to change (see issue #29598)
+  --> $DIR/feature-gate-trace_macros.rs:12:5
+   |
+LL |     trace_macros!(true); //~ ERROR: `trace_macros` is not stable
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(trace_macros)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0658"

@@ -1,0 +1,47 @@
+error[E0601]: main function not found
+
+error: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:17:1
+   |
+LL | #![rustc_deprecated           = "1500"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:20:1
+   |
+LL | #[rustc_deprecated = "1500"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:23:17
+   |
+LL |     mod inner { #![rustc_deprecated="1500"] }
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:26:5
+   |
+LL |     #[rustc_deprecated = "1500"] fn f() { }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:29:5
+   |
+LL |     #[rustc_deprecated = "1500"] struct S;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:32:5
+   |
+LL |     #[rustc_deprecated = "1500"] type T = S;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:35:5
+   |
+LL |     #[rustc_deprecated = "1500"] impl S { }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+
+If you want more information on this error, try using "rustc --explain E0601"

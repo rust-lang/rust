@@ -108,6 +108,9 @@ pub fn main() {
     let array_expected_size = round_up(28, align_of::<Eu64NonCLike<[u32; 5]>>());
     assert_eq!(size_of::<Eu64NonCLike<[u32; 5]>>(), array_expected_size);
     assert_eq!(size_of::<Eu64NonCLike<[u32; 6]>>(), 32);
+
+    assert_eq!(align_of::<Eu32>(), align_of::<u32>());
+    assert_eq!(align_of::<Eu64NonCLike<u8>>(), align_of::<u64>());
 }
 
 // Rounds x up to the next multiple of a

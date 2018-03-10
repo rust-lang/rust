@@ -12,6 +12,7 @@
 // compile-flags:-Zprint-trans-items=eager
 
 #![deny(dead_code)]
+#![feature(start)]
 
 fn foo1<T1>(a: T1) -> (T1, u32) {
     (a, 1)
@@ -31,8 +32,9 @@ pub fn lifetime_only<'a>(a: &'a u32) -> &'a u32 {
     a
 }
 
-//~ TRANS_ITEM fn generic_functions::main[0]
-fn main() {
+//~ TRANS_ITEM fn generic_functions::start[0]
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize {
     //~ TRANS_ITEM fn generic_functions::foo1[0]<i32>
     let _ = foo1(2i32);
     //~ TRANS_ITEM fn generic_functions::foo1[0]<i64>
@@ -59,4 +61,6 @@ fn main() {
     let _ = foo3(0i16, "a", 2usize);
     //~ TRANS_ITEM fn generic_functions::foo3[0]<char, (), ()>
     let _ = foo3('v', (), ());
+
+    0
 }

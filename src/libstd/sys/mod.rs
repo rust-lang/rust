@@ -32,46 +32,71 @@
 
 #![allow(missing_debug_implementations)]
 
-pub use self::imp::*;
+cfg_if! {
+    if #[cfg(unix)] {
+        mod unix;
+        pub use self::unix::*;
+    } else if #[cfg(windows)] {
+        mod windows;
+        pub use self::windows::*;
+    } else if #[cfg(target_os = "cloudabi")] {
+        mod cloudabi;
+        pub use self::cloudabi::*;
+    } else if #[cfg(target_os = "redox")] {
+        mod redox;
+        pub use self::redox::*;
+    } else if #[cfg(target_arch = "wasm32")] {
+        mod wasm;
+        pub use self::wasm::*;
+    } else {
+        compile_error!("libstd doesn't compile for this platform yet");
+    }
+}
 
-#[cfg(unix)]
-#[path = "unix/mod.rs"]
-mod imp;
+// Import essential modules from both platforms when documenting. These are
+// then later used in the `std::os` module when documenting, for example,
+// Windows when we're compiling for Linux.
 
-#[cfg(windows)]
-#[path = "windows/mod.rs"]
-mod imp;
+#[cfg(dox)]
+cfg_if! {
+    if #[cfg(any(unix, target_os = "redox"))] {
+        // On unix we'll document what's already available
+        pub use self::ext as unix_ext;
+    } else if #[cfg(any(target_os = "cloudabi", target_arch = "wasm32"))] {
+        // On CloudABI and wasm right now the module below doesn't compile
+        // (missing things in `libc` which is empty) so just omit everything
+        // with an empty module
+        #[unstable(issue = "0", feature = "std_internals")]
+        pub mod unix_ext {}
+    } else {
+        // On other platforms like Windows document the bare bones of unix
+        use os::linux as platform;
+        #[path = "unix/ext/mod.rs"]
+        pub mod unix_ext;
+    }
+}
 
-#[cfg(target_os = "redox")]
-#[path = "redox/mod.rs"]
-mod imp;
+#[cfg(dox)]
+cfg_if! {
+    if #[cfg(windows)] {
+        // On windows we'll just be documenting what's already available
+        pub use self::ext as windows_ext;
+    } else if #[cfg(any(target_os = "cloudabi", target_arch = "wasm32"))] {
+        // On CloudABI and wasm right now the shim below doesn't compile, so
+        // just omit it
+        #[unstable(issue = "0", feature = "std_internals")]
+        pub mod windows_ext {}
+    } else {
+        // On all other platforms (aka linux/osx/etc) then pull in a "minimal"
+        // amount of windows goop which ends up compiling
+        #[macro_use]
+        #[path = "windows/compat.rs"]
+        mod compat;
 
+        #[path = "windows/c.rs"]
+        mod c;
 
-// Import essential modules from both platforms when documenting.
-
-#[cfg(all(dox, not(unix)))]
-use os::linux as platform;
-
-#[cfg(all(dox, not(any(unix, target_os = "redox"))))]
-#[path = "unix/ext/mod.rs"]
-pub mod unix_ext;
-
-#[cfg(all(dox, any(unix, target_os = "redox")))]
-pub use self::ext as unix_ext;
-
-
-#[cfg(all(dox, not(windows)))]
-#[macro_use]
-#[path = "windows/compat.rs"]
-mod compat;
-
-#[cfg(all(dox, not(windows)))]
-#[path = "windows/c.rs"]
-mod c;
-
-#[cfg(all(dox, not(windows)))]
-#[path = "windows/ext/mod.rs"]
-pub mod windows_ext;
-
-#[cfg(all(dox, windows))]
-pub use self::ext as windows_ext;
+        #[path = "windows/ext/mod.rs"]
+        pub mod windows_ext;
+    }
+}

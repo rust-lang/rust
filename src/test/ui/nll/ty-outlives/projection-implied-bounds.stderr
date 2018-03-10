@@ -1,0 +1,17 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/projection-implied-bounds.rs:45:36
+   |
+LL |     twice(value, |value_ref, item| invoke2(value_ref, item));
+   |                                    ^^^^^^^
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/projection-implied-bounds.rs:45:18
+   |
+LL |     twice(value, |value_ref, item| invoke2(value_ref, item));
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `T: 'static`...
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0310"

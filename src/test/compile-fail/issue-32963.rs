@@ -16,6 +16,6 @@ fn size_of_copy<T: Copy+?Sized>() -> usize { mem::size_of::<T>() }
 
 fn main() {
     size_of_copy::<Misc+Copy>();
-    //~^ ERROR only Send/Sync traits can be used as additional traits in a trait object
+    //~^ ERROR only auto traits can be used as additional traits in a trait object
     //~| ERROR the trait bound `Misc: std::marker::Copy` is not satisfied
 }

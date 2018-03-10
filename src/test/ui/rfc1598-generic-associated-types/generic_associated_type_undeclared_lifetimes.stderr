@@ -1,0 +1,34 @@
+error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/generic_associated_type_undeclared_lifetimes.rs:22:37
+   |
+LL |         + Deref<Target = Self::Item<'b>>;
+   |                                     ^^ undeclared lifetime
+
+error[E0261]: use of undeclared lifetime name `'undeclared`
+  --> $DIR/generic_associated_type_undeclared_lifetimes.rs:26:41
+   |
+LL |     fn iter<'a>(&'a self) -> Self::Iter<'undeclared>;
+   |                                         ^^^^^^^^^^^ undeclared lifetime
+
+error[E0110]: lifetime parameters are not allowed on this type
+  --> $DIR/generic_associated_type_undeclared_lifetimes.rs:20:47
+   |
+LL |     type Iter<'a>: Iterator<Item = Self::Item<'a>>
+   |                                               ^^ lifetime parameter not allowed on this type
+
+error[E0110]: lifetime parameters are not allowed on this type
+  --> $DIR/generic_associated_type_undeclared_lifetimes.rs:22:37
+   |
+LL |         + Deref<Target = Self::Item<'b>>;
+   |                                     ^^ lifetime parameter not allowed on this type
+
+error[E0110]: lifetime parameters are not allowed on this type
+  --> $DIR/generic_associated_type_undeclared_lifetimes.rs:26:41
+   |
+LL |     fn iter<'a>(&'a self) -> Self::Iter<'undeclared>;
+   |                                         ^^^^^^^^^^^ lifetime parameter not allowed on this type
+
+error: aborting due to 5 previous errors
+
+You've got a few errors: E0110, E0261
+If you want more information on an error, try using "rustc --explain E0110"

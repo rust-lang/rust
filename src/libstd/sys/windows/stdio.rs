@@ -218,7 +218,10 @@ fn readconsole_input_control(wakeup_mask: c::ULONG) -> c::CONSOLE_READCONSOLE_CO
 const CTRL_Z: u8 = 0x1A;
 const CTRL_Z_MASK: c::ULONG = 0x4000000; //1 << 0x1A
 
-pub const EBADF_ERR: i32 = ::sys::c::ERROR_INVALID_HANDLE as i32;
+pub fn is_ebadf(err: &io::Error) -> bool {
+    err.raw_os_error() == Some(c::ERROR_INVALID_HANDLE as i32)
+}
+
 // The default buffer capacity is 64k, but apparently windows
 // doesn't like 64k reads on stdin. See #13304 for details, but the
 // idea is that on windows we use a slightly smaller buffer that's

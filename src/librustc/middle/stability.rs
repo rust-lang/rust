@@ -131,7 +131,7 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                    item_sp: Span, kind: AnnotationKind, visit_children: F)
         where F: FnOnce(&mut Self)
     {
-        if self.tcx.sess.features.borrow().staged_api {
+        if self.tcx.features().staged_api {
             // This crate explicitly wants staged API.
             debug!("annotate(id = {:?}, attrs = {:?})", id, attrs);
             if let Some(..) = attr::find_deprecation(self.tcx.sess.diagnostic(), attrs, item_sp) {
@@ -398,7 +398,7 @@ impl<'a, 'tcx> Index<'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Index<'tcx> {
         let is_staged_api =
             tcx.sess.opts.debugging_opts.force_unstable_if_unmarked ||
-            tcx.sess.features.borrow().staged_api;
+            tcx.features().staged_api;
         let mut staged_api = FxHashMap();
         staged_api.insert(LOCAL_CRATE, is_staged_api);
         let mut index = Index {
@@ -408,7 +408,7 @@ impl<'a, 'tcx> Index<'tcx> {
             active_features: FxHashSet(),
         };
 
-        let ref active_lib_features = tcx.sess.features.borrow().declared_lib_features;
+        let ref active_lib_features = tcx.features().declared_lib_features;
 
         // Put the active features into a map for quick lookup
         index.active_features = active_lib_features.iter().map(|&(ref s, _)| s.clone()).collect();
@@ -516,11 +516,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             return;
         }
 
-        let lint_deprecated = |note: Option<Symbol>| {
+        let lint_deprecated = |def_id: DefId, note: Option<Symbol>| {
+            let path = self.item_path_str(def_id);
+
             let msg = if let Some(note) = note {
-                format!("use of deprecated item: {}", note)
+                format!("use of deprecated item '{}': {}", path, note)
             } else {
-                format!("use of deprecated item")
+                format!("use of deprecated item '{}'", path)
             };
 
             self.lint_node(lint::builtin::DEPRECATED, id, span, &msg);
@@ -538,7 +540,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             };
 
             if !skip {
-                lint_deprecated(depr_entry.attr.note);
+                lint_deprecated(def_id, depr_entry.attr.note);
             }
         }
 
@@ -557,7 +559,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if let Some(&Stability{rustc_depr: Some(attr::RustcDeprecation { reason, .. }), ..})
                 = stability {
             if id != ast::DUMMY_NODE_ID {
-                lint_deprecated(Some(reason));
+                lint_deprecated(def_id, Some(reason));
             }
         }
 
@@ -605,7 +607,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 let span_key = msp.primary_span().and_then(|sp: Span|
                     if sp != DUMMY_SP {
                         let file = cm.lookup_char_pos(sp.lo()).file;
-                        if file.name.starts_with("<") && file.name.ends_with(" macros>") {
+                        if file.name.is_macros() {
                             None
                         } else {
                             Some(span)
@@ -675,7 +677,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
 
             // There's no good place to insert stability check for non-Copy unions,
             // so semi-randomly perform it here in stability.rs
-            hir::ItemUnion(..) if !self.tcx.sess.features.borrow().untagged_unions => {
+            hir::ItemUnion(..) if !self.tcx.features().untagged_unions => {
                 let def_id = self.tcx.hir.local_def_id(item.id);
                 let adt_def = self.tcx.adt_def(def_id);
                 let ty = self.tcx.type_of(def_id);
@@ -719,8 +721,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 /// were expected to be library features), and the list of features used from
 /// libraries, identify activated features that don't exist and error about them.
 pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let sess = &tcx.sess;
-
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
 
     if tcx.stability().staged_api[&LOCAL_CRATE] {
@@ -734,12 +734,12 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         krate.visit_all_item_likes(&mut missing.as_deep_visitor());
     }
 
-    let ref declared_lib_features = sess.features.borrow().declared_lib_features;
+    let ref declared_lib_features = tcx.features().declared_lib_features;
     let mut remaining_lib_features: FxHashMap<Symbol, Span>
         = declared_lib_features.clone().into_iter().collect();
     remaining_lib_features.remove(&Symbol::intern("proc_macro"));
 
-    for &(ref stable_lang_feature, span) in &sess.features.borrow().declared_stable_lang_features {
+    for &(ref stable_lang_feature, span) in &tcx.features().declared_stable_lang_features {
         let version = find_lang_feature_accepted_version(&stable_lang_feature.as_str())
             .expect("unexpectedly couldn't find version feature was stabilized");
         tcx.lint_node(lint::builtin::STABLE_FEATURES,

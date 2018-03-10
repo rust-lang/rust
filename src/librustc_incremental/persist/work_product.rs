@@ -35,9 +35,9 @@ pub fn save_trans_partition(sess: &Session,
                  let extension = match kind {
                      WorkProductFileKind::Object => "o",
                      WorkProductFileKind::Bytecode => "bc",
-                     WorkProductFileKind::BytecodeCompressed => "bc-compressed",
+                     WorkProductFileKind::BytecodeCompressed => "bc.z",
                  };
-                 let file_name = format!("cgu-{}.{}", cgu_name, extension);
+                 let file_name = format!("{}.{}", cgu_name, extension);
                  let path_in_incr_dir = in_incr_comp_dir_sess(sess, &file_name);
                  match link_or_copy(path, &path_in_incr_dir) {
                      Ok(_) => Some((kind, file_name)),

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // error-pattern:drop 1
-
+// ignore-cloudabi no std::process
 
 /// Structure which will not allow to be dropped twice.
 struct Droppable<'a>(&'a mut bool, u32);

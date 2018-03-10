@@ -16,12 +16,14 @@
 #![deny(warnings)]
 
 #![feature(proc_macro_internals)]
+#![feature(decl_macro)]
 
 extern crate fmt_macros;
 #[macro_use]
 extern crate syntax;
 extern crate syntax_pos;
 extern crate proc_macro;
+extern crate rustc_data_structures;
 extern crate rustc_errors as errors;
 
 mod asm;
@@ -43,7 +45,7 @@ pub mod deriving;
 
 pub mod proc_macro_impl;
 
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax::ext::base::{MacroExpanderFn, NormalTT, NamedSyntaxExtension};
 use syntax::symbol::Symbol;
@@ -54,7 +56,7 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
     deriving::register_builtin_derives(resolver);
 
     let mut register = |name, ext| {
-        resolver.add_builtin(ast::Ident::with_empty_ctxt(name), Rc::new(ext));
+        resolver.add_builtin(ast::Ident::with_empty_ctxt(name), Lrc::new(ext));
     };
 
     macro_rules! register {
