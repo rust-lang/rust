@@ -332,18 +332,6 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
 
                 self.super_place(place, context, location);
             }
-
-            /*
-            fn visit_statement(&mut self,
-                               block: BasicBlock,
-                               statement: &mir::Statement<'tcx>,
-                               location: Location) {
-                if let mir::StatementKind::StorageDead(loc) = *statement {
-                }
-
-                self.super_statement(block, statement, location);
-            }
-            */
         }
 
         impl<'a, 'gcx, 'tcx> GatherBorrows<'a, 'gcx, 'tcx> {
