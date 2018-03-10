@@ -1568,7 +1568,7 @@ impl<'a> State<'a> {
                     ti.ident,
                     ty,
                     default.as_ref().map(|expr| &**expr),
-                    &codemap::respan(ti.span.empty(), ast::VisibilityKind::Inherited),
+                    &codemap::respan(ti.span.shrink_to_lo(), ast::VisibilityKind::Inherited),
                 )?;
             }
             ast::TraitItemKind::Method(ref sig, ref body) => {
@@ -1579,7 +1579,7 @@ impl<'a> State<'a> {
                     ti.ident,
                     &ti.generics,
                     sig,
-                    &codemap::respan(ti.span.empty(), ast::VisibilityKind::Inherited),
+                    &codemap::respan(ti.span.shrink_to_lo(), ast::VisibilityKind::Inherited),
                 )?;
                 if let Some(ref body) = *body {
                     self.nbsp()?;

@@ -1512,7 +1512,7 @@ impl<'a> Parser<'a> {
         if self.eat(&token::RArrow) {
             Ok(FunctionRetTy::Ty(self.parse_ty_common(allow_plus, true)?))
         } else {
-            Ok(FunctionRetTy::Default(self.span.with_hi(self.span.lo())))
+            Ok(FunctionRetTy::Default(self.span.shrink_to_lo()))
         }
     }
 

@@ -117,7 +117,7 @@ impl Path {
                 return None;
             }
         }
-        Some(PathSegment::crate_root(self.span.with_hi(self.span.lo())))
+        Some(PathSegment::crate_root(self.span.shrink_to_lo()))
     }
 
     pub fn is_global(&self) -> bool {

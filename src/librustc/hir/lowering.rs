@@ -879,7 +879,7 @@ impl<'a> LoweringContext<'a> {
             TyKind::Slice(ref ty) => hir::TySlice(self.lower_ty(ty, itctx)),
             TyKind::Ptr(ref mt) => hir::TyPtr(self.lower_mt(mt, itctx)),
             TyKind::Rptr(ref region, ref mt) => {
-                let span = t.span.with_hi(t.span.lo());
+                let span = t.span.shrink_to_lo();
                 let lifetime = match *region {
                     Some(ref lt) => self.lower_lifetime(lt),
                     None => self.elided_lifetime(span)

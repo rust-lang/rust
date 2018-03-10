@@ -214,7 +214,7 @@ impl<'a> StringReader<'a> {
 
         // Make the range zero-length if the span is invalid.
         if span.lo() > span.hi() || begin.fm.start_pos != end.fm.start_pos {
-            span = span.with_hi(span.lo());
+            span = span.shrink_to_lo();
         }
 
         let mut sr = StringReader::new_raw_internal(sess, begin.fm);

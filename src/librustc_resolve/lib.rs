@@ -756,7 +756,7 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
                     // don't suggest placing a use before the prelude
                     // import or other generated ones
                     if item.span.ctxt().outer().expn_info().is_none() {
-                        self.span = Some(item.span.with_hi(item.span.lo()));
+                        self.span = Some(item.span.shrink_to_lo());
                         self.found_use = true;
                         return;
                     }
@@ -768,12 +768,12 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
                     if item.span.ctxt().outer().expn_info().is_none() {
                         // don't insert between attributes and an item
                         if item.attrs.is_empty() {
-                            self.span = Some(item.span.with_hi(item.span.lo()));
+                            self.span = Some(item.span.shrink_to_lo());
                         } else {
                             // find the first attribute on the item
                             for attr in &item.attrs {
                                 if self.span.map_or(true, |span| attr.span < span) {
-                                    self.span = Some(attr.span.with_hi(attr.span.lo()));
+                                    self.span = Some(attr.span.shrink_to_lo());
                                 }
                             }
                         }

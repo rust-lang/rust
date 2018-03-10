@@ -76,7 +76,7 @@ pub fn maybe_inject_crates_ref(mut krate: ast::Crate, alt_std_name: Option<&str>
             is_sugared_doc: false,
             span,
         }],
-        vis: respan(span.empty(), ast::VisibilityKind::Inherited),
+        vis: respan(span.shrink_to_lo(), ast::VisibilityKind::Inherited),
         node: ast::ItemKind::Use(P(ast::UseTree {
             prefix: ast::Path {
                 segments: [name, "prelude", "v1"].into_iter().map(|name| {
