@@ -8,12 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:--test
-
-#![feature(rustc_private, flt2dec)]
-
-extern crate core;
-extern crate rand;
+#![cfg(not(target_arch = "wasm32"))]
 
 use std::i16;
 use std::mem;
@@ -24,8 +19,9 @@ use core::num::flt2dec::strategy::grisu::format_exact_opt;
 use core::num::flt2dec::strategy::grisu::format_shortest_opt;
 use core::num::flt2dec::{decode, DecodableFloat, FullDecoded, Decoded};
 
-use rand::{Rand, XorShiftRng};
+use rand::{self, Rand, XorShiftRng};
 use rand::distributions::{IndependentSample, Range};
+
 pub fn decode_finite<T: DecodableFloat>(v: T) -> Decoded {
     match decode(v).1 {
         FullDecoded::Finite(decoded) => decoded,
@@ -161,3 +157,4 @@ fn exact_f64_random_equivalence_test() {
                                              |d, buf| fallback(d, buf, i16::MIN), k, 1_000);
     }
 }
+

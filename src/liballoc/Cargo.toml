@@ -12,7 +12,7 @@ core = { path = "../libcore" }
 std_unicode = { path = "../libstd_unicode" }
 
 [dev-dependencies]
-rand = "0.3"
+rand = "0.4"
 
 [[test]]
 name = "collectionstests"
