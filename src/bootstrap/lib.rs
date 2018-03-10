@@ -132,6 +132,10 @@ extern crate num_cpus;
 extern crate toml;
 extern crate time;
 
+#[cfg(test)]
+#[macro_use]
+extern crate pretty_assertions;
+
 #[cfg(unix)]
 extern crate libc;
 

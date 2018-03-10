@@ -1692,6 +1692,7 @@ impl Step for Bootstrap {
         let mut cmd = Command::new(&build.initial_cargo);
         cmd.arg("test")
            .current_dir(build.src.join("src/bootstrap"))
+           .env("RUSTFLAGS", "-Cdebuginfo=2")
            .env("CARGO_TARGET_DIR", build.out.join("bootstrap"))
            .env("RUSTC_BOOTSTRAP", "1")
            .env("RUSTC", &build.initial_rustc);
