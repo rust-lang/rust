@@ -12,12 +12,14 @@ a few new superpowers.
 In Rust's solver, **goals** and **clauses** have the following forms
 (note that the two definitions reference one another):
 
-    Goal = DomainGoal
+    Goal = DomainGoal           // defined in the section below
          | Goal && Goal
          | Goal || Goal
          | exists<K> { Goal }   // existential quantification
          | forall<K> { Goal }   // universal quantification 
          | if (Clause) { Goal } // implication
+         | true                 // something that's trivially true 
+         | ambiguous            // something that's never provable
 
     Clause = DomainGoal
            | Clause :- Goal     // if can prove Goal, then Clause is true
@@ -39,9 +41,11 @@ gives the details.
 
 ## Domain goals
 
+<a name=trait-ref>
+
 To define the set of *domain goals* in our system, we need to first
 introduce a few simple formulations. A **trait reference** consists of
-the name of a trait allow with a suitable set of inputs P0..Pn:
+the name of a trait along with a suitable set of inputs P0..Pn:
 
     TraitRef = P0: TraitName<P1..Pn>
     
@@ -50,7 +54,9 @@ IntoIterator`. Note that Rust surface syntax also permits some extra
 things, like associated type bindings (`Vec<T>: IntoIterator<Item =
 T>`), that are not part of a trait reference.
 
-A **projection** consists of a an associated item reference along with
+<a name=projection>
+
+A **projection** consists of an associated item reference along with
 its inputs P0..Pm:
 
     Projection = <P0 as TraitName<P1..Pn>>::AssocItem<Pn+1..Pm>
@@ -77,13 +83,17 @@ Given that, we can define a `DomainGoal` as follows:
     to [implied bounds].
 - `ProjectionEq(Projection = Type)` -- the given associated type `Projection` is equal
   to `Type`; see [the section on associated types](./traits-associated-types.html)
-- `Normalize(Projection -> Type)` -- the given associated type `Projection` can be normalized
+  - in general, proving `ProjectionEq(TraitRef::Item = Type)` also
+    requires proving `Implemented(TraitRef)`
+- `Normalize(Projection -> Type)` -- the given associated type `Projection` can be [normalized][n]
   to `Type`
   - as discussed in [the section on associated types](./traits-associated-types.html),
     `Normalize` implies `ProjectionEq` but not vice versa
 - `WellFormed(..)` -- these goals imply that the given item is
   *well-formed*
   - well-formedness is important to [implied bounds].
+
+[n]: ./traits-associated-types.html#normalize
 
 <a name=coinductive>
 

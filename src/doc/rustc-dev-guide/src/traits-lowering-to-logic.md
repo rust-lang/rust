@@ -33,6 +33,9 @@ Prolog-like notation, as follows:
 ```
 Clone(usize).
 Clone(Vec<?T>) :- Clone(?T).
+
+// The notation `A :- B` means "A is true if B is true".
+// Or, put another way, B implies A.
 ```
 
 In Prolog terms, we might say that `Clone(Foo)` -- where `Foo` is some
@@ -82,20 +85,20 @@ let's turn our focus a bit towards **type-checking**. Type-checking is
 interesting because it is what gives us the goals that we need to
 prove. That is, everything we've seen so far has been about how we
 derive the rules by which we can prove goals from the traits and impls
-in the program; but we are also interesting in how derive the goals
+in the program; but we are also interested in how to derive the goals
 that we need to prove, and those come from type-checking.
 
 Consider type-checking the function `foo()` here:
 
 ```rust
 fn foo() { bar::<usize>() }
-fn bar<U: Eq>() { }
+fn bar<U: Eq<U>>() { }
 ```
 
 This function is very simple, of course: all it does is to call
 `bar::<usize>()`. Now, looking at the definition of `bar()`, we can see
-that it has one where-clause `U: Eq`. So, that means that `foo()` will
-have to prove that `usize: Eq` in order to show that it can call `bar()`
+that it has one where-clause `U: Eq<U>`. So, that means that `foo()` will
+have to prove that `usize: Eq<usize>` in order to show that it can call `bar()`
 with `usize` as the type argument.
 
 If we wanted, we could write a Prolog predicate that defines the
@@ -103,7 +106,7 @@ conditions under which `bar()` can be called. We'll say that those
 conditions are called being "well-formed":
 
 ```
-barWellFormed(?U) :- Eq(?U).
+barWellFormed(?U) :- Eq(?U, ?U).
 ```
 
 Then we can say that `foo()` type-checks if the reference to
@@ -118,7 +121,7 @@ If we try to prove the goal `fooTypeChecks`, it will succeed:
 
 - `fooTypeChecks` is provable if:
   - `barWellFormed(usize)`, which is provable if:
-    - `Eq(usize)`, which is provable because of an impl.
+    - `Eq(usize, usize)`, which is provable because of an impl.
     
 Ok, so far so good. Let's move on to type-checking a more complex function.
 
@@ -132,8 +135,8 @@ can be provide. To see what I'm talking about, let's revamp our previous
 example to make `foo` generic:
 
 ```rust
-fn foo<T: Eq>() { bar::<T>() }
-fn bar<U: Eq>() { }
+fn foo<T: Eq<T>>() { bar::<T>() }
+fn bar<U: Eq<U>>() { }
 ```
 
 To type-check the body of `foo`, we need to be able to hold the type
@@ -145,8 +148,8 @@ this like so:
 fooTypeChecks :-
   // for all types T...
   forall<T> {
-    // ...if we assume that Eq(T) is provable...
-    if (Eq(T)) {
+    // ...if we assume that Eq(T, T) is provable...
+    if (Eq(T, T)) {
       // ...then we can prove that `barWellFormed(T)` holds.
       barWellFormed(T)
     }

@@ -1,8 +1,8 @@
 # Lowering rules
 
 This section gives the complete lowering rules for Rust traits into
-[program clauses][pc]. These rules reference the [domain goals][dg] defined in
-an earlier section.
+[program clauses][pc]. It is a kind of reference. These rules
+reference the [domain goals][dg] defined in an earlier section.
 
 [pc]: ./traits-goals-and-clauses.html
 [dg]: ./traits-goals-and-clauses.html#domain-goals
@@ -22,7 +22,7 @@ definitions; these macros reference other sections within this chapter.
 
 ## Lowering where clauses
 
-When used in a goal position, where clauses can be mapped directly
+When used in a goal position, where clauses can be mapped directly to
 [domain goals][dg], as follows:
 
 - `A0: Foo<A1..An>` maps to `Implemented(A0: Foo<A1..An>)`.
@@ -72,12 +72,12 @@ inside the `{}`.
 ### Trait header
 
 From the trait itself we mostly make "meta" rules that setup the
-relationships between different kinds of domain goals.  The first dush
+relationships between different kinds of domain goals.  The first such
 rule from the trait header creates the mapping between the `FromEnv`
 and `Implemented` predicates:
 
     forall<Self, P1..Pn> {
-      Implemented(Self: Trait<P1..Pn>) :- FromEnv(Self: Trait<P1..Pn)
+      Implemented(Self: Trait<P1..Pn>) :- FromEnv(Self: Trait<P1..Pn>)
     }
 
 <a name="implied-bounds">
@@ -114,7 +114,7 @@ to be **well-formed**:
 
     // For each where clause WC:
     forall<Self, P1..Pn> {
-      WellFormed(Self: Trait<P1..Pn>) :- Implemented(Self: Trait<P1..Pn>), WellFormed(WC)
+      WellFormed(Self: Trait<P1..Pn>) :- Implemented(Self: Trait<P1..Pn>) && WellFormed(WC)
     }
 
 This `WellFormed` rule states that `T: Trait` is well-formed if (a)
@@ -150,7 +150,7 @@ one of those:
 
 This `WellFormed` predicate is only used when proving that impls are
 well-formed -- basically, for each impl of some trait ref `TraitRef`,
-we must that `WellFormed(TraitRef)`. This in turn justifies the
+we must show that `WellFormed(TraitRef)`. This in turn justifies the
 implied bounds rules that allow us to extend the set of `FromEnv`
 items.
 
@@ -170,9 +170,10 @@ where WC
 }
 ```
 
-We will produce a number of program clases. The first two define
+We will produce a number of program clauses. The first two define
 the rules by which `ProjectionEq` can succeed; these two clauses are discussed
-in detail in the [section on associated types](./traits-associated-types.html).
+in detail in the [section on associated types](./traits-associated-types.html),,
+but reproduced here for reference:
 
     // ProjectionEq can succeed by normalizing:
     forall<Self, P1..Pn, Pn+1..Pm, U> {
@@ -180,7 +181,8 @@ in detail in the [section on associated types](./traits-associated-types.html).
           Normalize(<Self as Trait<P1..Pn>>::AssocType<Pn+1..Pm> -> U)
     }
 
-    // ProjectionEq can succeed by skolemizing:
+    // ProjectionEq can succeed by skolemizing, see "associated type"
+    // chapter for more:
     forall<Self, P1..Pn, Pn+1..Pm> {
       ProjectionEq(
         <Self as Trait<P1..Pn>>::AssocType<Pn+1..Pm> =
@@ -188,13 +190,13 @@ in detail in the [section on associated types](./traits-associated-types.html).
       ) :-
         // But only if the trait is implemented, and the conditions from
         // the associated type are met as well:
-        Implemented(Self: Trait<P1..Pn>),
-        WC1
+        Implemented(Self: Trait<P1..Pn>)
+        && WC1
     }
     
 The next rule covers implied bounds for the projection. In particular,
 the `Bounds` declared on the associated type must be proven to hold to
-show that the impl is well-formed, and hence we can rely on them from
+show that the impl is well-formed, and hence we can rely on them
 elsewhere.
 
     // XXX how exactly should we set this up? Have to be careful;
@@ -237,7 +239,7 @@ Given an impl that contains:
 impl<P0..Pn> Trait<A1..An> for A0
 where WC
 {
-    type AssocType<Pn+1..Pm>: Bounds where WC1 = T;
+    type AssocType<Pn+1..Pm> where WC1 = T;
 }
 ```
 
@@ -246,13 +248,12 @@ We produce the following rule:
     forall<P0..Pm> {
       forall<Pn+1..Pm> {
         Normalize(<A0 as Trait<A1..An>>::AssocType<Pn+1..Pm> -> T) :-
-          WC, WC1
+          WC && WC1
       }
     }
   
 Note that `WC` and `WC1` both encode where-clauses that the impl can
-rely on, whereas the bounds `Bounds` on the associated type are things
-that the impl must prove (see the well-formedness checking).
+rely on.
 
 <a name=constant-vals>
 

@@ -20,6 +20,8 @@ that syntax is expanded during
 ["type collection"](./type-checking.html) into the explicit form,
 though that is something we may want to change in the future.)
 
+<a name=normalize>
+
 In some cases, associated type projections can be **normalized** --
 that is, simplified -- based on the types given in an impl. So, to
 continue with our example, the impl of `IntoIterator` for `Option<T>`
