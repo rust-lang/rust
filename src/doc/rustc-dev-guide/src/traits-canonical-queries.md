@@ -90,6 +90,8 @@ where-clauses, that would be provable. (Internally within the solver,
 though, they can potentially enumerate all possible answers. See
 [the description of the SLG solver](./traits-slg.html) for details.)
 
+<a name=query-response>
+
 The response to a trait query in rustc is typically a
 `Result<QueryResult<T>, NoSolution>` (where the `T` will vary a bit
 depending on the query itself). The `Err(NoSolution)` case indicates

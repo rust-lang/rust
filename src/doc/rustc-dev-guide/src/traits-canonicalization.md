@@ -2,7 +2,8 @@
 
 Canonicalization is the process of **isolating** an inference value
 from its context. It is a key part of implementing
-[canonical queries][cq].
+[canonical queries][cq], and you may wish to read the parent chapter
+to get more context.
 
 Canonicalization is really based on a very simple concept: every
 [inference variable](./type-inference.html#vars) is always in one of
@@ -33,6 +34,8 @@ the same answer. That answer will be expressed in terms of the
 canonical variables (`?0`, `?1`), which we can then map back to the
 original variables (`?T`, `?U`).
 
+## Canonicalizing the query
+
 To see how it works, imagine that we are asking to solve the following
 trait query: `?A: Foo<'static, ?B>`, where `?A` and `?B` are unbound.
 This query contains two unbound variables, but it also contains the
@@ -48,54 +51,174 @@ Sometimes we write this differently, like so:
     for<T,L,T> { ?0: Foo<'?1, ?2> }
     
 This `for<>` gives some information about each of the canonical
-variables within.  In this case, I am saying that `?0` is a type
-(`T`), `?1` is a lifetime (`L`), and `?2` is also a type (`T`). The
-`canonicalize` method *also* gives back a `CanonicalVarValues` array
-with the "original values" for each canonicalized variable:
+variables within.  In this case, each `T` indicates a type variable,
+so `?0` and `?2` are types; the `L` indicates a lifetime varibale, so
+`?1` is a lifetime. The `canonicalize` method *also* gives back a
+`CanonicalVarValues` array OV with the "original values" for each
+canonicalized variable:
 
     [?A, 'static, ?B]
+    
+We'll need this vector OV later, when we process the query response.
 
-Now we do the query and get back some result R. As part of that
-result, we'll have an array of values for the canonical inputs. For
-example, the canonical result might be:
+## Executing the query
+
+Once we've constructed the canonical query, we can try to solve it.
+To do so, we will wind up creating a fresh inference context and
+**instantiating** the canonical query in that context. The idea is that
+we create a substitution S from the canonical form containing a fresh
+inference variable (of suitable kind) for each canonical variable.
+So, for our example query:
+
+    for<T,L,T> { ?0: Foo<'?1, ?2> }
+
+the substitution S might be:
+
+    S = [?A, '?B, ?C]
+    
+We can then replace the bound canonical variables (`?0`, etc) with
+these inference variables, yielding the following fully instantiated
+query:
+
+    ?A: Foo<'?B, ?C>
+    
+Remember that substitution S though! We're going to need it later.
+
+OK, now that we have a fresh inference context and an instantiated
+query, we can go ahead and try to solve it. The trait solver itself is
+explained in more detail in [another section](./traits-slg.html), but
+suffice to say that it will compute a [certainty value][cqqr] (`Proven` or
+`Ambiguous`) and have side-effects on the inference variables we've
+created. For example, if there were only one impl of `Foo`, like so:
+
+[cqqr]: ./traits-canonical-queries.html#query-response
 
 ```
-for<?0, ?1> {
-    values = [ Vec<?0>, '1, ?0 ]
-                   ^^   ^^  ^^ these are variables in the result!
-    ...
-}
+impl<'a, X> Foo<'a, X> for Vec<X>
+where X: 'a
+{ ... }
 ```
 
-Note that this result is itself canonical and may include some
-variables (in this case, `?0`).
+then we might wind up with a certainty value of `Proven`, as well as
+creating fresh inference variables `'?D` and `?E` (to represent the
+parameters on the impl) and unifying as follows:
 
-What we want to do conceptually is to (a) instantiate each of the
-canonical variables in the result with a fresh inference variable
-and then (b) unify the values in the result with the original values.
-Doing step (a) would yield a result of
+- `'?B = '?D`
+- `?A = Vec<?E>`
+- `?C = ?E`
+
+We would also accumulate the region constraint `?E: '?D`, due to the
+where clause.
+
+In order to create our final query result, we have to "lift" these
+values out of the query's inference context and into something that
+can be reapplied in our original inference context. We do that by
+**re-applying canonicalization**, but to the **query result**.
+
+## Canonicalizing the query result
+
+As discussed in [the parent section][cqqr], most trait queries wind up
+with a result that brings together a "certainty value" `certainty`, a
+result substitution `var_values`, and some region constraints. To
+create this, we wind up re-using the substitution S that we created
+when first instantiating our query. To refresh your memory, we had a query
+
+    for<T,L,T> { ?0: Foo<'?1, ?2> }
+
+for which we made a substutition S:
+
+    S = [?A, '?B, ?C]
+    
+We then did some work which unified some of those variables with other things. If we
+"refresh" S with the latest results, we get:
+
+    S = [Vec<?E>, '?D, ?E]
+    
+These are precisely the new values for the three input variables from
+our original query. Note though that they include some new variables
+(like `?E`). We can make those go away by canonicalizing again! We don't
+just canonicalize S, though, we canonicalize the whole query response QR:
+
+    QR = {
+      certainty: Proven,             // or whatever
+      var_values: [Vec<?E>, '?D, ?E] // this is S
+      region_constraints: [?E: '?D], // from the impl
+      value: (),                     // for our purposes, just (), but 
+                                     // in some cases this might have
+                                     // a type or other info
+    }                                     
+
+The result would be as follows:
+
+    Canonical(QR) = for<T, L> {
+      certainty: Proven,
+      var_values: [Vec<?0>, '?1, ?2]
+      region_constraints: [?2: '?1],
+      value: (),
+    }                                     
+
+(One subtle point: when we canonicalize the query **result**, we do not
+use any special treatment for free lifetimes. Note that both
+references to `'?D`, for example, were converted into the same
+canonical variable (`?1`). This is in contrast to the original query,
+where we canonicalized every free lifetime into a fresh canonical
+variable.)
+
+Now, this result must be reapplied in each context where needed.
+
+## Processing the canonicalized query result
+
+In the previous section we produced a canonical query result. We now have
+to apply that result in our original context. If you recall, way back in the
+beginning, we were trying to prove this query:
+
+    ?A: Foo<'static, ?B>
+    
+We canonicalized that into this:
+
+    for<T,L,T> { ?0: Foo<'?1, ?2> }
+
+and now we got back a canonical response:
+
+    for<T, L> {
+      certainty: Proven,
+      var_values: [Vec<?0>, '?1, ?2]
+      region_constraints: [?2: '?1],
+      value: (),
+    }                                     
+
+We now want to apply that response to our context. Conceptually, how
+we do that is to (a) instantiate each of the canonical variables in
+the result with a fresh inference variable, (b) unify the values in
+the result with the original values, and then (c) record the region
+constraints for later. Doing step (a) would yield a result of
 
 ```
 {
-    values = [ Vec<?C>, '?X, ?C ]
-                   ^^   ^^^ fresh inference variables in `self`
-    ..
-}
+      certainty: Proven,
+      var_values: [Vec<?C>, '?D, ?C]
+                       ^^   ^^^ fresh inference variables
+      region_constraints: [?C: '?D],
+      value: (),
+}         
 ```
 
 Step (b) would then unify:
 
 ```
 ?A with Vec<?C>
-'static with '?X
+'static with '?D
 ?B with ?C
 ```
 
-(What we actually do is a mildly optimized variant of that: Rather
+And finally the region constraint of `?C: 'static` would be recorded
+for later verification.
+
+(What we *actually* do is a mildly optimized variant of that: Rather
 than eagerly instantiating all of the canonical values in the result
 with variables, we instead walk the vector of values, looking for
 cases where the value is just a canonical variable. In our example,
 `values[2]` is `?C`, so that we means we can deduce that `?C := ?B and
-`'?X := 'static`. This gives us a partial set of values. Anything for
+`'?D := 'static`. This gives us a partial set of values. Anything for
 which we do not find a value, we create an inference variable.)
 
