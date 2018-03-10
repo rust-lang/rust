@@ -921,10 +921,6 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
             }
         }
         if !type_param_bounds.is_empty() {
-            let shape = Shape {
-                indent: shape.indent.block_unindent(context.config),
-                ..shape
-            };
             result = rewrite_assign_rhs_with(
                 context,
                 result + ":",

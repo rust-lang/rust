@@ -126,3 +126,33 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         // ...
     }
 }
+
+// #2497
+fn handle_update<'a, Tab, Conn, R, C>(
+    executor: &Executor<PooledConnection<ConnectionManager<Conn>>>,
+    change_set: &'a C,
+) -> ExecutionResult
+where
+    &'a C: Identifiable + AsChangeset<Target = Tab> + HasTable<Table = Tab>,
+    <&'a C as AsChangeset>::Changeset: QueryFragment<Conn::Backend>,
+    Tab: Table + HasTable<Table = Tab>,
+    Tab::PrimaryKey: EqAll<<&'a C as Identifiable>::Id>,
+    Tab::FromClause: QueryFragment<Conn::Backend>,
+    Tab: FindDsl<<&'a C as Identifiable>::Id>,
+    Find<Tab, <&'a C as Identifiable>::Id>: IntoUpdateTarget<Table = Tab>,
+    <Find<Tab, <&'a C as Identifiable>::Id> as IntoUpdateTarget>::WhereClause:
+        QueryFragment<Conn::Backend>,
+    Tab::Query: FilterDsl<<Tab::PrimaryKey as EqAll<<&'a C as Identifiable>::Id>>::Output>,
+    Filter<Tab::Query, <Tab::PrimaryKey as EqAll<<&'a C as Identifiable>::Id>>::Output>: LimitDsl,
+    Limit<Filter<Tab::Query, <Tab::PrimaryKey as EqAll<<&'a C as Identifiable>::Id>>::Output>>:
+        QueryDsl
+            + BoxedDsl<
+                'a,
+                Conn::Backend,
+                Output = BoxedSelectStatement<'a, R::SqlType, Tab, Conn::Backend>,
+            >,
+    R: LoadingHandler<Conn, Table = Tab, SqlType = Tab::SqlType>
+        + GraphQLType<TypeInfo = (), Context = ()>,
+{
+    unimplemented!()
+}
