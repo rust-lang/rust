@@ -326,7 +326,7 @@ impl Build {
         let rls_info = channel::GitInfo::new(&config, &src.join("src/tools/rls"));
         let rustfmt_info = channel::GitInfo::new(&config, &src.join("src/tools/rustfmt"));
 
-        Build {
+        let mut build = Build {
             initial_rustc: config.initial_rustc.clone(),
             initial_cargo: config.initial_cargo.clone(),
             local_rebuild: config.local_rebuild,
@@ -357,7 +357,27 @@ impl Build {
             delayed_failures: RefCell::new(Vec::new()),
             prerelease_version: Cell::new(None),
             tool_artifacts: Default::default(),
+        };
+
+        build.verbose("finding compilers");
+        cc_detect::find(&mut build);
+        build.verbose("running sanity check");
+        sanity::check(&mut build);
+        // If local-rust is the same major.minor as the current version, then force a local-rebuild
+        let local_version_verbose = output(
+            Command::new(&build.initial_rustc).arg("--version").arg("--verbose"));
+        let local_release = local_version_verbose
+            .lines().filter(|x| x.starts_with("release:"))
+            .next().unwrap().trim_left_matches("release:").trim();
+        let my_version = channel::CFG_RELEASE_NUM;
+        if local_release.split('.').take(2).eq(my_version.split('.').take(2)) {
+            build.verbose(&format!("auto-detected local-rebuild {}", local_release));
+            build.local_rebuild = true;
         }
+        build.verbose("learning about cargo");
+        metadata::build(&mut build);
+
+        build
     }
 
     pub fn build_triple(&self) -> &[Interned<String>] {
@@ -375,24 +395,6 @@ impl Build {
         if let Subcommand::Clean { all } = self.config.cmd {
             return clean::clean(self, all);
         }
-
-        self.verbose("finding compilers");
-        cc_detect::find(self);
-        self.verbose("running sanity check");
-        sanity::check(self);
-        // If local-rust is the same major.minor as the current version, then force a local-rebuild
-        let local_version_verbose = output(
-            Command::new(&self.initial_rustc).arg("--version").arg("--verbose"));
-        let local_release = local_version_verbose
-            .lines().filter(|x| x.starts_with("release:"))
-            .next().unwrap().trim_left_matches("release:").trim();
-        let my_version = channel::CFG_RELEASE_NUM;
-        if local_release.split('.').take(2).eq(my_version.split('.').take(2)) {
-            self.verbose(&format!("auto-detected local-rebuild {}", local_release));
-            self.local_rebuild = true;
-        }
-        self.verbose("learning about cargo");
-        metadata::build(self);
 
         let builder = builder::Builder::new(&self);
         if let Some(path) = builder.paths.get(0) {
