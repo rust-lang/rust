@@ -31,10 +31,12 @@ LTO                     |  Link-Time Optimizations. A set of optimizations offer
 [LLVM]                  |  (actually not an acronym :P) an open-source compiler backend. It accepts LLVM IR and outputs native binaries. Various languages (e.g. Rust) can then implement a compiler front-end that output LLVM IR and use LLVM to compile to all the platforms LLVM supports.
 MIR                     |  the Mid-level IR that is created after type-checking for use by borrowck and trans ([see more](./mir.html))
 miri                    |  an interpreter for MIR used for constant evaluation ([see more](./miri.html))
+normalize               |  a general term for converting to a more canonical form, but in the case of rustc typically refers to [associated type normalization](./traits-associated-types.html#normalize)
 newtype                 |  a "newtype" is a wrapper around some other type (e.g., `struct Foo(T)` is a "newtype" for `T`). This is commonly used in Rust to give a stronger type for indices.
 NLL                     | [non-lexical lifetimes](./mir-regionck.html), an extension to Rust's borrowing system to make it be based on the control-flow graph.
 node-id or NodeId       |  an index identifying a particular node in the AST or HIR; gradually being phased out and replaced with `HirId`.
 obligation              |  something that must be proven by the trait system ([see more](trait-resolution.html))
+projection              |  a general term for a "relative path", e.g. `x.f` is a "field projection", and `T::Item` is an ["associated type projection"](./traits-goals-and-clauses.html#trait-ref)
 promoted constants      |  constants extracted from a function and lifted to static scope; see [this section](./mir.html#promoted) for more details.
 provider                |  the function that executes a query ([see more](query.html))
 quantified              |  in math or logic, existential and universal quantification are used to ask questions like "is there any type T for which is true?" or "is this true for all types T?"; see [the background chapter for more](./background.html#quantified)  
@@ -49,6 +51,7 @@ span                    |  a location in the user's source code, used for error 
 substs                  |  the substitutions for a given generic type or item (e.g. the `i32`, `u32` in `HashMap<i32, u32>`)
 tcx                     |  the "typing context", main data structure of the compiler ([see more](ty.html))
 'tcx                    |  the lifetime of the currently active inference context ([see more](ty.html))
+trait reference         |  the name of a trait along with a suitable set of input type/lifetimes ([see more](./traits-goals-and-clauses.html#trait-ref))
 token                   |  the smallest unit of parsing. Tokens are produced after lexing ([see more](the-parser.html)).
 [TLS]                   |  Thread-Local Storage. Variables may be defined so that each thread has its own copy (rather than all threads sharing the variable). This has some interactions with LLVM. Not all platforms support TLS.
 trans                   |  the code to translate MIR into LLVM IR.

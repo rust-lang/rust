@@ -43,6 +43,8 @@ The `tcx.infer_ctxt` method actually returns a builder, which means
 there are some kinds of configuration you can do before the `infcx` is
 created. See `InferCtxtBuilder` for more information.
 
+<a name=vars>
+
 ## Inference variables
 
 The main purpose of the inference context is to house a bunch of
