@@ -581,6 +581,7 @@ define_dep_nodes!( <'tcx>
     [] ImplDefaultness(DefId),
     [] CheckItemWellFormed(DefId),
     [] CheckTraitItemWellFormed(DefId),
+    [] CheckImplItemWellFormed(DefId),
     [] ReachableNonGenerics(CrateNum),
     [] NativeLibraries(CrateNum),
     [] PluginRegistrarFn(CrateNum),

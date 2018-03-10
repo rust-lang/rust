@@ -873,6 +873,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::ImplDefaultness => { force!(impl_defaultness, def_id!()); }
         DepKind::CheckItemWellFormed => { force!(check_item_well_formed, def_id!()); }
         DepKind::CheckTraitItemWellFormed => { force!(check_trait_item_well_formed, def_id!()); }
+        DepKind::CheckImplItemWellFormed => { force!(check_impl_item_well_formed, def_id!()); }
         DepKind::ReachableNonGenerics => { force!(reachable_non_generics, krate!()); }
         DepKind::NativeLibraries => { force!(native_libraries, krate!()); }
         DepKind::PluginRegistrarFn => { force!(plugin_registrar_fn, krate!()); }
