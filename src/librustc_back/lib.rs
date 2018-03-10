@@ -131,6 +131,7 @@ pub enum RelroLevel {
     Full,
     Partial,
     Off,
+    None,
 }
 
 impl RelroLevel {
@@ -139,6 +140,7 @@ impl RelroLevel {
             RelroLevel::Full => "full",
             RelroLevel::Partial => "partial",
             RelroLevel::Off => "off",
+            RelroLevel::None => "none",
         }
     }
 }
@@ -151,6 +153,7 @@ impl FromStr for RelroLevel {
             "full" => Ok(RelroLevel::Full),
             "partial" => Ok(RelroLevel::Partial),
             "off" => Ok(RelroLevel::Off),
+            "none" => Ok(RelroLevel::None),
             _ => Err(()),
         }
     }
@@ -162,6 +165,7 @@ impl ToJson for RelroLevel {
             RelroLevel::Full => "full".to_json(),
             RelroLevel::Partial => "partial".to_json(),
             RelroLevel::Off => "off".to_json(),
+            RelroLevel::None => "None".to_json(),
         }
     }
 }
