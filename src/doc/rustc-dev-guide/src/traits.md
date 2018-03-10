@@ -17,7 +17,7 @@ Trait solving is based around a few key ideas:
   Rust traits in terms of standard logical terms.
   - The [goals and clauses](./traits-goals-and-clauses.html) chapter
     describes the precise form of rules we use, and
-    [lowering rules](./lowering-rules.html) gives the complete set of
+    [lowering rules](./traits-lowering-rules.html) gives the complete set of
     lowering rules in a more reference-like form.
 - [Canonical queries](./traits-canonical-queries.html), which allow us
   to solve trait problems (like "is `Foo` implemented for the type
