@@ -394,7 +394,13 @@ impl Build {
         self.verbose("learning about cargo");
         metadata::build(self);
 
-        builder::Builder::run(&self);
+        let builder = builder::Builder::new(&self);
+        if let Some(path) = builder.paths.get(0) {
+            if path == Path::new("nonexistent/path/to/trigger/cargo/metadata") {
+                return;
+            }
+        }
+        builder.execute_cli();
 
         // Check for postponed failures from `test --no-fail-fast`.
         let failures = self.delayed_failures.borrow();

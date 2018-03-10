@@ -42,6 +42,7 @@ pub struct Builder<'a> {
     cache: Cache,
     stack: RefCell<Vec<Box<Any>>>,
     time_spent_on_dependencies: Cell<Duration>,
+    pub paths: Vec<PathBuf>,
 }
 
 impl<'a> Deref for Builder<'a> {
@@ -351,6 +352,7 @@ impl<'a> Builder<'a> {
             cache: Cache::new(),
             stack: RefCell::new(Vec::new()),
             time_spent_on_dependencies: Cell::new(Duration::new(0, 0)),
+            paths: vec![],
         };
 
         let builder = &builder;
@@ -367,7 +369,7 @@ impl<'a> Builder<'a> {
         Some(help)
     }
 
-    pub fn run(build: &Build) {
+    pub fn new(build: &Build) -> Builder {
         let (kind, paths) = match build.config.cmd {
             Subcommand::Build { ref paths } => (Kind::Build, &paths[..]),
             Subcommand::Check { ref paths } => (Kind::Check, &paths[..]),
@@ -379,12 +381,6 @@ impl<'a> Builder<'a> {
             Subcommand::Clean { .. } => panic!(),
         };
 
-        if let Some(path) = paths.get(0) {
-            if path == Path::new("nonexistent/path/to/trigger/cargo/metadata") {
-                return;
-            }
-        }
-
         let builder = Builder {
             build,
             top_stage: build.config.stage.unwrap_or(2),
@@ -392,15 +388,20 @@ impl<'a> Builder<'a> {
             cache: Cache::new(),
             stack: RefCell::new(Vec::new()),
             time_spent_on_dependencies: Cell::new(Duration::new(0, 0)),
+            paths: paths.to_owned(),
         };
 
         if kind == Kind::Dist {
-            assert!(!build.config.test_miri, "Do not distribute with miri enabled.\n\
+            assert!(!builder.config.test_miri, "Do not distribute with miri enabled.\n\
                 The distributed libraries would include all MIR (increasing binary size).
                 The distributed MIR would include validation statements.");
         }
 
-        StepDescription::run(&Builder::get_step_descriptions(builder.kind), &builder, paths);
+        builder
+    }
+
+    pub fn execute_cli(&self) {
+        StepDescription::run(&Builder::get_step_descriptions(self.kind), self, &self.paths);
     }
 
     pub fn default_doc(&self, paths: Option<&[PathBuf]>) {
