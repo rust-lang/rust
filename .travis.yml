@@ -275,11 +275,12 @@ after_failure:
   - ls -lat $HOME/Library/Logs/DiagnosticReports/
   - find $HOME/Library/Logs/DiagnosticReports
       -type f
+      -name '*.crash'
       -not -name '*.stage2-*.crash'
       -not -name 'com.apple.CoreSimulator.CoreSimulatorService-*.crash'
       -exec printf travis_fold":start:crashlog\n\033[31;1m%s\033[0m\n" {} \;
       -exec head -750 {} \;
-      -exec echo travis_fold":"end:crashlog \;
+      -exec echo travis_fold":"end:crashlog \; || true
 
   # attempt to debug anything killed by the oom killer on linux, just to see if
   # it happened
