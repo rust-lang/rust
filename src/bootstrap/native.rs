@@ -60,6 +60,9 @@ impl Step for Llvm {
 
     /// Compile LLVM for `target`.
     fn run(self, builder: &Builder) -> PathBuf {
+        if cfg!(test) {
+            return PathBuf::from("llvm-config-test-generated");
+        }
         let build = builder.build;
         let target = self.target;
         let emscripten = self.emscripten;
@@ -336,6 +339,9 @@ impl Step for Lld {
 
     /// Compile LLVM for `target`.
     fn run(self, builder: &Builder) -> PathBuf {
+        if cfg!(test) {
+            return PathBuf::from("lld-out-dir-test-gen");
+        }
         let target = self.target;
         let build = builder.build;
 
@@ -389,6 +395,9 @@ impl Step for TestHelpers {
     /// Compiles the `rust_test_helpers.c` library which we used in various
     /// `run-pass` test suites for ABI testing.
     fn run(self, builder: &Builder) {
+        if cfg!(test) {
+            return;
+        }
         let build = builder.build;
         let target = self.target;
         let dst = build.test_helpers_out(target);
@@ -441,6 +450,9 @@ impl Step for Openssl {
     }
 
     fn run(self, builder: &Builder) {
+        if cfg!(test) {
+            return;
+        }
         let build = builder.build;
         let target = self.target;
         let out = match build.openssl_dir(target) {

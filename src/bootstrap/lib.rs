@@ -363,16 +363,19 @@ impl Build {
         cc_detect::find(&mut build);
         build.verbose("running sanity check");
         sanity::check(&mut build);
-        // If local-rust is the same major.minor as the current version, then force a local-rebuild
-        let local_version_verbose = output(
-            Command::new(&build.initial_rustc).arg("--version").arg("--verbose"));
-        let local_release = local_version_verbose
-            .lines().filter(|x| x.starts_with("release:"))
-            .next().unwrap().trim_left_matches("release:").trim();
-        let my_version = channel::CFG_RELEASE_NUM;
-        if local_release.split('.').take(2).eq(my_version.split('.').take(2)) {
-            build.verbose(&format!("auto-detected local-rebuild {}", local_release));
-            build.local_rebuild = true;
+        if !cfg!(test) {
+            // If local-rust is the same major.minor as the current version, then force a
+            // local-rebuild
+            let local_version_verbose = output(
+                Command::new(&build.initial_rustc).arg("--version").arg("--verbose"));
+            let local_release = local_version_verbose
+                .lines().filter(|x| x.starts_with("release:"))
+                .next().unwrap().trim_left_matches("release:").trim();
+            let my_version = channel::CFG_RELEASE_NUM;
+            if local_release.split('.').take(2).eq(my_version.split('.').take(2)) {
+                build.verbose(&format!("auto-detected local-rebuild {}", local_release));
+                build.local_rebuild = true;
+            }
         }
         build.verbose("learning about cargo");
         metadata::build(&mut build);
@@ -419,6 +422,7 @@ impl Build {
     ///
     /// After this executes, it will also ensure that `dir` exists.
     fn clear_if_dirty(&self, dir: &Path, input: &Path) -> bool {
+        if cfg!(test) { return true; }
         let stamp = dir.join(".stamp");
         let mut cleared = false;
         if mtime(&stamp) < mtime(input) {
@@ -593,12 +597,14 @@ impl Build {
 
     /// Runs a command, printing out nice contextual information if it fails.
     fn run(&self, cmd: &mut Command) {
+        if cfg!(test) { return; }
         self.verbose(&format!("running: {:?}", cmd));
         run_silent(cmd)
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
     fn run_quiet(&self, cmd: &mut Command) {
+        if cfg!(test) { return; }
         self.verbose(&format!("running: {:?}", cmd));
         run_suppressed(cmd)
     }
@@ -607,6 +613,7 @@ impl Build {
     /// Exits if the command failed to execute at all, otherwise returns its
     /// `status.success()`.
     fn try_run(&self, cmd: &mut Command) -> bool {
+        if cfg!(test) { return true; }
         self.verbose(&format!("running: {:?}", cmd));
         try_run_silent(cmd)
     }
@@ -615,6 +622,7 @@ impl Build {
     /// Exits if the command failed to execute at all, otherwise returns its
     /// `status.success()`.
     fn try_run_quiet(&self, cmd: &mut Command) -> bool {
+        if cfg!(test) { return true; }
         self.verbose(&format!("running: {:?}", cmd));
         try_run_suppressed(cmd)
     }
@@ -685,6 +693,7 @@ impl Build {
 
     /// Returns the path to the linker for the given target if it needs to be overridden.
     fn linker(&self, target: Interned<String>) -> Option<&Path> {
+        if cfg!(test) { return None; }
         if let Some(linker) = self.config.target_config.get(&target)
                                                        .and_then(|c| c.linker.as_ref()) {
             Some(linker)

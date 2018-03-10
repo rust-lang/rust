@@ -199,7 +199,11 @@ impl Step for ToolBuild {
 
         if !is_expected {
             if !is_ext_tool {
-                exit(1);
+                if cfg!(test) {
+                    panic!("unexpected failure -- would have hard exited");
+                } else {
+                    exit(1);
+                }
             } else {
                 return None;
             }

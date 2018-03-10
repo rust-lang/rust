@@ -687,7 +687,7 @@ impl<'a> Builder<'a> {
         // the options through environment variables that are fetched and understood by both.
         //
         // FIXME: the guard against msvc shouldn't need to be here
-        if !target.contains("msvc") {
+        if !target.contains("msvc") && !cfg!(test) {
             let ccache = self.config.ccache.as_ref();
             let ccacheify = |s: &Path| {
                 let ccache = match ccache {

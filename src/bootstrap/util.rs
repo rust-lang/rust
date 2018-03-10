@@ -34,6 +34,7 @@ pub fn staticlib(name: &str, target: &str) -> String {
 
 /// Copies a file from `src` to `dst`
 pub fn copy(src: &Path, dst: &Path) {
+    if cfg!(test) { return; }
     let _ = fs::remove_file(&dst);
     // Attempt to "easy copy" by creating a hard link (symlinks don't work on
     // windows), but if that fails just fall back to a slow `copy` operation.
@@ -66,6 +67,7 @@ pub fn replace_in_file(path: &Path, replacements: &[(&str, &str)]) {
 }
 
 pub fn read_stamp_file(stamp: &Path) -> Vec<PathBuf> {
+    if cfg!(test) { return vec![]; }
     let mut paths = Vec::new();
     let mut contents = Vec::new();
     t!(t!(File::open(stamp)).read_to_end(&mut contents));
@@ -215,6 +217,7 @@ impl Drop for TimeIt {
 /// Symlinks two directories, using junctions on Windows and normal symlinks on
 /// Unix.
 pub fn symlink_dir(src: &Path, dest: &Path) -> io::Result<()> {
+    if cfg!(test) { return Ok(()); }
     let _ = fs::remove_dir(dest);
     return symlink_dir_inner(src, dest);
 

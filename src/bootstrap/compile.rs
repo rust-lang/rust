@@ -690,6 +690,9 @@ impl Step for CodegenBackend {
                               cargo.arg("--features").arg(features),
                               &tmp_stamp,
                               false);
+        if cfg!(test) {
+            return;
+        }
         let mut files = files.into_iter()
             .filter(|f| {
                 let filename = f.file_name().unwrap().to_str().unwrap();
@@ -719,6 +722,7 @@ impl Step for CodegenBackend {
 fn copy_codegen_backends_to_sysroot(builder: &Builder,
                                     compiler: Compiler,
                                     target_compiler: Compiler) {
+    if cfg!(test) { return; }
     let build = builder.build;
     let target = target_compiler.host;
 
