@@ -1,106 +1,72 @@
-//! Run-time feature detection
+//! This module implements run-time feature detection.
+//!
+//! The `is_{arch}_feature_detected!("feature-name")` macros take the name of a
+//! feature as a string-literal, and return a boolean indicating whether the
+//! feature is enabled at run-time or not.
+//!
+//! These macros do two things:
+//! * map the string-literal into an integer stored as a `Feature` enum,
+//! * call a `os::check_for(x: Feature)` function that returns `true` if the
+//! feature is enabled.
+//!
+//! The `Feature` enums are also implemented in the `arch/{target_arch}.rs`
+//! modules.
+//!
+//! The `check_for` functions are, in general, Operating System dependent. Most
+//! architectures do not allow user-space programs to query the feature bits
+//! due to security concerns (x86 is the big exception). These functions are
+//! implemented in the `os/{target_os}.rs` modules.
 
-mod cache;
-mod bit;
+#[macro_use]
+mod error_macros;
 
 cfg_if! {
     if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
-        #[path = "x86.rs"]
+        #[path = "arch/x86.rs"]
+        #[macro_use]
         mod arch;
     } else if #[cfg(target_arch = "arm")] {
-        #[path = "arm.rs"]
+        #[path = "arch/arm.rs"]
+        #[macro_use]
         mod arch;
     } else if #[cfg(target_arch = "aarch64")] {
-        #[path = "aarch64.rs"]
+        #[path = "arch/aarch64.rs"]
+        #[macro_use]
         mod arch;
     } else if #[cfg(target_arch = "powerpc64")] {
-        #[path = "powerpc64.rs"]
+        #[path = "arch/powerpc64.rs"]
+        #[macro_use]
+        mod arch;
+    } else if #[cfg(target_arch = "mips")] {
+        #[path = "arch/mips.rs"]
+        #[macro_use]
+        mod arch;
+    } else if #[cfg(target_arch = "mips64")] {
+        #[path = "arch/mips64.rs"]
+        #[macro_use]
         mod arch;
     } else {
+        // Unimplemented architecture:
         mod arch {
             pub enum Feature {
                 Null
             }
-            pub fn detect_features() -> super::cache::Initializer {
-                Default::default()
-            }
         }
     }
 }
-
-mod linux;
-
 pub use self::arch::Feature;
 
-/// Performs run-time feature detection.
-pub fn check_for(x: Feature) -> bool {
-    cache::test(x as u32, arch::detect_features)
-}
-
-#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-#[macro_export]
-#[unstable(feature = "stdsimd", issue = "0")]
-macro_rules! is_x86_feature_detected {
-    ($t:tt) => {
-        compile_error!(r#"
-is_x86_feature_detected can only be used on x86 and x86_64 targets.
-You can prevent it from being used in other architectures by
-guarding it behind a cfg(target_arch) as follows:
-
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
-        if is_x86_feature_detected(...) { ... }
+cfg_if! {
+    if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
+        // On x86/x86_64 no OS specific functionality is required.
+        #[path = "os/x86.rs"]
+        mod os;
+    } else if #[cfg(target_os = "linux")] {
+        #[path = "os/linux/mod.rs"]
+        mod os;
+    } else {
+        #[path = "os/other.rs"]
+        mod os;
     }
-"#)
-    };
 }
-
-#[cfg(not(target_arch = "arm"))]
-#[macro_export]
-#[unstable(feature = "stdsimd", issue = "0")]
-macro_rules! is_arm_feature_detected {
-    ($t:tt) => {
-        compile_error!(r#"
-is_arm_feature_detected can only be used on ARM targets.
-You can prevent it from being used in other architectures by
-guarding it behind a cfg(target_arch) as follows:
-
-    #[cfg(target_arch = "arm")] {
-        if is_arm_feature_detected(...) { ... }
-    }
-"#)
-    };
-}
-
-#[cfg(not(target_arch = "aarch64"))]
-#[macro_export]
-#[unstable(feature = "stdsimd", issue = "0")]
-macro_rules! is_aarch64_feature_detected {
-    ($t:tt) => {
-        compile_error!(r#"
-is_aarch64_feature_detected can only be used on AArch64 targets.
-You can prevent it from being used in other architectures by
-guarding it behind a cfg(target_arch) as follows:
-
-    #[cfg(target_arch = "aarch64")] {
-        if is_aarch64_feature_detected(...) { ... }
-    }
-"#)
-    };
-}
-
-#[cfg(not(target_arch = "powerpc64"))]
-#[macro_export]
-#[unstable(feature = "stdsimd", issue = "0")]
-macro_rules! is_powerpc64_feature_detected {
-    ($t:tt) => {
-        compile_error!(r#"
-is_powerpc64_feature_detected can only be used on PowerPC64 targets.
-You can prevent it from being used in other architectures by
-guarding it behind a cfg(target_arch) as follows:
-
-    #[cfg(target_arch = "powerpc64")] {
-        if is_powerpc64_feature_detected(...) { ... }
-    }
-"#)
-    };
-}
+pub use self::os::check_for;

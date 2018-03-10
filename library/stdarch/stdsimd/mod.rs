@@ -188,11 +188,15 @@
 /// * [`x86_64`]
 /// * [`arm`]
 /// * [`aarch64`]
+/// * [`mips`]
+/// * [`mips64`]
 ///
 /// [`x86`]: https://rust-lang-nursery.github.io/stdsimd/i686/stdsimd/arch/x86/index.html
 /// [`x86_64`]: https://rust-lang-nursery.github.io/stdsimd/x86_64/stdsimd/arch/x86_64/index.html
 /// [`arm`]: https://rust-lang-nursery.github.io/stdsimd/arm/stdsimd/arch/arm/index.html
 /// [`aarch64`]: https://rust-lang-nursery.github.io/stdsimd/aarch64/stdsimd/arch/aarch64/index.html
+/// [`mips`]: https://rust-lang-nursery.github.io/stdsimd/aarch64/stdsimd/arch/mips/index.html
+/// [`mips64`]: https://rust-lang-nursery.github.io/stdsimd/aarch64/stdsimd/arch/mips64/index.html
 ///
 /// # Examples
 ///
@@ -356,6 +360,12 @@ pub mod arch {
     #[cfg(target_arch = "wasm32")]
     pub use coresimd::arch::wasm32;
 
+    #[cfg(all(not(dox), target_arch = "mips"))]
+    pub use coresimd::arch::mips;
+
+    #[cfg(all(not(dox), target_arch = "mips64"))]
+    pub use coresimd::arch::mips64;
+
     #[doc(hidden)] // unstable implementation detail
     pub mod detect;
 
@@ -402,6 +412,28 @@ pub mod arch {
     #[cfg(dox)]
     #[doc(cfg(target_arch = "aarch64"))]
     pub mod aarch64 {}
+
+    /// Platform-specific intrinsics for the `mips` platform.
+    ///
+    /// The documentation with the full listing of `mips` intrinsics is
+    /// available in [libcore], but the module is re-exported here in std
+    /// as well.
+    ///
+    /// [libcore]: ../../../core/arch/mips/index.html
+    #[cfg(dox)]
+    #[doc(cfg(target_arch = "mips"))]
+    pub mod mips {}
+
+    /// Platform-specific intrinsics for the `mips64` platform.
+    ///
+    /// The documentation with the full listing of `mips64` intrinsics is
+    /// available in [libcore], but the module is re-exported here in std
+    /// as well.
+    ///
+    /// [libcore]: ../../../core/arch/mips64/index.html
+    #[cfg(dox)]
+    #[doc(cfg(target_arch = "mips64"))]
+    pub mod mips64 {}
 }
 
 #[unstable(feature = "stdsimd", issue = "0")]

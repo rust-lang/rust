@@ -29,6 +29,9 @@ mod stdsimd;
 
 pub use stdsimd::*;
 
+#[allow(unused_imports)]
 use _std::prelude;
+#[allow(unused_imports)]
 use _std::fs;
+#[allow(unused_imports)]
 use _std::io;

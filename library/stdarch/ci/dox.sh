@@ -42,6 +42,8 @@ dox arm armv7-unknown-linux-gnueabihf
 dox aarch64 aarch64-unknown-linux-gnu
 dox powerpc powerpc-unknown-linux-gnu
 dox powerpc64 powerpc64-unknown-linux-gnu
+dox mips mips-unknown-linux-gnu
+dox mips64 mips64-unknown-linux-gnuabi64
 
 # If we're on travis, not a PR, and on the right branch, publish!
 if [ "$TRAVIS_PULL_REQUEST" = "false" ] && [ "$TRAVIS_BRANCH" = "master" ]; then

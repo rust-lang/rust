@@ -12,6 +12,10 @@ matrix:
     - env: TARGET=arm-unknown-linux-gnueabihf
     - env: TARGET=armv7-unknown-linux-gnueabihf
     - env: TARGET=aarch64-unknown-linux-gnu
+    - env: TARGET=mips-unknown-linux-gnu NORUN=1
+    - env: TARGET=mipsel-unknown-linux-gnu NORUN=1
+    - env: TARGET=mips64-unknown-linux-gnuabi64 NORUN=1
+    - env: TARGET=mips64el-unknown-linux-gnuabi64 NORUN=1
     - env: TARGET=powerpc-unknown-linux-gnu
     - env: TARGET=powerpc64-unknown-linux-gnu
     - env: TARGET=powerpc64le-unknown-linux-gnu
@@ -21,11 +25,6 @@ matrix:
     - os: osx
       env: TARGET=x86_64-apple-darwin NO_ADD=1
       script: ci/run.sh
-    - env: DOCUMENTATION
-      install: true
-      script: ci/dox.sh
-    - script: cargo test --manifest-path crates/stdsimd-verify/Cargo.toml
-      install: true
     - env: TARGET=wasm32-unknown-unknown
       before_script:
         - git clone --recursive https://github.com/WebAssembly/wabt
@@ -39,6 +38,11 @@ matrix:
         - cat wasm.wat
         - grep current_memory wasm.wat
         - grep grow_memory wasm.wat
+    - env: DOCUMENTATION
+      install: true
+      script: ci/dox.sh
+    - script: cargo test --manifest-path crates/stdsimd-verify/Cargo.toml
+      install: true
     - env: RUSTFMT=On TARGET=x86_64-unknown-linux-gnu NO_ADD=1
       before_script:
       - rustup component add rustfmt-preview
@@ -60,7 +64,13 @@ install:
 
 script:
   - cargo generate-lockfile
-  - ci/run-docker.sh $TARGET $FEATURES
+  - |
+    if [ "$NORUN" == "1" ]; then
+      cargo build --target=$TARGET -p coresimd -p stdsimd --manifest-path crates/stdsimd/Cargo.toml
+      cargo build --release --target=$TARGET -p coresimd -p stdsimd --manifest-path crates/stdsimd/Cargo.toml
+    else
+      ci/run-docker.sh $TARGET $FEATURES
+    fi
 
 notifications:
   email:

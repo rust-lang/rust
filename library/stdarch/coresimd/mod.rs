@@ -29,11 +29,15 @@ pub mod simd {
 /// * [`x86_64`]
 /// * [`arm`]
 /// * [`aarch64`]
+/// * [`mips`]
+/// * [`mips64`]
 ///
 /// [`x86`]: https://rust-lang-nursery.github.io/stdsimd/x86/stdsimd/arch/index.html
 /// [`x86_64`]: https://rust-lang-nursery.github.io/stdsimd/x86_64/stdsimd/arch/index.html
 /// [`arm`]: https://rust-lang-nursery.github.io/stdsimd/arm/stdsimd/arch/index.html
 /// [`aarch64`]: https://rust-lang-nursery.github.io/stdsimd/aarch64/stdsimd/arch/index.html
+/// [`mips`]: https://rust-lang-nursery.github.io/stdsimd/mips/stdsimd/arch/index.html
+/// [`mips64`]: https://rust-lang-nursery.github.io/stdsimd/mips64/stdsimd/arch/index.html
 #[unstable(feature = "stdsimd", issue = "0")]
 pub mod arch {
     /// Platform-specific intrinsics for the `x86` platform.
@@ -81,6 +85,24 @@ pub mod arch {
     pub mod wasm32 {
         pub use coresimd::wasm32::*;
     }
+
+    /// Platform-specific intrinsics for the `mips` platform.
+    ///
+    /// See the [module documentation](../index.html) for more details.
+    #[cfg(any(target_arch = "mips", dox))]
+    #[doc(cfg(target_arch = "mips"))]
+    pub mod mips {
+        pub use coresimd::mips::*;
+    }
+
+    /// Platform-specific intrinsics for the `mips64` platform.
+    ///
+    /// See the [module documentation](../index.html) for more details.
+    #[cfg(any(target_arch = "mips64", dox))]
+    #[doc(cfg(target_arch = "mips64"))]
+    pub mod mips64 {
+        pub use coresimd::mips::*;
+    }
 }
 
 mod simd_llvm;
@@ -96,5 +118,8 @@ mod arm;
 mod aarch64;
 #[cfg(target_arch = "wasm32")]
 mod wasm32;
+
+#[cfg(any(target_arch = "mips", target_arch = "mips64", dox))]
+mod mips;
 
 mod nvptx;
