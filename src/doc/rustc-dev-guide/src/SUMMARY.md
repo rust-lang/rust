@@ -21,7 +21,7 @@
     - [Higher-ranked trait bounds](./trait-hrtb.md)
     - [Caching subtleties](./trait-caching.md)
     - [Specialization](./trait-specialization.md)
-- [Trait solving (new-style)](./traits.md)    
+- [Trait solving (new-style)](./traits.md)
     - [Lowering to logic](./traits-lowering-to-logic.md)
       - [Goals and clauses](./traits-goals-and-clauses.md)
       - [Equality and associated types](./traits-associated-types.md)
