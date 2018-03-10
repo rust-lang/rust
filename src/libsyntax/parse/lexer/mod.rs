@@ -14,7 +14,7 @@ use codemap::{CodeMap, FilePathMapping};
 use errors::{FatalError, DiagnosticBuilder};
 use parse::{token, ParseSess};
 use str::char_at;
-use symbol::Symbol;
+use symbol::{Symbol, keywords};
 use std_unicode::property::Pattern_White_Space;
 
 use std::borrow::Cow;
@@ -1115,26 +1115,49 @@ impl<'a> StringReader<'a> {
     /// token, and updates the interner
     fn next_token_inner(&mut self) -> Result<token::Token, ()> {
         let c = self.ch;
-        if ident_start(c) &&
-           match (c.unwrap(), self.nextch(), self.nextnextch()) {
-            // Note: r as in r" or r#" is part of a raw string literal,
-            // b as in b' is part of a byte literal.
-            // They are not identifiers, and are handled further down.
-            ('r', Some('"'), _) |
-            ('r', Some('#'), _) |
-            ('b', Some('"'), _) |
-            ('b', Some('\''), _) |
-            ('b', Some('r'), Some('"')) |
-            ('b', Some('r'), Some('#')) => false,
-            _ => true,
-        } {
-            let start = self.pos;
-            while ident_continue(self.ch) {
-                self.bump();
-            }
 
-            // FIXME: perform NFKC normalization here. (Issue #2253)
-            return Ok(self.with_str_from(start, |string| token::Ident(self.mk_ident(string))));
+        if ident_start(c) {
+            let (is_ident_start, is_raw_ident) =
+                match (c.unwrap(), self.nextch(), self.nextnextch()) {
+                    // r# followed by an identifier starter is a raw identifier.
+                    // This is an exception to the r# case below.
+                    ('r', Some('#'), x) if ident_start(x) => (true, true),
+                    // r as in r" or r#" is part of a raw string literal.
+                    // b as in b' is part of a byte literal.
+                    // They are not identifiers, and are handled further down.
+                    ('r', Some('"'), _) |
+                    ('r', Some('#'), _) |
+                    ('b', Some('"'), _) |
+                    ('b', Some('\''), _) |
+                    ('b', Some('r'), Some('"')) |
+                    ('b', Some('r'), Some('#')) => (false, false),
+                    _ => (true, false),
+                };
+            if is_ident_start {
+                let raw_start = self.pos;
+                if is_raw_ident {
+                    // Consume the 'r#' characters.
+                    self.bump();
+                    self.bump();
+                }
+
+                let start = self.pos;
+                while ident_continue(self.ch) {
+                    self.bump();
+                }
+
+                return Ok(self.with_str_from(start, |string| {
+                    // FIXME: perform NFKC normalization here. (Issue #2253)
+                    let ident = self.mk_ident(string);
+                    if is_raw_ident && (token::is_path_segment_keyword(ident) ||
+                                        ident.name == keywords::Underscore.name()) {
+                        self.fatal_span_(raw_start, self.pos,
+                            &format!("`r#{}` is not currently supported.", ident.name)
+                        ).raise();
+                    }
+                    token::Ident(ident, is_raw_ident)
+                }));
+            }
         }
 
         if is_dec_digit(c) {
@@ -1801,7 +1824,7 @@ mod tests {
             assert_eq!(string_reader.next_token().tok, token::Whitespace);
             let tok1 = string_reader.next_token();
             let tok2 = TokenAndSpan {
-                tok: token::Ident(id),
+                tok: token::Ident(id, false),
                 sp: Span::new(BytePos(21), BytePos(23), NO_EXPANSION),
             };
             assert_eq!(tok1, tok2);
@@ -1811,7 +1834,7 @@ mod tests {
             // read another token:
             let tok3 = string_reader.next_token();
             let tok4 = TokenAndSpan {
-                tok: token::Ident(Ident::from_str("main")),
+                tok: mk_ident("main"),
                 sp: Span::new(BytePos(24), BytePos(28), NO_EXPANSION),
             };
             assert_eq!(tok3, tok4);
@@ -1830,7 +1853,7 @@ mod tests {
 
     // make the identifier by looking up the string in the interner
     fn mk_ident(id: &str) -> token::Token {
-        token::Ident(Ident::from_str(id))
+        token::Token::from_ast_ident(Ident::from_str(id))
     }
 
     #[test]

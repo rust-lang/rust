@@ -625,7 +625,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                         } else {
                             Some(self.resolve_crate_root(source.ctxt.modern(), false))
                         }
-                    } else if is_extern && !token::Ident(source).is_path_segment_keyword() {
+                    } else if is_extern && !token::is_path_segment_keyword(source) {
                         let crate_id =
                             self.crate_loader.resolve_crate_from_path(source.name, directive.span);
                         let crate_root =
@@ -667,7 +667,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             }
             PathResult::Failed(span, msg, true) => {
                 let (mut self_path, mut self_result) = (module_path.clone(), None);
-                let is_special = |ident| token::Ident(ident).is_path_segment_keyword() &&
+                let is_special = |ident| token::is_path_segment_keyword(ident) &&
                                          ident.name != keywords::CrateRoot.name();
                 if !self_path.is_empty() && !is_special(self_path[0].node) &&
                    !(self_path.len() > 1 && is_special(self_path[1].node)) {

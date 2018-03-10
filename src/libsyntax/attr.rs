@@ -1106,7 +1106,8 @@ impl IntType {
 
 impl MetaItem {
     fn tokens(&self) -> TokenStream {
-        let ident = TokenTree::Token(self.span, Token::Ident(Ident::with_empty_ctxt(self.name)));
+        let ident = TokenTree::Token(self.span,
+                                     Token::from_ast_ident(Ident::with_empty_ctxt(self.name)));
         TokenStream::concat(vec![ident.into(), self.node.tokens(self.span)])
     }
 
@@ -1114,9 +1115,9 @@ impl MetaItem {
         where I: Iterator<Item = TokenTree>,
     {
         let (span, name) = match tokens.next() {
-            Some(TokenTree::Token(span, Token::Ident(ident))) => (span, ident.name),
+            Some(TokenTree::Token(span, Token::Ident(ident, _))) => (span, ident.name),
             Some(TokenTree::Token(_, Token::Interpolated(ref nt))) => match nt.0 {
-                token::Nonterminal::NtIdent(ident) => (ident.span, ident.node.name),
+                token::Nonterminal::NtIdent(ident, _) => (ident.span, ident.node.name),
                 token::Nonterminal::NtMeta(ref meta) => return Some(meta.clone()),
                 _ => return None,
             },
@@ -1269,14 +1270,14 @@ impl LitKind {
                 "true"
             } else {
                 "false"
-            }))),
+            })), false),
         }
     }
 
     fn from_token(token: Token) -> Option<LitKind> {
         match token {
-            Token::Ident(ident) if ident.name == "true" => Some(LitKind::Bool(true)),
-            Token::Ident(ident) if ident.name == "false" => Some(LitKind::Bool(false)),
+            Token::Ident(ident, false) if ident.name == "true" => Some(LitKind::Bool(true)),
+            Token::Ident(ident, false) if ident.name == "false" => Some(LitKind::Bool(false)),
             Token::Interpolated(ref nt) => match nt.0 {
                 token::NtExpr(ref v) => match v.node {
                     ExprKind::Lit(ref lit) => Some(lit.node.clone()),

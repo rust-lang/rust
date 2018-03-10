@@ -681,7 +681,8 @@ impl TokenTree {
             Dollar => op!('$'),
             Question => op!('?'),
 
-            Ident(ident) | Lifetime(ident) => TokenNode::Term(Term(ident.name)),
+            Ident(ident, false) | Lifetime(ident) => TokenNode::Term(Term(ident.name)),
+            Ident(ident, true) => TokenNode::Term(Term(Symbol::intern(&format!("r#{}", ident)))),
             Literal(..) | DocComment(..) => TokenNode::Literal(self::Literal(token)),
 
             Interpolated(_) => {
@@ -713,8 +714,14 @@ impl TokenTree {
             },
             TokenNode::Term(symbol) => {
                 let ident = ast::Ident { name: symbol.0, ctxt: self.span.0.ctxt() };
+                let sym_str = symbol.0.as_str();
                 let token =
-                    if symbol.0.as_str().starts_with("'") { Lifetime(ident) } else { Ident(ident) };
+                    if sym_str.starts_with("'") { Lifetime(ident) }
+                    else if sym_str.starts_with("r#") {
+                        let name = Symbol::intern(&sym_str[2..]);
+                        let ident = ast::Ident { name, ctxt: self.span.0.ctxt() };
+                        Ident(ident, true)
+                    } else { Ident(ident, false) };
                 return TokenTree::Token(self.span.0, token).into();
             }
             TokenNode::Literal(token) => return TokenTree::Token(self.span.0, token.0).into(),

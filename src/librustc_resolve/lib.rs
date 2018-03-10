@@ -3206,7 +3206,7 @@ impl<'a> Resolver<'a> {
                     // `$crate::a::b`
                     module = Some(self.resolve_crate_root(ident.node.ctxt, true));
                     continue
-                } else if i == 1 && !token::Ident(ident.node).is_path_segment_keyword() {
+                } else if i == 1 && !token::is_path_segment_keyword(ident.node) {
                     let prev_name = path[0].node.name;
                     if prev_name == keywords::Extern.name() ||
                        prev_name == keywords::CrateRoot.name() &&

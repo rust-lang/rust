@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,6 +10,16 @@
 
 // compile-flags: -Z parse-only
 
-static s: &'static str =
-    r#~"#"~# //~ ERROR found invalid character; only `#` is allowed in raw string delimitation
-;
+#![feature(dyn_trait)]
+
+fn test_if() {
+    r#if true { } //~ ERROR found `true`
+}
+
+fn test_struct() {
+    r#struct Test; //~ ERROR found `Test`
+}
+
+fn test_union() {
+    r#union Test; //~ ERROR found `Test`
+}

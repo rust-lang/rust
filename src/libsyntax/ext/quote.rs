@@ -75,7 +75,7 @@ pub mod rt {
 
     impl ToTokens for ast::Ident {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
-            vec![TokenTree::Token(DUMMY_SP, token::Ident(*self))]
+            vec![TokenTree::Token(DUMMY_SP, Token::from_ast_ident(*self))]
         }
     }
 
@@ -238,7 +238,8 @@ pub mod rt {
                 if i > 0 {
                     inner.push(TokenTree::Token(self.span, token::Colon).into());
                 }
-                inner.push(TokenTree::Token(self.span, token::Ident(segment.identifier)).into());
+                inner.push(TokenTree::Token(self.span,
+                                            token::Ident(segment.identifier, false)).into());
             }
             inner.push(self.tokens.clone());
 
@@ -658,10 +659,10 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
         token::Literal(token::ByteStr(i), suf) => return mk_lit!("ByteStr", suf, i),
         token::Literal(token::ByteStrRaw(i, n), suf) => return mk_lit!("ByteStrRaw", suf, i, n),
 
-        token::Ident(ident) => {
+        token::Ident(ident, is_raw) => {
             return cx.expr_call(sp,
                                 mk_token_path(cx, sp, "Ident"),
-                                vec![mk_ident(cx, sp, ident)]);
+                                vec![mk_ident(cx, sp, ident), cx.expr_bool(sp, is_raw)]);
         }
 
         token::Lifetime(ident) => {
@@ -720,7 +721,7 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
 
 fn statements_mk_tt(cx: &ExtCtxt, tt: &TokenTree, quoted: bool) -> Vec<ast::Stmt> {
     match *tt {
-        TokenTree::Token(sp, token::Ident(ident)) if quoted => {
+        TokenTree::Token(sp, token::Ident(ident, _)) if quoted => {
             // tt.extend($ident.to_tokens(ext_cx))
 
             let e_to_toks =

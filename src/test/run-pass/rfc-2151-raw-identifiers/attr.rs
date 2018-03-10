@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+use std::mem;
 
-static s: &'static str =
-    r#~"#"~# //~ ERROR found invalid character; only `#` is allowed in raw string delimitation
-;
+#[r#repr(r#C, r#packed)]
+struct Test {
+    a: bool, b: u64
+}
+
+#[r#derive(r#Debug)]
+struct Test2(u32);
+
+pub fn main() {
+    assert_eq!(mem::size_of::<Test>(), 9);
+    assert_eq!("Test2(123)", format!("{:?}", Test2(123)));
+}

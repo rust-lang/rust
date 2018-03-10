@@ -358,7 +358,7 @@ impl TokenCursor {
 
         let body = TokenTree::Delimited(sp, Delimited {
             delim: token::Bracket,
-            tts: [TokenTree::Token(sp, token::Ident(ast::Ident::from_str("doc"))),
+            tts: [TokenTree::Token(sp, token::Ident(ast::Ident::from_str("doc"), false)),
                   TokenTree::Token(sp, token::Eq),
                   TokenTree::Token(sp, token::Literal(
                       token::StrRaw(Symbol::intern(&stripped), num_of_hashes), None))]
@@ -784,7 +784,7 @@ impl<'a> Parser<'a> {
 
     fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, ast::Ident> {
         match self.token {
-            token::Ident(i) => {
+            token::Ident(i, _) => {
                 if self.token.is_reserved_ident() {
                     let mut err = self.expected_ident_found();
                     if recover {
@@ -1925,7 +1925,7 @@ impl<'a> Parser<'a> {
 
     pub fn parse_path_segment_ident(&mut self) -> PResult<'a, ast::Ident> {
         match self.token {
-            token::Ident(sid) if self.token.is_path_segment_keyword() => {
+            token::Ident(sid, _) if self.token.is_path_segment_keyword() => {
                 self.bump();
                 Ok(sid)
             }
@@ -2740,11 +2740,14 @@ impl<'a> Parser<'a> {
     }
 
     pub fn process_potential_macro_variable(&mut self) {
-        let ident = match self.token {
+        let (ident, is_raw) = match self.token {
             token::Dollar if self.span.ctxt() != syntax_pos::hygiene::SyntaxContext::empty() &&
                              self.look_ahead(1, |t| t.is_ident()) => {
                 self.bump();
-                let name = match self.token { token::Ident(ident) => ident, _ => unreachable!() };
+                let name = match self.token {
+                    token::Ident(ident, _) => ident,
+                    _ => unreachable!()
+                };
                 let mut err = self.fatal(&format!("unknown macro variable `{}`", name));
                 err.span_label(self.span, "unknown macro variable");
                 err.emit();
@@ -2753,13 +2756,13 @@ impl<'a> Parser<'a> {
             token::Interpolated(ref nt) => {
                 self.meta_var_span = Some(self.span);
                 match nt.0 {
-                    token::NtIdent(ident) => ident,
+                    token::NtIdent(ident, is_raw) => (ident, is_raw),
                     _ => return,
                 }
             }
             _ => return,
         };
-        self.token = token::Ident(ident.node);
+        self.token = token::Ident(ident.node, is_raw);
         self.span = ident.span;
     }
 
@@ -4245,7 +4248,7 @@ impl<'a> Parser<'a> {
                      -> PResult<'a, Option<P<Item>>> {
         let token_lo = self.span;
         let (ident, def) = match self.token {
-            token::Ident(ident) if ident.name == keywords::Macro.name() => {
+            token::Ident(ident, false) if ident.name == keywords::Macro.name() => {
                 self.bump();
                 let ident = self.parse_ident()?;
                 let tokens = if self.check(&token::OpenDelim(token::Brace)) {
@@ -4273,7 +4276,7 @@ impl<'a> Parser<'a> {
 
                 (ident, ast::MacroDef { tokens: tokens.into(), legacy: false })
             }
-            token::Ident(ident) if ident.name == "macro_rules" &&
+            token::Ident(ident, _) if ident.name == "macro_rules" &&
                                    self.look_ahead(1, |t| *t == token::Not) => {
                 let prev_span = self.prev_span;
                 self.complain_if_pub_macro(&vis.node, prev_span);
@@ -5078,7 +5081,9 @@ impl<'a> Parser<'a> {
     fn parse_self_arg(&mut self) -> PResult<'a, Option<Arg>> {
         let expect_ident = |this: &mut Self| match this.token {
             // Preserve hygienic context.
-            token::Ident(ident) => { let sp = this.span; this.bump(); codemap::respan(sp, ident) }
+            token::Ident(ident, _) => {
+                let sp = this.span; this.bump(); codemap::respan(sp, ident)
+            }
             _ => unreachable!()
         };
         let isolated_self = |this: &mut Self, n| {
@@ -5375,7 +5380,7 @@ impl<'a> Parser<'a> {
             VisibilityKind::Inherited => Ok(()),
             _ => {
                 let is_macro_rules: bool = match self.token {
-                    token::Ident(sid) => sid.name == Symbol::intern("macro_rules"),
+                    token::Ident(sid, _) => sid.name == Symbol::intern("macro_rules"),
                     _ => false,
                 };
                 if is_macro_rules {
@@ -7016,7 +7021,7 @@ impl<'a> Parser<'a> {
     fn parse_rename(&mut self) -> PResult<'a, Option<Ident>> {
         if self.eat_keyword(keywords::As) {
             match self.token {
-                token::Ident(ident) if ident.name == keywords::Underscore.name() => {
+                token::Ident(ident, false) if ident.name == keywords::Underscore.name() => {
                     self.bump(); // `_`
                     Ok(Some(Ident { name: ident.name.gensymed(), ..ident }))
                 }

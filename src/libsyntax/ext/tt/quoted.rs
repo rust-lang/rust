@@ -296,7 +296,7 @@ where
                         name: keywords::DollarCrate.name(),
                         ..ident
                     };
-                    TokenTree::Token(span, token::Ident(ident))
+                    TokenTree::Token(span, token::Ident(ident, false))
                 } else {
                     TokenTree::MetaVar(span, ident)
                 }

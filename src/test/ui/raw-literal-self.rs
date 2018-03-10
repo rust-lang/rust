@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,6 +10,6 @@
 
 // compile-flags: -Z parse-only
 
-static s: &'static str =
-    r#~"#"~# //~ ERROR found invalid character; only `#` is allowed in raw string delimitation
-;
+fn self_test(r#self: u32) {
+    //~^ ERROR `r#self` is not currently supported.
+}

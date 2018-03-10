@@ -318,7 +318,10 @@ fn hash_token<'a, 'gcx, W: StableHasherResult>(
             opt_name.hash_stable(hcx, hasher);
         }
 
-        token::Token::Ident(ident) |
+        token::Token::Ident(ident, is_raw) => {
+            ident.name.hash_stable(hcx, hasher);
+            is_raw.hash_stable(hcx, hasher);
+        }
         token::Token::Lifetime(ident) => ident.name.hash_stable(hcx, hasher),
 
         token::Token::Interpolated(_) => {
