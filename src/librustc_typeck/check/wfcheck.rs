@@ -159,6 +159,18 @@ impl<'a, 'gcx> CheckTypeWellFormed<'a, 'gcx> {
         }
     }
 
+    pub fn check_trait_item(&mut self, def_id: DefId) {
+        let node_id = self.tcx.hir.as_local_node_id(def_id).unwrap();
+        let trait_item = self.tcx.hir.expect_trait_item(node_id);
+
+        let method_sig = match trait_item.node {
+            hir::TraitItemKind::Method(ref sig, _) => Some(sig),
+            _ => None
+        };
+        CheckTypeWellFormed::new(self.tcx)
+            .check_associated_item(trait_item.id, trait_item.span, method_sig);
+    }
+
     fn check_associated_item(&mut self,
                              item_id: ast::NodeId,
                              span: Span,
@@ -675,12 +687,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'a, 'tcx> {
 
     fn visit_trait_item(&mut self, trait_item: &'v hir::TraitItem) {
         debug!("visit_trait_item: {:?}", trait_item);
-        let method_sig = match trait_item.node {
-            hir::TraitItemKind::Method(ref sig, _) => Some(sig),
-            _ => None
-        };
-        CheckTypeWellFormed::new(self.tcx)
-            .check_associated_item(trait_item.id, trait_item.span, method_sig);
+        let def_id = self.tcx.hir.local_def_id(trait_item.id);
+        ty::maps::queries::check_trait_item_well_formed::ensure(self.tcx, def_id);
         intravisit::walk_trait_item(self, trait_item)
     }
 

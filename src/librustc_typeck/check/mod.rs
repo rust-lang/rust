@@ -722,6 +722,10 @@ fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) 
     wfcheck::CheckTypeWellFormed::new(tcx).check_item_well_formed(def_id);
 }
 
+fn check_trait_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
+    wfcheck::CheckTypeWellFormed::new(tcx).check_trait_item(def_id);
+}
+
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         typeck_item_bodies,
@@ -730,6 +734,7 @@ pub fn provide(providers: &mut Providers) {
         adt_destructor,
         used_trait_imports,
         check_item_well_formed,
+        check_trait_item_well_formed,
         ..*providers
     };
 }
