@@ -25,6 +25,11 @@
 //! M, into constraints in our source context. This process of
 //! translating the results back is done by the
 //! `instantiate_query_result` method.
+//!
+//! For a more detailed look at what is happening here, check
+//! out the [chapter in the rustc guide][c].
+//!
+//! [c]: https://rust-lang-nursery.github.io/rustc-guide/traits-canonicalization.html
 
 use infer::{InferCtxt, InferOk, InferResult, RegionVariableOrigin, TypeVariableOrigin};
 use rustc_data_structures::indexed_vec::Idx;
@@ -270,64 +275,10 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// have been ambiguous; you should check the certainty level of
     /// the query before applying this function.)
     ///
-    /// It's easiest to explain what is happening here by
-    /// example. Imagine we start out with the query `?A: Foo<'static,
-    /// ?B>`. We would canonicalize that by introducing two variables:
+    /// To get a good understanding of what is happening here, check
+    /// out the [chapter in the rustc guide][c].
     ///
-    ///     ?0: Foo<'?1, ?2>
-    ///
-    /// (Note that all regions get replaced with variables always,
-    /// even "known" regions like `'static`.) After canonicalization,
-    /// we also get back an array with the "original values" for each
-    /// canonicalized variable:
-    ///
-    ///     [?A, 'static, ?B]
-    ///
-    /// Now we do the query and get back some result R. As part of that
-    /// result, we'll have an array of values for the canonical inputs.
-    /// For example, the canonical result might be:
-    ///
-    /// ```
-    /// for<2> {
-    ///     values = [ Vec<?0>, '1, ?0 ]
-    ///                    ^^   ^^  ^^ these are variables in the result!
-    ///     ...
-    /// }
-    /// ```
-    ///
-    /// Note that this result is itself canonical and may include some
-    /// variables (in this case, `?0`).
-    ///
-    /// What we want to do conceptually is to (a) instantiate each of the
-    /// canonical variables in the result with a fresh inference variable
-    /// and then (b) unify the values in the result with the original values.
-    /// Doing step (a) would yield a result of
-    ///
-    /// ```
-    /// {
-    ///     values = [ Vec<?C>, '?X, ?C ]
-    ///                    ^^   ^^^ fresh inference variables in `self`
-    ///     ..
-    /// }
-    /// ```
-    ///
-    /// Step (b) would then unify:
-    ///
-    /// ```
-    /// ?A with Vec<?C>
-    /// 'static with '?X
-    /// ?B with ?C
-    /// ```
-    ///
-    /// But what we actually do is a mildly optimized variant of
-    /// that. Rather than eagerly instantiating all of the canonical
-    /// values in the result with variables, we instead walk the
-    /// vector of values, looking for cases where the value is just a
-    /// canonical variable. In our example, `values[2]` is `?C`, so
-    /// that we means we can deduce that `?C := ?B and `'?X :=
-    /// 'static`. This gives us a partial set of values. Anything for
-    /// which we do not find a value, we create an inference variable
-    /// for. **Then** we unify.
+    /// [c]: https://rust-lang-nursery.github.io/rustc-guide/traits-canonicalization.html#processing-the-canonicalized-query-result
     pub fn instantiate_query_result<R>(
         &self,
         cause: &ObligationCause<'tcx>,
@@ -509,6 +460,11 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     ///     T: Trait<'?0>
     ///
     /// with a mapping M that maps `'?0` to `'static`.
+    ///
+    /// To get a good understanding of what is happening here, check
+    /// out the [chapter in the rustc guide][c].
+    ///
+    /// [c]: https://rust-lang-nursery.github.io/rustc-guide/traits-canonicalization.html#canonicalizing-the-query
     pub fn canonicalize_query<V>(&self, value: &V) -> (V::Canonicalized, CanonicalVarValues<'tcx>)
     where
         V: Canonicalize<'gcx, 'tcx>,
@@ -541,6 +497,11 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// things) includes a mapping to `'?0 := 'static`. When
     /// canonicalizing this query result R, we would leave this
     /// reference to `'static` alone.
+    ///
+    /// To get a good understanding of what is happening here, check
+    /// out the [chapter in the rustc guide][c].
+    ///
+    /// [c]: https://rust-lang-nursery.github.io/rustc-guide/traits-canonicalization.html#canonicalizing-the-query-result
     pub fn canonicalize_response<V>(
         &self,
         value: &V,
