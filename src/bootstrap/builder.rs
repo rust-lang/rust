@@ -759,7 +759,9 @@ impl<'a> Builder<'a> {
         // be resolved because MinGW has the import library. The downside is we
         // don't get newer functions from Windows, but we don't use any of them
         // anyway.
-        cargo.env("WINAPI_NO_BUNDLED_LIBRARIES", "1");
+        if mode != Mode::Tool {
+            cargo.env("WINAPI_NO_BUNDLED_LIBRARIES", "1");
+        }
 
         if self.is_very_verbose() {
             cargo.arg("-v");

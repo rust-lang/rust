@@ -23,6 +23,7 @@ mod strategy {
     mod dragon;
     mod grisu;
 }
+mod random;
 
 pub fn decode_finite<T: DecodableFloat>(v: T) -> Decoded {
     match decode(v).1 {
