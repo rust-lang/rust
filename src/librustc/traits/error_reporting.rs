@@ -888,28 +888,22 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                 err: &mut DiagnosticBuilder<'tcx>,
                                 trait_ref: &ty::Binder<ty::TraitRef<'tcx>>) {
         let ty::Binder(trait_ref) = trait_ref;
-
         let span = obligation.cause.span;
-        let mut snippet = match self.tcx.sess.codemap().span_to_snippet(span) {
-            Ok(s) => s,
-            Err(_) => String::from(""),
-        };
 
-        let mut refs_number = 0;
+        if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
+            let refs_number = snippet.chars()
+                .filter(|c| !c.is_whitespace())
+                .take_while(|c| *c == '&')
+                .count();
 
-        for c in snippet.chars() {
-            if c == '&' {
-                refs_number += 1;
-            }
-        }
+            let mut refs_remaining = refs_number;
+            let mut trait_type = trait_ref.self_ty();
+            let mut selcx = SelectionContext::new(self);
 
-        let mut refs_remaining = refs_number;
-        let mut trait_type = trait_ref.self_ty();
-        let mut selcx = SelectionContext::new(self);
+            while refs_remaining > 0 {
+                if let ty::TypeVariants::TyRef(_, ty::TypeAndMut{ ty: t_type, mutbl: _ }) =
+                    trait_type.sty {
 
-        while refs_remaining > 0 {
-            if let ty::TypeVariants::TyRef(_, ty::TypeAndMut{ ty: t_type, mutbl: _ }) =
-                trait_type.sty {
                     trait_type = t_type;
                     refs_remaining -= 1;
 
@@ -920,14 +914,20 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                          new_trait_ref.to_predicate());
 
                     if selcx.evaluate_obligation(&new_obligation) {
-                        for i in 0..refs_number {
-                            snippet.remove(i);
-                        }
-                        err.span_suggestion(span, "consider removing `&`s like", format!("{}", snippet));
+                        let suggest_snippet = snippet.chars()
+                            .skip(refs_number)
+                            .collect::<String>();
+
+                        err.span_suggestion(span,
+                                            "consider removing `&`s like",
+                                            format!("{}", suggest_snippet));
+
+                        break;
                     }
                 } else {
                     break;
                 }
+            }
         }
     }
 
