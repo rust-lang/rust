@@ -30,18 +30,27 @@ thread_local! {
 ///
 /// This handle is not synchronized or buffered in any fashion. Constructed via
 /// the `std::io::stdio::stdin_raw` function.
+///
+/// The size of a StdinRaw struct may vary depending on the target operating
+/// system, and may change between Rust releases.
 struct StdinRaw(stdio::Stdin);
 
 /// A handle to a raw instance of the standard output stream of this process.
 ///
 /// This handle is not synchronized or buffered in any fashion. Constructed via
 /// the `std::io::stdio::stdout_raw` function.
+///
+/// The size of a StdoutRaw struct may vary depending on the target operating
+/// system, and may change between Rust releases.
 struct StdoutRaw(stdio::Stdout);
 
 /// A handle to a raw instance of the standard output stream of this process.
 ///
 /// This handle is not synchronized or buffered in any fashion. Constructed via
 /// the `std::io::stdio::stderr_raw` function.
+///
+/// The size of a StderrRaw struct may vary depending on the target operating
+/// system, and may change between Rust releases.
 struct StderrRaw(stdio::Stderr);
 
 /// Constructs a new raw handle to the standard input of this process.

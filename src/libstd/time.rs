@@ -49,6 +49,9 @@ pub use core::time::Duration;
 /// allows measuring the duration between two instants (or comparing two
 /// instants).
 ///
+/// The size of an Instant struct may vary depending on the target operating
+/// system, and may change between Rust releases.
+///
 /// Example:
 ///
 /// ```no_run
@@ -87,6 +90,9 @@ pub struct Instant(time::Instant);
 /// information about a `SystemTime`. By calculating the duration from this
 /// fixed point in time, a `SystemTime` can be converted to a human-readable time,
 /// or perhaps some other string representation.
+///
+/// The size of a SystemTime struct may vary depending on the target operating
+/// system, and may change between Rust releases.
 ///
 /// [`Instant`]: ../../std/time/struct.Instant.html
 /// [`Result`]: ../../std/result/enum.Result.html
