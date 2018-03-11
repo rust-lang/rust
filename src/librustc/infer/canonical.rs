@@ -518,17 +518,6 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     }
 }
 
-impl<'cx, 'gcx> TyCtxt<'cx, 'gcx, 'gcx> {
-    /// Canonicalize a value that doesn't have any inference variables
-    /// or other things (and we know it).
-    pub fn canonicalize_global<V>(self, value: &V) -> (V::Canonicalized, CanonicalVarValues<'gcx>)
-    where
-        V: Canonicalize<'gcx, 'gcx>,
-    {
-        Canonicalizer::canonicalize(value, None, self, CanonicalizeAllFreeRegions(false))
-    }
-}
-
 /// If this flag is true, then all free regions will be replaced with
 /// a canonical var. This is used to make queries as generic as
 /// possible. For example, the query `F: Foo<'static>` would be
