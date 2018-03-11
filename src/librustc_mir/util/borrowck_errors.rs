@@ -54,16 +54,16 @@ impl Origin {
 
 pub trait BorrowckErrors<'cx> {
     fn struct_span_err_with_code<S: Into<MultiSpan>>(self,
-                                                         sp: S,
-                                                         msg: &str,
-                                                         code: DiagnosticId)
-                                                         -> DiagnosticBuilder<'cx>
+                                                     sp: S,
+                                                     msg: &str,
+                                                     code: DiagnosticId)
+                                                     -> DiagnosticBuilder<'cx>
         where Self: Sized + Copy;
 
     fn struct_span_err<S: Into<MultiSpan>>(self,
-                                               sp: S,
-                                               msg: &str)
-                                               -> DiagnosticBuilder<'cx>
+                                           sp: S,
+                                           msg: &str)
+                                           -> DiagnosticBuilder<'cx>
         where Self: Sized + Copy;
 
     /// Cancels the given error if we shouldn't emit errors for a given
@@ -72,9 +72,9 @@ pub trait BorrowckErrors<'cx> {
     /// Always make sure that the error gets passed through this function
     /// before you return it.
     fn cancel_if_wrong_origin(self,
-                                diag: DiagnosticBuilder<'cx>,
-                                o: Origin)
-                                -> DiagnosticBuilder<'cx>
+                              diag: DiagnosticBuilder<'cx>,
+                              o: Origin)
+                              -> DiagnosticBuilder<'cx>
         where Self: Sized + Copy;
 
     fn cannot_move_when_borrowed(self, span: Span, desc: &str, o: Origin)
