@@ -430,7 +430,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
     }
 
     pub fn enter<F, R>(&'tcx mut self, f: F) -> R
-        where F: for<'b> FnOnce(InferCtxt<'b, 'gcx, 'tcx>) -> R
+        where F: for<'b> FnOnce(&InferCtxt<'b, 'gcx, 'tcx>) -> R
     {
         let InferCtxtBuilder {
             global_tcx,
@@ -438,7 +438,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             ref fresh_tables,
         } = *self;
         let in_progress_tables = fresh_tables.as_ref();
-        global_tcx.enter_local(arena, |tcx| f(InferCtxt {
+        global_tcx.enter_local(arena, |tcx| f(&InferCtxt {
             tcx,
             in_progress_tables,
             projection_cache: RefCell::new(traits::ProjectionCache::new()),

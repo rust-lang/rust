@@ -189,7 +189,7 @@ impl<'a, 'tcx> MaybeInProgressTables<'a, 'tcx> {
 /// `bar()` will each have their own `FnCtxt`, but they will
 /// share the inherited fields.
 pub struct Inherited<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    infcx: InferCtxt<'a, 'gcx, 'tcx>,
+    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
 
     tables: MaybeInProgressTables<'a, 'tcx>,
 
@@ -620,7 +620,7 @@ impl<'a, 'gcx, 'tcx> InheritedBuilder<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
-    fn new(infcx: InferCtxt<'a, 'gcx, 'tcx>, def_id: DefId) -> Self {
+    fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>, def_id: DefId) -> Self {
         let tcx = infcx.tcx;
         let item_id = tcx.hir.as_local_node_id(def_id);
         let body_id = item_id.and_then(|id| tcx.hir.maybe_body_owned_by(id));
