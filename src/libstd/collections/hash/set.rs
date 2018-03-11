@@ -1371,6 +1371,39 @@ fn assert_covariance() {
     }
 }
 
+/// Creates a `HashSet` containing the provided key-value pairs.
+///
+/// `hashset!` allows `HashSet`s to be defined with the same syntax as array expressions.
+///
+/// ```
+/// use std::collections::HashSet;
+///
+/// let s = hashset!["one", "two", "three"];
+/// assert!(s.contains("one"));
+/// assert!(s.contains("two"));
+/// assert!(s.contains("three"));
+///
+/// let mut s = hashset![];
+/// s.insert("one");
+/// s.insert("two");
+/// s.insert("three");
+///
+/// assert_eq!(s, hashset!["one", "three", "two",]);
+/// ```
+#[macro_export]
+macro_rules! hashset {
+    ($($key:expr),*) => (
+        {
+            let mut set = HashSet::new();
+            $(
+                set.insert($key);
+            )*
+            set
+        }
+    );
+    ($($key:expr,)*) => (hashset![$($key),*])
+}
+
 #[cfg(test)]
 mod test_set {
     use super::HashSet;
@@ -1751,5 +1784,25 @@ mod test_set {
         assert!(set.contains(&2));
         assert!(set.contains(&4));
         assert!(set.contains(&6));
+    }
+
+    #[test]
+    fn test_macro() {
+        let mut expected = HashSet::new();
+        expected.insert("this is a test");
+        expected.insert("это испытание");
+        expected.insert("هذا اختبار");
+
+        assert_eq!(expected, hashset!["this is a test", "هذا اختبار", "это испытание",]);
+
+        let mut second_a = HashSet::new();
+        let mut second_b = hashset![];
+
+        second_a.insert("one");
+        second_a.insert("two");
+        second_b.insert("one");
+        second_b.insert("two");
+
+        assert_eq!(second_a, second_b);
     }
 }
