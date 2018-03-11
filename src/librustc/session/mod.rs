@@ -24,8 +24,9 @@ use session::config::{DebugInfoLevel, OutputType};
 use ty::tls;
 use util::nodemap::{FxHashMap, FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
+use util::common::ProfileQueriesMsg;
 
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{Lrc, Lock};
 
 use syntax::ast::NodeId;
 use errors::{self, DiagnosticBuilder, DiagnosticId};
@@ -53,6 +54,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Once, ONCE_INIT};
 use std::time::Duration;
+use std::sync::mpsc;
 
 mod code_stats;
 pub mod config;
@@ -125,6 +127,9 @@ pub struct Session {
 
     /// A cache of attributes ignored by StableHashingContext
     pub ignored_attr_names: FxHashSet<Symbol>,
+
+    /// Used by -Z profile-queries in util::common
+    pub profile_channel: Lock<Option<mpsc::Sender<ProfileQueriesMsg>>>,
 
     /// Some measurements that are being gathered during compilation.
     pub perf_stats: PerfStats,
@@ -1131,6 +1136,7 @@ pub fn build_session_(
         imported_macro_spans: RefCell::new(HashMap::new()),
         incr_comp_session: RefCell::new(IncrCompSession::NotInitialized),
         ignored_attr_names: ich::compute_ignored_attr_names(),
+        profile_channel: Lock::new(None),
         perf_stats: PerfStats {
             svh_time: Cell::new(Duration::from_secs(0)),
             incr_comp_hashes_time: Cell::new(Duration::from_secs(0)),

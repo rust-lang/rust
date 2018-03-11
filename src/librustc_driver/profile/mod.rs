@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc::session::Session;
 use rustc::util::common::{ProfQDumpParams, ProfileQueriesMsg, profq_msg, profq_set_chan};
 use std::sync::mpsc::{Receiver};
 use std::io::{Write};
@@ -17,11 +18,11 @@ use std::time::{Duration, Instant};
 pub mod trace;
 
 /// begin a profile thread, if not already running
-pub fn begin() {
+pub fn begin(sess: &Session) {
     use std::thread;
     use std::sync::mpsc::{channel};
     let (tx, rx) = channel();
-    if profq_set_chan(tx) {
+    if profq_set_chan(sess, tx) {
         thread::spawn(move||profile_queries_thread(rx));
     }
 }
@@ -30,7 +31,7 @@ pub fn begin() {
 /// wait for this dump to complete.
 ///
 /// wraps the RPC (send/recv channel logic) of requesting a dump.
-pub fn dump(path:String) {
+pub fn dump(sess: &Session, path: String) {
     use std::sync::mpsc::{channel};
     let (tx, rx) = channel();
     let params = ProfQDumpParams{
@@ -39,7 +40,7 @@ pub fn dump(path:String) {
         // is written; false for now
         dump_profq_msg_log:true,
     };
-    profq_msg(ProfileQueriesMsg::Dump(params));
+    profq_msg(sess, ProfileQueriesMsg::Dump(params));
     let _ = rx.recv().unwrap();
 }
 

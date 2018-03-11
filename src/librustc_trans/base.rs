@@ -712,7 +712,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Translate the metadata.
     let llmod_id = "metadata";
     let (metadata_llcx, metadata_llmod, metadata) =
-        time(tcx.sess.time_passes(), "write metadata", || {
+        time(tcx.sess, "write metadata", || {
             write_metadata(tcx, llmod_id, &link_meta)
         });
 
@@ -790,7 +790,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 llcx,
                 tm: create_target_machine(tcx.sess),
             };
-            time(tcx.sess.time_passes(), "write allocator module", || {
+            time(tcx.sess, "write allocator module", || {
                 allocator::trans(tcx, &modules, kind)
             });
 
@@ -924,11 +924,11 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn assert_and_save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    time(tcx.sess.time_passes(),
+    time(tcx.sess,
          "assert dep graph",
          || rustc_incremental::assert_dep_graph(tcx));
 
-    time(tcx.sess.time_passes(),
+    time(tcx.sess,
          "serialize dep graph",
          || rustc_incremental::save_dep_graph(tcx));
 }
@@ -939,7 +939,6 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
 ) -> (Arc<DefIdSet>, Arc<Vec<Arc<CodegenUnit<'tcx>>>>)
 {
     assert_eq!(cnum, LOCAL_CRATE);
-    let time_passes = tcx.sess.time_passes();
 
     let collection_mode = match tcx.sess.opts.debugging_opts.print_trans_items {
         Some(ref s) => {
@@ -968,7 +967,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
     };
 
     let (items, inlining_map) =
-        time(time_passes, "translation item collection", || {
+        time(tcx.sess, "translation item collection", || {
             collector::collect_crate_mono_items(tcx, collection_mode)
     });
 
@@ -982,7 +981,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
         PartitioningStrategy::FixedUnitCount(tcx.sess.codegen_units())
     };
 
-    let codegen_units = time(time_passes, "codegen unit partitioning", || {
+    let codegen_units = time(tcx.sess, "codegen unit partitioning", || {
         partitioning::partition(tcx,
                                 items.iter().cloned(),
                                 strategy,

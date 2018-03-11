@@ -26,6 +26,7 @@ use ty::maps::{QueryMsg};
 use dep_graph::{DepNode};
 use proc_macro;
 use lazy_static;
+use session::Session;
 
 // The name of the associated type for `Fn` return types
 pub const FN_OUTPUT_NAME: &'static str = "Output";
@@ -54,9 +55,6 @@ fn panic_hook(info: &panic::PanicInfo) {
 pub fn install_panic_hook() {
     lazy_static::initialize(&DEFAULT_HOOK);
 }
-
-/// Initialized for -Z profile-queries
-thread_local!(static PROFQ_CHAN: RefCell<Option<Sender<ProfileQueriesMsg>>> = RefCell::new(None));
 
 /// Parameters to the `Dump` variant of type `ProfileQueriesMsg`.
 #[derive(Clone,Debug)]
@@ -97,29 +95,23 @@ pub enum ProfileQueriesMsg {
 }
 
 /// If enabled, send a message to the profile-queries thread
-pub fn profq_msg(msg: ProfileQueriesMsg) {
-    PROFQ_CHAN.with(|sender|{
-        if let Some(s) = sender.borrow().as_ref() {
-            s.send(msg).unwrap()
-        } else {
-            // Do nothing.
-            //
-            // FIXME(matthewhammer): Multi-threaded translation phase triggers the panic below.
-            // From backtrace: rustc_trans::back::write::spawn_work::{{closure}}.
-            //
-            // panic!("no channel on which to send profq_msg: {:?}", msg)
-        }
-    })
+pub fn profq_msg(sess: &Session, msg: ProfileQueriesMsg) {
+    if let Some(s) = sess.profile_channel.borrow().as_ref() {
+        s.send(msg).unwrap()
+    } else {
+        // Do nothing
+    }
 }
 
 /// Set channel for profile queries channel
-pub fn profq_set_chan(s: Sender<ProfileQueriesMsg>) -> bool {
-    PROFQ_CHAN.with(|chan|{
-        if chan.borrow().is_none() {
-            *chan.borrow_mut() = Some(s);
-            true
-        } else { false }
-    })
+pub fn profq_set_chan(sess: &Session, s: Sender<ProfileQueriesMsg>) -> bool {
+    let mut channel = sess.profile_channel.borrow_mut();
+    if channel.is_none() {
+        *channel = Some(s);
+        true
+    } else {
+        false
+    }
 }
 
 /// Read the current depth of `time()` calls. This is used to
@@ -135,7 +127,13 @@ pub fn set_time_depth(depth: usize) {
     TIME_DEPTH.with(|slot| slot.set(depth));
 }
 
-pub fn time<T, F>(do_it: bool, what: &str, f: F) -> T where
+pub fn time<T, F>(sess: &Session, what: &str, f: F) -> T where
+    F: FnOnce() -> T,
+{
+    time_ext(sess.time_passes(), Some(sess), what, f)
+}
+
+pub fn time_ext<T, F>(do_it: bool, sess: Option<&Session>, what: &str, f: F) -> T where
     F: FnOnce() -> T,
 {
     if !do_it { return f(); }
@@ -146,15 +144,19 @@ pub fn time<T, F>(do_it: bool, what: &str, f: F) -> T where
         r
     });
 
-    if cfg!(debug_assertions) {
-        profq_msg(ProfileQueriesMsg::TimeBegin(what.to_string()))
-    };
+    if let Some(sess) = sess {
+        if cfg!(debug_assertions) {
+            profq_msg(sess, ProfileQueriesMsg::TimeBegin(what.to_string()))
+        }
+    }
     let start = Instant::now();
     let rv = f();
     let dur = start.elapsed();
-    if cfg!(debug_assertions) {
-        profq_msg(ProfileQueriesMsg::TimeEnd)
-    };
+    if let Some(sess) = sess {
+        if cfg!(debug_assertions) {
+            profq_msg(sess, ProfileQueriesMsg::TimeEnd)
+        }
+    }
 
     print_time_passes_entry_internal(what, dur);
 

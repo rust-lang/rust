@@ -164,8 +164,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 macro_rules! profq_msg {
     ($tcx:expr, $msg:expr) => {
         if cfg!(debug_assertions) {
-            if  $tcx.sess.profile_queries() {
-                profq_msg($msg)
+            if $tcx.sess.profile_queries() {
+                profq_msg($tcx.sess, $msg)
             }
         }
     }

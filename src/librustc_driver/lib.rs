@@ -914,7 +914,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
 pub fn enable_save_analysis(control: &mut CompileController) {
     control.keep_ast = true;
     control.after_analysis.callback = box |state| {
-        time(state.session.time_passes(), "save analysis", || {
+        time(state.session, "save analysis", || {
             save::process_crate(state.tcx.unwrap(),
                                 state.expanded_crate.unwrap(),
                                 state.analysis.unwrap(),

@@ -9,8 +9,7 @@
 // except according to those terms.
 
 use errors::DiagnosticBuilder;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
-                                           StableHashingContextProvider};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::sync::Lrc;
@@ -20,7 +19,7 @@ use std::hash::Hash;
 use ty::TyCtxt;
 use util::common::{ProfileQueriesMsg, profq_msg};
 
-use ich::Fingerprint;
+use ich::{StableHashingContext, StableHashingContextProvider, Fingerprint};
 
 use super::debug::EdgeFilter;
 use super::dep_node::{DepNode, DepKind, WorkProductId};
@@ -189,21 +188,21 @@ impl DepGraph {
     ///   `arg` parameter.
     ///
     /// [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/incremental-compilation.html
-    pub fn with_task<C, A, R, HCX>(&self,
+    pub fn with_task<'gcx, C, A, R>(&self,
                                    key: DepNode,
                                    cx: C,
                                    arg: A,
                                    task: fn(C, A) -> R)
                                    -> (R, DepNodeIndex)
-        where C: DepGraphSafe + StableHashingContextProvider<ContextType=HCX>,
-              R: HashStable<HCX>,
+        where C: DepGraphSafe + StableHashingContextProvider<'gcx>,
+              R: HashStable<StableHashingContext<'gcx>>,
     {
         self.with_task_impl(key, cx, arg, task,
             |data, key| data.borrow_mut().push_task(key),
             |data, key| data.borrow_mut().pop_task(key))
     }
 
-    fn with_task_impl<C, A, R, HCX>(&self,
+    fn with_task_impl<'gcx, C, A, R>(&self,
                                     key: DepNode,
                                     cx: C,
                                     arg: A,
@@ -211,25 +210,27 @@ impl DepGraph {
                                     push: fn(&RefCell<CurrentDepGraph>, DepNode),
                                     pop: fn(&RefCell<CurrentDepGraph>, DepNode) -> DepNodeIndex)
                                     -> (R, DepNodeIndex)
-        where C: DepGraphSafe + StableHashingContextProvider<ContextType=HCX>,
-              R: HashStable<HCX>,
+        where C: DepGraphSafe + StableHashingContextProvider<'gcx>,
+              R: HashStable<StableHashingContext<'gcx>>,
     {
         if let Some(ref data) = self.data {
             push(&data.current, key);
-            if cfg!(debug_assertions) {
-                profq_msg(ProfileQueriesMsg::TaskBegin(key.clone()))
-            };
 
             // In incremental mode, hash the result of the task. We don't
             // do anything with the hash yet, but we are computing it
             // anyway so that
             //  - we make sure that the infrastructure works and
             //  - we can get an idea of the runtime cost.
-            let mut hcx = cx.create_stable_hashing_context();
+            let mut hcx = cx.get_stable_hashing_context();
+
+            if cfg!(debug_assertions) {
+                profq_msg(hcx.sess(), ProfileQueriesMsg::TaskBegin(key.clone()))
+            };
 
             let result = task(cx, arg);
+
             if cfg!(debug_assertions) {
-                profq_msg(ProfileQueriesMsg::TaskEnd)
+                profq_msg(hcx.sess(), ProfileQueriesMsg::TaskEnd)
             };
 
             let dep_node_index = pop(&data.current, key);
@@ -274,7 +275,7 @@ impl DepGraph {
             (result, dep_node_index)
         } else {
             if key.kind.fingerprint_needed_for_crate_hash() {
-                let mut hcx = cx.create_stable_hashing_context();
+                let mut hcx = cx.get_stable_hashing_context();
                 let result = task(cx, arg);
                 let mut stable_hasher = StableHasher::new();
                 result.hash_stable(&mut hcx, &mut stable_hasher);
@@ -314,14 +315,14 @@ impl DepGraph {
 
     /// Execute something within an "eval-always" task which is a task
     // that runs whenever anything changes.
-    pub fn with_eval_always_task<C, A, R, HCX>(&self,
+    pub fn with_eval_always_task<'gcx, C, A, R>(&self,
                                    key: DepNode,
                                    cx: C,
                                    arg: A,
                                    task: fn(C, A) -> R)
                                    -> (R, DepNodeIndex)
-        where C: DepGraphSafe + StableHashingContextProvider<ContextType=HCX>,
-              R: HashStable<HCX>,
+        where C: DepGraphSafe + StableHashingContextProvider<'gcx>,
+              R: HashStable<StableHashingContext<'gcx>>,
     {
         self.with_task_impl(key, cx, arg, task,
             |data, key| data.borrow_mut().push_eval_always_task(key),
