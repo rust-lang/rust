@@ -50,7 +50,7 @@ pub use core::time::Duration;
 /// instants).
 ///
 /// The size of an Instant struct may vary depending on the target operating
-/// system, and may change between Rust releases.
+/// system.
 ///
 /// Example:
 ///
@@ -92,7 +92,7 @@ pub struct Instant(time::Instant);
 /// or perhaps some other string representation.
 ///
 /// The size of a SystemTime struct may vary depending on the target operating
-/// system, and may change between Rust releases.
+/// system.
 ///
 /// [`Instant`]: ../../std/time/struct.Instant.html
 /// [`Result`]: ../../std/result/enum.Result.html

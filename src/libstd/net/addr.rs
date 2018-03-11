@@ -29,7 +29,7 @@ use slice;
 /// [`SocketAddrV6`]'s respective documentation for more details.
 ///
 /// The size of a SocketAddr instance may vary depending on the target operating
-/// system, and may change between Rust releases.
+/// system.
 ///
 /// [IP address]: ../../std/net/enum.IpAddr.html
 /// [`SocketAddrV4`]: ../../std/net/struct.SocketAddrV4.html
@@ -65,7 +65,7 @@ pub enum SocketAddr {
 /// See [`SocketAddr`] for a type encompassing both IPv4 and IPv6 socket addresses.
 ///
 /// The size of a SocketAddrV4 struct may vary depending on the target operating
-/// system, and may change between Rust releases.
+/// system.
 ///
 /// [IETF RFC 793]: https://tools.ietf.org/html/rfc793
 /// [IPv4 address]: ../../std/net/struct.Ipv4Addr.html
@@ -95,7 +95,7 @@ pub struct SocketAddrV4 { inner: c::sockaddr_in }
 /// See [`SocketAddr`] for a type encompassing both IPv4 and IPv6 socket addresses.
 ///
 /// The size of a SocketAddrV6 struct may vary depending on the target operating
-/// system, and may change between Rust releases.
+/// system.
 ///
 /// [IETF RFC 2553, Section 3.3]: https://tools.ietf.org/html/rfc2553#section-3.3
 /// [IPv6 address]: ../../std/net/struct.Ipv6Addr.html
