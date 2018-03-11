@@ -457,7 +457,9 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// *also* replace all free regions whatsoever. So for example a
     /// query like `T: Trait<'static>` would be canonicalized to
     ///
-    ///     T: Trait<'?0>
+    /// ```text
+    /// T: Trait<'?0>
+    /// ```
     ///
     /// with a mapping M that maps `'?0` to `'static`.
     ///
@@ -486,7 +488,9 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// there was an input query `T: Trait<'static>`, it would have
     /// been canonicalized to
     ///
-    ///     T: Trait<'?0>
+    /// ```text
+    /// T: Trait<'?0>
+    /// ```
     ///
     /// with a mapping M that maps `'?0` to `'static`. But if we found that there
     /// exists only one possible impl of `Trait`, and it looks like
