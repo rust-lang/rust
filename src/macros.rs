@@ -22,7 +22,7 @@
 use std::collections::HashMap;
 
 use config::lists::*;
-use syntax::ast;
+use syntax::{ast, ptr};
 use syntax::codemap::{BytePos, Span};
 use syntax::parse::new_parser_from_tts;
 use syntax::parse::parser::Parser;
@@ -39,6 +39,7 @@ use lists::{itemize_list, write_list, ListFormatting};
 use overflow;
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
+use spanned::Spanned;
 use utils::{format_visibility, mk_sp, wrap_str};
 
 const FORCED_BRACKET_MACROS: &[&str] = &["vec!"];
@@ -71,9 +72,21 @@ impl MacroStyle {
 
 #[derive(Debug)]
 pub enum MacroArg {
-    Expr(ast::Expr),
-    Ty(ast::Ty),
-    Pat(ast::Pat),
+    Expr(ptr::P<ast::Expr>),
+    Ty(ptr::P<ast::Ty>),
+    Pat(ptr::P<ast::Pat>),
+    // `parse_item` returns `Option<ptr::P<ast::Item>>`.
+    Item(Option<ptr::P<ast::Item>>),
+}
+
+impl Rewrite for ast::Item {
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+        let mut visitor = ::visitor::FmtVisitor::from_context(context);
+        visitor.block_indent = shape.indent;
+        visitor.last_pos = self.span().lo();
+        visitor.visit_item(self);
+        Some(visitor.buffer)
+    }
 }
 
 impl Rewrite for MacroArg {
@@ -82,6 +95,7 @@ impl Rewrite for MacroArg {
             MacroArg::Expr(ref expr) => expr.rewrite(context, shape),
             MacroArg::Ty(ref ty) => ty.rewrite(context, shape),
             MacroArg::Pat(ref pat) => pat.rewrite(context, shape),
+            MacroArg::Item(ref item) => item.as_ref().and_then(|item| item.rewrite(context, shape)),
         }
     }
 }
@@ -97,7 +111,7 @@ fn parse_macro_arg(parser: &mut Parser) -> Option<MacroArg> {
                     } else {
                         // Parsing succeeded.
                         *parser = cloned_parser;
-                        return Some(MacroArg::$macro_arg((*x).clone()));
+                        return Some(MacroArg::$macro_arg(x.clone()));
                     }
                 }
                 Err(mut e) => {
@@ -111,6 +125,7 @@ fn parse_macro_arg(parser: &mut Parser) -> Option<MacroArg> {
     parse_macro_arg!(Expr, parse_expr);
     parse_macro_arg!(Ty, parse_ty);
     parse_macro_arg!(Pat, parse_pat);
+    parse_macro_arg!(Item, parse_item);
 
     None
 }

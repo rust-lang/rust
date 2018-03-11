@@ -2652,6 +2652,7 @@ impl<'a> ToExpr for MacroArg {
             MacroArg::Expr(ref expr) => can_be_overflowed_expr(context, expr, len),
             MacroArg::Ty(ref ty) => can_be_overflowed_type(context, ty, len),
             MacroArg::Pat(..) => false,
+            MacroArg::Item(..) => len == 1,
         }
     }
 }
