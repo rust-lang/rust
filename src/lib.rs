@@ -16,6 +16,7 @@
 #[macro_use]
 extern crate derive_new;
 extern crate diff;
+extern crate itertools;
 #[macro_use]
 extern crate log;
 extern crate regex;
