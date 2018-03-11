@@ -597,10 +597,8 @@ class RustBuild(object):
                 self.cargo()))
         args = [self.cargo(), "build", "--manifest-path",
                 os.path.join(self.rust_root, "src/bootstrap/Cargo.toml")]
-        if self.verbose:
+        for _ in range(1, self.verbose):
             args.append("--verbose")
-            if self.verbose > 1:
-                args.append("--verbose")
         if self.use_locked_deps:
             args.append("--locked")
         if self.use_vendored_sources:
@@ -675,7 +673,7 @@ def bootstrap(help_triggered):
     parser.add_argument('--config')
     parser.add_argument('--build')
     parser.add_argument('--clean', action='store_true')
-    parser.add_argument('-v', '--verbose', action='store_true')
+    parser.add_argument('-v', '--verbose', action='count', default=0)
 
     args = [a for a in sys.argv if a != '-h' and a != '--help']
     args, _ = parser.parse_known_args(args)
@@ -691,10 +689,9 @@ def bootstrap(help_triggered):
     except (OSError, IOError):
         pass
 
-    if '\nverbose = 2' in build.config_toml:
-        build.verbose = 2
-    elif '\nverbose = 1' in build.config_toml:
-        build.verbose = 1
+    match = re.search(r'\nverbose = (\d+)', build.config_toml)
+    if match is not None:
+        build.verbose = max(build.verbose, int(match.group(1)))
 
     build.use_vendored_sources = '\nvendor = true' in build.config_toml
 
