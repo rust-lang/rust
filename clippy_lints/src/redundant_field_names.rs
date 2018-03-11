@@ -36,9 +36,9 @@ impl LintPass for RedundantFieldNames {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantFieldNames {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        // Do not care about range expressions.
-        // They could have redundant field name when desugared to structs.
-        // e.g. `start..end` is desugared to `Range { start: start, end: end }`
+        // Ignore all macros including range expressions.
+        // They can have redundant field names when expanded.
+        // e.g. range expression `start..end` is desugared to `Range { start: start, end: end }`
         if in_macro(expr.span) || is_range_expression(expr.span) {
             return;
         }
