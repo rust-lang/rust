@@ -1875,7 +1875,7 @@ const LLVM_WORK_PACKAGE_KIND: time_graph::WorkPackageKind =
 fn spawn_work(cgcx: CodegenContext, work: WorkItem) {
     let depth = time_depth();
 
-    thread::spawn(move || {
+    let _handle = thread::spawn(move || {
         set_time_depth(depth);
 
         // Set up a destructor which will fire off a message that we're done as

@@ -164,7 +164,7 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// for _ in 0..10 {
 ///     let five = Arc::clone(&five);
 ///
-///     thread::spawn(move || {
+///     let _t = thread::spawn(move || {
 ///         println!("{:?}", five);
 ///     });
 /// }
@@ -184,7 +184,7 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// for _ in 0..10 {
 ///     let val = Arc::clone(&val);
 ///
-///     thread::spawn(move || {
+///     let _t = thread::spawn(move || {
 ///         let v = val.fetch_add(1, Ordering::SeqCst);
 ///         println!("{:?}", v);
 ///     });

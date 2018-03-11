@@ -36,9 +36,7 @@
 //! non-zero exit code.
 //!
 //! When the main thread of a Rust program terminates, the entire program shuts
-//! down, even if other threads are still running. However, this module provides
-//! convenient facilities for automatically waiting for the termination of a
-//! child thread (i.e., join).
+//! down, even if other threads are still running.
 //!
 //! ## Spawning a thread
 //!
@@ -47,7 +45,7 @@
 //! ```rust
 //! use std::thread;
 //!
-//! thread::spawn(move || {
+//! let _t = thread::spawn(move || {
 //!     // some work here
 //! });
 //! ```
@@ -1177,7 +1175,7 @@ pub type Result<T> = ::result::Result<T, Box<Any + Send + 'static>>;
 // parent thread never reads this packet until the child has exited).
 //
 // This packet itself is then stored into a `JoinInner` which in turns is placed
-// in `JoinHandle` and `JoinGuard`. Due to the usage of `UnsafeCell` we need to
+// in `JoinHandle`. Due to the usage of `UnsafeCell` we need to
 // manually worry about impls like Send and Sync. The type `T` should
 // already always be Send (otherwise the thread could not have been created) and
 // this type is inherently Sync because no methods take &self. Regardless,
@@ -1267,6 +1265,8 @@ impl<T> JoinInner<T> {
 /// [`Clone`]: ../../std/clone/trait.Clone.html
 /// [`thread::spawn`]: fn.spawn.html
 /// [`thread::Builder::spawn`]: struct.Builder.html#method.spawn
+#[must_use = "spawned thread must be joined, or else it could be abruptly terminated when the main \
+              thread ends"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct JoinHandle<T>(JoinInner<T>);
 
@@ -1384,7 +1384,7 @@ mod tests {
     #[test]
     fn test_run_basic() {
         let (tx, rx) = channel();
-        thread::spawn(move|| {
+        let _t = thread::spawn(move || {
             tx.send(()).unwrap();
         });
         rx.recv().unwrap();
@@ -1406,14 +1406,13 @@ mod tests {
 
         fn f(i: i32, tx: Sender<()>) {
             let tx = tx.clone();
-            thread::spawn(move|| {
+            let _ = thread::spawn(move|| {
                 if i == 0 {
                     tx.send(()).unwrap();
                 } else {
                     f(i - 1, tx);
                 }
             });
-
         }
         f(10, tx);
         rx.recv().unwrap();
@@ -1423,8 +1422,8 @@ mod tests {
     fn test_spawn_sched_childs_on_default_sched() {
         let (tx, rx) = channel();
 
-        thread::spawn(move|| {
-            thread::spawn(move|| {
+        let _ = thread::spawn(move|| {
+            let _ = thread::spawn(move|| {
                 tx.send(()).unwrap();
             });
         });
@@ -1450,14 +1449,14 @@ mod tests {
     #[test]
     fn test_avoid_copying_the_body_spawn() {
         avoid_copying_the_body(|v| {
-            thread::spawn(move || v());
+            let _ = thread::spawn(move || v());
         });
     }
 
     #[test]
     fn test_avoid_copying_the_body_thread_spawn() {
         avoid_copying_the_body(|f| {
-            thread::spawn(move|| {
+            let _ = thread::spawn(move || {
                 f();
             });
         })
@@ -1466,7 +1465,7 @@ mod tests {
     #[test]
     fn test_avoid_copying_the_body_join() {
         avoid_copying_the_body(|f| {
-            let _ = thread::spawn(move|| {
+            let _ = thread::spawn(move || {
                 f()
             }).join();
         })
@@ -1482,16 +1481,16 @@ mod tests {
         fn child_no(x: u32) -> Box<Fn() + Send> {
             return Box::new(move|| {
                 if x < GENERATIONS {
-                    thread::spawn(move|| child_no(x+1)());
+                    let _ = thread::spawn(move || child_no(x+1)());
                 }
             });
         }
-        thread::spawn(|| child_no(0)());
+        let _ = thread::spawn(|| child_no(0)());
     }
 
     #[test]
     fn test_simple_newsched_spawn() {
-        thread::spawn(move || {});
+        let _ = thread::spawn(move || {});
     }
 
     #[test]
@@ -1570,7 +1569,7 @@ mod tests {
         for _ in 0..10 {
             let th = thread::current();
 
-            let _guard = thread::spawn(move || {
+            let _handle = thread::spawn(move || {
                 super::sleep(Duration::from_millis(50));
                 th.unpark();
             });

@@ -49,7 +49,7 @@ use mem;
 /// });
 ///
 /// // each thread starts out with the initial value of 1
-/// thread::spawn(move|| {
+/// let _t = thread::spawn(move|| {
 ///     FOO.with(|f| {
 ///         assert_eq!(*f.borrow(), 1);
 ///         *f.borrow_mut() = 3;

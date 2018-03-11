@@ -206,7 +206,7 @@ mod tests {
         for _ in 0..N - 1 {
             let c = barrier.clone();
             let tx = tx.clone();
-            thread::spawn(move|| {
+            let _t = thread::spawn(move|| {
                 tx.send(c.wait().is_leader()).unwrap();
             });
         }

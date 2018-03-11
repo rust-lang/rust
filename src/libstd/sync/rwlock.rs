@@ -183,7 +183,7 @@ impl<T: ?Sized> RwLock<T> {
     /// let n = lock.read().unwrap();
     /// assert_eq!(*n, 1);
     ///
-    /// thread::spawn(move || {
+    /// let _t = thread::spawn(move || {
     ///     let r = c_lock.read();
     ///     assert!(r.is_ok());
     /// }).join().unwrap();
@@ -594,7 +594,7 @@ mod tests {
         for _ in 0..N {
             let tx = tx.clone();
             let r = r.clone();
-            thread::spawn(move || {
+            let _t = thread::spawn(move || {
                 let mut rng = rand::thread_rng();
                 for _ in 0..M {
                     if rng.gen_weighted_bool(N) {
@@ -663,7 +663,7 @@ mod tests {
         let arc2 = arc.clone();
         let (tx, rx) = channel();
 
-        thread::spawn(move || {
+        let _t = thread::spawn(move || {
             let mut lock = arc2.write().unwrap();
             for _ in 0..10 {
                 let tmp = *lock;

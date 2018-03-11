@@ -68,7 +68,7 @@
 //!
 //! // Create a simple streaming channel
 //! let (tx, rx) = channel();
-//! thread::spawn(move|| {
+//! let _t = thread::spawn(move|| {
 //!     tx.send(10).unwrap();
 //! });
 //! assert_eq!(rx.recv().unwrap(), 10);
@@ -86,7 +86,7 @@
 //! let (tx, rx) = channel();
 //! for i in 0..10 {
 //!     let tx = tx.clone();
-//!     thread::spawn(move|| {
+//!     let _t = thread::spawn(move|| {
 //!         tx.send(i).unwrap();
 //!     });
 //! }
@@ -116,7 +116,7 @@
 //! use std::sync::mpsc::sync_channel;
 //!
 //! let (tx, rx) = sync_channel::<i32>(0);
-//! thread::spawn(move|| {
+//! let _t = thread::spawn(move|| {
 //!     // This will wait for the parent thread to start receiving
 //!     tx.send(53).unwrap();
 //! });
@@ -317,7 +317,7 @@ mod cache_aligned;
 ///
 /// let (send, recv) = channel();
 ///
-/// thread::spawn(move || {
+/// let _t = thread::spawn(move || {
 ///     send.send("Hello world!").unwrap();
 ///     thread::sleep(Duration::from_secs(2)); // block for two seconds
 ///     send.send("Delayed for 2 seconds").unwrap();
@@ -359,7 +359,7 @@ impl<T> !Sync for Receiver<T> { }
 ///
 /// let (send, recv) = channel();
 ///
-/// thread::spawn(move || {
+/// let _t = thread::spawn(move || {
 ///     send.send(1u8).unwrap();
 ///     send.send(2u8).unwrap();
 ///     send.send(3u8).unwrap();
@@ -401,7 +401,7 @@ pub struct Iter<'a, T: 'a> {
 /// assert!(receiver.try_iter().next().is_none());
 /// println!("Nothing in the buffer...");
 ///
-/// thread::spawn(move || {
+/// let _t = thread::spawn(move || {
 ///     sender.send(1).unwrap();
 ///     sender.send(2).unwrap();
 ///     sender.send(3).unwrap();
@@ -439,7 +439,7 @@ pub struct TryIter<'a, T: 'a> {
 ///
 /// let (send, recv) = channel();
 ///
-/// thread::spawn(move || {
+/// let _t = thread::spawn(move || {
 ///     send.send(1u8).unwrap();
 ///     send.send(2u8).unwrap();
 ///     send.send(3u8).unwrap();
@@ -473,12 +473,12 @@ pub struct IntoIter<T> {
 /// let sender2 = sender.clone();
 ///
 /// // First thread owns sender
-/// thread::spawn(move || {
+/// let _t = thread::spawn(move || {
 ///     sender.send(1).unwrap();
 /// });
 ///
 /// // Second thread owns sender2
-/// thread::spawn(move || {
+/// let _t = thread::spawn(move || {
 ///     sender2.send(2).unwrap();
 /// });
 ///
@@ -521,13 +521,13 @@ impl<T> !Sync for Sender<T> { }
 /// let sync_sender2 = sync_sender.clone();
 ///
 /// // First thread owns sync_sender
-/// thread::spawn(move || {
+/// let _t = thread::spawn(move || {
 ///     sync_sender.send(1).unwrap();
 ///     sync_sender.send(2).unwrap();
 /// });
 ///
 /// // Second thread owns sync_sender2
-/// thread::spawn(move || {
+/// let _t = thread::spawn(move || {
 ///     sync_sender2.send(3).unwrap();
 ///     // thread will now block since the buffer is full
 ///     println!("Thread unblocked!");
@@ -710,7 +710,7 @@ impl<T> UnsafeFlavor<T> for Receiver<T> {
 /// let (sender, receiver) = channel();
 ///
 /// // Spawn off an expensive computation
-/// thread::spawn(move|| {
+/// let _t = thread::spawn(move || {
 /// #   fn expensive_computation() {}
 ///     sender.send(expensive_computation()).unwrap();
 /// });
@@ -765,7 +765,7 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
 /// // this returns immediately
 /// sender.send(1).unwrap();
 ///
-/// thread::spawn(move|| {
+/// let _t = thread::spawn(move|| {
 ///     // this will block until the previous message has been received
 ///     sender.send(2).unwrap();
 /// });
@@ -962,7 +962,7 @@ impl<T> SyncSender<T> {
     /// // Create a rendezvous sync_channel with buffer size 0
     /// let (sync_sender, receiver) = sync_channel(0);
     ///
-    /// thread::spawn(move || {
+    /// let _t = thread::spawn(move || {
     ///    println!("sending message...");
     ///    sync_sender.send(1).unwrap();
     ///    // Thread is now blocked until the message is received
@@ -1001,14 +1001,14 @@ impl<T> SyncSender<T> {
     /// let sync_sender2 = sync_sender.clone();
     ///
     /// // First thread owns sync_sender
-    /// thread::spawn(move || {
+    /// let _t = thread::spawn(move || {
     ///     sync_sender.send(1).unwrap();
     ///     sync_sender.send(2).unwrap();
     ///     // Thread blocked
     /// });
     ///
     /// // Second thread owns sync_sender2
-    /// thread::spawn(move || {
+    /// let _t = thread::spawn(move || {
     ///     // This will return an error and send
     ///     // no message if the buffer is full
     ///     sync_sender2.try_send(3).is_err();
@@ -1258,7 +1258,7 @@ impl<T> Receiver<T> {
     ///
     /// let (send, recv) = mpsc::channel();
     ///
-    /// thread::spawn(move || {
+    /// let _t = thread::spawn(move || {
     ///     send.send('a').unwrap();
     /// });
     ///
@@ -1277,7 +1277,7 @@ impl<T> Receiver<T> {
     ///
     /// let (send, recv) = mpsc::channel();
     ///
-    /// thread::spawn(move || {
+    /// let _t = thread::spawn(move || {
     ///     thread::sleep(Duration::from_millis(800));
     ///     send.send('a').unwrap();
     /// });
@@ -1331,7 +1331,7 @@ impl<T> Receiver<T> {
     ///
     /// let (send, recv) = mpsc::channel();
     ///
-    /// thread::spawn(move || {
+    /// let _t = thread::spawn(move || {
     ///     send.send('a').unwrap();
     /// });
     ///
@@ -1351,7 +1351,7 @@ impl<T> Receiver<T> {
     ///
     /// let (send, recv) = mpsc::channel();
     ///
-    /// thread::spawn(move || {
+    /// let _t = thread::spawn(move || {
     ///     thread::sleep(Duration::from_millis(800));
     ///     send.send('a').unwrap();
     /// });
@@ -1427,7 +1427,7 @@ impl<T> Receiver<T> {
     ///
     /// let (send, recv) = channel();
     ///
-    /// thread::spawn(move || {
+    /// let _t = thread::spawn(move || {
     ///     send.send(1).unwrap();
     ///     send.send(2).unwrap();
     ///     send.send(3).unwrap();
@@ -1463,7 +1463,7 @@ impl<T> Receiver<T> {
     /// // nothing is in the buffer yet
     /// assert!(receiver.try_iter().next().is_none());
     ///
-    /// thread::spawn(move || {
+    /// let _t = thread::spawn(move || {
     ///     thread::sleep(Duration::from_secs(1));
     ///     sender.send(1).unwrap();
     ///     sender.send(2).unwrap();
@@ -1949,7 +1949,7 @@ mod tests {
 
         for _ in 0..NTHREADS {
             let tx = tx.clone();
-            thread::spawn(move|| {
+            let _handle = thread::spawn(move|| {
                 for _ in 0..AMT { tx.send(1).unwrap(); }
             });
         }
@@ -2148,14 +2148,14 @@ mod tests {
     fn oneshot_multi_thread_recv_close_stress() {
         for _ in 0..stress_factor() {
             let (tx, rx) = channel::<i32>();
-            thread::spawn(move|| {
+            let _t = thread::spawn(move|| {
                 let res = thread::spawn(move|| {
                     rx.recv().unwrap();
                 }).join();
                 assert!(res.is_err());
             });
             let _t = thread::spawn(move|| {
-                thread::spawn(move|| {
+                let _t = thread::spawn(move|| {
                     drop(tx);
                 });
             });
@@ -2184,7 +2184,7 @@ mod tests {
             fn send(tx: Sender<Box<i32>>, i: i32) {
                 if i == 10 { return }
 
-                thread::spawn(move|| {
+                let _t = thread::spawn(move|| {
                     tx.send(box i).unwrap();
                     send(tx, i + 1);
                 });
@@ -2193,7 +2193,7 @@ mod tests {
             fn recv(rx: Receiver<Box<i32>>, i: i32) {
                 if i == 10 { return }
 
-                thread::spawn(move|| {
+                let _t = thread::spawn(move|| {
                     assert!(*rx.recv().unwrap() == i);
                     recv(rx, i + 1);
                 });
@@ -2217,7 +2217,7 @@ mod tests {
         let stress = stress_factor() + 100;
         let timeout = Duration::from_millis(100);
 
-        thread::spawn(move || {
+        let _t = thread::spawn(move || {
             for i in 0..stress {
                 if i % 2 == 0 {
                     thread::sleep(timeout * 2);
@@ -2259,7 +2259,7 @@ mod tests {
 
         for i in 0..stress {
             let tx = tx.clone();
-            thread::spawn(move || {
+            let _t = thread::spawn(move || {
                 thread::sleep(Duration::from_millis(i as u64 * 10));
                 tx.send(1usize).unwrap();
             });
@@ -2296,7 +2296,7 @@ mod tests {
         let total = 5;
         for _ in 0..total {
             let tx = tx.clone();
-            thread::spawn(move|| {
+            let _t = thread::spawn(move|| {
                 tx.send(()).unwrap();
             });
         }
@@ -2314,7 +2314,7 @@ mod tests {
         let total = stress_factor() + 100;
         for _ in 0..total {
             let tx = tx.clone();
-            thread::spawn(move|| {
+            let _t = thread::spawn(move|| {
                 tx.send(()).unwrap();
             });
         }
@@ -2586,7 +2586,7 @@ mod sync_tests {
     #[test]
     fn chan_gone_concurrent() {
         let (tx, rx) = sync_channel::<i32>(0);
-        thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             tx.send(1).unwrap();
             tx.send(1).unwrap();
         });
@@ -2596,7 +2596,7 @@ mod sync_tests {
     #[test]
     fn stress() {
         let (tx, rx) = sync_channel::<i32>(0);
-        thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             for _ in 0..10000 { tx.send(1).unwrap(); }
         });
         for _ in 0..10000 {
@@ -2608,7 +2608,7 @@ mod sync_tests {
     fn stress_recv_timeout_two_threads() {
         let (tx, rx) = sync_channel::<i32>(0);
 
-        thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             for _ in 0..10000 { tx.send(1).unwrap(); }
         });
 
@@ -2634,7 +2634,7 @@ mod sync_tests {
         let (tx, rx) = sync_channel::<i32>(0);
         let (dtx, drx) = sync_channel::<()>(0);
 
-        thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             let mut recv_count = 0;
             loop {
                 match rx.recv_timeout(Duration::from_millis(10)) {
@@ -2655,7 +2655,7 @@ mod sync_tests {
 
         for _ in 0..NTHREADS {
             let tx = tx.clone();
-            thread::spawn(move|| {
+            let _t = thread::spawn(move|| {
                 for _ in 0..AMT { tx.send(1).unwrap(); }
             });
         }
@@ -2672,7 +2672,7 @@ mod sync_tests {
         let (tx, rx) = sync_channel::<i32>(0);
         let (dtx, drx) = sync_channel::<()>(0);
 
-        thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             for _ in 0..AMT * NTHREADS {
                 assert_eq!(rx.recv().unwrap(), 1);
             }
@@ -2685,7 +2685,7 @@ mod sync_tests {
 
         for _ in 0..NTHREADS {
             let tx = tx.clone();
-            thread::spawn(move|| {
+            let _t = thread::spawn(move|| {
                 for _ in 0..AMT { tx.send(1).unwrap(); }
             });
         }
@@ -2856,7 +2856,7 @@ mod sync_tests {
                 assert!(res.is_err());
             });
             let _t = thread::spawn(move|| {
-                thread::spawn(move|| {
+                let _t = thread::spawn(move|| {
                     drop(tx);
                 });
             });
@@ -2885,7 +2885,7 @@ mod sync_tests {
             fn send(tx: SyncSender<Box<i32>>, i: i32) {
                 if i == 10 { return }
 
-                thread::spawn(move|| {
+                let _t = thread::spawn(move|| {
                     tx.send(box i).unwrap();
                     send(tx, i + 1);
                 });
@@ -2894,7 +2894,7 @@ mod sync_tests {
             fn recv(rx: Receiver<Box<i32>>, i: i32) {
                 if i == 10 { return }
 
-                thread::spawn(move|| {
+                let _t = thread::spawn(move|| {
                     assert!(*rx.recv().unwrap() == i);
                     recv(rx, i + 1);
                 });
@@ -2916,7 +2916,7 @@ mod sync_tests {
         let total = stress_factor() + 100;
         for _ in 0..total {
             let tx = tx.clone();
-            thread::spawn(move|| {
+            let _t = thread::spawn(move|| {
                 tx.send(()).unwrap();
             });
         }
