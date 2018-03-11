@@ -161,7 +161,6 @@ macro_rules! install {
         impl Step for $name {
             type Output = ();
             const DEFAULT: bool = true;
-            const ONLY_BUILD_TARGETS: bool = true;
             const ONLY_HOSTS: bool = $only_hosts;
             $(const $c: bool = true;)*
 
@@ -174,7 +173,7 @@ macro_rules! install {
                 run.builder.ensure($name {
                     stage: run.builder.top_stage,
                     target: run.target,
-                    host: run.host,
+                    host: run.builder.build.build,
                 });
             }
 
@@ -226,10 +225,6 @@ install!((self, builder, _config),
         });
         install_analysis(builder, self.stage, self.target);
     };
-    Src, "src", Self::should_build(_config) , only_hosts: true, {
-        builder.ensure(dist::Src);
-        install_src(builder, self.stage);
-    }, ONLY_BUILD;
     Rustc, "src/librustc", true, only_hosts: true, {
         builder.ensure(dist::Rustc {
             compiler: builder.compiler(self.stage, self.target),
@@ -237,3 +232,32 @@ install!((self, builder, _config),
         install_rustc(builder, self.stage, self.target);
     };
 );
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct Src {
+    pub stage: u32,
+}
+
+impl Step for Src {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        let config = &run.builder.config;
+        let cond = config.extended &&
+            config.tools.as_ref().map_or(true, |t| t.contains("src"));
+        run.path("src").default_condition(cond)
+    }
+
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Src {
+            stage: run.builder.top_stage,
+        });
+    }
+
+    fn run(self, builder: &Builder) {
+        builder.ensure(dist::Src);
+        install_src(builder, self.stage);
+    }
+}

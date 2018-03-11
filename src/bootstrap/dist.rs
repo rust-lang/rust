@@ -70,7 +70,6 @@ pub struct Docs {
 impl Step for Docs {
     type Output = PathBuf;
     const DEFAULT: bool = true;
-    const ONLY_BUILD_TARGETS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         run.path("src/doc")
@@ -271,7 +270,6 @@ pub struct Mingw {
 impl Step for Mingw {
     type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
-    const ONLY_BUILD_TARGETS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         run.never()
@@ -331,7 +329,6 @@ impl Step for Rustc {
     type Output = PathBuf;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
-    const ONLY_BUILD_TARGETS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         run.path("src/librustc")
@@ -561,7 +558,6 @@ pub struct Std {
 impl Step for Std {
     type Output = PathBuf;
     const DEFAULT: bool = true;
-    const ONLY_BUILD_TARGETS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         run.path("src/libstd")
@@ -569,7 +565,7 @@ impl Step for Std {
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(Std {
-            compiler: run.builder.compiler(run.builder.top_stage, run.host),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.build),
             target: run.target,
         });
     }
@@ -638,7 +634,6 @@ pub struct Analysis {
 impl Step for Analysis {
     type Output = PathBuf;
     const DEFAULT: bool = true;
-    const ONLY_BUILD_TARGETS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         let builder = run.builder;
@@ -647,7 +642,7 @@ impl Step for Analysis {
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(Analysis {
-            compiler: run.builder.compiler(run.builder.top_stage, run.host),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.build),
             target: run.target,
         });
     }
@@ -755,8 +750,6 @@ impl Step for Src {
     type Output = PathBuf;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
-    const ONLY_BUILD_TARGETS: bool = true;
-    const ONLY_BUILD: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         run.path("src")
@@ -851,8 +844,6 @@ impl Step for PlainSourceTarball {
     type Output = PathBuf;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
-    const ONLY_BUILD_TARGETS: bool = true;
-    const ONLY_BUILD: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         let builder = run.builder;
@@ -1007,7 +998,6 @@ pub struct Cargo {
 
 impl Step for Cargo {
     type Output = PathBuf;
-    const ONLY_BUILD_TARGETS: bool = true;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
@@ -1095,7 +1085,6 @@ pub struct Rls {
 
 impl Step for Rls {
     type Output = Option<PathBuf>;
-    const ONLY_BUILD_TARGETS: bool = true;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
@@ -1177,7 +1166,6 @@ pub struct Rustfmt {
 
 impl Step for Rustfmt {
     type Output = Option<PathBuf>;
-    const ONLY_BUILD_TARGETS: bool = true;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
@@ -1263,7 +1251,6 @@ pub struct Extended {
 impl Step for Extended {
     type Output = ();
     const DEFAULT: bool = true;
-    const ONLY_BUILD_TARGETS: bool = true;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
@@ -1274,7 +1261,7 @@ impl Step for Extended {
     fn make_run(run: RunConfig) {
         run.builder.ensure(Extended {
             stage: run.builder.top_stage,
-            host: run.host,
+            host: run.builder.build.build,
             target: run.target,
         });
     }
@@ -1692,9 +1679,7 @@ pub struct HashSign;
 
 impl Step for HashSign {
     type Output = ();
-    const ONLY_BUILD_TARGETS: bool = true;
     const ONLY_HOSTS: bool = true;
-    const ONLY_BUILD: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         run.path("hash-and-sign")
