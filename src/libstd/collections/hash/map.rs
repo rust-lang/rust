@@ -2709,6 +2709,39 @@ fn assert_covariance() {
     }
 }
 
+/// Creates a `HashMap` containing the provided key-value pairs.
+///
+/// `hashmap!` allows `HashMap`s to be defined with the same syntax as an array of tuples.
+///
+/// ```
+/// use std::collections::HashMap;
+///
+/// let m = hashmap![("one", 1), ("two", 2), ("three", 3)];
+/// assert_eq!(m["one"], 1);
+/// assert_eq!(m["two"], 2);
+/// assert_eq!(m["three"], 3);
+///
+/// let mut m = hashmap![];
+/// m.insert("one", 1);
+/// m.insert("two", 2);
+/// m.insert("three", 3);
+///
+/// assert_eq!(m, hashmap![("one", 1), ("three", 3), ("two", 2),]);
+/// ```
+#[macro_export]
+macro_rules! hashmap {
+    ($(($key:expr, $value:expr)),*) => (
+        {
+            let mut map = HashMap::new();
+            $(
+                map.insert($key, $value);
+            )*
+            map
+        }
+    );
+    ($(($key:expr, $value:expr),)*) => (hashmap![$(($key, $value)),*])
+}
+
 #[cfg(test)]
 mod test_map {
     use super::HashMap;
@@ -3650,5 +3683,25 @@ mod test_map {
         hm.insert(0, TestV(&mut can_drop));
         let _ = panic::catch_unwind(panic::AssertUnwindSafe(|| { hm.entry(0) <- makepanic(); }));
         assert_eq!(hm.len(), 0);
+    }
+
+    #[test]
+    fn test_macro() {
+        let mut expected = HashMap::new();
+        expected.insert("this is a test", 'a');
+        expected.insert("это испытание", 'b');
+        expected.insert("هذا اختبار", 'c');
+
+        assert_eq!(expected, hashmap![("this is a test", 'a'), ("هذا اختبار", 'c'), ("это испытание", 'b'),]);
+
+        let mut second_a = HashMap::new();
+        let mut second_b = hashmap![];
+
+        second_a.insert("three", 3.0);
+        second_a.insert("four", 4.0);
+        second_b.insert("three", 3.0);
+        second_b.insert("four", 4.0);
+
+        assert_eq!(second_a, second_b);
     }
 }
