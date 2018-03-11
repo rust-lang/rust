@@ -429,9 +429,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
         self
     }
 
-    pub fn enter<F, R>(&'tcx mut self, f: F) -> R
-        where F: for<'b> FnOnce(&InferCtxt<'b, 'gcx, 'tcx>) -> R
-    {
+    pub fn enter<R>(&'tcx mut self, f: impl FnOnce(&InferCtxt<'_, 'gcx, 'tcx>) -> R) -> R {
         let InferCtxtBuilder {
             global_tcx,
             ref arena,
