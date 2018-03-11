@@ -15,7 +15,7 @@ use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::middle::region;
 use rustc::middle::lang_items::UnsizeTraitLangItem;
 
-use rustc::traits::{self, ObligationCause};
+use rustc::traits::{self, TraitEngine, ObligationCause};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::TypeFoldable;
 use rustc::ty::adjustment::CoerceUnsizedInfo;
@@ -372,7 +372,7 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
         };
 
-        let mut fulfill_cx = traits::FulfillmentContext::new();
+        let mut fulfill_cx = TraitEngine::new();
 
         // Register an obligation for `A: Trait<B>`.
         let cause = traits::ObligationCause::misc(span, impl_node_id);

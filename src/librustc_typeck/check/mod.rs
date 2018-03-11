@@ -95,7 +95,8 @@ use rustc::infer::type_variable::{TypeVariableOrigin};
 use rustc::middle::region;
 use rustc::mir::interpret::{GlobalId};
 use rustc::ty::subst::{Kind, Subst, Substs};
-use rustc::traits::{self, FulfillmentContext, ObligationCause, ObligationCauseCode};
+use rustc::traits::{self, ObligationCause, ObligationCauseCode};
+use rustc::traits::engine::TraitEngine;
 use rustc::ty::{self, Ty, TyCtxt, Visibility, ToPredicate};
 use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
@@ -195,7 +196,7 @@ pub struct Inherited<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     locals: RefCell<NodeMap<Ty<'tcx>>>,
 
-    fulfillment_cx: RefCell<traits::FulfillmentContext<'tcx>>,
+    fulfillment_cx: RefCell<Box<dyn TraitEngine<'tcx>>>,
 
     // When we process a call like `c()` where `c` is a closure type,
     // we may not have decided yet whether `c` is a `Fn`, `FnMut`, or
@@ -634,7 +635,7 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
                 maybe_tables: infcx.in_progress_tables,
             },
             infcx,
-            fulfillment_cx: RefCell::new(traits::FulfillmentContext::new()),
+            fulfillment_cx: RefCell::new(TraitEngine::new()),
             locals: RefCell::new(NodeMap()),
             deferred_call_resolutions: RefCell::new(DefIdMap()),
             deferred_cast_checks: RefCell::new(Vec::new()),
@@ -2893,7 +2894,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         // out unconstrained or ambiguous, as we're
                         // just trying to get hints here.
                         self.save_and_restore_in_snapshot_flag(|_| {
-                            let mut fulfill = FulfillmentContext::new();
+                            let mut fulfill = TraitEngine::new();
                             for obligation in ok.obligations {
                                 fulfill.register_predicate_obligation(self, obligation);
                             }

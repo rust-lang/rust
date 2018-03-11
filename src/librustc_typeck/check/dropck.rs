@@ -16,7 +16,7 @@ use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::middle::region;
 use rustc::ty::subst::{Subst, Substs, UnpackedKind};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::traits::{self, ObligationCause};
+use rustc::traits::{self, ObligationCause, TraitEngine};
 use util::common::ErrorReported;
 
 use syntax::ast;
@@ -84,7 +84,7 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
     tcx.infer_ctxt().enter(|ref infcx| {
         let impl_param_env = tcx.param_env(self_type_did);
         let tcx = infcx.tcx;
-        let mut fulfillment_cx = traits::FulfillmentContext::new();
+        let mut fulfillment_cx = TraitEngine::new();
 
         let named_type = tcx.type_of(self_type_did);
 
