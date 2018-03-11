@@ -2,6 +2,9 @@
 #![allow(unused_variables)]
 #![feature(inclusive_range, inclusive_range_syntax)]
 
+#[macro_use]
+extern crate derive_new;
+
 use std::ops::{Range, RangeFrom, RangeTo, RangeInclusive, RangeToInclusive};
 
 mod foo {
@@ -14,6 +17,11 @@ struct Person {
     name: u8,
     buzz: u64,
     foo: u8,
+}
+
+#[derive(new)]
+pub struct S {
+    v: String,
 }
 
 fn main() {
