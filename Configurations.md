@@ -2149,8 +2149,7 @@ Skip formatting the specified files and directories.
 If you want to ignore specific files, put the following to your config file:
 
 ```toml
-[ignore]
-files = [
+ignore = [
     "src/types.rs",
     "src/foo/bar.rs",
 ]
@@ -2159,8 +2158,7 @@ files = [
 If you want to ignore every file under `examples/`, put the following to your config file:
 
 ```toml
-[ignore]
-directories = [
+ignore [
     "examples",
 ]
 ```
