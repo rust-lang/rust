@@ -27,7 +27,7 @@ use ty::{self, Ty, TyCtxt};
 use ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use ty::fold::TypeFoldable;
 use ty::relate::RelateResult;
-use traits::{self, ObligationCause, PredicateObligations, TraitEngine};
+use traits::{self, ObligationCause, PredicateObligations};
 use rustc_data_structures::unify as ut;
 use std::cell::{Cell, RefCell, Ref, RefMut};
 use std::collections::BTreeMap;

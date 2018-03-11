@@ -85,7 +85,7 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
             register_region_obligations: false
         }
     }
-    
+
     pub fn register_predicate_obligations<I>(&mut self,
                                              infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                              obligations: I)
@@ -217,8 +217,8 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
     }
 
     fn select_all_or_error<'a, 'gcx>(&mut self,
-                           infcx: &InferCtxt<'a, 'gcx, 'tcx>)
-                           -> Result<(),Vec<FulfillmentError<'tcx>>>
+                                     infcx: &InferCtxt<'a, 'gcx, 'tcx>)
+                                     -> Result<(),Vec<FulfillmentError<'tcx>>>
     {
         self.select_where_possible(infcx)?;
 

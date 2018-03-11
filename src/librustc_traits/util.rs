@@ -12,7 +12,7 @@ use rustc::infer::InferCtxt;
 use rustc::infer::canonical::{CanonicalVarValues, Canonicalize, Certainty, QueryRegionConstraints,
                               QueryResult};
 use rustc::infer::region_constraints::{Constraint, RegionConstraintData};
-use rustc::traits::FulfillmentContext;
+use rustc::traits::{FulfillmentContext, TraitEngine};
 use rustc::traits::query::NoSolution;
 use rustc::ty;
 use std::fmt::Debug;

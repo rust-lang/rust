@@ -16,13 +16,6 @@ use super::{FulfillmentContext, FulfillmentError};
 use super::{ObligationCause, PredicateObligation, PendingPredicateObligation};
 
 pub trait TraitEngine<'tcx> {
-    /// "Normalize" a projection type `<SomeType as SomeTrait>::X` by
-    /// creating a fresh type variable `$0` as well as a projection
-    /// predicate `<SomeType as SomeTrait>::X == $0`. When the
-    /// inference engine runs, it will attempt to find an impl of
-    /// `SomeTrait` or a where clause that lets us unify `$0` with
-    /// something concrete. If this fails, we'll unify `$0` with
-    /// `projection_ty` again.
     fn normalize_projection_type<'a, 'gcx>(
         &mut self,
         infcx: &InferCtxt<'a, 'gcx, 'tcx>,
@@ -31,9 +24,6 @@ pub trait TraitEngine<'tcx> {
         cause: ObligationCause<'tcx>,
     ) -> Ty<'tcx>;
 
-    /// Requires that `ty` must implement the trait with `def_id` in
-    /// the given environment. This trait must not have any type
-    /// parameters (except for `Self`).
     fn register_bound<'a, 'gcx>(
         &mut self,
         infcx: &InferCtxt<'a, 'gcx, 'tcx>,
@@ -62,8 +52,19 @@ pub trait TraitEngine<'tcx> {
     fn pending_obligations(&self) -> Vec<PendingPredicateObligation<'tcx>>;
 }
 
-impl<'tcx> dyn TraitEngine<'tcx> {
-    pub fn new(_tcx: TyCtxt<'_, '_, 'tcx>) -> Box<Self> {
-        Box::new(FulfillmentContext::new())
-    }
+impl<'a, 'gcx, 'tcx> dyn TraitEngine<'tcx> +'tcx {
+   pub fn new(_tcx: TyCtxt<'_, '_, 'tcx>) -> Box<Self + 'tcx>
+   {
+       Box::new(FulfillmentContext::new())
+   }
+
+   pub fn register_predicate_obligations<I>(&mut self,
+                                            infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                            obligations: I)
+       where I: IntoIterator<Item = PredicateObligation<'tcx>>
+   {
+       for obligation in obligations {
+           self.register_predicate_obligation(infcx, obligation);
+       }
+   }
 }
