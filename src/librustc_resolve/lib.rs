@@ -863,6 +863,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
             }
             ForeignItemKind::Static(..) => NoTypeParameters,
             ForeignItemKind::Ty => NoTypeParameters,
+            ForeignItemKind::Macro(..) => NoTypeParameters,
         };
         self.with_type_parameter_rib(type_parameters, |this| {
             visit::walk_foreign_item(this, foreign_item);

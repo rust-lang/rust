@@ -133,6 +133,8 @@ expansions! {
         "trait item", .make_trait_items, lift .fold_trait_item, lift .visit_trait_item;
     ImplItems: SmallVector<ast::ImplItem> [SmallVector, ast::ImplItem],
         "impl item",  .make_impl_items,  lift .fold_impl_item,  lift .visit_impl_item;
+    ForeignItems: SmallVector<ast::ForeignItem> [SmallVector, ast::ForeignItem],
+        "foreign item", .make_foreign_items, lift .fold_foreign_item, lift .visit_foreign_item;
 }
 
 impl ExpansionKind {
@@ -149,6 +151,8 @@ impl ExpansionKind {
                 Expansion::ImplItems(items.map(Annotatable::expect_impl_item).collect()),
             ExpansionKind::TraitItems =>
                 Expansion::TraitItems(items.map(Annotatable::expect_trait_item).collect()),
+            ExpansionKind::ForeignItems =>
+                Expansion::ForeignItems(items.map(Annotatable::expect_foreign_item).collect()),
             _ => unreachable!(),
         }
     }
@@ -435,6 +439,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             Annotatable::ImplItem(item) => {
                 Annotatable::ImplItem(item.map(|item| cfg.fold_impl_item(item).pop().unwrap()))
             }
+            Annotatable::ForeignItem(item) => {
+                Annotatable::ForeignItem(
+                    item.map(|item| cfg.fold_foreign_item(item).pop().unwrap())
+                )
+            }
             Annotatable::Stmt(stmt) => {
                 Annotatable::Stmt(stmt.map(|stmt| cfg.fold_stmt(stmt).pop().unwrap()))
             }
@@ -509,6 +518,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     Annotatable::Item(item) => token::NtItem(item),
                     Annotatable::TraitItem(item) => token::NtTraitItem(item.into_inner()),
                     Annotatable::ImplItem(item) => token::NtImplItem(item.into_inner()),
+                    Annotatable::ForeignItem(item) => token::NtForeignItem(item.into_inner()),
                     Annotatable::Stmt(stmt) => token::NtStmt(stmt.into_inner()),
                     Annotatable::Expr(expr) => token::NtExpr(expr),
                 })).into();
@@ -792,6 +802,15 @@ impl<'a> Parser<'a> {
                     items.push(self.parse_impl_item(&mut false)?);
                 }
                 Expansion::ImplItems(items)
+            }
+            ExpansionKind::ForeignItems => {
+                let mut items = SmallVector::new();
+                while self.token != token::Eof {
+                    if let Some(item) = self.parse_foreign_item()? {
+                        items.push(item);
+                    }
+                }
+                Expansion::ForeignItems(items)
             }
             ExpansionKind::Stmts => {
                 let mut stmts = SmallVector::new();
@@ -1166,6 +1185,44 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
         noop_fold_foreign_mod(self.cfg.configure_foreign_mod(foreign_mod), self)
     }
 
+    fn fold_foreign_item(&mut self,
+                         foreign_item: ast::ForeignItem) -> SmallVector<ast::ForeignItem> {
+        let (attr, traits, foreign_item) = self.classify_item(foreign_item);
+
+        let explain = if self.cx.ecfg.proc_macro_enabled() {
+            feature_gate::EXPLAIN_PROC_MACROS_IN_EXTERN
+        } else {
+            feature_gate::EXPLAIN_MACROS_IN_EXTERN
+        };
+
+        if attr.is_some() || !traits.is_empty()  {
+            if !self.cx.ecfg.macros_in_extern_enabled() {
+                if let Some(ref attr) = attr {
+                    emit_feature_err(&self.cx.parse_sess, "macros_in_extern", attr.span,
+                                     GateIssue::Language, explain);
+                }
+            }
+
+            let item = Annotatable::ForeignItem(P(foreign_item));
+            return self.collect_attr(attr, traits, item, ExpansionKind::ForeignItems)
+                .make_foreign_items();
+        }
+
+        if let ast::ForeignItemKind::Macro(mac) = foreign_item.node {
+            self.check_attributes(&foreign_item.attrs);
+
+            if !self.cx.ecfg.macros_in_extern_enabled() {
+                emit_feature_err(&self.cx.parse_sess, "macros_in_extern", foreign_item.span,
+                                 GateIssue::Language, explain);
+            }
+
+            return self.collect_bang(mac, foreign_item.span, ExpansionKind::ForeignItems)
+                .make_foreign_items();
+        }
+
+        noop_fold_foreign_item(foreign_item, self)
+    }
+
     fn fold_item_kind(&mut self, item: ast::ItemKind) -> ast::ItemKind {
         match item {
             ast::ItemKind::MacroDef(..) => item,
@@ -1311,6 +1368,7 @@ impl<'feat> ExpansionConfig<'feat> {
         fn enable_allow_internal_unstable = allow_internal_unstable,
         fn enable_custom_derive = custom_derive,
         fn proc_macro_enabled = proc_macro,
+        fn macros_in_extern_enabled = macros_in_extern,
     }
 }
 

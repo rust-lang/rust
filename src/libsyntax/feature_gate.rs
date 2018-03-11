@@ -447,6 +447,9 @@ declare_features! (
 
     // Allows keywords to be escaped for use as identifiers
     (active, raw_identifiers, "1.26.0", Some(48589), None),
+
+    // Allows macro invocations in `extern {}` blocks
+    (active, macros_in_extern, "1.27.0", Some(49476), None),
 );
 
 declare_features! (
@@ -1296,6 +1299,13 @@ pub const EXPLAIN_UNSIZED_TUPLE_COERCION: &'static str =
 pub const EXPLAIN_MACRO_AT_MOST_ONCE_REP: &'static str =
     "Using the `?` macro Kleene operator for \"at most one\" repetition is unstable";
 
+pub const EXPLAIN_MACROS_IN_EXTERN: &'static str =
+    "Macro invocations in `extern {}` blocks are experimental.";
+
+// mention proc-macros when enabled
+pub const EXPLAIN_PROC_MACROS_IN_EXTERN: &'static str =
+    "Macro and proc-macro invocations in `extern {}` blocks are experimental.";
+
 struct PostExpansionVisitor<'a> {
     context: &'a Context<'a>,
 }
@@ -1600,6 +1610,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     gate_feature_post!(&self, extern_types, i.span,
                                        "extern types are experimental");
             }
+            ast::ForeignItemKind::Macro(..) => {}
         }
 
         visit::walk_foreign_item(self, i)

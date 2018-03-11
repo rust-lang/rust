@@ -381,7 +381,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         .span_label(span, "pattern not allowed in foreign function").emit();
                 });
             }
-            ForeignItemKind::Static(..) | ForeignItemKind::Ty => {}
+            ForeignItemKind::Static(..) | ForeignItemKind::Ty | ForeignItemKind::Macro(..) => {}
         }
 
         visit::walk_foreign_item(self, fi)
@@ -460,6 +460,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         self.check_late_bound_lifetime_defs(&t.bound_generic_params);
         visit::walk_poly_trait_ref(self, t, m);
     }
+
+    fn visit_mac(&mut self, mac: &Spanned<Mac_>) {
+        // when a new macro kind is added but the author forgets to set it up for expansion
+        // because that's the only part that won't cause a compiler error
+        self.session.diagnostic()
+            .span_bug(mac.span, "macro invocation missed in expansion; did you forget to override \
+                                 the relevant `fold_*()` method in `PlaceholderExpander`?");
+    }
 }
 
 // Bans nested `impl Trait`, e.g. `impl Into<impl Debug>`.
@@ -522,6 +530,10 @@ impl<'a> Visitor<'a> for NestedImplTraitVisitor<'a> {
             }
         }
     }
+
+    fn visit_mac(&mut self, _mac: &Spanned<Mac_>) {
+        // covered in AstValidator
+    }
 }
 
 // Bans `impl Trait` in path projections like `<impl Iterator>::Item` or `Foo::Bar<impl Trait>`.
@@ -582,6 +594,10 @@ impl<'a> Visitor<'a> for ImplTraitProjectionVisitor<'a> {
             }
             _ => visit::walk_ty(self, t),
         }
+    }
+
+    fn visit_mac(&mut self, _mac: &Spanned<Mac_>) {
+        // covered in AstValidator
     }
 }
 

@@ -460,6 +460,7 @@ pub fn walk_foreign_item<'a, V: Visitor<'a>>(visitor: &mut V, foreign_item: &'a 
         }
         ForeignItemKind::Static(ref typ, _) => visitor.visit_ty(typ),
         ForeignItemKind::Ty => (),
+        ForeignItemKind::Macro(ref mac) => visitor.visit_mac(mac),
     }
 
     walk_list!(visitor, visit_attribute, &foreign_item.attrs);

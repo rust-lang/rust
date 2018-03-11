@@ -2724,6 +2724,7 @@ impl<'a> LoweringContext<'a> {
                         hir::ForeignItemStatic(this.lower_ty(t, ImplTraitContext::Disallowed), m)
                     }
                     ForeignItemKind::Ty => hir::ForeignItemType,
+                    ForeignItemKind::Macro(_) => panic!("shouldn't exist here"),
                 },
                 vis: this.lower_visibility(&i.vis, None),
                 span: i.span,
