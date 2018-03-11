@@ -96,7 +96,7 @@
 #![feature(dropck_eyepatch)]
 #![feature(exact_size_is_empty)]
 #![feature(fmt_internals)]
-#![feature(fn_must_use)]
+#![cfg_attr(stage0, feature(fn_must_use))]
 #![feature(from_ref)]
 #![feature(fundamental)]
 #![feature(lang_items)]

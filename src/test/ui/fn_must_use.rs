@@ -10,7 +10,6 @@
 
 // compile-pass
 
-#![feature(fn_must_use)]
 #![warn(unused_must_use)]
 
 #[derive(PartialEq, Eq)]

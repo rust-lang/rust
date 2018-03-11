@@ -12,7 +12,6 @@
 
 // compile-pass
 
-#![feature(fn_must_use)]
 #![warn(unused_must_use)]
 
 fn main() {

@@ -518,6 +518,7 @@ mod tests {
         }
     }
 
+    #[allow(unused_must_use)]
     #[test]
     fn cloning() {
         let (tx1, rx1) = channel::<i32>();
@@ -540,6 +541,7 @@ mod tests {
         tx3.send(()).unwrap();
     }
 
+    #[allow(unused_must_use)]
     #[test]
     fn cloning2() {
         let (tx1, rx1) = channel::<i32>();
