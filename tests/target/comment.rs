@@ -82,8 +82,7 @@ fn some_fn3() // some comment some comment some comment some comment some commen
 }
 
 fn some_fn4()
-// some comment some comment some comment some comment some comment some comment
-// some comment
+// some comment some comment some comment some comment some comment some comment some comment
 {
 }
 

@@ -23,10 +23,10 @@ pub struct Indent {
     pub alignment: usize,
 }
 
-// INDENT_BUFFER.len() = 80
+// INDENT_BUFFER.len() = 81
 const INDENT_BUFFER_LEN: usize = 80;
 const INDENT_BUFFER: &str =
-    "\n                                                                               ";
+    "\n                                                                                ";
 impl Indent {
     pub fn new(block_indent: usize, alignment: usize) -> Indent {
         Indent {

@@ -25,6 +25,7 @@ use config::{Config, ControlBraceStyle, IndentStyle};
 use lists::{definitive_tactic, itemize_list, shape_for_tactic, struct_lit_formatting,
             struct_lit_shape, struct_lit_tactic, write_list, ListFormatting, ListItem, Separator};
 use macros::{rewrite_macro, MacroArg, MacroPosition};
+use overflow;
 use patterns::{can_be_overflowed_pat, TuplePatField};
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
@@ -523,7 +524,7 @@ fn array_tactic<T: Rewrite + Spanned + ToExpr>(
                 None => DefinitiveListTactic::Vertical,
             };
             if tactic == DefinitiveListTactic::Vertical && !has_long_item
-                && is_every_args_simple(exprs)
+                && is_every_expr_simple(exprs)
             {
                 DefinitiveListTactic::Mixed
             } else {
@@ -1872,6 +1873,20 @@ fn rewrite_string_lit(context: &RewriteContext, span: Span, shape: Shape) -> Opt
     )
 }
 
+/// In case special-case style is required, returns an offset from which we start horizontal layout.
+pub fn maybe_get_args_offset<T: ToExpr>(callee_str: &str, args: &[&T]) -> Option<(bool, usize)> {
+    if let Some(&(_, num_args_before)) = SPECIAL_MACRO_WHITELIST
+        .iter()
+        .find(|&&(s, _)| s == callee_str)
+    {
+        let all_simple = args.len() > num_args_before && is_every_expr_simple(args);
+
+        Some((all_simple, num_args_before))
+    } else {
+        None
+    }
+}
+
 /// A list of `format!`-like macros, that take a long format string and a list of arguments to
 /// format.
 ///
@@ -1913,297 +1928,26 @@ pub fn rewrite_call(
     span: Span,
     shape: Shape,
 ) -> Option<String> {
-    let force_trailing_comma = if context.inside_macro {
-        span_ends_with_comma(context, span)
-    } else {
-        false
-    };
-    rewrite_call_inner(
+    overflow::rewrite_with_parens(
         context,
         callee,
         &ptr_vec_to_ref_vec(args),
-        span,
         shape,
+        span,
         context.config.width_heuristics().fn_call_width,
-        force_trailing_comma,
+        if context.inside_macro {
+            if span_ends_with_comma(context, span) {
+                Some(SeparatorTactic::Always)
+            } else {
+                Some(SeparatorTactic::Never)
+            }
+        } else {
+            None
+        },
     )
 }
 
-pub fn rewrite_call_inner<'a, T>(
-    context: &RewriteContext,
-    callee_str: &str,
-    args: &[&T],
-    span: Span,
-    shape: Shape,
-    args_max_width: usize,
-    force_trailing_comma: bool,
-) -> Option<String>
-where
-    T: Rewrite + Spanned + ToExpr + 'a,
-{
-    // 2 = `( `, 1 = `(`
-    let paren_overhead = if context.config.spaces_within_parens_and_brackets() {
-        2
-    } else {
-        1
-    };
-    let used_width = extra_offset(callee_str, shape);
-    let one_line_width = shape
-        .width
-        .checked_sub(used_width + 2 * paren_overhead)
-        .unwrap_or(0);
-
-    // 1 = "(" or ")"
-    let one_line_shape = shape
-        .offset_left(last_line_width(callee_str) + 1)
-        .and_then(|shape| shape.sub_width(1))
-        .unwrap_or(Shape { width: 0, ..shape });
-    let nested_shape = shape_from_indent_style(
-        context,
-        shape,
-        used_width + 2 * paren_overhead,
-        used_width + paren_overhead,
-    )?;
-
-    let span_lo = context.snippet_provider.span_after(span, "(");
-    let args_span = mk_sp(span_lo, span.hi());
-
-    let (extendable, list_str) = rewrite_call_args(
-        context,
-        args,
-        args_span,
-        one_line_shape,
-        nested_shape,
-        one_line_width,
-        args_max_width,
-        force_trailing_comma,
-        callee_str,
-    )?;
-
-    if !context.use_block_indent() && need_block_indent(&list_str, nested_shape) && !extendable {
-        let mut new_context = context.clone();
-        new_context.use_block = true;
-        return rewrite_call_inner(
-            &new_context,
-            callee_str,
-            args,
-            span,
-            shape,
-            args_max_width,
-            force_trailing_comma,
-        );
-    }
-
-    let args_shape = Shape {
-        width: shape
-            .width
-            .checked_sub(last_line_width(callee_str))
-            .unwrap_or(0),
-        ..shape
-    };
-    Some(format!(
-        "{}{}",
-        callee_str,
-        wrap_args_with_parens(context, &list_str, extendable, args_shape, nested_shape)
-    ))
-}
-
-fn need_block_indent(s: &str, shape: Shape) -> bool {
-    s.lines().skip(1).any(|s| {
-        s.find(|c| !char::is_whitespace(c))
-            .map_or(false, |w| w + 1 < shape.indent.width())
-    })
-}
-
-fn rewrite_call_args<'a, T>(
-    context: &RewriteContext,
-    args: &[&T],
-    span: Span,
-    one_line_shape: Shape,
-    nested_shape: Shape,
-    one_line_width: usize,
-    args_max_width: usize,
-    force_trailing_comma: bool,
-    callee_str: &str,
-) -> Option<(bool, String)>
-where
-    T: Rewrite + Spanned + ToExpr + 'a,
-{
-    let items = itemize_list(
-        context.snippet_provider,
-        args.iter(),
-        ")",
-        ",",
-        |item| item.span().lo(),
-        |item| item.span().hi(),
-        |item| item.rewrite(context, nested_shape),
-        span.lo(),
-        span.hi(),
-        true,
-    );
-    let mut item_vec: Vec<_> = items.collect();
-
-    // Try letting the last argument overflow to the next line with block
-    // indentation. If its first line fits on one line with the other arguments,
-    // we format the function arguments horizontally.
-    let tactic = try_overflow_last_arg(
-        context,
-        &mut item_vec,
-        &args[..],
-        one_line_shape,
-        nested_shape,
-        one_line_width,
-        args_max_width,
-        callee_str,
-    );
-
-    let fmt = ListFormatting {
-        tactic,
-        separator: ",",
-        trailing_separator: if force_trailing_comma {
-            SeparatorTactic::Always
-        } else if context.inside_macro || !context.use_block_indent() {
-            SeparatorTactic::Never
-        } else {
-            context.config.trailing_comma()
-        },
-        separator_place: SeparatorPlace::Back,
-        shape: nested_shape,
-        ends_with_newline: context.use_block_indent() && tactic == DefinitiveListTactic::Vertical,
-        preserve_newline: false,
-        config: context.config,
-    };
-
-    write_list(&item_vec, &fmt)
-        .map(|args_str| (tactic == DefinitiveListTactic::Horizontal, args_str))
-}
-
-fn try_overflow_last_arg<'a, T>(
-    context: &RewriteContext,
-    item_vec: &mut Vec<ListItem>,
-    args: &[&T],
-    one_line_shape: Shape,
-    nested_shape: Shape,
-    one_line_width: usize,
-    args_max_width: usize,
-    callee_str: &str,
-) -> DefinitiveListTactic
-where
-    T: Rewrite + Spanned + ToExpr + 'a,
-{
-    // 1 = "("
-    let combine_arg_with_callee =
-        callee_str.len() + 1 <= context.config.tab_spaces() && args.len() == 1;
-    let overflow_last = combine_arg_with_callee || can_be_overflowed(context, args);
-
-    // Replace the last item with its first line to see if it fits with
-    // first arguments.
-    let placeholder = if overflow_last {
-        let mut context = context.clone();
-        if !combine_arg_with_callee {
-            if let Some(expr) = args[args.len() - 1].to_expr() {
-                if let ast::ExprKind::MethodCall(..) = expr.node {
-                    context.force_one_line_chain = true;
-                }
-            }
-        }
-        last_arg_shape(args, item_vec, one_line_shape, args_max_width).and_then(|arg_shape| {
-            rewrite_last_arg_with_overflow(&context, args, &mut item_vec[args.len() - 1], arg_shape)
-        })
-    } else {
-        None
-    };
-
-    let mut tactic = definitive_tactic(
-        &*item_vec,
-        ListTactic::LimitedHorizontalVertical(args_max_width),
-        Separator::Comma,
-        one_line_width,
-    );
-
-    // Replace the stub with the full overflowing last argument if the rewrite
-    // succeeded and its first line fits with the other arguments.
-    match (overflow_last, tactic, placeholder) {
-        (true, DefinitiveListTactic::Horizontal, Some(ref overflowed)) if args.len() == 1 => {
-            // When we are rewriting a nested function call, we restrict the
-            // bugdet for the inner function to avoid them being deeply nested.
-            // However, when the inner function has a prefix or a suffix
-            // (e.g. `foo() as u32`), this budget reduction may produce poorly
-            // formatted code, where a prefix or a suffix being left on its own
-            // line. Here we explicitlly check those cases.
-            if count_newlines(overflowed) == 1 {
-                let rw = args.last()
-                    .and_then(|last_arg| last_arg.rewrite(context, nested_shape));
-                let no_newline = rw.as_ref().map_or(false, |s| !s.contains('\n'));
-                if no_newline {
-                    item_vec[args.len() - 1].item = rw;
-                } else {
-                    item_vec[args.len() - 1].item = Some(overflowed.to_owned());
-                }
-            } else {
-                item_vec[args.len() - 1].item = Some(overflowed.to_owned());
-            }
-        }
-        (true, DefinitiveListTactic::Horizontal, placeholder @ Some(..)) => {
-            item_vec[args.len() - 1].item = placeholder;
-        }
-        _ if args.len() >= 1 => {
-            item_vec[args.len() - 1].item = args.last()
-                .and_then(|last_arg| last_arg.rewrite(context, nested_shape));
-
-            let default_tactic = || {
-                definitive_tactic(
-                    &*item_vec,
-                    ListTactic::LimitedHorizontalVertical(args_max_width),
-                    Separator::Comma,
-                    one_line_width,
-                )
-            };
-
-            // Use horizontal layout for a function with a single argument as long as
-            // everything fits in a single line.
-            if args.len() == 1
-                && args_max_width != 0 // Vertical layout is forced.
-                && !item_vec[0].has_comment()
-                && !item_vec[0].inner_as_ref().contains('\n')
-                && ::lists::total_item_width(&item_vec[0]) <= one_line_width
-            {
-                tactic = DefinitiveListTactic::Horizontal;
-            } else {
-                tactic = default_tactic();
-
-                if tactic == DefinitiveListTactic::Vertical {
-                    if let Some((all_simple, num_args_before)) =
-                        maybe_get_args_offset(callee_str, args)
-                    {
-                        let one_line = all_simple
-                            && definitive_tactic(
-                                &item_vec[..num_args_before],
-                                ListTactic::HorizontalVertical,
-                                Separator::Comma,
-                                nested_shape.width,
-                            ) == DefinitiveListTactic::Horizontal
-                            && definitive_tactic(
-                                &item_vec[num_args_before + 1..],
-                                ListTactic::HorizontalVertical,
-                                Separator::Comma,
-                                nested_shape.width,
-                            ) == DefinitiveListTactic::Horizontal;
-
-                        if one_line {
-                            tactic = DefinitiveListTactic::SpecialMacro(num_args_before);
-                        };
-                    }
-                }
-            }
-        }
-        _ => (),
-    }
-
-    tactic
-}
-
-fn is_simple_arg(expr: &ast::Expr) -> bool {
+fn is_simple_expr(expr: &ast::Expr) -> bool {
     match expr.node {
         ast::ExprKind::Lit(..) => true,
         ast::ExprKind::Path(ref qself, ref path) => qself.is_none() && path.segments.len() <= 1,
@@ -2213,106 +1957,18 @@ fn is_simple_arg(expr: &ast::Expr) -> bool {
         | ast::ExprKind::Field(ref expr, _)
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::TupField(ref expr, _)
-        | ast::ExprKind::Unary(_, ref expr) => is_simple_arg(expr),
+        | ast::ExprKind::Unary(_, ref expr) => is_simple_expr(expr),
         ast::ExprKind::Index(ref lhs, ref rhs) | ast::ExprKind::Repeat(ref lhs, ref rhs) => {
-            is_simple_arg(lhs) && is_simple_arg(rhs)
+            is_simple_expr(lhs) && is_simple_expr(rhs)
         }
         _ => false,
     }
 }
 
-fn is_every_args_simple<T: ToExpr>(lists: &[&T]) -> bool {
+fn is_every_expr_simple<T: ToExpr>(lists: &[&T]) -> bool {
     lists
         .iter()
-        .all(|arg| arg.to_expr().map_or(false, is_simple_arg))
-}
-
-/// In case special-case style is required, returns an offset from which we start horizontal layout.
-fn maybe_get_args_offset<T: ToExpr>(callee_str: &str, args: &[&T]) -> Option<(bool, usize)> {
-    if let Some(&(_, num_args_before)) = SPECIAL_MACRO_WHITELIST
-        .iter()
-        .find(|&&(s, _)| s == callee_str)
-    {
-        let all_simple = args.len() > num_args_before && is_every_args_simple(args);
-
-        Some((all_simple, num_args_before))
-    } else {
-        None
-    }
-}
-
-/// Returns a shape for the last argument which is going to be overflowed.
-fn last_arg_shape<T>(
-    lists: &[&T],
-    items: &[ListItem],
-    shape: Shape,
-    args_max_width: usize,
-) -> Option<Shape>
-where
-    T: Rewrite + Spanned + ToExpr,
-{
-    let is_nested_call = lists
-        .iter()
-        .next()
-        .and_then(|item| item.to_expr())
-        .map_or(false, is_nested_call);
-    if items.len() == 1 && !is_nested_call {
-        return Some(shape);
-    }
-    let offset = items.iter().rev().skip(1).fold(0, |acc, i| {
-        // 2 = ", "
-        acc + 2 + i.inner_as_ref().len()
-    });
-    Shape {
-        width: min(args_max_width, shape.width),
-        ..shape
-    }.offset_left(offset)
-}
-
-fn rewrite_last_arg_with_overflow<'a, T>(
-    context: &RewriteContext,
-    args: &[&T],
-    last_item: &mut ListItem,
-    shape: Shape,
-) -> Option<String>
-where
-    T: Rewrite + Spanned + ToExpr + 'a,
-{
-    let last_arg = args[args.len() - 1];
-    let rewrite = if let Some(expr) = last_arg.to_expr() {
-        match expr.node {
-            // When overflowing the closure which consists of a single control flow expression,
-            // force to use block if its condition uses multi line.
-            ast::ExprKind::Closure(..) => {
-                // If the argument consists of multiple closures, we do not overflow
-                // the last closure.
-                if closures::args_have_many_closure(args) {
-                    None
-                } else {
-                    closures::rewrite_last_closure(context, expr, shape)
-                }
-            }
-            _ => expr.rewrite(context, shape),
-        }
-    } else {
-        last_arg.rewrite(context, shape)
-    };
-
-    if let Some(rewrite) = rewrite {
-        let rewrite_first_line = Some(rewrite[..first_line_width(&rewrite)].to_owned());
-        last_item.item = rewrite_first_line;
-        Some(rewrite)
-    } else {
-        None
-    }
-}
-
-fn can_be_overflowed<'a, T>(context: &RewriteContext, args: &[&T]) -> bool
-where
-    T: Rewrite + Spanned + ToExpr + 'a,
-{
-    args.last()
-        .map_or(false, |x| x.can_be_overflowed(context, args.len()))
+        .all(|arg| arg.to_expr().map_or(false, is_simple_expr))
 }
 
 pub fn can_be_overflowed_expr(context: &RewriteContext, expr: &ast::Expr, args_len: usize) -> bool {
@@ -2348,7 +2004,7 @@ pub fn can_be_overflowed_expr(context: &RewriteContext, expr: &ast::Expr, args_l
     }
 }
 
-fn is_nested_call(expr: &ast::Expr) -> bool {
+pub fn is_nested_call(expr: &ast::Expr) -> bool {
     match expr.node {
         ast::ExprKind::Call(..) | ast::ExprKind::Mac(..) => true,
         ast::ExprKind::AddrOf(_, ref expr)
@@ -2360,55 +2016,10 @@ fn is_nested_call(expr: &ast::Expr) -> bool {
     }
 }
 
-pub fn wrap_args_with_parens(
-    context: &RewriteContext,
-    args_str: &str,
-    is_extendable: bool,
-    shape: Shape,
-    nested_shape: Shape,
-) -> String {
-    let paren_overhead = paren_overhead(context);
-    let fits_one_line = args_str.len() + paren_overhead <= shape.width;
-    let extend_width = if args_str.is_empty() {
-        paren_overhead
-    } else {
-        paren_overhead / 2
-    };
-    if !context.use_block_indent()
-        || (context.inside_macro && !args_str.contains('\n') && fits_one_line)
-        || (is_extendable && extend_width <= shape.width)
-    {
-        let mut result = String::with_capacity(args_str.len() + 4);
-        if context.config.spaces_within_parens_and_brackets() && !args_str.is_empty() {
-            result.push_str("( ");
-            result.push_str(args_str);
-            result.push_str(" )");
-        } else {
-            result.push_str("(");
-            result.push_str(args_str);
-            result.push_str(")");
-        }
-        result
-    } else {
-        let nested_indent_str = nested_shape.indent.to_string_with_newline(context.config);
-        let indent_str = shape.block().indent.to_string_with_newline(context.config);
-        let mut result =
-            String::with_capacity(args_str.len() + 2 + indent_str.len() + nested_indent_str.len());
-        result.push_str("(");
-        if !args_str.is_empty() {
-            result.push_str(&nested_indent_str);
-            result.push_str(args_str);
-        }
-        result.push_str(&indent_str);
-        result.push_str(")");
-        result
-    }
-}
-
 /// Return true if a function call or a method call represented by the given span ends with a
 /// trailing comma. This function is used when rewriting macro, as adding or removing a trailing
 /// comma from macro can potentially break the code.
-fn span_ends_with_comma(context: &RewriteContext, span: Span) -> bool {
+pub fn span_ends_with_comma(context: &RewriteContext, span: Span) -> bool {
     let mut result: bool = Default::default();
     let mut prev_char: char = Default::default();
 
@@ -2735,24 +2346,6 @@ pub fn rewrite_field(
     }
 }
 
-fn shape_from_indent_style(
-    context: &RewriteContext,
-    shape: Shape,
-    overhead: usize,
-    offset: usize,
-) -> Option<Shape> {
-    if context.use_block_indent() {
-        // 1 = ","
-        shape
-            .block()
-            .block_indent(context.config.tab_spaces())
-            .with_max_width(context.config)
-            .sub_width(1)
-    } else {
-        shape.visual_indent(offset).sub_width(overhead)
-    }
-}
-
 fn rewrite_tuple_in_visual_indent_style<'a, T>(
     context: &RewriteContext,
     items: &[&T],
@@ -2833,19 +2426,27 @@ where
     debug!("rewrite_tuple {:?}", shape);
     if context.use_block_indent() {
         // We use the same rule as function calls for rewriting tuples.
-        let force_trailing_comma = if context.inside_macro {
-            span_ends_with_comma(context, span)
+        let force_tactic = if context.inside_macro {
+            if span_ends_with_comma(context, span) {
+                Some(SeparatorTactic::Always)
+            } else {
+                Some(SeparatorTactic::Never)
+            }
         } else {
-            items.len() == 1
+            if items.len() == 1 {
+                Some(SeparatorTactic::Always)
+            } else {
+                None
+            }
         };
-        rewrite_call_inner(
+        overflow::rewrite_with_parens(
             context,
-            &String::new(),
+            "",
             items,
-            span,
             shape,
+            span,
             context.config.width_heuristics().fn_call_width,
-            force_trailing_comma,
+            force_tactic,
         )
     } else {
         rewrite_tuple_in_visual_indent_style(context, items, span, shape)
@@ -3052,5 +2653,15 @@ impl<'a> ToExpr for MacroArg {
             MacroArg::Ty(ref ty) => can_be_overflowed_type(context, ty, len),
             MacroArg::Pat(..) => false,
         }
+    }
+}
+
+impl ToExpr for ast::GenericParam {
+    fn to_expr(&self) -> Option<&ast::Expr> {
+        None
+    }
+
+    fn can_be_overflowed(&self, _: &RewriteContext, _: usize) -> bool {
+        false
     }
 }

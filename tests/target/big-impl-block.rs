@@ -38,11 +38,8 @@ impl Foo<ExcessivelyLongGenericName, ExcessivelyLongGenericName, AnotherExcessiv
 {
     fn foo() {}
 }
-impl<
-    ExcessivelyLongGenericName,
-    ExcessivelyLongGenericName,
-    AnotherExcessivelyLongGenericName,
-> Foo<ExcessivelyLongGenericName, ExcessivelyLongGenericName, AnotherExcessivelyLongGenericName>
+impl<ExcessivelyLongGenericName, ExcessivelyLongGenericName, AnotherExcessivelyLongGenericName>
+    Foo<ExcessivelyLongGenericName, ExcessivelyLongGenericName, AnotherExcessivelyLongGenericName>
     for Bar
 {
     fn foo() {}
@@ -65,11 +62,8 @@ impl Foo<ExcessivelyLongGenericName, ExcessivelyLongGenericName, AnotherExcessiv
 {
     fn foo() {}
 }
-impl<
-    ExcessivelyLongGenericName,
-    ExcessivelyLongGenericName,
-    AnotherExcessivelyLongGenericName,
-> Foo<ExcessivelyLongGenericName, ExcessivelyLongGenericName, AnotherExcessivelyLongGenericName>
+impl<ExcessivelyLongGenericName, ExcessivelyLongGenericName, AnotherExcessivelyLongGenericName>
+    Foo<ExcessivelyLongGenericName, ExcessivelyLongGenericName, AnotherExcessivelyLongGenericName>
     for Bar<
         ExcessivelyLongGenericName,
         ExcessivelyLongGenericName,

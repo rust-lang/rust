@@ -18,10 +18,10 @@ use syntax::symbol::keywords;
 
 use codemap::SpanUtils;
 use config::{IndentStyle, TypeDensity};
-use expr::{rewrite_pair, rewrite_tuple, rewrite_unary_prefix, wrap_args_with_parens, PairParts};
-use items::{format_generics_item_list, generics_shape_from_config};
+use expr::{rewrite_pair, rewrite_tuple, rewrite_unary_prefix, PairParts, ToExpr};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
 use macros::{rewrite_macro, MacroPosition};
+use overflow;
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use spanned::Spanned;
@@ -151,12 +151,25 @@ enum SegmentParam<'a> {
     Binding(&'a ast::TypeBinding),
 }
 
-impl<'a> SegmentParam<'a> {
-    fn get_span(&self) -> Span {
+impl<'a> Spanned for SegmentParam<'a> {
+    fn span(&self) -> Span {
         match *self {
             SegmentParam::LifeTime(lt) => lt.span,
             SegmentParam::Type(ty) => ty.span,
             SegmentParam::Binding(binding) => binding.span,
+        }
+    }
+}
+
+impl<'a> ToExpr for SegmentParam<'a> {
+    fn to_expr(&self) -> Option<&ast::Expr> {
+        None
+    }
+
+    fn can_be_overflowed(&self, context: &RewriteContext, len: usize) -> bool {
+        match *self {
+            SegmentParam::Type(ty) => ty.can_be_overflowed(context, len),
+            _ => false,
         }
     }
 }
@@ -204,7 +217,11 @@ fn rewrite_segment(
     result.push_str(&segment.identifier.name.as_str());
 
     let ident_len = result.len();
-    let shape = shape.shrink_left(ident_len)?;
+    let shape = if context.use_block_indent() {
+        shape.offset_left(ident_len)?
+    } else {
+        shape.shrink_left(ident_len)?
+    };
 
     if let Some(ref params) = segment.parameters {
         match **params {
@@ -219,10 +236,6 @@ fn rewrite_segment(
                     .chain(data.bindings.iter().map(|x| SegmentParam::Binding(&*x)))
                     .collect::<Vec<_>>();
 
-                let next_span_lo = param_list.last().unwrap().get_span().hi() + BytePos(1);
-                let list_lo = context
-                    .snippet_provider
-                    .span_after(mk_sp(*span_lo, span_hi), "<");
                 let separator = if path_context == PathContext::Expr {
                     "::"
                 } else {
@@ -230,26 +243,18 @@ fn rewrite_segment(
                 };
                 result.push_str(separator);
 
-                let generics_shape =
-                    generics_shape_from_config(context.config, shape, separator.len())?;
-                let one_line_width = shape.width.checked_sub(separator.len() + 2)?;
-                let items = itemize_list(
-                    context.snippet_provider,
-                    param_list.into_iter(),
-                    ">",
-                    ",",
-                    |param| param.get_span().lo(),
-                    |param| param.get_span().hi(),
-                    |seg| seg.rewrite(context, generics_shape),
-                    list_lo,
-                    span_hi,
-                    false,
-                );
-                let generics_str =
-                    format_generics_item_list(context, items, generics_shape, one_line_width)?;
+                let generics_str = overflow::rewrite_with_angle_brackets(
+                    context,
+                    "",
+                    &param_list.iter().map(|e| &*e).collect::<Vec<_>>()[..],
+                    shape,
+                    mk_sp(*span_lo, span_hi),
+                )?;
 
                 // Update position of last bracket.
-                *span_lo = next_span_lo;
+                *span_lo = context
+                    .snippet_provider
+                    .span_after(mk_sp(*span_lo, span_hi), "<");
 
                 result.push_str(&generics_str)
             }
@@ -384,14 +389,18 @@ where
         FunctionRetTy::Default(..) => String::new(),
     };
 
-    let extendable = (!list_str.contains('\n') || list_str.is_empty()) && !output.contains('\n');
-    let args = wrap_args_with_parens(
-        context,
-        &list_str,
-        extendable,
-        shape.sub_width(first_line_width(&output))?,
-        Shape::indented(offset, context.config),
-    );
+    let args = if (!list_str.contains('\n') || list_str.is_empty()) && !output.contains('\n')
+        || !context.use_block_indent()
+    {
+        format!("({})", list_str)
+    } else {
+        format!(
+            "({}{}{})",
+            offset.to_string_with_newline(context.config),
+            list_str,
+            shape.block().indent.to_string_with_newline(context.config),
+        )
+    };
     if last_line_width(&args) + first_line_width(&output) <= shape.width {
         Some(format!("{}{}", args, output))
     } else {
@@ -803,7 +812,7 @@ pub fn join_bounds(context: &RewriteContext, shape: Shape, type_strs: &[String])
 
 pub fn can_be_overflowed_type(context: &RewriteContext, ty: &ast::Ty, len: usize) -> bool {
     match ty.node {
-        ast::TyKind::Path(..) | ast::TyKind::Tup(..) => context.use_block_indent() && len == 1,
+        ast::TyKind::Tup(..) => context.use_block_indent() && len == 1,
         ast::TyKind::Rptr(_, ref mutty) | ast::TyKind::Ptr(ref mutty) => {
             can_be_overflowed_type(context, &*mutty.ty, len)
         }

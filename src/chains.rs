@@ -257,7 +257,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         Cow::from("")
     } else {
         // Use new lines.
-        if context.force_one_line_chain {
+        if *context.force_one_line_chain.borrow() {
             return None;
         }
         nested_shape.indent.to_string_with_newline(context.config)
