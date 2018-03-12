@@ -8,3 +8,26 @@ enable, and thus are more fully documented in the [Unstable Book]. Those section
 there as necessary.
 
 [Unstable Book]: ../unstable-book/
+
+## Error numbers for `compile-fail` doctests
+
+As detailed in [the chapter on documentation tests][doctest-attributes], you can add a
+`compile_fail` attribute to a doctest to state that the test should fail to compile. However, on
+nightly, you can optionally add an error number to state that a doctest should emit a specific error
+number:
+
+[doctest-attributes]: documentation-tests.html#attributes
+
+``````markdown
+```compile_fail,E0044
+extern { fn some_func<T>(x: T); }
+```
+``````
+
+This is used by the error index to ensure that the samples that correspond to a given error number
+properly emit that error code. However, these error codes aren't guaranteed to be the only thing
+that a piece of code emits from version to version, so this in unlikely to be stabilized in the
+future.
+
+Attempting to use these error numbers on stable will result in the code sample being interpreted as
+plain text.
