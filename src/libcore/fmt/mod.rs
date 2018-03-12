@@ -1375,27 +1375,159 @@ impl<'a> Formatter<'a> {
         }
     }
 
-    /// Optionally specified integer width that the output should be
+    /// Optionally specified integer width that the output should be.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo(i32);
+    ///
+    /// impl fmt::Display for Foo {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///         if let Some(width) = formatter.width() {
+    ///             // If we received a width, we use it
+    ///             write!(formatter, "{:width$}", &format!("Foo({})", self.0), width = width)
+    ///         } else {
+    ///             // Otherwise we do nothing special
+    ///             write!(formatter, "Foo({})", self.0)
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(&format!("{:10}", Foo(23)), "Foo(23)   ");
+    /// assert_eq!(&format!("{}", Foo(23)), "Foo(23)");
+    /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn width(&self) -> Option<usize> { self.width }
 
-    /// Optionally specified precision for numeric types
+    /// Optionally specified precision for numeric types.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo(f32);
+    ///
+    /// impl fmt::Display for Foo {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///         if let Some(precision) = formatter.precision() {
+    ///             // If we received a precision, we use it.
+    ///             write!(formatter, "Foo({1:.*})", precision, self.0)
+    ///         } else {
+    ///             // Otherwise we default to 2.
+    ///             write!(formatter, "Foo({:.2})", self.0)
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(&format!("{:.4}", Foo(23.2)), "Foo(23.2000)");
+    /// assert_eq!(&format!("{}", Foo(23.2)), "Foo(23.20)");
+    /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn precision(&self) -> Option<usize> { self.precision }
 
     /// Determines if the `+` flag was specified.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo(i32);
+    ///
+    /// impl fmt::Display for Foo {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///         if formatter.sign_plus() {
+    ///             write!(formatter,
+    ///                    "Foo({}{})",
+    ///                    if self.0 < 0 { '-' } else { '+' },
+    ///                    self.0)
+    ///         } else {
+    ///             write!(formatter, "Foo({})", self.0)
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(&format!("{:+}", Foo(23)), "Foo(+23)");
+    /// assert_eq!(&format!("{}", Foo(23)), "Foo(23)");
+    /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn sign_plus(&self) -> bool { self.flags & (1 << FlagV1::SignPlus as u32) != 0 }
 
     /// Determines if the `-` flag was specified.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo(i32);
+    ///
+    /// impl fmt::Display for Foo {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///         if formatter.sign_minus() {
+    ///             // You want a minus sign? Have one!
+    ///             write!(formatter, "-Foo({})", self.0)
+    ///         } else {
+    ///             write!(formatter, "Foo({})", self.0)
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(&format!("{:-}", Foo(23)), "-Foo(23)");
+    /// assert_eq!(&format!("{}", Foo(23)), "Foo(23)");
+    /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn sign_minus(&self) -> bool { self.flags & (1 << FlagV1::SignMinus as u32) != 0 }
 
     /// Determines if the `#` flag was specified.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo(i32);
+    ///
+    /// impl fmt::Display for Foo {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///         if formatter.alternate() {
+    ///             write!(formatter, "Foo({})", self.0)
+    ///         } else {
+    ///             write!(formatter, "{}", self.0)
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(&format!("{:#}", Foo(23)), "Foo(23)");
+    /// assert_eq!(&format!("{}", Foo(23)), "23");
+    /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn alternate(&self) -> bool { self.flags & (1 << FlagV1::Alternate as u32) != 0 }
 
     /// Determines if the `0` flag was specified.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo(i32);
+    ///
+    /// impl fmt::Display for Foo {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///         assert!(formatter.sign_aware_zero_pad());
+    ///         assert_eq!(formatter.width(), Some(4));
+    ///         // We ignore the formatter's options.
+    ///         write!(formatter, "{}", self.0)
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(&format!("{:04}", Foo(23)), "23");
+    /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn sign_aware_zero_pad(&self) -> bool {
         self.flags & (1 << FlagV1::SignAwareZeroPad as u32) != 0
