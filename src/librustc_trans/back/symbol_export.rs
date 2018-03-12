@@ -14,8 +14,8 @@ use std::sync::Arc;
 use monomorphize::Instance;
 use rustc::hir;
 use rustc::hir::TransFnAttrFlags;
-use rustc::hir::def_id::CrateNum;
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, CRATE_DEF_INDEX};
+use rustc::ich::Fingerprint;
 use rustc::middle::exported_symbols::{SymbolExportLevel, ExportedSymbol, metadata_symbol_name};
 use rustc::session::config;
 use rustc::ty::{TyCtxt, SymbolName};
@@ -23,6 +23,9 @@ use rustc::ty::maps::Providers;
 use rustc::ty::subst::Substs;
 use rustc::util::nodemap::{FxHashMap, DefIdMap};
 use rustc_allocator::ALLOCATOR_METHODS;
+use rustc_data_structures::indexed_vec::IndexVec;
+use syntax::attr;
+use std::collections::hash_map::Entry::*;
 
 pub type ExportedSymbols = FxHashMap<
     CrateNum,
@@ -282,12 +285,39 @@ fn upstream_monomorphizations_provider<'a, 'tcx>(
 
     let mut instances = DefIdMap();
 
+    let cnum_stable_ids: IndexVec<CrateNum, Fingerprint> = {
+        let mut cnum_stable_ids = IndexVec::from_elem_n(Fingerprint::ZERO,
+                                                        cnums.len() + 1);
+
+        for &cnum in cnums.iter() {
+            cnum_stable_ids[cnum] = tcx.def_path_hash(DefId {
+                krate: cnum,
+                index: CRATE_DEF_INDEX,
+            }).0;
+        }
+
+        cnum_stable_ids
+    };
+
     for &cnum in cnums.iter() {
         for &(ref exported_symbol, _) in tcx.exported_symbols(cnum).iter() {
             if let &ExportedSymbol::Generic(def_id, substs) = exported_symbol {
-                instances.entry(def_id)
-                         .or_insert_with(|| FxHashMap())
-                         .insert(substs, cnum);
+                let substs_map = instances.entry(def_id)
+                                          .or_insert_with(|| FxHashMap());
+
+                match substs_map.entry(substs) {
+                    Occupied(mut e) => {
+                        // If there are multiple monomorphizations available,
+                        // we select one deterministically.
+                        let other_cnum = *e.get();
+                        if cnum_stable_ids[other_cnum] > cnum_stable_ids[cnum] {
+                            e.insert(cnum);
+                        }
+                    }
+                    Vacant(e) => {
+                        e.insert(cnum);
+                    }
+                }
             }
         }
     }
