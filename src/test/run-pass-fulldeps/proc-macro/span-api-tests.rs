@@ -37,7 +37,7 @@ reemit_legacy! {
 say_hello_extern! { assert_fake_source_file }
 
 reemit! {
-    assert_source_file! { "Hello, world!" }
+    assert_fake_source_file! { "Hello, world!" }
 }
 
 fn main() {}
