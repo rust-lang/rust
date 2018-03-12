@@ -684,18 +684,16 @@ pub trait Octal {
 ///
 /// The `Binary` trait should format its output as a number in binary.
 ///
-/// For primitive signed integers (`i8` to `i128`, and `isize`),
+/// For primitive signed integers ([`i8`] to [`i128`], and [`isize`]),
 /// negative values are formatted as the two’s complement representation.
 ///
 /// The alternate flag, `#`, adds a `0b` in front of the output.
 ///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
-/// [module]: ../../std/fmt/index.html
-///
 /// # Examples
 ///
-/// Basic usage with `i32`:
+/// Basic usage with [`i32`]:
 ///
 /// ```
 /// let x = 42; // 42 is '101010' in binary
@@ -725,6 +723,12 @@ pub trait Octal {
 ///
 /// println!("l as binary is: {:b}", l);
 /// ```
+///
+/// [module]: ../../std/fmt/index.html
+/// [`i8`]: ../../std/primitive.i8.html
+/// [`i128`]: ../../std/primitive.i128.html
+/// [`isize`]: ../../std/primitive.isize.html
+/// [`i32`]: ../../std/primitive.i32.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Binary {
     /// Formats the value using the given formatter.
