@@ -47,7 +47,8 @@ use syntax_pos::{DUMMY_SP, Span};
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn report_fulfillment_errors(&self,
                                      errors: &Vec<FulfillmentError<'tcx>>,
-                                     body_id: Option<hir::BodyId>) {
+                                     body_id: Option<hir::BodyId>,
+                                     fallback_has_occurred: bool) {
         #[derive(Debug)]
         struct ErrorDescriptor<'tcx> {
             predicate: ty::Predicate<'tcx>,
@@ -107,7 +108,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         for (error, suppressed) in errors.iter().zip(is_suppressed) {
             if !suppressed {
-                self.report_fulfillment_error(error, body_id);
+                self.report_fulfillment_error(error, body_id, fallback_has_occurred);
             }
         }
     }
@@ -151,11 +152,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn report_fulfillment_error(&self, error: &FulfillmentError<'tcx>,
-                                body_id: Option<hir::BodyId>) {
+                                body_id: Option<hir::BodyId>,
+                                fallback_has_occurred: bool) {
         debug!("report_fulfillment_errors({:?})", error);
         match error.code {
             FulfillmentErrorCode::CodeSelectionError(ref e) => {
-                self.report_selection_error(&error.obligation, e);
+                self.report_selection_error(&error.obligation, e, fallback_has_occurred);
             }
             FulfillmentErrorCode::CodeProjectionError(ref e) => {
                 self.report_projection_error(&error.obligation, e);
@@ -533,9 +535,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     pub fn report_selection_error(&self,
                                   obligation: &PredicateObligation<'tcx>,
-                                  error: &SelectionError<'tcx>)
+                                  error: &SelectionError<'tcx>,
+                                  fallback_has_occurred: bool)
     {
         let span = obligation.cause.span;
+        let _ = fallback_has_occurred;
 
         let mut err = match *error {
             SelectionError::Unimplemented => {
@@ -617,6 +621,37 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             // Can't show anything else useful, try to find similar impls.
                             let impl_candidates = self.find_similar_impl_candidates(trait_ref);
                             self.report_similar_impl_candidates(impl_candidates, &mut err);
+                        }
+
+                        // If this error is due to `!: !Trait` but `(): Trait` then add a note
+                        // about the fallback behaviour change.
+                        if trait_predicate.skip_binder().self_ty().is_never() {
+                            let predicate = trait_predicate.map_bound(|mut trait_pred| {
+                                {
+                                    let trait_ref = &mut trait_pred.trait_ref;
+                                    let never_substs = trait_ref.substs;
+                                    let mut unit_substs = Vec::with_capacity(never_substs.len());
+                                    unit_substs.push(self.tcx.mk_nil().into());
+                                    unit_substs.extend(&never_substs[1..]);
+                                    trait_ref.substs = self.tcx.intern_substs(&unit_substs);
+                                }
+                                trait_pred
+                            });
+                            let unit_obligation = Obligation {
+                                cause: obligation.cause.clone(),
+                                param_env: obligation.param_env,
+                                recursion_depth: obligation.recursion_depth,
+                                predicate,
+                            };
+                            let mut selcx = SelectionContext::new(self);
+                            if let Ok(Some(..)) = selcx.select(&unit_obligation) {
+                                err.note("the trait is implemented for `()`. \
+                                         Possibly this error has been caused by changes to \
+                                         Rust's type-inference algorithm \
+                                         (see: https://github.com/rust-lang/rust/issues/48950 \
+                                         for more info). Consider whether you meant to use the \
+                                         type `()` here instead.");
+                            }
                         }
 
                         err

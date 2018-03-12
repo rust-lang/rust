@@ -873,11 +873,12 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         };
 
         // All type checking constraints were added, try to fallback unsolved variables.
-        fcx.select_obligations_where_possible();
+        fcx.select_obligations_where_possible(false);
+        let mut fallback_has_occurred = false;
         for ty in &fcx.unsolved_variables() {
-            fcx.fallback_if_possible(ty);
+            fallback_has_occurred |= fcx.fallback_if_possible(ty);
         }
-        fcx.select_obligations_where_possible();
+        fcx.select_obligations_where_possible(fallback_has_occurred);
 
         // Even though coercion casts provide type hints, we check casts after fallback for
         // backwards compatibility. This makes fallback a stronger type hint than a cast coercion.
@@ -1837,7 +1838,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // possible. This can help substantially when there are
         // indirect dependencies that don't seem worth tracking
         // precisely.
-        self.select_obligations_where_possible();
+        self.select_obligations_where_possible(false);
         ty = self.resolve_type_vars_if_possible(&ty);
 
         debug!("resolve_type_vars_with_obligations: ty={:?}", ty);
@@ -2154,7 +2155,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn resolve_generator_interiors(&self, def_id: DefId) {
         let mut generators = self.deferred_generator_interiors.borrow_mut();
         for (body_id, interior) in generators.drain(..) {
-            self.select_obligations_where_possible();
+            self.select_obligations_where_possible(false);
             generator_interior::resolve_interior(self, def_id, body_id, interior);
         }
     }
@@ -2164,7 +2165,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // unconstrained floats with f64.
     // Fallback becomes very dubious if we have encountered type-checking errors.
     // In that case, fallback to TyError.
-    fn fallback_if_possible(&self, ty: Ty<'tcx>) {
+    // The return value indicates whether fallback has occured.
+    fn fallback_if_possible(&self, ty: Ty<'tcx>) -> bool {
         use rustc::ty::error::UnconstrainedNumeric::Neither;
         use rustc::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
 
@@ -2174,24 +2176,27 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             UnconstrainedInt => self.tcx.types.i32,
             UnconstrainedFloat => self.tcx.types.f64,
             Neither if self.type_var_diverges(ty) => self.tcx.types.never,
-            Neither => return
+            Neither => return false,
         };
         debug!("default_type_parameters: defaulting `{:?}` to `{:?}`", ty, fallback);
         self.demand_eqtype(syntax_pos::DUMMY_SP, ty, fallback);
+        true
     }
 
     fn select_all_obligations_or_error(&self) {
         debug!("select_all_obligations_or_error");
         if let Err(errors) = self.fulfillment_cx.borrow_mut().select_all_or_error(&self) {
-            self.report_fulfillment_errors(&errors, self.inh.body_id);
+            self.report_fulfillment_errors(&errors, self.inh.body_id, false);
         }
     }
 
     /// Select as many obligations as we can at present.
-    fn select_obligations_where_possible(&self) {
+    fn select_obligations_where_possible(&self, fallback_has_occurred: bool) {
         match self.fulfillment_cx.borrow_mut().select_where_possible(self) {
             Ok(()) => { }
-            Err(errors) => { self.report_fulfillment_errors(&errors, self.inh.body_id); }
+            Err(errors) => {
+                self.report_fulfillment_errors(&errors, self.inh.body_id, fallback_has_occurred);
+            },
         }
     }
 
@@ -2595,7 +2600,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // an "opportunistic" vtable resolution of any trait bounds on
             // the call. This helps coercions.
             if check_closures {
-                self.select_obligations_where_possible();
+                self.select_obligations_where_possible(false);
             }
 
             // For variadic functions, we don't have a declared type for all of
