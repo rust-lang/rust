@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use char::from_u32;
+use core::char::from_u32;
+use std::ascii::AsciiExt;
 
 #[test]
 fn test_is_ascii() {
