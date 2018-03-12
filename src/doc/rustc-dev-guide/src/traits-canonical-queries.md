@@ -20,7 +20,7 @@ will run off and start supplying you with every possible answer it can
 find. So given something like this:
 
     ?- Vec<i32>: AsRef<?U>
-    
+
 The solver might answer:
 
     Vec<i32>: AsRef<[i32]>
@@ -71,26 +71,26 @@ Another interesting thing is that queries might still have variables
 in them. For example:
 
     ?- Rc<?T>: Clone
-    
+
 might produce the answer:
 
     Rc<?T>: Clone
         continue? (y/n)
-        
-After all, `Rc<?T>` is true **no matter what type `?T` is**.        
+
+After all, `Rc<?T>` is true **no matter what type `?T` is**.
+
+<a name="query-response">
 
 ## A trait query in rustc
 
 The trait queries in rustc work somewhat differently. Instead of
 trying to enumerate **all possible** answers for you, they are looking
-for an **unambiguous** answer. In particular, when they tells you the
+for an **unambiguous** answer. In particular, when they tell you the
 value for a type variable, that means that this is the **only possible
 instantiation** that you could use, given the current set of impls and
 where-clauses, that would be provable. (Internally within the solver,
 though, they can potentially enumerate all possible answers. See
 [the description of the SLG solver](./traits-slg.html) for details.)
-
-<a name=query-response>
 
 The response to a trait query in rustc is typically a
 `Result<QueryResult<T>, NoSolution>` (where the `T` will vary a bit
@@ -191,7 +191,7 @@ fn main() {
     let mut t: Vec<_> = vec![]; // Type: Vec<?T>
     let mut u: Option<_> = None; // Type: Option<?U>
     foo(t, u); // `Vec<?T>: Borrow<?U>` => ambiguous
-    
+
     // New stuff:
     u = Some(vec![]); // ?U = Vec<?V>
 }
@@ -206,10 +206,10 @@ vector. This in turn implies that `?U` is [unified] to `Vec<?V>`.
 Let's suppose that the type checker decides to revisit the
 "as-yet-unproven" trait obligation we saw before, `Vec<?T>:
 Borrow<?U>`. `?U` is no longer an unbound inference variable; it now
-has a value, &. So, if we "refresh" the query with that value, we get:
+has a value, `Vec<?V>`. So, if we "refresh" the query with that value, we get:
 
     Vec<?T>: Borrow<Vec<?V>>
-    
+
 This time, there is only one impl that applies, the reflexive impl:
 
     impl<T> Borrow<T> for T where T: ?Sized
