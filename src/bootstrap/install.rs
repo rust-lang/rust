@@ -67,18 +67,21 @@ fn install_sh(
 
     let prefix_default = PathBuf::from("/usr/local");
     let sysconfdir_default = PathBuf::from("/etc");
-    let docdir_default = PathBuf::from("share/doc/rust");
+    let datadir_default = PathBuf::from("share");
+    let docdir_default = datadir_default.join("doc/rust");
     let bindir_default = PathBuf::from("bin");
     let libdir_default = PathBuf::from("lib");
-    let mandir_default = PathBuf::from("share/man");
+    let mandir_default = datadir_default.join("man");
     let prefix = build.config.prefix.as_ref().unwrap_or(&prefix_default);
     let sysconfdir = build.config.sysconfdir.as_ref().unwrap_or(&sysconfdir_default);
+    let datadir = build.config.datadir.as_ref().unwrap_or(&datadir_default);
     let docdir = build.config.docdir.as_ref().unwrap_or(&docdir_default);
     let bindir = build.config.bindir.as_ref().unwrap_or(&bindir_default);
     let libdir = build.config.libdir.as_ref().unwrap_or(&libdir_default);
     let mandir = build.config.mandir.as_ref().unwrap_or(&mandir_default);
 
     let sysconfdir = prefix.join(sysconfdir);
+    let datadir = prefix.join(datadir);
     let docdir = prefix.join(docdir);
     let bindir = prefix.join(bindir);
     let libdir = prefix.join(libdir);
@@ -88,6 +91,7 @@ fn install_sh(
 
     let prefix = add_destdir(&prefix, &destdir);
     let sysconfdir = add_destdir(&sysconfdir, &destdir);
+    let datadir = add_destdir(&datadir, &destdir);
     let docdir = add_destdir(&docdir, &destdir);
     let bindir = add_destdir(&bindir, &destdir);
     let libdir = add_destdir(&libdir, &destdir);
@@ -107,6 +111,7 @@ fn install_sh(
         .arg(sanitize_sh(&tmpdir(build).join(&package_name).join("install.sh")))
         .arg(format!("--prefix={}", sanitize_sh(&prefix)))
         .arg(format!("--sysconfdir={}", sanitize_sh(&sysconfdir)))
+        .arg(format!("--datadir={}", sanitize_sh(&datadir)))
         .arg(format!("--docdir={}", sanitize_sh(&docdir)))
         .arg(format!("--bindir={}", sanitize_sh(&bindir)))
         .arg(format!("--libdir={}", sanitize_sh(&libdir)))

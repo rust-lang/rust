@@ -127,6 +127,7 @@ pub struct Config {
     pub musl_root: Option<PathBuf>,
     pub prefix: Option<PathBuf>,
     pub sysconfdir: Option<PathBuf>,
+    pub datadir: Option<PathBuf>,
     pub docdir: Option<PathBuf>,
     pub bindir: Option<PathBuf>,
     pub libdir: Option<PathBuf>,
@@ -212,13 +213,13 @@ struct Build {
 struct Install {
     prefix: Option<String>,
     sysconfdir: Option<String>,
+    datadir: Option<String>,
     docdir: Option<String>,
     bindir: Option<String>,
     libdir: Option<String>,
     mandir: Option<String>,
 
     // standard paths, currently unused
-    datadir: Option<String>,
     infodir: Option<String>,
     localstatedir: Option<String>,
 }
@@ -419,6 +420,7 @@ impl Config {
         if let Some(ref install) = toml.install {
             config.prefix = install.prefix.clone().map(PathBuf::from);
             config.sysconfdir = install.sysconfdir.clone().map(PathBuf::from);
+            config.datadir = install.datadir.clone().map(PathBuf::from);
             config.docdir = install.docdir.clone().map(PathBuf::from);
             config.bindir = install.bindir.clone().map(PathBuf::from);
             config.libdir = install.libdir.clone().map(PathBuf::from);
