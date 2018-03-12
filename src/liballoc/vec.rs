@@ -1212,8 +1212,9 @@ impl<T: Clone> Vec<T> {
     /// difference, with each additional slot filled with `value`.
     /// If `new_len` is less than `len`, the `Vec` is simply truncated.
     ///
-    /// This method requires `Clone` to clone the passed value. If you'd
-    /// rather create a value with `Default` instead, see [`resize_default`].
+    /// This method requires [`Clone`] to be able clone the passed value. If
+    /// you'd rather create a value with [`Default`] instead, see
+    /// [`resize_default`].
     ///
     /// # Examples
     ///
@@ -1227,6 +1228,8 @@ impl<T: Clone> Vec<T> {
     /// assert_eq!(vec, [1, 2]);
     /// ```
     ///
+    /// [`Clone`]: ../../std/clone/trait.Clone.html
+    /// [`Default`]: ../../std/default/trait.Default.html
     /// [`resize_default`]: #method.resize_default
     #[stable(feature = "vec_resize", since = "1.5.0")]
     pub fn resize(&mut self, new_len: usize, value: T) {
@@ -1244,7 +1247,7 @@ impl<T: Clone> Vec<T> {
     /// Iterates over the slice `other`, clones each element, and then appends
     /// it to this `Vec`. The `other` vector is traversed in-order.
     ///
-    /// Note that this function is same as `extend` except that it is
+    /// Note that this function is same as [`extend`] except that it is
     /// specialized to work with slices instead. If and when Rust gets
     /// specialization this function will likely be deprecated (but still
     /// available).
@@ -1256,6 +1259,8 @@ impl<T: Clone> Vec<T> {
     /// vec.extend_from_slice(&[2, 3, 4]);
     /// assert_eq!(vec, [1, 2, 3, 4]);
     /// ```
+    ///
+    /// [`extend`]: #method.extend
     #[stable(feature = "vec_extend_from_slice", since = "1.6.0")]
     pub fn extend_from_slice(&mut self, other: &[T]) {
         self.spec_extend(other.iter())
@@ -1266,12 +1271,11 @@ impl<T: Default> Vec<T> {
     /// Resizes the `Vec` in-place so that `len` is equal to `new_len`.
     ///
     /// If `new_len` is greater than `len`, the `Vec` is extended by the
-    /// difference, with each additional slot filled with `Default::default()`.
+    /// difference, with each additional slot filled with [`Default::default()`].
     /// If `new_len` is less than `len`, the `Vec` is simply truncated.
     ///
-    /// This method uses `Default` to create new values on every push. If
-    /// you'd rather `Clone` a given value, use [`resize`].
-    ///
+    /// This method uses [`Default`] to create new values on every push. If
+    /// you'd rather [`Clone`] a given value, use [`resize`].
     ///
     /// # Examples
     ///
@@ -1288,6 +1292,9 @@ impl<T: Default> Vec<T> {
     /// ```
     ///
     /// [`resize`]: #method.resize
+    /// [`Default::default()`]: ../../std/default/trait.Default.html#tymethod.default
+    /// [`Default`]: ../../std/default/trait.Default.html
+    /// [`Clone`]: ../../std/clone/trait.Clone.html
     #[unstable(feature = "vec_resize_default", issue = "41758")]
     pub fn resize_default(&mut self, new_len: usize) {
         let len = self.len();
