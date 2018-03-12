@@ -502,7 +502,7 @@ unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_vo
             let msg = llvm::build_string(|s| {
                 llvm::LLVMRustWriteDiagnosticInfoToString(diagnostic_ref, s)
             }).expect("non-UTF8 PGO diagnostic");
-            diag_handler.note_without_error(&msg);
+            diag_handler.warn(&msg);
         }
         llvm::diagnostic::UnknownDiagnostic(..) => {},
     }
