@@ -72,9 +72,6 @@ LL |     a::b()
    |        |
    |        did you mean `I`?
 
-error[E0601]: main function not found in crate suggest_path_instead_of_mod_dot_item
+error: aborting due to 9 previous errors
 
-error: aborting due to 10 previous errors
-
-Some errors occurred: E0423, E0601.
-For more information about an error, try `rustc --explain E0423`.
+For more information about this error, try `rustc --explain E0423`.

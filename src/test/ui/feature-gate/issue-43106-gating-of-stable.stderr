@@ -1,5 +1,3 @@
-error[E0601]: main function not found in crate issue_43106_gating_of_stable
-
 error: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-stable.rs:17:1
    |
@@ -42,6 +40,5 @@ error: stability attributes may not be used outside of the standard library
 LL |     #[stable = "1300"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 8 previous errors
+error: aborting due to 7 previous errors
 
-For more information about this error, try `rustc --explain E0601`.

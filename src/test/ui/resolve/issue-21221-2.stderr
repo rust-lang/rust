@@ -8,7 +8,5 @@ help: possible candidate is found in another module, you can import it into scop
 LL | use foo::bar::T;
    |
 
-error[E0601]: main function not found in crate issue_21221_2
-
 error: cannot continue compilation due to previous error
 

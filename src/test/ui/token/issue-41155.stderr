@@ -12,9 +12,6 @@ error[E0412]: cannot find type `S` in this scope
 LL | impl S { //~ ERROR cannot find type
    |      ^ not found in this scope
 
-error[E0601]: main function not found in crate issue_41155
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-Some errors occurred: E0412, E0601.
-For more information about an error, try `rustc --explain E0412`.
+For more information about this error, try `rustc --explain E0412`.
