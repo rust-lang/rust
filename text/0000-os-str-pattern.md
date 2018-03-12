@@ -87,7 +87,7 @@ impl OsStr {
     /// let path = OsStr::new("/usr/bin/bash");
     /// let range = path.find_range("/b");
     /// assert_eq!(range, Some(4..6));
-    /// assert_eq!(path[range.unwrap()], OsStr::new("/bin"));
+    /// assert_eq!(path[range.unwrap()], OsStr::new("/b"));
     /// ```
     pub fn find_range<'a, P>(&'a self, pat: P) -> Option<Range<usize>>
     where
@@ -101,7 +101,7 @@ impl OsStr {
     /// let path = OsStr::new("/usr/bin/bash");
     /// let range = path.rfind_range("/b");
     /// assert_eq!(range, Some(8..10));
-    /// assert_eq!(path[range.unwrap()], OsStr::new("/bin"));
+    /// assert_eq!(path[range.unwrap()], OsStr::new("/b"));
     /// ```
     pub fn rfind_range<'a, P>(&'a self, pat: P) -> Option<Range<usize>>
     where
@@ -445,7 +445,7 @@ match self.matcher.next_match() {
     let needle = OsString::from_wide(&[0xdc00]);
     let haystack = OsStr::new("\u{10000}a");
     let index = haystack.find(&needle).unwrap();
-    let matched = &haystack[index..(index + needle.len()];
+    let matched = &haystack[index..(index + needle.len())];
     // `matched` will contain "\u{dc00}a" instead of "\u{dc00}".
     ```
 
