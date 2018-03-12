@@ -19,15 +19,19 @@ running `rustdoc --test foo.rs` will extract this example, and then run it as a 
 Please note that by default, if no language is set for the block code, `rustdoc`
 assumes it is `Rust` code. So the following:
 
+``````markdown
 ```rust
 let x = 5;
 ```
+``````
 
 is strictly equivalent to:
 
+``````markdown
 ```
 let x = 5;
 ```
+``````
 
 There's some subtlety though! Read on for more details.
 
