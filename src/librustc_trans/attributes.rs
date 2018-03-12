@@ -93,7 +93,7 @@ pub fn set_probestack(cx: &CodegenCx, llfn: ValueRef) {
     }
 
     // probestack doesn't play nice either with pgo-gen.
-    if cx.sess().opts.cg.pgo_gen.is_some() {
+    if cx.sess().opts.debugging_opts.pgo_gen.is_some() {
         return;
     }
 

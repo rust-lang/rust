@@ -943,8 +943,8 @@ pub fn start_async_translation(tcx: TyCtxt,
         modules_config.passes.push("insert-gcov-profiling".to_owned())
     }
 
-    modules_config.pgo_gen = sess.opts.cg.pgo_gen.clone();
-    modules_config.pgo_use = sess.opts.cg.pgo_use.clone();
+    modules_config.pgo_gen = sess.opts.debugging_opts.pgo_gen.clone();
+    modules_config.pgo_use = sess.opts.debugging_opts.pgo_use.clone();
 
     modules_config.opt_level = Some(get_llvm_opt_level(sess.opts.optimize));
     modules_config.opt_size = Some(get_llvm_opt_size(sess.opts.optimize));

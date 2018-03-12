@@ -1095,7 +1095,9 @@ fn link_args(cmd: &mut Linker,
     //
     // Though it may be worth to try to revert those changes upstream, since the
     // overhead of the initialization should be minor.
-    if sess.opts.cg.pgo_gen.is_some() && sess.target.target.options.linker_is_gnu {
+    if sess.opts.debugging_opts.pgo_gen.is_some() &&
+        sess.target.target.options.linker_is_gnu
+    {
         cmd.args(&["-u".to_owned(), "__llvm_profile_runtime".to_owned()]);
     }
 
