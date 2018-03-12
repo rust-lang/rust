@@ -98,7 +98,7 @@ fn build_libbacktrace(host: &str, target: &str) -> Result<(), ()> {
                 .arg("--disable-host-shared")
                 .arg(format!("--host={}", build_helper::gnu_target(target)))
                 .arg(format!("--build={}", build_helper::gnu_target(host)))
-                .env("CFLAGS", env::var("CFLAGS").unwrap_or_default() + " -fvisibility=hidden"));
+                .env("CFLAGS", env::var("CFLAGS").unwrap_or_default() + " -fvisibility=hidden -O2"));
 
     run(Command::new(build_helper::make(host))
                 .current_dir(&native.out_dir)
