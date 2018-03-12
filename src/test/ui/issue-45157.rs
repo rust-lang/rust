@@ -37,7 +37,6 @@ fn main() {
         let nref = &u.z.c;
         //~^ ERROR cannot borrow `u.z.c` as immutable because it is also borrowed as mutable [E0502]
         println!("{} {}", mref, nref)
-        //~^ ERROR cannot borrow `u.s.a` as mutable because it is also borrowed as immutable [E0502]
     }
 }
 

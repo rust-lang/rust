@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// revisions: lxl nll g2p
+// revisions: lxl nll
 //[lxl]compile-flags: -Z borrowck=mir -Z two-phase-borrows
 //[nll]compile-flags: -Z borrowck=mir -Z two-phase-borrows -Z nll
+
 //[g2p]compile-flags: -Z borrowck=mir -Z two-phase-borrows -Z nll -Z two-phase-beyond-autoref
+// the above revision is disabled until two-phase-beyond-autoref support is better
 
 // This is a test checking that when we limit two-phase borrows to
 // method receivers, we do not let other kinds of auto-ref to leak
@@ -70,10 +72,8 @@ fn overloaded_call_traits() {
     fn twice_ten_sm<F: FnMut(i32) -> i32>(f: &mut F) {
         f(f(10));
         //[lxl]~^     ERROR cannot borrow `*f` as mutable more than once at a time
-        //[lxl]~|     ERROR cannot borrow `*f` as mutable more than once at a time
-        //[nll]~^^^   ERROR cannot borrow `*f` as mutable more than once at a time
-        //[nll]~|     ERROR cannot borrow `*f` as mutable more than once at a time
-        //[g2p]~^^^^^ ERROR cannot borrow `*f` as mutable more than once at a time
+        //[nll]~^^   ERROR cannot borrow `*f` as mutable more than once at a time
+        //[g2p]~^^^ ERROR cannot borrow `*f` as mutable more than once at a time
     }
     fn twice_ten_si<F: Fn(i32) -> i32>(f: &mut F) {
         f(f(10));
@@ -88,10 +88,8 @@ fn overloaded_call_traits() {
     fn twice_ten_om(f: &mut FnMut(i32) -> i32) {
         f(f(10));
         //[lxl]~^     ERROR cannot borrow `*f` as mutable more than once at a time
-        //[lxl]~|     ERROR cannot borrow `*f` as mutable more than once at a time
-        //[nll]~^^^   ERROR cannot borrow `*f` as mutable more than once at a time
-        //[nll]~|     ERROR cannot borrow `*f` as mutable more than once at a time
-        //[g2p]~^^^^^ ERROR cannot borrow `*f` as mutable more than once at a time
+        //[nll]~^^   ERROR cannot borrow `*f` as mutable more than once at a time
+        //[g2p]~^^^ ERROR cannot borrow `*f` as mutable more than once at a time
     }
     fn twice_ten_oi(f: &mut Fn(i32) -> i32) {
         f(f(10));

@@ -711,6 +711,12 @@ impl<'a> IntoCow<'a, str> for &'a str {
     }
 }
 
+impl<'a> IntoCow<'a, str> for Cow<'a, str> {
+    fn into_cow(self) -> Cow<'a, str> {
+        self
+    }
+}
+
 impl<'a, T: Clone> IntoCow<'a, [T]> for Vec<T> {
     fn into_cow(self) -> Cow<'a, [T]> {
         Cow::Owned(self)

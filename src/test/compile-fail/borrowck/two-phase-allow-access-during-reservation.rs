@@ -10,9 +10,13 @@
 
 // ignore-tidy-linelength
 
-// revisions: lxl_beyond nll_beyond nll_target
+// revisions: nll_target
+
+// The following revisions are disabled due to missing support for two_phase_beyond_autoref
 //[lxl_beyond] compile-flags: -Z borrowck=mir -Z two-phase-borrows -Z two_phase_beyond_autoref
 //[nll_beyond] compile-flags: -Z borrowck=mir -Z two-phase-borrows -Z two_phase_beyond_autoref -Z nll
+
+
 //[nll_target] compile-flags: -Z borrowck=mir -Z two-phase-borrows -Z nll
 
 // This is the second counter-example from Niko's blog post

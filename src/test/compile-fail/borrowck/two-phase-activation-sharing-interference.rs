@@ -10,10 +10,12 @@
 
 // ignore-tidy-linelength
 
-// revisions: lxl_beyond nll_beyond nll_target
+// revisions: nll_target
 
+// The following revisions are disabled due to missing support from two-phase beyond autorefs
 //[lxl_beyond] compile-flags: -Z borrowck=mir -Z two-phase-borrows -Z two-phase-beyond-autoref
 //[nll_beyond] compile-flags: -Z borrowck=mir -Z two-phase-borrows -Z two-phase-beyond-autoref -Z nll
+
 //[nll_target] compile-flags: -Z borrowck=mir -Z two-phase-borrows -Z nll
 
 // This is an important corner case pointed out by Niko: one is
@@ -51,7 +53,6 @@ fn not_ok() {
     *y += 1;
     //[lxl_beyond]~^   ERROR cannot borrow `x` as mutable because it is also borrowed as immutable
     //[nll_beyond]~^^  ERROR cannot borrow `x` as mutable because it is also borrowed as immutable
-    //[nll_target]~^^^ ERROR cannot borrow `x` as mutable because it is also borrowed as immutable
     read(z);
 }
 
