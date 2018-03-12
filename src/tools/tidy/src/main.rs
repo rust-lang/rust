@@ -45,6 +45,7 @@ fn main() {
         deps::check(&path, &mut bad);
     }
     deps::check_whitelist(&path, &cargo, &mut bad);
+    ui_tests::check(&path, &mut bad);
 
     if bad {
         eprintln!("some tidy checks failed");
