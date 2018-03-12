@@ -341,7 +341,7 @@ where
     // nothing to distinguish the nested module contents.
     let skip_children = config.skip_children() || config.write_mode() == config::WriteMode::Plain;
     for (path, module) in modules::list_files(krate, parse_session.codemap())? {
-        if skip_children && path != *main_file {
+        if (skip_children && path != *main_file) || config.ignore().skip_file(&path) {
             continue;
         }
         should_emit_verbose(&path, config, || println!("Formatting {}", path));

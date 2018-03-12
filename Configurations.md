@@ -2135,3 +2135,30 @@ Copyright 2018 The Rust Project Developers.`, etc.:
 ```
 
 `\{`, `\}` and `\\` match literal braces / backslashes.
+
+## `ignore`
+
+Skip formatting the specified files and directories.
+
+- **Default value**: format every files
+- **Possible values**: See an example below
+- **Stable**: No
+
+### Example
+
+If you want to ignore specific files, put the following to your config file:
+
+```toml
+ignore = [
+    "src/types.rs",
+    "src/foo/bar.rs",
+]
+```
+
+If you want to ignore every file under `examples/`, put the following to your config file:
+
+```toml
+ignore [
+    "examples",
+]
+```

@@ -8,8 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use syntax::codemap::FileName;
+
 use config::config_type::ConfigType;
 use config::lists::*;
+
+use std::collections::HashSet;
+use std::path::{Path, PathBuf};
 
 /// Macro for deriving implementations of Serialize/Deserialize for enums
 #[macro_export]
@@ -242,5 +247,52 @@ impl ::std::str::FromStr for WidthHeuristics {
 
     fn from_str(_: &str) -> Result<Self, Self::Err> {
         Err("WidthHeuristics is not parsable")
+    }
+}
+
+/// A set of directories, files and modules that rustfmt should ignore.
+#[derive(Default, Deserialize, Serialize, Clone, Debug)]
+pub struct IgnoreList(HashSet<PathBuf>);
+
+impl IgnoreList {
+    pub fn add_prefix(&mut self, dir: &Path) {
+        self.0 = self.0
+            .iter()
+            .map(|s| {
+                if s.has_root() {
+                    s.clone()
+                } else {
+                    let mut path = PathBuf::from(dir);
+                    path.push(s);
+                    path
+                }
+            })
+            .collect();
+    }
+
+    fn skip_file_inner(&self, file: &Path) -> bool {
+        for path in &self.0 {
+            if file.starts_with(path) {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    pub fn skip_file(&self, file: &FileName) -> bool {
+        if let FileName::Real(ref path) = file {
+            self.skip_file_inner(path)
+        } else {
+            false
+        }
+    }
+}
+
+impl ::std::str::FromStr for IgnoreList {
+    type Err = &'static str;
+
+    fn from_str(_: &str) -> Result<Self, Self::Err> {
+        Err("IgnoreList is not parsable")
     }
 }
