@@ -1877,13 +1877,19 @@ pub struct Variant_ {
 
 pub type Variant = Spanned<Variant_>;
 
+/// Part of `use` item to the right of its prefix.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum UseTreeKind {
+    /// `use prefix` or `use prefix as rename`
     Simple(Option<Ident>),
+    /// `use prefix::{...}`
     Nested(Vec<(UseTree, NodeId)>),
+    /// `use prefix::*`
     Glob,
 }
 
+/// A tree of paths sharing common prefixes.
+/// Used in `use` items both at top-level and inside of braces in import groups.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct UseTree {
     pub prefix: Path,
