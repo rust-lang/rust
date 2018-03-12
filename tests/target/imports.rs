@@ -54,9 +54,9 @@ use foo::{baz, qux as bar};
 
 // With absolute paths
 use foo;
+use Foo;
 use foo::Bar;
 use foo::{Bar, Baz};
-use Foo;
 use {Bar, Baz};
 
 // Root globs

@@ -1,17 +1,14 @@
 // rustfmt-normalize_comments: true
 
-extern crate foo;
-extern crate foo as bar;
-
+extern crate bar;
 extern crate chrono;
 extern crate dotenv;
-extern crate futures;
-
-extern crate bar;
 extern crate foo;
-
-// #2315
+extern crate foo;
+extern crate foo as bar;
+extern crate futures;
 extern crate proc_macro;
+// #2315
 extern crate proc_macro2;
 
 extern "C" {

@@ -68,14 +68,9 @@ create_config! {
     imports_layout: ListTactic, ListTactic::Mixed, false, "Item layout inside a import block";
 
     // Ordering
-    reorder_extern_crates: bool, true, false, "Reorder extern crate statements alphabetically";
-    reorder_extern_crates_in_group: bool, true, false, "Reorder extern crate statements in group";
-    reorder_imports: bool, true, false, "Reorder import statements alphabetically";
-    reorder_imports_in_group: bool, true, false, "Reorder import statements in group";
-    reorder_imported_names: bool, true, false,
-        "Reorder lists of names in import statements alphabetically";
-    reorder_modules: bool, true, false, "Reorder module statemtents alphabetically in group";
     reorder_impl_items: bool, false, false, "Reorder impl items";
+    reorder_imports: bool, true, false, "Reorder import and extern crate statements alphabetically";
+    reorder_modules: bool, true, false, "Reorder module statements alphabetically in group";
 
     // Spaces around punctuation
     type_punctuation_density: TypeDensity, TypeDensity::Wide, false,

@@ -485,6 +485,7 @@ fn rewrite_nested_use_tree(
         );
         (tactic, remaining_width)
     };
+
     let ends_with_newline = context.config.imports_indent() == IndentStyle::Block
         && tactic != DefinitiveListTactic::Horizontal;
     let fmt = ListFormatting {
