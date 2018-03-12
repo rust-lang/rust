@@ -26,10 +26,10 @@ As a reminder, all contributors are expected to follow our [Code of Conduct][coc
 ## Feature Requests
 [feature-requests]: #feature-requests
 
-To request a change to the way that the Rust language works, please open an
-issue in the [RFCs repository](https://github.com/rust-lang/rfcs/issues/new)
-rather than this one. New features and other significant language changes
-must go through the RFC process.
+To request a change to the way the Rust language works, please head over
+to the [RFCs repository](https://github.com/rust-lang/rfcs) and view the 
+[README](https://github.com/rust-lang/rfcs/blob/master/README.md)
+for instructions.
 
 ## Bug Reports
 [bug-reports]: #bug-reports
