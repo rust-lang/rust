@@ -19,6 +19,7 @@ use hir::map::Map;
 use hir::def::Def;
 use hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use hir::ItemLocalId;
+use hir::LifetimeName;
 use ty::{self, TyCtxt};
 
 use std::cell::Cell;
@@ -569,10 +570,26 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 for bound in bounds {
                     self.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
                 }
-                if lifetime.is_elided() {
-                    self.resolve_object_lifetime_default(lifetime)
-                } else {
-                    self.visit_lifetime(lifetime);
+                match lifetime.name {
+                    LifetimeName::Implicit => {
+                        // If the user does not write *anything*, we
+                        // use the object lifetime defaulting
+                        // rules. So e.g. `Box<dyn Debug>` becomes
+                        // `Box<dyn Debug + 'static>`.
+                        self.resolve_object_lifetime_default(lifetime)
+                    }
+                    LifetimeName::Underscore => {
+                        // If the user writes `'_`, we use the *ordinary* elision
+                        // rules. So the `'_` in e.g. `Box<dyn Debug + '_>` will be
+                        // resolved the same as the `'_` in `&'_ Foo`.
+                        //
+                        // cc #48468
+                        self.resolve_elided_lifetimes(slice::from_ref(lifetime), false)
+                    }
+                    LifetimeName::Static | LifetimeName::Name(_) => {
+                        // If the user wrote an explicit name, use that.
+                        self.visit_lifetime(lifetime);
+                    }
                 }
             }
             hir::TyRptr(ref lifetime_ref, ref mt) => {
