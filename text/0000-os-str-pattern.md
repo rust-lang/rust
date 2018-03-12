@@ -229,7 +229,7 @@ assert_eq!(parts.next(), None);
 It is trivial to apply the pattern API to `OsStr` on platforms where it is just an `[u8]`. The main
 difficulty is on Windows where it is an `[u16]` encoded as WTF-8. This RFC thus focuses on Windows.
 
-We will generalize the encoding of `OsStr` to specify these two capabilities:
+We will generalize the encoding of `OsStr` to “[OMG-WTF-8]” which specifies these two capabilities:
 
 1. Slicing a surrogate pair in half:
 
@@ -248,7 +248,9 @@ We will generalize the encoding of `OsStr` to specify these two capabilities:
     ```
 
 These allow us to implement the “Pattern 1.5” API for all `OsStr` without panicking. Implementation
-detail can be found in the [`omgwtf8` package](https://github.com/kennytm/omgwtf8).
+detail can be found in the [`omgwtf8` package][OMG-WTF-8].
+
+[OMG-WTF-8]: https://github.com/kennytm/omgwtf8
 
 ## Slicing
 
