@@ -61,6 +61,7 @@ unsafe fn configure_llvm(sess: &Session) {
         add("rustc"); // fake program name
         if sess.time_llvm_passes() { add("-time-passes"); }
         if sess.print_llvm_passes() { add("-debug-pass=Structure"); }
+        add("-disable-preinline");
 
         for arg in &sess.opts.cg.llvm_args {
             add(&(*arg));
