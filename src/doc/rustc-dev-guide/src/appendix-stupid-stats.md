@@ -243,13 +243,15 @@ impl<'a> CompilerCalls<'a> for StupidCalls {
     }
 
     fn late_callback(&mut self,
+                     t: &TransCrate,
                      m: &getopts::Matches,
                      s: &Session,
+                     c: &CrateStore,
                      i: &Input,
-                     odir: &Option<Path>,
-                     ofile: &Option<Path>)
+                     odir: &Option<PathBuf>,
+                     ofile: &Option<PathBuf>)
                      -> Compilation {
-        self.default_calls.late_callback(m, s, i, odir, ofile);
+        self.default_calls.late_callback(t, m, s, c, i, odir, ofile);
         Compilation::Continue
     }
 
