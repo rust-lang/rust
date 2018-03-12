@@ -1698,7 +1698,8 @@ fn rewrite_match_body(
     );
     match (orig_body, next_line_body) {
         (Some(ref orig_str), Some(ref next_line_str))
-            if forbid_same_line || prefer_next_line(orig_str, next_line_str) =>
+            if forbid_same_line
+                || prefer_next_line(orig_str, next_line_str, RhsTactics::Default) =>
         {
             combine_next_line_body(next_line_str)
         }
@@ -2514,6 +2515,15 @@ fn rewrite_assignment(
     rewrite_assign_rhs(context, lhs_str, rhs, shape)
 }
 
+/// Controls where to put the rhs.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum RhsTactics {
+    /// Use heuristics.
+    Default,
+    /// Put the rhs on the next line if it uses multiple line.
+    ForceNextLine,
+}
+
 // The left hand side must contain everything up to, and including, the
 // assignment operator.
 pub fn rewrite_assign_rhs<S: Into<String>, R: Rewrite>(
@@ -2521,6 +2531,16 @@ pub fn rewrite_assign_rhs<S: Into<String>, R: Rewrite>(
     lhs: S,
     ex: &R,
     shape: Shape,
+) -> Option<String> {
+    rewrite_assign_rhs_with(context, lhs, ex, shape, RhsTactics::Default)
+}
+
+pub fn rewrite_assign_rhs_with<S: Into<String>, R: Rewrite>(
+    context: &RewriteContext,
+    lhs: S,
+    ex: &R,
+    shape: Shape,
+    rhs_tactics: RhsTactics,
 ) -> Option<String> {
     let lhs = lhs.into();
     let last_line_width = last_line_width(&lhs)
@@ -2536,15 +2556,22 @@ pub fn rewrite_assign_rhs<S: Into<String>, R: Rewrite>(
         offset: shape.offset + last_line_width + 1,
         ..shape
     });
-    let rhs = choose_rhs(context, ex, orig_shape, ex.rewrite(context, orig_shape))?;
+    let rhs = choose_rhs(
+        context,
+        ex,
+        orig_shape,
+        ex.rewrite(context, orig_shape),
+        rhs_tactics,
+    )?;
     Some(lhs + &rhs)
 }
 
-pub fn choose_rhs<R: Rewrite>(
+fn choose_rhs<R: Rewrite>(
     context: &RewriteContext,
     expr: &R,
     shape: Shape,
     orig_rhs: Option<String>,
+    rhs_tactics: RhsTactics,
 ) -> Option<String> {
     match orig_rhs {
         Some(ref new_str) if !new_str.contains('\n') && new_str.len() <= shape.width => {
@@ -2566,7 +2593,9 @@ pub fn choose_rhs<R: Rewrite>(
                 {
                     Some(format!(" {}", orig_rhs))
                 }
-                (Some(ref orig_rhs), Some(ref new_rhs)) if prefer_next_line(orig_rhs, new_rhs) => {
+                (Some(ref orig_rhs), Some(ref new_rhs))
+                    if prefer_next_line(orig_rhs, new_rhs, rhs_tactics) =>
+                {
                     Some(format!("{}{}", new_indent_str, new_rhs))
                 }
                 (None, Some(ref new_rhs)) => Some(format!("{}{}", new_indent_str, new_rhs)),
@@ -2577,8 +2606,9 @@ pub fn choose_rhs<R: Rewrite>(
     }
 }
 
-fn prefer_next_line(orig_rhs: &str, next_line_rhs: &str) -> bool {
-    !next_line_rhs.contains('\n') || count_newlines(orig_rhs) > count_newlines(next_line_rhs) + 1
+fn prefer_next_line(orig_rhs: &str, next_line_rhs: &str, rhs_tactics: RhsTactics) -> bool {
+    rhs_tactics == RhsTactics::ForceNextLine || !next_line_rhs.contains('\n')
+        || count_newlines(orig_rhs) > count_newlines(next_line_rhs) + 1
 }
 
 fn rewrite_expr_addrof(

@@ -18,7 +18,8 @@ use syntax::symbol::keywords;
 
 use codemap::SpanUtils;
 use config::{IndentStyle, TypeDensity};
-use expr::{rewrite_pair, rewrite_tuple, rewrite_unary_prefix, PairParts, ToExpr};
+use expr::{rewrite_assign_rhs, rewrite_pair, rewrite_tuple, rewrite_unary_prefix, PairParts,
+           ToExpr};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
 use macros::{rewrite_macro, MacroPosition};
 use overflow;
@@ -431,64 +432,35 @@ impl Rewrite for ast::WherePredicate {
                 ..
             }) => {
                 let type_str = bounded_ty.rewrite(context, shape)?;
-
-                let colon = type_bound_colon(context);
-
-                if let Some(lifetime_str) =
+                let colon = type_bound_colon(context).trim_right();
+                let lhs = if let Some(lifetime_str) =
                     rewrite_lifetime_param(context, shape, bound_generic_params)
                 {
-                    // 6 = "for<> ".len()
-                    let used_width = lifetime_str.len() + type_str.len() + colon.len() + 6;
-                    let ty_shape = shape.offset_left(used_width)?;
-                    let bounds = bounds
-                        .iter()
-                        .map(|ty_bound| ty_bound.rewrite(context, ty_shape))
-                        .collect::<Option<Vec<_>>>()?;
-                    let bounds_str = join_bounds(context, ty_shape, &bounds);
-
                     if context.config.spaces_within_parens_and_brackets()
                         && !lifetime_str.is_empty()
                     {
-                        format!(
-                            "for< {} > {}{}{}",
-                            lifetime_str, type_str, colon, bounds_str
-                        )
+                        format!("for< {} > {}{}", lifetime_str, type_str, colon)
                     } else {
-                        format!("for<{}> {}{}{}", lifetime_str, type_str, colon, bounds_str)
+                        format!("for<{}> {}{}", lifetime_str, type_str, colon)
                     }
                 } else {
-                    let used_width = type_str.len() + colon.len();
-                    let ty_shape = match context.config.indent_style() {
-                        IndentStyle::Visual => shape.block_left(used_width)?,
-                        IndentStyle::Block => shape,
-                    };
-                    let bounds = bounds
-                        .iter()
-                        .map(|ty_bound| ty_bound.rewrite(context, ty_shape))
-                        .collect::<Option<Vec<_>>>()?;
-                    let overhead = type_str.len() + colon.len();
-                    let bounds_str = join_bounds(context, ty_shape.sub_width(overhead)?, &bounds);
+                    format!("{}{}", type_str, colon)
+                };
 
-                    format!("{}{}{}", type_str, colon, bounds_str)
-                }
+                rewrite_assign_rhs(context, lhs, bounds, shape)?
             }
             ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
                 ref lifetime,
                 ref bounds,
                 ..
-            }) => rewrite_bounded_lifetime(lifetime, bounds.iter(), context, shape)?,
+            }) => rewrite_bounded_lifetime(lifetime, bounds, context, shape)?,
             ast::WherePredicate::EqPredicate(ast::WhereEqPredicate {
                 ref lhs_ty,
                 ref rhs_ty,
                 ..
             }) => {
-                let lhs_ty_str = lhs_ty.rewrite(context, shape)?;
-                // 3 = " = ".len()
-                let used_width = 3 + lhs_ty_str.len();
-                let budget = shape.width.checked_sub(used_width)?;
-                let rhs_ty_str =
-                    rhs_ty.rewrite(context, Shape::legacy(budget, shape.indent + used_width))?;
-                format!("{} = {}", lhs_ty_str, rhs_ty_str)
+                let lhs_ty_str = lhs_ty.rewrite(context, shape).map(|lhs| lhs + " =")?;
+                rewrite_assign_rhs(context, lhs_ty_str, &**rhs_ty, shape)?
             }
         };
 
@@ -498,35 +470,28 @@ impl Rewrite for ast::WherePredicate {
 
 impl Rewrite for ast::LifetimeDef {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        rewrite_bounded_lifetime(&self.lifetime, self.bounds.iter(), context, shape)
+        rewrite_bounded_lifetime(&self.lifetime, &self.bounds, context, shape)
     }
 }
 
-fn rewrite_bounded_lifetime<'b, I>(
+fn rewrite_bounded_lifetime(
     lt: &ast::Lifetime,
-    bounds: I,
+    bounds: &[ast::Lifetime],
     context: &RewriteContext,
     shape: Shape,
-) -> Option<String>
-where
-    I: ExactSizeIterator<Item = &'b ast::Lifetime>,
-{
+) -> Option<String> {
     let result = lt.rewrite(context, shape)?;
 
     if bounds.len() == 0 {
         Some(result)
     } else {
-        let appendix = bounds
-            .into_iter()
-            .map(|b| b.rewrite(context, shape))
-            .collect::<Option<Vec<_>>>()?;
         let colon = type_bound_colon(context);
         let overhead = last_line_width(&result) + colon.len();
         let result = format!(
             "{}{}{}",
             result,
             colon,
-            join_bounds(context, shape.sub_width(overhead)?, &appendix)
+            join_bounds(context, shape.sub_width(overhead)?, bounds, true)?
         );
         Some(result)
     }
@@ -552,12 +517,21 @@ impl Rewrite for ast::Lifetime {
     }
 }
 
+/// A simple wrapper over type param bounds in trait.
+#[derive(new)]
+pub struct TraitTyParamBounds<'a> {
+    inner: &'a ast::TyParamBounds,
+}
+
+impl<'a> Rewrite for TraitTyParamBounds<'a> {
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+        join_bounds(context, shape, self.inner, false)
+    }
+}
+
 impl Rewrite for ast::TyParamBounds {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        let strs = self.iter()
-            .map(|b| b.rewrite(context, shape))
-            .collect::<Option<Vec<_>>>()?;
-        Some(join_bounds(context, shape, &strs))
+        join_bounds(context, shape, self, true)
     }
 }
 
@@ -572,11 +546,7 @@ impl Rewrite for ast::TyParam {
         result.push_str(&self.ident.to_string());
         if !self.bounds.is_empty() {
             result.push_str(type_bound_colon(context));
-            let strs = self.bounds
-                .iter()
-                .map(|ty_bound| ty_bound.rewrite(context, shape))
-                .collect::<Option<Vec<_>>>()?;
-            result.push_str(&join_bounds(context, shape, &strs));
+            result.push_str(&self.bounds.rewrite(context, shape)?)
         }
         if let Some(ref def) = self.default {
             let eq_str = match context.config.type_punctuation_density() {
@@ -794,20 +764,44 @@ fn rewrite_bare_fn(
     Some(result)
 }
 
-pub fn join_bounds(context: &RewriteContext, shape: Shape, type_strs: &[String]) -> String {
+fn join_bounds<T>(
+    context: &RewriteContext,
+    shape: Shape,
+    items: &[T],
+    need_indent: bool,
+) -> Option<String>
+where
+    T: Rewrite,
+{
     // Try to join types in a single line
     let joiner = match context.config.type_punctuation_density() {
         TypeDensity::Compressed => "+",
         TypeDensity::Wide => " + ",
     };
+    let type_strs = items
+        .iter()
+        .map(|item| item.rewrite(context, shape))
+        .collect::<Option<Vec<_>>>()?;
     let result = type_strs.join(joiner);
-    if result.contains('\n') || result.len() > shape.width {
-        let joiner_indent = shape.indent.block_indent(context.config);
-        let joiner = format!("{}+ ", joiner_indent.to_string_with_newline(context.config));
-        type_strs.join(&joiner)
-    } else {
-        result
+    if items.len() == 1 || (!result.contains('\n') && result.len() <= shape.width) {
+        return Some(result);
     }
+
+    // We need to use multiple lines.
+    let (type_strs, offset) = if need_indent {
+        // Rewrite with additional indentation.
+        let nested_shape = shape.block_indent(context.config.tab_spaces());
+        let type_strs = items
+            .iter()
+            .map(|item| item.rewrite(context, nested_shape))
+            .collect::<Option<Vec<_>>>()?;
+        (type_strs, nested_shape.indent)
+    } else {
+        (type_strs, shape.indent)
+    };
+
+    let joiner = format!("{}+ ", offset.to_string_with_newline(context.config));
+    Some(type_strs.join(&joiner))
 }
 
 pub fn can_be_overflowed_type(context: &RewriteContext, ty: &ast::Ty, len: usize) -> bool {

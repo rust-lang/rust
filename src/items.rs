@@ -23,13 +23,14 @@ use codemap::{LineRangeUtils, SpanUtils};
 use comment::{combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
               recover_missing_comment_in_span, rewrite_missing_comment, FindUncommented};
 use config::{BraceStyle, Config, Density, IndentStyle};
-use expr::{format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs, ExprType};
+use expr::{format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs,
+           rewrite_assign_rhs_with, ExprType, RhsTactics};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
 use rewrite::{Rewrite, RewriteContext};
 use overflow;
 use shape::{Indent, Shape};
 use spanned::Spanned;
-use types::join_bounds;
+use types::TraitTyParamBounds;
 use utils::{colon_spaces, contains_skip, first_line_width, format_abi, format_constness,
             format_defaultness, format_mutability, format_unsafety, format_visibility,
             is_attributes_extendable, last_line_contains_single_line_comment,
@@ -919,60 +920,55 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
                 return None;
             }
         }
-        let trait_bound_str = rewrite_trait_bounds(
-            context,
-            type_param_bounds,
-            Shape::indented(offset, context.config),
-        )?;
-        // If the trait, generics, and trait bound cannot fit on the same line,
-        // put the trait bounds on an indented new line
-        if offset.width() + last_line_width(&result) + trait_bound_str.len()
-            > context.config.comment_width()
-        {
-            let trait_indent = offset.block_only().block_indent(context.config);
-            result.push_str(&trait_indent.to_string_with_newline(context.config));
+        if !type_param_bounds.is_empty() {
+            result = rewrite_assign_rhs_with(
+                context,
+                result + ":",
+                &TraitTyParamBounds::new(type_param_bounds),
+                shape,
+                RhsTactics::ForceNextLine,
+            )?;
         }
-        result.push_str(&trait_bound_str);
 
-        let where_density =
-            if context.config.indent_style() == IndentStyle::Block && result.is_empty() {
+        // Rewrite where clause.
+        if !generics.where_clause.predicates.is_empty() {
+            let where_density = if context.config.indent_style() == IndentStyle::Block {
                 Density::Compressed
             } else {
                 Density::Tall
             };
 
-        let where_budget = context.budget(last_line_width(&result));
-        let pos_before_where = if type_param_bounds.is_empty() {
-            generics.where_clause.span.lo()
+            let where_budget = context.budget(last_line_width(&result));
+            let pos_before_where = if type_param_bounds.is_empty() {
+                generics.where_clause.span.lo()
+            } else {
+                type_param_bounds[type_param_bounds.len() - 1].span().hi()
+            };
+            let option = WhereClauseOption::snuggled(&generics_str);
+            let where_clause_str = rewrite_where_clause(
+                context,
+                &generics.where_clause,
+                context.config.brace_style(),
+                Shape::legacy(where_budget, offset.block_only()),
+                where_density,
+                "{",
+                None,
+                pos_before_where,
+                option,
+                false,
+            )?;
+            // If the where clause cannot fit on the same line,
+            // put the where clause on a new line
+            if !where_clause_str.contains('\n')
+                && last_line_width(&result) + where_clause_str.len() + offset.width()
+                    > context.config.comment_width()
+            {
+                let width = offset.block_indent + context.config.tab_spaces() - 1;
+                let where_indent = Indent::new(0, width);
+                result.push_str(&where_indent.to_string_with_newline(context.config));
+            }
+            result.push_str(&where_clause_str);
         } else {
-            type_param_bounds[type_param_bounds.len() - 1].span().hi()
-        };
-        let option = WhereClauseOption::snuggled(&generics_str);
-        let where_clause_str = rewrite_where_clause(
-            context,
-            &generics.where_clause,
-            context.config.brace_style(),
-            Shape::legacy(where_budget, offset.block_only()),
-            where_density,
-            "{",
-            None,
-            pos_before_where,
-            option,
-            false,
-        )?;
-        // If the where clause cannot fit on the same line,
-        // put the where clause on a new line
-        if !where_clause_str.contains('\n')
-            && last_line_width(&result) + where_clause_str.len() + offset.width()
-                > context.config.comment_width()
-        {
-            let width = offset.block_indent + context.config.tab_spaces() - 1;
-            let where_indent = Indent::new(0, width);
-            result.push_str(&where_indent.to_string_with_newline(context.config));
-        }
-        result.push_str(&where_clause_str);
-
-        if generics.where_clause.predicates.is_empty() {
             let item_snippet = context.snippet(item.span);
             if let Some(lo) = item_snippet.chars().position(|c| c == '/') {
                 // 1 = `{`
@@ -995,7 +991,9 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         }
 
         match context.config.brace_style() {
-            _ if last_line_contains_single_line_comment(&result) => {
+            _ if last_line_contains_single_line_comment(&result)
+                || last_line_width(&result) + 2 > context.budget(offset.width()) =>
+            {
                 result.push_str(&offset.to_string_with_newline(context.config));
             }
             BraceStyle::AlwaysNextLine => {
@@ -1003,8 +1001,8 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
             }
             BraceStyle::PreferSameLine => result.push(' '),
             BraceStyle::SameLineWhere => {
-                if !where_clause_str.is_empty()
-                    && (!trait_items.is_empty() || result.contains('\n'))
+                if result.contains('\n')
+                    || (!generics.where_clause.predicates.is_empty() && !trait_items.is_empty())
                 {
                     result.push_str(&offset.to_string_with_newline(context.config));
                 } else {
@@ -1585,16 +1583,12 @@ pub fn rewrite_associated_type(
     let prefix = format!("type {}", ident);
 
     let type_bounds_str = if let Some(bounds) = ty_param_bounds_opt {
-        // 2 = ": ".len()
-        let shape = Shape::indented(indent, context.config).offset_left(prefix.len() + 2)?;
-        let bound_str = bounds
-            .iter()
-            .map(|ty_bound| ty_bound.rewrite(context, shape))
-            .collect::<Option<Vec<_>>>()?;
-        if !bounds.is_empty() {
-            format!(": {}", join_bounds(context, shape, &bound_str))
-        } else {
+        if bounds.is_empty() {
             String::new()
+        } else {
+            // 2 = ": ".len()
+            let shape = Shape::indented(indent, context.config).offset_left(prefix.len() + 2)?;
+            bounds.rewrite(context, shape).map(|s| format!(": {}", s))?
         }
     } else {
         String::new()
@@ -2327,21 +2321,6 @@ pub fn generics_shape_from_config(config: &Config, shape: Shape, offset: usize) 
                 .sub_width(1)
         }
     }
-}
-
-fn rewrite_trait_bounds(
-    context: &RewriteContext,
-    bounds: &[ast::TyParamBound],
-    shape: Shape,
-) -> Option<String> {
-    if bounds.is_empty() {
-        return Some(String::new());
-    }
-    let bound_str = bounds
-        .iter()
-        .map(|ty_bound| ty_bound.rewrite(context, shape))
-        .collect::<Option<Vec<_>>>()?;
-    Some(format!(": {}", join_bounds(context, shape, &bound_str)))
 }
 
 fn rewrite_where_clause_rfc_style(

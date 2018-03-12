@@ -174,8 +174,8 @@ impl<#[may_dangle] K, #[may_dangle] V> Drop for RawTable<K, V> {
 }
 
 // #1168
-pub trait Number
-    : Copy
+pub trait Number:
+    Copy
     + Eq
     + Not<Output = Self>
     + Shl<u8, Output = Self>
@@ -183,14 +183,15 @@ pub trait Number
     + BitAnd<Self, Output = Self>
     + BitOr<Self, Output = Self>
     + BitAndAssign
-    + BitOrAssign {
+    + BitOrAssign
+{
     // test
     fn zero() -> Self;
 }
 
 // #1642
-pub trait SomeTrait
-    : Clone
+pub trait SomeTrait:
+    Clone
     + Eq
     + PartialEq
     + Ord
@@ -201,7 +202,8 @@ pub trait SomeTrait
     + Display
     + Write
     + Read
-    + FromStr {
+    + FromStr
+{
     // comment
 }
 

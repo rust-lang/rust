@@ -7,7 +7,7 @@ fn main() {
     fn f1(a: Box<dyn MyTrait>) {}
 
     // checks if line wrap works correctly
-    trait Very_______________________Long__________________Name____________________Trait {
+    trait Very_______________________Long__________________Name_______________________________Trait {
         fn method(&self) -> u64;
     }
 
