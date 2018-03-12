@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,20 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[macro_use] mod bleh {
-    pub macro_rules! foo { //~ ERROR can't qualify macro_rules invocation with `pub`
-    //~^ HELP did you mean #[macro_export]?
-        ($n:ident) => (
-            fn $n () -> i32 {
-                1
-            }
-        )
-    }
+#![crate_name = "foo"]
 
-}
+#![feature(optin_builtin_traits)]
 
-foo!(meh);
+pub struct Foo;
 
-fn main() {
-    println!("{}", meh());
-}
+// @has foo/struct.Foo.html
+// @!has - '//*[@class="synthetic-implementations"]' 'Auto Trait Implementations'
+impl !Send for Foo {}
+impl !Sync for Foo {}

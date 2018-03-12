@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,6 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 fn main() {
-    let x = ~1; //~ ERROR can not be used as a unary operator
+    let foo =
+        match
+        Some(4).unwrap_or_else(5)
+        //~^ NOTE expected one of `.`, `?`, `{`, or an operator here
+        ; //~ NOTE unexpected token
+        //~^ ERROR expected one of `.`, `?`, `{`, or an operator, found `;`
+
+    println!("{}", foo)
 }

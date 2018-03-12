@@ -8,15 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+#[macro_use] mod bleh {
+    pub macro_rules! foo { //~ ERROR can't qualify macro_rules invocation
+        ($n:ident) => (
+            fn $n () -> i32 {
+                1
+            }
+        )
+    }
+
+}
+
+foo!(meh);
 
 fn main() {
-    let foo =
-        match //~ NOTE did you mean to remove this `match` keyword?
-        Some(4).unwrap_or_else(5)
-        //~^ NOTE expected one of `.`, `?`, `{`, or an operator here
-        ; //~ NOTE unexpected token
-        //~^ ERROR expected one of `.`, `?`, `{`, or an operator, found `;`
-
-    println!("{}", foo)
+    println!("{}", meh());
 }
