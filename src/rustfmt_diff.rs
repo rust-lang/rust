@@ -12,8 +12,8 @@ use config::Color;
 use diff;
 use std::collections::VecDeque;
 use std::io;
-use term;
 use std::io::Write;
+use term;
 use utils::use_colored_tty;
 
 #[derive(Debug, PartialEq)]

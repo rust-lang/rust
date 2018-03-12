@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::time::{Duration, Instant};
 use std::default::Default;
+use std::time::{Duration, Instant};
 
 #[must_use]
 #[derive(Debug, Default, Clone, Copy)]

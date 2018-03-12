@@ -17,9 +17,9 @@ use syntax::codemap::Span;
 
 use closures;
 use codemap::SpanUtils;
+use expr::{is_nested_call, maybe_get_args_offset, ToExpr};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
 use rewrite::{Rewrite, RewriteContext};
-use expr::{is_nested_call, maybe_get_args_offset, ToExpr};
 use shape::Shape;
 use spanned::Spanned;
 use utils::{count_newlines, extra_offset, first_line_width, last_line_width, mk_sp, paren_overhead};

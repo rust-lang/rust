@@ -26,8 +26,8 @@ use config::{BraceStyle, Config, Density, IndentStyle};
 use expr::{format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs,
            rewrite_assign_rhs_with, ExprType, RhsTactics};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
-use rewrite::{Rewrite, RewriteContext};
 use overflow;
+use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
 use spanned::Spanned;
 use types::TraitTyParamBounds;

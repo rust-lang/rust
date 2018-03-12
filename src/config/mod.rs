@@ -23,9 +23,9 @@ mod config_type;
 mod options;
 
 pub mod file_lines;
+pub mod license;
 pub mod lists;
 pub mod summary;
-pub mod license;
 
 use config::config_type::ConfigType;
 use config::file_lines::FileLines;
@@ -69,7 +69,7 @@ create_config! {
 
     // Ordering
     reorder_extern_crates: bool, true, false, "Reorder extern crate statements alphabetically";
-    reorder_extern_crates_in_group: bool, true, false, "Reorder extern crate statements in group";
+    reorder_extern_crates_in_group: bool, false, false, "Reorder extern crate statements in group";
     reorder_imports: bool, true, false, "Reorder import statements alphabetically";
     reorder_imports_in_group: bool, true, false, "Reorder import statements in group";
     reorder_imported_names: bool, true, false,
