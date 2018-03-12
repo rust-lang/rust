@@ -1254,6 +1254,9 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
          location if it's empty."),
     pgo_use: String = (String::new(), parse_string, [TRACKED],
         "Use PGO profile data from the given profile file."),
+    disable_instrumentation_preinliner: bool =
+        (false, parse_bool, [TRACKED], "Disable the instrumentation pre-inliner, \
+        useful for profiling / PGO."),
     relro_level: Option<RelroLevel> = (None, parse_relro_level, [TRACKED],
         "choose which RELRO level to use"),
     nll: bool = (false, parse_bool, [UNTRACKED],
