@@ -8,20 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[macro_use] mod bleh {
-    pub macro_rules! foo { //~ ERROR can't qualify macro_rules invocation with `pub`
-    //~^ HELP did you mean #[macro_export]?
-        ($n:ident) => (
-            fn $n () -> i32 {
-                1
-            }
-        )
-    }
-
-}
-
-foo!(meh);
+// compile-flags: -Z parse-only
 
 fn main() {
-    println!("{}", meh());
+    let foo =
+        match
+        Some(4).unwrap_or_else(5)
+        //~^ NOTE expected one of `.`, `?`, `{`, or an operator here
+        ; //~ NOTE unexpected token
+        //~^ ERROR expected one of `.`, `?`, `{`, or an operator, found `;`
+
+    println!("{}", foo)
 }
