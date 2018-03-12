@@ -54,6 +54,7 @@
 use alloc::allocator;
 use any::TypeId;
 use borrow::Cow;
+use boxed;
 use cell;
 use char;
 use convert;
@@ -285,6 +286,13 @@ impl Error for num::TryFromIntError {
 
 #[unstable(feature = "try_from", issue = "33417")]
 impl Error for array::TryFromSliceError {
+    fn description(&self) -> &str {
+        self.__description()
+    }
+}
+
+#[unstable(feature = "try_from", issue = "33417")]
+impl<T> Error for boxed::TryFromSliceError<T> {
     fn description(&self) -> &str {
         self.__description()
     }

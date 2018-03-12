@@ -152,6 +152,7 @@ macro_rules! array_impls {
             impl<'a, T> TryFrom<&'a [T]> for &'a [T; $N] {
                 type Error = TryFromSliceError;
 
+                #[inline]
                 fn try_from(slice: &[T]) -> Result<&[T; $N], TryFromSliceError> {
                     if slice.len() == $N {
                         let ptr = slice.as_ptr() as *const [T; $N];
@@ -166,6 +167,7 @@ macro_rules! array_impls {
             impl<'a, T> TryFrom<&'a mut [T]> for &'a mut [T; $N] {
                 type Error = TryFromSliceError;
 
+                #[inline]
                 fn try_from(slice: &mut [T]) -> Result<&mut [T; $N], TryFromSliceError> {
                     if slice.len() == $N {
                         let ptr = slice.as_mut_ptr() as *mut [T; $N];

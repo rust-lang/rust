@@ -61,6 +61,7 @@ use raw_vec::RawVec;
 use core::any::Any;
 use core::borrow;
 use core::cmp::Ordering;
+use core::convert::TryFrom;
 use core::fmt;
 use core::hash::{self, Hash, Hasher};
 use core::iter::FusedIterator;
@@ -587,6 +588,79 @@ impl From<Box<str>> for Box<[u8]> {
     fn from(s: Box<str>) -> Self {
         unsafe { Box::from_raw(Box::into_raw(s) as *mut [u8]) }
     }
+}
+
+/// The error type returned when a conversion from a boxed slice to a boxed
+/// array fails.
+#[unstable(feature = "try_from", issue = "33417")]
+#[derive(Clone)]
+pub struct TryFromSliceError<T>(Box<[T]>);
+
+#[unstable(feature = "try_from", issue = "33417")]
+impl<T> fmt::Debug for TryFromSliceError<T> {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("TryFromSliceError").finish()
+    }
+}
+
+#[unstable(feature = "try_from", issue = "33417")]
+impl<T> fmt::Display for TryFromSliceError<T> {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(self.__description(), f)
+    }
+}
+
+impl<T> TryFromSliceError<T> {
+    #[unstable(feature = "array_error_internals",
+           reason = "available through Error trait and this method should not \
+                     be exposed publicly",
+           issue = "0")]
+    #[inline]
+    #[doc(hidden)]
+    pub fn __description(&self) -> &str {
+        "could not convert boxed slice to boxed array"
+    }
+
+    /// Returns the boxed slice that was attempted to convert to a boxed array.
+    ///
+    /// This method is meant to avoid allocation. It will consume the error,
+    /// moving out the boxed slice, so that a copy of the slice does not need to
+    /// be made.
+    #[unstable(feature = "try_from", issue = "33417")]
+    #[inline]
+    pub fn into_boxed_slice(self) -> Box<[T]> {
+        self.0
+    }
+}
+
+macro_rules! array_impls {
+    ($($N:expr)+) => {
+        $(
+            #[unstable(feature = "try_from", issue = "33417")]
+            impl<T> TryFrom<Box<[T]>> for Box<[T; $N]> {
+                type Error = TryFromSliceError<T>;
+
+                #[inline]
+                fn try_from(slice: Box<[T]>) -> Result<Box<[T; $N]>, TryFromSliceError<T>> {
+                    if slice.len() == $N {
+                        let ptr = Box::into_raw(slice) as *mut [T; $N];
+                        unsafe { Ok(Box::from_raw(ptr)) }
+                    } else {
+                        Err(TryFromSliceError(slice))
+                    }
+                }
+            }
+        )+
+    }
+}
+
+array_impls! {
+     0  1  2  3  4  5  6  7  8  9
+    10 11 12 13 14 15 16 17 18 19
+    20 21 22 23 24 25 26 27 28 29
+    30 31 32
 }
 
 impl Box<Any> {
