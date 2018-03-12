@@ -350,12 +350,24 @@ should move backward by 2 bytes before continuing. This ensure searching for `\u
 
 ## Pattern API
 
-This RFC assumes a generalized pattern API which supports more than strings. If the pattern API is
-not available, the new functions can take `&OsStr` instead of `impl Pattern<&OsStr>`, but this may
-hurt future compatibility due to inference breakage.
+As of Rust 1.25, we can search a `&str` using a character, a character set or another string,
+powered by [RFC #528](https://github.com/rust-lang/rfcs/pull/528) a.k.a. “Pattern API 1.0”.
 
-Assuming we do want to generalize the Pattern API, the implementor should note the issue of
-splitting a surrogate pair:
+There are some drafts to generalize this so that we could retain mutability and search in more types
+such as `&[T]` and `&OsStr`, as described in various comments
+(“[v1.5](https://github.com/rust-lang/rust/issues/27721#issuecomment-185405392)” and
+“[v2.0](https://github.com/rust-lang/rfcs/pull/1309#issuecomment-214030263)”). A proper RFC has not
+been proposed so far.
+
+This RFC assumes the target of generalizing the Pattern API beyond `&str` is accepted, enabling us
+to provide a uniform search API between different types of haystack and needles. However, this RFC
+does not rely on a generalized Pattern API. If this RFC is stabilized without a generalized Pattern
+API, the new methods described in the [Guide-level explanation][guide-level-explanation] section can
+take `&OsStr` instead of `impl Pattern<&OsStr>`, but this may hurt future compatibility due to
+inference breakage if generalized Pattern API is indeed implemented.
+
+Assuming we do want to generalize Pattern API, the implementor should note the issue of splitting a
+surrogate pair:
 
 1. A match which starts with a low surrogate will point to byte 1 of the 4-byte sequence
 2. An index always point to byte 2 of the 4-byte sequence
@@ -363,9 +375,14 @@ splitting a surrogate pair:
 
 Implementation should note these different offsets when converting between different kinds of
 cursors. In the [`omgwtf8::pattern` module](https://docs.rs/omgwtf8/*/omgwtf8/pattern/index.html),
-this behavior is enforced by using distinct types for the start and end cursors.
+based on the “v1.5” draft, this behavior is enforced in the API design by using distinct types for
+the start and end cursors.
+
+The following outlines the generalized Pattern API which could work for `&OsStr`:
 
 ```rust
+// in module `core::pattern`:
+
 pub trait Pattern<H: Haystack>: Sized {
     type Searcher: Searcher<H>;
     fn into_searcher(self, haystack: H) -> Self::Searcher;
@@ -379,6 +396,13 @@ pub trait Searcher<H: Haystack> {
     fn next_match(&mut self) -> Option<(H::StartCursor, H::EndCursor)>;
     fn next_reject(&mut self) -> Option<(H::StartCursor, H::EndCursor)>;
 }
+
+pub trait ReverseSearcher<H: Haystack>: Searcher<H> {
+    fn next_match_back(&mut self) -> Option<(H::StartCursor, H::EndCursor)>;
+    fn next_reject_back(&mut self) -> Option<(H::StartCursor, H::EndCursor)>;
+}
+
+pub trait DoubleEndedSearcher<H: Haystack>: ReverseSearcher<H> {}
 
 // equivalent to SearchPtrs in "Pattern API 1.5"
 // and PatternHaystack in "Pattern API 2.0"
@@ -403,7 +427,7 @@ pub trait Haystack: Sized {
 }
 ```
 
-For `&OsStr`, we define both `StartCursor` and `EndCursor` as `*const u8`.
+For the `&OsStr` haystack, we define both `StartCursor` and `EndCursor` as `*const u8`.
 
 The `start_to_end_cursor` function will return `cur + 2` if we find that `cur` points to the middle
 of a 4-byte sequence.
@@ -452,7 +476,7 @@ match self.matcher.next_match() {
     ```
 
     As a workaround, we introduced `find_range` and `match_ranges`. Note that this is already a
-    problem to solve if we want to make `Regex` a pattern.
+    problem to solve if we want to make `Regex` a pattern of strings.
 
 # Rationale and alternatives
 [alternatives]: #alternatives
