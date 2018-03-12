@@ -1021,6 +1021,7 @@ enum class LLVMRustDiagnosticKind {
   OptimizationRemarkAnalysisAliasing,
   OptimizationRemarkOther,
   OptimizationFailure,
+  PGOProfile,
 };
 
 static LLVMRustDiagnosticKind toRust(DiagnosticKind Kind) {
@@ -1043,6 +1044,8 @@ static LLVMRustDiagnosticKind toRust(DiagnosticKind Kind) {
     return LLVMRustDiagnosticKind::OptimizationRemarkAnalysisFPCommute;
   case DK_OptimizationRemarkAnalysisAliasing:
     return LLVMRustDiagnosticKind::OptimizationRemarkAnalysisAliasing;
+  case DK_PGOProfile:
+    return LLVMRustDiagnosticKind::PGOProfile;
   default:
     return (Kind >= DK_FirstRemark && Kind <= DK_LastRemark)
                ? LLVMRustDiagnosticKind::OptimizationRemarkOther

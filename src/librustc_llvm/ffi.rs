@@ -322,6 +322,7 @@ pub enum DiagnosticKind {
     OptimizationRemarkAnalysisAliasing,
     OptimizationRemarkOther,
     OptimizationFailure,
+    PGOProfile,
 }
 
 /// LLVMRustArchiveKind
