@@ -261,9 +261,17 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
 
     debug!("mbcx.used_mut: {:?}", mbcx.used_mut);
 
-    for local in mbcx.mir.mut_vars_iter().filter(|local| !mbcx.used_mut.contains(local)) {
+    for local in mbcx.mir.mut_vars_and_args_iter().filter(|local| !mbcx.used_mut.contains(local)) {
         if let ClearCrossCrate::Set(ref vsi) = mbcx.mir.visibility_scope_info {
-            let source_info = mbcx.mir.local_decls[local].source_info;
+            let local_decl = &mbcx.mir.local_decls[local];
+
+            // Skip over locals that begin with an underscore
+            match local_decl.name {
+                Some(name) if name.as_str().starts_with("_") => continue,
+                _ => {},
+            }
+
+            let source_info = local_decl.source_info;
             let mut_span = tcx.sess.codemap().span_until_non_whitespace(source_info.span);
 
             tcx.struct_span_lint_node(
@@ -864,7 +872,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
 
         let mutability_error =
-            self.check_access_permissions(place_span, rw, is_local_mutation_allowed);
+            self.check_access_permissions(place_span, rw, is_local_mutation_allowed, flow_state);
         let conflict_error =
             self.check_access_for_conflict(context, place_span, sd, rw, flow_state);
 
@@ -1656,6 +1664,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         (place, span): (&Place<'tcx>, Span),
         kind: ReadOrWrite,
         is_local_mutation_allowed: LocalMutationIsAllowed,
+        flow_state: &Flows<'cx, 'gcx, 'tcx>,
     ) -> bool {
         debug!(
             "check_access_permissions({:?}, {:?}, {:?})",
@@ -1691,7 +1700,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Reservation(WriteKind::Mutate) | Write(WriteKind::Mutate) => {
                 match place {
                     Place::Local(local) => {
-                        self.used_mut.insert(*local);
+                        // If the local may be initialized, and it is now currently being
+                        // mutated, then it is justified to be annotated with the `mut` keyword,
+                        // since the mutation may be a possible reassignment.
+                        let mpi = self.move_data.rev_lookup.find_local(*local);
+                        if flow_state.inits.contains(&mpi) {
+                            self.used_mut.insert(*local);
+                        }
                     }
                     Place::Projection(ref proj) => {
                         if let Some(field) = self.is_upvar_field_projection(&proj.base) {
