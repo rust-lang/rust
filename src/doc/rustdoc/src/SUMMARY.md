@@ -5,3 +5,4 @@
 - [The `#[doc]` attribute](the-doc-attribute.md)
 - [Documentation tests](documentation-tests.md)
 - [Passes](passes.md)
+- [Unstable features](unstable-features.md)
