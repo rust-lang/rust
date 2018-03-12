@@ -8,7 +8,7 @@ managing state such as the [`CodeMap`] \(maps AST nodes to source code),
 stuff). The `rustc_driver` crate also provides external users with a method
 for running code at particular times during the compilation process, allowing
 third parties to effectively use `rustc`'s internals as a library for
-analysing a crate.
+analysing a crate or emulating the compiler in-process (e.g. the RLS).
 
 For those using `rustc` as a library, the `run_compiler()` function is the main
 entrypoint to the compiler. Its main parameters are a list of command-line
@@ -20,10 +20,12 @@ of each phase.
 From `rustc_driver`'s perspective, the main phases of the compiler are:
 
 1. *Parse Input:* Initial crate parsing
-2. *Configure and Expand:* Resolve `#[cfg]` attributes and expand macros
-3. *Run Analysis Passes:* Run the resolution, typechecking, region checking
+2. *Configure and Expand:* Resolve `#[cfg]` attributes, name resolution, and 
+   expand macros
+3. *Run Analysis Passes:* Run trait resolution, typechecking, region checking
    and other miscellaneous analysis passes on the crate
-4. *Translate to LLVM:* Turn the analysed program into executable code
+4. *Translate to LLVM:* Translate to the in-memory form of LLVM IR and turn it 
+   into an executable/object files
 
 The `CompileController` then gives users the ability to inspect the ongoing 
 compilation process
@@ -36,6 +38,9 @@ compilation process
 
 The `CompileState`'s various `state_after_*()` constructors can be inspected to
 determine what bits of information are available to which callback.
+
+> **Warning:** By its very nature, the internal compiler APIs are always going
+> to be unstable. That said, we do try not to break things unnecessarily.
 
 ## A Note On Lifetimes
 
