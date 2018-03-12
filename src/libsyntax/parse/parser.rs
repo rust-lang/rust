@@ -2831,9 +2831,10 @@ impl<'a> Parser<'a> {
                 let (span, e) = self.interpolated_or_expr_span(e)?;
                 let span_of_tilde = lo;
                 let mut err = self.diagnostic().struct_span_err(span_of_tilde,
-                        "`~` can not be used as a unary operator");
-                err.span_label(span_of_tilde, "did you mean `!`?");
-                err.help("use `!` instead of `~` if you meant to perform bitwise negation");
+                        "`~` cannot be used as a unary operator");
+                err.span_suggestion_short(span_of_tilde,
+                                          "use `!` to perform bitwise negation",
+                                          "!".to_owned());
                 err.emit();
                 (lo.to(span), self.mk_unary(UnOp::Not, e))
             }
@@ -3389,7 +3390,7 @@ impl<'a> Parser<'a> {
                                                None)?;
         if let Err(mut e) = self.expect(&token::OpenDelim(token::Brace)) {
             if self.token == token::Token::Semi {
-                e.span_note(match_span, "did you mean to remove this `match` keyword?");
+                e.span_suggestion_short(match_span, "try removing this `match`", "".to_owned());
             }
             return Err(e)
         }
@@ -5361,7 +5362,9 @@ impl<'a> Parser<'a> {
                 if is_macro_rules {
                     let mut err = self.diagnostic()
                         .struct_span_err(sp, "can't qualify macro_rules invocation with `pub`");
-                    err.help("did you mean #[macro_export]?");
+                    err.span_suggestion(sp,
+                                        "try exporting the macro",
+                                        "#[macro_export]".to_owned());
                     Err(err)
                 } else {
                     let mut err = self.diagnostic()

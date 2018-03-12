@@ -3096,10 +3096,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             };
                     }
                     ty::TyRawPtr(..) => {
-                        err.note(&format!("`{0}` is a native pointer; perhaps you need to deref \
-                                           with `(*{0}).{1}`",
-                                          self.tcx.hir.node_to_pretty_string(base.id),
-                                          field.node));
+                        let base = self.tcx.hir.node_to_pretty_string(base.id);
+                        let msg = format!("`{}` is a native pointer; try dereferencing it", base);
+                        let suggestion = format!("(*{}).{}", base, field.node);
+                        err.span_suggestion(field.span, &msg, suggestion);
                     }
                     _ => {}
                 }
