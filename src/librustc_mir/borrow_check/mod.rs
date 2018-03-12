@@ -1566,7 +1566,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
                 if place != place_err {
                     if let Some(name) = self.describe_place(place_err) {
-                        err.note(&format!("Value not mutable causing this error: `{}`", name));
+                        err.note(&format!("value not mutable causing this error: `{}`", name));
                     }
                 }
 
@@ -1619,13 +1619,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             err.span_label(span, sec_span);
                         }
                         err.emit()
-                    }else{
+                    } else {
                         let item_msg_ = self.get_main_error_message(place);
                         let mut err = self.tcx.cannot_assign(span, &item_msg_, Origin::Mir, false);
                         err.span_label(span, "cannot mutate");
                         if place != place_err {
                             if let Some(name) = self.describe_place(place_err) {
-                                err.note(&format!("Value not mutable causing this error: `{}`",
+                                err.note(&format!("value not mutable causing this error: `{}`",
                                                   name));
                             }
                         }
