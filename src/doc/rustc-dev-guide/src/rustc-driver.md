@@ -39,6 +39,9 @@ compilation process
 The `CompileState`'s various `state_after_*()` constructors can be inspected to
 determine what bits of information are available to which callback.
 
+For a more detailed explanation on using `rustc_driver`, check out the 
+[stupid-stats] guide by `@nrc` (attached as [Appendix A]).
+
 > **Warning:** By its very nature, the internal compiler APIs are always going
 > to be unstable. That said, we do try not to break things unnecessarily.
 
@@ -69,3 +72,5 @@ thread-locals, although you should rarely need to touch it.
 [`Session`]: https://github.com/rust-lang/rust/blob/master/src/librustc/session/mod.rs
 [`TyCtxt`]: https://github.com/rust-lang/rust/blob/master/src/librustc/ty/context.rs
 [`CodeMap`]: https://github.com/rust-lang/rust/blob/master/src/libsyntax/codemap.rs
+[stupid-stats]: https://github.com/nrc/stupid-stats
+[Appendix A]: appendix-stupid-stats.html

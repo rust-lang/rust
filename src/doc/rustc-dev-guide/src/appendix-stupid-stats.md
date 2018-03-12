@@ -1,5 +1,10 @@
 # Appendix A: A tutorial on creating a drop-in replacement for rustc
 
+> **Note:** This is a copy of `@nrc`'s amazing [stupid-stats]. You should find
+> a copy of the code on the GitHub repository although due to the compiler's
+> constantly evolving nature, there is no guarantee it'll compile on the first
+> go. 
+
 Many tools benefit from being a drop-in replacement for a compiler. By this, I
 mean that any user of the tool can use `mytool` in all the ways they would
 normally use `rustc` - whether manually compiling a single file or as part of a
@@ -396,3 +401,5 @@ analysis, rather than doing its own analysis). Other parts of the compiler
 (e.g., pretty printing, testing) could be refactored to use these APIs
 internally (I already changed save-analysis to use `CompilerController`). I've
 been experimenting with a prototype rustfmt which also uses these APIs.
+
+[stupid-stats]: https://github.com/nrc/stupid-stats
