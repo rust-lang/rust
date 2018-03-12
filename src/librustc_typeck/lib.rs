@@ -88,6 +88,8 @@ This API is completely unstable and subject to change.
 #![feature(slice_patterns)]
 #![feature(i128_type)]
 #![cfg_attr(stage0, feature(never_type))]
+#![feature(underscore_lifetimes)]
+#![feature(universal_impl_trait)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
