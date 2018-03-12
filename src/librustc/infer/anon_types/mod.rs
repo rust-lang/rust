@@ -616,10 +616,9 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ReverseMapper<'cx, 'gcx, 'tcx> 
                 // during trans.
 
                 let generics = self.tcx.generics_of(def_id);
-                let parent_len = generics.parent_count();
                 let substs = self.tcx.mk_substs(substs.substs.iter().enumerate().map(
                     |(index, &kind)| {
-                        if index < parent_len {
+                        if index < generics.parent_count {
                             // Accommodate missing regions in the parent kinds...
                             self.fold_kind_mapping_missing_regions_to_empty(kind)
                         } else {

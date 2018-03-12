@@ -369,13 +369,13 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
 
     let generics = tcx.generics_of(def_id);
     let is_our_default = |def: &ty::TypeParameterDef|
-                            def.has_default && def.index >= generics.parent_count() as u32;
+                            def.has_default && def.index >= generics.parent_count as u32;
 
     // Check that concrete defaults are well-formed. See test `type-check-defaults.rs`.
     // For example this forbids the declaration:
     // struct Foo<T = Vec<[u32]>> { .. }
     // Here the default `Vec<[u32]>` is not WF because `[u32]: Sized` does not hold.
-    for d in generics.types.iter().cloned().filter(is_our_default).map(|p| p.def_id) {
+    for d in generics.types().cloned().filter(is_our_default).map(|p| p.def_id) {
         let ty = fcx.tcx.type_of(d);
         // ignore dependent defaults -- that is, where the default of one type
         // parameter includes another (e.g., <T, U = T>). In those cases, we can't

@@ -252,7 +252,6 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         }
 
         for def in &defs.params {
-            assert_eq!(def.index() as usize, substs.len());
             let param = match def {
                 ty::GenericParam::Lifetime(ref lt) => {
                     mk_region(lt, substs).into()
@@ -265,6 +264,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                     mk_type(ty, substs).into()
                 }
             };
+            assert_eq!(def.index() as usize, substs.len());
             substs.push(param);
         }
     }

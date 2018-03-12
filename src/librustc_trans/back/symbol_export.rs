@@ -117,7 +117,7 @@ fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 }) => {
                     let def_id = tcx.hir.local_def_id(node_id);
                     let generics = tcx.generics_of(def_id);
-                    if (generics.parent_types == 0 && generics.types.is_empty()) &&
+                    if !generics.has_type_parameters(tcx) &&
                         // Functions marked with #[inline] are only ever translated
                         // with "internal" linkage and are never exported.
                         !Instance::mono(tcx, def_id).def.requires_local(tcx) {
