@@ -156,7 +156,7 @@ impl<'a> Quote for &'a str {
 
 impl Quote for usize {
     fn quote(self) -> TokenStream {
-        TokenNode::Literal(Literal::integer(self as i128)).into()
+        TokenNode::Literal(Literal::integer(self as u128)).into()
     }
 }
 
