@@ -87,7 +87,10 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>
         lang_items: lang_items(tcx),
     };
 
-    // See README.md for a discussion on dep-graph management.
+    // See the following for a discussion on dep-graph management.
+    //
+    // - https://rust-lang-nursery.github.io/rustc-guide/query.html
+    // - https://rust-lang-nursery.github.io/rustc-guide/variance.html
     tcx.hir.krate().visit_all_item_likes(&mut terms_cx);
 
     terms_cx
