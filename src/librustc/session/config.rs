@@ -1641,7 +1641,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
         opt::multi_s(
             "",
             "remap-path-prefix",
-            "remap source names in output",
+            "Remap source names in all output (compiler messages and output files)",
             "FROM=TO",
         ),
     ]);
