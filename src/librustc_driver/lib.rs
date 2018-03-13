@@ -1138,10 +1138,9 @@ fn usage(verbose: bool, include_unstable_options: bool) {
 
 fn print_wall_help() {
     println!("
-The flag -Wall does not exist in rustc. Most useful lints are enabled by default.
-Use `rustc -W help` to see all available lints. The most used lints that are not
-enabled by default covered by -Wunused; however, the best practice is to put
-warning settings in the crate root using `#![warn(unused)]` instead of using
+The flag `-Wall` does not exist in `rustc`. Most useful lints are enabled by
+default. Use `rustc -W help` to see all available lints. It's more common to put
+warning settings in the crate root using `#![warn(LINT_NAME)]` instead of using
 the command line flag directly.
 ");
 }
