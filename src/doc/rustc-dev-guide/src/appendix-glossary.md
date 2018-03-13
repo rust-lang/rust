@@ -56,7 +56,8 @@ token                   |  the smallest unit of parsing. Tokens are produced aft
 trans                   |  the code to translate MIR into LLVM IR.
 trait reference         |  a trait and values for its type parameters ([see more](ty.html)).
 ty                      |  the internal representation of a type ([see more](ty.html)).
-variance                |  variance determines how changes to a generic type/lifetime parameter affect subtyping; for example, if `T` is a subtype of `U`, then `Vec<T>` is a subtype `Vec<U>` because `Vec` is *covariant* in its generic parameter. See [the background chapter for more](./appendix-background.html#variance).
+UFCS                    |  Universal Function Call Syntax. An unambiguous syntax for calling a method ([see more](type-checking.html)).
+variance                |  variance determines how changes to a generic type/lifetime parameter affect subtyping; for example, if `T` is a subtype of `U`, then `Vec<T>` is a subtype `Vec<U>` because `Vec` is *covariant* in its generic parameter. See [the background chapter](./appendix-background.html#variance) for a more general explanation. See the [variance chapter](./variance.html) for an explanation of how type checking handles variance.
 
 [LLVM]: https://llvm.org/
 [lto]: https://llvm.org/docs/LinkTimeOptimization.html

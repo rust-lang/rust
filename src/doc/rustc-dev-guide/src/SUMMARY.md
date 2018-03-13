@@ -35,6 +35,8 @@
     - [The SLG solver](./traits-slg.md)
     - [Bibliography](./traits-bibliography.md)
 - [Type checking](./type-checking.md)
+    - [Method Lookup](./method-lookup.md)
+    - [Variance](./variance.md)
 - [The MIR (Mid-level IR)](./mir.md)
     - [MIR construction](./mir-construction.md)
     - [MIR visitor and traversal](./mir-visitor.md)
