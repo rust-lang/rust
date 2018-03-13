@@ -24,7 +24,6 @@ use rustc::ty::subst::Substs;
 use rustc::util::nodemap::{FxHashMap, DefIdMap};
 use rustc_allocator::ALLOCATOR_METHODS;
 use rustc_data_structures::indexed_vec::IndexVec;
-use syntax::attr;
 use std::collections::hash_map::Entry::*;
 
 pub type ExportedSymbols = FxHashMap<

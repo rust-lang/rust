@@ -112,9 +112,9 @@ pub fn metadata_symbol_name(tcx: ty::TyCtxt) -> String {
             tcx.crate_disambiguator(LOCAL_CRATE).to_fingerprint().to_hex())
 }
 
-impl<'gcx> HashStable<StableHashingContext<'gcx>> for ExportedSymbol<'gcx> {
+impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for ExportedSymbol<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
