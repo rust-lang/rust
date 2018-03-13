@@ -1,4 +1,6 @@
 extern crate cargo_metadata;
+extern crate semver;
+use semver::VersionReq;
 
 #[test]
 fn check_that_clippy_lints_has_the_same_version_as_clippy() {
@@ -8,7 +10,7 @@ fn check_that_clippy_lints_has_the_same_version_as_clippy() {
     assert_eq!(clippy_lints_meta.packages[0].version, clippy_meta.packages[0].version);
     for package in &clippy_meta.packages[0].dependencies {
         if package.name == "clippy_lints" {
-            assert_eq!(clippy_lints_meta.packages[0].version, package.req[1..]);
+            assert_eq!(VersionReq::parse(&clippy_lints_meta.packages[0].version).unwrap(), package.req);
             return;
         }
     }
