@@ -267,7 +267,8 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                             &variant.fields[..]
                         }
 
-                        _ => unreachable!()
+                        _ => span_bug!(item.span,
+                            "unexpected item {:?}", item.node)
                     }
                 };
 
