@@ -9,8 +9,11 @@
 // except according to those terms.
 
 use std::borrow::Cow;
+#[cfg(not(target_arch = "asmjs"))]
 use std::collections::CollectionAllocErr::*;
+#[cfg(not(target_arch = "asmjs"))]
 use std::mem::size_of;
+#[cfg(not(target_arch = "asmjs"))]
 use std::{usize, isize};
 
 pub trait IntoCow<'a, B: ?Sized> where B: ToOwned {
@@ -532,6 +535,7 @@ fn test_reserve_exact() {
     assert!(s.capacity() >= 33)
 }
 
+#[cfg(not(target_arch = "asmjs"))]
 #[test]
 fn test_try_reserve() {
 
@@ -609,6 +613,7 @@ fn test_try_reserve() {
 
 }
 
+#[cfg(not(target_arch = "asmjs"))]
 #[test]
 fn test_try_reserve_exact() {
 

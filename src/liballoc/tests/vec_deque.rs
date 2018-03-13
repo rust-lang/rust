@@ -11,9 +11,13 @@
 use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::collections::vec_deque::{Drain};
+#[cfg(not(target_arch = "asmjs"))]
 use std::collections::CollectionAllocErr::*;
+#[cfg(not(target_arch = "asmjs"))]
 use std::mem::size_of;
-use std::{usize, isize};
+use std::isize;
+#[cfg(not(target_arch = "asmjs"))]
+use std::usize;
 
 use self::Taggy::*;
 use self::Taggypar::*;
@@ -1049,6 +1053,7 @@ fn test_reserve_exact_2() {
     assert!(v.capacity() >= 48)
 }
 
+#[cfg(not(target_arch = "asmjs"))]
 #[test]
 fn test_try_reserve() {
 
@@ -1150,6 +1155,7 @@ fn test_try_reserve() {
 
 }
 
+#[cfg(not(target_arch = "asmjs"))]
 #[test]
 fn test_try_reserve_exact() {
 
