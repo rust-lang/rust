@@ -159,7 +159,13 @@ macro_rules! debug {
         impl fmt::Debug for $T {
             #[inline]
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                fmt::Display::fmt(self, f)
+                if f.debug_lower_hex() {
+                    fmt::LowerHex::fmt(self, f)
+                } else if f.debug_upper_hex() {
+                    fmt::UpperHex::fmt(self, f)
+                } else {
+                    fmt::Display::fmt(self, f)
+                }
             }
         }
     }
