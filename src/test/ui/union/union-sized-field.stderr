@@ -1,15 +1,15 @@
 error[E0277]: the trait bound `T: std::marker::Sized` is not satisfied
-  --> $DIR/union-sized-field.rs:14:5
+  --> $DIR/union-sized-field.rs:15:5
    |
 LL |     value: T, //~ ERROR the trait bound `T: std::marker::Sized` is not satisfied
    |     ^^^^^^^^ `T` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `T`
    = help: consider adding a `where T: std::marker::Sized` bound
-   = note: no field of a union may have a dynamically sized type
+   = note: only single-field unions may have a dynamically sized type
 
 error[E0277]: the trait bound `T: std::marker::Sized` is not satisfied
-  --> $DIR/union-sized-field.rs:18:5
+  --> $DIR/union-sized-field.rs:19:5
    |
 LL |     value: T, //~ ERROR the trait bound `T: std::marker::Sized` is not satisfied
    |     ^^^^^^^^ `T` does not have a constant size known at compile-time
@@ -19,7 +19,7 @@ LL |     value: T, //~ ERROR the trait bound `T: std::marker::Sized` is not sati
    = note: only the last field of a struct may have a dynamically sized type
 
 error[E0277]: the trait bound `T: std::marker::Sized` is not satisfied
-  --> $DIR/union-sized-field.rs:23:11
+  --> $DIR/union-sized-field.rs:24:11
    |
 LL |     Value(T), //~ ERROR the trait bound `T: std::marker::Sized` is not satisfied
    |           ^^ `T` does not have a constant size known at compile-time

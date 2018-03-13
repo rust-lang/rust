@@ -33,13 +33,13 @@ impl Drop for U5 {
 }
 
 // the non-`Copy` error message has priority
-// replace this with unsized error message if
-// non-`Copy` unions are stabilized before unsized unions
+// replace this with an "unsized unions are unstable" error message
+// if non-`Copy` unions are stabilized before unsized unions
 union U6<T: ?Sized> { //~ ERROR unions with non-`Copy` fields are unstable
     a: T
 }
 
-union U7<T: Copy + ?Sized> { // ERROR unsized unions are unstable
+union U7<T: Copy + ?Sized> { //~ ERROR unsized unions are unstable
     a: T
 }
 
