@@ -75,10 +75,6 @@ pub struct OnDiskCache<'sess> {
     // A map from dep-node to the position of any associated diagnostics in
     // `serialized_data`.
     prev_diagnostics_index: FxHashMap<SerializedDepNodeIndex, AbsoluteBytePos>,
-
-    // A map from dep-node to the position of any associated constants in
-    // `serialized_data`.
-    prev_constants_index: FxHashMap<SerializedDepNodeIndex, AbsoluteBytePos>,
 }
 
 // This type is used only for (de-)serialization.
@@ -88,10 +84,8 @@ struct Footer {
     prev_cnums: Vec<(u32, String, CrateDisambiguator)>,
     query_result_index: EncodedQueryResultIndex,
     diagnostics_index: EncodedQueryResultIndex,
-    constants_index: EncodedConstantsIndex,
 }
 
-type EncodedConstantsIndex = Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>;
 type EncodedQueryResultIndex = Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>;
 type EncodedDiagnosticsIndex = Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>;
 type EncodedDiagnostics = Vec<Diagnostic>;
@@ -145,7 +139,6 @@ impl<'sess> OnDiskCache<'sess> {
             current_diagnostics: RefCell::new(FxHashMap()),
             query_result_index: footer.query_result_index.into_iter().collect(),
             prev_diagnostics_index: footer.diagnostics_index.into_iter().collect(),
-            prev_constants_index: footer.constants_index.into_iter().collect(),
             synthetic_expansion_infos: RefCell::new(FxHashMap()),
         }
     }
@@ -161,7 +154,6 @@ impl<'sess> OnDiskCache<'sess> {
             current_diagnostics: RefCell::new(FxHashMap()),
             query_result_index: FxHashMap(),
             prev_diagnostics_index: FxHashMap(),
-            prev_constants_index: FxHashMap(),
             synthetic_expansion_infos: RefCell::new(FxHashMap()),
         }
     }
@@ -229,46 +221,25 @@ impl<'sess> OnDiskCache<'sess> {
                 encode_query_results::<symbol_name, _>(tcx, enc, qri)?;
                 encode_query_results::<check_match, _>(tcx, enc, qri)?;
                 encode_query_results::<trans_fn_attrs, _>(tcx, enc, qri)?;
-            }
 
-            // encode successful constant evaluations
-            let constants_index = {
-                let mut constants_index = EncodedConstantsIndex::new();
-                use ty::maps::queries::const_eval;
+                // const eval is special, it only encodes successfully evaluated constants
                 use ty::maps::plumbing::GetCacheInternal;
-                use ty::maps::config::QueryDescription;
                 for (key, entry) in const_eval::get_cache_internal(tcx).map.iter() {
-                    if let Ok(ref constant) = entry.value {
-                        if const_eval::cache_on_disk(key.clone()) {
-                            trace!("caching constant {:?} with value {:#?}", key, constant);
+                    use ty::maps::config::QueryDescription;
+                    if const_eval::cache_on_disk(key.clone()) {
+                        if let Ok(ref value) = entry.value {
                             let dep_node = SerializedDepNodeIndex::new(entry.index.index());
 
                             // Record position of the cache entry
-                            constants_index.push((
-                                dep_node,
-                                AbsoluteBytePos::new(encoder.position()),
-                            ));
-                            let did = key.value.instance.def_id();
-                            let constant = if key.value.promoted.is_none()
-                                           && tcx.is_static(did).is_some() {
-                                // memorize the allocation for the static, too, so
-                                // we can refer to the static, not just read its value
-                                // since we have had a successful query, the cached value must
-                                // exist, so we can unwrap it
-                                let cached = tcx.interpret_interner.get_cached(did).unwrap();
-                                (constant, Some(cached))
-                            } else {
-                                (constant, None)
-                            };
+                            qri.push((dep_node, AbsoluteBytePos::new(enc.position())));
 
                             // Encode the type check tables with the SerializedDepNodeIndex
                             // as tag.
-                            encoder.encode_tagged(dep_node, &constant)?;
+                            enc.encode_tagged(dep_node, value)?;
                         }
                     }
                 }
-                constants_index
-            };
+            }
 
             // Encode diagnostics
             let diagnostics_index = {
@@ -303,7 +274,6 @@ impl<'sess> OnDiskCache<'sess> {
                 prev_cnums,
                 query_result_index,
                 diagnostics_index,
-                constants_index,
             })?;
 
             // Encode the position of the footer as the last 8 bytes of the
@@ -323,25 +293,6 @@ impl<'sess> OnDiskCache<'sess> {
                 cnums.dedup();
                 cnums
             }
-        })
-    }
-
-    /// Load a constant emitted during the previous compilation session.
-    pub fn load_constant<'a, 'tcx>(&self,
-                                      tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                      dep_node_index: SerializedDepNodeIndex)
-                                      -> Option<&'tcx ty::Const<'tcx>> {
-        type Encoded<'tcx> = (ty::Const<'tcx>, Option<interpret::AllocId>);
-        let constant: Option<Encoded<'tcx>> = self.load_indexed(
-            tcx,
-            dep_node_index,
-            &self.prev_constants_index,
-            "constants");
-
-        constant.map(|(c, _alloc_id)| {
-            // the AllocId decoding already registers the AllocId to its DefId
-            // so we don't need to take additional actions here
-            tcx.mk_const(c)
         })
     }
 

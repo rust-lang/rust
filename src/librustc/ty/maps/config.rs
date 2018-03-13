@@ -158,15 +158,15 @@ impl<'tcx> QueryDescription<'tcx> for queries::const_eval<'tcx> {
     }
 
     #[inline]
-    fn cache_on_disk(key: Self::Key) -> bool {
-        key.value.instance.def_id().is_local()
+    fn cache_on_disk(_key: Self::Key) -> bool {
+        true
     }
 
     #[inline]
     fn try_load_from_disk<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               id: SerializedDepNodeIndex)
                               -> Option<Self::Value> {
-        tcx.on_disk_query_result_cache.load_constant(tcx, id).map(Ok)
+        tcx.on_disk_query_result_cache.try_load_query_result(tcx, id).map(Ok)
     }
 }
 

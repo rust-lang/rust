@@ -110,6 +110,7 @@ fn eval_body_and_ecx<'a, 'mir, 'tcx>(
         span = mir.span;
         let layout = ecx.layout_of(mir.return_ty().subst(tcx, cid.instance.substs))?;
         let alloc = tcx.interpret_interner.get_cached(cid.instance.def_id());
+        let is_static = tcx.is_static(cid.instance.def_id()).is_some();
         let alloc = match alloc {
             Some(alloc) => {
                 assert!(cid.promoted.is_none());
@@ -123,7 +124,7 @@ fn eval_body_and_ecx<'a, 'mir, 'tcx>(
                     layout.align,
                     None,
                 )?;
-                if tcx.is_static(cid.instance.def_id()).is_some() {
+                if is_static {
                     tcx.interpret_interner.cache(cid.instance.def_id(), ptr.alloc_id);
                 }
                 let internally_mutable = !layout.ty.is_freeze(tcx, param_env, mir.span);
@@ -151,8 +152,11 @@ fn eval_body_and_ecx<'a, 'mir, 'tcx>(
             }
         };
         let ptr = MemoryPointer::new(alloc, 0).into();
+        // always try to read the value and report errors
         let value = match ecx.try_read_value(ptr, layout.align, layout.ty)? {
-            Some(val) => val,
+            // if it's a constant (so it needs no address, directly compute its value)
+            Some(val) if !is_static => val,
+            // point at the allocation
             _ => Value::ByRef(ptr, layout.align),
         };
         Ok((value, ptr, layout.ty))
