@@ -120,6 +120,9 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
 
     fn visit_user_assert_ty(&mut self, _ty: &mut Ty<'tcx>, _local: &mut Local,
                             _location: Location) {
+        // User-assert-ty statements represent types that the user added explicitly.
+        // We don't want to erase the regions from these types: rather, we want to
+        // add them as constraints at type-check time.
         debug!("visit_user_assert_ty: skipping renumber");
     }
 
