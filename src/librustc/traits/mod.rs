@@ -63,6 +63,8 @@ mod structural_impls;
 pub mod trans;
 mod util;
 
+pub mod query;
+
 // Whether to enable bug compatibility with issue #43355
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum IntercrateMode {
@@ -695,7 +697,7 @@ fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            predicates);
 
     let result = tcx.infer_ctxt().enter(|infcx| {
-        let param_env = ty::ParamEnv::empty(Reveal::All);
+        let param_env = ty::ParamEnv::reveal_all();
         let mut selcx = SelectionContext::new(&infcx);
         let mut fulfill_cx = FulfillmentContext::new();
         let cause = ObligationCause::dummy();
@@ -768,7 +770,10 @@ fn vtable_methods<'a, 'tcx>(
                 // the trait type may have higher-ranked lifetimes in it;
                 // so erase them if they appear, so that we get the type
                 // at some particular call site
-                let substs = tcx.erase_late_bound_regions_and_normalize(&ty::Binder(substs));
+                let substs = tcx.normalize_erasing_late_bound_regions(
+                    ty::ParamEnv::reveal_all(),
+                    &ty::Binder(substs),
+                );
 
                 // It's possible that the method relies on where clauses that
                 // do not hold for this particular set of type parameters.

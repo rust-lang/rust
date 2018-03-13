@@ -350,6 +350,10 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         mem::replace(data, RegionConstraintData::default())
     }
 
+    pub fn data(&self) -> &RegionConstraintData<'tcx> {
+        &self.data
+    }
+
     fn in_snapshot(&self) -> bool {
         !self.undo_log.is_empty()
     }

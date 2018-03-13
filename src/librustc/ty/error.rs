@@ -220,6 +220,7 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             ty::TyInfer(ty::TyVar(_)) => "inferred type".to_string(),
             ty::TyInfer(ty::IntVar(_)) => "integral variable".to_string(),
             ty::TyInfer(ty::FloatVar(_)) => "floating-point variable".to_string(),
+            ty::TyInfer(ty::CanonicalTy(_)) |
             ty::TyInfer(ty::FreshTy(_)) => "skolemized type".to_string(),
             ty::TyInfer(ty::FreshIntTy(_)) => "skolemized integral type".to_string(),
             ty::TyInfer(ty::FreshFloatTy(_)) => "skolemized floating-point type".to_string(),

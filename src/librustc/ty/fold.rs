@@ -49,6 +49,9 @@ use util::nodemap::FxHashSet;
 
 /// The TypeFoldable trait is implemented for every type that can be folded.
 /// Basically, every type that has a corresponding method in TypeFolder.
+///
+/// To implement this conveniently, use the
+/// `BraceStructTypeFoldableImpl` etc macros found in `macros.rs`.
 pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self;
     fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {

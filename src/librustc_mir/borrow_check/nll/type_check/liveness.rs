@@ -14,13 +14,9 @@ use dataflow::MaybeInitializedPlaces;
 use dataflow::move_paths::{HasMoveData, MoveData};
 use rustc::mir::{BasicBlock, Location, Mir};
 use rustc::mir::Local;
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc::traits;
+use rustc::ty::{Ty, TyCtxt, TypeFoldable};
 use rustc::infer::InferOk;
-use rustc::util::common::ErrorReported;
 use borrow_check::nll::type_check::AtLocation;
-use rustc_data_structures::fx::FxHashSet;
-use syntax::codemap::DUMMY_SP;
 use util::liveness::LivenessResults;
 
 use super::TypeChecker;
@@ -105,8 +101,7 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
             for live_local in live_locals {
                 debug!(
                     "add_liveness_constraints: location={:?} live_local={:?}",
-                    location,
-                    live_local
+                    location, live_local
                 );
 
                 self.flow_inits.each_state_bit(|mpi_init| {
@@ -157,8 +152,7 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
     {
         debug!(
             "push_type_live_constraint(live_ty={:?}, location={:?})",
-            value,
-            location
+            value, location
         );
 
         self.tcx.for_each_free_region(&value, |live_region| {
@@ -182,9 +176,7 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
     ) {
         debug!(
             "add_drop_live_constraint(dropped_local={:?}, dropped_ty={:?}, location={:?})",
-            dropped_local,
-            dropped_ty,
-            location
+            dropped_local, dropped_ty, location
         );
 
         // If we end visiting the same type twice (usually due to a cycle involving
@@ -197,73 +189,34 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
         //
         // For this reason, we avoid calling TypeChecker.normalize, instead doing all normalization
         // ourselves in one large 'fully_perform_op' callback.
-        let (type_constraints, kind_constraints) = self.cx.fully_perform_op(location.at_self(),
-            |cx| {
+        let kind_constraints = self.cx
+            .fully_perform_op(location.at_self(), |cx| {
+                let span = cx.last_span;
 
-            let tcx = cx.infcx.tcx;
-            let mut selcx = traits::SelectionContext::new(cx.infcx);
-            let cause = cx.misc(cx.last_span);
+                let mut final_obligations = Vec::new();
+                let mut kind_constraints = Vec::new();
 
-            let mut types = vec![(dropped_ty, 0)];
-            let mut final_obligations = Vec::new();
-            let mut type_constraints = Vec::new();
-            let mut kind_constraints = Vec::new();
-
-            let mut known = FxHashSet();
-
-            while let Some((ty, depth)) = types.pop() {
-                let span = DUMMY_SP; // FIXME
-                let result = match tcx.dtorck_constraint_for_ty(span, dropped_ty, depth, ty) {
-                    Ok(result) => result,
-                    Err(ErrorReported) => {
-                        continue;
-                    }
-                };
-
-                let ty::DtorckConstraint {
-                    outlives,
-                    dtorck_types,
-                } = result;
-
-                // All things in the `outlives` array may be touched by
-                // the destructor and must be live at this point.
-                for outlive in outlives {
+                let InferOk {
+                    value: kinds,
+                    obligations,
+                } = cx.infcx
+                    .at(&cx.misc(span), cx.param_env)
+                    .dropck_outlives(dropped_ty);
+                for kind in kinds {
+                    // All things in the `outlives` array may be touched by
+                    // the destructor and must be live at this point.
                     let cause = Cause::DropVar(dropped_local, location);
-                    kind_constraints.push((outlive, location, cause));
+                    kind_constraints.push((kind, location, cause));
                 }
 
-                // However, there may also be some types that
-                // `dtorck_constraint_for_ty` could not resolve (e.g.,
-                // associated types and parameters). We need to normalize
-                // associated types here and possibly recursively process.
-                for ty in dtorck_types {
-                    let traits::Normalized { value: ty, obligations } =
-                        traits::normalize(&mut selcx, cx.param_env, cause.clone(), &ty);
+                final_obligations.extend(obligations);
 
-                    final_obligations.extend(obligations);
-
-                    let ty = cx.infcx.resolve_type_and_region_vars_if_possible(&ty);
-                    match ty.sty {
-                        ty::TyParam(..) | ty::TyProjection(..) | ty::TyAnon(..) => {
-                            let cause = Cause::DropVar(dropped_local, location);
-                            type_constraints.push((ty, location, cause));
-                        }
-
-                        _ => if known.insert(ty) {
-                            types.push((ty, depth + 1));
-                        },
-                    }
-                }
-            }
-
-            Ok(InferOk {
-                value: (type_constraints, kind_constraints), obligations: final_obligations
+                Ok(InferOk {
+                    value: kind_constraints,
+                    obligations: final_obligations,
+                })
             })
-        }).unwrap();
-
-        for (ty, location, cause) in type_constraints {
-            self.push_type_live_constraint(ty, location, cause);
-        }
+            .unwrap();
 
         for (kind, location, cause) in kind_constraints {
             self.push_type_live_constraint(kind, location, cause);

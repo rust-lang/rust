@@ -31,6 +31,7 @@ use rustc_incremental;
 use rustc_resolve::{MakeGlobMap, Resolver, ResolverArenas};
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::{self, CStore};
+use rustc_traits;
 use rustc_trans_utils::trans_crate::TransCrate;
 use rustc_typeck as typeck;
 use rustc_privacy;
@@ -942,6 +943,7 @@ pub fn default_provide(providers: &mut ty::maps::Providers) {
     traits::provide(providers);
     reachable::provide(providers);
     rustc_passes::provide(providers);
+    rustc_traits::provide(providers);
     middle::region::provide(providers);
     cstore::provide(providers);
     lint::provide(providers);

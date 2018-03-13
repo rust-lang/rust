@@ -476,6 +476,7 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
                 }
             }
 
+            ty::ReCanonical(..) |
             ty::ReClosureBound(..) => {
                 span_bug!(
                     self.span,

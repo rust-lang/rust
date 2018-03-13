@@ -14,14 +14,14 @@
 // general routines.
 
 use dep_graph::{DepKind, DepTrackingMapConfig};
-use infer::TransNormalize;
 use std::marker::PhantomData;
 use syntax_pos::DUMMY_SP;
-use hir::def_id::DefId;
+use infer::InferCtxt;
+use syntax_pos::Span;
 use traits::{FulfillmentContext, Obligation, ObligationCause, SelectionContext, Vtable};
 use ty::{self, Ty, TyCtxt};
 use ty::subst::{Subst, Substs};
-use ty::fold::{TypeFoldable, TypeFolder};
+use ty::fold::TypeFoldable;
 
 /// Attempts to resolve an obligation to a vtable.. The result is
 /// a shallow vtable resolution -- meaning that we do not
@@ -87,111 +87,29 @@ pub fn trans_fulfill_obligation<'a, 'tcx>(ty: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
-    /// Monomorphizes a type from the AST by first applying the in-scope
-    /// substitutions and then normalizing any associated types.
-    pub fn trans_apply_param_substs<T>(self,
-                                       param_substs: &Substs<'tcx>,
-                                       value: &T)
-                                       -> T
-        where T: TransNormalize<'tcx>
-    {
-        debug!("apply_param_substs(param_substs={:?}, value={:?})", param_substs, value);
-        let substituted = value.subst(self, param_substs);
-        let substituted = self.erase_regions(&substituted);
-        AssociatedTypeNormalizer::new(self).fold(&substituted)
-    }
-
-    pub fn trans_apply_param_substs_env<T>(
+    /// Monomorphizes a type from the AST by first applying the
+    /// in-scope substitutions and then normalizing any associated
+    /// types.
+    pub fn subst_and_normalize_erasing_regions<T>(
         self,
         param_substs: &Substs<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        value: &T,
+        value: &T
     ) -> T
     where
-        T: TransNormalize<'tcx>,
+        T: TypeFoldable<'tcx>,
     {
         debug!(
-            "apply_param_substs_env(param_substs={:?}, value={:?}, param_env={:?})",
+            "subst_and_normalize_erasing_regions(\
+             param_substs={:?}, \
+             value={:?}, \
+             param_env={:?})",
             param_substs,
             value,
             param_env,
         );
         let substituted = value.subst(self, param_substs);
-        let substituted = self.erase_regions(&substituted);
-        AssociatedTypeNormalizerEnv::new(self, param_env).fold(&substituted)
-    }
-
-    pub fn trans_impl_self_ty(&self, def_id: DefId, substs: &'tcx Substs<'tcx>)
-                              -> Ty<'tcx>
-    {
-        self.trans_apply_param_substs(substs, &self.type_of(def_id))
-    }
-}
-
-struct AssociatedTypeNormalizer<'a, 'gcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'gcx>,
-}
-
-impl<'a, 'gcx> AssociatedTypeNormalizer<'a, 'gcx> {
-    fn new(tcx: TyCtxt<'a, 'gcx, 'gcx>) -> Self {
-        AssociatedTypeNormalizer { tcx }
-    }
-
-    fn fold<T:TypeFoldable<'gcx>>(&mut self, value: &T) -> T {
-        if !value.has_projections() {
-            value.clone()
-        } else {
-            value.fold_with(self)
-        }
-    }
-}
-
-impl<'a, 'gcx> TypeFolder<'gcx, 'gcx> for AssociatedTypeNormalizer<'a, 'gcx> {
-    fn tcx<'c>(&'c self) -> TyCtxt<'c, 'gcx, 'gcx> {
-        self.tcx
-    }
-
-    fn fold_ty(&mut self, ty: Ty<'gcx>) -> Ty<'gcx> {
-        if !ty.has_projections() {
-            ty
-        } else {
-            debug!("AssociatedTypeNormalizer: ty={:?}", ty);
-            self.tcx.fully_normalize_monormophic_ty(ty)
-        }
-    }
-}
-
-struct AssociatedTypeNormalizerEnv<'a, 'gcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'gcx>,
-    param_env: ty::ParamEnv<'gcx>,
-}
-
-impl<'a, 'gcx> AssociatedTypeNormalizerEnv<'a, 'gcx> {
-    fn new(tcx: TyCtxt<'a, 'gcx, 'gcx>, param_env: ty::ParamEnv<'gcx>) -> Self {
-        Self { tcx, param_env }
-    }
-
-    fn fold<T: TypeFoldable<'gcx>>(&mut self, value: &T) -> T {
-        if !value.has_projections() {
-            value.clone()
-        } else {
-            value.fold_with(self)
-        }
-    }
-}
-
-impl<'a, 'gcx> TypeFolder<'gcx, 'gcx> for AssociatedTypeNormalizerEnv<'a, 'gcx> {
-    fn tcx<'c>(&'c self) -> TyCtxt<'c, 'gcx, 'gcx> {
-        self.tcx
-    }
-
-    fn fold_ty(&mut self, ty: Ty<'gcx>) -> Ty<'gcx> {
-        if !ty.has_projections() {
-            ty
-        } else {
-            debug!("AssociatedTypeNormalizerEnv: ty={:?}", ty);
-            self.tcx.normalize_associated_type_in_env(&ty, self.param_env)
-        }
+        self.normalize_erasing_regions(param_env, substituted)
     }
 }
 
@@ -219,5 +137,47 @@ impl<'gcx> DepTrackingMapConfig for ProjectionCache<'gcx> {
     type Value = Ty<'gcx>;
     fn to_dep_kind() -> DepKind {
         DepKind::TraitSelect
+    }
+}
+
+impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
+    /// Finishes processes any obligations that remain in the
+    /// fulfillment context, and then returns the result with all type
+    /// variables removed and regions erased. Because this is intended
+    /// for use after type-check has completed, if any errors occur,
+    /// it will panic. It is used during normalization and other cases
+    /// where processing the obligations in `fulfill_cx` may cause
+    /// type inference variables that appear in `result` to be
+    /// unified, and hence we need to process those obligations to get
+    /// the complete picture of the type.
+    fn drain_fulfillment_cx_or_panic<T>(&self,
+                                        span: Span,
+                                        fulfill_cx: &mut FulfillmentContext<'tcx>,
+                                        result: &T)
+                                        -> T::Lifted
+        where T: TypeFoldable<'tcx> + ty::Lift<'gcx>
+    {
+        debug!("drain_fulfillment_cx_or_panic()");
+
+        // In principle, we only need to do this so long as `result`
+        // contains unbound type parameters. It could be a slight
+        // optimization to stop iterating early.
+        match fulfill_cx.select_all_or_error(self) {
+            Ok(()) => { }
+            Err(errors) => {
+                span_bug!(span, "Encountered errors `{:?}` resolving bounds after type-checking",
+                          errors);
+            }
+        }
+
+        let result = self.resolve_type_vars_if_possible(result);
+        let result = self.tcx.erase_regions(&result);
+
+        match self.tcx.lift_to_global(&result) {
+            Some(result) => result,
+            None => {
+                span_bug!(span, "Uninferred types/regions in `{:?}`", result);
+            }
+        }
     }
 }

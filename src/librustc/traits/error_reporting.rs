@@ -21,7 +21,6 @@ use super::{
     TraitNotObjectSafe,
     ConstEvalFailure,
     PredicateObligation,
-    Reveal,
     SelectionContext,
     SelectionError,
     ObjectSafetyViolation,
@@ -140,7 +139,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 // FIXME: I'm just not taking associated types at all here.
                 // Eventually I'll need to implement param-env-aware
                 // `Γ₁ ⊦ φ₁ => Γ₂ ⊦ φ₂` logic.
-                let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
+                let param_env = ty::ParamEnv::empty();
                 if let Ok(_) = self.can_sub(param_env, error, implication) {
                     debug!("error_implies: {:?} -> {:?} -> {:?}", cond, error, implication);
                     return true

@@ -29,20 +29,18 @@ use mir::Mir;
 use mir::interpret::{GlobalId, Value, PrimVal};
 use mir::GeneratorLayout;
 use session::CrateDisambiguator;
-use traits;
+use traits::{self, Reveal};
 use ty;
 use ty::subst::{Subst, Substs};
 use ty::util::{IntTypeExt, Discr};
 use ty::walk::TypeWalker;
-use util::common::ErrorReported;
-use util::nodemap::{NodeSet, DefIdMap, FxHashMap, FxHashSet};
+use util::nodemap::{NodeSet, DefIdMap, FxHashMap};
 
 use serialize::{self, Encodable, Encoder};
 use std::cell::RefCell;
 use std::cmp;
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::iter::FromIterator;
 use std::ops::Deref;
 use rustc_data_structures::sync::Lrc;
 use std::slice;
@@ -60,7 +58,7 @@ use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
 
 use hir;
 
-pub use self::sty::{Binder, DebruijnIndex};
+pub use self::sty::{Binder, CanonicalVar, DebruijnIndex};
 pub use self::sty::{FnSig, GenSig, PolyFnSig, PolyGenSig};
 pub use self::sty::{InferTy, ParamTy, ProjectionTy, ExistentialPredicate};
 pub use self::sty::{ClosureSubsts, GeneratorInterior, TypeAndMut};
@@ -452,6 +450,10 @@ bitflags! {
         // Currently we can't normalize projections w/ bound regions.
         const HAS_NORMALIZABLE_PROJECTION = 1 << 12;
 
+        // Set if this includes a "canonical" type or region var --
+        // ought to be true only for the results of canonicalization.
+        const HAS_CANONICAL_VARS = 1 << 13;
+
         const NEEDS_SUBST        = TypeFlags::HAS_PARAMS.bits |
                                    TypeFlags::HAS_SELF.bits |
                                    TypeFlags::HAS_RE_EARLY_BOUND.bits;
@@ -470,7 +472,8 @@ bitflags! {
                                   TypeFlags::HAS_PROJECTION.bits |
                                   TypeFlags::HAS_TY_CLOSURE.bits |
                                   TypeFlags::HAS_LOCAL_NAMES.bits |
-                                  TypeFlags::KEEP_IN_LOCAL_TCX.bits;
+                                  TypeFlags::KEEP_IN_LOCAL_TCX.bits |
+                                  TypeFlags::HAS_CANONICAL_VARS.bits;
     }
 }
 
@@ -1396,32 +1399,81 @@ pub struct ParamEnv<'tcx> {
 }
 
 impl<'tcx> ParamEnv<'tcx> {
-    /// Creates a suitable environment in which to perform trait
-    /// queries on the given value. This will either be `self` *or*
-    /// the empty environment, depending on whether `value` references
-    /// type parameters that are in scope. (If it doesn't, then any
-    /// judgements should be completely independent of the context,
-    /// and hence we can safely use the empty environment so as to
-    /// enable more sharing across functions.)
+    /// Construct a trait environment suitable for contexts where
+    /// there are no where clauses in scope. Hidden types (like `impl
+    /// Trait`) are left hidden, so this is suitable for ordinary
+    /// type-checking.
+    pub fn empty() -> Self {
+        Self::new(ty::Slice::empty(), Reveal::UserFacing, ty::UniverseIndex::ROOT)
+    }
+
+    /// Construct a trait environment with no where clauses in scope
+    /// where the values of all `impl Trait` and other hidden types
+    /// are revealed. This is suitable for monomorphized, post-typeck
+    /// environments like trans or doing optimizations.
     ///
-    /// NB: This is a mildly dubious thing to do, in that a function
-    /// (or other environment) might have wacky where-clauses like
+    /// NB. If you want to have predicates in scope, use `ParamEnv::new`,
+    /// or invoke `param_env.with_reveal_all()`.
+    pub fn reveal_all() -> Self {
+        Self::new(ty::Slice::empty(), Reveal::All, ty::UniverseIndex::ROOT)
+    }
+
+    /// Construct a trait environment with the given set of predicates.
+    pub fn new(caller_bounds: &'tcx ty::Slice<ty::Predicate<'tcx>>,
+               reveal: Reveal,
+               universe: ty::UniverseIndex)
+               -> Self {
+        ty::ParamEnv { caller_bounds, reveal, universe }
+    }
+
+    /// Returns a new parameter environment with the same clauses, but
+    /// which "reveals" the true results of projections in all cases
+    /// (even for associated types that are specializable).  This is
+    /// the desired behavior during trans and certain other special
+    /// contexts; normally though we want to use `Reveal::UserFacing`,
+    /// which is the default.
+    pub fn with_reveal_all(self) -> Self {
+        ty::ParamEnv { reveal: Reveal::All, ..self }
+    }
+
+    /// Returns this same environment but with no caller bounds.
+    pub fn without_caller_bounds(self) -> Self {
+        ty::ParamEnv { caller_bounds: ty::Slice::empty(), ..self }
+    }
+
+    /// Creates a suitable environment in which to perform trait
+    /// queries on the given value. When type-checking, this is simply
+    /// the pair of the environment plus value. But when reveal is set to
+    /// All, then if `value` does not reference any type parameters, we will
+    /// pair it with the empty environment. This improves caching and is generally
+    /// invisible.
+    ///
+    /// NB: We preserve the environment when type-checking because it
+    /// is possible for the user to have wacky where-clauses like
     /// `where Box<u32>: Copy`, which are clearly never
-    /// satisfiable. The code will at present ignore these,
-    /// effectively, when type-checking the body of said
-    /// function. This preserves existing behavior in any
-    /// case. --nmatsakis
+    /// satisfiable. We generally want to behave as if they were true,
+    /// although the surrounding function is never reachable.
     pub fn and<T: TypeFoldable<'tcx>>(self, value: T) -> ParamEnvAnd<'tcx, T> {
-        assert!(!value.needs_infer());
-        if value.has_param_types() || value.has_self_ty() {
-            ParamEnvAnd {
-                param_env: self,
-                value,
+        match self.reveal {
+            Reveal::UserFacing => {
+                ParamEnvAnd {
+                    param_env: self,
+                    value,
+                }
             }
-        } else {
-            ParamEnvAnd {
-                param_env: ParamEnv::empty(self.reveal),
-                value,
+
+            Reveal::All => {
+                if value.needs_infer() || value.has_param_types() || value.has_self_ty() {
+                    ParamEnvAnd {
+                        param_env: self,
+                        value,
+                    }
+                } else {
+                    ParamEnvAnd {
+                        param_env: self.without_caller_bounds(),
+                        value,
+                    }
+                }
             }
         }
     }
@@ -1829,7 +1881,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         expr_did: DefId,
     ) -> Option<Discr<'tcx>> {
-        let param_env = ParamEnv::empty(traits::Reveal::UserFacing);
+        let param_env = ParamEnv::empty();
         let repr_type = self.repr.discr_type();
         let bit_size = layout::Integer::from_attr(tcx, repr_type).size().bits();
         let substs = Substs::identity_for_item(tcx.global_tcx(), expr_did);
@@ -2607,38 +2659,6 @@ fn adt_sized_constraint<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     result
 }
 
-/// Calculates the dtorck constraint for a type.
-fn adt_dtorck_constraint<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                   def_id: DefId)
-                                   -> DtorckConstraint<'tcx> {
-    let def = tcx.adt_def(def_id);
-    let span = tcx.def_span(def_id);
-    debug!("dtorck_constraint: {:?}", def);
-
-    if def.is_phantom_data() {
-        let result = DtorckConstraint {
-            outlives: vec![],
-            dtorck_types: vec![
-                tcx.mk_param_from_def(&tcx.generics_of(def_id).types[0])
-           ]
-        };
-        debug!("dtorck_constraint: {:?} => {:?}", def, result);
-        return result;
-    }
-
-    let mut result = def.all_fields()
-        .map(|field| tcx.type_of(field.did))
-        .map(|fty| tcx.dtorck_constraint_for_ty(span, fty, 0, fty))
-        .collect::<Result<DtorckConstraint, ErrorReported>>()
-        .unwrap_or(DtorckConstraint::empty());
-    result.outlives.extend(tcx.destructor_constraints(def));
-    result.dedup();
-
-    debug!("dtorck_constraint: {:?} => {:?}", def, result);
-
-    result
-}
-
 fn associated_item_def_ids<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      def_id: DefId)
                                      -> Lrc<Vec<DefId>> {
@@ -2754,7 +2774,6 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         associated_item,
         associated_item_def_ids,
         adt_sized_constraint,
-        adt_dtorck_constraint,
         def_span,
         param_env,
         trait_of_item,
@@ -2775,49 +2794,6 @@ pub fn provide(providers: &mut ty::maps::Providers) {
 #[derive(Clone, Debug)]
 pub struct CrateInherentImpls {
     pub inherent_impls: DefIdMap<Lrc<Vec<DefId>>>,
-}
-
-/// A set of constraints that need to be satisfied in order for
-/// a type to be valid for destruction.
-#[derive(Clone, Debug)]
-pub struct DtorckConstraint<'tcx> {
-    /// Types that are required to be alive in order for this
-    /// type to be valid for destruction.
-    pub outlives: Vec<ty::subst::Kind<'tcx>>,
-    /// Types that could not be resolved: projections and params.
-    pub dtorck_types: Vec<Ty<'tcx>>,
-}
-
-impl<'tcx> FromIterator<DtorckConstraint<'tcx>> for DtorckConstraint<'tcx>
-{
-    fn from_iter<I: IntoIterator<Item=DtorckConstraint<'tcx>>>(iter: I) -> Self {
-        let mut result = Self::empty();
-
-        for constraint in iter {
-            result.outlives.extend(constraint.outlives);
-            result.dtorck_types.extend(constraint.dtorck_types);
-        }
-
-        result
-    }
-}
-
-
-impl<'tcx> DtorckConstraint<'tcx> {
-    fn empty() -> DtorckConstraint<'tcx> {
-        DtorckConstraint {
-            outlives: vec![],
-            dtorck_types: vec![]
-        }
-    }
-
-    fn dedup<'a>(&mut self) {
-        let mut outlives = FxHashSet();
-        let mut dtorck_types = FxHashSet();
-
-        self.outlives.retain(|&val| outlives.replace(val).is_none());
-        self.dtorck_types.retain(|&val| dtorck_types.replace(val).is_none());
-    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable)]

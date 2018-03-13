@@ -40,9 +40,9 @@ use super::*;
 use ty::relate::{Relate, TypeRelation};
 
 pub struct At<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    cause: &'a ObligationCause<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    pub infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+    pub cause: &'a ObligationCause<'tcx>,
+    pub param_env: ty::ParamEnv<'tcx>,
 }
 
 pub struct Trace<'a, 'gcx: 'tcx, 'tcx: 'a> {
@@ -277,6 +277,20 @@ impl<'tcx> ToTrace<'tcx> for Ty<'tcx> {
         TypeTrace {
             cause: cause.clone(),
             values: Types(ExpectedFound::new(a_is_expected, a, b))
+        }
+    }
+}
+
+impl<'tcx> ToTrace<'tcx> for ty::Region<'tcx> {
+    fn to_trace(cause: &ObligationCause<'tcx>,
+                a_is_expected: bool,
+                a: Self,
+                b: Self)
+                -> TypeTrace<'tcx>
+    {
+        TypeTrace {
+            cause: cause.clone(),
+            values: Regions(ExpectedFound::new(a_is_expected, a, b))
         }
     }
 }

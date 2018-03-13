@@ -51,7 +51,11 @@ impl<'a, 'tcx> Instance<'tcx> {
               -> Ty<'tcx>
     {
         let ty = tcx.type_of(self.def.def_id());
-        tcx.trans_apply_param_substs(self.substs, &ty)
+        tcx.subst_and_normalize_erasing_regions(
+            self.substs,
+            ty::ParamEnv::reveal_all(),
+            &ty,
+        )
     }
 }
 
@@ -184,7 +188,11 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
             resolve_associated_item(tcx, &item, param_env, trait_def_id, substs)
         } else {
             let ty = tcx.type_of(def_id);
-            let item_type = tcx.trans_apply_param_substs_env(substs, param_env, &ty);
+            let item_type = tcx.subst_and_normalize_erasing_regions(
+                substs,
+                param_env,
+                &ty,
+            );
 
             let def = match item_type.sty {
                 ty::TyFnDef(..) if {
@@ -199,7 +207,7 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
                 _ => {
                     if Some(def_id) == tcx.lang_items().drop_in_place_fn() {
                         let ty = substs.type_at(0);
-                        if ty.needs_drop(tcx, ty::ParamEnv::empty(traits::Reveal::All)) {
+                        if ty.needs_drop(tcx, ty::ParamEnv::reveal_all()) {
                             debug!(" => nontrivial drop glue");
                             ty::InstanceDef::DropGlue(def_id, Some(ty))
                         } else {
@@ -352,7 +360,7 @@ fn fn_once_adapter_instance<'a, 'tcx>(
         closure_did, substs);
 
     let sig = substs.closure_sig(closure_did, tcx);
-    let sig = tcx.erase_late_bound_regions_and_normalize(&sig);
+    let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
     assert_eq!(sig.inputs().len(), 1);
     let substs = tcx.mk_substs([Kind::from(self_ty), sig.inputs()[0].into()].iter().cloned());
 

@@ -11,7 +11,7 @@
 // Type substitutions.
 
 use hir::def_id::DefId;
-use ty::{self, Slice, Region, Ty, TyCtxt};
+use ty::{self, Lift, Slice, Region, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
 use serialize::{self, Encodable, Encoder, Decodable, Decoder};
@@ -40,6 +40,7 @@ const TAG_MASK: usize = 0b11;
 const TYPE_TAG: usize = 0b00;
 const REGION_TAG: usize = 0b01;
 
+#[derive(Debug)]
 pub enum UnpackedKind<'tcx> {
     Lifetime(ty::Region<'tcx>),
     Type(Ty<'tcx>),
@@ -109,6 +110,17 @@ impl<'tcx> fmt::Display for Kind<'tcx> {
         match self.unpack() {
             UnpackedKind::Lifetime(lt) => write!(f, "{}", lt),
             UnpackedKind::Type(ty) => write!(f, "{}", ty),
+        }
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for Kind<'a> {
+    type Lifted = Kind<'tcx>;
+
+    fn lift_to_tcx<'cx, 'gcx>(&self, tcx: TyCtxt<'cx, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        match self.unpack() {
+            UnpackedKind::Lifetime(a) => a.lift_to_tcx(tcx).map(|a| a.into()),
+            UnpackedKind::Type(a) => a.lift_to_tcx(tcx).map(|a| a.into()),
         }
     }
 }

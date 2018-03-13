@@ -21,21 +21,20 @@ use hir::def_id::DefId;
 use middle::free_region::RegionRelations;
 use middle::region;
 use middle::lang_items;
-use mir::tcx::PlaceTy;
 use ty::subst::Substs;
 use ty::{TyVid, IntVid, FloatVid};
 use ty::{self, Ty, TyCtxt};
 use ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
-use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
+use ty::fold::TypeFoldable;
 use ty::relate::RelateResult;
-use traits::{self, ObligationCause, PredicateObligations, Reveal};
+use traits::{self, ObligationCause, PredicateObligations};
 use rustc_data_structures::unify as ut;
 use std::cell::{Cell, RefCell, Ref, RefMut};
 use std::collections::BTreeMap;
 use std::fmt;
 use syntax::ast;
 use errors::DiagnosticBuilder;
-use syntax_pos::{self, Span, DUMMY_SP};
+use syntax_pos::{self, Span};
 use util::nodemap::FxHashMap;
 use arena::DroplessArena;
 
@@ -50,6 +49,7 @@ use self::unify_key::ToType;
 
 pub mod anon_types;
 pub mod at;
+pub mod canonical;
 mod combine;
 mod equate;
 pub mod error_reporting;
@@ -68,6 +68,7 @@ pub mod type_variable;
 pub mod unify_key;
 
 #[must_use]
+#[derive(Debug)]
 pub struct InferOk<'tcx, T> {
     pub value: T,
     pub obligations: PredicateObligations<'tcx>,
@@ -191,6 +192,7 @@ pub type SkolemizationMap<'tcx> = BTreeMap<ty::BoundRegion, ty::Region<'tcx>>;
 #[derive(Clone, Debug)]
 pub enum ValuePairs<'tcx> {
     Types(ExpectedFound<Ty<'tcx>>),
+    Regions(ExpectedFound<ty::Region<'tcx>>),
     TraitRefs(ExpectedFound<ty::TraitRef<'tcx>>),
     PolyTraitRefs(ExpectedFound<ty::PolyTraitRef<'tcx>>),
 }
@@ -472,6 +474,12 @@ impl<'tcx, T> InferOk<'tcx, T> {
     }
 }
 
+impl<'tcx> InferOk<'tcx, ()> {
+    pub fn into_obligations(self) -> PredicateObligations<'tcx> {
+        self.obligations
+    }
+}
+
 #[must_use = "once you start a snapshot, you should always consume it"]
 pub struct CombinedSnapshot<'a, 'tcx:'a> {
     projection_cache_snapshot: traits::ProjectionCacheSnapshot,
@@ -484,176 +492,7 @@ pub struct CombinedSnapshot<'a, 'tcx:'a> {
     _in_progress_tables: Option<Ref<'a, ty::TypeckTables<'tcx>>>,
 }
 
-/// Helper trait for shortening the lifetimes inside a
-/// value for post-type-checking normalization.
-pub trait TransNormalize<'gcx>: TypeFoldable<'gcx> {
-    fn trans_normalize<'a, 'tcx>(&self,
-                                 infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                 param_env: ty::ParamEnv<'tcx>)
-                                 -> Self;
-}
-
-macro_rules! items { ($($item:item)+) => ($($item)+) }
-macro_rules! impl_trans_normalize {
-    ($lt_gcx:tt, $($ty:ty),+) => {
-        items!($(impl<$lt_gcx> TransNormalize<$lt_gcx> for $ty {
-            fn trans_normalize<'a, 'tcx>(&self,
-                                         infcx: &InferCtxt<'a, $lt_gcx, 'tcx>,
-                                         param_env: ty::ParamEnv<'tcx>)
-                                         -> Self {
-                infcx.normalize_projections_in(param_env, self)
-            }
-        })+);
-    }
-}
-
-impl_trans_normalize!('gcx,
-    Ty<'gcx>,
-    &'gcx ty::Const<'gcx>,
-    &'gcx Substs<'gcx>,
-    ty::FnSig<'gcx>,
-    ty::PolyFnSig<'gcx>,
-    ty::ClosureSubsts<'gcx>,
-    ty::PolyTraitRef<'gcx>,
-    ty::ExistentialTraitRef<'gcx>
-);
-
-impl<'gcx> TransNormalize<'gcx> for PlaceTy<'gcx> {
-    fn trans_normalize<'a, 'tcx>(&self,
-                                 infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                 param_env: ty::ParamEnv<'tcx>)
-                                 -> Self {
-        match *self {
-            PlaceTy::Ty { ty } => PlaceTy::Ty { ty: ty.trans_normalize(infcx, param_env) },
-            PlaceTy::Downcast { adt_def, substs, variant_index } => {
-                PlaceTy::Downcast {
-                    adt_def,
-                    substs: substs.trans_normalize(infcx, param_env),
-                    variant_index,
-                }
-            }
-        }
-    }
-}
-
-// NOTE: Callable from trans only!
-impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
-    /// Currently, higher-ranked type bounds inhibit normalization. Therefore,
-    /// each time we erase them in translation, we need to normalize
-    /// the contents.
-    pub fn erase_late_bound_regions_and_normalize<T>(self, value: &ty::Binder<T>)
-        -> T
-        where T: TransNormalize<'tcx>
-    {
-        assert!(!value.needs_subst());
-        let value = self.erase_late_bound_regions(value);
-        self.fully_normalize_associated_types_in(&value)
-    }
-
-    /// Fully normalizes any associated types in `value`, using an
-    /// empty environment and `Reveal::All` mode (therefore, suitable
-    /// only for monomorphized code during trans, basically).
-    pub fn fully_normalize_associated_types_in<T>(self, value: &T) -> T
-        where T: TransNormalize<'tcx>
-    {
-        debug!("fully_normalize_associated_types_in(t={:?})", value);
-
-        let param_env = ty::ParamEnv::empty(Reveal::All);
-        let value = self.erase_regions(value);
-
-        if !value.has_projections() {
-            return value;
-        }
-
-        self.infer_ctxt().enter(|infcx| {
-            value.trans_normalize(&infcx, param_env)
-        })
-    }
-
-    /// Does a best-effort to normalize any associated types in
-    /// `value`; this includes revealing specializable types, so this
-    /// should be not be used during type-checking, but only during
-    /// optimization and code generation.
-    pub fn normalize_associated_type_in_env<T>(
-        self, value: &T, env: ty::ParamEnv<'tcx>
-    ) -> T
-        where T: TransNormalize<'tcx>
-    {
-        debug!("normalize_associated_type_in_env(t={:?})", value);
-
-        let value = self.erase_regions(value);
-
-        if !value.has_projections() {
-            return value;
-        }
-
-        self.infer_ctxt().enter(|infcx| {
-            value.trans_normalize(&infcx, env.reveal_all())
-       })
-    }
-}
-
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
-    fn normalize_projections_in<T>(&self, param_env: ty::ParamEnv<'tcx>, value: &T) -> T::Lifted
-        where T: TypeFoldable<'tcx> + ty::Lift<'gcx>
-    {
-        let mut selcx = traits::SelectionContext::new(self);
-        let cause = traits::ObligationCause::dummy();
-        let traits::Normalized { value: result, obligations } =
-            traits::normalize(&mut selcx, param_env, cause, value);
-
-        debug!("normalize_projections_in: result={:?} obligations={:?}",
-                result, obligations);
-
-        let mut fulfill_cx = traits::FulfillmentContext::new();
-
-        for obligation in obligations {
-            fulfill_cx.register_predicate_obligation(self, obligation);
-        }
-
-        self.drain_fulfillment_cx_or_panic(DUMMY_SP, &mut fulfill_cx, &result)
-    }
-
-    /// Finishes processes any obligations that remain in the
-    /// fulfillment context, and then returns the result with all type
-    /// variables removed and regions erased. Because this is intended
-    /// for use after type-check has completed, if any errors occur,
-    /// it will panic. It is used during normalization and other cases
-    /// where processing the obligations in `fulfill_cx` may cause
-    /// type inference variables that appear in `result` to be
-    /// unified, and hence we need to process those obligations to get
-    /// the complete picture of the type.
-    pub fn drain_fulfillment_cx_or_panic<T>(&self,
-                                            span: Span,
-                                            fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
-                                            result: &T)
-                                            -> T::Lifted
-        where T: TypeFoldable<'tcx> + ty::Lift<'gcx>
-    {
-        debug!("drain_fulfillment_cx_or_panic()");
-
-        // In principle, we only need to do this so long as `result`
-        // contains unbound type parameters. It could be a slight
-        // optimization to stop iterating early.
-        match fulfill_cx.select_all_or_error(self) {
-            Ok(()) => { }
-            Err(errors) => {
-                span_bug!(span, "Encountered errors `{:?}` resolving bounds after type-checking",
-                          errors);
-            }
-        }
-
-        let result = self.resolve_type_vars_if_possible(result);
-        let result = self.tcx.erase_regions(&result);
-
-        match self.tcx.lift_to_global(&result) {
-            Some(result) => result,
-            None => {
-                span_bug!(span, "Uninferred types/regions in `{:?}`", result);
-            }
-        }
-    }
-
     pub fn is_in_snapshot(&self) -> bool {
         self.in_snapshot.get()
     }
@@ -1212,6 +1051,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.borrow_region_constraints().take_and_reset_data()
     }
 
+    /// Gives temporary access to the region constraint data.
+    #[allow(non_camel_case_types)] // bug with impl trait
+    pub fn with_region_constraints<R>(
+        &self,
+        op: impl FnOnce(&RegionConstraintData<'tcx>) -> R,
+    ) -> R {
+        let region_constraints = self.borrow_region_constraints();
+        op(region_constraints.data())
+    }
+
     /// Takes ownership of the list of variable regions. This implies
     /// that all the region constriants have already been taken, and
     /// hence that `resolve_regions_and_report_errors` can never be
@@ -1246,7 +1095,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 // it can be resolved to an int/float variable, which
                 // can then be recursively resolved, hence the
                 // recursion. Note though that we prevent type
-                // variables from unifying to other type variables
+                // variables from unifyxing to other type variables
                 // directly (though they may be embedded
                 // structurally), and we prevent cycles in any case,
                 // so this recursion should always be of very limited
@@ -1623,40 +1472,12 @@ impl RegionVariableOrigin {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ValuePairs<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        match *self {
-            ValuePairs::Types(ref ef) => {
-                ValuePairs::Types(ef.fold_with(folder))
-            }
-            ValuePairs::TraitRefs(ref ef) => {
-                ValuePairs::TraitRefs(ef.fold_with(folder))
-            }
-            ValuePairs::PolyTraitRefs(ref ef) => {
-                ValuePairs::PolyTraitRefs(ef.fold_with(folder))
-            }
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        match *self {
-            ValuePairs::Types(ref ef) => ef.visit_with(visitor),
-            ValuePairs::TraitRefs(ref ef) => ef.visit_with(visitor),
-            ValuePairs::PolyTraitRefs(ref ef) => ef.visit_with(visitor),
-        }
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for TypeTrace<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        TypeTrace {
-            cause: self.cause.fold_with(folder),
-            values: self.values.fold_with(folder)
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.cause.visit_with(visitor) || self.values.visit_with(visitor)
+EnumTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for ValuePairs<'tcx> {
+        (ValuePairs::Types)(a),
+        (ValuePairs::Regions)(a),
+        (ValuePairs::TraitRefs)(a),
+        (ValuePairs::PolyTraitRefs)(a),
     }
 }
 
@@ -1667,4 +1488,3 @@ impl<'tcx> fmt::Debug for RegionObligation<'tcx> {
                self.sup_type)
     }
 }
-

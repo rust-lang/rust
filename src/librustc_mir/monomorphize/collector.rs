@@ -196,7 +196,6 @@ use rustc::hir::def_id::DefId;
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::interpret::{Value, PrimVal, AllocId, Pointer};
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem, StartFnLangItem};
-use rustc::traits;
 use rustc::ty::subst::{Substs, Kind};
 use rustc::ty::{self, TypeFoldable, Ty, TyCtxt};
 use rustc::ty::adjustment::CustomCoerceUnsized;
@@ -383,7 +382,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 instance,
                 promoted: None,
             };
-            let param_env = ty::ParamEnv::empty(traits::Reveal::All);
+            let param_env = ty::ParamEnv::reveal_all();
 
             match tcx.const_eval(param_env.and(cid)) {
                 Ok(val) => collect_const(tcx, val, instance.substs, &mut neighbors),
@@ -524,11 +523,17 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             // have to instantiate all methods of the trait being cast to, so we
             // can build the appropriate vtable.
             mir::Rvalue::Cast(mir::CastKind::Unsize, ref operand, target_ty) => {
-                let target_ty = self.tcx.trans_apply_param_substs(self.param_substs,
-                                                                  &target_ty);
+                let target_ty = self.tcx.subst_and_normalize_erasing_regions(
+                    self.param_substs,
+                    ty::ParamEnv::reveal_all(),
+                    &target_ty,
+                );
                 let source_ty = operand.ty(self.mir, self.tcx);
-                let source_ty = self.tcx.trans_apply_param_substs(self.param_substs,
-                                                                  &source_ty);
+                let source_ty = self.tcx.subst_and_normalize_erasing_regions(
+                    self.param_substs,
+                    ty::ParamEnv::reveal_all(),
+                    &source_ty,
+                );
                 let (source_ty, target_ty) = find_vtable_types_for_unsizing(self.tcx,
                                                                             source_ty,
                                                                             target_ty);
@@ -544,14 +549,20 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             }
             mir::Rvalue::Cast(mir::CastKind::ReifyFnPointer, ref operand, _) => {
                 let fn_ty = operand.ty(self.mir, self.tcx);
-                let fn_ty = self.tcx.trans_apply_param_substs(self.param_substs,
-                                                              &fn_ty);
+                let fn_ty = self.tcx.subst_and_normalize_erasing_regions(
+                    self.param_substs,
+                    ty::ParamEnv::reveal_all(),
+                    &fn_ty,
+                );
                 visit_fn_use(self.tcx, fn_ty, false, &mut self.output);
             }
             mir::Rvalue::Cast(mir::CastKind::ClosureFnPointer, ref operand, _) => {
                 let source_ty = operand.ty(self.mir, self.tcx);
-                let source_ty = self.tcx.trans_apply_param_substs(self.param_substs,
-                                                                  &source_ty);
+                let source_ty = self.tcx.subst_and_normalize_erasing_regions(
+                    self.param_substs,
+                    ty::ParamEnv::reveal_all(),
+                    &source_ty,
+                );
                 match source_ty.sty {
                     ty::TyClosure(def_id, substs) => {
                         let instance = monomorphize::resolve_closure(
@@ -596,14 +607,22 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         match *kind {
             mir::TerminatorKind::Call { ref func, .. } => {
                 let callee_ty = func.ty(self.mir, tcx);
-                let callee_ty = tcx.trans_apply_param_substs(self.param_substs, &callee_ty);
+                let callee_ty = tcx.subst_and_normalize_erasing_regions(
+                    self.param_substs,
+                    ty::ParamEnv::reveal_all(),
+                    &callee_ty,
+                );
                 visit_fn_use(self.tcx, callee_ty, true, &mut self.output);
             }
             mir::TerminatorKind::Drop { ref location, .. } |
             mir::TerminatorKind::DropAndReplace { ref location, .. } => {
                 let ty = location.ty(self.mir, self.tcx)
                     .to_ty(self.tcx);
-                let ty = tcx.trans_apply_param_substs(self.param_substs, &ty);
+                let ty = tcx.subst_and_normalize_erasing_regions(
+                    self.param_substs,
+                    ty::ParamEnv::reveal_all(),
+                    &ty,
+                );
                 visit_drop_use(self.tcx, ty, true, self.output);
             }
             mir::TerminatorKind::Goto { .. } |
@@ -654,7 +673,7 @@ fn visit_fn_use<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     if let ty::TyFnDef(def_id, substs) = ty.sty {
         let instance = ty::Instance::resolve(tcx,
-                                             ty::ParamEnv::empty(traits::Reveal::All),
+                                             ty::ParamEnv::reveal_all(),
                                              def_id,
                                              substs).unwrap();
         visit_instance_use(tcx, instance, is_direct_call, output);
@@ -776,7 +795,7 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let ptr_vtable = |inner_source: Ty<'tcx>, inner_target: Ty<'tcx>| {
         let type_has_metadata = |ty: Ty<'tcx>| -> bool {
             use syntax_pos::DUMMY_SP;
-            if ty.is_sized(tcx.at(DUMMY_SP), ty::ParamEnv::empty(traits::Reveal::All)) {
+            if ty.is_sized(tcx.at(DUMMY_SP), ty::ParamEnv::reveal_all()) {
                 return false;
             }
             let tail = tcx.struct_tail(ty);
@@ -859,7 +878,7 @@ fn create_mono_items_for_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let methods = methods.iter().cloned().filter_map(|method| method)
                 .map(|(def_id, substs)| ty::Instance::resolve(
                         tcx,
-                        ty::ParamEnv::empty(traits::Reveal::All),
+                        ty::ParamEnv::reveal_all(),
                         def_id,
                         substs).unwrap())
                 .filter(|&instance| should_monomorphize_locally(tcx, &instance))
@@ -1013,7 +1032,7 @@ impl<'b, 'a, 'v> RootCollector<'b, 'a, 'v> {
 
         let start_instance = Instance::resolve(
             self.tcx,
-            ty::ParamEnv::empty(traits::Reveal::All),
+            ty::ParamEnv::reveal_all(),
             start_def_id,
             self.tcx.mk_substs(iter::once(Kind::from(main_ret_ty)))
         ).unwrap();
@@ -1062,7 +1081,7 @@ fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     }
 
                     let instance = ty::Instance::resolve(tcx,
-                                                         ty::ParamEnv::empty(traits::Reveal::All),
+                                                         ty::ParamEnv::reveal_all(),
                                                          method.def_id,
                                                          callee_substs).unwrap();
 
@@ -1120,7 +1139,7 @@ fn collect_neighbours<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         output,
         param_substs: instance.substs,
     }.visit_mir(&mir);
-    let param_env = ty::ParamEnv::empty(traits::Reveal::All);
+    let param_env = ty::ParamEnv::reveal_all();
     for (i, promoted) in mir.promoted.iter().enumerate() {
         use rustc_data_structures::indexed_vec::Idx;
         let cid = GlobalId {
@@ -1155,9 +1174,12 @@ fn collect_const<'a, 'tcx>(
 
     let val = match constant.val {
         ConstVal::Unevaluated(def_id, substs) => {
-            let param_env = ty::ParamEnv::empty(traits::Reveal::All);
-            let substs = tcx.trans_apply_param_substs(param_substs,
-                                                        &substs);
+            let param_env = ty::ParamEnv::reveal_all();
+            let substs = tcx.subst_and_normalize_erasing_regions(
+                param_substs,
+                param_env,
+                &substs,
+            );
             let instance = ty::Instance::resolve(tcx,
                                                 param_env,
                                                 def_id,

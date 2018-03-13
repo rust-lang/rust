@@ -249,7 +249,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         trace!("resolve: {:?}, {:#?}", def_id, substs);
         trace!("substs: {:#?}", self.substs());
         trace!("param_env: {:#?}", self.param_env);
-        let substs = self.tcx.trans_apply_param_substs_env(self.substs(), self.param_env, &substs);
+        let substs = self.tcx.subst_and_normalize_erasing_regions(
+            self.substs(),
+            self.param_env,
+            &substs,
+        );
         ty::Instance::resolve(
             *self.tcx,
             self.param_env,
@@ -285,10 +289,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     pub fn monomorphize(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
         // miri doesn't care about lifetimes, and will choke on some crazy ones
         // let's simply get rid of them
-        let without_lifetimes = self.tcx.erase_regions(&ty);
-        let substituted = without_lifetimes.subst(*self.tcx, substs);
-        let substituted = self.tcx.fully_normalize_monormophic_ty(&substituted);
-        substituted
+        let substituted = ty.subst(*self.tcx, substs);
+        self.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substituted)
     }
 
     /// Return the size and aligment of the value at the given type.
@@ -724,7 +726,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     ClosureFnPointer => {
                         match self.eval_operand(operand)?.ty.sty {
                             ty::TyClosure(def_id, substs) => {
-                                let substs = self.tcx.trans_apply_param_substs(self.substs(), &substs);
+                                let substs = self.tcx.subst_and_normalize_erasing_regions(
+                                    self.substs(),
+                                    ty::ParamEnv::reveal_all(),
+                                    &substs,
+                                );
                                 let instance = ty::Instance::resolve_closure(
                                     *self.tcx,
                                     def_id,
@@ -949,8 +955,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
     pub fn const_eval(&self, gid: GlobalId<'tcx>) -> EvalResult<'tcx, &'tcx ty::Const<'tcx>> {
         let param_env = if self.tcx.is_static(gid.instance.def_id()).is_some() {
-            use rustc::traits;
-            ty::ParamEnv::empty(traits::Reveal::All)
+            ty::ParamEnv::reveal_all()
         } else {
             self.param_env
         };

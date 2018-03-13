@@ -33,7 +33,7 @@ use rustc::hir::def_id::DefId;
 use rustc::cfg;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
-use rustc::traits::{self, Reveal};
+use rustc::traits;
 use rustc::hir::map as hir_map;
 use util::nodemap::NodeSet;
 use lint::{LateContext, LintContext, LintArray};
@@ -525,7 +525,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
         if def.has_dtor(cx.tcx) {
             return;
         }
-        let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
+        let param_env = ty::ParamEnv::empty();
         if !ty.moves_by_default(cx.tcx, param_env, item.span) {
             return;
         }

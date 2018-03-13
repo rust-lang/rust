@@ -114,9 +114,10 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
                 self.tcx().types.re_erased
             }
 
+            ty::ReCanonical(..) |
             ty::ReClosureBound(..) => {
                 bug!(
-                    "encountered unexpected ReClosureBound: {:?}",
+                    "encountered unexpected region: {:?}",
                     r,
                 );
             }
@@ -169,6 +170,9 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
                 }
                 t
             }
+
+            ty::TyInfer(ty::CanonicalTy(..)) =>
+                bug!("encountered canonical ty during freshening"),
 
             ty::TyGenerator(..) |
             ty::TyBool |

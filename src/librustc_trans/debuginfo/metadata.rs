@@ -30,7 +30,7 @@ use rustc::ty::util::TypeIdHasher;
 use rustc::ich::Fingerprint;
 use rustc::ty::Instance;
 use common::CodegenCx;
-use rustc::ty::{self, AdtKind, Ty, TyCtxt};
+use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, LayoutOf, Size, TyLayout};
 use rustc::session::config;
 use rustc::util::nodemap::FxHashMap;
@@ -353,7 +353,10 @@ fn subroutine_type_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                       span: Span)
                                       -> MetadataCreationResult
 {
-    let signature = cx.tcx.erase_late_bound_regions_and_normalize(&signature);
+    let signature = cx.tcx.normalize_erasing_late_bound_regions(
+        ty::ParamEnv::reveal_all(),
+        &signature,
+    );
 
     let mut signature_metadata: Vec<DIType> = Vec::with_capacity(signature.inputs().len() + 1);
 
@@ -589,7 +592,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         }
         ty::TyGenerator(def_id, substs, _) => {
             let upvar_tys : Vec<_> = substs.field_tys(def_id, cx.tcx).map(|t| {
-                cx.tcx.fully_normalize_associated_types_in(&t)
+                cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), t)
             }).collect();
             prepare_tuple_metadata(cx,
                                    t,

@@ -1047,6 +1047,9 @@ pub enum RegionKind {
     /// `ClosureRegionRequirements` that are produced by MIR borrowck.
     /// See `ClosureRegionRequirements` for more details.
     ReClosureBound(RegionVid),
+
+    /// Canonicalized region, used only when preparing a trait query.
+    ReCanonical(CanonicalVar),
 }
 
 impl<'tcx> serialize::UseSpecializedDecodable for Region<'tcx> {}
@@ -1091,7 +1094,12 @@ pub enum InferTy {
     FreshTy(u32),
     FreshIntTy(u32),
     FreshFloatTy(u32),
+
+    /// Canonicalized type variable, used only when preparing a trait query.
+    CanonicalTy(CanonicalVar),
 }
+
+newtype_index!(CanonicalVar);
 
 /// A `ProjectionPredicate` for an `ExistentialTraitRef`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
@@ -1212,6 +1220,10 @@ impl RegionKind {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
             }
             ty::ReErased => {
+            }
+            ty::ReCanonical(..) => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
+                flags = flags | TypeFlags::HAS_CANONICAL_VARS;
             }
             ty::ReClosureBound(..) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
