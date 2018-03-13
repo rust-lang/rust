@@ -91,6 +91,9 @@ cycle.
 Check out the subtyping chapter from the
 [Rust Nomicon](https://doc.rust-lang.org/nomicon/subtyping.html).
 
+See the [variance](./variance.html) chapter of this guide for more info on how
+the type checker handles variance.
+
 <a name=free-vs-bound>
 
 ## What is a "free region" or a "free variable"? What about "bound region"?

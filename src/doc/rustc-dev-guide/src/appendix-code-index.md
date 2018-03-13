@@ -14,9 +14,11 @@ Item            |  Kind    | Short description           | Chapter            | 
 `Session` | struct | The data associated with a compilation session | [the Parser], [The Rustc Driver] | [src/librustc/session/mod.html](https://github.com/rust-lang/rust/blob/master/src/librustc/session/mod.rs)
 `StringReader` | struct | This is the lexer used during parsing. It consumes characters from the raw source code being compiled and produces a series of tokens for use by the rest of the parser | [The parser] |  [src/libsyntax/parse/lexer/mod.rs](https://github.com/rust-lang/rust/blob/master/src/libsyntax/parse/lexer/mod.rs)
 `TraitDef` | struct | This struct contains a trait's definition with type information | [The `ty` modules] |  [src/librustc/ty/trait_def.rs](https://github.com/rust-lang/rust/blob/master/src/librustc/ty/trait_def.rs)
+`Ty<'tcx>` | struct | This is the internal representation of a type used for type checking | [Type checking] | [src/librustc/ty/mod.rs](https://github.com/rust-lang/rust/blob/master/src/librustc/ty/mod.rs)
 `TyCtxt<'cx, 'tcx, 'tcx>` | type | The "typing context". This is the central data structure in the compiler. It is the context that you use to perform all manner of queries. | [The `ty` modules] | [src/librustc/ty/context.rs](https://github.com/rust-lang/rust/blob/master/src/librustc/ty/context.rs)
 
 [The HIR]: hir.html
 [The parser]: the-parser.html
 [The Rustc Driver]: rustc-driver.html
+[Type checking]: type-checking.html
 [The `ty` modules]: ty.html
