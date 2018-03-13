@@ -11,6 +11,6 @@
 #![feature(nll)]
 
 fn main() {
-    let vec: Vec<&'static String> = vec![&String::new()];
-    //~^ ERROR
+    let _vec: Vec<&'static String> = vec![&String::new()];
+    //~^ ERROR borrowed value does not live long enough [E0597]
 }
