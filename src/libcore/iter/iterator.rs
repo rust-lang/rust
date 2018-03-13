@@ -285,7 +285,7 @@ pub trait Iterator {
     /// ```
     /// #![feature(iterator_step_by)]
     /// let a = [0, 1, 2, 3, 4, 5];
-    /// let mut iter = a.into_iter().step_by(2);
+    /// let mut iter = a.iter().step_by(2);
     ///
     /// assert_eq!(iter.next(), Some(&0));
     /// assert_eq!(iter.next(), Some(&2));
@@ -461,7 +461,7 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3];
     ///
-    /// let mut iter = a.into_iter().map(|x| 2 * x);
+    /// let mut iter = a.iter().map(|x| 2 * x);
     ///
     /// assert_eq!(iter.next(), Some(2));
     /// assert_eq!(iter.next(), Some(4));
@@ -550,7 +550,7 @@ pub trait Iterator {
     /// ```
     /// let a = [0i32, 1, 2];
     ///
-    /// let mut iter = a.into_iter().filter(|x| x.is_positive());
+    /// let mut iter = a.iter().filter(|x| x.is_positive());
     ///
     /// assert_eq!(iter.next(), Some(&1));
     /// assert_eq!(iter.next(), Some(&2));
@@ -564,7 +564,7 @@ pub trait Iterator {
     /// ```
     /// let a = [0, 1, 2];
     ///
-    /// let mut iter = a.into_iter().filter(|x| **x > 1); // need two *s!
+    /// let mut iter = a.iter().filter(|x| **x > 1); // need two *s!
     ///
     /// assert_eq!(iter.next(), Some(&2));
     /// assert_eq!(iter.next(), None);
@@ -576,7 +576,7 @@ pub trait Iterator {
     /// ```
     /// let a = [0, 1, 2];
     ///
-    /// let mut iter = a.into_iter().filter(|&x| *x > 1); // both & and *
+    /// let mut iter = a.iter().filter(|&x| *x > 1); // both & and *
     ///
     /// assert_eq!(iter.next(), Some(&2));
     /// assert_eq!(iter.next(), None);
@@ -587,7 +587,7 @@ pub trait Iterator {
     /// ```
     /// let a = [0, 1, 2];
     ///
-    /// let mut iter = a.into_iter().filter(|&&x| x > 1); // two &s
+    /// let mut iter = a.iter().filter(|&&x| x > 1); // two &s
     ///
     /// assert_eq!(iter.next(), Some(&2));
     /// assert_eq!(iter.next(), None);
@@ -767,7 +767,7 @@ pub trait Iterator {
     /// ```
     /// let a = [-1i32, 0, 1];
     ///
-    /// let mut iter = a.into_iter().skip_while(|x| x.is_negative());
+    /// let mut iter = a.iter().skip_while(|x| x.is_negative());
     ///
     /// assert_eq!(iter.next(), Some(&0));
     /// assert_eq!(iter.next(), Some(&1));
@@ -781,7 +781,7 @@ pub trait Iterator {
     /// ```
     /// let a = [-1, 0, 1];
     ///
-    /// let mut iter = a.into_iter().skip_while(|x| **x < 0); // need two *s!
+    /// let mut iter = a.iter().skip_while(|x| **x < 0); // need two *s!
     ///
     /// assert_eq!(iter.next(), Some(&0));
     /// assert_eq!(iter.next(), Some(&1));
@@ -793,7 +793,7 @@ pub trait Iterator {
     /// ```
     /// let a = [-1, 0, 1, -2];
     ///
-    /// let mut iter = a.into_iter().skip_while(|x| **x < 0);
+    /// let mut iter = a.iter().skip_while(|x| **x < 0);
     ///
     /// assert_eq!(iter.next(), Some(&0));
     /// assert_eq!(iter.next(), Some(&1));
@@ -828,7 +828,7 @@ pub trait Iterator {
     /// ```
     /// let a = [-1i32, 0, 1];
     ///
-    /// let mut iter = a.into_iter().take_while(|x| x.is_negative());
+    /// let mut iter = a.iter().take_while(|x| x.is_negative());
     ///
     /// assert_eq!(iter.next(), Some(&-1));
     /// assert_eq!(iter.next(), None);
@@ -841,7 +841,7 @@ pub trait Iterator {
     /// ```
     /// let a = [-1, 0, 1];
     ///
-    /// let mut iter = a.into_iter().take_while(|x| **x < 0); // need two *s!
+    /// let mut iter = a.iter().take_while(|x| **x < 0); // need two *s!
     ///
     /// assert_eq!(iter.next(), Some(&-1));
     /// assert_eq!(iter.next(), None);
@@ -852,7 +852,7 @@ pub trait Iterator {
     /// ```
     /// let a = [-1, 0, 1, -2];
     ///
-    /// let mut iter = a.into_iter().take_while(|x| **x < 0);
+    /// let mut iter = a.iter().take_while(|x| **x < 0);
     ///
     /// assert_eq!(iter.next(), Some(&-1));
     ///
@@ -867,7 +867,7 @@ pub trait Iterator {
     ///
     /// ```
     /// let a = [1, 2, 3, 4];
-    /// let mut iter = a.into_iter();
+    /// let mut iter = a.iter();
     ///
     /// let result: Vec<i32> = iter.by_ref()
     ///                            .take_while(|n| **n != 3)
@@ -1229,7 +1229,7 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3];
     ///
-    /// let iter = a.into_iter();
+    /// let iter = a.iter();
     ///
     /// let sum: i32 = iter.take(5).fold(0, |acc, i| acc + i );
     ///
@@ -1242,7 +1242,7 @@ pub trait Iterator {
     /// // let's try that again
     /// let a = [1, 2, 3];
     ///
-    /// let mut iter = a.into_iter();
+    /// let mut iter = a.iter();
     ///
     /// // instead, we add in a .by_ref()
     /// let sum: i32 = iter.by_ref().take(2).fold(0, |acc, i| acc + i );
@@ -1386,7 +1386,7 @@ pub trait Iterator {
     /// let a = [1, 2, 3];
     ///
     /// let (even, odd): (Vec<i32>, Vec<i32>) = a
-    ///     .into_iter()
+    ///     .iter()
     ///     .partition(|&n| n % 2 == 0);
     ///
     /// assert_eq!(even, vec![2]);

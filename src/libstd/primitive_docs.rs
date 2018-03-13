@@ -413,7 +413,7 @@ mod prim_pointer { }
 /// the element type allows it:
 ///
 /// - [`Debug`][debug]
-/// - [`IntoIterator`][intoiterator] (implemented for `&[T; N]` and `&mut [T; N]`)
+/// - [`IntoIterator`][intoiterator] (implemented for `[T; N]`, `&[T; N]`, and `&mut [T; N]`)
 /// - [`PartialEq`][partialeq], [`PartialOrd`][partialord], [`Eq`][eq], [`Ord`][ord]
 /// - [`Hash`][hash]
 /// - [`AsRef`][asref], [`AsMut`][asmut]
@@ -435,8 +435,8 @@ mod prim_pointer { }
 /// an array. Indeed, this provides most of the API for working with arrays.
 /// Slices have a dynamic size and do not coerce to arrays.
 ///
-/// There is no way to move elements out of an array. See [`mem::replace`][replace]
-/// for an alternative.
+/// There is no way to move individual elements out of an array. See [`mem::replace`][replace]
+/// for an alternative, or use [`IntoIterator`][intoiterator] to move the entire array.
 ///
 /// # Examples
 ///
@@ -454,16 +454,16 @@ mod prim_pointer { }
 /// }
 /// ```
 ///
-/// An array itself is not iterable:
+/// An array itself is iterable by value:
 ///
-/// ```compile_fail,E0277
+/// ```
 /// let array: [i32; 3] = [0; 3];
 ///
 /// for x in array { }
-/// // error: the trait bound `[i32; 3]: std::iter::Iterator` is not satisfied
 /// ```
 ///
-/// The solution is to coerce the array to a slice by calling a slice method:
+/// You can also coerce an array to a slice by calling a slice method
+/// to iterate by reference:
 ///
 /// ```
 /// # let array: [i32; 3] = [0; 3];

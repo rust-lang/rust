@@ -10,6 +10,7 @@
 
 #![deny(warnings)]
 
+#![feature(array_into_iter)]
 #![feature(ascii_ctype)]
 #![feature(box_syntax)]
 #![feature(core_float)]

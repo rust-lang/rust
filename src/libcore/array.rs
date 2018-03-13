@@ -24,7 +24,10 @@ use cmp::Ordering;
 use convert::TryFrom;
 use fmt;
 use hash::{Hash, self};
-use marker::Unsize;
+use iter::{FusedIterator, TrustedLen};
+use marker::{PhantomData, Unsize};
+use mem::{ManuallyDrop, self};
+use ptr;
 use slice::{Iter, IterMut};
 
 /// Utility trait implemented only on arrays of fixed size
@@ -52,6 +55,7 @@ unsafe impl<T, A: Unsize<[T]>> FixedSizeArray<T> for A {
     fn as_slice(&self) -> &[T] {
         self
     }
+
     #[inline]
     fn as_mut_slice(&mut self) -> &mut [T] {
         self
@@ -210,6 +214,21 @@ macro_rules! array_impls {
                 }
             }
 
+            #[unstable(feature = "array_into_iter", issue = "0")]
+            impl<T> IntoIterator for [T; $N] {
+                type Item = T;
+                type IntoIter = IntoIter<T, Self>;
+
+                fn into_iter(self) -> Self::IntoIter {
+                    Self::IntoIter {
+                        array: ManuallyDrop::new(self),
+                        index: 0,
+                        index_back: $N,
+                        _marker: PhantomData,
+                    }
+                }
+            }
+
             // NOTE: some less important impls are omitted to reduce code bloat
             __impl_slice_eq1! { [A; $N], [B; $N] }
             __impl_slice_eq2! { [A; $N], [B] }
@@ -285,3 +304,171 @@ macro_rules! array_impl_default {
 }
 
 array_impl_default!{32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
+
+
+/// An iterator that moves out of an array.
+///
+/// This `struct` is created by the `into_iter` method on [arrays]
+/// (provided by the [`IntoIterator`] trait).
+///
+/// [arrays]: ../../std/primitive.array.html
+/// [`IntoIterator`]: ../../std/iter/trait.IntoIterator.html
+#[unstable(feature = "array_into_iter", issue = "0")]
+pub struct IntoIter<T, A: FixedSizeArray<T>> {
+    // Invariants: index <= index_back <= array.len()
+    // Only values in array[index..index_back] are alive at any given time.
+    // Values from array[..index] and array[index_back..] are already moved/dropped.
+    array: ManuallyDrop<A>,
+    index: usize,
+    index_back: usize,
+    _marker: PhantomData<T>,
+}
+
+impl<T, A: FixedSizeArray<T>> IntoIter<T, A> {
+    /// Returns the remaining items of this iterator as a slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(array_into_iter)]
+    ///
+    /// # fn main() {
+    /// let array = ['a', 'b', 'c'];
+    /// let mut into_iter = array.into_iter();
+    /// assert_eq!(into_iter.as_slice(), &['a', 'b', 'c']);
+    /// let _ = into_iter.next().unwrap();
+    /// assert_eq!(into_iter.as_slice(), &['b', 'c']);
+    /// # }
+    /// ```
+    #[inline]
+    #[unstable(feature = "array_into_iter", issue = "0")]
+    pub fn as_slice(&self) -> &[T] {
+        &self.array.as_slice()[self.index..self.index_back]
+    }
+
+    /// Returns the remaining items of this iterator as a mutable slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(array_into_iter)]
+    ///
+    /// # fn main() {
+    /// let array = ['a', 'b', 'c'];
+    /// let mut into_iter = array.into_iter();
+    /// assert_eq!(into_iter.as_slice(), &['a', 'b', 'c']);
+    /// into_iter.as_mut_slice()[2] = 'z';
+    /// assert_eq!(into_iter.next().unwrap(), 'a');
+    /// assert_eq!(into_iter.next().unwrap(), 'b');
+    /// assert_eq!(into_iter.next().unwrap(), 'z');
+    /// # }
+    /// ```
+    #[inline]
+    #[unstable(feature = "array_into_iter", issue = "0")]
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        &mut self.array.as_mut_slice()[self.index..self.index_back]
+    }
+}
+
+#[unstable(feature = "array_into_iter", issue = "0")]
+impl<T, A: FixedSizeArray<T>> Drop for IntoIter<T, A> {
+    #[inline]
+    fn drop(&mut self) {
+        // Drop values that are still alive.
+        for p in self.as_mut_slice() {
+            unsafe { ptr::drop_in_place(p); }
+        }
+    }
+}
+
+#[unstable(feature = "array_into_iter", issue = "0")]
+impl<T: Clone, A: FixedSizeArray<T>> Clone for IntoIter<T, A> {
+    fn clone(&self) -> Self {
+        unsafe {
+            let mut iter = Self {
+                array: ManuallyDrop::new(mem::uninitialized()),
+                index: 0,
+                index_back: 0,
+                _marker: PhantomData,
+            };
+
+            // Clone values that are still alive.
+            for (dst, src) in iter.array.as_mut_slice().iter_mut().zip(self.as_slice()) {
+                ptr::write(dst, src.clone());
+                iter.index_back += 1;
+            }
+
+            iter
+        }
+    }
+}
+
+#[unstable(feature = "array_into_iter", issue = "0")]
+impl<T: fmt::Debug, A: FixedSizeArray<T>> fmt::Debug for IntoIter<T, A> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("IntoIter")
+            .field(&self.as_slice())
+            .finish()
+    }
+}
+
+#[unstable(feature = "array_into_iter", issue = "0")]
+impl<T, A: FixedSizeArray<T>> Iterator for IntoIter<T, A> {
+    type Item = T;
+
+    #[inline]
+    fn next(&mut self) -> Option<T> {
+        if self.index < self.index_back {
+            let p = &self.array.as_slice()[self.index];
+            self.index += 1;
+            unsafe { Some(ptr::read(p)) }
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.len();
+        (len, Some(len))
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.len()
+    }
+}
+
+#[unstable(feature = "array_into_iter", issue = "0")]
+impl<T, A: FixedSizeArray<T>> DoubleEndedIterator for IntoIter<T, A> {
+    #[inline]
+    fn next_back(&mut self) -> Option<T> {
+        if self.index < self.index_back {
+            self.index_back -= 1;
+            let p = &self.array.as_slice()[self.index_back];
+            unsafe { Some(ptr::read(p)) }
+        } else {
+            None
+        }
+    }
+}
+
+#[unstable(feature = "array_into_iter", issue = "0")]
+impl<T, A: FixedSizeArray<T>> ExactSizeIterator for IntoIter<T, A> {
+    #[inline]
+    fn len(&self) -> usize {
+        self.index_back - self.index
+    }
+
+    #[inline]
+    fn is_empty(&self) -> bool {
+        self.index_back == self.index
+    }
+}
+
+#[unstable(feature = "array_into_iter", issue = "0")]
+impl<T, A: FixedSizeArray<T>> FusedIterator for IntoIter<T, A> {}
+
+// #[unstable(feature = "trusted_len", issue = "37572")]
+#[unstable(feature = "array_into_iter", issue = "0")]
+unsafe impl<T, A: FixedSizeArray<T>> TrustedLen for IntoIter<T, A> {}
