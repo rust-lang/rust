@@ -10,6 +10,7 @@
 
 #![deny(warnings)]
 
+#![feature(ascii_ctype)]
 #![feature(box_syntax)]
 #![feature(core_float)]
 #![feature(core_private_bignum)]
@@ -54,6 +55,7 @@ extern crate rand;
 
 mod any;
 mod array;
+mod ascii;
 mod atomic;
 mod cell;
 mod char;
