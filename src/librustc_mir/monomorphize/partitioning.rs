@@ -419,6 +419,7 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         // If it is a upstream monomorphization
                                         // and we export generics, we must make
                                         // it available to downstream crates.
+                                        can_be_internalized = false;
                                         default_visibility(def_id, true)
                                     } else {
                                         Visibility::Hidden
