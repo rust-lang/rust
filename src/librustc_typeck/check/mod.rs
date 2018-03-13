@@ -719,15 +719,15 @@ fn typeck_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum
 }
 
 fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
-    wfcheck::CheckTypeWellFormed::new(tcx).check_item_well_formed(def_id);
+    wfcheck::check_item_well_formed(tcx, def_id);
 }
 
 fn check_trait_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
-    wfcheck::CheckTypeWellFormed::new(tcx).check_trait_item(def_id);
+    wfcheck::check_trait_item(tcx, def_id);
 }
 
 fn check_impl_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
-    wfcheck::CheckTypeWellFormed::new(tcx).check_impl_item(def_id);
+    wfcheck::check_impl_item(tcx, def_id);
 }
 
 pub fn provide(providers: &mut Providers) {
