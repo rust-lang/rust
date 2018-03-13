@@ -5,19 +5,18 @@ use rustc::hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisito
 use rustc::lint::*;
 use rustc::ty::{self, Ty, TyCtxt, TypeckTables};
 use rustc::ty::layout::LayoutOf;
-use rustc::ty::subst::Substs;
 use rustc_typeck::hir_ty_to_ty;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::borrow::Cow;
 use syntax::ast::{FloatTy, IntTy, UintTy};
-use syntax::attr::IntType;
 use syntax::codemap::Span;
 use syntax::errors::DiagnosticBuilder;
 use utils::{comparisons, higher, in_constant, in_external_macro, in_macro, last_path_segment, match_def_path, match_path,
             multispan_sugg, opt_def_id, same_tys, snippet, snippet_opt, span_help_and_lint, span_lint,
-            span_lint_and_sugg, span_lint_and_then};
+            span_lint_and_sugg, span_lint_and_then, clip, unsext, sext, int_bits};
 use utils::paths;
+use consts::{constant, Constant};
 
 /// Handles all the linting of funky types
 #[allow(missing_copy_implementations)]
@@ -1298,58 +1297,20 @@ fn detect_absurd_comparison<'a, 'tcx>(
 }
 
 fn detect_extreme_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> Option<ExtremeExpr<'tcx>> {
-    use rustc::middle::const_val::ConstVal::*;
-    use rustc_const_math::*;
-    use rustc_const_eval::*;
     use types::ExtremeType::*;
 
     let ty = cx.tables.expr_ty(expr);
 
-    match ty.sty {
-        ty::TyBool | ty::TyInt(_) | ty::TyUint(_) => (),
-        _ => return None,
-    };
+    let cv = constant(cx, expr)?.0;
 
-    let parent_item = cx.tcx.hir.get_parent(expr.id);
-    let parent_def_id = cx.tcx.hir.local_def_id(parent_item);
-    let substs = Substs::identity_for_item(cx.tcx, parent_def_id);
-    let cv = match ConstContext::new(cx.tcx, cx.param_env.and(substs), cx.tables).eval(expr) {
-        Ok(val) => val,
-        Err(_) => return None,
-    };
+    let which = match (&ty.sty, cv) {
+        (&ty::TyBool, Constant::Bool(false)) |
+        (&ty::TyUint(_), Constant::Int(0)) => Minimum,
+        (&ty::TyInt(ity), Constant::Int(i)) if i == unsext(cx.tcx, i128::min_value() >> (128 - int_bits(cx.tcx, ity)), ity) => Minimum,
 
-    let which = match (&ty.sty, cv.val) {
-        (&ty::TyBool, Bool(false)) |
-        (&ty::TyInt(IntTy::Isize), Integral(Isize(Is32(::std::i32::MIN)))) |
-        (&ty::TyInt(IntTy::Isize), Integral(Isize(Is64(::std::i64::MIN)))) |
-        (&ty::TyInt(IntTy::I8), Integral(I8(::std::i8::MIN))) |
-        (&ty::TyInt(IntTy::I16), Integral(I16(::std::i16::MIN))) |
-        (&ty::TyInt(IntTy::I32), Integral(I32(::std::i32::MIN))) |
-        (&ty::TyInt(IntTy::I64), Integral(I64(::std::i64::MIN))) |
-        (&ty::TyInt(IntTy::I128), Integral(I128(::std::i128::MIN))) |
-        (&ty::TyUint(UintTy::Usize), Integral(Usize(Us32(::std::u32::MIN)))) |
-        (&ty::TyUint(UintTy::Usize), Integral(Usize(Us64(::std::u64::MIN)))) |
-        (&ty::TyUint(UintTy::U8), Integral(U8(::std::u8::MIN))) |
-        (&ty::TyUint(UintTy::U16), Integral(U16(::std::u16::MIN))) |
-        (&ty::TyUint(UintTy::U32), Integral(U32(::std::u32::MIN))) |
-        (&ty::TyUint(UintTy::U64), Integral(U64(::std::u64::MIN))) |
-        (&ty::TyUint(UintTy::U128), Integral(U128(::std::u128::MIN))) => Minimum,
-
-        (&ty::TyBool, Bool(true)) |
-        (&ty::TyInt(IntTy::Isize), Integral(Isize(Is32(::std::i32::MAX)))) |
-        (&ty::TyInt(IntTy::Isize), Integral(Isize(Is64(::std::i64::MAX)))) |
-        (&ty::TyInt(IntTy::I8), Integral(I8(::std::i8::MAX))) |
-        (&ty::TyInt(IntTy::I16), Integral(I16(::std::i16::MAX))) |
-        (&ty::TyInt(IntTy::I32), Integral(I32(::std::i32::MAX))) |
-        (&ty::TyInt(IntTy::I64), Integral(I64(::std::i64::MAX))) |
-        (&ty::TyInt(IntTy::I128), Integral(I128(::std::i128::MAX))) |
-        (&ty::TyUint(UintTy::Usize), Integral(Usize(Us32(::std::u32::MAX)))) |
-        (&ty::TyUint(UintTy::Usize), Integral(Usize(Us64(::std::u64::MAX)))) |
-        (&ty::TyUint(UintTy::U8), Integral(U8(::std::u8::MAX))) |
-        (&ty::TyUint(UintTy::U16), Integral(U16(::std::u16::MAX))) |
-        (&ty::TyUint(UintTy::U32), Integral(U32(::std::u32::MAX))) |
-        (&ty::TyUint(UintTy::U64), Integral(U64(::std::u64::MAX))) |
-        (&ty::TyUint(UintTy::U128), Integral(U128(::std::u128::MAX))) => Maximum,
+        (&ty::TyBool, Constant::Bool(true)) => Maximum,
+        (&ty::TyInt(ity), Constant::Int(i)) if i == unsext(cx.tcx, i128::max_value() >> (128 - int_bits(cx.tcx, ity)), ity) => Maximum,
+        (&ty::TyUint(uty), Constant::Int(i)) if clip(cx.tcx, u128::max_value(), uty) == i => Maximum,
 
         _ => return None,
     };
@@ -1524,24 +1485,16 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(
     }
 }
 
-#[allow(cast_possible_wrap)]
 fn node_as_const_fullint<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> Option<FullInt> {
-    use rustc::middle::const_val::ConstVal::*;
-    use rustc_const_eval::ConstContext;
-
-    let parent_item = cx.tcx.hir.get_parent(expr.id);
-    let parent_def_id = cx.tcx.hir.local_def_id(parent_item);
-    let substs = Substs::identity_for_item(cx.tcx, parent_def_id);
-    match ConstContext::new(cx.tcx, cx.param_env.and(substs), cx.tables).eval(expr) {
-        Ok(val) => if let Integral(const_int) = val.val {
-            match const_int.int_type() {
-                IntType::SignedInt(_) => Some(FullInt::S(const_int.to_u128_unchecked() as i128)),
-                IntType::UnsignedInt(_) => Some(FullInt::U(const_int.to_u128_unchecked())),
-            }
-        } else {
-            None
-        },
-        Err(_) => None,
+    let val = constant(cx, expr)?.0;
+    if let Constant::Int(const_int) = val {
+        match cx.tables.expr_ty(expr).sty {
+            ty::TyInt(ity) => Some(FullInt::S(sext(cx.tcx, const_int, ity))),
+            ty::TyUint(_) => Some(FullInt::U(const_int)),
+            _ => None,
+        }
+    } else {
+        None
     }
 }
 

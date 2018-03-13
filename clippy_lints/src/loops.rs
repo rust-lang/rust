@@ -6,23 +6,19 @@ use rustc::hir::def_id;
 use rustc::hir::intravisit::{walk_block, walk_decl, walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
 use rustc::hir::map::Node::{NodeBlock, NodeExpr, NodeStmt};
 use rustc::lint::*;
-use rustc::middle::const_val::ConstVal;
 use rustc::middle::region;
 // use rustc::middle::region::CodeExtent;
 use rustc::middle::expr_use_visitor::*;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::mem_categorization::cmt;
 use rustc::ty::{self, Ty};
-use rustc::ty::subst::{Subst, Substs};
-use rustc_const_eval::ConstContext;
+use rustc::ty::subst::Subst;
 use std::collections::{HashMap, HashSet};
 use std::iter::{once, Iterator};
 use syntax::ast;
 use syntax::codemap::Span;
-use utils::sugg;
-use utils::const_to_u64;
-
-use consts::constant;
+use utils::{sugg, sext};
+use consts::{constant, Constant};
 
 use utils::{get_enclosing_block, get_parent_expr, higher, in_external_macro, is_integer_literal, is_refutable,
             last_path_segment, match_trait_method, match_type, match_var, multispan_sugg, snippet, snippet_opt,
@@ -1113,27 +1109,22 @@ fn check_for_loop_reverse_range<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arg: &'tcx
     }) = higher::range(arg)
     {
         // ...and both sides are compile-time constant integers...
-        let parent_item = cx.tcx.hir.get_parent(arg.id);
-        let parent_def_id = cx.tcx.hir.local_def_id(parent_item);
-        let substs = Substs::identity_for_item(cx.tcx, parent_def_id);
-        let constcx = ConstContext::new(cx.tcx, cx.param_env.and(substs), cx.tables);
-        if let Ok(start_idx) = constcx.eval(start) {
-            if let Ok(end_idx) = constcx.eval(end) {
+        if let Some((start_idx, _)) = constant(cx, start) {
+            if let Some((end_idx, _)) = constant(cx, end) {
                 // ...and the start index is greater than the end index,
                 // this loop will never run. This is often confusing for developers
                 // who think that this will iterate from the larger value to the
                 // smaller value.
+                let ty = cx.tables.expr_ty(start);
                 let (sup, eq) = match (start_idx, end_idx) {
                     (
-                        &ty::Const {
-                            val: ConstVal::Integral(start_idx),
-                            ..
-                        },
-                        &ty::Const {
-                            val: ConstVal::Integral(end_idx),
-                            ..
-                        },
-                    ) => (start_idx > end_idx, start_idx == end_idx),
+                        Constant::Int(start_idx),
+                        Constant::Int(end_idx),
+                    ) => (match ty.sty {
+                        ty::TyInt(ity) => sext(cx.tcx, start_idx, ity) > sext(cx.tcx, end_idx, ity),
+                        ty::TyUint(_) => start_idx > end_idx,
+                        _ => false,
+                    }, start_idx == end_idx),
                     _ => (false, false),
                 };
 
@@ -1220,7 +1211,7 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
                     match cx.tables.expr_ty(&args[0]).sty {
                         // If the length is greater than 32 no traits are implemented for array and
                         // therefore we cannot use `&`.
-                        ty::TypeVariants::TyArray(_, size) if const_to_u64(size) > 32 => (),
+                        ty::TypeVariants::TyArray(_, size) if size.val.to_raw_bits().expect("array size") > 32 => (),
                         _ => lint_iter_method(cx, args, arg, method_name),
                     };
                 } else {
@@ -1795,7 +1786,7 @@ fn is_ref_iterable_type(cx: &LateContext, e: &Expr) -> bool {
 fn is_iterable_array(ty: Ty) -> bool {
     // IntoIterator is currently only implemented for array sizes <= 32 in rustc
     match ty.sty {
-        ty::TyArray(_, n) => (0..=32).contains(const_to_u64(n)),
+        ty::TyArray(_, n) => (0..=32).contains(n.val.to_raw_bits().expect("array length")),
         _ => false,
     }
 }

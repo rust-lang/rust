@@ -2,13 +2,14 @@
 //! don't fit into an `i32`
 
 use rustc::lint::*;
-use rustc::middle::const_val::ConstVal;
-use rustc_const_math::*;
 use rustc::hir::*;
-use rustc::ty;
-use rustc::traits::Reveal;
+use rustc::{ty, traits};
 use rustc::ty::subst::Substs;
+use syntax::ast::{IntTy, UintTy};
 use utils::span_lint;
+use consts::{Constant, miri_to_const};
+use rustc::ty::util::IntTypeExt;
+use rustc::mir::interpret::GlobalId;
 
 /// **What it does:** Checks for C-like enumerations that are
 /// `repr(isize/usize)` and have values that don't fit into an `i32`.
@@ -43,36 +44,46 @@ impl LintPass for UnportableVariant {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnportableVariant {
     #[allow(cast_possible_truncation, cast_sign_loss)]
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
+        if cx.tcx.data_layout.pointer_size.bits() != 64 {
+            return;
+        }
         if let ItemEnum(ref def, _) = item.node {
             for var in &def.variants {
                 let variant = &var.node;
                 if let Some(body_id) = variant.disr_expr {
-                    let expr = &cx.tcx.hir.body(body_id).value;
+                    let param_env = ty::ParamEnv::empty(traits::Reveal::UserFacing);
                     let did = cx.tcx.hir.body_owner_def_id(body_id);
-                    let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
                     let substs = Substs::identity_for_item(cx.tcx.global_tcx(), did);
-                    let bad = match cx.tcx
-                        .at(expr.span)
-                        .const_eval(param_env.and((did, substs)))
-                    {
-                        Ok(&ty::Const {
-                            val: ConstVal::Integral(Usize(Us64(i))),
-                            ..
-                        }) => u64::from(i as u32) != i,
-                        Ok(&ty::Const {
-                            val: ConstVal::Integral(Isize(Is64(i))),
-                            ..
-                        }) => i64::from(i as i32) != i,
-                        _ => false,
+                    let instance = ty::Instance::new(did, substs);
+                    let cid = GlobalId {
+                        instance,
+                        promoted: None
                     };
-                    if bad {
+                    let constant = cx.tcx.const_eval(param_env.and(cid)).ok();
+                    if let Some(Constant::Int(val)) = constant.and_then(|c| miri_to_const(cx.tcx, c)) {
+                        let mut ty = cx.tcx.type_of(did);
+                        if let ty::TyAdt(adt, _) = ty.sty {
+                            if adt.is_enum() {
+                                ty = adt.repr.discr_type().to_ty(cx.tcx);
+                            }
+                        }
+                        match ty.sty {
+                            ty::TyInt(IntTy::Isize) => {
+                                let val = ((val as i128) << 64) >> 64;
+                                if val <= i32::max_value() as i128 && val >= i32::min_value() as i128 {
+                                    continue;
+                                }
+                            }
+                            ty::TyUint(UintTy::Usize) if val > u32::max_value() as u128 => {},
+                            _ => continue,
+                        }
                         span_lint(
                             cx,
                             ENUM_CLIKE_UNPORTABLE_VARIANT,
                             var.span,
                             "Clike enum variant discriminant is not portable to 32-bit targets",
                         );
-                    }
+                    };
                 }
             }
         }

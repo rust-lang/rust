@@ -94,16 +94,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             // Range with step_by(0).
             if name == "step_by" && args.len() == 2 && has_step_by(cx, &args[0]) {
                 use consts::{constant, Constant};
-                use rustc_const_math::ConstInt::Usize;
-                if let Some((Constant::Int(Usize(us)), _)) = constant(cx, &args[1]) {
-                    if us.as_u64() == 0 {
-                        span_lint(
-                            cx,
-                            ITERATOR_STEP_BY_ZERO,
-                            expr.span,
-                            "Iterator::step_by(0) will panic at runtime",
-                        );
-                    }
+                if let Some((Constant::Int(0), _)) = constant(cx, &args[1]) {
+                    span_lint(
+                        cx,
+                        ITERATOR_STEP_BY_ZERO,
+                        expr.span,
+                        "Iterator::step_by(0) will panic at runtime",
+                    );
                 }
             } else if name == "zip" && args.len() == 2 {
                 let iter = &args[0].node;

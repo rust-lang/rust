@@ -10,5 +10,13 @@ help: use the values directly
 13 |     let foo = 5 - 6;
    |
 
-error: aborting due to previous error
+error: taken reference of right operand
+  --> $DIR/op_ref.rs:21:8
+   |
+21 |     if b < &a {
+   |        ^^^^--
+   |            |
+   |            help: use the right value directly: `a`
+
+error: aborting due to 2 previous errors
 

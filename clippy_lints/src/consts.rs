@@ -2,19 +2,18 @@
 
 use rustc::lint::LateContext;
 use rustc::hir::def::Def;
-use rustc_const_eval::lookup_const_by_id;
-use rustc_const_math::ConstInt;
 use rustc::hir::*;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, Instance};
 use rustc::ty::subst::{Subst, Substs};
 use std::cmp::Ordering::{self, Equal};
 use std::cmp::PartialOrd;
 use std::hash::{Hash, Hasher};
 use std::mem;
 use std::rc::Rc;
-use syntax::ast::{FloatTy, LitKind, StrStyle};
+use syntax::ast::{FloatTy, LitKind};
 use syntax::ptr::P;
-use utils::const_to_u64;
+use rustc::middle::const_val::ConstVal;
+use utils::{sext, unsext, clip};
 
 #[derive(Debug, Copy, Clone)]
 pub enum FloatWidth {
@@ -36,15 +35,17 @@ impl From<FloatTy> for FloatWidth {
 #[derive(Debug, Clone)]
 pub enum Constant {
     /// a String "abc"
-    Str(String, StrStyle),
+    Str(String),
     /// a Binary String b"abc"
     Binary(Rc<Vec<u8>>),
     /// a single char 'a'
     Char(char),
-    /// an integer, third argument is whether the value is negated
-    Int(ConstInt),
-    /// a float with given type
-    Float(String, FloatWidth),
+    /// an integer's bit representation
+    Int(u128),
+    /// an f32
+    F32(f32),
+    /// an f64
+    F64(f64),
     /// true or false
     Bool(bool),
     /// an array of constants
@@ -58,20 +59,21 @@ pub enum Constant {
 impl PartialEq for Constant {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (&Constant::Str(ref ls, ref l_sty), &Constant::Str(ref rs, ref r_sty)) => ls == rs && l_sty == r_sty,
+            (&Constant::Str(ref ls), &Constant::Str(ref rs)) => ls == rs,
             (&Constant::Binary(ref l), &Constant::Binary(ref r)) => l == r,
             (&Constant::Char(l), &Constant::Char(r)) => l == r,
-            (&Constant::Int(l), &Constant::Int(r)) => {
-                l.is_negative() == r.is_negative() && l.to_u128_unchecked() == r.to_u128_unchecked()
-            },
-            (&Constant::Float(ref ls, _), &Constant::Float(ref rs, _)) => {
+            (&Constant::Int(l), &Constant::Int(r)) => l == r,
+            (&Constant::F64(l), &Constant::F64(r)) => {
                 // we want `Fw32 == FwAny` and `FwAny == Fw64`, by transitivity we must have
                 // `Fw32 == Fw64` so don’t compare them
-                match (ls.parse::<f64>(), rs.parse::<f64>()) {
-                    // mem::transmute is required to catch non-matching 0.0, -0.0, and NaNs
-                    (Ok(l), Ok(r)) => unsafe { mem::transmute::<f64, u64>(l) == mem::transmute::<f64, u64>(r) },
-                    _ => false,
-                }
+                // mem::transmute is required to catch non-matching 0.0, -0.0, and NaNs
+                unsafe { mem::transmute::<f64, u64>(l) == mem::transmute::<f64, u64>(r) }
+            },
+            (&Constant::F32(l), &Constant::F32(r)) => {
+                // we want `Fw32 == FwAny` and `FwAny == Fw64`, by transitivity we must have
+                // `Fw32 == Fw64` so don’t compare them
+                // mem::transmute is required to catch non-matching 0.0, -0.0, and NaNs
+                unsafe { mem::transmute::<f64, u64>(l as f64) == mem::transmute::<f64, u64>(r as f64) }
             },
             (&Constant::Bool(l), &Constant::Bool(r)) => l == r,
             (&Constant::Vec(ref l), &Constant::Vec(ref r)) | (&Constant::Tuple(ref l), &Constant::Tuple(ref r)) => l == r,
@@ -87,9 +89,8 @@ impl Hash for Constant {
         H: Hasher,
     {
         match *self {
-            Constant::Str(ref s, ref k) => {
+            Constant::Str(ref s) => {
                 s.hash(state);
-                k.hash(state);
             },
             Constant::Binary(ref b) => {
                 b.hash(state);
@@ -98,14 +99,13 @@ impl Hash for Constant {
                 c.hash(state);
             },
             Constant::Int(i) => {
-                i.to_u128_unchecked().hash(state);
-                i.is_negative().hash(state);
+                i.hash(state);
             },
-            Constant::Float(ref f, _) => {
-                // don’t use the width here because of PartialEq implementation
-                if let Ok(f) = f.parse::<f64>() {
-                    unsafe { mem::transmute::<f64, u64>(f) }.hash(state);
-                }
+            Constant::F32(f) => {
+                unsafe { mem::transmute::<f64, u64>(f as f64) }.hash(state);
+            },
+            Constant::F64(f) => {
+                unsafe { mem::transmute::<f64, u64>(f) }.hash(state);
             },
             Constant::Bool(b) => {
                 b.hash(state);
@@ -124,25 +124,11 @@ impl Hash for Constant {
 impl PartialOrd for Constant {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         match (self, other) {
-            (&Constant::Str(ref ls, ref l_sty), &Constant::Str(ref rs, ref r_sty)) => if l_sty == r_sty {
-                Some(ls.cmp(rs))
-            } else {
-                None
-            },
+            (&Constant::Str(ref ls), &Constant::Str(ref rs)) => Some(ls.cmp(rs)),
             (&Constant::Char(ref l), &Constant::Char(ref r)) => Some(l.cmp(r)),
             (&Constant::Int(l), &Constant::Int(r)) => Some(l.cmp(&r)),
-            (&Constant::Float(ref ls, _), &Constant::Float(ref rs, _)) => {
-                match (ls.parse::<f64>(), rs.parse::<f64>()) {
-                    (Ok(ref l), Ok(ref r)) => {
-                        match (l.partial_cmp(r), l.is_sign_positive() == r.is_sign_positive()) {
-                            // Check for comparison of -0.0 and 0.0
-                            (Some(Ordering::Equal), false) => None,
-                            (x, _) => x,
-                        }
-                    },
-                    _ => None,
-                }
-            },
+            (&Constant::F64(l), &Constant::F64(r)) => l.partial_cmp(&r),
+            (&Constant::F32(l), &Constant::F32(r)) => l.partial_cmp(&r),
             (&Constant::Bool(ref l), &Constant::Bool(ref r)) => Some(l.cmp(r)),
             (&Constant::Tuple(ref l), &Constant::Tuple(ref r)) | (&Constant::Vec(ref l), &Constant::Vec(ref r)) => {
                 l.partial_cmp(r)
@@ -157,60 +143,22 @@ impl PartialOrd for Constant {
 }
 
 /// parse a `LitKind` to a `Constant`
-#[allow(cast_possible_wrap)]
-pub fn lit_to_constant<'a, 'tcx>(lit: &LitKind, tcx: TyCtxt<'a, 'tcx, 'tcx>, mut ty: Ty<'tcx>) -> Constant {
+pub fn lit_to_constant<'a, 'tcx>(lit: &LitKind, ty: Ty<'tcx>) -> Constant {
     use syntax::ast::*;
-    use syntax::ast::LitIntType::*;
-    use rustc::ty::util::IntTypeExt;
 
-    if let ty::TyAdt(adt, _) = ty.sty {
-        if adt.is_enum() {
-            ty = adt.repr.discr_type().to_ty(tcx)
-        }
-    }
     match *lit {
-        LitKind::Str(ref is, style) => Constant::Str(is.to_string(), style),
-        LitKind::Byte(b) => Constant::Int(ConstInt::U8(b)),
+        LitKind::Str(ref is, _) => Constant::Str(is.to_string()),
+        LitKind::Byte(b) => Constant::Int(b as u128),
         LitKind::ByteStr(ref s) => Constant::Binary(Rc::clone(s)),
         LitKind::Char(c) => Constant::Char(c),
-        LitKind::Int(n, hint) => match (&ty.sty, hint) {
-            (&ty::TyInt(ity), _) | (_, Signed(ity)) => {
-                Constant::Int(ConstInt::new_signed_truncating(n as i128, ity, tcx.sess.target.isize_ty))
-            },
-            (&ty::TyUint(uty), _) | (_, Unsigned(uty)) => {
-                Constant::Int(ConstInt::new_unsigned_truncating(n as u128, uty, tcx.sess.target.usize_ty))
-            },
+        LitKind::Int(n, _) => Constant::Int(n),
+        LitKind::Float(ref is, _) |
+        LitKind::FloatUnsuffixed(ref is) => match ty.sty {
+            ty::TyFloat(FloatTy::F32) => Constant::F32(is.as_str().parse().unwrap()),
+            ty::TyFloat(FloatTy::F64) => Constant::F64(is.as_str().parse().unwrap()),
             _ => bug!(),
         },
-        LitKind::Float(ref is, ty) => Constant::Float(is.to_string(), ty.into()),
-        LitKind::FloatUnsuffixed(ref is) => Constant::Float(is.to_string(), FloatWidth::Any),
         LitKind::Bool(b) => Constant::Bool(b),
-    }
-}
-
-fn constant_not(o: &Constant) -> Option<Constant> {
-    use self::Constant::*;
-    match *o {
-        Bool(b) => Some(Bool(!b)),
-        Int(value) => (!value).ok().map(Int),
-        _ => None,
-    }
-}
-
-fn constant_negate(o: Constant) -> Option<Constant> {
-    use self::Constant::*;
-    match o {
-        Int(value) => (-value).ok().map(Int),
-        Float(is, ty) => Some(Float(neg_float_str(&is), ty)),
-        _ => None,
-    }
-}
-
-fn neg_float_str(s: &str) -> String {
-    if s.starts_with('-') {
-        s[1..].to_owned()
-    } else {
-        format!("-{}", s)
     }
 }
 
@@ -255,23 +203,59 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             ExprPath(ref qpath) => self.fetch_path(qpath, e.hir_id),
             ExprBlock(ref block) => self.block(block),
             ExprIf(ref cond, ref then, ref otherwise) => self.ifthenelse(cond, then, otherwise),
-            ExprLit(ref lit) => Some(lit_to_constant(&lit.node, self.tcx, self.tables.expr_ty(e))),
+            ExprLit(ref lit) => Some(lit_to_constant(&lit.node, self.tables.expr_ty(e))),
             ExprArray(ref vec) => self.multi(vec).map(Constant::Vec),
             ExprTup(ref tup) => self.multi(tup).map(Constant::Tuple),
             ExprRepeat(ref value, _) => {
                 let n = match self.tables.expr_ty(e).sty {
-                    ty::TyArray(_, n) => const_to_u64(n),
+                    ty::TyArray(_, n) => n.val.to_raw_bits().expect("array length"),
                     _ => span_bug!(e.span, "typeck error"),
                 };
-                self.expr(value).map(|v| Constant::Repeat(Box::new(v), n))
+                self.expr(value).map(|v| Constant::Repeat(Box::new(v), n as u64))
             },
             ExprUnary(op, ref operand) => self.expr(operand).and_then(|o| match op {
-                UnNot => constant_not(&o),
-                UnNeg => constant_negate(o),
+                UnNot => self.constant_not(&o, self.tables.expr_ty(e)),
+                UnNeg => self.constant_negate(o, self.tables.expr_ty(e)),
                 UnDeref => Some(o),
             }),
             ExprBinary(op, ref left, ref right) => self.binop(op, left, right),
             // TODO: add other expressions
+            _ => None,
+        }
+    }
+
+    fn constant_not(&self, o: &Constant, ty: ty::Ty) -> Option<Constant> {
+        use self::Constant::*;
+        match *o {
+            Bool(b) => Some(Bool(!b)),
+            Int(value) => {
+                let mut value = !value;
+                match ty.sty {
+                    ty::TyInt(ity) => Some(Int(unsext(self.tcx, value as i128, ity))),
+                    ty::TyUint(ity) => Some(Int(clip(self.tcx, value, ity))),
+                    _ => None,
+                }
+            },
+            _ => None,
+        }
+    }
+
+    fn constant_negate(&self, o: Constant, ty: ty::Ty) -> Option<Constant> {
+        use self::Constant::*;
+        match o {
+            Int(value) => {
+                let ity = match ty.sty {
+                    ty::TyInt(ity) => ity,
+                    _ => return None,
+                };
+                // sign extend
+                let value = sext(self.tcx, value, ity);
+                let value = value.checked_neg()?;
+                // clear unused bits
+                Some(Int(unsext(self.tcx, value, ity)))
+            },
+            F32(f) => Some(F32(-f)),
+            F64(f) => Some(F64(-f)),
             _ => None,
         }
     }
@@ -295,27 +279,18 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                 } else {
                     substs.subst(self.tcx, self.substs)
                 };
-                let param_env = self.param_env.and((def_id, substs));
-                if let Some((def_id, substs)) = lookup_const_by_id(self.tcx, param_env) {
-                    let mut cx = Self {
-                        tcx: self.tcx,
-                        tables: self.tcx.typeck_tables_of(def_id),
-                        needed_resolution: false,
-                        substs: substs,
-                        param_env: param_env.param_env,
-                    };
-                    let body = if let Some(id) = self.tcx.hir.as_local_node_id(def_id) {
-                        self.tcx.mir_const_qualif(def_id);
-                        self.tcx.hir.body(self.tcx.hir.body_owned_by(id))
-                    } else {
-                        self.tcx.extern_const_body(def_id).body
-                    };
-                    let ret = cx.expr(&body.value);
-                    if ret.is_some() {
-                        self.needed_resolution = true;
-                    }
-                    return ret;
+                let instance = Instance::resolve(self.tcx, self.param_env, def_id, substs)?;
+                let gid = GlobalId {
+                    instance,
+                    promoted: None,
+                };
+                use rustc::mir::interpret::GlobalId;
+                let result = self.tcx.const_eval(self.param_env.and(gid)).ok()?;
+                let ret = miri_to_const(self.tcx, result);
+                if ret.is_some() {
+                    self.needed_resolution = true;
                 }
+                return ret;
             },
             _ => {},
         }
@@ -344,36 +319,127 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
     }
 
     fn binop(&mut self, op: BinOp, left: &Expr, right: &Expr) -> Option<Constant> {
-        let l = if let Some(l) = self.expr(left) {
-            l
-        } else {
-            return None;
-        };
+        let l = self.expr(left)?;
         let r = self.expr(right);
-        match (op.node, l, r) {
-            (BiAdd, Constant::Int(l), Some(Constant::Int(r))) => (l + r).ok().map(Constant::Int),
-            (BiSub, Constant::Int(l), Some(Constant::Int(r))) => (l - r).ok().map(Constant::Int),
-            (BiMul, Constant::Int(l), Some(Constant::Int(r))) => (l * r).ok().map(Constant::Int),
-            (BiDiv, Constant::Int(l), Some(Constant::Int(r))) => (l / r).ok().map(Constant::Int),
-            (BiRem, Constant::Int(l), Some(Constant::Int(r))) => (l % r).ok().map(Constant::Int),
-            (BiAnd, Constant::Bool(false), _) => Some(Constant::Bool(false)),
-            (BiOr, Constant::Bool(true), _) => Some(Constant::Bool(true)),
-            (BiAnd, Constant::Bool(true), Some(r)) | (BiOr, Constant::Bool(false), Some(r)) => Some(r),
-            (BiBitXor, Constant::Bool(l), Some(Constant::Bool(r))) => Some(Constant::Bool(l ^ r)),
-            (BiBitXor, Constant::Int(l), Some(Constant::Int(r))) => (l ^ r).ok().map(Constant::Int),
-            (BiBitAnd, Constant::Bool(l), Some(Constant::Bool(r))) => Some(Constant::Bool(l & r)),
-            (BiBitAnd, Constant::Int(l), Some(Constant::Int(r))) => (l & r).ok().map(Constant::Int),
-            (BiBitOr, Constant::Bool(l), Some(Constant::Bool(r))) => Some(Constant::Bool(l | r)),
-            (BiBitOr, Constant::Int(l), Some(Constant::Int(r))) => (l | r).ok().map(Constant::Int),
-            (BiShl, Constant::Int(l), Some(Constant::Int(r))) => (l << r).ok().map(Constant::Int),
-            (BiShr, Constant::Int(l), Some(Constant::Int(r))) => (l >> r).ok().map(Constant::Int),
-            (BiEq, Constant::Int(l), Some(Constant::Int(r))) => Some(Constant::Bool(l == r)),
-            (BiNe, Constant::Int(l), Some(Constant::Int(r))) => Some(Constant::Bool(l != r)),
-            (BiLt, Constant::Int(l), Some(Constant::Int(r))) => Some(Constant::Bool(l < r)),
-            (BiLe, Constant::Int(l), Some(Constant::Int(r))) => Some(Constant::Bool(l <= r)),
-            (BiGe, Constant::Int(l), Some(Constant::Int(r))) => Some(Constant::Bool(l >= r)),
-            (BiGt, Constant::Int(l), Some(Constant::Int(r))) => Some(Constant::Bool(l > r)),
+        match (l, r) {
+            (Constant::Int(l), Some(Constant::Int(r))) => {
+                match self.tables.expr_ty(left).sty {
+                    ty::TyInt(ity) => {
+                        let l = sext(self.tcx, l, ity);
+                        let r = sext(self.tcx, r, ity);
+                        let zext = |n: i128| Constant::Int(unsext(self.tcx, n, ity));
+                        match op.node {
+                            BiAdd => l.checked_add(r).map(zext),
+                            BiSub => l.checked_sub(r).map(zext),
+                            BiMul => l.checked_mul(r).map(zext),
+                            BiDiv if r != 0 => l.checked_div(r).map(zext),
+                            BiRem if r != 0 => l.checked_rem(r).map(zext),
+                            BiShr => l.checked_shr(r as u128 as u32).map(zext),
+                            BiShl => l.checked_shl(r as u128 as u32).map(zext),
+                            BiBitXor => Some(zext(l ^ r)),
+                            BiBitOr => Some(zext(l | r)),
+                            BiBitAnd => Some(zext(l & r)),
+                            BiEq => Some(Constant::Bool(l == r)),
+                            BiNe => Some(Constant::Bool(l != r)),
+                            BiLt => Some(Constant::Bool(l < r)),
+                            BiLe => Some(Constant::Bool(l <= r)),
+                            BiGe => Some(Constant::Bool(l >= r)),
+                            BiGt => Some(Constant::Bool(l > r)),
+                            _ => None,
+                        }
+                    }
+                    ty::TyUint(_) => {
+                        match op.node {
+                            BiAdd => l.checked_add(r).map(Constant::Int),
+                            BiSub => l.checked_sub(r).map(Constant::Int),
+                            BiMul => l.checked_mul(r).map(Constant::Int),
+                            BiDiv => l.checked_div(r).map(Constant::Int),
+                            BiRem => l.checked_rem(r).map(Constant::Int),
+                            BiShr => l.checked_shr(r as u32).map(Constant::Int),
+                            BiShl => l.checked_shl(r as u32).map(Constant::Int),
+                            BiBitXor => Some(Constant::Int(l ^ r)),
+                            BiBitOr => Some(Constant::Int(l | r)),
+                            BiBitAnd => Some(Constant::Int(l & r)),
+                            BiEq => Some(Constant::Bool(l == r)),
+                            BiNe => Some(Constant::Bool(l != r)),
+                            BiLt => Some(Constant::Bool(l < r)),
+                            BiLe => Some(Constant::Bool(l <= r)),
+                            BiGe => Some(Constant::Bool(l >= r)),
+                            BiGt => Some(Constant::Bool(l > r)),
+                            _ => None,
+                        }
+                    },
+                    _ => None,
+                }
+            },
+            (Constant::F32(l), Some(Constant::F32(r))) => match op.node {
+                BiAdd => Some(Constant::F32(l + r)),
+                BiSub => Some(Constant::F32(l - r)),
+                BiMul => Some(Constant::F32(l * r)),
+                BiDiv => Some(Constant::F32(l / r)),
+                BiRem => Some(Constant::F32(l * r)),
+                BiEq => Some(Constant::Bool(l == r)),
+                BiNe => Some(Constant::Bool(l != r)),
+                BiLt => Some(Constant::Bool(l < r)),
+                BiLe => Some(Constant::Bool(l <= r)),
+                BiGe => Some(Constant::Bool(l >= r)),
+                BiGt => Some(Constant::Bool(l > r)),
+                _ => None,
+            },
+            (Constant::F64(l), Some(Constant::F64(r))) => match op.node {
+                BiAdd => Some(Constant::F64(l + r)),
+                BiSub => Some(Constant::F64(l - r)),
+                BiMul => Some(Constant::F64(l * r)),
+                BiDiv => Some(Constant::F64(l / r)),
+                BiRem => Some(Constant::F64(l * r)),
+                BiEq => Some(Constant::Bool(l == r)),
+                BiNe => Some(Constant::Bool(l != r)),
+                BiLt => Some(Constant::Bool(l < r)),
+                BiLe => Some(Constant::Bool(l <= r)),
+                BiGe => Some(Constant::Bool(l >= r)),
+                BiGt => Some(Constant::Bool(l > r)),
+                _ => None,
+            },
+            (l, r) => match (op.node, l, r) {
+                (BiAnd, Constant::Bool(false), _) => Some(Constant::Bool(false)),
+                (BiOr, Constant::Bool(true), _) => Some(Constant::Bool(true)),
+                (BiAnd, Constant::Bool(true), Some(r)) | (BiOr, Constant::Bool(false), Some(r)) => Some(r),
+                (BiBitXor, Constant::Bool(l), Some(Constant::Bool(r))) => Some(Constant::Bool(l ^ r)),
+                (BiBitAnd, Constant::Bool(l), Some(Constant::Bool(r))) => Some(Constant::Bool(l & r)),
+                (BiBitOr, Constant::Bool(l), Some(Constant::Bool(r))) => Some(Constant::Bool(l | r)),
+                _ => None,
+            },
+        }
+    }
+}
+
+pub fn miri_to_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, result: &ty::Const<'tcx>) -> Option<Constant> {
+    use rustc::mir::interpret::{Value, PrimVal};
+    match result.val {
+        ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))) => match result.ty.sty {
+            ty::TyBool => Some(Constant::Bool(b == 1)),
+            ty::TyUint(_) | ty::TyInt(_) => Some(Constant::Int(b)),
+            ty::TyFloat(FloatTy::F32) => Some(Constant::F32(f32::from_bits(b as u32))),
+            ty::TyFloat(FloatTy::F64) => Some(Constant::F64(f64::from_bits(b as u64))),
+            // FIXME: implement other conversion
+            _ => None,
+        },
+        ConstVal::Value(Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::Bytes(n))) => match result.ty.sty {
+            ty::TyRef(_, tam) => match tam.ty.sty {
+                ty::TyStr => {
+                    let alloc = tcx
+                        .interpret_interner
+                        .get_alloc(ptr.alloc_id)
+                        .unwrap();
+                    let offset = ptr.offset as usize;
+                    let n = n as usize;
+                    String::from_utf8(alloc.bytes[offset..(offset + n)].to_owned()).ok().map(Constant::Str)
+                },
+                _ => None,
+            },
             _ => None,
         }
+        // FIXME: implement other conversions
+        _ => None,
     }
 }

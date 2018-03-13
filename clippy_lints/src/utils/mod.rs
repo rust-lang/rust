@@ -8,7 +8,7 @@ use rustc::hir::map::Node;
 use rustc::lint::{LateContext, Level, Lint, LintContext};
 use rustc::session::Session;
 use rustc::traits;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, layout};
 use rustc_errors;
 use std::borrow::Cow;
 use std::env;
@@ -274,14 +274,6 @@ pub fn path_to_def(cx: &LateContext, path: &[&str]) -> Option<def::Def> {
     } else {
         None
     }
-}
-
-pub fn const_to_u64(c: &ty::Const) -> u64 {
-    c.val
-        .to_const_int()
-        .expect("eddyb says this works")
-        .to_u64()
-        .expect("see previous expect")
 }
 
 /// Convenience function to get the `DefId` of a trait by path.
@@ -1070,4 +1062,27 @@ pub fn get_arg_name(pat: &Pat) -> Option<ast::Name> {
         PatKind::Ref(ref subpat, _) => get_arg_name(subpat),
         _ => None,
     }
+}
+
+pub fn int_bits(tcx: TyCtxt, ity: ast::IntTy) -> u64 {
+    layout::Integer::from_attr(tcx, attr::IntType::SignedInt(ity)).size().bits()
+}
+
+/// Turn a constant int byte representation into an i128
+pub fn sext(tcx: TyCtxt, u: u128, ity: ast::IntTy) -> i128 {
+    let amt = 128 - int_bits(tcx, ity);
+    ((u as i128) << amt) >> amt
+}
+
+/// clip unused bytes
+pub fn unsext(tcx: TyCtxt, u: i128, ity: ast::IntTy) -> u128 {
+    let amt = 128 - int_bits(tcx, ity);
+    ((u as u128) << amt) >> amt
+}
+
+/// clip unused bytes
+pub fn clip(tcx: TyCtxt, u: u128, ity: ast::UintTy) -> u128 {
+    let bits = layout::Integer::from_attr(tcx, attr::IntType::UnsignedInt(ity)).size().bits();
+    let amt = 128 - bits;
+    (u << amt) >> amt
 }

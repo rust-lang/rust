@@ -47,8 +47,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NegMultiply {
 fn check_mul(cx: &LateContext, span: Span, lit: &Expr, exp: &Expr) {
     if_chain! {
         if let ExprLit(ref l) = lit.node;
-        if let Constant::Int(ref ci) = consts::lit_to_constant(&l.node, cx.tcx, cx.tables.expr_ty(lit));
-        if let Some(val) = ci.to_u64();
+        if let Constant::Int(val) = consts::lit_to_constant(&l.node, cx.tables.expr_ty(lit));
         if val == 1;
         if cx.tables.expr_ty(exp).is_integral();
         then {

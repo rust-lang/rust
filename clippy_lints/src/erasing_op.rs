@@ -51,7 +51,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ErasingOp {
 
 fn check(cx: &LateContext, e: &Expr, span: Span) {
     if let Some(Constant::Int(v)) = constant_simple(cx, e) {
-        if v.to_u128_unchecked() == 0 {
+        if v == 0 {
             span_lint(
                 cx,
                 ERASING_OP,

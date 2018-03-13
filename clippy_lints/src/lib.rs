@@ -10,6 +10,7 @@
 #![feature(conservative_impl_trait)]
 #![feature(inclusive_range_syntax, range_contains)]
 #![feature(macro_vis_matcher)]
+#![feature(dotdoteq_in_patterns)]
 #![allow(unknown_lints, indexing_slicing, shadow_reuse, missing_docs_in_private_items)]
 #![recursion_limit = "256"]
 
@@ -37,7 +38,6 @@ extern crate regex_syntax;
 
 extern crate quine_mc_cluskey;
 
-extern crate rustc_const_eval;
 extern crate rustc_const_math;
 extern crate rustc_errors;
 extern crate rustc_plugin;
