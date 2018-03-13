@@ -39,7 +39,7 @@ union U6<T: ?Sized> { //~ ERROR unions with non-`Copy` fields are unstable
     a: T
 }
 
-union U6<T: Copy + ?Sized> { // ERROR unsized unions are unstable
+union U7<T: Copy + ?Sized> { // ERROR unsized unions are unstable
     a: T
 }
 
