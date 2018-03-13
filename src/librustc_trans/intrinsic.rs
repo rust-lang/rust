@@ -1018,13 +1018,21 @@ fn generic_simd_intrinsic<'a, 'tcx>(
                          name, $($fmt)*));
         }
     }
-    macro_rules! require {
-        ($cond: expr, $($fmt: tt)*) => {
-            if !$cond {
+    macro_rules! return_error {
+        ($($fmt: tt)*) => {
+            {
                 emit_error!($($fmt)*);
                 return Err(());
             }
         }
+    }
+
+    macro_rules! require {
+        ($cond: expr, $($fmt: tt)*) => {
+            if !$cond {
+                return_error!($($fmt)*);
+            }
+        };
     }
     macro_rules! require_simd {
         ($ty: expr, $position: expr) => {
@@ -1141,6 +1149,211 @@ fn generic_simd_intrinsic<'a, 'tcx>(
                  in_elem, in_ty, ret_ty);
         return Ok(bx.extract_element(args[0].immediate(), args[1].immediate()))
     }
+
+    if name == "simd_reduce_add" {
+        require!(ret_ty == in_elem,
+                 "expected return type `{}` (element of input `{}`), found `{}`",
+                 in_elem, in_ty, ret_ty);
+        return match in_elem.sty {
+            ty::TyInt(_i) => {
+                Ok(bx.vector_reduce_add(args[0].immediate()))
+            },
+            ty::TyUint(_u) => {
+                Ok(bx.vector_reduce_add(args[0].immediate()))
+            },
+            ty::TyFloat(f) => {
+                // undef as accumulator makes the reduction unordered:
+                let acc = match f.bit_width() {
+                    32 => C_undef(Type::f32(bx.cx)),
+                    64 => C_undef(Type::f64(bx.cx)),
+                    v => {
+                        return_error!(
+                            "unsupported {} from `{}` with element `{}` of size `{}` to `{}`",
+                            "simd_reduce_add", in_ty, in_elem, v, ret_ty)
+                    }
+                };
+                Ok(bx.vector_reduce_fadd_fast(acc, args[0].immediate()))
+            }
+            _ => {
+                return_error!("unsupported {} from `{}` with element `{}` to `{}`",
+                              "simd_reduce_add", in_ty, in_elem, ret_ty)
+            },
+        }
+    }
+
+    if name == "simd_reduce_mul" {
+        require!(ret_ty == in_elem,
+                 "expected return type `{}` (element of input `{}`), found `{}`",
+                 in_elem, in_ty, ret_ty);
+        return match in_elem.sty {
+            ty::TyInt(_i) => {
+                Ok(bx.vector_reduce_mul(args[0].immediate()))
+            },
+            ty::TyUint(_u) => {
+                Ok(bx.vector_reduce_mul(args[0].immediate()))
+            },
+            ty::TyFloat(f) => {
+                // undef as accumulator makes the reduction unordered:
+                let acc = match f.bit_width() {
+                    32 => C_undef(Type::f32(bx.cx)),
+                    64 => C_undef(Type::f64(bx.cx)),
+                    v => {
+                        return_error!(
+                            "unsupported {} from `{}` with element `{}` of size `{}` to `{}`",
+                            "simd_reduce_mul", in_ty, in_elem, v, ret_ty)
+                    }
+                };
+                Ok(bx.vector_reduce_fmul_fast(acc, args[0].immediate()))
+            }
+            _ => {
+                return_error!("unsupported {} from `{}` with element `{}` to `{}`",
+                              "simd_reduce_mul", in_ty, in_elem, ret_ty)
+            },
+        }
+    }
+
+    if name == "simd_reduce_min" {
+        require!(ret_ty == in_elem,
+                 "expected return type `{}` (element of input `{}`), found `{}`",
+                 in_elem, in_ty, ret_ty);
+        return match in_elem.sty {
+            ty::TyInt(_i) => {
+                Ok(bx.vector_reduce_min(args[0].immediate(), true))
+            },
+            ty::TyUint(_u) => {
+                Ok(bx.vector_reduce_min(args[0].immediate(), false))
+            },
+            ty::TyFloat(_f) => {
+                Ok(bx.vector_reduce_fmin_fast(args[0].immediate()))
+            }
+            _ => {
+                return_error!("unsupported {} from `{}` with element `{}` to `{}`",
+                              "simd_reduce_min", in_ty, in_elem, ret_ty)
+            },
+        }
+    }
+
+    if name == "simd_reduce_max" {
+        require!(ret_ty == in_elem,
+                 "expected return type `{}` (element of input `{}`), found `{}`",
+                 in_elem, in_ty, ret_ty);
+        return match in_elem.sty {
+            ty::TyInt(_i) => {
+                Ok(bx.vector_reduce_max(args[0].immediate(), true))
+            },
+            ty::TyUint(_u) => {
+                Ok(bx.vector_reduce_max(args[0].immediate(), false))
+            },
+            ty::TyFloat(_f) => {
+                Ok(bx.vector_reduce_fmax_fast(args[0].immediate()))
+            }
+            _ => {
+                return_error!("unsupported {} from `{}` with element `{}` to `{}`",
+                              "simd_reduce_max", in_ty, in_elem, ret_ty)
+            },
+        }
+    }
+
+    if name == "simd_reduce_and" {
+        require!(ret_ty == in_elem,
+                 "expected return type `{}` (element of input `{}`), found `{}`",
+                 in_elem, in_ty, ret_ty);
+        return match in_elem.sty {
+            ty::TyInt(_i) => {
+                Ok(bx.vector_reduce_and(args[0].immediate()))
+            },
+            ty::TyUint(_u) => {
+                Ok(bx.vector_reduce_and(args[0].immediate()))
+            },
+            _ => {
+                return_error!("unsupported {} from `{}` with element `{}` to `{}`",
+                              "simd_reduce_and", in_ty, in_elem, ret_ty)
+            },
+        }
+    }
+
+    if name == "simd_reduce_or" {
+        require!(ret_ty == in_elem,
+                 "expected return type `{}` (element of input `{}`), found `{}`",
+                 in_elem, in_ty, ret_ty);
+        return match in_elem.sty {
+            ty::TyInt(_i) => {
+                Ok(bx.vector_reduce_or(args[0].immediate()))
+            },
+            ty::TyUint(_u) => {
+                Ok(bx.vector_reduce_or(args[0].immediate()))
+            },
+            _ => {
+                return_error!("unsupported {} from `{}` with element `{}` to `{}`",
+                              "simd_reduce_or", in_ty, in_elem, ret_ty)
+            },
+        }
+    }
+
+    if name == "simd_reduce_xor" {
+        require!(ret_ty == in_elem,
+                 "expected return type `{}` (element of input `{}`), found `{}`",
+                 in_elem, in_ty, ret_ty);
+        return match in_elem.sty {
+            ty::TyInt(_i) => {
+                Ok(bx.vector_reduce_xor(args[0].immediate()))
+            },
+            ty::TyUint(_u) => {
+                Ok(bx.vector_reduce_xor(args[0].immediate()))
+            },
+            _ => {
+                return_error!("unsupported {} from `{}` with element `{}` to `{}`",
+                              "simd_reduce_xor", in_ty, in_elem, ret_ty)
+            },
+        }
+    }
+
+    if name == "simd_reduce_all" {
+        //require!(ret_ty == in_elem,
+        //         "expected return type `{}` (element of input `{}`), found `{}`",
+        //         in_elem, in_ty, ret_ty);
+        let i1 = Type::i1(bx.cx);
+        let i1xn = Type::vector(&i1, in_len as u64);
+        let v = bx.trunc(args[0].immediate(), i1xn);
+
+        let red = match in_elem.sty {
+            ty::TyInt(_i) => {
+                bx.vector_reduce_and(v)
+            },
+            ty::TyUint(_u) => {
+                bx.vector_reduce_and(v)
+            },
+            _ => {
+                return_error!("unsupported {} from `{}` with element `{}` to `{}`",
+                              "simd_reduce_and", in_ty, in_elem, ret_ty)
+            },
+        };
+        return Ok(bx.zext(red, Type::bool(bx.cx)));
+    }
+
+    if name == "simd_reduce_any" {
+        //require!(ret_ty == in_elem,
+        //         "expected return type `{}` (element of input `{}`), found `{}`",
+        //         in_elem, in_ty, ret_ty);
+        let i1 = Type::i1(bx.cx);
+        let i1xn = Type::vector(&i1, in_len as u64);
+        let v = bx.trunc(args[0].immediate(), i1xn);
+
+        let red = match in_elem.sty {
+            ty::TyInt(_i) => {
+                bx.vector_reduce_or(v)
+            },
+            ty::TyUint(_u) => {
+                bx.vector_reduce_or(v)
+            },
+            _ => {
+                return_error!("unsupported {} from `{}` with element `{}` to `{}`",
+                              "simd_reduce_and", in_ty, in_elem, ret_ty)
+            },
+        };
+        return Ok(bx.zext(red, Type::bool(bx.cx)));
+    }
+
 
     if name == "simd_cast" {
         require_simd!(ret_ty, "return");

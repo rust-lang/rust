@@ -955,6 +955,81 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
+    pub fn vector_reduce_fadd_fast(&self, acc: ValueRef, src: ValueRef) -> ValueRef {
+        self.count_insn("vector.reduce.fadd_fast");
+        unsafe {
+            let instr = llvm::LLVMRustBuildVectorReduceFAdd(self.llbuilder, acc, src);
+            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            instr
+        }
+    }
+    pub fn vector_reduce_fmul_fast(&self, acc: ValueRef, src: ValueRef) -> ValueRef {
+        self.count_insn("vector.reduce.fmul_fast");
+        unsafe {
+            let instr = llvm::LLVMRustBuildVectorReduceFMul(self.llbuilder, acc, src);
+            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            instr
+        }
+    }
+    pub fn vector_reduce_add(&self, src: ValueRef) -> ValueRef {
+        self.count_insn("vector.reduce.add");
+        unsafe {
+            llvm::LLVMRustBuildVectorReduceAdd(self.llbuilder, src)
+        }
+    }
+    pub fn vector_reduce_mul(&self, src: ValueRef) -> ValueRef {
+        self.count_insn("vector.reduce.mul");
+        unsafe {
+            llvm::LLVMRustBuildVectorReduceMul(self.llbuilder, src)
+        }
+    }
+    pub fn vector_reduce_and(&self, src: ValueRef) -> ValueRef {
+        self.count_insn("vector.reduce.and");
+        unsafe {
+            llvm::LLVMRustBuildVectorReduceAnd(self.llbuilder, src)
+        }
+    }
+    pub fn vector_reduce_or(&self, src: ValueRef) -> ValueRef {
+        self.count_insn("vector.reduce.or");
+        unsafe {
+            llvm::LLVMRustBuildVectorReduceOr(self.llbuilder, src)
+        }
+    }
+    pub fn vector_reduce_xor(&self, src: ValueRef) -> ValueRef {
+        self.count_insn("vector.reduce.xor");
+        unsafe {
+            llvm::LLVMRustBuildVectorReduceXor(self.llbuilder, src)
+        }
+    }
+    pub fn vector_reduce_fmin_fast(&self, src: ValueRef) -> ValueRef {
+        self.count_insn("vector.reduce.fmin_fast");
+        unsafe {
+            let instr = llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, false);
+            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            instr
+        }
+    }
+    pub fn vector_reduce_fmax_fast(&self, src: ValueRef) -> ValueRef {
+        self.count_insn("vector.reduce.fmax_fast");
+        unsafe {
+            let instr = llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, false);
+            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            instr
+        }
+    }
+    pub fn vector_reduce_min(&self, src: ValueRef, is_signed: bool) -> ValueRef {
+        self.count_insn("vector.reduce.min");
+        unsafe {
+            llvm::LLVMRustBuildVectorReduceMin(self.llbuilder, src, is_signed)
+        }
+    }
+    pub fn vector_reduce_max(&self, src: ValueRef, is_signed: bool) -> ValueRef {
+        self.count_insn("vector.reduce.max");
+        unsafe {
+            llvm::LLVMRustBuildVectorReduceMax(self.llbuilder, src, is_signed)
+        }
+    }
+
     pub fn extract_value(&self, agg_val: ValueRef, idx: u64) -> ValueRef {
         self.count_insn("extractvalue");
         assert_eq!(idx as c_uint as u64, idx);
