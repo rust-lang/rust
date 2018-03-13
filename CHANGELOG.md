@@ -4,6 +4,41 @@
 
 ### Added
 
+- Add `ignore` configuration option.
+- Add `license_template_path` configuration option.
+- Format `lazy_static!`.
+
+### Fixed
+
+- Fix formatting bugs.
+- Support `dyn trait` syntax.
+- Support multiple patterns in `if let` and `while let`.
+- Support a pattern with parentheses.
+
+## [0.4.0] 2018-03-02
+
+### Changed
+
+- Do not print verbose outputs when formatting with stdin.
+- Preserve trailing whitespaces in doc comments.
+- Scale the values of width heuristics by `max_width`.
+
+### Fixed
+
+- Do not reorder items with `#[macro_use]`.
+- Fix formatting bugs.
+- Support the beginning `|` on a match arm.
+
+## [0.3.8] 2018-02-04
+
+### Added
+
+- Format (or at least try to format) `macro_rules!`.
+
+## [0.3.7] 2018-02-01
+
+### Added
+
 - Add `use_field_init_shorthand` config option.
 - Add `reorder_modules` configuration option.
 
