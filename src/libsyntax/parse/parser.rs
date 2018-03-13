@@ -1392,7 +1392,7 @@ impl<'a> Parser<'a> {
     /// Parse the items in a trait declaration
     pub fn parse_trait_item(&mut self, at_end: &mut bool) -> PResult<'a, TraitItem> {
         maybe_whole!(self, NtTraitItem, |x| x);
-        let attrs = self.parse_outer_attributes()?;
+        let attrs = self.parse_outer_attributes(true)?;
         let (mut item, tokens) = self.collect_tokens(|this| {
             this.parse_trait_item_(at_end, attrs)
         })?;
@@ -2123,7 +2123,7 @@ impl<'a> Parser<'a> {
 
     /// Parse ident (COLON expr)?
     pub fn parse_field(&mut self) -> PResult<'a, Field> {
-        let attrs = self.parse_outer_attributes()?;
+        let attrs = self.parse_outer_attributes(false)?;
         let lo = self.span;
         let hi;
 
@@ -2538,7 +2538,7 @@ impl<'a> Parser<'a> {
         if let Some(attrs) = already_parsed_attrs {
             Ok(attrs)
         } else {
-            self.parse_outer_attributes().map(|a| a.into())
+            self.parse_outer_attributes(false).map(|a| a.into())
         }
     }
 
@@ -2689,7 +2689,7 @@ impl<'a> Parser<'a> {
                             use print::pprust::PrintState;
                             s.popen()?;
                             s.print_expr(&e)?;
-                            s.s.word( ".")?;
+                            s.s.word(".")?;
                             s.print_usize(float.trunc() as usize)?;
                             s.pclose()?;
                             s.s.word(".")?;
@@ -3420,7 +3420,7 @@ impl<'a> Parser<'a> {
     pub fn parse_arm(&mut self) -> PResult<'a, Arm> {
         maybe_whole!(self, NtArm, |x| x);
 
-        let attrs = self.parse_outer_attributes()?;
+        let attrs = self.parse_outer_attributes(false)?;
         // Allow a '|' before the pats (RFC 1925)
         self.eat(&token::BinOp(token::Or));
         let pats = self.parse_pats()?;
@@ -3658,7 +3658,7 @@ impl<'a> Parser<'a> {
                 if self.check(&token::CloseDelim(token::Brace)) { break }
             }
 
-            let attrs = self.parse_outer_attributes()?;
+            let attrs = self.parse_outer_attributes(false)?;
             let lo = self.span;
             let hi;
 
@@ -4310,7 +4310,7 @@ impl<'a> Parser<'a> {
                                    -> PResult<'a, Option<Stmt>> {
         maybe_whole!(self, NtStmt, |x| Some(x));
 
-        let attrs = self.parse_outer_attributes()?;
+        let attrs = self.parse_outer_attributes(true)?;
         let lo = self.span;
 
         Ok(Some(if self.eat_keyword(keywords::Let) {
@@ -4797,7 +4797,7 @@ impl<'a> Parser<'a> {
         let mut params = Vec::new();
         let mut seen_ty_param = false;
         loop {
-            let attrs = self.parse_outer_attributes()?;
+            let attrs = self.parse_outer_attributes(true)?;
             if self.check_lifetime() {
                 let lifetime = self.expect_lifetime();
                 // Parse lifetime parameter.
@@ -5312,7 +5312,7 @@ impl<'a> Parser<'a> {
     /// Parse an impl item.
     pub fn parse_impl_item(&mut self, at_end: &mut bool) -> PResult<'a, ImplItem> {
         maybe_whole!(self, NtImplItem, |x| x);
-        let attrs = self.parse_outer_attributes()?;
+        let attrs = self.parse_outer_attributes(true)?;
         let (mut item, tokens) = self.collect_tokens(|this| {
             this.parse_impl_item_(at_end, attrs)
         })?;
@@ -5779,7 +5779,7 @@ impl<'a> Parser<'a> {
             &token::CloseDelim(token::Paren),
             SeqSep::trailing_allowed(token::Comma),
             |p| {
-                let attrs = p.parse_outer_attributes()?;
+                let attrs = p.parse_outer_attributes(true)?;
                 let lo = p.span;
                 let vis = p.parse_visibility(true)?;
                 let ty = p.parse_ty()?;
@@ -5826,7 +5826,7 @@ impl<'a> Parser<'a> {
 
     /// Parse an element of a struct definition
     fn parse_struct_decl_field(&mut self) -> PResult<'a, StructField> {
-        let attrs = self.parse_outer_attributes()?;
+        let attrs = self.parse_outer_attributes(true)?;
         let lo = self.span;
         let vis = self.parse_visibility(false)?;
         self.parse_single_struct_field(lo, vis, attrs)
@@ -6364,7 +6364,7 @@ impl<'a> Parser<'a> {
         let mut all_nullary = true;
         let mut any_disr = None;
         while self.token != token::CloseDelim(token::Brace) {
-            let variant_attrs = self.parse_outer_attributes()?;
+            let variant_attrs = self.parse_outer_attributes(true)?;
             let vlo = self.span;
 
             let struct_def;
@@ -6805,7 +6805,7 @@ impl<'a> Parser<'a> {
 
     /// Parse a foreign item.
     fn parse_foreign_item(&mut self) -> PResult<'a, Option<ForeignItem>> {
-        let attrs = self.parse_outer_attributes()?;
+        let attrs = self.parse_outer_attributes(true)?;
         let lo = self.span;
         let visibility = self.parse_visibility(false)?;
 
@@ -6936,7 +6936,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_item(&mut self) -> PResult<'a, Option<P<Item>>> {
-        let attrs = self.parse_outer_attributes()?;
+        let attrs = self.parse_outer_attributes(false)?;
 
         let (ret, tokens) = self.collect_tokens(|this| {
             this.parse_item_(attrs, true, false)

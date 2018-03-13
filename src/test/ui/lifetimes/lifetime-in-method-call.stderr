@@ -1,0 +1,18 @@
+error: found unexpected lifetime `'a`
+  --> $DIR/lifetime-in-method-call.rs:25:14
+   |
+LL |         foo(&'a x);
+   |              ^^ unexpected lifetime
+   |
+   = help: lifetimes are only appropriate in definitions
+
+error: found unexpected lifetime `'a`
+  --> $DIR/lifetime-in-method-call.rs:31:12
+   |
+LL |     s.foo(&'a mut x);
+   |            ^^ unexpected lifetime
+   |
+   = help: lifetimes are only appropriate in definitions
+
+error: aborting due to 2 previous errors
+
