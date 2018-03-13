@@ -883,6 +883,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    /// Whenever references are used by mistake, like `for (i, e) in &vec.iter().enumerate()`,
+    /// suggest removing these references until we reach a type that implements the trait.
     fn suggest_remove_reference(&self,
                                 obligation: &PredicateObligation<'tcx>,
                                 err: &mut DiagnosticBuilder<'tcx>,
@@ -896,16 +898,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 .take_while(|c| *c == '&')
                 .count();
 
-            let mut refs_remaining = refs_number;
             let mut trait_type = trait_ref.self_ty();
             let mut selcx = SelectionContext::new(self);
 
-            while refs_remaining > 0 {
+            for refs_remaining in 0..refs_number {
                 if let ty::TypeVariants::TyRef(_, ty::TypeAndMut{ ty: t_type, mutbl: _ }) =
                     trait_type.sty {
 
                     trait_type = t_type;
-                    refs_remaining -= 1;
 
                     let substs = self.tcx.mk_substs_trait(trait_type, &[]);
                     let new_trait_ref = ty::TraitRef::new(trait_ref.def_id, substs);
@@ -914,12 +914,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                          new_trait_ref.to_predicate());
 
                     if selcx.evaluate_obligation(&new_obligation) {
+                        let remove_refs = refs_remaining + 1;
+
                         let suggest_snippet = snippet.chars()
-                            .skip(refs_number)
+                            .filter(|c| !c.is_whitespace())
+                            .skip(remove_refs)
                             .collect::<String>();
 
                         err.span_suggestion(span,
-                                            "consider removing `&`s like",
+                                            &format!("consider removing {} references `&`",
+                                                    remove_refs),
                                             format!("{}", suggest_snippet));
 
                         break;
