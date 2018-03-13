@@ -123,7 +123,8 @@ macro_rules! from_str_float_impl {
             /// * '2.5E-10'
             /// * '5.'
             /// * '.5', or, equivalently,  '0.5'
-            /// * 'inf', '-inf', 'NaN'
+            /// * 'inf', `-inf`, or equivalently 'infinity', `-infinity` (case-insensitive)
+            /// * 'NaN' (case-insensitive)
             ///
             /// Leading and trailing whitespace represent an error.
             ///
@@ -215,10 +216,17 @@ fn dec2flt<T: RawFloat>(s: &str) -> Result<T, ParseFloatError> {
         ParseResult::Valid(decimal) => convert(decimal)?,
         ParseResult::ShortcutToInf => T::INFINITY,
         ParseResult::ShortcutToZero => T::ZERO,
-        ParseResult::Invalid => match s {
-            "inf" => T::INFINITY,
-            "NaN" => T::NAN,
-            _ => { return Err(pfe_invalid()); }
+        ParseResult::Invalid => {
+            let buf = [0; 8]
+                .get_mut(..s.len())
+                .ok_or_else(pfe_invalid)?;
+            buf.copy_from_slice(s.as_bytes());
+            buf.make_ascii_uppercase();
+            match &*buf {
+                b"INFINITY" | b"INF" => T::INFINITY,
+                b"NAN" => T::NAN,
+                _ => { return Err(pfe_invalid()); }
+            }
         }
     };
 

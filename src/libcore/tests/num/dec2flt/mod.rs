@@ -122,15 +122,23 @@ fn whitespace() {
 #[test]
 fn nan() {
     assert!("NaN".parse::<f32>().unwrap().is_nan());
+    assert!("NAN".parse::<f32>().unwrap().is_nan());
+    assert!("nan".parse::<f32>().unwrap().is_nan());
     assert!("NaN".parse::<f64>().unwrap().is_nan());
+    assert!("NAN".parse::<f64>().unwrap().is_nan());
+    assert!("nan".parse::<f64>().unwrap().is_nan());
 }
 
 #[test]
 fn inf() {
-    assert_eq!("inf".parse(), Ok(f64::INFINITY));
-    assert_eq!("-inf".parse(), Ok(f64::NEG_INFINITY));
-    assert_eq!("inf".parse(), Ok(f32::INFINITY));
+    assert_eq!("INF".parse(), Ok(f32::INFINITY));
     assert_eq!("-inf".parse(), Ok(f32::NEG_INFINITY));
+    assert_eq!("INFINITy".parse(), Ok(f32::INFINITY));
+    assert_eq!("-infinitY".parse(), Ok(f32::NEG_INFINITY));
+    assert_eq!("INF".parse(), Ok(f64::INFINITY));
+    assert_eq!("-inf".parse(), Ok(f64::NEG_INFINITY));
+    assert_eq!("INFINITy".parse(), Ok(f64::INFINITY));
+    assert_eq!("-infinitY".parse(), Ok(f64::NEG_INFINITY));
 }
 
 #[test]
