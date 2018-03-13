@@ -268,6 +268,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     &FnSig::from_fn_kind(&fk, generics, fd, defaultness),
                     mk_sp(s.lo(), b.span.lo()),
                     b,
+                    inner_attrs,
                 )
             }
             visit::FnKind::Closure(_) => unreachable!(),
@@ -381,13 +382,14 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 self.visit_static(&StaticParts::from_item(item));
             }
             ast::ItemKind::Fn(ref decl, unsafety, constness, abi, ref generics, ref body) => {
+                let inner_attrs = inner_attributes(&item.attrs);
                 self.visit_fn(
                     visit::FnKind::ItemFn(item.ident, unsafety, constness, abi, &item.vis, body),
                     generics,
                     decl,
                     item.span,
                     ast::Defaultness::Final,
-                    Some(&item.attrs),
+                    Some(&inner_attrs),
                 )
             }
             ast::ItemKind::Ty(ref ty, ref generics) => {
@@ -438,13 +440,14 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 self.push_rewrite(ti.span, rewrite);
             }
             ast::TraitItemKind::Method(ref sig, Some(ref body)) => {
+                let inner_attrs = inner_attributes(&ti.attrs);
                 self.visit_fn(
                     visit::FnKind::Method(ti.ident, sig, None, body),
                     &ti.generics,
                     &sig.decl,
                     ti.span,
                     ast::Defaultness::Final,
-                    Some(&ti.attrs),
+                    Some(&inner_attrs),
                 );
             }
             ast::TraitItemKind::Type(ref type_param_bounds, ref type_default) => {
@@ -473,13 +476,14 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
         match ii.node {
             ast::ImplItemKind::Method(ref sig, ref body) => {
+                let inner_attrs = inner_attributes(&ii.attrs);
                 self.visit_fn(
                     visit::FnKind::Method(ii.ident, sig, Some(&ii.vis), body),
                     &ii.generics,
                     &sig.decl,
                     ii.span,
                     ii.defaultness,
-                    Some(&ii.attrs),
+                    Some(&inner_attrs),
                 );
             }
             ast::ImplItemKind::Const(..) => self.visit_static(&StaticParts::from_impl_item(ii)),

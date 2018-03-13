@@ -50,7 +50,8 @@ pub fn rewrite_closure(
     if let ast::ExprKind::Block(ref block) = body.node {
         // The body of the closure is an empty block.
         if block.stmts.is_empty() && !block_contains_comment(block, context.codemap) {
-            return Some(format!("{} {{}}", prefix));
+            return body.rewrite(context, shape)
+                .map(|s| format!("{} {}", prefix, s));
         }
 
         let result = match fn_decl.output {
@@ -138,7 +139,7 @@ fn rewrite_closure_with_block(
         span: body.span,
         recovered: false,
     };
-    let block = ::expr::rewrite_block_with_visitor(context, "", &block, shape, false)?;
+    let block = ::expr::rewrite_block_with_visitor(context, "", &block, None, shape, false)?;
     Some(format!("{} {}", prefix, block))
 }
 
@@ -291,7 +292,8 @@ pub fn rewrite_last_closure(
     if let ast::ExprKind::Closure(capture, movability, ref fn_decl, ref body, _) = expr.node {
         let body = match body.node {
             ast::ExprKind::Block(ref block)
-                if !is_unsafe_block(block) && is_simple_block(block, context.codemap) =>
+                if !is_unsafe_block(block)
+                    && is_simple_block(block, Some(&body.attrs), context.codemap) =>
             {
                 stmt_expr(&block.stmts[0]).unwrap_or(body)
             }
