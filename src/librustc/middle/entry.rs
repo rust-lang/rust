@@ -165,7 +165,7 @@ fn configure_main(this: &mut EntryContext, crate_name: &str) {
     } else {
         // No main function
         let mut err = struct_err!(this.session, E0601,
-            "main function not found in crate {}", crate_name);
+            "`main` function not found in crate `{}`", crate_name);
         if !this.non_main_fns.is_empty() {
             // There were some functions named 'main' though. Try to give the user a hint.
             err.note("the main function must be defined at the crate level \
@@ -179,7 +179,7 @@ fn configure_main(this: &mut EntryContext, crate_name: &str) {
             this.session.abort_if_errors();
         } else {
             if let Some(ref filename) = this.session.local_crate_source_file {
-                err.note(&format!("consider adding a main function to {}", filename.display()));
+                err.note(&format!("consider adding a `main` function to `{}`", filename.display()));
             }
             if this.session.teach(&err.get_code().unwrap()) {
                 err.note("If you don't know the basics of Rust, you can go look to the Rust Book \

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: main function not found
+// error-pattern: `main` function not found
 
 // At time of authorship, a crate-level #![bench] with no `--test`
 // will cause compilation to error unconditionally with "main function

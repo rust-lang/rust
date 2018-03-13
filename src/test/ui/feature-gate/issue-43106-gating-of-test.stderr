@@ -1,6 +1,6 @@
-error[E0601]: main function not found in crate issue_43106_gating_of_test
+error[E0601]: `main` function not found in crate `issue_43106_gating_of_test`
    |
-   = note: consider adding a main function to $DIR/issue-43106-gating-of-test.rs
+   = note: consider adding a `main` function to `$DIR/issue-43106-gating-of-test.rs`
 
 error: aborting due to previous error
 
