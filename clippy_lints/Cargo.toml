@@ -16,18 +16,18 @@ license = "MPL-2.0"
 keywords = ["clippy", "lint", "plugin"]
 
 [dependencies]
-itertools = "0.6.0"
+itertools = "0.7"
 lazy_static = "1.0"
 matches = "0.1.2"
 quine-mc_cluskey = "0.2.2"
-regex-syntax = "0.4.0"
-semver = "0.6.0"
+regex-syntax = "0.5.0"
+semver = "0.9.0"
 serde = "1.0"
 serde_derive = "1.0"
 toml = "0.4"
 unicode-normalization = "0.1"
-pulldown-cmark = "0.0.15"
-url = "1.5.0"
+pulldown-cmark = "0.1"
+url = "1.7.0"
 if_chain = "0.1"
 
 [features]

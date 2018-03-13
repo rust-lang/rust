@@ -9,7 +9,7 @@ use std::io::{self, Write};
 
 extern crate cargo_metadata;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 const CARGO_CLIPPY_HELP: &str = r#"Checks a package to catch common mistakes and improve your Rust code.
 
@@ -61,17 +61,19 @@ pub fn main() {
 
     let manifest_path_arg = std::env::args()
         .skip(2)
-        .find(|val| val.starts_with("--manifest-path="));
+        .find(|val| val.starts_with("--manifest-path="))
+        .map(|val| val["--manifest-path=".len()..].to_owned());
 
     let mut metadata = if let Ok(metadata) = cargo_metadata::metadata(manifest_path_arg.as_ref().map(AsRef::as_ref)) {
         metadata
     } else {
+        println!("{:?}", cargo_metadata::metadata(manifest_path_arg.as_ref().map(AsRef::as_ref)));
         let _ = io::stderr().write_fmt(format_args!("error: Could not obtain cargo metadata.\n"));
         process::exit(101);
     };
 
     let manifest_path = manifest_path_arg.map(|arg| {
-        Path::new(&arg["--manifest-path=".len()..])
+        PathBuf::from(arg)
             .canonicalize()
             .expect("manifest path could not be canonicalized")
     });
