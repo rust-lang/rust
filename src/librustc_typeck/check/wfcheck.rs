@@ -251,7 +251,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                     match item.node {
                         hir::ItemStruct(..) => {
                             // last field in a struct may be unsized
-                            &variant.fields[..variant.fields.len()-1]
+                            &variant.fields[..variant.fields.len().max(1)-1]
                         }
                         hir::ItemUnion(..) => {
                             if variant.fields.len() == 1 {
