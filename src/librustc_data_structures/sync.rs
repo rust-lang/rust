@@ -333,6 +333,13 @@ impl<T> Lock<T> {
     }
 }
 
+impl<T: Default> Default for Lock<T> {
+    #[inline]
+    fn default() -> Self {
+        Lock::new(T::default())
+    }
+}
+
 // FIXME: Probably a bad idea
 impl<T: Clone> Clone for Lock<T> {
     #[inline]
