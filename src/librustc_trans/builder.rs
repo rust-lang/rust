@@ -958,6 +958,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn vector_reduce_fadd_fast(&self, acc: ValueRef, src: ValueRef) -> ValueRef {
         self.count_insn("vector.reduce.fadd_fast");
         unsafe {
+            // FIXME: add a non-fast math version once
+            // https://bugs.llvm.org/show_bug.cgi?id=36732
+            // is fixed.
             let instr = llvm::LLVMRustBuildVectorReduceFAdd(self.llbuilder, acc, src);
             llvm::LLVMRustSetHasUnsafeAlgebra(instr);
             instr
@@ -966,6 +969,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn vector_reduce_fmul_fast(&self, acc: ValueRef, src: ValueRef) -> ValueRef {
         self.count_insn("vector.reduce.fmul_fast");
         unsafe {
+            // FIXME: add a non-fast math version once
+            // https://bugs.llvm.org/show_bug.cgi?id=36732
+            // is fixed.
             let instr = llvm::LLVMRustBuildVectorReduceFMul(self.llbuilder, acc, src);
             llvm::LLVMRustSetHasUnsafeAlgebra(instr);
             instr
@@ -999,6 +1005,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.count_insn("vector.reduce.xor");
         unsafe {
             llvm::LLVMRustBuildVectorReduceXor(self.llbuilder, src)
+        }
+    }
+    pub fn vector_reduce_fmin(&self, src: ValueRef) -> ValueRef {
+        self.count_insn("vector.reduce.fmin");
+        unsafe {
+            llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, true)
+        }
+    }
+    pub fn vector_reduce_fmax(&self, src: ValueRef) -> ValueRef {
+        self.count_insn("vector.reduce.fmax");
+        unsafe {
+            llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, true)
         }
     }
     pub fn vector_reduce_fmin_fast(&self, src: ValueRef) -> ValueRef {

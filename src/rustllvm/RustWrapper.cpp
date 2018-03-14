@@ -1397,6 +1397,7 @@ LLVMRustModuleCost(LLVMModuleRef M) {
 }
 
 // Vector reductions:
+#if LLVM_VERSION_GE(6, 0)
 extern "C" LLVMValueRef
 LLVMRustBuildVectorReduceFAdd(LLVMBuilderRef B, LLVMValueRef Acc, LLVMValueRef Src) {
     return wrap(unwrap(B)->CreateFAddReduce(unwrap(Acc),unwrap(Src)));
@@ -1441,3 +1442,4 @@ extern "C" LLVMValueRef
 LLVMRustBuildVectorReduceFMax(LLVMBuilderRef B, LLVMValueRef Src, bool NoNaN) {
   return wrap(unwrap(B)->CreateFPMaxReduce(unwrap(Src), NoNaN));
 }
+#endif
