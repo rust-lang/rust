@@ -75,6 +75,7 @@
 #![feature(trusted_len)]
 #![feature(catch_expr)]
 #![feature(test)]
+#![feature(inclusive_range_fields)]
 
 #![recursion_limit="512"]
 

@@ -47,6 +47,7 @@
 #![feature(exact_chunks)]
 #![feature(atomic_nand)]
 #![feature(reverse_bits)]
+#![feature(inclusive_range_fields)]
 
 extern crate core;
 extern crate test;

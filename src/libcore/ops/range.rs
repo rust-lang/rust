@@ -283,6 +283,8 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// # Examples
 ///
 /// ```
+/// #![feature(inclusive_range_fields)]
+///
 /// assert_eq!((3..=5), std::ops::RangeInclusive { start: 3, end: 5 });
 /// assert_eq!(3 + 4 + 5, (3..=5).sum());
 ///
@@ -294,10 +296,10 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 pub struct RangeInclusive<Idx> {
     /// The lower bound of the range (inclusive).
-    #[stable(feature = "inclusive_range", since = "1.26.0")]
+    #[unstable(feature = "inclusive_range_fields", issue = "49022")]
     pub start: Idx,
     /// The upper bound of the range (inclusive).
-    #[stable(feature = "inclusive_range", since = "1.26.0")]
+    #[unstable(feature = "inclusive_range_fields", issue = "49022")]
     pub end: Idx,
 }
 

@@ -33,6 +33,7 @@
 #![feature(slice_patterns)]
 #![feature(conservative_impl_trait)]
 #![feature(optin_builtin_traits)]
+#![feature(inclusive_range_fields)]
 
 use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;
