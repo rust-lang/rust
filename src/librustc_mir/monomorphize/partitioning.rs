@@ -301,6 +301,11 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut codegen_units = FxHashMap();
     let is_incremental_build = tcx.sess.opts.incremental.is_some();
     let mut internalization_candidates = FxHashSet();
+
+    // Determine if monomorphizations instantiated in this crate will be made
+    // available to downstream crates. This depends on whether we are in
+    // share-generics mode and whether the current crate can even have
+    // downstream crates.
     let export_generics = tcx.share_generics() &&
                           tcx.local_crate_exports_generics();
 

@@ -762,14 +762,22 @@ fn should_monomorphize_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: 
                                                -> bool {
         debug_assert!(!def_id.is_local());
 
+        // If we are not in share generics mode, we don't link to upstream
+        // monomorphizations but always instantiate our own internal versions
+        // instead.
         if !tcx.share_generics() {
             return false
         }
 
+        // If this instance has no type parameters, it cannot be a shared
+        // monomorphization. Non-generic instances are already handled above
+        // by `is_reachable_non_generic()`
         if substs.types().next().is_none() {
             return false
         }
 
+        // Take a look at the available monomorphizations listed in the metadata
+        // of upstream crates.
         tcx.upstream_monomorphizations_for(def_id)
            .map(|set| set.contains_key(substs))
            .unwrap_or(false)
