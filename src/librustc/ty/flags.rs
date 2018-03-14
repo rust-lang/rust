@@ -179,10 +179,7 @@ impl FlagComputation {
                 self.add_ty(m.ty);
             }
 
-            &ty::TyTuple(ref ts, is_default) => {
-                if is_default {
-                    self.add_flags(TypeFlags::KEEP_IN_LOCAL_TCX);
-                }
+            &ty::TyTuple(ref ts) => {
                 self.add_tys(&ts[..]);
             }
 

@@ -788,7 +788,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 let tys : Vec<_> = substs.upvar_tys(def_id, self.tcx()).collect();
                 self.open_drop_for_tuple(&tys)
             }
-            ty::TyTuple(tys, _) => {
+            ty::TyTuple(tys) => {
                 self.open_drop_for_tuple(tys)
             }
             ty::TyAdt(def, _) if def.is_box() => {

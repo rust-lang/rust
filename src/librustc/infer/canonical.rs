@@ -609,12 +609,6 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
                 bug!("encountered a canonical type during canonicalization")
             }
 
-            // Replace a `()` that "would've fallen back" to `!` with just `()`.
-            ty::TyTuple(ref tys, true) => {
-                assert!(tys.is_empty());
-                self.tcx().mk_nil()
-            }
-
             ty::TyClosure(..)
             | ty::TyGenerator(..)
             | ty::TyGeneratorWitness(..)
@@ -634,7 +628,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
             | ty::TyFnPtr(_)
             | ty::TyDynamic(..)
             | ty::TyNever
-            | ty::TyTuple(_, false)
+            | ty::TyTuple(..)
             | ty::TyProjection(..)
             | ty::TyForeign(..)
             | ty::TyParam(..)

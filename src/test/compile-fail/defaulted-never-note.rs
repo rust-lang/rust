@@ -25,14 +25,17 @@ trait ImplementedForUnitButNotNever {}
 impl ImplementedForUnitButNotNever for () {}
 
 fn foo<T: ImplementedForUnitButNotNever>(_t: T) {}
+//~^ NOTE required by `foo`
 
 fn smeg() {
     let _x = return;
     foo(_x);
-    //~^ ERROR code relies on type
-    //~| WARNING previously accepted
+    //~^ ERROR the trait bound
+    //~| NOTE the trait `ImplementedForUnitButNotNever` is not implemented
+    //~| NOTE the trait is implemented for `()`
 }
 
 fn main() {
     smeg();
 }
+

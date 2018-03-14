@@ -448,7 +448,7 @@ fn arg_local_refs<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
 
             let arg_ty = fx.monomorphize(&arg_decl.ty);
             let tupled_arg_tys = match arg_ty.sty {
-                ty::TyTuple(ref tys, _) => tys,
+                ty::TyTuple(ref tys) => tys,
                 _ => bug!("spread argument isn't a tuple?!")
             };
 

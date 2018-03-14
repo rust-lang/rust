@@ -97,7 +97,7 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             Some(GeneratorWitnessSimplifiedType(tys.skip_binder().len()))
         }
         ty::TyNever => Some(NeverSimplifiedType),
-        ty::TyTuple(ref tys, _) => {
+        ty::TyTuple(ref tys) => {
             Some(TupleSimplifiedType(tys.len()))
         }
         ty::TyFnPtr(ref f) => {

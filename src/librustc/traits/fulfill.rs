@@ -330,11 +330,7 @@ fn process_predicate<'a, 'gcx, 'tcx>(
             if data.is_global() {
                 // no type variables present, can use evaluation for better caching.
                 // FIXME: consider caching errors too.
-                if
-                    // make defaulted unit go through the slow path for better warnings,
-                    // please remove this when the warnings are removed.
-                    !trait_obligation.predicate.skip_binder().self_ty().is_defaulted_unit() &&
-                    selcx.evaluate_obligation_conservatively(&obligation) {
+                if selcx.evaluate_obligation_conservatively(&obligation) {
                     debug!("selecting trait `{:?}` at depth {} evaluated to holds",
                            data, obligation.recursion_depth);
                     return Ok(Some(vec![]))

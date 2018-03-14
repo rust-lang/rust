@@ -334,7 +334,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // Check that all obligations are satisfied by the implementation's
         // version.
         if let Err(ref errors) = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx) {
-            infcx.report_fulfillment_errors(errors, None);
+            infcx.report_fulfillment_errors(errors, None, false);
             return Err(ErrorReported);
         }
 
@@ -839,7 +839,7 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // Check that all obligations are satisfied by the implementation's
         // version.
         if let Err(ref errors) = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx) {
-            infcx.report_fulfillment_errors(errors, None);
+            infcx.report_fulfillment_errors(errors, None, false);
             return;
         }
 

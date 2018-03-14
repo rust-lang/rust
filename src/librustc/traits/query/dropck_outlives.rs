@@ -236,7 +236,7 @@ fn trivial_dropck_outlives<'cx, 'tcx>(tcx: TyCtxt<'cx, '_, 'tcx>, ty: Ty<'tcx>) 
 
         // (T1..Tn) and closures have same properties as T1..Tn --
         // check if *any* of those are trivial.
-        ty::TyTuple(ref tys, _) => tys.iter().cloned().all(|t| trivial_dropck_outlives(tcx, t)),
+        ty::TyTuple(ref tys) => tys.iter().cloned().all(|t| trivial_dropck_outlives(tcx, t)),
         ty::TyClosure(def_id, ref substs) => substs
             .upvar_tys(def_id, tcx)
             .all(|t| trivial_dropck_outlives(tcx, t)),

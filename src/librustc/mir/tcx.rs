@@ -155,7 +155,7 @@ impl<'tcx> Rvalue<'tcx> {
                 let lhs_ty = lhs.ty(local_decls, tcx);
                 let rhs_ty = rhs.ty(local_decls, tcx);
                 let ty = op.ty(tcx, lhs_ty, rhs_ty);
-                tcx.intern_tup(&[ty, tcx.types.bool], false)
+                tcx.intern_tup(&[ty, tcx.types.bool])
             }
             Rvalue::UnaryOp(UnOp::Not, ref operand) |
             Rvalue::UnaryOp(UnOp::Neg, ref operand) => {
@@ -178,10 +178,7 @@ impl<'tcx> Rvalue<'tcx> {
                         tcx.mk_array(ty, ops.len() as u64)
                     }
                     AggregateKind::Tuple => {
-                        tcx.mk_tup(
-                            ops.iter().map(|op| op.ty(local_decls, tcx)),
-                            false
-                        )
+                        tcx.mk_tup(ops.iter().map(|op| op.ty(local_decls, tcx)))
                     }
                     AggregateKind::Adt(def, _, substs, _) => {
                         tcx.type_of(def.did).subst(tcx, substs)

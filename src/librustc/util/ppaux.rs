@@ -340,7 +340,7 @@ impl PrintContext {
 
         if !verbose && fn_trait_kind.is_some() && projections.len() == 1 {
             let projection_ty = projections[0].ty;
-            if let TyTuple(ref args, _) = substs.type_at(1).sty {
+            if let TyTuple(ref args) = substs.type_at(1).sty {
                 return self.fn_sig(f, args, false, projection_ty);
             }
         }
@@ -1013,7 +1013,7 @@ define_print! {
                     tm.print(f, cx)
                 }
                 TyNever => write!(f, "!"),
-                TyTuple(ref tys, _) => {
+                TyTuple(ref tys) => {
                     write!(f, "(")?;
                     let mut tys = tys.iter();
                     if let Some(&ty) = tys.next() {

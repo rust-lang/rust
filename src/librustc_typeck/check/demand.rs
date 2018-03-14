@@ -100,7 +100,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                               -> (Ty<'tcx>, Option<DiagnosticBuilder<'tcx>>) {
         let expected = self.resolve_type_vars_with_obligations(expected);
 
-        let e = match self.try_coerce(expr, checked_ty, self.diverges.get(), expected) {
+        let e = match self.try_coerce(expr, checked_ty, expected) {
             Ok(ty) => return (ty, None),
             Err(e) => e
         };

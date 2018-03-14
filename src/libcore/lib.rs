@@ -85,7 +85,7 @@
 #![feature(iterator_repeat_with)]
 #![feature(lang_items)]
 #![feature(link_llvm_intrinsics)]
-#![feature(never_type)]
+#![feature(exhaustive_patterns)]
 #![feature(no_core)]
 #![feature(on_unimplemented)]
 #![feature(optin_builtin_traits)]
@@ -103,6 +103,7 @@
 #![feature(unwind_attributes)]
 
 #![cfg_attr(stage0, allow(unused_attributes))]
+#![cfg_attr(stage0, feature(never_type))]
 
 #[prelude_import]
 #[allow(unused)]

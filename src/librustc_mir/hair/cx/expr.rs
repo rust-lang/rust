@@ -227,7 +227,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
                 let arg_tys = args.iter().map(|e| cx.tables().expr_ty_adjusted(e));
                 let tupled_args = Expr {
-                    ty: cx.tcx.mk_tup(arg_tys, false),
+                    ty: cx.tcx.mk_tup(arg_tys),
                     temp_lifetime,
                     span: expr.span,
                     kind: ExprKind::Tuple { fields: args.iter().map(ToRef::to_ref).collect() },

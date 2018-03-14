@@ -12,13 +12,9 @@
 #![allow(unused_assignments)]
 #![allow(dead_code)]
 #![deny(unreachable_code)]
-#![deny(coerce_never)]
-#![feature(never_type)]
 
 fn foo() {
-    let x: ! = ! { return; 22 }; //~ ERROR unreachable
-    //~^ ERROR cannot coerce
-    //~| hard error
+    let x: ! = ! { return; }; //~ ERROR unreachable
     //~| ERROR cannot apply unary operator `!` to type `!`
 }
 

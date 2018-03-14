@@ -298,7 +298,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     pub fn t_pair(&self, ty1: Ty<'tcx>, ty2: Ty<'tcx>) -> Ty<'tcx> {
-        self.infcx.tcx.intern_tup(&[ty1, ty2], false)
+        self.infcx.tcx.intern_tup(&[ty1, ty2])
     }
 
     pub fn t_param(&self, index: u32) -> Ty<'tcx> {
@@ -604,8 +604,8 @@ fn walk_ty() {
         let tcx = env.infcx.tcx;
         let int_ty = tcx.types.isize;
         let usize_ty = tcx.types.usize;
-        let tup1_ty = tcx.intern_tup(&[int_ty, usize_ty, int_ty, usize_ty], false);
-        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, usize_ty], false);
+        let tup1_ty = tcx.intern_tup(&[int_ty, usize_ty, int_ty, usize_ty]);
+        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, usize_ty]);
         let walked: Vec<_> = tup2_ty.walk().collect();
         assert_eq!(walked,
                    [tup2_ty, tup1_ty, int_ty, usize_ty, int_ty, usize_ty, tup1_ty, int_ty,
@@ -619,8 +619,8 @@ fn walk_ty_skip_subtree() {
         let tcx = env.infcx.tcx;
         let int_ty = tcx.types.isize;
         let usize_ty = tcx.types.usize;
-        let tup1_ty = tcx.intern_tup(&[int_ty, usize_ty, int_ty, usize_ty], false);
-        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, usize_ty], false);
+        let tup1_ty = tcx.intern_tup(&[int_ty, usize_ty, int_ty, usize_ty]);
+        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, usize_ty]);
 
         // types we expect to see (in order), plus a boolean saying
         // whether to skip the subtree.

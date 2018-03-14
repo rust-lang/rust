@@ -12,7 +12,6 @@
 #![allow(unused_assignments)]
 #![allow(dead_code)]
 #![deny(unreachable_code)]
-#![feature(never_type)]
 #![feature(type_ascription)]
 
 fn a() {
@@ -21,7 +20,7 @@ fn a() {
 }
 
 fn b() {
-    // the `array is unreachable:
+    // the array is unreachable:
     let x: [usize; 2] = [22, return]; //~ ERROR unreachable
 }
 

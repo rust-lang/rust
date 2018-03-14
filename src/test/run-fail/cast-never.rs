@@ -10,8 +10,6 @@
 
 // Test that we can explicitly cast ! to another type
 
-#![feature(never_type)]
-
 // error-pattern:explicit
 fn main() {
     let x: ! = panic!();

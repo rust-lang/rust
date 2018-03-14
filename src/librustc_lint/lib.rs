@@ -32,6 +32,7 @@
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
+#![cfg_attr(stage0, feature(never_type))]
 
 #[macro_use]
 extern crate syntax;
@@ -235,11 +236,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             epoch: None,
         },
         FutureIncompatibleInfo {
-            id: LintId::of(RESOLVE_TRAIT_ON_DEFAULTED_UNIT),
-            reference: "issue #39216 <https://github.com/rust-lang/rust/issues/39216>",
-            epoch: None,
-        },
-        FutureIncompatibleInfo {
             id: LintId::of(MISSING_FRAGMENT_SPECIFIER),
             reference: "issue #40107 <https://github.com/rust-lang/rust/issues/40107>",
             epoch: None,
@@ -272,11 +268,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         FutureIncompatibleInfo {
             id: LintId::of(INCOHERENT_FUNDAMENTAL_IMPLS),
             reference: "issue #46205 <https://github.com/rust-lang/rust/issues/46205>",
-            epoch: None,
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(COERCE_NEVER),
-            reference: "issue #46325 <https://github.com/rust-lang/rust/issues/46325>",
             epoch: None,
         },
         FutureIncompatibleInfo {
@@ -315,4 +306,8 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         "converted into hard error, see https://github.com/rust-lang/rust/issues/36892");
     store.register_removed("extra_requirement_in_impl",
         "converted into hard error, see https://github.com/rust-lang/rust/issues/37166");
+    store.register_removed("coerce_never",
+        "converted into hard error, see https://github.com/rust-lang/rust/issues/48950");
+    store.register_removed("resolve_trait_on_defaulted_unit",
+        "converted into hard error, see https://github.com/rust-lang/rust/issues/48950");
 }
