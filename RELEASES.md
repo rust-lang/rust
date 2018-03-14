@@ -60,6 +60,8 @@ Cargo
 Misc
 ----
 
+- [Rust by example is now shipped with new releases][46196]
+
 Compatibility Notes
 -------------------
 - [Deprecated `net::lookup_host`.][47510]
@@ -90,6 +92,7 @@ Compatibility Notes
 [46830]: https://github.com/rust-lang/rust/pull/46830
 [46095]: https://github.com/rust-lang/rust/pull/46095
 [46666]: https://github.com/rust-lang/rust/pull/46666
+[46196]: https://github.com/rust-lang/rust/pull/46196
 [cargo/5013]: https://github.com/rust-lang/cargo/pull/5013
 [cargo/5029]: https://github.com/rust-lang/cargo/pull/5029
 [RFC 1358]: https://github.com/rust-lang/rfcs/pull/1358
