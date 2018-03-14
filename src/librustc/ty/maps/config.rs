@@ -178,6 +178,18 @@ impl<'tcx> QueryDescription<'tcx> for queries::const_eval<'tcx> {
     fn describe(tcx: TyCtxt, key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>) -> String {
         format!("const-evaluating `{}`", tcx.item_path_str(key.value.instance.def.def_id()))
     }
+
+    #[inline]
+    fn cache_on_disk(_key: Self::Key) -> bool {
+        true
+    }
+
+    #[inline]
+    fn try_load_from_disk<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                              id: SerializedDepNodeIndex)
+                              -> Option<Self::Value> {
+        tcx.on_disk_query_result_cache.try_load_query_result(tcx, id).map(Ok)
+    }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::mir_keys<'tcx> {

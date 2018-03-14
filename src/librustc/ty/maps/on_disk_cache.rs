@@ -221,6 +221,24 @@ impl<'sess> OnDiskCache<'sess> {
                 encode_query_results::<symbol_name, _>(tcx, enc, qri)?;
                 encode_query_results::<check_match, _>(tcx, enc, qri)?;
                 encode_query_results::<trans_fn_attrs, _>(tcx, enc, qri)?;
+
+                // const eval is special, it only encodes successfully evaluated constants
+                use ty::maps::plumbing::GetCacheInternal;
+                for (key, entry) in const_eval::get_cache_internal(tcx).map.iter() {
+                    use ty::maps::config::QueryDescription;
+                    if const_eval::cache_on_disk(key.clone()) {
+                        if let Ok(ref value) = entry.value {
+                            let dep_node = SerializedDepNodeIndex::new(entry.index.index());
+
+                            // Record position of the cache entry
+                            qri.push((dep_node, AbsoluteBytePos::new(enc.position())));
+
+                            // Encode the type check tables with the SerializedDepNodeIndex
+                            // as tag.
+                            enc.encode_tagged(dep_node, value)?;
+                        }
+                    }
+                }
             }
 
             // Encode diagnostics
@@ -563,6 +581,7 @@ impl<'a, 'tcx, 'x> SpecializedDecoder<interpret::AllocId> for CacheDecoder<'a, '
                 tcx.interpret_interner.intern_at_reserved(alloc_id, allocation);
 
                 if let Some(glob) = Option::<DefId>::decode(self)? {
+                    trace!("connecting alloc {:?} with {:?}", alloc_id, glob);
                     tcx.interpret_interner.cache(glob, alloc_id);
                 }
 
