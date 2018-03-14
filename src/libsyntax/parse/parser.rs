@@ -784,7 +784,7 @@ impl<'a> Parser<'a> {
 
     fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, ast::Ident> {
         match self.token {
-            token::Ident(i, _) => {
+            token::Ident(i, is_raw) => {
                 if self.token.is_reserved_ident() {
                     let mut err = self.expected_ident_found();
                     if recover {
@@ -792,6 +792,9 @@ impl<'a> Parser<'a> {
                     } else {
                         return Err(err);
                     }
+                }
+                if is_raw {
+                    self.sess.raw_identifier_spans.borrow_mut().push(self.span);
                 }
                 self.bump();
                 Ok(i)

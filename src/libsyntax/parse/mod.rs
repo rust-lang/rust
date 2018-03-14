@@ -48,6 +48,9 @@ pub struct ParseSess {
     pub unstable_features: UnstableFeatures,
     pub config: CrateConfig,
     pub missing_fragment_specifiers: RefCell<HashSet<Span>>,
+    /// Places where raw identifiers were used. This is used for feature gating
+    /// raw identifiers
+    pub raw_identifier_spans: RefCell<Vec<Span>>,
     /// The registered diagnostics codes
     pub registered_diagnostics: Lock<ErrorMap>,
     // Spans where a `mod foo;` statement was included in a non-mod.rs file.
@@ -74,6 +77,7 @@ impl ParseSess {
             unstable_features: UnstableFeatures::from_environment(),
             config: HashSet::new(),
             missing_fragment_specifiers: RefCell::new(HashSet::new()),
+            raw_identifier_spans: RefCell::new(Vec::new()),
             registered_diagnostics: Lock::new(ErrorMap::new()),
             included_mod_stack: RefCell::new(vec![]),
             code_map,

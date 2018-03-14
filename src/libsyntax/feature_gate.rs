@@ -452,6 +452,9 @@ declare_features! (
 
     // `use path as _;` and `extern crate c as _;`
     (active, underscore_imports, "1.26.0", Some(48216), None),
+
+    // Raw identifiers allowing keyword names to be used
+    (active, raw_identifiers, "1.26.0", Some(48589), None),
 );
 
 declare_features! (
@@ -1932,6 +1935,17 @@ pub fn check_crate(krate: &ast::Crate,
         parse_sess: sess,
         plugin_attributes,
     };
+
+    if !features.raw_identifiers {
+        for &span in sess.raw_identifier_spans.borrow().iter() {
+            if !span.allows_unstable() {
+                gate_feature!(&ctx, raw_identifiers, span,
+                    "raw identifiers are experimental and subject to change"
+                );
+            }
+        }
+    }
+
     let visitor = &mut PostExpansionVisitor { context: &ctx };
     visitor.whole_crate_feature_gates(krate);
     visit::walk_crate(visitor, krate);

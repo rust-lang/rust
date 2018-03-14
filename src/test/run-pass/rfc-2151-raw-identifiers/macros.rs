@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(decl_macro)]
+#![feature(raw_identifiers)]
 
 r#macro_rules! r#struct {
     ($r#struct:expr) => { $r#struct }
