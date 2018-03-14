@@ -248,8 +248,8 @@ pub type TraitObligations<'tcx> = Vec<TraitObligation<'tcx>>;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum WhereClauseAtom<'tcx> {
-    Implemented(ty::PolyTraitPredicate<'tcx>),
-    ProjectionEq(ty::PolyProjectionPredicate<'tcx>),
+    Implemented(ty::TraitPredicate<'tcx>),
+    ProjectionEq(ty::ProjectionPredicate<'tcx>),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -259,13 +259,8 @@ pub enum DomainGoal<'tcx> {
     FromEnv(WhereClauseAtom<'tcx>),
     WellFormedTy(Ty<'tcx>),
     FromEnvTy(Ty<'tcx>),
-    RegionOutlives(ty::PolyRegionOutlivesPredicate<'tcx>),
-    TypeOutlives(ty::PolyTypeOutlivesPredicate<'tcx>),
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub enum LeafGoal<'tcx> {
-    DomainGoal(DomainGoal<'tcx>),
+    RegionOutlives(ty::RegionOutlivesPredicate<'tcx>),
+    TypeOutlives(ty::TypeOutlivesPredicate<'tcx>),
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -276,23 +271,30 @@ pub enum QuantifierKind {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Goal<'tcx> {
-    Implies(Vec<DomainGoal<'tcx>>, Box<Goal<'tcx>>),
+    Implies(Vec<Clause<'tcx>>, Box<Goal<'tcx>>),
     And(Box<Goal<'tcx>>, Box<Goal<'tcx>>),
     Not(Box<Goal<'tcx>>),
-    Leaf(LeafGoal<'tcx>),
+    DomainGoal(DomainGoal<'tcx>),
     Quantified(QuantifierKind, Box<ty::Binder<Goal<'tcx>>>)
 }
 
 impl<'tcx> From<DomainGoal<'tcx>> for Goal<'tcx> {
     fn from(domain_goal: DomainGoal<'tcx>) -> Self {
-        Goal::Leaf(LeafGoal::DomainGoal(domain_goal))
+        Goal::DomainGoal(domain_goal)
+    }
+}
+
+impl<'tcx> From<DomainGoal<'tcx>> for Clause<'tcx> {
+    fn from(domain_goal: DomainGoal<'tcx>) -> Self {
+        Clause::DomainGoal(domain_goal)
     }
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
-pub struct ProgramClause<'tcx> {
-    pub consequence: DomainGoal<'tcx>,
-    pub conditions: Vec<Goal<'tcx>>,
+pub enum Clause<'tcx> {
+    Implies(Vec<Goal<'tcx>>, DomainGoal<'tcx>),
+    DomainGoal(DomainGoal<'tcx>),
+    ForAll(Box<ty::Binder<Clause<'tcx>>>),
 }
 
 pub fn dump_program_clauses<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {

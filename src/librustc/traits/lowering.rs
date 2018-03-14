@@ -11,8 +11,8 @@
 use hir::{self, ImplPolarity};
 use hir::def_id::DefId;
 use hir::intravisit::{self, NestedVisitorMap, Visitor};
-use ty::{self, PolyTraitPredicate, TraitPredicate, PolyProjectionPredicate, TyCtxt, Predicate};
-use super::{DomainGoal, ProgramClause, WhereClauseAtom};
+use ty::{self, TyCtxt};
+use super::{QuantifierKind, Goal, DomainGoal, Clause, WhereClauseAtom};
 use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 
@@ -26,13 +26,13 @@ impl<T, U> Lower<Vec<U>> for Vec<T> where T: Lower<U> {
     }
 }
 
-impl<'tcx> Lower<WhereClauseAtom<'tcx>> for PolyTraitPredicate<'tcx> {
+impl<'tcx> Lower<WhereClauseAtom<'tcx>> for ty::TraitPredicate<'tcx> {
     fn lower(&self) -> WhereClauseAtom<'tcx> {
         WhereClauseAtom::Implemented(*self)
     }
 }
 
-impl<'tcx> Lower<WhereClauseAtom<'tcx>> for PolyProjectionPredicate<'tcx> {
+impl<'tcx> Lower<WhereClauseAtom<'tcx>> for ty::ProjectionPredicate<'tcx> {
     fn lower(&self) -> WhereClauseAtom<'tcx> {
         WhereClauseAtom::ProjectionEq(*self)
     }
@@ -44,27 +44,52 @@ impl<'tcx, T> Lower<DomainGoal<'tcx>> for T where T: Lower<WhereClauseAtom<'tcx>
     }
 }
 
-impl<'tcx> Lower<DomainGoal<'tcx>> for Predicate<'tcx> {
+impl<'tcx> Lower<DomainGoal<'tcx>> for ty::RegionOutlivesPredicate<'tcx> {
     fn lower(&self) -> DomainGoal<'tcx> {
-        use self::Predicate::*;
+        DomainGoal::RegionOutlives(*self)
+    }
+}
 
-        match *self {
+impl<'tcx> Lower<DomainGoal<'tcx>> for ty::TypeOutlivesPredicate<'tcx> {
+    fn lower(&self) -> DomainGoal<'tcx> {
+        DomainGoal::TypeOutlives(*self)
+    }
+}
+
+impl<'tcx, T> Lower<Goal<'tcx>> for ty::Binder<T>
+    where T: Lower<DomainGoal<'tcx>> + ty::fold::TypeFoldable<'tcx> + Copy
+{
+    fn lower(&self) -> Goal<'tcx> {
+        match self.no_late_bound_regions() {
+            Some(p) => p.lower().into(),
+            None => Goal::Quantified(
+                QuantifierKind::Universal,
+                Box::new(self.map_bound(|p| p.lower().into()))
+            ),
+        }
+    }
+}
+
+impl<'tcx> Lower<Goal<'tcx>> for ty::Predicate<'tcx> {
+    fn lower(&self) -> Goal<'tcx> {
+        use ty::Predicate::*;
+
+        match self {
             Trait(predicate) => predicate.lower(),
-            RegionOutlives(predicate) => DomainGoal::RegionOutlives(predicate),
-            TypeOutlives(predicate) => DomainGoal::TypeOutlives(predicate),
+            RegionOutlives(predicate) => predicate.lower(),
+            TypeOutlives(predicate) => predicate.lower(),
             Projection(predicate) => predicate.lower(),
-            WellFormed(ty) => DomainGoal::WellFormedTy(ty),
+            WellFormed(ty) => DomainGoal::WellFormedTy(*ty).into(),
             ObjectSafe(..) |
             ClosureKind(..) |
             Subtype(..) |
             ConstEvaluatable(..) => unimplemented!(),
-
         }
     }
 }
 
 pub fn program_clauses_for<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
-    -> Lrc<Vec<ProgramClause<'tcx>>>
+    -> Lrc<Vec<Clause<'tcx>>>
 {
     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
     let item = tcx.hir.expect_item(node_id);
@@ -75,21 +100,17 @@ pub fn program_clauses_for<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
 }
 
 fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
-    -> Lrc<Vec<ProgramClause<'tcx>>>
+    -> Lrc<Vec<Clause<'tcx>>>
 {
     if let ImplPolarity::Negative = tcx.impl_polarity(def_id) {
         return Lrc::new(vec![]);
     }
 
     let trait_ref = tcx.impl_trait_ref(def_id).unwrap();
-    let trait_ref = ty::Binder(TraitPredicate { trait_ref }).lower();
+    let trait_ref = ty::TraitPredicate { trait_ref }.lower();
     let where_clauses = tcx.predicates_of(def_id).predicates.lower();
 
-    let clause = ProgramClause {
-        consequence: trait_ref,
-        conditions: where_clauses.into_iter().map(|wc| wc.into()).collect(),
-    };
-
+    let clause = Clause::Implies(where_clauses, trait_ref);
     Lrc::new(vec![clause])
 }
 
