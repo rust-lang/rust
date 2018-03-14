@@ -1484,6 +1484,12 @@ fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
         args.push(arg.to_string_lossy().to_string());
     }
 
+    // Avoid printing help because of empty args. This can suggest the compiler
+    // itself is not the program root (consider RLS).
+    if args.len() < 2 {
+        return None;
+    }
+
     let matches = if let Some(matches) = handle_options(&args) {
         matches
     } else {
