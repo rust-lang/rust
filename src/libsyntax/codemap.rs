@@ -124,13 +124,17 @@ impl StableFilemapId {
 // CodeMap
 //
 
+pub(super) struct CodeMapFiles {
+    pub(super) file_maps: Vec<Lrc<FileMap>>,
+    stable_id_to_filemap: FxHashMap<StableFilemapId, Lrc<FileMap>>
+}
+
 pub struct CodeMap {
-    pub(super) files: Lock<Vec<Lrc<FileMap>>>,
+    pub(super) files: Lock<CodeMapFiles>,
     file_loader: Box<FileLoader + Sync + Send>,
     // This is used to apply the file path remapping as specified via
     // --remap-path-prefix to all FileMaps allocated within this CodeMap.
     path_mapping: FilePathMapping,
-    stable_id_to_filemap: Lock<FxHashMap<StableFilemapId, Lrc<FileMap>>>,
     /// In case we are in a doctest, replace all file names with the PathBuf,
     /// and add the given offsets to the line info
     doctest_offset: Option<(FileName, isize)>,
@@ -139,10 +143,12 @@ pub struct CodeMap {
 impl CodeMap {
     pub fn new(path_mapping: FilePathMapping) -> CodeMap {
         CodeMap {
-            files: Lock::new(Vec::new()),
+            files: Lock::new(CodeMapFiles {
+                file_maps: Vec::new(),
+                stable_id_to_filemap: FxHashMap(),
+            }),
             file_loader: Box::new(RealFileLoader),
             path_mapping,
-            stable_id_to_filemap: Lock::new(FxHashMap()),
             doctest_offset: None,
         }
     }
@@ -160,10 +166,12 @@ impl CodeMap {
                             path_mapping: FilePathMapping)
                             -> CodeMap {
         CodeMap {
-            files: Lock::new(Vec::new()),
+            files: Lock::new(CodeMapFiles {
+                file_maps: Vec::new(),
+                stable_id_to_filemap: FxHashMap(),
+            }),
             file_loader: file_loader,
             path_mapping,
-            stable_id_to_filemap: Lock::new(FxHashMap()),
             doctest_offset: None,
         }
     }
@@ -187,16 +195,15 @@ impl CodeMap {
     }
 
     pub fn files(&self) -> LockGuard<Vec<Lrc<FileMap>>> {
-        self.files.borrow()
+        LockGuard::map(self.files.borrow(), |files| &mut files.file_maps)
     }
 
     pub fn filemap_by_stable_id(&self, stable_id: StableFilemapId) -> Option<Lrc<FileMap>> {
-        self.stable_id_to_filemap.borrow().get(&stable_id).map(|fm| fm.clone())
+        self.files.borrow().stable_id_to_filemap.get(&stable_id).map(|fm| fm.clone())
     }
 
     fn next_start_pos(&self) -> usize {
-        let files = self.files.borrow();
-        match files.last() {
+        match self.files.borrow().file_maps.last() {
             None => 0,
             // Add one so there is some space between files. This lets us distinguish
             // positions in the codemap, even in the presence of zero-length files.
@@ -206,6 +213,7 @@ impl CodeMap {
 
     /// Creates a new filemap without setting its line information. If you don't
     /// intend to set the line information yourself, you should use new_filemap_and_lines.
+    /// This does not ensure that only one FileMap exists per file name.
     pub fn new_filemap(&self, filename: FileName, src: String) -> Lrc<FileMap> {
         let start_pos = self.next_start_pos();
 
@@ -231,16 +239,16 @@ impl CodeMap {
             Pos::from_usize(start_pos),
         ));
 
-        self.files.borrow_mut().push(filemap.clone());
+        let mut files = self.files.borrow_mut();
 
-        self.stable_id_to_filemap
-            .borrow_mut()
-            .insert(StableFilemapId::new(&filemap), filemap.clone());
+        files.file_maps.push(filemap.clone());
+        files.stable_id_to_filemap.insert(StableFilemapId::new(&filemap), filemap.clone());
 
         filemap
     }
 
     /// Creates a new filemap and sets its line information.
+    /// This does not ensure that only one FileMap exists per file name.
     pub fn new_filemap_and_lines(&self, filename: &Path, src: &str) -> Lrc<FileMap> {
         let fm = self.new_filemap(filename.to_owned().into(), src.to_owned());
         let mut byte_pos: u32 = fm.start_pos.0;
@@ -303,11 +311,10 @@ impl CodeMap {
             name_hash,
         });
 
-        self.files.borrow_mut().push(filemap.clone());
+        let mut files = self.files.borrow_mut();
 
-        self.stable_id_to_filemap
-            .borrow_mut()
-            .insert(StableFilemapId::new(&filemap), filemap.clone());
+        files.file_maps.push(filemap.clone());
+        files.stable_id_to_filemap.insert(StableFilemapId::new(&filemap), filemap.clone());
 
         filemap
     }
@@ -398,7 +405,7 @@ impl CodeMap {
     pub fn lookup_line(&self, pos: BytePos) -> Result<FileMapAndLine, Lrc<FileMap>> {
         let idx = self.lookup_filemap_idx(pos);
 
-        let f = (*self.files.borrow())[idx].clone();
+        let f = (*self.files.borrow().file_maps)[idx].clone();
 
         match f.lookup_line(pos) {
             Some(line) => Ok(FileMapAndLine { fm: f, line: line }),
@@ -452,7 +459,7 @@ impl CodeMap {
     }
 
     pub fn span_to_string(&self, sp: Span) -> String {
-        if self.files.borrow().is_empty() && sp.source_equal(&DUMMY_SP) {
+        if self.files.borrow().file_maps.is_empty() && sp.source_equal(&DUMMY_SP) {
             return "no-location".to_string();
         }
 
@@ -787,7 +794,7 @@ impl CodeMap {
     }
 
     pub fn get_filemap(&self, filename: &FileName) -> Option<Lrc<FileMap>> {
-        for fm in self.files.borrow().iter() {
+        for fm in self.files.borrow().file_maps.iter() {
             if *filename == fm.name {
                 return Some(fm.clone());
             }
@@ -798,7 +805,7 @@ impl CodeMap {
     /// For a global BytePos compute the local offset within the containing FileMap
     pub fn lookup_byte_offset(&self, bpos: BytePos) -> FileMapAndBytePos {
         let idx = self.lookup_filemap_idx(bpos);
-        let fm = (*self.files.borrow())[idx].clone();
+        let fm = (*self.files.borrow().file_maps)[idx].clone();
         let offset = bpos - fm.start_pos;
         FileMapAndBytePos {fm: fm, pos: offset}
     }
@@ -806,7 +813,7 @@ impl CodeMap {
     /// Converts an absolute BytePos to a CharPos relative to the filemap.
     pub fn bytepos_to_file_charpos(&self, bpos: BytePos) -> CharPos {
         let idx = self.lookup_filemap_idx(bpos);
-        let map = &(*self.files.borrow())[idx];
+        let map = &(*self.files.borrow().file_maps)[idx];
 
         // The number of extra bytes due to multibyte chars in the FileMap
         let mut total_extra_bytes = 0;
@@ -832,7 +839,7 @@ impl CodeMap {
     // Return the index of the filemap (in self.files) which contains pos.
     pub fn lookup_filemap_idx(&self, pos: BytePos) -> usize {
         let files = self.files.borrow();
-        let files = &*files;
+        let files = &files.file_maps;
         let count = files.len();
 
         // Binary search for the filemap.
