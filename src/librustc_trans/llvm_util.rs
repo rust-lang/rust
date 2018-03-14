@@ -104,7 +104,7 @@ const POWERPC_WHITELIST: &'static [&'static str] = &["altivec",
                                                      "power8-vector", "power9-vector",
                                                      "vsx"];
 
-const MIPS_WHITELIST: &'static [&'static str] = &["msa"];
+const MIPS_WHITELIST: &'static [&'static str] = &["fp64", "msa"];
 
 pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> &'a str {
     let arch = if sess.target.target.arch == "x86_64" {
