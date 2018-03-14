@@ -1089,7 +1089,9 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(trans: &TransCrate,
 
         time(sess, "lint checking", || lint::check_crate(tcx));
 
-        time(sess, "dumping chalk-like clauses", || traits::dump_program_clauses(tcx));
+        time(sess,
+             "dumping chalk-like clauses",
+             || rustc_traits::lowering::dump_program_clauses(tcx));
 
         return Ok(f(tcx, analysis, rx, tcx.sess.compile_status()));
     })

@@ -63,7 +63,6 @@ mod specialize;
 mod structural_impls;
 pub mod trans;
 mod util;
-mod lowering;
 
 pub mod query;
 
@@ -295,10 +294,6 @@ pub enum Clause<'tcx> {
     Implies(Vec<Goal<'tcx>>, DomainGoal<'tcx>),
     DomainGoal(DomainGoal<'tcx>),
     ForAll(Box<ty::Binder<Clause<'tcx>>>),
-}
-
-pub fn dump_program_clauses<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    lowering::dump_program_clauses(tcx)
 }
 
 pub type Selection<'tcx> = Vtable<'tcx, PredicateObligation<'tcx>>;
@@ -972,7 +967,6 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         specialization_graph_of: specialize::specialization_graph_provider,
         specializes: specialize::specializes,
         trans_fulfill_obligation: trans::trans_fulfill_obligation,
-        program_clauses_for: lowering::program_clauses_for,
         vtable_methods,
         substitute_normalize_and_test_predicates,
         ..*providers

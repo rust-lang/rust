@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use hir::{self, ImplPolarity};
-use hir::def_id::DefId;
-use hir::intravisit::{self, NestedVisitorMap, Visitor};
-use ty::{self, TyCtxt};
-use super::{QuantifierKind, Goal, DomainGoal, Clause, WhereClauseAtom};
-use rustc_data_structures::sync::Lrc;
+use rustc::hir::{self, ImplPolarity};
+use rustc::hir::def_id::DefId;
+use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc::ty::{self, TyCtxt};
+use rustc::traits::{QuantifierKind, Goal, DomainGoal, Clause, WhereClauseAtom};
 use syntax::ast;
+use rustc_data_structures::sync::Lrc;
 
 trait Lower<T> {
     fn lower(&self) -> T;
@@ -72,7 +72,7 @@ impl<'tcx, T> Lower<Goal<'tcx>> for ty::Binder<T>
 
 impl<'tcx> Lower<Goal<'tcx>> for ty::Predicate<'tcx> {
     fn lower(&self) -> Goal<'tcx> {
-        use ty::Predicate::*;
+        use rustc::ty::Predicate::*;
 
         match self {
             Trait(predicate) => predicate.lower(),
@@ -88,7 +88,7 @@ impl<'tcx> Lower<Goal<'tcx>> for ty::Predicate<'tcx> {
     }
 }
 
-pub fn program_clauses_for<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
+crate fn program_clauses_for<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
     -> Lrc<Vec<Clause<'tcx>>>
 {
     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
