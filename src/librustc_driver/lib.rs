@@ -1147,6 +1147,15 @@ fn usage(verbose: bool, include_unstable_options: bool) {
              verbose_help);
 }
 
+fn print_wall_help() {
+    println!("
+The flag `-Wall` does not exist in `rustc`. Most useful lints are enabled by
+default. Use `rustc -W help` to see all available lints. It's more common to put
+warning settings in the crate root using `#![warn(LINT_NAME)]` instead of using
+the command line flag directly.
+");
+}
+
 fn describe_lints(sess: &Session, lint_store: &lint::LintStore, loaded_plugins: bool) {
     println!("
 Available lint options:
@@ -1388,6 +1397,13 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
         // historically.
         usage(matches.opt_present("verbose"),
               nightly_options::is_unstable_enabled(&matches));
+        return None;
+    }
+
+    // Handle the special case of -Wall.
+    let wall = matches.opt_strs("W");
+    if wall.iter().any(|x| *x == "all") {
+        print_wall_help();
         return None;
     }
 
