@@ -233,7 +233,7 @@ use rustc::util::nodemap::FxHashMap;
 use errors::DiagnosticBuilder;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
-use rustc_back::target::Target;
+use rustc_back::target::{Target, TargetTriple};
 
 use std::cmp;
 use std::fmt;
@@ -258,7 +258,7 @@ pub struct Context<'a> {
     pub hash: Option<&'a Svh>,
     // points to either self.sess.target.target or self.sess.host, must match triple
     pub target: &'a Target,
-    pub triple: &'a str,
+    pub triple: &'a TargetTriple,
     pub filesearch: FileSearch<'a>,
     pub root: &'a Option<CratePaths>,
     pub rejected_via_hash: Vec<CrateMismatch>,
@@ -394,7 +394,7 @@ impl<'a> Context<'a> {
                                            add);
 
             if (self.ident == "std" || self.ident == "core")
-                && self.triple != config::host_triple() {
+                && self.triple != &TargetTriple::from_triple(config::host_triple()) {
                 err.note(&format!("the `{}` target may not be installed", self.triple));
             }
             err.span_label(self.span, "can't find crate");
@@ -698,13 +698,13 @@ impl<'a> Context<'a> {
             }
         }
 
-        if root.triple != self.triple {
+        if &root.triple != self.triple {
             info!("Rejecting via crate triple: expected {} got {}",
                   self.triple,
                   root.triple);
             self.rejected_via_triple.push(CrateMismatch {
                 path: libpath.to_path_buf(),
-                got: root.triple,
+                got: format!("{}", root.triple),
             });
             return None;
         }

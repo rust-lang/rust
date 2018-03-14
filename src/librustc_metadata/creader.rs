@@ -22,6 +22,7 @@ use rustc::middle::cstore::DepKind;
 use rustc::session::{Session, CrateDisambiguator};
 use rustc::session::config::{Sanitizer, self};
 use rustc_back::PanicStrategy;
+use rustc_back::target::TargetTriple;
 use rustc::session::search_paths::PathKind;
 use rustc::middle;
 use rustc::middle::cstore::{validate_crate_name, ExternCrate};
@@ -295,7 +296,7 @@ impl<'a> CrateLoader<'a> {
 
                 let mut proc_macro_locator = locator::Context {
                     target: &self.sess.host,
-                    triple: config::host_triple(),
+                    triple: &TargetTriple::from_triple(config::host_triple()),
                     filesearch: self.sess.host_filesearch(path_kind),
                     rejected_via_hash: vec![],
                     rejected_via_triple: vec![],
@@ -339,7 +340,7 @@ impl<'a> CrateLoader<'a> {
         // don't want to match a host crate against an equivalent target one
         // already loaded.
         let root = library.metadata.get_root();
-        if locate_ctxt.triple == self.sess.opts.target_triple {
+        if locate_ctxt.triple == &self.sess.opts.target_triple {
             let mut result = LoadResult::Loaded(library);
             self.cstore.iter_crate_data(|cnum, data| {
                 if data.name() == root.name && root.hash == data.hash() {
@@ -426,8 +427,9 @@ impl<'a> CrateLoader<'a> {
     fn read_extension_crate(&mut self, span: Span, orig_name: Symbol, rename: Symbol)
                             -> ExtensionCrate {
         info!("read extension crate `extern crate {} as {}`", orig_name, rename);
-        let target_triple = &self.sess.opts.target_triple[..];
-        let is_cross = target_triple != config::host_triple();
+        let target_triple = &self.sess.opts.target_triple;
+        let host_triple = TargetTriple::from_triple(config::host_triple());
+        let is_cross = target_triple != &host_triple;
         let mut target_only = false;
         let mut locate_ctxt = locator::Context {
             sess: self.sess,
@@ -437,7 +439,7 @@ impl<'a> CrateLoader<'a> {
             hash: None,
             filesearch: self.sess.host_filesearch(PathKind::Crate),
             target: &self.sess.host,
-            triple: config::host_triple(),
+            triple: &host_triple,
             root: &None,
             rejected_via_hash: vec![],
             rejected_via_triple: vec![],

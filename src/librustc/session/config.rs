@@ -21,7 +21,7 @@ use session::search_paths::SearchPaths;
 
 use ich::StableHashingContext;
 use rustc_back::{LinkerFlavor, PanicStrategy, RelroLevel};
-use rustc_back::target::Target;
+use rustc_back::target::{Target, TargetTriple};
 use rustc_data_structures::stable_hasher::ToStableHashKey;
 use lint;
 use middle::cstore;
@@ -367,7 +367,7 @@ top_level_options!(
         libs: Vec<(String, Option<String>, Option<cstore::NativeLibraryKind>)> [TRACKED],
         maybe_sysroot: Option<PathBuf> [TRACKED],
 
-        target_triple: String [TRACKED],
+        target_triple: TargetTriple [TRACKED],
 
         test: bool [TRACKED],
         error_format: ErrorOutputType [UNTRACKED],
@@ -567,7 +567,7 @@ pub fn basic_options() -> Options {
         output_types: OutputTypes(BTreeMap::new()),
         search_paths: SearchPaths::new(),
         maybe_sysroot: None,
-        target_triple: host_triple().to_string(),
+        target_triple: TargetTriple::from_triple(host_triple()),
         test: false,
         incremental: None,
         debugging_opts: basic_debugging_options(),
@@ -1903,9 +1903,15 @@ pub fn build_session_options_and_crate_config(
     let cg = cg;
 
     let sysroot_opt = matches.opt_str("sysroot").map(|m| PathBuf::from(&m));
-    let target = matches
-        .opt_str("target")
-        .unwrap_or(host_triple().to_string());
+    let target_triple = if let Some(target) = matches.opt_str("target") {
+        if target.ends_with(".json") {
+            TargetTriple::TargetPath(PathBuf::from(target))
+        } else {
+            TargetTriple::TargetTriple(target)
+        }
+    } else {
+        TargetTriple::from_triple(host_triple())
+    };
     let opt_level = {
         if matches.opt_present("O") {
             if cg.opt_level.is_some() {
@@ -2113,7 +2119,7 @@ pub fn build_session_options_and_crate_config(
             output_types: OutputTypes(output_types),
             search_paths,
             maybe_sysroot: sysroot_opt,
-            target_triple: target,
+            target_triple,
             test,
             incremental,
             debugging_opts,
@@ -2264,6 +2270,7 @@ mod dep_tracking {
                 Passes, Sanitizer};
     use syntax::feature_gate::UnstableFeatures;
     use rustc_back::{PanicStrategy, RelroLevel};
+    use rustc_back::target::TargetTriple;
 
     pub trait DepTrackingHash {
         fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType);
@@ -2323,6 +2330,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Sanitizer);
     impl_dep_tracking_hash_via_hash!(Option<Sanitizer>);
     impl_dep_tracking_hash_via_hash!(Edition);
+    impl_dep_tracking_hash_via_hash!(TargetTriple);
 
     impl_dep_tracking_hash_for_sortable_vec_of!(String);
     impl_dep_tracking_hash_for_sortable_vec_of!(PathBuf);

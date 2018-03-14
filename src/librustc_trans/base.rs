@@ -73,6 +73,7 @@ use type_of::LayoutLlvmExt;
 use rustc::util::nodemap::{FxHashMap, FxHashSet, DefIdSet};
 use CrateInfo;
 use rustc_data_structures::sync::Lrc;
+use rustc_back::target::TargetTriple;
 
 use std::any::Any;
 use std::collections::BTreeMap;
@@ -1079,7 +1080,7 @@ impl CrateInfo {
         let load_wasm_items = tcx.sess.crate_types.borrow()
             .iter()
             .any(|c| *c != config::CrateTypeRlib) &&
-            tcx.sess.opts.target_triple == "wasm32-unknown-unknown";
+            tcx.sess.opts.target_triple == TargetTriple::from_triple("wasm32-unknown-unknown");
 
         if load_wasm_items {
             info!("attempting to load all wasm sections");

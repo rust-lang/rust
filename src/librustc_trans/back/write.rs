@@ -848,7 +848,7 @@ unsafe fn embed_bitcode(cgcx: &CodegenContext,
         "rustc.embedded.module\0".as_ptr() as *const _,
     );
     llvm::LLVMSetInitializer(llglobal, llconst);
-    let section = if cgcx.opts.target_triple.contains("-ios") {
+    let section = if cgcx.opts.target_triple.triple().contains("-ios") {
         "__LLVM,__bitcode\0"
     } else {
         ".llvmbc\0"
@@ -863,7 +863,7 @@ unsafe fn embed_bitcode(cgcx: &CodegenContext,
         "rustc.embedded.cmdline\0".as_ptr() as *const _,
     );
     llvm::LLVMSetInitializer(llglobal, llconst);
-    let section = if cgcx.opts.target_triple.contains("-ios") {
+    let section = if cgcx.opts.target_triple.triple().contains("-ios") {
         "__LLVM,__cmdline\0"
     } else {
         ".llvmcmd\0"
