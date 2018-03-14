@@ -161,12 +161,12 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
                  -> Ty<'tcx> {
         let ty = {
             let mut interner = self.type_.borrow_mut();
-            let global_interner = global_interners.map(|interners| {
-                interners.type_.borrow_mut()
-            });
             if let Some(&Interned(ty)) = interner.get(&st) {
                 return ty;
             }
+            let global_interner = global_interners.map(|interners| {
+                interners.type_.borrow_mut()
+            });
             if let Some(ref interner) = global_interner {
                 if let Some(&Interned(ty)) = interner.get(&st) {
                     return ty;
