@@ -1181,8 +1181,8 @@ fn generic_simd_intrinsic<'a, 'tcx>(
                                 32 => C_undef(Type::f32(bx.cx)),
                                 64 => C_undef(Type::f64(bx.cx)),
                                 v => {
-                                    return_error!(
-                                        "unsupported {} from `{}` with element `{}` of size `{}` to `{}`",
+                                    return_error!(r#"
+unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
                                         $name, in_ty, in_elem, v, ret_ty
                                     )
                                 }
