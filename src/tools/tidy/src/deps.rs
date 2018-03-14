@@ -93,6 +93,7 @@ static WHITELIST: &'static [Crate] = &[
     Crate("regex-syntax"),
     Crate("remove_dir_all"),
     Crate("rustc-demangle"),
+    Crate("scoped-tls"),
     Crate("smallvec"),
     Crate("stable_deref_trait"),
     Crate("tempdir"),

@@ -69,18 +69,20 @@ fn basic_sess(sysroot: PathBuf) -> (Session, Rc<CStore>, Box<TransCrate>) {
 }
 
 fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
-    let (sess, cstore, trans) = basic_sess(sysroot);
-    let control = CompileController::basic();
-    let input = Input::Str { name: FileName::Anon, input: code };
-    let _ = compile_input(
-        trans,
-        &sess,
-        &cstore,
-        &None,
-        &input,
-        &None,
-        &Some(output),
-        None,
-        &control
-    );
+    syntax::with_globals(|| {
+        let (sess, cstore, trans) = basic_sess(sysroot);
+        let control = CompileController::basic();
+        let input = Input::Str { name: FileName::Anon, input: code };
+        let _ = compile_input(
+            trans,
+            &sess,
+            &cstore,
+            &None,
+            &input,
+            &None,
+            &Some(output),
+            None,
+            &control
+        );
+    });
 }

@@ -448,6 +448,17 @@ pub fn run_compiler<'a>(args: &[String],
                         emitter_dest: Option<Box<Write + Send>>)
                         -> (CompileResult, Option<Session>)
 {
+    syntax::with_globals(|| {
+        run_compiler_impl(args, callbacks, file_loader, emitter_dest)
+    })
+}
+
+fn run_compiler_impl<'a>(args: &[String],
+                         callbacks: &mut CompilerCalls<'a>,
+                         file_loader: Option<Box<FileLoader + 'static>>,
+                         emitter_dest: Option<Box<Write + Send>>)
+                         -> (CompileResult, Option<Session>)
+{
     macro_rules! do_or_return {($expr: expr, $sess: expr) => {
         match $expr {
             Compilation::Stop => return (Ok(()), $sess),

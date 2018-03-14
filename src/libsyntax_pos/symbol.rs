@@ -13,9 +13,9 @@
 //! type, and vice versa.
 
 use hygiene::SyntaxContext;
+use GLOBALS;
 
 use serialize::{Decodable, Decoder, Encodable, Encoder};
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -247,7 +247,7 @@ macro_rules! declare_keywords {(
     }
 
     impl Interner {
-        fn fresh() -> Self {
+        pub fn fresh() -> Self {
             Interner::prefill(&[$($string,)*])
         }
     }
@@ -330,12 +330,10 @@ declare_keywords! {
     (60, Union,          "union")
 }
 
-// If an interner exists in TLS, return it. Otherwise, prepare a fresh one.
+// If an interner exists, return it. Otherwise, prepare a fresh one.
+#[inline]
 fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
-    thread_local!(static INTERNER: RefCell<Interner> = {
-        RefCell::new(Interner::fresh())
-    });
-    INTERNER.with(|interner| f(&mut *interner.borrow_mut()))
+    GLOBALS.with(|globals| f(&mut *globals.symbol_interner.lock()))
 }
 
 /// Represents a string stored in the thread-local interner. Because the
@@ -422,6 +420,7 @@ impl Encodable for InternedString {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use Globals;
 
     #[test]
     fn interner_tests() {
@@ -444,7 +443,9 @@ mod tests {
 
     #[test]
     fn without_first_quote_test() {
-        let i = Ident::from_str("'break");
-        assert_eq!(i.without_first_quote().name, keywords::Break.name());
+        GLOBALS.set(&Globals::new(), || {
+            let i = Ident::from_str("'break");
+            assert_eq!(i.without_first_quote().name, keywords::Break.name());
+        });
     }
 }

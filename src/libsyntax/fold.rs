@@ -1386,6 +1386,7 @@ mod tests {
     use util::parser_testing::{string_to_crate, matches_codepattern};
     use print::pprust;
     use fold;
+    use with_globals;
     use super::*;
 
     // this version doesn't care about getting comments or docstrings in.
@@ -1423,28 +1424,32 @@ mod tests {
 
     // make sure idents get transformed everywhere
     #[test] fn ident_transformation () {
-        let mut zz_fold = ToZzIdentFolder;
-        let ast = string_to_crate(
-            "#[a] mod b {fn c (d : e, f : g) {h!(i,j,k);l;m}}".to_string());
-        let folded_crate = zz_fold.fold_crate(ast);
-        assert_pred!(
-            matches_codepattern,
-            "matches_codepattern",
-            pprust::to_string(|s| fake_print_crate(s, &folded_crate)),
-            "#[zz]mod zz{fn zz(zz:zz,zz:zz){zz!(zz,zz,zz);zz;zz}}".to_string());
+        with_globals(|| {
+            let mut zz_fold = ToZzIdentFolder;
+            let ast = string_to_crate(
+                "#[a] mod b {fn c (d : e, f : g) {h!(i,j,k);l;m}}".to_string());
+            let folded_crate = zz_fold.fold_crate(ast);
+            assert_pred!(
+                matches_codepattern,
+                "matches_codepattern",
+                pprust::to_string(|s| fake_print_crate(s, &folded_crate)),
+                "#[zz]mod zz{fn zz(zz:zz,zz:zz){zz!(zz,zz,zz);zz;zz}}".to_string());
+        })
     }
 
     // even inside macro defs....
     #[test] fn ident_transformation_in_defs () {
-        let mut zz_fold = ToZzIdentFolder;
-        let ast = string_to_crate(
-            "macro_rules! a {(b $c:expr $(d $e:token)f+ => \
-             (g $(d $d $e)+))} ".to_string());
-        let folded_crate = zz_fold.fold_crate(ast);
-        assert_pred!(
-            matches_codepattern,
-            "matches_codepattern",
-            pprust::to_string(|s| fake_print_crate(s, &folded_crate)),
-            "macro_rules! zz((zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+)));".to_string());
+        with_globals(|| {
+            let mut zz_fold = ToZzIdentFolder;
+            let ast = string_to_crate(
+                "macro_rules! a {(b $c:expr $(d $e:token)f+ => \
+                (g $(d $d $e)+))} ".to_string());
+            let folded_crate = zz_fold.fold_crate(ast);
+            assert_pred!(
+                matches_codepattern,
+                "matches_codepattern",
+                pprust::to_string(|s| fake_print_crate(s, &folded_crate)),
+                "macro_rules! zz((zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+)));".to_string());
+        })
     }
 }

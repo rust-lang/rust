@@ -27,6 +27,10 @@ use syntax::ptr::P;
 use rustc_data_structures::sync::Lrc;
 
 fn main() {
+    syntax::with_globals(|| run());
+}
+
+fn run() {
     let parse_sess = ParseSess::new(FilePathMapping::empty());
     let exp_cfg = ExpansionConfig::default("issue_35829".to_owned());
     let mut resolver = DummyResolver;
