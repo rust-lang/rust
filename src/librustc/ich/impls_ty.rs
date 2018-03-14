@@ -834,8 +834,12 @@ for ty::TypeVariants<'gcx>
             TyStr   |
             TyError |
             TyNever |
-            TyUnusedParam | ty::TyLayoutOnlyParam(_, _) => {
+            TyUnusedParam => {
                 // Nothing more to hash.
+            }
+            TyLayoutOnlyParam(size, align) => {
+                size.hash_stable(hcx, hasher);
+                align.hash_stable(hcx, hasher);
             }
             TyInt(int_ty) => {
                 int_ty.hash_stable(hcx, hasher);
