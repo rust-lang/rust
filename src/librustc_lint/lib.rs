@@ -306,4 +306,8 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         "converted into hard error, see https://github.com/rust-lang/rust/issues/36892");
     store.register_removed("extra_requirement_in_impl",
         "converted into hard error, see https://github.com/rust-lang/rust/issues/37166");
+    store.register_removed("coerce_never",
+        "converted into hard error, see https://github.com/rust-lang/rust/issues/48950");
+    store.register_removed("resolve_trait_on_defaulted_unit",
+        "converted into hard error, see https://github.com/rust-lang/rust/issues/48950");
 }
