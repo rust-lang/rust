@@ -148,3 +148,23 @@ chapter in the Unstable Book][unstable-spotlight] and [its tracking issue][issue
 
 [unstable-spotlight]: ../unstable-book/language-features/doc-spotlight.html
 [issue-spotlight]: https://github.com/rust-lang/rust/issues/45040
+
+## Exclude certain dependencies from documentation
+
+The standard library uses several dependencies which, in turn, use several types and traits from the
+standard library. In addition, there are several compiler-internal crates that are not considered to
+be part of the official standard library, and thus would be a distraction to include in
+documentation. It's not enough to exclude their crate documentation, since information about trait
+implementations appears on the pages for both the type and the trait, which can be in different
+crates!
+
+To prevent internal types from being included in documentation, the standard library adds an
+attribute to their `extern crate` declarations: `#[doc(masked)]`. This causes Rustdoc to "mask out"
+types from these crates when building lists of trait implementations.
+
+The `#[doc(masked)]` attribute is intended to be used internally, and is governed by a feature gate.
+For more information, see [its chapter in the Unstable Book][unstable-masked] and [its tracking
+issue][issue-masked].
+
+[unstable-masked]: ../unstable-book/language-features/doc-masked.html
+[issue-masked]: https://github.com/rust-lang/rust/issues/44027
