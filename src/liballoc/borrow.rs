@@ -361,6 +361,17 @@ impl<'a, T: ?Sized + ToOwned> AsRef<T> for Cow<'a, T> {
     }
 }
 
+#[stable(feature = "generic_cow_from", since = "1.24.0")]
+impl<'a, B, T> From<&'a B> for Cow<'a, T>
+where
+    B: ?Sized + Borrow<T>,
+    T: ?Sized + ToOwned,
+{
+    fn from(b: &'a B) -> Self {
+        Cow::Borrowed(b.borrow())
+    }
+}
+
 #[stable(feature = "cow_add", since = "1.14.0")]
 impl<'a> Add<&'a str> for Cow<'a, str> {
     type Output = Cow<'a, str>;

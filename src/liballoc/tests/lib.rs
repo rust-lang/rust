@@ -39,6 +39,7 @@ use std::collections::hash_map::DefaultHasher;
 
 mod binary_heap;
 mod btree;
+mod borrow;
 mod cow_str;
 mod fmt;
 mod heap;

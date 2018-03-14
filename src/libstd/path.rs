@@ -1517,14 +1517,6 @@ impl Default for PathBuf {
 }
 
 #[stable(feature = "cow_from_path", since = "1.6.0")]
-impl<'a> From<&'a Path> for Cow<'a, Path> {
-    #[inline]
-    fn from(s: &'a Path) -> Cow<'a, Path> {
-        Cow::Borrowed(s)
-    }
-}
-
-#[stable(feature = "cow_from_path", since = "1.6.0")]
 impl<'a> From<PathBuf> for Cow<'a, Path> {
     #[inline]
     fn from(s: PathBuf) -> Cow<'a, Path> {
