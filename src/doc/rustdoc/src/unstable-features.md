@@ -76,3 +76,55 @@ For more details, check out [the RFC][RFC 1946], and see [the tracking issue][43
 information about what parts of the feature are available.
 
 [43466]: https://github.com/rust-lang/rust/issues/43466
+
+## Documenting platform-/feature-specific information
+
+Because of the way Rustdoc documents a crate, the documentation it creates is specific to the target
+rustc compiles for. Anything that's specific to any other target is dropped via `#[cfg]` attribute
+processing early in the compilation process. However, Rustdoc has a trick up its sleeve to handle
+platform-specific code if it *does* receive it.
+
+Because Rustdoc doesn't need to fully compile a crate to binary, it replaces function bodies with
+`loop {}` to prevent having to process more than necessary. This means that any code within a
+function that requires platform-specific pieces is ignored. Combined with a special attribute,
+`#[doc(cfg(...))]`, you can tell Rustdoc exactly which platform something is supposed to run on,
+ensuring that doctests are only run on the appropriate platforms.
+
+The `#[doc(cfg(...))]` attribute has another effect: When Rustdoc renders documentation for that
+item, it will be accompanied by a banner explaining that the item is only available on certain
+platforms.
+
+As mentioned earlier, getting the items to Rustdoc requires some extra preparation. The standard
+library adds a `--cfg dox` flag to every Rustdoc command, but the same thing can be accomplished by
+adding a feature to your Cargo.toml and adding `--feature dox` (or whatever you choose to name the
+feature) to your `cargo doc` calls.
+
+Either way, once you create an environment for the documentation, you can start to augment your
+`#[cfg]` attributes to allow both the target platform *and* the documentation configuration to leave
+the item in. For example, `#[cfg(any(windows, feature = "dox"))]` will preserve the item either on
+Windows or during the documentation process. Then, adding a new attribute `#[doc(cfg(windows))]`
+will tell Rustdoc that the item is supposed to be used on Windows. For example:
+
+```rust
+#![feature(doc_cfg)]
+
+/// Token struct that can only be used on Windows.
+#[cfg(any(windows, feature = "dox"))]
+#[doc(cfg(windows))]
+pub struct WindowsToken;
+
+/// Token struct that can only be used on Unix.
+#[cfg(any(unix, feature = "dox"))]
+#[doc(cfg(unix))]
+pub struct UnixToken;
+```
+
+In this sample, the tokens will only appear on their respective platforms, but they will both appear
+in documentation.
+
+`#[doc(cfg(...))]` was introduced to be used by the standard library and is currently controlled by
+a feature gate. For more information, see [its chapter in the Unstable Book][unstable-doc-cfg] and
+[its tracking issue][issue-doc-cfg].
+
+[unstable-doc-cfg]: ../unstable-book/language-features/doc-cfg.html
+[issue-doc-cfg]: https://github.com/rust-lang/rust/issues/43781
