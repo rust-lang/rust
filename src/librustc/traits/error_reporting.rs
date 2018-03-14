@@ -539,7 +539,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                   fallback_has_occurred: bool)
     {
         let span = obligation.cause.span;
-        let _ = fallback_has_occurred;
 
         let mut err = match *error {
             SelectionError::Unimplemented => {
@@ -623,9 +622,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             self.report_similar_impl_candidates(impl_candidates, &mut err);
                         }
 
-                        // If this error is due to `!: !Trait` but `(): Trait` then add a note
-                        // about the fallback behaviour change.
-                        if trait_predicate.skip_binder().self_ty().is_never() {
+                        // If this error is due to `!: Trait` not implemented but `(): Trait` is
+                        // implemented, and fallback has occured, then it could be due to a
+                        // variable that used to fallback to `()` now falling back to `!`. Issue a
+                        // note informing about the change in behaviour.
+                        if trait_predicate.skip_binder().self_ty().is_never()
+                            && fallback_has_occurred
+                        {
                             let predicate = trait_predicate.map_bound(|mut trait_pred| {
                                 {
                                     let trait_ref = &mut trait_pred.trait_ref;
@@ -638,13 +641,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                 trait_pred
                             });
                             let unit_obligation = Obligation {
-                                cause: obligation.cause.clone(),
-                                param_env: obligation.param_env,
-                                recursion_depth: obligation.recursion_depth,
-                                predicate,
+                                predicate: ty::Predicate::Trait(predicate),
+                                .. obligation.clone()
                             };
                             let mut selcx = SelectionContext::new(self);
-                            if let Ok(Some(..)) = selcx.select(&unit_obligation) {
+                            if selcx.evaluate_obligation(&unit_obligation) {
                                 err.note("the trait is implemented for `()`. \
                                          Possibly this error has been caused by changes to \
                                          Rust's type-inference algorithm \
