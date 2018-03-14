@@ -883,6 +883,9 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
             force!(all_trait_implementations, krate!());
         }
 
+        DepKind::DllimportForeignItems => {
+            force!(dllimport_foreign_items, krate!());
+        }
         DepKind::IsDllimportForeignItem => {
             force!(is_dllimport_foreign_item, def_id!());
         }
@@ -935,6 +938,8 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
 
         DepKind::GetSymbolExportLevel => { force!(symbol_export_level, def_id!()); }
         DepKind::Features => { force!(features_query, LOCAL_CRATE); }
+        DepKind::WasmImportModuleMap => { force!(wasm_import_module_map, krate!()); }
+        DepKind::ForeignModules => { force!(foreign_modules, krate!()); }
     }
 
     true

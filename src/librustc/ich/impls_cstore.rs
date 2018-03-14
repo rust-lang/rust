@@ -33,7 +33,12 @@ impl_stable_hash_for!(struct middle::cstore::NativeLibrary {
     kind,
     name,
     cfg,
-    foreign_items
+    foreign_module
+});
+
+impl_stable_hash_for!(struct middle::cstore::ForeignModule {
+    foreign_items,
+    def_id
 });
 
 impl_stable_hash_for!(enum middle::cstore::LinkagePreference {

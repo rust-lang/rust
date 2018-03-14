@@ -590,6 +590,7 @@ define_dep_nodes!( <'tcx>
     [] ImplementationsOfTrait { krate: CrateNum, trait_id: DefId },
     [] AllTraitImplementations(CrateNum),
 
+    [] DllimportForeignItems(CrateNum),
     [] IsDllimportForeignItem(DefId),
     [] IsStaticallyIncludedForeignItem(DefId),
     [] NativeLibraryKind(DefId),
@@ -648,6 +649,9 @@ define_dep_nodes!( <'tcx>
     [] GetSymbolExportLevel(DefId),
 
     [input] Features,
+
+    [] WasmImportModuleMap(CrateNum),
+    [] ForeignModules(CrateNum),
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {

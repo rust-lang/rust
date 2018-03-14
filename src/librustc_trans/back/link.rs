@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use back::wasm;
 use cc::windows_registry;
 use super::archive::{ArchiveBuilder, ArchiveConfig};
 use super::bytecode::RLIB_BYTECODE_EXTENSION;
@@ -809,6 +810,10 @@ fn link_natively(sess: &Session,
             Ok(..) => {}
             Err(e) => sess.fatal(&format!("failed to run dsymutil: {}", e)),
         }
+    }
+
+    if sess.opts.target_triple == "wasm32-unknown-unknown" {
+        wasm::rewrite_imports(&out_filename, &trans.crate_info.wasm_imports);
     }
 }
 
