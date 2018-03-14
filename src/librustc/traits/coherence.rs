@@ -481,7 +481,8 @@ fn ty_is_local_constructor(ty: Ty, in_crate: InCrate) -> bool {
         ty::TyGenerator(..) |
         ty::TyGeneratorWitness(..) |
         ty::TyAnon(..) |
-        ty::TyUnusedParam | ty::TyLayoutOnlyParam(_, _) => {
+        ty::TyUnusedParam |
+        ty::TyLayoutOnlyParam(_, _) => {
             bug!("ty_is_local invoked on unexpected type: {:?}", ty)
         }
     }
