@@ -41,7 +41,7 @@ use rustc::ty;
 use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
 
-use syntax::codemap::{dummy_spanned, respan, CodeMap};
+use syntax::codemap::{dummy_spanned, respan, BytePos, CodeMap};
 use syntax::ext::hygiene::{Mark, MarkKind, SyntaxContext};
 use syntax::ast::{self, Name, NodeId, Ident, SpannedIdent, FloatTy, IntTy, UintTy};
 use syntax::ext::base::SyntaxExtension;
@@ -179,11 +179,12 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
                                            E0401,
                                            "can't use type parameters from outer function");
             err.span_label(span, "use of type variable from outer function");
+
+            let cm = resolver.session.codemap();
             match outer_def {
                 Def::SelfTy(_, maybe_impl_defid) => {
                     if let Some(impl_span) = maybe_impl_defid.map_or(None,
                             |def_id| resolver.definitions.opt_span(def_id)) {
-                        let cm = resolver.session.codemap();
                         err.span_label(reduce_impl_span_to_impl_keyword(cm, impl_span),
                                     "`Self` type implicitely declared here, on the `impl`");
                     }
@@ -206,12 +207,13 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
             // Try to retrieve the span of the function signature and generate a new message with
             // a local type parameter
             let sugg_msg = "try using a local type parameter instead";
-            if let Some((sugg_span, new_snippet)) = generate_local_type_param_snippet(
-                                                        resolver.session.codemap(), span) {
+            if let Some((sugg_span, new_snippet)) = generate_local_type_param_snippet(cm, span) {
                 // Suggest the modification to the user
                 err.span_suggestion(sugg_span,
                                     sugg_msg,
                                     new_snippet);
+            } else if let Some(sp) = generate_fn_name_span(cm, span) {
+                err.span_label(sp, "try adding a local type parameter in this method instead");
             } else {
                 err.help("try using a local type parameter instead");
             }
@@ -407,6 +409,15 @@ fn reduce_impl_span_to_impl_keyword(cm: &CodeMap, impl_span: Span) -> Span {
     impl_span
 }
 
+fn generate_fn_name_span(cm: &CodeMap, span: Span) -> Option<Span> {
+    let prev_span = cm.span_extend_to_prev_str(span, "fn", true);
+    cm.span_to_snippet(prev_span).map(|snippet| {
+        let len = snippet.find(|c: char| !c.is_alphanumeric() && c != '_')
+            .expect("no label after fn");
+        prev_span.with_hi(BytePos(prev_span.lo().0 + len as u32))
+    }).ok()
+}
+
 /// Take the span of a type parameter in a function signature and try to generate a span for the
 /// function name (with generics) and a new snippet for this span with the pointed type parameter as
 /// a new local type parameter.
@@ -428,17 +439,12 @@ fn reduce_impl_span_to_impl_keyword(cm: &CodeMap, impl_span: Span) -> Span {
 fn generate_local_type_param_snippet(cm: &CodeMap, span: Span) -> Option<(Span, String)> {
     // Try to extend the span to the previous "fn" keyword to retrieve the function
     // signature
-    let sugg_span = cm.span_extend_to_prev_str(span, "fn");
+    let sugg_span = cm.span_extend_to_prev_str(span, "fn", false);
     if sugg_span != span {
         if let Ok(snippet) = cm.span_to_snippet(sugg_span) {
-            use syntax::codemap::BytePos;
-
             // Consume the function name
-            let mut offset = 0;
-            for c in snippet.chars().take_while(|c| c.is_ascii_alphanumeric() ||
-                                                    *c == '_') {
-                offset += c.len_utf8();
-            }
+            let mut offset = snippet.find(|c: char| !c.is_alphanumeric() && c != '_')
+                .expect("no label after fn");
 
             // Consume the generics part of the function signature
             let mut bracket_counter = 0;

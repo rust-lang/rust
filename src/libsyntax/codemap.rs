@@ -622,13 +622,21 @@ impl CodeMap {
         sp
     }
 
-    /// Extend the given `Span` to just after the previous occurrence of `pat`. Return the same span
-    /// if no character could be found or if an error occurred while retrieving the code snippet.
-    pub fn span_extend_to_prev_str(&self, sp: Span, pat: &str) -> Span {
-        if let Ok(prev_source) = self.span_to_prev_source(sp) {
-            let prev_source = prev_source.rsplit(pat).nth(0).unwrap_or("").trim_left();
-            if !prev_source.is_empty() && !prev_source.contains('\n') {
-                return sp.with_lo(BytePos(sp.lo().0 - prev_source.len() as u32));
+    /// Extend the given `Span` to just after the previous occurrence of `pat` when surrounded by
+    /// whitespace. Return the same span if no character could be found or if an error occurred
+    /// while retrieving the code snippet.
+    pub fn span_extend_to_prev_str(&self, sp: Span, pat: &str, accept_newlines: bool) -> Span {
+        // assure that the pattern is delimited, to avoid the following
+        //     fn my_fn()
+        //           ^^^^ returned span without the check
+        //     ---------- correct span
+        for ws in &[" ", "\t", "\n"] {
+            let pat = pat.to_owned() + ws;
+            if let Ok(prev_source) = self.span_to_prev_source(sp) {
+                let prev_source = prev_source.rsplit(&pat).nth(0).unwrap_or("").trim_left();
+                if !prev_source.is_empty() && (!prev_source.contains('\n') || accept_newlines) {
+                    return sp.with_lo(BytePos(sp.lo().0 - prev_source.len() as u32));
+                }
             }
         }
 
