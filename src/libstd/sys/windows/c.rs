@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! C definitions used by libnative that don't belong in liblibc
+//! C definitions used by libnative that don't belong in libc
 
 #![allow(bad_style)]
 #![cfg_attr(test, allow(dead_code))]
