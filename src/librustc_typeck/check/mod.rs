@@ -613,10 +613,10 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
 impl<'a, 'gcx> InheritedBuilder<'a, 'gcx> {
     fn enter<'tcx, R>(
         &'tcx mut self,
-        f: impl FnOnce(Inherited<'_, 'gcx, 'tcx>) -> R,
+        f: impl FnOnce(&Inherited<'_, 'gcx, 'tcx>) -> R,
     ) -> R {
         let def_id = self.def_id;
-        self.infcx.enter(|infcx| f(Inherited::new(infcx, def_id)))
+        self.infcx.enter(|infcx| f(&Inherited::new(infcx, def_id)))
     }
 }
 
