@@ -721,3 +721,4 @@ impl_disk_cacheable_query!(type_of, |def_id| def_id.is_local());
 impl_disk_cacheable_query!(predicates_of, |def_id| def_id.is_local());
 impl_disk_cacheable_query!(used_trait_imports, |def_id| def_id.is_local());
 impl_disk_cacheable_query!(trans_fn_attrs, |_| true);
+impl_disk_cacheable_query!(specialization_graph_of, |_| true);
