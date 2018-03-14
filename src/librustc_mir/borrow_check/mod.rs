@@ -530,7 +530,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                     // Look for any active borrows to locals
                     let domain = flow_state.borrows.operator();
                     let data = domain.borrows();
-                    flow_state.borrows.with_elems_outgoing(|borrows| {
+                    flow_state.borrows.with_iter_outgoing(|borrows| {
                         for i in borrows {
                             let borrow = &data[i.borrow_index()];
                             self.check_for_local_borrow(borrow, span);
@@ -546,7 +546,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 // so this "extra check" serves as a kind of backup.
                 let domain = flow_state.borrows.operator();
                 let data = domain.borrows();
-                flow_state.borrows.with_elems_outgoing(|borrows| {
+                flow_state.borrows.with_iter_outgoing(|borrows| {
                     for i in borrows {
                         let borrow = &data[i.borrow_index()];
                         let context = ContextKind::StorageDead.new(loc);
@@ -1292,7 +1292,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             place
         );
 
-        for i in flow_state.ever_inits.elems_incoming() {
+        for i in flow_state.ever_inits.iter_incoming() {
             let init = self.move_data.inits[i];
             let init_place = &self.move_data.move_paths[init.path].place;
             if self.places_conflict(&init_place, place, Deep) {
@@ -2129,8 +2129,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         // check for loan restricting path P being used. Accounts for
         // borrows of P, P.a.b, etc.
-        let mut elems_incoming = flow_state.borrows.elems_incoming();
-        while let Some(i) = elems_incoming.next() {
+        let mut iter_incoming = flow_state.borrows.iter_incoming();
+        while let Some(i) = iter_incoming.next() {
             let borrowed = &data[i.borrow_index()];
 
             if self.places_conflict(&borrowed.borrowed_place, place, access) {

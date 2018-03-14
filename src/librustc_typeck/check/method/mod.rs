@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Method lookup: the secret sauce of Rust. See `README.md`.
+//! Method lookup: the secret sauce of Rust. See the [rustc guide] chapter.
+//!
+//! [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/method-lookup.html
 
 use check::FnCtxt;
 use hir::def::Def;

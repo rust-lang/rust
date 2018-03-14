@@ -25,8 +25,8 @@ pub fn target() -> TargetResult {
         linker_flavor: LinkerFlavor::Gcc,
 
         options: TargetOptions {
-            cpu: "mips32".to_string(),
-            features: "+mips32,+soft-float".to_string(),
+            cpu: "mips32r2".to_string(),
+            features: "+mips32r2,+soft-float".to_string(),
             max_atomic_width: Some(32),
 
             // see #36994
