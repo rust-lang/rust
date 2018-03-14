@@ -20,4 +20,4 @@ LL | impl<X> A<i32, X> { fn f(&self) {} }
 
 error: aborting due to 2 previous errors
 
-If you want more information on this error, try using "rustc --explain E0592"
+For more information about this error, try `rustc --explain E0592`.

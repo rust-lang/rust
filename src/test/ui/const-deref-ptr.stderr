@@ -6,4 +6,4 @@ LL |     static C: u64 = unsafe {*(0xdeadbeef as *const u64)}; //~ ERROR E0396
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0396"
+For more information about this error, try `rustc --explain E0396`.

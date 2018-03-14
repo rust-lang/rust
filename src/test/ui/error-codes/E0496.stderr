@@ -8,4 +8,4 @@ LL |     fn f<'a>(x: &'a i32) { //~ ERROR E0496
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0496"
+For more information about this error, try `rustc --explain E0496`.

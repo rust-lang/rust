@@ -30,5 +30,5 @@ LL |     fn iter<'a>(&'a self) -> Self::Iter<'undeclared>;
 
 error: aborting due to 5 previous errors
 
-You've got a few errors: E0110, E0261
-If you want more information on an error, try using "rustc --explain E0110"
+Some errors occurred: E0110, E0261.
+For more information about an error, try `rustc --explain E0110`.

@@ -12,5 +12,3 @@ LL | fn g<F:Typedef(isize) -> isize>(x: F) {}
 
 error: cannot continue compilation due to previous error
 
-You've got a few errors: E0404, E0405
-If you want more information on an error, try using "rustc --explain E0404"

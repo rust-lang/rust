@@ -6,4 +6,4 @@ LL |     let map = HashMap::new(); //~ ERROR E0433
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0433"
+For more information about this error, try `rustc --explain E0433`.

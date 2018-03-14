@@ -8,4 +8,4 @@ LL |     let Foo { a: x, a: y, b: 0 } = x;
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0025"
+For more information about this error, try `rustc --explain E0025`.

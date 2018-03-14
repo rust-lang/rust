@@ -17,4 +17,4 @@ LL |     pub(crate) bar: u8, //~ ERROR is already declared
 
 error: aborting due to 2 previous errors
 
-If you want more information on this error, try using "rustc --explain E0124"
+For more information about this error, try `rustc --explain E0124`.

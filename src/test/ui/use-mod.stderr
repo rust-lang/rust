@@ -30,5 +30,5 @@ LL |     self as other_bar
 
 error: aborting due to 3 previous errors
 
-You've got a few errors: E0252, E0430, E0431
-If you want more information on an error, try using "rustc --explain E0252"
+Some errors occurred: E0252, E0430, E0431.
+For more information about an error, try `rustc --explain E0252`.
