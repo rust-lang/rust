@@ -29,6 +29,8 @@
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(exact_chunks)]
+#![feature(str_cut)]
+#![feature(str_cutn)]
 
 extern crate alloc_system;
 extern crate std_unicode;
