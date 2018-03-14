@@ -13,9 +13,23 @@ use rustc::mir::Mir;
 use rustc::mir::visit::PlaceContext;
 use rustc::mir::visit::Visitor;
 
+crate trait FindAssignments {
+    // Finds all statements that assign directly to local (i.e., X = ...)
+    // and returns their locations.
+    fn find_assignments(&self, local: Local) -> Vec<Location>;
+}
+
+impl<'tcx> FindAssignments for Mir<'tcx>{
+    fn find_assignments(&self, local: Local) -> Vec<Location>{
+            let mut visitor = FindLocalAssignmentVisitor{ needle: local, locations: vec![]};
+            visitor.visit_mir(self);
+            visitor.locations
+    }
+}
+
 // The Visitor walks the MIR to return the assignment statements corresponding
 // to a Local.
-pub struct FindLocalAssignmentVisitor {
+struct FindLocalAssignmentVisitor {
     needle: Local,
     locations: Vec<Location>,
 }
@@ -50,16 +64,4 @@ impl<'tcx> Visitor<'tcx> for FindLocalAssignmentVisitor {
     }
     // TO-DO
     // fn super_local()
-}
-
-crate trait FindAssignments {
-    fn find_assignments(&self, local: Local) -> Vec<Location>;
-    }
-
-impl<'tcx> FindAssignments for Mir<'tcx>{
-    fn find_assignments(&self, local: Local) -> Vec<Location>{
-            let mut visitor = FindLocalAssignmentVisitor{ needle: local, locations: vec![]};
-            visitor.visit_mir(self);
-            visitor.locations
-    }
 }

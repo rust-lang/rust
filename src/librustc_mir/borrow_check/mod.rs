@@ -1422,13 +1422,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
     }
 
-    fn get_main_error_message(&self, place:&Place<'tcx>) -> String{
-        match self.describe_place(place) {
-            Some(name) => format!("immutable item `{}`", name),
-            None => "immutable item".to_owned(),
-        }
-    }
-
     /// Currently MoveData does not store entries for all places in
     /// the input MIR. For example it will currently filter out
     /// places that are Copy; thus we do not track places of shared
@@ -1533,6 +1526,21 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
     }
 
+    fn specialized_description(&self, place:&Place<'tcx>) -> Option<String>{
+        if let Some(name) = self.describe_place(place) {
+            Some(format!("`&`-reference `{}`", name))
+        } else {
+            None
+        }
+    }
+
+    fn get_main_error_message(&self, place:&Place<'tcx>) -> String{
+        match self.describe_place(place) {
+            Some(name) => format!("immutable item `{}`", name),
+            None => "immutable item".to_owned(),
+        }
+    }
+
     /// Check the permissions for the given place and read or write kind
     ///
     /// Returns true if an error is reported, false otherwise.
@@ -1566,7 +1574,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
                 if place != place_err {
                     if let Some(name) = self.describe_place(place_err) {
-                        err.note(&format!("value not mutable causing this error: `{}`", name));
+                        err.note(&format!("the value which is causing this path not to be mutable is...: `{}`", name));
                     }
                 }
 
@@ -1576,7 +1584,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 if let Err(place_err) = self.is_mutable(place, is_local_mutation_allowed) {
                     error_reported = true;
 
-                    let err_info = match *place_err {
+                    let mut err_info = None;
+                    match *place_err {
                         Place::Projection(ref proj) => {
                             match proj.elem {
                                 ProjectionElem::Deref => {
@@ -1585,32 +1594,27 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                             let locations = self.mir.find_assignments(local);
                                             if locations.len() > 0 {
                                                 let item_msg = if error_reported {
-                                                    if let Some(name) =
-                                                            self.describe_place(place_err) {
-                                                        let var = str::replace(&name, "*", "");
-                                                        format!("`&`-reference `{}`", var)
-                                                    } else {
-                                                        self.get_main_error_message(place)
+                                                    match self.specialized_description(&proj.base){
+                                                        Some(msg) => msg,
+                                                        None => self.get_main_error_message(place)
                                                     }
                                                 } else {
                                                     self.get_main_error_message(place)
                                                 };
-                                                Some((self.mir.source_info(locations[0]).span,
+                                                err_info = Some((self.mir.source_info(locations[0]).span,
                                                       "consider changing this to be a \
                                                        mutable reference: `&mut`", item_msg,
-                                                       "cannot assign through `&`-reference"))
-                                            } else {
-                                                None
+                                                       "cannot assign through `&`-reference"));
                                             }
                                         }
-                                        _ => None,
+                                        _ => {},
                                     }
                                 }
-                                _ => None,
+                                _ => {}
                             }
                         }
-                        _ => None,
-                    };
+                        _ => {}
+                    }
 
                     if let Some((err_help_span, err_help_stmt, item_msg, sec_span)) = err_info {
                         let mut err = self.tcx.cannot_assign(span, &item_msg, Origin::Mir, true);
@@ -1625,7 +1629,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         err.span_label(span, "cannot mutate");
                         if place != place_err {
                             if let Some(name) = self.describe_place(place_err) {
-                                err.note(&format!("value not mutable causing this error: `{}`",
+                                err.note(&format!("the value which is causing this path not to be mutable is...: `{}`",
                                                   name));
                             }
                         }
