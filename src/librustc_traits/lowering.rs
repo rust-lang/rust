@@ -17,6 +17,7 @@ use syntax::ast;
 use rustc_data_structures::sync::Lrc;
 
 trait Lower<T> {
+    /// Lower a rustc construction (e.g. `ty::TraitPredicate`) to a chalk-like type.
     fn lower(&self) -> T;
 }
 
@@ -56,6 +57,15 @@ impl<'tcx> Lower<DomainGoal<'tcx>> for ty::TypeOutlivesPredicate<'tcx> {
     }
 }
 
+/// `ty::Binder` is used for wrapping a rustc construction possibly containing generic
+/// lifetimes, e.g. `for<'a> T: Fn(&'a i32)`. Instead of representing higher-ranked things
+/// in that leaf-form (i.e. `Holds(Implemented(Binder<TraitPredicate>))` in the previous
+/// example), we model them with quantified goals, e.g. as for the previous example:
+/// `forall<'a> { T: Fn(&'a i32) }` which corresponds to something like
+/// `Binder<Holds(Implemented(TraitPredicate))>`.
+///
+/// Also, if `self` does not contain generic lifetimes, we can safely drop the binder and we
+/// can directly lower to a leaf goal instead of a quantified goal.
 impl<'tcx, T> Lower<Goal<'tcx>> for ty::Binder<T>
     where T: Lower<DomainGoal<'tcx>> + ty::fold::TypeFoldable<'tcx> + Copy
 {
@@ -95,6 +105,8 @@ crate fn program_clauses_for<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefI
     let item = tcx.hir.expect_item(node_id);
     match item.node {
         hir::ItemImpl(..) => program_clauses_for_impl(tcx, def_id),
+
+        // FIXME: other constructions e.g. traits, associated types...
         _ => Lrc::new(vec![]),
     }
 }

@@ -245,6 +245,14 @@ pub type Obligations<'tcx, O> = Vec<Obligation<'tcx, O>>;
 pub type PredicateObligations<'tcx> = Vec<PredicateObligation<'tcx>>;
 pub type TraitObligations<'tcx> = Vec<TraitObligation<'tcx>>;
 
+/// The following types:
+/// * `WhereClauseAtom`
+/// * `DomainGoal`
+/// * `Goal`
+/// * `Clause`
+/// are used for representing the trait system in the form of
+/// logic programming clauses. They are part of the interface
+/// for the chalk SLG solver.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum WhereClauseAtom<'tcx> {
     Implemented(ty::TraitPredicate<'tcx>),
@@ -270,6 +278,7 @@ pub enum QuantifierKind {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Goal<'tcx> {
+    // FIXME: use interned refs instead of `Box`
     Implies(Vec<Clause<'tcx>>, Box<Goal<'tcx>>),
     And(Box<Goal<'tcx>>, Box<Goal<'tcx>>),
     Not(Box<Goal<'tcx>>),
@@ -289,8 +298,11 @@ impl<'tcx> From<DomainGoal<'tcx>> for Clause<'tcx> {
     }
 }
 
+/// This matches the definition from Page 7 of "A Proof Procedure for the Logic of Hereditary
+/// Harrop Formulas".
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Clause<'tcx> {
+    // FIXME: again, use interned refs instead of `Box`
     Implies(Vec<Goal<'tcx>>, DomainGoal<'tcx>),
     DomainGoal(DomainGoal<'tcx>),
     ForAll(Box<ty::Binder<Clause<'tcx>>>),
