@@ -827,11 +827,14 @@ fn exec_linker(sess: &Session, cmd: &mut Command, tmpdir: &Path)
     if !cmd.very_likely_to_exceed_some_spawn_limit() {
         match cmd.command().stdout(Stdio::piped()).stderr(Stdio::piped()).spawn() {
             Ok(child) => return child.wait_with_output(),
-            Err(ref e) if command_line_too_big(e) => {}
+            Err(ref e) if command_line_too_big(e) => {
+                info!("command line to linker was too big: {}", e);
+            }
             Err(e) => return Err(e)
         }
     }
 
+    info!("falling back to passing arguments to linker via an @-file");
     let mut cmd2 = cmd.clone();
     let mut args = String::new();
     for arg in cmd2.take_args() {
@@ -856,6 +859,7 @@ fn exec_linker(sess: &Session, cmd: &mut Command, tmpdir: &Path)
     };
     fs::write(&file, &bytes)?;
     cmd2.arg(format!("@{}", file.display()));
+    info!("invoking linker {:?}", cmd2);
     return cmd2.output();
 
     #[cfg(unix)]
