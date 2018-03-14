@@ -9,7 +9,14 @@ there as necessary.
 
 [Unstable Book]: ../unstable-book/
 
-## Error numbers for `compile-fail` doctests
+## Nightly-gated functionality
+
+These features just require a nightly build to operate. Unlike the other features on this page,
+these don't need to be "turned on" with a command-line flag or a `#![feature(...)]` attribute in
+your crate. This can give them some subtle fallback modes when used on a stable release, so be
+careful!
+
+### Error numbers for `compile-fail` doctests
 
 As detailed in [the chapter on documentation tests][doctest-attributes], you can add a
 `compile_fail` attribute to a doctest to state that the test should fail to compile. However, on
@@ -32,7 +39,7 @@ future.
 Attempting to use these error numbers on stable will result in the code sample being interpreted as
 plain text.
 
-## Linking to items by type
+### Linking to items by type
 
 As designed in [RFC 1946], Rustdoc can parse paths to items when you use them as links. To resolve
 these type names, it uses the items currently in-scope, either by declaration or by `use` statement.
@@ -77,7 +84,12 @@ information about what parts of the feature are available.
 
 [43466]: https://github.com/rust-lang/rust/issues/43466
 
-## Documenting platform-/feature-specific information
+## Extensions to the `#[doc]` attribute
+
+These features operate by extending the `#[doc]` attribute, and thus can be caught by the compiler
+and enabled with a `#![feature(...)]` attribute in your crate.
+
+### Documenting platform-/feature-specific information
 
 Because of the way Rustdoc documents a crate, the documentation it creates is specific to the target
 rustc compiles for. Anything that's specific to any other target is dropped via `#[cfg]` attribute
@@ -129,7 +141,7 @@ a feature gate. For more information, see [its chapter in the Unstable Book][uns
 [unstable-doc-cfg]: ../unstable-book/language-features/doc-cfg.html
 [issue-doc-cfg]: https://github.com/rust-lang/rust/issues/43781
 
-## Adding your trait to the "Important Traits" dialog
+### Adding your trait to the "Important Traits" dialog
 
 Rustdoc keeps a list of a few traits that are believed to be "fundamental" to a given type when
 implemented on it. These traits are intended to be the primary interface for their types, and are
@@ -149,7 +161,7 @@ chapter in the Unstable Book][unstable-spotlight] and [its tracking issue][issue
 [unstable-spotlight]: ../unstable-book/language-features/doc-spotlight.html
 [issue-spotlight]: https://github.com/rust-lang/rust/issues/45040
 
-## Exclude certain dependencies from documentation
+### Exclude certain dependencies from documentation
 
 The standard library uses several dependencies which, in turn, use several types and traits from the
 standard library. In addition, there are several compiler-internal crates that are not considered to
@@ -169,7 +181,7 @@ tracking issue][issue-masked].
 [unstable-masked]: ../unstable-book/language-features/doc-masked.html
 [issue-masked]: https://github.com/rust-lang/rust/issues/44027
 
-## Include external files as API documentation
+### Include external files as API documentation
 
 As designed in [RFC 1990], Rustdoc can read an external file to use as a type's documentation. This
 is useful if certain documentation is so long that it would break the flow of reading the source.
