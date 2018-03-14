@@ -18,6 +18,7 @@ use ty::{self, Lift, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc_data_structures::sync::Lrc;
 use mir::interpret;
 
 use std::rc::Rc;
@@ -465,7 +466,7 @@ impl<'a, 'tcx> Lift<'tcx> for ConstEvalErr<'a> {
         tcx.lift(&*self.kind).map(|kind| {
             ConstEvalErr {
                 span: self.span,
-                kind: Rc::new(kind),
+                kind: Lrc::new(kind),
             }
         })
     }

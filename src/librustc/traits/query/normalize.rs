@@ -17,7 +17,7 @@ use infer::at::At;
 use infer::canonical::{Canonical, Canonicalize, QueryResult};
 use middle::const_val::ConstVal;
 use mir::interpret::GlobalId;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
 use traits::query::CanonicalProjectionGoal;
 use traits::project::Normalized;
@@ -259,13 +259,13 @@ impl<'gcx: 'tcx, 'tcx> Canonicalize<'gcx, 'tcx> for ty::ParamEnvAnd<'tcx, ty::Pr
 
 impl<'gcx: 'tcx, 'tcx> Canonicalize<'gcx, 'tcx> for QueryResult<'tcx, NormalizationResult<'tcx>> {
     // we ought to intern this, but I'm too lazy just now
-    type Canonicalized = Rc<Canonical<'gcx, QueryResult<'gcx, NormalizationResult<'gcx>>>>;
+    type Canonicalized = Lrc<Canonical<'gcx, QueryResult<'gcx, NormalizationResult<'gcx>>>>;
 
     fn intern(
         _gcx: TyCtxt<'_, 'gcx, 'gcx>,
         value: Canonical<'gcx, Self::Lifted>,
     ) -> Self::Canonicalized {
-        Rc::new(value)
+        Lrc::new(value)
     }
 }
 

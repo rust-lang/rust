@@ -16,14 +16,14 @@ use rustc::traits::query::dropck_outlives::{DtorckConstraint, DropckOutlivesResu
 use rustc::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use rustc::ty::subst::Subst;
 use rustc::util::nodemap::FxHashSet;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use syntax::codemap::{Span, DUMMY_SP};
 use util;
 
 crate fn dropck_outlives<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     goal: CanonicalTyGoal<'tcx>,
-) -> Result<Rc<Canonical<'tcx, QueryResult<'tcx, DropckOutlivesResult<'tcx>>>>, NoSolution> {
+) -> Result<Lrc<Canonical<'tcx, QueryResult<'tcx, DropckOutlivesResult<'tcx>>>>, NoSolution> {
     debug!("dropck_outlives(goal={:#?})", goal);
 
     tcx.infer_ctxt().enter(|ref infcx| {
