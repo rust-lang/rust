@@ -44,8 +44,12 @@ function switchTheme(styleElem, mainStyleElem, newTheme) {
     var fullBasicCss = "rustdoc" + resourcesSuffix + ".css";
     var fullNewTheme = newTheme + resourcesSuffix + ".css";
     var newHref = mainStyleElem.href.replace(fullBasicCss, fullNewTheme);
-    var found = false;
 
+    if (styleElem.href === newHref) {
+        return;
+    }
+
+    var found = false;
     if (savedHref.length === 0) {
         onEach(document.getElementsByTagName("link"), function(el) {
             savedHref.push(el.href);
