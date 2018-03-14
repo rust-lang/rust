@@ -184,7 +184,7 @@ fn dtorck_constraint_for_ty<'a, 'gcx, 'tcx>(
             dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ety)
         }
 
-        ty::TyTuple(tys, _) => tys.iter()
+        ty::TyTuple(tys) => tys.iter()
             .map(|ty| dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty))
             .collect(),
 
