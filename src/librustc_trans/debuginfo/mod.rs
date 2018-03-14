@@ -30,7 +30,8 @@ use abi::Abi;
 use common::CodegenCx;
 use builder::Builder;
 use monomorphize::Instance;
-use rustc::ty::{self, ParamEnv, Ty};
+use rustc::ty::{self, TyCtxt, ParamEnv, Ty, TypeFoldable};
+use rustc::ty::fold::TypeFolder;
 use rustc::mir;
 use rustc::session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
 use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet};
@@ -201,13 +202,30 @@ pub fn finalize(cx: &CodegenCx) {
 /// for debug info creation. The function may also return another variant of the
 /// FunctionDebugContext enum which indicates why no debuginfo should be created
 /// for the function.
-pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
+pub fn create_function_debug_context<'a, 'tcx>(cx: &'a CodegenCx<'a, 'tcx>,
                                                instance: Instance<'tcx>,
                                                sig: ty::FnSig<'tcx>,
                                                llfn: ValueRef,
-                                               mir: &mir::Mir) -> FunctionDebugContext {
-    let has_unused_subst = true; // FIXME: make it work with TyUnusedSubst
-    if cx.sess().opts.debuginfo == NoDebugInfo || has_unused_subst {
+                                               mir: &'a mir::Mir<'tcx>) -> FunctionDebugContext {
+    struct UnusedParamVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a>(TyCtxt<'a, 'gcx, 'tcx>, bool);
+    impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> TypeFolder<'gcx, 'tcx> for UnusedParamVisitor<'a, 'gcx, 'tcx> {
+        fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> {
+            self.0
+        }
+        fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+            match ty.sty {
+                ty::TyUnusedParam => {
+                    self.1 = true;
+                }
+                _ => {}
+            }
+            ty.super_fold_with(self)
+        }
+    }
+    let mut has_unused_param_visitor = UnusedParamVisitor(cx.tcx, false);
+    mir.fold_with(&mut has_unused_param_visitor);
+
+    if cx.sess().opts.debuginfo == NoDebugInfo || has_unused_param_visitor.1 {
         return FunctionDebugContext::DebugInfoDisabled;
     }
 
