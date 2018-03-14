@@ -14,8 +14,8 @@ use infer::outlives::free_region_map::FreeRegionRelations;
 use rustc_data_structures::fx::FxHashMap;
 use syntax::ast;
 use traits::{self, PredicateObligation};
-use ty::{self, Ty};
-use ty::fold::{BottomUpFolder, TypeFoldable};
+use ty::{self, Ty, TyCtxt};
+use ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
 use ty::outlives::Component;
 use ty::subst::{Kind, UnpackedKind, Substs};
 use util::nodemap::DefIdMap;
@@ -458,52 +458,60 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // Convert the type from the function into a type valid outside
         // the function, by replacing invalid regions with 'static,
         // after producing an error for each of them.
-        let definition_ty = gcx.fold_regions(&instantiated_ty, &mut false, |r, _| {
-            match *r {
-                // 'static and early-bound regions are valid.
-                ty::ReStatic | ty::ReEmpty => r,
-
-                // All other regions, we map them appropriately to their adjusted
-                // indices, erroring if we find any lifetimes that were not mapped
-                // into the new set.
-                _ => if let Some(UnpackedKind::Lifetime(r1)) = map.get(&r.into())
-                                                                  .map(|k| k.unpack()) {
-                    r1
-                } else {
-                    // No mapping was found. This means that
-                    // it is either a disallowed lifetime,
-                    // which will be caught by regionck, or it
-                    // is a region in a non-upvar closure
-                    // generic, which is explicitly
-                    // allowed. If that surprises you, read
-                    // on.
-                    //
-                    // The case of closure is a somewhat
-                    // subtle (read: hacky) consideration. The
-                    // problem is that our closure types
-                    // currently include all the lifetime
-                    // parameters declared on the enclosing
-                    // function, even if they are unused by
-                    // the closure itself. We can't readily
-                    // filter them out, so here we replace
-                    // those values with `'empty`. This can't
-                    // really make a difference to the rest of
-                    // the compiler; those regions are ignored
-                    // for the outlives relation, and hence
-                    // don't affect trait selection or auto
-                    // traits, and they are erased during
-                    // trans.
-                    gcx.types.re_empty
-                },
-            }
-        });
-
+        let definition_ty = instantiated_ty.fold_with(&mut ReverseMapper { tcx: self.tcx, map });
         debug!(
             "infer_anon_definition_from_instantiation: definition_ty={:?}",
             definition_ty
         );
 
+        // We can unwrap here because our reverse mapper always
+        // produces things with 'gcx lifetime, though the type folder
+        // obscures that.
+        let definition_ty = gcx.lift(&definition_ty).unwrap();
+
         definition_ty
+    }
+}
+
+struct ReverseMapper<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
+    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+    map: FxHashMap<Kind<'tcx>, Kind<'gcx>>
+}
+
+impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ReverseMapper<'cx, 'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'_, 'gcx, 'tcx> {
+        self.tcx
+    }
+
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        // ignore bound regions that appear in the type (e.g., this
+        // would ignore `'r` in a type like `for<'r> fn(&'r u32)`.
+        if let ty::ReLateBound(..) = *r {
+            return r;
+        }
+
+        match self.map.get(&r.into()).map(|k| k.unpack()) {
+            Some(UnpackedKind::Lifetime(r1)) => r1,
+            Some(u) => panic!("region mapped to unexpected kind: {:?}", u),
+            None => {
+                // No mapping was found. This means that it is either a
+                // disallowed lifetime, which will be caught by regionck,
+                // or it is a region in a non-upvar closure generic, which
+                // is explicitly allowed. If that surprises you, read on.
+                //
+                // The case of closure is a somewhat subtle (read: hacky)
+                // consideration. The problem is that our closure types
+                // currently include all the lifetime parameters declared
+                // on the enclosing function, even if they are unused by
+                // the closure itself. We can't readily filter them out,
+                // so here we replace those values with `'empty`. This
+                // can't really make a difference to the rest of the
+                // compiler; those regions are ignored for the outlives
+                // relation, and hence don't affect trait selection or
+                // auto traits, and they are erased during trans.
+                self.tcx.types.re_empty
+            }
+        }
     }
 }
 
