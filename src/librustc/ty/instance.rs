@@ -74,6 +74,15 @@ impl<'tcx> InstanceDef<'tcx> {
     }
 
     #[inline]
+    pub fn shim_def_id(&self) -> Option<DefId> {
+        if let InstanceDef::CloneShim(_, ty) = *self {
+            ty.ty_to_def_id()
+        } else {
+            None
+        }
+    }
+
+    #[inline]
     pub fn attrs<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::Attributes<'tcx> {
         tcx.get_attrs(self.def_id())
     }
