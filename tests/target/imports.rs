@@ -43,21 +43,21 @@ fn test() {
 }
 
 // Simple imports
-use foo::bar::baz;
 use bar::quux as kaas;
 use foo;
+use foo::bar::baz;
 
 // With aliases.
-use foo::{self as bar, baz};
 use foo as bar;
 use foo::qux as bar;
+use foo::{self as bar, baz};
 use foo::{baz, qux as bar};
 
 // With absolute paths
 use foo;
+use Foo;
 use foo::Bar;
 use foo::{Bar, Baz};
-use Foo;
 use {Bar, Baz};
 
 // Root globs
@@ -83,6 +83,7 @@ use fooo::{bar, x, y, z,
            bar::*};
 
 // nested imports with a single sub-tree.
-use a::b::c::*;
 use a::b::c::d;
+use a::b::c::*;
+
 use a::b::c::{xxx, yyy, zzz};

@@ -22,7 +22,6 @@
 use std::collections::HashMap;
 
 use config::lists::*;
-use syntax::{ast, ptr};
 use syntax::codemap::{BytePos, Span};
 use syntax::parse::new_parser_from_tts;
 use syntax::parse::parser::Parser;
@@ -31,6 +30,7 @@ use syntax::print::pprust;
 use syntax::symbol;
 use syntax::tokenstream::{Cursor, ThinTokenStream, TokenStream, TokenTree};
 use syntax::util::ThinVec;
+use syntax::{ast, ptr};
 
 use codemap::SpanUtils;
 use comment::{contains_comment, remove_trailing_white_spaces, CharClasses, FindUncommented,

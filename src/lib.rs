@@ -38,11 +38,11 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::Duration;
 
+use syntax::ast;
+pub use syntax::codemap::FileName;
+use syntax::codemap::{CodeMap, FilePathMapping};
 use syntax::errors::{DiagnosticBuilder, Handler};
 use syntax::errors::emitter::{ColorConfig, EmitterWriter};
-use syntax::ast;
-use syntax::codemap::{CodeMap, FilePathMapping};
-pub use syntax::codemap::FileName;
 use syntax::parse::{self, ParseSess};
 
 use checkstyle::{output_footer, output_header};

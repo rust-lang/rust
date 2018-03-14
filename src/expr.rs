@@ -13,8 +13,8 @@ use std::cmp::min;
 use std::iter::repeat;
 
 use config::lists::*;
-use syntax::{ast, ptr};
 use syntax::codemap::{BytePos, CodeMap, Span};
+use syntax::{ast, ptr};
 
 use chains::rewrite_chain;
 use closures;

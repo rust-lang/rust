@@ -211,8 +211,8 @@ where
 
 #[cfg(test)]
 mod test {
-    use super::{make_diff, Mismatch};
     use super::DiffLine::*;
+    use super::{make_diff, Mismatch};
 
     #[test]
     fn diff_simple() {

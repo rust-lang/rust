@@ -23,10 +23,10 @@ extern crate regex;
 extern crate serde_derive;
 extern crate serde_json as json;
 
-use std::{env, fmt, process};
 use std::collections::HashSet;
 use std::error::Error;
 use std::io::{self, BufRead};
+use std::{env, fmt, process};
 
 use regex::Regex;
 

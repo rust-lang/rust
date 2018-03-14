@@ -1300,13 +1300,12 @@ Reorder import statements in group
 #### `false` (default):
 
 ```rust
-use std::mem;
-use std::io;
-
-use lorem;
-use ipsum;
 use dolor;
+use ipsum;
+use lorem;
 use sit;
+use std::io;
+use std::mem;
 ```
 
 #### `true`:

@@ -9,9 +9,9 @@
 // except according to those terms.
 
 use config::lists::*;
-use syntax::{ast, ptr};
 use syntax::codemap::Span;
 use syntax::parse::classify;
+use syntax::{ast, ptr};
 
 use codemap::SpanUtils;
 use expr::{block_contains_comment, is_simple_block, is_unsafe_block, rewrite_cond, ToExpr};

@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::{env, fs};
 use std::cell::Cell;
 use std::default::Default;
 use std::fs::File;
 use std::io::{Error, ErrorKind, Read};
 use std::path::{Path, PathBuf};
+use std::{env, fs};
 
 use regex::Regex;
 
