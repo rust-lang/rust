@@ -2605,7 +2605,7 @@ impl<I, U> DoubleEndedIterator for Flatten<I>
     }
 }
 
-#[stable(feature = "fused", since = "1.26.0")]
+#[unstable(feature = "iterator_flatten", issue = "48213")]
 impl<I, U> FusedIterator for Flatten<I>
     where I: FusedIterator, U: Iterator,
           I::Item: IntoIterator<IntoIter = U, Item = U::Item> {}
