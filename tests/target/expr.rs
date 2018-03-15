@@ -393,3 +393,19 @@ fn issue2178() {
         .map(|item| ls_util::rls_to_location(item))
         .collect())
 }
+
+// #2493
+impl Foo {
+    fn bar(&self) {
+        {
+            let x = match () {
+                () => {
+                    let i;
+                    i == self.install_config
+                        .storage
+                        .experimental_compressed_block_size as usize
+                }
+            };
+        }
+    }
+}
