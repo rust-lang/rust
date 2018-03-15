@@ -49,3 +49,5 @@ mod m4 {
     use two_macros::m;
     m!(); //~ ERROR ambiguous
 }
+
+fn main() {}

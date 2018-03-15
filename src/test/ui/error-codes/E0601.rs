@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: `main` function not found
-
-// Since we're not compiling a test runner this function should be elided
-// and the build will fail because main doesn't exist
-#[test]
-fn main() {
-}
+// Test for main function not found.
