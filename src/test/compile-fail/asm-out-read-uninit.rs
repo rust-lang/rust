@@ -12,6 +12,8 @@
 // ignore-emscripten
 // ignore-powerpc
 // ignore-sparc
+// ignore-mips
+// ignore-mips64
 
 // revisions: ast mir
 //[mir]compile-flags: -Z borrowck=mir

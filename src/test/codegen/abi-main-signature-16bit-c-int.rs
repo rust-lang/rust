@@ -17,6 +17,7 @@
 // ignore-asmjs
 // ignore-hexagon
 // ignore-mips
+// ignore-mips64
 // ignore-powerpc
 // ignore-s390x
 // ignore-sparc
