@@ -51,10 +51,6 @@ pub fn cvt_gai(err: c_int) -> io::Result<()> {
     if err == 0 {
         return Ok(())
     }
-
-    // We may need to trigger a glibc workaround. See on_resolver_failure() for details.
-    on_resolver_failure();
-
     if err == EAI_SYSTEM {
         return Err(io::Error::last_os_error())
     }
@@ -381,22 +377,21 @@ impl IntoInner<c_int> for Socket {
 // res_init unconditionally, we call it only when we detect we're linking
 // against glibc version < 2.26. (That is, when we both know its needed and
 // believe it's thread-safe).
-#[cfg(target_env = "gnu")]
-fn on_resolver_failure() {
+pub fn res_init_if_glibc_before_2_26() -> io::Result<()> {
     // If the version fails to parse, we treat it the same as "not glibc".
     if let Some(Ok(version_str)) = glibc_version_cstr().map(CStr::to_str) {
         if let Some(version) = parse_glibc_version(version_str) {
             if version < (2, 26) {
-                unsafe { libc::res_init() };
+                let ret = unsafe { libc::res_init() };
+                if ret != 0 {
+                    return Err(io::Error::last_os_error());
+                }
             }
         }
     }
+    Ok(())
 }
 
-#[cfg(not(target_env = "gnu"))]
-fn on_resolver_failure() {}
-
-#[cfg(target_env = "gnu")]
 fn glibc_version_cstr() -> Option<&'static CStr> {
     weak! {
         fn gnu_get_libc_version() -> *const libc::c_char
@@ -410,7 +405,6 @@ fn glibc_version_cstr() -> Option<&'static CStr> {
 
 // Returns Some((major, minor)) if the string is a valid "x.y" version,
 // ignoring any extra dot-separated parts. Otherwise return None.
-#[cfg(target_env = "gnu")]
 fn parse_glibc_version(version: &str) -> Option<(usize, usize)> {
     let mut parsed_ints = version.split(".").map(str::parse::<usize>).fuse();
     match (parsed_ints.next(), parsed_ints.next()) {
@@ -419,7 +413,7 @@ fn parse_glibc_version(version: &str) -> Option<(usize, usize)> {
     }
 }
 
-#[cfg(all(test, taget_env = "gnu"))]
+#[cfg(test)]
 mod test {
     use super::*;
 

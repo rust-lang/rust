@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // revisions: ast mir
-//[mir]compile-flags: -Z borrowck=mir
+//[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
 
 #![allow(unused_variables)]
 #![allow(unused_assignments)]
@@ -26,7 +26,8 @@ fn separate_arms() {
         }
         Some(ref __isize) => {
             x = Some(1); //[ast]~ ERROR cannot assign
-                         //[mir]~^ ERROR cannot assign to `x` because it is borrowed
+                         //[mir]~^ ERROR cannot assign to `x` because it is borrowed (Ast)
+                         //[mir]~| ERROR cannot assign to `x` because it is borrowed (Mir)
         }
     }
     x.clone(); // just to prevent liveness warnings

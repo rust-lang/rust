@@ -1,10 +1,7 @@
 error[E0599]: no method named `foo` found for type `Bar` in the current scope
   --> $DIR/issue-21659-show-relevant-trait-impls-3.rs:30:8
    |
-LL | struct Bar;
-   | ----------- method `foo` not found for this
-...
-LL |     f1.foo(1usize);
+30 |     f1.foo(1usize);
    |        ^^^
    |
    = help: items from traits can only be used if the trait is implemented and in scope
@@ -13,4 +10,3 @@ LL |     f1.foo(1usize);
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0599"

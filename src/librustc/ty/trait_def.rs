@@ -20,7 +20,7 @@ use ty::{Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
-use rustc_data_structures::sync::Lrc;
+use std::rc::Rc;
 
 /// A trait's definition with type information.
 pub struct TraitDef {
@@ -142,7 +142,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 // Query provider for `trait_impls_of`.
 pub(super) fn trait_impls_of_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 trait_id: DefId)
-                                                -> Lrc<TraitImpls> {
+                                                -> Rc<TraitImpls> {
     let mut remote_impls = Vec::new();
 
     // Traits defined in the current crate can't have impls in upstream
@@ -180,7 +180,7 @@ pub(super) fn trait_impls_of_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    Lrc::new(TraitImpls {
+    Rc::new(TraitImpls {
         blanket_impls: blanket_impls,
         non_blanket_impls: non_blanket_impls,
     })

@@ -10,14 +10,14 @@
 
 use std::fmt;
 use std::ops::{Deref, Range};
-use rustc_data_structures::sync::Lrc;
+use std::rc::Rc;
 
 use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
                                            HashStable};
 
 #[derive(Clone)]
 pub struct RcSlice<T> {
-    data: Lrc<Box<[T]>>,
+    data: Rc<Box<[T]>>,
     offset: u32,
     len: u32,
 }
@@ -27,7 +27,7 @@ impl<T> RcSlice<T> {
         RcSlice {
             offset: 0,
             len: vec.len() as u32,
-            data: Lrc::new(vec.into_boxed_slice()),
+            data: Rc::new(vec.into_boxed_slice()),
         }
     }
 

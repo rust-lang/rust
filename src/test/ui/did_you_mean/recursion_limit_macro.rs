@@ -17,7 +17,7 @@
 
 macro_rules! recurse {
     () => { };
-    ($t:tt $($tail:tt)*) => { recurse!($($tail)*) }; //~ ERROR recursion limit
+    ($t:tt $($tail:tt)*) => { recurse!($($tail)*) };
 }
 
 fn main() {

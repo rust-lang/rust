@@ -30,10 +30,21 @@ trait Trait2 {
 
 impl Trait2 for () { }
 
+#[cfg(rpass1)]
 mod mod3 {
-    #[cfg(rpass1)]
     use Trait1;
-    #[cfg(rpass2)]
+
+    fn bar() {
+        ().method();
+    }
+
+    fn baz() {
+        22; // no method call, traits in scope don't matter
+    }
+}
+
+#[cfg(rpass2)]
+mod mod3 {
     use Trait2;
 
     #[rustc_clean(label="Hir", cfg="rpass2")]

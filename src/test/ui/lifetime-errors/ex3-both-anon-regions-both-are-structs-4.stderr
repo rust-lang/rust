@@ -1,13 +1,12 @@
 error[E0623]: lifetime mismatch
   --> $DIR/ex3-both-anon-regions-both-are-structs-4.rs:16:11
    |
-LL | fn foo(mut x: Ref) {
+15 | fn foo(mut x: Ref) {
    |               ---
    |               |
    |               this type is declared with multiple lifetimes...
-LL |     x.a = x.b; //~ ERROR lifetime mismatch
+16 |     x.a = x.b;
    |           ^^^ ...but data with one lifetime flows into the other here
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0623"

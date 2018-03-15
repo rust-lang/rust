@@ -38,13 +38,11 @@
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(lang_items)]
-#![feature(optin_builtin_traits)]
 
 #[macro_use]
 extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc_errors;
-extern crate rustc_data_structures;
 
 mod diagnostic;
 
@@ -52,7 +50,7 @@ mod diagnostic;
 pub use diagnostic::{Diagnostic, Level};
 
 use std::{ascii, fmt, iter};
-use rustc_data_structures::sync::Lrc;
+use std::rc::Rc;
 use std::str::FromStr;
 
 use syntax::ast;
@@ -61,7 +59,7 @@ use syntax::parse::{self, token};
 use syntax::symbol::Symbol;
 use syntax::tokenstream;
 use syntax_pos::DUMMY_SP;
-use syntax_pos::{FileMap, Pos, SyntaxContext, FileName};
+use syntax_pos::{FileMap, Pos, SyntaxContext};
 use syntax_pos::hygiene::Mark;
 
 /// The main type provided by this crate, representing an abstract stream of
@@ -91,7 +89,7 @@ impl FromStr for TokenStream {
     fn from_str(src: &str) -> Result<TokenStream, LexError> {
         __internal::with_sess(|(sess, mark)| {
             let src = src.to_string();
-            let name = FileName::ProcMacroSourceCode;
+            let name = "<proc-macro source code>".to_string();
             let expn_info = mark.expn_info().unwrap();
             let call_site = expn_info.call_site;
             // notify the expansion info that it is unhygienic
@@ -179,10 +177,9 @@ impl TokenStream {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Span(syntax_pos::Span);
 
-impl Span {
-    /// A span that resolves at the macro definition site.
-    #[unstable(feature = "proc_macro", issue = "38356")]
-    pub fn def_site() -> Span {
+#[unstable(feature = "proc_macro", issue = "38356")]
+impl Default for Span {
+    fn default() -> Span {
         ::__internal::with_sess(|(_, mark)| {
             let call_site = mark.expn_info().unwrap().call_site;
             Span(call_site.with_ctxt(SyntaxContext::empty().apply_mark(mark)))
@@ -194,7 +191,7 @@ impl Span {
 /// This is needed to implement a custom quoter.
 #[unstable(feature = "proc_macro", issue = "38356")]
 pub fn quote_span(span: Span) -> TokenStream {
-    quote::Quote::quote(span)
+    TokenStream(quote::Quote::quote(&span.0))
 }
 
 macro_rules! diagnostic_method {
@@ -223,21 +220,6 @@ impl Span {
         }
     }
 
-    /// The `Span` for the tokens in the previous macro expansion from which
-    /// `self` was generated from, if any.
-    #[unstable(feature = "proc_macro", issue = "38356")]
-    pub fn parent(&self) -> Option<Span> {
-        self.0.ctxt().outer().expn_info().map(|i| Span(i.call_site))
-    }
-
-    /// The span for the origin source code that `self` was generated from. If
-    /// this `Span` wasn't generated from other macro expansions then the return
-    /// value is the same as `*self`.
-    #[unstable(feature = "proc_macro", issue = "38356")]
-    pub fn source(&self) -> Span {
-        Span(self.0.source_callsite())
-    }
-
     /// Get the starting line/column in the source file for this span.
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub fn start(&self) -> LineColumn {
@@ -264,25 +246,11 @@ impl Span {
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub fn join(&self, other: Span) -> Option<Span> {
         let self_loc = __internal::lookup_char_pos(self.0.lo());
-        let other_loc = __internal::lookup_char_pos(other.0.lo());
+        let other_loc = __internal::lookup_char_pos(self.0.lo());
 
         if self_loc.file.name != other_loc.file.name { return None }
 
         Some(Span(self.0.to(other.0)))
-    }
-
-    /// Creates a new span with the same line/column information as `self` but
-    /// that resolves symbols as though it were at `other`.
-    #[unstable(feature = "proc_macro", issue = "38356")]
-    pub fn resolved_at(&self, other: Span) -> Span {
-        Span(self.0.with_ctxt(other.0.ctxt()))
-    }
-
-    /// Creates a new span with the same name resolution behavior as `self` but
-    /// with the line/column information of `other`.
-    #[unstable(feature = "proc_macro", issue = "38356")]
-    pub fn located_at(&self, other: Span) -> Span {
-        other.resolved_at(*self)
     }
 
     diagnostic_method!(error, Level::Error);
@@ -296,39 +264,32 @@ impl Span {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct LineColumn {
     /// The 1-indexed line in the source file on which the span starts or ends (inclusive).
-    #[unstable(feature = "proc_macro", issue = "38356")]
-    pub line: usize,
+    line: usize,
     /// The 0-indexed column (in UTF-8 characters) in the source file on which
     /// the span starts or ends (inclusive).
-    #[unstable(feature = "proc_macro", issue = "38356")]
-    pub column: usize
+    column: usize
 }
 
 /// The source file of a given `Span`.
 #[unstable(feature = "proc_macro", issue = "38356")]
 #[derive(Clone)]
 pub struct SourceFile {
-    filemap: Lrc<FileMap>,
+    filemap: Rc<FileMap>,
 }
 
-#[unstable(feature = "proc_macro", issue = "38356")]
-impl !Send for SourceFile {}
-#[unstable(feature = "proc_macro", issue = "38356")]
-impl !Sync for SourceFile {}
-
 impl SourceFile {
-    /// Get the path to this source file.
+    /// Get the path to this source file as a string.
     ///
     /// ### Note
     /// If the code span associated with this `SourceFile` was generated by an external macro, this
     /// may not be an actual path on the filesystem. Use [`is_real`] to check.
     ///
-    /// Also note that even if `is_real` returns `true`, if `--remap-path-prefix` was passed on
+    /// Also note that even if `is_real` returns `true`, if `-Z remap-path-prefix-*` was passed on
     /// the command line, the path as given may not actually be valid.
     ///
     /// [`is_real`]: #method.is_real
     # [unstable(feature = "proc_macro", issue = "38356")]
-    pub fn path(&self) -> &FileName {
+    pub fn as_str(&self) -> &str {
         &self.filemap.name
     }
 
@@ -344,9 +305,9 @@ impl SourceFile {
 }
 
 #[unstable(feature = "proc_macro", issue = "38356")]
-impl AsRef<FileName> for SourceFile {
-    fn as_ref(&self) -> &FileName {
-        self.path()
+impl AsRef<str> for SourceFile {
+    fn as_ref(&self) -> &str {
+        self.as_str()
     }
 }
 
@@ -354,7 +315,7 @@ impl AsRef<FileName> for SourceFile {
 impl fmt::Debug for SourceFile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("SourceFile")
-            .field("path", self.path())
+            .field("path", &self.as_str())
             .field("is_real", &self.is_real())
             .finish()
     }
@@ -363,7 +324,7 @@ impl fmt::Debug for SourceFile {
 #[unstable(feature = "proc_macro", issue = "38356")]
 impl PartialEq for SourceFile {
     fn eq(&self, other: &Self) -> bool {
-        Lrc::ptr_eq(&self.filemap, &other.filemap)
+        Rc::ptr_eq(&self.filemap, &other.filemap)
     }
 }
 
@@ -371,8 +332,8 @@ impl PartialEq for SourceFile {
 impl Eq for SourceFile {}
 
 #[unstable(feature = "proc_macro", issue = "38356")]
-impl PartialEq<FileName> for SourceFile {
-    fn eq(&self, other: &FileName) -> bool {
+impl PartialEq<str> for SourceFile {
+    fn eq(&self, other: &str) -> bool {
         self.as_ref() == other
     }
 }
@@ -390,7 +351,7 @@ pub struct TokenTree {
 #[unstable(feature = "proc_macro", issue = "38356")]
 impl From<TokenNode> for TokenTree {
     fn from(kind: TokenNode) -> TokenTree {
-        TokenTree { span: Span::def_site(), kind: kind }
+        TokenTree { span: Span::default(), kind: kind }
     }
 }
 
@@ -692,7 +653,7 @@ impl TokenTree {
                 })
             }
 
-            DotEq => joint!('.', Eq),
+            DotEq => unreachable!(),
             OpenDelim(..) | CloseDelim(..) => unreachable!(),
             Whitespace | Comment | Shebang(..) | Eof => unreachable!(),
         };
@@ -767,7 +728,7 @@ impl TokenTree {
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[doc(hidden)]
 pub mod __internal {
-    pub use quote::{LiteralKind, Quoter, unquote};
+    pub use quote::{Quoter, __rt};
 
     use std::cell::Cell;
 
@@ -849,12 +810,6 @@ pub mod __internal {
             p.set((cx.parse_sess, cx.current_expansion.mark));
             f()
         })
-    }
-
-    pub fn in_sess() -> bool
-    {
-        let p = CURRENT_SESS.with(|p| p.get());
-        !p.0.is_null()
     }
 
     pub fn with_sess<F, R>(f: F) -> R

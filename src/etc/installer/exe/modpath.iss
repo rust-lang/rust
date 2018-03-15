@@ -144,7 +144,7 @@ begin
 	end;
 end;
 
-// Split a string into an array using passed delimiter
+// Split a string into an array using passed delimeter
 procedure Explode(var Dest: TArrayOfString; Text: String; Separator: String);
 var
 	i: Integer;

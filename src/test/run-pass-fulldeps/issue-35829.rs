@@ -13,7 +13,6 @@
 #![feature(quote, rustc_private)]
 
 extern crate syntax;
-extern crate rustc_data_structures;
 
 use syntax::ext::base::{ExtCtxt, DummyResolver};
 use syntax::ext::expand::ExpansionConfig;
@@ -24,7 +23,7 @@ use syntax::ast::{Expr, ExprKind, LitKind, StrStyle, RangeLimits};
 use syntax::symbol::Symbol;
 use syntax::ptr::P;
 
-use rustc_data_structures::sync::Lrc;
+use std::rc::Rc;
 
 fn main() {
     let parse_sess = ParseSess::new(FilePathMapping::empty());
@@ -34,16 +33,16 @@ fn main() {
 
     // check byte string
     let byte_string = quote_expr!(&cx, b"one");
-    let byte_string_lit_kind = LitKind::ByteStr(Lrc::new(b"one".to_vec()));
+    let byte_string_lit_kind = LitKind::ByteStr(Rc::new(b"one".to_vec()));
     assert_eq!(byte_string.node, ExprKind::Lit(P(dummy_spanned(byte_string_lit_kind))));
 
     // check raw byte string
     let raw_byte_string = quote_expr!(&cx, br###"#"two"#"###);
-    let raw_byte_string_lit_kind = LitKind::ByteStr(Lrc::new(b"#\"two\"#".to_vec()));
+    let raw_byte_string_lit_kind = LitKind::ByteStr(Rc::new(b"#\"two\"#".to_vec()));
     assert_eq!(raw_byte_string.node, ExprKind::Lit(P(dummy_spanned(raw_byte_string_lit_kind))));
 
-    // check dotdoteq
-    let closed_range = quote_expr!(&cx, 0 ..= 1);
+    // check dotdotdot
+    let closed_range = quote_expr!(&cx, 0 ... 1);
     assert_eq!(closed_range.node, ExprKind::Range(
         Some(quote_expr!(&cx, 0)),
         Some(quote_expr!(&cx, 1)),

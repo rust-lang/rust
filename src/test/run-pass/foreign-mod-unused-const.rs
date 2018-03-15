@@ -8,11 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 // pretty-expanded FIXME #23616
 
+#![feature(libc)]
+
+extern crate libc;
+
 mod foo {
+    use libc::c_int;
+
     extern {
-        pub static errno: u32;
+        pub static errno: c_int;
     }
 }
 

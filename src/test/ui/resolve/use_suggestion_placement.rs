@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-cloudabi no std::path support
-
 macro_rules! y {
     () => {}
 }
@@ -24,15 +22,15 @@ mod foo {
 
     // test whether the use suggestion isn't
     // placed into the expansion of `#[derive(Debug)]
-    type Bar = Path; //~ ERROR cannot find
+    type Bar = Path;
 }
 
 fn main() {
     y!();
-    let _ = A; //~ ERROR cannot find
+    let _ = A;
     foo();
 }
 
 fn foo() {
-    type Dict<K, V> = HashMap<K, V>; //~ ERROR cannot find
+    type Dict<K, V> = HashMap<K, V>;
 }

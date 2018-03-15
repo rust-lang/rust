@@ -20,12 +20,12 @@ fn bar(x: !) { }
 
 fn a() {
     // the `22` is unreachable:
-    foo(return, 22); //~ ERROR unreachable
+    foo(return, 22);
 }
 
 fn b() {
     // the call is unreachable:
-    bar(return); //~ ERROR unreachable
+    bar(return);
 }
 
 fn main() { }

@@ -10,6 +10,7 @@
 
 #![feature(optin_builtin_traits)]
 
+trait MarkerTr {}
 pub trait Tr {
     fn f();
     const C: u8;
@@ -20,6 +21,8 @@ pub struct S {
 }
 struct Ts(pub u8);
 
+#[allow(auto_impl)]
+pub impl MarkerTr for .. {} //~ ERROR unnecessary visibility qualifier
 pub impl Tr for S {  //~ ERROR unnecessary visibility qualifier
     pub fn f() {} //~ ERROR unnecessary visibility qualifier
     pub const C: u8 = 0; //~ ERROR unnecessary visibility qualifier
@@ -36,6 +39,7 @@ pub extern "C" { //~ ERROR unnecessary visibility qualifier
 }
 
 const MAIN: u8 = {
+    trait MarkerTr {}
     pub trait Tr {
         fn f();
         const C: u8;
@@ -46,6 +50,8 @@ const MAIN: u8 = {
     }
     struct Ts(pub u8);
 
+    #[allow(auto_impl)]
+    pub impl MarkerTr for .. {} //~ ERROR unnecessary visibility qualifier
     pub impl Tr for S {  //~ ERROR unnecessary visibility qualifier
         pub fn f() {} //~ ERROR unnecessary visibility qualifier
         pub const C: u8 = 0; //~ ERROR unnecessary visibility qualifier
@@ -65,6 +71,7 @@ const MAIN: u8 = {
 };
 
 fn main() {
+    trait MarkerTr {}
     pub trait Tr {
         fn f();
         const C: u8;
@@ -75,6 +82,8 @@ fn main() {
     }
     struct Ts(pub u8);
 
+    #[allow(auto_impl)]
+    pub impl MarkerTr for .. {} //~ ERROR unnecessary visibility qualifier
     pub impl Tr for S {  //~ ERROR unnecessary visibility qualifier
         pub fn f() {} //~ ERROR unnecessary visibility qualifier
         pub const C: u8 = 0; //~ ERROR unnecessary visibility qualifier

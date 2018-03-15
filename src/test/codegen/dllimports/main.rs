@@ -9,20 +9,19 @@
 // except according to those terms.
 
 // This test is for *-windows-msvc only.
+// ignore-gnu
 // ignore-android
 // ignore-bitrig
-// ignore-cloudabi
+// ignore-macos
 // ignore-dragonfly
-// ignore-emscripten
 // ignore-freebsd
-// ignore-gnu
 // ignore-haiku
 // ignore-ios
 // ignore-linux
-// ignore-macos
 // ignore-netbsd
 // ignore-openbsd
 // ignore-solaris
+// ignore-emscripten
 
 // aux-build:dummy.rs
 // aux-build:wrapper.rs

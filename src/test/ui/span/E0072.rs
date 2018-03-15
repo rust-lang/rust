@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct ListNode { //~ ERROR has infinite size
+struct ListNode {
     head: u8,
     tail: Option<ListNode>,
 }

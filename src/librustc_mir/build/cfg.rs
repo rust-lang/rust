@@ -50,18 +50,7 @@ impl<'tcx> CFG<'tcx> {
                                              block: BasicBlock,
                                              source_info: SourceInfo,
                                              region_scope: region::Scope) {
-        if tcx.emit_end_regions() {
-            if let region::ScopeData::CallSite(_) = region_scope.data() {
-                // The CallSite scope (aka the root scope) is sort of weird, in that it is
-                // supposed to "separate" the "interior" and "exterior" of a closure. Being
-                // that, it is not really a part of the region hierarchy, but for some
-                // reason it *is* considered a part of it.
-                //
-                // It should die a hopefully painful death with NLL, so let's leave this hack
-                // for now so that nobody can complain about soundness.
-                return
-            }
-
+        if tcx.sess.emit_end_regions() {
             self.push(block, Statement {
                 source_info,
                 kind: StatementKind::EndRegion(region_scope),
@@ -72,18 +61,18 @@ impl<'tcx> CFG<'tcx> {
     pub fn push_assign(&mut self,
                        block: BasicBlock,
                        source_info: SourceInfo,
-                       place: &Place<'tcx>,
+                       lvalue: &Lvalue<'tcx>,
                        rvalue: Rvalue<'tcx>) {
         self.push(block, Statement {
             source_info,
-            kind: StatementKind::Assign(place.clone(), rvalue)
+            kind: StatementKind::Assign(lvalue.clone(), rvalue)
         });
     }
 
     pub fn push_assign_constant(&mut self,
                                 block: BasicBlock,
                                 source_info: SourceInfo,
-                                temp: &Place<'tcx>,
+                                temp: &Lvalue<'tcx>,
                                 constant: Constant<'tcx>) {
         self.push_assign(block, source_info, temp,
                          Rvalue::Use(Operand::Constant(box constant)));
@@ -92,8 +81,8 @@ impl<'tcx> CFG<'tcx> {
     pub fn push_assign_unit(&mut self,
                             block: BasicBlock,
                             source_info: SourceInfo,
-                            place: &Place<'tcx>) {
-        self.push_assign(block, source_info, place, Rvalue::Aggregate(
+                            lvalue: &Lvalue<'tcx>) {
+        self.push_assign(block, source_info, lvalue, Rvalue::Aggregate(
             box AggregateKind::Tuple, vec![]
         ));
     }

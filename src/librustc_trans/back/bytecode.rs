@@ -47,7 +47,7 @@ pub const RLIB_BYTECODE_OBJECT_MAGIC: &'static [u8] = b"RUST_OBJECT";
 // The version number this compiler will write to bytecode objects in rlibs
 pub const RLIB_BYTECODE_OBJECT_VERSION: u8 = 2;
 
-pub const RLIB_BYTECODE_EXTENSION: &str = "bc.z";
+pub const RLIB_BYTECODE_EXTENSION: &str = "bytecode.encoded";
 
 pub fn encode(identifier: &str, bytecode: &[u8]) -> Vec<u8> {
     let mut encoded = Vec::new();
@@ -74,7 +74,7 @@ pub fn encode(identifier: &str, bytecode: &[u8]) -> Vec<u8> {
     encoded.extend_from_slice(&[0, 0, 0, 0, 0, 0, 0, 0]);
 
     let before = encoded.len();
-    DeflateEncoder::new(&mut encoded, Compression::fast())
+    DeflateEncoder::new(&mut encoded, Compression::Fast)
         .write_all(bytecode)
         .unwrap();
     let after = encoded.len();

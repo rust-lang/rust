@@ -14,8 +14,6 @@
 // suggestions to use `crate` given when it is on). When that feature becomes
 // stable, this test can be deleted.
 
-// must-compile-successfully
-
 #![feature(macro_vis_matcher)]
 
 #![allow(unused)]

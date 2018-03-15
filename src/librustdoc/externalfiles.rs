@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::fs;
+use std::fs::File;
+use std::io::prelude::*;
 use std::path::Path;
 use std::str;
-use html::markdown::Markdown;
+use html::markdown::{Markdown, RenderType};
 
 #[derive(Clone)]
-pub struct ExternalHtml {
+pub struct ExternalHtml{
     /// Content that will be included inline in the <head> section of a
     /// rendered Markdown file or generated documentation
     pub in_header: String,
@@ -28,7 +29,7 @@ pub struct ExternalHtml {
 
 impl ExternalHtml {
     pub fn load(in_header: &[String], before_content: &[String], after_content: &[String],
-                md_before_content: &[String], md_after_content: &[String])
+                md_before_content: &[String], md_after_content: &[String], render: RenderType)
             -> Option<ExternalHtml> {
         load_external_files(in_header)
             .and_then(|ih|
@@ -37,7 +38,7 @@ impl ExternalHtml {
             )
             .and_then(|(ih, bc)|
                 load_external_files(md_before_content)
-                    .map(|m_bc| (ih, format!("{}{}", bc, Markdown(&m_bc, &[]))))
+                    .map(|m_bc| (ih, format!("{}{}", bc, Markdown(&m_bc, render))))
             )
             .and_then(|(ih, bc)|
                 load_external_files(after_content)
@@ -45,7 +46,7 @@ impl ExternalHtml {
             )
             .and_then(|(ih, bc, ac)|
                 load_external_files(md_after_content)
-                    .map(|m_ac| (ih, bc, format!("{}{}", ac, Markdown(&m_ac, &[]))))
+                    .map(|m_ac| (ih, bc, format!("{}{}", ac, Markdown(&m_ac, render))))
             )
             .map(|(ih, bc, ac)|
                 ExternalHtml {
@@ -64,13 +65,13 @@ pub enum LoadStringError {
 
 pub fn load_string<P: AsRef<Path>>(file_path: P) -> Result<String, LoadStringError> {
     let file_path = file_path.as_ref();
-    let contents = match fs::read(file_path) {
-        Ok(bytes) => bytes,
-        Err(e) => {
-            eprintln!("error reading `{}`: {}", file_path.display(), e);
-            return Err(LoadStringError::ReadFail);
-        }
-    };
+    let mut contents = vec![];
+    let result = File::open(file_path)
+                      .and_then(|mut f| f.read_to_end(&mut contents));
+    if let Err(e) = result {
+        eprintln!("error reading `{}`: {}", file_path.display(), e);
+        return Err(LoadStringError::ReadFail);
+    }
     match str::from_utf8(&contents) {
         Ok(s) => Ok(s.to_string()),
         Err(_) => {

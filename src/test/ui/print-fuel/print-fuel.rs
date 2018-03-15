@@ -12,7 +12,6 @@
 #![allow(dead_code)]
 
 // compile-flags: -Z print-fuel=foo
-// must-compile-successfully
 
 struct S1(u8, u16, u8);
 struct S2(u8, u16, u8);

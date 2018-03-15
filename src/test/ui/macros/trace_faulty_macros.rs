@@ -14,7 +14,7 @@
 
 macro_rules! my_faulty_macro {
     () => {
-        my_faulty_macro!(bcd); //~ ERROR no rules
+        my_faulty_macro!(bcd);
     };
 }
 
@@ -29,7 +29,7 @@ macro_rules! pat_macro {
 
 macro_rules! my_recursive_macro {
     () => {
-        my_recursive_macro!(); //~ ERROR recursion limit
+        my_recursive_macro!();
     };
 }
 

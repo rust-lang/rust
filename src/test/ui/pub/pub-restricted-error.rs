@@ -13,7 +13,7 @@
 struct Bar(pub(()));
 
 struct Foo {
-    pub(crate) () foo: usize, //~ ERROR expected identifier
+    pub(crate) () foo: usize,
 }
 
-fn main() {}
+

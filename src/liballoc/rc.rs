@@ -252,11 +252,11 @@ use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
 use core::marker;
-use core::marker::{Unsize, PhantomData};
+use core::marker::Unsize;
 use core::mem::{self, align_of_val, forget, size_of_val, uninitialized};
 use core::ops::Deref;
 use core::ops::CoerceUnsized;
-use core::ptr::{self, NonNull};
+use core::ptr::{self, Shared};
 use core::convert::From;
 
 use heap::{Heap, Alloc, Layout, box_free};
@@ -282,8 +282,7 @@ struct RcBox<T: ?Sized> {
 /// [get_mut]: #method.get_mut
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Rc<T: ?Sized> {
-    ptr: NonNull<RcBox<T>>,
-    phantom: PhantomData<T>,
+    ptr: Shared<RcBox<T>>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -311,12 +310,11 @@ impl<T> Rc<T> {
             // pointers, which ensures that the weak destructor never frees
             // the allocation while the strong destructor is running, even
             // if the weak pointer is stored inside the strong one.
-            ptr: Box::into_raw_non_null(box RcBox {
+            ptr: Shared::from(Box::into_unique(box RcBox {
                 strong: Cell::new(1),
                 weak: Cell::new(1),
                 value,
-            }),
-            phantom: PhantomData,
+            })),
         }
     }
 
@@ -348,7 +346,7 @@ impl<T> Rc<T> {
             unsafe {
                 let val = ptr::read(&*this); // copy the contained object
 
-                // Indicate to Weaks that they can't be promoted by decrementing
+                // Indicate to Weaks that they can't be promoted by decrememting
                 // the strong count, and then remove the implicit "strong weak"
                 // pointer while also handling drop logic by just crafting a
                 // fake Weak.
@@ -428,8 +426,7 @@ impl<T: ?Sized> Rc<T> {
         let rc_ptr = set_data_ptr(fake_ptr, (ptr as *mut u8).offset(-offset));
 
         Rc {
-            ptr: NonNull::new_unchecked(rc_ptr),
-            phantom: PhantomData,
+            ptr: Shared::new_unchecked(rc_ptr),
         }
     }
 
@@ -649,8 +646,7 @@ impl Rc<Any> {
                 let raw: *const RcBox<Any> = self.ptr.as_ptr();
                 forget(self);
                 Ok(Rc {
-                    ptr: NonNull::new_unchecked(raw as *const RcBox<T> as *mut _),
-                    phantom: PhantomData,
+                    ptr: Shared::new_unchecked(raw as *const RcBox<T> as *mut _),
                 })
             }
         } else {
@@ -695,7 +691,7 @@ impl<T: ?Sized> Rc<T> {
             // Free the allocation without dropping its contents
             box_free(bptr);
 
-            Rc { ptr: NonNull::new_unchecked(ptr), phantom: PhantomData }
+            Rc { ptr: Shared::new_unchecked(ptr) }
         }
     }
 }
@@ -722,7 +718,7 @@ impl<T> Rc<[T]> {
             &mut (*ptr).value as *mut [T] as *mut T,
             v.len());
 
-        Rc { ptr: NonNull::new_unchecked(ptr), phantom: PhantomData }
+        Rc { ptr: Shared::new_unchecked(ptr) }
     }
 }
 
@@ -781,7 +777,7 @@ impl<T: Clone> RcFromSlice<T> for Rc<[T]> {
             // All clear. Forget the guard so it doesn't free the new RcBox.
             forget(guard);
 
-            Rc { ptr: NonNull::new_unchecked(ptr), phantom: PhantomData }
+            Rc { ptr: Shared::new_unchecked(ptr) }
         }
     }
 }
@@ -872,7 +868,7 @@ impl<T: ?Sized> Clone for Rc<T> {
     #[inline]
     fn clone(&self) -> Rc<T> {
         self.inc_strong();
-        Rc { ptr: self.ptr, phantom: PhantomData }
+        Rc { ptr: self.ptr }
     }
 }
 
@@ -1076,7 +1072,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Rc<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> fmt::Pointer for Rc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Pointer::fmt(&(&**self as *const T), f)
+        fmt::Pointer::fmt(&self.ptr, f)
     }
 }
 
@@ -1099,8 +1095,7 @@ impl<'a, T: Clone> From<&'a [T]> for Rc<[T]> {
 impl<'a> From<&'a str> for Rc<str> {
     #[inline]
     fn from(v: &str) -> Rc<str> {
-        let rc = Rc::<[u8]>::from(v.as_bytes());
-        unsafe { Rc::from_raw(Rc::into_raw(rc) as *const str) }
+        unsafe { mem::transmute(<Rc<[u8]>>::from(v.as_bytes())) }
     }
 }
 
@@ -1160,7 +1155,7 @@ impl<T> From<Vec<T>> for Rc<[T]> {
 /// [`None`]: ../../std/option/enum.Option.html#variant.None
 #[stable(feature = "rc_weak", since = "1.4.0")]
 pub struct Weak<T: ?Sized> {
-    ptr: NonNull<RcBox<T>>,
+    ptr: Shared<RcBox<T>>,
 }
 
 #[stable(feature = "rc_weak", since = "1.4.0")]
@@ -1190,11 +1185,11 @@ impl<T> Weak<T> {
     pub fn new() -> Weak<T> {
         unsafe {
             Weak {
-                ptr: Box::into_raw_non_null(box RcBox {
+                ptr: Shared::from(Box::into_unique(box RcBox {
                     strong: Cell::new(0),
                     weak: Cell::new(1),
                     value: uninitialized(),
-                }),
+                })),
             }
         }
     }
@@ -1233,7 +1228,7 @@ impl<T: ?Sized> Weak<T> {
             None
         } else {
             self.inc_strong();
-            Some(Rc { ptr: self.ptr, phantom: PhantomData })
+            Some(Rc { ptr: self.ptr })
         }
     }
 }

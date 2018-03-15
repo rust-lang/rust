@@ -50,7 +50,7 @@ fn expand(cx: &mut ExtCtxt,
     let trait_def = TraitDef {
         span: span,
         attributes: vec![],
-        path: Path::new_local("TotalSum"),
+        path: Path::new(vec!["TotalSum"]),
         additional_bounds: vec![],
         generics: LifetimeBounds::empty(),
         associated_types: vec![],

@@ -15,11 +15,10 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
-use hir::TransFnAttrs;
 use hir::map as hir_map;
 use hir::def::Def;
 use hir::def_id::{DefId, CrateNum};
-use rustc_data_structures::sync::Lrc;
+use std::rc::Rc;
 use ty::{self, TyCtxt};
 use ty::maps::Providers;
 use middle::privacy;
@@ -38,14 +37,14 @@ use hir::intravisit;
 // Returns true if the given set of generics implies that the item it's
 // associated with must be inlined.
 fn generics_require_inlining(generics: &hir::Generics) -> bool {
-    generics.params.iter().any(|param| param.is_type_param())
+    !generics.ty_params.is_empty()
 }
 
 // Returns true if the given item must be inlined because it may be
 // monomorphized or it was marked with `#[inline]`. This will only return
 // true for functions.
-fn item_might_be_inlined(item: &hir::Item, attrs: TransFnAttrs) -> bool {
-    if attrs.requests_inline() {
+fn item_might_be_inlined(item: &hir::Item) -> bool {
+    if attr::requests_inline(&item.attrs) {
         return true
     }
 
@@ -61,15 +60,14 @@ fn item_might_be_inlined(item: &hir::Item, attrs: TransFnAttrs) -> bool {
 fn method_might_be_inlined<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      impl_item: &hir::ImplItem,
                                      impl_src: DefId) -> bool {
-    let trans_fn_attrs = tcx.trans_fn_attrs(impl_item.hir_id.owner_def_id());
-    if trans_fn_attrs.requests_inline() ||
+    if attr::requests_inline(&impl_item.attrs) ||
         generics_require_inlining(&impl_item.generics) {
         return true
     }
     if let Some(impl_node_id) = tcx.hir.as_local_node_id(impl_src) {
         match tcx.hir.find(impl_node_id) {
             Some(hir_map::NodeItem(item)) =>
-                item_might_be_inlined(&item, trans_fn_attrs),
+                item_might_be_inlined(&item),
             Some(..) | None =>
                 span_bug!(impl_item.span, "impl did is not an item")
         }
@@ -162,8 +160,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
         match self.tcx.hir.find(node_id) {
             Some(hir_map::NodeItem(item)) => {
                 match item.node {
-                    hir::ItemFn(..) =>
-                        item_might_be_inlined(&item, self.tcx.trans_fn_attrs(def_id)),
+                    hir::ItemFn(..) => item_might_be_inlined(&item),
                     _ => false,
                 }
             }
@@ -179,9 +176,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                 match impl_item.node {
                     hir::ImplItemKind::Const(..) => true,
                     hir::ImplItemKind::Method(..) => {
-                        let attrs = self.tcx.trans_fn_attrs(def_id);
                         if generics_require_inlining(&impl_item.generics) ||
-                                attrs.requests_inline() {
+                                attr::requests_inline(&impl_item.attrs) {
                             true
                         } else {
                             let impl_did = self.tcx
@@ -210,7 +206,11 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
     // Step 2: Mark all symbols that the symbols on the worklist touch.
     fn propagate(&mut self) {
         let mut scanned = FxHashSet();
-        while let Some(search_item) = self.worklist.pop() {
+        loop {
+            let search_item = match self.worklist.pop() {
+                Some(item) => item,
+                None => break,
+            };
             if !scanned.insert(search_item) {
                 continue
             }
@@ -233,7 +233,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     false
                 };
                 let def_id = self.tcx.hir.local_def_id(item.id);
-                let is_extern = self.tcx.trans_fn_attrs(def_id).contains_extern_indicator();
+                let is_extern = self.tcx.contains_extern_indicator(def_id);
                 if reachable || is_extern {
                     self.reachable_symbols.insert(search_item);
                 }
@@ -250,8 +250,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             hir_map::NodeItem(item) => {
                 match item.node {
                     hir::ItemFn(.., body) => {
-                        let def_id = self.tcx.hir.local_def_id(item.id);
-                        if item_might_be_inlined(&item, self.tcx.trans_fn_attrs(def_id)) {
+                        if item_might_be_inlined(&item) {
                             self.visit_nested_body(body);
                         }
                     }
@@ -269,9 +268,10 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     hir::ItemExternCrate(_) | hir::ItemUse(..) |
                     hir::ItemTy(..) | hir::ItemStatic(..) |
                     hir::ItemMod(..) | hir::ItemForeignMod(..) |
-                    hir::ItemImpl(..) | hir::ItemTrait(..) | hir::ItemTraitAlias(..) |
+                    hir::ItemImpl(..) | hir::ItemTrait(..) |
                     hir::ItemStruct(..) | hir::ItemEnum(..) |
-                    hir::ItemUnion(..) |  hir::ItemGlobalAsm(..) => {}
+                    hir::ItemUnion(..) | hir::ItemAutoImpl(..) |
+                    hir::ItemGlobalAsm(..) => {}
                 }
             }
             hir_map::NodeTraitItem(trait_method) => {
@@ -378,7 +378,7 @@ impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 
 // We introduce a new-type here, so we can have a specialized HashStable
 // implementation for it.
 #[derive(Clone)]
-pub struct ReachableSet(pub Lrc<NodeSet>);
+pub struct ReachableSet(pub Rc<NodeSet>);
 
 
 fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> ReachableSet {
@@ -426,7 +426,7 @@ fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> 
     reachable_context.propagate();
 
     // Return the set of reachable symbols.
-    ReachableSet(Lrc::new(reachable_context.reachable_symbols))
+    ReachableSet(Rc::new(reachable_context.reachable_symbols))
 }
 
 pub fn provide(providers: &mut Providers) {

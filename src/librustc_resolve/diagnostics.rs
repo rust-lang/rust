@@ -325,8 +325,6 @@ Erroneous code example:
 extern crate core;
 
 struct core;
-
-fn main() {}
 ```
 
 There are two possible solutions:
@@ -542,7 +540,7 @@ fn foo<T, T>(s: T, u: T) {} // error: the name `T` is already used for a type
                             //        parameter in this type parameter list
 ```
 
-Please verify that none of the type parameters are misspelled, and rename any
+Please verify that none of the type parameterss are misspelled, and rename any
 clashing parameters. Example:
 
 ```
@@ -551,8 +549,7 @@ fn foo<T, Y>(s: T, u: Y) {} // ok!
 "##,
 
 E0404: r##"
-You tried to use something which is not a trait in a trait position, such as
-a bound or `impl`.
+You tried to implement something which was not a trait on an object.
 
 Erroneous code example:
 
@@ -561,14 +558,6 @@ struct Foo;
 struct Bar;
 
 impl Foo for Bar {} // error: `Foo` is not a trait
-```
-
-Another erroneous code example:
-
-```compile_fail,E0404
-struct Foo;
-
-fn bar<T: Foo>(t: T) {} // error: `Foo` is not a trait
 ```
 
 Please verify that you didn't misspell the trait's name or otherwise use the
@@ -584,17 +573,6 @@ impl Foo for Bar { // ok!
     // functions implementation
 }
 ```
-
-or
-
-```
-trait Foo {
-    // some functions
-}
-
-fn bar<T: Foo>(t: T) {} // ok!
-```
-
 "##,
 
 E0405: r##"
@@ -1396,7 +1374,7 @@ arguments.
 "##,
 
 E0467: r##"
-Macro re-export declarations were empty or malformed.
+Macro reexport declarations were empty or malformed.
 
 Erroneous code examples:
 
@@ -1411,12 +1389,12 @@ extern crate core as other_macros_for_good;
 This is a syntax error at the level of attribute declarations.
 
 Currently, `macro_reexport` requires at least one macro name to be listed.
-Unlike `macro_use`, listing no names does not re-export all macros from the
+Unlike `macro_use`, listing no names does not reexport all macros from the
 given crate.
 
 Decide which macros you would like to export and list them properly.
 
-These are proper re-export declarations:
+These are proper reexport declarations:
 
 ```ignore (cannot-doctest-multicrate-project)
 #[macro_reexport(some_macro, another_macro)]
@@ -1497,7 +1475,7 @@ extern crate some_crate; //ok!
 "##,
 
 E0470: r##"
-A macro listed for re-export was not found.
+A macro listed for reexport was not found.
 
 Erroneous code example:
 
@@ -1515,7 +1493,7 @@ exported from the given crate.
 
 This could be caused by a typo. Did you misspell the macro's name?
 
-Double-check the names of the macros listed for re-export, and that the crate
+Double-check the names of the macros listed for reexport, and that the crate
 in question exports them.
 
 A working version:
@@ -1640,59 +1618,6 @@ mod SomeModule {
 }
 
 println!("const value: {}", SomeModule::PRIVATE); // ok!
-```
-"##,
-
-E0659: r##"
-An item usage is ambiguous.
-
-Erroneous code example:
-
-```compile_fail,E0659
-pub mod moon {
-    pub fn foo() {}
-}
-
-pub mod earth {
-    pub fn foo() {}
-}
-
-mod collider {
-    pub use moon::*;
-    pub use earth::*;
-}
-
-fn main() {
-    collider::foo(); // ERROR: `foo` is ambiguous
-}
-```
-
-This error generally appears when two items with the same name are imported into
-a module. Here, the `foo` functions are imported and reexported from the
-`collider` module and therefore, when we're using `collider::foo()`, both
-functions collide.
-
-To solve this error, the best solution is generally to keep the path before the
-item when using it. Example:
-
-```
-pub mod moon {
-    pub fn foo() {}
-}
-
-pub mod earth {
-    pub fn foo() {}
-}
-
-mod collider {
-    pub use moon;
-    pub use earth;
-}
-
-fn main() {
-    collider::moon::foo(); // ok!
-    collider::earth::foo(); // ok!
-}
 ```
 "##,
 

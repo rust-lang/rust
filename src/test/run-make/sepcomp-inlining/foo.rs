@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(start)]
-
 #[inline]
 fn inlined() -> u32 {
     1234
@@ -31,10 +29,7 @@ mod b {
     }
 }
 
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
+fn main() {
     a::f();
     b::f();
-
-    0
 }

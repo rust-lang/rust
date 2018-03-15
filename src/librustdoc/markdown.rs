@@ -24,7 +24,8 @@ use externalfiles::{ExternalHtml, LoadStringError, load_string};
 use html::render::reset_ids;
 use html::escape::Escape;
 use html::markdown;
-use html::markdown::{Markdown, MarkdownWithToc, find_testable_code};
+use html::markdown::{Markdown, MarkdownWithToc, find_testable_code, old_find_testable_code};
+use html::markdown::RenderType;
 use test::{TestOptions, Collector};
 
 /// Separate any lines at the start of the file that begin with `# ` or `%`.
@@ -48,9 +49,11 @@ fn extract_leading_metadata<'a>(s: &'a str) -> (Vec<&'a str>, &'a str) {
 
 /// Render `input` (e.g. "foo.md") into an HTML file in `output`
 /// (e.g. output = "bar" => "bar/foo.html").
-pub fn render(input: &Path, mut output: PathBuf, matches: &getopts::Matches,
-              external_html: &ExternalHtml, include_toc: bool) -> isize {
-    output.push(input.file_stem().unwrap());
+pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
+              external_html: &ExternalHtml, include_toc: bool,
+              render_type: RenderType) -> isize {
+    let input_p = Path::new(input);
+    output.push(input_p.file_stem().unwrap());
     output.set_extension("html");
 
     let mut css = String::new();
@@ -86,10 +89,10 @@ pub fn render(input: &Path, mut output: PathBuf, matches: &getopts::Matches,
 
     reset_ids(false);
 
-    let text = if include_toc {
-        format!("{}", MarkdownWithToc(text))
+    let rendered = if include_toc {
+        format!("{}", MarkdownWithToc(text, render_type))
     } else {
-        format!("{}", Markdown(text, &[]))
+        format!("{}", Markdown(text, render_type))
     };
 
     let err = write!(
@@ -123,23 +126,23 @@ pub fn render(input: &Path, mut output: PathBuf, matches: &getopts::Matches,
         css = css,
         in_header = external_html.in_header,
         before_content = external_html.before_content,
-        text = text,
+        text = rendered,
         after_content = external_html.after_content,
-    );
+        );
 
     match err {
         Err(e) => {
             eprintln!("rustdoc: cannot write to `{}`: {}", output.display(), e);
             6
         }
-        Ok(_) => 0,
+        Ok(_) => 0
     }
 }
 
 /// Run any tests/code examples in the markdown file `input`.
 pub fn test(input: &str, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
             mut test_args: Vec<String>, maybe_sysroot: Option<PathBuf>,
-            display_warnings: bool, linker: Option<PathBuf>) -> isize {
+            render_type: RenderType, display_warnings: bool, linker: Option<String>) -> isize {
     let input_str = match load_string(input) {
         Ok(s) => s,
         Err(LoadStringError::ReadFail) => return 1,
@@ -148,11 +151,16 @@ pub fn test(input: &str, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
 
     let mut opts = TestOptions::default();
     opts.no_crate_inject = true;
-    let mut collector = Collector::new(input.to_owned(), cfgs, libs, externs,
+    let mut collector = Collector::new(input.to_string(), cfgs, libs, externs,
                                        true, opts, maybe_sysroot, None,
-                                       Some(PathBuf::from(input)),
-                                       linker);
-    find_testable_code(&input_str, &mut collector, DUMMY_SP);
+                                       Some(input.to_owned()),
+                                       render_type, linker);
+    if render_type == RenderType::Pulldown {
+        old_find_testable_code(&input_str, &mut collector, DUMMY_SP);
+        find_testable_code(&input_str, &mut collector, DUMMY_SP);
+    } else {
+        old_find_testable_code(&input_str, &mut collector, DUMMY_SP);
+    }
     test_args.insert(0, "rustdoctest".to_string());
     testing::test_main(&test_args, collector.tests,
                        testing::Options::new().display_output(display_warnings));

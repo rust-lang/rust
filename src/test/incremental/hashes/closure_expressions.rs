@@ -18,7 +18,7 @@
 
 // must-compile-successfully
 // revisions: cfail1 cfail2 cfail3
-// compile-flags: -Z query-dep-graph -Zincremental-ignore-spans
+// compile-flags: -Z query-dep-graph
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]
@@ -27,14 +27,18 @@
 
 // Change closure body ---------------------------------------------------------
 #[cfg(cfail1)]
-pub fn change_closure_body() {
+fn change_closure_body() {
     let _ = || 1u32;
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody")]
-#[rustc_clean(cfg="cfail3")]
-pub fn change_closure_body() {
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+fn change_closure_body() {
     let _ = || 3u32;
 }
 
@@ -42,15 +46,19 @@ pub fn change_closure_body() {
 
 // Add parameter ---------------------------------------------------------------
 #[cfg(cfail1)]
-pub fn add_parameter() {
+fn add_parameter() {
     let x = 0u32;
     let _ = || x + 1;
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, MirValidated, MirOptimized, TypeckTables")]
-#[rustc_clean(cfg="cfail3")]
-pub fn add_parameter() {
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+fn add_parameter() {
     let x = 0u32;
     let _ = |x: u32| x + 1;
 }
@@ -59,14 +67,18 @@ pub fn add_parameter() {
 
 // Change parameter pattern ----------------------------------------------------
 #[cfg(cfail1)]
-pub fn change_parameter_pattern() {
+fn change_parameter_pattern() {
     let _ = |x: &u32| x;
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, MirValidated, TypeckTables")]
-#[rustc_clean(cfg="cfail3")]
-pub fn change_parameter_pattern() {
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+fn change_parameter_pattern() {
     let _ = |&x: &u32| x;
 }
 
@@ -74,14 +86,18 @@ pub fn change_parameter_pattern() {
 
 // Add `move` to closure -------------------------------------------------------
 #[cfg(cfail1)]
-pub fn add_move() {
+fn add_move() {
     let _ = || 1;
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody")]
-#[rustc_clean(cfg="cfail3")]
-pub fn add_move() {
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+fn add_move() {
     let _ = move || 1;
 }
 
@@ -89,15 +105,19 @@ pub fn add_move() {
 
 // Add type ascription to parameter --------------------------------------------
 #[cfg(cfail1)]
-pub fn add_type_ascription_to_parameter() {
+fn add_type_ascription_to_parameter() {
     let closure = |x| x + 1u32;
     let _: u32 = closure(1);
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody")]
-#[rustc_clean(cfg="cfail3")]
-pub fn add_type_ascription_to_parameter() {
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+fn add_type_ascription_to_parameter() {
     let closure = |x: u32| x + 1u32;
     let _: u32 = closure(1);
 }
@@ -106,15 +126,19 @@ pub fn add_type_ascription_to_parameter() {
 
 // Change parameter type -------------------------------------------------------
 #[cfg(cfail1)]
-pub fn change_parameter_type() {
+fn change_parameter_type() {
     let closure = |x: u32| (x as u64) + 1;
     let _ = closure(1);
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, MirValidated, MirOptimized, TypeckTables")]
-#[rustc_clean(cfg="cfail3")]
-pub fn change_parameter_type() {
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+fn change_parameter_type() {
     let closure = |x: u16| (x as u64) + 1;
     let _ = closure(1);
 }

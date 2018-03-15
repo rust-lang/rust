@@ -12,7 +12,7 @@ struct Ref<'a> {
 }
 
 fn foo(mut x: Vec<Ref>, y: Ref) {
-    x.push(y); //~ ERROR lifetime mismatch
+    x.push(y);
 }
 
 fn main() {}

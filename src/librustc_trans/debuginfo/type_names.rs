@@ -10,7 +10,7 @@
 
 // Type Names for Debug Info.
 
-use common::CodegenCx;
+use common::CrateContext;
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
@@ -21,7 +21,7 @@ use rustc::hir;
 // any caching, i.e. calling the function twice with the same type will also do
 // the work twice. The `qualified` parameter only affects the first level of the
 // type name, further levels (i.e. type parameters) are always fully qualified.
-pub fn compute_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
+pub fn compute_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                              t: Ty<'tcx>,
                                              qualified: bool)
                                              -> String {
@@ -32,7 +32,7 @@ pub fn compute_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
 // Pushes the name of the type as it should be stored in debuginfo on the
 // `output` String. See also compute_debuginfo_type_name().
-pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
+pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                           t: Ty<'tcx>,
                                           qualified: bool,
                                           output: &mut String) {
@@ -117,14 +117,14 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         },
         ty::TyDynamic(ref trait_data, ..) => {
             if let Some(principal) = trait_data.principal() {
-                let principal = cx.tcx.erase_late_bound_regions_and_normalize(
+                let principal = cx.tcx().erase_late_bound_regions_and_normalize(
                     &principal);
                 push_item_name(cx, principal.def_id, false, output);
                 push_type_params(cx, principal.substs, output);
             }
         },
         ty::TyFnDef(..) | ty::TyFnPtr(_) => {
-            let sig = t.fn_sig(cx.tcx);
+            let sig = t.fn_sig(cx.tcx());
             if sig.unsafety() == hir::Unsafety::Unsafe {
                 output.push_str("unsafe ");
             }
@@ -138,7 +138,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
             output.push_str("fn(");
 
-            let sig = cx.tcx.erase_late_bound_regions_and_normalize(&sig);
+            let sig = cx.tcx().erase_late_bound_regions_and_normalize(&sig);
             if !sig.inputs().is_empty() {
                 for &parameter_type in sig.inputs() {
                     push_debuginfo_type_name(cx, parameter_type, true, output);
@@ -173,25 +173,24 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         ty::TyInfer(_) |
         ty::TyProjection(..) |
         ty::TyAnon(..) |
-        ty::TyGeneratorWitness(..) |
         ty::TyParam(_) => {
             bug!("debuginfo: Trying to create type name for \
                 unexpected type: {:?}", t);
         }
     }
 
-    fn push_item_name(cx: &CodegenCx,
+    fn push_item_name(cx: &CrateContext,
                       def_id: DefId,
                       qualified: bool,
                       output: &mut String) {
         if qualified {
-            output.push_str(&cx.tcx.crate_name(def_id.krate).as_str());
-            for path_element in cx.tcx.def_path(def_id).data {
+            output.push_str(&cx.tcx().crate_name(def_id.krate).as_str());
+            for path_element in cx.tcx().def_path(def_id).data {
                 output.push_str("::");
                 output.push_str(&path_element.data.as_interned_str());
             }
         } else {
-            output.push_str(&cx.tcx.item_name(def_id));
+            output.push_str(&cx.tcx().item_name(def_id));
         }
     }
 
@@ -200,7 +199,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     // reconstructed for items from non-local crates. For local crates, this
     // would be possible but with inlining and LTO we have to use the least
     // common denominator - otherwise we would run into conflicts.
-    fn push_type_params<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
+    fn push_type_params<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                   substs: &Substs<'tcx>,
                                   output: &mut String) {
         if substs.types().next().is_none() {

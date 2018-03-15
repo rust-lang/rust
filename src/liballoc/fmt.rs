@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Utilities for formatting and printing `String`s.
+//! Utilities for formatting and printing `String`s
 //!
 //! This module contains the runtime support for the [`format!`] syntax extension.
 //! This macro is implemented in the compiler to emit calls to this module in
@@ -236,8 +236,6 @@
 //! writeln!     // same as write but appends a newline
 //! print!       // the format string is printed to the standard output
 //! println!     // same as print but appends a newline
-//! eprint!      // the format string is printed to the standard error
-//! eprintln!    // same as eprint but appends a newline
 //! format_args! // described below.
 //! ```
 //!
@@ -266,11 +264,6 @@
 //! print!("Hello {}!", "world");
 //! println!("I have a newline {}", "character at the end");
 //! ```
-//! ### `eprint!`
-//!
-//! The [`eprint!`] and [`eprintln!`] macros are identical to
-//! [`print!`] and [`println!`], respectively, except they emit their
-//! output to stderr.
 //!
 //! ### `format_args!`
 //!
@@ -497,10 +490,7 @@
 //! [`writeln!`]: ../../std/macro.writeln.html
 //! [`write_fmt`]: ../../std/io/trait.Write.html#method.write_fmt
 //! [`std::io::Write`]: ../../std/io/trait.Write.html
-//! [`print!`]: ../../std/macro.print.html
 //! [`println!`]: ../../std/macro.println.html
-//! [`eprint!`]: ../../std/macro.eprint.html
-//! [`eprintln!`]: ../../std/macro.eprintln.html
 //! [`write!`]: ../../std/macro.write.html
 //! [`format_args!`]: ../../std/macro.format_args.html
 //! [`fmt::Arguments`]: struct.Arguments.html
@@ -546,7 +536,7 @@ use string;
 /// assert_eq!(s, "Hello, world!");
 /// ```
 ///
-/// Please note that using [`format!`] might be preferable.
+/// Please note that using [`format!`] might be preferrable.
 /// Example:
 ///
 /// ```

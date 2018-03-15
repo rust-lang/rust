@@ -10,4 +10,7 @@
 
 #![feature(optin_builtin_traits)]
 
-pub auto trait AnOibit {}
+pub trait AnOibit {}
+
+#[allow(auto_impl)]
+impl AnOibit for .. {}

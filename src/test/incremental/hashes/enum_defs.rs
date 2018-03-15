@@ -23,7 +23,7 @@
 
 // must-compile-successfully
 // revisions: cfail1 cfail2 cfail3
-// compile-flags: -Z query-dep-graph -Zincremental-ignore-spans
+// compile-flags: -Z query-dep-graph
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]
@@ -39,7 +39,11 @@ enum EnumVisibility { A }
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 pub enum EnumVisibility {
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     A
 }
 
@@ -55,8 +59,13 @@ enum EnumChangeNameCStyleVariant {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumChangeNameCStyleVariant {
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     Variant1,
+    #[rustc_metadata_clean(cfg="cfail3")]
     Variant2Changed,
 }
 
@@ -72,6 +81,8 @@ enum EnumChangeNameTupleStyleVariant {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumChangeNameTupleStyleVariant {
     Variant1,
     Variant2Changed(u32, f32),
@@ -89,6 +100,8 @@ enum EnumChangeNameStructStyleVariant {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumChangeNameStructStyleVariant {
     Variant1,
     Variant2Changed { a: u32, b: f32 },
@@ -106,10 +119,16 @@ enum EnumChangeValueCStyleVariant0 {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="HirBody")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumChangeValueCStyleVariant0 {
     Variant1,
 
+    #[rustc_metadata_clean(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     Variant2 =
+        #[rustc_metadata_dirty(cfg="cfail2")]
+        #[rustc_metadata_clean(cfg="cfail3")]
         22,
 }
 
@@ -122,6 +141,8 @@ enum EnumChangeValueCStyleVariant1 {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumChangeValueCStyleVariant1 {
     Variant1,
     Variant2 = 11,
@@ -138,6 +159,8 @@ enum EnumAddCStyleVariant {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumAddCStyleVariant {
     Variant1,
     Variant2,
@@ -155,6 +178,8 @@ enum EnumRemoveCStyleVariant {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumRemoveCStyleVariant {
     Variant1,
 }
@@ -170,6 +195,8 @@ enum EnumAddTupleStyleVariant {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumAddTupleStyleVariant {
     Variant1,
     Variant2(u32, f32),
@@ -187,6 +214,8 @@ enum EnumRemoveTupleStyleVariant {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumRemoveTupleStyleVariant {
     Variant1,
 }
@@ -202,6 +231,8 @@ enum EnumAddStructStyleVariant {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumAddStructStyleVariant {
     Variant1,
     Variant2 { a: u32, b: f32 },
@@ -219,6 +250,8 @@ enum EnumRemoveStructStyleVariant {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumRemoveStructStyleVariant {
     Variant1,
 }
@@ -234,8 +267,12 @@ enum EnumChangeFieldTypeTupleStyleVariant {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumChangeFieldTypeTupleStyleVariant {
     Variant1(u32,
+        #[rustc_metadata_dirty(cfg="cfail2")]
+        #[rustc_metadata_clean(cfg="cfail3")]
         u64),
 }
 
@@ -251,10 +288,14 @@ enum EnumChangeFieldTypeStructStyleVariant {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumChangeFieldTypeStructStyleVariant {
     Variant1,
     Variant2 {
         a: u32,
+        #[rustc_metadata_dirty(cfg="cfail2")]
+        #[rustc_metadata_clean(cfg="cfail3")]
         b: u64
     },
 }
@@ -270,6 +311,8 @@ enum EnumChangeFieldNameStructStyleVariant {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumChangeFieldNameStructStyleVariant {
     Variant1 { a: u32, c: u32 },
 }
@@ -285,9 +328,15 @@ enum EnumChangeOrderTupleStyleVariant {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumChangeOrderTupleStyleVariant {
     Variant1(
+        #[rustc_metadata_dirty(cfg="cfail2")]
+        #[rustc_metadata_clean(cfg="cfail3")]
         u64,
+        #[rustc_metadata_dirty(cfg="cfail2")]
+        #[rustc_metadata_clean(cfg="cfail3")]
         u32),
 }
 
@@ -302,6 +351,8 @@ enum EnumChangeFieldOrderStructStyleVariant {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumChangeFieldOrderStructStyleVariant {
     Variant1 { b: f32, a: u32 },
 }
@@ -317,6 +368,8 @@ enum EnumAddFieldTupleStyleVariant {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumAddFieldTupleStyleVariant {
     Variant1(u32, u32, u32),
 }
@@ -332,6 +385,8 @@ enum EnumAddFieldStructStyleVariant {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumAddFieldStructStyleVariant {
     Variant1 { a: u32, b: u32, c: u32 },
 }
@@ -348,6 +403,8 @@ enum EnumAddMustUse {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 #[must_use]
 enum EnumAddMustUse {
     Variant1,
@@ -366,6 +423,8 @@ enum EnumAddReprC {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 #[repr(C)]
 enum EnumAddReprC {
     Variant1,
@@ -383,6 +442,8 @@ enum EnumChangeNameOfTypeParameter<S> {
 #[cfg(not(cfail1))]
 #[rustc_dirty(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumChangeNameOfTypeParameter<T> {
     Variant1(T),
 }
@@ -399,6 +460,8 @@ enum EnumAddTypeParameter<S> {
 #[cfg(not(cfail1))]
 #[rustc_dirty(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumAddTypeParameter<S, T> {
     Variant1(S),
     Variant2(T),
@@ -415,6 +478,8 @@ enum EnumChangeNameOfLifetimeParameter<'a> {
 #[cfg(not(cfail1))]
 #[rustc_dirty(cfg="cfail2", except="PredicatesOfItem")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumChangeNameOfLifetimeParameter<'b> {
     Variant1(&'b u32),
 }
@@ -431,6 +496,8 @@ enum EnumAddLifetimeParameter<'a> {
 #[cfg(not(cfail1))]
 #[rustc_dirty(cfg="cfail2", except="PredicatesOfItem")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumAddLifetimeParameter<'a, 'b> {
     Variant1(&'a u32),
     Variant2(&'b u32),
@@ -448,6 +515,8 @@ enum EnumAddLifetimeParameterBound<'a, 'b> {
 #[cfg(not(cfail1))]
 #[rustc_dirty(cfg="cfail2", except="GenericsOfItem,TypeOfItem")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumAddLifetimeParameterBound<'a, 'b: 'a> {
     Variant1(&'a u32),
     Variant2(&'b u32),
@@ -463,6 +532,8 @@ enum EnumAddLifetimeBoundToParameter<'a, T> {
 #[cfg(not(cfail1))]
 #[rustc_dirty(cfg="cfail2", except="TypeOfItem")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumAddLifetimeBoundToParameter<'a, T: 'a> {
     Variant1(T),
     Variant2(&'a u32),
@@ -479,6 +550,8 @@ enum EnumAddTraitBound<S> {
 #[cfg(not(cfail1))]
 #[rustc_dirty(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumAddTraitBound<T: Sync> {
     Variant1(T),
 }
@@ -495,6 +568,8 @@ enum EnumAddLifetimeParameterBoundWhere<'a, 'b> {
 #[cfg(not(cfail1))]
 #[rustc_dirty(cfg="cfail2", except="GenericsOfItem,TypeOfItem")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumAddLifetimeParameterBoundWhere<'a, 'b> where 'b: 'a {
     Variant1(&'a u32),
     Variant2(&'b u32),
@@ -512,6 +587,8 @@ enum EnumAddLifetimeBoundToParameterWhere<'a, T> {
 #[cfg(not(cfail1))]
 #[rustc_dirty(cfg="cfail2", except="TypeOfItem")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumAddLifetimeBoundToParameterWhere<'a, T> where T: 'a {
     Variant1(T),
     Variant2(&'a u32),
@@ -528,6 +605,8 @@ enum EnumAddTraitBoundWhere<S> {
 #[cfg(not(cfail1))]
 #[rustc_dirty(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumAddTraitBoundWhere<T> where T: Sync {
     Variant1(T),
 }
@@ -544,11 +623,21 @@ enum EnumSwapUsageTypeParameters<A, B> {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumSwapUsageTypeParameters<A, B> {
+    #[rustc_metadata_clean(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     Variant1 {
+        #[rustc_metadata_dirty(cfg="cfail2")]
+        #[rustc_metadata_clean(cfg="cfail3")]
         a: B
     },
+    #[rustc_metadata_clean(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     Variant2 {
+        #[rustc_metadata_dirty(cfg="cfail2")]
+        #[rustc_metadata_clean(cfg="cfail3")]
         a: A
     },
 }
@@ -565,11 +654,21 @@ enum EnumSwapUsageLifetimeParameters<'a, 'b> {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 enum EnumSwapUsageLifetimeParameters<'a, 'b> {
+    #[rustc_metadata_clean(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     Variant1 {
+        #[rustc_metadata_dirty(cfg="cfail2")]
+        #[rustc_metadata_clean(cfg="cfail3")]
         a: &'b u32
     },
+    #[rustc_metadata_clean(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     Variant2 {
+        #[rustc_metadata_dirty(cfg="cfail2")]
+        #[rustc_metadata_clean(cfg="cfail3")]
         b: &'a u32
     },
 }
@@ -590,8 +689,14 @@ mod change_field_type_indirectly_tuple_style {
 
     #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
     #[rustc_clean(cfg="cfail3")]
+    #[rustc_metadata_clean(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     enum TupleStyle {
+        #[rustc_metadata_dirty(cfg="cfail2")]
+        #[rustc_metadata_clean(cfg="cfail3")]
         Variant1(
+            #[rustc_metadata_dirty(cfg="cfail2")]
+            #[rustc_metadata_clean(cfg="cfail3")]
             FieldType
         )
     }
@@ -608,8 +713,14 @@ mod change_field_type_indirectly_struct_style {
 
     #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
     #[rustc_clean(cfg="cfail3")]
+    #[rustc_metadata_clean(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     enum StructStyle {
+        #[rustc_metadata_clean(cfg="cfail2")]
+        #[rustc_metadata_clean(cfg="cfail3")]
         Variant1 {
+            #[rustc_metadata_dirty(cfg="cfail2")]
+            #[rustc_metadata_clean(cfg="cfail3")]
             a: FieldType
         }
     }
@@ -631,6 +742,8 @@ mod change_trait_bound_indirectly {
 
     #[rustc_clean(cfg="cfail2", except="Hir,HirBody,PredicatesOfItem")]
     #[rustc_clean(cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     enum Enum<T: Trait> {
         Variant1(T)
     }
@@ -647,7 +760,11 @@ mod change_trait_bound_indirectly_where {
 
     #[rustc_clean(cfg="cfail2", except="Hir,HirBody,PredicatesOfItem")]
     #[rustc_clean(cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     enum Enum<T> where T: Trait {
         Variant1(T)
     }
 }
+
+

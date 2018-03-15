@@ -18,6 +18,6 @@ impl Drop for S {
 
 fn main() {
     match (S {f:"foo".to_string()}) {
-        S {f:_s} => {} //~ ERROR cannot move out
+        S {f:_s} => {}
     }
 }

@@ -1,7 +1,7 @@
 error[E0512]: transmute called with types of different sizes
   --> $DIR/transmute-from-fn-item-types-error.rs:14:13
    |
-LL |     let i = mem::transmute(bar);
+14 |     let i = mem::transmute(bar);
    |             ^^^^^^^^^^^^^^
    |
    = note: source type: unsafe fn() {bar} (0 bits)
@@ -10,7 +10,7 @@ LL |     let i = mem::transmute(bar);
 error[E0591]: can't transmute zero-sized type
   --> $DIR/transmute-from-fn-item-types-error.rs:18:13
    |
-LL |     let p = mem::transmute(foo);
+18 |     let p = mem::transmute(foo);
    |             ^^^^^^^^^^^^^^
    |
    = note: source type: unsafe fn() -> (i8, *const (), std::option::Option<fn()>) {foo}
@@ -20,7 +20,7 @@ LL |     let p = mem::transmute(foo);
 error[E0591]: can't transmute zero-sized type
   --> $DIR/transmute-from-fn-item-types-error.rs:22:14
    |
-LL |     let of = mem::transmute(main);
+22 |     let of = mem::transmute(main);
    |              ^^^^^^^^^^^^^^
    |
    = note: source type: fn() {main}
@@ -30,7 +30,7 @@ LL |     let of = mem::transmute(main);
 error[E0512]: transmute called with types of different sizes
   --> $DIR/transmute-from-fn-item-types-error.rs:31:5
    |
-LL |     mem::transmute::<_, u8>(main);
+31 |     mem::transmute::<_, u8>(main);
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: source type: fn() {main} (0 bits)
@@ -39,7 +39,7 @@ LL |     mem::transmute::<_, u8>(main);
 error[E0591]: can't transmute zero-sized type
   --> $DIR/transmute-from-fn-item-types-error.rs:35:5
    |
-LL |     mem::transmute::<_, *mut ()>(foo);
+35 |     mem::transmute::<_, *mut ()>(foo);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: source type: unsafe fn() -> (i8, *const (), std::option::Option<fn()>) {foo}
@@ -49,7 +49,7 @@ LL |     mem::transmute::<_, *mut ()>(foo);
 error[E0591]: can't transmute zero-sized type
   --> $DIR/transmute-from-fn-item-types-error.rs:39:5
    |
-LL |     mem::transmute::<_, fn()>(bar);
+39 |     mem::transmute::<_, fn()>(bar);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: source type: unsafe fn() {bar}
@@ -59,7 +59,7 @@ LL |     mem::transmute::<_, fn()>(bar);
 error[E0591]: can't transmute zero-sized type
   --> $DIR/transmute-from-fn-item-types-error.rs:48:5
    |
-LL |     mem::transmute::<_, *mut ()>(Some(foo));
+48 |     mem::transmute::<_, *mut ()>(Some(foo));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: source type: unsafe fn() -> (i8, *const (), std::option::Option<fn()>) {foo}
@@ -69,7 +69,7 @@ LL |     mem::transmute::<_, *mut ()>(Some(foo));
 error[E0591]: can't transmute zero-sized type
   --> $DIR/transmute-from-fn-item-types-error.rs:52:5
    |
-LL |     mem::transmute::<_, fn()>(Some(bar));
+52 |     mem::transmute::<_, fn()>(Some(bar));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: source type: unsafe fn() {bar}
@@ -79,7 +79,7 @@ LL |     mem::transmute::<_, fn()>(Some(bar));
 error[E0591]: can't transmute zero-sized type
   --> $DIR/transmute-from-fn-item-types-error.rs:56:5
    |
-LL |     mem::transmute::<_, Option<fn()>>(Some(baz));
+56 |     mem::transmute::<_, Option<fn()>>(Some(baz));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: source type: unsafe fn() {baz}
@@ -88,5 +88,3 @@ LL |     mem::transmute::<_, Option<fn()>>(Some(baz));
 
 error: aborting due to 9 previous errors
 
-You've got a few errors: E0512, E0591
-If you want more information on an error, try using "rustc --explain E0512"

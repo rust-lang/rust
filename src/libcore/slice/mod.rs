@@ -16,13 +16,16 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+// FIXME: after next stage0, change RangeInclusive { ... } back to ..=
+use ops::RangeInclusive;
+
 // How this module is organized.
 //
 // The library infrastructure for slices is fairly messy. There's
 // a lot of stuff defined here. Let's keep it clean.
 //
 // Since slices don't support inherent methods; all operations
-// on them are defined on traits, which are then re-exported from
+// on them are defined on traits, which are then reexported from
 // the prelude for convenience. So there are a lot of traits here.
 //
 // The layout of this file is thus:
@@ -40,7 +43,7 @@ use cmp;
 use fmt;
 use intrinsics::assume;
 use iter::*;
-use ops::{FnMut, Try, self};
+use ops::{FnMut, self};
 use option::Option;
 use option::Option::{None, Some};
 use result::Result;
@@ -49,11 +52,6 @@ use ptr;
 use mem;
 use marker::{Copy, Send, Sync, Sized, self};
 use iter_private::TrustedRandomAccess;
-
-#[unstable(feature = "slice_internals", issue = "0",
-           reason = "exposed from core to be reused in std; use the memchr crate")]
-/// Pure rust memchr implementation, taken from rust-memchr
-pub mod memchr;
 
 mod rotate;
 mod sort;
@@ -103,9 +101,6 @@ pub trait SliceExt {
 
     #[stable(feature = "core", since = "1.6.0")]
     fn chunks(&self, size: usize) -> Chunks<Self::Item>;
-
-    #[unstable(feature = "exact_chunks", issue = "47115")]
-    fn exact_chunks(&self, size: usize) -> ExactChunks<Self::Item>;
 
     #[stable(feature = "core", since = "1.6.0")]
     fn get<I>(&self, index: I) -> Option<&I::Output>
@@ -184,9 +179,6 @@ pub trait SliceExt {
     #[stable(feature = "core", since = "1.6.0")]
     fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<Self::Item>;
 
-    #[unstable(feature = "exact_chunks", issue = "47115")]
-    fn exact_chunks_mut(&mut self, size: usize) -> ExactChunksMut<Self::Item>;
-
     #[stable(feature = "core", since = "1.6.0")]
     fn swap(&mut self, a: usize, b: usize);
 
@@ -211,11 +203,8 @@ pub trait SliceExt {
     #[stable(feature = "core", since = "1.6.0")]
     fn ends_with(&self, needle: &[Self::Item]) -> bool where Self::Item: PartialEq;
 
-    #[stable(feature = "slice_rotate", since = "1.26.0")]
-    fn rotate_left(&mut self, mid: usize);
-
-    #[stable(feature = "slice_rotate", since = "1.26.0")]
-    fn rotate_right(&mut self, k: usize);
+    #[unstable(feature = "slice_rotate", issue = "41891")]
+    fn rotate(&mut self, mid: usize);
 
     #[stable(feature = "clone_from_slice", since = "1.7.0")]
     fn clone_from_slice(&mut self, src: &[Self::Item]) where Self::Item: Clone;
@@ -357,17 +346,9 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn chunks(&self, chunk_size: usize) -> Chunks<T> {
-        assert!(chunk_size != 0);
-        Chunks { v: self, chunk_size: chunk_size }
-    }
-
-    #[inline]
-    fn exact_chunks(&self, chunk_size: usize) -> ExactChunks<T> {
-        assert!(chunk_size != 0);
-        let rem = self.len() % chunk_size;
-        let len = self.len() - rem;
-        ExactChunks { v: &self[..len], chunk_size: chunk_size}
+    fn chunks(&self, size: usize) -> Chunks<T> {
+        assert!(size != 0);
+        Chunks { v: self, size: size }
     }
 
     #[inline]
@@ -413,25 +394,23 @@ impl<T> SliceExt for [T] {
     fn binary_search_by<'a, F>(&'a self, mut f: F) -> Result<usize, usize>
         where F: FnMut(&'a T) -> Ordering
     {
-        let s = self;
-        let mut size = s.len();
-        if size == 0 {
-            return Err(0);
-        }
         let mut base = 0usize;
-        while size > 1 {
-            let half = size / 2;
-            let mid = base + half;
-            // mid is always in [0, size), that means mid is >= 0 and < size.
-            // mid >= 0: by definition
-            // mid < size: mid = size / 2 + size / 4 + size / 8 ...
-            let cmp = f(unsafe { s.get_unchecked(mid) });
-            base = if cmp == Greater { base } else { mid };
-            size -= half;
+        let mut s = self;
+
+        loop {
+            let (head, tail) = s.split_at(s.len() >> 1);
+            if tail.is_empty() {
+                return Err(base)
+            }
+            match f(&tail[0]) {
+                Less => {
+                    base += head.len() + 1;
+                    s = &tail[1..];
+                }
+                Greater => s = head,
+                Equal => return Ok(base + head.len()),
+            }
         }
-        // base is always in [0, size) because base <= mid.
-        let cmp = f(unsafe { s.get_unchecked(base) });
-        if cmp == Equal { Ok(base) } else { Err(base + (cmp == Less) as usize) }
     }
 
     #[inline]
@@ -549,16 +528,8 @@ impl<T> SliceExt for [T] {
 
     #[inline]
     fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<T> {
-        assert!(chunk_size != 0);
+        assert!(chunk_size > 0);
         ChunksMut { v: self, chunk_size: chunk_size }
-    }
-
-    #[inline]
-    fn exact_chunks_mut(&mut self, chunk_size: usize) -> ExactChunksMut<T> {
-        assert!(chunk_size != 0);
-        let rem = self.len() % chunk_size;
-        let len = self.len() - rem;
-        ExactChunksMut { v: &mut self[..len], chunk_size: chunk_size}
     }
 
     #[inline]
@@ -649,7 +620,7 @@ impl<T> SliceExt for [T] {
 
     #[inline]
     fn contains(&self, x: &T) -> bool where T: PartialEq {
-        x.slice_contains(self)
+        self.iter().any(|elt| *x == *elt)
     }
 
     #[inline]
@@ -670,19 +641,9 @@ impl<T> SliceExt for [T] {
         self.binary_search_by(|p| p.cmp(x))
     }
 
-    fn rotate_left(&mut self, mid: usize) {
+    fn rotate(&mut self, mid: usize) {
         assert!(mid <= self.len());
         let k = self.len() - mid;
-
-        unsafe {
-            let p = self.as_mut_ptr();
-            rotate::ptr_rotate(mid, p.offset(mid as isize), k);
-        }
-    }
-
-    fn rotate_right(&mut self, k: usize) {
-        assert!(k <= self.len());
-        let mid = self.len() - k;
 
         unsafe {
             let p = self.as_mut_ptr();
@@ -1086,32 +1047,32 @@ impl<T> SliceIndex<[T]> for ops::RangeToInclusive<usize> {
 
     #[inline]
     fn get(self, slice: &[T]) -> Option<&[T]> {
-        (0..=self.end).get(slice)
+        (RangeInclusive { start: 0, end: self.end }).get(slice)
     }
 
     #[inline]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
-        (0..=self.end).get_mut(slice)
+        (RangeInclusive { start: 0, end: self.end }).get_mut(slice)
     }
 
     #[inline]
     unsafe fn get_unchecked(self, slice: &[T]) -> &[T] {
-        (0..=self.end).get_unchecked(slice)
+        (RangeInclusive { start: 0, end: self.end }).get_unchecked(slice)
     }
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut [T] {
-        (0..=self.end).get_unchecked_mut(slice)
+        (RangeInclusive { start: 0, end: self.end }).get_unchecked_mut(slice)
     }
 
     #[inline]
     fn index(self, slice: &[T]) -> &[T] {
-        (0..=self.end).index(slice)
+        (RangeInclusive { start: 0, end: self.end }).index(slice)
     }
 
     #[inline]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
-        (0..=self.end).index_mut(slice)
+        (RangeInclusive { start: 0, end: self.end }).index_mut(slice)
     }
 }
 
@@ -1205,76 +1166,62 @@ macro_rules! iterator {
                 self.next_back()
             }
 
-            #[inline]
-            fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R where
-                Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+            fn all<F>(&mut self, mut predicate: F) -> bool
+                where F: FnMut(Self::Item) -> bool,
             {
-                // manual unrolling is needed when there are conditional exits from the loop
-                let mut accum = init;
-                unsafe {
-                    while ptrdistance(self.ptr, self.end) >= 4 {
-                        accum = f(accum, $mkref!(self.ptr.post_inc()))?;
-                        accum = f(accum, $mkref!(self.ptr.post_inc()))?;
-                        accum = f(accum, $mkref!(self.ptr.post_inc()))?;
-                        accum = f(accum, $mkref!(self.ptr.post_inc()))?;
+                self.search_while(true, move |elt| {
+                    if predicate(elt) {
+                        SearchWhile::Continue
+                    } else {
+                        SearchWhile::Done(false)
                     }
-                    while self.ptr != self.end {
-                        accum = f(accum, $mkref!(self.ptr.post_inc()))?;
+                })
+            }
+
+            fn any<F>(&mut self, mut predicate: F) -> bool
+                where F: FnMut(Self::Item) -> bool,
+            {
+                !self.all(move |elt| !predicate(elt))
+            }
+
+            fn find<F>(&mut self, mut predicate: F) -> Option<Self::Item>
+                where F: FnMut(&Self::Item) -> bool,
+            {
+                self.search_while(None, move |elt| {
+                    if predicate(&elt) {
+                        SearchWhile::Done(Some(elt))
+                    } else {
+                        SearchWhile::Continue
                     }
-                }
-                Try::from_ok(accum)
+                })
             }
 
-            #[inline]
-            fn fold<Acc, Fold>(mut self, init: Acc, mut f: Fold) -> Acc
-                where Fold: FnMut(Acc, Self::Item) -> Acc,
+            fn position<F>(&mut self, mut predicate: F) -> Option<usize>
+                where F: FnMut(Self::Item) -> bool,
             {
-                // Let LLVM unroll this, rather than using the default
-                // impl that would force the manual unrolling above
-                let mut accum = init;
-                while let Some(x) = self.next() {
-                    accum = f(accum, x);
-                }
-                accum
+                let mut index = 0;
+                self.search_while(None, move |elt| {
+                    if predicate(elt) {
+                        SearchWhile::Done(Some(index))
+                    } else {
+                        index += 1;
+                        SearchWhile::Continue
+                    }
+                })
             }
 
-            #[inline]
-            #[rustc_inherit_overflow_checks]
-            fn position<P>(&mut self, mut predicate: P) -> Option<usize> where
-                Self: Sized,
-                P: FnMut(Self::Item) -> bool,
+            fn rposition<F>(&mut self, mut predicate: F) -> Option<usize>
+                where F: FnMut(Self::Item) -> bool,
             {
-                // The addition might panic on overflow
-                // Use the len of the slice to hint optimizer to remove result index bounds check.
-                let n = make_slice!(self.ptr, self.end).len();
-                self.try_fold(0, move |i, x| {
-                    if predicate(x) { Err(i) }
-                    else { Ok(i + 1) }
-                }).err()
-                    .map(|i| {
-                        unsafe { assume(i < n) };
-                        i
-                    })
-            }
-
-            #[inline]
-            fn rposition<P>(&mut self, mut predicate: P) -> Option<usize> where
-                P: FnMut(Self::Item) -> bool,
-                Self: Sized + ExactSizeIterator + DoubleEndedIterator
-            {
-                // No need for an overflow check here, because `ExactSizeIterator`
-                // implies that the number of elements fits into a `usize`.
-                // Use the len of the slice to hint optimizer to remove result index bounds check.
-                let n = make_slice!(self.ptr, self.end).len();
-                self.try_rfold(n, move |i, x| {
-                    let i = i - 1;
-                    if predicate(x) { Err(i) }
-                    else { Ok(i) }
-                }).err()
-                    .map(|i| {
-                        unsafe { assume(i < n) };
-                        i
-                    })
+                let mut index = self.len();
+                self.rsearch_while(None, move |elt| {
+                    index -= 1;
+                    if predicate(elt) {
+                        SearchWhile::Done(Some(index))
+                    } else {
+                        SearchWhile::Continue
+                    }
+                })
             }
         }
 
@@ -1296,37 +1243,59 @@ macro_rules! iterator {
                 }
             }
 
-            #[inline]
-            fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R where
-                Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+            fn rfind<F>(&mut self, mut predicate: F) -> Option<Self::Item>
+                where F: FnMut(&Self::Item) -> bool,
             {
-                // manual unrolling is needed when there are conditional exits from the loop
-                let mut accum = init;
-                unsafe {
-                    while ptrdistance(self.ptr, self.end) >= 4 {
-                        accum = f(accum, $mkref!(self.end.pre_dec()))?;
-                        accum = f(accum, $mkref!(self.end.pre_dec()))?;
-                        accum = f(accum, $mkref!(self.end.pre_dec()))?;
-                        accum = f(accum, $mkref!(self.end.pre_dec()))?;
+                self.rsearch_while(None, move |elt| {
+                    if predicate(&elt) {
+                        SearchWhile::Done(Some(elt))
+                    } else {
+                        SearchWhile::Continue
                     }
-                    while self.ptr != self.end {
-                        accum = f(accum, $mkref!(self.end.pre_dec()))?;
-                    }
-                }
-                Try::from_ok(accum)
+                })
             }
 
-            #[inline]
-            fn rfold<Acc, Fold>(mut self, init: Acc, mut f: Fold) -> Acc
-                where Fold: FnMut(Acc, Self::Item) -> Acc,
+        }
+
+        // search_while is a generalization of the internal iteration methods.
+        impl<'a, T> $name<'a, T> {
+            // search through the iterator's element using the closure `g`.
+            // if no element was found, return `default`.
+            fn search_while<Acc, G>(&mut self, default: Acc, mut g: G) -> Acc
+                where Self: Sized,
+                      G: FnMut($elem) -> SearchWhile<Acc>
             {
-                // Let LLVM unroll this, rather than using the default
-                // impl that would force the manual unrolling above
-                let mut accum = init;
-                while let Some(x) = self.next_back() {
-                    accum = f(accum, x);
+                // manual unrolling is needed when there are conditional exits from the loop
+                unsafe {
+                    while ptrdistance(self.ptr, self.end) >= 4 {
+                        search_while!(g($mkref!(self.ptr.post_inc())));
+                        search_while!(g($mkref!(self.ptr.post_inc())));
+                        search_while!(g($mkref!(self.ptr.post_inc())));
+                        search_while!(g($mkref!(self.ptr.post_inc())));
+                    }
+                    while self.ptr != self.end {
+                        search_while!(g($mkref!(self.ptr.post_inc())));
+                    }
                 }
-                accum
+                default
+            }
+
+            fn rsearch_while<Acc, G>(&mut self, default: Acc, mut g: G) -> Acc
+                where Self: Sized,
+                      G: FnMut($elem) -> SearchWhile<Acc>
+            {
+                unsafe {
+                    while ptrdistance(self.ptr, self.end) >= 4 {
+                        search_while!(g($mkref!(self.end.pre_dec())));
+                        search_while!(g($mkref!(self.end.pre_dec())));
+                        search_while!(g($mkref!(self.end.pre_dec())));
+                        search_while!(g($mkref!(self.end.pre_dec())));
+                    }
+                    while self.ptr != self.end {
+                        search_while!(g($mkref!(self.end.pre_dec())));
+                    }
+                }
+                default
             }
         }
     }
@@ -1358,6 +1327,24 @@ macro_rules! make_mut_slice {
             unsafe { from_raw_parts_mut(start, len) }
         }
     }}
+}
+
+// An enum used for controlling the execution of `.search_while()`.
+enum SearchWhile<T> {
+    // Continue searching
+    Continue,
+    // Fold is complete and will return this value
+    Done(T),
+}
+
+// helper macro for search while's control flow
+macro_rules! search_while {
+    ($e:expr) => {
+        match $e {
+            SearchWhile::Continue => { }
+            SearchWhile::Done(done) => return done,
+        }
+    }
 }
 
 /// Immutable slice iterator
@@ -1455,7 +1442,7 @@ impl<'a, T> ExactSizeIterator for Iter<'a, T> {
     }
 }
 
-#[stable(feature = "fused", since = "1.26.0")]
+#[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for Iter<'a, T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
@@ -1583,7 +1570,7 @@ impl<'a, T> ExactSizeIterator for IterMut<'a, T> {
     }
 }
 
-#[stable(feature = "fused", since = "1.26.0")]
+#[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for IterMut<'a, T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
@@ -1731,7 +1718,7 @@ impl<'a, T, P> SplitIter for Split<'a, T, P> where P: FnMut(&T) -> bool {
     }
 }
 
-#[stable(feature = "fused", since = "1.26.0")]
+#[unstable(feature = "fused", issue = "35602")]
 impl<'a, T, P> FusedIterator for Split<'a, T, P> where P: FnMut(&T) -> bool {}
 
 /// An iterator over the subslices of the vector which are separated
@@ -1829,7 +1816,7 @@ impl<'a, T, P> DoubleEndedIterator for SplitMut<'a, T, P> where
     }
 }
 
-#[stable(feature = "fused", since = "1.26.0")]
+#[unstable(feature = "fused", issue = "35602")]
 impl<'a, T, P> FusedIterator for SplitMut<'a, T, P> where P: FnMut(&T) -> bool {}
 
 /// An iterator over subslices separated by elements that match a predicate
@@ -1886,6 +1873,7 @@ impl<'a, T, P> SplitIter for RSplit<'a, T, P> where P: FnMut(&T) -> bool {
     }
 }
 
+//#[unstable(feature = "fused", issue = "35602")]
 #[unstable(feature = "slice_rsplit", issue = "41020")]
 impl<'a, T, P> FusedIterator for RSplit<'a, T, P> where P: FnMut(&T) -> bool {}
 
@@ -1944,6 +1932,7 @@ impl<'a, T, P> DoubleEndedIterator for RSplitMut<'a, T, P> where
     }
 }
 
+//#[unstable(feature = "fused", issue = "35602")]
 #[unstable(feature = "slice_rsplit", issue = "41020")]
 impl<'a, T, P> FusedIterator for RSplitMut<'a, T, P> where P: FnMut(&T) -> bool {}
 
@@ -2080,7 +2069,7 @@ macro_rules! forward_iterator {
             }
         }
 
-        #[stable(feature = "fused", since = "1.26.0")]
+        #[unstable(feature = "fused", issue = "35602")]
         impl<'a, $elem, P> FusedIterator for $name<'a, $elem, P>
             where P: FnMut(&T) -> bool {}
     }
@@ -2186,18 +2175,10 @@ impl<'a, T> DoubleEndedIterator for Windows<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Windows<'a, T> {}
 
-#[stable(feature = "fused", since = "1.26.0")]
+#[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for Windows<'a, T> {}
 
-#[doc(hidden)]
-unsafe impl<'a, T> TrustedRandomAccess for Windows<'a, T> {
-    unsafe fn get_unchecked(&mut self, i: usize) -> &'a [T] {
-        from_raw_parts(self.v.as_ptr().offset(i as isize), self.size)
-    }
-    fn may_have_side_effect() -> bool { false }
-}
-
-/// An iterator over a slice in (non-overlapping) chunks (`chunk_size` elements at a
+/// An iterator over a slice in (non-overlapping) chunks (`size` elements at a
 /// time).
 ///
 /// When the slice len is not evenly divided by the chunk size, the last slice
@@ -2211,7 +2192,7 @@ unsafe impl<'a, T> TrustedRandomAccess for Windows<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chunks<'a, T:'a> {
     v: &'a [T],
-    chunk_size: usize
+    size: usize
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
@@ -2220,7 +2201,7 @@ impl<'a, T> Clone for Chunks<'a, T> {
     fn clone(&self) -> Chunks<'a, T> {
         Chunks {
             v: self.v,
-            chunk_size: self.chunk_size,
+            size: self.size,
         }
     }
 }
@@ -2234,7 +2215,7 @@ impl<'a, T> Iterator for Chunks<'a, T> {
         if self.v.is_empty() {
             None
         } else {
-            let chunksz = cmp::min(self.v.len(), self.chunk_size);
+            let chunksz = cmp::min(self.v.len(), self.size);
             let (fst, snd) = self.v.split_at(chunksz);
             self.v = snd;
             Some(fst)
@@ -2246,8 +2227,8 @@ impl<'a, T> Iterator for Chunks<'a, T> {
         if self.v.is_empty() {
             (0, Some(0))
         } else {
-            let n = self.v.len() / self.chunk_size;
-            let rem = self.v.len() % self.chunk_size;
+            let n = self.v.len() / self.size;
+            let rem = self.v.len() % self.size;
             let n = if rem > 0 { n+1 } else { n };
             (n, Some(n))
         }
@@ -2260,12 +2241,12 @@ impl<'a, T> Iterator for Chunks<'a, T> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        let (start, overflow) = n.overflowing_mul(self.chunk_size);
+        let (start, overflow) = n.overflowing_mul(self.size);
         if start >= self.v.len() || overflow {
             self.v = &[];
             None
         } else {
-            let end = match start.checked_add(self.chunk_size) {
+            let end = match start.checked_add(self.size) {
                 Some(sum) => cmp::min(self.v.len(), sum),
                 None => self.v.len(),
             };
@@ -2280,7 +2261,7 @@ impl<'a, T> Iterator for Chunks<'a, T> {
         if self.v.is_empty() {
             None
         } else {
-            let start = (self.v.len() - 1) / self.chunk_size * self.chunk_size;
+            let start = (self.v.len() - 1) / self.size * self.size;
             Some(&self.v[start..])
         }
     }
@@ -2293,8 +2274,8 @@ impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
         if self.v.is_empty() {
             None
         } else {
-            let remainder = self.v.len() % self.chunk_size;
-            let chunksz = if remainder != 0 { remainder } else { self.chunk_size };
+            let remainder = self.v.len() % self.size;
+            let chunksz = if remainder != 0 { remainder } else { self.size };
             let (fst, snd) = self.v.split_at(self.v.len() - chunksz);
             self.v = fst;
             Some(snd)
@@ -2305,23 +2286,10 @@ impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Chunks<'a, T> {}
 
-#[stable(feature = "fused", since = "1.26.0")]
+#[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for Chunks<'a, T> {}
 
-#[doc(hidden)]
-unsafe impl<'a, T> TrustedRandomAccess for Chunks<'a, T> {
-    unsafe fn get_unchecked(&mut self, i: usize) -> &'a [T] {
-        let start = i * self.chunk_size;
-        let end = match start.checked_add(self.chunk_size) {
-            None => self.v.len(),
-            Some(end) => cmp::min(end, self.v.len()),
-        };
-        from_raw_parts(self.v.as_ptr().offset(start as isize), end - start)
-    }
-    fn may_have_side_effect() -> bool { false }
-}
-
-/// An iterator over a slice in (non-overlapping) mutable chunks (`chunk_size`
+/// An iterator over a slice in (non-overlapping) mutable chunks (`size`
 /// elements at a time). When the slice len is not evenly divided by the chunk
 /// size, the last slice of the iteration will be the remainder.
 ///
@@ -2421,224 +2389,8 @@ impl<'a, T> DoubleEndedIterator for ChunksMut<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for ChunksMut<'a, T> {}
 
-#[stable(feature = "fused", since = "1.26.0")]
+#[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for ChunksMut<'a, T> {}
-
-#[doc(hidden)]
-unsafe impl<'a, T> TrustedRandomAccess for ChunksMut<'a, T> {
-    unsafe fn get_unchecked(&mut self, i: usize) -> &'a mut [T] {
-        let start = i * self.chunk_size;
-        let end = match start.checked_add(self.chunk_size) {
-            None => self.v.len(),
-            Some(end) => cmp::min(end, self.v.len()),
-        };
-        from_raw_parts_mut(self.v.as_mut_ptr().offset(start as isize), end - start)
-    }
-    fn may_have_side_effect() -> bool { false }
-}
-
-/// An iterator over a slice in (non-overlapping) chunks (`chunk_size` elements at a
-/// time).
-///
-/// When the slice len is not evenly divided by the chunk size, the last
-/// up to `chunk_size-1` elements will be omitted.
-///
-/// This struct is created by the [`exact_chunks`] method on [slices].
-///
-/// [`exact_chunks`]: ../../std/primitive.slice.html#method.exact_chunks
-/// [slices]: ../../std/primitive.slice.html
-#[derive(Debug)]
-#[unstable(feature = "exact_chunks", issue = "47115")]
-pub struct ExactChunks<'a, T:'a> {
-    v: &'a [T],
-    chunk_size: usize
-}
-
-// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
-#[unstable(feature = "exact_chunks", issue = "47115")]
-impl<'a, T> Clone for ExactChunks<'a, T> {
-    fn clone(&self) -> ExactChunks<'a, T> {
-        ExactChunks {
-            v: self.v,
-            chunk_size: self.chunk_size,
-        }
-    }
-}
-
-#[unstable(feature = "exact_chunks", issue = "47115")]
-impl<'a, T> Iterator for ExactChunks<'a, T> {
-    type Item = &'a [T];
-
-    #[inline]
-    fn next(&mut self) -> Option<&'a [T]> {
-        if self.v.len() < self.chunk_size {
-            None
-        } else {
-            let (fst, snd) = self.v.split_at(self.chunk_size);
-            self.v = snd;
-            Some(fst)
-        }
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let n = self.v.len() / self.chunk_size;
-        (n, Some(n))
-    }
-
-    #[inline]
-    fn count(self) -> usize {
-        self.len()
-    }
-
-    #[inline]
-    fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        let (start, overflow) = n.overflowing_mul(self.chunk_size);
-        if start >= self.v.len() || overflow {
-            self.v = &[];
-            None
-        } else {
-            let (_, snd) = self.v.split_at(start);
-            self.v = snd;
-            self.next()
-        }
-    }
-
-    #[inline]
-    fn last(mut self) -> Option<Self::Item> {
-        self.next_back()
-    }
-}
-
-#[unstable(feature = "exact_chunks", issue = "47115")]
-impl<'a, T> DoubleEndedIterator for ExactChunks<'a, T> {
-    #[inline]
-    fn next_back(&mut self) -> Option<&'a [T]> {
-        if self.v.len() < self.chunk_size {
-            None
-        } else {
-            let (fst, snd) = self.v.split_at(self.v.len() - self.chunk_size);
-            self.v = fst;
-            Some(snd)
-        }
-    }
-}
-
-#[unstable(feature = "exact_chunks", issue = "47115")]
-impl<'a, T> ExactSizeIterator for ExactChunks<'a, T> {
-    fn is_empty(&self) -> bool {
-        self.v.is_empty()
-    }
-}
-
-#[unstable(feature = "exact_chunks", issue = "47115")]
-impl<'a, T> FusedIterator for ExactChunks<'a, T> {}
-
-#[doc(hidden)]
-unsafe impl<'a, T> TrustedRandomAccess for ExactChunks<'a, T> {
-    unsafe fn get_unchecked(&mut self, i: usize) -> &'a [T] {
-        let start = i * self.chunk_size;
-        from_raw_parts(self.v.as_ptr().offset(start as isize), self.chunk_size)
-    }
-    fn may_have_side_effect() -> bool { false }
-}
-
-/// An iterator over a slice in (non-overlapping) mutable chunks (`chunk_size`
-/// elements at a time). When the slice len is not evenly divided by the chunk
-/// size, the last up to `chunk_size-1` elements will be omitted.
-///
-/// This struct is created by the [`exact_chunks_mut`] method on [slices].
-///
-/// [`exact_chunks_mut`]: ../../std/primitive.slice.html#method.exact_chunks_mut
-/// [slices]: ../../std/primitive.slice.html
-#[derive(Debug)]
-#[unstable(feature = "exact_chunks", issue = "47115")]
-pub struct ExactChunksMut<'a, T:'a> {
-    v: &'a mut [T],
-    chunk_size: usize
-}
-
-#[unstable(feature = "exact_chunks", issue = "47115")]
-impl<'a, T> Iterator for ExactChunksMut<'a, T> {
-    type Item = &'a mut [T];
-
-    #[inline]
-    fn next(&mut self) -> Option<&'a mut [T]> {
-        if self.v.len() < self.chunk_size {
-            None
-        } else {
-            let tmp = mem::replace(&mut self.v, &mut []);
-            let (head, tail) = tmp.split_at_mut(self.chunk_size);
-            self.v = tail;
-            Some(head)
-        }
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let n = self.v.len() / self.chunk_size;
-        (n, Some(n))
-    }
-
-    #[inline]
-    fn count(self) -> usize {
-        self.len()
-    }
-
-    #[inline]
-    fn nth(&mut self, n: usize) -> Option<&'a mut [T]> {
-        let (start, overflow) = n.overflowing_mul(self.chunk_size);
-        if start >= self.v.len() || overflow {
-            self.v = &mut [];
-            None
-        } else {
-            let tmp = mem::replace(&mut self.v, &mut []);
-            let (_, snd) = tmp.split_at_mut(start);
-            self.v = snd;
-            self.next()
-        }
-    }
-
-    #[inline]
-    fn last(mut self) -> Option<Self::Item> {
-        self.next_back()
-    }
-}
-
-#[unstable(feature = "exact_chunks", issue = "47115")]
-impl<'a, T> DoubleEndedIterator for ExactChunksMut<'a, T> {
-    #[inline]
-    fn next_back(&mut self) -> Option<&'a mut [T]> {
-        if self.v.len() < self.chunk_size {
-            None
-        } else {
-            let tmp = mem::replace(&mut self.v, &mut []);
-            let tmp_len = tmp.len();
-            let (head, tail) = tmp.split_at_mut(tmp_len - self.chunk_size);
-            self.v = head;
-            Some(tail)
-        }
-    }
-}
-
-#[unstable(feature = "exact_chunks", issue = "47115")]
-impl<'a, T> ExactSizeIterator for ExactChunksMut<'a, T> {
-    fn is_empty(&self) -> bool {
-        self.v.is_empty()
-    }
-}
-
-#[unstable(feature = "exact_chunks", issue = "47115")]
-impl<'a, T> FusedIterator for ExactChunksMut<'a, T> {}
-
-#[doc(hidden)]
-unsafe impl<'a, T> TrustedRandomAccess for ExactChunksMut<'a, T> {
-    unsafe fn get_unchecked(&mut self, i: usize) -> &'a mut [T] {
-        let start = i * self.chunk_size;
-        from_raw_parts_mut(self.v.as_mut_ptr().offset(start as isize), self.chunk_size)
-    }
-    fn may_have_side_effect() -> bool { false }
-}
 
 //
 // Free functions
@@ -2927,28 +2679,4 @@ unsafe impl<'a, T> TrustedRandomAccess for IterMut<'a, T> {
         &mut *self.ptr.offset(i as isize)
     }
     fn may_have_side_effect() -> bool { false }
-}
-
-trait SliceContains: Sized {
-    fn slice_contains(&self, x: &[Self]) -> bool;
-}
-
-impl<T> SliceContains for T where T: PartialEq {
-    default fn slice_contains(&self, x: &[Self]) -> bool {
-        x.iter().any(|y| *y == *self)
-    }
-}
-
-impl SliceContains for u8 {
-    fn slice_contains(&self, x: &[Self]) -> bool {
-        memchr::memchr(*self, x).is_some()
-    }
-}
-
-impl SliceContains for i8 {
-    fn slice_contains(&self, x: &[Self]) -> bool {
-        let byte = *self as u8;
-        let bytes: &[u8] = unsafe { from_raw_parts(x.as_ptr() as *const u8, x.len()) };
-        memchr::memchr(byte, bytes).is_some()
-    }
 }

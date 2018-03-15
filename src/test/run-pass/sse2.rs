@@ -7,9 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
-// no-system-llvm -- needs MCSubtargetInfo::getFeatureTable()
-// ignore-cloudabi no std::env
+// min-llvm-version 4.0
 
 #![feature(cfg_target_feature)]
 

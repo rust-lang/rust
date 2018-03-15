@@ -83,8 +83,7 @@ pub enum _Unwind_Context {}
 pub type _Unwind_Exception_Cleanup_Fn = extern "C" fn(unwind_code: _Unwind_Reason_Code,
                                                       exception: *mut _Unwind_Exception);
 extern "C" {
-    #[cfg_attr(stage0, unwind)]
-    #[cfg_attr(not(stage0), unwind(allowed))]
+    #[unwind]
     pub fn _Unwind_Resume(exception: *mut _Unwind_Exception) -> !;
     pub fn _Unwind_DeleteException(exception: *mut _Unwind_Exception);
     pub fn _Unwind_GetLanguageSpecificData(ctx: *mut _Unwind_Context) -> *mut c_void;
@@ -94,7 +93,8 @@ extern "C" {
 }
 
 cfg_if! {
-if #[cfg(all(any(target_os = "ios", not(target_arch = "arm"))))] {
+if #[cfg(not(any(all(target_os = "android", target_arch = "arm"),
+                 all(target_os = "linux", target_arch = "arm"))))] {
     // Not ARM EHABI
     #[repr(C)]
     #[derive(Copy, Clone, PartialEq)]
@@ -221,8 +221,7 @@ if #[cfg(all(any(target_os = "ios", not(target_arch = "arm"))))] {
 if #[cfg(not(all(target_os = "ios", target_arch = "arm")))] {
     // Not 32-bit iOS
     extern "C" {
-        #[cfg_attr(stage0, unwind)]
-        #[cfg_attr(not(stage0), unwind(allowed))]
+        #[unwind]
         pub fn _Unwind_RaiseException(exception: *mut _Unwind_Exception) -> _Unwind_Reason_Code;
         pub fn _Unwind_Backtrace(trace: _Unwind_Trace_Fn,
                                  trace_argument: *mut c_void)
@@ -231,8 +230,7 @@ if #[cfg(not(all(target_os = "ios", target_arch = "arm")))] {
 } else {
     // 32-bit iOS uses SjLj and does not provide _Unwind_Backtrace()
     extern "C" {
-        #[cfg_attr(stage0, unwind)]
-        #[cfg_attr(not(stage0), unwind(allowed))]
+        #[unwind]
         pub fn _Unwind_SjLj_RaiseException(e: *mut _Unwind_Exception) -> _Unwind_Reason_Code;
     }
 

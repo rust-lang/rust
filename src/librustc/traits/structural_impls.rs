@@ -10,7 +10,7 @@
 
 use traits;
 use traits::project::Normalized;
-use ty::{self, Lift, TyCtxt};
+use ty::{Lift, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
 use std::fmt;
@@ -26,18 +26,18 @@ impl<'tcx, T: fmt::Debug> fmt::Debug for Normalized<'tcx, T> {
     }
 }
 
+impl<'tcx> fmt::Debug for traits::RegionObligation<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "RegionObligation(sub_region={:?}, sup_type={:?})",
+               self.sub_region,
+               self.sup_type)
+    }
+}
 impl<'tcx, O: fmt::Debug> fmt::Debug for traits::Obligation<'tcx, O> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if ty::tls::with(|tcx| tcx.sess.verbose()) {
-            write!(f, "Obligation(predicate={:?},cause={:?},depth={})",
-                   self.predicate,
-                   self.cause,
-                   self.recursion_depth)
-        } else {
-            write!(f, "Obligation(predicate={:?},depth={})",
-                   self.predicate,
-                   self.recursion_depth)
-        }
+        write!(f, "Obligation(predicate={:?},depth={})",
+               self.predicate,
+               self.recursion_depth)
     }
 }
 
@@ -209,7 +209,6 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             super::VariableType(id) => Some(super::VariableType(id)),
             super::ReturnType(id) => Some(super::ReturnType(id)),
             super::SizedReturnType => Some(super::SizedReturnType),
-            super::SizedYieldType => Some(super::SizedYieldType),
             super::RepeatVec => Some(super::RepeatVec),
             super::FieldSized(item) => Some(super::FieldSized(item)),
             super::ConstSized => Some(super::ConstSized),
@@ -222,11 +221,13 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             }
             super::CompareImplMethodObligation { item_name,
                                                  impl_item_def_id,
-                                                 trait_item_def_id } => {
+                                                 trait_item_def_id,
+                                                 lint_id } => {
                 Some(super::CompareImplMethodObligation {
                     item_name,
                     impl_item_def_id,
                     trait_item_def_id,
+                    lint_id,
                 })
             }
             super::ExprAssignable => Some(super::ExprAssignable),
@@ -236,6 +237,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             }
             super::IfExpression => Some(super::IfExpression),
             super::IfExpressionWithNoElse => Some(super::IfExpressionWithNoElse),
+            super::EquatePredicate => Some(super::EquatePredicate),
             super::MainFunctionType => Some(super::MainFunctionType),
             super::StartFunctionType => Some(super::StartFunctionType),
             super::IntrinsicType => Some(super::IntrinsicType),
@@ -511,6 +513,7 @@ impl<'tcx> TypeFoldable<'tcx> for traits::ObligationCauseCode<'tcx> {
             super::MatchExpressionArm { arm_span: _, source: _ } |
             super::IfExpression |
             super::IfExpressionWithNoElse |
+            super::EquatePredicate |
             super::MainFunctionType |
             super::StartFunctionType |
             super::IntrinsicType |
@@ -525,7 +528,6 @@ impl<'tcx> TypeFoldable<'tcx> for traits::ObligationCauseCode<'tcx> {
             super::VariableType(_) |
             super::ReturnType(_) |
             super::SizedReturnType |
-            super::SizedYieldType |
             super::ReturnNoExpression |
             super::RepeatVec |
             super::FieldSized(_) |
@@ -559,6 +561,7 @@ impl<'tcx> TypeFoldable<'tcx> for traits::ObligationCauseCode<'tcx> {
             super::MatchExpressionArm { arm_span: _, source: _ } |
             super::IfExpression |
             super::IfExpressionWithNoElse |
+            super::EquatePredicate |
             super::MainFunctionType |
             super::StartFunctionType |
             super::IntrinsicType |
@@ -573,7 +576,6 @@ impl<'tcx> TypeFoldable<'tcx> for traits::ObligationCauseCode<'tcx> {
             super::VariableType(_) |
             super::ReturnType(_) |
             super::SizedReturnType |
-            super::SizedYieldType |
             super::ReturnNoExpression |
             super::RepeatVec |
             super::FieldSized(_) |

@@ -26,22 +26,22 @@ fn main() {
 }
 
 // END RUST SOURCE
-// START rustc.bar.Deaggregator.before.mir
+// START rustc.node10.Deaggregator.before.mir
 // bb0: {
 //     StorageLive(_2);
 //     _2 = _1;
-//     _0 = Baz::Foo { x: move _2 };
+//     _0 = Baz::Foo { x: _2 };
 //     StorageDead(_2);
 //     return;
 // }
-// END rustc.bar.Deaggregator.before.mir
-// START rustc.bar.Deaggregator.after.mir
+// END rustc.node10.Deaggregator.before.mir
+// START rustc.node10.Deaggregator.after.mir
 // bb0: {
 //     StorageLive(_2);
 //     _2 = _1;
-//     ((_0 as Foo).0: usize) = move _2;
+//     ((_0 as Foo).0: usize) = _2;
 //     discriminant(_0) = 1;
 //     StorageDead(_2);
 //     return;
 // }
-// END rustc.bar.Deaggregator.after.mir
+// END rustc.node10.Deaggregator.after.mir

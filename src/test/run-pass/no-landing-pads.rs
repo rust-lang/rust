@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z no-landing-pads -C codegen-units=1
+// compile-flags: -Z no-landing-pads
 // ignore-emscripten no threads support
 
 use std::thread;

@@ -13,9 +13,12 @@ extern crate namespaced_enums;
 
 fn main() {
     let _ = namespaced_enums::A;
-    //~^ ERROR cannot find value `A`
+    //~^ ERROR unresolved value `namespaced_enums::A`
+    //~| HELP you can import it into scope: `use namespaced_enums::Foo::A;`
     let _ = namespaced_enums::B(10);
-    //~^ ERROR cannot find function `B`
+    //~^ ERROR unresolved function `namespaced_enums::B`
+    //~| HELP you can import it into scope: `use namespaced_enums::Foo::B;`
     let _ = namespaced_enums::C { a: 10 };
-    //~^ ERROR cannot find struct, variant or union type `C`
+    //~^ ERROR unresolved struct, variant or union type `namespaced_enums::C`
+    //~| HELP you can import it into scope: `use namespaced_enums::Foo::C;`
 }

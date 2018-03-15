@@ -15,7 +15,6 @@ fn main() {
     let p;
     {
         let b = m.borrow();
-        p = &*b;
+        p = &*b; //~ ERROR `b` does not live long enough
     }
-    //~^^ ERROR `b` does not live long enough
 }

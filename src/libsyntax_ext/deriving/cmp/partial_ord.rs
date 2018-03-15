@@ -10,7 +10,6 @@
 
 pub use self::OrderingOp::*;
 
-use deriving::{path_local, pathvec_std, path_std};
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
@@ -46,11 +45,11 @@ pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt,
         } }
     }
 
-    let ordering_ty = Literal(path_std!(cx, cmp::Ordering));
-    let ret_ty = Literal(Path::new_(pathvec_std!(cx, option::Option),
+    let ordering_ty = Literal(path_std!(cx, core::cmp::Ordering));
+    let ret_ty = Literal(Path::new_(pathvec_std!(cx, core::option::Option),
                                     None,
                                     vec![Box::new(ordering_ty)],
-                                    PathKind::Std));
+                                    true));
 
     let inline = cx.meta_word(span, Symbol::intern("inline"));
     let attrs = vec![cx.attribute(span, inline)];
@@ -85,7 +84,7 @@ pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt,
     let trait_def = TraitDef {
         span,
         attributes: vec![],
-        path: path_std!(cx, cmp::PartialOrd),
+        path: path_std!(cx, core::cmp::PartialOrd),
         additional_bounds: vec![],
         generics: LifetimeBounds::empty(),
         is_unsafe: false,

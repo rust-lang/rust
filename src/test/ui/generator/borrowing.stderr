@@ -1,30 +1,29 @@
 error[E0597]: `a` does not live long enough
   --> $DIR/borrowing.rs:18:20
    |
-LL |         (|| yield &a).resume()
-   |          --        ^ borrowed value does not live long enough
+18 |         (|| yield &a).resume()
+   |          --        ^ does not live long enough
    |          |
    |          capture occurs here
-LL |         //~^ ERROR: `a` does not live long enough
-LL |     };
+19 |         //~^ ERROR: `a` does not live long enough
+20 |     };
    |     - borrowed value only lives until here
 ...
-LL | }
+29 | }
    | - borrowed value needs to live until here
 
 error[E0597]: `a` does not live long enough
   --> $DIR/borrowing.rs:25:20
    |
-LL |         || {
+24 |         || {
    |         -- capture occurs here
-LL |             yield &a
-   |                    ^ borrowed value does not live long enough
+25 |             yield &a
+   |                    ^ does not live long enough
 ...
-LL |     };
+28 |     };
    |     - borrowed value only lives until here
-LL | }
+29 | }
    | - borrowed value needs to live until here
 
 error: aborting due to 2 previous errors
 
-If you want more information on this error, try using "rustc --explain E0597"

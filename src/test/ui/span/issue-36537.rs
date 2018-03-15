@@ -11,6 +11,8 @@
 fn main() {
     let p;
     let a = 42;
-    p = &a;
-    //~^ ERROR `a` does not live long enough
+    p = &a; //~ NOTE borrow occurs here
 }
+//~^ ERROR `a` does not live long enough
+//~| NOTE `a` dropped here while still borrowed
+//~| NOTE values in a scope are dropped in the opposite order they are created

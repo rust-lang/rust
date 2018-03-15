@@ -9,15 +9,12 @@
 // except according to those terms.
 
 use super::*;
+
 use dep_graph::{DepGraph, DepKind, DepNodeIndex};
-use hir::def_id::{LOCAL_CRATE, CrateNum};
 use hir::intravisit::{Visitor, NestedVisitorMap};
-use hir::svh::Svh;
-use middle::cstore::CrateStore;
 use session::CrateDisambiguator;
 use std::iter::repeat;
 use syntax::ast::{NodeId, CRATE_NODE_ID};
-use syntax::codemap::CodeMap;
 use syntax_pos::Span;
 
 use ich::StableHashingContext;
@@ -46,7 +43,7 @@ pub(super) struct NodeCollector<'a, 'hir> {
 
     // We are collecting DepNode::HirBody hashes here so we can compute the
     // crate hash from then later on.
-    hir_body_nodes: Vec<(DefPathHash, DepNodeIndex)>,
+    hir_body_nodes: Vec<DefPathHash>,
 }
 
 impl<'a, 'hir> NodeCollector<'a, 'hir> {
@@ -101,7 +98,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             );
         }
 
-        let hir_body_nodes = vec![(root_mod_def_path_hash, root_mod_full_dep_index)];
+        let hir_body_nodes = vec![root_mod_def_path_hash];
 
         let mut collector = NodeCollector {
             krate,
@@ -122,60 +119,24 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
     }
 
     pub(super) fn finalize_and_compute_crate_hash(self,
-                                                  crate_disambiguator: CrateDisambiguator,
-                                                  cstore: &dyn CrateStore,
-                                                  codemap: &CodeMap,
-                                                  commandline_args_hash: u64)
-                                                  -> (Vec<MapEntry<'hir>>, Svh) {
+                                                  crate_disambiguator: CrateDisambiguator)
+                                                  -> Vec<MapEntry<'hir>> {
         let mut node_hashes: Vec<_> = self
             .hir_body_nodes
             .iter()
-            .map(|&(def_path_hash, dep_node_index)| {
-                (def_path_hash, self.dep_graph.fingerprint_of(dep_node_index))
+            .map(|&def_path_hash| {
+                let dep_node = def_path_hash.to_dep_node(DepKind::HirBody);
+                (def_path_hash, self.dep_graph.fingerprint_of(&dep_node))
             })
             .collect();
 
         node_hashes.sort_unstable_by(|&(ref d1, _), &(ref d2, _)| d1.cmp(d2));
 
-        let mut upstream_crates: Vec<_> = cstore.crates_untracked().iter().map(|&cnum| {
-            let name = cstore.crate_name_untracked(cnum).as_str();
-            let disambiguator = cstore.crate_disambiguator_untracked(cnum)
-                                      .to_fingerprint();
-            let hash = cstore.crate_hash_untracked(cnum);
-            (name, disambiguator, hash)
-        }).collect();
-
-        upstream_crates.sort_unstable_by(|&(name1, dis1, _), &(name2, dis2, _)| {
-            (name1, dis1).cmp(&(name2, dis2))
-        });
-
-        // We hash the final, remapped names of all local source files so we
-        // don't have to include the path prefix remapping commandline args.
-        // If we included the full mapping in the SVH, we could only have
-        // reproducible builds by compiling from the same directory. So we just
-        // hash the result of the mapping instead of the mapping itself.
-        let mut source_file_names: Vec<_> = codemap
-            .files()
-            .iter()
-            .filter(|filemap| CrateNum::from_u32(filemap.crate_of_origin) == LOCAL_CRATE)
-            .map(|filemap| filemap.name_hash)
-            .collect();
-
-        source_file_names.sort_unstable();
-
-        let (_, crate_dep_node_index) = self
-            .dep_graph
-            .with_task(DepNode::new_no_params(DepKind::Krate),
-                       &self.hcx,
-                       (((node_hashes, upstream_crates), source_file_names),
-                        (commandline_args_hash,
-                         crate_disambiguator.to_fingerprint())),
-                       identity_fn);
-
-        let svh = Svh::new(self.dep_graph
-                               .fingerprint_of(crate_dep_node_index)
-                               .to_smaller_hash());
-        (self.map, svh)
+        self.dep_graph.with_task(DepNode::new_no_params(DepKind::Krate),
+                                 &self.hcx,
+                                 (node_hashes, crate_disambiguator.to_fingerprint()),
+                                 identity_fn);
+        self.map
     }
 
     fn insert_entry(&mut self, id: NodeId, entry: MapEntry<'hir>) {
@@ -277,7 +238,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             identity_fn
         ).1;
 
-        self.hir_body_nodes.push((def_path_hash, self.current_full_dep_index));
+        self.hir_body_nodes.push(def_path_hash);
 
         self.current_dep_node_owner = dep_node_owner;
         self.currently_in_body = false;
@@ -348,7 +309,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_generics(&mut self, generics: &'hir Generics) {
-        for ty_param in generics.ty_params() {
+        for ty_param in generics.ty_params.iter() {
             self.insert(ty_param.id, NodeTyParam(ty_param));
         }
 

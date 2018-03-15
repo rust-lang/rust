@@ -9,7 +9,8 @@
 // except according to those terms.
 
 fn foo(_: Self) {
-//~^ ERROR cannot find type `Self`
+//~^ ERROR unresolved type `Self`
+//~| NOTE `Self` is only available in traits and impls
 }
 
 fn main() {}

@@ -8,7 +8,8 @@ ifneq ($(shell uname),FreeBSD)
 ifndef IS_WINDOWS
 all:
 	$(RUSTC) --emit dep-info main.rs
-	$(CGREP) "input.txt" "input.bin" "input.md" < $(TMPDIR)/main.d
+	grep "input.txt" $(TMPDIR)/main.d
+	grep "input.bin" $(TMPDIR)/main.d
 else
 all:
 

@@ -7,4 +7,3 @@
 src/etc/installer/gfx/* binary
 *.woff binary
 src/vendor/** -text
-Cargo.lock -merge

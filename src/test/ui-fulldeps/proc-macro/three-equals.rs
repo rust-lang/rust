@@ -22,17 +22,17 @@ fn main() {
     three_equals!(===);
 
     // Need exactly three equals.
-    three_equals!(==); //~ ERROR found 2 equal signs, need exactly 3
+    three_equals!(==);
 
     // Need exactly three equals.
-    three_equals!(=====); //~ ERROR expected EOF
+    three_equals!(=====);
 
     // Only equals accepted.
-    three_equals!(abc); //~ ERROR expected `=`
+    three_equals!(abc);
 
     // Only equals accepted.
-    three_equals!(!!); //~ ERROR expected `=`
+    three_equals!(!!);
 
     // Only three characters expected.
-    three_equals!(===a); //~ ERROR expected EOF
+    three_equals!(===a);
 }

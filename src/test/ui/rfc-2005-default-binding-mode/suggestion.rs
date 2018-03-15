@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    if let Some(y) = &Some(22) { //~ ERROR non-reference pattern
+    if let Some(y) = &Some(22) {
       println!("{}", y);
     }
 }

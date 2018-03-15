@@ -41,11 +41,8 @@ impl<A: Clone> DoubleEndedIterator for Repeat<A> {
     fn next_back(&mut self) -> Option<A> { Some(self.element.clone()) }
 }
 
-#[stable(feature = "fused", since = "1.26.0")]
+#[unstable(feature = "fused", issue = "35602")]
 impl<A: Clone> FusedIterator for Repeat<A> {}
-
-#[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<A: Clone> TrustedLen for Repeat<A> {}
 
 /// Creates a new iterator that endlessly repeats a single element.
 ///
@@ -56,12 +53,6 @@ unsafe impl<A: Clone> TrustedLen for Repeat<A> {}
 /// [`take`], in order to make them finite.
 ///
 /// [`take`]: trait.Iterator.html#method.take
-///
-/// If the element type of the iterator you need does not implement `Clone`,
-/// or if you do not want to keep the repeated element in memory, you can
-/// instead use the [`repeat_with`] function.
-///
-/// [`repeat_with`]: fn.repeat_with.html
 ///
 /// # Examples
 ///
@@ -103,115 +94,6 @@ unsafe impl<A: Clone> TrustedLen for Repeat<A> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn repeat<T: Clone>(elt: T) -> Repeat<T> {
     Repeat{element: elt}
-}
-
-/// An iterator that repeats elements of type `A` endlessly by
-/// applying the provided closure `F: FnMut() -> A`.
-///
-/// This `struct` is created by the [`repeat_with`] function.
-/// See its documentation for more.
-///
-/// [`repeat_with`]: fn.repeat_with.html
-#[derive(Copy, Clone, Debug)]
-#[unstable(feature = "iterator_repeat_with", issue = "48169")]
-pub struct RepeatWith<F> {
-    repeater: F
-}
-
-#[unstable(feature = "iterator_repeat_with", issue = "48169")]
-impl<A, F: FnMut() -> A> Iterator for RepeatWith<F> {
-    type Item = A;
-
-    #[inline]
-    fn next(&mut self) -> Option<A> { Some((self.repeater)()) }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) { (usize::MAX, None) }
-}
-
-#[unstable(feature = "iterator_repeat_with", issue = "48169")]
-impl<A, F: FnMut() -> A> DoubleEndedIterator for RepeatWith<F> {
-    #[inline]
-    fn next_back(&mut self) -> Option<A> { self.next() }
-}
-
-#[unstable(feature = "iterator_repeat_with", issue = "48169")]
-impl<A, F: FnMut() -> A> FusedIterator for RepeatWith<F> {}
-
-#[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<A, F: FnMut() -> A> TrustedLen for RepeatWith<F> {}
-
-/// Creates a new iterator that repeats elements of type `A` endlessly by
-/// applying the provided closure, the repeater, `F: FnMut() -> A`.
-///
-/// The `repeat_with()` function calls the repeater over and over and over and
-/// over and over and 🔁.
-///
-/// Infinite iterators like `repeat_with()` are often used with adapters like
-/// [`take`], in order to make them finite.
-///
-/// [`take`]: trait.Iterator.html#method.take
-///
-/// If the element type of the iterator you need implements `Clone`, and
-/// it is OK to keep the source element in memory, you should instead use
-/// the [`repeat`] function.
-///
-/// [`repeat`]: fn.repeat.html
-///
-/// An iterator produced by `repeat_with()` is a `DoubleEndedIterator`.
-/// It is important to note that reversing `repeat_with(f)` will produce
-/// the exact same sequence as the non-reversed iterator. In other words,
-/// `repeat_with(f).rev().collect::<Vec<_>>()` is equivalent to
-/// `repeat_with(f).collect::<Vec<_>>()`.
-///
-/// # Examples
-///
-/// Basic usage:
-///
-/// ```
-/// #![feature(iterator_repeat_with)]
-///
-/// use std::iter;
-///
-/// // let's assume we have some value of a type that is not `Clone`
-/// // or which don't want to have in memory just yet because it is expensive:
-/// #[derive(PartialEq, Debug)]
-/// struct Expensive;
-///
-/// // a particular value forever:
-/// let mut things = iter::repeat_with(|| Expensive);
-///
-/// assert_eq!(Some(Expensive), things.next());
-/// assert_eq!(Some(Expensive), things.next());
-/// assert_eq!(Some(Expensive), things.next());
-/// assert_eq!(Some(Expensive), things.next());
-/// assert_eq!(Some(Expensive), things.next());
-/// ```
-///
-/// Using mutation and going finite:
-///
-/// ```rust
-/// #![feature(iterator_repeat_with)]
-///
-/// use std::iter;
-///
-/// // From the zeroth to the third power of two:
-/// let mut curr = 1;
-/// let mut pow2 = iter::repeat_with(|| { let tmp = curr; curr *= 2; tmp })
-///                     .take(4);
-///
-/// assert_eq!(Some(1), pow2.next());
-/// assert_eq!(Some(2), pow2.next());
-/// assert_eq!(Some(4), pow2.next());
-/// assert_eq!(Some(8), pow2.next());
-///
-/// // ... and now we're done
-/// assert_eq!(None, pow2.next());
-/// ```
-#[inline]
-#[unstable(feature = "iterator_repeat_with", issue = "48169")]
-pub fn repeat_with<A, F: FnMut() -> A>(repeater: F) -> RepeatWith<F> {
-    RepeatWith { repeater }
 }
 
 /// An iterator that yields nothing.
@@ -259,7 +141,7 @@ impl<T> ExactSizeIterator for Empty<T> {
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<T> TrustedLen for Empty<T> {}
 
-#[stable(feature = "fused", since = "1.26.0")]
+#[unstable(feature = "fused", issue = "35602")]
 impl<T> FusedIterator for Empty<T> {}
 
 // not #[derive] because that adds a Clone bound on T,
@@ -340,7 +222,7 @@ impl<T> ExactSizeIterator for Once<T> {
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<T> TrustedLen for Once<T> {}
 
-#[stable(feature = "fused", since = "1.26.0")]
+#[unstable(feature = "fused", issue = "35602")]
 impl<T> FusedIterator for Once<T> {}
 
 /// Creates an iterator that yields an element exactly once.

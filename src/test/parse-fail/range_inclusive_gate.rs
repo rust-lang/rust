@@ -72,3 +72,5 @@ pub fn main() {
     o!(); // not allowed in macros that output cfgs
     p!(); // not allowed in cfg'ed macros that output cfgs
 }
+
+

@@ -15,13 +15,11 @@ use io;
 use mem;
 use path::Path;
 use ptr;
+use rand::{self, Rng};
 use slice;
-use sync::atomic::Ordering::SeqCst;
-use sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT};
 use sys::c;
 use sys::fs::{File, OpenOptions};
 use sys::handle::Handle;
-use sys::hashmap_random_keys;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Anonymous pipes
@@ -73,9 +71,10 @@ pub fn anon_pipe(ours_readable: bool) -> io::Result<Pipes> {
         let mut reject_remote_clients_flag = c::PIPE_REJECT_REMOTE_CLIENTS;
         loop {
             tries += 1;
+            let key: u64 = rand::thread_rng().gen();
             name = format!(r"\\.\pipe\__rust_anonymous_pipe1__.{}.{}",
                            c::GetCurrentProcessId(),
-                           random_number());
+                           key);
             let wide_name = OsStr::new(&name)
                                   .encode_wide()
                                   .chain(Some(0))
@@ -154,17 +153,6 @@ pub fn anon_pipe(ours_readable: bool) -> io::Result<Pipes> {
             ours: AnonPipe { inner: ours },
             theirs: AnonPipe { inner: theirs.into_handle() },
         })
-    }
-}
-
-fn random_number() -> usize {
-    static N: AtomicUsize = ATOMIC_USIZE_INIT;
-    loop {
-        if N.load(SeqCst) != 0 {
-            return N.fetch_add(1, SeqCst)
-        }
-
-        N.store(hashmap_random_keys().0 as usize, SeqCst);
     }
 }
 

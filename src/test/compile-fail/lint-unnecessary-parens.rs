@@ -13,19 +13,19 @@
 #[derive(Eq, PartialEq)]
 struct X { y: bool }
 impl X {
-    fn foo(&self, conjunct: bool) -> bool { self.y && conjunct }
+    fn foo(&self) -> bool { self.y }
 }
 
 fn foo() -> isize {
     return (1); //~ ERROR unnecessary parentheses around `return` value
 }
-fn bar(y: bool) -> X {
-    return (X { y }); //~ ERROR unnecessary parentheses around `return` value
+fn bar() -> X {
+    return (X { y: true }); //~ ERROR unnecessary parentheses around `return` value
 }
 
 fn main() {
     foo();
-    bar((true)); //~ ERROR unnecessary parentheses around function argument
+    bar();
 
     if (true) {} //~ ERROR unnecessary parentheses around `if` condition
     while (true) {} //~ ERROR unnecessary parentheses around `while` condition
@@ -40,14 +40,12 @@ fn main() {
     if (X { y: true } == v) {}
     if (X { y: false }.y) {}
 
-    while (X { y: false }.foo(true)) {}
+    while (X { y: false }.foo()) {}
     while (true | X { y: false }.y) {}
 
     match (X { y: false }) {
         _ => {}
     }
-
-    X { y: false }.foo((true)); //~ ERROR unnecessary parentheses around method argument
 
     let mut _a = (0); //~ ERROR unnecessary parentheses around assigned value
     _a = (0); //~ ERROR unnecessary parentheses around assigned value

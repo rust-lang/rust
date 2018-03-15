@@ -14,7 +14,7 @@ struct Foo {
 
 fn main() {
     let f = Foo { v: Vec::new() };
-    f.v.push("cat".to_string()); //~ ERROR cannot borrow
+    f.v.push("cat".to_string());
 }
 
 
@@ -23,9 +23,9 @@ struct S {
 }
 fn foo() {
     let s = S { x: 42 };
-    s.x += 1; //~ ERROR cannot assign
+    s.x += 1;
 }
 
 fn bar(s: S) {
-    s.x += 1; //~ ERROR cannot assign
+    s.x += 1;
 }

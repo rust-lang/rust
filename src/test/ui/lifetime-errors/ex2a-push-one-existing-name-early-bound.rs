@@ -14,7 +14,7 @@ fn baz<'a, 'b, T>(x: &mut Vec<&'a T>, y: &T)
     where i32: Foo<'a>,
           u32: Foo<'b>
 {
-    x.push(y); //~ ERROR explicit lifetime required
+    x.push(y);
 }
 fn main() {
 let x = baz;

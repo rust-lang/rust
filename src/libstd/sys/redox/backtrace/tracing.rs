@@ -96,9 +96,8 @@ extern fn trace_fn(ctx: *mut uw::_Unwind_Context,
 
     if cx.idx < cx.frames.len() {
         cx.frames[cx.idx] = Frame {
-            symbol_addr: symaddr as *mut u8,
-            exact_position: ip as *mut u8,
-            inline_context: 0,
+            symbol_addr: symaddr,
+            exact_position: ip,
         };
         cx.idx += 1;
     }

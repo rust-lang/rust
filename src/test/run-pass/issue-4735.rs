@@ -8,21 +8,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 // pretty-expanded FIXME #23616
 
-use std::mem::transmute;
+#![allow(unknown_features)]
+#![feature(box_syntax, libc)]
 
-struct NonCopyable(*const u8);
+extern crate libc;
+
+use std::mem::transmute;
+use libc::c_void;
+
+struct NonCopyable(*const c_void);
 
 impl Drop for NonCopyable {
     fn drop(&mut self) {
         let NonCopyable(p) = *self;
-        let _v = unsafe { transmute::<*const u8, Box<isize>>(p) };
+        let _v = unsafe { transmute::<*const c_void, Box<isize>>(p) };
     }
 }
 
 pub fn main() {
-    let t = Box::new(0);
-    let p = unsafe { transmute::<Box<isize>, *const u8>(t) };
+    let t = box 0;
+    let p = unsafe { transmute::<Box<isize>, *const c_void>(t) };
     let _z = NonCopyable(p);
 }

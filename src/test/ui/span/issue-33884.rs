@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-cloudabi no std::net support
-
 use std::net::TcpListener;
 use std::net::TcpStream;
 use std::io::{self, Read, Write};

@@ -13,34 +13,32 @@
 // Fns with that type used only in their body are also recompiled, but
 // their callers are not.
 
-// revisions:cfail1 cfail2
+// revisions:rpass1 rpass2
 // compile-flags: -Z query-dep-graph
-// must-compile-successfully
 
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]
 #![allow(dead_code)]
-#![crate_type = "rlib"]
 
 // These are expected to require translation.
-#![rustc_partition_translated(module="struct_point-point", cfg="cfail2")]
-#![rustc_partition_translated(module="struct_point-fn_with_type_in_sig", cfg="cfail2")]
-#![rustc_partition_translated(module="struct_point-call_fn_with_type_in_sig", cfg="cfail2")]
-#![rustc_partition_translated(module="struct_point-fn_with_type_in_body", cfg="cfail2")]
-#![rustc_partition_translated(module="struct_point-fn_make_struct", cfg="cfail2")]
-#![rustc_partition_translated(module="struct_point-fn_read_field", cfg="cfail2")]
-#![rustc_partition_translated(module="struct_point-fn_write_field", cfg="cfail2")]
+#![rustc_partition_translated(module="struct_point-point", cfg="rpass2")]
+#![rustc_partition_translated(module="struct_point-fn_with_type_in_sig", cfg="rpass2")]
+#![rustc_partition_translated(module="struct_point-call_fn_with_type_in_sig", cfg="rpass2")]
+#![rustc_partition_translated(module="struct_point-fn_with_type_in_body", cfg="rpass2")]
+#![rustc_partition_translated(module="struct_point-fn_make_struct", cfg="rpass2")]
+#![rustc_partition_translated(module="struct_point-fn_read_field", cfg="rpass2")]
+#![rustc_partition_translated(module="struct_point-fn_write_field", cfg="rpass2")]
 
-#![rustc_partition_reused(module="struct_point-call_fn_with_type_in_body", cfg="cfail2")]
+#![rustc_partition_reused(module="struct_point-call_fn_with_type_in_body", cfg="rpass2")]
 
-pub mod point {
-    #[cfg(cfail1)]
+mod point {
+    #[cfg(rpass1)]
     pub struct Point {
         pub x: f32,
         pub y: f32,
     }
 
-    #[cfg(cfail2)]
+    #[cfg(rpass2)]
     pub struct Point {
         pub x: f32,
         pub y: f32,
@@ -49,18 +47,18 @@ pub mod point {
 
     impl Point {
         pub fn origin() -> Point {
-            #[cfg(cfail1)]
+            #[cfg(rpass1)]
             return Point { x: 0.0, y: 0.0 };
 
-            #[cfg(cfail2)]
+            #[cfg(rpass2)]
             return Point { x: 0.0, y: 0.0, z: 0.0 };
         }
 
         pub fn total(&self) -> f32 {
-            #[cfg(cfail1)]
+            #[cfg(rpass1)]
             return self.x + self.y;
 
-            #[cfg(cfail2)]
+            #[cfg(rpass2)]
             return self.x + self.y + self.z;
         }
 
@@ -77,10 +75,10 @@ pub mod point {
 /// sufficiently "private", we might not need to type-check again.
 /// Rebuilding is probably always necessary since the layout may be
 /// affected.
-pub mod fn_with_type_in_sig {
+mod fn_with_type_in_sig {
     use point::Point;
 
-    #[rustc_dirty(label="TypeckTables", cfg="cfail2")]
+    #[rustc_dirty(label="TypeckTables", cfg="rpass2")]
     pub fn boop(p: Option<&Point>) -> f32 {
         p.map(|p| p.total()).unwrap_or(0.0)
     }
@@ -93,10 +91,10 @@ pub mod fn_with_type_in_sig {
 /// sufficiently "private", we might not need to type-check again.
 /// Rebuilding is probably always necessary since the layout may be
 /// affected.
-pub mod call_fn_with_type_in_sig {
+mod call_fn_with_type_in_sig {
     use fn_with_type_in_sig;
 
-    #[rustc_dirty(label="TypeckTables", cfg="cfail2")]
+    #[rustc_dirty(label="TypeckTables", cfg="rpass2")]
     pub fn bip() -> f32 {
         fn_with_type_in_sig::boop(None)
     }
@@ -109,10 +107,10 @@ pub mod call_fn_with_type_in_sig {
 /// sufficiently "private", we might not need to type-check again.
 /// Rebuilding is probably always necessary since the layout may be
 /// affected.
-pub mod fn_with_type_in_body {
+mod fn_with_type_in_body {
     use point::Point;
 
-    #[rustc_dirty(label="TypeckTables", cfg="cfail2")]
+    #[rustc_dirty(label="TypeckTables", cfg="rpass2")]
     pub fn boop() -> f32 {
         Point::origin().total()
     }
@@ -122,41 +120,44 @@ pub mod fn_with_type_in_body {
 /// body. In this case, the effects of the change should be contained
 /// to Y; X should not have to be rebuilt, nor should it need to be
 /// typechecked again.
-pub mod call_fn_with_type_in_body {
+mod call_fn_with_type_in_body {
     use fn_with_type_in_body;
 
-    #[rustc_clean(label="TypeckTables", cfg="cfail2")]
+    #[rustc_clean(label="TypeckTables", cfg="rpass2")]
     pub fn bip() -> f32 {
         fn_with_type_in_body::boop()
     }
 }
 
 /// A fn item that makes an instance of `Point` but does not invoke methods
-pub mod fn_make_struct {
+mod fn_make_struct {
     use point::Point;
 
-    #[rustc_dirty(label="TypeckTables", cfg="cfail2")]
+    #[rustc_dirty(label="TypeckTables", cfg="rpass2")]
     pub fn make_origin(p: Point) -> Point {
         Point { ..p }
     }
 }
 
 /// A fn item that reads fields from `Point` but does not invoke methods
-pub mod fn_read_field {
+mod fn_read_field {
     use point::Point;
 
-    #[rustc_dirty(label="TypeckTables", cfg="cfail2")]
+    #[rustc_dirty(label="TypeckTables", cfg="rpass2")]
     pub fn get_x(p: Point) -> f32 {
         p.x
     }
 }
 
 /// A fn item that writes to a field of `Point` but does not invoke methods
-pub mod fn_write_field {
+mod fn_write_field {
     use point::Point;
 
-    #[rustc_dirty(label="TypeckTables", cfg="cfail2")]
+    #[rustc_dirty(label="TypeckTables", cfg="rpass2")]
     pub fn inc_x(p: &mut Point) {
         p.x += 1.0;
     }
+}
+
+fn main() {
 }

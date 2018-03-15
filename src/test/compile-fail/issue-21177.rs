@@ -14,7 +14,7 @@ trait Trait {
 }
 
 fn foo<T: Trait<A = T::B>>() { }
-//~^ ERROR cyclic dependency detected
+//~^ ERROR unsupported cyclic reference between types/traits detected
 //~| ERROR associated type `B` not found for `T`
 
 fn main() { }

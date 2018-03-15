@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 #
 # Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
@@ -46,3 +46,5 @@ while [[ "$1" != "" ]]; do
         cp $BUILD_DIR/$STDERR_NAME $MYDIR/$STDERR_NAME
     fi
 done
+
+

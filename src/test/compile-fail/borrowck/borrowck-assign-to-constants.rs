@@ -9,12 +9,13 @@
 // except according to those terms.
 
 // revisions: ast mir
-//[mir]compile-flags: -Z borrowck=mir
+//[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
 
 static foo: isize = 5;
 
 fn main() {
     // assigning to various global constants
     foo = 6; //[ast]~ ERROR cannot assign to immutable static item
-             //[mir]~^ ERROR cannot assign to immutable item `foo`
+             //[mir]~^ ERROR cannot assign to immutable static item (Ast)
+             //[mir]~| ERROR cannot assign to immutable static item `foo` (Mir)
 }

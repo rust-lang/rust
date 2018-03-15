@@ -18,17 +18,17 @@ use Wrapper::Wrap;
 
 pub fn main() {
     let Wrap(x) = &Wrap(3);
-    *x += 1; //~ ERROR cannot assign to immutable
+    *x += 1;
 
 
     if let Some(x) = &Some(3) {
-        *x += 1; //~ ERROR cannot assign to immutable
+        *x += 1;
     } else {
         panic!();
     }
 
     while let Some(x) = &Some(3) {
-        *x += 1; //~ ERROR cannot assign to immutable
+        *x += 1;
         break;
     }
 }

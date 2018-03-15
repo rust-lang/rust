@@ -14,17 +14,17 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-// Re-exported core operators
+// Reexported core operators
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use marker::{Copy, Send, Sized, Sync};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use ops::{Drop, Fn, FnMut, FnOnce};
 
-// Re-exported functions
+// Reexported functions
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use mem::drop;
 
-// Re-exported types and traits
+// Reexported types and traits
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use boxed::Box;
 #[stable(feature = "rust1", since = "1.0.0")]

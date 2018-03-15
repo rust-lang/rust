@@ -51,7 +51,7 @@ impl base::AttrProcMacro for AttrProcMacro {
                 }
 
                 err.emit();
-                FatalError.raise();
+                panic!(FatalError);
             }
         }
     }
@@ -86,7 +86,7 @@ impl base::ProcMacro for BangProcMacro {
                 }
 
                 err.emit();
-                FatalError.raise();
+                panic!(FatalError);
             }
         }
     }

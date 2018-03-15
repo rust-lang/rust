@@ -16,7 +16,7 @@ trait Parser<T> {
 
 impl<bool> Parser<bool> for bool {
     fn parse(text: &str) -> Option<bool> {
-        Some(true) //~ ERROR mismatched types
+        Some(true)
     }
 }
 

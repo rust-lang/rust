@@ -10,11 +10,11 @@
 
 //! Code related to processing overloaded binary and unary operators.
 
-use super::{FnCtxt, Needs};
+use super::FnCtxt;
 use super::method::MethodCallee;
-use rustc::ty::{self, Ty, TypeFoldable, TypeVariants};
-use rustc::ty::TypeVariants::{TyStr, TyRef, TyAdt};
-use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability};
+use rustc::ty::{self, Ty, TypeFoldable, NoPreference, PreferMutLvalue, TypeVariants};
+use rustc::ty::TypeVariants::{TyStr, TyRef};
+use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
 use rustc::infer::type_variable::TypeVariableOrigin;
 use errors;
 use syntax_pos::Span;
@@ -40,9 +40,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             return_ty
         };
 
-        if !self.is_place_expr(lhs_expr) {
+        let tcx = self.tcx;
+        if !tcx.expr_is_lval(lhs_expr) {
             struct_span_err!(
-                self.tcx.sess, lhs_expr.span,
+                tcx.sess, lhs_expr.span,
                 E0067, "invalid left-hand side expression")
             .span_label(
                 lhs_expr.span,
@@ -165,20 +166,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                op,
                is_assign);
 
-        let lhs_needs = match is_assign {
-            IsAssign::Yes => Needs::MutPlace,
-            IsAssign::No => Needs::None
+        let lhs_pref = match is_assign {
+            IsAssign::Yes => PreferMutLvalue,
+            IsAssign::No => NoPreference
         };
         // Find a suitable supertype of the LHS expression's type, by coercing to
         // a type variable, to pass as the `Self` to the trait, avoiding invariant
         // trait matching creating lifetime constraints that are too strict.
         // E.g. adding `&'a T` and `&'b T`, given `&'x T: Add<&'x T>`, will result
         // in `&'a T <: &'x T` and `&'b T <: &'x T`, instead of `'a = 'b = 'x`.
-        let lhs_ty = self.check_expr_coercable_to_type_with_needs(
-            lhs_expr,
-            self.next_ty_var(ty::UniverseIndex::ROOT,
-                             TypeVariableOrigin::MiscVariable(lhs_expr.span)),
-            lhs_needs);
+        let lhs_ty = self.check_expr_coercable_to_type_with_lvalue_pref(lhs_expr,
+            self.next_ty_var(TypeVariableOrigin::MiscVariable(lhs_expr.span)),
+            lhs_pref);
         let lhs_ty = self.resolve_type_vars_with_obligations(lhs_ty);
 
         // NB: As we have not yet type-checked the RHS, we don't have the
@@ -187,8 +186,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // using this variable as the expected type, which sometimes lets
         // us do better coercions than we would be able to do otherwise,
         // particularly for things like `String + &String`.
-        let rhs_ty_var = self.next_ty_var(ty::UniverseIndex::ROOT,
-                         TypeVariableOrigin::MiscVariable(rhs_expr.span));
+        let rhs_ty_var = self.next_ty_var(TypeVariableOrigin::MiscVariable(rhs_expr.span));
 
         let result = self.lookup_op_method(lhs_ty, &[rhs_ty_var], Op::Binary(op, is_assign));
 
@@ -201,16 +199,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let by_ref_binop = !op.node.is_by_value();
                 if is_assign == IsAssign::Yes || by_ref_binop {
                     if let ty::TyRef(region, mt) = method.sig.inputs()[0].sty {
-                        let mutbl = match mt.mutbl {
-                            hir::MutImmutable => AutoBorrowMutability::Immutable,
-                            hir::MutMutable => AutoBorrowMutability::Mutable {
-                                // Allow two-phase borrows for binops in initial deployment
-                                // since they desugar to methods
-                                allow_two_phase_borrow: true,
-                            }
-                        };
                         let autoref = Adjustment {
-                            kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
+                            kind: Adjust::Borrow(AutoBorrow::Ref(region, mt.mutbl)),
                             target: method.sig.inputs()[0]
                         };
                         self.apply_adjustments(lhs_expr, vec![autoref]);
@@ -218,16 +208,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 if by_ref_binop {
                     if let ty::TyRef(region, mt) = method.sig.inputs()[1].sty {
-                        let mutbl = match mt.mutbl {
-                            hir::MutImmutable => AutoBorrowMutability::Immutable,
-                            hir::MutMutable => AutoBorrowMutability::Mutable {
-                                // Allow two-phase borrows for binops in initial deployment
-                                // since they desugar to methods
-                                allow_two_phase_borrow: true,
-                            }
-                        };
                         let autoref = Adjustment {
-                            kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
+                            kind: Adjust::Borrow(AutoBorrow::Ref(region, mt.mutbl)),
                             target: method.sig.inputs()[1]
                         };
                         // HACK(eddyb) Bypass checks due to reborrows being in
@@ -302,16 +284,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                         if let Some(missing_trait) = missing_trait {
                             if missing_trait == "std::ops::Add" &&
-                                self.check_str_addition(expr, lhs_expr, rhs_expr, lhs_ty,
+                                self.check_str_addition(expr, lhs_expr, lhs_ty,
                                                         rhs_ty, &mut err) {
                                 // This has nothing here because it means we did string
                                 // concatenation (e.g. "Hello " + "World!"). This means
                                 // we don't want the note in the else clause to be emitted
-                            } else if let ty::TyParam(_) = lhs_ty.sty {
-                                // FIXME: point to span of param
-                                err.note(
-                                    &format!("`{}` might need a bound for `{}`",
-                                             lhs_ty, missing_trait));
                             } else {
                                 err.note(
                                     &format!("an implementation of `{}` might be missing for `{}`",
@@ -331,54 +308,37 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn check_str_addition(&self,
                           expr: &'gcx hir::Expr,
                           lhs_expr: &'gcx hir::Expr,
-                          rhs_expr: &'gcx hir::Expr,
                           lhs_ty: Ty<'tcx>,
                           rhs_ty: Ty<'tcx>,
                           err: &mut errors::DiagnosticBuilder) -> bool {
-        let codemap = self.tcx.sess.codemap();
-        let msg = "`to_owned()` can be used to create an owned `String` \
-                   from a string reference. String concatenation \
-                   appends the string on the right to the string \
-                   on the left and may require reallocation. This \
-                   requires ownership of the string on the left";
         // If this function returns true it means a note was printed, so we don't need
         // to print the normal "implementation of `std::ops::Add` might be missing" note
-        match (&lhs_ty.sty, &rhs_ty.sty) {
-            (&TyRef(_, ref l_ty), &TyRef(_, ref r_ty))
-            if l_ty.ty.sty == TyStr && r_ty.ty.sty == TyStr => {
-                err.span_label(expr.span,
-                    "`+` can't be used to concatenate two `&str` strings");
-                match codemap.span_to_snippet(lhs_expr.span) {
-                    Ok(lstring) => err.span_suggestion(lhs_expr.span,
-                                                       msg,
-                                                       format!("{}.to_owned()", lstring)),
-                    _ => err.help(msg),
-                };
-                true
+        let mut is_string_addition = false;
+        if let TyRef(_, l_ty) = lhs_ty.sty {
+            if let TyRef(_, r_ty) = rhs_ty.sty {
+                if l_ty.ty.sty == TyStr && r_ty.ty.sty == TyStr {
+                    err.span_label(expr.span,
+                        "`+` can't be used to concatenate two `&str` strings");
+                    let codemap = self.tcx.sess.codemap();
+                    let suggestion =
+                        match codemap.span_to_snippet(lhs_expr.span) {
+                            Ok(lstring) => format!("{}.to_owned()", lstring),
+                            _ => format!("<expression>")
+                        };
+                    err.span_suggestion(lhs_expr.span,
+                        &format!("`to_owned()` can be used to create an owned `String` \
+                                  from a string reference. String concatenation \
+                                  appends the string on the right to the string \
+                                  on the left and may require reallocation. This \
+                                  requires ownership of the string on the left"), suggestion);
+                    is_string_addition = true;
+                }
+
             }
-            (&TyRef(_, ref l_ty), &TyAdt(..))
-            if l_ty.ty.sty == TyStr && &format!("{:?}", rhs_ty) == "std::string::String" => {
-                err.span_label(expr.span,
-                    "`+` can't be used to concatenate a `&str` with a `String`");
-                match codemap.span_to_snippet(lhs_expr.span) {
-                    Ok(lstring) => err.span_suggestion(lhs_expr.span,
-                                                       msg,
-                                                       format!("{}.to_owned()", lstring)),
-                    _ => err.help(msg),
-                };
-                match codemap.span_to_snippet(rhs_expr.span) {
-                    Ok(rstring) => {
-                        err.span_suggestion(rhs_expr.span,
-                                            "you also need to borrow the `String` on the right to \
-                                             get a `&str`",
-                                            format!("&{}", rstring));
-                    }
-                    _ => {}
-                };
-                true
-            }
-            _ => false,
+
         }
+
+        is_string_addition
     }
 
     pub fn check_user_unop(&self,

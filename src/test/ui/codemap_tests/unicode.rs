@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern "路濫狼á́́" fn foo() {} //~ ERROR invalid ABI
+extern "路濫狼á́́" fn foo() {}
 
 fn main() { }

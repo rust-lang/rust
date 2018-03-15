@@ -19,14 +19,13 @@ fn foo(x: RefCell<String>) -> String {
     let y = x;
     y.borrow().clone()
 }
-//~^^ ERROR `y` does not live long enough
+//~^ ERROR `y` does not live long enough
 
 fn foo2(x: RefCell<String>) -> String {
     let ret = {
         let y = x;
-        y.borrow().clone()
+        y.borrow().clone() //~ ERROR `y` does not live long enough
     };
-    //~^^ ERROR `y` does not live long enough
     ret
 }
 

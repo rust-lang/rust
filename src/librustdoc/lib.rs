@@ -18,21 +18,22 @@
 #![feature(rustc_private)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(fs_read_write)]
+#![feature(libc)]
 #![feature(set_stdio)]
 #![feature(slice_patterns)]
 #![feature(test)]
 #![feature(unicode)]
 #![feature(vec_remove_item)]
-#![feature(entry_and_modify)]
 
 extern crate arena;
 extern crate getopts;
 extern crate env_logger;
+extern crate html_diff;
+extern crate libc;
 extern crate rustc;
 extern crate rustc_data_structures;
 extern crate rustc_const_math;
-extern crate rustc_trans_utils;
+extern crate rustc_trans;
 extern crate rustc_driver;
 extern crate rustc_resolve;
 extern crate rustc_lint;
@@ -47,7 +48,6 @@ extern crate std_unicode;
 #[macro_use] extern crate log;
 extern crate rustc_errors as errors;
 extern crate pulldown_cmark;
-extern crate tempdir;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
@@ -57,13 +57,14 @@ use std::env;
 use std::fmt::Display;
 use std::io;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process;
 use std::sync::mpsc::channel;
 
 use externalfiles::ExternalHtml;
 use rustc::session::search_paths::SearchPaths;
-use rustc::session::config::{ErrorOutputType, RustcOptGroup, nightly_options, Externs};
+use rustc::session::config::{ErrorOutputType, RustcOptGroup, nightly_options,
+                             Externs};
 
 #[macro_use]
 pub mod externalfiles;
@@ -88,9 +89,10 @@ pub mod plugins;
 pub mod visit_ast;
 pub mod visit_lib;
 pub mod test;
-pub mod theme;
 
 use clean::AttributesExt;
+
+use html::markdown::RenderType;
 
 struct Output {
     krate: clean::Crate,
@@ -100,7 +102,7 @@ struct Output {
 
 pub fn main() {
     const STACK_SIZE: usize = 32_000_000; // 32MB
-    env_logger::init();
+    env_logger::init().unwrap();
     let res = std::thread::Builder::new().stack_size(STACK_SIZE).spawn(move || {
         get_args().map(|args| main_args(&args)).unwrap_or(1)
     }).unwrap().join().unwrap_or(101);
@@ -238,6 +240,9 @@ pub fn opts() -> Vec<RustcOptGroup> {
                       or `#![doc(html_playground_url=...)]`",
                      "URL")
         }),
+        unstable("enable-commonmark", |o| {
+            o.optflag("", "enable-commonmark", "to enable commonmark doc rendering/testing")
+        }),
         unstable("display-warnings", |o| {
             o.optflag("", "display-warnings", "to print code warnings when testing doc")
         }),
@@ -246,27 +251,6 @@ pub fn opts() -> Vec<RustcOptGroup> {
         }),
         unstable("linker", |o| {
             o.optopt("", "linker", "linker used for building executable test code", "PATH")
-        }),
-        unstable("sort-modules-by-appearance", |o| {
-            o.optflag("", "sort-modules-by-appearance", "sort modules by where they appear in the \
-                                                         program, rather than alphabetically")
-        }),
-        unstable("themes", |o| {
-            o.optmulti("", "themes",
-                       "additional themes which will be added to the generated docs",
-                       "FILES")
-        }),
-        unstable("theme-checker", |o| {
-            o.optmulti("", "theme-checker",
-                       "check if given theme is valid",
-                       "FILES")
-        }),
-        unstable("resource-suffix", |o| {
-            o.optopt("",
-                     "resource-suffix",
-                     "suffix to add to CSS and JavaScript files, e.g. \"main.css\" will become \
-                      \"main-suffix.css\"",
-                     "PATH")
         }),
     ]
 }
@@ -317,31 +301,6 @@ pub fn main_args(args: &[String]) -> isize {
         return 0;
     }
 
-    let to_check = matches.opt_strs("theme-checker");
-    if !to_check.is_empty() {
-        let paths = theme::load_css_paths(include_bytes!("html/static/themes/main.css"));
-        let mut errors = 0;
-
-        println!("rustdoc: [theme-checker] Starting tests!");
-        for theme_file in to_check.iter() {
-            print!(" - Checking \"{}\"...", theme_file);
-            let (success, differences) = theme::test_theme_against(theme_file, &paths);
-            if !differences.is_empty() || !success {
-                println!(" FAILED");
-                errors += 1;
-                if !differences.is_empty() {
-                    println!("{}", differences.join("\n"));
-                }
-            } else {
-                println!(" OK");
-            }
-        }
-        if errors != 0 {
-            return 1;
-        }
-        return 0;
-    }
-
     if matches.free.is_empty() {
         print_error("missing file operand");
         return 1;
@@ -371,12 +330,17 @@ pub fn main_args(args: &[String]) -> isize {
                                           .collect();
 
     let should_test = matches.opt_present("test");
-    let markdown_input = Path::new(input).extension()
-        .map_or(false, |e| e == "md" || e == "markdown");
+    let markdown_input = input.ends_with(".md") || input.ends_with(".markdown");
 
     let output = matches.opt_str("o").map(|s| PathBuf::from(&s));
     let css_file_extension = matches.opt_str("e").map(|s| PathBuf::from(&s));
     let cfgs = matches.opt_strs("cfg");
+
+    let render_type = if matches.opt_present("enable-commonmark") {
+        RenderType::Pulldown
+    } else {
+        RenderType::Hoedown
+    };
 
     if let Some(ref p) = css_file_extension {
         if !p.is_file() {
@@ -388,33 +352,13 @@ pub fn main_args(args: &[String]) -> isize {
         }
     }
 
-    let mut themes = Vec::new();
-    if matches.opt_present("themes") {
-        let paths = theme::load_css_paths(include_bytes!("html/static/themes/main.css"));
-
-        for (theme_file, theme_s) in matches.opt_strs("themes")
-                                            .iter()
-                                            .map(|s| (PathBuf::from(&s), s.to_owned())) {
-            if !theme_file.is_file() {
-                println!("rustdoc: option --themes arguments must all be files");
-                return 1;
-            }
-            let (success, ret) = theme::test_theme_against(&theme_file, &paths);
-            if !success || !ret.is_empty() {
-                println!("rustdoc: invalid theme: \"{}\"", theme_s);
-                println!("         Check what's wrong with the \"theme-checker\" option");
-                return 1;
-            }
-            themes.push(theme_file);
-        }
-    }
-
     let external_html = match ExternalHtml::load(
             &matches.opt_strs("html-in-header"),
             &matches.opt_strs("html-before-content"),
             &matches.opt_strs("html-after-content"),
             &matches.opt_strs("markdown-before-content"),
-            &matches.opt_strs("markdown-after-content")) {
+            &matches.opt_strs("markdown-after-content"),
+            render_type) {
         Some(eh) => eh,
         None => return 3,
     };
@@ -422,40 +366,37 @@ pub fn main_args(args: &[String]) -> isize {
     let playground_url = matches.opt_str("playground-url");
     let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
     let display_warnings = matches.opt_present("display-warnings");
-    let linker = matches.opt_str("linker").map(PathBuf::from);
-    let sort_modules_alphabetically = !matches.opt_present("sort-modules-by-appearance");
-    let resource_suffix = matches.opt_str("resource-suffix");
+    let linker = matches.opt_str("linker");
 
     match (should_test, markdown_input) {
         (true, true) => {
-            return markdown::test(input, cfgs, libs, externs, test_args, maybe_sysroot,
+            return markdown::test(input, cfgs, libs, externs, test_args, maybe_sysroot, render_type,
                                   display_warnings, linker)
         }
         (true, false) => {
-            return test::run(Path::new(input), cfgs, libs, externs, test_args, crate_name,
-                             maybe_sysroot, display_warnings, linker)
+            return test::run(input, cfgs, libs, externs, test_args, crate_name, maybe_sysroot,
+                             render_type, display_warnings, linker)
         }
-        (false, true) => return markdown::render(Path::new(input),
+        (false, true) => return markdown::render(input,
                                                  output.unwrap_or(PathBuf::from("doc")),
                                                  &matches, &external_html,
-                                                 !matches.opt_present("markdown-no-toc")),
+                                                 !matches.opt_present("markdown-no-toc"),
+                                                 render_type),
         (false, false) => {}
     }
 
     let output_format = matches.opt_str("w");
-    let res = acquire_input(PathBuf::from(input), externs, &matches, move |out| {
+    let res = acquire_input(input, externs, &matches, move |out| {
         let Output { krate, passes, renderinfo } = out;
         info!("going to format");
         match output_format.as_ref().map(|s| &**s) {
             Some("html") | None => {
                 html::render::run(krate, &external_html, playground_url,
                                   output.unwrap_or(PathBuf::from("doc")),
-                                  resource_suffix.unwrap_or(String::new()),
                                   passes.into_iter().collect(),
                                   css_file_extension,
                                   renderinfo,
-                                  sort_modules_alphabetically,
-                                  themes)
+                                  render_type)
                     .expect("failed to generate documentation");
                 0
             }
@@ -482,7 +423,7 @@ fn print_error<T>(error_message: T) where T: Display {
 
 /// Looks inside the command line arguments to extract the relevant input format
 /// and files and then generates the necessary rustdoc output for formatting.
-fn acquire_input<R, F>(input: PathBuf,
+fn acquire_input<R, F>(input: &str,
                        externs: Externs,
                        matches: &getopts::Matches,
                        f: F)
@@ -517,7 +458,7 @@ fn parse_externs(matches: &getopts::Matches) -> Result<Externs, String> {
 /// generated from the cleaned AST of the crate.
 ///
 /// This form of input will run all of the plug/cleaning passes
-fn rust_input<R, F>(cratefile: PathBuf, externs: Externs, matches: &getopts::Matches, f: F) -> R
+fn rust_input<R, F>(cratefile: &str, externs: Externs, matches: &getopts::Matches, f: F) -> R
 where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
     let mut default_passes = !matches.opt_present("no-defaults");
     let mut passes = matches.opt_strs("passes");
@@ -529,6 +470,7 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
         default_passes = false;
 
         passes = vec![
+            String::from("strip-hidden"),
             String::from("collapse-docs"),
             String::from("unindent-comments"),
         ];
@@ -546,6 +488,7 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
     let crate_version = matches.opt_str("crate-version");
     let plugin_path = matches.opt_str("plugin-path");
 
+    let cr = PathBuf::from(cratefile);
     info!("starting to run rustc");
     let display_warnings = matches.opt_present("display-warnings");
 
@@ -558,9 +501,8 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
         use rustc::session::config::Input;
 
         let (mut krate, renderinfo) =
-            core::run_core(paths, cfgs, externs, Input::File(cratefile), triple, maybe_sysroot,
-                           display_warnings, crate_name.clone(),
-                           force_unstable_if_unmarked);
+            core::run_core(paths, cfgs, externs, Input::File(cr), triple, maybe_sysroot,
+                           display_warnings, force_unstable_if_unmarked);
 
         info!("finished with rustc");
 

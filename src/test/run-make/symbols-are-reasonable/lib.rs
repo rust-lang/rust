@@ -14,8 +14,7 @@ pub static Y: &'static [u8] = include_bytes!("lib.rs");
 trait Foo { fn dummy(&self) { } }
 impl Foo for usize {}
 
-#[no_mangle]
-pub extern "C" fn dummy() {
+pub fn dummy() {
     // force the vtable to be created
     let _x = &1usize as &Foo;
 }

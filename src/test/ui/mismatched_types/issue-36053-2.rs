@@ -16,5 +16,13 @@ use std::iter::once;
 fn main() {
     once::<&str>("str").fuse().filter(|a: &str| true).count();
     //~^ ERROR no method named `count`
-    //~| ERROR type mismatch in closure arguments
+    //~| ERROR E0281
+    //~| ERROR E0281
+    //~| NOTE expected &str, found str
+    //~| NOTE expected &str, found str
+    //~| NOTE implements
+    //~| NOTE implements
+    //~| NOTE requires
+    //~| NOTE requires
+    //~| NOTE the method `count` exists but the following trait bounds
 }

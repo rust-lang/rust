@@ -110,8 +110,6 @@ struct Context<'a, 'b: 'a> {
     /// still existed in this phase of processing.
     /// Used only for `all_pieces_simple` tracking in `trans_piece`.
     curarg: usize,
-    /// Keep track of invalid references to positional arguments
-    invalid_refs: Vec<usize>,
 }
 
 /// Parses the arguments from the given list of tokens, returning None
@@ -228,7 +226,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 // argument second, if it's an implicit positional parameter
                 // it's written second, so it should come after width/precision.
                 let pos = match arg.position {
-                    parse::ArgumentIs(i) | parse::ArgumentImplicitlyIs(i) => Exact(i),
+                    parse::ArgumentIs(i) => Exact(i),
                     parse::ArgumentNamed(s) => Named(s.to_string()),
                 };
 
@@ -253,45 +251,10 @@ impl<'a, 'b> Context<'a, 'b> {
 
     fn describe_num_args(&self) -> String {
         match self.args.len() {
-            0 => "no arguments were given".to_string(),
+            0 => "no arguments given".to_string(),
             1 => "there is 1 argument".to_string(),
             x => format!("there are {} arguments", x),
         }
-    }
-
-    /// Handle invalid references to positional arguments. Output different
-    /// errors for the case where all arguments are positional and for when
-    /// there are named arguments or numbered positional arguments in the
-    /// format string.
-    fn report_invalid_references(&self, numbered_position_args: bool) {
-        let mut e;
-        let mut refs: Vec<String> = self.invalid_refs
-                                        .iter()
-                                        .map(|r| r.to_string())
-                                        .collect();
-
-        if self.names.is_empty() && !numbered_position_args {
-            e = self.ecx.mut_span_err(self.fmtsp,
-                &format!("{} positional argument{} in format string, but {}",
-                         self.pieces.len(),
-                         if self.pieces.len() > 1 { "s" } else { "" },
-                         self.describe_num_args()));
-        } else {
-            let arg_list = match refs.len() {
-                1 => format!("argument {}", refs.pop().unwrap()),
-                _ => format!("arguments {head} and {tail}",
-                             tail=refs.pop().unwrap(),
-                             head=refs.join(", "))
-            };
-
-            e = self.ecx.mut_span_err(self.fmtsp,
-                &format!("invalid reference to positional {} ({})",
-                        arg_list,
-                        self.describe_num_args()));
-            e.note("positional arguments are zero-based");
-        };
-
-        e.emit();
     }
 
     /// Actually verifies and tracks a given format placeholder
@@ -300,7 +263,11 @@ impl<'a, 'b> Context<'a, 'b> {
         match arg {
             Exact(arg) => {
                 if self.args.len() <= arg {
-                    self.invalid_refs.push(arg);
+                    let msg = format!("invalid reference to argument `{}` ({})",
+                                      arg,
+                                      self.describe_num_args());
+
+                    self.ecx.span_err(self.fmtsp, &msg[..]);
                     return;
                 }
                 match ty {
@@ -436,8 +403,7 @@ impl<'a, 'b> Context<'a, 'b> {
                         }
                     };
                     match arg.position {
-                        parse::ArgumentIs(i)
-                        | parse::ArgumentImplicitlyIs(i) => {
+                        parse::ArgumentIs(i) => {
                             // Map to index in final generated argument array
                             // in case of multiple types specified
                             let arg_idx = match arg_index_consumed.get_mut(i) {
@@ -725,33 +691,25 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
         all_pieces_simple: true,
         macsp,
         fmtsp: fmt.span,
-        invalid_refs: Vec::new(),
     };
 
     let fmt_str = &*fmt.node.0.as_str();
     let mut parser = parse::Parser::new(fmt_str);
     let mut pieces = vec![];
 
-    while let Some(mut piece) = parser.next() {
-        if !parser.errors.is_empty() {
-            break;
-        }
-        cx.verify_piece(&piece);
-        cx.resolve_name_inplace(&mut piece);
-        pieces.push(piece);
-    }
-
-    let numbered_position_args = pieces.iter().any(|arg: &parse::Piece| {
-        match *arg {
-            parse::String(_) => false,
-            parse::NextArgument(arg) => {
-                match arg.position {
-                    parse::Position::ArgumentIs(_) => true,
-                    _ => false,
+    loop {
+        match parser.next() {
+            Some(mut piece) => {
+                if !parser.errors.is_empty() {
+                    break;
                 }
+                cx.verify_piece(&piece);
+                cx.resolve_name_inplace(&mut piece);
+                pieces.push(piece);
             }
+            None => break,
         }
-    });
+    }
 
     cx.build_index_map();
 
@@ -776,10 +734,6 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
     if !cx.literal.is_empty() {
         let s = cx.trans_literal_string();
         cx.str_pieces.push(s);
-    }
-
-    if cx.invalid_refs.len() >= 1 {
-        cx.report_invalid_references(numbered_position_args);
     }
 
     // Make sure that all arguments were used and all arguments have types.
@@ -809,11 +763,15 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
                 let (sp, msg) = errs.into_iter().next().unwrap();
                 cx.ecx.struct_span_err(sp, msg)
             } else {
-                let mut diag = cx.ecx.struct_span_err(
-                    errs.iter().map(|&(sp, _)| sp).collect::<Vec<Span>>(),
-                    "multiple unused formatting arguments"
-                );
-                diag.span_label(cx.fmtsp, "multiple unused arguments in this statement");
+                let mut diag = cx.ecx.struct_span_err(cx.fmtsp,
+                    "multiple unused formatting arguments");
+
+                // Ignoring message, as it gets repetitive
+                // Then use MultiSpan to not clutter up errors
+                for (sp, _) in errs {
+                    diag.span_label(sp, "unused");
+                }
+
                 diag
             }
         };

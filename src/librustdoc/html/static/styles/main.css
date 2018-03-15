@@ -1,0 +1,241 @@
+/**
+ * Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+ * file at the top-level directory of this distribution and at
+ * http://rust-lang.org/COPYRIGHT.
+ *
+ * Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+ * http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+ * <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+ * option. This file may not be copied, modified, or distributed
+ * except according to those terms.
+ */
+
+/* General structure and fonts */
+
+body {
+	background-color: white;
+	color: black;
+}
+
+h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod) {
+	color: black;
+}
+h1.fqn {
+	border-bottom-color: #D5D5D5;
+}
+h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod) {
+	border-bottom-color: #DDDDDD;
+}
+
+.in-band {
+	background-color: white;
+}
+
+.docblock code, .docblock-short code {
+	background-color: #F5F5F5;
+}
+pre {
+	background-color: #F5F5F5;
+}
+
+.sidebar {
+	background-color: #F1F1F1;
+}
+
+.sidebar .current {
+	background-color: #fff;
+}
+
+.source .sidebar {
+	background-color: #fff;
+}
+
+.sidebar .location {
+	border-color: #000;
+	background-color: #fff;
+	color: #333;
+}
+
+.block a:hover {
+	background: #F5F5F5;
+}
+
+.line-numbers span { color: #c67e2d; }
+.line-numbers .line-highlighted {
+	background-color: #f6fdb0 !important;
+}
+
+.docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
+	border-bottom-color: #DDD;
+}
+
+.docblock table {
+	border-color: #ddd;
+}
+
+.docblock table td {
+	border-top-color: #ddd;
+	border-bottom-color: #ddd;
+}
+
+.docblock table th {
+	border-top-color: #ddd;
+	border-bottom-color: #ddd;
+}
+
+:target { background: #FDFFD3; }
+
+:target > .in-band {
+	background: #FDFFD3;
+}
+
+.content .highlighted {
+	color: #000 !important;
+	background-color: #ccc;
+}
+.content .highlighted a, .content .highlighted span { color: #000 !important; }
+.content .highlighted.trait { background-color: #c7b6ff; }
+.content .highlighted.mod,
+.content .highlighted.externcrate { background-color: #afc6e4; }
+.content .highlighted.enum { background-color: #b4d1b9; }
+.content .highlighted.struct { background-color: #e7b1a0; }
+.content .highlighted.union { background-color: #b7bd49; }
+.content .highlighted.fn,
+.content .highlighted.method,
+.content .highlighted.tymethod { background-color: #c6afb3; }
+.content .highlighted.type { background-color: #ffc891; }
+.content .highlighted.macro { background-color: #8ce488; }
+.content .highlighted.constant,
+.content .highlighted.static { background-color: #c3e0ff; }
+.content .highlighted.primitive { background-color: #9aecff; }
+
+.content span.enum, .content a.enum, .block a.current.enum { color: #508157; }
+.content span.struct, .content a.struct, .block a.current.struct { color: #df3600; }
+.content span.type, .content a.type, .block a.current.type { color: #ba5d00; }
+.content span.macro, .content a.macro, .block a.current.macro { color: #068000; }
+.content span.union, .content a.union, .block a.current.union { color: #767b27; }
+.content span.constant, .content a.constant, .block a.current.constant,
+.content span.static, .content a.static, .block a.current.static { color: #546e8a; }
+.content span.primitive, .content a.primitive, .block a.current.primitive { color: #2c8093; }
+.content span.externcrate,
+.content span.mod, .content a.mod, .block a.current.mod { color: #4d76ae; }
+.content span.trait, .content a.trait, .block a.current.trait { color: #7c5af3; }
+.content span.fn, .content a.fn, .block a.current.fn,
+.content span.method, .content a.method, .block a.current.method,
+.content span.tymethod, .content a.tymethod, .block a.current.tymethod,
+.content .fnname { color: #9a6e31; }
+
+pre.rust .comment { color: #8E908C; }
+pre.rust .doccomment { color: #4D4D4C; }
+
+nav {
+	border-bottom-color: #e0e0e0;
+}
+nav.main .current {
+	border-top-color: #000;
+	border-bottom-color: #000;
+}
+nav.main .separator {
+	border: 1px solid #000;
+}
+a {
+	color: #000;
+}
+
+.docblock a, .docblock-short a, .stability a {
+	color: #3873AD;
+}
+
+a.test-arrow {
+	color: #f5f5f5;
+}
+
+.search-input {
+	color: #555;
+	box-shadow: 0 0 0 1px #e0e0e0, 0 0 0 2px transparent;
+	background-color: white;
+}
+
+.stab.unstable { background: #FFF5D6; border-color: #FFC600; }
+.stab.deprecated { background: #F3DFFF; border-color: #7F0087; }
+.stab.portability { background: #C4ECFF; border-color: #7BA5DB; }
+
+#help > div {
+	background: #e9e9e9;
+	border-color: #bfbfbf;;
+}
+
+#help dt {
+	border-color: #bfbfbf;
+	background: #fff;
+}
+
+.since {
+	color: grey;
+}
+
+.line-numbers :target { background-color: transparent; }
+
+/* Code highlighting */
+pre.rust .kw { color: #8959A8; }
+pre.rust .kw-2, pre.rust .prelude-ty { color: #4271AE; }
+pre.rust .number, pre.rust .string { color: #718C00; }
+pre.rust .self, pre.rust .bool-val, pre.rust .prelude-val,
+pre.rust .attribute, pre.rust .attribute .ident { color: #C82829; }
+pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999F; }
+pre.rust .lifetime { color: #B76514; }
+pre.rust .question-mark {
+	color: #ff9011;
+}
+
+a.test-arrow {
+	background-color: rgba(78, 139, 202, 0.2);
+}
+
+a.test-arrow:hover{
+	background-color: #4e8bca;
+}
+
+.toggle-label {
+	color: #999;
+}
+
+:target > code {
+	background: #FDFFD3;
+}
+
+pre.compile_fail {
+	border-left: 2px solid rgba(255,0,0,.4);
+}
+
+pre.compile_fail:hover, .information:hover + pre.compile_fail {
+	border-left: 2px solid #f00;
+}
+
+pre.ignore {
+	border-left: 2px solid rgba(255,142,0,.4);
+}
+
+pre.ignore:hover, .information:hover + pre.ignore {
+	border-left: 2px solid #ff9200;
+}
+
+.tooltip.compile_fail {
+	color: rgba(255,0,0,.3);
+}
+
+.information > .compile_fail:hover {
+	color: #f00;
+}
+
+.tooltip.ignore {
+	color: rgba(255,142,0,.3);
+}
+
+.information > .ignore:hover {
+	color: rgba(255,142,0,1);
+}
+
+.search-failed > a {
+	color: #0089ff;
+}

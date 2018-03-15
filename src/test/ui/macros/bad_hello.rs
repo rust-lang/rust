@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    println!(3 + 4); //~ ERROR expected a literal
+    println!(3 + 4);
 }

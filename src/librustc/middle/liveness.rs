@@ -109,7 +109,7 @@ use self::VarKind::*;
 use hir::def::*;
 use ty::{self, TyCtxt};
 use lint;
-use util::nodemap::{NodeMap, NodeSet};
+use util::nodemap::NodeMap;
 
 use std::{fmt, usize};
 use std::io::prelude::*;
@@ -244,8 +244,7 @@ struct CaptureInfo {
 #[derive(Copy, Clone, Debug)]
 struct LocalInfo {
     id: NodeId,
-    name: ast::Name,
-    is_shorthand: bool,
+    name: ast::Name
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -334,13 +333,6 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
         }
     }
 
-    fn variable_is_shorthand(&self, var: Variable) -> bool {
-        match self.var_kinds[var.get()] {
-            Local(LocalInfo { is_shorthand, .. }) => is_shorthand,
-            Arg(..) | CleanExit => false
-        }
-    }
-
     fn set_captures(&mut self, node_id: NodeId, cs: Vec<CaptureInfo>) {
         self.capture_info_map.insert(node_id, Rc::new(cs));
     }
@@ -392,9 +384,8 @@ fn visit_local<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, local: &'tcx hir::Local) {
         let name = path1.node;
         ir.add_live_node_for_node(p_id, VarDefNode(sp));
         ir.add_variable(Local(LocalInfo {
-            id: p_id,
-            name,
-            is_shorthand: false,
+          id: p_id,
+          name,
         }));
     });
     intravisit::walk_local(ir, local);
@@ -402,22 +393,6 @@ fn visit_local<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, local: &'tcx hir::Local) {
 
 fn visit_arm<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, arm: &'tcx hir::Arm) {
     for pat in &arm.pats {
-        // for struct patterns, take note of which fields used shorthand (`x`
-        // rather than `x: x`)
-        //
-        // FIXME: according to the rust-lang-nursery/rustc-guide book and
-        // librustc/README.md, `NodeId`s are to be phased out in favor of
-        // `HirId`s; however, we need to match the signature of `each_binding`,
-        // which uses `NodeIds`.
-        let mut shorthand_field_ids = NodeSet();
-        if let hir::PatKind::Struct(_, ref fields, _) = pat.node {
-            for field in fields {
-                if field.node.is_shorthand {
-                    shorthand_field_ids.insert(field.node.pat.id);
-                }
-            }
-        }
-
         pat.each_binding(|bm, p_id, sp, path1| {
             debug!("adding local variable {} from match with bm {:?}",
                    p_id, bm);
@@ -425,8 +400,7 @@ fn visit_arm<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, arm: &'tcx hir::Arm) {
             ir.add_live_node_for_node(p_id, VarDefNode(sp));
             ir.add_variable(Local(LocalInfo {
                 id: p_id,
-                name: name,
-                is_shorthand: shorthand_field_ids.contains(&p_id)
+                name,
             }));
         })
     }
@@ -673,7 +647,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn write_vars<F>(&self,
-                     wr: &mut dyn Write,
+                     wr: &mut Write,
                      ln: LiveNode,
                      mut test: F)
                      -> io::Result<()> where
@@ -694,7 +668,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn ln_str(&self, ln: LiveNode) -> String {
         let mut wr = Vec::new();
         {
-            let wr = &mut wr as &mut dyn Write;
+            let wr = &mut wr as &mut Write;
             write!(wr, "[ln({:?}) of kind {:?} reads", ln.get(), self.ir.lnk(ln));
             self.write_vars(wr, ln, |idx| self.users[idx].reader);
             write!(wr, "  writes");
@@ -1060,10 +1034,10 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           }
 
           hir::ExprAssign(ref l, ref r) => {
-            // see comment on places in
-            // propagate_through_place_components()
-            let succ = self.write_place(&l, succ, ACC_WRITE);
-            let succ = self.propagate_through_place_components(&l, succ);
+            // see comment on lvalues in
+            // propagate_through_lvalue_components()
+            let succ = self.write_lvalue(&l, succ, ACC_WRITE);
+            let succ = self.propagate_through_lvalue_components(&l, succ);
             self.propagate_through_expr(&r, succ)
           }
 
@@ -1073,11 +1047,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 let succ = self.propagate_through_expr(&l, succ);
                 self.propagate_through_expr(&r, succ)
             } else {
-                // see comment on places in
-                // propagate_through_place_components()
-                let succ = self.write_place(&l, succ, ACC_WRITE|ACC_READ);
+                // see comment on lvalues in
+                // propagate_through_lvalue_components()
+                let succ = self.write_lvalue(&l, succ, ACC_WRITE|ACC_READ);
                 let succ = self.propagate_through_expr(&r, succ);
-                self.propagate_through_place_components(&l, succ)
+                self.propagate_through_lvalue_components(&l, succ)
             }
           }
 
@@ -1147,14 +1121,14 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           hir::ExprInlineAsm(ref ia, ref outputs, ref inputs) => {
             let succ = ia.outputs.iter().zip(outputs).rev().fold(succ, |succ, (o, output)| {
-                // see comment on places
-                // in propagate_through_place_components()
+                // see comment on lvalues
+                // in propagate_through_lvalue_components()
                 if o.is_indirect {
                     self.propagate_through_expr(output, succ)
                 } else {
                     let acc = if o.is_rw { ACC_WRITE|ACC_READ } else { ACC_WRITE };
-                    let succ = self.write_place(output, succ, acc);
-                    self.propagate_through_place_components(output, succ)
+                    let succ = self.write_lvalue(output, succ, acc);
+                    self.propagate_through_lvalue_components(output, succ)
                 }
             });
 
@@ -1172,11 +1146,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         }
     }
 
-    fn propagate_through_place_components(&mut self,
+    fn propagate_through_lvalue_components(&mut self,
                                            expr: &Expr,
                                            succ: LiveNode)
                                            -> LiveNode {
-        // # Places
+        // # Lvalues
         //
         // In general, the full flow graph structure for an
         // assignment/move/etc can be handled in one of two ways,
@@ -1186,7 +1160,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         //
         // The two kinds of graphs are:
         //
-        //    Tracked place          Untracked place
+        //    Tracked lvalue          Untracked lvalue
         // ----------------------++-----------------------
         //                       ||
         //         |             ||           |
@@ -1194,7 +1168,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         //     (rvalue)          ||       (rvalue)
         //         |             ||           |
         //         v             ||           v
-        // (write of place)     ||   (place components)
+        // (write of lvalue)     ||   (lvalue components)
         //         |             ||           |
         //         v             ||           v
         //      (succ)           ||        (succ)
@@ -1203,25 +1177,25 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         //
         // I will cover the two cases in turn:
         //
-        // # Tracked places
+        // # Tracked lvalues
         //
-        // A tracked place is a local variable/argument `x`.  In
+        // A tracked lvalue is a local variable/argument `x`.  In
         // these cases, the link_node where the write occurs is linked
-        // to node id of `x`.  The `write_place()` routine generates
+        // to node id of `x`.  The `write_lvalue()` routine generates
         // the contents of this node.  There are no subcomponents to
         // consider.
         //
-        // # Non-tracked places
+        // # Non-tracked lvalues
         //
-        // These are places like `x[5]` or `x.f`.  In that case, we
+        // These are lvalues like `x[5]` or `x.f`.  In that case, we
         // basically ignore the value which is written to but generate
         // reads for the components---`x` in these two examples.  The
         // components reads are generated by
-        // `propagate_through_place_components()` (this fn).
+        // `propagate_through_lvalue_components()` (this fn).
         //
-        // # Illegal places
+        // # Illegal lvalues
         //
-        // It is still possible to observe assignments to non-places;
+        // It is still possible to observe assignments to non-lvalues;
         // these errors are detected in the later pass borrowck.  We
         // just ignore such cases and treat them as reads.
 
@@ -1233,17 +1207,17 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         }
     }
 
-    // see comment on propagate_through_place()
-    fn write_place(&mut self, expr: &Expr, succ: LiveNode, acc: u32)
+    // see comment on propagate_through_lvalue()
+    fn write_lvalue(&mut self, expr: &Expr, succ: LiveNode, acc: u32)
                     -> LiveNode {
         match expr.node {
           hir::ExprPath(hir::QPath::Resolved(_, ref path)) => {
               self.access_path(expr.id, path, succ, acc)
           }
 
-          // We do not track other places, so just propagate through
+          // We do not track other lvalues, so just propagate through
           // to their subcomponents.  Also, it may happen that
-          // non-places occur here, because those are detected in the
+          // non-lvalues occur here, because those are detected in the
           // later pass borrowck.
           _ => succ
         }
@@ -1389,14 +1363,14 @@ fn check_arm<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, arm: &'tcx hir::Arm) {
 fn check_expr<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, expr: &'tcx Expr) {
     match expr.node {
       hir::ExprAssign(ref l, _) => {
-        this.check_place(&l);
+        this.check_lvalue(&l);
 
         intravisit::walk_expr(this, expr);
       }
 
       hir::ExprAssignOp(_, ref l, _) => {
         if !this.tables.is_method_call(expr) {
-            this.check_place(&l);
+            this.check_lvalue(&l);
         }
 
         intravisit::walk_expr(this, expr);
@@ -1407,10 +1381,10 @@ fn check_expr<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, expr: &'tcx Expr) {
           this.visit_expr(input);
         }
 
-        // Output operands must be places
+        // Output operands must be lvalues
         for (o, output) in ia.outputs.iter().zip(outputs) {
           if !o.is_indirect {
-            this.check_place(output);
+            this.check_lvalue(output);
           }
           this.visit_expr(output);
         }
@@ -1435,7 +1409,7 @@ fn check_expr<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, expr: &'tcx Expr) {
 }
 
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
-    fn check_place(&mut self, expr: &'tcx Expr) {
+    fn check_lvalue(&mut self, expr: &'tcx Expr) {
         match expr.node {
             hir::ExprPath(hir::QPath::Resolved(_, ref path)) => {
                 if let Def::Local(nid) = path.def {
@@ -1449,7 +1423,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 }
             }
             _ => {
-                // For other kinds of places, no checks are required,
+                // For other kinds of lvalues, no checks are required,
                 // and any embedded expressions are actually rvalues
                 intravisit::walk_expr(self, expr);
             }
@@ -1509,26 +1483,17 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     self.assigned_on_exit(ln, var).is_some()
                 };
 
-                let suggest_underscore_msg = format!("consider using `_{}` instead",
-                                                     name);
                 if is_assigned {
-                    self.ir.tcx
-                        .lint_node_note(lint::builtin::UNUSED_VARIABLES, id, sp,
-                                        &format!("variable `{}` is assigned to, but never used",
-                                                 name),
-                                        &suggest_underscore_msg);
+                    self.ir.tcx.lint_node_note(lint::builtin::UNUSED_VARIABLES, id, sp,
+                        &format!("variable `{}` is assigned to, but never used",
+                                 name),
+                        &format!("to avoid this warning, consider using `_{}` instead",
+                                 name));
                 } else if name != "self" {
-                    let msg = format!("unused variable: `{}`", name);
-                    let mut err = self.ir.tcx
-                        .struct_span_lint_node(lint::builtin::UNUSED_VARIABLES, id, sp, &msg);
-                    if self.ir.variable_is_shorthand(var) {
-                        err.span_suggestion(sp, "try ignoring the field",
-                                            format!("{}: _", name));
-                    } else {
-                        err.span_suggestion_short(sp, &suggest_underscore_msg,
-                                                  format!("_{}", name));
-                    }
-                    err.emit()
+                    self.ir.tcx.lint_node_note(lint::builtin::UNUSED_VARIABLES, id, sp,
+                        &format!("unused variable: `{}`", name),
+                        &format!("to avoid this warning, consider using `_{}` instead",
+                                 name));
                 }
             }
             true

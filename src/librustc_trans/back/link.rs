@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use cc::windows_registry;
 use super::archive::{ArchiveBuilder, ArchiveConfig};
 use super::bytecode::RLIB_BYTECODE_EXTENSION;
 use super::linker::Linker;
@@ -16,9 +15,8 @@ use super::command::Command;
 use super::rpath::RPathConfig;
 use super::rpath;
 use metadata::METADATA_FILENAME;
-use rustc_back::LinkerFlavor;
 use rustc::session::config::{self, NoDebugInfo, OutputFilenames, OutputType, PrintRequest};
-use rustc::session::config::{RUST_CGU_EXT, Lto};
+use rustc::session::config::RUST_CGU_EXT;
 use rustc::session::filesearch;
 use rustc::session::search_paths::PathKind;
 use rustc::session::Session;
@@ -28,7 +26,7 @@ use {CrateTranslation, CrateInfo};
 use rustc::util::common::time;
 use rustc::util::fs::fix_windows_verbatim_for_gcc;
 use rustc::hir::def_id::CrateNum;
-use tempdir::TempDir;
+use rustc_back::tempdir::TempDir;
 use rustc_back::{PanicStrategy, RelroLevel};
 use context::get_reloc_model;
 use llvm;
@@ -36,9 +34,10 @@ use llvm;
 use std::ascii;
 use std::char;
 use std::env;
+use std::ffi::OsString;
 use std::fmt;
-use std::fs;
-use std::io;
+use std::fs::{self, File};
+use std::io::{self, Write, BufWriter};
 use std::path::{Path, PathBuf};
 use std::process::{Output, Stdio};
 use std::str;
@@ -58,7 +57,9 @@ pub use rustc_trans_utils::link::{find_crate_name, filename_for_input, default_o
 // The third parameter is for env vars, used on windows to set up the
 // path for MSVC to find its DLLs, and gcc to find its bundled
 // toolchain
-pub fn get_linker(sess: &Session) -> (PathBuf, Command) {
+pub fn get_linker(sess: &Session) -> (String, Command, Vec<(OsString, OsString)>) {
+    let envs = vec![("PATH".into(), command_path(sess))];
+
     // If our linker looks like a batch script on Windows then to execute this
     // we'll need to spawn `cmd` explicitly. This is primarily done to handle
     // emscripten where the linker is `emcc.bat` and needs to be spawned as
@@ -67,63 +68,62 @@ pub fn get_linker(sess: &Session) -> (PathBuf, Command) {
     // This worked historically but is needed manually since #42436 (regression
     // was tagged as #42791) and some more info can be found on #44443 for
     // emscripten itself.
-    let cmd = |linker: &Path| {
-        if let Some(linker) = linker.to_str() {
-            if cfg!(windows) && linker.ends_with(".bat") {
-                return Command::bat_script(linker)
-            }
-        }
-        match sess.linker_flavor() {
-            LinkerFlavor::Lld(f) => Command::lld(linker, f),
-            _ => Command::new(linker),
-
+    let cmd = |linker: &str| {
+        if cfg!(windows) && linker.ends_with(".bat") {
+            let mut cmd = Command::new("cmd");
+            cmd.arg("/c").arg(linker);
+            cmd
+        } else {
+            Command::new(linker)
         }
     };
 
-    let msvc_tool = windows_registry::find_tool(&sess.opts.target_triple, "link.exe");
+    if let Some(ref linker) = sess.opts.cg.linker {
+        (linker.clone(), cmd(linker), envs)
+    } else if sess.target.target.options.is_like_msvc {
+        let (cmd, envs) = msvc_link_exe_cmd(sess);
+        ("link.exe".to_string(), cmd, envs)
+    } else {
+        let linker = &sess.target.target.options.linker;
+        (linker.clone(), cmd(linker), envs)
+    }
+}
 
-    let linker_path = sess.opts.cg.linker.as_ref().map(|s| &**s)
-        .or(sess.target.target.options.linker.as_ref().map(|s| s.as_ref()))
-        .unwrap_or(match sess.linker_flavor() {
-            LinkerFlavor::Msvc => {
-                msvc_tool.as_ref().map(|t| t.path()).unwrap_or("link.exe".as_ref())
-            }
-            LinkerFlavor::Em if cfg!(windows) => "emcc.bat".as_ref(),
-            LinkerFlavor::Em => "emcc".as_ref(),
-            LinkerFlavor::Gcc => "cc".as_ref(),
-            LinkerFlavor::Ld => "ld".as_ref(),
-            LinkerFlavor::Lld(_) => "lld".as_ref(),
-        });
+#[cfg(windows)]
+pub fn msvc_link_exe_cmd(sess: &Session) -> (Command, Vec<(OsString, OsString)>) {
+    use cc::windows_registry;
 
-    let mut cmd = cmd(linker_path);
+    let target = &sess.opts.target_triple;
+    let tool = windows_registry::find_tool(target, "link.exe");
 
+    if let Some(tool) = tool {
+        let mut cmd = Command::new(tool.path());
+        cmd.args(tool.args());
+        for &(ref k, ref v) in tool.env() {
+            cmd.env(k, v);
+        }
+        let envs = tool.env().to_vec();
+        (cmd, envs)
+    } else {
+        debug!("Failed to locate linker.");
+        (Command::new("link.exe"), vec![])
+    }
+}
+
+#[cfg(not(windows))]
+pub fn msvc_link_exe_cmd(_sess: &Session) -> (Command, Vec<(OsString, OsString)>) {
+    (Command::new("link.exe"), vec![])
+}
+
+fn command_path(sess: &Session) -> OsString {
     // The compiler's sysroot often has some bundled tools, so add it to the
     // PATH for the child.
     let mut new_path = sess.host_filesearch(PathKind::All)
                            .get_tools_search_paths();
-    let mut msvc_changed_path = false;
-    if sess.target.target.options.is_like_msvc {
-        if let Some(ref tool) = msvc_tool {
-            cmd.args(tool.args());
-            for &(ref k, ref v) in tool.env() {
-                if k == "PATH" {
-                    new_path.extend(env::split_paths(v));
-                    msvc_changed_path = true;
-                } else {
-                    cmd.env(k, v);
-                }
-            }
-        }
+    if let Some(path) = env::var_os("PATH") {
+        new_path.extend(env::split_paths(&path));
     }
-
-    if !msvc_changed_path {
-        if let Some(path) = env::var_os("PATH") {
-            new_path.extend(env::split_paths(&path));
-        }
-    }
-    cmd.env("PATH", env::join_paths(new_path).unwrap());
-
-    (linker_path.to_path_buf(), cmd)
+    env::join_paths(new_path).unwrap()
 }
 
 pub fn remove(sess: &Session, path: &Path) {
@@ -139,10 +139,10 @@ pub fn remove(sess: &Session, path: &Path) {
 
 /// Perform the linkage portion of the compilation phase. This will generate all
 /// of the requested outputs for this compilation session.
-pub(crate) fn link_binary(sess: &Session,
-                          trans: &CrateTranslation,
-                          outputs: &OutputFilenames,
-                          crate_name: &str) -> Vec<PathBuf> {
+pub fn link_binary(sess: &Session,
+                   trans: &CrateTranslation,
+                   outputs: &OutputFilenames,
+                   crate_name: &str) -> Vec<PathBuf> {
     let mut out_filenames = Vec::new();
     for &crate_type in sess.crate_types.borrow().iter() {
         // Ignore executable crates if we have -Z no-trans, as they will error.
@@ -166,9 +166,7 @@ pub(crate) fn link_binary(sess: &Session,
 
     // Remove the temporary object file and metadata if we aren't saving temps
     if !sess.opts.cg.save_temps {
-        if sess.opts.output_types.should_trans() &&
-            !preserve_objects_for_their_debuginfo(sess)
-        {
+        if sess.opts.output_types.should_trans() {
             for obj in trans.modules.iter().filter_map(|m| m.object.as_ref()) {
                 remove(sess, obj);
             }
@@ -192,52 +190,6 @@ pub(crate) fn link_binary(sess: &Session,
     out_filenames
 }
 
-/// Returns a boolean indicating whether we should preserve the object files on
-/// the filesystem for their debug information. This is often useful with
-/// split-dwarf like schemes.
-fn preserve_objects_for_their_debuginfo(sess: &Session) -> bool {
-    // If the objects don't have debuginfo there's nothing to preserve.
-    if sess.opts.debuginfo == NoDebugInfo {
-        return false
-    }
-
-    // If we're only producing artifacts that are archives, no need to preserve
-    // the objects as they're losslessly contained inside the archives.
-    let output_linked = sess.crate_types.borrow()
-        .iter()
-        .any(|x| *x != config::CrateTypeRlib && *x != config::CrateTypeStaticlib);
-    if !output_linked {
-        return false
-    }
-
-    // If we're on OSX then the equivalent of split dwarf is turned on by
-    // default. The final executable won't actually have any debug information
-    // except it'll have pointers to elsewhere. Historically we've always run
-    // `dsymutil` to "link all the dwarf together" but this is actually sort of
-    // a bummer for incremental compilation! (the whole point of split dwarf is
-    // that you don't do this sort of dwarf link).
-    //
-    // Basically as a result this just means that if we're on OSX and we're
-    // *not* running dsymutil then the object files are the only source of truth
-    // for debug information, so we must preserve them.
-    if sess.target.target.options.is_like_osx {
-        match sess.opts.debugging_opts.run_dsymutil {
-            // dsymutil is not being run, preserve objects
-            Some(false) => return true,
-
-            // dsymutil is being run, no need to preserve the objects
-            Some(true) => return false,
-
-            // The default historical behavior was to always run dsymutil, so
-            // we're preserving that temporarily, but we're likely to switch the
-            // default soon.
-            None => return false,
-        }
-    }
-
-    false
-}
-
 fn filename_for_metadata(sess: &Session, crate_name: &str, outputs: &OutputFilenames) -> PathBuf {
     let out_filename = outputs.single_output_file.clone()
         .unwrap_or(outputs
@@ -247,9 +199,9 @@ fn filename_for_metadata(sess: &Session, crate_name: &str, outputs: &OutputFilen
     out_filename
 }
 
-pub(crate) fn each_linked_rlib(sess: &Session,
-                               info: &CrateInfo,
-                               f: &mut FnMut(CrateNum, &Path)) -> Result<(), String> {
+pub fn each_linked_rlib(sess: &Session,
+                        info: &CrateInfo,
+                        f: &mut FnMut(CrateNum, &Path)) -> Result<(), String> {
     let crates = info.used_crates_static.iter();
     let fmts = sess.dependency_formats.borrow();
     let fmts = fmts.get(&config::CrateTypeExecutable)
@@ -293,12 +245,12 @@ pub(crate) fn each_linked_rlib(sess: &Session,
 /// It's unusual for a crate to not participate in LTO. Typically only
 /// compiler-specific and unstable crates have a reason to not participate in
 /// LTO.
-pub(crate) fn ignored_for_lto(sess: &Session, info: &CrateInfo, cnum: CrateNum) -> bool {
-    // If our target enables builtin function lowering in LLVM then the
-    // crates providing these functions don't participate in LTO (e.g.
-    // no_builtins or compiler builtins crates).
-    !sess.target.target.options.no_builtins &&
-        (info.is_no_builtins.contains(&cnum) || info.compiler_builtins == Some(cnum))
+pub fn ignored_for_lto(info: &CrateInfo, cnum: CrateNum) -> bool {
+    // `#![no_builtins]` crates don't participate in LTO because the state
+    // of builtins gets messed up (our crate isn't tagged with no builtins).
+    // Similarly `#![compiler_builtins]` doesn't participate because we want
+    // those builtins!
+    info.is_no_builtins.contains(&cnum) || info.compiler_builtins == Some(cnum)
 }
 
 fn link_binary_output(sess: &Session,
@@ -310,30 +262,18 @@ fn link_binary_output(sess: &Session,
         check_file_is_writeable(obj, sess);
     }
 
-    let mut out_filenames = vec![];
-
-    if outputs.outputs.contains_key(&OutputType::Metadata) {
-        let out_filename = filename_for_metadata(sess, crate_name, outputs);
-        // To avoid races with another rustc process scanning the output directory,
-        // we need to write the file somewhere else and atomically move it to its
-        // final destination, with a `fs::rename` call. In order for the rename to
-        // always succeed, the temporary file needs to be on the same filesystem,
-        // which is why we create it inside the output directory specifically.
-        let metadata_tmpdir = match TempDir::new_in(out_filename.parent().unwrap(), "rmeta") {
-            Ok(tmpdir) => tmpdir,
-            Err(err) => sess.fatal(&format!("couldn't create a temp dir: {}", err)),
-        };
-        let metadata = emit_metadata(sess, trans, &metadata_tmpdir);
-        if let Err(e) = fs::rename(metadata, &out_filename) {
-            sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
-        }
-        out_filenames.push(out_filename);
-    }
-
     let tmpdir = match TempDir::new("rustc") {
         Ok(tmpdir) => tmpdir,
         Err(err) => sess.fatal(&format!("couldn't create a temp dir: {}", err)),
     };
+
+    let mut out_filenames = vec![];
+
+    if outputs.outputs.contains_key(&OutputType::Metadata) {
+        let out_filename = filename_for_metadata(sess, crate_name, outputs);
+        emit_metadata(sess, trans, &out_filename);
+        out_filenames.push(out_filename);
+    }
 
     if outputs.outputs.should_trans() {
         let out_filename = out_filename(sess, crate_type, outputs, crate_name);
@@ -343,10 +283,10 @@ fn link_binary_output(sess: &Session,
                           trans,
                           RlibFlavor::Normal,
                           &out_filename,
-                          &tmpdir).build();
+                          tmpdir.path()).build();
             }
             config::CrateTypeStaticlib => {
-                link_staticlib(sess, trans, &out_filename, &tmpdir);
+                link_staticlib(sess, trans, &out_filename, tmpdir.path());
             }
             _ => {
                 link_natively(sess, crate_type, &out_filename, trans, tmpdir.path());
@@ -381,21 +321,14 @@ fn archive_config<'a>(sess: &'a Session,
     }
 }
 
-/// We use a temp directory here to avoid races between concurrent rustc processes,
-/// such as builds in the same directory using the same filename for metadata while
-/// building an `.rlib` (stomping over one another), or writing an `.rmeta` into a
-/// directory being searched for `extern crate` (observing an incomplete file).
-/// The returned path is the temporary file containing the complete metadata.
-fn emit_metadata<'a>(sess: &'a Session, trans: &CrateTranslation, tmpdir: &TempDir)
-                     -> PathBuf {
-    let out_filename = tmpdir.path().join(METADATA_FILENAME);
-    let result = fs::write(&out_filename, &trans.metadata.raw_data);
+fn emit_metadata<'a>(sess: &'a Session, trans: &CrateTranslation, out_filename: &Path) {
+    let result = fs::File::create(out_filename).and_then(|mut f| {
+        f.write_all(&trans.metadata.raw_data)
+    });
 
     if let Err(e) = result {
         sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
     }
-
-    out_filename
 }
 
 enum RlibFlavor {
@@ -413,7 +346,7 @@ fn link_rlib<'a>(sess: &'a Session,
                  trans: &CrateTranslation,
                  flavor: RlibFlavor,
                  out_filename: &Path,
-                 tmpdir: &TempDir) -> ArchiveBuilder<'a> {
+                 tmpdir: &Path) -> ArchiveBuilder<'a> {
     info!("preparing rlib to {:?}", out_filename);
     let mut ab = ArchiveBuilder::new(archive_config(sess, out_filename, None));
 
@@ -475,8 +408,12 @@ fn link_rlib<'a>(sess: &'a Session,
     match flavor {
         RlibFlavor::Normal => {
             // Instead of putting the metadata in an object file section, rlibs
-            // contain the metadata in a separate file.
-            ab.add_file(&emit_metadata(sess, trans, tmpdir));
+            // contain the metadata in a separate file. We use a temp directory
+            // here so concurrent builds in the same directory don't try to use
+            // the same filename for metadata (stomping over one another)
+            let metadata = tmpdir.join(METADATA_FILENAME);
+            emit_metadata(sess, trans, &metadata);
+            ab.add_file(&metadata);
 
             // For LTO purposes, the bytecode of this library is also inserted
             // into the archive.
@@ -520,7 +457,7 @@ fn link_rlib<'a>(sess: &'a Session,
 fn link_staticlib(sess: &Session,
                   trans: &CrateTranslation,
                   out_filename: &Path,
-                  tempdir: &TempDir) {
+                  tempdir: &Path) {
     let mut ab = link_rlib(sess,
                            trans,
                            RlibFlavor::StaticlibBase,
@@ -551,8 +488,7 @@ fn link_staticlib(sess: &Session,
         });
         ab.add_rlib(path,
                     &name.as_str(),
-                    is_full_lto_enabled(sess) &&
-                        !ignored_for_lto(sess, &trans.crate_info, cnum),
+                    sess.lto() && !ignored_for_lto(&trans.crate_info, cnum),
                     skip_object_files).unwrap();
 
         all_native_libs.extend(trans.crate_info.native_libraries[&cnum].iter().cloned());
@@ -567,7 +503,28 @@ fn link_staticlib(sess: &Session,
     if !all_native_libs.is_empty() {
         if sess.opts.prints.contains(&PrintRequest::NativeStaticLibs) {
             print_native_static_libs(sess, &all_native_libs);
+        } else {
+            // Fallback for backwards compatibility only
+            print_native_static_libs_legacy(sess, &all_native_libs);
         }
+    }
+}
+
+fn print_native_static_libs_legacy(sess: &Session, all_native_libs: &[NativeLibrary]) {
+    sess.note_without_error("link against the following native artifacts when linking against \
+                             this static library");
+    sess.note_without_error("This list will not be printed by default. \
+        Please add --print=native-static-libs if you need this information");
+
+    for lib in all_native_libs.iter().filter(|l| relevant_lib(sess, l)) {
+        let name = match lib.kind {
+            NativeLibraryKind::NativeStaticNobundle |
+            NativeLibraryKind::NativeUnknown => "library",
+            NativeLibraryKind::NativeFramework => "framework",
+            // These are included, no need to print them
+            NativeLibraryKind::NativeStatic => continue,
+        };
+        sess.note_without_error(&format!("{}: {}", name, lib.name));
     }
 }
 
@@ -613,7 +570,9 @@ fn link_natively(sess: &Session,
     let flavor = sess.linker_flavor();
 
     // The invocations of cc share some flags across platforms
-    let (pname, mut cmd) = get_linker(sess);
+    let (pname, mut cmd, envs) = get_linker(sess);
+    // This will set PATH on windows
+    cmd.envs(envs);
 
     let root = sess.target_filesearch(PathKind::Native).get_lib_path();
     if let Some(args) = sess.target.target.options.pre_link_args.get(&flavor) {
@@ -693,6 +652,9 @@ fn link_natively(sess: &Session,
         prog = time(sess.time_passes(), "running linker", || {
             exec_linker(sess, &mut cmd, tmpdir)
         });
+        if !retry_on_segfault || i > 3 {
+            break
+        }
         let output = match prog {
             Ok(ref output) => output,
             Err(_) => break,
@@ -703,43 +665,17 @@ fn link_natively(sess: &Session,
         let mut out = output.stderr.clone();
         out.extend(&output.stdout);
         let out = String::from_utf8_lossy(&out);
-
-        // Check to see if the link failed with "unrecognized command line option:
-        // '-no-pie'" for gcc or "unknown argument: '-no-pie'" for clang. If so,
-        // reperform the link step without the -no-pie option. This is safe because
-        // if the linker doesn't support -no-pie then it should not default to
-        // linking executables as pie. Different versions of gcc seem to use
-        // different quotes in the error message so don't check for them.
-        if sess.target.target.options.linker_is_gnu &&
-           (out.contains("unrecognized command line option") ||
-            out.contains("unknown argument")) &&
-           out.contains("-no-pie") &&
-           cmd.get_args().iter().any(|e| e.to_string_lossy() == "-no-pie") {
-            info!("linker output: {:?}", out);
-            warn!("Linker does not support -no-pie command line option. Retrying without.");
-            for arg in cmd.take_args() {
-                if arg.to_string_lossy() != "-no-pie" {
-                    cmd.arg(arg);
-                }
-            }
-            info!("{:?}", &cmd);
-            continue;
-        }
-        if !retry_on_segfault || i > 3 {
-            break
-        }
-        let msg_segv = "clang: error: unable to execute command: Segmentation fault: 11";
-        let msg_bus  = "clang: error: unable to execute command: Bus error: 10";
-        if !(out.contains(msg_segv) || out.contains(msg_bus)) {
+        let msg = "clang: error: unable to execute command: \
+                   Segmentation fault: 11";
+        if !out.contains(msg) {
             break
         }
 
-        warn!(
-            "looks like the linker segfaulted when we tried to call it, \
-             automatically retrying again. cmd = {:?}, out = {}.",
-            cmd,
-            out,
-        );
+        sess.struct_warn("looks like the linker segfaulted when we tried to \
+                          call it, automatically retrying again")
+            .note(&format!("{:?}", cmd))
+            .note(&out)
+            .emit();
     }
 
     match prog {
@@ -758,7 +694,7 @@ fn link_natively(sess: &Session,
                 let mut output = prog.stderr.clone();
                 output.extend_from_slice(&prog.stdout);
                 sess.struct_err(&format!("linking with `{}` failed: {}",
-                                         pname.display(),
+                                         pname,
                                          prog.status))
                     .note(&format!("{:?}", &cmd))
                     .note(&escape_string(&output))
@@ -769,25 +705,10 @@ fn link_natively(sess: &Session,
             info!("linker stdout:\n{}", escape_string(&prog.stdout));
         },
         Err(e) => {
-            let linker_not_found = e.kind() == io::ErrorKind::NotFound;
-
-            let mut linker_error = {
-                if linker_not_found {
-                    sess.struct_err(&format!("linker `{}` not found", pname.display()))
-                } else {
-                    sess.struct_err(&format!("could not exec the linker `{}`", pname.display()))
-                }
-            };
-
-            linker_error.note(&format!("{}", e));
-
-            if !linker_not_found {
-                linker_error.note(&format!("{:?}", &cmd));
-            }
-
-            linker_error.emit();
-
-            if sess.target.target.options.is_like_msvc && linker_not_found {
+            sess.struct_err(&format!("could not exec the linker `{}`: {}", pname, e))
+                .note(&format!("{:?}", &cmd))
+                .emit();
+            if sess.target.target.options.is_like_msvc && e.kind() == io::ErrorKind::NotFound {
                 sess.note_without_error("the msvc targets depend on the msvc linker \
                     but `link.exe` was not found");
                 sess.note_without_error("please ensure that VS 2013 or VS 2015 was installed \
@@ -799,12 +720,8 @@ fn link_natively(sess: &Session,
 
 
     // On macOS, debuggers need this utility to get run to do some munging of
-    // the symbols. Note, though, that if the object files are being preserved
-    // for their debug information there's no need for us to run dsymutil.
-    if sess.target.target.options.is_like_osx &&
-        sess.opts.debuginfo != NoDebugInfo &&
-        !preserve_objects_for_their_debuginfo(sess)
-    {
+    // the symbols
+    if sess.target.target.options.is_like_osx && sess.opts.debuginfo != NoDebugInfo {
         match Command::new("dsymutil").arg(out_filename).output() {
             Ok(..) => {}
             Err(e) => sess.fatal(&format!("failed to run dsymutil: {}", e)),
@@ -824,38 +741,26 @@ fn exec_linker(sess: &Session, cmd: &mut Command, tmpdir: &Path)
     // that contains all the arguments. The theory is that this is then
     // accepted on all linkers and the linker will read all its options out of
     // there instead of looking at the command line.
-    if !cmd.very_likely_to_exceed_some_spawn_limit() {
-        match cmd.command().stdout(Stdio::piped()).stderr(Stdio::piped()).spawn() {
-            Ok(child) => return child.wait_with_output(),
-            Err(ref e) if command_line_too_big(e) => {}
-            Err(e) => return Err(e)
-        }
+    match cmd.command().stdout(Stdio::piped()).stderr(Stdio::piped()).spawn() {
+        Ok(child) => return child.wait_with_output(),
+        Err(ref e) if command_line_too_big(e) => {}
+        Err(e) => return Err(e)
     }
 
-    let mut cmd2 = cmd.clone();
-    let mut args = String::new();
-    for arg in cmd2.take_args() {
-        args.push_str(&Escape {
+    let file = tmpdir.join("linker-arguments");
+    let mut cmd2 = Command::new(cmd.get_program());
+    cmd2.arg(format!("@{}", file.display()));
+    for &(ref k, ref v) in cmd.get_env() {
+        cmd2.env(k, v);
+    }
+    let mut f = BufWriter::new(File::create(&file)?);
+    for arg in cmd.get_args() {
+        writeln!(f, "{}", Escape {
             arg: arg.to_str().unwrap(),
             is_like_msvc: sess.target.target.options.is_like_msvc,
-        }.to_string());
-        args.push_str("\n");
+        })?;
     }
-    let file = tmpdir.join("linker-arguments");
-    let bytes = if sess.target.target.options.is_like_msvc {
-        let mut out = vec![];
-        // start the stream with a UTF-16 BOM
-        for c in vec![0xFEFF].into_iter().chain(args.encode_utf16()) {
-            // encode in little endian
-            out.push(c as u8);
-            out.push((c >> 8) as u8);
-        }
-        out
-    } else {
-        args.into_bytes()
-    };
-    fs::write(&file, &bytes)?;
-    cmd2.arg(format!("@{}", file.display()));
+    f.into_inner()?;
     return cmd2.output();
 
     #[cfg(unix)]
@@ -976,30 +881,16 @@ fn link_args(cmd: &mut Linker,
 
     let used_link_args = &trans.crate_info.link_args;
 
-    if crate_type == config::CrateTypeExecutable {
-        let mut position_independent_executable = false;
+    if crate_type == config::CrateTypeExecutable &&
+       t.options.position_independent_executables {
+        let empty_vec = Vec::new();
+        let args = sess.opts.cg.link_args.as_ref().unwrap_or(&empty_vec);
+        let more_args = &sess.opts.cg.link_arg;
+        let mut args = args.iter().chain(more_args.iter()).chain(used_link_args.iter());
 
-        if t.options.position_independent_executables {
-            let empty_vec = Vec::new();
-            let args = sess.opts.cg.link_args.as_ref().unwrap_or(&empty_vec);
-            let more_args = &sess.opts.cg.link_arg;
-            let mut args = args.iter().chain(more_args.iter()).chain(used_link_args.iter());
-
-            if get_reloc_model(sess) == llvm::RelocMode::PIC
-                && !sess.crt_static() && !args.any(|x| *x == "-static") {
-                position_independent_executable = true;
-            }
-        }
-
-        if position_independent_executable {
+        if get_reloc_model(sess) == llvm::RelocMode::PIC
+            && !sess.crt_static() && !args.any(|x| *x == "-static") {
             cmd.position_independent_executable();
-        } else {
-            // recent versions of gcc can be configured to generate position
-            // independent executables by default. We have to pass -no-pie to
-            // explicitly turn that off.
-            if sess.target.target.options.linker_is_gnu {
-                cmd.no_position_independent_executable();
-            }
         }
     }
 
@@ -1305,8 +1196,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
             lib.kind == NativeLibraryKind::NativeStatic && !relevant_lib(sess, lib)
         });
 
-        if (!is_full_lto_enabled(sess) ||
-            ignored_for_lto(sess, &trans.crate_info, cnum)) &&
+        if (!sess.lto() || ignored_for_lto(&trans.crate_info, cnum)) &&
            crate_type != config::CrateTypeDylib &&
            !skip_native {
             cmd.link_rlib(&fix_windows_verbatim_for_gcc(cratepath));
@@ -1359,10 +1249,8 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
                 // file, then we don't need the object file as it's part of the
                 // LTO module. Note that `#![no_builtins]` is excluded from LTO,
                 // though, so we let that object file slide.
-                let skip_because_lto = is_full_lto_enabled(sess) &&
-                    is_rust_object &&
-                    (sess.target.target.options.no_builtins ||
-                     !trans.crate_info.is_no_builtins.contains(&cnum));
+                let skip_because_lto = sess.lto() && is_rust_object &&
+                                        !trans.crate_info.is_no_builtins.contains(&cnum);
 
                 if skip_because_cfg_say_so || skip_because_lto {
                     archive.remove_file(&f);
@@ -1396,7 +1284,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
     fn add_dynamic_crate(cmd: &mut Linker, sess: &Session, cratepath: &Path) {
         // If we're performing LTO, then it should have been previously required
         // that all upstream rust dependencies were available in an rlib format.
-        assert!(!is_full_lto_enabled(sess));
+        assert!(!sess.lto());
 
         // Just need to tell the linker about where the library lives and
         // what its name is
@@ -1475,15 +1363,5 @@ fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {
     match lib.cfg {
         Some(ref cfg) => attr::cfg_matches(cfg, &sess.parse_sess, None),
         None => true,
-    }
-}
-
-fn is_full_lto_enabled(sess: &Session) -> bool {
-    match sess.lto() {
-        Lto::Yes |
-        Lto::Thin |
-        Lto::Fat => true,
-        Lto::No |
-        Lto::ThinLocal => false,
     }
 }

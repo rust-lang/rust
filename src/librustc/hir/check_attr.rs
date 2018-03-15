@@ -14,10 +14,11 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use ty::TyCtxt;
+use session::Session;
 
-use hir;
-use hir::intravisit::{self, Visitor, NestedVisitorMap};
+use syntax::ast;
+use syntax::visit;
+use syntax::visit::Visitor;
 
 #[derive(Copy, Clone, PartialEq)]
 enum Target {
@@ -29,103 +30,88 @@ enum Target {
 }
 
 impl Target {
-    fn from_item(item: &hir::Item) -> Target {
+    fn from_item(item: &ast::Item) -> Target {
         match item.node {
-            hir::ItemFn(..) => Target::Fn,
-            hir::ItemStruct(..) => Target::Struct,
-            hir::ItemUnion(..) => Target::Union,
-            hir::ItemEnum(..) => Target::Enum,
+            ast::ItemKind::Fn(..) => Target::Fn,
+            ast::ItemKind::Struct(..) => Target::Struct,
+            ast::ItemKind::Union(..) => Target::Union,
+            ast::ItemKind::Enum(..) => Target::Enum,
             _ => Target::Other,
         }
     }
 }
 
-struct CheckAttrVisitor<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct CheckAttrVisitor<'a> {
+    sess: &'a Session,
 }
 
-impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
+impl<'a> CheckAttrVisitor<'a> {
     /// Check any attribute.
-    fn check_attributes(&self, item: &hir::Item, target: Target) {
-        self.tcx.trans_fn_attrs(self.tcx.hir.local_def_id(item.id));
-
-        for attr in &item.attrs {
-            if let Some(name) = attr.name() {
-                if name == "inline" {
-                    self.check_inline(attr, item, target)
-                }
+    fn check_attribute(&self, attr: &ast::Attribute, target: Target) {
+        if let Some(name) = attr.name() {
+            match &*name.as_str() {
+                "inline" => self.check_inline(attr, target),
+                "repr" => self.check_repr(attr, target),
+                _ => (),
             }
         }
-
-        self.check_repr(item, target);
     }
 
     /// Check if an `#[inline]` is applied to a function.
-    fn check_inline(&self, attr: &hir::Attribute, item: &hir::Item, target: Target) {
+    fn check_inline(&self, attr: &ast::Attribute, target: Target) {
         if target != Target::Fn {
-            struct_span_err!(self.tcx.sess,
-                             attr.span,
-                             E0518,
-                             "attribute should be applied to function")
-                .span_label(item.span, "not a function")
+            struct_span_err!(self.sess, attr.span, E0518, "attribute should be applied to function")
+                .span_label(attr.span, "requires a function")
                 .emit();
         }
     }
 
-    /// Check if the `#[repr]` attributes on `item` are valid.
-    fn check_repr(&self, item: &hir::Item, target: Target) {
-        // Extract the names of all repr hints, e.g., [foo, bar, align] for:
-        // ```
-        // #[repr(foo)]
-        // #[repr(bar, align(8))]
-        // ```
-        let hints: Vec<_> = item.attrs
-            .iter()
-            .filter(|attr| match attr.name() {
-                Some(name) => name == "repr",
-                None => false,
-            })
-            .filter_map(|attr| attr.meta_item_list())
-            .flat_map(|hints| hints)
-            .collect();
+    /// Check if an `#[repr]` attr is valid.
+    fn check_repr(&self, attr: &ast::Attribute, target: Target) {
+        let words = match attr.meta_item_list() {
+            Some(words) => words,
+            None => {
+                return;
+            }
+        };
 
-        let mut int_reprs = 0;
-        let mut is_c = false;
-        let mut is_simd = false;
-        let mut is_transparent = false;
+        let mut conflicting_reprs = 0;
 
-        for hint in &hints {
-            let name = if let Some(name) = hint.name() {
-                name
-            } else {
-                // Invalid repr hint like repr(42). We don't check for unrecognized hints here
-                // (libsyntax does that), so just ignore it.
-                continue;
+        for word in words {
+
+            let name = match word.name() {
+                Some(word) => word,
+                None => continue,
             };
 
-            let (article, allowed_targets) = match &*name.as_str() {
+            let (message, label) = match &*name.as_str() {
                 "C" => {
-                    is_c = true;
+                    conflicting_reprs += 1;
                     if target != Target::Struct &&
                             target != Target::Union &&
                             target != Target::Enum {
-                                ("a", "struct, enum or union")
+                                ("attribute should be applied to struct, enum or union",
+                                 "a struct, enum or union")
                     } else {
                         continue
                     }
                 }
                 "packed" => {
+                    // Do not increment conflicting_reprs here, because "packed"
+                    // can be used to modify another repr hint
                     if target != Target::Struct &&
                             target != Target::Union {
-                                ("a", "struct or union")
+                                ("attribute should be applied to struct or union",
+                                 "a struct or union")
                     } else {
                         continue
                     }
                 }
                 "simd" => {
-                    is_simd = true;
+                    conflicting_reprs += 1;
                     if target != Target::Struct {
-                        ("a", "struct")
+                        ("attribute should be applied to struct",
+                         "a struct")
                     } else {
                         continue
                     }
@@ -133,15 +119,8 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                 "align" => {
                     if target != Target::Struct &&
                             target != Target::Union {
-                        ("a", "struct or union")
-                    } else {
-                        continue
-                    }
-                }
-                "transparent" => {
-                    is_transparent = true;
-                    if target != Target::Struct {
-                        ("a", "struct")
+                        ("attribute should be applied to struct or union",
+                         "a struct or union")
                     } else {
                         continue
                     }
@@ -149,69 +128,37 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                 "i8" | "u8" | "i16" | "u16" |
                 "i32" | "u32" | "i64" | "u64" |
                 "isize" | "usize" => {
-                    int_reprs += 1;
+                    conflicting_reprs += 1;
                     if target != Target::Enum {
-                        ("an", "enum")
+                        ("attribute should be applied to enum",
+                         "an enum")
                     } else {
                         continue
                     }
                 }
                 _ => continue,
             };
-            struct_span_err!(self.tcx.sess, hint.span, E0517,
-                             "attribute should be applied to {}", allowed_targets)
-                .span_label(item.span, format!("not {} {}", article, allowed_targets))
+            struct_span_err!(self.sess, attr.span, E0517, "{}", message)
+                .span_label(attr.span, format!("requires {}", label))
                 .emit();
         }
-
-        // Just point at all repr hints if there are any incompatibilities.
-        // This is not ideal, but tracking precisely which ones are at fault is a huge hassle.
-        let hint_spans = hints.iter().map(|hint| hint.span);
-
-        // Error on repr(transparent, <anything else>).
-        if is_transparent && hints.len() > 1 {
-            let hint_spans: Vec<_> = hint_spans.clone().collect();
-            span_err!(self.tcx.sess, hint_spans, E0692,
-                      "transparent struct cannot have other repr hints");
-        }
-        // Warn on repr(u8, u16), repr(C, simd), and c-like-enum-repr(C, u8)
-        if (int_reprs > 1)
-           || (is_simd && is_c)
-           || (int_reprs == 1 && is_c && is_c_like_enum(item)) {
-            let hint_spans: Vec<_> = hint_spans.collect();
-            span_warn!(self.tcx.sess, hint_spans, E0566,
+        if conflicting_reprs > 1 {
+            span_warn!(self.sess, attr.span, E0566,
                        "conflicting representation hints");
         }
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for CheckAttrVisitor<'a, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::None
-    }
-
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
+impl<'a> Visitor<'a> for CheckAttrVisitor<'a> {
+    fn visit_item(&mut self, item: &'a ast::Item) {
         let target = Target::from_item(item);
-        self.check_attributes(item, target);
-        intravisit::walk_item(self, item);
-    }
-}
-
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let mut checker = CheckAttrVisitor { tcx };
-    tcx.hir.krate().visit_all_item_likes(&mut checker.as_deep_visitor());
-}
-
-fn is_c_like_enum(item: &hir::Item) -> bool {
-    if let hir::ItemEnum(ref def, _) = item.node {
-        for variant in &def.variants {
-            match variant.node.data {
-                hir::VariantData::Unit(_) => { /* continue */ }
-                _ => { return false; }
-            }
+        for attr in &item.attrs {
+            self.check_attribute(attr, target);
         }
-        true
-    } else {
-        false
+        visit::walk_item(self, item);
     }
+}
+
+pub fn check_crate(sess: &Session, krate: &ast::Crate) {
+    visit::walk_crate(&mut CheckAttrVisitor { sess: sess }, krate);
 }

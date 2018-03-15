@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Panic support in the standard library.
+//! Panic support in the standard library
 
 #![stable(feature = "std_panic", since = "1.9.0")]
 
@@ -17,16 +17,13 @@ use cell::UnsafeCell;
 use fmt;
 use ops::{Deref, DerefMut};
 use panicking;
-use ptr::{Unique, NonNull};
+use ptr::{Unique, Shared};
 use rc::Rc;
 use sync::{Arc, Mutex, RwLock, atomic};
 use thread::Result;
 
 #[stable(feature = "panic_hooks", since = "1.10.0")]
-pub use panicking::{take_hook, set_hook};
-
-#[stable(feature = "panic_hooks", since = "1.10.0")]
-pub use core::panic::{PanicInfo, Location};
+pub use panicking::{take_hook, set_hook, PanicInfo, Location};
 
 /// A marker trait which represents "panic safe" types in Rust.
 ///
@@ -104,7 +101,7 @@ pub use core::panic::{PanicInfo, Location};
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 #[rustc_on_unimplemented = "the type {Self} may not be safely transferred \
                             across an unwind boundary"]
-pub auto trait UnwindSafe {}
+pub trait UnwindSafe {}
 
 /// A marker trait representing types where a shared reference is considered
 /// unwind safe.
@@ -118,7 +115,7 @@ pub auto trait UnwindSafe {}
 #[rustc_on_unimplemented = "the type {Self} may contain interior mutability \
                             and a reference may not be safely transferrable \
                             across a catch_unwind boundary"]
-pub auto trait RefUnwindSafe {}
+pub trait RefUnwindSafe {}
 
 /// A simple wrapper around a type to assert that it is unwind safe.
 ///
@@ -190,7 +187,10 @@ pub struct AssertUnwindSafe<T>(
 // * Unique, an owning pointer, lifts an implementation
 // * Types like Mutex/RwLock which are explicilty poisoned are unwind safe
 // * Our custom AssertUnwindSafe wrapper is indeed unwind safe
-
+#[stable(feature = "catch_unwind", since = "1.9.0")]
+#[allow(unknown_lints)]
+#[allow(auto_impl)]
+impl UnwindSafe for .. {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<'a, T: ?Sized> !UnwindSafe for &'a mut T {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
@@ -199,10 +199,10 @@ impl<'a, T: RefUnwindSafe + ?Sized> UnwindSafe for &'a T {}
 impl<T: RefUnwindSafe + ?Sized> UnwindSafe for *const T {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T: RefUnwindSafe + ?Sized> UnwindSafe for *mut T {}
-#[unstable(feature = "ptr_internals", issue = "0")]
+#[unstable(feature = "unique", issue = "27730")]
 impl<T: UnwindSafe + ?Sized> UnwindSafe for Unique<T> {}
-#[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: RefUnwindSafe + ?Sized> UnwindSafe for NonNull<T> {}
+#[unstable(feature = "shared", issue = "27730")]
+impl<T: RefUnwindSafe + ?Sized> UnwindSafe for Shared<T> {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T: ?Sized> UnwindSafe for Mutex<T> {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
@@ -219,9 +219,13 @@ impl<T: RefUnwindSafe + ?Sized> UnwindSafe for Rc<T> {}
 impl<T: RefUnwindSafe + ?Sized> UnwindSafe for Arc<T> {}
 
 // Pretty simple implementations for the `RefUnwindSafe` marker trait,
-// basically just saying that `UnsafeCell` is the
+// basically just saying that this is a marker trait and `UnsafeCell` is the
 // only thing which doesn't implement it (which then transitively applies to
 // everything else).
+#[stable(feature = "catch_unwind", since = "1.9.0")]
+#[allow(unknown_lints)]
+#[allow(auto_impl)]
+impl RefUnwindSafe for .. {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T: ?Sized> !RefUnwindSafe for UnsafeCell<T> {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]

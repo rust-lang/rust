@@ -71,3 +71,5 @@ pub fn check_prefetch_write_instruction(data: &[i8]) {
         prefetch_write_instruction(data.as_ptr(), 3);
     }
 }
+
+

@@ -20,14 +20,12 @@
 #![rustc_partition_reused(module="krate_inlined-x", cfg="rpass2")]
 
 fn main() {
-    x::method();
-
     #[cfg(rpass2)]
     ()
 }
 
 mod x {
-    pub fn method() {
+    fn method() {
         // use some methods that require inlining HIR from another crate:
         let mut v = vec![];
         v.push(1);

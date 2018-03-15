@@ -14,7 +14,6 @@ use std::env;
 
 use ast;
 use ast::{Ident, Name};
-use codemap;
 use syntax_pos::Span;
 use ext::base::{ExtCtxt, MacEager, MacResult};
 use ext::build::AstBuilder;
@@ -235,7 +234,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
                 ty,
                 expr,
             ),
-            vis: codemap::respan(span.empty(), ast::VisibilityKind::Public),
+            vis: ast::Visibility::Public,
             span,
             tokens: None,
         })

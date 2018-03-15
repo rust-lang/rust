@@ -8,48 +8,47 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// revisions: cfail1 cfail2
+// revisions: rpass1 rpass2
 // compile-flags: -Z query-dep-graph
-// must-compile-successfully
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]
-#![crate_type = "rlib"]
 
 // Here the only thing which changes is the string constant in `x`.
 // Therefore, the compiler deduces (correctly) that typeck is not
 // needed even for callers of `x`.
 
+fn main() { }
 
-pub mod x {
-    #[cfg(cfail1)]
+mod x {
+    #[cfg(rpass1)]
     pub fn x() {
         println!("{}", "1");
     }
 
-    #[cfg(cfail2)]
-    #[rustc_dirty(label="HirBody", cfg="cfail2")]
-    #[rustc_dirty(label="MirOptimized", cfg="cfail2")]
+    #[cfg(rpass2)]
+    #[rustc_dirty(label="HirBody", cfg="rpass2")]
+    #[rustc_dirty(label="MirOptimized", cfg="rpass2")]
     pub fn x() {
         println!("{}", "2");
     }
 }
 
-pub mod y {
+mod y {
     use x;
 
-    #[rustc_clean(label="TypeckTables", cfg="cfail2")]
-    #[rustc_clean(label="MirOptimized", cfg="cfail2")]
+    #[rustc_clean(label="TypeckTables", cfg="rpass2")]
+    #[rustc_clean(label="MirOptimized", cfg="rpass2")]
     pub fn y() {
         x::x();
     }
 }
 
-pub mod z {
+mod z {
     use y;
 
-    #[rustc_clean(label="TypeckTables", cfg="cfail2")]
-    #[rustc_clean(label="MirOptimized", cfg="cfail2")]
+    #[rustc_clean(label="TypeckTables", cfg="rpass2")]
+    #[rustc_clean(label="MirOptimized", cfg="rpass2")]
     pub fn z() {
         y::y();
     }

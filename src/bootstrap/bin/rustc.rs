@@ -61,11 +61,6 @@ fn main() {
         args.remove(n);
     }
 
-    if let Some(s) = env::var_os("RUSTC_ERROR_FORMAT") {
-        args.push("--error-format".into());
-        args.push(s);
-    }
-
     // Detect whether or not we're a build script depending on whether --target
     // is passed (a bit janky...)
     let target = args.windows(2)
@@ -130,6 +125,11 @@ fn main() {
             cmd.arg(format!("-Clinker={}", target_linker));
         }
 
+        // Pass down incremental directory, if any.
+        if let Ok(dir) = env::var("RUSTC_INCREMENTAL") {
+            cmd.arg(format!("-Zincremental={}", dir));
+        }
+
         let crate_name = args.windows(2)
             .find(|a| &*a[0] == "--crate-name")
             .unwrap();
@@ -175,7 +175,7 @@ fn main() {
         if let Ok(s) = env::var("RUSTC_CODEGEN_UNITS") {
             cmd.arg("-C").arg(format!("codegen-units={}", s));
         }
-        if env::var("RUSTC_THINLTO").is_ok() {
+        if stage != "0" && env::var("RUSTC_THINLTO").is_ok() {
             cmd.arg("-Ccodegen-units=16").arg("-Zthinlto");
         }
 
@@ -183,8 +183,7 @@ fn main() {
         if env::var("RUSTC_SAVE_ANALYSIS") == Ok("api".to_string()) {
             cmd.arg("-Zsave-analysis");
             cmd.env("RUST_SAVE_ANALYSIS_CONFIG",
-                    "{\"output_file\": null,\"full_docs\": false,\
-                     \"pub_only\": true,\"reachable_only\": false,\
+                    "{\"output_file\": null,\"full_docs\": false,\"pub_only\": true,\
                      \"distro_crate\": true,\"signatures\": false,\"borrow_data\": false}");
         }
 
@@ -224,7 +223,7 @@ fn main() {
                 // flesh out rpath support more fully in the future.
                 cmd.arg("-Z").arg("osx-rpath-install-name");
                 Some("-Wl,-rpath,@loader_path/../lib")
-            } else if !target.contains("windows") && !target.contains("wasm32") {
+            } else if !target.contains("windows") {
                 Some("-Wl,-rpath,$ORIGIN/../lib")
             } else {
                 None
@@ -246,9 +245,6 @@ fn main() {
         // When running miri tests, we need to generate MIR for all libraries
         if env::var("TEST_MIRI").ok().map_or(false, |val| val == "true") {
             cmd.arg("-Zalways-encode-mir");
-            if stage != "0" {
-                cmd.arg("-Zmiri");
-            }
             cmd.arg("-Zmir-emit-validate=1");
         }
 
@@ -263,10 +259,6 @@ fn main() {
         if let Ok(host_linker) = env::var("RUSTC_HOST_LINKER") {
             cmd.arg(format!("-Clinker={}", host_linker));
         }
-    }
-
-    if env::var_os("RUSTC_PARALLEL_QUERIES").is_some() {
-        cmd.arg("--cfg").arg("parallel_queries");
     }
 
     let color = match env::var("RUSTC_COLOR") {

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // exec-env:TEST_EXEC_ENV=22
-// ignore-cloudabi no env vars
 // ignore-emscripten FIXME: issue #31622
 
 use std::env;

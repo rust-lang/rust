@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-cloudabi no std::path
-
 use std::collections::HashMap;
 use std::path::Path;
 

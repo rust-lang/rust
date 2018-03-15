@@ -92,7 +92,7 @@
 //! }
 //! ```
 
-use deriving::{self, pathvec_std};
+use deriving;
 use deriving::generic::*;
 use deriving::generic::ty::*;
 use deriving::warn_if_deprecated;
@@ -127,12 +127,20 @@ fn expand_deriving_encodable_imp(cx: &mut ExtCtxt,
                                  item: &Annotatable,
                                  push: &mut FnMut(Annotatable),
                                  krate: &'static str) {
+    if cx.crate_root != Some("std") {
+        // FIXME(#21880): lift this requirement.
+        cx.span_err(span,
+                    "this trait cannot be derived with #![no_std] \
+                           or #![no_core]");
+        return;
+    }
+
     let typaram = &*deriving::hygienic_type_parameter(item, "__S");
 
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
-        path: Path::new_(vec![krate, "Encodable"], None, vec![], PathKind::Global),
+        path: Path::new_(vec![krate, "Encodable"], None, vec![], true),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
@@ -142,21 +150,19 @@ fn expand_deriving_encodable_imp(cx: &mut ExtCtxt,
                 name: "encode",
                 generics: LifetimeBounds {
                     lifetimes: Vec::new(),
-                    bounds: vec![
-                        (typaram,
-                         vec![Path::new_(vec![krate, "Encoder"], None, vec![], PathKind::Global)])
-                    ],
+                    bounds: vec![(typaram,
+                                  vec![Path::new_(vec![krate, "Encoder"], None, vec![], true)])]
                 },
                 explicit_self: borrowed_explicit_self(),
                 args: vec![Ptr(Box::new(Literal(Path::new_local(typaram))),
                            Borrowed(None, Mutability::Mutable))],
                 ret_ty: Literal(Path::new_(
-                    pathvec_std!(cx, result::Result),
+                    pathvec_std!(cx, core::result::Result),
                     None,
                     vec![Box::new(Tuple(Vec::new())), Box::new(Literal(Path::new_(
-                        vec![typaram, "Error"], None, vec![], PathKind::Local
+                        vec![typaram, "Error"], None, vec![], false
                     )))],
-                    PathKind::Std
+                    true
                 )),
                 attributes: Vec::new(),
                 is_unsafe: false,
@@ -190,7 +196,7 @@ fn encodable_substructure(cx: &mut ExtCtxt,
         Struct(_, ref fields) => {
             let emit_struct_field = cx.ident_of("emit_struct_field");
             let mut stmts = Vec::new();
-            for (i, &FieldInfo { name, ref self_, span, attrs, .. }) in fields.iter().enumerate() {
+            for (i, &FieldInfo { name, ref self_, span, .. }) in fields.iter().enumerate() {
                 let name = match name {
                     Some(id) => id.name,
                     None => Symbol::intern(&format!("_field{}", i)),
@@ -212,19 +218,7 @@ fn encodable_substructure(cx: &mut ExtCtxt,
                 } else {
                     cx.expr(span, ExprKind::Ret(Some(call)))
                 };
-
-                // This exists for https://github.com/rust-lang/rust/pull/47540
-                //
-                // If we decide to stabilize that flag this can be removed
-                let expr = if attrs.iter().any(|a| a.check_name("rustc_serialize_exclude_null")) {
-                    let is_some = cx.ident_of("is_some");
-                    let condition = cx.expr_method_call(span, self_.clone(), is_some, vec![]);
-                    cx.expr_if(span, condition, call, None)
-                } else {
-                    call
-                };
-                let stmt = cx.stmt_expr(expr);
-                stmts.push(stmt);
+                stmts.push(cx.stmt_expr(call));
             }
 
             // unit structs have no fields and need to return Ok()

@@ -57,7 +57,11 @@
 
 #define LLVM_VERSION_LT(major, minor) (!LLVM_VERSION_GE((major), (minor)))
 
+#if LLVM_VERSION_GE(3, 7)
 #include "llvm/IR/LegacyPassManager.h"
+#else
+#include "llvm/PassManager.h"
+#endif
 
 #if LLVM_VERSION_GE(4, 0)
 #include "llvm/Bitcode/BitcodeReader.h"
@@ -71,7 +75,7 @@
 #include "llvm/IR/IRPrintingPasses.h"
 #include "llvm/Linker/Linker.h"
 
-extern "C" void LLVMRustSetLastError(const char *);
+void LLVMRustSetLastError(const char *);
 
 enum class LLVMRustResult { Success, Failure };
 
@@ -103,7 +107,9 @@ enum LLVMRustAttribute {
 
 typedef struct OpaqueRustString *RustStringRef;
 typedef struct LLVMOpaqueTwine *LLVMTwineRef;
+typedef struct LLVMOpaqueDebugLoc *LLVMDebugLocRef;
 typedef struct LLVMOpaqueSMDiagnostic *LLVMSMDiagnosticRef;
+typedef struct LLVMOpaqueRustJITMemoryManager *LLVMRustJITMemoryManagerRef;
 
 extern "C" void LLVMRustStringWriteImpl(RustStringRef Str, const char *Ptr,
                                         size_t Size);

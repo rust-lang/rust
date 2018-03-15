@@ -10,12 +10,12 @@
 
 fn f() -> String {  //~ ERROR mismatched types
     0u8;
-    "bla".to_string();
+    "bla".to_string();  //~ HELP consider removing this semicolon
 }
 
 fn g() -> String {  //~ ERROR mismatched types
     "this won't work".to_string();
-    "removeme".to_string();
+    "removeme".to_string(); //~ HELP consider removing this semicolon
 }
 
 fn main() {}

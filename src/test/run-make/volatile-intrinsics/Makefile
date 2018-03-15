@@ -6,4 +6,5 @@ all:
 	$(call RUN,main)
 	# ... and the loads/stores must not be optimized out.
 	$(RUSTC) main.rs --emit=llvm-ir
-	$(CGREP) "load volatile" "store volatile" < $(TMPDIR)/main.ll
+	grep "load volatile"  $(TMPDIR)/main.ll
+	grep "store volatile" $(TMPDIR)/main.ll

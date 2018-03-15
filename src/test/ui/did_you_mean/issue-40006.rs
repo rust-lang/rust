@@ -8,24 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-impl X { //~ ERROR cannot be made into an object
-//~^ ERROR missing
+impl X {
     Y
 }
 
 struct S;
 
-trait X { //~ ERROR missing
+trait X {
     X() {}
-    fn xxx() { ### } //~ ERROR missing
-    //~^ ERROR expected
-    L = M; //~ ERROR missing
-    Z = { 2 + 3 }; //~ ERROR expected one of
-    ::Y (); //~ ERROR expected one of
+    fn xxx() { ### }
+    L = M;
+    Z = { 2 + 3 };
+    ::Y ();
 }
 
 impl S {
-    pub hello_method(&self) { //~ ERROR missing
+    pub hello_method(&self) {
         println!("Hello");
     }
 }

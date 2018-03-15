@@ -72,7 +72,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
 
         let mut fn_warned = false;
         let mut op_warned = false;
-        if cx.tcx.features().fn_must_use {
+        if cx.tcx.sess.features.borrow().fn_must_use {
             let maybe_def = match expr.node {
                 hir::ExprCall(ref callee, _) => {
                     match callee.node {
@@ -302,38 +302,7 @@ impl EarlyLintPass for UnusedParens {
             Assign(_, ref value) => (value, "assigned value", false),
             AssignOp(.., ref value) => (value, "assigned value", false),
             InPlace(_, ref value) => (value, "emplacement value", false),
-            // either function/method call, or something this lint doesn't care about
-            ref call_or_other => {
-                let args_to_check;
-                let call_kind;
-                match *call_or_other {
-                    Call(_, ref args) => {
-                        call_kind = "function";
-                        args_to_check = &args[..];
-                    },
-                    MethodCall(_, ref args) => {
-                        call_kind = "method";
-                        // first "argument" is self (which sometimes needs parens)
-                        args_to_check = &args[1..];
-                    }
-                    // actual catch-all arm
-                    _ => { return; }
-                }
-                // Don't lint if this is a nested macro expansion: otherwise, the lint could
-                // trigger in situations that macro authors shouldn't have to care about, e.g.,
-                // when a parenthesized token tree matched in one macro expansion is matched as
-                // an expression in another and used as a fn/method argument (Issue #47775)
-                if e.span.ctxt().outer().expn_info()
-                    .map_or(false, |info| info.call_site.ctxt().outer()
-                            .expn_info().is_some()) {
-                        return;
-                }
-                let msg = format!("{} argument", call_kind);
-                for arg in args_to_check {
-                    self.check_unused_parens_core(cx, arg, &msg, false);
-                }
-                return;
-            }
+            _ => return,
         };
         self.check_unused_parens_core(cx, &value, msg, struct_lit_needs_parens);
     }
@@ -361,43 +330,6 @@ declare_lint! {
 #[derive(Copy, Clone)]
 pub struct UnusedImportBraces;
 
-impl UnusedImportBraces {
-    fn check_use_tree(&self, cx: &EarlyContext, use_tree: &ast::UseTree, item: &ast::Item) {
-        if let ast::UseTreeKind::Nested(ref items) = use_tree.kind {
-            // Recursively check nested UseTrees
-            for &(ref tree, _) in items {
-                self.check_use_tree(cx, tree, item);
-            }
-
-            // Trigger the lint only if there is one nested item
-            if items.len() != 1 {
-                return;
-            }
-
-            // Trigger the lint if the nested item is a non-self single item
-            let node_ident;
-            match items[0].0.kind {
-                ast::UseTreeKind::Simple(ident) => {
-                    if ident.name == keywords::SelfValue.name() {
-                        return;
-                    } else {
-                        node_ident = ident;
-                    }
-                }
-                ast::UseTreeKind::Glob => {
-                    node_ident = ast::Ident::from_str("*");
-                }
-                ast::UseTreeKind::Nested(_) => {
-                    return;
-                }
-            }
-
-            let msg = format!("braces around {} is unnecessary", node_ident.name);
-            cx.span_lint(UNUSED_IMPORT_BRACES, item.span, &msg);
-        }
-    }
-}
-
 impl LintPass for UnusedImportBraces {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNUSED_IMPORT_BRACES)
@@ -406,8 +338,13 @@ impl LintPass for UnusedImportBraces {
 
 impl EarlyLintPass for UnusedImportBraces {
     fn check_item(&mut self, cx: &EarlyContext, item: &ast::Item) {
-        if let ast::ItemKind::Use(ref use_tree) = item.node {
-            self.check_use_tree(cx, use_tree, item);
+        if let ast::ItemKind::Use(ref view_path) = item.node {
+            if let ast::ViewPathList(_, ref items) = view_path.node {
+                if items.len() == 1 && items[0].node.name.name != keywords::SelfValue.name() {
+                    let msg = format!("braces around {} is unnecessary", items[0].node.name);
+                    cx.span_lint(UNUSED_IMPORT_BRACES, item.span, &msg);
+                }
+            }
         }
     }
 }
@@ -437,10 +374,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAllocation {
         for adj in cx.tables.expr_adjustments(e) {
             if let adjustment::Adjust::Borrow(adjustment::AutoBorrow::Ref(_, m)) = adj.kind {
                 let msg = match m {
-                    adjustment::AutoBorrowMutability::Immutable =>
-                        "unnecessary allocation, use & instead",
-                    adjustment::AutoBorrowMutability::Mutable { .. }=>
-                        "unnecessary allocation, use &mut instead"
+                    hir::MutImmutable => "unnecessary allocation, use & instead",
+                    hir::MutMutable => "unnecessary allocation, use &mut instead"
                 };
                 cx.span_lint(UNUSED_ALLOCATION, e.span, msg);
             }

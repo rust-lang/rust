@@ -23,7 +23,7 @@ use syntax_pos::{MultiSpan, Span};
 #[must_use]
 #[derive(Clone)]
 pub struct DiagnosticBuilder<'a> {
-    pub handler: &'a Handler,
+    handler: &'a Handler,
     diagnostic: Diagnostic,
 }
 
@@ -83,12 +83,7 @@ impl<'a> DiagnosticBuilder<'a> {
             return;
         }
 
-        self.handler.emit_db(&self);
-        self.cancel();
-    }
-
-    pub fn is_error(&self) -> bool {
-        match self.level {
+        let is_error = match self.level {
             Level::Bug |
             Level::Fatal |
             Level::PhaseFatal |
@@ -102,7 +97,18 @@ impl<'a> DiagnosticBuilder<'a> {
             Level::Cancelled => {
                 false
             }
+        };
+
+        self.handler.emit_db(&self);
+        self.cancel();
+
+        if is_error {
+            self.handler.bump_err_count();
         }
+
+        // if self.is_fatal() {
+        //     panic!(FatalError);
+        // }
     }
 
     /// Convenience function for internal use, clients should use one of the
@@ -186,16 +192,6 @@ impl<'a> DiagnosticBuilder<'a> {
                                      msg: &str,
                                      suggestions: Vec<String>)
                                      -> &mut Self);
-    forward!(pub fn span_approximate_suggestion(&mut self,
-                                                sp: Span,
-                                                msg: &str,
-                                                suggestion: String)
-                                                -> &mut Self);
-    forward!(pub fn span_approximate_suggestions(&mut self,
-                                                 sp: Span,
-                                                 msg: &str,
-                                                 suggestions: Vec<String>)
-                                                 -> &mut Self);
     forward!(pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self);
     forward!(pub fn code(&mut self, s: DiagnosticId) -> &mut Self);
 

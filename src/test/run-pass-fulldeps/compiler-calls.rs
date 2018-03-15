@@ -18,7 +18,6 @@
 extern crate getopts;
 extern crate rustc;
 extern crate rustc_driver;
-extern crate rustc_trans_utils;
 extern crate syntax;
 extern crate rustc_errors as errors;
 
@@ -26,7 +25,6 @@ use rustc::middle::cstore::CrateStore;
 use rustc::session::Session;
 use rustc::session::config::{self, Input};
 use rustc_driver::{driver, CompilerCalls, Compilation};
-use rustc_trans_utils::trans_crate::TransCrate;
 use syntax::ast;
 
 use std::path::PathBuf;
@@ -48,7 +46,6 @@ impl<'a> CompilerCalls<'a> for TestCalls {
     }
 
     fn late_callback(&mut self,
-                     _: &TransCrate,
                      _: &getopts::Matches,
                      _: &Session,
                      _: &CrateStore,

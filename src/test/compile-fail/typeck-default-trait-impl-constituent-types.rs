@@ -10,8 +10,10 @@
 
 #![feature(optin_builtin_traits)]
 
-auto trait MyTrait {}
+trait MyTrait {}
 
+#[allow(auto_impl)]
+impl MyTrait for .. {}
 impl<T> !MyTrait for *mut T {}
 
 struct MyS;

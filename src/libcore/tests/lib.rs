@@ -24,19 +24,15 @@
 #![feature(i128_type)]
 #![feature(inclusive_range)]
 #![feature(inclusive_range_syntax)]
-#![feature(iterator_try_fold)]
-#![feature(iterator_flatten)]
-#![feature(conservative_impl_trait)]
 #![feature(iter_rfind)]
 #![feature(iter_rfold)]
-#![feature(iterator_repeat_with)]
 #![feature(nonzero)]
-#![feature(pattern)]
-#![feature(range_is_empty)]
+#![feature(rand)]
 #![feature(raw)]
 #![feature(refcell_replace_swap)]
 #![feature(sip_hash_13)]
 #![feature(slice_patterns)]
+#![feature(slice_rotate)]
 #![feature(sort_internals)]
 #![feature(specialization)]
 #![feature(step_trait)]
@@ -44,12 +40,15 @@
 #![feature(trusted_len)]
 #![feature(try_from)]
 #![feature(try_trait)]
-#![feature(exact_chunks)]
-#![feature(atomic_nand)]
-#![feature(reverse_bits)]
+#![feature(unique)]
+
+#![feature(const_atomic_bool_new)]
+#![feature(const_atomic_usize_new)]
+#![feature(const_atomic_isize_new)]
 
 extern crate core;
 extern crate test;
+extern crate rand;
 
 mod any;
 mod array;
@@ -67,7 +66,6 @@ mod nonzero;
 mod num;
 mod ops;
 mod option;
-mod pattern;
 mod ptr;
 mod result;
 mod slice;

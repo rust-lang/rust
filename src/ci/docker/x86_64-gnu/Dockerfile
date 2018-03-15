@@ -16,9 +16,5 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-ENV RUST_CONFIGURE_ARGS \
- --build=x86_64-unknown-linux-gnu \
- --enable-sanitizers \
- --enable-profiler \
- --enable-compiler-docs
+ENV RUST_CONFIGURE_ARGS --build=x86_64-unknown-linux-gnu --enable-sanitizers --enable-profiler
 ENV SCRIPT python2.7 ../x.py test

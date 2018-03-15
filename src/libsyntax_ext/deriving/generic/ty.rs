@@ -15,14 +15,12 @@ pub use self::PtrTy::*;
 pub use self::Ty::*;
 
 use syntax::ast;
-use syntax::ast::{Expr, GenericParam, Generics, Ident, SelfKind};
+use syntax::ast::{Expr, Generics, Ident, SelfKind};
 use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
 use syntax::codemap::respan;
 use syntax::ptr::P;
 use syntax_pos::Span;
-use syntax_pos::hygiene::SyntaxContext;
-use syntax_pos::symbol::keywords;
 
 /// The types of pointers
 #[derive(Clone, Eq, PartialEq)]
@@ -38,36 +36,29 @@ pub enum PtrTy<'a> {
 /// for type parameters and a lifetime.
 #[derive(Clone, Eq, PartialEq)]
 pub struct Path<'a> {
-    path: Vec<&'a str>,
-    lifetime: Option<&'a str>,
-    params: Vec<Box<Ty<'a>>>,
-    kind: PathKind,
-}
-
-#[derive(Clone, Eq, PartialEq)]
-pub enum PathKind {
-    Local,
-    Global,
-    Std,
+    pub path: Vec<&'a str>,
+    pub lifetime: Option<&'a str>,
+    pub params: Vec<Box<Ty<'a>>>,
+    pub global: bool,
 }
 
 impl<'a> Path<'a> {
     pub fn new<'r>(path: Vec<&'r str>) -> Path<'r> {
-        Path::new_(path, None, Vec::new(), PathKind::Std)
+        Path::new_(path, None, Vec::new(), true)
     }
     pub fn new_local<'r>(path: &'r str) -> Path<'r> {
-        Path::new_(vec![path], None, Vec::new(), PathKind::Local)
+        Path::new_(vec![path], None, Vec::new(), false)
     }
     pub fn new_<'r>(path: Vec<&'r str>,
                     lifetime: Option<&'r str>,
                     params: Vec<Box<Ty<'r>>>,
-                    kind: PathKind)
+                    global: bool)
                     -> Path<'r> {
         Path {
             path,
             lifetime,
             params,
-            kind,
+            global,
         }
     }
 
@@ -85,20 +76,11 @@ impl<'a> Path<'a> {
                    self_ty: Ident,
                    self_generics: &Generics)
                    -> ast::Path {
-        let mut idents = self.path.iter().map(|s| cx.ident_of(*s)).collect();
+        let idents = self.path.iter().map(|s| cx.ident_of(*s)).collect();
         let lt = mk_lifetimes(cx, span, &self.lifetime);
         let tys = self.params.iter().map(|t| t.to_ty(cx, span, self_ty, self_generics)).collect();
 
-        match self.kind {
-            PathKind::Global => cx.path_all(span, true, idents, lt, tys, Vec::new()),
-            PathKind::Local => cx.path_all(span, false, idents, lt, tys, Vec::new()),
-            PathKind::Std => {
-                let def_site = SyntaxContext::empty().apply_mark(cx.current_expansion.mark);
-                idents.insert(0, Ident { ctxt: def_site, ..keywords::DollarCrate.ident() });
-                cx.path_all(span, false, idents, lt, tys, Vec::new())
-            }
-        }
-
+        cx.path_all(span, self.global, idents, lt, tys, Vec::new())
     }
 }
 
@@ -185,20 +167,13 @@ impl<'a> Ty<'a> {
                    -> ast::Path {
         match *self {
             Self_ => {
-                let self_params = self_generics.params
+                let self_params = self_generics.ty_params
                     .iter()
-                    .filter_map(|param| match *param {
-                        GenericParam::Type(ref ty_param) => Some(cx.ty_ident(span, ty_param.ident)),
-                        _ => None,
-                    })
+                    .map(|ty_param| cx.ty_ident(span, ty_param.ident))
                     .collect();
-
-                let lifetimes: Vec<ast::Lifetime> = self_generics.params
+                let lifetimes = self_generics.lifetimes
                     .iter()
-                    .filter_map(|param| match *param {
-                        GenericParam::Lifetime(ref ld) => Some(ld.lifetime),
-                        _ => None,
-                    })
+                    .map(|d| d.lifetime)
                     .collect();
 
                 cx.path_all(span,
@@ -233,9 +208,11 @@ fn mk_ty_param(cx: &ExtCtxt,
     cx.typaram(span, cx.ident_of(name), attrs.to_owned(), bounds, None)
 }
 
-fn mk_generics(params: Vec<GenericParam>, span: Span) -> Generics {
+fn mk_generics(lifetimes: Vec<ast::LifetimeDef>, ty_params: Vec<ast::TyParam>, span: Span)
+               -> Generics {
     Generics {
-        params,
+        lifetimes,
+        ty_params,
         where_clause: ast::WhereClause {
             id: ast::DUMMY_NODE_ID,
             predicates: Vec::new(),
@@ -265,26 +242,26 @@ impl<'a> LifetimeBounds<'a> {
                        self_ty: Ident,
                        self_generics: &Generics)
                        -> Generics {
-        let generic_params = self.lifetimes
+        let lifetimes = self.lifetimes
             .iter()
             .map(|&(lt, ref bounds)| {
                 let bounds = bounds.iter()
                     .map(|b| cx.lifetime(span, Ident::from_str(b)))
                     .collect();
-                GenericParam::Lifetime(cx.lifetime_def(span, Ident::from_str(lt), vec![], bounds))
+                cx.lifetime_def(span, Ident::from_str(lt), vec![], bounds)
             })
-            .chain(self.bounds
-                .iter()
-                .map(|t| {
-                    let (name, ref bounds) = *t;
-                    GenericParam::Type(mk_ty_param(
-                        cx, span, name, &[], &bounds, self_ty, self_generics
-                    ))
-                })
-            )
             .collect();
-
-        mk_generics(generic_params, span)
+        let ty_params = self.bounds
+            .iter()
+            .map(|t| {
+                match *t {
+                    (ref name, ref bounds) => {
+                        mk_ty_param(cx, span, *name, &[], bounds, self_ty, self_generics)
+                    }
+                }
+            })
+            .collect();
+        mk_generics(lifetimes, ty_params, span)
     }
 }
 

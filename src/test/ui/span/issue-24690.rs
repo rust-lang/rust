@@ -18,9 +18,8 @@
 #![warn(unused)]
 
 #[rustc_error]
-fn main() { //~ ERROR compilation successful
-    let theTwo = 2; //~ WARN should have a snake case name
-    let theOtherTwo = 2; //~ WARN should have a snake case name
-    //~^ WARN unused variable
+fn main() {
+    let theTwo = 2;
+    let theOtherTwo = 2;
     println!("{}", theTwo);
 }

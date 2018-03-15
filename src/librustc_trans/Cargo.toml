@@ -11,16 +11,14 @@ test = false
 
 [dependencies]
 bitflags = "1.0"
-cc = "1.0.1"
-flate2 = "1.0"
-jobserver = "0.1.5"
-libc = "0.2"
-log = "0.4"
 num_cpus = "1.0"
-rustc = { path = "../librustc" }
+flate2 = "0.2"
+jobserver = "0.1.5"
+log = "0.3"
+owning_ref = "0.3.3"
 rustc-demangle = "0.1.4"
+rustc = { path = "../librustc" }
 rustc_allocator = { path = "../librustc_allocator" }
-rustc_apfloat = { path = "../librustc_apfloat" }
 rustc_back = { path = "../librustc_back" }
 rustc_const_math = { path = "../librustc_const_math" }
 rustc_data_structures = { path = "../librustc_data_structures" }
@@ -29,22 +27,9 @@ rustc_incremental = { path = "../librustc_incremental" }
 rustc_llvm = { path = "../librustc_llvm" }
 rustc_platform_intrinsics = { path = "../librustc_platform_intrinsics" }
 rustc_trans_utils = { path = "../librustc_trans_utils" }
-rustc_mir = { path = "../librustc_mir" }
 serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
-tempdir = "0.3"
 
-# not actually used but needed to make sure we enable the same feature set as
-# winapi used in librustc
-env_logger = { version = "0.5", default-features = false }
-
-[features]
-# Used to communicate the feature to `rustc_back` in the same manner that the
-# `rustc` driver script communicate this.
-jemalloc = ["rustc_back/jemalloc"]
-
-# This is used to convince Cargo to separately cache builds of `rustc_trans`
-# when this option is enabled or not. That way we can build two, cache two
-# artifacts, and have nice speedy rebuilds.
-emscripten = ["rustc_llvm/emscripten"]
+[target."cfg(windows)".dependencies]
+cc = "1.0.1"

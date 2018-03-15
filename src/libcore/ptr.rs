@@ -74,6 +74,7 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_ptr_null")]
 pub const fn null<T>() -> *const T { 0 as *const T }
 
 /// Creates a null mutable raw pointer.
@@ -88,15 +89,12 @@ pub const fn null<T>() -> *const T { 0 as *const T }
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_ptr_null_mut")]
 pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 
 /// Swaps the values at two mutable locations of the same type, without
-/// deinitializing either.
-///
-/// The values pointed at by `x` and `y` may overlap, unlike `mem::swap` which
-/// is otherwise equivalent. If the values do overlap, then the overlapping
-/// region of memory from `x` will be used. This is demonstrated in the
-/// examples section below.
+/// deinitializing either. They may overlap, unlike `mem::swap` which is
+/// otherwise equivalent.
 ///
 /// # Safety
 ///
@@ -104,40 +102,6 @@ pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 /// as arguments.
 ///
 /// Ensure that these pointers are valid before calling `swap`.
-///
-/// # Examples
-///
-/// Swapping two non-overlapping regions:
-///
-/// ```
-/// use std::ptr;
-///
-/// let mut array = [0, 1, 2, 3];
-///
-/// let x = array[0..].as_mut_ptr() as *mut [u32; 2];
-/// let y = array[2..].as_mut_ptr() as *mut [u32; 2];
-///
-/// unsafe {
-///     ptr::swap(x, y);
-///     assert_eq!([2, 3, 0, 1], array);
-/// }
-/// ```
-///
-/// Swapping two overlapping regions:
-///
-/// ```
-/// use std::ptr;
-///
-/// let mut array = [0, 1, 2, 3];
-///
-/// let x = array[0..].as_mut_ptr() as *mut [u32; 3];
-/// let y = array[1..].as_mut_ptr() as *mut [u32; 3];
-///
-/// unsafe {
-///     ptr::swap(x, y);
-///     assert_eq!([1, 0, 1, 2], array);
-/// }
-/// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
@@ -510,11 +474,6 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 impl<T: ?Sized> *const T {
     /// Returns `true` if the pointer is null.
     ///
-    /// Note that unsized types have many possible null pointers, as only the
-    /// raw data pointer is considered, not their length, vtable, etc.
-    /// Therefore, two pointers that are null may still not compare equal to
-    /// each other.
-    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -526,10 +485,8 @@ impl<T: ?Sized> *const T {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is_null(self) -> bool {
-        // Compare via a cast to a thin pointer, so fat pointers are only
-        // considering their "data" part for null-ness.
-        (self as *const u8) == null()
+    pub fn is_null(self) -> bool where T: Sized {
+        self == null()
     }
 
     /// Returns `None` if the pointer is null, or else returns a reference to
@@ -561,7 +518,9 @@ impl<T: ?Sized> *const T {
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[inline]
     pub unsafe fn as_ref<'a>(self) -> Option<&'a T> {
-        if self.is_null() {
+        // Check for null via a cast to a thin pointer, so fat pointers are only
+        // considering their "data" part for null-ness.
+        if (self as *const u8).is_null() {
             None
         } else {
             Some(&*self)
@@ -581,7 +540,8 @@ impl<T: ?Sized> *const T {
     /// * Both the starting and resulting pointer must be either in bounds or one
     ///   byte past the end of an allocated object.
     ///
-    /// * The computed offset, **in bytes**, cannot overflow an `isize`.
+    /// * The computed offset, **in bytes**, cannot overflow or underflow an
+    ///   `isize`.
     ///
     /// * The offset being in bounds cannot rely on "wrapping around" the address
     ///   space. That is, the infinite-precision sum, **in bytes** must fit in a usize.
@@ -713,7 +673,8 @@ impl<T: ?Sized> *const T {
     /// * Both the starting and resulting pointer must be either in bounds or one
     ///   byte past the end of an allocated object.
     ///
-    /// * The computed offset, **in bytes**, cannot overflow an `isize`.
+    /// * The computed offset, **in bytes**, cannot overflow or underflow an
+    ///   `isize`.
     ///
     /// * The offset being in bounds cannot rely on "wrapping around" the address
     ///   space. That is, the infinite-precision sum must fit in a `usize`.
@@ -740,6 +701,8 @@ impl<T: ?Sized> *const T {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(pointer_methods)]
+    ///
     /// let s: &str = "123";
     /// let ptr: *const u8 = s.as_ptr();
     ///
@@ -748,7 +711,7 @@ impl<T: ?Sized> *const T {
     ///     println!("{}", *ptr.add(2) as char);
     /// }
     /// ```
-    #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[unstable(feature = "pointer_methods", issue = "43941")]
     #[inline]
     pub unsafe fn add(self, count: usize) -> Self
         where T: Sized,
@@ -797,6 +760,8 @@ impl<T: ?Sized> *const T {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(pointer_methods)]
+    ///
     /// let s: &str = "123";
     ///
     /// unsafe {
@@ -805,7 +770,7 @@ impl<T: ?Sized> *const T {
     ///     println!("{}", *end.sub(2) as char);
     /// }
     /// ```
-    #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[unstable(feature = "pointer_methods", issue = "43941")]
     #[inline]
     pub unsafe fn sub(self, count: usize) -> Self
         where T: Sized,
@@ -832,6 +797,8 @@ impl<T: ?Sized> *const T {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(pointer_methods)]
+    ///
     /// // Iterate using a raw pointer in increments of two elements
     /// let data = [1u8, 2, 3, 4, 5];
     /// let mut ptr: *const u8 = data.as_ptr();
@@ -846,7 +813,7 @@ impl<T: ?Sized> *const T {
     ///     ptr = ptr.wrapping_add(step);
     /// }
     /// ```
-    #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[unstable(feature = "pointer_methods", issue = "43941")]
     #[inline]
     pub fn wrapping_add(self, count: usize) -> Self
         where T: Sized,
@@ -873,6 +840,8 @@ impl<T: ?Sized> *const T {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(pointer_methods)]
+    ///
     /// // Iterate using a raw pointer in increments of two elements (backwards)
     /// let data = [1u8, 2, 3, 4, 5];
     /// let mut ptr: *const u8 = data.as_ptr();
@@ -887,7 +856,7 @@ impl<T: ?Sized> *const T {
     ///     ptr = ptr.wrapping_sub(step);
     /// }
     /// ```
-    #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[unstable(feature = "pointer_methods", issue = "43941")]
     #[inline]
     pub fn wrapping_sub(self, count: usize) -> Self
         where T: Sized,
@@ -914,6 +883,8 @@ impl<T: ?Sized> *const T {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(pointer_methods)]
+    ///
     /// let x = 12;
     /// let y = &x as *const i32;
     ///
@@ -921,7 +892,7 @@ impl<T: ?Sized> *const T {
     ///     assert_eq!(y.read(), 12);
     /// }
     /// ```
-    #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[unstable(feature = "pointer_methods", issue = "43941")]
     #[inline]
     pub unsafe fn read(self) -> T
         where T: Sized,
@@ -964,6 +935,8 @@ impl<T: ?Sized> *const T {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(pointer_methods)]
+    ///
     /// let x = 12;
     /// let y = &x as *const i32;
     ///
@@ -971,7 +944,7 @@ impl<T: ?Sized> *const T {
     ///     assert_eq!(y.read_volatile(), 12);
     /// }
     /// ```
-    #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[unstable(feature = "pointer_methods", issue = "43941")]
     #[inline]
     pub unsafe fn read_volatile(self) -> T
         where T: Sized,
@@ -998,6 +971,8 @@ impl<T: ?Sized> *const T {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(pointer_methods)]
+    ///
     /// let x = 12;
     /// let y = &x as *const i32;
     ///
@@ -1005,7 +980,7 @@ impl<T: ?Sized> *const T {
     ///     assert_eq!(y.read_unaligned(), 12);
     /// }
     /// ```
-    #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[unstable(feature = "pointer_methods", issue = "43941")]
     #[inline]
     pub unsafe fn read_unaligned(self) -> T
         where T: Sized,
@@ -1032,6 +1007,8 @@ impl<T: ?Sized> *const T {
     /// Efficiently create a Rust vector from an unsafe buffer:
     ///
     /// ```
+    /// #![feature(pointer_methods)]
+    ///
     /// # #[allow(dead_code)]
     /// unsafe fn from_buf_raw<T: Copy>(ptr: *const T, elts: usize) -> Vec<T> {
     ///     let mut dst = Vec::with_capacity(elts);
@@ -1040,7 +1017,7 @@ impl<T: ?Sized> *const T {
     ///     dst
     /// }
     /// ```
-    #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[unstable(feature = "pointer_methods", issue = "43941")]
     #[inline]
     pub unsafe fn copy_to(self, dest: *mut T, count: usize)
         where T: Sized,
@@ -1069,6 +1046,8 @@ impl<T: ?Sized> *const T {
     /// Efficiently create a Rust vector from an unsafe buffer:
     ///
     /// ```
+    /// #![feature(pointer_methods)]
+    ///
     /// # #[allow(dead_code)]
     /// unsafe fn from_buf_raw<T: Copy>(ptr: *const T, elts: usize) -> Vec<T> {
     ///     let mut dst = Vec::with_capacity(elts);
@@ -1077,7 +1056,7 @@ impl<T: ?Sized> *const T {
     ///     dst
     /// }
     /// ```
-    #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[unstable(feature = "pointer_methods", issue = "43941")]
     #[inline]
     pub unsafe fn copy_to_nonoverlapping(self, dest: *mut T, count: usize)
         where T: Sized,
@@ -1128,11 +1107,6 @@ impl<T: ?Sized> *const T {
 impl<T: ?Sized> *mut T {
     /// Returns `true` if the pointer is null.
     ///
-    /// Note that unsized types have many possible null pointers, as only the
-    /// raw data pointer is considered, not their length, vtable, etc.
-    /// Therefore, two pointers that are null may still not compare equal to
-    /// each other.
-    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1144,10 +1118,8 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is_null(self) -> bool {
-        // Compare via a cast to a thin pointer, so fat pointers are only
-        // considering their "data" part for null-ness.
-        (self as *mut u8) == null_mut()
+    pub fn is_null(self) -> bool where T: Sized {
+        self == null_mut()
     }
 
     /// Returns `None` if the pointer is null, or else returns a reference to
@@ -1179,7 +1151,9 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[inline]
     pub unsafe fn as_ref<'a>(self) -> Option<&'a T> {
-        if self.is_null() {
+        // Check for null via a cast to a thin pointer, so fat pointers are only
+        // considering their "data" part for null-ness.
+        if (self as *const u8).is_null() {
             None
         } else {
             Some(&*self)
@@ -1199,7 +1173,8 @@ impl<T: ?Sized> *mut T {
     /// * Both the starting and resulting pointer must be either in bounds or one
     ///   byte past the end of an allocated object.
     ///
-    /// * The computed offset, **in bytes**, cannot overflow an `isize`.
+    /// * The computed offset, **in bytes**, cannot overflow or underflow an
+    ///   `isize`.
     ///
     /// * The offset being in bounds cannot rely on "wrapping around" the address
     ///   space. That is, the infinite-precision sum, **in bytes** must fit in a usize.
@@ -1302,7 +1277,9 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[inline]
     pub unsafe fn as_mut<'a>(self) -> Option<&'a mut T> {
-        if self.is_null() {
+        // Check for null via a cast to a thin pointer, so fat pointers are only
+        // considering their "data" part for null-ness.
+        if (self as *mut u8).is_null() {
             None
         } else {
             Some(&mut *self)
@@ -1398,7 +1375,8 @@ impl<T: ?Sized> *mut T {
     /// * Both the starting and resulting pointer must be either in bounds or one
     ///   byte past the end of an allocated object.
     ///
-    /// * The computed offset, **in bytes**, cannot overflow an `isize`.
+    /// * The computed offset, **in bytes**, cannot overflow or underflow an
+    ///   `isize`.
     ///
     /// * The offset being in bounds cannot rely on "wrapping around" the address
     ///   space. That is, the infinite-precision sum must fit in a `usize`.
@@ -1425,6 +1403,8 @@ impl<T: ?Sized> *mut T {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(pointer_methods)]
+    ///
     /// let s: &str = "123";
     /// let ptr: *const u8 = s.as_ptr();
     ///
@@ -1433,7 +1413,7 @@ impl<T: ?Sized> *mut T {
     ///     println!("{}", *ptr.add(2) as char);
     /// }
     /// ```
-    #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[unstable(feature = "pointer_methods", issue = "43941")]
     #[inline]
     pub unsafe fn add(self, count: usize) -> Self
         where T: Sized,
@@ -1482,6 +1462,8 @@ impl<T: ?Sized> *mut T {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(pointer_methods)]
+    ///
     /// let s: &str = "123";
     ///
     /// unsafe {
@@ -1490,7 +1472,7 @@ impl<T: ?Sized> *mut T {
     ///     println!("{}", *end.sub(2) as char);
     /// }
     /// ```
-    #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[unstable(feature = "pointer_methods", issue = "43941")]
     #[inline]
     pub unsafe fn sub(self, count: usize) -> Self
         where T: Sized,
@@ -1517,6 +1499,8 @@ impl<T: ?Sized> *mut T {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(pointer_methods)]
+    ///
     /// // Iterate using a raw pointer in increments of two elements
     /// let data = [1u8, 2, 3, 4, 5];
     /// let mut ptr: *const u8 = data.as_ptr();
@@ -1531,7 +1515,7 @@ impl<T: ?Sized> *mut T {
     ///     ptr = ptr.wrapping_add(step);
     /// }
     /// ```
-    #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[unstable(feature = "pointer_methods", issue = "43941")]
     #[inline]
     pub fn wrapping_add(self, count: usize) -> Self
         where T: Sized,
@@ -1558,6 +1542,8 @@ impl<T: ?Sized> *mut T {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(pointer_methods)]
+    ///
     /// // Iterate using a raw pointer in increments of two elements (backwards)
     /// let data = [1u8, 2, 3, 4, 5];
     /// let mut ptr: *const u8 = data.as_ptr();
@@ -1572,7 +1558,7 @@ impl<T: ?Sized> *mut T {
     ///     ptr = ptr.wrapping_sub(step);
     /// }
     /// ```
-    #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[unstable(feature = "pointer_methods", issue = "43941")]
     #[inline]
     pub fn wrapping_sub(self, count: usize) -> Self
         where T: Sized,
@@ -1599,6 +1585,8 @@ impl<T: ?Sized> *mut T {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(pointer_methods)]
+    ///
     /// let x = 12;
     /// let y = &x as *const i32;
     ///
@@ -1606,7 +1594,7 @@ impl<T: ?Sized> *mut T {
     ///     assert_eq!(y.read(), 12);
     /// }
     /// ```
-    #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[unstable(feature = "pointer_methods", issue = "43941")]
     #[inline]
     pub unsafe fn read(self) -> T
         where T: Sized,
@@ -1640,7 +1628,7 @@ impl<T: ?Sized> *mut T {
     /// Beyond accepting a raw pointer, this is unsafe because it semantically
     /// moves the value out of `self` without preventing further usage of `self`.
     /// If `T` is not `Copy`, then care must be taken to ensure that the value at
-    /// `self` is not used before the data is overwritten again (e.g. with `write`,
+    /// `src` is not used before the data is overwritten again (e.g. with `write`,
     /// `write_bytes`, or `copy`). Note that `*self = foo` counts as a use
     /// because it will attempt to drop the value previously at `*self`.
     ///
@@ -1649,6 +1637,8 @@ impl<T: ?Sized> *mut T {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(pointer_methods)]
+    ///
     /// let x = 12;
     /// let y = &x as *const i32;
     ///
@@ -1656,7 +1646,7 @@ impl<T: ?Sized> *mut T {
     ///     assert_eq!(y.read_volatile(), 12);
     /// }
     /// ```
-    #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[unstable(feature = "pointer_methods", issue = "43941")]
     #[inline]
     pub unsafe fn read_volatile(self) -> T
         where T: Sized,
@@ -1683,6 +1673,8 @@ impl<T: ?Sized> *mut T {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(pointer_methods)]
+    ///
     /// let x = 12;
     /// let y = &x as *const i32;
     ///
@@ -1690,7 +1682,7 @@ impl<T: ?Sized> *mut T {
     ///     assert_eq!(y.read_unaligned(), 12);
     /// }
     /// ```
-    #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[unstable(feature = "pointer_methods", issue = "43941")]
     #[inline]
     pub unsafe fn read_unaligned(self) -> T
         where T: Sized,
@@ -1717,6 +1709,8 @@ impl<T: ?Sized> *mut T {
     /// Efficiently create a Rust vector from an unsafe buffer:
     ///
     /// ```
+    /// #![feature(pointer_methods)]
+    ///
     /// # #[allow(dead_code)]
     /// unsafe fn from_buf_raw<T: Copy>(ptr: *const T, elts: usize) -> Vec<T> {
     ///     let mut dst = Vec::with_capacity(elts);
@@ -1725,7 +1719,7 @@ impl<T: ?Sized> *mut T {
     ///     dst
     /// }
     /// ```
-    #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[unstable(feature = "pointer_methods", issue = "43941")]
     #[inline]
     pub unsafe fn copy_to(self, dest: *mut T, count: usize)
         where T: Sized,
@@ -1754,6 +1748,8 @@ impl<T: ?Sized> *mut T {
     /// Efficiently create a Rust vector from an unsafe buffer:
     ///
     /// ```
+    /// #![feature(pointer_methods)]
+    ///
     /// # #[allow(dead_code)]
     /// unsafe fn from_buf_raw<T: Copy>(ptr: *const T, elts: usize) -> Vec<T> {
     ///     let mut dst = Vec::with_capacity(elts);
@@ -1762,7 +1758,7 @@ impl<T: ?Sized> *mut T {
     ///     dst
     /// }
     /// ```
-    #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[unstable(feature = "pointer_methods", issue = "43941")]
     #[inline]
     pub unsafe fn copy_to_nonoverlapping(self, dest: *mut T, count: usize)
         where T: Sized,
@@ -1789,15 +1785,17 @@ impl<T: ?Sized> *mut T {
     /// Efficiently create a Rust vector from an unsafe buffer:
     ///
     /// ```
+    /// #![feature(pointer_methods)]
+    ///
     /// # #[allow(dead_code)]
     /// unsafe fn from_buf_raw<T: Copy>(ptr: *const T, elts: usize) -> Vec<T> {
-    ///     let mut dst: Vec<T> = Vec::with_capacity(elts);
+    ///     let mut dst = Vec::with_capacity(elts);
     ///     dst.set_len(elts);
     ///     dst.as_mut_ptr().copy_from(ptr, elts);
     ///     dst
     /// }
     /// ```
-    #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[unstable(feature = "pointer_methods", issue = "43941")]
     #[inline]
     pub unsafe fn copy_from(self, src: *const T, count: usize)
         where T: Sized,
@@ -1826,15 +1824,17 @@ impl<T: ?Sized> *mut T {
     /// Efficiently create a Rust vector from an unsafe buffer:
     ///
     /// ```
+    /// #![feature(pointer_methods)]
+    ///
     /// # #[allow(dead_code)]
     /// unsafe fn from_buf_raw<T: Copy>(ptr: *const T, elts: usize) -> Vec<T> {
-    ///     let mut dst: Vec<T> = Vec::with_capacity(elts);
+    ///     let mut dst = Vec::with_capacity(elts);
     ///     dst.set_len(elts);
     ///     dst.as_mut_ptr().copy_from_nonoverlapping(ptr, elts);
     ///     dst
     /// }
     /// ```
-    #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[unstable(feature = "pointer_methods", issue = "43941")]
     #[inline]
     pub unsafe fn copy_from_nonoverlapping(self, src: *const T, count: usize)
         where T: Sized,
@@ -1859,7 +1859,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// This has all the same safety problems as `ptr::read` with respect to
     /// invalid pointers, types, and double drops.
-    #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[unstable(feature = "pointer_methods", issue = "43941")]
     #[inline]
     pub unsafe fn drop_in_place(self) {
         drop_in_place(self)
@@ -1889,6 +1889,8 @@ impl<T: ?Sized> *mut T {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(pointer_methods)]
+    ///
     /// let mut x = 0;
     /// let y = &mut x as *mut i32;
     /// let z = 12;
@@ -1898,7 +1900,7 @@ impl<T: ?Sized> *mut T {
     ///     assert_eq!(y.read(), 12);
     /// }
     /// ```
-    #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[unstable(feature = "pointer_methods", issue = "43941")]
     #[inline]
     pub unsafe fn write(self, val: T)
         where T: Sized,
@@ -1912,6 +1914,8 @@ impl<T: ?Sized> *mut T {
     /// # Examples
     ///
     /// ```
+    /// #![feature(pointer_methods)]
+    ///
     /// let mut vec = vec![0; 4];
     /// unsafe {
     ///     let vec_ptr = vec.as_mut_ptr();
@@ -1919,7 +1923,7 @@ impl<T: ?Sized> *mut T {
     /// }
     /// assert_eq!(vec, [b'a', b'a', 0, 0]);
     /// ```
-    #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[unstable(feature = "pointer_methods", issue = "43941")]
     #[inline]
     pub unsafe fn write_bytes(self, val: u8, count: usize)
         where T: Sized,
@@ -1964,6 +1968,8 @@ impl<T: ?Sized> *mut T {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(pointer_methods)]
+    ///
     /// let mut x = 0;
     /// let y = &mut x as *mut i32;
     /// let z = 12;
@@ -1973,7 +1979,7 @@ impl<T: ?Sized> *mut T {
     ///     assert_eq!(y.read_volatile(), 12);
     /// }
     /// ```
-    #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[unstable(feature = "pointer_methods", issue = "43941")]
     #[inline]
     pub unsafe fn write_volatile(self, val: T)
         where T: Sized,
@@ -1994,8 +2000,8 @@ impl<T: ?Sized> *mut T {
     /// allocations or resources, so care must be taken not to overwrite an object
     /// that should be dropped.
     ///
-    /// Additionally, it does not drop `self`. Semantically, `self` is moved into the
-    /// location pointed to by `val`.
+    /// Additionally, it does not drop `src`. Semantically, `src` is moved into the
+    /// location pointed to by `dst`.
     ///
     /// This is appropriate for initializing uninitialized memory, or overwriting
     /// memory that has previously been `read` from.
@@ -2005,6 +2011,8 @@ impl<T: ?Sized> *mut T {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(pointer_methods)]
+    ///
     /// let mut x = 0;
     /// let y = &mut x as *mut i32;
     /// let z = 12;
@@ -2014,7 +2022,7 @@ impl<T: ?Sized> *mut T {
     ///     assert_eq!(y.read_unaligned(), 12);
     /// }
     /// ```
-    #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[unstable(feature = "pointer_methods", issue = "43941")]
     #[inline]
     pub unsafe fn write_unaligned(self, val: T)
         where T: Sized,
@@ -2029,7 +2037,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// This is only unsafe because it accepts a raw pointer.
     /// Otherwise, this operation is identical to `mem::replace`.
-    #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[unstable(feature = "pointer_methods", issue = "43941")]
     #[inline]
     pub unsafe fn replace(self, src: T) -> T
         where T: Sized,
@@ -2047,7 +2055,7 @@ impl<T: ?Sized> *mut T {
     /// as arguments.
     ///
     /// Ensure that these pointers are valid before calling `swap`.
-    #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[unstable(feature = "pointer_methods", issue = "43941")]
     #[inline]
     pub unsafe fn swap(self, with: *mut T)
         where T: Sized,
@@ -2273,7 +2281,7 @@ impl<T: ?Sized> PartialOrd for *mut T {
 /// its owning Unique.
 ///
 /// If you're uncertain of whether it's correct to use `Unique` for your purposes,
-/// consider using `NonNull`, which has weaker semantics.
+/// consider using `Shared`, which has weaker semantics.
 ///
 /// Unlike `*mut T`, the pointer must always be non-null, even if the pointer
 /// is never dereferenced. This is so that enums may use this forbidden value
@@ -2282,9 +2290,9 @@ impl<T: ?Sized> PartialOrd for *mut T {
 ///
 /// Unlike `*mut T`, `Unique<T>` is covariant over `T`. This should always be correct
 /// for any type which upholds Unique's aliasing requirements.
-#[unstable(feature = "ptr_internals", issue = "0",
-           reason = "use NonNull instead and consider PhantomData<T> \
-                     (if you also use #[may_dangle]), Send, and/or Sync")]
+#[allow(missing_debug_implementations)]
+#[unstable(feature = "unique", reason = "needs an RFC to flesh out design",
+           issue = "27730")]
 pub struct Unique<T: ?Sized> {
     pointer: NonZero<*const T>,
     // NOTE: this marker has no consequences for variance, but is necessary
@@ -2295,34 +2303,26 @@ pub struct Unique<T: ?Sized> {
     _marker: PhantomData<T>,
 }
 
-#[unstable(feature = "ptr_internals", issue = "0")]
-impl<T: ?Sized> fmt::Debug for Unique<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Pointer::fmt(&self.as_ptr(), f)
-    }
-}
-
 /// `Unique` pointers are `Send` if `T` is `Send` because the data they
 /// reference is unaliased. Note that this aliasing invariant is
 /// unenforced by the type system; the abstraction using the
 /// `Unique` must enforce it.
-#[unstable(feature = "ptr_internals", issue = "0")]
+#[unstable(feature = "unique", issue = "27730")]
 unsafe impl<T: Send + ?Sized> Send for Unique<T> { }
 
 /// `Unique` pointers are `Sync` if `T` is `Sync` because the data they
 /// reference is unaliased. Note that this aliasing invariant is
 /// unenforced by the type system; the abstraction using the
 /// `Unique` must enforce it.
-#[unstable(feature = "ptr_internals", issue = "0")]
+#[unstable(feature = "unique", issue = "27730")]
 unsafe impl<T: Sync + ?Sized> Sync for Unique<T> { }
 
-#[unstable(feature = "ptr_internals", issue = "0")]
+#[unstable(feature = "unique", issue = "27730")]
 impl<T: Sized> Unique<T> {
     /// Creates a new `Unique` that is dangling, but well-aligned.
     ///
     /// This is useful for initializing types which lazily allocate, like
     /// `Vec::new` does.
-    // FIXME: rename to dangling() to match NonNull?
     pub fn empty() -> Self {
         unsafe {
             let ptr = mem::align_of::<T>() as *mut T;
@@ -2331,13 +2331,15 @@ impl<T: Sized> Unique<T> {
     }
 }
 
-#[unstable(feature = "ptr_internals", issue = "0")]
+#[unstable(feature = "unique", issue = "27730")]
 impl<T: ?Sized> Unique<T> {
     /// Creates a new `Unique`.
     ///
     /// # Safety
     ///
     /// `ptr` must be non-null.
+    #[unstable(feature = "unique", issue = "27730")]
+    #[rustc_const_unstable(feature = "const_unique_new")]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
         Unique { pointer: NonZero::new_unchecked(ptr), _marker: PhantomData }
     }
@@ -2356,7 +2358,7 @@ impl<T: ?Sized> Unique<T> {
     ///
     /// The resulting lifetime is bound to self so this behaves "as if"
     /// it were actually an instance of T that is getting borrowed. If a longer
-    /// (unbound) lifetime is needed, use `&*my_ptr.as_ptr()`.
+    /// (unbound) lifetime is needed, use `&*my_ptr.ptr()`.
     pub unsafe fn as_ref(&self) -> &T {
         &*self.as_ptr()
     }
@@ -2365,123 +2367,124 @@ impl<T: ?Sized> Unique<T> {
     ///
     /// The resulting lifetime is bound to self so this behaves "as if"
     /// it were actually an instance of T that is getting borrowed. If a longer
-    /// (unbound) lifetime is needed, use `&mut *my_ptr.as_ptr()`.
+    /// (unbound) lifetime is needed, use `&mut *my_ptr.ptr()`.
     pub unsafe fn as_mut(&mut self) -> &mut T {
         &mut *self.as_ptr()
     }
 }
 
-#[unstable(feature = "ptr_internals", issue = "0")]
+#[unstable(feature = "unique", issue = "27730")]
 impl<T: ?Sized> Clone for Unique<T> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-#[unstable(feature = "ptr_internals", issue = "0")]
+#[unstable(feature = "unique", issue = "27730")]
 impl<T: ?Sized> Copy for Unique<T> { }
 
-#[unstable(feature = "ptr_internals", issue = "0")]
+#[unstable(feature = "unique", issue = "27730")]
 impl<T: ?Sized, U: ?Sized> CoerceUnsized<Unique<U>> for Unique<T> where T: Unsize<U> { }
 
-#[unstable(feature = "ptr_internals", issue = "0")]
+#[unstable(feature = "unique", issue = "27730")]
 impl<T: ?Sized> fmt::Pointer for Unique<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Pointer::fmt(&self.as_ptr(), f)
     }
 }
 
-#[unstable(feature = "ptr_internals", issue = "0")]
+#[unstable(feature = "unique", issue = "27730")]
 impl<'a, T: ?Sized> From<&'a mut T> for Unique<T> {
     fn from(reference: &'a mut T) -> Self {
         Unique { pointer: NonZero::from(reference), _marker: PhantomData }
     }
 }
 
-#[unstable(feature = "ptr_internals", issue = "0")]
+#[unstable(feature = "unique", issue = "27730")]
 impl<'a, T: ?Sized> From<&'a T> for Unique<T> {
     fn from(reference: &'a T) -> Self {
         Unique { pointer: NonZero::from(reference), _marker: PhantomData }
     }
 }
 
-#[unstable(feature = "ptr_internals", issue = "0")]
-impl<'a, T: ?Sized> From<NonNull<T>> for Unique<T> {
-    fn from(p: NonNull<T>) -> Self {
-        Unique { pointer: p.pointer, _marker: PhantomData }
-    }
-}
-
-/// Previous name of `NonNull`.
-#[rustc_deprecated(since = "1.25.0", reason = "renamed to `NonNull`")]
-#[unstable(feature = "shared", issue = "27730")]
-pub type Shared<T> = NonNull<T>;
-
-/// `*mut T` but non-zero and covariant.
+/// A wrapper around a raw `*mut T` that indicates that the possessor
+/// of this wrapper has shared ownership of the referent. Useful for
+/// building abstractions like `Rc<T>`, `Arc<T>`, or doubly-linked lists, which
+/// internally use aliased raw pointers to manage the memory that they own.
 ///
-/// This is often the correct thing to use when building data structures using
-/// raw pointers, but is ultimately more dangerous to use because of its additional
-/// properties. If you're not sure if you should use `NonNull<T>`, just use `*mut T`!
+/// This is similar to `Unique`, except that it doesn't make any aliasing
+/// guarantees, and doesn't derive Send and Sync. Note that unlike `&T`,
+/// Shared has no special mutability requirements. Shared may mutate data
+/// aliased by other Shared pointers. More precise rules require Rust to
+/// develop an actual aliasing model.
 ///
 /// Unlike `*mut T`, the pointer must always be non-null, even if the pointer
 /// is never dereferenced. This is so that enums may use this forbidden value
-/// as a discriminant -- `Option<NonNull<T>>` has the same size as `NonNull<T>`.
+/// as a discriminant -- `Option<Shared<T>>` has the same size as `Shared<T>`.
 /// However the pointer may still dangle if it isn't dereferenced.
 ///
-/// Unlike `*mut T`, `NonNull<T>` is covariant over `T`. If this is incorrect
+/// Unlike `*mut T`, `Shared<T>` is covariant over `T`. If this is incorrect
 /// for your use case, you should include some PhantomData in your type to
 /// provide invariance, such as `PhantomData<Cell<T>>` or `PhantomData<&'a mut T>`.
-/// Usually this won't be necessary; covariance is correct for most safe abstractions,
-/// such as Box, Rc, Arc, Vec, and LinkedList. This is the case because they
-/// provide a public API that follows the normal shared XOR mutable rules of Rust.
-#[stable(feature = "nonnull", since = "1.25.0")]
-pub struct NonNull<T: ?Sized> {
+/// Usually this won't be necessary; covariance is correct for Rc, Arc, and LinkedList
+/// because they provide a public API that follows the normal shared XOR mutable
+/// rules of Rust.
+#[allow(missing_debug_implementations)]
+#[unstable(feature = "shared", reason = "needs an RFC to flesh out design",
+           issue = "27730")]
+pub struct Shared<T: ?Sized> {
     pointer: NonZero<*const T>,
+    // NOTE: this marker has no consequences for variance, but is necessary
+    // for dropck to understand that we logically own a `T`.
+    //
+    // For details, see:
+    // https://github.com/rust-lang/rfcs/blob/master/text/0769-sound-generic-drop.md#phantom-data
+    _marker: PhantomData<T>,
 }
 
-/// `NonNull` pointers are not `Send` because the data they reference may be aliased.
+/// `Shared` pointers are not `Send` because the data they reference may be aliased.
 // NB: This impl is unnecessary, but should provide better error messages.
-#[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> !Send for NonNull<T> { }
+#[unstable(feature = "shared", issue = "27730")]
+impl<T: ?Sized> !Send for Shared<T> { }
 
-/// `NonNull` pointers are not `Sync` because the data they reference may be aliased.
+/// `Shared` pointers are not `Sync` because the data they reference may be aliased.
 // NB: This impl is unnecessary, but should provide better error messages.
-#[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> !Sync for NonNull<T> { }
+#[unstable(feature = "shared", issue = "27730")]
+impl<T: ?Sized> !Sync for Shared<T> { }
 
-impl<T: Sized> NonNull<T> {
-    /// Creates a new `NonNull` that is dangling, but well-aligned.
+#[unstable(feature = "shared", issue = "27730")]
+impl<T: Sized> Shared<T> {
+    /// Creates a new `Shared` that is dangling, but well-aligned.
     ///
     /// This is useful for initializing types which lazily allocate, like
     /// `Vec::new` does.
-    #[stable(feature = "nonnull", since = "1.25.0")]
-    pub fn dangling() -> Self {
+    pub fn empty() -> Self {
         unsafe {
             let ptr = mem::align_of::<T>() as *mut T;
-            NonNull::new_unchecked(ptr)
+            Shared::new_unchecked(ptr)
         }
     }
 }
 
-impl<T: ?Sized> NonNull<T> {
-    /// Creates a new `NonNull`.
+#[unstable(feature = "shared", issue = "27730")]
+impl<T: ?Sized> Shared<T> {
+    /// Creates a new `Shared`.
     ///
     /// # Safety
     ///
     /// `ptr` must be non-null.
-    #[stable(feature = "nonnull", since = "1.25.0")]
+    #[unstable(feature = "shared", issue = "27730")]
+    #[rustc_const_unstable(feature = "const_shared_new")]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
-        NonNull { pointer: NonZero::new_unchecked(ptr) }
+        Shared { pointer: NonZero::new_unchecked(ptr), _marker: PhantomData }
     }
 
-    /// Creates a new `NonNull` if `ptr` is non-null.
-    #[stable(feature = "nonnull", since = "1.25.0")]
+    /// Creates a new `Shared` if `ptr` is non-null.
     pub fn new(ptr: *mut T) -> Option<Self> {
-        NonZero::new(ptr as *const T).map(|nz| NonNull { pointer: nz })
+        NonZero::new(ptr as *const T).map(|nz| Shared { pointer: nz, _marker: PhantomData })
     }
 
     /// Acquires the underlying `*mut` pointer.
-    #[stable(feature = "nonnull", since = "1.25.0")]
     pub fn as_ptr(self) -> *mut T {
         self.pointer.get() as *mut T
     }
@@ -2490,8 +2493,7 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// The resulting lifetime is bound to self so this behaves "as if"
     /// it were actually an instance of T that is getting borrowed. If a longer
-    /// (unbound) lifetime is needed, use `&*my_ptr.as_ptr()`.
-    #[stable(feature = "nonnull", since = "1.25.0")]
+    /// (unbound) lifetime is needed, use `&*my_ptr.ptr()`.
     pub unsafe fn as_ref(&self) -> &T {
         &*self.as_ptr()
     }
@@ -2500,96 +2502,56 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// The resulting lifetime is bound to self so this behaves "as if"
     /// it were actually an instance of T that is getting borrowed. If a longer
-    /// (unbound) lifetime is needed, use `&mut *my_ptr.as_ptr()`.
-    #[stable(feature = "nonnull", since = "1.25.0")]
+    /// (unbound) lifetime is needed, use `&mut *my_ptr.ptr_mut()`.
     pub unsafe fn as_mut(&mut self) -> &mut T {
         &mut *self.as_ptr()
     }
 
-    /// Cast to a pointer of another type
-    #[unstable(feature = "nonnull_cast", issue = "47653")]
-    pub fn cast<U>(self) -> NonNull<U> {
-        unsafe {
-            NonNull::new_unchecked(self.as_ptr() as *mut U)
-        }
+    /// Acquires the underlying pointer as a `*mut` pointer.
+    #[rustc_deprecated(since = "1.19", reason = "renamed to `as_ptr` for ergonomics/consistency")]
+    #[unstable(feature = "shared", issue = "27730")]
+    pub unsafe fn as_mut_ptr(&self) -> *mut T {
+        self.as_ptr()
     }
 }
 
-#[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> Clone for NonNull<T> {
+#[unstable(feature = "shared", issue = "27730")]
+impl<T: ?Sized> Clone for Shared<T> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-#[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> Copy for NonNull<T> { }
+#[unstable(feature = "shared", issue = "27730")]
+impl<T: ?Sized> Copy for Shared<T> { }
 
-#[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<T: ?Sized, U: ?Sized> CoerceUnsized<NonNull<U>> for NonNull<T> where T: Unsize<U> { }
+#[unstable(feature = "shared", issue = "27730")]
+impl<T: ?Sized, U: ?Sized> CoerceUnsized<Shared<U>> for Shared<T> where T: Unsize<U> { }
 
-#[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> fmt::Debug for NonNull<T> {
+#[unstable(feature = "shared", issue = "27730")]
+impl<T: ?Sized> fmt::Pointer for Shared<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Pointer::fmt(&self.as_ptr(), f)
     }
 }
 
-#[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> fmt::Pointer for NonNull<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Pointer::fmt(&self.as_ptr(), f)
-    }
-}
-
-#[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> Eq for NonNull<T> {}
-
-#[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> PartialEq for NonNull<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.as_ptr() == other.as_ptr()
-    }
-}
-
-#[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> Ord for NonNull<T> {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.as_ptr().cmp(&other.as_ptr())
-    }
-}
-
-#[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> PartialOrd for NonNull<T> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.as_ptr().partial_cmp(&other.as_ptr())
-    }
-}
-
-#[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> hash::Hash for NonNull<T> {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.as_ptr().hash(state)
-    }
-}
-
-#[unstable(feature = "ptr_internals", issue = "0")]
-impl<T: ?Sized> From<Unique<T>> for NonNull<T> {
+#[unstable(feature = "shared", issue = "27730")]
+impl<T: ?Sized> From<Unique<T>> for Shared<T> {
     fn from(unique: Unique<T>) -> Self {
-        NonNull { pointer: unique.pointer }
+        Shared { pointer: unique.pointer, _marker: PhantomData }
     }
 }
 
-#[stable(feature = "nonnull", since = "1.25.0")]
-impl<'a, T: ?Sized> From<&'a mut T> for NonNull<T> {
+#[unstable(feature = "shared", issue = "27730")]
+impl<'a, T: ?Sized> From<&'a mut T> for Shared<T> {
     fn from(reference: &'a mut T) -> Self {
-        NonNull { pointer: NonZero::from(reference) }
+        Shared { pointer: NonZero::from(reference), _marker: PhantomData }
     }
 }
 
-#[stable(feature = "nonnull", since = "1.25.0")]
-impl<'a, T: ?Sized> From<&'a T> for NonNull<T> {
+#[unstable(feature = "shared", issue = "27730")]
+impl<'a, T: ?Sized> From<&'a T> for Shared<T> {
     fn from(reference: &'a T) -> Self {
-        NonNull { pointer: NonZero::from(reference) }
+        Shared { pointer: NonZero::from(reference), _marker: PhantomData }
     }
 }

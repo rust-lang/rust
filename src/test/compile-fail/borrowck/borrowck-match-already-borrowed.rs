@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // revisions: ast mir
-//[mir]compile-flags: -Z borrowck=mir
+//[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
 
 enum Foo {
     A(i32),
@@ -19,11 +19,12 @@ enum Foo {
 fn match_enum() {
     let mut foo = Foo::B;
     let p = &mut foo;
-    let _ = match foo { //[mir]~ ERROR [E0503]
-        Foo::B => 1, //[mir]~ ERROR [E0503]
+    let _ = match foo {
+        Foo::B => 1, //[mir]~ ERROR (Mir) [E0503]
         _ => 2,
         Foo::A(x) => x //[ast]~ ERROR [E0503]
-                       //[mir]~^ ERROR [E0503]
+                       //[mir]~^ ERROR (Ast) [E0503]
+                       //[mir]~| ERROR (Mir) [E0503]
     };
 }
 
@@ -31,10 +32,12 @@ fn match_enum() {
 fn main() {
     let mut x = 1;
     let _x = &mut x;
-    let _ = match x { //[mir]~ ERROR [E0503]
-        x => x + 1, //[ast]~ ERROR [E0503]
-                    //[mir]~^ ERROR [E0503]
+    let _ = match x {
+        x => x + 1, //[ast]~ ERROR E0503
+                    //[mir]~^ ERROR (Mir) [E0503]
+                    //[mir]~| ERROR (Ast) [E0503]
         y => y + 2, //[ast]~ ERROR [E0503]
-                    //[mir]~^ ERROR [E0503]
+                    //[mir]~^ ERROR (Mir) [E0503]
+                    //[mir]~| ERROR (Ast) [E0503]
     };
 }

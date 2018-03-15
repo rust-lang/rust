@@ -8,16 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Logic and data structures related to impl specialization, explained in
-//! greater detail below.
-//!
-//! At the moment, this implementation support only the simple "chain" rule:
-//! If any two impls overlap, one must be a strict subset of the other.
-//!
-//! See the [rustc guide] for a bit more detail on how specialization
-//! fits together with the rest of the trait machinery.
-//!
-//! [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/trait-specialization.html
+// Logic and data structures related to impl specialization, explained in
+// greater detail below.
+//
+// At the moment, this implementation support only the simple "chain" rule:
+// If any two impls overlap, one must be a strict subset of the other.
+//
+// See traits/README.md for a bit more detail on how specialization
+// fits together with the rest of the trait machinery.
 
 use super::{SelectionContext, FulfillmentContext};
 use super::util::impl_trait_ref_and_oblig;
@@ -30,9 +28,7 @@ use traits::{self, Reveal, ObligationCause};
 use traits::select::IntercrateAmbiguityCause;
 use ty::{self, TyCtxt, TypeFoldable};
 use syntax_pos::DUMMY_SP;
-use rustc_data_structures::sync::Lrc;
-
-use lint;
+use std::rc::Rc;
 
 pub mod specialization_graph;
 
@@ -164,7 +160,7 @@ pub(super) fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // The feature gate should prevent introducing new specializations, but not
     // taking advantage of upstream ones.
-    if !tcx.features().specialization &&
+    if !tcx.sess.features.borrow().specialization &&
         (impl1_def_id.is_local() || impl2_def_id.is_local()) {
         return false;
     }
@@ -221,7 +217,7 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                        target_impl: DefId)
                                        -> Result<&'tcx Substs<'tcx>, ()> {
     let selcx = &mut SelectionContext::new(&infcx);
-    let target_substs = infcx.fresh_substs_for_item(param_env.universe, DUMMY_SP, target_impl);
+    let target_substs = infcx.fresh_substs_for_item(DUMMY_SP, target_impl);
     let (target_trait_ref, mut obligations) = impl_trait_ref_and_oblig(selcx,
                                                                        param_env,
                                                                        target_impl,
@@ -245,18 +241,7 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     // (which are packed up in penv)
 
     infcx.save_and_restore_in_snapshot_flag(|infcx| {
-        // If we came from `translate_substs`, we already know that the
-        // predicates for our impl hold (after all, we know that a more
-        // specialized impl holds, so our impl must hold too), and
-        // we only want to process the projections to determine the
-        // the types in our substs using RFC 447, so we can safely
-        // ignore region obligations, which allows us to avoid threading
-        // a node-id to assign them with.
-        //
-        // If we came from specialization graph construction, then
-        // we already make a mockery out of the region system, so
-        // why not ignore them a bit earlier?
-        let mut fulfill_cx = FulfillmentContext::new_ignoring_regions();
+        let mut fulfill_cx = FulfillmentContext::new();
         for oblig in obligations.into_iter() {
             fulfill_cx.register_predicate_obligation(&infcx, oblig);
         }
@@ -308,7 +293,7 @@ impl SpecializesCache {
 // Query provider for `specialization_graph_of`.
 pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                       trait_id: DefId)
-                                                      -> Lrc<specialization_graph::Graph> {
+                                                      -> Rc<specialization_graph::Graph> {
     let mut sg = specialization_graph::Graph::new();
 
     let mut trait_impls = Vec::new();
@@ -329,42 +314,21 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
             // This is where impl overlap checking happens:
             let insert_result = sg.insert(tcx, impl_def_id);
             // Report error if there was one.
-            let (overlap, used_to_be_allowed) = match insert_result {
-                Err(overlap) => (Some(overlap), false),
-                Ok(opt_overlap) => (opt_overlap, true)
-            };
-
-            if let Some(overlap) = overlap {
-                let msg = format!("conflicting implementations of trait `{}`{}:{}",
-                    overlap.trait_desc,
-                    overlap.self_desc.clone().map_or(
-                        String::new(), |ty| {
-                            format!(" for type `{}`", ty)
-                        }),
-                    if used_to_be_allowed { " (E0119)" } else { "" }
-                );
-                let impl_span = tcx.sess.codemap().def_span(
-                    tcx.span_of_impl(impl_def_id).unwrap()
-                );
-                let mut err = if used_to_be_allowed {
-                    tcx.struct_span_lint_node(
-                        lint::builtin::INCOHERENT_FUNDAMENTAL_IMPLS,
-                        tcx.hir.as_local_node_id(impl_def_id).unwrap(),
-                        impl_span,
-                        &msg)
-                } else {
-                    struct_span_err!(tcx.sess,
-                                     impl_span,
-                                     E0119,
-                                     "{}",
-                                     msg)
-                };
+            if let Err(overlap) = insert_result {
+                let mut err = struct_span_err!(tcx.sess,
+                                               tcx.span_of_impl(impl_def_id).unwrap(),
+                                               E0119,
+                                               "conflicting implementations of trait `{}`{}:",
+                                               overlap.trait_desc,
+                                               overlap.self_desc.clone().map_or(String::new(),
+                                                                                |ty| {
+                    format!(" for type `{}`", ty)
+                }));
 
                 match tcx.span_of_impl(overlap.with_impl) {
                     Ok(span) => {
-                        err.span_label(tcx.sess.codemap().def_span(span),
-                                       format!("first implementation here"));
-                        err.span_label(impl_span,
+                        err.span_label(span, format!("first implementation here"));
+                        err.span_label(tcx.span_of_impl(impl_def_id).unwrap(),
                                        format!("conflicting implementation{}",
                                                 overlap.self_desc
                                                     .map_or(String::new(),
@@ -392,7 +356,7 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
         }
     }
 
-    Lrc::new(sg)
+    Rc::new(sg)
 }
 
 /// Recovers the "impl X for Y" signature from `impl_def_id` and returns it as a

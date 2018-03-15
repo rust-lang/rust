@@ -27,87 +27,111 @@ impl BarTy {
 impl Foo for *const BarTy {
     fn bar(&self) {
         baz();
-        //~^ ERROR cannot find function `baz`
+        //~^ ERROR unresolved function `baz`
+        //~| NOTE did you mean `self.baz(...)`?
         a;
-        //~^ ERROR cannot find value `a`
+        //~^ ERROR unresolved value `a`
+        //~| NOTE no resolution found
     }
 }
 
 impl<'a> Foo for &'a BarTy {
     fn bar(&self) {
         baz();
-        //~^ ERROR cannot find function `baz`
+        //~^ ERROR unresolved function `baz`
+        //~| NOTE did you mean `self.baz(...)`?
         x;
-        //~^ ERROR cannot find value `x`
+        //~^ ERROR unresolved value `x`
+        //~| NOTE did you mean `self.x`?
         y;
-        //~^ ERROR cannot find value `y`
+        //~^ ERROR unresolved value `y`
+        //~| NOTE did you mean `self.y`?
         a;
-        //~^ ERROR cannot find value `a`
+        //~^ ERROR unresolved value `a`
+        //~| NOTE no resolution found
         bah;
-        //~^ ERROR cannot find value `bah`
+        //~^ ERROR unresolved value `bah`
+        //~| NOTE did you mean `Self::bah`?
         b;
-        //~^ ERROR cannot find value `b`
+        //~^ ERROR unresolved value `b`
+        //~| NOTE no resolution found
     }
 }
 
 impl<'a> Foo for &'a mut BarTy {
     fn bar(&self) {
         baz();
-        //~^ ERROR cannot find function `baz`
+        //~^ ERROR unresolved function `baz`
+        //~| NOTE did you mean `self.baz(...)`?
         x;
-        //~^ ERROR cannot find value `x`
+        //~^ ERROR unresolved value `x`
+        //~| NOTE did you mean `self.x`?
         y;
-        //~^ ERROR cannot find value `y`
+        //~^ ERROR unresolved value `y`
+        //~| NOTE did you mean `self.y`?
         a;
-        //~^ ERROR cannot find value `a`
+        //~^ ERROR unresolved value `a`
+        //~| NOTE no resolution found
         bah;
-        //~^ ERROR cannot find value `bah`
+        //~^ ERROR unresolved value `bah`
+        //~| NOTE did you mean `Self::bah`?
         b;
-        //~^ ERROR cannot find value `b`
+        //~^ ERROR unresolved value `b`
+        //~| NOTE no resolution found
     }
 }
 
 impl Foo for Box<BarTy> {
     fn bar(&self) {
         baz();
-        //~^ ERROR cannot find function `baz`
+        //~^ ERROR unresolved function `baz`
+        //~| NOTE did you mean `self.baz(...)`?
         bah;
-        //~^ ERROR cannot find value `bah`
+        //~^ ERROR unresolved value `bah`
+        //~| NOTE did you mean `Self::bah`?
     }
 }
 
 impl Foo for *const isize {
     fn bar(&self) {
         baz();
-        //~^ ERROR cannot find function `baz`
+        //~^ ERROR unresolved function `baz`
+        //~| NOTE did you mean `self.baz(...)`?
         bah;
-        //~^ ERROR cannot find value `bah`
+        //~^ ERROR unresolved value `bah`
+        //~| NOTE did you mean `Self::bah`?
     }
 }
 
 impl<'a> Foo for &'a isize {
     fn bar(&self) {
         baz();
-        //~^ ERROR cannot find function `baz`
+        //~^ ERROR unresolved function `baz`
+        //~| NOTE did you mean `self.baz(...)`?
         bah;
-        //~^ ERROR cannot find value `bah`
+        //~^ ERROR unresolved value `bah`
+        //~| NOTE did you mean `Self::bah`?
     }
 }
 
 impl<'a> Foo for &'a mut isize {
     fn bar(&self) {
         baz();
-        //~^ ERROR cannot find function `baz`
+        //~^ ERROR unresolved function `baz`
+        //~| NOTE did you mean `self.baz(...)`?
         bah;
-        //~^ ERROR cannot find value `bah`
+        //~^ ERROR unresolved value `bah`
+        //~| NOTE did you mean `Self::bah`?
     }
 }
 
 impl Foo for Box<isize> {
     fn bar(&self) {
         baz();
-        //~^ ERROR cannot find function `baz`
+        //~^ ERROR unresolved function `baz`
+        //~| NOTE did you mean `self.baz(...)`?
         bah;
-        //~^ ERROR cannot find value `bah`
+        //~^ ERROR unresolved value `bah`
+        //~| NOTE did you mean `Self::bah`?
     }
 }

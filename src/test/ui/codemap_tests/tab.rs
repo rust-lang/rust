@@ -11,9 +11,9 @@
 // ignore-tidy-tab
 
 fn main() {
-	bar; //~ ERROR cannot find value `bar`
+	bar;
 }
 
 fn foo() {
-	"bar			boo" //~ ERROR mismatched types
+	"bar			boo"
 }

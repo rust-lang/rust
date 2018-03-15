@@ -15,13 +15,13 @@ fn main() {
 }
 
 // END RUST SOURCE
-// START rustc.main.SimplifyBranches-initial.before.mir
+// START rustc.node4.SimplifyBranches-initial.before.mir
 // bb0: {
-//     switchInt(const false) -> [0u8: bb3, otherwise: bb2];
+//     switchInt(const false) -> [0u8: bb2, otherwise: bb1];
 // }
-// END rustc.main.SimplifyBranches-initial.before.mir
-// START rustc.main.SimplifyBranches-initial.after.mir
+// END rustc.node4.SimplifyBranches-initial.before.mir
+// START rustc.node4.SimplifyBranches-initial.after.mir
 // bb0: {
-//     goto -> bb3;
+//     goto -> bb2;
 // }
-// END rustc.main.SimplifyBranches-initial.after.mir
+// END rustc.node4.SimplifyBranches-initial.after.mir

@@ -11,11 +11,15 @@
 // no-prefer-dynamic
 // ignore-cross-compile
 
+#![feature(rustc_private)]
+
+extern crate rustc_back;
+
 use std::env;
 use std::fs;
 use std::process;
 use std::str;
-use std::path::PathBuf;
+use rustc_back::tempdir::TempDir;
 
 fn main() {
     // If we're the child, make sure we were invoked correctly
@@ -37,9 +41,8 @@ fn test() {
     let my_path = env::current_exe().unwrap();
     let my_dir  = my_path.parent().unwrap();
 
-    let child_dir = PathBuf::from(env::var_os("RUST_TEST_TMPDIR").unwrap());
-    let child_dir = child_dir.join("issue-15140-child");
-    fs::create_dir_all(&child_dir).unwrap();
+    let child_dir = TempDir::new_in(&my_dir, "issue-15140-child").unwrap();
+    let child_dir = child_dir.path();
 
     let child_path = child_dir.join(&format!("mytest{}",
                                              env::consts::EXE_SUFFIX));
@@ -60,4 +63,11 @@ fn test() {
             format!("child assertion failed\n child stdout:\n {}\n child stderr:\n {}",
                     str::from_utf8(&child_output.stdout).unwrap(),
                     str::from_utf8(&child_output.stderr).unwrap()));
+
+    let res = fs::remove_dir_all(&child_dir);
+    if res.is_err() {
+        // On Windows deleting just executed mytest.exe can fail because it's still locked
+        std::thread::sleep_ms(1000);
+        fs::remove_dir_all(&child_dir).unwrap();
+    }
 }

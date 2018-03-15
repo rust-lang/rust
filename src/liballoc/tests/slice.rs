@@ -10,9 +10,8 @@
 
 use std::cmp::Ordering::{Equal, Greater, Less};
 use std::mem;
+use std::__rand::{Rng, thread_rng};
 use std::rc::Rc;
-
-use rand::{Rng, thread_rng};
 
 fn square(n: usize) -> usize {
     n * n
@@ -494,72 +493,37 @@ fn test_sort_stability() {
 }
 
 #[test]
-fn test_rotate_left() {
+fn test_rotate() {
     let expected: Vec<_> = (0..13).collect();
     let mut v = Vec::new();
 
     // no-ops
     v.clone_from(&expected);
-    v.rotate_left(0);
+    v.rotate(0);
     assert_eq!(v, expected);
-    v.rotate_left(expected.len());
+    v.rotate(expected.len());
     assert_eq!(v, expected);
     let mut zst_array = [(), (), ()];
-    zst_array.rotate_left(2);
+    zst_array.rotate(2);
 
     // happy path
     v = (5..13).chain(0..5).collect();
-    v.rotate_left(8);
+    v.rotate(8);
     assert_eq!(v, expected);
 
     let expected: Vec<_> = (0..1000).collect();
 
     // small rotations in large slice, uses ptr::copy
     v = (2..1000).chain(0..2).collect();
-    v.rotate_left(998);
+    v.rotate(998);
     assert_eq!(v, expected);
     v = (998..1000).chain(0..998).collect();
-    v.rotate_left(2);
+    v.rotate(2);
     assert_eq!(v, expected);
 
     // non-small prime rotation, has a few rounds of swapping
     v = (389..1000).chain(0..389).collect();
-    v.rotate_left(1000-389);
-    assert_eq!(v, expected);
-}
-
-#[test]
-fn test_rotate_right() {
-    let expected: Vec<_> = (0..13).collect();
-    let mut v = Vec::new();
-
-    // no-ops
-    v.clone_from(&expected);
-    v.rotate_right(0);
-    assert_eq!(v, expected);
-    v.rotate_right(expected.len());
-    assert_eq!(v, expected);
-    let mut zst_array = [(), (), ()];
-    zst_array.rotate_right(2);
-
-    // happy path
-    v = (5..13).chain(0..5).collect();
-    v.rotate_right(5);
-    assert_eq!(v, expected);
-
-    let expected: Vec<_> = (0..1000).collect();
-
-    // small rotations in large slice, uses ptr::copy
-    v = (2..1000).chain(0..2).collect();
-    v.rotate_right(2);
-    assert_eq!(v, expected);
-    v = (998..1000).chain(0..998).collect();
-    v.rotate_right(998);
-    assert_eq!(v, expected);
-
-    // non-small prime rotation, has a few rounds of swapping
-    v = (389..1000).chain(0..389).collect();
-    v.rotate_right(389);
+    v.rotate(1000-389);
     assert_eq!(v, expected);
 }
 
@@ -946,30 +910,6 @@ fn test_chunksator_0() {
 }
 
 #[test]
-fn test_exact_chunksator() {
-    let v = &[1, 2, 3, 4, 5];
-
-    assert_eq!(v.exact_chunks(2).len(), 2);
-
-    let chunks: &[&[_]] = &[&[1, 2], &[3, 4]];
-    assert_eq!(v.exact_chunks(2).collect::<Vec<_>>(), chunks);
-    let chunks: &[&[_]] = &[&[1, 2, 3]];
-    assert_eq!(v.exact_chunks(3).collect::<Vec<_>>(), chunks);
-    let chunks: &[&[_]] = &[];
-    assert_eq!(v.exact_chunks(6).collect::<Vec<_>>(), chunks);
-
-    let chunks: &[&[_]] = &[&[3, 4], &[1, 2]];
-    assert_eq!(v.exact_chunks(2).rev().collect::<Vec<_>>(), chunks);
-}
-
-#[test]
-#[should_panic]
-fn test_exact_chunksator_0() {
-    let v = &[1, 2, 3, 4];
-    let _it = v.exact_chunks(0);
-}
-
-#[test]
 fn test_reverse_part() {
     let mut values = [1, 2, 3, 4, 5];
     values[1..4].reverse();
@@ -1183,7 +1123,7 @@ fn test_mut_chunks() {
         }
     }
     let result = [0, 0, 0, 1, 1, 1, 2];
-    assert_eq!(v, result);
+    assert!(v == result);
 }
 
 #[test]
@@ -1195,7 +1135,7 @@ fn test_mut_chunks_rev() {
         }
     }
     let result = [2, 2, 2, 1, 1, 1, 0];
-    assert_eq!(v, result);
+    assert!(v == result);
 }
 
 #[test]
@@ -1203,38 +1143,6 @@ fn test_mut_chunks_rev() {
 fn test_mut_chunks_0() {
     let mut v = [1, 2, 3, 4];
     let _it = v.chunks_mut(0);
-}
-
-#[test]
-fn test_mut_exact_chunks() {
-    let mut v = [0, 1, 2, 3, 4, 5, 6];
-    assert_eq!(v.exact_chunks_mut(2).len(), 3);
-    for (i, chunk) in v.exact_chunks_mut(3).enumerate() {
-        for x in chunk {
-            *x = i as u8;
-        }
-    }
-    let result = [0, 0, 0, 1, 1, 1, 6];
-    assert_eq!(v, result);
-}
-
-#[test]
-fn test_mut_exact_chunks_rev() {
-    let mut v = [0, 1, 2, 3, 4, 5, 6];
-    for (i, chunk) in v.exact_chunks_mut(3).rev().enumerate() {
-        for x in chunk {
-            *x = i as u8;
-        }
-    }
-    let result = [1, 1, 1, 0, 0, 0, 6];
-    assert_eq!(v, result);
-}
-
-#[test]
-#[should_panic]
-fn test_mut_exact_chunks_0() {
-    let mut v = [1, 2, 3, 4];
-    let _it = v.exact_chunks_mut(0);
 }
 
 #[test]

@@ -44,6 +44,7 @@ pub struct Module {
     pub stab: Option<attr::Stability>,
     pub depr: Option<attr::Deprecation>,
     pub impls: Vec<Impl>,
+    pub def_traits: Vec<AutoImpl>,
     pub foreigns: Vec<hir::ForeignMod>,
     pub macros: Vec<Macro>,
     pub is_crate: bool,
@@ -72,6 +73,7 @@ impl Module {
             constants  : Vec::new(),
             traits     : Vec::new(),
             impls      : Vec::new(),
+            def_traits : Vec::new(),
             foreigns   : Vec::new(),
             macros     : Vec::new(),
             is_crate   : false,
@@ -196,7 +198,6 @@ pub struct Constant {
 }
 
 pub struct Trait {
-    pub is_auto: hir::IsAuto,
     pub unsafety: hir::Unsafety,
     pub name: Name,
     pub items: hir::HirVec<hir::TraitItem>,
@@ -210,7 +211,6 @@ pub struct Trait {
     pub depr: Option<attr::Deprecation>,
 }
 
-#[derive(Debug)]
 pub struct Impl {
     pub unsafety: hir::Unsafety,
     pub polarity: hir::ImplPolarity,
@@ -225,6 +225,14 @@ pub struct Impl {
     pub stab: Option<attr::Stability>,
     pub depr: Option<attr::Deprecation>,
     pub id: ast::NodeId,
+}
+
+pub struct AutoImpl {
+    pub unsafety: hir::Unsafety,
+    pub trait_: hir::TraitRef,
+    pub id: ast::NodeId,
+    pub attrs: hir::HirVec<ast::Attribute>,
+    pub whence: Span,
 }
 
 // For Macro we store the DefId instead of the NodeId, since we also create

@@ -29,7 +29,7 @@ use core::iter::{FromIterator, FusedIterator};
 use core::marker::PhantomData;
 use core::mem;
 use core::ops::{BoxPlace, InPlace, Place, Placer};
-use core::ptr::{self, NonNull};
+use core::ptr::{self, Shared};
 
 use boxed::{Box, IntermediateBox};
 use super::SpecExtend;
@@ -44,15 +44,15 @@ use super::SpecExtend;
 /// more memory efficient and make better use of CPU cache.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct LinkedList<T> {
-    head: Option<NonNull<Node<T>>>,
-    tail: Option<NonNull<Node<T>>>,
+    head: Option<Shared<Node<T>>>,
+    tail: Option<Shared<Node<T>>>,
     len: usize,
     marker: PhantomData<Box<Node<T>>>,
 }
 
 struct Node<T> {
-    next: Option<NonNull<Node<T>>>,
-    prev: Option<NonNull<Node<T>>>,
+    next: Option<Shared<Node<T>>>,
+    prev: Option<Shared<Node<T>>>,
     element: T,
 }
 
@@ -65,8 +65,8 @@ struct Node<T> {
 /// [`LinkedList`]: struct.LinkedList.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
-    head: Option<NonNull<Node<T>>>,
-    tail: Option<NonNull<Node<T>>>,
+    head: Option<Shared<Node<T>>>,
+    tail: Option<Shared<Node<T>>>,
     len: usize,
     marker: PhantomData<&'a Node<T>>,
 }
@@ -98,8 +98,8 @@ impl<'a, T> Clone for Iter<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> {
     list: &'a mut LinkedList<T>,
-    head: Option<NonNull<Node<T>>>,
-    tail: Option<NonNull<Node<T>>>,
+    head: Option<Shared<Node<T>>>,
+    tail: Option<Shared<Node<T>>>,
     len: usize,
 }
 
@@ -157,7 +157,7 @@ impl<T> LinkedList<T> {
         unsafe {
             node.next = self.head;
             node.prev = None;
-            let node = Some(Box::into_raw_non_null(node));
+            let node = Some(Shared::from(Box::into_unique(node)));
 
             match self.head {
                 None => self.tail = node,
@@ -192,7 +192,7 @@ impl<T> LinkedList<T> {
         unsafe {
             node.next = None;
             node.prev = self.tail;
-            let node = Some(Box::into_raw_non_null(node));
+            let node = Some(Shared::from(Box::into_unique(node)));
 
             match self.tail {
                 None => self.head = node,
@@ -219,28 +219,6 @@ impl<T> LinkedList<T> {
             self.len -= 1;
             node
         })
-    }
-
-    /// Unlinks the specified node from the current list.
-    ///
-    /// Warning: this will not check that the provided node belongs to the current list.
-    #[inline]
-    unsafe fn unlink_node(&mut self, mut node: NonNull<Node<T>>) {
-        let node = node.as_mut();
-
-        match node.prev {
-            Some(mut prev) => prev.as_mut().next = node.next.clone(),
-            // this node is the head node
-            None => self.head = node.next.clone(),
-        };
-
-        match node.next {
-            Some(mut next) => next.as_mut().prev = node.prev.clone(),
-            // this node is the tail node
-            None => self.tail = node.prev.clone(),
-        };
-
-        self.len -= 1;
     }
 }
 
@@ -744,49 +722,6 @@ impl<T> LinkedList<T> {
         second_part
     }
 
-    /// Creates an iterator which uses a closure to determine if an element should be removed.
-    ///
-    /// If the closure returns true, then the element is removed and yielded.
-    /// If the closure returns false, the element will remain in the list and will not be yielded
-    /// by the iterator.
-    ///
-    /// Note that `drain_filter` lets you mutate every element in the filter closure, regardless of
-    /// whether you choose to keep or remove it.
-    ///
-    /// # Examples
-    ///
-    /// Splitting a list into evens and odds, reusing the original list:
-    ///
-    /// ```
-    /// #![feature(drain_filter)]
-    /// use std::collections::LinkedList;
-    ///
-    /// let mut numbers: LinkedList<u32> = LinkedList::new();
-    /// numbers.extend(&[1, 2, 3, 4, 5, 6, 8, 9, 11, 13, 14, 15]);
-    ///
-    /// let evens = numbers.drain_filter(|x| *x % 2 == 0).collect::<LinkedList<_>>();
-    /// let odds = numbers;
-    ///
-    /// assert_eq!(evens.into_iter().collect::<Vec<_>>(), vec![2, 4, 6, 8, 14]);
-    /// assert_eq!(odds.into_iter().collect::<Vec<_>>(), vec![1, 3, 5, 9, 11, 13, 15]);
-    /// ```
-    #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
-    pub fn drain_filter<F>(&mut self, filter: F) -> DrainFilter<T, F>
-        where F: FnMut(&mut T) -> bool
-    {
-        // avoid borrow issues.
-        let it = self.head;
-        let old_len = self.len;
-
-        DrainFilter {
-            list: self,
-            it: it,
-            pred: filter,
-            idx: 0,
-            old_len: old_len,
-        }
-    }
-
     /// Returns a place for insertion at the front of the list.
     ///
     /// Using this method with placement syntax is equivalent to
@@ -897,7 +832,7 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
 
-#[stable(feature = "fused", since = "1.26.0")]
+#[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for Iter<'a, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -946,7 +881,7 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for IterMut<'a, T> {}
 
-#[stable(feature = "fused", since = "1.26.0")]
+#[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for IterMut<'a, T> {}
 
 impl<'a, T> IterMut<'a, T> {
@@ -986,11 +921,11 @@ impl<'a, T> IterMut<'a, T> {
                     Some(prev) => prev,
                 };
 
-                let node = Some(Box::into_raw_non_null(box Node {
+                let node = Some(Shared::from(Box::into_unique(box Node {
                     next: Some(head),
                     prev: Some(prev),
                     element,
-                }));
+                })));
 
                 prev.as_mut().next = node;
                 head.as_mut().prev = node;
@@ -1032,65 +967,6 @@ impl<'a, T> IterMut<'a, T> {
     }
 }
 
-/// An iterator produced by calling `drain_filter` on LinkedList.
-#[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
-pub struct DrainFilter<'a, T: 'a, F: 'a>
-    where F: FnMut(&mut T) -> bool,
-{
-    list: &'a mut LinkedList<T>,
-    it: Option<NonNull<Node<T>>>,
-    pred: F,
-    idx: usize,
-    old_len: usize,
-}
-
-#[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
-impl<'a, T, F> Iterator for DrainFilter<'a, T, F>
-    where F: FnMut(&mut T) -> bool,
-{
-    type Item = T;
-
-    fn next(&mut self) -> Option<T> {
-        while let Some(mut node) = self.it {
-            unsafe {
-                self.it = node.as_ref().next;
-                self.idx += 1;
-
-                if (self.pred)(&mut node.as_mut().element) {
-                    self.list.unlink_node(node);
-                    return Some(Box::from_raw(node.as_ptr()).element);
-                }
-            }
-        }
-
-        None
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, Some(self.old_len - self.idx))
-    }
-}
-
-#[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
-impl<'a, T, F> Drop for DrainFilter<'a, T, F>
-    where F: FnMut(&mut T) -> bool,
-{
-    fn drop(&mut self) {
-        for _ in self { }
-    }
-}
-
-#[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
-impl<'a, T: 'a + fmt::Debug, F> fmt::Debug for DrainFilter<'a, T, F>
-    where F: FnMut(&mut T) -> bool
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("DrainFilter")
-         .field(&self.list)
-         .finish()
-    }
-}
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Iterator for IntoIter<T> {
     type Item = T;
@@ -1117,7 +993,7 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for IntoIter<T> {}
 
-#[stable(feature = "fused", since = "1.26.0")]
+#[unstable(feature = "fused", issue = "35602")]
 impl<T> FusedIterator for IntoIter<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1286,7 +1162,7 @@ impl<'a, T> Placer<T> for FrontPlace<'a, T> {
 #[unstable(feature = "collection_placement",
            reason = "placement protocol is subject to change",
            issue = "30172")]
-unsafe impl<'a, T> Place<T> for FrontPlace<'a, T> {
+impl<'a, T> Place<T> for FrontPlace<'a, T> {
     fn pointer(&mut self) -> *mut T {
         unsafe { &mut (*self.node.pointer()).element }
     }
@@ -1341,7 +1217,7 @@ impl<'a, T> Placer<T> for BackPlace<'a, T> {
 #[unstable(feature = "collection_placement",
            reason = "placement protocol is subject to change",
            issue = "30172")]
-unsafe impl<'a, T> Place<T> for BackPlace<'a, T> {
+impl<'a, T> Place<T> for BackPlace<'a, T> {
     fn pointer(&mut self) -> *mut T {
         unsafe { &mut (*self.node.pointer()).element }
     }
@@ -1393,10 +1269,9 @@ unsafe impl<'a, T: Sync> Sync for IterMut<'a, T> {}
 
 #[cfg(test)]
 mod tests {
+    use std::__rand::{thread_rng, Rng};
     use std::thread;
     use std::vec::Vec;
-
-    use rand::{thread_rng, Rng};
 
     use super::{LinkedList, Node};
 
@@ -1412,8 +1287,6 @@ mod tests {
             let mut node_ptr: &Node<T>;
             match list.head {
                 None => {
-                    // tail node should also be None.
-                    assert!(list.tail.is_none());
                     assert_eq!(0, list.len);
                     return;
                 }
@@ -1440,11 +1313,6 @@ mod tests {
                     }
                 }
             }
-
-            // verify that the tail node points to the last node.
-            let tail = list.tail.as_ref().expect("some tail node").as_ref();
-            assert_eq!(tail as *const Node<T>, node_ptr as *const Node<T>);
-            // check that len matches interior links.
             assert_eq!(len, list.len);
         }
     }
@@ -1632,29 +1500,5 @@ mod tests {
             assert_eq!(a, b);
         }
         assert_eq!(i, v.len());
-    }
-
-    #[test]
-    fn drain_filter_test() {
-        let mut m: LinkedList<u32> = LinkedList::new();
-        m.extend(&[1, 2, 3, 4, 5, 6]);
-        let deleted = m.drain_filter(|v| *v < 4).collect::<Vec<_>>();
-
-        check_links(&m);
-
-        assert_eq!(deleted, &[1, 2, 3]);
-        assert_eq!(m.into_iter().collect::<Vec<_>>(), &[4, 5, 6]);
-    }
-
-    #[test]
-    fn drain_to_empty_test() {
-        let mut m: LinkedList<u32> = LinkedList::new();
-        m.extend(&[1, 2, 3, 4, 5, 6]);
-        let deleted = m.drain_filter(|_| true).collect::<Vec<_>>();
-
-        check_links(&m);
-
-        assert_eq!(deleted, &[1, 2, 3, 4, 5, 6]);
-        assert_eq!(m.into_iter().collect::<Vec<_>>(), &[]);
     }
 }

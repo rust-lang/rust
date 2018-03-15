@@ -384,11 +384,8 @@ pub fn unlink(p: &Path) -> io::Result<()> {
 }
 
 pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
-    let fd = cvt(syscall::open(old.to_str().unwrap(),
-                               syscall::O_CLOEXEC | syscall::O_STAT | syscall::O_NOFOLLOW))?;
-    let res = cvt(syscall::frename(fd, new.to_str().unwrap()));
-    cvt(syscall::close(fd))?;
-    res?;
+    copy(old, new)?;
+    unlink(old)?;
     Ok(())
 }
 
@@ -424,27 +421,24 @@ fn remove_dir_all_recursive(path: &Path) -> io::Result<()> {
 }
 
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {
-    let fd = cvt(syscall::open(p.to_str().unwrap(),
-                               syscall::O_CLOEXEC | syscall::O_SYMLINK | syscall::O_RDONLY))?;
+    let fd = cvt(syscall::open(p.to_str().unwrap(), syscall::O_SYMLINK | syscall::O_RDONLY))?;
     let mut buf: [u8; 4096] = [0; 4096];
-    let res = cvt(syscall::read(fd, &mut buf));
+    let count = cvt(syscall::read(fd, &mut buf))?;
     cvt(syscall::close(fd))?;
-    let count = res?;
     Ok(PathBuf::from(unsafe { String::from_utf8_unchecked(Vec::from(&buf[..count])) }))
 }
 
 pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
     let fd = cvt(syscall::open(dst.to_str().unwrap(),
-                               syscall::O_CLOEXEC | syscall::O_SYMLINK |
-                               syscall::O_CREAT | syscall::O_WRONLY | 0o777))?;
-    let res = cvt(syscall::write(fd, src.to_str().unwrap().as_bytes()));
+                               syscall::O_SYMLINK | syscall::O_CREAT | syscall::O_WRONLY | 0o777))?;
+    cvt(syscall::write(fd, src.to_str().unwrap().as_bytes()))?;
     cvt(syscall::close(fd))?;
-    res?;
     Ok(())
 }
 
 pub fn link(_src: &Path, _dst: &Path) -> io::Result<()> {
-    Err(Error::from_raw_os_error(syscall::ENOSYS))
+    ::sys_common::util::dumb_print(format_args!("Link\n"));
+    unimplemented!();
 }
 
 pub fn stat(p: &Path) -> io::Result<FileAttr> {

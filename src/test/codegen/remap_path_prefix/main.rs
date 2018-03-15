@@ -11,7 +11,7 @@
 // ignore-windows
 // ignore-tidy-linelength
 
-// compile-flags: -g  -C no-prepopulate-passes --remap-path-prefix={{cwd}}=/the/cwd --remap-path-prefix={{src-base}}=/the/src
+// compile-flags: -g  -C no-prepopulate-passes -Zremap-path-prefix-from={{cwd}} -Zremap-path-prefix-to=/the/cwd -Zremap-path-prefix-from={{src-base}} -Zremap-path-prefix-to=/the/src
 // aux-build:remap_path_prefix_aux.rs
 
 extern crate remap_path_prefix_aux;
@@ -32,7 +32,7 @@ fn main() {
 }
 
 // Here we check that local debuginfo is mapped correctly.
-// CHECK: !DIFile(filename: "/the/src/remap_path_prefix/main.rs", directory: "/the/cwd/")
+// CHECK: !DIFile(filename: "/the/src/remap_path_prefix/main.rs", directory: "/the/cwd")
 
 // And here that debuginfo from other crates are expanded to absolute paths.
 // CHECK: !DIFile(filename: "/the/aux-src/remap_path_prefix_aux.rs", directory: "")

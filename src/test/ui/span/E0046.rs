@@ -10,12 +10,14 @@
 
 trait Foo {
     fn foo();
+    //~^ NOTE `foo` from trait
 }
 
 struct Bar;
 
 impl Foo for Bar {}
 //~^ ERROR E0046
+//~| NOTE missing `foo` in implementation
 
 fn main() {
 }

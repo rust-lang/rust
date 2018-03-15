@@ -23,19 +23,19 @@ struct X<T1, T2> {
 }
 
 fn a() -> Foo {
-    Some(Foo { bar: 1 }) //~ ERROR mismatched types
+    Some(Foo { bar: 1 })
 }
 
 fn a2() -> Foo {
-    Ok(Foo { bar: 1}) //~ ERROR mismatched types
+    Ok(Foo { bar: 1})
 }
 
 fn b() -> Option<Foo> {
-    Foo { bar: 1 } //~ ERROR mismatched types
+    Foo { bar: 1 }
 }
 
 fn c() -> Result<Foo, Bar> {
-    Foo { bar: 1 } //~ ERROR mismatched types
+    Foo { bar: 1 }
 }
 
 fn d() -> X<X<String, String>, String> {
@@ -46,7 +46,7 @@ fn d() -> X<X<String, String>, String> {
         },
         y: 3,
     };
-    x //~ ERROR mismatched types
+    x
 }
 
 fn e() -> X<X<String, String>, String> {
@@ -57,7 +57,7 @@ fn e() -> X<X<String, String>, String> {
         },
         y: "".to_string(),
     };
-    x //~ ERROR mismatched types
+    x
 }
 
 fn main() {}

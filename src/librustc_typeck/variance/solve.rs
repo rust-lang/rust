@@ -18,7 +18,7 @@
 use rustc::hir::def_id::DefId;
 use rustc::ty;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::Lrc;
+use std::rc::Rc;
 
 use super::constraints::*;
 use super::terms::*;
@@ -51,7 +51,7 @@ pub fn solve_constraints(constraints_cx: ConstraintContext) -> ty::CrateVariance
     };
     solutions_cx.solve();
     let variances = solutions_cx.create_map();
-    let empty_variance = Lrc::new(Vec::new());
+    let empty_variance = Rc::new(Vec::new());
 
     ty::CrateVariancesMap { variances, empty_variance }
 }
@@ -88,7 +88,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
         }
     }
 
-    fn create_map(&self) -> FxHashMap<DefId, Lrc<Vec<ty::Variance>>> {
+    fn create_map(&self) -> FxHashMap<DefId, Rc<Vec<ty::Variance>>> {
         let tcx = self.terms_cx.tcx;
 
         let solutions = &self.solutions;
@@ -109,7 +109,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
                 }
             }
 
-            (def_id, Lrc::new(variances))
+            (def_id, Rc::new(variances))
         }).collect()
     }
 

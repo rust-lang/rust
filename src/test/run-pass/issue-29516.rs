@@ -10,8 +10,9 @@
 
 #![feature(optin_builtin_traits)]
 
-auto trait NotSame {}
-
+trait NotSame {}
+#[allow(auto_impl)]
+impl NotSame for .. {}
 impl<A> !NotSame for (A, A) {}
 
 trait OneOfEach {}

@@ -11,24 +11,21 @@
 // This test case makes sure that the compiler doesn't crash due to a failing
 // table lookup when a source file is removed.
 
-// revisions:cfail1 cfail2
+// revisions:rpass1 rpass2
 
 // Note that we specify -g so that the FileMaps actually get referenced by the
 // incr. comp. cache:
 // compile-flags: -Z query-dep-graph -g
-// must-compile-successfully
 
-#![crate_type= "rlib"]
-
-#[cfg(cfail1)]
+#[cfg(rpass1)]
 mod auxiliary;
 
-#[cfg(cfail1)]
-pub fn foo() {
+#[cfg(rpass1)]
+fn main() {
     auxiliary::print_hello();
 }
 
-#[cfg(cfail2)]
-pub fn foo() {
+#[cfg(rpass2)]
+fn main() {
     println!("hello");
 }

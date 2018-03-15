@@ -34,4 +34,3 @@ fn issue_36540() {
 }
 
 trait Trait<T> {}
-impl Trait<i32> for i32 {}

@@ -21,7 +21,7 @@ use syntax::print::pprust::PrintState;
 use syntax::ptr::P;
 use syntax::symbol::keywords;
 use syntax::util::parser::{self, AssocOp, Fixity};
-use syntax_pos::{self, BytePos, FileName};
+use syntax_pos::{self, BytePos};
 
 use hir;
 use hir::{PatKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier, RangeEnd};
@@ -62,7 +62,7 @@ pub trait PpAnn {
 
 pub struct NoAnn;
 impl PpAnn for NoAnn {}
-pub const NO_ANN: &'static dyn PpAnn = &NoAnn;
+pub const NO_ANN: &'static PpAnn = &NoAnn;
 
 impl PpAnn for hir::Crate {
     fn nested(&self, state: &mut State, nested: Nested) -> io::Result<()> {
@@ -83,7 +83,7 @@ pub struct State<'a> {
     literals: Peekable<vec::IntoIter<comments::Literal>>,
     cur_cmnt: usize,
     boxes: Vec<pp::Breaks>,
-    ann: &'a (dyn PpAnn + 'a),
+    ann: &'a (PpAnn + 'a),
 }
 
 impl<'a> PrintState<'a> for State<'a> {
@@ -125,10 +125,10 @@ pub const default_columns: usize = 78;
 pub fn print_crate<'a>(cm: &'a CodeMap,
                        sess: &ParseSess,
                        krate: &hir::Crate,
-                       filename: FileName,
-                       input: &mut dyn Read,
-                       out: Box<dyn Write + 'a>,
-                       ann: &'a dyn PpAnn,
+                       filename: String,
+                       input: &mut Read,
+                       out: Box<Write + 'a>,
+                       ann: &'a PpAnn,
                        is_expanded: bool)
                        -> io::Result<()> {
     let mut s = State::new_from_input(cm, sess, filename, input, out, ann, is_expanded);
@@ -144,10 +144,10 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
 impl<'a> State<'a> {
     pub fn new_from_input(cm: &'a CodeMap,
                           sess: &ParseSess,
-                          filename: FileName,
-                          input: &mut dyn Read,
-                          out: Box<dyn Write + 'a>,
-                          ann: &'a dyn PpAnn,
+                          filename: String,
+                          input: &mut Read,
+                          out: Box<Write + 'a>,
+                          ann: &'a PpAnn,
                           is_expanded: bool)
                           -> State<'a> {
         let (cmnts, lits) = comments::gather_comments_and_literals(sess, filename, input);
@@ -167,8 +167,8 @@ impl<'a> State<'a> {
     }
 
     pub fn new(cm: &'a CodeMap,
-               out: Box<dyn Write + 'a>,
-               ann: &'a dyn PpAnn,
+               out: Box<Write + 'a>,
+               ann: &'a PpAnn,
                comments: Option<Vec<comments::Comment>>,
                literals: Option<Vec<comments::Literal>>)
                -> State<'a> {
@@ -184,7 +184,7 @@ impl<'a> State<'a> {
     }
 }
 
-pub fn to_string<F>(ann: &dyn PpAnn, f: F) -> String
+pub fn to_string<F>(ann: &PpAnn, f: F) -> String
     where F: FnOnce(&mut State) -> io::Result<()>
 {
     let mut wr = Vec::new();
@@ -390,7 +390,16 @@ impl<'a> State<'a> {
                 self.pclose()?;
             }
             hir::TyBareFn(ref f) => {
-                self.print_ty_fn(f.abi, f.unsafety, &f.decl, None, &f.generic_params,
+                let generics = hir::Generics {
+                    lifetimes: f.lifetimes.clone(),
+                    ty_params: hir::HirVec::new(),
+                    where_clause: hir::WhereClause {
+                        id: ast::DUMMY_NODE_ID,
+                        predicates: hir::HirVec::new(),
+                    },
+                    span: syntax_pos::DUMMY_SP,
+                };
+                self.print_ty_fn(f.abi, f.unsafety, &f.decl, None, &generics,
                                  &f.arg_names[..])?;
             }
             hir::TyPath(ref qpath) => {
@@ -399,22 +408,21 @@ impl<'a> State<'a> {
             hir::TyTraitObject(ref bounds, ref lifetime) => {
                 let mut first = true;
                 for bound in bounds {
+                    self.nbsp()?;
                     if first {
                         first = false;
                     } else {
-                        self.nbsp()?;
                         self.word_space("+")?;
                     }
                     self.print_poly_trait_ref(bound)?;
                 }
                 if !lifetime.is_elided() {
-                    self.nbsp()?;
                     self.word_space("+")?;
                     self.print_lifetime(lifetime)?;
                 }
             }
-            hir::TyImplTraitExistential(ref existty, ref _lifetimes) => {
-                self.print_bounds("impl", &existty.bounds[..])?;
+            hir::TyImplTrait(ref bounds) => {
+                self.print_bounds("impl ", &bounds[..])?;
             }
             hir::TyArray(ref ty, v) => {
                 self.s.word("[")?;
@@ -626,15 +634,15 @@ impl<'a> State<'a> {
                 self.s.word(&ga.asm.as_str())?;
                 self.end()?
             }
-            hir::ItemTy(ref ty, ref generics) => {
+            hir::ItemTy(ref ty, ref params) => {
                 self.ibox(indent_unit)?;
                 self.ibox(0)?;
                 self.word_nbsp(&visibility_qualified(&item.vis, "type"))?;
                 self.print_name(item.name)?;
-                self.print_generic_params(&generics.params)?;
+                self.print_generics(params)?;
                 self.end()?; // end the inner ibox
 
-                self.print_where_clause(&generics.where_clause)?;
+                self.print_where_clause(&params.where_clause)?;
                 self.s.space()?;
                 self.word_space("=")?;
                 self.print_type(&ty)?;
@@ -652,6 +660,18 @@ impl<'a> State<'a> {
                 self.head(&visibility_qualified(&item.vis, "union"))?;
                 self.print_struct(struct_def, generics, item.name, item.span, true)?;
             }
+            hir::ItemAutoImpl(unsafety, ref trait_ref) => {
+                self.head("")?;
+                self.print_visibility(&item.vis)?;
+                self.print_unsafety(unsafety)?;
+                self.word_nbsp("impl")?;
+                self.print_trait_ref(trait_ref)?;
+                self.s.space()?;
+                self.word_space("for")?;
+                self.word_space("..")?;
+                self.bopen()?;
+                self.bclose(item.span)?;
+            }
             hir::ItemImpl(unsafety,
                           polarity,
                           defaultness,
@@ -665,8 +685,8 @@ impl<'a> State<'a> {
                 self.print_unsafety(unsafety)?;
                 self.word_nbsp("impl")?;
 
-                if !generics.params.is_empty() {
-                    self.print_generic_params(&generics.params)?;
+                if generics.is_parameterized() {
+                    self.print_generics(generics)?;
                     self.s.space()?;
                 }
 
@@ -704,7 +724,7 @@ impl<'a> State<'a> {
                 self.print_unsafety(unsafety)?;
                 self.word_nbsp("trait")?;
                 self.print_name(item.name)?;
-                self.print_generic_params(&generics.params)?;
+                self.print_generics(generics)?;
                 let mut real_bounds = Vec::with_capacity(bounds.len());
                 for b in bounds.iter() {
                     if let TraitTyParamBound(ref ptr, hir::TraitBoundModifier::Maybe) = *b {
@@ -724,28 +744,6 @@ impl<'a> State<'a> {
                 }
                 self.bclose(item.span)?;
             }
-            hir::ItemTraitAlias(ref generics, ref bounds) => {
-                self.head("")?;
-                self.print_visibility(&item.vis)?;
-                self.word_nbsp("trait")?;
-                self.print_name(item.name)?;
-                self.print_generic_params(&generics.params)?;
-                let mut real_bounds = Vec::with_capacity(bounds.len());
-                // FIXME(durka) this seems to be some quite outdated syntax
-                for b in bounds.iter() {
-                    if let TraitTyParamBound(ref ptr, hir::TraitBoundModifier::Maybe) = *b {
-                        self.s.space()?;
-                        self.word_space("for ?")?;
-                        self.print_trait_ref(&ptr.trait_ref)?;
-                    } else {
-                        real_bounds.push(b.clone());
-                    }
-                }
-                self.nbsp()?;
-                self.print_bounds("=", &real_bounds[..])?;
-                self.print_where_clause(&generics.where_clause)?;
-                self.s.word(";")?;
-            }
         }
         self.ann.post(self, NodeItem(item))
     }
@@ -754,20 +752,24 @@ impl<'a> State<'a> {
         self.print_path(&t.path, false)
     }
 
-    fn print_formal_generic_params(
-        &mut self,
-        generic_params: &[hir::GenericParam]
-    ) -> io::Result<()> {
-        if !generic_params.is_empty() {
-            self.s.word("for")?;
-            self.print_generic_params(generic_params)?;
-            self.nbsp()?;
+    fn print_formal_lifetime_list(&mut self, lifetimes: &[hir::LifetimeDef]) -> io::Result<()> {
+        if !lifetimes.is_empty() {
+            self.s.word("for<")?;
+            let mut comma = false;
+            for lifetime_def in lifetimes {
+                if comma {
+                    self.word_space(",")?
+                }
+                self.print_lifetime_def(lifetime_def)?;
+                comma = true;
+            }
+            self.s.word(">")?;
         }
         Ok(())
     }
 
     fn print_poly_trait_ref(&mut self, t: &hir::PolyTraitRef) -> io::Result<()> {
-        self.print_formal_generic_params(&t.bound_generic_params)?;
+        self.print_formal_lifetime_list(&t.bound_lifetimes)?;
         self.print_trait_ref(&t.trait_ref)
     }
 
@@ -780,7 +782,7 @@ impl<'a> State<'a> {
                           -> io::Result<()> {
         self.head(&visibility_qualified(visibility, "enum"))?;
         self.print_name(name)?;
-        self.print_generic_params(&generics.params)?;
+        self.print_generics(generics)?;
         self.print_where_clause(&generics.where_clause)?;
         self.s.space()?;
         self.print_variants(&enum_definition.variants, span)
@@ -833,7 +835,7 @@ impl<'a> State<'a> {
                         print_finalizer: bool)
                         -> io::Result<()> {
         self.print_name(name)?;
-        self.print_generic_params(&generics.params)?;
+        self.print_generics(generics)?;
         if !struct_def.is_struct() {
             if struct_def.is_tuple() {
                 self.popen()?;
@@ -1104,7 +1106,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_expr_maybe_paren(&mut self, expr: &hir::Expr, prec: i8) -> io::Result<()> {
-        let needs_par = expr.precedence().order() < prec;
+        let needs_par = expr_precedence(expr) < prec;
         if needs_par {
             self.popen()?;
         }
@@ -1337,9 +1339,9 @@ impl<'a> State<'a> {
             hir::ExprIf(ref test, ref blk, ref elseopt) => {
                 self.print_if(&test, &blk, elseopt.as_ref().map(|e| &**e))?;
             }
-            hir::ExprWhile(ref test, ref blk, opt_label) => {
-                if let Some(label) = opt_label {
-                    self.print_name(label.name)?;
+            hir::ExprWhile(ref test, ref blk, opt_sp_name) => {
+                if let Some(sp_name) = opt_sp_name {
+                    self.print_name(sp_name.node)?;
                     self.word_space(":")?;
                 }
                 self.head("while")?;
@@ -1347,9 +1349,9 @@ impl<'a> State<'a> {
                 self.s.space()?;
                 self.print_block(&blk)?;
             }
-            hir::ExprLoop(ref blk, opt_label, _) => {
-                if let Some(label) = opt_label {
-                    self.print_name(label.name)?;
+            hir::ExprLoop(ref blk, opt_sp_name, _) => {
+                if let Some(sp_name) = opt_sp_name {
+                    self.print_name(sp_name.node)?;
                     self.word_space(":")?;
                 }
                 self.head("loop")?;
@@ -1424,11 +1426,11 @@ impl<'a> State<'a> {
             hir::ExprPath(ref qpath) => {
                 self.print_qpath(qpath, true)?
             }
-            hir::ExprBreak(destination, ref opt_expr) => {
+            hir::ExprBreak(label, ref opt_expr) => {
                 self.s.word("break")?;
                 self.s.space()?;
-                if let Some(label) = destination.label {
-                    self.print_name(label.name)?;
+                if let Some(label_ident) = label.ident {
+                    self.print_name(label_ident.node.name)?;
                     self.s.space()?;
                 }
                 if let Some(ref expr) = *opt_expr {
@@ -1436,11 +1438,11 @@ impl<'a> State<'a> {
                     self.s.space()?;
                 }
             }
-            hir::ExprAgain(destination) => {
+            hir::ExprAgain(label) => {
                 self.s.word("continue")?;
                 self.s.space()?;
-                if let Some(label) = destination.label {
-                    self.print_name(label.name)?;
+                if let Some(label_ident) = label.ident {
+                    self.print_name(label_ident.node.name)?;
                     self.s.space()?
                 }
             }
@@ -1915,7 +1917,7 @@ impl<'a> State<'a> {
             self.nbsp()?;
             self.print_name(name)?;
         }
-        self.print_generic_params(&generics.params)?;
+        self.print_generics(generics)?;
 
         self.popen()?;
         let mut i = 0;
@@ -1990,29 +1992,30 @@ impl<'a> State<'a> {
             self.s.word(prefix)?;
             let mut first = true;
             for bound in bounds {
-                if !(first && prefix.is_empty()) {
-                    self.nbsp()?;
-                }
+                self.nbsp()?;
                 if first {
                     first = false;
                 } else {
                     self.word_space("+")?;
                 }
 
-                match bound {
-                    TraitTyParamBound(tref, modifier) => {
-                        if modifier == &TraitBoundModifier::Maybe {
-                            self.s.word("?")?;
-                        }
-                        self.print_poly_trait_ref(tref)?;
+                match *bound {
+                    TraitTyParamBound(ref tref, TraitBoundModifier::None) => {
+                        self.print_poly_trait_ref(tref)
                     }
-                    RegionTyParamBound(lt) => {
-                        self.print_lifetime(lt)?;
+                    TraitTyParamBound(ref tref, TraitBoundModifier::Maybe) => {
+                        self.s.word("?")?;
+                        self.print_poly_trait_ref(tref)
                     }
-                }
+                    RegionTyParamBound(ref lt) => {
+                        self.print_lifetime(lt)
+                    }
+                }?
             }
+            Ok(())
+        } else {
+            Ok(())
         }
-        Ok(())
     }
 
     pub fn print_lifetime(&mut self, lifetime: &hir::Lifetime) -> io::Result<()> {
@@ -2030,19 +2033,31 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    pub fn print_generic_params(&mut self, generic_params: &[hir::GenericParam]) -> io::Result<()> {
-        if !generic_params.is_empty() {
-            self.s.word("<")?;
-
-            self.commasep(Inconsistent, generic_params, |s, param| {
-                match *param {
-                    hir::GenericParam::Lifetime(ref ld) => s.print_lifetime_def(ld),
-                    hir::GenericParam::Type(ref tp) => s.print_ty_param(tp),
-                }
-            })?;
-
-            self.s.word(">")?;
+    pub fn print_generics(&mut self, generics: &hir::Generics) -> io::Result<()> {
+        let total = generics.lifetimes.len() + generics.ty_params.len();
+        if total == 0 {
+            return Ok(());
         }
+
+        self.s.word("<")?;
+
+        let mut ints = Vec::new();
+        for i in 0..total {
+            ints.push(i);
+        }
+
+        self.commasep(Inconsistent, &ints[..], |s, &idx| {
+            if idx < generics.lifetimes.len() {
+                let lifetime = &generics.lifetimes[idx];
+                s.print_lifetime_def(lifetime)
+            } else {
+                let idx = idx - generics.lifetimes.len();
+                let param = &generics.ty_params[idx];
+                s.print_ty_param(param)
+            }
+        })?;
+
+        self.s.word(">")?;
         Ok(())
     }
 
@@ -2073,13 +2088,11 @@ impl<'a> State<'a> {
             }
 
             match predicate {
-                &hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
-                    ref bound_generic_params,
-                    ref bounded_ty,
-                    ref bounds,
-                    ..
-                }) => {
-                    self.print_formal_generic_params(bound_generic_params)?;
+                &hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate{ref bound_lifetimes,
+                                                                              ref bounded_ty,
+                                                                              ref bounds,
+                                                                              ..}) => {
+                    self.print_formal_lifetime_list(bound_lifetimes)?;
                     self.print_type(&bounded_ty)?;
                     self.print_bounds(":", bounds)?;
                 }
@@ -2148,16 +2161,17 @@ impl<'a> State<'a> {
                        unsafety: hir::Unsafety,
                        decl: &hir::FnDecl,
                        name: Option<ast::Name>,
-                       generic_params: &[hir::GenericParam],
+                       generics: &hir::Generics,
                        arg_names: &[Spanned<ast::Name>])
                        -> io::Result<()> {
         self.ibox(indent_unit)?;
-        if !generic_params.is_empty() {
+        if !generics.lifetimes.is_empty() || !generics.ty_params.is_empty() {
             self.s.word("for")?;
-            self.print_generic_params(generic_params)?;
+            self.print_generics(generics)?;
         }
         let generics = hir::Generics {
-            params: hir::HirVec::new(),
+            lifetimes: hir::HirVec::new(),
+            ty_params: hir::HirVec::new(),
             where_clause: hir::WhereClause {
                 id: ast::DUMMY_NODE_ID,
                 predicates: hir::HirVec::new(),
@@ -2208,8 +2222,13 @@ impl<'a> State<'a> {
         if self.next_comment().is_none() {
             self.s.hardbreak()?;
         }
-        while let Some(ref cmnt) = self.next_comment() {
-            self.print_comment(cmnt)?
+        loop {
+            match self.next_comment() {
+                Some(ref cmnt) => {
+                    self.print_comment(cmnt)?;
+                }
+                _ => break,
+            }
         }
         Ok(())
     }
@@ -2310,6 +2329,55 @@ fn stmt_ends_with_semi(stmt: &hir::Stmt_) -> bool {
         hir::StmtSemi(..) => {
             false
         }
+    }
+}
+
+
+fn expr_precedence(expr: &hir::Expr) -> i8 {
+    use syntax::util::parser::*;
+
+    match expr.node {
+        hir::ExprClosure(..) => PREC_CLOSURE,
+
+        hir::ExprBreak(..) |
+        hir::ExprAgain(..) |
+        hir::ExprRet(..) |
+        hir::ExprYield(..) => PREC_JUMP,
+
+        // Binop-like expr kinds, handled by `AssocOp`.
+        hir::ExprBinary(op, _, _) => bin_op_to_assoc_op(op.node).precedence() as i8,
+
+        hir::ExprCast(..) => AssocOp::As.precedence() as i8,
+        hir::ExprType(..) => AssocOp::Colon.precedence() as i8,
+
+        hir::ExprAssign(..) |
+        hir::ExprAssignOp(..) => AssocOp::Assign.precedence() as i8,
+
+        // Unary, prefix
+        hir::ExprBox(..) |
+        hir::ExprAddrOf(..) |
+        hir::ExprUnary(..) => PREC_PREFIX,
+
+        // Unary, postfix
+        hir::ExprCall(..) |
+        hir::ExprMethodCall(..) |
+        hir::ExprField(..) |
+        hir::ExprTupField(..) |
+        hir::ExprIndex(..) |
+        hir::ExprInlineAsm(..) => PREC_POSTFIX,
+
+        // Never need parens
+        hir::ExprArray(..) |
+        hir::ExprRepeat(..) |
+        hir::ExprTup(..) |
+        hir::ExprLit(..) |
+        hir::ExprPath(..) |
+        hir::ExprIf(..) |
+        hir::ExprWhile(..) |
+        hir::ExprLoop(..) |
+        hir::ExprMatch(..) |
+        hir::ExprBlock(..) |
+        hir::ExprStruct(..) => PREC_PAREN,
     }
 }
 

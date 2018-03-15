@@ -29,16 +29,12 @@ pub trait Idx: Copy + 'static + Eq + Debug {
 }
 
 impl Idx for usize {
-    #[inline]
     fn new(idx: usize) -> Self { idx }
-    #[inline]
     fn index(self) -> usize { self }
 }
 
 impl Idx for u32 {
-    #[inline]
     fn new(idx: usize) -> Self { assert!(idx <= u32::MAX as usize); idx as u32 }
-    #[inline]
     fn index(self) -> usize { self as usize }
 }
 
@@ -77,13 +73,11 @@ macro_rules! newtype_index {
         pub struct $type($($pub)* u32);
 
         impl Idx for $type {
-            #[inline]
             fn new(value: usize) -> Self {
                 assert!(value < ($max) as usize);
                 $type(value as u32)
             }
 
-            #[inline]
             fn index(self) -> usize {
                 self.0 as usize
             }
@@ -210,7 +204,7 @@ macro_rules! newtype_index {
                           $($tokens)*);
     );
 
-    // The case where no derives are added, but encodable is overridden. Don't
+    // The case where no derives are added, but encodable is overriden. Don't
     // derive serialization traits
     (@pub          [$($pub:tt)*]
      @type         [$type:ident]
@@ -333,12 +327,8 @@ macro_rules! newtype_index {
 #[derive(Clone, PartialEq, Eq)]
 pub struct IndexVec<I: Idx, T> {
     pub raw: Vec<T>,
-    _marker: PhantomData<fn(&I)>
+    _marker: PhantomData<Fn(&I)>
 }
-
-// Whether `IndexVec` is `Send` depends only on the data,
-// not the phantom data.
-unsafe impl<I: Idx, T> Send for IndexVec<I, T> where T: Send {}
 
 impl<I: Idx, T: serialize::Encodable> serialize::Encodable for IndexVec<I, T> {
     fn encode<S: serialize::Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
@@ -395,11 +385,6 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn pop(&mut self) -> Option<T> {
-        self.raw.pop()
-    }
-
-    #[inline]
     pub fn len(&self) -> usize {
         self.raw.len()
     }
@@ -426,7 +411,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn iter_enumerated(&self) -> Enumerated<I, slice::Iter<'_, T>>
+    pub fn iter_enumerated(&self) -> Enumerated<I, slice::Iter<T>>
     {
         self.raw.iter().enumerate().map(IntoIdx { _marker: PhantomData })
     }
@@ -442,7 +427,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn iter_enumerated_mut(&mut self) -> Enumerated<I, slice::IterMut<'_, T>>
+    pub fn iter_enumerated_mut(&mut self) -> Enumerated<I, slice::IterMut<T>>
     {
         self.raw.iter_mut().enumerate().map(IntoIdx { _marker: PhantomData })
     }
@@ -487,21 +472,6 @@ impl<I: Idx, T> IndexVec<I, T> {
     #[inline]
     pub fn get_mut(&mut self, index: I) -> Option<&mut T> {
         self.raw.get_mut(index.index())
-    }
-
-    /// Return mutable references to two distinct elements, a and b. Panics if a == b.
-    #[inline]
-    pub fn pick2_mut(&mut self, a: I, b: I) -> (&mut T, &mut T) {
-        let (ai, bi) = (a.index(), b.index());
-        assert!(ai != bi);
-
-        if ai < bi {
-            let (c1, c2) = self.raw.split_at_mut(bi);
-            (&mut c1[ai], &mut c2[0])
-        } else {
-            let (c2, c1) = self.pick2_mut(b, a);
-            (c1, c2)
-        }
     }
 }
 

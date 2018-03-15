@@ -25,16 +25,16 @@ impl FooT for Foo {
 
 fn main() {
     let f = Foo;
-    f.bat(1.0); //~ ERROR no method named
+    f.bat(1.0);
 
     let s = "foo".to_string();
-    let _ = s.is_emtpy(); //~ ERROR no method named
+    let _ = s.is_emtpy();
 
     // Generates a warning for `count_zeros()`. `count_ones()` is also a close
     // match, but the former is closer.
-    let _ = 63u32.count_eos(); //~ ERROR no method named
+    let _ = 63u32.count_eos();
 
     // Does not generate a warning
-    let _ = 63u32.count_o(); //~ ERROR no method named
+    let _ = 63u32.count_o();
 
 }

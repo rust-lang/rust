@@ -18,11 +18,10 @@ pub fn main() {
         let _result: Result<(), &str> = do catch {
             let my_string = String::from("");
             let my_str: & str = & my_string;
-            //~^ ERROR `my_string` does not live long enough
             Err(my_str) ?;
             Err("") ?;
             Ok(())
-        };
+        }; //~ ERROR `my_string` does not live long enough
     }
 
     {

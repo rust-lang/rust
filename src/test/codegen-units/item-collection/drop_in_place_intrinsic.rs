@@ -12,8 +12,6 @@
 // compile-flags:-Zprint-trans-items=eager
 // compile-flags:-Zinline-in-all-cgus
 
-#![feature(start)]
-
 //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<drop_in_place_intrinsic::StructWithDtor[0]> @@ drop_in_place_intrinsic0[Internal]
 struct StructWithDtor(u32);
 
@@ -22,16 +20,13 @@ impl Drop for StructWithDtor {
     fn drop(&mut self) {}
 }
 
-//~ TRANS_ITEM fn drop_in_place_intrinsic::start[0]
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
+//~ TRANS_ITEM fn drop_in_place_intrinsic::main[0]
+fn main() {
 
     //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<[drop_in_place_intrinsic::StructWithDtor[0]; 2]> @@ drop_in_place_intrinsic0[Internal]
     let x = [StructWithDtor(0), StructWithDtor(1)];
 
     drop_slice_in_place(&x);
-
-    0
 }
 
 //~ TRANS_ITEM fn drop_in_place_intrinsic::drop_slice_in_place[0]

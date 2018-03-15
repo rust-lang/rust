@@ -23,7 +23,7 @@ use rustc::middle::dependency_format::Linkage;
 use rustc::session::Session;
 use rustc::session::config::{self, CrateType, OptLevel, DebugInfoLevel};
 use rustc::ty::TyCtxt;
-use rustc_back::{LinkerFlavor, LldFlavor};
+use rustc_back::LinkerFlavor;
 use serialize::{json, Encoder};
 
 /// For all the linkers we support, and information they might
@@ -45,7 +45,6 @@ impl LinkerInfo {
                          cmd: Command,
                          sess: &'a Session) -> Box<Linker+'a> {
         match sess.linker_flavor() {
-            LinkerFlavor::Lld(LldFlavor::Link) |
             LinkerFlavor::Msvc => {
                 Box::new(MsvcLinker {
                     cmd,
@@ -69,9 +68,6 @@ impl LinkerInfo {
                     is_ld: false,
                 }) as Box<Linker>
             }
-
-            LinkerFlavor::Lld(LldFlavor::Ld) |
-            LinkerFlavor::Lld(LldFlavor::Ld64) |
             LinkerFlavor::Ld => {
                 Box::new(GccLinker {
                     cmd,
@@ -79,12 +75,6 @@ impl LinkerInfo {
                     info: self,
                     hinted_static: false,
                     is_ld: true,
-                }) as Box<Linker>
-            }
-
-            LinkerFlavor::Lld(LldFlavor::Wasm) => {
-                Box::new(WasmLd {
-                    cmd,
                 }) as Box<Linker>
             }
         }
@@ -112,7 +102,6 @@ pub trait Linker {
     fn add_object(&mut self, path: &Path);
     fn gc_sections(&mut self, keep_metadata: bool);
     fn position_independent_executable(&mut self);
-    fn no_position_independent_executable(&mut self);
     fn partial_relro(&mut self);
     fn full_relro(&mut self);
     fn optimize(&mut self);
@@ -187,7 +176,6 @@ impl<'a> Linker for GccLinker<'a> {
     fn output_filename(&mut self, path: &Path) { self.cmd.arg("-o").arg(path); }
     fn add_object(&mut self, path: &Path) { self.cmd.arg(path); }
     fn position_independent_executable(&mut self) { self.cmd.arg("-pie"); }
-    fn no_position_independent_executable(&mut self) { self.cmd.arg("-no-pie"); }
     fn partial_relro(&mut self) { self.linker_arg("-z,relro"); }
     fn full_relro(&mut self) { self.linker_arg("-z,relro,-z,now"); }
     fn build_static_executable(&mut self) { self.cmd.arg("-static"); }
@@ -448,10 +436,6 @@ impl<'a> Linker for MsvcLinker<'a> {
         // noop
     }
 
-    fn no_position_independent_executable(&mut self) {
-        // noop
-    }
-
     fn partial_relro(&mut self) {
         // noop
     }
@@ -660,10 +644,6 @@ impl<'a> Linker for EmLinker<'a> {
         // noop
     }
 
-    fn no_position_independent_executable(&mut self) {
-        // noop
-    }
-
     fn partial_relro(&mut self) {
         // noop
     }
@@ -768,9 +748,9 @@ fn exported_symbols(tcx: TyCtxt, crate_type: CrateType) -> Vec<String> {
     let mut symbols = Vec::new();
 
     let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
-    for &(symbol, level) in tcx.exported_symbols(LOCAL_CRATE).iter() {
+    for &(ref name, _, level) in tcx.exported_symbols(LOCAL_CRATE).iter() {
         if level.is_below_threshold(export_threshold) {
-            symbols.push(symbol.symbol_name(tcx).to_string());
+            symbols.push(name.clone());
         }
     }
 
@@ -782,121 +762,13 @@ fn exported_symbols(tcx: TyCtxt, crate_type: CrateType) -> Vec<String> {
         // For each dependency that we are linking to statically ...
         if *dep_format == Linkage::Static {
             // ... we add its symbol list to our export list.
-            for &(symbol, level) in tcx.exported_symbols(cnum).iter() {
+            for &(ref name, _, level) in tcx.exported_symbols(cnum).iter() {
                 if level.is_below_threshold(export_threshold) {
-                    symbols.push(symbol.symbol_name(tcx).to_string());
+                    symbols.push(name.clone());
                 }
             }
         }
     }
 
     symbols
-}
-
-pub struct WasmLd {
-    cmd: Command,
-}
-
-impl Linker for WasmLd {
-    fn link_dylib(&mut self, lib: &str) {
-        self.cmd.arg("-l").arg(lib);
-    }
-
-    fn link_staticlib(&mut self, lib: &str) {
-        self.cmd.arg("-l").arg(lib);
-    }
-
-    fn link_rlib(&mut self, lib: &Path) {
-        self.cmd.arg(lib);
-    }
-
-    fn include_path(&mut self, path: &Path) {
-        self.cmd.arg("-L").arg(path);
-    }
-
-    fn framework_path(&mut self, _path: &Path) {
-        panic!("frameworks not supported")
-    }
-
-    fn output_filename(&mut self, path: &Path) {
-        self.cmd.arg("-o").arg(path);
-    }
-
-    fn add_object(&mut self, path: &Path) {
-        self.cmd.arg(path);
-    }
-
-    fn position_independent_executable(&mut self) {
-    }
-
-    fn partial_relro(&mut self) {
-    }
-
-    fn full_relro(&mut self) {
-    }
-
-    fn build_static_executable(&mut self) {
-    }
-
-    fn args(&mut self, args: &[String]) {
-        self.cmd.args(args);
-    }
-
-    fn link_rust_dylib(&mut self, lib: &str, _path: &Path) {
-        self.cmd.arg("-l").arg(lib);
-    }
-
-    fn link_framework(&mut self, _framework: &str) {
-        panic!("frameworks not supported")
-    }
-
-    fn link_whole_staticlib(&mut self, lib: &str, _search_path: &[PathBuf]) {
-        self.cmd.arg("-l").arg(lib);
-    }
-
-    fn link_whole_rlib(&mut self, lib: &Path) {
-        self.cmd.arg(lib);
-    }
-
-    fn gc_sections(&mut self, _keep_metadata: bool) {
-    }
-
-    fn optimize(&mut self) {
-    }
-
-    fn debuginfo(&mut self) {
-    }
-
-    fn no_default_libraries(&mut self) {
-    }
-
-    fn build_dylib(&mut self, _out_filename: &Path) {
-    }
-
-    fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType) {
-    }
-
-    fn subsystem(&mut self, _subsystem: &str) {
-    }
-
-    fn no_position_independent_executable(&mut self) {
-    }
-
-    fn finalize(&mut self) -> Command {
-        self.cmd.arg("--threads");
-
-        // FIXME we probably shouldn't pass this but instead pass an explicit
-        // whitelist of symbols we'll allow to be undefined. Unfortunately
-        // though we can't handle symbols like `log10` that LLVM injects at a
-        // super late date without actually parsing object files. For now let's
-        // stick to this and hopefully fix it before stabilization happens.
-        self.cmd.arg("--allow-undefined");
-
-        // For now we just never have an entry symbol
-        self.cmd.arg("--no-entry");
-
-        let mut cmd = Command::new("");
-        ::std::mem::swap(&mut cmd, &mut self.cmd);
-        cmd
-    }
 }

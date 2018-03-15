@@ -1,8 +1,8 @@
 error: expected identifier, found `(`
   --> $DIR/pub-restricted-error.rs:16:16
    |
-LL |     pub(crate) () foo: usize, //~ ERROR expected identifier
-   |                ^ expected identifier
+16 |     pub(crate) () foo: usize,
+   |                ^
 
 error: aborting due to previous error
 

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -C codegen-units=8 -O -C lto=thin
+// compile-flags: -Z thinlto -C codegen-units=8 -O -C lto
 // aux-build:thin-lto-inlines-aux.rs
 // min-llvm-version 4.0
 // no-prefer-dynamic

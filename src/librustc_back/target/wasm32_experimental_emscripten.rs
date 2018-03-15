@@ -10,6 +10,7 @@
 
 use LinkerFlavor;
 use super::{LinkArgs, Target, TargetOptions};
+use super::emscripten_base::{cmd};
 
 pub fn target() -> Result<Target, String> {
     let mut post_link_args = LinkArgs::new();
@@ -23,6 +24,8 @@ pub fn target() -> Result<Target, String> {
                                "-g3".to_string()]);
 
     let opts = TargetOptions {
+        linker: cmd("emcc"),
+
         dynamic_linking: false,
         executables: true,
         // Today emcc emits two files - a .js file to bootstrap and

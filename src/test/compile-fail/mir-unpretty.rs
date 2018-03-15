@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z unpretty=mir
+// compile-flags: -Z unstable-options --unpretty=mir
 
 fn main() {
     let x: () = 0; //~ ERROR: mismatched types

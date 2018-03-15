@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
@@ -37,21 +37,19 @@ if [ "$DIST_SRC" = "" ]; then
 fi
 
 # If we're deploying artifacts then we set the release channel, otherwise if
-# we're not deploying then we want to be sure to enable all assertions because
+# we're not deploying then we want to be sure to enable all assertions becauase
 # we'll be running tests
 #
 # FIXME: need a scheme for changing this `nightly` value to `beta` and `stable`
 #        either automatically or manually.
-export RUST_RELEASE_CHANNEL=nightly
 if [ "$DEPLOY$DEPLOY_ALT" != "" ]; then
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --release-channel=$RUST_RELEASE_CHANNEL"
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --release-channel=nightly"
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-static-stdcpp"
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-thinlto"
 
   if [ "$NO_LLVM_ASSERTIONS" = "1" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-llvm-assertions"
   elif [ "$DEPLOY_ALT" != "" ]; then
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-assertions"
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-llvm-assertions"
   fi
 else
   # We almost always want debug assertions enabled, but sometimes this takes too
@@ -66,12 +64,6 @@ else
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-assertions"
   fi
 fi
-
-# We've had problems in the past of shell scripts leaking fds into the sccache
-# server (#48192) which causes Cargo to erroneously think that a build script
-# hasn't finished yet. Try to solve that problem by starting a very long-lived
-# sccache server at the start of the build, but no need to worry if this fails.
-SCCACHE_IDLE_TIMEOUT=10800 sccache --start-server || true
 
 travis_fold start configure
 travis_time_start
@@ -104,7 +96,7 @@ else
     travis_fold start "make-$1"
     travis_time_start
     echo "make -j $ncpus $1"
-    make -j $ncpus $1
+    make -j $ncpus "$1"
     local retval=$?
     travis_fold end "make-$1"
     travis_time_finish

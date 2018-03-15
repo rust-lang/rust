@@ -1,4 +1,4 @@
-.TH RUSTC "1" "<INSERT DATE HERE>" "rustc <INSERT VERSION HERE>" "User Commands"
+.TH RUSTC "1" "September 2016" "rustc 1.13.0" "User Commands"
 .SH NAME
 rustc \- The Rust compiler
 .SH SYNOPSIS
@@ -124,16 +124,6 @@ Print version info and exit.
 .TP
 \fB\-v\fR, \fB\-\-verbose\fR
 Use verbose output.
-.TP
-\fB\-\-remap\-path\-prefix\fR \fIfrom\fR=\fIto\fR
-Remap source path prefixes in all output, including compiler diagnostics, debug information,
-macro expansions, etc. The \fIfrom\fR=\fIto\fR parameter is scanned from right to left, so \fIfrom\fR
-may contain '=', but \fIto\fR may not.
-
-This is useful for normalizing build products, for example by removing the current directory out of
-pathnames emitted into the object files. The replacement is purely textual, with no consideration of
-the current system's pathname syntax. For example \fI\-\-remap\-path\-prefix foo=bar\fR will
-match \fBfoo/lib.rs\fR but not \fB./foo/lib.rs\fR.
 .TP
 \fB\-\-extern\fR \fINAME\fR=\fIPATH\fR
 Specify where an external rust library is located. These should match

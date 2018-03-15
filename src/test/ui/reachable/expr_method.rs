@@ -23,12 +23,12 @@ impl Foo {
 
 fn a() {
     // the `22` is unreachable:
-    Foo.foo(return, 22); //~ ERROR unreachable
+    Foo.foo(return, 22);
 }
 
 fn b() {
     // the call is unreachable:
-    Foo.bar(return); //~ ERROR unreachable
+    Foo.bar(return);
 }
 
 fn main() { }

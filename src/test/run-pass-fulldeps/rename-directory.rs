@@ -13,13 +13,17 @@
 
 // ignore-cross-compile
 
-use std::env;
+#![feature(rustc_private)]
+
+extern crate rustc_back;
+
 use std::ffi::CString;
 use std::fs::{self, File};
-use std::path::PathBuf;
+use rustc_back::tempdir::TempDir;
 
 fn rename_directory() {
-    let tmpdir = PathBuf::from(env::var_os("RUST_TEST_TMPDIR").unwrap());
+    let tmpdir = TempDir::new("rename_directory").ok().expect("rename_directory failed");
+    let tmpdir = tmpdir.path();
     let old_path = tmpdir.join("foo/bar/baz");
     fs::create_dir_all(&old_path).unwrap();
     let test_file = &old_path.join("temp.txt");

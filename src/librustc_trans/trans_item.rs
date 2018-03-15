@@ -18,131 +18,165 @@ use asm;
 use attributes;
 use base;
 use consts;
-use context::CodegenCx;
+use context::CrateContext;
+use common;
 use declare;
 use llvm;
 use monomorphize::Instance;
-use type_of::LayoutLlvmExt;
 use rustc::hir;
-use rustc::hir::def::Def;
-use rustc::hir::def_id::DefId;
-use rustc::mir::mono::{Linkage, Visibility};
-use rustc::ty::TypeFoldable;
-use rustc::ty::layout::LayoutOf;
+use rustc::middle::trans::{Linkage, Visibility};
+use rustc::ty::{self, TyCtxt, TypeFoldable};
+use syntax::ast;
 use syntax::attr;
+use syntax_pos::Span;
+use syntax_pos::symbol::Symbol;
+use type_of;
 use std::fmt;
 
-pub use rustc::mir::mono::MonoItem;
+pub use rustc::middle::trans::TransItem;
 
-pub use rustc_mir::monomorphize::item::*;
-pub use rustc_mir::monomorphize::item::MonoItemExt as BaseMonoItemExt;
+pub use rustc_trans_utils::trans_item::*;
+pub use rustc_trans_utils::trans_item::TransItemExt as BaseTransItemExt;
 
-pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
-    fn define(&self, cx: &CodegenCx<'a, 'tcx>) {
+pub trait TransItemExt<'a, 'tcx>: fmt::Debug + BaseTransItemExt<'a, 'tcx> {
+    fn define(&self, ccx: &CrateContext<'a, 'tcx>) {
         debug!("BEGIN IMPLEMENTING '{} ({})' in cgu {}",
-               self.to_string(cx.tcx),
+               self.to_string(ccx.tcx()),
                self.to_raw_string(),
-               cx.codegen_unit.name());
+               ccx.codegen_unit().name());
 
-        match *self.as_mono_item() {
-            MonoItem::Static(def_id) => {
-                let tcx = cx.tcx;
-                let is_mutable = match tcx.describe_def(def_id) {
-                    Some(Def::Static(_, is_mutable)) => is_mutable,
-                    Some(other) => {
-                        bug!("Expected Def::Static, found {:?}", other)
-                    }
-                    None => {
-                        bug!("Expected Def::Static for {:?}, found nothing", def_id)
-                    }
-                };
-                let attrs = tcx.get_attrs(def_id);
-
-                match consts::trans_static(&cx, def_id, is_mutable, &attrs) {
-                    Ok(_) => { /* Cool, everything's alright. */ },
-                    Err(err) => {
-                        err.report(tcx, tcx.def_span(def_id), "static");
-                    }
-                };
-            }
-            MonoItem::GlobalAsm(node_id) => {
-                let item = cx.tcx.hir.expect_item(node_id);
-                if let hir::ItemGlobalAsm(ref ga) = item.node {
-                    asm::trans_global_asm(cx, ga);
+        match *self.as_trans_item() {
+            TransItem::Static(node_id) => {
+                let tcx = ccx.tcx();
+                let item = tcx.hir.expect_item(node_id);
+                if let hir::ItemStatic(_, m, _) = item.node {
+                    match consts::trans_static(&ccx, m, item.id, &item.attrs) {
+                        Ok(_) => { /* Cool, everything's alright. */ },
+                        Err(err) => {
+                            err.report(tcx, item.span, "static");
+                        }
+                    };
                 } else {
                     span_bug!(item.span, "Mismatch between hir::Item type and TransItem type")
                 }
             }
-            MonoItem::Fn(instance) => {
-                base::trans_instance(&cx, instance);
+            TransItem::GlobalAsm(node_id) => {
+                let item = ccx.tcx().hir.expect_item(node_id);
+                if let hir::ItemGlobalAsm(ref ga) = item.node {
+                    asm::trans_global_asm(ccx, ga);
+                } else {
+                    span_bug!(item.span, "Mismatch between hir::Item type and TransItem type")
+                }
+            }
+            TransItem::Fn(instance) => {
+                base::trans_instance(&ccx, instance);
             }
         }
 
         debug!("END IMPLEMENTING '{} ({})' in cgu {}",
-               self.to_string(cx.tcx),
+               self.to_string(ccx.tcx()),
                self.to_raw_string(),
-               cx.codegen_unit.name());
+               ccx.codegen_unit().name());
     }
 
     fn predefine(&self,
-                 cx: &CodegenCx<'a, 'tcx>,
+                 ccx: &CrateContext<'a, 'tcx>,
                  linkage: Linkage,
                  visibility: Visibility) {
         debug!("BEGIN PREDEFINING '{} ({})' in cgu {}",
-               self.to_string(cx.tcx),
+               self.to_string(ccx.tcx()),
                self.to_raw_string(),
-               cx.codegen_unit.name());
+               ccx.codegen_unit().name());
 
-        let symbol_name = self.symbol_name(cx.tcx);
+        let symbol_name = self.symbol_name(ccx.tcx());
 
         debug!("symbol {}", &symbol_name);
 
-        match *self.as_mono_item() {
-            MonoItem::Static(def_id) => {
-                predefine_static(cx, def_id, linkage, visibility, &symbol_name);
+        match *self.as_trans_item() {
+            TransItem::Static(node_id) => {
+                predefine_static(ccx, node_id, linkage, visibility, &symbol_name);
             }
-            MonoItem::Fn(instance) => {
-                predefine_fn(cx, instance, linkage, visibility, &symbol_name);
+            TransItem::Fn(instance) => {
+                predefine_fn(ccx, instance, linkage, visibility, &symbol_name);
             }
-            MonoItem::GlobalAsm(..) => {}
+            TransItem::GlobalAsm(..) => {}
         }
 
         debug!("END PREDEFINING '{} ({})' in cgu {}",
-               self.to_string(cx.tcx),
+               self.to_string(ccx.tcx()),
                self.to_raw_string(),
-               cx.codegen_unit.name());
+               ccx.codegen_unit().name());
+    }
+
+    fn symbol_name(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::SymbolName {
+        match *self.as_trans_item() {
+            TransItem::Fn(instance) => tcx.symbol_name(instance),
+            TransItem::Static(node_id) => {
+                let def_id = tcx.hir.local_def_id(node_id);
+                tcx.symbol_name(Instance::mono(tcx, def_id))
+            }
+            TransItem::GlobalAsm(node_id) => {
+                let def_id = tcx.hir.local_def_id(node_id);
+                ty::SymbolName {
+                    name: Symbol::intern(&format!("global_asm_{:?}", def_id)).as_str()
+                }
+            }
+        }
+    }
+
+    fn local_span(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Span> {
+        match *self.as_trans_item() {
+            TransItem::Fn(Instance { def, .. }) => {
+                tcx.hir.as_local_node_id(def.def_id())
+            }
+            TransItem::Static(node_id) |
+            TransItem::GlobalAsm(node_id) => {
+                Some(node_id)
+            }
+        }.map(|node_id| tcx.hir.span(node_id))
+    }
+
+    fn is_generic_fn(&self) -> bool {
+        match *self.as_trans_item() {
+            TransItem::Fn(ref instance) => {
+                instance.substs.types().next().is_some()
+            }
+            TransItem::Static(..) |
+            TransItem::GlobalAsm(..) => false,
+        }
     }
 
     fn to_raw_string(&self) -> String {
-        match *self.as_mono_item() {
-            MonoItem::Fn(instance) => {
+        match *self.as_trans_item() {
+            TransItem::Fn(instance) => {
                 format!("Fn({:?}, {})",
                          instance.def,
                          instance.substs.as_ptr() as usize)
             }
-            MonoItem::Static(id) => {
+            TransItem::Static(id) => {
                 format!("Static({:?})", id)
             }
-            MonoItem::GlobalAsm(id) => {
+            TransItem::GlobalAsm(id) => {
                 format!("GlobalAsm({:?})", id)
             }
         }
     }
 }
 
-impl<'a, 'tcx> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {}
+impl<'a, 'tcx> TransItemExt<'a, 'tcx> for TransItem<'tcx> {}
 
-fn predefine_static<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
-                              def_id: DefId,
+fn predefine_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                              node_id: ast::NodeId,
                               linkage: Linkage,
                               visibility: Visibility,
                               symbol_name: &str) {
-    let instance = Instance::mono(cx.tcx, def_id);
-    let ty = instance.ty(cx.tcx);
-    let llty = cx.layout_of(ty).llvm_type(cx);
+    let def_id = ccx.tcx().hir.local_def_id(node_id);
+    let instance = Instance::mono(ccx.tcx(), def_id);
+    let ty = common::instance_ty(ccx.tcx(), &instance);
+    let llty = type_of::type_of(ccx, ty);
 
-    let g = declare::define_global(cx, symbol_name, llty).unwrap_or_else(|| {
-        cx.sess().span_fatal(cx.tcx.def_span(def_id),
+    let g = declare::define_global(ccx, symbol_name, llty).unwrap_or_else(|| {
+        ccx.sess().span_fatal(ccx.tcx().hir.span(node_id),
             &format!("symbol `{}` is already defined", symbol_name))
     });
 
@@ -151,11 +185,11 @@ fn predefine_static<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         llvm::LLVMRustSetVisibility(g, base::visibility_to_llvm(visibility));
     }
 
-    cx.instances.borrow_mut().insert(instance, g);
-    cx.statics.borrow_mut().insert(g, def_id);
+    ccx.instances().borrow_mut().insert(instance, g);
+    ccx.statics().borrow_mut().insert(g, def_id);
 }
 
-fn predefine_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
+fn predefine_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                           instance: Instance<'tcx>,
                           linkage: Linkage,
                           visibility: Visibility,
@@ -163,14 +197,14 @@ fn predefine_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     assert!(!instance.substs.needs_infer() &&
             !instance.substs.has_param_types());
 
-    let mono_ty = instance.ty(cx.tcx);
-    let attrs = instance.def.attrs(cx.tcx);
-    let lldecl = declare::declare_fn(cx, symbol_name, mono_ty);
+    let mono_ty = common::instance_ty(ccx.tcx(), &instance);
+    let attrs = instance.def.attrs(ccx.tcx());
+    let lldecl = declare::declare_fn(ccx, symbol_name, mono_ty);
     unsafe { llvm::LLVMRustSetLinkage(lldecl, base::linkage_to_llvm(linkage)) };
-    base::set_link_section(cx, lldecl, &attrs);
+    base::set_link_section(ccx, lldecl, &attrs);
     if linkage == Linkage::LinkOnceODR ||
         linkage == Linkage::WeakODR {
-        llvm::SetUniqueComdat(cx.llmod, lldecl);
+        llvm::SetUniqueComdat(ccx.llmod(), lldecl);
     }
 
     // If we're compiling the compiler-builtins crate, e.g. the equivalent of
@@ -178,7 +212,7 @@ fn predefine_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     // visibility as we're going to link this object all over the place but
     // don't want the symbols to get exported.
     if linkage != Linkage::Internal && linkage != Linkage::Private &&
-       attr::contains_name(cx.tcx.hir.krate_attrs(), "compiler_builtins") {
+       attr::contains_name(ccx.tcx().hir.krate_attrs(), "compiler_builtins") {
         unsafe {
             llvm::LLVMRustSetVisibility(lldecl, llvm::Visibility::Hidden);
         }
@@ -189,10 +223,10 @@ fn predefine_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     }
 
     debug!("predefine_fn: mono_ty = {:?} instance = {:?}", mono_ty, instance);
-    if instance.def.is_inline(cx.tcx) {
+    if common::is_inline_instance(ccx.tcx(), &instance) {
         attributes::inline(lldecl, attributes::InlineAttr::Hint);
     }
-    attributes::from_fn_attrs(cx, lldecl, instance.def.def_id());
+    attributes::from_fn_attrs(ccx, &attrs, lldecl);
 
-    cx.instances.borrow_mut().insert(instance, lldecl);
+    ccx.instances().borrow_mut().insert(instance, lldecl);
 }

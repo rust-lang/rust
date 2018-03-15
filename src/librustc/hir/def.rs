@@ -14,7 +14,6 @@ use syntax::ast;
 use syntax::ext::base::MacroKind;
 use syntax_pos::Span;
 use hir;
-use ty;
 
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum CtorKind {
@@ -37,7 +36,6 @@ pub enum Def {
     Trait(DefId),
     TyAlias(DefId),
     TyForeign(DefId),
-    TraitAlias(DefId),
     AssociatedTy(DefId),
     PrimTy(hir::PrimTy),
     TyParam(DefId),
@@ -71,16 +69,13 @@ pub enum Def {
 /// `base_def` is definition of resolved part of the
 /// path, `unresolved_segments` is the number of unresolved
 /// segments.
+///     module::Type::AssocX::AssocY::MethodOrAssocType
+///     ^~~~~~~~~~~~  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+///     base_def      unresolved_segments = 3
 ///
-/// ```text
-/// module::Type::AssocX::AssocY::MethodOrAssocType
-/// ^~~~~~~~~~~~  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/// base_def      unresolved_segments = 3
-///
-/// <T as Trait>::AssocX::AssocY::MethodOrAssocType
-///       ^~~~~~~~~~~~~~  ^~~~~~~~~~~~~~~~~~~~~~~~~
-///       base_def        unresolved_segments = 2
-/// ```
+///     <T as Trait>::AssocX::AssocY::MethodOrAssocType
+///           ^~~~~~~~~~~~~~  ^~~~~~~~~~~~~~~~~~~~~~~~~
+///           base_def        unresolved_segments = 2
 #[derive(Copy, Clone, Debug)]
 pub struct PathResolution {
     base_def: Def,
@@ -131,12 +126,6 @@ pub struct Export {
     pub def: Def,
     /// The span of the target definition.
     pub span: Span,
-    /// The visibility of the export.
-    /// We include non-`pub` exports for hygienic macros that get used from extern crates.
-    pub vis: ty::Visibility,
-    /// True if from a `use` or and `extern crate`.
-    /// Used in rustdoc.
-    pub is_import: bool,
 }
 
 impl CtorKind {
@@ -160,8 +149,7 @@ impl Def {
     pub fn def_id(&self) -> DefId {
         match *self {
             Def::Fn(id) | Def::Mod(id) | Def::Static(id, _) |
-            Def::Variant(id) | Def::VariantCtor(id, ..) | Def::Enum(id) |
-            Def::TyAlias(id) | Def::TraitAlias(id) |
+            Def::Variant(id) | Def::VariantCtor(id, ..) | Def::Enum(id) | Def::TyAlias(id) |
             Def::AssociatedTy(id) | Def::TyParam(id) | Def::Struct(id) | Def::StructCtor(id, ..) |
             Def::Union(id) | Def::Trait(id) | Def::Method(id) | Def::Const(id) |
             Def::AssociatedConst(id) | Def::Macro(id, ..) |
@@ -192,7 +180,6 @@ impl Def {
             Def::VariantCtor(.., CtorKind::Fictive) => "struct variant",
             Def::Enum(..) => "enum",
             Def::TyAlias(..) => "type alias",
-            Def::TraitAlias(..) => "trait alias",
             Def::AssociatedTy(..) => "associated type",
             Def::Struct(..) => "struct",
             Def::StructCtor(.., CtorKind::Fn) => "tuple struct",

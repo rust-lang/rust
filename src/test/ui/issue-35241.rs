@@ -10,6 +10,6 @@
 
 struct Foo(u32);
 
-fn test() -> Foo { Foo } //~ ERROR mismatched types
+fn test() -> Foo { Foo }
 
 fn main() {}

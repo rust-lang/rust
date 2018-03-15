@@ -19,7 +19,6 @@
 // compile-flags:-Zprint-trans-items=lazy -Zincremental=tmp/partitioning-tests/methods-are-with-self-type
 
 #![allow(dead_code)]
-#![feature(start)]
 
 struct SomeType;
 
@@ -64,9 +63,9 @@ mod type2 {
     pub struct Struct;
 }
 
-//~ TRANS_ITEM fn methods_are_with_self_type::start[0]
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
+//~ TRANS_ITEM fn methods_are_with_self_type::main[0]
+fn main()
+{
     //~ TRANS_ITEM fn methods_are_with_self_type::mod1[0]::{{impl}}[1]::method[0]<u32, u64> @@ methods_are_with_self_type.volatile[WeakODR]
     SomeGenericType(0u32, 0u64).method();
     //~ TRANS_ITEM fn methods_are_with_self_type::mod1[0]::{{impl}}[1]::associated_fn[0]<char, &str> @@ methods_are_with_self_type.volatile[WeakODR]
@@ -81,8 +80,6 @@ fn start(_: isize, _: *const *const u8) -> isize {
     type1::Struct.default();
     //~ TRANS_ITEM fn methods_are_with_self_type::Trait[0]::default[0]<methods_are_with_self_type::type2[0]::Struct[0]> @@ methods_are_with_self_type-type2.volatile[WeakODR]
     type2::Struct.default();
-
-    0
 }
 
 //~ TRANS_ITEM drop-glue i8

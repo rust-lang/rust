@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//compile-flags: -Z borrowck=compare -Z emit-end-regions
-
 #![deny(warnings)]
 
 fn foo<F: FnOnce()>(_f: F) { }

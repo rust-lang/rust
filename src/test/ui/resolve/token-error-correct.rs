@@ -12,7 +12,15 @@
 
 fn main() {
     foo(bar(;
-    //~^ ERROR: expected expression, found `;`
+    //~^ NOTE: unclosed delimiter
+    //~| NOTE: unclosed delimiter
+    //~| ERROR: expected expression, found `;`
+    //~| ERROR: unresolved function `foo`
+    //~| NOTE: no resolution found
+    //~| ERROR: unresolved function `bar`
+    //~| NOTE: no resolution found
+    //~| ERROR: expected one of `)`, `,`, `.`, `<`, `?`
 }
 //~^ ERROR: incorrect close delimiter: `}`
 //~| ERROR: incorrect close delimiter: `}`
+//~| ERROR: expected expression, found `)`

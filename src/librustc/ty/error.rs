@@ -9,8 +9,9 @@
 // except according to those terms.
 
 use hir::def_id::DefId;
+use infer::type_variable;
 use middle::const_val::ConstVal;
-use ty::{self, BoundRegion, Region, Ty, TyCtxt};
+use ty::{self, BoundRegion, DefIdTree, Region, Ty, TyCtxt};
 
 use std::fmt;
 use syntax::abi;
@@ -48,16 +49,11 @@ pub enum TypeError<'tcx> {
     FloatMismatch(ExpectedFound<ast::FloatTy>),
     Traits(ExpectedFound<DefId>),
     VariadicMismatch(ExpectedFound<bool>),
-
-    /// Instantiating a type variable with the given type would have
-    /// created a cycle (because it appears somewhere within that
-    /// type).
-    CyclicTy(Ty<'tcx>),
+    CyclicTy,
     ProjectionMismatched(ExpectedFound<DefId>),
     ProjectionBoundsLength(ExpectedFound<usize>),
+    TyParamDefaultMismatch(ExpectedFound<type_variable::Default<'tcx>>),
     ExistentialMismatch(ExpectedFound<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>),
-
-    OldStyleLUB(Box<TypeError<'tcx>>),
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
@@ -86,7 +82,7 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
         }
 
         match *self {
-            CyclicTy(_) => write!(f, "cyclic type of infinite size"),
+            CyclicTy => write!(f, "cyclic type of infinite size"),
             Mismatch => write!(f, "types differ"),
             UnsafetyMismatch(values) => {
                 write!(f, "expected {} fn, found {} fn",
@@ -165,12 +161,14 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                        values.expected,
                        values.found)
             },
+            TyParamDefaultMismatch(ref values) => {
+                write!(f, "conflicting type parameter defaults `{}` and `{}`",
+                       values.expected.ty,
+                       values.found.ty)
+            }
             ExistentialMismatch(ref values) => {
                 report_maybe_different(f, format!("trait `{}`", values.expected),
                                        format!("trait `{}`", values.found))
-            }
-            OldStyleLUB(ref err) => {
-                write!(f, "{}", err)
             }
         }
     }
@@ -220,7 +218,6 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             }
             ty::TyClosure(..) => "closure".to_string(),
             ty::TyGenerator(..) => "generator".to_string(),
-            ty::TyGeneratorWitness(..) => "generator witness".to_string(),
             ty::TyTuple(..) => "tuple".to_string(),
             ty::TyInfer(ty::TyVar(_)) => "inferred type".to_string(),
             ty::TyInfer(ty::IntVar(_)) => "integral variable".to_string(),
@@ -254,23 +251,47 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 let expected_str = values.expected.sort_string(self);
                 let found_str = values.found.sort_string(self);
                 if expected_str == found_str && expected_str == "closure" {
-                    db.note("no two closures, even if identical, have the same type");
-                    db.help("consider boxing your closure and/or using it as a trait object");
+                    db.span_note(sp,
+                        "no two closures, even if identical, have the same type");
+                    db.span_help(sp,
+                        "consider boxing your closure and/or using it as a trait object");
                 }
             },
-            OldStyleLUB(err) => {
-                db.note("this was previously accepted by the compiler but has been phased out");
-                db.note("for more information, see https://github.com/rust-lang/rust/issues/45852");
+            TyParamDefaultMismatch(values) => {
+                let expected = values.expected;
+                let found = values.found;
+                db.span_note(sp, &format!("conflicting type parameter defaults `{}` and `{}`",
+                                          expected.ty,
+                                          found.ty));
 
-                self.note_and_explain_type_err(db, &err, sp);
-            }
-            CyclicTy(ty) => {
-                // Watch out for various cases of cyclic types and try to explain.
-                if ty.is_closure() || ty.is_generator() {
-                    db.note("closures cannot capture themselves or take themselves as argument;\n\
-                             this error may be the result of a recent compiler bug-fix,\n\
-                             see https://github.com/rust-lang/rust/issues/46062 for more details");
+                match self.hir.span_if_local(expected.def_id) {
+                    Some(span) => {
+                        db.span_note(span, "a default was defined here...");
+                    }
+                    None => {
+                        let item_def_id = self.parent(expected.def_id).unwrap();
+                        db.note(&format!("a default is defined on `{}`",
+                                         self.item_path_str(item_def_id)));
+                    }
                 }
+
+                db.span_note(
+                    expected.origin_span,
+                    "...that was applied to an unconstrained type variable here");
+
+                match self.hir.span_if_local(found.def_id) {
+                    Some(span) => {
+                        db.span_note(span, "a second default was defined here...");
+                    }
+                    None => {
+                        let item_def_id = self.parent(found.def_id).unwrap();
+                        db.note(&format!("a second default is defined on `{}`",
+                                         self.item_path_str(item_def_id)));
+                    }
+                }
+
+                db.span_note(found.origin_span,
+                             "...that also applies to the same type variable here");
             }
             _ => {}
         }

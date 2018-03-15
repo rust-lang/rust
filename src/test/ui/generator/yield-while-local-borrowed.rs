@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z borrowck=compare
-
 #![feature(generators, generator_trait)]
 
 use std::ops::{GeneratorState, Generator};
@@ -21,9 +19,7 @@ fn borrow_local_inline() {
     // (This error occurs because the region shows up in the type of
     // `b` and gets extended by region inference.)
     let mut b = move || {
-        let a = &mut 3;
-        //~^ ERROR borrow may still be in use when generator yields (Ast)
-        //~| ERROR borrow may still be in use when generator yields (Mir)
+        let a = &3; //~ ERROR
         yield();
         println!("{}", a);
     };
@@ -34,7 +30,7 @@ fn borrow_local_inline_done() {
     // No error here -- `a` is not in scope at the point of `yield`.
     let mut b = move || {
         {
-            let a = &mut 3;
+            let a = &3;
         }
         yield();
     };
@@ -49,9 +45,7 @@ fn borrow_local() {
     let mut b = move || {
         let a = 3;
         {
-            let b = &a;
-            //~^ ERROR borrow may still be in use when generator yields (Ast)
-            //~| ERROR borrow may still be in use when generator yields (Mir)
+            let b = &a; //~ ERROR
             yield();
             println!("{}", b);
         }

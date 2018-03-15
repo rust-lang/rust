@@ -11,7 +11,7 @@
 fn main() {
     return
         { return () }
-//~^ ERROR type annotations needed [E0282]
+//~^ ERROR the type of this value must be known in this context
     ()
     ;
 }

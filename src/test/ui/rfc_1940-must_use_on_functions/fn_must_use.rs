@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// must-compile-successfully
-
 #![feature(fn_must_use)]
 #![warn(unused_must_use)]
 
@@ -58,22 +56,21 @@ fn need_to_use_this_value() -> bool {
 }
 
 fn main() {
-    need_to_use_this_value(); //~ WARN unused return value
+    need_to_use_this_value();
 
     let mut m = MyStruct { n: 2 };
     let n = MyStruct { n: 3 };
 
-    m.need_to_use_this_method_value(); //~ WARN unused return value
+    m.need_to_use_this_method_value();
     m.is_even(); // trait method!
-    //~^ WARN unused return value
 
     m.replace(3); // won't warn (annotation needs to be in trait definition)
 
     // comparison methods are `must_use`
-    2.eq(&3); //~ WARN unused return value
-    m.eq(&n); //~ WARN unused return value
+    2.eq(&3);
+    m.eq(&n);
 
     // lint includes comparison operators
-    2 == 3; //~ WARN unused comparison
-    m == n; //~ WARN unused comparison
+    2 == 3;
+    m == n;
 }

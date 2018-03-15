@@ -82,7 +82,8 @@ RUN sh /scripts/sccache.sh
 ENV HOSTS=x86_64-unknown-linux-gnu
 
 ENV RUST_CONFIGURE_ARGS \
-      --enable-full-tools \
+      --host=$HOSTS \
+      --enable-extended \
       --enable-sanitizers \
       --enable-profiler
 ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS

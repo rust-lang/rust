@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z borrowck=compare
 
 use std::cell::Cell;
 use std::mem::swap;

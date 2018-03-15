@@ -13,5 +13,6 @@ enum SomeEnum {
 }
 
 fn main() {
-    E { name: "foobar" }; //~ ERROR cannot find struct, variant or union type `E`
+    E { name: "foobar" }; //~ ERROR unresolved struct, variant or union type `E`
+                          //~^ HELP you can import it into scope: `use SomeEnum::E;`
 }

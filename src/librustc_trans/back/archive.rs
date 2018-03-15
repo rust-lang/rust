@@ -120,7 +120,10 @@ impl<'a> ArchiveBuilder<'a> {
         if let Some(ref a) = self.src_archive {
             return a.as_ref()
         }
-        let src = self.config.src.as_ref()?;
+        let src = match self.config.src {
+            Some(ref src) => src,
+            None => return None,
+        };
         self.src_archive = Some(ArchiveRO::open(src).ok());
         self.src_archive.as_ref().unwrap().as_ref()
     }

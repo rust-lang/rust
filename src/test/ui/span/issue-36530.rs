@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[foo] //~ ERROR is currently unknown to the compiler
+#[foo]
 mod foo {
-    #![foo] //~ ERROR is currently unknown to the compiler
+    #![foo]
 }

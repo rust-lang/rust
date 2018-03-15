@@ -17,9 +17,8 @@ use super::{CombinedSnapshot,
             SubregionOrigin,
             SkolemizationMap};
 use super::combine::CombineFields;
-use super::region_constraints::{TaintDirections};
+use super::region_inference::{TaintDirections};
 
-use std::collections::BTreeMap;
 use ty::{self, TyCtxt, Binder, TypeFoldable};
 use ty::error::TypeError;
 use ty::relate::{Relate, RelateResult, TypeRelation};
@@ -177,10 +176,9 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
                                      .filter(|&r| r != representative)
                 {
                     let origin = SubregionOrigin::Subtype(self.trace.clone());
-                    self.infcx.borrow_region_constraints()
-                              .make_eqregion(origin,
-                                             *representative,
-                                             *region);
+                    self.infcx.region_vars.make_eqregion(origin,
+                                                         *representative,
+                                                         *region);
                 }
             }
 
@@ -244,10 +242,10 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
 
         fn generalize_region<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                              span: Span,
-                                             snapshot: &CombinedSnapshot<'a, 'tcx>,
+                                             snapshot: &CombinedSnapshot,
                                              debruijn: ty::DebruijnIndex,
                                              new_vars: &[ty::RegionVid],
-                                             a_map: &BTreeMap<ty::BoundRegion, ty::Region<'tcx>>,
+                                             a_map: &FxHashMap<ty::BoundRegion, ty::Region<'tcx>>,
                                              r0: ty::Region<'tcx>)
                                              -> ty::Region<'tcx> {
             // Regions that pre-dated the LUB computation stay as they are.
@@ -340,10 +338,10 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
 
         fn generalize_region<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                              span: Span,
-                                             snapshot: &CombinedSnapshot<'a, 'tcx>,
+                                             snapshot: &CombinedSnapshot,
                                              debruijn: ty::DebruijnIndex,
                                              new_vars: &[ty::RegionVid],
-                                             a_map: &BTreeMap<ty::BoundRegion, ty::Region<'tcx>>,
+                                             a_map: &FxHashMap<ty::BoundRegion, ty::Region<'tcx>>,
                                              a_vars: &[ty::RegionVid],
                                              b_vars: &[ty::RegionVid],
                                              r0: ty::Region<'tcx>)
@@ -412,7 +410,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
 
         fn rev_lookup<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                       span: Span,
-                                      a_map: &BTreeMap<ty::BoundRegion, ty::Region<'tcx>>,
+                                      a_map: &FxHashMap<ty::BoundRegion, ty::Region<'tcx>>,
                                       r: ty::Region<'tcx>) -> ty::Region<'tcx>
         {
             for (a_br, a_r) in a_map {
@@ -429,13 +427,13 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
         fn fresh_bound_variable<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                                 debruijn: ty::DebruijnIndex)
                                                 -> ty::Region<'tcx> {
-            infcx.borrow_region_constraints().new_bound(infcx.tcx, debruijn)
+            infcx.region_vars.new_bound(debruijn)
         }
     }
 }
 
 fn var_ids<'a, 'gcx, 'tcx>(fields: &CombineFields<'a, 'gcx, 'tcx>,
-                           map: &BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
+                           map: &FxHashMap<ty::BoundRegion, ty::Region<'tcx>>)
                            -> Vec<ty::RegionVid> {
     map.iter()
        .map(|(_, &r)| match *r {
@@ -479,19 +477,15 @@ fn fold_regions_in<'a, 'gcx, 'tcx, T, F>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     fn tainted_regions(&self,
-                       snapshot: &CombinedSnapshot<'a, 'tcx>,
+                       snapshot: &CombinedSnapshot,
                        r: ty::Region<'tcx>,
                        directions: TaintDirections)
                        -> FxHashSet<ty::Region<'tcx>> {
-        self.borrow_region_constraints().tainted(
-            self.tcx,
-            &snapshot.region_constraints_snapshot,
-            r,
-            directions)
+        self.region_vars.tainted(&snapshot.region_vars_snapshot, r, directions)
     }
 
     fn region_vars_confined_to_snapshot(&self,
-                                        snapshot: &CombinedSnapshot<'a, 'tcx>)
+                                        snapshot: &CombinedSnapshot)
                                         -> Vec<ty::RegionVid>
     {
         /*!
@@ -545,8 +539,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
          */
 
         let mut region_vars =
-            self.borrow_region_constraints().vars_created_since_snapshot(
-                &snapshot.region_constraints_snapshot);
+            self.region_vars.vars_created_since_snapshot(&snapshot.region_vars_snapshot);
 
         let escaping_types =
             self.type_variables.borrow_mut().types_escaping_snapshot(&snapshot.type_snapshot);
@@ -583,13 +576,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// See `README.md` for more details.
     pub fn skolemize_late_bound_regions<T>(&self,
                                            binder: &ty::Binder<T>,
-                                           snapshot: &CombinedSnapshot<'a, 'tcx>)
+                                           snapshot: &CombinedSnapshot)
                                            -> (T, SkolemizationMap<'tcx>)
         where T : TypeFoldable<'tcx>
     {
         let (result, map) = self.tcx.replace_late_bound_regions(binder, |br| {
-            self.borrow_region_constraints()
-                .push_skolemized(self.tcx, br, &snapshot.region_constraints_snapshot)
+            self.region_vars.push_skolemized(br, &snapshot.region_vars_snapshot)
         });
 
         debug!("skolemize_bound_regions(binder={:?}, result={:?}, map={:?})",
@@ -609,7 +601,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                       overly_polymorphic: bool,
                       _span: Span,
                       skol_map: &SkolemizationMap<'tcx>,
-                      snapshot: &CombinedSnapshot<'a, 'tcx>)
+                      snapshot: &CombinedSnapshot)
                       -> RelateResult<'tcx, ()>
     {
         debug!("leak_check: skol_map={:?}",
@@ -684,7 +676,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// predicate is `for<'a> &'a int : Clone`.
     pub fn plug_leaks<T>(&self,
                          skol_map: SkolemizationMap<'tcx>,
-                         snapshot: &CombinedSnapshot<'a, 'tcx>,
+                         snapshot: &CombinedSnapshot,
                          value: T) -> T
         where T : TypeFoldable<'tcx>
     {
@@ -770,11 +762,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// Note: popping also occurs implicitly as part of `leak_check`.
     pub fn pop_skolemized(&self,
                           skol_map: SkolemizationMap<'tcx>,
-                          snapshot: &CombinedSnapshot<'a, 'tcx>) {
+                          snapshot: &CombinedSnapshot)
+    {
         debug!("pop_skolemized({:?})", skol_map);
         let skol_regions: FxHashSet<_> = skol_map.values().cloned().collect();
-        self.borrow_region_constraints()
-            .pop_skolemized(self.tcx, &skol_regions, &snapshot.region_constraints_snapshot);
+        self.region_vars.pop_skolemized(&skol_regions, &snapshot.region_vars_snapshot);
         if !skol_map.is_empty() {
             self.projection_cache.borrow_mut().rollback_skolemized(
                 &snapshot.projection_cache_snapshot);

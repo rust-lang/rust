@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z no-landing-pads -C codegen-units=1
+// compile-flags: -Z no-landing-pads
 // error-pattern:diverging_fn called
-// ignore-cloudabi no std::process
-
 use std::io::{self, Write};
 
 struct Droppable;

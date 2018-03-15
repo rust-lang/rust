@@ -20,8 +20,10 @@ pub struct FooConstForMethod;
 
 impl Foo for FooConstForMethod {
     //~^ ERROR E0046
+    //~| NOTE missing `bar` in implementation
     const bar: u64 = 1;
     //~^ ERROR E0323
+    //~| NOTE does not match trait
     const MY_CONST: u32 = 1;
 }
 
@@ -29,23 +31,25 @@ pub struct FooMethodForConst;
 
 impl Foo for FooMethodForConst {
     //~^ ERROR E0046
+    //~| NOTE missing `MY_CONST` in implementation
     fn bar(&self) {}
     fn MY_CONST() {}
     //~^ ERROR E0324
+    //~| NOTE does not match trait
 }
 
 pub struct FooTypeForMethod;
 
 impl Foo for FooTypeForMethod {
     //~^ ERROR E0046
+    //~| NOTE missing `bar` in implementation
     type bar = u64;
     //~^ ERROR E0325
-    //~| ERROR E0437
+    //~| NOTE does not match trait
     const MY_CONST: u32 = 1;
 }
 
 impl Debug for FooTypeForMethod {
 }
-//~^^ ERROR E0046
 
 fn main () {}

@@ -19,7 +19,7 @@ extern {
     fn extern_fn();
 // CHECK-NOT: Function Attrs: nounwind
 // CHECK: declare void @unwinding_extern_fn
-    #[unwind(allowed)]
+    #[unwind]
     fn unwinding_extern_fn();
 }
 

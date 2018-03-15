@@ -14,6 +14,5 @@
 use std::ops::Deref;
 
 fn homura<T: Deref<Trget = i32>>(_: T) {}
-//~^ ERROR not found
 
 fn main() {}

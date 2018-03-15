@@ -18,7 +18,7 @@ use proc_macro::{TokenStream, TokenNode, Span, Diagnostic};
 
 fn parse(input: TokenStream) -> Result<(), Diagnostic> {
     let mut count = 0;
-    let mut last_span = Span::def_site();
+    let mut last_span = Span::default();
     for tree in input {
         let span = tree.span;
         if count >= 3 {
@@ -37,7 +37,7 @@ fn parse(input: TokenStream) -> Result<(), Diagnostic> {
     }
 
     if count < 3 {
-        return Err(Span::def_site()
+        return Err(Span::default()
                        .error(format!("found {} equal signs, need exactly 3", count))
                        .help("input must be: `===`"))
     }

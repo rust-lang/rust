@@ -23,7 +23,7 @@ fn main() {
     let f = Foo{bar:6};
 
     match &f {
-        FOO => {}, //~ ERROR mismatched types
+        FOO => {},
         _ => panic!(),
     }
 }

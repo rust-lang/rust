@@ -25,7 +25,6 @@
 extern crate rustc;
 extern crate rustc_const_eval;
 extern crate rustc_const_math;
-extern crate rustc_data_structures;
 
 #[macro_use]
 extern crate log;
@@ -43,6 +42,8 @@ pub mod consts;
 pub mod hir_stats;
 pub mod loops;
 mod mir_stats;
+pub mod no_asm;
+pub mod static_recursion;
 
 __build_diagnostic_array! { librustc_passes, DIAGNOSTICS }
 

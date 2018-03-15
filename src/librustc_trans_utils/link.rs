@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc::ich::Fingerprint;
 use rustc::session::config::{self, OutputFilenames, Input, OutputType};
 use rustc::session::Session;
 use rustc::middle::cstore::{self, LinkMeta};
 use rustc::hir::svh::Svh;
 use std::path::{Path, PathBuf};
-use syntax::{ast, attr};
+use syntax::ast;
 use syntax_pos::Span;
 
 pub fn out_filename(sess: &Session,
@@ -49,9 +50,9 @@ fn is_writeable(p: &Path) -> bool {
     }
 }
 
-pub fn build_link_meta(crate_hash: Svh) -> LinkMeta {
+pub fn build_link_meta(crate_hash: Fingerprint) -> LinkMeta {
     let r = LinkMeta {
-        crate_hash,
+        crate_hash: Svh::new(crate_hash.to_smaller_hash()),
     };
     info!("{:?}", r);
     return r;
@@ -69,8 +70,8 @@ pub fn find_crate_name(sess: Option<&Session>,
     // as used. After doing this, however, we still prioritize a crate name from
     // the command line over one found in the #[crate_name] attribute. If we
     // find both we ensure that they're the same later on as well.
-    let attr_crate_name = attr::find_by_name(attrs, "crate_name")
-        .and_then(|at| at.value_str().map(|s| (at, s)));
+    let attr_crate_name = attrs.iter().find(|at| at.check_name("crate_name"))
+                               .and_then(|at| at.value_str().map(|s| (at, s)));
 
     if let Some(sess) = sess {
         if let Some(ref s) = sess.opts.crate_name {
@@ -162,30 +163,15 @@ pub fn default_output_for_target(sess: &Session) -> config::CrateType {
 /// Checks if target supports crate_type as output
 pub fn invalid_output_for_target(sess: &Session,
                                  crate_type: config::CrateType) -> bool {
-    match crate_type {
-        config::CrateTypeCdylib |
-        config::CrateTypeDylib |
-        config::CrateTypeProcMacro => {
-            if !sess.target.target.options.dynamic_linking {
-                return true
-            }
-            if sess.crt_static() && !sess.target.target.options.crt_static_allows_dylibs {
-                return true
-            }
-        }
-        _ => {}
+    match (sess.target.target.options.dynamic_linking,
+           sess.target.target.options.executables, crate_type) {
+        (false, _, config::CrateTypeCdylib) |
+        (false, _, config::CrateTypeDylib) |
+        (false, _, config::CrateTypeProcMacro) => true,
+        (true, _, config::CrateTypeCdylib) |
+        (true, _, config::CrateTypeDylib) => sess.crt_static() &&
+            !sess.target.target.options.crt_static_allows_dylibs,
+        (_, false, config::CrateTypeExecutable) => true,
+        _ => false
     }
-    if sess.target.target.options.only_cdylib {
-        match crate_type {
-            config::CrateTypeProcMacro | config::CrateTypeDylib => return true,
-            _ => {}
-        }
-    }
-    if !sess.target.target.options.executables {
-        if crate_type == config::CrateTypeExecutable {
-            return true
-        }
-    }
-
-    false
 }

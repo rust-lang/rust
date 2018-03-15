@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // compile-flags: -Z print-type-sizes
-// must-compile-successfully
 
 // This file illustrates how padding is handled: alignment
 // requirements can lead to the introduction of padding, either before
@@ -18,7 +17,8 @@
 // It avoids using u64/i64 because on some targets that is only 4-byte
 // aligned (while on most it is 8-byte aligned) and so the resulting
 // padding and overall computed sizes can be quite different.
-#![feature(start)]
+#![feature(attr_literals)]
+#![feature(repr_align)]
 #![allow(dead_code)]
 
 #[repr(align(16))]
@@ -38,8 +38,6 @@ struct S {
     d: i8,
 }
 
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
+fn main() {
     let _s: S = Default::default();
-    0
 }

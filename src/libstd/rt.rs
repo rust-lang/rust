@@ -23,23 +23,24 @@
 #![doc(hidden)]
 
 
-// Re-export some of our utilities which are expected by other crates.
+
+// Reexport some of our utilities which are expected by other crates.
 pub use panicking::{begin_panic, begin_panic_fmt, update_panic_count};
 
-// To reduce the generated code of the new `lang_start`, this function is doing
-// the real work.
 #[cfg(not(test))]
-fn lang_start_internal(main: &(Fn() -> i32 + Sync + ::panic::RefUnwindSafe),
-                       argc: isize, argv: *const *const u8) -> isize {
+#[lang = "start"]
+fn lang_start(main: fn(), argc: isize, argv: *const *const u8) -> isize {
     use panic;
     use sys;
     use sys_common;
     use sys_common::thread_info;
     use thread::Thread;
+    #[cfg(not(feature = "backtrace"))]
+    use mem;
 
     sys::init();
 
-    unsafe {
+    let failed = unsafe {
         let main_guard = sys::thread::guard::init();
         sys::stack_overflow::init();
 
@@ -55,21 +56,18 @@ fn lang_start_internal(main: &(Fn() -> i32 + Sync + ::panic::RefUnwindSafe),
 
         // Let's run some code!
         #[cfg(feature = "backtrace")]
-        let exit_code = panic::catch_unwind(|| {
-            ::sys_common::backtrace::__rust_begin_short_backtrace(move || main())
+        let res = panic::catch_unwind(|| {
+            ::sys_common::backtrace::__rust_begin_short_backtrace(main)
         });
         #[cfg(not(feature = "backtrace"))]
-        let exit_code = panic::catch_unwind(move || main());
-
+        let res = panic::catch_unwind(mem::transmute::<_, fn()>(main));
         sys_common::cleanup();
-        exit_code.unwrap_or(101) as isize
-    }
-}
+        res.is_err()
+    };
 
-#[cfg(not(test))]
-#[lang = "start"]
-fn lang_start<T: ::process::Termination + 'static>
-    (main: fn() -> T, argc: isize, argv: *const *const u8) -> isize
-{
-    lang_start_internal(&move || main().report(), argc, argv)
+    if failed {
+        101
+    } else {
+        0
+    }
 }

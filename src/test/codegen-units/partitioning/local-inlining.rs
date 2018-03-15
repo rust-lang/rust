@@ -28,28 +28,28 @@ mod inline {
     }
 }
 
-pub mod user1 {
+mod user1 {
     use super::inline;
 
-    //~ TRANS_ITEM fn local_inlining::user1[0]::foo[0] @@ local_inlining-user1[External]
-    pub fn foo() {
+    //~ TRANS_ITEM fn local_inlining::user1[0]::foo[0] @@ local_inlining-user1[Internal]
+    fn foo() {
         inline::inlined_function();
     }
 }
 
-pub mod user2 {
+mod user2 {
     use super::inline;
 
-    //~ TRANS_ITEM fn local_inlining::user2[0]::bar[0] @@ local_inlining-user2[External]
-    pub fn bar() {
+    //~ TRANS_ITEM fn local_inlining::user2[0]::bar[0] @@ local_inlining-user2[Internal]
+    fn bar() {
         inline::inlined_function();
     }
 }
 
-pub mod non_user {
+mod non_user {
 
-    //~ TRANS_ITEM fn local_inlining::non_user[0]::baz[0] @@ local_inlining-non_user[External]
-    pub fn baz() {
+    //~ TRANS_ITEM fn local_inlining::non_user[0]::baz[0] @@ local_inlining-non_user[Internal]
+    fn baz() {
 
     }
 }

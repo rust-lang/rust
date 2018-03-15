@@ -294,7 +294,7 @@ def default_build_triple():
             raise ValueError('unknown byteorder: {}'.format(sys.byteorder))
         # only the n64 ABI is supported, indicate it
         ostype += 'abi64'
-    elif cputype == 'sparc' or cputype == 'sparcv9' or cputype == 'sparc64':
+    elif cputype == 'sparcv9' or cputype == 'sparc64':
         pass
     else:
         err = "unknown cpu type: {}".format(cputype)
@@ -314,6 +314,7 @@ class RustBuild(object):
         self.build_dir = os.path.join(os.getcwd(), "build")
         self.clean = False
         self.config_toml = ''
+        self.printed = False
         self.rust_root = os.path.abspath(os.path.join(__file__, '../../..'))
         self.use_locked_deps = ''
         self.use_vendored_sources = ''
@@ -335,6 +336,7 @@ class RustBuild(object):
         if self.rustc().startswith(self.bin_root()) and \
                 (not os.path.exists(self.rustc()) or
                  self.program_out_of_date(self.rustc_stamp())):
+            self.print_what_bootstrap_means()
             if os.path.exists(self.bin_root()):
                 shutil.rmtree(self.bin_root())
             filename = "rust-std-{}-{}.tar.gz".format(
@@ -349,9 +351,6 @@ class RustBuild(object):
             with open(self.rustc_stamp(), 'w') as rust_stamp:
                 rust_stamp.write(self.date)
 
-            # This is required so that we don't mix incompatible MinGW
-            # libraries/binaries that are included in rust-std with
-            # the system MinGW ones.
             if "pc-windows-gnu" in self.build:
                 filename = "rust-mingw-{}-{}.tar.gz".format(
                     rustc_channel, self.build)
@@ -360,6 +359,7 @@ class RustBuild(object):
         if self.cargo().startswith(self.bin_root()) and \
                 (not os.path.exists(self.cargo()) or
                  self.program_out_of_date(self.cargo_stamp())):
+            self.print_what_bootstrap_means()
             filename = "cargo-{}-{}.tar.gz".format(cargo_channel, self.build)
             self._download_stage0_helper(filename, "cargo")
             self.fix_executable("{}/bin/cargo".format(self.bin_root()))
@@ -560,6 +560,23 @@ class RustBuild(object):
             return '.exe'
         return ''
 
+    def print_what_bootstrap_means(self):
+        """Prints more information about the build system"""
+        if hasattr(self, 'printed'):
+            return
+        self.printed = True
+        if os.path.exists(self.bootstrap_binary()):
+            return
+        if '--help' not in sys.argv or len(sys.argv) == 1:
+            return
+
+        print('info: the build system for Rust is written in Rust, so this')
+        print('      script is now going to download a stage0 rust compiler')
+        print('      and then compile the build system itself')
+        print('')
+        print('info: in the meantime you can read more about rustbuild at')
+        print('      src/bootstrap/README.md before the download finishes')
+
     def bootstrap_binary(self):
         """Return the path of the boostrap binary
 
@@ -573,6 +590,7 @@ class RustBuild(object):
 
     def build_bootstrap(self):
         """Build bootstrap"""
+        self.print_what_bootstrap_means()
         build_dir = os.path.join(self.build_dir, "bootstrap")
         if self.clean and os.path.exists(build_dir):
             shutil.rmtree(build_dir)
@@ -589,7 +607,6 @@ class RustBuild(object):
         env["LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib") + \
             (os.pathsep + env["LIBRARY_PATH"]) \
             if "LIBRARY_PATH" in env else ""
-        env["RUSTFLAGS"] = "-Cdebuginfo=2"
         env["PATH"] = os.path.join(self.bin_root(), "bin") + \
             os.pathsep + env["PATH"]
         if not os.path.isfile(self.cargo()):
@@ -627,27 +644,14 @@ class RustBuild(object):
              os.path.join(self.rust_root, ".gitmodules"),
              "--get-regexp", "path"]
         ).decode(default_encoding).splitlines()]
-        filtered_submodules = []
-        for module in submodules:
-            if module.endswith("llvm"):
-                if self.get_toml('llvm-config'):
-                    continue
-            if module.endswith("llvm-emscripten"):
-                backends = self.get_toml('codegen-backends')
-                if backends is None or not 'emscripten' in backends:
-                    continue
-            if module.endswith("jemalloc"):
-                if self.get_toml('use-jemalloc') == 'false':
-                    continue
-                if self.get_toml('jemalloc'):
-                    continue
-            if module.endswith("lld"):
-                config = self.get_toml('lld')
-                if config is None or config == 'false':
-                    continue
-            filtered_submodules.append(module)
+        submodules = [module for module in submodules
+                      if not ((module.endswith("llvm") and
+                               self.get_toml('llvm-config')) or
+                              (module.endswith("jemalloc") and
+                               (self.get_toml('use-jemalloc') == "false" or
+                                self.get_toml('jemalloc'))))]
         run(["git", "submodule", "update",
-             "--init", "--recursive"] + filtered_submodules,
+             "--init", "--recursive"] + submodules,
             cwd=self.rust_root, verbose=self.verbose)
         run(["git", "submodule", "-q", "foreach", "git",
              "reset", "-q", "--hard"],
@@ -661,16 +665,8 @@ class RustBuild(object):
         self._download_url = 'https://dev-static.rust-lang.org'
 
 
-def bootstrap(help_triggered):
+def bootstrap():
     """Configure, fetch, build and run the initial bootstrap"""
-
-    # If the user is asking for help, let them know that the whole download-and-build
-    # process has to happen before anything is printed out.
-    if help_triggered:
-        print("info: Downloading and building bootstrap before processing --help")
-        print("      command. See src/bootstrap/README.md for help with common")
-        print("      commands.")
-
     parser = argparse.ArgumentParser(description='Build rust')
     parser.add_argument('--config')
     parser.add_argument('--build')
@@ -707,7 +703,7 @@ def bootstrap(help_triggered):
             print('      and so in order to preserve your $HOME this will now')
             print('      use vendored sources by default. Note that if this')
             print('      does not work you should run a normal build first')
-            print('      before running a command like `sudo ./x.py install`')
+            print('      before running a command like `sudo make install`')
 
     if build.use_vendored_sources:
         if not os.path.exists('.cargo'):
@@ -733,10 +729,7 @@ def bootstrap(help_triggered):
     if 'dev' in data:
         build.set_dev_environment()
 
-    # No help text depends on submodules. This check saves ~1 minute of git commands, even if
-    # all the submodules are present and downloaded!
-    if not help_triggered:
-        build.update_submodules()
+    build.update_submodules()
 
     # Fetch/build the bootstrap
     build.build = args.build or build.build_triple()
@@ -762,7 +755,7 @@ def main():
     help_triggered = (
         '-h' in sys.argv) or ('--help' in sys.argv) or (len(sys.argv) == 1)
     try:
-        bootstrap(help_triggered)
+        bootstrap()
         if not help_triggered:
             print("Build completed successfully in {}".format(
                 format_build_time(time() - start_time)))

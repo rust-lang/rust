@@ -27,7 +27,6 @@ use syntax_pos::Span;
 
 #[derive(Clone, Debug)]
 pub enum PatternError<'tcx> {
-    AssociatedConstInPattern(Span),
     StaticInPattern(Span),
     ConstEval(ConstEvalErr<'tcx>),
 }
@@ -93,9 +92,7 @@ pub enum PatternKind<'tcx> {
         end: RangeEnd,
     },
 
-    /// matches against a slice, checking the length and extracting elements.
-    /// irrefutable when there is a slice pattern and both `prefix` and `suffix` are empty.
-    /// e.g. `&[ref xs..]`.
+    /// matches against a slice, checking the length and extracting elements
     Slice {
         prefix: Vec<Pattern<'tcx>>,
         slice: Option<Pattern<'tcx>>,
@@ -134,7 +131,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                     BindingMode::ByValue => mutability == Mutability::Mut,
                     BindingMode::ByRef(_, bk) => {
                         write!(f, "ref ")?;
-                        match bk { BorrowKind::Mut { .. } => true, _ => false }
+                        bk == BorrowKind::Mut
                     }
                 };
                 if is_mut {
@@ -153,7 +150,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                         Some(&adt_def.variants[variant_index])
                     }
                     _ => if let ty::TyAdt(adt, _) = self.ty.sty {
-                        if !adt.is_enum() {
+                        if adt.is_univariant() {
                             Some(&adt.variants[0])
                         } else {
                             None
@@ -283,8 +280,7 @@ impl<'a, 'tcx> Pattern<'tcx> {
         let mut pcx = PatternContext::new(tcx, param_env_and_substs, tables);
         let result = pcx.lower_pattern(pat);
         if !pcx.errors.is_empty() {
-            let msg = format!("encountered errors lowering pattern: {:?}", pcx.errors);
-            tcx.sess.delay_span_bug(pat.span, &msg);
+            span_bug!(pat.span, "encountered errors lowering pattern: {:?}", pcx.errors)
         }
         debug!("Pattern::from_hir({:?}) = {:?}", pat, result);
         result
@@ -429,7 +425,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         (Mutability::Not, BindingMode::ByValue),
                     ty::BindByReference(hir::MutMutable) =>
                         (Mutability::Not, BindingMode::ByRef(
-                            region.unwrap(), BorrowKind::Mut { allow_two_phase_borrow: false })),
+                            region.unwrap(), BorrowKind::Mut)),
                     ty::BindByReference(hir::MutImmutable) =>
                         (Mutability::Not, BindingMode::ByRef(
                             region.unwrap(), BorrowKind::Shared)),
@@ -602,7 +598,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             Def::Variant(variant_id) | Def::VariantCtor(variant_id, ..) => {
                 let enum_id = self.tcx.parent_def_id(variant_id).unwrap();
                 let adt_def = self.tcx.adt_def(enum_id);
-                if adt_def.is_enum() {
+                if adt_def.variants.len() > 1 {
                     let substs = match ty.sty {
                         ty::TyAdt(_, substs) |
                         ty::TyFnDef(_, substs) => substs,
@@ -636,10 +632,6 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                   -> Pattern<'tcx> {
         let ty = self.tables.node_id_to_type(id);
         let def = self.tables.qpath_def(qpath, id);
-        let is_associated_const = match def {
-            Def::AssociatedConst(_) => true,
-            _ => false,
-        };
         let kind = match def {
             Def::Const(def_id) | Def::AssociatedConst(def_id) => {
                 let substs = self.tables.node_substs(id);
@@ -661,11 +653,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         return pat;
                     }
                     None => {
-                        self.errors.push(if is_associated_const {
-                            PatternError::AssociatedConstInPattern(span)
-                        } else {
-                            PatternError::StaticInPattern(span)
-                        });
+                        self.errors.push(PatternError::StaticInPattern(span));
                         PatternKind::Wild
                     }
                 }

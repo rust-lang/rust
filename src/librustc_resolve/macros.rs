@@ -13,8 +13,8 @@ use {Module, ModuleKind, NameBinding, NameBindingKind, PathResult};
 use Namespace::{self, MacroNS};
 use build_reduced_graph::BuildReducedGraphVisitor;
 use resolve_imports::ImportResolver;
-use rustc::hir::def_id::{DefId, BUILTIN_MACROS_CRATE, CRATE_DEF_INDEX, DefIndex,
-                         DefIndexAddressSpace};
+use rustc_data_structures::indexed_vec::Idx;
+use rustc::hir::def_id::{DefId, BUILTIN_MACROS_CRATE, CRATE_DEF_INDEX, DefIndex};
 use rustc::hir::def::{Def, Export};
 use rustc::hir::map::{self, DefCollector};
 use rustc::{ty, lint};
@@ -25,7 +25,7 @@ use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Annotatable, Determinacy, MultiModifier, MultiDecorator};
 use syntax::ext::base::{MacroKind, SyntaxExtension, Resolver as SyntaxResolver};
 use syntax::ext::expand::{Expansion, ExpansionKind, Invocation, InvocationKind, find_attr_invoc};
-use syntax::ext::hygiene::{Mark, MarkKind};
+use syntax::ext::hygiene::Mark;
 use syntax::ext::placeholders::placeholder;
 use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::{self, emit_feature_err, GateIssue};
@@ -40,7 +40,7 @@ use syntax_pos::{Span, DUMMY_SP};
 
 use std::cell::Cell;
 use std::mem;
-use rustc_data_structures::sync::Lrc;
+use std::rc::Rc;
 
 #[derive(Clone)]
 pub struct InvocationData<'a> {
@@ -81,14 +81,6 @@ pub struct LegacyBinding<'a> {
     pub ident: Ident,
     def_id: DefId,
     pub span: Span,
-}
-
-pub struct ProcMacError {
-    crate_name: Symbol,
-    name: Symbol,
-    module: ast::NodeId,
-    use_span: Span,
-    warn_msg: &'static str,
 }
 
 #[derive(Copy, Clone)]
@@ -140,7 +132,7 @@ impl<'a> base::Resolver for Resolver<'a> {
                 let ident = path.segments[0].identifier;
                 if ident.name == keywords::DollarCrate.name() {
                     path.segments[0].identifier.name = keywords::CrateRoot.name();
-                    let module = self.0.resolve_crate_root(ident.ctxt, true);
+                    let module = self.0.resolve_crate_root(ident.ctxt);
                     if !module.is_local() {
                         let span = path.segments[0].span;
                         path.segments.insert(1, match module.kind {
@@ -185,11 +177,10 @@ impl<'a> base::Resolver for Resolver<'a> {
         invocation.expansion.set(visitor.legacy_scope);
     }
 
-    fn add_builtin(&mut self, ident: ast::Ident, ext: Lrc<SyntaxExtension>) {
+    fn add_builtin(&mut self, ident: ast::Ident, ext: Rc<SyntaxExtension>) {
         let def_id = DefId {
             krate: BUILTIN_MACROS_CRATE,
-            index: DefIndex::from_array_index(self.macro_map.len(),
-                                              DefIndexAddressSpace::Low),
+            index: DefIndex::new(self.macro_map.len()),
         };
         let kind = ext.kind();
         self.macro_map.insert(def_id, ext);
@@ -293,30 +284,27 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn resolve_invoc(&mut self, invoc: &mut Invocation, scope: Mark, force: bool)
-                     -> Result<Option<Lrc<SyntaxExtension>>, Determinacy> {
+                     -> Result<Option<Rc<SyntaxExtension>>, Determinacy> {
         let def = match invoc.kind {
             InvocationKind::Attr { attr: None, .. } => return Ok(None),
             _ => self.resolve_invoc_to_def(invoc, scope, force)?,
         };
-        let def_id = def.def_id();
 
-        self.macro_defs.insert(invoc.expansion_data.mark, def_id);
+        self.macro_defs.insert(invoc.expansion_data.mark, def.def_id());
         let normal_module_def_id =
             self.macro_def_scope(invoc.expansion_data.mark).normal_ancestor_id;
         self.definitions.add_macro_def_scope(invoc.expansion_data.mark, normal_module_def_id);
 
-        self.unused_macros.remove(&def_id);
+        self.unused_macros.remove(&def.def_id());
         let ext = self.get_macro(def);
         if ext.is_modern() {
-            invoc.expansion_data.mark.set_kind(MarkKind::Modern);
-        } else if def_id.krate == BUILTIN_MACROS_CRATE {
-            invoc.expansion_data.mark.set_kind(MarkKind::Builtin);
+            invoc.expansion_data.mark.set_modern();
         }
         Ok(Some(ext))
     }
 
     fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind, force: bool)
-                     -> Result<Lrc<SyntaxExtension>, Determinacy> {
+                     -> Result<Rc<SyntaxExtension>, Determinacy> {
         self.resolve_macro_to_def(scope, path, kind, force).map(|def| {
             self.unused_macros.remove(&def.def_id());
             self.get_macro(def)
@@ -409,7 +397,7 @@ impl<'a> Resolver<'a> {
         def
     }
 
-    pub fn resolve_macro_to_def_inner(&mut self, scope: Mark, path: &ast::Path,
+    fn resolve_macro_to_def_inner(&mut self, scope: Mark, path: &ast::Path,
                                   kind: MacroKind, force: bool)
                                   -> Result<Def, Determinacy> {
         let ast::Path { ref segments, span } = *path;
@@ -430,15 +418,7 @@ impl<'a> Resolver<'a> {
             let def = match self.resolve_path(&path, Some(MacroNS), false, span) {
                 PathResult::NonModule(path_res) => match path_res.base_def() {
                     Def::Err => Err(Determinacy::Determined),
-                    def @ _ => {
-                        if path_res.unresolved_segments() > 0 {
-                            self.found_unresolved_macro = true;
-                            self.session.span_err(span, "fail to resolve non-ident macro path");
-                            Err(Determinacy::Determined)
-                        } else {
-                            Ok(def)
-                        }
-                    }
+                    def @ _ => Ok(def),
                 },
                 PathResult::Module(..) => unreachable!(),
                 PathResult::Indeterminate if !force => return Err(Determinacy::Undetermined),
@@ -691,7 +671,8 @@ impl<'a> Resolver<'a> {
         if let Some(suggestion) = suggestion {
             if suggestion != name {
                 if let MacroKind::Bang = kind {
-                    err.span_suggestion(span, "you could try the macro", suggestion.to_string());
+                    err.span_suggestion(span, "you could try the macro",
+                                        format!("{}!", suggestion));
                 } else {
                     err.span_suggestion(span, "try", suggestion.to_string());
                 }
@@ -743,8 +724,8 @@ impl<'a> Resolver<'a> {
         }
 
         let def_id = self.definitions.local_def_id(item.id);
-        let ext = Lrc::new(macro_rules::compile(&self.session.parse_sess,
-                                               &self.session.features_untracked(),
+        let ext = Rc::new(macro_rules::compile(&self.session.parse_sess,
+                                               &self.session.features,
                                                item));
         self.macro_map.insert(def_id, ext);
 
@@ -755,16 +736,10 @@ impl<'a> Resolver<'a> {
             *legacy_scope = LegacyScope::Binding(self.arenas.alloc_legacy_binding(LegacyBinding {
                 parent: Cell::new(*legacy_scope), ident: ident, def_id: def_id, span: item.span,
             }));
-            let def = Def::Macro(def_id, MacroKind::Bang);
-            self.all_macros.insert(ident.name, def);
             if attr::contains_name(&item.attrs, "macro_export") {
-                self.macro_exports.push(Export {
-                    ident: ident.modern(),
-                    def: def,
-                    vis: ty::Visibility::Public,
-                    span: item.span,
-                    is_import: false,
-                });
+                let def = Def::Macro(def_id, MacroKind::Bang);
+                self.macro_exports
+                    .push(Export { ident: ident.modern(), def: def, span: item.span });
             } else {
                 self.unused_macros.insert(def_id);
             }
@@ -804,41 +779,16 @@ impl<'a> Resolver<'a> {
             _ => return,
         };
 
-        let def_id = self.current_module.normal_ancestor_id;
-        let node_id = self.definitions.as_local_node_id(def_id).unwrap();
+        let crate_name = self.cstore.crate_name_untracked(krate);
 
-        self.proc_mac_errors.push(ProcMacError {
-            crate_name: self.cstore.crate_name_untracked(krate),
-            name,
-            module: node_id,
-            use_span,
-            warn_msg,
-        });
-    }
-
-    pub fn report_proc_macro_import(&mut self, krate: &ast::Crate) {
-        for err in self.proc_mac_errors.drain(..) {
-            let (span, found_use) = ::UsePlacementFinder::check(krate, err.module);
-
-            if let Some(span) = span {
-                let found_use = if found_use { "" } else { "\n" };
-                self.session.struct_span_err(err.use_span, err.warn_msg)
-                    .span_suggestion(
-                        span,
-                        "instead, import the procedural macro like any other item",
-                        format!("use {}::{};{}", err.crate_name, err.name, found_use),
-                    ).emit();
-            } else {
-                self.session.struct_span_err(err.use_span, err.warn_msg)
-                    .help(&format!("instead, import the procedural macro like any other item: \
-                                    `use {}::{};`", err.crate_name, err.name))
-                    .emit();
-            }
-        }
+        self.session.struct_span_err(use_span, warn_msg)
+            .help(&format!("instead, import the procedural macro like any other item: \
+                             `use {}::{};`", crate_name, name))
+            .emit();
     }
 
     fn gate_legacy_custom_derive(&mut self, name: Symbol, span: Span) {
-        if !self.session.features_untracked().custom_derive {
+        if !self.session.features.borrow().custom_derive {
             let sess = &self.session.parse_sess;
             let explain = feature_gate::EXPLAIN_CUSTOM_DERIVE;
             emit_feature_err(sess, "custom_derive", span, GateIssue::Language, explain);

@@ -992,7 +992,7 @@ extern "rust-intrinsic" {
     ///         ptr::copy_nonoverlapping(y, x, 1);
     ///         ptr::copy_nonoverlapping(&t, y, 1);
     ///
-    ///         // y and t now point to the same thing, but we need to completely forget `t`
+    ///         // y and t now point to the same thing, but we need to completely forget `tmp`
     ///         // because it's no longer relevant.
     ///         mem::forget(t);
     ///     }
@@ -1292,10 +1292,6 @@ extern "rust-intrinsic" {
     /// Reverses the bytes in an integer type `T`.
     pub fn bswap<T>(x: T) -> T;
 
-    /// Reverses the bits in an integer type `T`.
-    #[cfg(not(stage0))]
-    pub fn bitreverse<T>(x: T) -> T;
-
     /// Performs checked integer addition.
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `overflowing_add` method. For example,
@@ -1391,8 +1387,4 @@ extern "rust-intrinsic" {
     /// # } }
     /// ```
     pub fn align_offset(ptr: *const (), align: usize) -> usize;
-
-    /// Emits a `!nontemporal` store according to LLVM (see their docs).
-    /// Probably will never become stable.
-    pub fn nontemporal_store<T>(ptr: *mut T, val: T);
 }

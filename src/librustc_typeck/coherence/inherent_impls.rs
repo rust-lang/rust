@@ -24,7 +24,7 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ty::{self, CrateInherentImpls, TyCtxt};
 use rustc::util::nodemap::DefIdMap;
 
-use rustc_data_structures::sync::Lrc;
+use std::rc::Rc;
 use syntax::ast;
 use syntax_pos::Span;
 
@@ -48,7 +48,7 @@ pub fn crate_inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// On-demand query: yields a vector of the inherent impls for a specific type.
 pub fn inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 ty_def_id: DefId)
-                                -> Lrc<Vec<DefId>> {
+                                -> Rc<Vec<DefId>> {
     assert!(ty_def_id.is_local());
 
     // NB. Until we adopt the red-green dep-tracking algorithm (see
@@ -67,7 +67,7 @@ pub fn inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // [the plan]: https://github.com/rust-lang/rust-roadmap/issues/4
 
     thread_local! {
-        static EMPTY_DEF_ID_VEC: Lrc<Vec<DefId>> = Lrc::new(vec![])
+        static EMPTY_DEF_ID_VEC: Rc<Vec<DefId>> = Rc::new(vec![])
     }
 
     let result = tcx.dep_graph.with_ignore(|| {
@@ -93,10 +93,22 @@ struct InherentCollect<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
-        let ty = match item.node {
-            hir::ItemImpl(.., None, ref ty, _) => ty,
+        let (unsafety, ty) = match item.node {
+            hir::ItemImpl(unsafety, .., None, ref ty, _) => (unsafety, ty),
             _ => return
         };
+
+        match unsafety {
+            hir::Unsafety::Normal => {
+                // OK
+            }
+            hir::Unsafety::Unsafe => {
+                span_err!(self.tcx.sess,
+                          item.span,
+                          E0197,
+                          "inherent impls cannot be declared as unsafe");
+            }
+        }
 
         let def_id = self.tcx.hir.local_def_id(item.id);
         let self_ty = self.tcx.type_of(def_id);
@@ -188,7 +200,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
                                           "i128",
                                           item.span);
             }
-            ty::TyInt(ast::IntTy::Isize) => {
+            ty::TyInt(ast::IntTy::Is) => {
                 self.check_primitive_impl(def_id,
                                           lang_items.isize_impl(),
                                           "isize",
@@ -230,7 +242,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
                                           "u128",
                                           item.span);
             }
-            ty::TyUint(ast::UintTy::Usize) => {
+            ty::TyUint(ast::UintTy::Us) => {
                 self.check_primitive_impl(def_id,
                                           lang_items.usize_impl(),
                                           "usize",
@@ -284,11 +296,11 @@ impl<'a, 'tcx> InherentCollect<'a, 'tcx> {
             let impl_def_id = self.tcx.hir.local_def_id(item.id);
             let mut rc_vec = self.impls_map.inherent_impls
                                            .entry(def_id)
-                                           .or_insert_with(|| Lrc::new(vec![]));
+                                           .or_insert_with(|| Rc::new(vec![]));
 
             // At this point, there should not be any clones of the
-            // `Lrc`, so we can still safely push into it in place:
-            Lrc::get_mut(&mut rc_vec).unwrap().push(impl_def_id);
+            // `Rc`, so we can still safely push into it in place:
+            Rc::get_mut(&mut rc_vec).unwrap().push(impl_def_id);
         } else {
             struct_span_err!(self.tcx.sess,
                              item.span,

@@ -13,7 +13,6 @@ use fmt;
 use sys::{cvt, syscall};
 use time::Duration;
 use convert::TryInto;
-use core::hash::{Hash, Hasher};
 
 const NSEC_PER_SEC: u64 = 1_000_000_000;
 
@@ -111,19 +110,12 @@ impl Ord for Timespec {
     }
 }
 
-impl Hash for Timespec {
-    fn hash<H : Hasher>(&self, state: &mut H) {
-        self.t.tv_sec.hash(state);
-        self.t.tv_nsec.hash(state);
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Instant {
     t: Timespec,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SystemTime {
     t: Timespec,
 }

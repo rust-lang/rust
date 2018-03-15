@@ -275,8 +275,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             "volatile_store" =>
                 (1, vec![ tcx.mk_mut_ptr(param(0)), param(0) ], tcx.mk_nil()),
 
-            "ctpop" | "ctlz" | "ctlz_nonzero" | "cttz" | "cttz_nonzero" |
-            "bswap" | "bitreverse" =>
+            "ctpop" | "ctlz" | "ctlz_nonzero" | "cttz" | "cttz_nonzero" | "bswap" =>
                 (1, vec![param(0)], param(0)),
 
             "add_with_overflow" | "sub_with_overflow"  | "mul_with_overflow" =>
@@ -319,10 +318,6 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 (0, vec![ptr_ty, tcx.types.usize], tcx.types.usize)
             },
 
-            "nontemporal_store" => {
-                (1, vec![ tcx.mk_mut_ptr(param(0)), param(0) ], tcx.mk_nil())
-            }
-
             ref other => {
                 struct_span_err!(tcx.sess, it.span, E0093,
                                 "unrecognized intrinsic function: `{}`",
@@ -353,7 +348,7 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         "simd_eq" | "simd_ne" | "simd_lt" | "simd_le" | "simd_gt" | "simd_ge" => {
             (2, vec![param(0), param(0)], param(1))
         }
-        "simd_add" | "simd_sub" | "simd_mul" | "simd_rem" |
+        "simd_add" | "simd_sub" | "simd_mul" |
         "simd_div" | "simd_shl" | "simd_shr" |
         "simd_and" | "simd_or" | "simd_xor" => {
             (1, vec![param(0), param(0)], param(0))
@@ -390,7 +385,7 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     let mut structural_to_nomimal = FxHashMap();
 
                     let sig = tcx.fn_sig(def_id);
-                    let sig = sig.no_late_bound_regions().unwrap();
+                    let sig = tcx.no_late_bound_regions(&sig).unwrap();
                     if intr.inputs.len() != sig.inputs().len() {
                         span_err!(tcx.sess, it.span, E0444,
                                   "platform-specific intrinsic has invalid number of \

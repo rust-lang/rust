@@ -1,9 +1,9 @@
 error[E0308]: mismatched types
   --> $DIR/issue-20862.rs:12:5
    |
-LL | fn foo(x: i32) {
+11 | fn foo(x: i32) {
    |                - possibly return type missing here?
-LL |     |y| x + y
+12 |     |y| x + y
    |     ^^^^^^^^^ expected (), found closure
    |
    = note: expected type `()`
@@ -12,10 +12,8 @@ LL |     |y| x + y
 error[E0618]: expected function, found `()`
   --> $DIR/issue-20862.rs:17:13
    |
-LL |     let x = foo(5)(2);
-   |             ^^^^^^^^^ not a function
+17 |     let x = foo(5)(2);
+   |             ^^^^^^^^^
 
 error: aborting due to 2 previous errors
 
-You've got a few errors: E0308, E0618
-If you want more information on an error, try using "rustc --explain E0308"

@@ -1,16 +1,10 @@
-error[E0478]: lifetime bound not satisfied
+error[E0477]: the type `std::borrow::Cow<'a, A>` does not fulfill the required lifetime
   --> $DIR/static-lifetime.rs:13:20
    |
-LL | impl<'a, A: Clone> Arbitrary for ::std::borrow::Cow<'a, A> {} //~ ERROR lifetime bound
+13 | impl<'a, A: Clone> Arbitrary for ::std::borrow::Cow<'a, A> {}
    |                    ^^^^^^^^^
    |
-note: lifetime parameter instantiated with the lifetime 'a as defined on the impl at 13:1
-  --> $DIR/static-lifetime.rs:13:1
-   |
-LL | impl<'a, A: Clone> Arbitrary for ::std::borrow::Cow<'a, A> {} //~ ERROR lifetime bound
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: but lifetime parameter must outlive the static lifetime
+   = note: type must satisfy the static lifetime
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0478"

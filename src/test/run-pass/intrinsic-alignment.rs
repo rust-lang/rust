@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-wasm32-bare seems not important to test here
 
 #![feature(intrinsics, main)]
 
@@ -19,16 +18,14 @@ mod rusti {
     }
 }
 
-#[cfg(any(target_os = "android",
-          target_os = "cloudabi",
-          target_os = "dragonfly",
-          target_os = "emscripten",
-          target_os = "freebsd",
-          target_os = "linux",
+#[cfg(any(target_os = "linux",
           target_os = "macos",
+          target_os = "freebsd",
+          target_os = "dragonfly",
           target_os = "netbsd",
           target_os = "openbsd",
-          target_os = "solaris"))]
+          target_os = "solaris",
+          target_os = "emscripten"))]
 mod m {
     #[main]
     #[cfg(target_arch = "x86")]
@@ -74,6 +71,18 @@ mod m {
 
     #[main]
     #[cfg(target_arch = "x86_64")]
+    pub fn main() {
+        unsafe {
+            assert_eq!(::rusti::pref_align_of::<u64>(), 8);
+            assert_eq!(::rusti::min_align_of::<u64>(), 8);
+        }
+    }
+}
+
+#[cfg(target_os = "android")]
+mod m {
+    #[main]
+    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
     pub fn main() {
         unsafe {
             assert_eq!(::rusti::pref_align_of::<u64>(), 8);

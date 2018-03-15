@@ -11,28 +11,23 @@
 pub use self::code_stats::{CodeStats, DataTypeKind, FieldInfo};
 pub use self::code_stats::{SizeKind, TypeSizeInfo, VariantInfo};
 
-use hir::def_id::CrateNum;
+use hir::def_id::{CrateNum, DefIndex};
 use ich::Fingerprint;
 
-use ich;
 use lint;
-use lint::builtin::BuiltinLintDiagnostics;
 use middle::allocator::AllocatorKind;
 use middle::dependency_format;
 use session::search_paths::PathKind;
-use session::config::{DebugInfoLevel, OutputType, Epoch};
+use session::config::DebugInfoLevel;
 use ty::tls;
 use util::nodemap::{FxHashMap, FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
-
-use rustc_data_structures::sync::Lrc;
 
 use syntax::ast::NodeId;
 use errors::{self, DiagnosticBuilder, DiagnosticId};
 use errors::emitter::{Emitter, EmitterWriter};
 use syntax::json::JsonEmitter;
 use syntax::feature_gate;
-use syntax::symbol::Symbol;
 use syntax::parse;
 use syntax::parse::ParseSess;
 use syntax::{ast, codemap};
@@ -50,6 +45,7 @@ use std::env;
 use std::fmt;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use std::sync::{Once, ONCE_INIT};
 use std::time::Duration;
 
@@ -73,10 +69,10 @@ pub struct Session {
     pub default_sysroot: Option<PathBuf>,
     /// The name of the root source file of the crate, in the local file system.
     /// `None` means that there is no source file.
-    pub local_crate_source_file: Option<PathBuf>,
+    pub local_crate_source_file: Option<String>,
     /// The directory the compiler has been executed in plus a flag indicating
     /// if the value stored here has been affected by path remapping.
-    pub working_dir: (PathBuf, bool),
+    pub working_dir: (String, bool),
     pub lint_store: RefCell<lint::LintStore>,
     pub buffered_lints: RefCell<Option<lint::LintBuffer>>,
     /// Set of (DiagnosticId, Option<Span>, message) tuples tracking
@@ -93,8 +89,7 @@ pub struct Session {
     /// multiple crates with the same name to coexist. See the
     /// trans::back::symbol_names module for more information.
     pub crate_disambiguator: RefCell<Option<CrateDisambiguator>>,
-
-    features: RefCell<Option<feature_gate::Features>>,
+    pub features: RefCell<feature_gate::Features>,
 
     /// The maximum recursion limit for potentially infinitely recursive
     /// operations such as auto-dereference and monomorphization.
@@ -116,9 +111,6 @@ pub struct Session {
     pub imported_macro_spans: RefCell<HashMap<Span, (String, Span)>>,
 
     incr_comp_session: RefCell<IncrCompSession>,
-
-    /// A cache of attributes ignored by StableHashingContext
-    pub ignored_attr_names: FxHashSet<Symbol>,
 
     /// Some measurements that are being gathered during compilation.
     pub perf_stats: PerfStats,
@@ -169,23 +161,14 @@ pub struct PerfStats {
 enum DiagnosticBuilderMethod {
     Note,
     SpanNote,
-    SpanSuggestion(String), // suggestion
     // add more variants as needed to support one-time diagnostics
 }
 
-/// Diagnostic message ID—used by `Session.one_time_diagnostics` to avoid
-/// emitting the same message more than once
+/// Diagnostic message id - used in order to avoid emitting the same message more than once
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum DiagnosticMessageId {
-    ErrorId(u16), // EXXXX error code as integer
     LintId(lint::LintId),
-    StabilityId(u32) // issue number
-}
-
-impl From<&'static lint::Lint> for DiagnosticMessageId {
-    fn from(lint: &'static lint::Lint) -> Self {
-        DiagnosticMessageId::LintId(lint::LintId::of(lint))
-    }
+    StabilityId(u32)
 }
 
 impl Session {
@@ -195,7 +178,6 @@ impl Session {
             None => bug!("accessing disambiguator before initialization"),
         }
     }
-
     pub fn struct_span_warn<'a, S: Into<MultiSpan>>(&'a self,
                                                     sp: S,
                                                     msg: &str)
@@ -254,7 +236,7 @@ impl Session {
     }
 
     pub fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
-        self.diagnostic().span_fatal(sp, msg).raise()
+        panic!(self.diagnostic().span_fatal(sp, msg))
     }
     pub fn span_fatal_with_code<S: Into<MultiSpan>>(
         &self,
@@ -262,10 +244,10 @@ impl Session {
         msg: &str,
         code: DiagnosticId,
     ) -> ! {
-        self.diagnostic().span_fatal_with_code(sp, msg, code).raise()
+        panic!(self.diagnostic().span_fatal_with_code(sp, msg, code))
     }
     pub fn fatal(&self, msg: &str) -> ! {
-        self.diagnostic().fatal(msg).raise()
+        panic!(self.diagnostic().fatal(msg))
     }
     pub fn span_err_or_warn<S: Into<MultiSpan>>(&self, is_warning: bool, sp: S, msg: &str) {
         if is_warning {
@@ -345,18 +327,7 @@ impl Session {
                                            sp: S,
                                            msg: &str) {
         match *self.buffered_lints.borrow_mut() {
-            Some(ref mut buffer) => buffer.add_lint(lint, id, sp.into(),
-                                                    msg, BuiltinLintDiagnostics::Normal),
-            None => bug!("can't buffer lints after HIR lowering"),
-        }
-    }
-
-    pub fn buffer_lint_with_diagnostic<S: Into<MultiSpan>>(&self,
-        lint: &'static lint::Lint, id: ast::NodeId, sp: S,
-        msg: &str, diagnostic: BuiltinLintDiagnostics) {
-        match *self.buffered_lints.borrow_mut() {
-            Some(ref mut buffer) => buffer.add_lint(lint, id, sp.into(),
-                                                    msg, diagnostic),
+            Some(ref mut buffer) => buffer.add_lint(lint, id, sp.into(), msg),
             None => bug!("can't buffer lints after HIR lowering"),
         }
     }
@@ -382,27 +353,34 @@ impl Session {
 
     /// Analogous to calling methods on the given `DiagnosticBuilder`, but
     /// deduplicates on lint ID, span (if any), and message for this `Session`
+    /// if we're not outputting in JSON mode.
     fn diag_once<'a, 'b>(&'a self,
                          diag_builder: &'b mut DiagnosticBuilder<'a>,
                          method: DiagnosticBuilderMethod,
-                         msg_id: DiagnosticMessageId,
-                         message: &str,
-                         span_maybe: Option<Span>) {
-
-        let id_span_message = (msg_id, span_maybe, message.to_owned());
-        let fresh = self.one_time_diagnostics.borrow_mut().insert(id_span_message);
-        if fresh {
+                         lint: &'static lint::Lint, message: &str, span: Option<Span>) {
+        let mut do_method = || {
             match method {
                 DiagnosticBuilderMethod::Note => {
                     diag_builder.note(message);
                 },
                 DiagnosticBuilderMethod::SpanNote => {
-                    let span = span_maybe.expect("span_note needs a span");
-                    diag_builder.span_note(span, message);
-                },
-                DiagnosticBuilderMethod::SpanSuggestion(suggestion) => {
-                    let span = span_maybe.expect("span_suggestion needs a span");
-                    diag_builder.span_suggestion(span, message, suggestion);
+                    diag_builder.span_note(span.expect("span_note expects a span"), message);
+                }
+            }
+        };
+
+        match self.opts.error_format {
+            // when outputting JSON for tool consumption, the tool might want
+            // the duplicates
+            config::ErrorOutputType::Json(_) => {
+                do_method()
+            },
+            _ => {
+                let lint_id = DiagnosticMessageId::LintId(lint::LintId::of(lint));
+                let id_span_message = (lint_id, span, message.to_owned());
+                let fresh = self.one_time_diagnostics.borrow_mut().insert(id_span_message);
+                if fresh {
+                    do_method()
                 }
             }
         }
@@ -410,25 +388,14 @@ impl Session {
 
     pub fn diag_span_note_once<'a, 'b>(&'a self,
                                        diag_builder: &'b mut DiagnosticBuilder<'a>,
-                                       msg_id: DiagnosticMessageId, span: Span, message: &str) {
-        self.diag_once(diag_builder, DiagnosticBuilderMethod::SpanNote,
-                       msg_id, message, Some(span));
+                                       lint: &'static lint::Lint, span: Span, message: &str) {
+        self.diag_once(diag_builder, DiagnosticBuilderMethod::SpanNote, lint, message, Some(span));
     }
 
     pub fn diag_note_once<'a, 'b>(&'a self,
                                   diag_builder: &'b mut DiagnosticBuilder<'a>,
-                                  msg_id: DiagnosticMessageId, message: &str) {
-        self.diag_once(diag_builder, DiagnosticBuilderMethod::Note, msg_id, message, None);
-    }
-
-    pub fn diag_span_suggestion_once<'a, 'b>(&'a self,
-                                             diag_builder: &'b mut DiagnosticBuilder<'a>,
-                                             msg_id: DiagnosticMessageId,
-                                             span: Span,
-                                             message: &str,
-                                             suggestion: String) {
-        self.diag_once(diag_builder, DiagnosticBuilderMethod::SpanSuggestion(suggestion),
-                       msg_id, message, Some(span));
+                                  lint: &'static lint::Lint, message: &str) {
+        self.diag_once(diag_builder, DiagnosticBuilderMethod::Note, lint, message, None);
     }
 
     pub fn codemap<'a>(&'a self) -> &'a codemap::CodeMap {
@@ -457,91 +424,14 @@ impl Session {
     pub fn print_llvm_passes(&self) -> bool {
         self.opts.debugging_opts.print_llvm_passes
     }
-
-    /// Get the features enabled for the current compilation session.
-    /// DO NOT USE THIS METHOD if there is a TyCtxt available, as it circumvents
-    /// dependency tracking. Use tcx.features() instead.
-    #[inline]
-    pub fn features_untracked(&self) -> cell::Ref<feature_gate::Features> {
-        let features = self.features.borrow();
-
-        if features.is_none() {
-            bug!("Access to Session::features before it is initialized");
-        }
-
-        cell::Ref::map(features, |r| r.as_ref().unwrap())
+    pub fn emit_end_regions(&self) -> bool {
+        self.opts.debugging_opts.emit_end_regions ||
+            (self.opts.debugging_opts.mir_emit_validate > 0) ||
+            self.opts.debugging_opts.borrowck_mir
     }
-
-    pub fn init_features(&self, features: feature_gate::Features) {
-        *(self.features.borrow_mut()) = Some(features);
+    pub fn lto(&self) -> bool {
+        self.opts.cg.lto
     }
-
-    /// If true, we should gather causal information during NLL
-    /// checking. This will eventually be the normal thing, but right
-    /// now it is too unoptimized.
-    pub fn nll_dump_cause(&self) -> bool {
-        self.opts.debugging_opts.nll_dump_cause
-    }
-
-    /// Calculates the flavor of LTO to use for this compilation.
-    pub fn lto(&self) -> config::Lto {
-        // If our target has codegen requirements ignore the command line
-        if self.target.target.options.requires_lto {
-            return config::Lto::Fat
-        }
-
-        // If the user specified something, return that. If they only said `-C
-        // lto` and we've for whatever reason forced off ThinLTO via the CLI,
-        // then ensure we can't use a ThinLTO.
-        match self.opts.cg.lto {
-            config::Lto::No => {}
-            config::Lto::Yes if self.opts.cli_forced_thinlto_off => {
-                return config::Lto::Fat
-            }
-            other => return other,
-        }
-
-        // Ok at this point the target doesn't require anything and the user
-        // hasn't asked for anything. Our next decision is whether or not
-        // we enable "auto" ThinLTO where we use multiple codegen units and
-        // then do ThinLTO over those codegen units. The logic below will
-        // either return `No` or `ThinLocal`.
-
-        // If processing command line options determined that we're incompatible
-        // with ThinLTO (e.g. `-C lto --emit llvm-ir`) then return that option.
-        if self.opts.cli_forced_thinlto_off {
-            return config::Lto::No
-        }
-
-        // If `-Z thinlto` specified process that, but note that this is mostly
-        // a deprecated option now that `-C lto=thin` exists.
-        if let Some(enabled) = self.opts.debugging_opts.thinlto {
-            if enabled {
-                return config::Lto::ThinLocal
-            } else {
-                return config::Lto::No
-            }
-        }
-
-        // If there's only one codegen unit and LTO isn't enabled then there's
-        // no need for ThinLTO so just return false.
-        if self.codegen_units() == 1 {
-            return config::Lto::No
-        }
-
-        // Right now ThinLTO isn't compatible with incremental compilation.
-        if self.opts.incremental.is_some() {
-            return config::Lto::No
-        }
-
-        // Now we're in "defaults" territory. By default we enable ThinLTO for
-        // optimized compiles (anything greater than O0).
-        match self.opts.optimize {
-            config::OptLevel::No => config::Lto::No,
-            _ => config::Lto::ThinLocal,
-        }
-    }
-
     /// Returns the panic strategy for this compile session. If the user explicitly selected one
     /// using '-C panic', use that, otherwise use the panic strategy defined by the target.
     pub fn panic_strategy(&self) -> PanicStrategy {
@@ -550,13 +440,6 @@ impl Session {
     pub fn linker_flavor(&self) -> LinkerFlavor {
         self.opts.debugging_opts.linker_flavor.unwrap_or(self.target.target.linker_flavor)
     }
-
-    pub fn fewer_names(&self) -> bool {
-        let more_names = self.opts.output_types.contains_key(&OutputType::LlvmAssembly) ||
-                         self.opts.output_types.contains_key(&OutputType::Bitcode);
-        self.opts.debugging_opts.fewer_names || !more_names
-    }
-
     pub fn no_landing_pads(&self) -> bool {
         self.opts.debugging_opts.no_landing_pads || self.panic_strategy() == PanicStrategy::Abort
     }
@@ -604,16 +487,18 @@ impl Session {
 
     /// Returns the symbol name for the registrar function,
     /// given the crate Svh and the function DefIndex.
-    pub fn generate_plugin_registrar_symbol(&self,
-                                            disambiguator: CrateDisambiguator)
+    pub fn generate_plugin_registrar_symbol(&self, disambiguator: CrateDisambiguator,
+                                            index: DefIndex)
                                             -> String {
-        format!("__rustc_plugin_registrar_{}__", disambiguator.to_fingerprint().to_hex())
+        format!("__rustc_plugin_registrar__{}_{}", disambiguator.to_fingerprint().to_hex(),
+                                                   index.as_usize())
     }
 
-    pub fn generate_derive_registrar_symbol(&self,
-                                            disambiguator: CrateDisambiguator)
+    pub fn generate_derive_registrar_symbol(&self, disambiguator: CrateDisambiguator,
+                                            index: DefIndex)
                                             -> String {
-        format!("__rustc_derive_registrar_{}__", disambiguator.to_fingerprint().to_hex())
+        format!("__rustc_derive_registrar__{}_{}", disambiguator.to_fingerprint().to_hex(),
+                                                   index.as_usize())
     }
 
     pub fn sysroot<'a>(&'a self) -> &'a Path {
@@ -693,7 +578,6 @@ impl Session {
             IncrCompSession::Active { ref session_directory, .. } => {
                 session_directory.clone()
             }
-            IncrCompSession::InvalidBecauseOfErrors { .. } => return,
             _ => bug!("Trying to invalidate IncrCompSession `{:?}`",
                       *incr_comp_session),
         };
@@ -738,13 +622,9 @@ impl Session {
                  self.perf_stats.incr_comp_hashes_count.get());
         println!("Total number of bytes hashed for incr. comp.:  {}",
                  self.perf_stats.incr_comp_bytes_hashed.get());
-        if self.perf_stats.incr_comp_hashes_count.get() != 0 {
-            println!("Average bytes hashed per incr. comp. HIR node: {}",
-                    self.perf_stats.incr_comp_bytes_hashed.get() /
-                    self.perf_stats.incr_comp_hashes_count.get());
-        } else {
-            println!("Average bytes hashed per incr. comp. HIR node: N/A");
-        }
+        println!("Average bytes hashed per incr. comp. HIR node: {}",
+                 self.perf_stats.incr_comp_bytes_hashed.get() /
+                 self.perf_stats.incr_comp_hashes_count.get());
         println!("Total time spent computing symbol hashes:      {}",
                  duration_to_secs_str(self.perf_stats.symbol_hash_time.get()));
         println!("Total time spent decoding DefPath tables:      {}",
@@ -777,12 +657,6 @@ impl Session {
         ret
     }
 
-    /// Returns the number of query threads that should be used for this
-    /// compilation
-    pub fn query_threads(&self) -> usize {
-        self.opts.debugging_opts.query_threads.unwrap_or(1)
-    }
-
     /// Returns the number of codegen units that should be used for this
     /// compilation
     pub fn codegen_units(&self) -> usize {
@@ -793,70 +667,31 @@ impl Session {
             return n as usize
         }
 
-        // Why is 16 codegen units the default all the time?
-        //
-        // The main reason for enabling multiple codegen units by default is to
-        // leverage the ability for the trans backend to do translation and
-        // codegen in parallel. This allows us, especially for large crates, to
-        // make good use of all available resources on the machine once we've
-        // hit that stage of compilation. Large crates especially then often
-        // take a long time in trans/codegen and this helps us amortize that
-        // cost.
-        //
-        // Note that a high number here doesn't mean that we'll be spawning a
-        // large number of threads in parallel. The backend of rustc contains
-        // global rate limiting through the `jobserver` crate so we'll never
-        // overload the system with too much work, but rather we'll only be
-        // optimizing when we're otherwise cooperating with other instances of
-        // rustc.
-        //
-        // Rather a high number here means that we should be able to keep a lot
-        // of idle cpus busy. By ensuring that no codegen unit takes *too* long
-        // to build we'll be guaranteed that all cpus will finish pretty closely
-        // to one another and we should make relatively optimal use of system
-        // resources
-        //
-        // Note that the main cost of codegen units is that it prevents LLVM
-        // from inlining across codegen units. Users in general don't have a lot
-        // of control over how codegen units are split up so it's our job in the
-        // compiler to ensure that undue performance isn't lost when using
-        // codegen units (aka we can't require everyone to slap `#[inline]` on
-        // everything).
-        //
-        // If we're compiling at `-O0` then the number doesn't really matter too
-        // much because performance doesn't matter and inlining is ok to lose.
-        // In debug mode we just want to try to guarantee that no cpu is stuck
-        // doing work that could otherwise be farmed to others.
-        //
-        // In release mode, however (O1 and above) performance does indeed
-        // matter! To recover the loss in performance due to inlining we'll be
-        // enabling ThinLTO by default (the function for which is just below).
-        // This will ensure that we recover any inlining wins we otherwise lost
-        // through codegen unit partitioning.
-        //
-        // ---
-        //
-        // Ok that's a lot of words but the basic tl;dr; is that we want a high
-        // number here -- but not too high. Additionally we're "safe" to have it
-        // always at the same number at all optimization levels.
-        //
-        // As a result 16 was chosen here! Mostly because it was a power of 2
-        // and most benchmarks agreed it was roughly a local optimum. Not very
-        // scientific.
-        16
-    }
+        match self.opts.optimize {
+            // If we're compiling at `-O0` then default to 16 codegen units.
+            // The number here shouldn't matter too too much as debug mode
+            // builds don't rely on performance at all, meaning that lost
+            // opportunities for inlining through multiple codegen units is
+            // a non-issue.
+            //
+            // Note that the high number here doesn't mean that we'll be
+            // spawning a large number of threads in parallel. The backend
+            // of rustc contains global rate limiting through the
+            // `jobserver` crate so we'll never overload the system with too
+            // much work, but rather we'll only be optimizing when we're
+            // otherwise cooperating with other instances of rustc.
+            //
+            // Rather the high number here means that we should be able to
+            // keep a lot of idle cpus busy. By ensuring that no codegen
+            // unit takes *too* long to build we'll be guaranteed that all
+            // cpus will finish pretty closely to one another and we should
+            // make relatively optimal use of system resources
+            config::OptLevel::No => 16,
 
-    pub fn teach(&self, code: &DiagnosticId) -> bool {
-        self.opts.debugging_opts.teach && !self.parse_sess.span_diagnostic.code_emitted(code)
-    }
-
-    /// Are we allowed to use features from the Rust 2018 epoch?
-    pub fn rust_2018(&self) -> bool {
-        self.opts.debugging_opts.epoch >= Epoch::Epoch2018
-    }
-
-    pub fn epoch(&self) -> Epoch {
-        self.opts.debugging_opts.epoch
+            // All other optimization levels default use one codegen unit,
+            // the historical default in Rust for a Long Time.
+            _ => 1,
+        }
     }
 }
 
@@ -869,15 +704,15 @@ pub fn build_session(sopts: config::Options,
     build_session_with_codemap(sopts,
                                local_crate_source_file,
                                registry,
-                               Lrc::new(codemap::CodeMap::new(file_path_mapping)),
+                               Rc::new(codemap::CodeMap::new(file_path_mapping)),
                                None)
 }
 
 pub fn build_session_with_codemap(sopts: config::Options,
                                   local_crate_source_file: Option<PathBuf>,
                                   registry: errors::registry::Registry,
-                                  codemap: Lrc<codemap::CodeMap>,
-                                  emitter_dest: Option<Box<dyn Write + Send>>)
+                                  codemap: Rc<codemap::CodeMap>,
+                                  emitter_dest: Option<Box<Write + Send>>)
                                   -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
@@ -890,50 +725,35 @@ pub fn build_session_with_codemap(sopts: config::Options,
         .unwrap_or(false);
     let cap_lints_allow = sopts.lint_cap.map_or(false, |cap| cap == lint::Allow);
 
-    let can_emit_warnings = !(warnings_allow || cap_lints_allow);
+    let can_print_warnings = !(warnings_allow || cap_lints_allow);
 
     let treat_err_as_bug = sopts.debugging_opts.treat_err_as_bug;
 
-    let external_macro_backtrace = sopts.debugging_opts.external_macro_backtrace;
-
-    let emitter: Box<dyn Emitter> = match (sopts.error_format, emitter_dest) {
+    let emitter: Box<Emitter> = match (sopts.error_format, emitter_dest) {
         (config::ErrorOutputType::HumanReadable(color_config), None) => {
-            Box::new(EmitterWriter::stderr(color_config, Some(codemap.clone()),
-                     false, sopts.debugging_opts.teach)
-                     .ui_testing(sopts.debugging_opts.ui_testing))
+            Box::new(EmitterWriter::stderr(color_config, Some(codemap.clone()), false))
         }
         (config::ErrorOutputType::HumanReadable(_), Some(dst)) => {
-            Box::new(EmitterWriter::new(dst, Some(codemap.clone()),
-                     false, false)
-                     .ui_testing(sopts.debugging_opts.ui_testing))
+            Box::new(EmitterWriter::new(dst, Some(codemap.clone()), false))
         }
         (config::ErrorOutputType::Json(pretty), None) => {
-            Box::new(JsonEmitter::stderr(Some(registry), codemap.clone(),
-                     pretty, sopts.debugging_opts.approximate_suggestions)
-                     .ui_testing(sopts.debugging_opts.ui_testing))
+            Box::new(JsonEmitter::stderr(Some(registry), codemap.clone(), pretty))
         }
         (config::ErrorOutputType::Json(pretty), Some(dst)) => {
-            Box::new(JsonEmitter::new(dst, Some(registry), codemap.clone(),
-                     pretty, sopts.debugging_opts.approximate_suggestions)
-                     .ui_testing(sopts.debugging_opts.ui_testing))
+            Box::new(JsonEmitter::new(dst, Some(registry), codemap.clone(), pretty))
         }
         (config::ErrorOutputType::Short(color_config), None) => {
-            Box::new(EmitterWriter::stderr(color_config, Some(codemap.clone()), true, false))
+            Box::new(EmitterWriter::stderr(color_config, Some(codemap.clone()), true))
         }
         (config::ErrorOutputType::Short(_), Some(dst)) => {
-            Box::new(EmitterWriter::new(dst, Some(codemap.clone()), true, false))
+            Box::new(EmitterWriter::new(dst, Some(codemap.clone()), true))
         }
     };
 
     let diagnostic_handler =
-        errors::Handler::with_emitter_and_flags(
-            emitter,
-            errors::HandlerFlags {
-                can_emit_warnings,
-                treat_err_as_bug,
-                external_macro_backtrace,
-                .. Default::default()
-            });
+        errors::Handler::with_emitter(can_print_warnings,
+                                      treat_err_as_bug,
+                                      emitter);
 
     build_session_(sopts,
                    local_crate_source_file,
@@ -944,12 +764,12 @@ pub fn build_session_with_codemap(sopts: config::Options,
 pub fn build_session_(sopts: config::Options,
                       local_crate_source_file: Option<PathBuf>,
                       span_diagnostic: errors::Handler,
-                      codemap: Lrc<codemap::CodeMap>)
+                      codemap: Rc<codemap::CodeMap>)
                       -> Session {
     let host = match Target::search(config::host_triple()) {
         Ok(t) => t,
         Err(e) => {
-            span_diagnostic.fatal(&format!("Error loading host specification: {}", e)).raise();
+            panic!(span_diagnostic.fatal(&format!("Error loading host specification: {}", e)));
         }
     };
     let target_cfg = config::build_target_config(&sopts, &span_diagnostic);
@@ -963,7 +783,7 @@ pub fn build_session_(sopts: config::Options,
     let file_path_mapping = sopts.file_path_mapping();
 
     let local_crate_source_file = local_crate_source_file.map(|path| {
-        file_path_mapping.map_prefix(path).0
+        file_path_mapping.map_prefix(path.to_string_lossy().into_owned()).0
     });
 
     let optimization_fuel_crate = sopts.debugging_opts.fuel.as_ref().map(|i| i.0.clone());
@@ -973,9 +793,9 @@ pub fn build_session_(sopts: config::Options,
     let print_fuel = Cell::new(0);
 
     let working_dir = match env::current_dir() {
-        Ok(dir) => dir,
+        Ok(dir) => dir.to_string_lossy().into_owned(),
         Err(e) => {
-            p_s.span_diagnostic.fatal(&format!("Current directory is invalid: {}", e)).raise()
+            panic!(p_s.span_diagnostic.fatal(&format!("Current directory is invalid: {}", e)))
         }
     };
     let working_dir = file_path_mapping.map_prefix(working_dir);
@@ -1001,7 +821,7 @@ pub fn build_session_(sopts: config::Options,
         crate_types: RefCell::new(Vec::new()),
         dependency_formats: RefCell::new(FxHashMap()),
         crate_disambiguator: RefCell::new(None),
-        features: RefCell::new(None),
+        features: RefCell::new(feature_gate::Features::new()),
         recursion_limit: Cell::new(64),
         type_length_limit: Cell::new(1048576),
         next_node_id: Cell::new(NodeId::new(1)),
@@ -1010,7 +830,6 @@ pub fn build_session_(sopts: config::Options,
         injected_panic_runtime: Cell::new(None),
         imported_macro_spans: RefCell::new(HashMap::new()),
         incr_comp_session: RefCell::new(IncrCompSession::NotInitialized),
-        ignored_attr_names: ich::compute_ignored_attr_names(),
         perf_stats: PerfStats {
             svh_time: Cell::new(Duration::from_secs(0)),
             incr_comp_hashes_time: Cell::new(Duration::from_secs(0)),
@@ -1095,28 +914,28 @@ pub enum IncrCompSession {
 }
 
 pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
-    let emitter: Box<dyn Emitter> = match output {
+    let emitter: Box<Emitter> = match output {
         config::ErrorOutputType::HumanReadable(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config, None, false, false))
+            Box::new(EmitterWriter::stderr(color_config, None, false))
         }
         config::ErrorOutputType::Json(pretty) => Box::new(JsonEmitter::basic(pretty)),
         config::ErrorOutputType::Short(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config, None, true, false))
+            Box::new(EmitterWriter::stderr(color_config, None, true))
         }
     };
     let handler = errors::Handler::with_emitter(true, false, emitter);
     handler.emit(&MultiSpan::new(), msg, errors::Level::Fatal);
-    errors::FatalError.raise();
+    panic!(errors::FatalError);
 }
 
 pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
-    let emitter: Box<dyn Emitter> = match output {
+    let emitter: Box<Emitter> = match output {
         config::ErrorOutputType::HumanReadable(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config, None, false, false))
+            Box::new(EmitterWriter::stderr(color_config, None, false))
         }
         config::ErrorOutputType::Json(pretty) => Box::new(JsonEmitter::basic(pretty)),
         config::ErrorOutputType::Short(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config, None, true, false))
+            Box::new(EmitterWriter::stderr(color_config, None, true))
         }
     };
     let handler = errors::Handler::with_emitter(true, false, emitter);

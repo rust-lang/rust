@@ -17,7 +17,7 @@
 
 fn a() {
     // the cast is unreachable:
-    let x = {return}: !; //~ ERROR unreachable
+    let x = {return}: !;
 }
 
 fn main() { }

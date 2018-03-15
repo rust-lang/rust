@@ -13,6 +13,7 @@
 
 #![feature(associated_type_defaults)]
 #![deny(private_in_public)]
+#![allow(unused)]
 #![allow(improper_ctypes)]
 
 mod types {
@@ -34,6 +35,7 @@ mod types {
         const C: Priv = Priv; //~ ERROR private type `types::Priv` in public interface
         //~^ WARNING hard error
         type Alias = Priv; //~ ERROR private type `types::Priv` in public interface
+        //~^ WARNING hard error
         fn f1(arg: Priv) {} //~ ERROR private type `types::Priv` in public interface
         //~^ WARNING hard error
         fn f2() -> Priv { panic!() } //~ ERROR private type `types::Priv` in public interface
@@ -49,6 +51,7 @@ mod types {
     }
     impl PubTr for Pub {
         type Alias = Priv; //~ ERROR private type `types::Priv` in public interface
+        //~^ WARNING hard error
     }
 }
 
@@ -58,7 +61,7 @@ mod traits {
     pub trait PubTr {}
 
     pub type Alias<T: PrivTr> = T; //~ ERROR private trait `traits::PrivTr` in public interface
-    //~^ WARN bounds are ignored in type aliases
+    //~^ WARN trait bounds are not (yet) enforced in type definitions
     //~| WARNING hard error
     pub trait Tr1: PrivTr {} //~ ERROR private trait `traits::PrivTr` in public interface
     //~^ WARNING hard error
@@ -143,6 +146,7 @@ mod impls {
     }
     impl PubTr for Pub {
         type Alias = Priv; //~ ERROR private type `impls::Priv` in public interface
+        //~^ WARNING hard error
     }
 }
 
@@ -216,14 +220,21 @@ mod aliases_pub {
         pub fn f(arg: Priv) {} //~ ERROR private type `aliases_pub::Priv` in public interface
         //~^ WARNING hard error
     }
+    // This doesn't even parse
+    // impl <Priv as PrivTr>::AssocAlias {
+    //     pub fn f(arg: Priv) {} // ERROR private type `aliases_pub::Priv` in public interface
+    // }
     impl PrivUseAliasTr for PrivUseAlias {
         type Check = Priv; //~ ERROR private type `aliases_pub::Priv` in public interface
+        //~^ WARNING hard error
     }
     impl PrivUseAliasTr for PrivAlias {
         type Check = Priv; //~ ERROR private type `aliases_pub::Priv` in public interface
+        //~^ WARNING hard error
     }
     impl PrivUseAliasTr for <Priv as PrivTr>::AssocAlias {
         type Check = Priv; //~ ERROR private type `aliases_pub::Priv` in public interface
+        //~^ WARNING hard error
     }
 }
 
@@ -262,6 +273,10 @@ mod aliases_priv {
     impl PrivAlias {
         pub fn f(arg: Priv) {} // OK
     }
+    // This doesn't even parse
+    // impl <Priv as PrivTr>::AssocAlias {
+    //     pub fn f(arg: Priv) {} // OK
+    // }
     impl PrivUseAliasTr for PrivUseAlias {
         type Check = Priv; // OK
     }

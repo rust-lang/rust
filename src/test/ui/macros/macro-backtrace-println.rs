@@ -21,7 +21,7 @@ macro_rules! myprint {
 }
 
 macro_rules! myprintln {
-    ($fmt:expr) => (myprint!(concat!($fmt, "\n"))); //~ ERROR no arguments were given
+    ($fmt:expr) => (myprint!(concat!($fmt, "\n")));
 }
 
 fn main() {

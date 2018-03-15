@@ -12,6 +12,7 @@
 // http://www.ti.com/lit/an/slaa534/slaa534.pdf
 
 use abi::{ArgType, FnType, LayoutExt};
+use context::CrateContext;
 
 // 3.5 Structures or Unions Passed and Returned by Reference
 //
@@ -19,31 +20,31 @@ use abi::{ArgType, FnType, LayoutExt};
 // returned by reference. To pass a structure or union by reference, the caller
 // places its address in the appropriate location: either in a register or on
 // the stack, according to its position in the argument list. (..)"
-fn classify_ret_ty(ret: &mut ArgType) {
-    if ret.layout.is_aggregate() && ret.layout.size.bits() > 32 {
-        ret.make_indirect();
+fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tcx>) {
+    if ret.layout.is_aggregate() && ret.layout.size(ccx).bits() > 32 {
+        ret.make_indirect(ccx);
     } else {
         ret.extend_integer_width_to(16);
     }
 }
 
-fn classify_arg_ty(arg: &mut ArgType) {
-    if arg.layout.is_aggregate() && arg.layout.size.bits() > 32 {
-        arg.make_indirect();
+fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tcx>) {
+    if arg.layout.is_aggregate() && arg.layout.size(ccx).bits() > 32 {
+        arg.make_indirect(ccx);
     } else {
         arg.extend_integer_width_to(16);
     }
 }
 
-pub fn compute_abi_info(fty: &mut FnType) {
+pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
     if !fty.ret.is_ignore() {
-        classify_ret_ty(&mut fty.ret);
+        classify_ret_ty(ccx, &mut fty.ret);
     }
 
     for arg in &mut fty.args {
         if arg.is_ignore() {
             continue;
         }
-        classify_arg_ty(arg);
+        classify_arg_ty(ccx, arg);
     }
 }

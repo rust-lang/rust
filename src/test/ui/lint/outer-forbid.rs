@@ -16,13 +16,13 @@
 
 #![forbid(unused, non_snake_case)]
 
-#[allow(unused_variables)] //~ ERROR overruled
+#[allow(unused_variables)]
 fn foo() {}
 
-#[allow(unused)] //~ ERROR overruled
+#[allow(unused)]
 fn bar() {}
 
-#[allow(bad_style)] //~ ERROR overruled
+#[allow(bad_style)]
 fn main() {
     println!("hello forbidden world")
 }

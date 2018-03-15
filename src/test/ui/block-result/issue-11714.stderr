@@ -1,13 +1,13 @@
 error[E0308]: mismatched types
   --> $DIR/issue-11714.rs:11:18
    |
-LL |   fn blah() -> i32 { //~ ERROR mismatched types
+11 |   fn blah() -> i32 { //~ ERROR mismatched types
    |  __________________^
-LL | |     1
-LL | |
-LL | |     ;
+12 | |     1
+13 | |
+14 | |     ; //~ HELP consider removing this semicolon:
    | |     - help: consider removing this semicolon
-LL | | }
+15 | | }
    | |_^ expected i32, found ()
    |
    = note: expected type `i32`
@@ -15,4 +15,3 @@ LL | | }
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0308"

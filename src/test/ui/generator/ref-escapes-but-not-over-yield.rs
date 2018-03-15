@@ -21,8 +21,7 @@ fn foo(x: &i32) {
     let mut b = move || {
         yield();
         let b = 5;
-        a = &b;
-        //~^ ERROR `b` does not live long enough
+        a = &b; //~ ERROR
     };
 }
 

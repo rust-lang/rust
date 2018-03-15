@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-impl S { //~ ERROR cannot find type
+impl S {
     pub
-} //~ ERROR expected one of
+}

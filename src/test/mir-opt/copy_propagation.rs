@@ -13,30 +13,27 @@ fn test(x: u32) -> u32 {
     y
 }
 
-fn main() {
-    // Make sure the function actually gets instantiated.
-    test(0);
-}
+fn main() { }
 
 // END RUST SOURCE
-// START rustc.test.CopyPropagation.before.mir
+// START rustc.node4.CopyPropagation.before.mir
 //  bb0: {
 //      ...
 //      _3 = _1;
 //      ...
-//      _2 = move _3;
+//      _2 = _3;
 //      ...
 //      _4 = _2;
-//      _0 = move _4;
+//      _0 = _4;
 //      ...
 //      return;
 //  }
-// END rustc.test.CopyPropagation.before.mir
-// START rustc.test.CopyPropagation.after.mir
+// END rustc.node4.CopyPropagation.before.mir
+// START rustc.node4.CopyPropagation.after.mir
 //  bb0: {
 //      ...
-//      _0 = move _1;
+//      _0 = _1;
 //      ...
 //      return;
 //  }
-// END rustc.test.CopyPropagation.after.mir
+// END rustc.node4.CopyPropagation.after.mir

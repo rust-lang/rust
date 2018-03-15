@@ -15,72 +15,77 @@ use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::{self, Location, TerminatorKind, Literal};
-use rustc::mir::visit::{Visitor, PlaceContext};
+use rustc::mir::visit::{Visitor, LvalueContext};
 use rustc::mir::traversal;
 use rustc::ty;
-use rustc::ty::layout::LayoutOf;
-use type_of::LayoutLlvmExt;
-use super::FunctionCx;
+use common;
+use super::MirContext;
 
-pub fn memory_locals<'a, 'tcx>(fx: &FunctionCx<'a, 'tcx>) -> BitVector {
-    let mir = fx.mir;
-    let mut analyzer = LocalAnalyzer::new(fx);
+pub fn lvalue_locals<'a, 'tcx>(mircx: &MirContext<'a, 'tcx>) -> BitVector {
+    let mir = mircx.mir;
+    let mut analyzer = LocalAnalyzer::new(mircx);
 
     analyzer.visit_mir(mir);
 
     for (index, ty) in mir.local_decls.iter().map(|l| l.ty).enumerate() {
-        let ty = fx.monomorphize(&ty);
+        let ty = mircx.monomorphize(&ty);
         debug!("local {} has type {:?}", index, ty);
-        let layout = fx.cx.layout_of(ty);
-        if layout.is_llvm_immediate() {
+        if ty.is_scalar() ||
+            ty.is_box() ||
+            ty.is_region_ptr() ||
+            ty.is_simd() ||
+            common::type_is_zero_size(mircx.ccx, ty)
+        {
             // These sorts of types are immediates that we can store
             // in an ValueRef without an alloca.
-        } else if layout.is_llvm_scalar_pair() {
+            assert!(common::type_is_immediate(mircx.ccx, ty) ||
+                    common::type_is_fat_ptr(mircx.ccx, ty));
+        } else if common::type_is_imm_pair(mircx.ccx, ty) {
             // We allow pairs and uses of any of their 2 fields.
         } else {
             // These sorts of types require an alloca. Note that
-            // is_llvm_immediate() may *still* be true, particularly
+            // type_is_immediate() may *still* be true, particularly
             // for newtypes, but we currently force some types
             // (e.g. structs) into an alloca unconditionally, just so
             // that we don't have to deal with having two pathways
             // (gep vs extractvalue etc).
-            analyzer.mark_as_memory(mir::Local::new(index));
+            analyzer.mark_as_lvalue(mir::Local::new(index));
         }
     }
 
-    analyzer.memory_locals
+    analyzer.lvalue_locals
 }
 
 struct LocalAnalyzer<'mir, 'a: 'mir, 'tcx: 'a> {
-    fx: &'mir FunctionCx<'a, 'tcx>,
-    memory_locals: BitVector,
+    cx: &'mir MirContext<'a, 'tcx>,
+    lvalue_locals: BitVector,
     seen_assigned: BitVector
 }
 
 impl<'mir, 'a, 'tcx> LocalAnalyzer<'mir, 'a, 'tcx> {
-    fn new(fx: &'mir FunctionCx<'a, 'tcx>) -> LocalAnalyzer<'mir, 'a, 'tcx> {
+    fn new(mircx: &'mir MirContext<'a, 'tcx>) -> LocalAnalyzer<'mir, 'a, 'tcx> {
         let mut analyzer = LocalAnalyzer {
-            fx,
-            memory_locals: BitVector::new(fx.mir.local_decls.len()),
-            seen_assigned: BitVector::new(fx.mir.local_decls.len())
+            cx: mircx,
+            lvalue_locals: BitVector::new(mircx.mir.local_decls.len()),
+            seen_assigned: BitVector::new(mircx.mir.local_decls.len())
         };
 
         // Arguments get assigned to by means of the function being called
-        for idx in 0..fx.mir.arg_count {
+        for idx in 0..mircx.mir.arg_count {
             analyzer.seen_assigned.insert(idx + 1);
         }
 
         analyzer
     }
 
-    fn mark_as_memory(&mut self, local: mir::Local) {
-        debug!("marking {:?} as memory", local);
-        self.memory_locals.insert(local.index());
+    fn mark_as_lvalue(&mut self, local: mir::Local) {
+        debug!("marking {:?} as lvalue", local);
+        self.lvalue_locals.insert(local.index());
     }
 
     fn mark_assigned(&mut self, local: mir::Local) {
         if !self.seen_assigned.insert(local.index()) {
-            self.mark_as_memory(local);
+            self.mark_as_lvalue(local);
         }
     }
 }
@@ -88,18 +93,18 @@ impl<'mir, 'a, 'tcx> LocalAnalyzer<'mir, 'a, 'tcx> {
 impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
     fn visit_assign(&mut self,
                     block: mir::BasicBlock,
-                    place: &mir::Place<'tcx>,
+                    lvalue: &mir::Lvalue<'tcx>,
                     rvalue: &mir::Rvalue<'tcx>,
                     location: Location) {
-        debug!("visit_assign(block={:?}, place={:?}, rvalue={:?})", block, place, rvalue);
+        debug!("visit_assign(block={:?}, lvalue={:?}, rvalue={:?})", block, lvalue, rvalue);
 
-        if let mir::Place::Local(index) = *place {
+        if let mir::Lvalue::Local(index) = *lvalue {
             self.mark_assigned(index);
-            if !self.fx.rvalue_creates_operand(rvalue) {
-                self.mark_as_memory(index);
+            if !self.cx.rvalue_creates_operand(rvalue) {
+                self.mark_as_lvalue(index);
             }
         } else {
-            self.visit_place(place, PlaceContext::Store, location);
+            self.visit_lvalue(lvalue, LvalueContext::Store, location);
         }
 
         self.visit_rvalue(rvalue, location);
@@ -117,12 +122,12 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
                     }, ..
                 }),
                 ref args, ..
-            } if Some(def_id) == self.fx.cx.tcx.lang_items().box_free_fn() => {
+            } if Some(def_id) == self.cx.ccx.tcx().lang_items().box_free_fn() => {
                 // box_free(x) shares with `drop x` the property that it
                 // is not guaranteed to be statically dominated by the
                 // definition of x, so x must always be in an alloca.
-                if let mir::Operand::Move(ref place) = args[0] {
-                    self.visit_place(place, PlaceContext::Drop, location);
+                if let mir::Operand::Consume(ref lvalue) = args[0] {
+                    self.visit_lvalue(lvalue, LvalueContext::Drop, location);
                 }
             }
             _ => {}
@@ -131,81 +136,64 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
         self.super_terminator_kind(block, kind, location);
     }
 
-    fn visit_place(&mut self,
-                    place: &mir::Place<'tcx>,
-                    context: PlaceContext<'tcx>,
+    fn visit_lvalue(&mut self,
+                    lvalue: &mir::Lvalue<'tcx>,
+                    context: LvalueContext<'tcx>,
                     location: Location) {
-        debug!("visit_place(place={:?}, context={:?})", place, context);
-        let cx = self.fx.cx;
+        debug!("visit_lvalue(lvalue={:?}, context={:?})", lvalue, context);
 
-        if let mir::Place::Projection(ref proj) = *place {
-            // Allow uses of projections that are ZSTs or from scalar fields.
-            let is_consume = match context {
-                PlaceContext::Copy | PlaceContext::Move => true,
-                _ => false
-            };
-            if is_consume {
-                let base_ty = proj.base.ty(self.fx.mir, cx.tcx);
-                let base_ty = self.fx.monomorphize(&base_ty);
+        if let mir::Lvalue::Projection(ref proj) = *lvalue {
+            // Allow uses of projections of immediate pair fields.
+            if let LvalueContext::Consume = context {
+                if let mir::Lvalue::Local(_) = proj.base {
+                    if let mir::ProjectionElem::Field(..) = proj.elem {
+                        let ty = proj.base.ty(self.cx.mir, self.cx.ccx.tcx());
 
-                // ZSTs don't require any actual memory access.
-                let elem_ty = base_ty.projection_ty(cx.tcx, &proj.elem).to_ty(cx.tcx);
-                let elem_ty = self.fx.monomorphize(&elem_ty);
-                if cx.layout_of(elem_ty).is_zst() {
-                    return;
-                }
-
-                if let mir::ProjectionElem::Field(..) = proj.elem {
-                    let layout = cx.layout_of(base_ty.to_ty(cx.tcx));
-                    if layout.is_llvm_immediate() || layout.is_llvm_scalar_pair() {
-                        // Recurse with the same context, instead of `Projection`,
-                        // potentially stopping at non-operand projections,
-                        // which would trigger `mark_as_memory` on locals.
-                        self.visit_place(&proj.base, context, location);
-                        return;
+                        let ty = self.cx.monomorphize(&ty.to_ty(self.cx.ccx.tcx()));
+                        if common::type_is_imm_pair(self.cx.ccx, ty) {
+                            return;
+                        }
                     }
                 }
             }
 
-            // A deref projection only reads the pointer, never needs the place.
+            // A deref projection only reads the pointer, never needs the lvalue.
             if let mir::ProjectionElem::Deref = proj.elem {
-                return self.visit_place(&proj.base, PlaceContext::Copy, location);
+                return self.visit_lvalue(&proj.base, LvalueContext::Consume, location);
             }
         }
 
-        self.super_place(place, context, location);
+        self.super_lvalue(lvalue, context, location);
     }
 
     fn visit_local(&mut self,
                    &index: &mir::Local,
-                   context: PlaceContext<'tcx>,
+                   context: LvalueContext<'tcx>,
                    _: Location) {
         match context {
-            PlaceContext::Call => {
+            LvalueContext::Call => {
                 self.mark_assigned(index);
             }
 
-            PlaceContext::StorageLive |
-            PlaceContext::StorageDead |
-            PlaceContext::Validate |
-            PlaceContext::Copy |
-            PlaceContext::Move => {}
+            LvalueContext::StorageLive |
+            LvalueContext::StorageDead |
+            LvalueContext::Validate |
+            LvalueContext::Inspect |
+            LvalueContext::Consume => {}
 
-            PlaceContext::Inspect |
-            PlaceContext::Store |
-            PlaceContext::AsmOutput |
-            PlaceContext::Borrow { .. } |
-            PlaceContext::Projection(..) => {
-                self.mark_as_memory(index);
+            LvalueContext::Store |
+            LvalueContext::Borrow { .. } |
+            LvalueContext::Projection(..) => {
+                self.mark_as_lvalue(index);
             }
 
-            PlaceContext::Drop => {
-                let ty = mir::Place::Local(index).ty(self.fx.mir, self.fx.cx.tcx);
-                let ty = self.fx.monomorphize(&ty.to_ty(self.fx.cx.tcx));
+            LvalueContext::Drop => {
+                let ty = mir::Lvalue::Local(index).ty(self.cx.mir, self.cx.ccx.tcx());
+                let ty = self.cx.monomorphize(&ty.to_ty(self.cx.ccx.tcx()));
 
-                // Only need the place if we're actually dropping it.
-                if self.fx.cx.type_needs_drop(ty) {
-                    self.mark_as_memory(index);
+                // Only need the lvalue if we're actually dropping it.
+                if self.cx.ccx.shared().type_needs_drop(ty) {
+                    self.mark_as_lvalue(index);
                 }
             }
         }
@@ -236,14 +224,12 @@ pub fn cleanup_kinds<'a, 'tcx>(mir: &mir::Mir<'tcx>) -> IndexVec<mir::BasicBlock
             match data.terminator().kind {
                 TerminatorKind::Goto { .. } |
                 TerminatorKind::Resume |
-                TerminatorKind::Abort |
                 TerminatorKind::Return |
                 TerminatorKind::GeneratorDrop |
                 TerminatorKind::Unreachable |
                 TerminatorKind::SwitchInt { .. } |
                 TerminatorKind::Yield { .. } |
-                TerminatorKind::FalseEdges { .. } |
-                TerminatorKind::FalseUnwind { .. } => {
+                TerminatorKind::FalseEdges { .. } => {
                     /* nothing to do */
                 }
                 TerminatorKind::Call { cleanup: unwind, .. } |

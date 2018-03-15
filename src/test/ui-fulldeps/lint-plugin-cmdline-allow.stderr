@@ -1,13 +1,13 @@
 warning: function is never used: `lintme`
   --> $DIR/lint-plugin-cmdline-allow.rs:20:1
    |
-LL | fn lintme() { }
+20 | fn lintme() { }
    | ^^^^^^^^^^^
    |
 note: lint level defined here
   --> $DIR/lint-plugin-cmdline-allow.rs:17:9
    |
-LL | #![warn(unused)]
+17 | #![warn(unused)]
    |         ^^^^^^
    = note: #[warn(dead_code)] implied by #[warn(unused)]
 

@@ -18,7 +18,7 @@
 
 // must-compile-successfully
 // revisions: cfail1 cfail2 cfail3
-// compile-flags: -Z query-dep-graph -Zincremental-ignore-spans
+// compile-flags: -Z query-dep-graph
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]
@@ -36,6 +36,8 @@ extern {
 #[cfg(not(cfail1))]
 #[rustc_dirty(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 extern {
     pub fn change_function_name2(c: i64) -> i32;
 }
@@ -51,7 +53,11 @@ extern {
 #[cfg(not(cfail1))]
 #[rustc_dirty(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 extern {
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     pub fn change_parameter_name(d: i64) -> i32;
 }
 
@@ -66,7 +72,11 @@ extern {
 #[cfg(not(cfail1))]
 #[rustc_dirty(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 extern {
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     pub fn change_parameter_type(c: i32) -> i32;
 }
 
@@ -81,7 +91,11 @@ extern {
 #[cfg(not(cfail1))]
 #[rustc_dirty(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 extern {
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     pub fn change_return_type(c: i32) -> i8;
 }
 
@@ -96,7 +110,11 @@ extern {
 #[cfg(not(cfail1))]
 #[rustc_dirty(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 extern {
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     pub fn add_parameter(c: i32, d: i32) -> i32;
 }
 
@@ -111,7 +129,11 @@ extern {
 #[cfg(not(cfail1))]
 #[rustc_dirty(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 extern {
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     pub fn add_return_type(c: i32) -> i32;
 }
 
@@ -126,7 +148,11 @@ extern {
 #[cfg(not(cfail1))]
 #[rustc_dirty(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 extern {
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     pub fn make_function_variadic(c: i32, ...);
 }
 
@@ -141,7 +167,11 @@ extern "C" {
 #[cfg(not(cfail1))]
 #[rustc_dirty(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 extern "rust-call" {
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     pub fn change_calling_convention(c: i32);
 }
 
@@ -156,7 +186,11 @@ extern {
 #[cfg(not(cfail1))]
 #[rustc_dirty(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 extern {
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     pub fn make_function_public(c: i32);
 }
 
@@ -171,6 +205,8 @@ extern {
 #[cfg(not(cfail1))]
 #[rustc_dirty(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 extern {
     pub fn add_function1(c: i32);
     pub fn add_function2();
@@ -188,6 +224,8 @@ extern {
 #[cfg(not(cfail1))]
 #[rustc_dirty(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 #[link_args = "-foo -bar -baz"]
 extern {
     pub fn change_link_args(c: i32);
@@ -205,6 +243,8 @@ extern {
 #[cfg(not(cfail1))]
 #[rustc_dirty(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
 #[link(name = "bar")]
 extern {
     pub fn change_link_name(c: i32);
@@ -222,7 +262,11 @@ mod indirectly_change_parameter_type {
 
     #[rustc_dirty(cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
+    #[rustc_metadata_clean(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     extern {
+        #[rustc_metadata_dirty(cfg="cfail2")]
+        #[rustc_metadata_clean(cfg="cfail3")]
         pub fn indirectly_change_parameter_type(c: c_int);
     }
 }
@@ -238,7 +282,11 @@ mod indirectly_change_return_type {
 
     #[rustc_dirty(cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
+    #[rustc_metadata_clean(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     extern {
+        #[rustc_metadata_dirty(cfg="cfail2")]
+        #[rustc_metadata_clean(cfg="cfail3")]
         pub fn indirectly_change_return_type() -> c_int;
     }
 }

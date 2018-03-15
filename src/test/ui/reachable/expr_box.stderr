@@ -1,13 +1,13 @@
 error: unreachable expression
   --> $DIR/expr_box.rs:16:13
    |
-LL |     let x = box return; //~ ERROR unreachable
+16 |     let x = box return;
    |             ^^^^^^^^^^
    |
 note: lint level defined here
   --> $DIR/expr_box.rs:13:9
    |
-LL | #![deny(unreachable_code)]
+13 | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Trait Resolution. See [rustc guide] for more info on how this works.
-//!
-//! [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/trait-resolution.html
+//! Trait Resolution. See README.md for an overview of how this works.
 
 pub use self::SelectionError::*;
 pub use self::FulfillmentErrorCode::*;
@@ -19,24 +17,23 @@ pub use self::ObligationCauseCode::*;
 
 use hir;
 use hir::def_id::DefId;
-use infer::outlives::env::OutlivesEnvironment;
 use middle::const_val::ConstEvalErr;
 use middle::region;
+use middle::free_region::FreeRegionMap;
 use ty::subst::Substs;
 use ty::{self, AdtKind, Ty, TyCtxt, TypeFoldable, ToPredicate};
 use ty::error::{ExpectedFound, TypeError};
 use infer::{InferCtxt};
 
-use rustc_data_structures::sync::Lrc;
 use std::rc::Rc;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 
 pub use self::coherence::{orphan_check, overlapping_impls, OrphanCheckErr, OverlapResult};
-pub use self::fulfill::FulfillmentContext;
+pub use self::fulfill::{FulfillmentContext, RegionObligation};
 pub use self::project::MismatchedProjectionTypes;
-pub use self::project::{normalize, normalize_projection_type, poly_project_and_unify_type};
-pub use self::project::{ProjectionCache, ProjectionCacheSnapshot, Reveal, Normalized};
+pub use self::project::{normalize, normalize_projection_type, Normalized};
+pub use self::project::{ProjectionCache, ProjectionCacheSnapshot, Reveal};
 pub use self::object_safety::ObjectSafetyViolation;
 pub use self::object_safety::MethodViolationCode;
 pub use self::on_unimplemented::{OnUnimplementedDirective, OnUnimplementedNote};
@@ -52,7 +49,7 @@ pub use self::util::SupertraitDefIds;
 pub use self::util::transitive_bounds;
 
 mod coherence;
-pub mod error_reporting;
+mod error_reporting;
 mod fulfill;
 mod project;
 mod object_safety;
@@ -63,43 +60,25 @@ mod structural_impls;
 pub mod trans;
 mod util;
 
-// Whether to enable bug compatibility with issue #43355
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum IntercrateMode {
-    Issue43355,
-    Fixed
-}
-
 /// An `Obligation` represents some trait reference (e.g. `int:Eq`) for
 /// which the vtable must be found.  The process of finding a vtable is
 /// called "resolving" the `Obligation`. This process consists of
 /// either identifying an `impl` (e.g., `impl Eq for int`) that
 /// provides the required vtable, or else finding a bound that is in
 /// scope. The eventual result is usually a `Selection` (defined below).
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Obligation<'tcx, T> {
-    /// Why do we have to prove this thing?
     pub cause: ObligationCause<'tcx>,
-
-    /// In which environment should we prove this thing?
     pub param_env: ty::ParamEnv<'tcx>,
-
-    /// What are we trying to prove?
-    pub predicate: T,
-
-    /// If we started proving this as a result of trying to prove
-    /// something else, track the total depth to ensure termination.
-    /// If this goes over a certain threshold, we abort compilation --
-    /// in such cases, we can not say whether or not the predicate
-    /// holds for certain. Stupid halting problem. Such a drag.
     pub recursion_depth: usize,
+    pub predicate: T,
 }
 
 pub type PredicateObligation<'tcx> = Obligation<'tcx, ty::Predicate<'tcx>>;
 pub type TraitObligation<'tcx> = Obligation<'tcx, ty::PolyTraitPredicate<'tcx>>;
 
 /// Why did we incur this obligation? Used for error reporting.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ObligationCause<'tcx> {
     pub span: Span,
 
@@ -114,20 +93,7 @@ pub struct ObligationCause<'tcx> {
     pub code: ObligationCauseCode<'tcx>
 }
 
-impl<'tcx> ObligationCause<'tcx> {
-    pub fn span<'a, 'gcx>(&self, tcx: &TyCtxt<'a, 'gcx, 'tcx>) -> Span {
-        match self.code {
-            ObligationCauseCode::CompareImplMethodObligation { .. } |
-            ObligationCauseCode::MainFunctionType |
-            ObligationCauseCode::StartFunctionType => {
-                tcx.sess.codemap().def_span(self.span)
-            }
-            _ => self.span,
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ObligationCauseCode<'tcx> {
     /// Not well classified or should be obvious from span.
     MiscObligation,
@@ -165,8 +131,6 @@ pub enum ObligationCauseCode<'tcx> {
     VariableType(ast::NodeId),
     /// Return type must be Sized
     SizedReturnType,
-    /// Yield type must be Sized
-    SizedYieldType,
     /// [T,..n] --> T must be Copy
     RepeatVec,
 
@@ -188,6 +152,7 @@ pub enum ObligationCauseCode<'tcx> {
         item_name: ast::Name,
         impl_item_def_id: DefId,
         trait_item_def_id: DefId,
+        lint_id: Option<ast::NodeId>,
     },
 
     /// Checking that this expression can be assigned where it needs to be
@@ -203,6 +168,9 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Computing common supertype of an if expression with no else counter-part
     IfExpressionWithNoElse,
+
+    /// `where a == b`
+    EquatePredicate,
 
     /// `main` has wrong type
     MainFunctionType,
@@ -226,7 +194,7 @@ pub enum ObligationCauseCode<'tcx> {
     BlockTailExpression(ast::NodeId),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DerivedObligationCause<'tcx> {
     /// The trait reference of the parent obligation that led to the
     /// current obligation. Note that only trait obligations lead to
@@ -315,7 +283,7 @@ pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 /// ### The type parameter `N`
 ///
 /// See explanation on `VtableImplData`.
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Clone)]
 pub enum Vtable<'tcx, N> {
     /// Vtable identifying a particular impl.
     VtableImpl(VtableImplData<'tcx, N>),
@@ -360,14 +328,14 @@ pub enum Vtable<'tcx, N> {
 /// is `Obligation`, as one might expect. During trans, however, this
 /// is `()`, because trans only requires a shallow resolution of an
 /// impl, and nested obligations are satisfied later.
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct VtableImplData<'tcx, N> {
     pub impl_def_id: DefId,
     pub substs: &'tcx Substs<'tcx>,
     pub nested: Vec<N>
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct VtableGeneratorData<'tcx, N> {
     pub closure_def_id: DefId,
     pub substs: ty::ClosureSubsts<'tcx>,
@@ -376,7 +344,7 @@ pub struct VtableGeneratorData<'tcx, N> {
     pub nested: Vec<N>
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct VtableClosureData<'tcx, N> {
     pub closure_def_id: DefId,
     pub substs: ty::ClosureSubsts<'tcx>,
@@ -385,20 +353,20 @@ pub struct VtableClosureData<'tcx, N> {
     pub nested: Vec<N>
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Clone)]
 pub struct VtableAutoImplData<N> {
     pub trait_def_id: DefId,
     pub nested: Vec<N>
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Clone)]
 pub struct VtableBuiltinData<N> {
     pub nested: Vec<N>
 }
 
 /// A vtable for some object-safe trait `Foo` automatically derived
 /// for the object type `Foo`.
-#[derive(PartialEq, Eq, Clone, RustcEncodable, RustcDecodable)]
+#[derive(PartialEq,Eq,Clone)]
 pub struct VtableObjectData<'tcx, N> {
     /// `Foo` upcast to the obligation trait. This will be some supertrait of `Foo`.
     pub upcast_trait_ref: ty::PolyTraitRef<'tcx>,
@@ -411,7 +379,7 @@ pub struct VtableObjectData<'tcx, N> {
     pub nested: Vec<N>,
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct VtableFnPointerData<'tcx, N> {
     pub fn_ty: Ty<'tcx>,
     pub nested: Vec<N>
@@ -464,10 +432,7 @@ pub fn type_known_to_meet_bound<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx
         // this function's result remains infallible, we must confirm
         // that guess. While imperfect, I believe this is sound.
 
-        // The handling of regions in this area of the code is terrible,
-        // see issue #29149. We should be able to improve on this with
-        // NLL.
-        let mut fulfill_cx = FulfillmentContext::new_ignoring_regions();
+        let mut fulfill_cx = FulfillmentContext::new();
 
         // We can use a dummy node-id here because we won't pay any mind
         // to region obligations that arise (there shouldn't really be any
@@ -544,28 +509,11 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            predicates);
 
     let elaborated_env = ty::ParamEnv::new(tcx.intern_predicates(&predicates),
-                                           unnormalized_env.reveal,
-                                           unnormalized_env.universe);
+                                           unnormalized_env.reveal);
 
     tcx.infer_ctxt().enter(|infcx| {
-        // FIXME. We should really... do something with these region
-        // obligations. But this call just continues the older
-        // behavior (i.e., doesn't cause any new bugs), and it would
-        // take some further refactoring to actually solve them. In
-        // particular, we would have to handle implied bounds
-        // properly, and that code is currently largely confined to
-        // regionck (though I made some efforts to extract it
-        // out). -nmatsakis
-        //
-        // @arielby: In any case, these obligations are checked
-        // by wfcheck anyway, so I'm not sure we have to check
-        // them here too, and we will remove this function when
-        // we move over to lazy normalization *anyway*.
-        let fulfill_cx = FulfillmentContext::new_ignoring_regions();
-
-        let predicates = match fully_normalize_with_fulfillcx(
+        let predicates = match fully_normalize(
             &infcx,
-            fulfill_cx,
             cause,
             elaborated_env,
             // You would really want to pass infcx.param_env.caller_bounds here,
@@ -588,13 +536,8 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             predicates);
 
         let region_scope_tree = region::ScopeTree::default();
-
-        // We can use the `elaborated_env` here; the region code only
-        // cares about declarations like `'a: 'b`.
-        let outlives_env = OutlivesEnvironment::new(elaborated_env);
-
-        infcx.resolve_regions_and_report_errors(region_context, &region_scope_tree, &outlives_env);
-
+        let free_regions = FreeRegionMap::new();
+        infcx.resolve_regions_and_report_errors(region_context, &region_scope_tree, &free_regions);
         let predicates = match infcx.fully_resolve(&predicates) {
             Ok(predicates) => predicates,
             Err(fixup_err) => {
@@ -619,9 +562,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         debug!("normalize_param_env_or_error: resolved predicates={:?}",
                predicates);
 
-        ty::ParamEnv::new(tcx.intern_predicates(&predicates),
-                          unnormalized_env.reveal,
-                          unnormalized_env.universe)
+        ty::ParamEnv::new(tcx.intern_predicates(&predicates), unnormalized_env.reveal)
     })
 }
 
@@ -632,10 +573,13 @@ pub fn fully_normalize<'a, 'gcx, 'tcx, T>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                           -> Result<T, Vec<FulfillmentError<'tcx>>>
     where T : TypeFoldable<'tcx>
 {
+    debug!("fully_normalize(value={:?})", value);
+
+    let selcx = &mut SelectionContext::new(infcx);
     // FIXME (@jroesch) ISSUE 26721
     // I'm not sure if this is a bug or not, needs further investigation.
     // It appears that by reusing the fulfillment_cx here we incur more
-    // obligations and later trip an assertion on regionck.rs line 337.
+    // obligations and later trip an asssertion on regionck.rs line 337.
     //
     // The two possibilities I see is:
     //      - normalization is not actually fully happening and we
@@ -645,21 +589,8 @@ pub fn fully_normalize<'a, 'gcx, 'tcx, T>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     //
     // I think we should probably land this refactor and then come
     // back to this is a follow-up patch.
-    let fulfillcx = FulfillmentContext::new();
-    fully_normalize_with_fulfillcx(infcx, fulfillcx, cause, param_env, value)
-}
+    let mut fulfill_cx = FulfillmentContext::new();
 
-pub fn fully_normalize_with_fulfillcx<'a, 'gcx, 'tcx, T>(
-    infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-    mut fulfill_cx: FulfillmentContext<'tcx>,
-    cause: ObligationCause<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    value: &T)
-    -> Result<T, Vec<FulfillmentError<'tcx>>>
-    where T : TypeFoldable<'tcx>
-{
-    debug!("fully_normalize_with_fulfillcx(value={:?})", value);
-    let selcx = &mut SelectionContext::new(infcx);
     let Normalized { value: normalized_value, obligations } =
         project::normalize(selcx, param_env, cause, value);
     debug!("fully_normalize: normalized_value={:?} obligations={:?}",
@@ -687,9 +618,9 @@ pub fn fully_normalize_with_fulfillcx<'a, 'gcx, 'tcx, T>(
 /// environment. If this returns false, then either normalize
 /// encountered an error or one of the predicates did not hold. Used
 /// when creating vtables to check for unsatisfiable methods.
-fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                           predicates: Vec<ty::Predicate<'tcx>>)
-                                           -> bool
+pub fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                               predicates: Vec<ty::Predicate<'tcx>>)
+                                               -> bool
 {
     debug!("normalize_and_test_predicates(predicates={:?})",
            predicates);
@@ -716,33 +647,17 @@ fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     result
 }
 
-fn substitute_normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                      key: (DefId, &'tcx Substs<'tcx>))
-                                                      -> bool
-{
-    use ty::subst::Subst;
-    debug!("substitute_normalize_and_test_predicates(key={:?})",
-           key);
-
-    let predicates = tcx.predicates_of(key.0).predicates.subst(tcx, key.1);
-    let result = normalize_and_test_predicates(tcx, predicates);
-
-    debug!("substitute_normalize_and_test_predicates(key={:?}) = {:?}",
-           key, result);
-    result
-}
-
 /// Given a trait `trait_ref`, iterates the vtable entries
 /// that come from `trait_ref`, including its supertraits.
 #[inline] // FIXME(#35870) Avoid closures being unexported due to impl Trait.
 fn vtable_methods<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>)
-    -> Lrc<Vec<Option<(DefId, &'tcx Substs<'tcx>)>>>
+    -> Rc<Vec<Option<(DefId, &'tcx Substs<'tcx>)>>>
 {
     debug!("vtable_methods({:?})", trait_ref);
 
-    Lrc::new(
+    Rc::new(
         supertraits(tcx, trait_ref).flat_map(move |trait_ref| {
             let trait_methods = tcx.associated_items(trait_ref.def_id())
                 .filter(|item| item.kind == ty::AssociatedKind::Method);
@@ -851,6 +766,19 @@ impl<'tcx, N> Vtable<'tcx, N> {
         }
     }
 
+    fn nested_obligations_mut(&mut self) -> &mut Vec<N> {
+        match self {
+            &mut VtableImpl(ref mut i) => &mut i.nested,
+            &mut VtableParam(ref mut n) => n,
+            &mut VtableBuiltin(ref mut i) => &mut i.nested,
+            &mut VtableAutoImpl(ref mut d) => &mut d.nested,
+            &mut VtableGenerator(ref mut c) => &mut c.nested,
+            &mut VtableClosure(ref mut c) => &mut c.nested,
+            &mut VtableObject(ref mut d) => &mut d.nested,
+            &mut VtableFnPointer(ref mut d) => &mut d.nested,
+        }
+    }
+
     pub fn map<M, F>(self, f: F) -> Vtable<'tcx, M> where F: FnMut(N) -> M {
         match self {
             VtableImpl(i) => VtableImpl(VtableImplData {
@@ -911,7 +839,17 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         specializes: specialize::specializes,
         trans_fulfill_obligation: trans::trans_fulfill_obligation,
         vtable_methods,
-        substitute_normalize_and_test_predicates,
+        ..*providers
+    };
+}
+
+pub fn provide_extern(providers: &mut ty::maps::Providers) {
+    *providers = ty::maps::Providers {
+        is_object_safe: object_safety::is_object_safe_provider,
+        specialization_graph_of: specialize::specialization_graph_provider,
+        specializes: specialize::specializes,
+        trans_fulfill_obligation: trans::trans_fulfill_obligation,
+        vtable_methods,
         ..*providers
     };
 }

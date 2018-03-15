@@ -8,10 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-tidy-linelength
-// revisions: ast mir
-//[mir]compile-flags: -Z borrowck=mir
-
 #![feature(unboxed_closures)]
 
 use std::io::Read;
@@ -21,11 +17,9 @@ fn to_fn_once<A,F:FnOnce<A>>(f: F) -> F { f }
 fn main() {
     let x = 1;
     to_fn_once(move|| { x = 2; });
-    //[ast]~^ ERROR: cannot assign to immutable captured outer variable
-    //[mir]~^^ ERROR: cannot assign to immutable item `x`
+    //~^ ERROR: cannot assign to immutable captured outer variable
 
     let s = std::io::stdin();
     to_fn_once(move|| { s.read_to_end(&mut Vec::new()); });
-    //[ast]~^ ERROR: cannot borrow immutable captured outer variable
-    //[mir]~^^ ERROR: cannot borrow immutable item `s` as mutable
+    //~^ ERROR: cannot borrow immutable captured outer variable
 }

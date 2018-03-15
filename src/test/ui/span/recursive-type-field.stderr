@@ -1,9 +1,9 @@
 error[E0072]: recursive type `Foo` has infinite size
   --> $DIR/recursive-type-field.rs:13:1
    |
-LL | struct Foo<'a> { //~ ERROR recursive type
+13 | struct Foo<'a> {
    | ^^^^^^^^^^^^^^ recursive type has infinite size
-LL |     bar: Bar<'a>,
+14 |     bar: Bar<'a>,
    |     ------------ recursive without indirection
    |
    = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `Foo` representable
@@ -11,22 +11,21 @@ LL |     bar: Bar<'a>,
 error[E0072]: recursive type `Bar` has infinite size
   --> $DIR/recursive-type-field.rs:18:1
    |
-LL | struct Bar<'a> { //~ ERROR recursive type
+18 | struct Bar<'a> {
    | ^^^^^^^^^^^^^^ recursive type has infinite size
-LL |     y: (Foo<'a>, Foo<'a>),
+19 |     y: (Foo<'a>, Foo<'a>),
    |     --------------------- recursive without indirection
-LL |     z: Option<Bar<'a>>,
+20 |     z: Option<Bar<'a>>,
    |     ------------------ recursive without indirection
 ...
-LL |     d: [Bar<'a>; 1],
+23 |     d: [Bar<'a>; 1],
    |     --------------- recursive without indirection
-LL |     e: Foo<'a>,
+24 |     e: Foo<'a>,
    |     ---------- recursive without indirection
-LL |     x: Bar<'a>,
+25 |     x: Bar<'a>,
    |     ---------- recursive without indirection
    |
    = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `Bar` representable
 
 error: aborting due to 2 previous errors
 
-If you want more information on this error, try using "rustc --explain E0072"

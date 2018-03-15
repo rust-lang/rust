@@ -12,7 +12,6 @@ use std::ops::Deref;
 
 struct Foo;
 
-impl<Foo> Deref for Foo { } //~ ERROR must be used
-//~^ ERROR conflicting implementations
+impl<Foo> Deref for Foo { }
 
 fn main() {}

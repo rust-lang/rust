@@ -20,5 +20,10 @@ type A3 = dyn<<dyn as dyn>::dyn>;
 //~^ ERROR cannot find type `dyn` in this scope
 //~| ERROR cannot find type `dyn` in this scope
 //~| ERROR Use of undeclared type or module `dyn`
+type A4 = dyn(dyn, dyn) -> dyn;
+//~^ ERROR cannot find type `dyn` in this scope
+//~| ERROR cannot find type `dyn` in this scope
+//~| ERROR cannot find type `dyn` in this scope
+//~| ERROR cannot find type `dyn` in this scope
 
 fn main() {}

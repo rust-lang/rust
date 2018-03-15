@@ -10,12 +10,17 @@
 
 // ignore-cross-compile
 
+#![feature(rustc_private)]
+
+extern crate rustc_back;
+
 use std::env;
 use std::fs::File;
 use std::io;
 use std::io::{Read, Write};
 use std::process::{Command, Stdio};
-use std::path::PathBuf;
+
+use rustc_back::tempdir::TempDir;
 
 fn main() {
     if env::args().len() > 1 {
@@ -26,9 +31,9 @@ fn main() {
 }
 
 fn parent() -> io::Result<()> {
-    let td = PathBuf::from(env::var_os("RUST_TEST_TMPDIR").unwrap());
-    let input = td.join("stdio-from-input");
-    let output = td.join("stdio-from-output");
+    let td = TempDir::new("foo").unwrap();
+    let input = td.path().join("input");
+    let output = td.path().join("output");
 
     File::create(&input)?.write_all(b"foo\n")?;
 

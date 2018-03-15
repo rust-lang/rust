@@ -10,8 +10,10 @@
 
 // error-pattern:casting
 
-struct A;
+#![feature(libc)]
+
+extern crate libc;
 
 fn main() {
-  println!("{:?}", 1.0 as *const A); // Can't cast float to foreign.
+  println!("{:?}", 1.0 as *const libc::FILE); // Can't cast float to foreign.
 }

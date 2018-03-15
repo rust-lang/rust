@@ -16,7 +16,6 @@ use std::ffi::CString;
 use std::fmt::Debug;
 use std::hash::{Hash, BuildHasher};
 use std::iter::repeat;
-use std::panic;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
@@ -24,36 +23,16 @@ use std::sync::mpsc::{Sender};
 use syntax_pos::{SpanData};
 use ty::maps::{QueryMsg};
 use dep_graph::{DepNode};
-use proc_macro;
-use lazy_static;
 
 // The name of the associated type for `Fn` return types
 pub const FN_OUTPUT_NAME: &'static str = "Output";
 
 // Useful type to use with `Result<>` indicate that an error has already
 // been reported to the user, so no need to continue checking.
-#[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, Debug)]
 pub struct ErrorReported;
 
 thread_local!(static TIME_DEPTH: Cell<usize> = Cell::new(0));
-
-lazy_static! {
-    static ref DEFAULT_HOOK: Box<dyn Fn(&panic::PanicInfo) + Sync + Send + 'static> = {
-        let hook = panic::take_hook();
-        panic::set_hook(Box::new(panic_hook));
-        hook
-    };
-}
-
-fn panic_hook(info: &panic::PanicInfo) {
-    if !proc_macro::__internal::in_sess() {
-        (*DEFAULT_HOOK)(info)
-    }
-}
-
-pub fn install_panic_hook() {
-    lazy_static::initialize(&DEFAULT_HOOK);
-}
 
 /// Initialized for -Z profile-queries
 thread_local!(static PROFQ_CHAN: RefCell<Option<Sender<ProfileQueriesMsg>>> = RefCell::new(None));
@@ -236,15 +215,24 @@ pub fn record_time<T, F>(accu: &Cell<Duration>, f: F) -> T where
     rv
 }
 
+// Like std::macros::try!, but for Option<>.
+#[cfg(unix)]
+macro_rules! option_try(
+    ($e:expr) => (match $e { Some(e) => e, None => return None })
+);
+
 // Memory reporting
 #[cfg(unix)]
 fn get_resident() -> Option<usize> {
-    use std::fs;
+    use std::fs::File;
+    use std::io::Read;
 
     let field = 1;
-    let contents = fs::read_string("/proc/self/statm").ok()?;
-    let s = contents.split_whitespace().nth(field)?;
-    let npages = s.parse::<usize>().ok()?;
+    let mut f = option_try!(File::open("/proc/self/statm").ok());
+    let mut contents = String::new();
+    option_try!(f.read_to_string(&mut contents).ok());
+    let s = option_try!(contents.split_whitespace().nth(field));
+    let npages = option_try!(s.parse::<usize>().ok());
     Some(npages * 4096)
 }
 

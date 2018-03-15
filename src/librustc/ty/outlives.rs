@@ -79,18 +79,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
-            ty::TyGenerator(def_id, ref substs, _) => {
+            ty::TyGenerator(def_id, ref substs, ref interior) => {
                 // Same as the closure case
                 for upvar_ty in substs.upvar_tys(def_id, *self) {
                     self.compute_components(upvar_ty, out);
                 }
 
-                // We ignore regions in the generator interior as we don't
-                // want these to affect region inference
+                // But generators can have additional interior types
+                self.compute_components(interior.witness, out);
             }
-
-            // All regions are bound inside a witness
-            ty::TyGeneratorWitness(..) => (),
 
             // OutlivesTypeParameterEnv -- the actual checking that `X:'a`
             // is implied by the environment is done in regionck.

@@ -11,7 +11,7 @@
 fn foo() -> Box<Fn()> {
     let num = 5;
 
-    let closure = || { //~ ERROR expected a closure that
+    let closure = || {
         num += 1;
     };
 

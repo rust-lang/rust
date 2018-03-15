@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // ignore-windows
-// ignore-wasm32-bare no libs to link
 
 #![feature(link_args)]
 

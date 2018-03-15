@@ -12,9 +12,9 @@ struct Foo {
     foo: Vec<u32>,
 }
 
-impl Copy for Foo { } //~ ERROR may not be implemented for this type
+impl Copy for Foo { }
 
-#[derive(Copy)] //~ ERROR may not be implemented for this type
+#[derive(Copy)]
 struct Foo2<'a> {
     ty: &'a mut bool,
 }
@@ -24,9 +24,9 @@ enum EFoo {
     Baz,
 }
 
-impl Copy for EFoo { } //~ ERROR may not be implemented for this type
+impl Copy for EFoo { }
 
-#[derive(Copy)] //~ ERROR may not be implemented for this type
+#[derive(Copy)]
 enum EFoo2<'a> {
     Bar(&'a mut bool),
     Baz,

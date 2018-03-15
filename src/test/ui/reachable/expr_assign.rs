@@ -17,7 +17,7 @@
 fn foo() {
     // No error here.
     let x;
-    x = return; //~ ERROR unreachable
+    x = return;
 }
 
 fn bar() {
@@ -27,13 +27,13 @@ fn bar() {
         // Here we consider the `return` unreachable because
         // "evaluating" the `*p` has type `!`. This is somewhat
         // dubious, I suppose.
-        *p = return; //~ ERROR unreachable
+        *p = return;
     }
 }
 
 fn baz() {
     let mut i = 0;
-    *{return; &mut i} = 22; //~ ERROR unreachable
+    *{return; &mut i} = 22;
 }
 
 fn main() { }

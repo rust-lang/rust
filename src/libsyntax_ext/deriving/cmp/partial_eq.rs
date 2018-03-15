@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use deriving::{path_local, path_std};
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
@@ -94,7 +93,7 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
-        path: path_std!(cx, cmp::PartialEq),
+        path: path_std!(cx, core::cmp::PartialEq),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         is_unsafe: false,

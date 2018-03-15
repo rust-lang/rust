@@ -10,21 +10,18 @@
 
 //! Inlining pass for MIR functions
 
-use rustc::hir;
-use rustc::hir::TransFnAttrFlags;
 use rustc::hir::def_id::DefId;
 
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 
 use rustc::mir::*;
+use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::visit::*;
-use rustc::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{self, Ty, TyCtxt, Instance};
 use rustc::ty::subst::{Subst,Substs};
 
 use std::collections::VecDeque;
-use std::iter;
-use transform::{MirPass, MirSource};
 use super::simplify::{remove_dead_blocks, CfgSimplifier};
 
 use syntax::{attr};
@@ -40,7 +37,7 @@ const UNKNOWN_SIZE_COST: usize = 10;
 
 pub struct Inline;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 struct CallSite<'tcx> {
     callee: DefId,
     substs: &'tcx Substs<'tcx>,
@@ -80,13 +77,8 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
         let mut callsites = VecDeque::new();
 
-        let param_env = self.tcx.param_env(self.source.def_id);
-
         // Only do inlining into fn bodies.
-        let id = self.tcx.hir.as_local_node_id(self.source.def_id).unwrap();
-        let body_owner_kind = self.tcx.hir.body_owner_kind(id);
-        if let (hir::BodyOwnerKind::Fn, None) = (body_owner_kind, self.source.promoted) {
-
+        if let MirSource::Fn(caller_id) = self.source {
             for (bb, bb_data) in caller_mir.basic_blocks().iter_enumerated() {
                 // Don't inline calls that are in cleanup blocks.
                 if bb_data.is_cleanup { continue; }
@@ -96,6 +88,9 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 if let TerminatorKind::Call {
                     func: Operand::Constant(ref f), .. } = terminator.kind {
                         if let ty::TyFnDef(callee_def_id, substs) = f.ty.sty {
+                            let caller_def_id = self.tcx.hir.local_def_id(caller_id);
+                            let param_env = self.tcx.param_env(caller_def_id);
+
                             if let Some(instance) = Instance::resolve(self.tcx,
                                                                       param_env,
                                                                       callee_def_id,
@@ -110,8 +105,6 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                         }
                     }
             }
-        } else {
-            return;
         }
 
         let mut local_change;
@@ -120,9 +113,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         loop {
             local_change = false;
             while let Some(callsite) = callsites.pop_front() {
-                debug!("checking whether to inline callsite {:?}", callsite);
                 if !self.tcx.is_mir_available(callsite.callee) {
-                    debug!("checking whether to inline callsite {:?} - MIR unavailable", callsite);
                     continue;
                 }
 
@@ -130,7 +121,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                                                                            callsite.location.span,
                                                                            callsite.callee) {
                     Ok(ref callee_mir) if self.should_inline(callsite, callee_mir) => {
-                        subst_and_normalize(callee_mir, self.tcx, &callsite.substs, param_env)
+                        callee_mir.subst(self.tcx, callsite.substs)
                     }
                     Ok(_) => continue,
 
@@ -142,12 +133,10 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 };
 
                 let start = caller_mir.basic_blocks().len();
-                debug!("attempting to inline callsite {:?} - mir={:?}", callsite, callee_mir);
+
                 if !self.inline_call(callsite, caller_mir, callee_mir) {
-                    debug!("attempting to inline callsite {:?} - failure", callsite);
                     continue;
                 }
-                debug!("attempting to inline callsite {:?} - success", callsite);
 
                 // Add callsites from inlined function
                 for (bb, bb_data) in caller_mir.basic_blocks().iter_enumerated().skip(start) {
@@ -191,33 +180,28 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                      callee_mir: &Mir<'tcx>)
                      -> bool
     {
-        debug!("should_inline({:?})", callsite);
         let tcx = self.tcx;
 
         // Don't inline closures that have captures
         // FIXME: Handle closures better
         if callee_mir.upvar_decls.len() > 0 {
-            debug!("    upvar decls present - not inlining");
             return false;
         }
 
         // Cannot inline generators which haven't been transformed yet
         if callee_mir.yield_ty.is_some() {
-            debug!("    yield ty present - not inlining");
             return false;
         }
 
-        let trans_fn_attrs = tcx.trans_fn_attrs(callsite.callee);
+        let attrs = tcx.get_attrs(callsite.callee);
+        let hint = attr::find_inline_attr(None, &attrs[..]);
 
-        let hinted = match trans_fn_attrs.inline {
+        let hinted = match hint {
             // Just treat inline(always) as a hint for now,
             // there are cases that prevent inlining that we
             // need to check for first.
             attr::InlineAttr::Always => true,
-            attr::InlineAttr::Never => {
-                debug!("#[inline(never)] present - not inlining");
-                return false
-            }
+            attr::InlineAttr::Never => return false,
             attr::InlineAttr::Hint => true,
             attr::InlineAttr::None => false,
         };
@@ -227,7 +211,6 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         // reference unexported symbols
         if callsite.callee.is_local() {
             if callsite.substs.types().count() == 0 && !hinted {
-                debug!("    callee is an exported function - not inlining");
                 return false;
             }
         }
@@ -239,7 +222,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         };
 
         // Significantly lower the threshold for inlining cold functions
-        if trans_fn_attrs.flags.contains(TransFnAttrFlags::COLD) {
+        if attr::contains_name(&attrs[..], "cold") {
             threshold /= 5;
         }
 
@@ -249,11 +232,11 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         if callee_mir.basic_blocks().len() <= 3 {
             threshold += threshold / 4;
         }
-        debug!("    final inline threshold = {}", threshold);
 
         // FIXME: Give a bonus to functions with only a single caller
 
-        let param_env = tcx.param_env(self.source.def_id);
+        let def_id = tcx.hir.local_def_id(self.source.item_id());
+        let param_env = tcx.param_env(def_id);
 
         let mut first_block = true;
         let mut cost = 0;
@@ -344,17 +327,12 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             }
         }
 
-        if let attr::InlineAttr::Always = trans_fn_attrs.inline {
-            debug!("INLINING {:?} because inline(always) [cost={}]", callsite, cost);
+        debug!("Inline cost for {:?} is {}", callsite.callee, cost);
+
+        if let attr::InlineAttr::Always = hint {
             true
         } else {
-            if cost <= threshold {
-                debug!("INLINING {:?} [cost={} <= threshold={}]", callsite, cost, threshold);
-                true
-            } else {
-                debug!("NOT inlining {:?} [cost={} > threshold={}]", callsite, cost, threshold);
-                false
-            }
+            cost <= threshold
         }
     }
 
@@ -403,12 +381,12 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
                 // If the call is something like `a[*i] = f(i)`, where
                 // `i : &mut usize`, then just duplicating the `a[*i]`
-                // Place could result in two different locations if `f`
+                // Lvalue could result in two different locations if `f`
                 // writes to `i`. To prevent this we need to create a temporary
-                // borrow of the place and pass the destination as `*temp` instead.
-                fn dest_needs_borrow(place: &Place) -> bool {
-                    match *place {
-                        Place::Projection(ref p) => {
+                // borrow of the lvalue and pass the destination as `*temp` instead.
+                fn dest_needs_borrow(lval: &Lvalue) -> bool {
+                    match *lval {
+                        Lvalue::Projection(ref p) => {
                             match p.elem {
                                 ProjectionElem::Deref |
                                 ProjectionElem::Index(_) => true,
@@ -417,7 +395,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                         }
                         // Static variables need a borrow because the callee
                         // might modify the same static.
-                        Place::Static(_) => true,
+                        Lvalue::Static(_) => true,
                         _ => false
                     }
                 }
@@ -426,7 +404,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     debug!("Creating temp for return destination");
                     let dest = Rvalue::Ref(
                         self.tcx.types.re_erased,
-                        BorrowKind::Mut { allow_two_phase_borrow: false },
+                        BorrowKind::Mut,
                         destination.0);
 
                     let ty = dest.ty(caller_mir, self.tcx);
@@ -434,7 +412,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     let temp = LocalDecl::new_temp(ty, callsite.location.span);
 
                     let tmp = caller_mir.local_decls.push(temp);
-                    let tmp = Place::Local(tmp);
+                    let tmp = Lvalue::Local(tmp);
 
                     let stmt = Statement {
                         source_info: callsite.location,
@@ -455,8 +433,8 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     // needs to generate the cast.
                     // FIXME: we should probably just generate correct MIR in the first place...
 
-                    let arg = if let Operand::Move(ref place) = args[0] {
-                        place.clone()
+                    let arg = if let Operand::Consume(ref lval) = args[0] {
+                        lval.clone()
                     } else {
                         bug!("Constant arg to \"box_free\"");
                     };
@@ -507,17 +485,17 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         }
     }
 
-    fn cast_box_free_arg(&self, arg: Place<'tcx>, ptr_ty: Ty<'tcx>,
-                         callsite: &CallSite<'tcx>, caller_mir: &mut Mir<'tcx>) -> Local {
+    fn cast_box_free_arg(&self, arg: Lvalue<'tcx>, ptr_ty: Ty<'tcx>,
+                         callsite: &CallSite<'tcx>, caller_mir: &mut Mir<'tcx>) -> Operand<'tcx> {
         let arg = Rvalue::Ref(
             self.tcx.types.re_erased,
-            BorrowKind::Mut { allow_two_phase_borrow: false },
+            BorrowKind::Mut,
             arg.deref());
 
         let ty = arg.ty(caller_mir, self.tcx);
         let ref_tmp = LocalDecl::new_temp(ty, callsite.location.span);
         let ref_tmp = caller_mir.local_decls.push(ref_tmp);
-        let ref_tmp = Place::Local(ref_tmp);
+        let ref_tmp = Lvalue::Local(ref_tmp);
 
         let ref_stmt = Statement {
             source_info: callsite.location,
@@ -534,151 +512,62 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         };
         let ptr_ty = self.tcx.mk_mut_ptr(pointee_ty);
 
-        let raw_ptr = Rvalue::Cast(CastKind::Misc, Operand::Move(ref_tmp), ptr_ty);
+        let raw_ptr = Rvalue::Cast(CastKind::Misc, Operand::Consume(ref_tmp), ptr_ty);
 
         let cast_tmp = LocalDecl::new_temp(ptr_ty, callsite.location.span);
         let cast_tmp = caller_mir.local_decls.push(cast_tmp);
+        let cast_tmp = Lvalue::Local(cast_tmp);
 
         let cast_stmt = Statement {
             source_info: callsite.location,
-            kind: StatementKind::Assign(Place::Local(cast_tmp), raw_ptr)
+            kind: StatementKind::Assign(cast_tmp.clone(), raw_ptr)
         };
 
         caller_mir[callsite.bb]
             .statements.push(cast_stmt);
 
-        cast_tmp
+        Operand::Consume(cast_tmp)
     }
 
-    fn make_call_args(
-        &self,
-        args: Vec<Operand<'tcx>>,
-        callsite: &CallSite<'tcx>,
-        caller_mir: &mut Mir<'tcx>,
-    ) -> Vec<Local> {
+    fn make_call_args(&self, args: Vec<Operand<'tcx>>,
+                      callsite: &CallSite<'tcx>, caller_mir: &mut Mir<'tcx>) -> Vec<Operand<'tcx>> {
         let tcx = self.tcx;
-
-        // There is a bit of a mismatch between the *caller* of a closure and the *callee*.
-        // The caller provides the arguments wrapped up in a tuple:
-        //
-        //     tuple_tmp = (a, b, c)
-        //     Fn::call(closure_ref, tuple_tmp)
-        //
-        // meanwhile the closure body expects the arguments (here, `a`, `b`, and `c`)
-        // as distinct arguments. (This is the "rust-call" ABI hack.) Normally, trans has
-        // the job of unpacking this tuple. But here, we are trans. =) So we want to create
-        // a vector like
-        //
-        //     [closure_ref, tuple_tmp.0, tuple_tmp.1, tuple_tmp.2]
-        //
-        // Except for one tiny wrinkle: we don't actually want `tuple_tmp.0`. It's more convenient
-        // if we "spill" that into *another* temporary, so that we can map the argument
-        // variable in the callee MIR directly to an argument variable on our side.
-        // So we introduce temporaries like:
-        //
-        //     tmp0 = tuple_tmp.0
-        //     tmp1 = tuple_tmp.1
-        //     tmp2 = tuple_tmp.2
-        //
-        // and the vector is `[closure_ref, tmp0, tmp1, tmp2]`.
-        if tcx.is_closure(callsite.callee) {
-            let mut args = args.into_iter();
-            let self_ = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_mir);
-            let tuple = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_mir);
-            assert!(args.next().is_none());
-
-            let tuple = Place::Local(tuple);
-            let tuple_tys = if let ty::TyTuple(s, _) = tuple.ty(caller_mir, tcx).to_ty(tcx).sty {
-                s
-            } else {
-                bug!("Closure arguments are not passed as a tuple");
-            };
-
-            // The `closure_ref` in our example above.
-            let closure_ref_arg = iter::once(self_);
-
-            // The `tmp0`, `tmp1`, and `tmp2` in our example abonve.
-            let tuple_tmp_args =
-                tuple_tys.iter().enumerate().map(|(i, ty)| {
-                    // This is e.g. `tuple_tmp.0` in our example above.
-                    let tuple_field = Operand::Move(tuple.clone().field(Field::new(i), ty));
-
-                    // Spill to a local to make e.g. `tmp0`.
-                    self.create_temp_if_necessary(tuple_field, callsite, caller_mir)
-                });
-
-            closure_ref_arg.chain(tuple_tmp_args).collect()
-        } else {
-            args.into_iter()
-                .map(|a| self.create_temp_if_necessary(a, callsite, caller_mir))
-                .collect()
-        }
-    }
-
-    /// If `arg` is already a temporary, returns it. Otherwise, introduces a fresh
-    /// temporary `T` and an instruction `T = arg`, and returns `T`.
-    fn create_temp_if_necessary(
-        &self,
-        arg: Operand<'tcx>,
-        callsite: &CallSite<'tcx>,
-        caller_mir: &mut Mir<'tcx>,
-    ) -> Local {
         // FIXME: Analysis of the usage of the arguments to avoid
         // unnecessary temporaries.
-
-        if let Operand::Move(Place::Local(local)) = arg {
-            if caller_mir.local_kind(local) == LocalKind::Temp {
-                // Reuse the operand if it's a temporary already
-                return local;
+        args.into_iter().map(|a| {
+            if let Operand::Consume(Lvalue::Local(local)) = a {
+                if caller_mir.local_kind(local) == LocalKind::Temp {
+                    // Reuse the operand if it's a temporary already
+                    return a;
+                }
             }
-        }
 
-        debug!("Creating temp for argument {:?}", arg);
-        // Otherwise, create a temporary for the arg
-        let arg = Rvalue::Use(arg);
+            debug!("Creating temp for argument");
+            // Otherwise, create a temporary for the arg
+            let arg = Rvalue::Use(a);
 
-        let ty = arg.ty(caller_mir, self.tcx);
+            let ty = arg.ty(caller_mir, tcx);
 
-        let arg_tmp = LocalDecl::new_temp(ty, callsite.location.span);
-        let arg_tmp = caller_mir.local_decls.push(arg_tmp);
+            let arg_tmp = LocalDecl::new_temp(ty, callsite.location.span);
+            let arg_tmp = caller_mir.local_decls.push(arg_tmp);
+            let arg_tmp = Lvalue::Local(arg_tmp);
 
-        let stmt = Statement {
-            source_info: callsite.location,
-            kind: StatementKind::Assign(Place::Local(arg_tmp), arg),
-        };
-        caller_mir[callsite.bb].statements.push(stmt);
-        arg_tmp
+            let stmt = Statement {
+                source_info: callsite.location,
+                kind: StatementKind::Assign(arg_tmp.clone(), arg)
+            };
+            caller_mir[callsite.bb].statements.push(stmt);
+            Operand::Consume(arg_tmp)
+        }).collect()
     }
 }
 
 fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           param_env: ty::ParamEnv<'tcx>,
                           ty: Ty<'tcx>) -> Option<u64> {
-    tcx.layout_of(param_env.and(ty)).ok().map(|layout| layout.size.bytes())
-}
-
-fn subst_and_normalize<'a, 'tcx: 'a>(
-    mir: &Mir<'tcx>,
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    substs: &'tcx ty::subst::Substs<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-) -> Mir<'tcx> {
-    struct Folder<'a, 'tcx: 'a> {
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        substs: &'tcx ty::subst::Substs<'tcx>,
-    }
-    impl<'a, 'tcx: 'a> ty::fold::TypeFolder<'tcx, 'tcx> for Folder<'a, 'tcx> {
-        fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
-            self.tcx
-        }
-
-        fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-            self.tcx.trans_apply_param_substs_env(&self.substs, self.param_env, &t)
-        }
-    }
-    let mut f = Folder { tcx, param_env, substs };
-    mir.fold_with(&mut f)
+    ty.layout(tcx, param_env).ok().map(|layout| {
+        layout.size(&tcx.data_layout).bytes()
+    })
 }
 
 /**
@@ -690,12 +579,12 @@ fn subst_and_normalize<'a, 'tcx: 'a>(
  */
 struct Integrator<'a, 'tcx: 'a> {
     block_idx: usize,
-    args: &'a [Local],
+    args: &'a [Operand<'tcx>],
     local_map: IndexVec<Local, Local>,
     scope_map: IndexVec<VisibilityScope, VisibilityScope>,
     promoted_map: IndexVec<Promoted, Promoted>,
     _callsite: CallSite<'tcx>,
-    destination: Place<'tcx>,
+    destination: Lvalue<'tcx>,
     return_block: BasicBlock,
     cleanup_block: Option<BasicBlock>,
     in_cleanup_block: bool,
@@ -707,40 +596,65 @@ impl<'a, 'tcx> Integrator<'a, 'tcx> {
         debug!("Updating target `{:?}`, new: `{:?}`", tgt, new);
         new
     }
+
+    fn arg_index(&self, arg: Local) -> Option<usize> {
+        let idx = arg.index();
+        if idx > 0 && idx <= self.args.len() {
+            Some(idx - 1)
+        } else {
+            None
+        }
+    }
 }
 
 impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
     fn visit_local(&mut self,
                    local: &mut Local,
-                   _ctxt: PlaceContext<'tcx>,
+                   _ctxt: LvalueContext<'tcx>,
                    _location: Location) {
-        if *local == RETURN_PLACE {
+        if *local == RETURN_POINTER {
             match self.destination {
-                Place::Local(l) => {
+                Lvalue::Local(l) => {
                     *local = l;
                     return;
                 },
-                ref place => bug!("Return place is {:?}, not local", place)
+                ref lval => bug!("Return lvalue is {:?}, not local", lval)
             }
         }
         let idx = local.index() - 1;
         if idx < self.args.len() {
-            *local = self.args[idx];
-            return;
+            match self.args[idx] {
+                Operand::Consume(Lvalue::Local(l)) => {
+                    *local = l;
+                    return;
+                },
+                ref op => bug!("Arg operand `{:?}` is {:?}, not local", idx, op)
+            }
         }
         *local = self.local_map[Local::new(idx - self.args.len())];
     }
 
-    fn visit_place(&mut self,
-                    place: &mut Place<'tcx>,
-                    _ctxt: PlaceContext<'tcx>,
+    fn visit_lvalue(&mut self,
+                    lvalue: &mut Lvalue<'tcx>,
+                    _ctxt: LvalueContext<'tcx>,
                     _location: Location) {
-        if let Place::Local(RETURN_PLACE) = *place {
-            // Return pointer; update the place itself
-            *place = self.destination.clone();
+        if let Lvalue::Local(RETURN_POINTER) = *lvalue {
+            // Return pointer; update the lvalue itself
+            *lvalue = self.destination.clone();
         } else {
-            self.super_place(place, _ctxt, _location);
+            self.super_lvalue(lvalue, _ctxt, _location);
         }
+    }
+
+    fn visit_operand(&mut self, operand: &mut Operand<'tcx>, location: Location) {
+        if let Operand::Consume(Lvalue::Local(arg)) = *operand {
+            if let Some(idx) = self.arg_index(arg) {
+                let new_arg = self.args[idx].clone();
+                *operand = new_arg;
+                return;
+            }
+        }
+        self.super_operand(operand, location);
     }
 
     fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {
@@ -805,7 +719,6 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                     *kind = TerminatorKind::Goto { target: tgt }
                 }
             }
-            TerminatorKind::Abort => { }
             TerminatorKind::Unreachable => { }
             TerminatorKind::FalseEdges { ref mut real_target, ref mut imaginary_targets } => {
                 *real_target = self.update_target(*real_target);
@@ -813,9 +726,6 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                     *target = self.update_target(*target);
                 }
             }
-            TerminatorKind::FalseUnwind { real_target: _ , unwind: _ } =>
-                // see the ordering of passes in the optimized_mir query.
-                bug!("False unwinds should have been removed before inlining")
         }
     }
 

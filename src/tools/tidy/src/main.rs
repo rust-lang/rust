@@ -24,11 +24,8 @@ use std::path::PathBuf;
 use std::env;
 
 fn main() {
-    let path = env::args_os().skip(1).next().expect("need path to src");
+    let path = env::args_os().skip(1).next().expect("need an argument");
     let path = PathBuf::from(path);
-
-    let cargo = env::args_os().skip(2).next().expect("need path to cargo");
-    let cargo = PathBuf::from(cargo);
 
     let args: Vec<String> = env::args().skip(1).collect();
 
@@ -44,7 +41,6 @@ fn main() {
     if !args.iter().any(|s| *s == "--no-vendor") {
         deps::check(&path, &mut bad);
     }
-    deps::check_whitelist(&path, &cargo, &mut bad);
 
     if bad {
         eprintln!("some tidy checks failed");

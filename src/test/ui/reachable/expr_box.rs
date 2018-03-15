@@ -13,6 +13,6 @@
 #![deny(unreachable_code)]
 
 fn main() {
-    let x = box return; //~ ERROR unreachable
+    let x = box return;
     println!("hi");
 }

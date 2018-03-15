@@ -50,7 +50,7 @@ struct MarkSymbolVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     live_symbols: Box<FxHashSet<ast::NodeId>>,
-    repr_has_repr_c: bool,
+    struct_has_extern_repr: bool,
     in_pat: bool,
     inherited_pub_visibility: bool,
     ignore_variant_stack: Vec<DefId>,
@@ -102,7 +102,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     fn handle_field_access(&mut self, lhs: &hir::Expr, name: ast::Name) {
         match self.tables.expr_ty_adjusted(lhs).sty {
             ty::TyAdt(def, _) => {
-                self.insert_def_id(def.non_enum_variant().field_named(name).did);
+                self.insert_def_id(def.struct_variant().field_named(name).did);
             }
             _ => span_bug!(lhs.span, "named field access on non-ADT"),
         }
@@ -111,7 +111,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     fn handle_tup_field_access(&mut self, lhs: &hir::Expr, idx: usize) {
         match self.tables.expr_ty_adjusted(lhs).sty {
             ty::TyAdt(def, _) => {
-                self.insert_def_id(def.non_enum_variant().fields[idx].did);
+                self.insert_def_id(def.struct_variant().fields[idx].did);
             }
             ty::TyTuple(..) => {}
             _ => span_bug!(lhs.span, "numeric field access on non-ADT"),
@@ -149,8 +149,8 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn visit_node(&mut self, node: &hir_map::Node<'tcx>) {
-        let had_repr_c = self.repr_has_repr_c;
-        self.repr_has_repr_c = false;
+        let had_extern_repr = self.struct_has_extern_repr;
+        self.struct_has_extern_repr = false;
         let had_inherited_pub_visibility = self.inherited_pub_visibility;
         self.inherited_pub_visibility = false;
         match *node {
@@ -159,7 +159,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                     hir::ItemStruct(..) | hir::ItemUnion(..) => {
                         let def_id = self.tcx.hir.local_def_id(item.id);
                         let def = self.tcx.adt_def(def_id);
-                        self.repr_has_repr_c = def.repr.c();
+                        self.struct_has_extern_repr = def.repr.c();
 
                         intravisit::walk_item(self, &item);
                     }
@@ -187,7 +187,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             }
             _ => ()
         }
-        self.repr_has_repr_c = had_repr_c;
+        self.struct_has_extern_repr = had_extern_repr;
         self.inherited_pub_visibility = had_inherited_pub_visibility;
     }
 
@@ -223,10 +223,10 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
 
     fn visit_variant_data(&mut self, def: &'tcx hir::VariantData, _: ast::Name,
                         _: &hir::Generics, _: ast::NodeId, _: syntax_pos::Span) {
-        let has_repr_c = self.repr_has_repr_c;
+        let has_extern_repr = self.struct_has_extern_repr;
         let inherited_pub_visibility = self.inherited_pub_visibility;
         let live_fields = def.fields().iter().filter(|f| {
-            has_repr_c || inherited_pub_visibility || f.vis == hir::Public
+            has_extern_repr || inherited_pub_visibility || f.vis == hir::Public
         });
         self.live_symbols.extend(live_fields.map(|f| f.id));
 
@@ -428,7 +428,7 @@ fn find_live<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         tcx,
         tables: &ty::TypeckTables::empty(None),
         live_symbols: box FxHashSet(),
-        repr_has_repr_c: false,
+        struct_has_extern_repr: false,
         in_pat: false,
         inherited_pub_visibility: false,
         ignore_variant_stack: vec![],
@@ -531,15 +531,13 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
                       id: ast::NodeId,
                       span: syntax_pos::Span,
                       name: ast::Name,
-                      node_type: &str,
-                      participle: &str) {
+                      node_type: &str) {
         if !name.as_str().starts_with("_") {
             self.tcx
                 .lint_node(lint::builtin::DEAD_CODE,
                            id,
                            span,
-                           &format!("{} is never {}: `{}`",
-                                    node_type, participle, name));
+                           &format!("{} is never used: `{}`", node_type, name));
         }
     }
 }
@@ -564,6 +562,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
                 hir::ItemStruct(..) |
                 hir::ItemUnion(..) |
                 hir::ItemTrait(..) |
+                hir::ItemAutoImpl(..) |
                 hir::ItemImpl(..) => self.tcx.sess.codemap().def_span(item.span),
                 _ => item.span,
             };
@@ -571,8 +570,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
                 item.id,
                 span,
                 item.name,
-                item.node.descriptive_variant(),
-                "used",
+                item.node.descriptive_variant()
             );
         } else {
             // Only continue if we didn't warn
@@ -585,8 +583,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
                      g: &'tcx hir::Generics,
                      id: ast::NodeId) {
         if self.should_warn_about_variant(&variant.node) {
-            self.warn_dead_code(variant.node.data.id(), variant.span, variant.node.name,
-                                "variant", "constructed");
+            self.warn_dead_code(variant.node.data.id(), variant.span, variant.node.name, "variant");
         } else {
             intravisit::walk_variant(self, variant, g, id);
         }
@@ -594,15 +591,15 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
 
     fn visit_foreign_item(&mut self, fi: &'tcx hir::ForeignItem) {
         if self.should_warn_about_foreign_item(fi) {
-            self.warn_dead_code(fi.id, fi.span, fi.name,
-                                fi.node.descriptive_variant(), "used");
+            self.warn_dead_code(fi.id, fi.span, fi.name, fi.node.descriptive_variant());
         }
         intravisit::walk_foreign_item(self, fi);
     }
 
     fn visit_struct_field(&mut self, field: &'tcx hir::StructField) {
         if self.should_warn_about_field(&field) {
-            self.warn_dead_code(field.id, field.span, field.name, "field", "used");
+            self.warn_dead_code(field.id, field.span,
+                                field.name, "field");
         }
         intravisit::walk_struct_field(self, field);
     }
@@ -614,15 +611,14 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
                     self.warn_dead_code(impl_item.id,
                                         impl_item.span,
                                         impl_item.name,
-                                        "associated const",
-                                        "used");
+                                        "associated const");
                 }
                 self.visit_nested_body(body_id)
             }
             hir::ImplItemKind::Method(_, body_id) => {
                 if !self.symbol_is_live(impl_item.id, None) {
                     let span = self.tcx.sess.codemap().def_span(impl_item.span);
-                    self.warn_dead_code(impl_item.id, span, impl_item.name, "method", "used");
+                    self.warn_dead_code(impl_item.id, span, impl_item.name, "method");
                 }
                 self.visit_nested_body(body_id)
             }

@@ -10,6 +10,6 @@
 
 #![feature(pub_restricted)]
 
-pub (.) fn afn() {} //~ ERROR expected identifier
+pub (.) fn afn() {}
 
 fn main() {}

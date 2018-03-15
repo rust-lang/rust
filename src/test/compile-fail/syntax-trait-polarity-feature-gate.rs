@@ -14,7 +14,7 @@ struct TestType;
 
 trait TestTrait {}
 
-impl !Send for TestType {}
+unsafe impl !Send for TestType {}
 //~^ ERROR negative trait bounds
 
 fn main() {}

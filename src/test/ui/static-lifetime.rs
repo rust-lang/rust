@@ -10,7 +10,7 @@
 
 pub trait Arbitrary: Sized + 'static {}
 
-impl<'a, A: Clone> Arbitrary for ::std::borrow::Cow<'a, A> {} //~ ERROR lifetime bound
+impl<'a, A: Clone> Arbitrary for ::std::borrow::Cow<'a, A> {}
 
 fn main() {
 }

@@ -1,7 +1,7 @@
 error[E0620]: cast to unsized type: `&{integer}` as `std::marker::Send`
   --> $DIR/cast-to-unsized-trait-object-suggestion.rs:12:5
    |
-LL |     &1 as Send; //~ ERROR cast to unsized
+12 |     &1 as Send;
    |     ^^^^^^----
    |           |
    |           help: try casting to a reference instead: `&Send`
@@ -9,11 +9,10 @@ LL |     &1 as Send; //~ ERROR cast to unsized
 error[E0620]: cast to unsized type: `std::boxed::Box<{integer}>` as `std::marker::Send`
   --> $DIR/cast-to-unsized-trait-object-suggestion.rs:13:5
    |
-LL |     Box::new(1) as Send; //~ ERROR cast to unsized
+13 |     Box::new(1) as Send;
    |     ^^^^^^^^^^^^^^^----
    |                    |
    |                    help: try casting to a `Box` instead: `Box<Send>`
 
 error: aborting due to 2 previous errors
 
-If you want more information on this error, try using "rustc --explain E0620"

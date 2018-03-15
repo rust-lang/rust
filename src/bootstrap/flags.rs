@@ -42,15 +42,10 @@ pub struct Flags {
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
     pub incremental: bool,
-    pub exclude: Vec<PathBuf>,
-    pub rustc_error_format: Option<String>,
 }
 
 pub enum Subcommand {
     Build {
-        paths: Vec<PathBuf>,
-    },
-    Check {
         paths: Vec<PathBuf>,
     },
     Doc {
@@ -59,9 +54,7 @@ pub enum Subcommand {
     Test {
         paths: Vec<PathBuf>,
         test_args: Vec<String>,
-        rustc_args: Vec<String>,
         fail_fast: bool,
-        doc_tests: bool,
     },
     Bench {
         paths: Vec<PathBuf>,
@@ -94,7 +87,6 @@ Usage: x.py <subcommand> [options] [<paths>...]
 
 Subcommands:
     build       Compile either the compiler or libraries
-    check       Compile either the compiler or libraries, using cargo check
     test        Build and run some test suites
     bench       Build and run some benchmarks
     doc         Build documentation
@@ -112,14 +104,12 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
         opts.optopt("", "build", "build target of the stage0 compiler", "BUILD");
         opts.optmulti("", "host", "host targets to build", "HOST");
         opts.optmulti("", "target", "target targets to build", "TARGET");
-        opts.optmulti("", "exclude", "build paths to exclude", "PATH");
         opts.optopt("", "on-fail", "command to run on failure", "CMD");
         opts.optopt("", "stage", "stage to build", "N");
         opts.optopt("", "keep-stage", "stage to keep without recompiling", "N");
         opts.optopt("", "src", "path to the root of the rust checkout", "DIR");
         opts.optopt("j", "jobs", "number of jobs to run in parallel", "JOBS");
         opts.optflag("h", "help", "print this help message");
-        opts.optopt("", "error-format", "rustc error format", "FORMAT");
 
         // fn usage()
         let usage = |exit_code: i32, opts: &Options, subcommand_help: &str, extra_help: &str| -> ! {
@@ -137,7 +127,6 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
         // there on out.
         let subcommand = args.iter().find(|&s|
             (s == "build")
-            || (s == "check")
             || (s == "test")
             || (s == "bench")
             || (s == "doc")
@@ -161,13 +150,6 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
             "test"  => {
                 opts.optflag("", "no-fail-fast", "Run all tests regardless of failure");
                 opts.optmulti("", "test-args", "extra arguments", "ARGS");
-                opts.optmulti(
-                    "",
-                    "rustc-args",
-                    "extra options to pass the compiler when running tests",
-                    "ARGS",
-                );
-                opts.optflag("", "doc", "run doc tests");
             },
             "bench" => { opts.optmulti("", "test-args", "extra arguments", "ARGS"); },
             "clean" => { opts.optflag("", "all", "clean all build artifacts"); },
@@ -229,21 +211,6 @@ Arguments:
     src/libtest and its dependencies.
     Once this is done, build/$ARCH/stage1 contains a usable compiler.");
             }
-            "check" => {
-                subcommand_help.push_str("\n
-Arguments:
-    This subcommand accepts a number of paths to directories to the crates
-    and/or artifacts to compile. For example:
-
-        ./x.py check src/libcore
-        ./x.py check src/libcore src/libproc_macro
-
-    If no arguments are passed then the complete artifacts are compiled: std, test, and rustc. Note
-    also that since we use `cargo check`, by default this will automatically enable incremental
-    compilation, so there's no need to pass it separately, though it won't hurt. We also completely
-    ignore the stage passed, as there's no way to compile in non-stage 0 without actually building
-    the compiler.");
-            }
             "test" => {
                 subcommand_help.push_str("\n
 Arguments:
@@ -279,10 +246,7 @@ Arguments:
         };
         // Get any optional paths which occur after the subcommand
         let cwd = t!(env::current_dir());
-        let src = matches.opt_str("src").map(PathBuf::from)
-            .or_else(|| env::var_os("SRC").map(PathBuf::from))
-            .unwrap_or(cwd.clone());
-        let paths = matches.free[1..].iter().map(|p| p.into()).collect::<Vec<PathBuf>>();
+        let paths = matches.free[1..].iter().map(|p| cwd.join(p)).collect::<Vec<_>>();
 
         let cfg_file = matches.opt_str("config").map(PathBuf::from).or_else(|| {
             if fs::metadata("config.toml").is_ok() {
@@ -315,16 +279,11 @@ Arguments:
             "build" => {
                 Subcommand::Build { paths: paths }
             }
-            "check" => {
-                Subcommand::Check { paths: paths }
-            }
             "test" => {
                 Subcommand::Test {
                     paths,
                     test_args: matches.opt_strs("test-args"),
-                    rustc_args: matches.opt_strs("rustc-args"),
                     fail_fast: !matches.opt_present("no-fail-fast"),
-                    doc_tests: matches.opt_present("doc"),
                 }
             }
             "bench" => {
@@ -368,11 +327,15 @@ Arguments:
             stage = Some(1);
         }
 
+        let cwd = t!(env::current_dir());
+        let src = matches.opt_str("src").map(PathBuf::from)
+            .or_else(|| env::var_os("SRC").map(PathBuf::from))
+            .unwrap_or(cwd);
+
         Flags {
             verbose: matches.opt_count("verbose"),
             stage,
             on_fail: matches.opt_str("on-fail"),
-            rustc_error_format: matches.opt_str("error-format"),
             keep_stage: matches.opt_str("keep-stage").map(|j| j.parse().unwrap()),
             build: matches.opt_str("build").map(|s| INTERNER.intern_string(s)),
             host: split(matches.opt_strs("host"))
@@ -380,12 +343,10 @@ Arguments:
             target: split(matches.opt_strs("target"))
                 .into_iter().map(|x| INTERNER.intern_string(x)).collect::<Vec<_>>(),
             config: cfg_file,
+            src,
             jobs: matches.opt_str("jobs").map(|j| j.parse().unwrap()),
             cmd,
             incremental: matches.opt_present("incremental"),
-            exclude: split(matches.opt_strs("exclude"))
-                .into_iter().map(|p| p.into()).collect::<Vec<_>>(),
-            src,
         }
     }
 }
@@ -401,25 +362,9 @@ impl Subcommand {
         }
     }
 
-    pub fn rustc_args(&self) -> Vec<&str> {
-        match *self {
-            Subcommand::Test { ref rustc_args, .. } => {
-                rustc_args.iter().flat_map(|s| s.split_whitespace()).collect()
-            }
-            _ => Vec::new(),
-        }
-    }
-
     pub fn fail_fast(&self) -> bool {
         match *self {
             Subcommand::Test { fail_fast, .. } => fail_fast,
-            _ => false,
-        }
-    }
-
-    pub fn doc_tests(&self) -> bool {
-        match *self {
-            Subcommand::Test { doc_tests, .. } => doc_tests,
             _ => false,
         }
     }

@@ -17,7 +17,10 @@ struct Foo {
 impl Foo {
     fn bar() {
         f(cx);
-        //~^ ERROR cannot find value `cx` in this scope
+        //~^ ERROR unresolved value `cx`
+        //~| ERROR unresolved value `cx`
+        //~| NOTE did you mean `self.cx`?
+        //~| NOTE `self` value is only available in methods with `self` parameter
     }
 }
 

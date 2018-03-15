@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::borrow::{Borrow, BorrowMut, ToOwned};
 use std::fmt;
 use std::iter;
 use std::marker::PhantomData;
@@ -18,7 +17,6 @@ use std::slice;
 use bitslice::{BitSlice, Word};
 use bitslice::{bitwise, Union, Subtract, Intersect};
 use indexed_vec::Idx;
-use rustc_serialize;
 
 /// Represents a set (or packed family of sets), of some element type
 /// E, where each E is identified by some unique index type `T`.
@@ -37,26 +35,6 @@ impl<T: Idx> Clone for IdxSetBuf<T> {
     }
 }
 
-impl<T: Idx> rustc_serialize::Encodable for IdxSetBuf<T> {
-    fn encode<E: rustc_serialize::Encoder>(&self,
-                                     encoder: &mut E)
-                                     -> Result<(), E::Error> {
-        self.bits.encode(encoder)
-    }
-}
-
-impl<T: Idx> rustc_serialize::Decodable for IdxSetBuf<T> {
-    fn decode<D: rustc_serialize::Decoder>(d: &mut D) -> Result<IdxSetBuf<T>, D::Error> {
-        let words: Vec<Word> = rustc_serialize::Decodable::decode(d)?;
-
-        Ok(IdxSetBuf {
-            _pd: PhantomData,
-            bits: words,
-        })
-    }
-}
-
-
 // pnkfelix wants to have this be `IdxSet<T>([Word]) and then pass
 // around `&mut IdxSet<T>` or `&IdxSet<T>`.
 //
@@ -72,25 +50,6 @@ impl<T: Idx> rustc_serialize::Decodable for IdxSetBuf<T> {
 pub struct IdxSet<T: Idx> {
     _pd: PhantomData<fn(&T)>,
     bits: [Word],
-}
-
-impl<T: Idx> Borrow<IdxSet<T>> for IdxSetBuf<T> {
-    fn borrow(&self) -> &IdxSet<T> {
-        &*self
-    }
-}
-
-impl<T: Idx> BorrowMut<IdxSet<T>> for IdxSetBuf<T> {
-    fn borrow_mut(&mut self) -> &mut IdxSet<T> {
-        &mut *self
-    }
-}
-
-impl<T: Idx> ToOwned for IdxSet<T> {
-    type Owned = IdxSetBuf<T>;
-    fn to_owned(&self) -> Self::Owned {
-        IdxSet::to_owned(self)
-    }
 }
 
 impl<T: Idx> fmt::Debug for IdxSetBuf<T> {
@@ -311,8 +270,10 @@ impl<'a, T: Idx> Iterator for Iter<'a, T> {
                 }
             }
 
-            let (i, word) = self.iter.next()?;
-            self.cur = Some((*word, word_bits * i));
+            match self.iter.next() {
+                Some((i, word)) => self.cur = Some((*word, word_bits * i)),
+                None => return None,
+            }
         }
     }
 }

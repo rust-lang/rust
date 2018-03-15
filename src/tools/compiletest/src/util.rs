@@ -15,7 +15,6 @@ use common::Config;
 const OS_TABLE: &'static [(&'static str, &'static str)] = &[
     ("android", "android"),
     ("bitrig", "bitrig"),
-    ("cloudabi", "cloudabi"),
     ("darwin", "macos"),
     ("dragonfly", "dragonfly"),
     ("freebsd", "freebsd"),
@@ -43,6 +42,7 @@ const ARCH_TABLE: &'static [(&'static str, &'static str)] = &[
     ("mips", "mips"),
     ("msp430", "msp430"),
     ("powerpc", "powerpc"),
+    ("powerpc64", "powerpc64"),
     ("s390x", "s390x"),
     ("sparc", "sparc"),
     ("x86_64", "x86_64"),
@@ -51,15 +51,10 @@ const ARCH_TABLE: &'static [(&'static str, &'static str)] = &[
     ("wasm32", "wasm32"),
 ];
 
-pub fn matches_os(triple: &str, name: &str) -> bool {
-    // For the wasm32 bare target we ignore anything also ignored on emscripten
-    // and then we also recognize `wasm32-bare` as the os for the target
-    if triple == "wasm32-unknown-unknown" {
-        return name == "emscripten" || name == "wasm32-bare"
-    }
+pub fn get_os(triple: &str) -> &'static str {
     for &(triple_os, os) in OS_TABLE {
         if triple.contains(triple_os) {
-            return os == name;
+            return os;
         }
     }
     panic!("Cannot determine OS from triple");

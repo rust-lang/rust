@@ -33,7 +33,6 @@ use syntax_pos::Span;
 /// and a body (as well as a NodeId, a span, etc).
 ///
 /// More specifically, it is one of either:
-///
 ///   - A function item,
 ///   - A closure expr (i.e. an ExprClosure), or
 ///   - The default implementation for a trait method.

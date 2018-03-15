@@ -1,24 +1,23 @@
 error[E0499]: cannot borrow `void` as mutable more than once at a time
   --> $DIR/mut-borrow-outside-loop.rs:17:23
    |
-LL |     let first = &mut void;
+16 |     let first = &mut void;
    |                      ---- first mutable borrow occurs here
-LL |     let second = &mut void; //~ ERROR cannot borrow
+17 |     let second = &mut void;
    |                       ^^^^ second mutable borrow occurs here
 ...
-LL | }
+25 | }
    | - first borrow ends here
 
 error[E0499]: cannot borrow `inner_void` as mutable more than once at a time
   --> $DIR/mut-borrow-outside-loop.rs:23:33
    |
-LL |         let inner_first = &mut inner_void;
+22 |         let inner_first = &mut inner_void;
    |                                ---------- first mutable borrow occurs here
-LL |         let inner_second = &mut inner_void; //~ ERROR cannot borrow
+23 |         let inner_second = &mut inner_void;
    |                                 ^^^^^^^^^^ second mutable borrow occurs here
-LL |     }
+24 |     }
    |     - first borrow ends here
 
 error: aborting due to 2 previous errors
 
-If you want more information on this error, try using "rustc --explain E0499"

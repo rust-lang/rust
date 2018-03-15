@@ -15,6 +15,7 @@
 
 extern crate helper;
 
+use std::env;
 use std::heap::{Heap, Alloc, System, Layout, AllocErr};
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
@@ -38,7 +39,8 @@ unsafe impl<'a> Alloc for &'a A {
 static GLOBAL: A = A;
 
 fn main() {
-    println!("hello!");
+    env::set_var("FOO", "bar");
+    drop(env::var("FOO"));
 
     let n = HITS.load(Ordering::SeqCst);
     assert!(n > 0);

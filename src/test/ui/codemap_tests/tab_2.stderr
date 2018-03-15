@@ -1,9 +1,9 @@
 error: unterminated double quote string
   --> $DIR/tab_2.rs:14:7
    |
-LL |                   """; //~ ERROR unterminated double quote
-   |  ___________________^
-LL | | }
+14 |       """;
+   |  _______^
+15 | | }
    | |__^
 
 error: aborting due to previous error

@@ -527,16 +527,6 @@ impl<T, S> HashSet<T, S>
     /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
     /// the value type.
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashSet;
-    ///
-    /// let set: HashSet<_> = [1, 2, 3].iter().cloned().collect();
-    /// assert_eq!(set.get(&2), Some(&2));
-    /// assert_eq!(set.get(&4), None);
-    /// ```
-    ///
     /// [`Eq`]: ../../std/cmp/trait.Eq.html
     /// [`Hash`]: ../../std/hash/trait.Hash.html
     #[stable(feature = "set_recovery", since = "1.9.0")]
@@ -641,19 +631,6 @@ impl<T, S> HashSet<T, S>
 
     /// Adds a value to the set, replacing the existing value, if any, that is equal to the given
     /// one. Returns the replaced value.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashSet;
-    ///
-    /// let mut set = HashSet::new();
-    /// set.insert(Vec::<i32>::new());
-    ///
-    /// assert_eq!(set.get(&[][..]).unwrap().capacity(), 0);
-    /// set.replace(Vec::with_capacity(10));
-    /// assert_eq!(set.get(&[][..]).unwrap().capacity(), 10);
-    /// ```
     #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn replace(&mut self, value: T) -> Option<T> {
         Recover::replace(&mut self.map, value)
@@ -694,16 +671,6 @@ impl<T, S> HashSet<T, S>
     /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
     /// the value type.
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashSet;
-    ///
-    /// let mut set: HashSet<_> = [1, 2, 3].iter().cloned().collect();
-    /// assert_eq!(set.take(&2), Some(2));
-    /// assert_eq!(set.take(&2), None);
-    /// ```
-    ///
     /// [`Eq`]: ../../std/cmp/trait.Eq.html
     /// [`Hash`]: ../../std/hash/trait.Hash.html
     #[stable(feature = "set_recovery", since = "1.9.0")]
@@ -724,7 +691,7 @@ impl<T, S> HashSet<T, S>
     /// use std::collections::HashSet;
     ///
     /// let xs = [1,2,3,4,5,6];
-    /// let mut set: HashSet<i32> = xs.iter().cloned().collect();
+    /// let mut set: HashSet<isize> = xs.iter().cloned().collect();
     /// set.retain(|&k| k % 2 == 0);
     /// assert_eq!(set.len(), 3);
     /// ```
@@ -1097,7 +1064,7 @@ impl<'a, K> ExactSizeIterator for Iter<'a, K> {
         self.iter.len()
     }
 }
-#[stable(feature = "fused", since = "1.26.0")]
+#[unstable(feature = "fused", issue = "35602")]
 impl<'a, K> FusedIterator for Iter<'a, K> {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -1124,7 +1091,7 @@ impl<K> ExactSizeIterator for IntoIter<K> {
         self.iter.len()
     }
 }
-#[stable(feature = "fused", since = "1.26.0")]
+#[unstable(feature = "fused", issue = "35602")]
 impl<K> FusedIterator for IntoIter<K> {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -1155,7 +1122,7 @@ impl<'a, K> ExactSizeIterator for Drain<'a, K> {
         self.iter.len()
     }
 }
-#[stable(feature = "fused", since = "1.26.0")]
+#[unstable(feature = "fused", issue = "35602")]
 impl<'a, K> FusedIterator for Drain<'a, K> {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -1185,9 +1152,13 @@ impl<'a, T, S> Iterator for Intersection<'a, T, S>
 
     fn next(&mut self) -> Option<&'a T> {
         loop {
-            let elt = self.iter.next()?;
-            if self.other.contains(elt) {
-                return Some(elt);
+            match self.iter.next() {
+                None => return None,
+                Some(elt) => {
+                    if self.other.contains(elt) {
+                        return Some(elt);
+                    }
+                }
             }
         }
     }
@@ -1208,7 +1179,7 @@ impl<'a, T, S> fmt::Debug for Intersection<'a, T, S>
     }
 }
 
-#[stable(feature = "fused", since = "1.26.0")]
+#[unstable(feature = "fused", issue = "35602")]
 impl<'a, T, S> FusedIterator for Intersection<'a, T, S>
     where T: Eq + Hash,
           S: BuildHasher
@@ -1231,9 +1202,13 @@ impl<'a, T, S> Iterator for Difference<'a, T, S>
 
     fn next(&mut self) -> Option<&'a T> {
         loop {
-            let elt = self.iter.next()?;
-            if !self.other.contains(elt) {
-                return Some(elt);
+            match self.iter.next() {
+                None => return None,
+                Some(elt) => {
+                    if !self.other.contains(elt) {
+                        return Some(elt);
+                    }
+                }
             }
         }
     }
@@ -1244,7 +1219,7 @@ impl<'a, T, S> Iterator for Difference<'a, T, S>
     }
 }
 
-#[stable(feature = "fused", since = "1.26.0")]
+#[unstable(feature = "fused", issue = "35602")]
 impl<'a, T, S> FusedIterator for Difference<'a, T, S>
     where T: Eq + Hash,
           S: BuildHasher
@@ -1283,7 +1258,7 @@ impl<'a, T, S> Iterator for SymmetricDifference<'a, T, S>
     }
 }
 
-#[stable(feature = "fused", since = "1.26.0")]
+#[unstable(feature = "fused", issue = "35602")]
 impl<'a, T, S> FusedIterator for SymmetricDifference<'a, T, S>
     where T: Eq + Hash,
           S: BuildHasher
@@ -1307,7 +1282,7 @@ impl<'a, T, S> Clone for Union<'a, T, S> {
     }
 }
 
-#[stable(feature = "fused", since = "1.26.0")]
+#[unstable(feature = "fused", issue = "35602")]
 impl<'a, T, S> FusedIterator for Union<'a, T, S>
     where T: Eq + Hash,
           S: BuildHasher
@@ -1745,7 +1720,7 @@ mod test_set {
     #[test]
     fn test_retain() {
         let xs = [1, 2, 3, 4, 5, 6];
-        let mut set: HashSet<i32> = xs.iter().cloned().collect();
+        let mut set: HashSet<isize> = xs.iter().cloned().collect();
         set.retain(|&k| k % 2 == 0);
         assert_eq!(set.len(), 3);
         assert!(set.contains(&2));

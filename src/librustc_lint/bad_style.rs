@@ -53,10 +53,6 @@ pub struct NonCamelCaseTypes;
 
 impl NonCamelCaseTypes {
     fn check_case(&self, cx: &LateContext, sort: &str, name: ast::Name, span: Span) {
-        fn char_has_case(c: char) -> bool {
-            c.is_lowercase() || c.is_uppercase()
-        }
-
         fn is_camel_case(name: ast::Name) -> bool {
             let name = name.as_str();
             if name.is_empty() {
@@ -66,38 +62,20 @@ impl NonCamelCaseTypes {
 
             // start with a non-lowercase letter rather than non-uppercase
             // ones (some scripts don't have a concept of upper/lowercase)
-            !name.is_empty() && !name.chars().next().unwrap().is_lowercase() &&
-                !name.contains("__") && !name.chars().collect::<Vec<_>>().windows(2).any(|pair| {
-                    // contains a capitalisable character followed by, or preceded by, an underscore
-                    char_has_case(pair[0]) && pair[1] == '_' ||
-                    char_has_case(pair[1]) && pair[0] == '_'
-                })
+            !name.is_empty() && !name.chars().next().unwrap().is_lowercase() && !name.contains('_')
         }
 
         fn to_camel_case(s: &str) -> String {
-            s.trim_matches('_')
-                .split('_')
-                .map(|word| {
+            s.split('_')
+                .flat_map(|word| {
                     word.chars().enumerate().map(|(i, c)| if i == 0 {
                         c.to_uppercase().collect::<String>()
                     } else {
                         c.to_lowercase().collect()
                     })
-                    .collect::<Vec<_>>()
-                    .concat()
                 })
-                .filter(|x| !x.is_empty())
                 .collect::<Vec<_>>()
-                .iter().fold((String::new(), None), |(acc, prev): (String, Option<&String>), next| {
-                    // separate two components with an underscore if their boundary cannot
-                    // be distinguished using a uppercase/lowercase case distinction
-                    let join = if let Some(prev) = prev {
-                                    let l = prev.chars().last().unwrap();
-                                    let f = next.chars().next().unwrap();
-                                    !char_has_case(l) && !char_has_case(f)
-                                } else { false };
-                    (acc + if join { "_" } else { "" } + next, Some(next))
-                }).0
+                .concat()
         }
 
         if !is_camel_case(name) {
@@ -120,15 +98,17 @@ impl LintPass for NonCamelCaseTypes {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCamelCaseTypes {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
-        let has_repr_c = it.attrs
+        let extern_repr_count = it.attrs
             .iter()
-            .any(|attr| {
+            .filter(|attr| {
                 attr::find_repr_attrs(cx.tcx.sess.diagnostic(), attr)
                     .iter()
-                    .any(|r| r == &attr::ReprC)
-            });
+                    .any(|r| r == &attr::ReprExtern)
+            })
+            .count();
+        let has_extern_repr = extern_repr_count > 0;
 
-        if has_repr_c {
+        if has_extern_repr {
             return;
         }
 
@@ -146,11 +126,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCamelCaseTypes {
         self.check_case(cx, "variant", v.node.name, v.span);
     }
 
-    fn check_generic_param(&mut self, cx: &LateContext, param: &hir::GenericParam) {
-        if let hir::GenericParam::Type(ref gen) = *param {
-            if gen.synthetic.is_none() {
-                self.check_case(cx, "type parameter", gen.name, gen.span);
-            }
+    fn check_generics(&mut self, cx: &LateContext, it: &hir::Generics) {
+        for gen in it.ty_params.iter() {
+            self.check_case(cx, "type parameter", gen.name, gen.span);
         }
     }
 }
@@ -243,23 +221,14 @@ impl LintPass for NonSnakeCase {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
     fn check_crate(&mut self, cx: &LateContext, cr: &hir::Crate) {
-        let attr_crate_name = attr::find_by_name(&cr.attrs, "crate_name")
+        let attr_crate_name = cr.attrs
+            .iter()
+            .find(|at| at.check_name("crate_name"))
             .and_then(|at| at.value_str().map(|s| (at, s)));
         if let Some(ref name) = cx.tcx.sess.opts.crate_name {
             self.check_snake_case(cx, "crate", name, None);
         } else if let Some((attr, name)) = attr_crate_name {
             self.check_snake_case(cx, "crate", &name.as_str(), Some(attr.span));
-        }
-    }
-
-    fn check_generic_param(&mut self, cx: &LateContext, param: &hir::GenericParam) {
-        if let hir::GenericParam::Lifetime(ref ld) = *param {
-            self.check_snake_case(
-                cx,
-                "lifetime",
-                &ld.lifetime.name.name().as_str(),
-                Some(ld.lifetime.span)
-            );
         }
     }
 
@@ -309,6 +278,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
                 self.check_snake_case(cx, "variable", &name.node.as_str(), Some(name.span));
             }
         }
+    }
+
+    fn check_lifetime_def(&mut self, cx: &LateContext, t: &hir::LifetimeDef) {
+        self.check_snake_case(cx,
+                              "lifetime",
+                              &t.lifetime.name.name().as_str(),
+                              Some(t.lifetime.span));
     }
 
     fn check_pat(&mut self, cx: &LateContext, p: &hir::Pat) {

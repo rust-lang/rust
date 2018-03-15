@@ -1,42 +1,46 @@
 error[E0277]: the `?` operator can only be used in a function that returns `Result` (or another type that implements `std::ops::Try`)
-  --> $DIR/try-operator-on-main.rs:19:5
+  --> $DIR/try-operator-on-main.rs:17:5
    |
-LL |     std::fs::File::open("foo")?; //~ ERROR the `?` operator can only
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot use the `?` operator in a function that returns `()`
+17 |     std::fs::File::open("foo")?;
+   |     ---------------------------
+   |     |
+   |     cannot use the `?` operator in a function that returns `()`
+   |     in this macro invocation
    |
    = help: the trait `std::ops::Try` is not implemented for `()`
    = note: required by `std::ops::Try::from_error`
 
 error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
-  --> $DIR/try-operator-on-main.rs:22:5
+  --> $DIR/try-operator-on-main.rs:20:5
    |
-LL |     ()?; //~ ERROR the `?` operator can only
-   |     ^^^ the `?` operator cannot be applied to type `()`
+20 |     ()?;
+   |     ---
+   |     |
+   |     the `?` operator cannot be applied to type `()`
+   |     in this macro invocation
    |
    = help: the trait `std::ops::Try` is not implemented for `()`
    = note: required by `std::ops::Try::into_result`
 
 error[E0277]: the trait bound `(): std::ops::Try` is not satisfied
-  --> $DIR/try-operator-on-main.rs:25:5
+  --> $DIR/try-operator-on-main.rs:23:5
    |
-LL |     try_trait_generic::<()>(); //~ ERROR the trait bound
+23 |     try_trait_generic::<()>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::ops::Try` is not implemented for `()`
    |
-note: required by `try_trait_generic`
-  --> $DIR/try-operator-on-main.rs:30:1
-   |
-LL | fn try_trait_generic<T: Try>() -> T {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: required by `try_trait_generic`
 
 error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
-  --> $DIR/try-operator-on-main.rs:32:5
+  --> $DIR/try-operator-on-main.rs:30:5
    |
-LL |     ()?; //~ ERROR the `?` operator can only
-   |     ^^^ the `?` operator cannot be applied to type `()`
+30 |     ()?;
+   |     ---
+   |     |
+   |     the `?` operator cannot be applied to type `()`
+   |     in this macro invocation
    |
    = help: the trait `std::ops::Try` is not implemented for `()`
    = note: required by `std::ops::Try::into_result`
 
 error: aborting due to 4 previous errors
 
-If you want more information on this error, try using "rustc --explain E0277"

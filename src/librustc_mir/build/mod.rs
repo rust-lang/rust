@@ -13,14 +13,14 @@ use build;
 use hair::cx::Cx;
 use hair::LintLevel;
 use rustc::hir;
-use rustc::hir::def_id::{DefId, LocalDefId};
+use rustc::hir::def_id::DefId;
 use rustc::middle::region;
 use rustc::mir::*;
+use rustc::mir::transform::MirSource;
 use rustc::mir::visit::{MutVisitor, TyContext};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
 use rustc::util::nodemap::NodeMap;
-use rustc_back::PanicStrategy;
 use rustc_const_eval::pattern::{BindingMode, PatternKind};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use shim;
@@ -28,10 +28,8 @@ use std::mem;
 use std::u32;
 use syntax::abi::Abi;
 use syntax::ast;
-use syntax::attr::{self, UnwindAttr};
 use syntax::symbol::keywords;
 use syntax_pos::Span;
-use transform::MirSource;
 use util as mir_util;
 
 /// Construct the MIR for a given def-id.
@@ -85,11 +83,12 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
         _ => unsupported(),
     };
 
+    let src = MirSource::from_node(tcx, id);
     tcx.infer_ctxt().enter(|infcx| {
-        let cx = Cx::new(&infcx, id);
+        let cx = Cx::new(&infcx, src);
         let mut mir = if cx.tables().tainted_by_errors {
             build::construct_error(cx, body_id)
-        } else if let hir::BodyOwnerKind::Fn = cx.body_owner_kind {
+        } else if let MirSource::Fn(id) = src {
             // fetch the fully liberated fn signature (that is, all bound
             // types/lifetimes replaced)
             let fn_hir_id = tcx.hir.node_to_hir_id(id);
@@ -102,10 +101,10 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
                     // HACK(eddyb) Avoid having RustCall on closures,
                     // as it adds unnecessary (and wrong) auto-tupling.
                     abi = Abi::Rust;
-                    Some((liberated_closure_env_ty(tcx, id, body_id), None))
+                    Some((closure_self_ty(tcx, id, body_id), None))
                 }
                 ty::TyGenerator(..) => {
-                    let gen_ty = tcx.body_tables(body_id).node_id_to_type(fn_hir_id);
+                    let gen_ty =  tcx.body_tables(body_id).node_id_to_type(fn_hir_id);
                     Some((gen_ty, None))
                 }
                 _ => None,
@@ -129,12 +128,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
             let arguments = implicit_argument.into_iter().chain(explicit_arguments);
 
             let (yield_ty, return_ty) = if body.is_generator {
-                let gen_sig = match ty.sty {
-                    ty::TyGenerator(gen_def_id, gen_substs, ..) =>
-                        gen_substs.generator_sig(gen_def_id, tcx),
-                    _ =>
-                        span_bug!(tcx.hir.span(id), "generator w/o generator type: {:?}", ty),
-                };
+                let gen_sig = cx.tables().generator_sigs()[fn_hir_id].clone().unwrap();
                 (Some(gen_sig.yield_ty), gen_sig.return_ty)
             } else {
                 (None, fn_sig.output())
@@ -156,8 +150,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
             mem::transmute::<Mir, Mir<'tcx>>(mir)
         };
 
-        mir_util::dump_mir(tcx, None, "mir_map", &0,
-                           MirSource::item(def_id), &mir, |_, _| Ok(()) );
+        mir_util::dump_mir(tcx, None, "mir_map", &0, src, &mir, |_, _| Ok(()) );
 
         mir
     })
@@ -221,7 +214,8 @@ fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let span = tcx.hir.span(ctor_id);
     if let hir::VariantData::Tuple(ref fields, ctor_id) = *v {
         tcx.infer_ctxt().enter(|infcx| {
-            let mut mir = shim::build_adt_ctor(&infcx, ctor_id, fields, span);
+            let (mut mir, src) =
+                shim::build_adt_ctor(&infcx, ctor_id, fields, span);
 
             // Convert the Mir to global types.
             let tcx = infcx.tcx.global_tcx();
@@ -234,9 +228,7 @@ fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 mem::transmute::<Mir, Mir<'tcx>>(mir)
             };
 
-            mir_util::dump_mir(tcx, None, "mir_map", &0,
-                               MirSource::item(tcx.hir.local_def_id(ctor_id)),
-                               &mir, |_, _| Ok(()) );
+            mir_util::dump_mir(tcx, None, "mir_map", &0, src, &mir, |_, _| Ok(()) );
 
             mir
         })
@@ -248,20 +240,32 @@ fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 ///////////////////////////////////////////////////////////////////////////
 // BuildMir -- walks a crate, looking for fn items and methods to build MIR from
 
-fn liberated_closure_env_ty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                            closure_expr_id: ast::NodeId,
-                                            body_id: hir::BodyId)
-                                            -> Ty<'tcx> {
+pub fn closure_self_ty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                       closure_expr_id: ast::NodeId,
+                                       body_id: hir::BodyId)
+                                       -> Ty<'tcx> {
     let closure_expr_hir_id = tcx.hir.node_to_hir_id(closure_expr_id);
     let closure_ty = tcx.body_tables(body_id).node_id_to_type(closure_expr_hir_id);
 
-    let (closure_def_id, closure_substs) = match closure_ty.sty {
-        ty::TyClosure(closure_def_id, closure_substs) => (closure_def_id, closure_substs),
-        _ => bug!("closure expr does not have closure type: {:?}", closure_ty)
-    };
+    let closure_def_id = tcx.hir.local_def_id(closure_expr_id);
+    let region = ty::ReFree(ty::FreeRegion {
+        scope: closure_def_id,
+        bound_region: ty::BoundRegion::BrEnv,
+    });
+    let region = tcx.mk_region(region);
 
-    let closure_env_ty = tcx.closure_env_ty(closure_def_id, closure_substs).unwrap();
-    tcx.liberate_late_bound_regions(closure_def_id, &closure_env_ty)
+    match tcx.closure_kind(closure_def_id) {
+        ty::ClosureKind::Fn =>
+            tcx.mk_ref(region,
+                       ty::TypeAndMut { ty: closure_ty,
+                                        mutbl: hir::MutImmutable }),
+        ty::ClosureKind::FnMut =>
+            tcx.mk_ref(region,
+                       ty::TypeAndMut { ty: closure_ty,
+                                        mutbl: hir::MutMutable }),
+        ty::ClosureKind::FnOnce =>
+            closure_ty
+    }
 }
 
 struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
@@ -295,15 +299,13 @@ struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// Maps node ids of variable bindings to the `Local`s created for them.
     var_indices: NodeMap<Local>,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
-    unit_temp: Option<Place<'tcx>>,
+    unit_temp: Option<Lvalue<'tcx>>,
 
     /// cached block with the RESUME terminator; this is created
     /// when first set of cleanups are built.
     cached_resume_block: Option<BasicBlock>,
     /// cached block with the RETURN terminator
     cached_return_block: Option<BasicBlock>,
-    /// cached block with the UNREACHABLE terminator
-    cached_unreachable_block: Option<BasicBlock>,
 }
 
 struct CFG<'tcx> {
@@ -355,34 +357,6 @@ macro_rules! unpack {
     };
 }
 
-fn should_abort_on_panic<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                         fn_def_id: DefId,
-                                         abi: Abi)
-                                         -> bool {
-    // Not callable from C, so we can safely unwind through these
-    if abi == Abi::Rust || abi == Abi::RustCall { return false; }
-
-    // We never unwind, so it's not relevant to stop an unwind
-    if tcx.sess.panic_strategy() != PanicStrategy::Unwind { return false; }
-
-    // We cannot add landing pads, so don't add one
-    if tcx.sess.no_landing_pads() { return false; }
-
-    // This is a special case: some functions have a C abi but are meant to
-    // unwind anyway. Don't stop them.
-    let attrs = &tcx.get_attrs(fn_def_id);
-    match attr::find_unwind_attr(Some(tcx.sess.diagnostic()), attrs) {
-        None => {
-            // FIXME(rust-lang/rust#48251) -- Had to disable
-            // abort-on-panic for backwards compatibility reasons.
-            false
-        }
-
-        Some(UnwindAttr::Allowed) => false,
-        Some(UnwindAttr::Aborts) => true,
-    }
-}
-
 ///////////////////////////////////////////////////////////////////////////
 /// the main entry point for building MIR for a function
 
@@ -407,17 +381,12 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         safety,
         return_ty);
 
-    let fn_def_id = tcx.hir.local_def_id(fn_id);
     let call_site_scope = region::Scope::CallSite(body.value.hir_id.local_id);
     let arg_scope = region::Scope::Arguments(body.value.hir_id.local_id);
     let mut block = START_BLOCK;
     let source_info = builder.source_info(span);
     let call_site_s = (call_site_scope, source_info);
     unpack!(block = builder.in_scope(call_site_s, LintLevel::Inherited, block, |builder| {
-        if should_abort_on_panic(tcx, fn_def_id, abi) {
-            builder.schedule_abort();
-        }
-
         let arg_scope_s = (arg_scope, source_info);
         unpack!(block = builder.in_scope(arg_scope_s, LintLevel::Inherited, block, |builder| {
             builder.args_and_body(block, &arguments, arg_scope, &body.value)
@@ -430,11 +399,6 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                               TerminatorKind::Goto { target: return_block });
         builder.cfg.terminate(return_block, source_info,
                               TerminatorKind::Return);
-        // Attribute any unreachable codepaths to the function's closing brace
-        if let Some(unreachable_block) = builder.cached_unreachable_block {
-            builder.cfg.terminate(unreachable_block, source_info,
-                                  TerminatorKind::Unreachable);
-        }
         return_block.unit()
     }));
     assert_eq!(block, builder.return_block());
@@ -444,19 +408,16 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         // RustCall pseudo-ABI untuples the last argument.
         spread_arg = Some(Local::new(arguments.len()));
     }
-    let closure_expr_id = tcx.hir.local_def_id(fn_id);
-    info!("fn_id {:?} has attrs {:?}", closure_expr_id,
-          tcx.get_attrs(closure_expr_id));
 
     // Gather the upvars of a closure, if any.
     let upvar_decls: Vec<_> = tcx.with_freevars(fn_id, |freevars| {
         freevars.iter().map(|fv| {
             let var_id = fv.var_id();
             let var_hir_id = tcx.hir.node_to_hir_id(var_id);
-            let closure_expr_id = tcx.hir.local_def_id(fn_id);
+            let closure_expr_id = tcx.hir.local_def_id(fn_id).index;
             let capture = hir.tables().upvar_capture(ty::UpvarId {
                 var_id: var_hir_id,
-                closure_expr_id: LocalDefId::from_def_id(closure_expr_id),
+                closure_expr_id,
             });
             let by_ref = match capture {
                 ty::UpvarCapture::ByValue => false,
@@ -465,27 +426,17 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
             let mut decl = UpvarDecl {
                 debug_name: keywords::Invalid.name(),
                 by_ref,
-                mutability: Mutability::Not,
             };
             if let Some(hir::map::NodeBinding(pat)) = tcx.hir.find(var_id) {
                 if let hir::PatKind::Binding(_, _, ref ident, _) = pat.node {
                     decl.debug_name = ident.node;
-
-                    let bm = *hir.tables.pat_binding_modes()
-                                        .get(pat.hir_id)
-                                        .expect("missing binding mode");
-                    if bm == ty::BindByValue(hir::MutMutable) {
-                        decl.mutability = Mutability::Mut;
-                    } else {
-                        decl.mutability = Mutability::Not;
-                    }
                 }
             }
             decl
         }).collect()
     });
 
-    let mut mir = builder.finish(upvar_decls, yield_ty);
+    let mut mir = builder.finish(upvar_decls, return_ty, yield_ty);
     mir.spread_arg = spread_arg;
     mir
 }
@@ -502,7 +453,7 @@ fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
 
     let mut block = START_BLOCK;
     let expr = builder.hir.mirror(ast_expr);
-    unpack!(block = builder.into_expr(&Place::Local(RETURN_PLACE), block, expr));
+    unpack!(block = builder.into_expr(&Lvalue::Local(RETURN_POINTER), block, expr));
 
     let source_info = builder.source_info(span);
     builder.cfg.terminate(block, source_info, TerminatorKind::Return);
@@ -510,14 +461,7 @@ fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
     // Constants can't `return` so a return block should not be created.
     assert_eq!(builder.cached_return_block, None);
 
-    // Constants may be match expressions in which case an unreachable block may
-    // be created, so terminate it properly.
-    if let Some(unreachable_block) = builder.cached_unreachable_block {
-        builder.cfg.terminate(unreachable_block, source_info,
-                              TerminatorKind::Unreachable);
-    }
-
-    builder.finish(vec![], None)
+    builder.finish(vec![], ty, None)
 }
 
 fn construct_error<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
@@ -529,7 +473,7 @@ fn construct_error<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
     let mut builder = Builder::new(hir, span, 0, Safety::Safe, ty);
     let source_info = builder.source_info(span);
     builder.cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
-    builder.finish(vec![], None)
+    builder.finish(vec![], ty, None)
 }
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
@@ -552,13 +496,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             push_unsafe_count: 0,
             unpushed_unsafe: safety,
             breakable_scopes: vec![],
-            local_decls: IndexVec::from_elem_n(LocalDecl::new_return_place(return_ty,
+            local_decls: IndexVec::from_elem_n(LocalDecl::new_return_pointer(return_ty,
                                                                              span), 1),
             var_indices: NodeMap(),
             unit_temp: None,
             cached_resume_block: None,
-            cached_return_block: None,
-            cached_unreachable_block: None,
+            cached_return_block: None
         };
 
         assert_eq!(builder.cfg.start_new_block(), START_BLOCK);
@@ -572,6 +515,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     fn finish(self,
               upvar_decls: Vec<UpvarDecl>,
+              return_ty: Ty<'tcx>,
               yield_ty: Option<Ty<'tcx>>)
               -> Mir<'tcx> {
         for (index, block) in self.cfg.basic_blocks.iter().enumerate() {
@@ -582,8 +526,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         Mir::new(self.cfg.basic_blocks,
                  self.visibility_scopes,
-                 ClearCrossCrate::Set(self.visibility_scope_info),
+                 ClearOnDecode::Set(self.visibility_scope_info),
                  IndexVec::new(),
+                 return_ty,
                  yield_ty,
                  self.local_decls,
                  self.arg_count,
@@ -610,13 +555,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             self.local_decls.push(LocalDecl {
-                mutability: Mutability::Mut,
+                mutability: Mutability::Not,
                 ty,
                 source_info: SourceInfo {
                     scope: ARGUMENT_VISIBILITY_SCOPE,
                     span: pattern.map_or(self.fn_span, |pat| pat.span)
                 },
-                syntactic_scope: ARGUMENT_VISIBILITY_SCOPE,
+                lexical_scope: ARGUMENT_VISIBILITY_SCOPE,
                 name,
                 internal: false,
                 is_user_variable: false,
@@ -626,9 +571,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let mut scope = None;
         // Bind the argument patterns
         for (index, &(ty, pattern)) in arguments.iter().enumerate() {
-            // Function arguments always get the first Local indices after the return place
+            // Function arguments always get the first Local indices after the return pointer
             let local = Local::new(index + 1);
-            let place = Place::Local(local);
+            let lvalue = Lvalue::Local(local);
 
             if let Some(pattern) = pattern {
                 let pattern = self.hir.pattern_from_hir(pattern);
@@ -642,14 +587,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     _ => {
                         scope = self.declare_bindings(scope, ast_body.span,
                                                       LintLevel::Inherited, &pattern);
-                        unpack!(block = self.place_into_pattern(block, pattern, &place));
+                        unpack!(block = self.lvalue_into_pattern(block, pattern, &lvalue));
                     }
                 }
             }
 
             // Make sure we drop (parts of) the argument even when not matched on.
             self.schedule_drop(pattern.as_ref().map_or(ast_body.span, |pat| pat.span),
-                               argument_scope, &place, ty);
+                               argument_scope, &lvalue, ty);
 
         }
 
@@ -659,10 +604,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
 
         let body = self.hir.mirror(ast_body);
-        self.into(&Place::Local(RETURN_PLACE), block, body)
+        self.into(&Lvalue::Local(RETURN_POINTER), block, body)
     }
 
-    fn get_unit_temp(&mut self) -> Place<'tcx> {
+    fn get_unit_temp(&mut self) -> Lvalue<'tcx> {
         match self.unit_temp {
             Some(ref tmp) => tmp.clone(),
             None => {
@@ -682,17 +627,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let rb = self.cfg.start_new_block();
                 self.cached_return_block = Some(rb);
                 rb
-            }
-        }
-    }
-
-    fn unreachable_block(&mut self) -> BasicBlock {
-        match self.cached_unreachable_block {
-            Some(ub) => ub,
-            None => {
-                let ub = self.cfg.start_new_block();
-                self.cached_unreachable_block = Some(ub);
-                ub
             }
         }
     }

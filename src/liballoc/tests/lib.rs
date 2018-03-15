@@ -10,8 +10,6 @@
 
 #![deny(warnings)]
 
-#![feature(allocator_api)]
-#![feature(alloc_system)]
 #![feature(attr_literals)]
 #![feature(box_syntax)]
 #![feature(inclusive_range_syntax)]
@@ -23,16 +21,15 @@
 #![feature(pattern)]
 #![feature(placement_in_syntax)]
 #![feature(rand)]
+#![feature(repr_align)]
+#![feature(slice_rotate)]
 #![feature(splice)]
 #![feature(str_escape)]
 #![feature(string_retain)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
-#![feature(exact_chunks)]
 
-extern crate alloc_system;
 extern crate std_unicode;
-extern crate rand;
 
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
@@ -41,7 +38,6 @@ mod binary_heap;
 mod btree;
 mod cow_str;
 mod fmt;
-mod heap;
 mod linked_list;
 mod slice;
 mod str;

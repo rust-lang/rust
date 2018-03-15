@@ -14,6 +14,7 @@ use generated_code;
 
 use std::cell::Cell;
 use std::env;
+use std::path::Path;
 
 use syntax::parse::lexer::{self, StringReader};
 use syntax::parse::token::{self, Token};
@@ -36,15 +37,12 @@ impl<'a> SpanUtils<'a> {
         }
     }
 
-    pub fn make_path_string(path: &FileName) -> String {
-        match *path {
-            FileName::Real(ref path) if !path.is_absolute() =>
-                env::current_dir()
-                    .unwrap()
-                    .join(&path)
-                    .display()
-                    .to_string(),
-            _ => path.to_string(),
+    pub fn make_path_string(file_name: &str) -> String {
+        let path = Path::new(file_name);
+        if path.is_absolute() {
+            path.clone().display().to_string()
+        } else {
+            env::current_dir().unwrap().join(&path).display().to_string()
         }
     }
 
@@ -68,7 +66,7 @@ impl<'a> SpanUtils<'a> {
         loop {
             let ts = toks.real_token();
             if ts.tok == token::Eof {
-                return result;
+                return result
             }
             if bracket_count == 0 && (ts.tok.is_ident() || ts.tok.is_keyword(keywords::SelfValue)) {
                 result = Some(ts.sp);
@@ -115,7 +113,7 @@ impl<'a> SpanUtils<'a> {
         // We keep track of the following two counts - the depth of nesting of
         // angle brackets, and the depth of nesting of square brackets. For the
         // angle bracket count, we only count tokens which occur outside of any
-        // square brackets (i.e. bracket_count == 0). The intuition here is
+        // square brackets (i.e. bracket_count == 0). The intutition here is
         // that we want to count angle brackets in the type, but not any which
         // could be in expression context (because these could mean 'less than',
         // etc.).
@@ -124,9 +122,10 @@ impl<'a> SpanUtils<'a> {
         loop {
             let next = toks.real_token();
 
-            if (next.tok == token::Lt || next.tok == token::Colon) && angle_count == 0
-                && bracket_count == 0 && prev.tok.is_ident()
-            {
+            if (next.tok == token::Lt || next.tok == token::Colon) &&
+               angle_count == 0 &&
+               bracket_count == 0 &&
+               prev.tok.is_ident() {
                 result = Some(prev.sp);
             }
 
@@ -151,20 +150,16 @@ impl<'a> SpanUtils<'a> {
             }
             prev = next;
         }
-        #[cfg(debug_assertions)] {
-            if angle_count != 0 || bracket_count != 0 {
-                let loc = self.sess.codemap().lookup_char_pos(span.lo());
-                span_bug!(
-                    span,
-                    "Mis-counted brackets when breaking path? Parsing '{}' \
-                     in {}, line {}",
-                    self.snippet(span),
-                    loc.file.name,
-                    loc.line
-                );
-            }
+        if angle_count != 0 || bracket_count != 0 {
+            let loc = self.sess.codemap().lookup_char_pos(span.lo());
+            span_bug!(span,
+                      "Mis-counted brackets when breaking path? Parsing '{}' \
+                       in {}, line {}",
+                      self.snippet(span),
+                      loc.file.name,
+                      loc.line);
         }
-        if result.is_none() && prev.tok.is_ident() {
+        if result.is_none() && prev.tok.is_ident() && angle_count == 0 {
             return Some(prev.sp);
         }
         result
@@ -216,7 +211,7 @@ impl<'a> SpanUtils<'a> {
             if f(ts.tok) {
                 let ts = toks.real_token();
                 if ts.tok == token::Eof {
-                    return None;
+                    return None
                 } else {
                     return Some(ts.sp);
                 }
@@ -283,12 +278,7 @@ impl<'a> SpanUtils<'a> {
         };
 
         //If the span comes from a fake filemap, filter it.
-        if !self.sess
-            .codemap()
-            .lookup_char_pos(parent.lo())
-            .file
-            .is_real_file()
-        {
+        if !self.sess.codemap().lookup_char_pos(parent.lo()).file.is_real_file() {
             return true;
         }
 

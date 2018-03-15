@@ -18,6 +18,7 @@
 // ignore-hexagon
 // ignore-mips
 // ignore-powerpc
+// ignore-powerpc64
 // ignore-s390x
 // ignore-sparc
 // ignore-wasm32

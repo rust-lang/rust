@@ -17,12 +17,12 @@
 
 fn a() {
     // the `2` is unreachable:
-    let x: (usize, usize) = (return, 2); //~ ERROR unreachable
+    let x: (usize, usize) = (return, 2);
 }
 
 fn b() {
     // the tuple is unreachable:
-    let x: (usize, usize) = (2, return); //~ ERROR unreachable
+    let x: (usize, usize) = (2, return);
 }
 
 fn main() { }

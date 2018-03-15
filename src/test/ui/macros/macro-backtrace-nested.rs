@@ -12,8 +12,7 @@
 // we replace the span of the expanded expression with that of the call site.
 
 macro_rules! nested_expr {
-    () => (fake) //~ ERROR cannot find
-    //~^ ERROR cannot find
+    () => (fake)
 }
 
 macro_rules! call_nested_expr {

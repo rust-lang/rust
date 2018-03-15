@@ -1,49 +1,49 @@
 error: expected one of `:` or `@`, found `<`
   --> $DIR/issue-34264.rs:11:14
    |
-LL | fn foo(Option<i32>, String) {} //~ ERROR expected one of
+11 | fn foo(Option<i32>, String) {}
    |              ^ expected one of `:` or `@` here
 
 error: expected one of `:` or `@`, found `)`
   --> $DIR/issue-34264.rs:11:27
    |
-LL | fn foo(Option<i32>, String) {} //~ ERROR expected one of
+11 | fn foo(Option<i32>, String) {}
    |                           ^ expected one of `:` or `@` here
 
 error: expected one of `:` or `@`, found `,`
-  --> $DIR/issue-34264.rs:13:9
+  --> $DIR/issue-34264.rs:12:9
    |
-LL | fn bar(x, y: usize) {} //~ ERROR expected one of
+12 | fn bar(x, y: usize) {}
    |         ^ expected one of `:` or `@` here
 
 error[E0061]: this function takes 2 parameters but 3 parameters were supplied
-  --> $DIR/issue-34264.rs:17:5
+  --> $DIR/issue-34264.rs:16:9
    |
-LL | fn foo(Option<i32>, String) {} //~ ERROR expected one of
-   | --------------------------- defined here
+11 | fn foo(Option<i32>, String) {}
+   | ------------------------------ defined here
 ...
-LL |     foo(Some(42), 2, ""); //~ ERROR this function takes
-   |     ^^^^^^^^^^^^^^^^^^^^ expected 2 parameters
+16 |     foo(Some(42), 2, "");
+   |         ^^^^^^^^^^^^^^^ expected 2 parameters
 
 error[E0308]: mismatched types
-  --> $DIR/issue-34264.rs:18:13
+  --> $DIR/issue-34264.rs:17:13
    |
-LL |     bar("", ""); //~ ERROR mismatched types
+17 |     bar("", "");
    |             ^^ expected usize, found reference
    |
    = note: expected type `usize`
               found type `&'static str`
+   = help: here are some functions which might fulfill your needs:
+           - .len()
 
 error[E0061]: this function takes 2 parameters but 3 parameters were supplied
-  --> $DIR/issue-34264.rs:20:5
+  --> $DIR/issue-34264.rs:19:9
    |
-LL | fn bar(x, y: usize) {} //~ ERROR expected one of
-   | ------------------- defined here
+12 | fn bar(x, y: usize) {}
+   | ---------------------- defined here
 ...
-LL |     bar(1, 2, 3); //~ ERROR this function takes
-   |     ^^^^^^^^^^^^ expected 2 parameters
+19 |     bar(1, 2, 3);
+   |         ^^^^^^^ expected 2 parameters
 
 error: aborting due to 6 previous errors
 
-You've got a few errors: E0061, E0308
-If you want more information on an error, try using "rustc --explain E0061"

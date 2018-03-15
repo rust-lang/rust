@@ -10,8 +10,6 @@
 
 // ignore-emscripten u128 not supported
 
-// compile-flags: -Z borrowck=compare
-
 #![feature(i128_type, test)]
 
 extern crate test;

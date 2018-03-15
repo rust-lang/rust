@@ -8,14 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::iter;
 
 use check::FnCtxt;
 use rustc::infer::InferOk;
 use rustc::traits::ObligationCause;
 
 use syntax::ast;
-use syntax::util::parser::PREC_POSTFIX;
 use syntax_pos::{self, Span};
 use rustc::hir;
 use rustc::hir::print;
@@ -136,48 +134,54 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
-        if let Some((msg, suggestion)) = self.check_ref(expr, checked_ty, expected) {
-            err.span_suggestion(expr.span, msg, suggestion);
-        } else if !self.check_for_cast(&mut err, expr, expr_ty, expected) {
-            let methods = self.get_conversion_methods(expected, checked_ty);
-            if let Ok(expr_text) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
-                let suggestions = iter::repeat(expr_text).zip(methods.iter())
-                    .map(|(receiver, method)| format!("{}.{}()", receiver, method.name))
-                    .collect::<Vec<_>>();
-                if !suggestions.is_empty() {
-                    err.span_suggestions(expr.span,
-                                         "try using a conversion method",
-                                         suggestions);
-                }
+        if let Some(suggestion) = self.check_ref(expr,
+                                                 checked_ty,
+                                                 expected) {
+            err.help(&suggestion);
+        } else {
+            let mode = probe::Mode::MethodCall;
+            let suggestions = self.probe_for_return_type(syntax_pos::DUMMY_SP,
+                                                         mode,
+                                                         expected,
+                                                         checked_ty,
+                                                         ast::DUMMY_NODE_ID);
+            if suggestions.len() > 0 {
+                err.help(&format!("here are some functions which \
+                                   might fulfill your needs:\n{}",
+                                  self.get_best_match(&suggestions).join("\n")));
             }
         }
         (expected, Some(err))
     }
 
-    fn get_conversion_methods(&self, expected: Ty<'tcx>, checked_ty: Ty<'tcx>)
-                              -> Vec<AssociatedItem> {
-        let mut methods = self.probe_for_return_type(syntax_pos::DUMMY_SP,
-                                                     probe::Mode::MethodCall,
-                                                     expected,
-                                                     checked_ty,
-                                                     ast::DUMMY_NODE_ID);
-        methods.retain(|m| {
-            self.has_no_input_arg(m) &&
-                self.tcx.get_attrs(m.def_id).iter()
-                // This special internal attribute is used to whitelist
-                // "identity-like" conversion methods to be suggested here.
-                //
-                // FIXME (#46459 and #46460): ideally
-                // `std::convert::Into::into` and `std::borrow:ToOwned` would
-                // also be `#[rustc_conversion_suggestion]`, if not for
-                // method-probing false-positives and -negatives (respectively).
-                //
-                // FIXME? Other potential candidate methods: `as_ref` and
-                // `as_mut`?
-                .find(|a| a.check_name("rustc_conversion_suggestion")).is_some()
-        });
+    fn format_method_suggestion(&self, method: &AssociatedItem) -> String {
+        format!("- .{}({})",
+                method.name,
+                if self.has_no_input_arg(method) {
+                    ""
+                } else {
+                    "..."
+                })
+    }
 
-        methods
+    fn display_suggested_methods(&self, methods: &[AssociatedItem]) -> Vec<String> {
+        methods.iter()
+               .take(5)
+               .map(|method| self.format_method_suggestion(&*method))
+               .collect::<Vec<String>>()
+    }
+
+    fn get_best_match(&self, methods: &[AssociatedItem]) -> Vec<String> {
+        let no_argument_methods: Vec<_> =
+            methods.iter()
+                   .filter(|ref x| self.has_no_input_arg(&*x))
+                   .map(|x| x.clone())
+                   .collect();
+        if no_argument_methods.len() > 0 {
+            self.display_suggested_methods(&no_argument_methods)
+        } else {
+            self.display_suggested_methods(&methods)
+        }
     }
 
     // This function checks if the method isn't static and takes other arguments than `self`.
@@ -210,7 +214,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                  expr: &hir::Expr,
                  checked_ty: Ty<'tcx>,
                  expected: Ty<'tcx>)
-                 -> Option<(&'static str, String)> {
+                 -> Option<String> {
         match (&expected.sty, &checked_ty.sty) {
             (&ty::TyRef(_, exp), &ty::TyRef(_, check)) => match (&exp.ty.sty, &check.ty.sty) {
                 (&ty::TyStr, &ty::TyArray(arr, _)) |
@@ -218,8 +222,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if let hir::ExprLit(_) = expr.node {
                         let sp = self.sess().codemap().call_span_if_macro(expr.span);
                         if let Ok(src) = self.tcx.sess.codemap().span_to_snippet(sp) {
-                            return Some(("consider removing the leading `b`",
-                                         src[1..].to_string()));
+                            return Some(format!("try `{}`", &src[1..]));
                         }
                     }
                     None
@@ -229,8 +232,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if let hir::ExprLit(_) = expr.node {
                         let sp = self.sess().codemap().call_span_if_macro(expr.span);
                         if let Ok(src) = self.tcx.sess.codemap().span_to_snippet(sp) {
-                            return Some(("consider adding a leading `b`",
-                                         format!("b{}", src)));
+                            return Some(format!("try `b{}`", src));
                         }
                     }
                     None
@@ -258,18 +260,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // Use the callsite's span if this is a macro call. #41858
                     let sp = self.sess().codemap().call_span_if_macro(expr.span);
                     if let Ok(src) = self.tcx.sess.codemap().span_to_snippet(sp) {
-                        let sugg_expr = match expr.node { // parenthesize if needed (Issue #46756)
-                            hir::ExprCast(_, _) | hir::ExprBinary(_, _, _) => format!("({})", src),
-                            _ => src,
-                        };
-                        return Some(match mutability.mutbl {
-                            hir::Mutability::MutMutable => {
-                                ("consider mutably borrowing here", format!("&mut {}", sugg_expr))
-                            }
-                            hir::Mutability::MutImmutable => {
-                                ("consider borrowing here", format!("&{}", sugg_expr))
-                            }
-                        });
+                        return Some(format!("try with `{}{}`",
+                                            match mutability.mutbl {
+                                                hir::Mutability::MutMutable => "&mut ",
+                                                hir::Mutability::MutImmutable => "&",
+                                            },
+                                            &src));
                     }
                 }
                 None
@@ -288,7 +284,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         // Maybe remove `&`?
                         hir::ExprAddrOf(_, ref expr) => {
                             if let Ok(code) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
-                                return Some(("consider removing the borrow", code));
+                                return Some(format!("try with `{}`", code));
                             }
                         }
 
@@ -299,252 +295,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                                 expr.span) {
                                 let sp = self.sess().codemap().call_span_if_macro(expr.span);
                                 if let Ok(code) = self.tcx.sess.codemap().span_to_snippet(sp) {
-                                    return Some(("consider dereferencing the borrow",
-                                                 format!("*{}", code)));
+                                    return Some(format!("try with `*{}`", code));
                                 }
                             }
-                        }
+                        },
                     }
                 }
                 None
             }
             _ => None,
-        }
-    }
-
-    fn check_for_cast(&self,
-                      err: &mut DiagnosticBuilder<'tcx>,
-                      expr: &hir::Expr,
-                      checked_ty: Ty<'tcx>,
-                      expected_ty: Ty<'tcx>)
-                      -> bool {
-        let will_truncate = "will truncate the source value";
-        let depending_on_isize = "will truncate or zero-extend depending on the bit width of \
-                                  `isize`";
-        let depending_on_usize = "will truncate or zero-extend depending on the bit width of \
-                                  `usize`";
-        let will_sign_extend = "will sign-extend the source value";
-        let will_zero_extend = "will zero-extend the source value";
-
-        // If casting this expression to a given numeric type would be appropriate in case of a type
-        // mismatch.
-        //
-        // We want to minimize the amount of casting operations that are suggested, as it can be a
-        // lossy operation with potentially bad side effects, so we only suggest when encountering
-        // an expression that indicates that the original type couldn't be directly changed.
-        //
-        // For now, don't suggest casting with `as`.
-        let can_cast = false;
-
-        let needs_paren = expr.precedence().order() < (PREC_POSTFIX as i8);
-
-        if let Ok(src) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
-            let msg = format!("you can cast an `{}` to `{}`", checked_ty, expected_ty);
-            let cast_suggestion = format!("{}{}{} as {}",
-                                          if needs_paren { "(" } else { "" },
-                                          src,
-                                          if needs_paren { ")" } else { "" },
-                                          expected_ty);
-            let into_suggestion = format!("{}{}{}.into()",
-                                          if needs_paren { "(" } else { "" },
-                                          src,
-                                          if needs_paren { ")" } else { "" });
-
-            match (&expected_ty.sty, &checked_ty.sty) {
-                (&ty::TyInt(ref exp), &ty::TyInt(ref found)) => {
-                    match (found.bit_width(), exp.bit_width()) {
-                        (Some(found), Some(exp)) if found > exp => {
-                            if can_cast {
-                                err.span_suggestion(expr.span,
-                                                    &format!("{}, which {}", msg, will_truncate),
-                                                    cast_suggestion);
-                            }
-                        }
-                        (None, _) | (_, None) => {
-                            if can_cast {
-                                err.span_suggestion(expr.span,
-                                                    &format!("{}, which {}",
-                                                             msg,
-                                                             depending_on_isize),
-                                                    cast_suggestion);
-                            }
-                        }
-                        _ => {
-                            err.span_suggestion(expr.span,
-                                                &format!("{}, which {}", msg, will_sign_extend),
-                                                into_suggestion);
-                        }
-                    }
-                    true
-                }
-                (&ty::TyUint(ref exp), &ty::TyUint(ref found)) => {
-                    match (found.bit_width(), exp.bit_width()) {
-                        (Some(found), Some(exp)) if found > exp => {
-                            if can_cast {
-                                err.span_suggestion(expr.span,
-                                                    &format!("{}, which {}", msg, will_truncate),
-                                                    cast_suggestion);
-                            }
-                        }
-                        (None, _) | (_, None) => {
-                            if can_cast {
-                                err.span_suggestion(expr.span,
-                                                    &format!("{}, which {}",
-                                                             msg,
-                                                             depending_on_usize),
-                                                    cast_suggestion);
-                            }
-                        }
-                        _ => {
-                            err.span_suggestion(expr.span,
-                                                &format!("{}, which {}", msg, will_zero_extend),
-                                                into_suggestion);
-                        }
-                    }
-                    true
-                }
-                (&ty::TyInt(ref exp), &ty::TyUint(ref found)) => {
-                    if can_cast {
-                        match (found.bit_width(), exp.bit_width()) {
-                            (Some(found), Some(exp)) if found > exp - 1 => {
-                                err.span_suggestion(expr.span,
-                                                    &format!("{}, which {}", msg, will_truncate),
-                                                    cast_suggestion);
-                            }
-                            (None, None) => {
-                                err.span_suggestion(expr.span,
-                                                    &format!("{}, which {}", msg, will_truncate),
-                                                    cast_suggestion);
-                            }
-                            (None, _) => {
-                                err.span_suggestion(expr.span,
-                                                    &format!("{}, which {}",
-                                                             msg,
-                                                             depending_on_isize),
-                                                    cast_suggestion);
-                            }
-                            (_, None) => {
-                                err.span_suggestion(expr.span,
-                                                    &format!("{}, which {}",
-                                                             msg,
-                                                             depending_on_usize),
-                                                    cast_suggestion);
-                            }
-                            _ => {
-                                err.span_suggestion(expr.span,
-                                                    &format!("{}, which {}", msg, will_zero_extend),
-                                                    cast_suggestion);
-                            }
-                        }
-                    }
-                    true
-                }
-                (&ty::TyUint(ref exp), &ty::TyInt(ref found)) => {
-                    if can_cast {
-                        match (found.bit_width(), exp.bit_width()) {
-                            (Some(found), Some(exp)) if found - 1 > exp => {
-                                err.span_suggestion(expr.span,
-                                                    &format!("{}, which {}", msg, will_truncate),
-                                                    cast_suggestion);
-                            }
-                            (None, None) => {
-                                err.span_suggestion(expr.span,
-                                                    &format!("{}, which {}", msg, will_sign_extend),
-                                                    cast_suggestion);
-                            }
-                            (None, _) => {
-                                err.span_suggestion(expr.span,
-                                                    &format!("{}, which {}",
-                                                             msg,
-                                                             depending_on_usize),
-                                                    cast_suggestion);
-                            }
-                            (_, None) => {
-                                err.span_suggestion(expr.span,
-                                                    &format!("{}, which {}",
-                                                             msg,
-                                                             depending_on_isize),
-                                                    cast_suggestion);
-                            }
-                            _ => {
-                                err.span_suggestion(expr.span,
-                                                    &format!("{}, which {}", msg, will_sign_extend),
-                                                    cast_suggestion);
-                            }
-                        }
-                    }
-                    true
-                }
-                (&ty::TyFloat(ref exp), &ty::TyFloat(ref found)) => {
-                    if found.bit_width() < exp.bit_width() {
-                        err.span_suggestion(expr.span,
-                                            &format!("{} in a lossless way",
-                                                     msg),
-                                            into_suggestion);
-                    } else if can_cast {
-                        err.span_suggestion(expr.span,
-                                            &format!("{}, producing the closest possible value",
-                                                     msg),
-                                            cast_suggestion);
-                        err.warn("casting here will cause undefined behavior if the value is \
-                                  finite but larger or smaller than the largest or smallest \
-                                  finite value representable by `f32` (this is a bug and will be \
-                                  fixed)");
-                    }
-                    true
-                }
-                (&ty::TyUint(_), &ty::TyFloat(_)) | (&ty::TyInt(_), &ty::TyFloat(_)) => {
-                    if can_cast {
-                        err.span_suggestion(expr.span,
-                                            &format!("{}, rounding the float towards zero",
-                                                     msg),
-                                            cast_suggestion);
-                        err.warn("casting here will cause undefined behavior if the rounded value \
-                                  cannot be represented by the target integer type, including \
-                                  `Inf` and `NaN` (this is a bug and will be fixed)");
-                    }
-                    true
-                }
-                (&ty::TyFloat(ref exp), &ty::TyUint(ref found)) => {
-                    // if `found` is `None` (meaning found is `usize`), don't suggest `.into()`
-                    if exp.bit_width() > found.bit_width().unwrap_or(256) {
-                        err.span_suggestion(expr.span,
-                                            &format!("{}, producing the floating point \
-                                                      representation of the integer",
-                                                      msg),
-                                            into_suggestion);
-                    } else if can_cast {
-                        err.span_suggestion(expr.span,
-                                            &format!("{}, producing the floating point \
-                                                      representation of the integer, rounded if \
-                                                      necessary",
-                                                      msg),
-                                            cast_suggestion);
-                    }
-                    true
-                }
-                (&ty::TyFloat(ref exp), &ty::TyInt(ref found)) => {
-                    // if `found` is `None` (meaning found is `isize`), don't suggest `.into()`
-                    if exp.bit_width() > found.bit_width().unwrap_or(256) {
-                        err.span_suggestion(expr.span,
-                                            &format!("{}, producing the floating point \
-                                                      representation of the integer",
-                                                      msg),
-                                            into_suggestion);
-                    } else if can_cast {
-                        err.span_suggestion(expr.span,
-                                            &format!("{}, producing the floating point \
-                                                      representation of the integer, rounded if \
-                                                      necessary",
-                                                      msg),
-                                            cast_suggestion);
-                    }
-                    true
-                }
-                _ => false,
-            }
-        } else {
-            false
         }
     }
 }

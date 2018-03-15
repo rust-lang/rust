@@ -1,48 +1,48 @@
 warning: unused return value of `need_to_use_this_value` which must be used: it's important
-  --> $DIR/fn_must_use.rs:61:5
+  --> $DIR/fn_must_use.rs:59:5
    |
-LL |     need_to_use_this_value(); //~ WARN unused return value
+59 |     need_to_use_this_value();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/fn_must_use.rs:14:9
+  --> $DIR/fn_must_use.rs:12:9
    |
-LL | #![warn(unused_must_use)]
+12 | #![warn(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
 
 warning: unused return value of `MyStruct::need_to_use_this_method_value` which must be used
-  --> $DIR/fn_must_use.rs:66:5
+  --> $DIR/fn_must_use.rs:64:5
    |
-LL |     m.need_to_use_this_method_value(); //~ WARN unused return value
+64 |     m.need_to_use_this_method_value();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused return value of `EvenNature::is_even` which must be used: no side effects
-  --> $DIR/fn_must_use.rs:67:5
+  --> $DIR/fn_must_use.rs:65:5
    |
-LL |     m.is_even(); // trait method!
+65 |     m.is_even(); // trait method!
    |     ^^^^^^^^^^^^
 
 warning: unused return value of `std::cmp::PartialEq::eq` which must be used
-  --> $DIR/fn_must_use.rs:73:5
+  --> $DIR/fn_must_use.rs:70:5
    |
-LL |     2.eq(&3); //~ WARN unused return value
+70 |     2.eq(&3);
    |     ^^^^^^^^^
 
 warning: unused return value of `std::cmp::PartialEq::eq` which must be used
-  --> $DIR/fn_must_use.rs:74:5
+  --> $DIR/fn_must_use.rs:71:5
    |
-LL |     m.eq(&n); //~ WARN unused return value
+71 |     m.eq(&n);
    |     ^^^^^^^^^
 
 warning: unused comparison which must be used
-  --> $DIR/fn_must_use.rs:77:5
+  --> $DIR/fn_must_use.rs:74:5
    |
-LL |     2 == 3; //~ WARN unused comparison
+74 |     2 == 3;
    |     ^^^^^^
 
 warning: unused comparison which must be used
-  --> $DIR/fn_must_use.rs:78:5
+  --> $DIR/fn_must_use.rs:75:5
    |
-LL |     m == n; //~ WARN unused comparison
+75 |     m == n;
    |     ^^^^^^
 

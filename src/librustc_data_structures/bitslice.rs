@@ -24,7 +24,6 @@ pub trait BitSlice {
 
 impl BitSlice for [Word] {
     /// Clears bit at `idx` to 0; returns true iff this changed `self.`
-    #[inline]
     fn clear_bit(&mut self, idx: usize) -> bool {
         let words = self;
         debug!("clear_bit: words={} idx={}",
@@ -38,7 +37,6 @@ impl BitSlice for [Word] {
     }
 
     /// Sets bit at `idx` to 1; returns true iff this changed `self.`
-    #[inline]
     fn set_bit(&mut self, idx: usize) -> bool {
         let words = self;
         debug!("set_bit: words={} idx={}",
@@ -52,7 +50,6 @@ impl BitSlice for [Word] {
     }
 
     /// Extracts value of bit at `idx` in `self`.
-    #[inline]
     fn get_bit(&self, idx: usize) -> bool {
         let words = self;
         let BitLookup { word, bit_mask, .. } = bit_lookup(idx);

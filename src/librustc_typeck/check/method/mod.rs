@@ -25,7 +25,7 @@ use syntax_pos::Span;
 
 use rustc::hir;
 
-use rustc_data_structures::sync::Lrc;
+use std::rc::Rc;
 
 pub use self::MethodError::*;
 pub use self::CandidateSource::*;
@@ -165,7 +165,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if let Some(import_id) = pick.import_id {
             let import_def_id = self.tcx.hir.local_def_id(import_id);
             debug!("used_trait_import: {:?}", import_def_id);
-            Lrc::get_mut(&mut self.tables.borrow_mut().used_trait_imports)
+            Rc::get_mut(&mut self.tables.borrow_mut().used_trait_imports)
                                         .unwrap().insert(import_def_id);
         }
 
@@ -249,13 +249,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let substs = Substs::for_item(self.tcx,
                                       trait_def_id,
                                       |def, _| self.region_var_for_def(span, def),
-                                      |def, _substs| {
+                                      |def, substs| {
             if def.index == 0 {
                 self_ty
             } else if let Some(ref input_types) = opt_input_types {
                 input_types[def.index as usize - 1]
             } else {
-                self.type_var_for_def(ty::UniverseIndex::ROOT, span, def)
+                self.type_var_for_def(span, def, substs)
             }
         });
 
@@ -364,7 +364,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if let Some(import_id) = pick.import_id {
             let import_def_id = self.tcx.hir.local_def_id(import_id);
             debug!("used_trait_import: {:?}", import_def_id);
-            Lrc::get_mut(&mut self.tables.borrow_mut().used_trait_imports)
+            Rc::get_mut(&mut self.tables.borrow_mut().used_trait_imports)
                                         .unwrap().insert(import_def_id);
         }
 

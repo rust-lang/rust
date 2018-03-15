@@ -55,15 +55,13 @@ pub fn test_44731_1() -> Result<Box<impl Clone>, ()> {
     Ok(Box::new(j()))
 }
 
-// NOTE these involve Fn sugar, where impl Trait is disallowed for now, see issue #45994
-//
-//pub fn test_44731_2() -> Box<Fn(impl Clone)> {
-//    Box::new(|_: u32| {})
-//}
-//
-//pub fn test_44731_3() -> Box<Fn() -> impl Clone> {
-//    Box::new(|| 0u32)
-//}
+pub fn test_44731_2() -> Box<Fn(impl Clone)> {
+    Box::new(|_: u32| {})
+}
+
+pub fn test_44731_3() -> Box<Fn() -> impl Clone> {
+    Box::new(|| 0u32)
+}
 
 pub fn test_44731_4() -> Box<Iterator<Item=impl Clone>> {
     Box::new(g())
@@ -80,4 +78,6 @@ pub fn test_44731_4() -> Box<Iterator<Item=impl Clone>> {
 // @has issue_43869/fn.o.html
 // @has issue_43869/fn.test_44731_0.html
 // @has issue_43869/fn.test_44731_1.html
+// @has issue_43869/fn.test_44731_2.html
+// @has issue_43869/fn.test_44731_3.html
 // @has issue_43869/fn.test_44731_4.html

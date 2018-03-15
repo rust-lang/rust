@@ -13,7 +13,7 @@
 struct Foo {
 }
 
-fn foo(&foo: Foo) { //~ ERROR mismatched types
+fn foo(&foo: Foo) {
 }
 
 fn bar(foo: Foo) {
@@ -27,13 +27,13 @@ fn zar(&foo: &Foo) {
 
 // The somewhat unexpected help message in this case is courtesy of
 // match_default_bindings.
-fn agh(&&bar: &u32) { //~ ERROR mismatched types
+fn agh(&&bar: &u32) {
 }
 
-fn bgh(&&bar: u32) { //~ ERROR mismatched types
+fn bgh(&&bar: u32) {
 }
 
-fn ugh(&[bar]: &u32) { //~ ERROR expected an array or slice
+fn ugh(&[bar]: &u32) {
 }
 
 fn main() {}

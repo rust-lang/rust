@@ -104,8 +104,7 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
                a,
                b);
         let origin = Subtype(self.fields.trace.clone());
-        self.fields.infcx.borrow_region_constraints()
-                         .make_eqregion(origin, a, b);
+        self.fields.infcx.region_vars.make_eqregion(origin, a, b);
         Ok(a)
     }
 

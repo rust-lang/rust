@@ -29,18 +29,16 @@ pub struct OnUnimplementedDirective {
     pub subcommands: Vec<OnUnimplementedDirective>,
     pub message: Option<OnUnimplementedFormatString>,
     pub label: Option<OnUnimplementedFormatString>,
-    pub note: Option<OnUnimplementedFormatString>,
 }
 
 pub struct OnUnimplementedNote {
     pub message: Option<String>,
     pub label: Option<String>,
-    pub note: Option<String>,
 }
 
 impl OnUnimplementedNote {
     pub fn empty() -> Self {
-        OnUnimplementedNote { message: None, label: None, note: None }
+        OnUnimplementedNote { message: None, label: None }
     }
 }
 
@@ -91,7 +89,6 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
 
         let mut message = None;
         let mut label = None;
-        let mut note = None;
         let mut subcommands = vec![];
         for item in item_iter {
             if item.check_name("message") && message.is_none() {
@@ -106,14 +103,8 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
                         tcx, trait_def_id, label_.as_str(), span)?);
                     continue;
                 }
-            } else if item.check_name("note") && note.is_none() {
-                if let Some(note_) = item.value_str() {
-                    note = Some(OnUnimplementedFormatString::try_parse(
-                        tcx, trait_def_id, note_.as_str(), span)?);
-                    continue;
-                }
             } else if item.check_name("on") && is_root &&
-                message.is_none() && label.is_none() && note.is_none()
+                message.is_none() && label.is_none()
             {
                 if let Some(items) = item.meta_item_list() {
                     if let Ok(subcommand) =
@@ -137,7 +128,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
         if errored {
             Err(ErrorReported)
         } else {
-            Ok(OnUnimplementedDirective { condition, message, label, subcommands, note })
+            Ok(OnUnimplementedDirective { condition, message, label, subcommands })
         }
     }
 
@@ -149,7 +140,9 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
     {
         let attrs = tcx.get_attrs(impl_def_id);
 
-        let attr = if let Some(item) = attr::find_by_name(&attrs, "rustc_on_unimplemented") {
+        let attr = if let Some(item) =
+            attrs.into_iter().find(|a| a.check_name("rustc_on_unimplemented"))
+        {
             item
         } else {
             return Ok(None);
@@ -163,8 +156,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
                 message: None,
                 subcommands: vec![],
                 label: Some(OnUnimplementedFormatString::try_parse(
-                    tcx, trait_def_id, value.as_str(), attr.span)?),
-                note: None,
+                    tcx, trait_def_id, value.as_str(), attr.span)?)
             }))
         } else {
             return Err(parse_error(tcx, attr.span,
@@ -179,20 +171,20 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
     pub fn evaluate(&self,
                     tcx: TyCtxt<'a, 'gcx, 'tcx>,
                     trait_ref: ty::TraitRef<'tcx>,
-                    options: &[(String, Option<String>)])
+                    options: &[(&str, Option<&str>)])
                     -> OnUnimplementedNote
     {
         let mut message = None;
         let mut label = None;
-        let mut note = None;
-        info!("evaluate({:?}, trait_ref={:?}, options={:?})", self, trait_ref, options);
+        info!("evaluate({:?}, trait_ref={:?}, options={:?})",
+              self, trait_ref, options);
 
         for command in self.subcommands.iter().chain(Some(self)).rev() {
             if let Some(ref condition) = command.condition {
                 if !attr::eval_condition(condition, &tcx.sess.parse_sess, &mut |c| {
-                    options.contains(&(c.name().as_str().to_string(),
-                                      match c.value_str().map(|s| s.as_str().to_string()) {
-                                          Some(s) => Some(s),
+                    options.contains(&(&c.name().as_str(),
+                                      match c.value_str().map(|s| s.as_str()) {
+                                          Some(ref s) => Some(s),
                                           None => None
                                       }))
                 }) {
@@ -208,16 +200,11 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
             if let Some(ref label_) = command.label {
                 label = Some(label_.clone());
             }
-
-            if let Some(ref note_) = command.note {
-                note = Some(note_.clone());
-            }
         }
 
         OnUnimplementedNote {
             label: label.map(|l| l.format(tcx, trait_ref)),
-            message: message.map(|m| m.format(tcx, trait_ref)),
-            note: note.map(|n| n.format(tcx, trait_ref)),
+            message: message.map(|m| m.format(tcx, trait_ref))
         }
     }
 }
@@ -267,7 +254,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
                         }
                     },
                     // `{:1}` and `{}` are not to be used
-                    Position::ArgumentIs(_) | Position::ArgumentImplicitlyIs(_) => {
+                    Position::ArgumentIs(_) => {
                         span_err!(tcx.sess, span, E0231,
                                   "only named substitution \
                                    parameters are allowed");

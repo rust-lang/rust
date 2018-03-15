@@ -11,15 +11,16 @@
 //! # Translation of inline assembly.
 
 use llvm::{self, ValueRef};
+use base;
 use common::*;
+use type_of;
 use type_::Type;
-use type_of::LayoutLlvmExt;
 use builder::Builder;
 
 use rustc::hir;
+use rustc::ty::Ty;
 
-use mir::place::PlaceRef;
-use mir::operand::OperandValue;
+use mir::lvalue::Alignment;
 
 use std::ffi::CString;
 use syntax::ast::AsmDialect;
@@ -27,9 +28,9 @@ use libc::{c_uint, c_char};
 
 // Take an inline assembly expression and splat it out via LLVM
 pub fn trans_inline_asm<'a, 'tcx>(
-    bx: &Builder<'a, 'tcx>,
+    bcx: &Builder<'a, 'tcx>,
     ia: &hir::InlineAsm,
-    outputs: Vec<PlaceRef<'tcx>>,
+    outputs: Vec<(ValueRef, Ty<'tcx>)>,
     mut inputs: Vec<ValueRef>
 ) {
     let mut ext_constraints = vec![];
@@ -37,15 +38,20 @@ pub fn trans_inline_asm<'a, 'tcx>(
 
     // Prepare the output operands
     let mut indirect_outputs = vec![];
-    for (i, (out, place)) in ia.outputs.iter().zip(&outputs).enumerate() {
+    for (i, (out, &(val, ty))) in ia.outputs.iter().zip(&outputs).enumerate() {
+        let val = if out.is_rw || out.is_indirect {
+            Some(base::load_ty(bcx, val, Alignment::Packed, ty))
+        } else {
+            None
+        };
         if out.is_rw {
-            inputs.push(place.load(bx).immediate());
+            inputs.push(val.unwrap());
             ext_constraints.push(i.to_string());
         }
         if out.is_indirect {
-            indirect_outputs.push(place.load(bx).immediate());
+            indirect_outputs.push(val.unwrap());
         } else {
-            output_types.push(place.layout.llvm_type(bx.cx));
+            output_types.push(type_of::type_of(bcx.ccx, ty));
         }
     }
     if !indirect_outputs.is_empty() {
@@ -58,10 +64,9 @@ pub fn trans_inline_asm<'a, 'tcx>(
 
     // Default per-arch clobbers
     // Basically what clang does
-    let arch_clobbers = match &bx.sess().target.target.arch[..] {
-        "x86" | "x86_64"  => vec!["~{dirflag}", "~{fpsr}", "~{flags}"],
-        "mips" | "mips64" => vec!["~{$1}"],
-        _                 => Vec::new()
+    let arch_clobbers = match &bcx.sess().target.target.arch[..] {
+        "x86" | "x86_64" => vec!["~{dirflag}", "~{fpsr}", "~{flags}"],
+        _                => Vec::new()
     };
 
     let all_constraints =
@@ -77,9 +82,9 @@ pub fn trans_inline_asm<'a, 'tcx>(
     // Depending on how many outputs we have, the return type is different
     let num_outputs = output_types.len();
     let output_type = match num_outputs {
-        0 => Type::void(bx.cx),
+        0 => Type::void(bcx.ccx),
         1 => output_types[0],
-        _ => Type::struct_(bx.cx, &output_types, false)
+        _ => Type::struct_(bcx.ccx, &output_types, false)
     };
 
     let dialect = match ia.dialect {
@@ -89,7 +94,7 @@ pub fn trans_inline_asm<'a, 'tcx>(
 
     let asm = CString::new(ia.asm.as_str().as_bytes()).unwrap();
     let constraint_cstr = CString::new(all_constraints).unwrap();
-    let r = bx.inline_asm_call(
+    let r = bcx.inline_asm_call(
         asm.as_ptr(),
         constraint_cstr.as_ptr(),
         &inputs,
@@ -101,29 +106,29 @@ pub fn trans_inline_asm<'a, 'tcx>(
 
     // Again, based on how many outputs we have
     let outputs = ia.outputs.iter().zip(&outputs).filter(|&(ref o, _)| !o.is_indirect);
-    for (i, (_, &place)) in outputs.enumerate() {
-        let v = if num_outputs == 1 { r } else { bx.extract_value(r, i as u64) };
-        OperandValue::Immediate(v).store(bx, place);
+    for (i, (_, &(val, _))) in outputs.enumerate() {
+        let v = if num_outputs == 1 { r } else { bcx.extract_value(r, i) };
+        bcx.store(v, val, None);
     }
 
     // Store mark in a metadata node so we can map LLVM errors
     // back to source locations.  See #17552.
     unsafe {
         let key = "srcloc";
-        let kind = llvm::LLVMGetMDKindIDInContext(bx.cx.llcx,
+        let kind = llvm::LLVMGetMDKindIDInContext(bcx.ccx.llcx(),
             key.as_ptr() as *const c_char, key.len() as c_uint);
 
-        let val: llvm::ValueRef = C_i32(bx.cx, ia.ctxt.outer().as_u32() as i32);
+        let val: llvm::ValueRef = C_i32(bcx.ccx, ia.ctxt.outer().as_u32() as i32);
 
         llvm::LLVMSetMetadata(r, kind,
-            llvm::LLVMMDNodeInContext(bx.cx.llcx, &val, 1));
+            llvm::LLVMMDNodeInContext(bcx.ccx.llcx(), &val, 1));
     }
 }
 
-pub fn trans_global_asm<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
+pub fn trans_global_asm<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                   ga: &hir::GlobalAsm) {
     let asm = CString::new(ga.asm.as_str().as_bytes()).unwrap();
     unsafe {
-        llvm::LLVMRustAppendModuleInlineAsm(cx.llmod, asm.as_ptr());
+        llvm::LLVMRustAppendModuleInlineAsm(ccx.llmod(), asm.as_ptr());
     }
 }

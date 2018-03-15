@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-cloudabi no environment variables present
 // ignore-emscripten env vars don't work?
 
 #![feature(path)]
@@ -27,10 +26,7 @@ fn main() {
     if cfg!(target_os = "android") {
         assert!(home_dir().is_none());
     } else {
-        // When HOME is not set, some platforms return `None`,
-        // but others return `Some` with a default.
-        // Just check that it is not "/home/MountainView".
-        assert_ne!(home_dir(), Some(PathBuf::from("/home/MountainView")));
+        assert!(home_dir().is_some());
     }
 }
 

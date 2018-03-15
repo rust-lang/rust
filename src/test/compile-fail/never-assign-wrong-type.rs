@@ -16,3 +16,5 @@
 fn main() {
     let x: ! = "hello"; //~ ERROR mismatched types
 }
+
+

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(allocator_api, nonnull)]
+#![feature(allocator_api, unique)]
 
 use std::heap::{Heap, Alloc};
 

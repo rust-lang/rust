@@ -12,8 +12,6 @@
 // main thread exit while still being in use by signal handlers. This test
 // triggers this situation by sending signal from atexit handler.
 //
-// ignore-cloudabi no signal handling support
-// ignore-wasm32-bare no libc
 // ignore-windows
 
 #![feature(libc)]
@@ -35,7 +33,7 @@ fn main() {
     unsafe {
         // Install signal hander that runs on alternate signal stack.
         let mut action: sigaction = std::mem::zeroed();
-        action.sa_flags = (SA_ONSTACK | SA_SIGINFO) as _;
+        action.sa_flags = SA_SIGINFO | SA_ONSTACK;
         action.sa_sigaction = signal_handler as sighandler_t;
         sigaction(SIGWINCH, &action, std::ptr::null_mut());
 

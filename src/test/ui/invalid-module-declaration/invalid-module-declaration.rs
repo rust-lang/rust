@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // ignore-tidy-linelength
-// ignore-windows
 
 // error-pattern: cannot declare a new module at this location
 // error-pattern: maybe move this module

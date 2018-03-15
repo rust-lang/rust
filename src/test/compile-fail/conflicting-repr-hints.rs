@@ -9,6 +9,8 @@
 // except according to those terms.
 
 #![allow(dead_code)]
+#![feature(attr_literals)]
+#![feature(repr_align)]
 
 #[repr(C)]
 enum A { A }

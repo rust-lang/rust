@@ -366,13 +366,16 @@ fn append_to_string<F>(buf: &mut String, f: F) -> Result<usize>
 fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> {
     let start_len = buf.len();
     let mut g = Guard { len: buf.len(), buf: buf };
+    let mut new_write_size = 16;
     let ret;
     loop {
         if g.len == g.buf.len() {
+            if new_write_size < DEFAULT_BUF_SIZE {
+                new_write_size *= 2;
+            }
             unsafe {
-                g.buf.reserve(32);
-                let capacity = g.buf.capacity();
-                g.buf.set_len(capacity);
+                g.buf.reserve(new_write_size);
+                g.buf.set_len(g.len + new_write_size);
                 r.initializer().initialize(&mut g.buf[g.len..]);
             }
         }
@@ -416,8 +419,14 @@ fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> 
 ///
 /// [`File`]s implement `Read`:
 ///
+/// [`read()`]: trait.Read.html#tymethod.read
+/// [`std::io`]: ../../std/io/index.html
+/// [`File`]: ../fs/struct.File.html
+/// [`BufRead`]: trait.BufRead.html
+/// [`BufReader`]: struct.BufReader.html
+///
 /// ```
-/// # use std::io;
+/// use std::io;
 /// use std::io::prelude::*;
 /// use std::fs::File;
 ///
@@ -440,34 +449,7 @@ fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> 
 /// # Ok(())
 /// # }
 /// ```
-///
-/// Read from [`&str`] because [`&[u8]`][slice] implements `Read`:
-///
-/// ```
-/// # use std::io;
-/// use std::io::prelude::*;
-///
-/// # fn foo() -> io::Result<()> {
-/// let mut b = "This string will be read".as_bytes();
-/// let mut buffer = [0; 10];
-///
-/// // read up to 10 bytes
-/// b.read(&mut buffer)?;
-///
-/// // etc... it works exactly as a File does!
-/// # Ok(())
-/// # }
-/// ```
-///
-/// [`read()`]: trait.Read.html#tymethod.read
-/// [`std::io`]: ../../std/io/index.html
-/// [`File`]: ../fs/struct.File.html
-/// [`BufRead`]: trait.BufRead.html
-/// [`BufReader`]: struct.BufReader.html
-/// [`&str`]: ../../std/primitive.str.html
-/// [slice]: ../../std/primitive.slice.html
 #[stable(feature = "rust1", since = "1.0.0")]
-#[doc(spotlight)]
 pub trait Read {
     /// Pull some bytes from this source into the specified buffer, returning
     /// how many bytes were read.
@@ -601,7 +583,7 @@ pub trait Read {
         read_to_end(self, buf)
     }
 
-    /// Read all bytes until EOF in this source, appending them to `buf`.
+    /// Read all bytes until EOF in this source, placing them into `buf`.
     ///
     /// If successful, this function returns the number of bytes which were read
     /// and appended to `buf`.
@@ -755,7 +737,7 @@ pub trait Read {
     /// Transforms this `Read` instance to an [`Iterator`] over its bytes.
     ///
     /// The returned type implements [`Iterator`] where the `Item` is
-    /// [`Result`]`<`[`u8`]`, `[`io::Error`]`>`.
+    /// [`Result`]`<`[`u8`]`, `[`io::Error`]>`.
     /// The yielded item is [`Ok`] if a byte was successfully read and [`Err`]
     /// otherwise. EOF is mapped to returning [`None`] from this iterator.
     ///
@@ -766,7 +748,7 @@ pub trait Read {
     /// [file]: ../fs/struct.File.html
     /// [`Iterator`]: ../../std/iter/trait.Iterator.html
     /// [`Result`]: ../../std/result/enum.Result.html
-    /// [`io::Error`]: ../../std/io/struct.Error.html
+    /// [`io::Error``]: ../../std/io/struct.Error.html
     /// [`u8`]: ../../std/primitive.u8.html
     /// [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
     /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
@@ -986,7 +968,6 @@ impl Initializer {
 /// # }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[doc(spotlight)]
 pub trait Write {
     /// Write a buffer into this object, returning how many bytes were written.
     ///
@@ -997,9 +978,9 @@ pub trait Write {
     ///
     /// Calls to `write` are not guaranteed to block waiting for data to be
     /// written, and a write which would otherwise block can be indicated through
-    /// an [`Err`] variant.
+    /// an `Err` variant.
     ///
-    /// If the return value is [`Ok(n)`] then it must be guaranteed that
+    /// If the return value is `Ok(n)` then it must be guaranteed that
     /// `0 <= n <= buf.len()`. A return value of `0` typically means that the
     /// underlying object is no longer able to accept bytes and will likely not
     /// be able to in the future as well, or that the buffer provided is empty.
@@ -1013,12 +994,8 @@ pub trait Write {
     /// It is **not** considered an error if the entire buffer could not be
     /// written to this writer.
     ///
-    /// An error of the [`ErrorKind::Interrupted`] kind is non-fatal and the
+    /// An error of the `ErrorKind::Interrupted` kind is non-fatal and the
     /// write operation should be retried if there is nothing else to do.
-    ///
-    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
-    /// [`Ok(n)`]:  ../../std/result/enum.Result.html#variant.Ok
-    /// [`ErrorKind::Interrupted`]: ../../std/io/enum.ErrorKind.html#variant.Interrupted
     ///
     /// # Examples
     ///
@@ -1065,20 +1042,17 @@ pub trait Write {
 
     /// Attempts to write an entire buffer into this write.
     ///
-    /// This method will continuously call [`write`] until there is no more data
-    /// to be written or an error of non-[`ErrorKind::Interrupted`] kind is
+    /// This method will continuously call `write` until there is no more data
+    /// to be written or an error of non-`ErrorKind::Interrupted` kind is
     /// returned. This method will not return until the entire buffer has been
     /// successfully written or such an error occurs. The first error that is
-    /// not of [`ErrorKind::Interrupted`] kind generated from this method will be
+    /// not of `ErrorKind::Interrupted` kind generated from this method will be
     /// returned.
     ///
     /// # Errors
     ///
     /// This function will return the first error of
-    /// non-[`ErrorKind::Interrupted`] kind that [`write`] returns.
-    ///
-    /// [`ErrorKind::Interrupted`]: ../../std/io/enum.ErrorKind.html#variant.Interrupted
-    /// [`write`]: #tymethod.write
+    /// non-`ErrorKind::Interrupted` kind that `write` returns.
     ///
     /// # Examples
     ///
@@ -1437,6 +1411,8 @@ pub trait BufRead: Read {
     ///
     /// If successful, this function will return the total number of bytes read.
     ///
+    /// An empty buffer returned indicates that the stream has reached EOF.
+    ///
     /// # Errors
     ///
     /// This function will ignore all instances of [`ErrorKind::Interrupted`] and
@@ -1505,8 +1481,6 @@ pub trait BufRead: Read {
     /// also return an error if the read bytes are not valid UTF-8. If an I/O
     /// error is encountered then `buf` may contain some bytes already read in
     /// the event that all data read so far was valid UTF-8.
-    ///
-    /// [`read_until`]: #method.read_until
     ///
     /// # Examples
     ///
@@ -2027,9 +2001,10 @@ impl<R: Read> Iterator for Chars<R> {
     type Item = result::Result<char, CharsError>;
 
     fn next(&mut self) -> Option<result::Result<char, CharsError>> {
-        let first_byte = match read_one_byte(&mut self.inner)? {
-            Ok(b) => b,
-            Err(e) => return Some(Err(CharsError::Other(e))),
+        let first_byte = match read_one_byte(&mut self.inner) {
+            None => return None,
+            Some(Ok(b)) => b,
+            Some(Err(e)) => return Some(Err(CharsError::Other(e))),
         };
         let width = core_str::utf8_char_width(first_byte);
         if width == 1 { return Some(Ok(first_byte as char)) }

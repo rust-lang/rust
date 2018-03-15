@@ -10,29 +10,25 @@
 
 use fmt;
 
-struct PadAdapter<'a> {
-    buf: &'a mut (fmt::Write + 'a),
+struct PadAdapter<'a, 'b: 'a> {
+    fmt: &'a mut fmt::Formatter<'b>,
     on_newline: bool,
 }
 
-impl<'a> PadAdapter<'a> {
-    fn wrap<'b, 'c: 'a+'b>(fmt: &'c mut fmt::Formatter, slot: &'b mut Option<Self>)
-                        -> fmt::Formatter<'b> {
-        fmt.wrap_buf(move |buf| {
-            *slot = Some(PadAdapter {
-                buf,
-                on_newline: false,
-            });
-            slot.as_mut().unwrap()
-        })
+impl<'a, 'b: 'a> PadAdapter<'a, 'b> {
+    fn new(fmt: &'a mut fmt::Formatter<'b>) -> PadAdapter<'a, 'b> {
+        PadAdapter {
+            fmt,
+            on_newline: false,
+        }
     }
 }
 
-impl<'a> fmt::Write for PadAdapter<'a> {
+impl<'a, 'b: 'a> fmt::Write for PadAdapter<'a, 'b> {
     fn write_str(&mut self, mut s: &str) -> fmt::Result {
         while !s.is_empty() {
             if self.on_newline {
-                self.buf.write_str("    ")?;
+                self.fmt.write_str("    ")?;
             }
 
             let split = match s.find('\n') {
@@ -45,7 +41,7 @@ impl<'a> fmt::Write for PadAdapter<'a> {
                     s.len()
                 }
             };
-            self.buf.write_str(&s[..split])?;
+            self.fmt.write_str(&s[..split])?;
             s = &s[split..];
         }
 
@@ -116,16 +112,11 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
             };
 
             if self.is_pretty() {
-                let mut slot = None;
-                let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot);
-                writer.write_str(prefix)?;
-                writer.write_str("\n")?;
-                writer.write_str(name)?;
-                writer.write_str(": ")?;
-                value.fmt(&mut writer)
+                let mut writer = PadAdapter::new(self.fmt);
+                fmt::write(&mut writer,
+                           format_args!("{}\n{}: {:#?}", prefix, name, value))
             } else {
-                write!(self.fmt, "{} {}: ", prefix, name)?;
-                value.fmt(self.fmt)
+                write!(self.fmt, "{} {}: {:?}", prefix, name, value)
             }
         });
 
@@ -213,15 +204,10 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
             };
 
             if self.is_pretty() {
-                let mut slot = None;
-                let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot);
-                writer.write_str(prefix)?;
-                writer.write_str("\n")?;
-                value.fmt(&mut writer)
+                let mut writer = PadAdapter::new(self.fmt);
+                fmt::write(&mut writer, format_args!("{}\n{:#?}", prefix, value))
             } else {
-                self.fmt.write_str(prefix)?;
-                self.fmt.write_str(space)?;
-                value.fmt(self.fmt)
+                write!(self.fmt, "{}{}{:?}", prefix, space, value)
             }
         });
 
@@ -261,19 +247,20 @@ impl<'a, 'b: 'a> DebugInner<'a, 'b> {
     fn entry(&mut self, entry: &fmt::Debug) {
         self.result = self.result.and_then(|_| {
             if self.is_pretty() {
-                let mut slot = None;
-                let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot);
-                writer.write_str(if self.has_fields {
-                    ",\n"
+                let mut writer = PadAdapter::new(self.fmt);
+                let prefix = if self.has_fields {
+                    ","
                 } else {
-                    "\n"
-                })?;
-                entry.fmt(&mut writer)
+                    ""
+                };
+                fmt::write(&mut writer, format_args!("{}\n{:#?}", prefix, entry))
             } else {
-                if self.has_fields {
-                    self.fmt.write_str(", ")?
-                }
-                entry.fmt(self.fmt)
+                let prefix = if self.has_fields {
+                    ", "
+                } else {
+                    ""
+                };
+                write!(self.fmt, "{}{:?}", prefix, entry)
             }
         });
 
@@ -485,23 +472,21 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     pub fn entry(&mut self, key: &fmt::Debug, value: &fmt::Debug) -> &mut DebugMap<'a, 'b> {
         self.result = self.result.and_then(|_| {
             if self.is_pretty() {
-                let mut slot = None;
-                let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot);
-                writer.write_str(if self.has_fields {
-                    ",\n"
+                let mut writer = PadAdapter::new(self.fmt);
+                let prefix = if self.has_fields {
+                    ","
                 } else {
-                    "\n"
-                })?;
-                key.fmt(&mut writer)?;
-                writer.write_str(": ")?;
-                value.fmt(&mut writer)
+                    ""
+                };
+                fmt::write(&mut writer,
+                           format_args!("{}\n{:#?}: {:#?}", prefix, key, value))
             } else {
-                if self.has_fields {
-                    self.fmt.write_str(", ")?
-                }
-                key.fmt(self.fmt)?;
-                self.fmt.write_str(": ")?;
-                value.fmt(self.fmt)
+                let prefix = if self.has_fields {
+                    ", "
+                } else {
+                    ""
+                };
+                write!(self.fmt, "{}{:?}: {:?}", prefix, key, value)
             }
         });
 

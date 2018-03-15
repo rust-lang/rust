@@ -53,9 +53,9 @@ fn set_to_summary_str(set: &BTreeSet<String>, dir: &str
     set
         .iter()
         .map(|ref n| format!("    - [{}]({}/{}.md)",
-                                      n.replace('-', "_"),
+                                      n,
                                       dir,
-                                      n))
+                                      n.replace('_', "-")))
         .fold("".to_owned(), |s, a| s + &a + "\n")
 }
 
@@ -96,17 +96,14 @@ fn generate_unstable_book_files(src :&Path, out: &Path, features :&Features) {
     let unstable_section_file_names = collect_unstable_book_section_file_names(src);
     t!(fs::create_dir_all(&out));
     for feature_name in &unstable_features - &unstable_section_file_names {
-        let feature_name_underscore = feature_name.replace('-', "_");
-        let file_name = format!("{}.md", feature_name);
+        let file_name = format!("{}.md", feature_name.replace('_', "-"));
         let out_file_path = out.join(&file_name);
-        let feature = &features[&feature_name_underscore];
+        let feature = &features[&feature_name];
 
         if has_valid_tracking_issue(&feature) {
-            generate_stub_issue(&out_file_path,
-                                &feature_name_underscore,
-                                feature.tracking_issue.unwrap());
+            generate_stub_issue(&out_file_path, &feature_name, feature.tracking_issue.unwrap());
         } else {
-            generate_stub_no_issue(&out_file_path, &feature_name_underscore);
+            generate_stub_no_issue(&out_file_path, &feature_name);
         }
     }
 }
@@ -132,9 +129,7 @@ fn main() {
     let dest_path = Path::new(&dest_path_str).join("src");
 
     let lang_features = collect_lang_features(src_path);
-    let lib_features = collect_lib_features(src_path).into_iter().filter(|&(ref name, _)| {
-        !lang_features.contains_key(name)
-    }).collect();
+    let lib_features = collect_lib_features(src_path);
 
     let doc_src_path = src_path.join(PATH_STR);
 

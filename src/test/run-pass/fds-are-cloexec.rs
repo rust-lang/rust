@@ -10,7 +10,6 @@
 
 // ignore-windows
 // ignore-android
-// ignore-cloudabi no processes
 // ignore-emscripten no processes
 // ignore-haiku
 

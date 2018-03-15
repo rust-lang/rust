@@ -12,7 +12,7 @@
 
 fn main() {
     f()  :
-    f(); //~ ERROR expected type, found function
+    f();
 }
 
 fn f() {}

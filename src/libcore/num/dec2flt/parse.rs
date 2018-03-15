@@ -73,8 +73,7 @@ pub fn parse_decimal(s: &str) -> ParseResult {
         }
         Some(&b'.') => {
             let (fractional, s) = eat_digits(&s[1..]);
-            if integral.is_empty() && fractional.is_empty() {
-                // We require at least a single digit before or after the point.
+            if integral.is_empty() && fractional.is_empty() && s.is_empty() {
                 return Invalid;
             }
 

@@ -1,17 +1,16 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/borrowck-ref-into-rvalue.rs:14:14
+  --> $DIR/borrowck-ref-into-rvalue.rs:18:5
    |
-LL |         Some(ref m) => {
-   |              ^^^^^ borrowed value does not live long enough
+14 |         Some(ref m) => { //~ ERROR borrowed value does not live long enough
+   |              ----- borrow occurs here
 ...
-LL |     }
-   |     - borrowed value dropped here while still borrowed
-LL |     println!("{}", *msg);
-LL | }
+18 |     }
+   |     ^ borrowed value dropped here while still borrowed
+19 |     println!("{}", *msg);
+20 | }
    | - borrowed value needs to live until here
    |
    = note: consider using a `let` binding to increase its lifetime
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0597"

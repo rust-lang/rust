@@ -12,7 +12,7 @@
 
 #[derive(Clone)]
 enum Enum {
-    Variant1, //~ ERROR: variant is never constructed
+    Variant1, //~ ERROR: variant is never used
     Variant2,
 }
 

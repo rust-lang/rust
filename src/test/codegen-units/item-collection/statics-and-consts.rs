@@ -12,7 +12,6 @@
 // compile-flags:-Zprint-trans-items=eager
 
 #![deny(dead_code)]
-#![feature(start)]
 
 static STATIC1: i64 = {
     const STATIC1_CONST1: i64 = 2;
@@ -48,13 +47,9 @@ fn foo() {
     };
 }
 
-//~ TRANS_ITEM fn statics_and_consts::start[0]
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
+fn main() {
     foo();
     let _ = STATIC1;
-
-    0
 }
 
 //~ TRANS_ITEM static statics_and_consts::STATIC1[0]
@@ -63,3 +58,5 @@ fn start(_: isize, _: *const *const u8) -> isize {
 //~ TRANS_ITEM static statics_and_consts::foo[0]::STATIC2[0]
 //~ TRANS_ITEM static statics_and_consts::foo[0]::STATIC2[1]
 //~ TRANS_ITEM static statics_and_consts::foo[0]::STATIC2[2]
+
+//~ TRANS_ITEM fn statics_and_consts::main[0]

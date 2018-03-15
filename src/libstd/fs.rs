@@ -81,18 +81,9 @@ use time::SystemTime;
 /// # }
 /// ```
 ///
-/// Note that, although read and write methods require a `&mut File`, because
-/// of the interfaces for [`Read`] and [`Write`], the holder of a `&File` can
-/// still modify the file, either through methods that take `&File` or by
-/// retrieving the underlying OS object and modifying the file that way.
-/// Additionally, many operating systems allow concurrent modification of files
-/// by different processes. Avoid assuming that holding a `&File` means that the
-/// file will not change.
-///
 /// [`Seek`]: ../io/trait.Seek.html
 /// [`String`]: ../string/struct.String.html
 /// [`Read`]: ../io/trait.Read.html
-/// [`Write`]: ../io/trait.Write.html
 /// [`BufReader<R>`]: ../io/struct.BufReader.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct File {
@@ -218,125 +209,6 @@ pub struct FileType(fs_imp::FileType);
 pub struct DirBuilder {
     inner: fs_imp::DirBuilder,
     recursive: bool,
-}
-
-/// How large a buffer to pre-allocate before reading the entire file.
-fn initial_buffer_size(file: &File) -> usize {
-    // Allocate one extra byte so the buffer doesn't need to grow before the
-    // final `read` call at the end of the file.  Don't worry about `usize`
-    // overflow because reading will fail regardless in that case.
-    file.metadata().map(|m| m.len() as usize + 1).unwrap_or(0)
-}
-
-/// Read the entire contents of a file into a bytes vector.
-///
-/// This is a convenience function for using [`File::open`] and [`read_to_end`]
-/// with fewer imports and without an intermediate variable.
-///
-/// [`File::open`]: struct.File.html#method.open
-/// [`read_to_end`]: ../io/trait.Read.html#method.read_to_end
-///
-/// # Errors
-///
-/// This function will return an error if `path` does not already exist.
-/// Other errors may also be returned according to [`OpenOptions::open`].
-///
-/// [`OpenOptions::open`]: struct.OpenOptions.html#method.open
-///
-/// It will also return an error if it encounters while reading an error
-/// of a kind other than [`ErrorKind::Interrupted`].
-///
-/// [`ErrorKind::Interrupted`]: ../../std/io/enum.ErrorKind.html#variant.Interrupted
-///
-/// # Examples
-///
-/// ```no_run
-/// #![feature(fs_read_write)]
-///
-/// use std::fs;
-/// use std::net::SocketAddr;
-///
-/// # fn foo() -> Result<(), Box<std::error::Error + 'static>> {
-/// let foo: SocketAddr = String::from_utf8_lossy(&fs::read("address.txt")?).parse()?;
-/// # Ok(())
-/// # }
-/// ```
-#[unstable(feature = "fs_read_write", issue = "46588")]
-pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
-    let mut file = File::open(path)?;
-    let mut bytes = Vec::with_capacity(initial_buffer_size(&file));
-    file.read_to_end(&mut bytes)?;
-    Ok(bytes)
-}
-
-/// Read the entire contents of a file into a string.
-///
-/// This is a convenience function for using [`File::open`] and [`read_to_string`]
-/// with fewer imports and without an intermediate variable.
-///
-/// [`File::open`]: struct.File.html#method.open
-/// [`read_to_string`]: ../io/trait.Read.html#method.read_to_string
-///
-/// # Errors
-///
-/// This function will return an error if `path` does not already exist.
-/// Other errors may also be returned according to [`OpenOptions::open`].
-///
-/// [`OpenOptions::open`]: struct.OpenOptions.html#method.open
-///
-/// It will also return an error if it encounters while reading an error
-/// of a kind other than [`ErrorKind::Interrupted`],
-/// or if the contents of the file are not valid UTF-8.
-///
-/// [`ErrorKind::Interrupted`]: ../../std/io/enum.ErrorKind.html#variant.Interrupted
-///
-/// # Examples
-///
-/// ```no_run
-/// #![feature(fs_read_write)]
-///
-/// use std::fs;
-/// use std::net::SocketAddr;
-///
-/// # fn foo() -> Result<(), Box<std::error::Error + 'static>> {
-/// let foo: SocketAddr = fs::read_string("address.txt")?.parse()?;
-/// # Ok(())
-/// # }
-/// ```
-#[unstable(feature = "fs_read_write", issue = "46588")]
-pub fn read_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
-    let mut file = File::open(path)?;
-    let mut string = String::with_capacity(initial_buffer_size(&file));
-    file.read_to_string(&mut string)?;
-    Ok(string)
-}
-
-/// Write a slice as the entire contents of a file.
-///
-/// This function will create a file if it does not exist,
-/// and will entirely replace its contents if it does.
-///
-/// This is a convenience function for using [`File::create`] and [`write_all`]
-/// with fewer imports.
-///
-/// [`File::create`]: struct.File.html#method.create
-/// [`write_all`]: ../io/trait.Write.html#method.write_all
-///
-/// # Examples
-///
-/// ```no_run
-/// #![feature(fs_read_write)]
-///
-/// use std::fs;
-///
-/// # fn foo() -> std::io::Result<()> {
-/// fs::write("foo.txt", b"Lorem ipsum")?;
-/// # Ok(())
-/// # }
-/// ```
-#[unstable(feature = "fs_read_write", issue = "46588")]
-pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result<()> {
-    File::create(path)?.write_all(contents.as_ref())
 }
 
 impl File {
@@ -468,9 +340,6 @@ impl File {
     /// # Ok(())
     /// # }
     /// ```
-    ///
-    /// Note that this method alters the content of the underlying file, even
-    /// though it takes `&self` rather than `&mut self`.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn set_len(&self, size: u64) -> io::Result<()> {
         self.inner.truncate(size)
@@ -494,42 +363,20 @@ impl File {
         self.inner.file_attr().map(Metadata)
     }
 
-    /// Create a new `File` instance that shares the same underlying file handle
-    /// as the existing `File` instance. Reads, writes, and seeks will affect
-    /// both `File` instances simultaneously.
+    /// Creates a new independently owned handle to the underlying file.
+    ///
+    /// The returned `File` is a reference to the same state that this object
+    /// references. Both handles will read and write with the same cursor
+    /// position.
     ///
     /// # Examples
     ///
-    /// Create two handles for a file named `foo.txt`:
-    ///
     /// ```no_run
     /// use std::fs::File;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let mut file = File::open("foo.txt")?;
-    /// let file_copy = file.try_clone()?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    ///
-    /// Assuming there’s a file named `foo.txt` with contents `abcdef\n`, create
-    /// two handles, seek one of them, and read the remaining bytes from the
-    /// other handle:
-    ///
-    /// ```no_run
-    /// use std::fs::File;
-    /// use std::io::SeekFrom;
-    /// use std::io::prelude::*;
-    ///
-    /// # fn foo() -> std::io::Result<()> {
-    /// let mut file = File::open("foo.txt")?;
-    /// let mut file_copy = file.try_clone()?;
-    ///
-    /// file.seek(SeekFrom::Start(3))?;
-    ///
-    /// let mut contents = vec![];
-    /// file_copy.read_to_end(&mut contents)?;
-    /// assert_eq!(contents, b"def\n");
+    /// let mut f = File::open("foo.txt")?;
+    /// let file_copy = f.try_clone()?;
     /// # Ok(())
     /// # }
     /// ```
@@ -569,9 +416,6 @@ impl File {
     /// # Ok(())
     /// # }
     /// ```
-    ///
-    /// Note that this method alters the permissions of the underlying file,
-    /// even though it takes `&self` rather than `&mut self`.
     #[stable(feature = "set_permissions_atomic", since = "1.16.0")]
     pub fn set_permissions(&self, perm: Permissions) -> io::Result<()> {
         self.inner.set_permissions(perm.0)
@@ -1038,7 +882,7 @@ impl Metadata {
         self.0.accessed().map(FromInner::from_inner)
     }
 
-    /// Returns the creation time listed in this metadata.
+    /// Returns the creation time listed in the this metadata.
     ///
     /// The returned value corresponds to the `birthtime` field of `stat` on
     /// Unix platforms and the `ftCreationTime` field on Windows platforms.
@@ -2028,7 +1872,7 @@ impl AsInnerMut<fs_imp::DirBuilder> for DirBuilder {
     }
 }
 
-#[cfg(all(test, not(any(target_os = "cloudabi", target_os = "emscripten"))))]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use io::prelude::*;
 
@@ -2068,9 +1912,7 @@ mod tests {
     ) }
 
     #[cfg(unix)]
-    macro_rules! error { ($e:expr, $s:expr) => ( error_contains!($e, $s) ) }
-
-    macro_rules! error_contains { ($e:expr, $s:expr) => (
+    macro_rules! error { ($e:expr, $s:expr) => (
         match $e {
             Ok(_) => panic!("Unexpected success. Should've been: {:?}", $s),
             Err(ref err) => assert!(err.to_string().contains($s),
@@ -3077,27 +2919,6 @@ mod tests {
         let mut v = Vec::new();
         check!(check!(File::open(&tmpdir.join("test"))).read_to_end(&mut v));
         assert!(v == &bytes[..]);
-    }
-
-    #[test]
-    fn write_then_read() {
-        let mut bytes = [0; 1024];
-        StdRng::new().unwrap().fill_bytes(&mut bytes);
-
-        let tmpdir = tmpdir();
-
-        check!(fs::write(&tmpdir.join("test"), &bytes[..]));
-        let v = check!(fs::read(&tmpdir.join("test")));
-        assert!(v == &bytes[..]);
-
-        check!(fs::write(&tmpdir.join("not-utf8"), &[0xFF]));
-        error_contains!(fs::read_string(&tmpdir.join("not-utf8")),
-                        "stream did not contain valid UTF-8");
-
-        let s = "𐁁𐀓𐀠𐀴𐀍";
-        check!(fs::write(&tmpdir.join("utf8"), s.as_bytes()));
-        let string = check!(fs::read_string(&tmpdir.join("utf8")));
-        assert_eq!(string, s);
     }
 
     #[test]

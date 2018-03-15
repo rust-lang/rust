@@ -29,7 +29,7 @@ fn foo(i: i32) {
 }
 
 // END RUST SOURCE
-// START rustc.main.SimplifyCfg-qualify-consts.after.mir
+// START rustc.node4.SimplifyCfg-qualify-consts.after.mir
 //     let mut _0: ();
 //     ...
 //     let _1: D;
@@ -51,12 +51,9 @@ fn foo(i: i32) {
 //         _3 = &'26_2rs _2;
 //         StorageLive(_5);
 //         _5 = (*_3);
-//         _4 = const foo(move _5) -> [return: bb2, unwind: bb3];
+//         _4 = const foo(_5) -> [return: bb1, unwind: bb3];
 //     }
 //     bb1: {
-//         resume;
-//     }
-//     bb2: {
 //         StorageDead(_5);
 //         StorageLive(_6);
 //         _6 = &'26_4rs _2;
@@ -66,14 +63,17 @@ fn foo(i: i32) {
 //         EndRegion('26_2rs);
 //         StorageDead(_3);
 //         StorageDead(_2);
-//         drop(_1) -> [return: bb4, unwind: bb1];
+//         drop(_1) -> bb4;
+//     }
+//     bb2: {
+//         resume;
 //     }
 //     bb3: {
 //         EndRegion('26_2rs);
-//         drop(_1) -> bb1;
+//         drop(_1) -> bb2;
 //     }
 //     bb4: {
 //         StorageDead(_1);
 //         return;
 //     }
-// END rustc.main.SimplifyCfg-qualify-consts.after.mir
+// END rustc.node4.SimplifyCfg-qualify-consts.after.mir

@@ -9,29 +9,29 @@
 // except according to those terms.
 
 use rustc_lint;
-use rustc_driver::{self, driver, target_features, abort_on_err};
+use rustc_driver::{driver, target_features, abort_on_err};
+use rustc_driver::pretty::ReplaceBodyWithLoop;
 use rustc::session::{self, config};
-use rustc::hir::def_id::{DefId, CrateNum};
+use rustc::hir::def_id::DefId;
 use rustc::hir::def::Def;
-use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevels;
-use rustc::ty::{self, TyCtxt, AllArenas};
+use rustc::ty::{self, TyCtxt, GlobalArenas};
 use rustc::hir::map as hir_map;
 use rustc::lint;
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc::util::nodemap::FxHashMap;
+use rustc_trans;
+use rustc_trans::back::link;
 use rustc_resolve as resolve;
-use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
 
-use syntax::ast::NodeId;
 use syntax::codemap;
 use syntax::feature_gate::UnstableFeatures;
+use syntax::fold::Folder;
 use errors;
 use errors::emitter::ColorConfig;
 
 use std::cell::{RefCell, Cell};
 use std::mem;
-use rustc_data_structures::sync::Lrc;
 use std::rc::Rc;
 use std::path::PathBuf;
 
@@ -39,19 +39,15 @@ use visit_ast::RustdocVisitor;
 use clean;
 use clean::Clean;
 use html::render::RenderInfo;
+use arena::DroplessArena;
 
 pub use rustc::session::config::Input;
 pub use rustc::session::search_paths::SearchPaths;
 
 pub type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
 
-pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a> {
+pub struct DocContext<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    pub resolver: &'a RefCell<resolve::Resolver<'rcx>>,
-    /// The stack of module NodeIds up till this point
-    pub mod_ids: RefCell<Vec<NodeId>>,
-    pub crate_name: Option<String>,
-    pub cstore: Rc<CrateStore>,
     pub populated_all_crate_impls: Cell<bool>,
     // Note that external items for which `doc(hidden)` applies to are shown as
     // non-reachable while local items aren't. This is because we're reusing
@@ -62,9 +58,7 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a> {
     pub renderinfo: RefCell<RenderInfo>,
     /// Later on moved through `clean::Crate` into `html::render::CACHE_KEY`
     pub external_traits: RefCell<FxHashMap<DefId, clean::Trait>>,
-    /// Used while populating `external_traits` to ensure we don't process the same trait twice at
-    /// the same time.
-    pub active_extern_traits: RefCell<Vec<DefId>>,
+
     // The current set of type and lifetime substitutions,
     // for expanding type aliases at the HIR level:
 
@@ -72,14 +66,9 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a> {
     pub ty_substs: RefCell<FxHashMap<Def, clean::Type>>,
     /// Table node id of lifetime parameter definition -> substituted lifetime
     pub lt_substs: RefCell<FxHashMap<DefId, clean::Lifetime>>,
-    pub send_trait: Option<DefId>,
-    pub fake_def_ids: RefCell<FxHashMap<CrateNum, DefId>>,
-    pub all_fake_def_ids: RefCell<FxHashSet<DefId>>,
-    /// Maps (type_id, trait_id) -> auto trait impl
-    pub generated_synthetics: RefCell<FxHashSet<(DefId, DefId)>>
 }
 
-impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
+impl<'a, 'tcx> DocContext<'a, 'tcx> {
     pub fn sess(&self) -> &session::Session {
         &self.tcx.sess
     }
@@ -119,7 +108,6 @@ pub fn run_core(search_paths: SearchPaths,
                 triple: Option<String>,
                 maybe_sysroot: Option<PathBuf>,
                 allow_warnings: bool,
-                crate_name: Option<String>,
                 force_unstable_if_unmarked: bool) -> (clean::Crate, RenderInfo)
 {
     // Parse, resolve, and typecheck the given crate.
@@ -149,66 +137,44 @@ pub fn run_core(search_paths: SearchPaths,
         ..config::basic_options().clone()
     };
 
-    let codemap = Lrc::new(codemap::CodeMap::new(sessopts.file_path_mapping()));
+    let codemap = Rc::new(codemap::CodeMap::new(sessopts.file_path_mapping()));
     let diagnostic_handler = errors::Handler::with_tty_emitter(ColorConfig::Auto,
                                                                true,
                                                                false,
                                                                Some(codemap.clone()));
 
+    let cstore = Rc::new(CStore::new(box rustc_trans::LlvmMetadataLoader));
     let mut sess = session::build_session_(
         sessopts, cpath, diagnostic_handler, codemap,
     );
-    let trans = rustc_driver::get_trans(&sess);
-    let cstore = Rc::new(CStore::new(trans.metadata_loader()));
+    rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let mut cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs));
-    target_features::add_configuration(&mut cfg, &sess, &*trans);
+    target_features::add_configuration(&mut cfg, &sess);
     sess.parse_sess.config = cfg;
 
-    let control = &driver::CompileController::basic();
+    let krate = panictry!(driver::phase_1_parse_input(&driver::CompileController::basic(),
+                                                      &sess,
+                                                      &input));
+    let krate = ReplaceBodyWithLoop::new().fold_crate(krate);
 
-    let krate = panictry!(driver::phase_1_parse_input(control, &sess, &input));
+    let name = link::find_crate_name(Some(&sess), &krate.attrs, &input);
 
-    let name = ::rustc_trans_utils::link::find_crate_name(Some(&sess), &krate.attrs, &input);
-
-    let mut crate_loader = CrateLoader::new(&sess, &cstore, &name);
-
-    let resolver_arenas = resolve::Resolver::arenas();
-    let result = driver::phase_2_configure_and_expand_inner(&sess,
-                                                      &cstore,
-                                                      krate,
-                                                      None,
-                                                      &name,
-                                                      None,
-                                                      resolve::MakeGlobMap::No,
-                                                      &resolver_arenas,
-                                                      &mut crate_loader,
-                                                      |_| Ok(()));
-    let driver::InnerExpansionResult {
-        mut hir_forest,
-        resolver,
-        ..
-    } = abort_on_err(result, &sess);
-
-    // We need to hold on to the complete resolver, so we clone everything
-    // for the analysis passes to use. Suboptimal, but necessary in the
-    // current architecture.
-    let defs = resolver.definitions.clone();
-    let resolutions = ty::Resolutions {
-        freevars: resolver.freevars.clone(),
-        export_map: resolver.export_map.clone(),
-        trait_map: resolver.trait_map.clone(),
-        maybe_unused_trait_imports: resolver.maybe_unused_trait_imports.clone(),
-        maybe_unused_extern_crates: resolver.maybe_unused_extern_crates.clone(),
-    };
-    let analysis = ty::CrateAnalysis {
-        access_levels: Lrc::new(AccessLevels::default()),
-        name: name.to_string(),
-        glob_map: if resolver.make_glob_map { Some(resolver.glob_map.clone()) } else { None },
+    let driver::ExpansionResult { defs, analysis, resolutions, mut hir_forest, .. } = {
+        let result = driver::phase_2_configure_and_expand(&sess,
+                                                          &cstore,
+                                                          krate,
+                                                          None,
+                                                          &name,
+                                                          None,
+                                                          resolve::MakeGlobMap::No,
+                                                          |_| Ok(()));
+        abort_on_err(result, &sess)
     };
 
-    let arenas = AllArenas::new();
+    let arena = DroplessArena::new();
+    let arenas = GlobalArenas::new();
     let hir_map = hir_map::map_crate(&sess, &*cstore, &mut hir_forest, &defs);
     let output_filenames = driver::build_output_filenames(&input,
                                                           &None,
@@ -216,15 +182,12 @@ pub fn run_core(search_paths: SearchPaths,
                                                           &[],
                                                           &sess);
 
-    let resolver = RefCell::new(resolver);
-
-    abort_on_err(driver::phase_3_run_analysis_passes(&*trans,
-                                                     control,
-                                                     &sess,
+    abort_on_err(driver::phase_3_run_analysis_passes(&sess,
                                                      &*cstore,
                                                      hir_map,
                                                      analysis,
                                                      resolutions,
+                                                     &arena,
                                                      &arenas,
                                                      &name,
                                                      &output_filenames,
@@ -243,29 +206,14 @@ pub fn run_core(search_paths: SearchPaths,
                                   .collect()
         };
 
-        let send_trait = if crate_name == Some("core".to_string()) {
-            clean::get_trait_def_id(&tcx, &["marker", "Send"], true)
-        } else {
-            clean::get_trait_def_id(&tcx, &["core", "marker", "Send"], false)
-        };
-
         let ctxt = DocContext {
             tcx,
-            resolver: &resolver,
-            crate_name,
-            cstore: cstore.clone(),
             populated_all_crate_impls: Cell::new(false),
             access_levels: RefCell::new(access_levels),
             external_traits: Default::default(),
-            active_extern_traits: Default::default(),
             renderinfo: Default::default(),
             ty_substs: Default::default(),
             lt_substs: Default::default(),
-            mod_ids: Default::default(),
-            send_trait: send_trait,
-            fake_def_ids: RefCell::new(FxHashMap()),
-            all_fake_def_ids: RefCell::new(FxHashSet()),
-            generated_synthetics: RefCell::new(FxHashSet()),
         };
         debug!("crate: {:?}", tcx.hir.krate());
 

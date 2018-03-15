@@ -13,16 +13,16 @@ type A = S;
 
 impl S {
     fn f() {
-        let s = Self(0, 1); //~ ERROR expected function
+        let s = Self(0, 1);
         match s {
-            Self(..) => {} //~ ERROR expected tuple struct/variant
+            Self(..) => {}
         }
     }
 }
 
 fn main() {
-    let s = A(0, 1); //~ ERROR expected function
+    let s = A(0, 1);
     match s {
-        A(..) => {} //~ ERROR expected tuple struct/variant
+        A(..) => {}
     }
 }

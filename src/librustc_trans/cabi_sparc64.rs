@@ -11,26 +11,28 @@
 // FIXME: This needs an audit for correctness and completeness.
 
 use abi::{FnType, ArgType, LayoutExt, Reg, RegKind, Uniform};
-use context::CodegenCx;
+use context::CrateContext;
 
-fn is_homogeneous_aggregate<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &mut ArgType<'tcx>)
+fn is_homogeneous_aggregate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tcx>)
                                      -> Option<Uniform> {
-    arg.layout.homogeneous_aggregate(cx).and_then(|unit| {
+    arg.layout.homogeneous_aggregate(ccx).and_then(|unit| {
+        let size = arg.layout.size(ccx);
+
         // Ensure we have at most eight uniquely addressable members.
-        if arg.layout.size > unit.size.checked_mul(8, cx).unwrap() {
+        if size > unit.size.checked_mul(8, ccx).unwrap() {
             return None;
         }
 
         let valid_unit = match unit.kind {
             RegKind::Integer => false,
             RegKind::Float => true,
-            RegKind::Vector => arg.layout.size.bits() == 128
+            RegKind::Vector => size.bits() == 128
         };
 
         if valid_unit {
             Some(Uniform {
                 unit,
-                total: arg.layout.size
+                total: size
             })
         } else {
             None
@@ -38,19 +40,19 @@ fn is_homogeneous_aggregate<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &mut ArgTyp
     })
 }
 
-fn classify_ret_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, ret: &mut ArgType<'tcx>) {
+fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tcx>) {
     if !ret.layout.is_aggregate() {
         ret.extend_integer_width_to(64);
         return;
     }
 
-    if let Some(uniform) = is_homogeneous_aggregate(cx, ret) {
-        ret.cast_to(uniform);
+    if let Some(uniform) = is_homogeneous_aggregate(ccx, ret) {
+        ret.cast_to(ccx, uniform);
         return;
     }
-    let size = ret.layout.size;
+    let size = ret.layout.size(ccx);
     let bits = size.bits();
-    if bits <= 256 {
+    if bits <= 128 {
         let unit = if bits <= 8 {
             Reg::i8()
         } else if bits <= 16 {
@@ -61,7 +63,7 @@ fn classify_ret_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, ret: &mut ArgType<'tcx>) 
             Reg::i64()
         };
 
-        ret.cast_to(Uniform {
+        ret.cast_to(ccx, Uniform {
             unit,
             total: size
         });
@@ -69,39 +71,34 @@ fn classify_ret_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, ret: &mut ArgType<'tcx>) 
     }
 
     // don't return aggregates in registers
-    ret.make_indirect();
+    ret.make_indirect(ccx);
 }
 
-fn classify_arg_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &mut ArgType<'tcx>) {
+fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tcx>) {
     if !arg.layout.is_aggregate() {
         arg.extend_integer_width_to(64);
         return;
     }
 
-    if let Some(uniform) = is_homogeneous_aggregate(cx, arg) {
-        arg.cast_to(uniform);
+    if let Some(uniform) = is_homogeneous_aggregate(ccx, arg) {
+        arg.cast_to(ccx, uniform);
         return;
     }
 
-    let total = arg.layout.size;
-    if total.bits() > 128 {
-        arg.make_indirect();
-        return;
-    }
-
-    arg.cast_to(Uniform {
+    let total = arg.layout.size(ccx);
+    arg.cast_to(ccx, Uniform {
         unit: Reg::i64(),
         total
     });
 }
 
-pub fn compute_abi_info<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, fty: &mut FnType<'tcx>) {
+pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
     if !fty.ret.is_ignore() {
-        classify_ret_ty(cx, &mut fty.ret);
+        classify_ret_ty(ccx, &mut fty.ret);
     }
 
     for arg in &mut fty.args {
         if arg.is_ignore() { continue; }
-        classify_arg_ty(cx, arg);
+        classify_arg_ty(ccx, arg);
     }
 }

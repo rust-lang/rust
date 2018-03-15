@@ -17,7 +17,7 @@ struct Gem {
     weapon: Weapon,
 }
 
-#[repr(simd)] //~ ERROR are experimental
+#[repr(simd)]
 struct Weapon {
     name: String,
     damage: u32
@@ -25,10 +25,9 @@ struct Weapon {
 
 impl Gem {
     #[must_use] fn summon_weapon(&self) -> Weapon { self.weapon }
-    //~^ WARN is experimental
 }
 
-#[must_use] //~ WARN is experimental
+#[must_use]
 fn bubble(gem: Gem) -> Result<Gem, ()> {
     if gem.poofed {
         Ok(gem)

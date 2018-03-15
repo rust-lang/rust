@@ -8,20 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use astconv::ExplicitSelf;
 use check::{Inherited, FnCtxt};
 use constrained_type_params::{identify_constrained_type_params, Parameter};
 
 use hir::def_id::DefId;
 use rustc::traits::{self, ObligationCauseCode};
-use rustc::ty::{self, Lift, Ty, TyCtxt};
-use rustc::ty::util::ExplicitSelf;
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::middle::lang_items;
 
 use syntax::ast;
-use syntax::feature_gate::{self, GateIssue};
 use syntax_pos::Span;
-use errors::{DiagnosticBuilder, DiagnosticId};
+use errors::DiagnosticBuilder;
 
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir;
@@ -107,21 +106,16 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
             //
             // won't be allowed unless there's an *explicit* implementation of `Send`
             // for `T`
-            hir::ItemImpl(_, polarity, defaultness, _, ref trait_ref, ref self_ty, _) => {
-                let is_auto = tcx.impl_trait_ref(tcx.hir.local_def_id(item.id))
-                                 .map_or(false, |trait_ref| tcx.trait_is_auto(trait_ref.def_id));
-                if let (hir::Defaultness::Default { .. }, true) = (defaultness, is_auto) {
-                    tcx.sess.span_err(item.span, "impls of auto traits cannot be default");
-                }
-                if polarity == hir::ImplPolarity::Positive {
-                    self.check_impl(item, self_ty, trait_ref);
-                } else {
-                    // FIXME(#27579) what amount of WF checking do we need for neg impls?
-                    if trait_ref.is_some() && !is_auto {
-                        span_err!(tcx.sess, item.span, E0192,
-                                  "negative impls are only allowed for \
-                                   auto traits (e.g., `Send` and `Sync`)")
-                    }
+            hir::ItemImpl(_, hir::ImplPolarity::Positive, _, _,
+                          ref trait_ref, ref self_ty, _) => {
+                self.check_impl(item, self_ty, trait_ref);
+            }
+            hir::ItemImpl(_, hir::ImplPolarity::Negative, _, _, Some(_), ..) => {
+                // FIXME(#27579) what amount of WF checking do we need for neg impls?
+
+                let trait_ref = tcx.impl_trait_ref(tcx.hir.local_def_id(item.id)).unwrap();
+                if !tcx.trait_is_auto(trait_ref.def_id) {
+                    error_192(tcx, item.span);
                 }
             }
             hir::ItemFn(..) => {
@@ -135,14 +129,14 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
             }
             hir::ItemStruct(ref struct_def, ref ast_generics) => {
                 self.check_type_defn(item, false, |fcx| {
-                    vec![fcx.non_enum_variant(struct_def)]
+                    vec![fcx.struct_variant(struct_def)]
                 });
 
                 self.check_variances_for_type_defn(item, ast_generics);
             }
             hir::ItemUnion(ref struct_def, ref ast_generics) => {
                 self.check_type_defn(item, true, |fcx| {
-                    vec![fcx.non_enum_variant(struct_def)]
+                    vec![fcx.struct_variant(struct_def)]
                 });
 
                 self.check_variances_for_type_defn(item, ast_generics);
@@ -185,7 +179,10 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                     reject_shadowing_type_parameters(fcx.tcx, item.def_id);
                     let sig = fcx.tcx.fn_sig(item.def_id);
                     let sig = fcx.normalize_associated_types_in(span, &sig);
-                    this.check_fn_or_method(fcx, span, sig,
+                    let predicates = fcx.tcx.predicates_of(item.def_id)
+                        .instantiate_identity(fcx.tcx);
+                    let predicates = fcx.normalize_associated_types_in(span, &predicates);
+                    this.check_fn_or_method(fcx, span, sig, &predicates,
                                             item.def_id, &mut implied_bounds);
                     let sig_if_method = sig_if_method.expect("bad signature for method");
                     this.check_method_receiver(fcx, sig_if_method, &item, self_ty);
@@ -226,31 +223,10 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
     {
         self.for_item(item).with_fcx(|fcx, this| {
             let variants = lookup_fields(fcx);
-            let def_id = fcx.tcx.hir.local_def_id(item.id);
-            let packed = fcx.tcx.adt_def(def_id).repr.packed();
 
             for variant in &variants {
-                // For DST, or when drop needs to copy things around, all
-                // intermediate types must be sized.
-                let needs_drop_copy = || {
-                    packed && {
-                        let ty = variant.fields.last().unwrap().ty;
-                        let ty = fcx.tcx.erase_regions(&ty).lift_to_tcx(this.tcx)
-                            .unwrap_or_else(|| {
-                                span_bug!(item.span, "inference variables in {:?}", ty)
-                            });
-                        ty.needs_drop(this.tcx, this.tcx.param_env(def_id))
-                    }
-                };
-                let unsized_len = if
-                    all_sized ||
-                    variant.fields.is_empty() ||
-                    needs_drop_copy()
-                {
-                    0
-                } else {
-                    1
-                };
+                // For DST, all intermediate types must be sized.
+                let unsized_len = if all_sized || variant.fields.is_empty() { 0 } else { 1 };
                 for field in &variant.fields[..variant.fields.len() - unsized_len] {
                     fcx.register_bound(
                         field.ty,
@@ -269,16 +245,87 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                 }
             }
 
-            self.check_where_clauses(fcx, item.span, def_id);
+            let def_id = fcx.tcx.hir.local_def_id(item.id);
+            let predicates = fcx.tcx.predicates_of(def_id).instantiate_identity(fcx.tcx);
+            let predicates = fcx.normalize_associated_types_in(item.span, &predicates);
+            this.check_where_clauses(fcx, item.span, &predicates);
 
             vec![] // no implied bounds in a struct def'n
         });
     }
 
+    fn check_auto_trait(&mut self, trait_def_id: DefId, span: Span) {
+        // We want to ensure:
+        //
+        // 1) that there are no items contained within
+        // the trait definition
+        //
+        // 2) that the definition doesn't violate the no-super trait rule
+        // for auto traits.
+        //
+        // 3) that the trait definition does not have any type parameters
+
+        let predicates = self.tcx.predicates_of(trait_def_id);
+
+        // We must exclude the Self : Trait predicate contained by all
+        // traits.
+        let has_predicates =
+            predicates.predicates.iter().any(|predicate| {
+                match predicate {
+                    &ty::Predicate::Trait(ref poly_trait_ref) => {
+                        let self_ty = poly_trait_ref.0.self_ty();
+                        !(self_ty.is_self() && poly_trait_ref.def_id() == trait_def_id)
+                    },
+                    _ => true,
+                }
+            });
+
+        let has_ty_params = self.tcx.generics_of(trait_def_id).types.len() > 1;
+
+        // We use an if-else here, since the generics will also trigger
+        // an extraneous error message when we find predicates like
+        // `T : Sized` for a trait like: `trait Magic<T>`.
+        //
+        // We also put the check on the number of items here,
+        // as it seems confusing to report an error about
+        // extraneous predicates created by things like
+        // an associated type inside the trait.
+        let mut err = None;
+        if !self.tcx.associated_item_def_ids(trait_def_id).is_empty() {
+            error_380(self.tcx, span);
+        } else if has_ty_params {
+            err = Some(struct_span_err!(self.tcx.sess, span, E0567,
+                "traits with auto impls (`e.g. impl \
+                    Trait for ..`) can not have type parameters"));
+        } else if has_predicates {
+            err = Some(struct_span_err!(self.tcx.sess, span, E0568,
+                "traits with auto impls (`e.g. impl \
+                    Trait for ..`) cannot have predicates"));
+        }
+
+        // Finally if either of the above conditions apply we should add a note
+        // indicating that this error is the result of a recent soundness fix.
+        match err {
+            None => {},
+            Some(mut e) => {
+                e.note("the new auto trait rules are the result of a \
+                          recent soundness fix; see #29859 for more details");
+                e.emit();
+            }
+        }
+    }
+
     fn check_trait(&mut self, item: &hir::Item) {
         let trait_def_id = self.tcx.hir.local_def_id(item.id);
-        self.for_item(item).with_fcx(|fcx, _| {
-            self.check_where_clauses(fcx, item.span, trait_def_id);
+
+        if self.tcx.trait_is_auto(trait_def_id) {
+            self.check_auto_trait(trait_def_id, item.span);
+        }
+
+        self.for_item(item).with_fcx(|fcx, this| {
+            let predicates = fcx.tcx.predicates_of(trait_def_id).instantiate_identity(fcx.tcx);
+            let predicates = fcx.normalize_associated_types_in(item.span, &predicates);
+            this.check_where_clauses(fcx, item.span, &predicates);
             vec![]
         });
     }
@@ -288,8 +335,12 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
             let def_id = fcx.tcx.hir.local_def_id(item.id);
             let sig = fcx.tcx.fn_sig(def_id);
             let sig = fcx.normalize_associated_types_in(item.span, &sig);
+
+            let predicates = fcx.tcx.predicates_of(def_id).instantiate_identity(fcx.tcx);
+            let predicates = fcx.normalize_associated_types_in(item.span, &predicates);
+
             let mut implied_bounds = vec![];
-            this.check_fn_or_method(fcx, item.span, sig,
+            this.check_fn_or_method(fcx, item.span, sig, &predicates,
                                     def_id, &mut implied_bounds);
             implied_bounds
         })
@@ -343,96 +394,19 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                 }
             }
 
-            this.check_where_clauses(fcx, item.span, item_def_id);
+            let predicates = fcx.tcx.predicates_of(item_def_id).instantiate_identity(fcx.tcx);
+            let predicates = fcx.normalize_associated_types_in(item.span, &predicates);
+            this.check_where_clauses(fcx, item.span, &predicates);
 
             fcx.impl_implied_bounds(item_def_id, item.span)
         });
     }
 
-    /// Checks where clauses and inline bounds that are declared on def_id.
     fn check_where_clauses<'fcx, 'tcx>(&mut self,
                                        fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
                                        span: Span,
-                                       def_id: DefId) {
-        use ty::subst::Subst;
-        use rustc::ty::TypeFoldable;
-
-        let mut predicates = fcx.tcx.predicates_of(def_id);
-        let mut substituted_predicates = Vec::new();
-
-        let generics = self.tcx.generics_of(def_id);
-        let is_our_default = |def: &ty::TypeParameterDef|
-                                def.has_default && def.index >= generics.parent_count() as u32;
-
-        // Check that concrete defaults are well-formed. See test `type-check-defaults.rs`.
-        // For example this forbids the declaration:
-        // struct Foo<T = Vec<[u32]>> { .. }
-        // Here the default `Vec<[u32]>` is not WF because `[u32]: Sized` does not hold.
-        for d in generics.types.iter().cloned().filter(is_our_default).map(|p| p.def_id) {
-            let ty = fcx.tcx.type_of(d);
-            // ignore dependent defaults -- that is, where the default of one type
-            // parameter includes another (e.g., <T, U = T>). In those cases, we can't
-            // be sure if it will error or not as user might always specify the other.
-            if !ty.needs_subst() {
-                fcx.register_wf_obligation(ty, fcx.tcx.def_span(d), self.code.clone());
-            }
-        }
-
-        // Check that trait predicates are WF when params are substituted by their defaults.
-        // We don't want to overly constrain the predicates that may be written but we want to
-        // catch cases where a default my never be applied such as `struct Foo<T: Copy = String>`.
-        // Therefore we check if a predicate which contains a single type param
-        // with a concrete default is WF with that default substituted.
-        // For more examples see tests `defaults-well-formedness.rs` and `type-check-defaults.rs`.
-        //
-        // First we build the defaulted substitution.
-        let substs = ty::subst::Substs::for_item(fcx.tcx, def_id, |def, _| {
-                // All regions are identity.
-                fcx.tcx.mk_region(ty::ReEarlyBound(def.to_early_bound_region_data()))
-            }, |def, _| {
-                // If the param has a default,
-                if is_our_default(def) {
-                    let default_ty = fcx.tcx.type_of(def.def_id);
-                    // and it's not a dependent default
-                    if !default_ty.needs_subst() {
-                        // then substitute with the default.
-                        return default_ty;
-                    }
-                }
-                // Mark unwanted params as err.
-                fcx.tcx.types.err
-            });
-        // Now we build the substituted predicates.
-        for &pred in predicates.predicates.iter() {
-            struct CountParams { params: FxHashSet<u32> }
-            impl<'tcx> ty::fold::TypeVisitor<'tcx> for CountParams {
-                fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
-                    match t.sty {
-                        ty::TyParam(p) => {
-                            self.params.insert(p.idx);
-                            t.super_visit_with(self)
-                        }
-                        _ => t.super_visit_with(self)
-                    }
-                }
-            }
-            let mut param_count = CountParams { params: FxHashSet() };
-            pred.visit_with(&mut param_count);
-            let substituted_pred = pred.subst(fcx.tcx, substs);
-            // Don't check non-defaulted params, dependent defaults or preds with multiple params.
-            if substituted_pred.references_error() || param_count.params.len() > 1 {
-                continue;
-            }
-            // Avoid duplication of predicates that contain no parameters, for example.
-            if !predicates.predicates.contains(&substituted_pred) {
-                substituted_predicates.push(substituted_pred);
-            }
-        }
-
-        predicates.predicates.extend(substituted_predicates);
-        let predicates = predicates.instantiate_identity(fcx.tcx);
-        let predicates = fcx.normalize_associated_types_in(span, &predicates);
-
+                                       predicates: &ty::InstantiatedPredicates<'tcx>)
+    {
         let obligations =
             predicates.predicates
                       .iter()
@@ -451,11 +425,12 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                                       fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
                                       span: Span,
                                       sig: ty::PolyFnSig<'tcx>,
+                                      predicates: &ty::InstantiatedPredicates<'tcx>,
                                       def_id: DefId,
                                       implied_bounds: &mut Vec<Ty<'tcx>>)
     {
         let sig = fcx.normalize_associated_types_in(span, &sig);
-        let sig = fcx.tcx.liberate_late_bound_regions(def_id, &sig);
+        let sig = fcx.liberate_late_bound_regions(def_id, &sig);
 
         for input_ty in sig.inputs() {
             fcx.register_wf_obligation(&input_ty, span, self.code.clone());
@@ -467,7 +442,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
         // FIXME(#25759) return types should not be implied bounds
         implied_bounds.push(sig.output());
 
-        self.check_where_clauses(fcx, span, def_id);
+        self.check_where_clauses(fcx, span, predicates);
     }
 
     fn check_method_receiver<'fcx, 'tcx>(&mut self,
@@ -476,7 +451,8 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                                          method: &ty::AssociatedItem,
                                          self_ty: Ty<'tcx>)
     {
-        // check that the method has a valid receiver type, given the type `Self`
+        // check that the type of the method's receiver matches the
+        // method's first parameter.
         debug!("check_method_receiver({:?}, self_ty={:?})",
                method, self_ty);
 
@@ -488,81 +464,30 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
 
         let sig = fcx.tcx.fn_sig(method.def_id);
         let sig = fcx.normalize_associated_types_in(span, &sig);
-        let sig = fcx.tcx.liberate_late_bound_regions(method.def_id, &sig);
+        let sig = fcx.liberate_late_bound_regions(method.def_id, &sig);
 
         debug!("check_method_receiver: sig={:?}", sig);
 
-        let self_ty = fcx.normalize_associated_types_in(span, &self_ty);
-        let self_ty = fcx.tcx.liberate_late_bound_regions(
-            method.def_id,
-            &ty::Binder(self_ty)
-        );
-
         let self_arg_ty = sig.inputs()[0];
+        let rcvr_ty = match ExplicitSelf::determine(self_ty, self_arg_ty) {
+            ExplicitSelf::ByValue => self_ty,
+            ExplicitSelf::ByReference(region, mutbl) => {
+                fcx.tcx.mk_ref(region, ty::TypeAndMut {
+                    ty: self_ty,
+                    mutbl,
+                })
+            }
+            ExplicitSelf::ByBox => fcx.tcx.mk_box(self_ty)
+        };
+        let rcvr_ty = fcx.normalize_associated_types_in(span, &rcvr_ty);
+        let rcvr_ty = fcx.liberate_late_bound_regions(method.def_id,
+                                                      &ty::Binder(rcvr_ty));
+
+        debug!("check_method_receiver: receiver ty = {:?}", rcvr_ty);
 
         let cause = fcx.cause(span, ObligationCauseCode::MethodReceiver);
-        let self_arg_ty = fcx.normalize_associated_types_in(span, &self_arg_ty);
-        let self_arg_ty = fcx.tcx.liberate_late_bound_regions(
-            method.def_id,
-            &ty::Binder(self_arg_ty)
-        );
-
-        let mut autoderef = fcx.autoderef(span, self_arg_ty).include_raw_pointers();
-
-        loop {
-            if let Some((potential_self_ty, _)) = autoderef.next() {
-                debug!("check_method_receiver: potential self type `{:?}` to match `{:?}`",
-                    potential_self_ty, self_ty);
-
-                if fcx.infcx.can_eq(fcx.param_env, self_ty, potential_self_ty).is_ok() {
-                    autoderef.finalize();
-                    if let Some(mut err) = fcx.demand_eqtype_with_origin(
-                        &cause, self_ty, potential_self_ty) {
-                        err.emit();
-                    }
-                    break
-                }
-            } else {
-                fcx.tcx.sess.diagnostic().mut_span_err(
-                    span, &format!("invalid `self` type: {:?}", self_arg_ty))
-                .note(&format!("type must be `{:?}` or a type that dereferences to it`", self_ty))
-                .help("consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`")
-                .code(DiagnosticId::Error("E0307".into()))
-                .emit();
-                return
-            }
-        }
-
-        let is_self_ty = |ty| fcx.infcx.can_eq(fcx.param_env, self_ty, ty).is_ok();
-        let self_kind = ExplicitSelf::determine(self_arg_ty, is_self_ty);
-
-        if !fcx.tcx.features().arbitrary_self_types {
-            match self_kind {
-                ExplicitSelf::ByValue |
-                ExplicitSelf::ByReference(_, _) |
-                ExplicitSelf::ByBox => (),
-
-                ExplicitSelf::ByRawPointer(_) => {
-                    feature_gate::feature_err(
-                        &fcx.tcx.sess.parse_sess,
-                        "arbitrary_self_types",
-                        span,
-                        GateIssue::Language,
-                        "raw pointer `self` is unstable")
-                    .help("consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`")
-                    .emit();
-                }
-
-                ExplicitSelf::Other => {
-                    feature_gate::feature_err(
-                        &fcx.tcx.sess.parse_sess,
-                        "arbitrary_self_types",
-                        span,
-                        GateIssue::Language,"arbitrary `self` types are unstable")
-                    .help("consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`")
-                    .emit();
-                }
-            }
+        if let Some(mut err) = fcx.demand_eqtype_with_origin(&cause, rcvr_ty, self_arg_ty) {
+            err.emit();
         }
     }
 
@@ -596,9 +521,13 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                 continue;
             }
 
-            let (span, name) = match ast_generics.params[index] {
-                hir::GenericParam::Lifetime(ref ld) => (ld.lifetime.span, ld.lifetime.name.name()),
-                hir::GenericParam::Type(ref tp) => (tp.span, tp.name),
+            let (span, name) = if index < ast_generics.lifetimes.len() {
+                (ast_generics.lifetimes[index].lifetime.span,
+                 ast_generics.lifetimes[index].lifetime.name.name())
+            } else {
+                let index = index - ast_generics.lifetimes.len();
+                (ast_generics.ty_params[index].span,
+                 ast_generics.ty_params[index].name)
             };
             self.report_bivariance(span, name);
         }
@@ -693,7 +622,7 @@ struct AdtField<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    fn non_enum_variant(&self, struct_def: &hir::VariantData) -> AdtVariant<'tcx> {
+    fn struct_variant(&self, struct_def: &hir::VariantData) -> AdtVariant<'tcx> {
         let fields =
             struct_def.fields().iter()
             .map(|field| {
@@ -708,7 +637,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn enum_variants(&self, enum_def: &hir::EnumDef) -> Vec<AdtVariant<'tcx>> {
         enum_def.variants.iter()
-            .map(|variant| self.non_enum_variant(&variant.node.data))
+            .map(|variant| self.struct_variant(&variant.node.data))
             .collect()
     }
 
@@ -729,6 +658,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         }
     }
+}
+
+fn error_192(tcx: TyCtxt, span: Span) {
+    span_err!(tcx.sess, span, E0192,
+              "negative impls are only allowed for traits with \
+               default impls (e.g., `Send` and `Sync`)")
+}
+
+fn error_380(tcx: TyCtxt, span: Span) {
+    span_err!(tcx.sess, span, E0380,
+              "traits with default impls (`e.g. impl \
+               Trait for ..`) must have no methods or associated items")
 }
 
 fn error_392<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, span: Span, param_name: ast::Name)

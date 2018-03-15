@@ -67,134 +67,6 @@
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_bool { }
 
-#[doc(primitive = "never")]
-//
-/// The `!` type, also called "never".
-///
-/// `!` represents the type of computations which never resolve to any value at all. For example,
-/// the [`exit`] function `fn exit(code: i32) -> !` exits the process without ever returning, and
-/// so returns `!`.
-///
-/// `break`, `continue` and `return` expressions also have type `!`. For example we are allowed to
-/// write:
-///
-/// ```
-/// #![feature(never_type)]
-/// # fn foo() -> u32 {
-/// let x: ! = {
-///     return 123
-/// };
-/// # }
-/// ```
-///
-/// Although the `let` is pointless here, it illustrates the meaning of `!`. Since `x` is never
-/// assigned a value (because `return` returns from the entire function), `x` can be given type
-/// `!`. We could also replace `return 123` with a `panic!` or a never-ending `loop` and this code
-/// would still be valid.
-///
-/// A more realistic usage of `!` is in this code:
-///
-/// ```
-/// # fn get_a_number() -> Option<u32> { None }
-/// # loop {
-/// let num: u32 = match get_a_number() {
-///     Some(num) => num,
-///     None => break,
-/// };
-/// # }
-/// ```
-///
-/// Both match arms must produce values of type [`u32`], but since `break` never produces a value
-/// at all we know it can never produce a value which isn't a [`u32`]. This illustrates another
-/// behaviour of the `!` type - expressions with type `!` will coerce into any other type.
-///
-/// [`u32`]: primitive.str.html
-/// [`exit`]: process/fn.exit.html
-///
-/// # `!` and generics
-///
-/// The main place you'll see `!` used explicitly is in generic code. Consider the [`FromStr`]
-/// trait:
-///
-/// ```
-/// trait FromStr: Sized {
-///     type Err;
-///     fn from_str(s: &str) -> Result<Self, Self::Err>;
-/// }
-/// ```
-///
-/// When implementing this trait for [`String`] we need to pick a type for [`Err`]. And since
-/// converting a string into a string will never result in an error, the appropriate type is `!`.
-/// (Currently the type actually used is an enum with no variants, though this is only because `!`
-/// was added to Rust at a later date and it may change in the future). With an [`Err`] type of
-/// `!`, if we have to call [`String::from_str`] for some reason the result will be a
-/// [`Result<String, !>`] which we can unpack like this:
-///
-/// ```ignore (string-from-str-error-type-is-not-never-yet)
-/// // NOTE: This does not work today!
-/// let Ok(s) = String::from_str("hello");
-/// ```
-///
-/// Since the [`Err`] variant contains a `!`, it can never occur. So we can exhaustively match on
-/// [`Result<T, !>`] by just taking the [`Ok`] variant. This illustrates another behaviour of `!` -
-/// it can be used to "delete" certain enum variants from generic types like `Result`.
-///
-/// [`String::from_str`]: str/trait.FromStr.html#tymethod.from_str
-/// [`Result<String, !>`]: result/enum.Result.html
-/// [`Result<T, !>`]: result/enum.Result.html
-/// [`Ok`]: result/enum.Result.html#variant.Ok
-/// [`String`]: string/struct.String.html
-/// [`Err`]: result/enum.Result.html#variant.Err
-/// [`FromStr`]: str/trait.FromStr.html
-///
-/// # `!` and traits
-///
-/// When writing your own traits, `!` should have an `impl` whenever there is an obvious `impl`
-/// which doesn't `panic!`. As is turns out, most traits can have an `impl` for `!`. Take [`Debug`]
-/// for example:
-///
-/// ```
-/// # #![feature(never_type)]
-/// # use std::fmt;
-/// # trait Debug {
-/// # fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result;
-/// # }
-/// impl Debug for ! {
-///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-///         *self
-///     }
-/// }
-/// ```
-///
-/// Once again we're using `!`'s ability to coerce into any other type, in this case
-/// [`fmt::Result`]. Since this method takes a `&!` as an argument we know that it can never be
-/// called (because there is no value of type `!` for it to be called with). Writing `*self`
-/// essentially tells the compiler "We know that this code can never be run, so just treat the
-/// entire function body has having type [`fmt::Result`]". This pattern can be used a lot when
-/// implementing traits for `!`. Generally, any trait which only has methods which take a `self`
-/// parameter should have such as impl.
-///
-/// On the other hand, one trait which would not be appropriate to implement is [`Default`]:
-///
-/// ```
-/// trait Default {
-///     fn default() -> Self;
-/// }
-/// ```
-///
-/// Since `!` has no values, it has no default value either. It's true that we could write an
-/// `impl` for this which simply panics, but the same is true for any type (we could `impl
-/// Default` for (eg.) [`File`] by just making [`default()`] panic.)
-///
-/// [`fmt::Result`]: fmt/type.Result.html
-/// [`File`]: fs/struct.File.html
-/// [`Debug`]: fmt/trait.Debug.html
-/// [`Default`]: default/trait.Default.html
-/// [`default()`]: default/trait.Default.html#tymethod.default
-///
-#[unstable(feature = "never_type", issue = "35121")]
-mod prim_never { }
-
 #[doc(primitive = "char")]
 //
 /// A character type.
@@ -720,6 +592,10 @@ mod prim_f64 { }
 /// The 8-bit signed integer type.
 ///
 /// *[See also the `std::i8` module](i8/index.html).*
+///
+/// However, please note that examples are shared between primitive integer
+/// types. So it's normal if you see usage of types like `i64` in there.
+///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i8 { }
 
@@ -728,6 +604,10 @@ mod prim_i8 { }
 /// The 16-bit signed integer type.
 ///
 /// *[See also the `std::i16` module](i16/index.html).*
+///
+/// However, please note that examples are shared between primitive integer
+/// types. So it's normal if you see usage of types like `i32` in there.
+///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i16 { }
 
@@ -736,6 +616,10 @@ mod prim_i16 { }
 /// The 32-bit signed integer type.
 ///
 /// *[See also the `std::i32` module](i32/index.html).*
+///
+/// However, please note that examples are shared between primitive integer
+/// types. So it's normal if you see usage of types like `i16` in there.
+///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i32 { }
 
@@ -744,6 +628,10 @@ mod prim_i32 { }
 /// The 64-bit signed integer type.
 ///
 /// *[See also the `std::i64` module](i64/index.html).*
+///
+/// However, please note that examples are shared between primitive integer
+/// types. So it's normal if you see usage of types like `i8` in there.
+///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i64 { }
 
@@ -752,6 +640,10 @@ mod prim_i64 { }
 /// The 128-bit signed integer type.
 ///
 /// *[See also the `std::i128` module](i128/index.html).*
+///
+/// However, please note that examples are shared between primitive integer
+/// types. So it's normal if you see usage of types like `i8` in there.
+///
 #[unstable(feature = "i128", issue="35118")]
 mod prim_i128 { }
 
@@ -760,6 +652,10 @@ mod prim_i128 { }
 /// The 8-bit unsigned integer type.
 ///
 /// *[See also the `std::u8` module](u8/index.html).*
+///
+/// However, please note that examples are shared between primitive integer
+/// types. So it's normal if you see usage of types like `u64` in there.
+///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_u8 { }
 
@@ -768,6 +664,10 @@ mod prim_u8 { }
 /// The 16-bit unsigned integer type.
 ///
 /// *[See also the `std::u16` module](u16/index.html).*
+///
+/// However, please note that examples are shared between primitive integer
+/// types. So it's normal if you see usage of types like `u32` in there.
+///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_u16 { }
 
@@ -776,6 +676,10 @@ mod prim_u16 { }
 /// The 32-bit unsigned integer type.
 ///
 /// *[See also the `std::u32` module](u32/index.html).*
+///
+/// However, please note that examples are shared between primitive integer
+/// types. So it's normal if you see usage of types like `u16` in there.
+///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_u32 { }
 
@@ -784,6 +688,10 @@ mod prim_u32 { }
 /// The 64-bit unsigned integer type.
 ///
 /// *[See also the `std::u64` module](u64/index.html).*
+///
+/// However, please note that examples are shared between primitive integer
+/// types. So it's normal if you see usage of types like `u8` in there.
+///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_u64 { }
 
@@ -792,6 +700,10 @@ mod prim_u64 { }
 /// The 128-bit unsigned integer type.
 ///
 /// *[See also the `std::u128` module](u128/index.html).*
+///
+/// However, please note that examples are shared between primitive integer
+/// types. So it's normal if you see usage of types like `u8` in there.
+///
 #[unstable(feature = "i128", issue="35118")]
 mod prim_u128 { }
 
@@ -804,6 +716,10 @@ mod prim_u128 { }
 /// and on a 64 bit target, this is 8 bytes.
 ///
 /// *[See also the `std::isize` module](isize/index.html).*
+///
+/// However, please note that examples are shared between primitive integer
+/// types. So it's normal if you see usage of types like `usize` in there.
+///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_isize { }
 
@@ -816,6 +732,10 @@ mod prim_isize { }
 /// and on a 64 bit target, this is 8 bytes.
 ///
 /// *[See also the `std::usize` module](usize/index.html).*
+///
+/// However, please note that examples are shared between primitive integer
+/// types. So it's normal if you see usage of types like `isize` in there.
+///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_usize { }
 

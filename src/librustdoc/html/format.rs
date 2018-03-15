@@ -25,7 +25,8 @@ use rustc::hir;
 use clean::{self, PrimitiveType};
 use core::DocAccessLevels;
 use html::item_type::ItemType;
-use html::render::{self, cache, CURRENT_LOCATION_KEY};
+use html::render;
+use html::render::{cache, CURRENT_LOCATION_KEY};
 
 /// Helper to render an optional visibility with a space after it (if the
 /// visibility is preset)
@@ -117,11 +118,30 @@ impl<'a> fmt::Display for TyParamBounds<'a> {
     }
 }
 
-impl fmt::Display for clean::GenericParam {
+impl fmt::Display for clean::Generics {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            clean::GenericParam::Lifetime(ref lp) => write!(f, "{}", lp),
-            clean::GenericParam::Type(ref tp) => {
+        if self.lifetimes.is_empty() && self.type_params.is_empty() { return Ok(()) }
+        if f.alternate() {
+            f.write_str("<")?;
+        } else {
+            f.write_str("&lt;")?;
+        }
+
+        for (i, life) in self.lifetimes.iter().enumerate() {
+            if i > 0 {
+                f.write_str(", ")?;
+            }
+            write!(f, "{}", *life)?;
+        }
+
+        if !self.type_params.is_empty() {
+            if !self.lifetimes.is_empty() {
+                f.write_str(", ")?;
+            }
+            for (i, tp) in self.type_params.iter().enumerate() {
+                if i > 0 {
+                    f.write_str(", ")?
+                }
                 f.write_str(&tp.name)?;
 
                 if !tp.bounds.is_empty() {
@@ -138,22 +158,15 @@ impl fmt::Display for clean::GenericParam {
                     } else {
                         write!(f, "&nbsp;=&nbsp;{}", ty)?;
                     }
-                }
-
-                Ok(())
+                };
             }
         }
-    }
-}
-
-impl fmt::Display for clean::Generics {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.params.is_empty() { return Ok(()) }
         if f.alternate() {
-            write!(f, "<{:#}>", CommaSep(&self.params))
+            f.write_str(">")?;
         } else {
-            write!(f, "&lt;{}&gt;", CommaSep(&self.params))
+            f.write_str("&gt;")?;
         }
+        Ok(())
     }
 }
 
@@ -246,11 +259,22 @@ impl fmt::Display for clean::Lifetime {
 
 impl fmt::Display for clean::PolyTrait {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if !self.generic_params.is_empty() {
+        if !self.lifetimes.is_empty() {
             if f.alternate() {
-                write!(f, "for<{:#}> ", CommaSep(&self.generic_params))?;
+                f.write_str("for<")?;
             } else {
-                write!(f, "for&lt;{}&gt; ", CommaSep(&self.generic_params))?;
+                f.write_str("for&lt;")?;
+            }
+            for (i, lt) in self.lifetimes.iter().enumerate() {
+                if i > 0 {
+                    f.write_str(", ")?;
+                }
+                write!(f, "{}", lt)?;
+            }
+            if f.alternate() {
+                f.write_str("> ")?;
+            } else {
+                f.write_str("&gt; ")?;
             }
         }
         if f.alternate() {
@@ -401,13 +425,15 @@ pub fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
         Some(&(ref fqp, shortty)) => {
             (fqp, shortty, repeat("../").take(loc.len()).collect())
         }
-        None => {
-            let &(ref fqp, shortty) = cache.external_paths.get(&did)?;
-            (fqp, shortty, match cache.extern_locations[&did.krate] {
-                (.., render::Remote(ref s)) => s.to_string(),
-                (.., render::Local) => repeat("../").take(loc.len()).collect(),
-                (.., render::Unknown) => return None,
-            })
+        None => match cache.external_paths.get(&did) {
+            Some(&(ref fqp, shortty)) => {
+                (fqp, shortty, match cache.extern_locations[&did.krate] {
+                    (.., render::Remote(ref s)) => s.to_string(),
+                    (.., render::Local) => repeat("../").take(loc.len()).collect(),
+                    (.., render::Unknown) => return None,
+                })
+            }
+            None => return None,
         }
     };
     for component in &fqp[..fqp.len() - 1] {
@@ -434,10 +460,32 @@ pub fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
 fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
                  print_all: bool, use_absolute: bool) -> fmt::Result {
     let last = path.segments.last().unwrap();
+    let rel_root = match &*path.segments[0].name {
+        "self" => Some("./".to_string()),
+        _ => None,
+    };
 
     if print_all {
-        for seg in &path.segments[..path.segments.len() - 1] {
-            write!(w, "{}::", seg.name)?;
+        let amt = path.segments.len() - 1;
+        match rel_root {
+            Some(mut root) => {
+                for seg in &path.segments[..amt] {
+                    if "super" == seg.name || "self" == seg.name || w.alternate() {
+                        write!(w, "{}::", seg.name)?;
+                    } else {
+                        root.push_str(&seg.name);
+                        root.push_str("/");
+                        write!(w, "<a class=\"mod\" href=\"{}index.html\">{}</a>::",
+                               root,
+                               seg.name)?;
+                    }
+                }
+            }
+            None => {
+                for seg in &path.segments[..amt] {
+                    write!(w, "{}::", seg.name)?;
+                }
+            }
         }
     }
     if w.alternate() {
@@ -553,15 +601,15 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt:
         clean::Primitive(prim) => primitive_link(f, prim, prim.as_str()),
         clean::BareFunction(ref decl) => {
             if f.alternate() {
-                write!(f, "{}{:#}fn{:#}{:#}",
+                write!(f, "{}{}fn{:#}{:#}",
                        UnsafetySpace(decl.unsafety),
                        AbiSpace(decl.abi),
-                       CommaSep(&decl.generic_params),
+                       decl.generics,
                        decl.decl)
             } else {
                 write!(f, "{}{}", UnsafetySpace(decl.unsafety), AbiSpace(decl.abi))?;
                 primitive_link(f, PrimitiveType::Fn, "fn")?;
-                write!(f, "{}{}", CommaSep(&decl.generic_params), decl.decl)
+                write!(f, "{}{}", decl.generics, decl.decl)
             }
         }
         clean::Tuple(ref typs) => {
@@ -590,7 +638,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt:
             fmt::Display::fmt(t, f)?;
             primitive_link(f, PrimitiveType::Array, &format!("; {}]", n))
         }
-        clean::Never => primitive_link(f, PrimitiveType::Never, "!"),
+        clean::Never => f.write_str("!"),
         clean::RawPointer(m, ref t) => {
             match **t {
                 clean::Generic(_) | clean::ResolvedPath {is_generic: true, ..} => {

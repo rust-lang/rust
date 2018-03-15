@@ -13,18 +13,17 @@ use back::write::create_target_machine;
 use llvm;
 use rustc::session::Session;
 use rustc::session::config::PrintRequest;
-use libc::c_int;
+use libc::{c_int, c_char};
 use std::ffi::CString;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Once;
 
-static POISONED: AtomicBool = AtomicBool::new(false);
-static INIT: Once = Once::new();
-
-pub(crate) fn init(sess: &Session) {
+pub fn init(sess: &Session) {
     unsafe {
         // Before we touch LLVM, make sure that multithreading is enabled.
+        static POISONED: AtomicBool = AtomicBool::new(false);
+        static INIT: Once = Once::new();
         INIT.call_once(|| {
             if llvm::LLVMStartMultithreaded() != 1 {
                 // use an extra bool to make sure that all future usage of LLVM
@@ -38,13 +37,6 @@ pub(crate) fn init(sess: &Session) {
         if POISONED.load(Ordering::SeqCst) {
             bug!("couldn't enable multi-threaded LLVM");
         }
-    }
-}
-
-fn require_inited() {
-    INIT.call_once(|| bug!("llvm is not initialized"));
-    if POISONED.load(Ordering::SeqCst) {
-        bug!("couldn't enable multi-threaded LLVM");
     }
 }
 
@@ -75,78 +67,49 @@ unsafe fn configure_llvm(sess: &Session) {
                                  llvm_args.as_ptr());
 }
 
-// WARNING: the features after applying `to_llvm_feature` must be known
-// to LLVM or the feature detection code will walk past the end of the feature
-// array, leading to crashes.
+// WARNING: the features must be known to LLVM or the feature
+// detection code will walk past the end of the feature array,
+// leading to crashes.
 
-const ARM_WHITELIST: &'static [&'static str] = &["neon", "v7", "vfp2", "vfp3", "vfp4"];
+const ARM_WHITELIST: &'static [&'static str] = &["neon\0", "vfp2\0", "vfp3\0", "vfp4\0"];
 
-const AARCH64_WHITELIST: &'static [&'static str] = &["fp", "neon", "sve", "crc", "crypto",
-                                                     "ras", "lse", "rdm", "fp16", "rcpc",
-                                                     "dotprod", "v8.1a", "v8.2a", "v8.3a"];
+const AARCH64_WHITELIST: &'static [&'static str] = &["neon\0"];
 
-const X86_WHITELIST: &'static [&'static str] = &["aes", "avx", "avx2", "avx512bw",
-                                                 "avx512cd", "avx512dq", "avx512er",
-                                                 "avx512f", "avx512ifma", "avx512pf",
-                                                 "avx512vbmi", "avx512vl", "avx512vpopcntdq",
-                                                 "bmi1", "bmi2", "fma", "fxsr",
-                                                 "lzcnt", "mmx", "pclmulqdq",
-                                                 "popcnt", "rdrand", "rdseed",
-                                                 "sse", "sse2", "sse3", "sse4.1",
-                                                 "sse4.2", "sse4a", "ssse3",
-                                                 "tbm", "xsave", "xsavec",
-                                                 "xsaveopt", "xsaves"];
+const X86_WHITELIST: &'static [&'static str] = &["avx\0", "avx2\0", "bmi\0", "bmi2\0", "sse\0",
+                                                 "sse2\0", "sse3\0", "sse4.1\0", "sse4.2\0",
+                                                 "ssse3\0", "tbm\0", "lzcnt\0", "popcnt\0",
+                                                 "sse4a\0", "rdrnd\0", "rdseed\0", "fma\0"];
 
-const HEXAGON_WHITELIST: &'static [&'static str] = &["hvx", "hvx-double"];
+const HEXAGON_WHITELIST: &'static [&'static str] = &["hvx\0", "hvx-double\0"];
 
-const POWERPC_WHITELIST: &'static [&'static str] = &["altivec",
-                                                     "power8-altivec", "power9-altivec",
-                                                     "power8-vector", "power9-vector",
-                                                     "vsx"];
-
-const MIPS_WHITELIST: &'static [&'static str] = &["msa"];
-
-pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> &'a str {
-    let arch = if sess.target.target.arch == "x86_64" {
-        "x86"
-    } else {
-        &*sess.target.target.arch
-    };
-    match (arch, s) {
-        ("x86", "pclmulqdq") => "pclmul",
-        ("x86", "rdrand") => "rdrnd",
-        ("x86", "bmi1") => "bmi",
-        ("aarch64", "fp16") => "fullfp16",
-        (_, s) => s,
-    }
-}
+const POWERPC_WHITELIST: &'static [&'static str] = &["altivec\0",
+                                                     "power8-altivec\0", "power9-altivec\0",
+                                                     "power8-vector\0", "power9-vector\0",
+                                                     "vsx\0"];
 
 pub fn target_features(sess: &Session) -> Vec<Symbol> {
     let target_machine = create_target_machine(sess);
-    target_feature_whitelist(sess)
-        .iter()
-        .filter(|feature| {
-            let llvm_feature = to_llvm_feature(sess, feature);
-            let cstr = CString::new(llvm_feature).unwrap();
-            unsafe { llvm::LLVMRustHasFeature(target_machine, cstr.as_ptr()) }
-        })
-        .map(|feature| Symbol::intern(feature)).collect()
-}
 
-pub fn target_feature_whitelist(sess: &Session) -> &'static [&'static str] {
-    match &*sess.target.target.arch {
+    let whitelist = match &*sess.target.target.arch {
         "arm" => ARM_WHITELIST,
         "aarch64" => AARCH64_WHITELIST,
         "x86" | "x86_64" => X86_WHITELIST,
         "hexagon" => HEXAGON_WHITELIST,
-        "mips" | "mips64" => MIPS_WHITELIST,
         "powerpc" | "powerpc64" => POWERPC_WHITELIST,
         _ => &[],
+    };
+
+    let mut features = Vec::new();
+    for feat in whitelist {
+        assert_eq!(feat.chars().last(), Some('\0'));
+        if unsafe { llvm::LLVMRustHasFeature(target_machine, feat.as_ptr() as *const c_char) } {
+            features.push(Symbol::intern(&feat[..feat.len() - 1]));
+        }
     }
+    features
 }
 
 pub fn print_version() {
-    // Can be called without initializing LLVM
     unsafe {
         println!("LLVM version: {}.{}",
                  llvm::LLVMRustVersionMajor(), llvm::LLVMRustVersionMinor());
@@ -154,12 +117,10 @@ pub fn print_version() {
 }
 
 pub fn print_passes() {
-    // Can be called without initializing LLVM
     unsafe { llvm::LLVMRustPrintPasses(); }
 }
 
-pub(crate) fn print(req: PrintRequest, sess: &Session) {
-    require_inited();
+pub fn print(req: PrintRequest, sess: &Session) {
     let tm = create_target_machine(sess);
     unsafe {
         match req {
@@ -168,4 +129,8 @@ pub(crate) fn print(req: PrintRequest, sess: &Session) {
             _ => bug!("rustc_trans can't handle print request: {:?}", req),
         }
     }
+}
+
+pub fn enable_llvm_debug() {
+    unsafe { llvm::LLVMRustSetDebug(1); }
 }

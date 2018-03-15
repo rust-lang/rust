@@ -22,6 +22,9 @@
 #![feature(i128)]
 #![feature(i128_type)]
 
+#![feature(const_min_value)]
+#![feature(const_max_value)]
+
 extern crate rustc_apfloat;
 
 extern crate syntax;
@@ -30,12 +33,12 @@ extern crate serialize as rustc_serialize; // used by deriving
 
 mod float;
 mod int;
-mod usize;
-mod isize;
+mod us;
+mod is;
 mod err;
 
 pub use float::*;
 pub use int::*;
-pub use usize::*;
-pub use isize::*;
+pub use us::*;
+pub use is::*;
 pub use err::{ConstMathErr, Op};

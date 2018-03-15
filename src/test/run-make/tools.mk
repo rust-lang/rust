@@ -16,7 +16,6 @@ RUSTDOC := $(RUSTDOC) --linker $(RUSTC_LINKER) -Z unstable-options
 endif
 #CC := $(CC) -L $(TMPDIR)
 HTMLDOCCK := $(PYTHON) $(S)/src/etc/htmldocck.py
-CGREP := "$(S)/src/etc/cat-and-grep.sh"
 
 # This is the name of the binary we will generate and run; use this
 # e.g. for `$(CC) -o $(RUN_BINFILE)`.
@@ -93,7 +92,7 @@ ifeq ($(UNAME),SunOS)
 	EXTRACFLAGS := -lm -lpthread -lposix4 -lsocket -lresolv
 else
 ifeq ($(UNAME),OpenBSD)
-	EXTRACFLAGS := -lm -lpthread -lc++abi
+	EXTRACFLAGS := -lm -lpthread
 	RUSTC := $(RUSTC) -C linker="$(word 1,$(CC:ccache=))"
 else
 	EXTRACFLAGS := -lm -lrt -ldl -lpthread

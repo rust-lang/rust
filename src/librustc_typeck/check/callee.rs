@@ -8,15 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::{Expectation, FnCtxt, Needs, TupleArgumentsFlag};
+use super::{Expectation, FnCtxt, TupleArgumentsFlag};
 use super::autoderef::Autoderef;
 use super::method::MethodCallee;
 
 use hir::def::Def;
 use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::{infer, traits};
-use rustc::ty::{self, TyCtxt, TypeFoldable, Ty};
-use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability};
+use rustc::ty::{self, TyCtxt, TypeFoldable, LvaluePreference, Ty};
+use rustc::ty::subst::Subst;
+use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
 use syntax::abi;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
@@ -96,7 +97,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // If the callee is a bare function or a closure, then we're all set.
         match adjusted_ty.sty {
             ty::TyFnDef(..) | ty::TyFnPtr(_) => {
-                let adjustments = autoderef.adjust_steps(Needs::None);
+                let adjustments = autoderef.adjust_steps(LvaluePreference::NoPreference);
                 self.apply_adjustments(callee_expr, adjustments);
                 return Some(CallStep::Builtin(adjusted_ty));
             }
@@ -107,13 +108,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // Check whether this is a call to a closure where we
                 // haven't yet decided on whether the closure is fn vs
                 // fnmut vs fnonce. If so, we have to defer further processing.
-                if self.closure_kind(def_id, substs).is_none() {
-                    let closure_ty = self.closure_sig(def_id, substs);
+                if self.closure_kind(def_id).is_none() {
+                    let closure_ty = self.fn_sig(def_id).subst(self.tcx, substs.substs);
                     let fn_sig = self.replace_late_bound_regions_with_fresh_var(call_expr.span,
                                                                    infer::FnCall,
                                                                    &closure_ty)
                         .0;
-                    let adjustments = autoderef.adjust_steps(Needs::None);
+                    let adjustments = autoderef.adjust_steps(LvaluePreference::NoPreference);
                     self.record_deferred_call_resolution(def_id, DeferredCallResolution {
                         call_expr,
                         callee_expr,
@@ -121,7 +122,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         adjustments,
                         fn_sig,
                         closure_def_id: def_id,
-                        closure_substs: substs,
                     });
                     return Some(CallStep::DeferredClosure(fn_sig));
                 }
@@ -143,7 +143,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
 
         self.try_overloaded_call_traits(call_expr, adjusted_ty).map(|(autoref, method)| {
-            let mut adjustments = autoderef.adjust_steps(Needs::None);
+            let mut adjustments = autoderef.adjust_steps(LvaluePreference::NoPreference);
             adjustments.extend(autoref);
             self.apply_adjustments(callee_expr, adjustments);
             CallStep::Overloaded(method)
@@ -176,17 +176,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let mut autoref = None;
                     if borrow {
                         if let ty::TyRef(region, mt) = method.sig.inputs()[0].sty {
-                            let mutbl = match mt.mutbl {
-                                hir::MutImmutable => AutoBorrowMutability::Immutable,
-                                hir::MutMutable => AutoBorrowMutability::Mutable {
-                                    // For initial two-phase borrow
-                                    // deployment, conservatively omit
-                                    // overloaded function call ops.
-                                    allow_two_phase_borrow: false,
-                                }
-                            };
                             autoref = Some(Adjustment {
-                                kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
+                                kind: Adjust::Borrow(AutoBorrow::Ref(region, mt.mutbl)),
                                 target: method.sig.inputs()[0]
                             });
                         }
@@ -219,25 +210,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         }
                     }
                 }
-
-                let mut err = type_error_struct!(
-                    self.tcx.sess,
-                    call_expr.span,
-                    callee_ty,
-                    E0618,
-                    "expected function, found {}",
-                    match unit_variant {
-                        Some(ref path) => format!("enum variant `{}`", path),
-                        None => format!("`{}`", callee_ty),
-                    });
-
-                err.span_label(call_expr.span, "not a function");
-
-                if let Some(ref path) = unit_variant {
-                    err.span_suggestion(call_expr.span,
-                                        &format!("`{}` is a unit variant, you need to write it \
-                                                  without the parenthesis", path),
-                                        path.to_string());
+                let mut err = type_error_struct!(self.tcx.sess, call_expr.span, callee_ty, E0618,
+                                                 "expected function, found `{}`",
+                                                 if let Some(ref path) = unit_variant {
+                                                     path.to_string()
+                                                 } else {
+                                                     callee_ty.to_string()
+                                                 });
+                if let Some(path) = unit_variant {
+                    err.help(&format!("did you mean to write `{}`?", path));
                 }
 
                 if let hir::ExprCall(ref expr, _) = call_expr.node {
@@ -254,11 +235,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         _ => self.tcx.hir.span_if_local(def.def_id())
                     };
                     if let Some(span) = def_span {
-                        let name = match unit_variant {
-                            Some(path) => path,
-                            None => callee_ty.to_string(),
-                        };
-                        err.span_label(span, format!("`{}` defined here", name));
+                        err.span_note(span, "defined here");
                     }
                 }
 
@@ -359,7 +336,6 @@ pub struct DeferredCallResolution<'gcx: 'tcx, 'tcx> {
     adjustments: Vec<Adjustment<'tcx>>,
     fn_sig: ty::FnSig<'tcx>,
     closure_def_id: DefId,
-    closure_substs: ty::ClosureSubsts<'tcx>,
 }
 
 impl<'a, 'gcx, 'tcx> DeferredCallResolution<'gcx, 'tcx> {
@@ -368,7 +344,7 @@ impl<'a, 'gcx, 'tcx> DeferredCallResolution<'gcx, 'tcx> {
 
         // we should not be invoked until the closure kind has been
         // determined by upvar inference
-        assert!(fcx.closure_kind(self.closure_def_id, self.closure_substs).is_some());
+        assert!(fcx.closure_kind(self.closure_def_id).is_some());
 
         // We may now know enough to figure out fn vs fnmut etc.
         match fcx.try_overloaded_call_traits(self.call_expr,

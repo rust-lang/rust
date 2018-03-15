@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use deriving::path_std;
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
@@ -25,13 +24,13 @@ pub fn expand_deriving_debug(cx: &mut ExtCtxt,
                              item: &Annotatable,
                              push: &mut FnMut(Annotatable)) {
     // &mut ::std::fmt::Formatter
-    let fmtr = Ptr(Box::new(Literal(path_std!(cx, fmt::Formatter))),
+    let fmtr = Ptr(Box::new(Literal(path_std!(cx, core::fmt::Formatter))),
                    Borrowed(None, ast::Mutability::Mutable));
 
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
-        path: path_std!(cx, fmt::Debug),
+        path: path_std!(cx, core::fmt::Debug),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
@@ -41,7 +40,7 @@ pub fn expand_deriving_debug(cx: &mut ExtCtxt,
                           generics: LifetimeBounds::empty(),
                           explicit_self: borrowed_explicit_self(),
                           args: vec![fmtr],
-                          ret_ty: Literal(path_std!(cx, fmt::Result)),
+                          ret_ty: Literal(path_std!(cx, core::fmt::Result)),
                           attributes: Vec::new(),
                           is_unsafe: false,
                           unify_fieldless_variants: false,

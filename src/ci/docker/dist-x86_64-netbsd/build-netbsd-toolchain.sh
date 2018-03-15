@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
@@ -52,9 +52,9 @@ curl $URL/2017-03-17-netbsd-comp.tgz | \
 cd usr/src
 
 # The options, in order, do the following
-# * this is an unprivileged build
+# * this is an unpriviledged build
 # * output to a predictable location
-# * disable various unneeded stuff
+# * disable various uneeded stuff
 MKUNPRIVED=yes TOOLDIR=/x-tools/x86_64-unknown-netbsd \
 MKSHARE=no MKDOC=no MKHTML=no MKINFO=no MKKMOD=no MKLINT=no MKMAN=no MKNLS=no MKPROFILE=no \
 hide_output ./build.sh -j10 -m amd64 tools
@@ -64,12 +64,12 @@ cd ../..
 rm -rf usr
 
 cat > /x-tools/x86_64-unknown-netbsd/bin/x86_64--netbsd-gcc-sysroot <<'EOF'
-#!/usr/bin/env bash
+#!/bin/bash
 exec /x-tools/x86_64-unknown-netbsd/bin/x86_64--netbsd-gcc --sysroot=/x-tools/x86_64-unknown-netbsd/sysroot "$@"
 EOF
 
 cat > /x-tools/x86_64-unknown-netbsd/bin/x86_64--netbsd-g++-sysroot <<'EOF'
-#!/usr/bin/env bash
+#!/bin/bash
 exec /x-tools/x86_64-unknown-netbsd/bin/x86_64--netbsd-g++ --sysroot=/x-tools/x86_64-unknown-netbsd/sysroot "$@"
 EOF
 

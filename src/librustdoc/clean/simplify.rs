@@ -38,7 +38,6 @@ pub fn where_clauses(cx: &DocContext, clauses: Vec<WP>) -> Vec<WP> {
     let mut lifetimes = Vec::new();
     let mut equalities = Vec::new();
     let mut tybounds = Vec::new();
-
     for clause in clauses {
         match clause {
             WP::BoundPredicate { ty, bounds } => {
@@ -106,9 +105,7 @@ pub fn where_clauses(cx: &DocContext, clauses: Vec<WP>) -> Vec<WP> {
                 }
                 PP::Parenthesized { ref mut output, .. } => {
                     assert!(output.is_none());
-                    if *rhs != clean::Type::Tuple(Vec::new()) {
-                        *output = Some(rhs.clone());
-                    }
+                    *output = Some(rhs.clone());
                 }
             };
             true

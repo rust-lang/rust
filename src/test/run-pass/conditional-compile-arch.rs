@@ -28,9 +28,6 @@ pub fn main() { }
 #[cfg(target_arch = "mips64")]
 pub fn main() { }
 
-#[cfg(target_arch = "powerpc")]
-pub fn main() { }
-
 #[cfg(target_arch = "powerpc64")]
 pub fn main() { }
 

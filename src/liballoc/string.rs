@@ -364,7 +364,7 @@ impl String {
     ///
     /// Given that the `String` is empty, this will not allocate any initial
     /// buffer. While that means that this initial operation is very
-    /// inexpensive, it may cause excessive allocation later when you add
+    /// inexpensive, but may cause excessive allocation later, when you add
     /// data. If you have an idea of how much data the `String` will hold,
     /// consider the [`with_capacity`] method to prevent excessive
     /// re-allocation.
@@ -596,7 +596,7 @@ impl String {
     /// Decode a UTF-16 encoded vector `v` into a `String`, returning [`Err`]
     /// if `v` contains any invalid data.
     ///
-    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
+    /// [`Err`]: ../../std/result/enum.Result.htlm#variant.Err
     ///
     /// # Examples
     ///
@@ -1044,7 +1044,10 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pop(&mut self) -> Option<char> {
-        let ch = self.chars().rev().next()?;
+        let ch = match self.chars().rev().next() {
+            Some(ch) => ch,
+            None => return None,
+        };
         let newlen = self.len() - ch.len_utf8();
         unsafe {
             self.vec.set_len(newlen);
@@ -2034,7 +2037,6 @@ pub trait ToString {
     ///
     /// assert_eq!(five, i.to_string());
     /// ```
-    #[rustc_conversion_suggestion]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn to_string(&self) -> String;
 }
@@ -2254,5 +2256,5 @@ impl<'a> DoubleEndedIterator for Drain<'a> {
     }
 }
 
-#[stable(feature = "fused", since = "1.26.0")]
+#[unstable(feature = "fused", issue = "35602")]
 impl<'a> FusedIterator for Drain<'a> {}

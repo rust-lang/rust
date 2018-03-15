@@ -17,12 +17,11 @@ use sys::cvt;
 use sys_common::mul_div_u64;
 use time::Duration;
 use convert::TryInto;
-use core::hash::{Hash, Hasher};
 
 const NANOS_PER_SEC: u64 = 1_000_000_000;
 const INTERVALS_PER_SEC: u64 = NANOS_PER_SEC / 100;
 
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
 pub struct Instant {
     t: c::LARGE_INTEGER,
 }
@@ -171,12 +170,6 @@ impl fmt::Debug for SystemTime {
 impl From<c::FILETIME> for SystemTime {
     fn from(t: c::FILETIME) -> SystemTime {
         SystemTime { t: t }
-    }
-}
-
-impl Hash for SystemTime {
-    fn hash<H : Hasher>(&self, state: &mut H) {
-        self.intervals().hash(state)
     }
 }
 

@@ -47,6 +47,7 @@
 use serialize::json::{Json, ToJson};
 use std::collections::BTreeMap;
 use std::default::Default;
+use std::io::prelude::*;
 use syntax::abi::{Abi, lookup as lookup_abi};
 
 use {LinkerFlavor, PanicStrategy, RelroLevel};
@@ -56,8 +57,8 @@ mod apple_base;
 mod apple_ios_base;
 mod arm_base;
 mod bitrig_base;
-mod cloudabi_base;
 mod dragonfly_base;
+mod emscripten_base;
 mod freebsd_base;
 mod haiku_base;
 mod linux_base;
@@ -142,31 +143,26 @@ supported_targets! {
     ("mips64el-unknown-linux-gnuabi64", mips64el_unknown_linux_gnuabi64),
     ("mipsel-unknown-linux-gnu", mipsel_unknown_linux_gnu),
     ("powerpc-unknown-linux-gnu", powerpc_unknown_linux_gnu),
-    ("powerpc-unknown-linux-gnuspe", powerpc_unknown_linux_gnuspe),
     ("powerpc64-unknown-linux-gnu", powerpc64_unknown_linux_gnu),
     ("powerpc64le-unknown-linux-gnu", powerpc64le_unknown_linux_gnu),
     ("s390x-unknown-linux-gnu", s390x_unknown_linux_gnu),
-    ("sparc-unknown-linux-gnu", sparc_unknown_linux_gnu),
-    ("sparc64-unknown-linux-gnu", sparc64_unknown_linux_gnu),
     ("arm-unknown-linux-gnueabi", arm_unknown_linux_gnueabi),
     ("arm-unknown-linux-gnueabihf", arm_unknown_linux_gnueabihf),
     ("arm-unknown-linux-musleabi", arm_unknown_linux_musleabi),
     ("arm-unknown-linux-musleabihf", arm_unknown_linux_musleabihf),
-    ("armv4t-unknown-linux-gnueabi", armv4t_unknown_linux_gnueabi),
     ("armv5te-unknown-linux-gnueabi", armv5te_unknown_linux_gnueabi),
     ("armv7-unknown-linux-gnueabihf", armv7_unknown_linux_gnueabihf),
     ("armv7-unknown-linux-musleabihf", armv7_unknown_linux_musleabihf),
     ("aarch64-unknown-linux-gnu", aarch64_unknown_linux_gnu),
-
     ("aarch64-unknown-linux-musl", aarch64_unknown_linux_musl),
     ("x86_64-unknown-linux-musl", x86_64_unknown_linux_musl),
     ("i686-unknown-linux-musl", i686_unknown_linux_musl),
-    ("i586-unknown-linux-musl", i586_unknown_linux_musl),
     ("mips-unknown-linux-musl", mips_unknown_linux_musl),
     ("mipsel-unknown-linux-musl", mipsel_unknown_linux_musl),
-
     ("mips-unknown-linux-uclibc", mips_unknown_linux_uclibc),
     ("mipsel-unknown-linux-uclibc", mipsel_unknown_linux_uclibc),
+
+    ("sparc64-unknown-linux-gnu", sparc64_unknown_linux_gnu),
 
     ("i686-linux-android", i686_linux_android),
     ("x86_64-linux-android", x86_64_linux_android),
@@ -187,7 +183,6 @@ supported_targets! {
     ("x86_64-unknown-openbsd", x86_64_unknown_openbsd),
 
     ("i686-unknown-netbsd", i686_unknown_netbsd),
-    ("powerpc-unknown-netbsd", powerpc_unknown_netbsd),
     ("sparc64-unknown-netbsd", sparc64_unknown_netbsd),
     ("x86_64-unknown-netbsd", x86_64_unknown_netbsd),
     ("x86_64-rumprun-netbsd", x86_64_rumprun_netbsd),
@@ -223,7 +218,6 @@ supported_targets! {
 
     ("asmjs-unknown-emscripten", asmjs_unknown_emscripten),
     ("wasm32-unknown-emscripten", wasm32_unknown_emscripten),
-    ("wasm32-unknown-unknown", wasm32_unknown_unknown),
     ("wasm32-experimental-emscripten", wasm32_experimental_emscripten),
 
     ("thumbv6m-none-eabi", thumbv6m_none_eabi),
@@ -232,11 +226,6 @@ supported_targets! {
     ("thumbv7em-none-eabihf", thumbv7em_none_eabihf),
 
     ("msp430-none-elf", msp430_none_elf),
-
-    ("aarch64-unknown-cloudabi", aarch64_unknown_cloudabi),
-    ("armv7-unknown-cloudabi-eabihf", armv7_unknown_cloudabi_eabihf),
-    ("i686-unknown-cloudabi", i686_unknown_cloudabi),
-    ("x86_64-unknown-cloudabi", x86_64_unknown_cloudabi),
 }
 
 /// Everything `rustc` knows about how to compile for a specific target.
@@ -278,8 +267,8 @@ pub struct TargetOptions {
     /// Whether the target is built-in or loaded from a custom target specification.
     pub is_builtin: bool,
 
-    /// Linker to invoke
-    pub linker: Option<String>,
+    /// Linker to invoke. Defaults to "cc".
+    pub linker: String,
 
     /// Linker arguments that are unconditionally passed *before* any
     /// user-defined libraries.
@@ -314,16 +303,14 @@ pub struct TargetOptions {
     pub features: String,
     /// Whether dynamic linking is available on this target. Defaults to false.
     pub dynamic_linking: bool,
-    /// If dynamic linking is available, whether only cdylibs are supported.
-    pub only_cdylib: bool,
     /// Whether executables are available on this target. iOS, for example, only allows static
     /// libraries. Defaults to false.
     pub executables: bool,
     /// Relocation model to use in object file. Corresponds to `llc
     /// -relocation-model=$relocation_model`. Defaults to "pic".
     pub relocation_model: String,
-    /// Code model to use. Corresponds to `llc -code-model=$code_model`.
-    pub code_model: Option<String>,
+    /// Code model to use. Corresponds to `llc -code-model=$code_model`. Defaults to "default".
+    pub code_model: String,
     /// TLS model to use. Options are "global-dynamic" (default), "local-dynamic", "initial-exec"
     /// and "local-exec". This is similar to the -ftls-model option in GCC/Clang.
     pub tls_model: String,
@@ -345,8 +332,9 @@ pub struct TargetOptions {
     pub staticlib_suffix: String,
     /// OS family to use for conditional compilation. Valid options: "unix", "windows".
     pub target_family: Option<String>,
-    /// Whether the target toolchain's ABI supports returning small structs as an integer.
-    pub abi_return_struct_as_int: bool,
+    /// Whether the target toolchain is like OpenBSD's.
+    /// Only useful for compiling against OpenBSD, for configuring abi when returning a struct.
+    pub is_like_openbsd: bool,
     /// Whether the target toolchain is like macOS's. Only useful for compiling against iOS/macOS,
     /// in particular running dsymutil and some other stuff like `-dead_strip`. Defaults to false.
     pub is_like_osx: bool,
@@ -369,7 +357,7 @@ pub struct TargetOptions {
     /// Whether the linker support GNU-like arguments such as -O. Defaults to false.
     pub linker_is_gnu: bool,
     /// The MinGW toolchain has a known issue that prevents it from correctly
-    /// handling COFF object files with more than 2<sup>15</sup> sections. Since each weak
+    /// handling COFF object files with more than 2^15 sections. Since each weak
     /// symbol needs its own COMDAT section, weak linkage implies a large
     /// number sections that easily exceeds the given limit for larger
     /// codebases. Consequently we want a way to disallow weak linkage on some
@@ -447,32 +435,6 @@ pub struct TargetOptions {
 
     /// Default number of codegen units to use in debug mode
     pub default_codegen_units: Option<u64>,
-
-    /// Whether to generate trap instructions in places where optimization would
-    /// otherwise produce control flow that falls through into unrelated memory.
-    pub trap_unreachable: bool,
-
-    /// This target requires everything to be compiled with LTO to emit a final
-    /// executable, aka there is no native linker for this target.
-    pub requires_lto: bool,
-
-    /// This target has no support for threads.
-    pub singlethread: bool,
-
-    /// Whether library functions call lowering/optimization is disabled in LLVM
-    /// for this target unconditionally.
-    pub no_builtins: bool,
-
-    /// Whether to lower 128-bit operations to compiler_builtins calls.  Use if
-    /// your backend only supports 64-bit and smaller math.
-    pub i128_lowering: bool,
-
-    /// The codegen backend to use for this target, typically "llvm"
-    pub codegen_backend: String,
-
-    /// The default visibility for symbols in this target should be "hidden"
-    /// rather than "default"
-    pub default_hidden_visibility: bool,
 }
 
 impl Default for TargetOptions {
@@ -481,17 +443,16 @@ impl Default for TargetOptions {
     fn default() -> TargetOptions {
         TargetOptions {
             is_builtin: false,
-            linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.to_string()),
+            linker: option_env!("CFG_DEFAULT_LINKER").unwrap_or("cc").to_string(),
             pre_link_args: LinkArgs::new(),
             post_link_args: LinkArgs::new(),
             asm_args: Vec::new(),
             cpu: "generic".to_string(),
             features: "".to_string(),
             dynamic_linking: false,
-            only_cdylib: false,
             executables: false,
             relocation_model: "pic".to_string(),
-            code_model: None,
+            code_model: "default".to_string(),
             tls_model: "global-dynamic".to_string(),
             disable_redzone: false,
             eliminate_frame_pointer: true,
@@ -502,7 +463,7 @@ impl Default for TargetOptions {
             staticlib_prefix: "lib".to_string(),
             staticlib_suffix: ".a".to_string(),
             target_family: None,
-            abi_return_struct_as_int: false,
+            is_like_openbsd: false,
             is_like_osx: false,
             is_like_solaris: false,
             is_like_windows: false,
@@ -537,13 +498,6 @@ impl Default for TargetOptions {
             stack_probes: false,
             min_global_align: None,
             default_codegen_units: None,
-            trap_unreachable: true,
-            requires_lto: false,
-            singlethread: false,
-            no_builtins: false,
-            i128_lowering: false,
-            codegen_backend: "llvm".to_string(),
-            default_hidden_visibility: false,
         }
     }
 }
@@ -731,7 +685,7 @@ impl Target {
         }
 
         key!(is_builtin, bool);
-        key!(linker, optional);
+        key!(linker);
         key!(pre_link_args, link_args);
         key!(pre_link_objects_exe, list);
         key!(pre_link_objects_dll, list);
@@ -743,10 +697,9 @@ impl Target {
         key!(cpu);
         key!(features);
         key!(dynamic_linking, bool);
-        key!(only_cdylib, bool);
         key!(executables, bool);
         key!(relocation_model);
-        key!(code_model, optional);
+        key!(code_model);
         key!(tls_model);
         key!(disable_redzone, bool);
         key!(eliminate_frame_pointer, bool);
@@ -757,7 +710,7 @@ impl Target {
         key!(staticlib_prefix);
         key!(staticlib_suffix);
         key!(target_family, optional);
-        key!(abi_return_struct_as_int, bool);
+        key!(is_like_openbsd, bool);
         key!(is_like_osx, bool);
         key!(is_like_solaris, bool);
         key!(is_like_windows, bool);
@@ -786,12 +739,6 @@ impl Target {
         key!(stack_probes, bool);
         key!(min_global_align, Option<u64>);
         key!(default_codegen_units, Option<u64>);
-        key!(trap_unreachable, bool);
-        key!(requires_lto, bool);
-        key!(singlethread, bool);
-        key!(no_builtins, bool);
-        key!(codegen_backend);
-        key!(default_hidden_visibility, bool);
 
         if let Some(array) = obj.find("abi-blacklist").and_then(Json::as_array) {
             for name in array.iter().filter_map(|abi| abi.as_string()) {
@@ -822,12 +769,14 @@ impl Target {
     pub fn search(target: &str) -> Result<Target, String> {
         use std::env;
         use std::ffi::OsString;
-        use std::fs;
+        use std::fs::File;
         use std::path::{Path, PathBuf};
         use serialize::json;
 
         fn load_file(path: &Path) -> Result<Target, String> {
-            let contents = fs::read(path).map_err(|e| e.to_string())?;
+            let mut f = File::open(path).map_err(|e| e.to_string())?;
+            let mut contents = Vec::new();
+            f.read_to_end(&mut contents).map_err(|e| e.to_string())?;
             let obj = json::from_reader(&mut &contents[..])
                            .map_err(|e| e.to_string())?;
             Target::from_json(obj)
@@ -941,7 +890,6 @@ impl ToJson for Target {
         target_option_val!(cpu);
         target_option_val!(features);
         target_option_val!(dynamic_linking);
-        target_option_val!(only_cdylib);
         target_option_val!(executables);
         target_option_val!(relocation_model);
         target_option_val!(code_model);
@@ -955,7 +903,7 @@ impl ToJson for Target {
         target_option_val!(staticlib_prefix);
         target_option_val!(staticlib_suffix);
         target_option_val!(target_family);
-        target_option_val!(abi_return_struct_as_int);
+        target_option_val!(is_like_openbsd);
         target_option_val!(is_like_osx);
         target_option_val!(is_like_solaris);
         target_option_val!(is_like_windows);
@@ -984,12 +932,6 @@ impl ToJson for Target {
         target_option_val!(stack_probes);
         target_option_val!(min_global_align);
         target_option_val!(default_codegen_units);
-        target_option_val!(trap_unreachable);
-        target_option_val!(requires_lto);
-        target_option_val!(singlethread);
-        target_option_val!(no_builtins);
-        target_option_val!(codegen_backend);
-        target_option_val!(default_hidden_visibility);
 
         if default.abi_blacklist != self.options.abi_blacklist {
             d.insert("abi-blacklist".to_string(), self.options.abi_blacklist.iter()

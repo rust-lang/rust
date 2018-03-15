@@ -24,6 +24,7 @@ endif
 
 all:
 ifeq ($(ASAN_SUPPORT),1)
-	$(RUSTC) -g -Z sanitizer=address -Z print-link-args $(EXTRA_RUSTFLAG) overflow.rs | $(CGREP) librustc_asan
-	$(TMPDIR)/overflow 2>&1 | $(CGREP) stack-buffer-overflow
+	$(RUSTC) -g -Z sanitizer=address -Z print-link-args $(EXTRA_RUSTFLAG) overflow.rs | grep -q librustc_asan
+	$(TMPDIR)/overflow 2>&1 | tee $(LOG)
+	grep -q stack-buffer-overflow $(LOG)
 endif

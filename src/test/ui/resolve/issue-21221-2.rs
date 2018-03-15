@@ -26,4 +26,5 @@ pub mod baz {
 
 struct Foo;
 impl T for Foo { }
-//~^ ERROR cannot find trait `T`
+//~^ ERROR unresolved trait `T`
+//~| HELP you can import it into scope: `use foo::bar::T;`

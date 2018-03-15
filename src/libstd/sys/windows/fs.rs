@@ -38,9 +38,8 @@ pub struct FileAttr {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct FileType {
-    attributes: c::DWORD,
-    reparse_tag: c::DWORD,
+pub enum FileType {
+    Dir, File, SymlinkFile, SymlinkDir, ReparsePoint, MountPoint,
 }
 
 pub struct ReadDir {
@@ -517,34 +516,30 @@ impl FilePermissions {
 
 impl FileType {
     fn new(attrs: c::DWORD, reparse_tag: c::DWORD) -> FileType {
-        FileType {
-            attributes: attrs,
-            reparse_tag: reparse_tag,
+        match (attrs & c::FILE_ATTRIBUTE_DIRECTORY != 0,
+               attrs & c::FILE_ATTRIBUTE_REPARSE_POINT != 0,
+               reparse_tag) {
+            (false, false, _) => FileType::File,
+            (true, false, _) => FileType::Dir,
+            (false, true, c::IO_REPARSE_TAG_SYMLINK) => FileType::SymlinkFile,
+            (true, true, c::IO_REPARSE_TAG_SYMLINK) => FileType::SymlinkDir,
+            (true, true, c::IO_REPARSE_TAG_MOUNT_POINT) => FileType::MountPoint,
+            (_, true, _) => FileType::ReparsePoint,
+            // Note: if a _file_ has a reparse tag of the type IO_REPARSE_TAG_MOUNT_POINT it is
+            // invalid, as junctions always have to be dirs. We set the filetype to ReparsePoint
+            // to indicate it is something symlink-like, but not something you can follow.
         }
     }
-    pub fn is_dir(&self) -> bool {
-        !self.is_symlink() && self.is_directory()
-    }
-    pub fn is_file(&self) -> bool {
-        !self.is_symlink() && !self.is_directory()
-    }
+
+    pub fn is_dir(&self) -> bool { *self == FileType::Dir }
+    pub fn is_file(&self) -> bool { *self == FileType::File }
     pub fn is_symlink(&self) -> bool {
-        self.is_reparse_point() && self.is_reparse_tag_name_surrogate()
+        *self == FileType::SymlinkFile ||
+        *self == FileType::SymlinkDir ||
+        *self == FileType::MountPoint
     }
     pub fn is_symlink_dir(&self) -> bool {
-        self.is_symlink() && self.is_directory()
-    }
-    pub fn is_symlink_file(&self) -> bool {
-        self.is_symlink() && !self.is_directory()
-    }
-    fn is_directory(&self) -> bool {
-        self.attributes & c::FILE_ATTRIBUTE_DIRECTORY != 0
-    }
-    fn is_reparse_point(&self) -> bool {
-        self.attributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0
-    }
-    fn is_reparse_tag_name_surrogate(&self) -> bool {
-        self.reparse_tag & 0x20000000 != 0
+        *self == FileType::SymlinkDir || *self == FileType::MountPoint
     }
 }
 
@@ -775,7 +770,7 @@ fn symlink_junction_inner(target: &Path, junction: &Path) -> io::Result<()> {
         let mut data = [0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
         let db = data.as_mut_ptr()
                     as *mut c::REPARSE_MOUNTPOINT_DATA_BUFFER;
-        let buf = &mut (*db).ReparseTarget as *mut c::WCHAR;
+        let buf = &mut (*db).ReparseTarget as *mut _;
         let mut i = 0;
         // FIXME: this conversion is very hacky
         let v = br"\??\";

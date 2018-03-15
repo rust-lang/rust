@@ -10,32 +10,30 @@
 
 // Test where we change the *signature* of a public, inherent method.
 
-// revisions:cfail1 cfail2
+// revisions:rpass1 rpass2
 // compile-flags: -Z query-dep-graph
-// must-compile-successfully
 
-#![crate_type = "rlib"]
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]
 #![allow(dead_code)]
 
 // These are expected to require translation.
-#![rustc_partition_translated(module="struct_point-point", cfg="cfail2")]
-#![rustc_partition_translated(module="struct_point-fn_calls_changed_method", cfg="cfail2")]
+#![rustc_partition_translated(module="struct_point-point", cfg="rpass2")]
+#![rustc_partition_translated(module="struct_point-fn_calls_changed_method", cfg="rpass2")]
 
-#![rustc_partition_reused(module="struct_point-fn_calls_another_method", cfg="cfail2")]
-#![rustc_partition_reused(module="struct_point-fn_make_struct", cfg="cfail2")]
-#![rustc_partition_reused(module="struct_point-fn_read_field", cfg="cfail2")]
-#![rustc_partition_reused(module="struct_point-fn_write_field", cfg="cfail2")]
+#![rustc_partition_reused(module="struct_point-fn_calls_another_method", cfg="rpass2")]
+#![rustc_partition_reused(module="struct_point-fn_make_struct", cfg="rpass2")]
+#![rustc_partition_reused(module="struct_point-fn_read_field", cfg="rpass2")]
+#![rustc_partition_reused(module="struct_point-fn_write_field", cfg="rpass2")]
 
-pub mod point {
+mod point {
     pub struct Point {
         pub x: f32,
         pub y: f32,
     }
 
     impl Point {
-        #[cfg(cfail1)]
+        #[cfg(rpass1)]
         pub fn distance_from_point(&self, p: Option<Point>) -> f32 {
             let p = p.unwrap_or(Point { x: 0.0, y: 0.0 });
             let x_diff = self.x - p.x;
@@ -43,7 +41,7 @@ pub mod point {
             return x_diff * x_diff + y_diff * y_diff;
         }
 
-        #[cfg(cfail2)]
+        #[cfg(rpass2)]
         pub fn distance_from_point(&self, p: Option<&Point>) -> f32 {
             const ORIGIN: &Point = &Point { x: 0.0, y: 0.0 };
             let p = p.unwrap_or(ORIGIN);
@@ -59,10 +57,10 @@ pub mod point {
 }
 
 /// A fn item that calls the method that was changed
-pub mod fn_calls_changed_method {
+mod fn_calls_changed_method {
     use point::Point;
 
-    #[rustc_dirty(label="TypeckTables", cfg="cfail2")]
+    #[rustc_dirty(label="TypeckTables", cfg="rpass2")]
     pub fn check() {
         let p = Point { x: 2.0, y: 2.0 };
         p.distance_from_point(None);
@@ -70,10 +68,10 @@ pub mod fn_calls_changed_method {
 }
 
 /// A fn item that calls a method that was not changed
-pub mod fn_calls_another_method {
+mod fn_calls_another_method {
     use point::Point;
 
-    #[rustc_clean(label="TypeckTables", cfg="cfail2")]
+    #[rustc_clean(label="TypeckTables", cfg="rpass2")]
     pub fn check() {
         let p = Point { x: 2.0, y: 2.0 };
         p.x();
@@ -81,31 +79,34 @@ pub mod fn_calls_another_method {
 }
 
 /// A fn item that makes an instance of `Point` but does not invoke methods
-pub mod fn_make_struct {
+mod fn_make_struct {
     use point::Point;
 
-    #[rustc_clean(label="TypeckTables", cfg="cfail2")]
+    #[rustc_clean(label="TypeckTables", cfg="rpass2")]
     pub fn make_origin() -> Point {
         Point { x: 2.0, y: 2.0 }
     }
 }
 
 /// A fn item that reads fields from `Point` but does not invoke methods
-pub mod fn_read_field {
+mod fn_read_field {
     use point::Point;
 
-    #[rustc_clean(label="TypeckTables", cfg="cfail2")]
+    #[rustc_clean(label="TypeckTables", cfg="rpass2")]
     pub fn get_x(p: Point) -> f32 {
         p.x
     }
 }
 
 /// A fn item that writes to a field of `Point` but does not invoke methods
-pub mod fn_write_field {
+mod fn_write_field {
     use point::Point;
 
-    #[rustc_clean(label="TypeckTables", cfg="cfail2")]
+    #[rustc_clean(label="TypeckTables", cfg="rpass2")]
     pub fn inc_x(p: &mut Point) {
         p.x += 1.0;
     }
+}
+
+fn main() {
 }

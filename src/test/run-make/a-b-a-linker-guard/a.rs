@@ -16,3 +16,5 @@ pub fn foo(x: u32) { }
 
 #[cfg(y)]
 pub fn foo(x: i32) { }
+
+

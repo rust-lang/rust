@@ -14,7 +14,10 @@
 pub mod bar {
     use std::marker;
 
-    pub auto trait Bar {}
+    pub trait Bar {}
+
+    #[allow(auto_impl)]
+    impl Bar for .. {}
 
     pub trait Foo {
         fn foo(&self) {}

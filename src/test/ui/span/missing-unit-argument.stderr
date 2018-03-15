@@ -1,70 +1,73 @@
 error[E0061]: this function takes 1 parameter but 0 parameters were supplied
   --> $DIR/missing-unit-argument.rs:21:33
    |
-LL |     let _: Result<(), String> = Ok(); //~ ERROR this function takes
+21 |     let _: Result<(), String> = Ok();
    |                                 ^^^^
+   |
 help: expected the unit value `()`; create it with empty parentheses
    |
-LL |     let _: Result<(), String> = Ok(()); //~ ERROR this function takes
+21 |     let _: Result<(), String> = Ok(());
    |                                    ^^
 
 error[E0061]: this function takes 2 parameters but 0 parameters were supplied
   --> $DIR/missing-unit-argument.rs:22:5
    |
-LL | fn foo(():(), ():()) {}
-   | -------------------- defined here
+11 | fn foo(():(), ():()) {}
+   | ----------------------- defined here
 ...
-LL |     foo(); //~ ERROR this function takes
+22 |     foo();
    |     ^^^^^ expected 2 parameters
 
 error[E0061]: this function takes 2 parameters but 1 parameter was supplied
-  --> $DIR/missing-unit-argument.rs:23:5
+  --> $DIR/missing-unit-argument.rs:23:9
    |
-LL | fn foo(():(), ():()) {}
-   | -------------------- defined here
+11 | fn foo(():(), ():()) {}
+   | ----------------------- defined here
 ...
-LL |     foo(()); //~ ERROR this function takes
-   |     ^^^^^^^ expected 2 parameters
+23 |     foo(());
+   |         ^^ expected 2 parameters
 
 error[E0061]: this function takes 1 parameter but 0 parameters were supplied
   --> $DIR/missing-unit-argument.rs:24:5
    |
-LL | fn bar(():()) {}
-   | ------------- defined here
+12 | fn bar(():()) {}
+   | ---------------- defined here
 ...
-LL |     bar(); //~ ERROR this function takes
+24 |     bar();
    |     ^^^^^
+   |
 help: expected the unit value `()`; create it with empty parentheses
    |
-LL |     bar(()); //~ ERROR this function takes
+24 |     bar(());
    |         ^^
 
 error[E0061]: this function takes 1 parameter but 0 parameters were supplied
   --> $DIR/missing-unit-argument.rs:25:7
    |
-LL |     fn baz(self, (): ()) { }
-   |     -------------------- defined here
+16 |     fn baz(self, (): ()) { }
+   |     ------------------------ defined here
 ...
-LL |     S.baz(); //~ ERROR this function takes
+25 |     S.baz();
    |       ^^^
+   |
 help: expected the unit value `()`; create it with empty parentheses
    |
-LL |     S.baz(()); //~ ERROR this function takes
+25 |     S.baz(());
    |           ^^
 
 error[E0061]: this function takes 1 parameter but 0 parameters were supplied
   --> $DIR/missing-unit-argument.rs:26:7
    |
-LL |     fn generic<T>(self, _: T) { }
-   |     ------------------------- defined here
+17 |     fn generic<T>(self, _: T) { }
+   |     ----------------------------- defined here
 ...
-LL |     S.generic::<()>(); //~ ERROR this function takes
+26 |     S.generic::<()>();
    |       ^^^^^^^
+   |
 help: expected the unit value `()`; create it with empty parentheses
    |
-LL |     S.generic::<()>(()); //~ ERROR this function takes
+26 |     S.generic::<()>(());
    |                     ^^
 
 error: aborting due to 6 previous errors
 
-If you want more information on this error, try using "rustc --explain E0061"

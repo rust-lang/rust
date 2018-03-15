@@ -20,7 +20,10 @@ use std::path::PathBuf;
 #[allow(deprecated)]
 pub fn get_dbpath_for_term(term: &str) -> Option<PathBuf> {
     let mut dirs_to_search = Vec::new();
-    let first_char = term.chars().next()?;
+    let first_char = match term.chars().next() {
+        Some(c) => c,
+        None => return None,
+    };
 
     // Find search directory
     if let Some(dir) = env::var_os("TERMINFO") {

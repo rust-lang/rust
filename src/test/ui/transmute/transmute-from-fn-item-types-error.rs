@@ -12,16 +12,16 @@ use std::mem;
 
 unsafe fn foo() -> (i8, *const (), Option<fn()>) {
     let i = mem::transmute(bar);
-    //~^ ERROR transmute called with types of different sizes
-
+    //~^ ERROR is zero-sized and can't be transmuted
+    //~^^ NOTE cast with `as` to a pointer instead
 
     let p = mem::transmute(foo);
-    //~^ ERROR can't transmute zero-sized type
-
+    //~^ ERROR is zero-sized and can't be transmuted
+    //~^^ NOTE cast with `as` to a pointer instead
 
     let of = mem::transmute(main);
-    //~^ ERROR can't transmute zero-sized type
-
+    //~^ ERROR is zero-sized and can't be transmuted
+    //~^^ NOTE cast with `as` to a pointer instead
 
     (i, p, of)
 }
@@ -30,15 +30,15 @@ unsafe fn bar() {
     // Error as usual if the resulting type is not pointer-sized.
     mem::transmute::<_, u8>(main);
     //~^ ERROR transmute called with types of different sizes
-
+    //~^^ NOTE transmuting between fn() {main} and u8
 
     mem::transmute::<_, *mut ()>(foo);
-    //~^ ERROR can't transmute zero-sized type
-
+    //~^ ERROR is zero-sized and can't be transmuted
+    //~^^ NOTE cast with `as` to a pointer instead
 
     mem::transmute::<_, fn()>(bar);
-    //~^ ERROR can't transmute zero-sized type
-
+    //~^ ERROR is zero-sized and can't be transmuted
+    //~^^ NOTE cast with `as` to a pointer instead
 
     // No error if a coercion would otherwise occur.
     mem::transmute::<fn(), usize>(main);
@@ -46,16 +46,16 @@ unsafe fn bar() {
 
 unsafe fn baz() {
     mem::transmute::<_, *mut ()>(Some(foo));
-    //~^ ERROR can't transmute zero-sized type
-
+    //~^ ERROR is zero-sized and can't be transmuted
+    //~^^ NOTE cast with `as` to a pointer instead
 
     mem::transmute::<_, fn()>(Some(bar));
-    //~^ ERROR can't transmute zero-sized type
-
+    //~^ ERROR is zero-sized and can't be transmuted
+    //~^^ NOTE cast with `as` to a pointer instead
 
     mem::transmute::<_, Option<fn()>>(Some(baz));
-    //~^ ERROR can't transmute zero-sized type
-
+    //~^ ERROR is zero-sized and can't be transmuted
+    //~^^ NOTE cast with `as` to a pointer instead
 
     // No error if a coercion would otherwise occur.
     mem::transmute::<Option<fn()>, usize>(Some(main));

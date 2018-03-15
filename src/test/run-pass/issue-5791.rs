@@ -10,11 +10,15 @@
 
 // pretty-expanded FIXME #23616
 
+#![feature(libc)]
+
+extern crate libc;
+
 extern {
     #[link_name = "malloc"]
-    fn malloc1(len: i32) -> *const u8;
+    fn malloc1(len: libc::c_int) -> *const libc::c_void;
     #[link_name = "malloc"]
-    fn malloc2(len: i32, foo: i32) -> *const u8;
+    fn malloc2(len: libc::c_int, foo: libc::c_int) -> *const libc::c_void;
 }
 
 pub fn main () {}

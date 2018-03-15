@@ -12,7 +12,6 @@
 // had to do with trans ignoring binders.
 
 // pretty-expanded FIXME #23616
-// ignore-cloudabi no std::fs
 
 #![feature(os)]
 

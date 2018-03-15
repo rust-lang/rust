@@ -1,30 +1,29 @@
 error[E0499]: cannot borrow `*arg` as mutable more than once at a time
   --> $DIR/mut-borrow-in-loop.rs:20:25
    |
-LL |             (self.func)(arg) //~ ERROR cannot borrow
+20 |             (self.func)(arg)
    |                         ^^^ mutable borrow starts here in previous iteration of loop
-LL |         }
-LL |     }
+21 |         }
+22 |     }
    |     - mutable borrow ends here
 
 error[E0499]: cannot borrow `*arg` as mutable more than once at a time
   --> $DIR/mut-borrow-in-loop.rs:26:25
    |
-LL |             (self.func)(arg) //~ ERROR cannot borrow
+26 |             (self.func)(arg)
    |                         ^^^ mutable borrow starts here in previous iteration of loop
-LL |         }
-LL |     }
+27 |         }
+28 |     }
    |     - mutable borrow ends here
 
 error[E0499]: cannot borrow `*arg` as mutable more than once at a time
   --> $DIR/mut-borrow-in-loop.rs:33:25
    |
-LL |             (self.func)(arg) //~ ERROR cannot borrow
+33 |             (self.func)(arg)
    |                         ^^^ mutable borrow starts here in previous iteration of loop
-LL |         }
-LL |     }
+34 |         }
+35 |     }
    |     - mutable borrow ends here
 
 error: aborting due to 3 previous errors
 
-If you want more information on this error, try using "rustc --explain E0499"

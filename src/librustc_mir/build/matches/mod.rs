@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Code related to match expressions. These are sufficiently complex
+//! Code related to match expresions. These are sufficiently complex
 //! to warrant their own module and submodules. :) This main module
 //! includes the high-level algorithm, the submodules contain the
 //! details.
@@ -30,29 +30,13 @@ mod util;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn match_expr(&mut self,
-                      destination: &Place<'tcx>,
+                      destination: &Lvalue<'tcx>,
                       span: Span,
                       mut block: BasicBlock,
                       discriminant: ExprRef<'tcx>,
                       arms: Vec<Arm<'tcx>>)
                       -> BlockAnd<()> {
-        let discriminant_place = unpack!(block = self.as_place(block, discriminant));
-
-        // Matching on a `discriminant_place` with an uninhabited type doesn't
-        // generate any memory reads by itself, and so if the place "expression"
-        // contains unsafe operations like raw pointer dereferences or union
-        // field projections, we wouldn't know to require an `unsafe` block
-        // around a `match` equivalent to `std::intrinsics::unreachable()`.
-        // See issue #47412 for this hole being discovered in the wild.
-        //
-        // HACK(eddyb) Work around the above issue by adding a dummy inspection
-        // of `discriminant_place`, specifically by applying `Rvalue::Discriminant`
-        // (which will work regardless of type) and storing the result in a temp.
-        let dummy_source_info = self.source_info(span);
-        let dummy_access = Rvalue::Discriminant(discriminant_place.clone());
-        let dummy_ty = dummy_access.ty(&self.local_decls, self.hir.tcx());
-        let dummy_temp = self.temp(dummy_ty, dummy_source_info.span);
-        self.cfg.push_assign(block, dummy_source_info, &dummy_temp, dummy_access);
+        let discriminant_lvalue = unpack!(block = self.as_lvalue(block, discriminant));
 
         let mut arm_blocks = ArmBlocks {
             blocks: arms.iter()
@@ -93,7 +77,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                        (pre_binding_block, next_candidate_pre_binding_block))| {
                     Candidate {
                         span: pattern.span,
-                        match_pairs: vec![MatchPair::new(discriminant_place.clone(), pattern)],
+                        match_pairs: vec![MatchPair::new(discriminant_lvalue.clone(), pattern)],
                         bindings: vec![],
                         guard,
                         arm_index,
@@ -107,7 +91,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         self.cfg.terminate(*pre_binding_blocks.last().unwrap(),
                            outer_source_info, TerminatorKind::Unreachable);
 
-        // this will generate code to test discriminant_place and
+        // this will generate code to test discriminant_lvalue and
         // branch to the appropriate arm block
         let otherwise = self.match_candidates(span, &mut arm_blocks, candidates, block);
 
@@ -155,22 +139,22 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             PatternKind::Binding { mode: BindingMode::ByValue,
                                    var,
                                    subpattern: None, .. } => {
-                let place = self.storage_live_binding(block, var, irrefutable_pat.span);
-                unpack!(block = self.into(&place, block, initializer));
+                let lvalue = self.storage_live_binding(block, var, irrefutable_pat.span);
+                unpack!(block = self.into(&lvalue, block, initializer));
                 self.schedule_drop_for_binding(var, irrefutable_pat.span);
                 block.unit()
             }
             _ => {
-                let place = unpack!(block = self.as_place(block, initializer));
-                self.place_into_pattern(block, irrefutable_pat, &place)
+                let lvalue = unpack!(block = self.as_lvalue(block, initializer));
+                self.lvalue_into_pattern(block, irrefutable_pat, &lvalue)
             }
         }
     }
 
-    pub fn place_into_pattern(&mut self,
+    pub fn lvalue_into_pattern(&mut self,
                                mut block: BasicBlock,
                                irrefutable_pat: Pattern<'tcx>,
-                               initializer: &Place<'tcx>)
+                               initializer: &Lvalue<'tcx>)
                                -> BlockAnd<()> {
         // create a dummy candidate
         let mut candidate = Candidate {
@@ -212,18 +196,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             pattern: &Pattern<'tcx>)
                             -> Option<VisibilityScope> {
         assert!(!(var_scope.is_some() && lint_level.is_explicit()),
-                "can't have both a var and a lint scope at the same time");
-        let mut syntactic_scope = self.visibility_scope;
+               "can't have both a var and a lint scope at the same time");
         self.visit_bindings(pattern, &mut |this, mutability, name, var, span, ty| {
             if var_scope.is_none() {
                 var_scope = Some(this.new_visibility_scope(scope_span,
                                                            LintLevel::Inherited,
                                                            None));
                 // If we have lints, create a new visibility scope
-                // that marks the lints for the locals. See the comment
-                // on the `syntactic_scope` field for why this is needed.
+                // that marks the lints for the locals.
                 if lint_level.is_explicit() {
-                    syntactic_scope =
+                    this.visibility_scope =
                         this.new_visibility_scope(scope_span, lint_level, None);
                 }
             }
@@ -231,13 +213,17 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 span,
                 scope: var_scope.unwrap()
             };
-            this.declare_binding(source_info, syntactic_scope, mutability, name, var, ty);
+            this.declare_binding(source_info, mutability, name, var, ty);
         });
+        // Pop any scope we created for the locals.
+        if let Some(var_scope) = var_scope {
+            self.visibility_scope = var_scope;
+        }
         var_scope
     }
 
     pub fn storage_live_binding(&mut self, block: BasicBlock, var: NodeId, span: Span)
-                            -> Place<'tcx>
+                            -> Lvalue<'tcx>
     {
         let local_id = self.var_indices[&var];
         let source_info = self.source_info(span);
@@ -245,7 +231,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             source_info,
             kind: StatementKind::StorageLive(local_id)
         });
-        Place::Local(local_id)
+        Lvalue::Local(local_id)
     }
 
     pub fn schedule_drop_for_binding(&mut self, var: NodeId, span: Span) {
@@ -253,7 +239,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let var_ty = self.local_decls[local_id].ty;
         let hir_id = self.hir.tcx().hir.node_to_hir_id(var);
         let region_scope = self.hir.region_scope_tree.var_scope(hir_id.local_id);
-        self.schedule_drop(span, region_scope, &Place::Local(local_id), var_ty);
+        self.schedule_drop(span, region_scope, &Lvalue::Local(local_id), var_ty);
     }
 
     pub fn visit_bindings<F>(&mut self, pattern: &Pattern<'tcx>, f: &mut F)
@@ -319,7 +305,7 @@ pub struct Candidate<'pat, 'tcx:'pat> {
 #[derive(Clone, Debug)]
 struct Binding<'tcx> {
     span: Span,
-    source: Place<'tcx>,
+    source: Lvalue<'tcx>,
     name: Name,
     var_id: NodeId,
     var_ty: Ty<'tcx>,
@@ -329,8 +315,8 @@ struct Binding<'tcx> {
 
 #[derive(Clone, Debug)]
 pub struct MatchPair<'pat, 'tcx:'pat> {
-    // this place...
-    place: Place<'tcx>,
+    // this lvalue...
+    lvalue: Lvalue<'tcx>,
 
     // ... must match this pattern.
     pattern: &'pat Pattern<'tcx>,
@@ -649,7 +635,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         match test.kind {
             TestKind::SwitchInt { switch_ty, ref mut options, ref mut indices } => {
                 for candidate in candidates.iter() {
-                    if !self.add_cases_to_switch(&match_pair.place,
+                    if !self.add_cases_to_switch(&match_pair.lvalue,
                                                  candidate,
                                                  switch_ty,
                                                  options,
@@ -660,7 +646,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
             TestKind::Switch { adt_def: _, ref mut variants} => {
                 for candidate in candidates.iter() {
-                    if !self.add_variants_to_switch(&match_pair.place,
+                    if !self.add_variants_to_switch(&match_pair.lvalue,
                                                     candidate,
                                                     variants) {
                         break;
@@ -675,7 +661,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // vector of candidates. Those are the candidates that still
         // apply if the test has that particular outcome.
         debug!("match_candidates: test={:?} match_pair={:?}", test, match_pair);
-        let target_blocks = self.perform_test(block, &match_pair.place, &test);
+        let target_blocks = self.perform_test(block, &match_pair.lvalue, &test);
         let mut target_candidates: Vec<_> = (0..target_blocks.len()).map(|_| vec![]).collect();
 
         // Sort the candidates into the appropriate vector in
@@ -684,7 +670,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // that point, we stop sorting.
         let tested_candidates =
             candidates.iter()
-                      .take_while(|c| self.sort_candidate(&match_pair.place,
+                      .take_while(|c| self.sort_candidate(&match_pair.lvalue,
                                                           &test,
                                                           c,
                                                           &mut target_candidates))
@@ -744,8 +730,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                TerminatorKind::FalseEdges {
                                    real_target: block,
                                    imaginary_targets:
-                                       vec![candidate.next_candidate_pre_binding_block],
-                               });
+                                       vec![candidate.next_candidate_pre_binding_block]});
 
         self.bind_matched_candidate(block, candidate.bindings);
 
@@ -766,8 +751,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                TerminatorKind::FalseEdges {
                                    real_target: otherwise,
                                    imaginary_targets:
-                                       vec![candidate.next_candidate_pre_binding_block],
-                               });
+                                       vec![candidate.next_candidate_pre_binding_block] });
             Some(otherwise)
         } else {
             self.cfg.terminate(block, candidate_source_info,
@@ -789,7 +773,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             self.schedule_drop_for_binding(binding.var_id, binding.span);
             let rvalue = match binding.binding_mode {
                 BindingMode::ByValue =>
-                    Rvalue::Use(self.consume_by_copy_or_move(binding.source)),
+                    Rvalue::Use(Operand::Consume(binding.source)),
                 BindingMode::ByRef(region, borrow_kind) =>
                     Rvalue::Ref(region, borrow_kind, binding.source),
             };
@@ -799,23 +783,21 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     fn declare_binding(&mut self,
                        source_info: SourceInfo,
-                       syntactic_scope: VisibilityScope,
                        mutability: Mutability,
                        name: Name,
                        var_id: NodeId,
                        var_ty: Ty<'tcx>)
                        -> Local
     {
-        debug!("declare_binding(var_id={:?}, name={:?}, var_ty={:?}, source_info={:?}, \
-                syntactic_scope={:?})",
-               var_id, name, var_ty, source_info, syntactic_scope);
+        debug!("declare_binding(var_id={:?}, name={:?}, var_ty={:?}, source_info={:?})",
+               var_id, name, var_ty, source_info);
 
         let var = self.local_decls.push(LocalDecl::<'tcx> {
             mutability,
             ty: var_ty.clone(),
             name: Some(name),
             source_info,
-            syntactic_scope,
+            lexical_scope: self.visibility_scope,
             internal: false,
             is_user_variable: true,
         });

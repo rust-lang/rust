@@ -20,18 +20,18 @@ use self::TrackMatchMode::*;
 use self::OverloadedCallType::*;
 
 use hir::def::Def;
-use hir::def_id::DefId;
+use hir::def_id::{DefId};
 use infer::InferCtxt;
 use middle::mem_categorization as mc;
 use middle::region;
 use ty::{self, TyCtxt, adjustment};
 
 use hir::{self, PatKind};
-use rustc_data_structures::sync::Lrc;
+use std::rc::Rc;
 use syntax::ast;
 use syntax::ptr::P;
 use syntax_pos::Span;
-use util::nodemap::ItemLocalSet;
+use util::nodemap::ItemLocalMap;
 
 ///////////////////////////////////////////////////////////////////////////
 // The Delegate trait
@@ -239,7 +239,7 @@ impl OverloadedCallType {
 // This is the code that actually walks the tree.
 pub struct ExprUseVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     mc: mc::MemCategorizationContext<'a, 'gcx, 'tcx>,
-    delegate: &'a mut dyn Delegate<'tcx>,
+    delegate: &'a mut Delegate<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 }
 
@@ -274,12 +274,12 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx, 'tcx> {
     ///   `None` means that rvalues will be given more conservative lifetimes.
     ///
     /// See also `with_infer`, which is used *during* typeck.
-    pub fn new(delegate: &'a mut (dyn Delegate<'tcx>+'a),
+    pub fn new(delegate: &'a mut (Delegate<'tcx>+'a),
                tcx: TyCtxt<'a, 'tcx, 'tcx>,
                param_env: ty::ParamEnv<'tcx>,
                region_scope_tree: &'a region::ScopeTree,
                tables: &'a ty::TypeckTables<'tcx>,
-               rvalue_promotable_map: Option<Lrc<ItemLocalSet>>)
+               rvalue_promotable_map: Option<Rc<ItemLocalMap<bool>>>)
                -> Self
     {
         ExprUseVisitor {
@@ -294,7 +294,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
-    pub fn with_infer(delegate: &'a mut (dyn Delegate<'tcx>+'a),
+    pub fn with_infer(delegate: &'a mut (Delegate<'tcx>+'a),
                       infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
                       param_env: ty::ParamEnv<'tcx>,
                       region_scope_tree: &'a region::ScopeTree,
@@ -558,29 +558,24 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             }
             ty::TyError => { }
             _ => {
-                if let Some(def) = self.mc.tables.type_dependent_defs().get(call.hir_id) {
-                    let def_id = def.def_id();
-                    let call_scope = region::Scope::Node(call.hir_id.local_id);
-                    match OverloadedCallType::from_method_id(self.tcx(), def_id) {
-                        FnMutOverloadedCall => {
-                            let call_scope_r = self.tcx().mk_region(ty::ReScope(call_scope));
-                            self.borrow_expr(callee,
-                                            call_scope_r,
-                                            ty::MutBorrow,
-                                            ClosureInvocation);
-                        }
-                        FnOverloadedCall => {
-                            let call_scope_r = self.tcx().mk_region(ty::ReScope(call_scope));
-                            self.borrow_expr(callee,
-                                            call_scope_r,
-                                            ty::ImmBorrow,
-                                            ClosureInvocation);
-                        }
-                        FnOnceOverloadedCall => self.consume_expr(callee),
+                let def_id = self.mc.tables.type_dependent_defs()[call.hir_id].def_id();
+                let call_scope = region::Scope::Node(call.hir_id.local_id);
+                match OverloadedCallType::from_method_id(self.tcx(), def_id) {
+                    FnMutOverloadedCall => {
+                        let call_scope_r = self.tcx().mk_region(ty::ReScope(call_scope));
+                        self.borrow_expr(callee,
+                                         call_scope_r,
+                                         ty::MutBorrow,
+                                         ClosureInvocation);
                     }
-                } else {
-                    self.tcx().sess.delay_span_bug(call.span,
-                                                   "no type-dependent def for overloaded call");
+                    FnOverloadedCall => {
+                        let call_scope_r = self.tcx().mk_region(ty::ReScope(call_scope));
+                        self.borrow_expr(callee,
+                                         call_scope_r,
+                                         ty::ImmBorrow,
+                                         ClosureInvocation);
+                    }
+                    FnOnceOverloadedCall => self.consume_expr(callee),
                 }
             }
         }
@@ -663,7 +658,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         match with_cmt.ty.sty {
             ty::TyAdt(adt, substs) if adt.is_struct() => {
                 // Consume those fields of the with expression that are needed.
-                for with_field in &adt.non_enum_variant().fields {
+                for with_field in &adt.struct_variant().fields {
                     if !contains_field_named(with_field, fields) {
                         let cmt_field = self.mc.cat_field(
                             &*with_expr,
@@ -760,7 +755,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                                      expr.span,
                                      cmt_base,
                                      r,
-                                     ty::BorrowKind::from_mutbl(m.into()),
+                                     ty::BorrowKind::from_mutbl(m),
                                      AutoRef);
             }
 
@@ -920,7 +915,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 let closure_def_id = self.tcx().hir.local_def_id(closure_expr.id);
                 let upvar_id = ty::UpvarId {
                     var_id: var_hir_id,
-                    closure_expr_id: closure_def_id.to_local(),
+                    closure_expr_id: closure_def_id.index
                 };
                 let upvar_capture = self.mc.tables.upvar_capture(upvar_id);
                 let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.id,

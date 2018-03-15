@@ -17,8 +17,3 @@ impl Def {
         Def { id: id }
     }
 }
-
-#[no_mangle]
-pub fn user() {
-    let _ = Def::new(0);
-}

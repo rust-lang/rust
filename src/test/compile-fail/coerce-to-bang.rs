@@ -9,17 +9,14 @@
 // except according to those terms.
 
 #![feature(never_type)]
-#![deny(coerce_never)]
 
 fn foo(x: usize, y: !, z: usize) { }
 
 fn call_foo_a() {
-    // FIXME(#40800) -- accepted because divergence happens **before**
+    // FIXME(#40800) -- accepted beacuse divergence happens **before**
     // the coercion to `!`, but within same expression. Not clear that
     // these are the rules we want.
     foo(return, 22, 44);
-    //~^ ERROR cannot coerce `{integer}` to !
-    //~| hard error
 }
 
 fn call_foo_b() {
@@ -39,8 +36,6 @@ fn call_foo_d() {
     let b = 22;
     let c = 44;
     foo(a, b, c); // ... and hence a reference to `a` is expected to diverge.
-    //~^ ERROR cannot coerce `{integer}` to !
-    //~| hard error
 }
 
 fn call_foo_e() {
@@ -80,8 +75,6 @@ fn tuple_a() {
 fn tuple_b() {
     // Divergence happens before coercion: OK
     let x: (usize, !, usize) = (return, 44, 66);
-    //~^ ERROR cannot coerce `{integer}` to !
-    //~| hard error
 }
 
 fn tuple_c() {

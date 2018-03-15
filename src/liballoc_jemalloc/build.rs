@@ -16,7 +16,7 @@ extern crate cc;
 use std::env;
 use std::path::PathBuf;
 use std::process::Command;
-use build_helper::{run, native_lib_boilerplate};
+use build_helper::{run, native_lib_boilerplate, BuildExpectation};
 
 fn main() {
     // FIXME: This is a hack to support building targets that don't
@@ -29,17 +29,10 @@ fn main() {
     // for targets like emscripten, even if we don't use it.
     let target = env::var("TARGET").expect("TARGET was not set");
     let host = env::var("HOST").expect("HOST was not set");
-    if target.contains("bitrig") || target.contains("emscripten") || target.contains("fuchsia") ||
-       target.contains("msvc") || target.contains("openbsd") || target.contains("redox") ||
-       target.contains("rumprun") || target.contains("wasm32") {
+    if target.contains("rumprun") || target.contains("bitrig") || target.contains("openbsd") ||
+       target.contains("msvc") || target.contains("emscripten") || target.contains("fuchsia") ||
+       target.contains("redox") {
         println!("cargo:rustc-cfg=dummy_jemalloc");
-        return;
-    }
-
-    // CloudABI ships with a copy of jemalloc that has been patched to
-    // work well with sandboxing. Don't attempt to build our own copy,
-    // as it won't build.
-    if target.contains("cloudabi") {
         return;
     }
 
@@ -120,7 +113,7 @@ fn main() {
         cmd.arg("--with-lg-quantum=4");
     }
 
-    run(&mut cmd);
+    run(&mut cmd, BuildExpectation::None);
 
     let mut make = Command::new(build_helper::make(&host));
     make.current_dir(&native.out_dir)
@@ -137,7 +130,7 @@ fn main() {
             .arg(env::var("NUM_JOBS").expect("NUM_JOBS was not set"));
     }
 
-    run(&mut make);
+    run(&mut make, BuildExpectation::None);
 
     // The pthread_atfork symbols is used by jemalloc on android but the really
     // old android we're building on doesn't have them defined, so just make
@@ -147,6 +140,6 @@ fn main() {
         cc::Build::new()
             .flag("-fvisibility=hidden")
             .file("pthread_atfork_dummy.c")
-            .compile("pthread_atfork_dummy");
+            .compile("libpthread_atfork_dummy.a");
     }
 }

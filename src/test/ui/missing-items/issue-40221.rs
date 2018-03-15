@@ -18,7 +18,7 @@ enum PC {
 }
 
 fn test(proto: P) {
-    match proto { //~ ERROR non-exhaustive patterns
+    match proto {
         P::C(PC::Q) => (),
     }
 }

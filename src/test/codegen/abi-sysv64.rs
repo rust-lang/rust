@@ -18,6 +18,7 @@
 // compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]
+#![feature(abi_sysv64)]
 
 // CHECK: define x86_64_sysvcc i64 @has_sysv64_abi
 #[no_mangle]

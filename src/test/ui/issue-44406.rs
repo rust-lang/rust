@@ -15,6 +15,5 @@ macro_rules! foo {
 }
 
 fn main() {
-    foo!(true); //~ ERROR expected type, found keyword
-    //~^ ERROR expected identifier, found keyword
+    foo!(true);
 }

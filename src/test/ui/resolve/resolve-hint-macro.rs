@@ -11,4 +11,5 @@
 fn main() {
     assert(true);
     //~^ ERROR expected function, found macro `assert`
+    //~| NOTE did you mean `assert!(...)`?
 }

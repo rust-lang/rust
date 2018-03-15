@@ -1,12 +1,11 @@
 error[E0046]: not all trait items implemented, missing: `foo`
-  --> $DIR/E0046.rs:17:1
+  --> $DIR/E0046.rs:18:1
    |
-LL |     fn foo();
+12 |     fn foo();
    |     --------- `foo` from trait
 ...
-LL | impl Foo for Bar {}
-   | ^^^^^^^^^^^^^^^^ missing `foo` in implementation
+18 | impl Foo for Bar {}
+   | ^^^^^^^^^^^^^^^^^^^ missing `foo` in implementation
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0046"

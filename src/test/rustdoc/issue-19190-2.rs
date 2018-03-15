@@ -13,10 +13,10 @@ use std::ops::Deref;
 pub struct Bar;
 
 impl Deref for Bar {
-    type Target = String;
-    fn deref(&self) -> &String { loop {} }
+    type Target = i32;
+    fn deref(&self) -> &i32 { loop {} }
 }
 
 // @has issue_19190_2/struct.Bar.html
-// @!has - '//*[@id="method.new"]' 'fn new() -> String'
-// @has - '//*[@id="method.as_str"]' 'fn as_str(&self) -> &str'
+// @has - '//*[@id="method.count_ones"]' 'fn count_ones(self) -> u32'
+// @!has - '//*[@id="method.min_value"]' 'fn min_value() -> i32'

@@ -12,7 +12,6 @@
 // compile-flags:-Zprint-trans-items=eager
 
 #![deny(dead_code)]
-#![feature(start)]
 
 struct Struct<T> {
     x: T,
@@ -51,9 +50,9 @@ impl<'a> LifeTimeOnly<'a> {
     pub fn non_instantiated<T>(&self) {}
 }
 
-//~ TRANS_ITEM fn generic_impl::start[0]
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
+
+//~ TRANS_ITEM fn generic_impl::main[0]
+fn main() {
     //~ TRANS_ITEM fn generic_impl::{{impl}}[0]::new[0]<i32>
     //~ TRANS_ITEM fn generic_impl::id[0]<i32>
     //~ TRANS_ITEM fn generic_impl::{{impl}}[0]::get[0]<i32, i16>
@@ -77,6 +76,4 @@ fn start(_: isize, _: *const *const u8) -> isize {
     //~ TRANS_ITEM fn generic_impl::{{impl}}[0]::new[0]<generic_impl::Struct[0]<&str>>
     //~ TRANS_ITEM fn generic_impl::id[0]<generic_impl::Struct[0]<&str>>
     let _ = (Struct::new(Struct::new("str")).f)(Struct::new("str"));
-
-    0
 }

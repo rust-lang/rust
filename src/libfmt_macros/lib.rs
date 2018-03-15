@@ -73,9 +73,7 @@ pub struct FormatSpec<'a> {
 /// Enum describing where an argument for a format can be located.
 #[derive(Copy, Clone, PartialEq)]
 pub enum Position<'a> {
-    /// The argument is implied to be located at an index
-    ArgumentImplicitlyIs(usize),
-    /// The argument is located at a specific index given in the format
+    /// The argument is located at a specific index.
     ArgumentIs(usize),
     /// The argument has a name.
     ArgumentNamed(&'a str),
@@ -277,7 +275,7 @@ impl<'a> Parser<'a> {
             None => {
                 let i = self.curarg;
                 self.curarg += 1;
-                ArgumentImplicitlyIs(i)
+                ArgumentIs(i)
             }
         };
 
@@ -519,7 +517,7 @@ mod tests {
     fn format_nothing() {
         same("{}",
              &[NextArgument(Argument {
-                   position: ArgumentImplicitlyIs(0),
+                   position: ArgumentIs(0),
                    format: fmtdflt(),
                })]);
     }
@@ -597,7 +595,7 @@ mod tests {
     fn format_counts() {
         same("{:10s}",
              &[NextArgument(Argument {
-                   position: ArgumentImplicitlyIs(0),
+                   position: ArgumentIs(0),
                    format: FormatSpec {
                        fill: None,
                        align: AlignUnknown,
@@ -609,7 +607,7 @@ mod tests {
                })]);
         same("{:10$.10s}",
              &[NextArgument(Argument {
-                   position: ArgumentImplicitlyIs(0),
+                   position: ArgumentIs(0),
                    format: FormatSpec {
                        fill: None,
                        align: AlignUnknown,
@@ -621,7 +619,7 @@ mod tests {
                })]);
         same("{:.*s}",
              &[NextArgument(Argument {
-                   position: ArgumentImplicitlyIs(1),
+                   position: ArgumentIs(1),
                    format: FormatSpec {
                        fill: None,
                        align: AlignUnknown,
@@ -633,7 +631,7 @@ mod tests {
                })]);
         same("{:.10$s}",
              &[NextArgument(Argument {
-                   position: ArgumentImplicitlyIs(0),
+                   position: ArgumentIs(0),
                    format: FormatSpec {
                        fill: None,
                        align: AlignUnknown,
@@ -645,7 +643,7 @@ mod tests {
                })]);
         same("{:a$.b$s}",
              &[NextArgument(Argument {
-                   position: ArgumentImplicitlyIs(0),
+                   position: ArgumentIs(0),
                    format: FormatSpec {
                        fill: None,
                        align: AlignUnknown,
@@ -660,7 +658,7 @@ mod tests {
     fn format_flags() {
         same("{:-}",
              &[NextArgument(Argument {
-                   position: ArgumentImplicitlyIs(0),
+                   position: ArgumentIs(0),
                    format: FormatSpec {
                        fill: None,
                        align: AlignUnknown,
@@ -672,7 +670,7 @@ mod tests {
                })]);
         same("{:+#}",
              &[NextArgument(Argument {
-                   position: ArgumentImplicitlyIs(0),
+                   position: ArgumentIs(0),
                    format: FormatSpec {
                        fill: None,
                        align: AlignUnknown,

@@ -19,7 +19,7 @@ use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, DefIndexAddressSpace,
                   CRATE_DEF_INDEX};
 use ich::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::{IndexVec};
+use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::stable_hasher::StableHasher;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 use session::CrateDisambiguator;
@@ -61,7 +61,7 @@ impl DefPathTable {
                 -> DefIndex {
         let index = {
             let index_to_key = &mut self.index_to_key[address_space.index()];
-            let index = DefIndex::from_array_index(index_to_key.len(), address_space);
+            let index = DefIndex::new(index_to_key.len() + address_space.start());
             debug!("DefPathTable::insert() - {:?} <-> {:?}", key, index);
             index_to_key.push(key);
             index
@@ -70,10 +70,6 @@ impl DefPathTable {
         debug_assert!(self.def_path_hashes[address_space.index()].len() ==
                       self.index_to_key[address_space.index()].len());
         index
-    }
-
-    pub fn next_id(&self, address_space: DefIndexAddressSpace) -> DefIndex {
-        DefIndex::from_array_index(self.index_to_key[address_space.index()].len(), address_space)
     }
 
     #[inline(always)]
@@ -93,7 +89,8 @@ impl DefPathTable {
     pub fn add_def_path_hashes_to(&self,
                                   cnum: CrateNum,
                                   out: &mut FxHashMap<DefPathHash, DefId>) {
-        for &address_space in &[DefIndexAddressSpace::Low, DefIndexAddressSpace::High] {
+        for address_space in &[DefIndexAddressSpace::Low, DefIndexAddressSpace::High] {
+            let start_index = address_space.start();
             out.extend(
                 (&self.def_path_hashes[address_space.index()])
                     .iter()
@@ -101,7 +98,7 @@ impl DefPathTable {
                     .map(|(index, &hash)| {
                         let def_id = DefId {
                             krate: cnum,
-                            index: DefIndex::from_array_index(index, address_space),
+                            index: DefIndex::new(index + start_index),
                         };
                         (hash, def_id)
                     })
@@ -315,29 +312,6 @@ impl DefPath {
                 .unwrap();
         }
 
-        s
-    }
-
-    /// Return filename friendly string of the DefPah without
-    /// the crate-prefix. This method is useful if you don't have
-    /// a TyCtxt available.
-    pub fn to_filename_friendly_no_crate(&self) -> String {
-        let mut s = String::with_capacity(self.data.len() * 16);
-
-        let mut opt_delimiter = None;
-        for component in &self.data {
-            opt_delimiter.map(|d| s.push(d));
-            opt_delimiter = Some('-');
-            if component.disambiguator == 0 {
-                write!(s, "{}", component.data.as_interned_str()).unwrap();
-            } else {
-                write!(s,
-                       "{}[{}]",
-                       component.data.as_interned_str(),
-                       component.disambiguator)
-                    .unwrap();
-            }
-        }
         s
     }
 }
@@ -578,8 +552,7 @@ impl Definitions {
             self.node_to_def_index.insert(node_id, index);
         }
 
-        let expansion = expansion.modern();
-        if expansion != Mark::root() {
+        if expansion.is_modern() {
             self.expansions.insert(index, expansion);
         }
 

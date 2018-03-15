@@ -15,7 +15,7 @@ struct Foo {
 impl Foo {
     fn foo<'a>(&self, x: &'a Foo) -> &'a Foo {
 
-        if true { x } else { self } //~ ERROR lifetime mismatch
+        if true { x } else { self }
 
     }
 }

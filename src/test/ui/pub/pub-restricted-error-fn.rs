@@ -10,4 +10,4 @@
 
 #![feature(pub_restricted)]
 
-pub(crate) () fn foo() {} //~ unmatched visibility
+pub(crate) () fn foo() {}

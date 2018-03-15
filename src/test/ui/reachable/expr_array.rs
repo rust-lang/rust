@@ -17,12 +17,12 @@
 
 fn a() {
     // the `22` is unreachable:
-    let x: [usize; 2] = [return, 22]; //~ ERROR unreachable
+    let x: [usize; 2] = [return, 22];
 }
 
 fn b() {
     // the `array is unreachable:
-    let x: [usize; 2] = [22, return]; //~ ERROR unreachable
+    let x: [usize; 2] = [22, return];
 }
 
 fn main() { }

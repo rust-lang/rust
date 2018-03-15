@@ -1,12 +1,11 @@
 error[E0507]: cannot move out of captured outer variable in an `Fn` closure
   --> $DIR/unboxed-closures-move-upvar-from-non-once-ref-closure.rs:21:9
    |
-LL |     let y = vec![format!("World")];
+19 |     let y = vec![format!("World")];  //~ NOTE moved
    |         - captured outer variable
-LL |     call(|| {
-LL |         y.into_iter();
+20 |     call(|| {
+21 |         y.into_iter();
    |         ^ cannot move out of captured outer variable in an `Fn` closure
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0507"

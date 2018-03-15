@@ -10,7 +10,6 @@
 
 use std::fmt;
 use std::io;
-use std::path::PathBuf;
 
 use externalfiles::ExternalHtml;
 
@@ -28,12 +27,11 @@ pub struct Page<'a> {
     pub root_path: &'a str,
     pub description: &'a str,
     pub keywords: &'a str,
-    pub resource_suffix: &'a str,
 }
 
 pub fn render<T: fmt::Display, S: fmt::Display>(
     dst: &mut io::Write, layout: &Layout, page: &Page, sidebar: &S, t: &T,
-    css_file_extension: bool, themes: &[PathBuf])
+    css_file_extension: bool)
     -> io::Result<()>
 {
     write!(dst,
@@ -48,13 +46,9 @@ r##"<!DOCTYPE html>
 
     <title>{title}</title>
 
-    <link rel="stylesheet" type="text/css" href="{root_path}normalize{suffix}.css">
-    <link rel="stylesheet" type="text/css" href="{root_path}rustdoc{suffix}.css"
-          id="mainThemeStyle">
-    {themes}
-    <link rel="stylesheet" type="text/css" href="{root_path}dark{suffix}.css">
-    <link rel="stylesheet" type="text/css" href="{root_path}main{suffix}.css" id="themeStyle">
-    <script src="{root_path}storage{suffix}.js"></script>
+    <link rel="stylesheet" type="text/css" href="{root_path}normalize.css">
+    <link rel="stylesheet" type="text/css" href="{root_path}rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="{root_path}main.css">
     {css_extension}
 
     {favicon}
@@ -71,18 +65,10 @@ r##"<!DOCTYPE html>
     {before_content}
 
     <nav class="sidebar">
-        <div class="sidebar-menu">&#9776;</div>
         {logo}
         {sidebar}
     </nav>
 
-    <div class="theme-picker">
-        <button id="theme-picker" aria-label="Pick another theme!">
-            <img src="{root_path}brush{suffix}.svg" width="18" alt="Pick another theme!">
-        </button>
-        <div id="theme-choices"></div>
-    </div>
-    <script src="{root_path}theme{suffix}.js"></script>
     <nav class="sub">
         <form class="search-form js-only">
             <div class="search-container">
@@ -107,22 +93,20 @@ r##"<!DOCTYPE html>
                 <h2>Keyboard Shortcuts</h2>
 
                 <dl>
-                    <dt><kbd>?</kbd></dt>
+                    <dt>?</dt>
                     <dd>Show this help dialog</dd>
-                    <dt><kbd>S</kbd></dt>
+                    <dt>S</dt>
                     <dd>Focus the search field</dd>
-                    <dt><kbd>↑</kbd></dt>
+                    <dt>↑</dt>
                     <dd>Move up in search results</dd>
-                    <dt><kbd>↓</kbd></dt>
+                    <dt>↓</dt>
                     <dd>Move down in search results</dd>
-                    <dt><kbd>↹</kbd></dt>
+                    <dt>↹</dt>
                     <dd>Switch tab</dd>
-                    <dt><kbd>&#9166;</kbd></dt>
+                    <dt>&#9166;</dt>
                     <dd>Go to active search result</dd>
-                    <dt><kbd>+</kbd></dt>
-                    <dd>Expand all sections</dd>
-                    <dt><kbd>-</kbd></dt>
-                    <dd>Collapse all sections</dd>
+                    <dt style="width:31px;">+ / -</dt>
+                    <dd>Collapse/expand all sections</dd>
                 </dl>
             </div>
 
@@ -155,14 +139,13 @@ r##"<!DOCTYPE html>
         window.rootPath = "{root_path}";
         window.currentCrate = "{krate}";
     </script>
-    <script src="{root_path}main{suffix}.js"></script>
+    <script src="{root_path}main.js"></script>
     <script defer src="{root_path}search-index.js"></script>
 </body>
 </html>"##,
     css_extension = if css_file_extension {
-        format!("<link rel=\"stylesheet\" type=\"text/css\" href=\"{root_path}theme{suffix}.css\">",
-                root_path = page.root_path,
-                suffix=page.resource_suffix)
+        format!("<link rel=\"stylesheet\" type=\"text/css\" href=\"{root_path}theme.css\">",
+                root_path = page.root_path)
     } else {
         "".to_owned()
     },
@@ -190,14 +173,6 @@ r##"<!DOCTYPE html>
     after_content = layout.external_html.after_content,
     sidebar   = *sidebar,
     krate     = layout.krate,
-    themes = themes.iter()
-                   .filter_map(|t| t.file_stem())
-                   .filter_map(|t| t.to_str())
-                   .map(|t| format!(r#"<link rel="stylesheet" type="text/css" href="{}{}">"#,
-                                    page.root_path,
-                                    t.replace(".css", &format!("{}.css", page.resource_suffix))))
-                   .collect::<String>(),
-    suffix=page.resource_suffix,
     )
 }
 

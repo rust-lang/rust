@@ -415,7 +415,13 @@ impl<O: ForestObligation> ObligationForest<O> {
             }
         }
 
-        while let Some(i) = error_stack.pop() {
+        loop {
+            // non-standard `while let` to bypass #6393
+            let i = match error_stack.pop() {
+                Some(i) => i,
+                None => break
+            };
+
             let node = &self.nodes[i];
 
             match node.state.get() {

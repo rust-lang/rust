@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    "😊""; //~ ERROR unterminated double quote
+    "😊"";
 }

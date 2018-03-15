@@ -22,7 +22,7 @@ use std::env;
 use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
 
 use build_helper::output;
@@ -30,7 +30,7 @@ use cmake;
 use cc;
 
 use Build;
-use util::{self, exe};
+use util;
 use build_helper::up_to_date;
 use builder::{Builder, RunConfig, ShouldRun, Step};
 use cache::Interned;
@@ -38,40 +38,35 @@ use cache::Interned;
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Llvm {
     pub target: Interned<String>,
-    pub emscripten: bool,
 }
 
 impl Step for Llvm {
-    type Output = PathBuf; // path to llvm-config
-
+    type Output = ();
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/llvm").path("src/llvm-emscripten")
+        run.path("src/llvm")
     }
 
     fn make_run(run: RunConfig) {
-        let emscripten = run.path.ends_with("llvm-emscripten");
-        run.builder.ensure(Llvm {
-            target: run.target,
-            emscripten,
-        });
+        run.builder.ensure(Llvm { target: run.target })
     }
 
     /// Compile LLVM for `target`.
-    fn run(self, builder: &Builder) -> PathBuf {
+    fn run(self, builder: &Builder) {
         let build = builder.build;
         let target = self.target;
-        let emscripten = self.emscripten;
+
+        // If we're not compiling for LLVM bail out here.
+        if !build.config.llvm_enabled {
+            return;
+        }
 
         // If we're using a custom LLVM bail out here, but we can only use a
         // custom LLVM for the build triple.
-        if !self.emscripten {
-            if let Some(config) = build.config.target_config.get(&target) {
-                if let Some(ref s) = config.llvm_config {
-                    check_llvm_version(build, s);
-                    return s.to_path_buf()
-                }
+        if let Some(config) = build.config.target_config.get(&target) {
+            if let Some(ref s) = config.llvm_config {
+                return check_llvm_version(build, s);
             }
         }
 
@@ -79,17 +74,8 @@ impl Step for Llvm {
         let mut rebuild_trigger_contents = String::new();
         t!(t!(File::open(&rebuild_trigger)).read_to_string(&mut rebuild_trigger_contents));
 
-        let (out_dir, llvm_config_ret_dir) = if emscripten {
-            let dir = build.emscripten_llvm_out(target);
-            let config_dir = dir.join("build/bin");
-            (dir, config_dir)
-        } else {
-            (build.llvm_out(target),
-                build.llvm_out(build.config.build).join("build/bin"))
-        };
+        let out_dir = build.llvm_out(target);
         let done_stamp = out_dir.join("llvm-finished-building");
-        let build_llvm_config = llvm_config_ret_dir
-            .join(exe("llvm-config", &*build.config.build));
         if done_stamp.exists() {
             let mut done_contents = String::new();
             t!(t!(File::open(&done_stamp)).read_to_string(&mut done_contents));
@@ -97,19 +83,20 @@ impl Step for Llvm {
             // If LLVM was already built previously and contents of the rebuild-trigger file
             // didn't change from the previous build, then no action is required.
             if done_contents == rebuild_trigger_contents {
-                return build_llvm_config
+                return
             }
         }
 
         let _folder = build.fold_output(|| "llvm");
-        let descriptor = if emscripten { "Emscripten " } else { "" };
-        println!("Building {}LLVM for {}", descriptor, target);
+        println!("Building LLVM for {}", target);
         let _time = util::timeit();
         t!(fs::create_dir_all(&out_dir));
 
         // http://llvm.org/docs/CMake.html
-        let root = if self.emscripten { "src/llvm-emscripten" } else { "src/llvm" };
-        let mut cfg = cmake::Config::new(build.src.join(root));
+        let mut cfg = cmake::Config::new(build.src.join("src/llvm"));
+        if build.config.ninja {
+            cfg.generator("Ninja");
+        }
 
         let profile = match (build.config.llvm_optimize, build.config.llvm_release_debuginfo) {
             (false, _) => "Debug",
@@ -117,26 +104,22 @@ impl Step for Llvm {
             (true, true) => "RelWithDebInfo",
         };
 
-        // NOTE: remember to also update `config.toml.example` when changing the
-        // defaults!
-        let llvm_targets = if self.emscripten {
-            "JSBackend"
-        } else {
-            match build.config.llvm_targets {
-                Some(ref s) => s,
-                None => "X86;ARM;AArch64;Mips;PowerPC;SystemZ;MSP430;Sparc;NVPTX;Hexagon",
-            }
+        // NOTE: remember to also update `config.toml.example` when changing the defaults!
+        let llvm_targets = match build.config.llvm_targets {
+            Some(ref s) => s,
+            None => "X86;ARM;AArch64;Mips;PowerPC;SystemZ;JSBackend;MSP430;Sparc;NVPTX;Hexagon",
         };
 
-        let llvm_exp_targets = if self.emscripten {
-            ""
-        } else {
-            &build.config.llvm_experimental_targets[..]
+        let llvm_exp_targets = match build.config.llvm_experimental_targets {
+            Some(ref s) => s,
+            None => "",
         };
 
         let assertions = if build.config.llvm_assertions {"ON"} else {"OFF"};
 
-        cfg.out_dir(&out_dir)
+        cfg.target(&target)
+           .host(&build.build)
+           .out_dir(&out_dir)
            .profile(profile)
            .define("LLVM_ENABLE_ASSERTIONS", assertions)
            .define("LLVM_TARGETS_TO_BUILD", llvm_targets)
@@ -152,14 +135,6 @@ impl Step for Llvm {
            .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
            .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
 
-        // By default, LLVM will automatically find OCaml and, if it finds it,
-        // install the LLVM bindings in LLVM_OCAML_INSTALL_PATH, which defaults
-        // to /usr/bin/ocaml.
-        // This causes problem for non-root builds of Rust. Side-step the issue
-        // by setting LLVM_OCAML_INSTALL_PATH to a relative path, so it installs
-        // in the prefix.
-        cfg.define("LLVM_OCAML_INSTALL_PATH",
-            env::var_os("LLVM_OCAML_INSTALL_PATH").unwrap_or_else(|| "usr/lib/ocaml".into()));
 
         // This setting makes the LLVM tools link to the dynamic LLVM library,
         // which saves both memory during parallel links and overall disk space
@@ -187,11 +162,8 @@ impl Step for Llvm {
         }
 
         // http://llvm.org/docs/HowToCrossCompileLLVM.html
-        if target != build.build && !emscripten {
-            builder.ensure(Llvm {
-                target: build.build,
-                emscripten: false,
-            });
+        if target != build.build {
+            builder.ensure(Llvm { target: build.build });
             // FIXME: if the llvm root for the build triple is overridden then we
             //        should use llvm-tblgen from there, also should verify that it
             //        actually exists most of the time in normal installs of LLVM.
@@ -208,7 +180,67 @@ impl Step for Llvm {
             cfg.define("LLVM_NATIVE_BUILD", build.llvm_out(build.build).join("build"));
         }
 
-        configure_cmake(build, target, &mut cfg, false);
+        let sanitize_cc = |cc: &Path| {
+            if target.contains("msvc") {
+                OsString::from(cc.to_str().unwrap().replace("\\", "/"))
+            } else {
+                cc.as_os_str().to_owned()
+            }
+        };
+
+        let configure_compilers = |cfg: &mut cmake::Config| {
+            // MSVC with CMake uses msbuild by default which doesn't respect these
+            // vars that we'd otherwise configure. In that case we just skip this
+            // entirely.
+            if target.contains("msvc") && !build.config.ninja {
+                return
+            }
+
+            let cc = build.cc(target);
+            let cxx = build.cxx(target).unwrap();
+
+            // Handle msvc + ninja + ccache specially (this is what the bots use)
+            if target.contains("msvc") &&
+               build.config.ninja &&
+               build.config.ccache.is_some() {
+                let mut cc = env::current_exe().expect("failed to get cwd");
+                cc.set_file_name("sccache-plus-cl.exe");
+
+               cfg.define("CMAKE_C_COMPILER", sanitize_cc(&cc))
+                  .define("CMAKE_CXX_COMPILER", sanitize_cc(&cc));
+               cfg.env("SCCACHE_PATH",
+                       build.config.ccache.as_ref().unwrap())
+                  .env("SCCACHE_TARGET", target);
+
+            // If ccache is configured we inform the build a little differently hwo
+            // to invoke ccache while also invoking our compilers.
+            } else if let Some(ref ccache) = build.config.ccache {
+               cfg.define("CMAKE_C_COMPILER", ccache)
+                  .define("CMAKE_C_COMPILER_ARG1", sanitize_cc(cc))
+                  .define("CMAKE_CXX_COMPILER", ccache)
+                  .define("CMAKE_CXX_COMPILER_ARG1", sanitize_cc(cxx));
+            } else {
+               cfg.define("CMAKE_C_COMPILER", sanitize_cc(cc))
+                  .define("CMAKE_CXX_COMPILER", sanitize_cc(cxx));
+            }
+
+            cfg.build_arg("-j").build_arg(build.jobs().to_string());
+            cfg.define("CMAKE_C_FLAGS", build.cflags(target).join(" "));
+            cfg.define("CMAKE_CXX_FLAGS", build.cflags(target).join(" "));
+            if let Some(ar) = build.ar(target) {
+                if ar.is_absolute() {
+                    // LLVM build breaks if `CMAKE_AR` is a relative path, for some reason it
+                    // tries to resolve this path in the LLVM build directory.
+                    cfg.define("CMAKE_AR", sanitize_cc(ar));
+                }
+            }
+        };
+
+        configure_compilers(&mut cfg);
+
+        if env::var_os("SCCACHE_ERROR_LOG").is_some() {
+            cfg.env("RUST_LOG", "sccache=warn");
+        }
 
         // FIXME: we don't actually need to build all LLVM tools and all LLVM
         //        libraries here, e.g. we just want a few components and a few
@@ -217,8 +249,6 @@ impl Step for Llvm {
         cfg.build();
 
         t!(t!(File::create(&done_stamp)).write_all(rebuild_trigger_contents.as_bytes()));
-
-        build_llvm_config
     }
 }
 
@@ -239,134 +269,6 @@ fn check_llvm_version(build: &Build, llvm_config: &Path) {
     panic!("\n\nbad LLVM version: {}, need >=3.9\n\n", version)
 }
 
-fn configure_cmake(build: &Build,
-                   target: Interned<String>,
-                   cfg: &mut cmake::Config,
-                   building_dist_binaries: bool) {
-    if build.config.ninja {
-        cfg.generator("Ninja");
-    }
-    cfg.target(&target)
-       .host(&build.config.build);
-
-    let sanitize_cc = |cc: &Path| {
-        if target.contains("msvc") {
-            OsString::from(cc.to_str().unwrap().replace("\\", "/"))
-        } else {
-            cc.as_os_str().to_owned()
-        }
-    };
-
-    // MSVC with CMake uses msbuild by default which doesn't respect these
-    // vars that we'd otherwise configure. In that case we just skip this
-    // entirely.
-    if target.contains("msvc") && !build.config.ninja {
-        return
-    }
-
-    let cc = build.cc(target);
-    let cxx = build.cxx(target).unwrap();
-
-    // Handle msvc + ninja + ccache specially (this is what the bots use)
-    if target.contains("msvc") &&
-       build.config.ninja &&
-       build.config.ccache.is_some() {
-        let mut cc = env::current_exe().expect("failed to get cwd");
-        cc.set_file_name("sccache-plus-cl.exe");
-
-       cfg.define("CMAKE_C_COMPILER", sanitize_cc(&cc))
-          .define("CMAKE_CXX_COMPILER", sanitize_cc(&cc));
-       cfg.env("SCCACHE_PATH",
-               build.config.ccache.as_ref().unwrap())
-          .env("SCCACHE_TARGET", target);
-
-    // If ccache is configured we inform the build a little differently hwo
-    // to invoke ccache while also invoking our compilers.
-    } else if let Some(ref ccache) = build.config.ccache {
-       cfg.define("CMAKE_C_COMPILER", ccache)
-          .define("CMAKE_C_COMPILER_ARG1", sanitize_cc(cc))
-          .define("CMAKE_CXX_COMPILER", ccache)
-          .define("CMAKE_CXX_COMPILER_ARG1", sanitize_cc(cxx));
-    } else {
-       cfg.define("CMAKE_C_COMPILER", sanitize_cc(cc))
-          .define("CMAKE_CXX_COMPILER", sanitize_cc(cxx));
-    }
-
-    cfg.build_arg("-j").build_arg(build.jobs().to_string());
-    cfg.define("CMAKE_C_FLAGS", build.cflags(target).join(" "));
-    let mut cxxflags = build.cflags(target).join(" ");
-    if building_dist_binaries {
-        if build.config.llvm_static_stdcpp && !target.contains("windows") {
-            cxxflags.push_str(" -static-libstdc++");
-        }
-    }
-    cfg.define("CMAKE_CXX_FLAGS", cxxflags);
-    if let Some(ar) = build.ar(target) {
-        if ar.is_absolute() {
-            // LLVM build breaks if `CMAKE_AR` is a relative path, for some reason it
-            // tries to resolve this path in the LLVM build directory.
-            cfg.define("CMAKE_AR", sanitize_cc(ar));
-        }
-    }
-
-    if env::var_os("SCCACHE_ERROR_LOG").is_some() {
-        cfg.env("RUST_LOG", "sccache=warn");
-    }
-}
-
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct Lld {
-    pub target: Interned<String>,
-}
-
-impl Step for Lld {
-    type Output = PathBuf;
-    const ONLY_HOSTS: bool = true;
-
-    fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/tools/lld")
-    }
-
-    fn make_run(run: RunConfig) {
-        run.builder.ensure(Lld { target: run.target });
-    }
-
-    /// Compile LLVM for `target`.
-    fn run(self, builder: &Builder) -> PathBuf {
-        let target = self.target;
-        let build = builder.build;
-
-        let llvm_config = builder.ensure(Llvm {
-            target: self.target,
-            emscripten: false,
-        });
-
-        let out_dir = build.lld_out(target);
-        let done_stamp = out_dir.join("lld-finished-building");
-        if done_stamp.exists() {
-            return out_dir
-        }
-
-        let _folder = build.fold_output(|| "lld");
-        println!("Building LLD for {}", target);
-        let _time = util::timeit();
-        t!(fs::create_dir_all(&out_dir));
-
-        let mut cfg = cmake::Config::new(build.src.join("src/tools/lld"));
-        configure_cmake(build, target, &mut cfg, true);
-
-        cfg.out_dir(&out_dir)
-           .profile("Release")
-           .define("LLVM_CONFIG_PATH", llvm_config)
-           .define("LLVM_INCLUDE_TESTS", "OFF");
-
-        cfg.build();
-
-        t!(File::create(&done_stamp));
-        out_dir
-    }
-}
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TestHelpers {
     pub target: Interned<String>,
@@ -376,7 +278,7 @@ impl Step for TestHelpers {
     type Output = ();
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/test/auxiliary/rust_test_helpers.c")
+        run.path("src/rt/rust_test_helpers.c")
     }
 
     fn make_run(run: RunConfig) {
@@ -389,7 +291,7 @@ impl Step for TestHelpers {
         let build = builder.build;
         let target = self.target;
         let dst = build.test_helpers_out(target);
-        let src = build.src.join("src/test/auxiliary/rust_test_helpers.c");
+        let src = build.src.join("src/rt/rust_test_helpers.c");
         if up_to_date(&src, &dst.join("librust_test_helpers.a")) {
             return
         }
@@ -416,8 +318,8 @@ impl Step for TestHelpers {
            .opt_level(0)
            .warnings(false)
            .debug(false)
-           .file(build.src.join("src/test/auxiliary/rust_test_helpers.c"))
-           .compile("rust_test_helpers");
+           .file(build.src.join("src/rt/rust_test_helpers.c"))
+           .compile("librust_test_helpers.a");
     }
 }
 
@@ -530,8 +432,6 @@ impl Step for Openssl {
             "arm-unknown-linux-gnueabihf" => "linux-armv4",
             "armv7-linux-androideabi" => "android-armv7",
             "armv7-unknown-linux-gnueabihf" => "linux-armv4",
-            "i586-unknown-linux-gnu" => "linux-elf",
-            "i586-unknown-linux-musl" => "linux-elf",
             "i686-apple-darwin" => "darwin-i386-cc",
             "i686-linux-android" => "android-x86",
             "i686-unknown-freebsd" => "BSD-x86-elf",
@@ -543,12 +443,9 @@ impl Step for Openssl {
             "mips64el-unknown-linux-gnuabi64" => "linux64-mips64",
             "mipsel-unknown-linux-gnu" => "linux-mips32",
             "powerpc-unknown-linux-gnu" => "linux-ppc",
-            "powerpc-unknown-linux-gnuspe" => "linux-ppc",
-            "powerpc-unknown-netbsd" => "BSD-generic32",
             "powerpc64-unknown-linux-gnu" => "linux-ppc64",
             "powerpc64le-unknown-linux-gnu" => "linux-ppc64le",
             "s390x-unknown-linux-gnu" => "linux64-s390x",
-            "sparc-unknown-linux-gnu" => "linux-sparcv9",
             "sparc64-unknown-linux-gnu" => "linux64-sparcv9",
             "sparc64-unknown-netbsd" => "BSD-sparc64",
             "x86_64-apple-darwin" => "darwin64-x86_64-cc",
@@ -556,7 +453,6 @@ impl Step for Openssl {
             "x86_64-unknown-freebsd" => "BSD-x86_64",
             "x86_64-unknown-dragonfly" => "BSD-x86_64",
             "x86_64-unknown-linux-gnu" => "linux-x86_64",
-            "x86_64-unknown-linux-gnux32" => "linux-x32",
             "x86_64-unknown-linux-musl" => "linux-x86_64",
             "x86_64-unknown-netbsd" => "BSD-x86_64",
             _ => panic!("don't know how to configure OpenSSL for {}", target),

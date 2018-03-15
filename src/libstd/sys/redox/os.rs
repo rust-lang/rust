@@ -213,7 +213,3 @@ pub fn exit(code: i32) -> ! {
 pub fn getpid() -> u32 {
     syscall::getpid().unwrap() as u32
 }
-
-pub fn getppid() -> u32 {
-    syscall::getppid().unwrap() as u32
-}
