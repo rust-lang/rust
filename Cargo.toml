@@ -47,7 +47,6 @@ getopts = "0.2"
 derive-new = "0.5"
 cargo_metadata = "0.5.1"
 rustc-ap-syntax = "67.0.0"
-rustc-ap-rustc_errors = "67.0.0"
 
 [dev-dependencies]
 lazy_static = "1.0.0"

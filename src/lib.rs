@@ -20,7 +20,6 @@ extern crate itertools;
 #[macro_use]
 extern crate log;
 extern crate regex;
-extern crate rustc_errors as errors;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
@@ -39,8 +38,8 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::Duration;
 
-use errors::{DiagnosticBuilder, Handler};
-use errors::emitter::{ColorConfig, EmitterWriter};
+use syntax::errors::{DiagnosticBuilder, Handler};
+use syntax::errors::emitter::{ColorConfig, EmitterWriter};
 use syntax::ast;
 use syntax::codemap::{CodeMap, FilePathMapping};
 pub use syntax::codemap::FileName;
