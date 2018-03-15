@@ -22,3 +22,5 @@ LL | |     let _y = bar();
 LL | | }
    | |_^
 
+error: aborting due to previous error
+

@@ -6,3 +6,5 @@ LL | |     println!("Hello World");
 LL | | }
    | |_^
 
+error: aborting due to previous error
+

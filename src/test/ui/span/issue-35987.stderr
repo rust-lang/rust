@@ -8,5 +8,6 @@ help: possible better candidate is found in another module, you can import it in
 LL | use std::ops::Add;
    |
 
-error: cannot continue compilation due to previous error
+error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0404`.
