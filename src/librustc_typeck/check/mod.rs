@@ -1222,6 +1222,7 @@ pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item
                 if !generics.types.is_empty() {
                     let mut err = struct_span_err!(tcx.sess, item.span, E0044,
                         "foreign items may not have type parameters");
+                    err.span_label(item.span, "can't have type parameters");
                     // FIXME: once we start storing spans for type arguments, turn this into a
                     // suggestion.
                     err.help("use specialization instead of type parameters by replacing them \
