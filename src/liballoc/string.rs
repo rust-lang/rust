@@ -2031,6 +2031,10 @@ impl ops::DerefMut for String {
 
 /// An error when parsing a `String`.
 ///
+/// As of Rust 1.26, this is a type alias for [`!`].  Code that doesn't need to
+/// support compilation with older compiler versions should just use that type
+/// directly; this alias will be deprecated in the future.
+///
 /// This `enum` is slightly awkward: it will never actually exist. This error is
 /// part of the type signature of the implementation of [`FromStr`] on
 /// [`String`]. The return type of [`from_str`], requires that an error be
@@ -2038,12 +2042,12 @@ impl ops::DerefMut for String {
 /// [`String`] without error, this type will never actually be returned. As
 /// such, it is only here to satisfy said signature, and is useless otherwise.
 ///
+/// [`!`]: ../../std/primitive.never.html
 /// [`FromStr`]: ../../std/str/trait.FromStr.html
 /// [`String`]: struct.String.html
 /// [`from_str`]: ../../std/str/trait.FromStr.html#tymethod.from_str
 #[stable(feature = "str_parse_error", since = "1.5.0")]
-#[derive(Copy)]
-pub enum ParseError {}
+pub type ParseError = !;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl FromStr for String {
@@ -2053,37 +2057,6 @@ impl FromStr for String {
         Ok(String::from(s))
     }
 }
-
-#[stable(feature = "str_parse_error", since = "1.5.0")]
-impl Clone for ParseError {
-    fn clone(&self) -> ParseError {
-        match *self {}
-    }
-}
-
-#[stable(feature = "str_parse_error", since = "1.5.0")]
-impl fmt::Debug for ParseError {
-    fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result {
-        match *self {}
-    }
-}
-
-#[stable(feature = "str_parse_error2", since = "1.8.0")]
-impl fmt::Display for ParseError {
-    fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result {
-        match *self {}
-    }
-}
-
-#[stable(feature = "str_parse_error", since = "1.5.0")]
-impl PartialEq for ParseError {
-    fn eq(&self, _: &ParseError) -> bool {
-        match *self {}
-    }
-}
-
-#[stable(feature = "str_parse_error", since = "1.5.0")]
-impl Eq for ParseError {}
 
 /// A trait for converting a value to a `String`.
 ///
