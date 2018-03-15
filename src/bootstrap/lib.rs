@@ -254,6 +254,10 @@ pub struct Build {
     ci_env: CiEnv,
     delayed_failures: RefCell<Vec<String>>,
     prerelease_version: Cell<Option<u32>>,
+    tool_artifacts: RefCell<HashMap<
+        Interned<String>,
+        HashMap<String, (&'static str, PathBuf, Vec<String>)>
+    >>,
 }
 
 #[derive(Debug)]
@@ -353,6 +357,7 @@ impl Build {
             ci_env: CiEnv::current(),
             delayed_failures: RefCell::new(Vec::new()),
             prerelease_version: Cell::new(None),
+            tool_artifacts: Default::default(),
         }
     }
 
