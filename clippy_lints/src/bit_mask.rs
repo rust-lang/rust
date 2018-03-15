@@ -1,11 +1,10 @@
 use rustc::hir::*;
-use rustc::hir::def::Def;
 use rustc::lint::*;
-use rustc_const_eval::lookup_const_by_id;
 use syntax::ast::LitKind;
 use syntax::codemap::Span;
 use utils::{span_lint, span_lint_and_then};
 use utils::sugg::Sugg;
+use consts::{constant, Constant};
 
 /// **What it does:** Checks for incompatible bit masks in comparisons.
 ///
@@ -302,31 +301,8 @@ fn check_ineffective_gt(cx: &LateContext, span: Span, m: u128, c: u128, op: &str
 }
 
 fn fetch_int_literal(cx: &LateContext, lit: &Expr) -> Option<u128> {
-    use rustc::ty::subst::Substs;
-    match lit.node {
-        ExprLit(ref lit_ptr) => {
-            if let LitKind::Int(value, _) = lit_ptr.node {
-                Some(value) // TODO: Handle sign
-            } else {
-                None
-            }
-        },
-        ExprPath(ref qpath) => {
-            let def = cx.tables.qpath_def(qpath, lit.hir_id);
-            if let Def::Const(def_id) = def {
-                lookup_const_by_id(cx.tcx, cx.param_env.and((def_id, Substs::empty()))).and_then(|(l, _ty)| {
-                    let body = if let Some(id) = cx.tcx.hir.as_local_node_id(l) {
-                        cx.tcx.mir_const_qualif(def_id);
-                        cx.tcx.hir.body(cx.tcx.hir.body_owned_by(id))
-                    } else {
-                        cx.tcx.extern_const_body(def_id).body
-                    };
-                    fetch_int_literal(cx, &body.value)
-                })
-            } else {
-                None
-            }
-        },
+    match constant(cx, lit)?.0 {
+        Constant::Int(n) => Some(n),
         _ => None,
     }
 }
