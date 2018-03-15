@@ -67,7 +67,10 @@ pub fn main() {
     let mut metadata = if let Ok(metadata) = cargo_metadata::metadata(manifest_path_arg.as_ref().map(AsRef::as_ref)) {
         metadata
     } else {
-        println!("{:?}", cargo_metadata::metadata(manifest_path_arg.as_ref().map(AsRef::as_ref)));
+        println!(
+            "{:?}",
+            cargo_metadata::metadata(manifest_path_arg.as_ref().map(AsRef::as_ref))
+        );
         let _ = io::stderr().write_fmt(format_args!("error: Could not obtain cargo metadata.\n"));
         process::exit(101);
     };

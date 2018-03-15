@@ -193,7 +193,5 @@ pub fn main() {
     }
 
     let mut ccc = ClippyCompilerCalls::new(clippy_enabled);
-    rustc_driver::run(move || {
-        rustc_driver::run_compiler(&args, &mut ccc, None, None)
-    });
+    rustc_driver::run(move || rustc_driver::run_compiler(&args, &mut ccc, None, None));
 }
