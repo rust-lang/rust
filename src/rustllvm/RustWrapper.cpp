@@ -21,6 +21,8 @@
 
 #if LLVM_VERSION_GE(5, 0)
 #include "llvm/ADT/Optional.h"
+#else
+#include <cstdlib>
 #endif
 
 //===----------------------------------------------------------------------===
@@ -1397,7 +1399,7 @@ LLVMRustModuleCost(LLVMModuleRef M) {
 }
 
 // Vector reductions:
-#if LLVM_VERSION_GE(6, 0)
+#if LLVM_VERSION_GE(5, 0)
 extern "C" LLVMValueRef
 LLVMRustBuildVectorReduceFAdd(LLVMBuilderRef B, LLVMValueRef Acc, LLVMValueRef Src) {
     return wrap(unwrap(B)->CreateFAddReduce(unwrap(Acc),unwrap(Src)));
@@ -1445,48 +1447,65 @@ LLVMRustBuildVectorReduceFMax(LLVMBuilderRef B, LLVMValueRef Src, bool NoNaN) {
 
 #else
 
+void error_and_exit(const char* msg) {
+  raw_fd_ostream OS(2, false);
+  OS << ::std::string(msg);
+  std::exit(EXIT_FAILURE);
+}
+
 extern "C" LLVMValueRef
 LLVMRustBuildVectorReduceFAdd(LLVMBuilderRef, LLVMValueRef, LLVMValueRef Src) {
+  error_and_exit("LLVMRustBuildVectorReduceFAdd requires LLVM >= 5.0");
   return Src;
 }
 extern "C" LLVMValueRef
 LLVMRustBuildVectorReduceFMul(LLVMBuilderRef, LLVMValueRef, LLVMValueRef Src) {
+  error_and_exit("LLVMRustBuildVectorReduceFMul requires LLVM >= 5.0");
   return Src;
 }
 extern "C" LLVMValueRef
 LLVMRustBuildVectorReduceAdd(LLVMBuilderRef, LLVMValueRef Src) {
+  error_and_exit("LLVMRustBuildVectorReduceAdd requires LLVM >= 5.0");
   return Src;
 }
 extern "C" LLVMValueRef
 LLVMRustBuildVectorReduceMul(LLVMBuilderRef, LLVMValueRef Src) {
+  error_and_exit("LLVMRustBuildVectorReduceMul requires LLVM >= 5.0");
   return Src;
 }
 extern "C" LLVMValueRef
 LLVMRustBuildVectorReduceAnd(LLVMBuilderRef, LLVMValueRef Src) {
+  error_and_exit("LLVMRustBuildVectorReduceAnd requires LLVM >= 5.0");
   return Src;
 }
 extern "C" LLVMValueRef
 LLVMRustBuildVectorReduceOr(LLVMBuilderRef, LLVMValueRef Src) {
+  error_and_exit("LLVMRustBuildVectorReduceOr requires LLVM >= 5.0");
   return Src;
 }
 extern "C" LLVMValueRef
 LLVMRustBuildVectorReduceXor(LLVMBuilderRef, LLVMValueRef Src) {
+  error_and_exit("LLVMRustBuildVectorReduceXor requires LLVM >= 5.0");
   return Src;
 }
 extern "C" LLVMValueRef
 LLVMRustBuildVectorReduceMin(LLVMBuilderRef, LLVMValueRef Src, bool) {
+  error_and_exit("LLVMRustBuildVectorReduceMin requires LLVM >= 5.0");
   return Src;
 }
 extern "C" LLVMValueRef
 LLVMRustBuildVectorReduceMax(LLVMBuilderRef, LLVMValueRef Src, bool) {
+  error_and_exit("LLVMRustBuildVectorReduceMax requires LLVM >= 5.0");
   return Src;
 }
 extern "C" LLVMValueRef
 LLVMRustBuildVectorReduceFMin(LLVMBuilderRef, LLVMValueRef Src, bool) {
+  error_and_exit("LLVMRustBuildVectorReduceFMin requires LLVM >= 5.0");
   return Src;
 }
 extern "C" LLVMValueRef
 LLVMRustBuildVectorReduceFMax(LLVMBuilderRef, LLVMValueRef Src, bool) {
+  error_and_exit("LLVMRustBuildVectorReduceFMax requires LLVM >= 5.0");
   return Src;
 }
 #endif
