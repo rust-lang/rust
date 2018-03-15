@@ -121,6 +121,7 @@ fn rewrite_reorderable_items(
         span.hi(),
         false,
     );
+
     let mut item_pair_vec: Vec<_> = items.zip(reorderable_items.iter()).collect();
     item_pair_vec.sort_by(|a, b| compare_items(a.1, b.1));
     let item_vec: Vec<_> = item_pair_vec.into_iter().map(|pair| pair.0).collect();

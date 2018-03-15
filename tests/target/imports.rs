@@ -85,5 +85,4 @@ use fooo::{bar, x, y, z,
 // nested imports with a single sub-tree.
 use a::b::c::d;
 use a::b::c::*;
-
 use a::b::c::{xxx, yyy, zzz};

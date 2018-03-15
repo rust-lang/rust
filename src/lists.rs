@@ -56,7 +56,7 @@ impl AsRef<ListItem> for ListItem {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum ListItemCommentStyle {
     // Try to keep the comment on the same line with the item.
     SameLine,
@@ -66,6 +66,7 @@ pub enum ListItemCommentStyle {
     None,
 }
 
+#[derive(Debug)]
 pub struct ListItem {
     // None for comments mean that they are not present.
     pub pre_comment: Option<String>,
@@ -117,6 +118,18 @@ impl ListItem {
             post_comment: None,
             new_lines: false,
         }
+    }
+
+    // true if the item causes something to be written.
+    fn is_substantial(&self) -> bool {
+        fn empty(s: &Option<String>) -> bool {
+            match *s {
+                Some(ref s) if !s.is_empty() => false,
+                _ => true,
+            }
+        }
+
+        !(empty(&self.pre_comment) && empty(&self.item) && empty(&self.post_comment))
     }
 }
 
@@ -220,6 +233,10 @@ where
             item_last_line_width -= indent_str.len();
         }
 
+        if !item.is_substantial() {
+            continue;
+        }
+
         match tactic {
             DefinitiveListTactic::Horizontal if !first => {
                 result.push(' ');
@@ -276,26 +293,28 @@ where
                 rewrite_comment(comment, block_mode, formatting.shape, formatting.config)?;
             result.push_str(&comment);
 
-            if tactic == DefinitiveListTactic::Vertical {
-                // We cannot keep pre-comments on the same line if the comment if normalized.
-                let keep_comment = if formatting.config.normalize_comments()
-                    || item.pre_comment_style == ListItemCommentStyle::DifferentLine
-                {
-                    false
+            if !inner_item.is_empty() {
+                if tactic == DefinitiveListTactic::Vertical {
+                    // We cannot keep pre-comments on the same line if the comment if normalized.
+                    let keep_comment = if formatting.config.normalize_comments()
+                        || item.pre_comment_style == ListItemCommentStyle::DifferentLine
+                    {
+                        false
+                    } else {
+                        // We will try to keep the comment on the same line with the item here.
+                        // 1 = ` `
+                        let total_width = total_item_width(item) + item_sep_len + 1;
+                        total_width <= formatting.shape.width
+                    };
+                    if keep_comment {
+                        result.push(' ');
+                    } else {
+                        result.push('\n');
+                        result.push_str(indent_str);
+                    }
                 } else {
-                    // We will try to keep the comment on the same line with the item here.
-                    // 1 = ` `
-                    let total_width = total_item_width(item) + item_sep_len + 1;
-                    total_width <= formatting.shape.width
-                };
-                if keep_comment {
                     result.push(' ');
-                } else {
-                    result.push('\n');
-                    result.push_str(indent_str);
                 }
-            } else {
-                result.push(' ');
             }
             item_max_width = None;
         }
@@ -304,7 +323,7 @@ where
             result.push_str(formatting.separator.trim());
             result.push(' ');
         }
-        result.push_str(&inner_item[..]);
+        result.push_str(inner_item);
 
         // Post-comments
         if tactic != DefinitiveListTactic::Vertical && item.post_comment.is_some() {
