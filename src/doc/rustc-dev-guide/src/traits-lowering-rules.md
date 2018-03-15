@@ -20,6 +20,16 @@ the [notation given in this section](./traits-goals-and-clauses.html).
 We sometimes insert "macros" like `LowerWhereClause!` into these
 definitions; these macros reference other sections within this chapter.
 
+## Rule names and cross-references
+
+Each of these lowering rules is given a name, documented with a
+comment like so:
+
+    // Rule Foo-Bar-Baz
+    
+you can also search through the `librustc_traits` crate in rustc
+to find the corresponding rules from the implementation.
+
 ## Lowering where clauses
 
 When used in a goal position, where clauses can be mapped directly to
@@ -76,6 +86,7 @@ relationships between different kinds of domain goals.  The first such
 rule from the trait header creates the mapping between the `FromEnv`
 and `Implemented` predicates:
 
+    // Rule Implemented-From-Env
     forall<Self, P1..Pn> {
       Implemented(Self: Trait<P1..Pn>) :- FromEnv(Self: Trait<P1..Pn>)
     }
@@ -89,6 +100,8 @@ The next few clauses have to do with implied bounds (see also
 
 [RFC 2089]: https://rust-lang.github.io/rfcs/2089-implied-bounds.html
 
+    // Rule Implied-Bound-From-Trait
+    //
     // For each where clause WC:
     forall<Self, P1..Pn> {
       FromEnv(WC) :- FromEnv(Self: Trait<P1..Pn)
@@ -112,6 +125,8 @@ clauses** but also things that follow from them.
 The next rule is related; it defines what it means for a trait reference
 to be **well-formed**:
 
+    // Rule WellFormed-TraitRef
+    //
     // For each where clause WC:
     forall<Self, P1..Pn> {
       WellFormed(Self: Trait<P1..Pn>) :- Implemented(Self: Trait<P1..Pn>) && WellFormed(WC)
@@ -175,12 +190,16 @@ the rules by which `ProjectionEq` can succeed; these two clauses are discussed
 in detail in the [section on associated types](./traits-associated-types.html),,
 but reproduced here for reference:
 
+    // Rule ProjectionEq-Normalize
+    //
     // ProjectionEq can succeed by normalizing:
     forall<Self, P1..Pn, Pn+1..Pm, U> {
       ProjectionEq(<Self as Trait<P1..Pn>>::AssocType<Pn+1..Pm> = U) :-
           Normalize(<Self as Trait<P1..Pn>>::AssocType<Pn+1..Pm> -> U)
     }
 
+    // Rule ProjectionEq-Skolemize
+    //
     // ProjectionEq can succeed by skolemizing, see "associated type"
     // chapter for more:
     forall<Self, P1..Pn, Pn+1..Pm> {
@@ -223,6 +242,7 @@ where WC
 Let `TraitRef` be the trait reference `A0: Trait<A1..An>`. Then we
 will create the following rules:
 
+    // Rule Implemented-From-Impl
     forall<P0..Pn> {
       Implemented(TraitRef) :- WC
     }
@@ -245,6 +265,7 @@ where WC
 
 We produce the following rule:
 
+    // Rule Normalize-From-Impl
     forall<P0..Pm> {
       forall<Pn+1..Pm> {
         Normalize(<A0 as Trait<A1..An>>::AssocType<Pn+1..Pm> -> T) :-
