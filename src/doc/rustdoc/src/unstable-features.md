@@ -7,7 +7,7 @@ themselves unstable. Several features here require a matching `#![feature(...)]`
 enable, and thus are more fully documented in the [Unstable Book]. Those sections will link over
 there as necessary.
 
-[Unstable Book]: ../unstable-book/
+[Unstable Book]: ../unstable-book/index.html
 
 ## Nightly-gated functionality
 
