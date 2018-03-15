@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.4.1] 2018-03-16
+
 ### Added
 
 - Add `ignore` configuration option.
@@ -11,6 +13,8 @@
 ### Fixed
 
 - Fix formatting bugs.
+- Fix setting `reorder_modules` removing inline modules.
+- Format attributes on block expressions.
 - Support `dyn trait` syntax.
 - Support multiple patterns in `if let` and `while let`.
 - Support a pattern with parentheses.
