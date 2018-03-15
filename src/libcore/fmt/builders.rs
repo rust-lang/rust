@@ -537,3 +537,77 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
         self.fmt.alternate()
     }
 }
+
+/// A struct to help with [`fmt::Debug`](trait.Debug.html) implementations.
+///
+/// This is useful you need to output an unquoted string as part of your
+/// [`Debug::fmt`](trait.Debug.html#tymethod.fmt) implementation.
+///
+/// The type can be constructed by the
+/// [`DebugStr::new`](struct.DebugStr.html#method.new) function.
+///
+/// The difference between `&'a str` and `DebugStr<'a>` in a `Debug` context
+/// such as `println!("{:?}", <value>)` is that the former will quote the
+/// string while the latter will not. In other words, the following holds:
+///
+/// ```rust
+/// #![feature(debug_str)]
+/// use std::fmt::DebugStr;
+///
+/// assert_eq!("foo", format!("{:?}", DebugStr::new("foo")));
+/// assert_eq!("\"foo\"", format!("{:?}", "foo"));
+/// ```
+///
+/// # Examples
+///
+/// In this example we use `DebugStr::new("_")` for a "catch all" match arm.
+///
+/// ```
+/// #![feature(debug_str)]
+/// use std::fmt::{Debug, Formatter, DebugStr, Result};
+///
+/// struct Arrow<'a, L: 'a, R: 'a>(&'a (L, R));
+/// struct Table<'a, K: 'a, V: 'a>(&'a [(K, V)], V);
+/// 
+/// impl<'a, L: 'a + Debug, R: 'a + Debug> Debug for Arrow<'a, L, R> {
+///     fn fmt(&self, fmt: &mut Formatter) -> Result {
+///         L::fmt(&(self.0).0, fmt)?;
+///         fmt.write_str(" => ")?;
+///         R::fmt(&(self.0).1, fmt)
+///     }
+/// }
+///
+/// impl<'a, K: 'a + Debug, V: 'a + Debug> Debug for Table<'a, K, V> {
+///     fn fmt(&self, fmt: &mut Formatter) -> Result {
+///         fmt.debug_set()
+///            .entries(self.0.iter().map(Arrow))
+///            .entry(&Arrow(&(DebugStr::new("_"), &self.1)))
+///            .finish()
+///     }
+/// }
+///
+/// let table = (1..3).enumerate().collect::<Vec<_>>();
+/// assert_eq!(format!("{:?}", Table(&*table, 0)),
+///            "{0 => 1, 1 => 2, _ => 0}");
+/// ```
+#[unstable(feature = "debug_str", issue = "0")]
+#[must_use]
+#[derive(Copy, Clone)]
+pub struct DebugStr<'a>(&'a str);
+
+#[unstable(feature = "debug_str", issue = "0")]
+impl<'a> DebugStr<'a> {
+    /// Constructs a new `DebugStr` which will output the given string slice
+    /// unquoted when used in a `Debug` context. See the documentation on the
+    /// [type](struct.DebugStr.html) for more information.
+    fn new(string: &'a str) -> Self {
+        DebugStr(string)
+    }
+}
+
+#[unstable(feature = "debug_str", issue = "0")]
+impl<'a> fmt::Debug for DebugStr<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_str(self.0)
+    }
+}
