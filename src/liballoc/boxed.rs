@@ -899,6 +899,7 @@ impl<T> Generator for Box<T>
 
 /// A pinned, heap allocated reference.
 #[unstable(feature = "pin", issue = "0")]
+#[fundamental]
 pub struct PinBox<T: ?Sized> {
     inner: Box<T>,
 }

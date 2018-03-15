@@ -1112,6 +1112,7 @@ pub unsafe fn unreachable() -> ! {
 /// safe to move a value out of a pinned reference unless the type of that
 /// value implements the `Unpin` trait.
 #[unstable(feature = "pin", issue = "0")]
+#[fundamental]
 pub struct Pin<'a, T: ?Sized + 'a> {
     inner: &'a mut T,
 }
