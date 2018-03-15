@@ -38,6 +38,9 @@ pub fn plugin_registrar(reg: &mut Registry) {
         Symbol::intern("into_multi_foo"),
         MultiModifier(Box::new(expand_into_foo_multi)));
     reg.register_syntax_extension(
+        Symbol::intern("noop_attribute"),
+        MultiModifier(Box::new(expand_noop_attribute)));
+    reg.register_syntax_extension(
         Symbol::intern("duplicate"),
         MultiDecorator(Box::new(expand_duplicate)));
 }
@@ -91,6 +94,13 @@ fn expand_into_foo_multi(cx: &mut ExtCtxt,
             })
         }
     }
+}
+
+fn expand_noop_attribute(_cx: &mut ExtCtxt,
+                         _sp: Span,
+                         _attr: &MetaItem,
+                         it: Annotatable) -> Annotatable {
+    it
 }
 
 // Create a duplicate of the annotatable, based on the MetaItem
