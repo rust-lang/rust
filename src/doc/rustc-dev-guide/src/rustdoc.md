@@ -116,9 +116,9 @@ Here is current (as of this writing) list of passes:
   markdown to like it. This is necessary because the convention for writing
   documentation is to provide a space between the `///` or `//!` marker and the
   text, and stripping that leading space will make the text easier to parse by
-  the Markdown parser. (In my experience it's less necessary now that we have a
-  Commonmark-compliant parser, since it doesn't have a problem with headers
-  that have a space before the `##` that marks the heading.)
+  the Markdown parser. (In the past, the markdown parser used was not Commonmark-
+  compliant, which caused annoyances with extra whitespace but this seems to be 
+  less of an issue today.)
 - `strip-priv-imports` strips all private import statements (`use`, `extern
   crate`) from a crate. This is necessary because rustdoc will handle *public*
   imports by either inlining the item's documentation to the module or creating
