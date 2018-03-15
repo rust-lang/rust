@@ -1,10 +1,7 @@
 use rustc::hir;
 use rustc::lint::*;
-use rustc::middle::const_val::ConstVal;
 use rustc::ty::{self, Ty};
 use rustc::hir::def::Def;
-use rustc::ty::subst::Substs;
-use rustc_const_eval::ConstContext;
 use std::borrow::Cow;
 use std::fmt;
 use std::iter;
@@ -16,7 +13,7 @@ use utils::{get_arg_name, get_trait_def_id, implements_trait, in_external_macro,
             span_lint, span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth};
 use utils::paths;
 use utils::sugg;
-use utils::const_to_u64;
+use consts::{constant, Constant};
 
 #[derive(Clone)]
 pub struct Pass;
@@ -1302,7 +1299,7 @@ fn derefs_to_slice(cx: &LateContext, expr: &hir::Expr, ty: Ty) -> Option<sugg::S
             ty::TySlice(_) => true,
             ty::TyAdt(def, _) if def.is_box() => may_slice(cx, ty.boxed_ty()),
             ty::TyAdt(..) => match_type(cx, ty, &paths::VEC),
-            ty::TyArray(_, size) => const_to_u64(size) < 32,
+            ty::TyArray(_, size) => size.val.to_raw_bits().expect("array length") < 32,
             ty::TyRef(_, ty::TypeAndMut { ty: inner, .. }) => may_slice(cx, inner),
             _ => false,
         }
@@ -1754,14 +1751,7 @@ fn lint_chars_last_cmp_with_unwrap<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &
 
 /// lint for length-1 `str`s for methods in `PATTERN_METHODS`
 fn lint_single_char_pattern<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr, arg: &'tcx hir::Expr) {
-    let parent_item = cx.tcx.hir.get_parent(arg.id);
-    let parent_def_id = cx.tcx.hir.local_def_id(parent_item);
-    let substs = Substs::identity_for_item(cx.tcx, parent_def_id);
-    if let Ok(&ty::Const {
-        val: ConstVal::Str(r),
-        ..
-    }) = ConstContext::new(cx.tcx, cx.param_env.and(substs), cx.tables).eval(arg)
-    {
+    if let Some((Constant::Str(r), _)) = constant(cx, arg) {
         if r.len() == 1 {
             let c = r.chars().next().unwrap();
             let snip = snippet(cx, expr.span, "..");

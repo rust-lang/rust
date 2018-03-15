@@ -1,4 +1,4 @@
-use consts::{constant_simple, Constant, FloatWidth};
+use consts::{constant_simple, Constant};
 use rustc::lint::*;
 use rustc::hir::*;
 use utils::span_help_and_lint;
@@ -37,16 +37,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             // TODO - constant_simple does not fold many operations involving floats.
             // That's probably fine for this lint - it's pretty unlikely that someone would
             // do something like 0.0/(2.0 - 2.0), but it would be nice to warn on that case too.
-            if let Some(Constant::Float(ref lhs_value, lhs_width)) = constant_simple(cx, left);
-            if let Some(Constant::Float(ref rhs_value, rhs_width)) = constant_simple(cx, right);
-            if Ok(0.0) == lhs_value.parse();
-            if Ok(0.0) == rhs_value.parse();
+            if let Some(lhs_value) = constant_simple(cx, left);
+            if let Some(rhs_value) = constant_simple(cx, right);
+            if Constant::F32(0.0) == lhs_value || Constant::F64(0.0) == lhs_value;
+            if Constant::F32(0.0) == rhs_value || Constant::F64(0.0) == rhs_value;
             then {
                 // since we're about to suggest a use of std::f32::NaN or std::f64::NaN,
                 // match the precision of the literals that are given.
-                let float_type = match (lhs_width, rhs_width) {
-                    (FloatWidth::F64, _)
-                    | (_, FloatWidth::F64) => "f64",
+                let float_type = match (lhs_value, rhs_value) {
+                    (Constant::F64(_), _)
+                    | (_, Constant::F64(_)) => "f64",
                     _ => "f32"
                 };
                 span_help_and_lint(

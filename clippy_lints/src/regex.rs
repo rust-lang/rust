@@ -1,15 +1,11 @@
 use regex_syntax;
 use rustc::hir::*;
 use rustc::lint::*;
-use rustc::ty;
-use rustc::middle::const_val::ConstVal;
-use rustc_const_eval::ConstContext;
-use rustc::ty::subst::Substs;
 use std::collections::HashSet;
 use syntax::ast::{LitKind, NodeId, StrStyle};
 use syntax::codemap::{BytePos, Span};
-use syntax::symbol::InternedString;
 use utils::{is_expn_of, match_def_path, match_type, opt_def_id, paths, span_help_and_lint, span_lint};
+use consts::{constant, Constant};
 
 /// **What it does:** Checks [regex](https://crates.io/crates/regex) creation
 /// (with `Regex::new`,`RegexBuilder::new` or `RegexSet::new`) for correct
@@ -141,17 +137,11 @@ fn str_span(base: Span, c: regex_syntax::ast::Span, offset: usize) -> Span {
     Span::new(start, end, base.ctxt())
 }
 
-fn const_str<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) -> Option<InternedString> {
-    let parent_item = cx.tcx.hir.get_parent(e.id);
-    let parent_def_id = cx.tcx.hir.local_def_id(parent_item);
-    let substs = Substs::identity_for_item(cx.tcx, parent_def_id);
-    match ConstContext::new(cx.tcx, cx.param_env.and(substs), cx.tables).eval(e) {
-        Ok(&ty::Const {
-            val: ConstVal::Str(r),
-            ..
-        }) => Some(r),
+fn const_str<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) -> Option<String> {
+    constant(cx, e).and_then(|(c, _)| match c {
+        Constant::Str(s) => Some(s),
         _ => None,
-    }
+    })
 }
 
 fn is_trivial_regex(s: &regex_syntax::hir::Hir) -> Option<&'static str> {
