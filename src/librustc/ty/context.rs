@@ -1010,17 +1010,16 @@ impl<'tcx> InterpretInterner<'tcx> {
     }
 }
 
-impl<'tcx> GlobalCtxt<'tcx> {
+impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Get the global TyCtxt.
-    pub fn global_tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
+    #[inline]
+    pub fn global_tcx(self) -> TyCtxt<'a, 'gcx, 'gcx> {
         TyCtxt {
-            gcx: self,
-            interners: &self.global_interners
+            gcx: self.gcx,
+            interners: &self.gcx.global_interners,
         }
     }
-}
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn alloc_generics(self, generics: ty::Generics) -> &'gcx ty::Generics {
         self.global_arenas.generics.alloc(generics)
     }
