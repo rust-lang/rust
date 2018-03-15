@@ -7040,7 +7040,11 @@ impl<'a> Parser<'a> {
 
     fn parse_rename(&mut self) -> PResult<'a, Option<Ident>> {
         if self.eat_keyword(keywords::As) {
-            self.parse_ident().map(Some)
+            if self.eat(&token::Underscore) {
+                Ok(Some(Ident::with_empty_ctxt(Symbol::gensym("_"))))
+            } else {
+                self.parse_ident().map(Some)
+            }
         } else {
             Ok(None)
         }
