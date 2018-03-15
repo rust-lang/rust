@@ -44,6 +44,10 @@
 
 #include "llvm-c/Transforms/PassManagerBuilder.h"
 
+#if LLVM_VERSION_GE(4, 0)
+#define PGO_AVAILABLE
+#endif
+
 using namespace llvm;
 using namespace llvm::legacy;
 
@@ -435,6 +439,8 @@ extern "C" void LLVMRustConfigurePassManagerBuilder(
   unwrap(PMBR)->SLPVectorize = SLPVectorize;
   unwrap(PMBR)->OptLevel = fromRust(OptLevel);
   unwrap(PMBR)->LoopVectorize = LoopVectorize;
+
+#ifdef PGO_AVAILABLE
   if (PGOGenPath) {
     assert(!PGOUsePath);
     unwrap(PMBR)->EnablePGOInstrGen = true;
@@ -444,6 +450,9 @@ extern "C" void LLVMRustConfigurePassManagerBuilder(
     assert(!PGOGenPath);
     unwrap(PMBR)->PGOInstrUse = PGOUsePath;
   }
+#else
+  assert(!PGOGenPath && !PGOUsePath && "Should've caught earlier");
+#endif
 }
 
 // Unfortunately, the LLVM C API doesn't provide a way to set the `LibraryInfo`
@@ -770,6 +779,15 @@ extern "C" void LLVMRustSetModulePIELevel(LLVMModuleRef M) {
 extern "C" bool
 LLVMRustThinLTOAvailable() {
 #if LLVM_VERSION_GE(4, 0)
+  return true;
+#else
+  return false;
+#endif
+}
+
+extern "C" bool
+LLVMRustPGOAvailable() {
+#ifdef PGO_AVAILABLE
   return true;
 #else
   return false;

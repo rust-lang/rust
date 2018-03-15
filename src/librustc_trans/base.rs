@@ -708,6 +708,13 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
+    if (tcx.sess.opts.debugging_opts.pgo_gen.is_some() ||
+        !tcx.sess.opts.debugging_opts.pgo_use.is_empty()) &&
+        unsafe { !llvm::LLVMRustPGOAvailable() }
+    {
+        tcx.sess.fatal("this compiler's LLVM does not support PGO");
+    }
+
     let crate_hash = tcx.crate_hash(LOCAL_CRATE);
     let link_meta = link::build_link_meta(crate_hash);
 

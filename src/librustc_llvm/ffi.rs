@@ -1739,6 +1739,7 @@ extern "C" {
     pub fn LLVMRustModuleCost(M: ModuleRef) -> u64;
 
     pub fn LLVMRustThinLTOAvailable() -> bool;
+    pub fn LLVMRustPGOAvailable() -> bool;
     pub fn LLVMRustWriteThinBitcodeToFile(PMR: PassManagerRef,
                                           M: ModuleRef,
                                           BC: *const c_char) -> bool;
