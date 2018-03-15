@@ -1,7 +1,7 @@
-- Feature Name: euclidean_modulo
+- Feature Name: `euclidean_modulo`
 - Start Date: 2017-10-09
-- RFC PR:
-- Rust Issue:
+- RFC PR: https://github.com/rust-lang/rfcs/pull/2169
+- Rust Issue: https://github.com/rust-lang/rust/issues/49048
 
 # Summary
 [summary]: #summary
