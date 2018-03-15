@@ -989,3 +989,6 @@ impl<T: ?Sized> fmt::Pointer for PinBox<T> {
         fmt::Pointer::fmt(&ptr, f)
     }
 }
+
+#[unstable(feature = "pin", issue = "0")]
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<PinBox<U>> for PinBox<T> {}
