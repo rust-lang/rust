@@ -123,7 +123,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
             } else if is_lint_array_type(ty) && item.vis == Visibility::Inherited && item.name == "ARRAY" {
                 let mut collector = LintCollector {
                     output: &mut self.registered_lints,
-                    cx: cx,
+                    cx,
                 };
                 collector.visit_expr(&cx.tcx.hir.body(body_id).value);
             }

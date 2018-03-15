@@ -73,7 +73,7 @@ impl PartialEq for Constant {
                 // we want `Fw32 == FwAny` and `FwAny == Fw64`, by transitivity we must have
                 // `Fw32 == Fw64` so don’t compare them
                 // mem::transmute is required to catch non-matching 0.0, -0.0, and NaNs
-                unsafe { mem::transmute::<f64, u64>(l as f64) == mem::transmute::<f64, u64>(r as f64) }
+                unsafe { mem::transmute::<f64, u64>(f64::from(l)) == mem::transmute::<f64, u64>(f64::from(r)) }
             },
             (&Constant::Bool(l), &Constant::Bool(r)) => l == r,
             (&Constant::Vec(ref l), &Constant::Vec(ref r)) | (&Constant::Tuple(ref l), &Constant::Tuple(ref r)) => l == r,
@@ -102,7 +102,7 @@ impl Hash for Constant {
                 i.hash(state);
             },
             Constant::F32(f) => {
-                unsafe { mem::transmute::<f64, u64>(f as f64) }.hash(state);
+                unsafe { mem::transmute::<f64, u64>(f64::from(f)) }.hash(state);
             },
             Constant::F64(f) => {
                 unsafe { mem::transmute::<f64, u64>(f) }.hash(state);
@@ -143,12 +143,12 @@ impl PartialOrd for Constant {
 }
 
 /// parse a `LitKind` to a `Constant`
-pub fn lit_to_constant<'a, 'tcx>(lit: &LitKind, ty: Ty<'tcx>) -> Constant {
+pub fn lit_to_constant<'tcx>(lit: &LitKind, ty: Ty<'tcx>) -> Constant {
     use syntax::ast::*;
 
     match *lit {
         LitKind::Str(ref is, _) => Constant::Str(is.to_string()),
-        LitKind::Byte(b) => Constant::Int(b as u128),
+        LitKind::Byte(b) => Constant::Int(u128::from(b)),
         LitKind::ByteStr(ref s) => Constant::Binary(Rc::clone(s)),
         LitKind::Char(c) => Constant::Char(c),
         LitKind::Int(n, _) => Constant::Int(n),
@@ -177,7 +177,7 @@ pub fn constant_simple(lcx: &LateContext, e: &Expr) -> Option<Constant> {
     constant(lcx, e).and_then(|(cst, res)| if res { None } else { Some(cst) })
 }
 
-/// Creates a ConstEvalLateContext from the given LateContext and TypeckTables
+/// Creates a `ConstEvalLateContext` from the given `LateContext` and `TypeckTables`
 pub fn constant_context<'c, 'cc>(lcx: &LateContext<'c, 'cc>, tables: &'cc ty::TypeckTables<'cc>) -> ConstEvalLateContext<'c, 'cc> {
     ConstEvalLateContext {
         tcx: lcx.tcx,
@@ -215,7 +215,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             },
             ExprUnary(op, ref operand) => self.expr(operand).and_then(|o| match op {
                 UnNot => self.constant_not(&o, self.tables.expr_ty(e)),
-                UnNeg => self.constant_negate(o, self.tables.expr_ty(e)),
+                UnNeg => self.constant_negate(&o, self.tables.expr_ty(e)),
                 UnDeref => Some(o),
             }),
             ExprBinary(op, ref left, ref right) => self.binop(op, left, right),
@@ -240,9 +240,9 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
         }
     }
 
-    fn constant_negate(&self, o: Constant, ty: ty::Ty) -> Option<Constant> {
+    fn constant_negate(&self, o: &Constant, ty: ty::Ty) -> Option<Constant> {
         use self::Constant::*;
-        match o {
+        match *o {
             Int(value) => {
                 let ity = match ty.sty {
                     ty::TyInt(ity) => ity,

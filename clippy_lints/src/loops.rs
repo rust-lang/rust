@@ -975,7 +975,7 @@ fn check_for_loop_range<'a, 'tcx>(
         // the var must be a single name
         if let PatKind::Binding(_, canonical_id, ref ident, _) = pat.node {
             let mut visitor = VarVisitor {
-                cx: cx,
+                cx,
                 var: canonical_id,
                 indexed_mut: HashSet::new(),
                 indexed_indirectly: HashMap::new(),
@@ -1289,7 +1289,7 @@ fn check_for_loop_explicit_counter<'a, 'tcx>(
 ) {
     // Look for variables that are incremented once per loop iteration.
     let mut visitor = IncrementVisitor {
-        cx: cx,
+        cx,
         states: HashMap::new(),
         depth: 0,
         done: false,
@@ -1309,7 +1309,7 @@ fn check_for_loop_explicit_counter<'a, 'tcx>(
                 .filter(|&(_, v)| *v == VarState::IncrOnce)
             {
                 let mut visitor2 = InitializeVisitor {
-                    cx: cx,
+                    cx,
                     end_expr: expr,
                     var_id: *id,
                     state: VarState::IncrOnce,
@@ -1728,8 +1728,8 @@ fn is_iterator_used_after_while_let<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, it
         None => return false,
     };
     let mut visitor = VarUsedAfterLoopVisitor {
-        cx: cx,
-        def_id: def_id,
+        cx,
+        def_id,
         iter_expr_id: iter_expr.id,
         past_while_let: false,
         var_used_after_while_let: false,
@@ -2048,7 +2048,7 @@ fn is_loop_nested(cx: &LateContext, loop_expr: &Expr, iter_expr: &Expr) -> bool 
             },
             Some(NodeBlock(block)) => {
                 let mut block_visitor = LoopNestVisitor {
-                    id: id,
+                    id,
                     iterator: iter_name,
                     nesting: Unknown,
                 };
@@ -2189,7 +2189,7 @@ struct MutableVarsVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> Visitor<'tcx> for MutableVarsVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &'tcx Expr) {
         match ex.node {
-            ExprPath(_) => if let Some(node_id) = check_for_mutability(self.cx, &ex) {
+            ExprPath(_) => if let Some(node_id) = check_for_mutability(self.cx, ex) {
                 self.ids.insert(node_id, None);
             },
 
@@ -2213,7 +2213,7 @@ struct MutVarsDelegate {
 
 impl<'tcx> MutVarsDelegate {
     fn update(&mut self, cat: &'tcx Categorization, sp: Span) {
-        if let &Categorization::Local(id) = cat {
+        if let Categorization::Local(id) = *cat {
             if let Some(span) = self.mut_spans.get_mut(&id) {    
                 *span = Some(sp)
             }

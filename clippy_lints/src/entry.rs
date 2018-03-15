@@ -55,12 +55,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for HashMapLint {
                     };
 
                     let mut visitor = InsertVisitor {
-                        cx: cx,
+                        cx,
                         span: expr.span,
-                        ty: ty,
-                        map: map,
-                        key: key,
-                        sole_expr: sole_expr,
+                        ty,
+                        map,
+                        key,
+                        sole_expr,
                     };
 
                     walk_expr(&mut visitor, &**then_block);
@@ -68,11 +68,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for HashMapLint {
             } else if let Some(ref else_block) = *else_block {
                 if let Some((ty, map, key)) = check_cond(cx, check) {
                     let mut visitor = InsertVisitor {
-                        cx: cx,
+                        cx,
                         span: expr.span,
-                        ty: ty,
-                        map: map,
-                        key: key,
+                        ty,
+                        map,
+                        key,
                         sole_expr: false,
                     };
 

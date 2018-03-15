@@ -202,9 +202,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                     };
 
                     let mut visitor = ExprVisitor {
-                        assignee: assignee,
+                        assignee,
                         counter: 0,
-                        cx: cx
+                        cx
                     };
 
                     walk_expr(&mut visitor, e);
@@ -253,7 +253,7 @@ struct ExprVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx: 'a> Visitor<'tcx> for ExprVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
-        if SpanlessEq::new(self.cx).ignore_fn().eq_expr(self.assignee, &expr) {
+        if SpanlessEq::new(self.cx).ignore_fn().eq_expr(self.assignee, expr) {
             self.counter += 1;
         }
 

@@ -203,7 +203,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
                     // Dereference suggestion
                     let sugg = |db: &mut DiagnosticBuilder| {
-                        if let ty::TypeVariants::TyAdt(ref def, ..) = ty.sty {
+                        if let ty::TypeVariants::TyAdt(def, ..) = ty.sty {
                             if let Some(span) = cx.tcx.hir.span_if_local(def.did) {
                                 let param_env = ty::ParamEnv::empty();
                                 if param_env.can_type_implement_copy(cx.tcx, ty, span).is_ok() {
@@ -307,7 +307,7 @@ struct MovedVariablesCtxt<'a, 'tcx: 'a> {
 impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
     fn new(cx: &'a LateContext<'a, 'tcx>) -> Self {
         Self {
-            cx: cx,
+            cx,
             moved_vars: HashSet::new(),
             spans_need_deref: HashMap::new(),
         }

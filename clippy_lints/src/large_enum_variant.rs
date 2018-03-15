@@ -35,7 +35,7 @@ pub struct LargeEnumVariant {
 impl LargeEnumVariant {
     pub fn new(maximum_size_difference_allowed: u64) -> Self {
         Self {
-            maximum_size_difference_allowed: maximum_size_difference_allowed,
+            maximum_size_difference_allowed,
         }
     }
 }

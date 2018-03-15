@@ -69,7 +69,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonminimalBool {
         _: Span,
         _: NodeId,
     ) {
-        NonminimalBoolVisitor { cx: cx }.visit_body(body)
+        NonminimalBoolVisitor { cx }.visit_body(body)
     }
 }
 
@@ -261,8 +261,8 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
 // The boolean part of the return indicates whether some simplifications have been applied.
 fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> (String, bool) {
     let mut suggest_context = SuggestContext {
-        terminals: terminals,
-        cx: cx,
+        terminals,
+        cx,
         output: String::new(),
         simplified: false,
     };

@@ -55,7 +55,7 @@ impl QuestionMarkPass {
             if let ExprIf(ref if_expr, ref body, _) = expr.node;
             if let ExprMethodCall(ref segment, _, ref args) = if_expr.node;
             if segment.name == "is_none";
-            if Self::expression_returns_none(cx, &body);
+            if Self::expression_returns_none(cx, body);
             if let Some(subject) = args.get(0);
             if Self::is_option(cx, subject);
 
@@ -64,7 +64,7 @@ impl QuestionMarkPass {
                     cx,
                     QUESTION_MARK,
                     expr.span,
-                    &format!("this block may be rewritten with the `?` operator"),
+                    "this block may be rewritten with the `?` operator",
                     |db| {
                         let receiver_str = &Sugg::hir(cx, subject, "..");
 
@@ -82,7 +82,7 @@ impl QuestionMarkPass {
     fn is_option(cx: &LateContext, expression: &Expr) -> bool {
         let expr_ty = cx.tables.expr_ty(expression);
 
-        return match_type(cx, expr_ty, &OPTION);
+        match_type(cx, expr_ty, &OPTION)
     }
 
     fn expression_returns_none(cx: &LateContext, expression: &Expr) -> bool {
@@ -127,7 +127,7 @@ impl QuestionMarkPass {
             return Some(ret_expr.clone());
         }
 
-        return None;
+        None
     }
 }
 

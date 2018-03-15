@@ -63,7 +63,7 @@ impl CyclomaticComplexity {
             divergence: 0,
             short_circuits: 0,
             returns: 0,
-            cx: cx,
+            cx,
         };
         helper.visit_expr(expr);
         let CCHelper {

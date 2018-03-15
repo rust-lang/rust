@@ -66,7 +66,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     ) {
         let fn_def_id = cx.tcx.hir.local_def_id(node_id);
         let mut v = EscapeDelegate {
-            cx: cx,
+            cx,
             set: NodeSet(),
             too_large_for_stack: self.too_large_for_stack,
         };
