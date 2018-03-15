@@ -9,14 +9,15 @@
 // except according to those terms.
 
 // ignore-tidy-linelength
-// compile-flags: -Zepoch=2018 -Zunstable-options
+// compile-flags: -Zedition=2015 -Zunstable-options
 
-// tests that epochs work with the tyvar warning-turned-error
+// tests that editions work with the tyvar warning-turned-error
 
 #[deny(warnings)]
 fn main() {
     let x = 0;
     let y = &x as *const _;
     let _ = y.is_null();
-    //~^ error: the type of this value must be known to call a method on a raw pointer on it [E0908]
+    //~^ error: type annotations needed [tyvar_behind_raw_pointer]
+    //~^^ warning: this was previously accepted
 }
