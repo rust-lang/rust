@@ -621,6 +621,7 @@ extern "C" {
     pub fn LLVMConstIntGetSExtValue(ConstantVal: ValueRef) -> c_longlong;
     pub fn LLVMRustConstInt128Get(ConstantVal: ValueRef, SExt: bool,
                                   high: *mut u64, low: *mut u64) -> bool;
+    pub fn LLVMConstRealGetDouble (ConstantVal: ValueRef, losesInfo: *mut Bool) -> f64;
 
 
     // Operations on composite constants
@@ -1607,6 +1608,7 @@ extern "C" {
     pub fn LLVMRustWriteValueToString(value_ref: ValueRef, s: RustStringRef);
 
     pub fn LLVMIsAConstantInt(value_ref: ValueRef) -> ValueRef;
+    pub fn LLVMIsAConstantFP(value_ref: ValueRef) -> ValueRef;
 
     pub fn LLVMRustPassKind(Pass: PassRef) -> PassKind;
     pub fn LLVMRustFindAndCreatePass(Pass: *const c_char) -> PassRef;

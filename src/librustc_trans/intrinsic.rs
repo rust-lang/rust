@@ -1174,7 +1174,25 @@ fn generic_simd_intrinsic<'a, 'tcx>(
                     ty::TyFloat(f) => {
                         // ordered arithmetic reductions take an accumulator
                         let acc = if $ordered {
-                            args[1].immediate()
+                            let acc = args[1].immediate();
+                            // FIXME: https://bugs.llvm.org/show_bug.cgi?id=36734
+                            // * if the accumulator of the fadd isn't 0, incorrect
+                            //   code is generated
+                            // * if the accumulator of the fmul isn't 1, incorrect
+                            //   code is generated
+                            match const_get_real(acc) {
+                                None => return_error!("accumulator of {} is not a constant", $name),
+                                Some((v, loses_info)) => {
+                                    if $name.contains("mul") && v != 1.0_f64 {
+                                        return_error!("accumulator of {} is not 1.0", $name);
+                                    } else if $name.contains("add") && v != 0.0_f64 {
+                                        return_error!("accumulator of {} is not 0.0", $name);
+                                    } else if loses_info {
+                                        return_error!("accumulator of {} loses information", $name);
+                                    }
+                                }
+                            }
+                            acc
                         } else {
                             // unordered arithmetic reductions do not:
                             match f.bit_width() {
@@ -1248,6 +1266,14 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
                              in_elem, in_ty, ret_ty);
                     args[0].immediate()
                 } else {
+                    match in_elem.sty {
+                        ty::TyInt(_) | ty::TyUint(_) => {},
+                        _ => {
+                            return_error!("unsupported {} from `{}` with element `{}` to `{}`",
+                                          $name, in_ty, in_elem, ret_ty)
+                        }
+                    }
+
                     // boolean reductions operate on vectors of i1s:
                     let i1 = Type::i1(bx.cx);
                     let i1xn = Type::vector(&i1, in_len as u64);

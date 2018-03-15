@@ -270,6 +270,19 @@ pub fn const_get_elt(v: ValueRef, idx: u64) -> ValueRef {
     }
 }
 
+pub fn const_get_real(v: ValueRef) -> Option<(f64, bool)> {
+    unsafe {
+        if is_const_real(v) {
+            let mut loses_info: llvm::Bool = ::std::mem::uninitialized();
+            let r = llvm::LLVMConstRealGetDouble(v, &mut loses_info as *mut llvm::Bool);
+            let loses_info = if loses_info == 1 { true } else { false };
+            Some((r, loses_info))
+        } else {
+            None
+        }
+    }
+}
+
 pub fn const_to_uint(v: ValueRef) -> u64 {
     unsafe {
         llvm::LLVMConstIntGetZExtValue(v)
@@ -281,6 +294,13 @@ pub fn is_const_integral(v: ValueRef) -> bool {
         !llvm::LLVMIsAConstantInt(v).is_null()
     }
 }
+
+pub fn is_const_real(v: ValueRef) -> bool {
+    unsafe {
+        !llvm::LLVMIsAConstantFP(v).is_null()
+    }
+}
+
 
 #[inline]
 fn hi_lo_to_u128(lo: u64, hi: u64) -> u128 {
