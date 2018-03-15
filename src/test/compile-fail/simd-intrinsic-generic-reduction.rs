@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// min-llvm-version 5.0
+
+// Test that the simd_reduce_{op} intrinsics produce ok-ish error
+// messages when misused.
+
 #![feature(repr_simd, platform_intrinsics)]
 #![allow(non_camel_case_types)]
 
