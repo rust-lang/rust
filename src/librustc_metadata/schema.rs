@@ -196,7 +196,7 @@ pub struct CrateRoot {
     pub has_panic_handler: bool,
     pub has_default_lib_allocator: bool,
     pub plugin_registrar_fn: Option<DefIndex>,
-    pub macro_derive_registrar: Option<DefIndex>,
+    pub proc_macro_decls_static: Option<DefIndex>,
 
     pub crate_deps: LazySeq<CrateDep>,
     pub dylib_dependency_formats: LazySeq<Option<LinkagePreference>>,

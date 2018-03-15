@@ -1122,8 +1122,8 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
     ("proc_macro_attribute", Normal, Ungated),
     ("proc_macro", Normal, Ungated),
 
-    ("rustc_derive_registrar", Normal, Gated(Stability::Unstable,
-                                             "rustc_derive_registrar",
+    ("rustc_proc_macro_decls", Normal, Gated(Stability::Unstable,
+                                             "rustc_proc_macro_decls",
                                              "used internally by rustc",
                                              cfg_fn!(rustc_attrs))),
 

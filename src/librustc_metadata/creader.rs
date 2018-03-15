@@ -36,7 +36,6 @@ use std::{cmp, fs};
 
 use syntax::ast;
 use syntax::attr;
-use syntax::edition::Edition;
 use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;
 use syntax::visit;
@@ -231,7 +230,7 @@ impl<'a> CrateLoader<'a> {
 
         let dependencies: Vec<CrateNum> = cnum_map.iter().cloned().collect();
 
-        let proc_macros = crate_root.macro_derive_registrar.map(|_| {
+        let proc_macros = crate_root.proc_macro_decls_static.map(|_| {
             self.load_derive_macros(&crate_root, dylib.clone().map(|p| p.0), span)
         });
 
@@ -339,7 +338,7 @@ impl<'a> CrateLoader<'a> {
         match result {
             LoadResult::Previous(cnum) => {
                 let data = self.cstore.get_crate_data(cnum);
-                if data.root.macro_derive_registrar.is_some() {
+                if data.root.proc_macro_decls_static.is_some() {
                     dep_kind = DepKind::UnexportedMacrosOnly;
                 }
                 data.dep_kind.with_lock(|data_dep_kind| {
@@ -431,7 +430,7 @@ impl<'a> CrateLoader<'a> {
                           dep_kind: DepKind)
                           -> cstore::CrateNumMap {
         debug!("resolving deps of external crate");
-        if crate_root.macro_derive_registrar.is_some() {
+        if crate_root.proc_macro_decls_static.is_some() {
             return cstore::CrateNumMap::new();
         }
 
@@ -533,9 +532,8 @@ impl<'a> CrateLoader<'a> {
     fn load_derive_macros(&mut self, root: &CrateRoot, dylib: Option<PathBuf>, span: Span)
                           -> Vec<(ast::Name, Lrc<SyntaxExtension>)> {
         use std::{env, mem};
-        use proc_macro::TokenStream;
-        use proc_macro::__internal::Registry;
         use dynamic_lib::DynamicLibrary;
+        use proc_macro::bridge::client::ProcMacro;
         use syntax_ext::deriving::custom::ProcMacroDerive;
         use syntax_ext::proc_macro_impl::{AttrProcMacro, BangProcMacro};
 
@@ -550,61 +548,49 @@ impl<'a> CrateLoader<'a> {
             Err(err) => self.sess.span_fatal(span, &err),
         };
 
-        let sym = self.sess.generate_derive_registrar_symbol(root.disambiguator);
-        let registrar = unsafe {
+        let sym = self.sess.generate_proc_macro_decls_symbol(root.disambiguator);
+        let decls = unsafe {
             let sym = match lib.symbol(&sym) {
                 Ok(f) => f,
                 Err(err) => self.sess.span_fatal(span, &err),
             };
-            mem::transmute::<*mut u8, fn(&mut dyn Registry)>(sym)
+            *(sym as *const &[ProcMacro])
         };
 
-        struct MyRegistrar {
-            extensions: Vec<(ast::Name, Lrc<SyntaxExtension>)>,
-            edition: Edition,
-        }
-
-        impl Registry for MyRegistrar {
-            fn register_custom_derive(&mut self,
-                                      trait_name: &str,
-                                      expand: fn(TokenStream) -> TokenStream,
-                                      attributes: &[&'static str]) {
-                let attrs = attributes.iter().cloned().map(Symbol::intern).collect::<Vec<_>>();
-                let derive = ProcMacroDerive::new(expand, attrs.clone());
-                let derive = SyntaxExtension::ProcMacroDerive(
-                    Box::new(derive), attrs, self.edition
-                );
-                self.extensions.push((Symbol::intern(trait_name), Lrc::new(derive)));
+        let extensions = decls.iter().map(|&decl| {
+            match decl {
+                ProcMacro::CustomDerive { trait_name, attributes, client } => {
+                    let attrs = attributes.iter().cloned().map(Symbol::intern).collect::<Vec<_>>();
+                    (trait_name, SyntaxExtension::ProcMacroDerive(
+                        Box::new(ProcMacroDerive {
+                            client,
+                            attrs: attrs.clone(),
+                        }),
+                        attrs,
+                        root.edition,
+                    ))
+                }
+                ProcMacro::Attr { name, client } => {
+                    (name, SyntaxExtension::AttrProcMacro(
+                        Box::new(AttrProcMacro { client }),
+                        root.edition,
+                    ))
+                }
+                ProcMacro::Bang { name, client } => {
+                    (name, SyntaxExtension::ProcMacro {
+                        expander: Box::new(BangProcMacro { client }),
+                        allow_internal_unstable: false,
+                        edition: root.edition,
+                    })
+                }
             }
-
-            fn register_attr_proc_macro(&mut self,
-                                        name: &str,
-                                        expand: fn(TokenStream, TokenStream) -> TokenStream) {
-                let expand = SyntaxExtension::AttrProcMacro(
-                    Box::new(AttrProcMacro { inner: expand }), self.edition
-                );
-                self.extensions.push((Symbol::intern(name), Lrc::new(expand)));
-            }
-
-            fn register_bang_proc_macro(&mut self,
-                                        name: &str,
-                                        expand: fn(TokenStream) -> TokenStream) {
-                let expand = SyntaxExtension::ProcMacro {
-                    expander: Box::new(BangProcMacro { inner: expand }),
-                    allow_internal_unstable: false,
-                    edition: self.edition,
-                };
-                self.extensions.push((Symbol::intern(name), Lrc::new(expand)));
-            }
-        }
-
-        let mut my_registrar = MyRegistrar { extensions: Vec::new(), edition: root.edition };
-        registrar(&mut my_registrar);
+        }).map(|(name, ext)| (Symbol::intern(name), Lrc::new(ext))).collect();
 
         // Intentionally leak the dynamic library. We can't ever unload it
         // since the library can make things that will live arbitrarily long.
         mem::forget(lib);
-        my_registrar.extensions
+
+        extensions
     }
 
     /// Look for a plugin registrar. Returns library path, crate

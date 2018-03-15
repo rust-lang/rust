@@ -55,9 +55,7 @@ mod trace_macros;
 mod test;
 mod test_case;
 
-pub mod proc_macro_registrar;
-
-
+pub mod proc_macro_decls;
 pub mod proc_macro_impl;
 
 use rustc_data_structures::sync::Lrc;

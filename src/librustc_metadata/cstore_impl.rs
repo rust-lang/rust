@@ -203,8 +203,8 @@ provide! { <'tcx> tcx, def_id, other, cdata,
             DefId { krate: def_id.krate, index }
         })
     }
-    derive_registrar_fn => {
-        cdata.root.macro_derive_registrar.map(|index| {
+    proc_macro_decls_static => {
+        cdata.root.proc_macro_decls_static.map(|index| {
             DefId { krate: def_id.krate, index }
         })
     }
@@ -431,8 +431,9 @@ impl cstore::CStore {
             use syntax::ext::base::SyntaxExtension;
             use syntax_ext::proc_macro_impl::BangProcMacro;
 
+            let client = ::proc_macro::bridge::client::Client::expand1(::proc_macro::quote);
             let ext = SyntaxExtension::ProcMacro {
-                expander: Box::new(BangProcMacro { inner: ::proc_macro::quote }),
+                expander: Box::new(BangProcMacro { client }),
                 allow_internal_unstable: true,
                 edition: data.root.edition,
             };

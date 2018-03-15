@@ -91,7 +91,7 @@ pub fn modify(sess: &ParseSess,
         return krate;
     }
 
-    krate.module.items.push(mk_registrar(&mut cx, &derives, &attr_macros, &bang_macros));
+    krate.module.items.push(mk_decls(&mut cx, &derives, &attr_macros, &bang_macros));
 
     krate
 }
@@ -339,19 +339,21 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
 //      mod $gensym {
 //          extern crate proc_macro;
 //
-//          use proc_macro::__internal::Registry;
+//          use proc_macro::bridge::client::ProcMacro;
 //
-//          #[plugin_registrar]
-//          fn registrar(registrar: &mut Registry) {
-//              registrar.register_custom_derive($name_trait1, ::$name1, &[]);
-//              registrar.register_custom_derive($name_trait2, ::$name2, &["attribute_name"]);
+//          #[rustc_proc_macro_decls]
+//          static DECLS: &[ProcMacro] = &[
+//              ProcMacro::custom_derive($name_trait1, &[], ::$name1);
+//              ProcMacro::custom_derive($name_trait2, &["attribute_name"], ::$name2);
 //              // ...
-//          }
+//          ];
 //      }
-fn mk_registrar(cx: &mut ExtCtxt,
-                custom_derives: &[ProcMacroDerive],
-                custom_attrs: &[ProcMacroDef],
-                custom_macros: &[ProcMacroDef]) -> P<ast::Item> {
+fn mk_decls(
+    cx: &mut ExtCtxt,
+    custom_derives: &[ProcMacroDerive],
+    custom_attrs: &[ProcMacroDef],
+    custom_macros: &[ProcMacroDef],
+) -> P<ast::Item> {
     let mark = Mark::fresh(Mark::root());
     mark.set_expn_info(ExpnInfo {
         call_site: DUMMY_SP,
@@ -370,75 +372,67 @@ fn mk_registrar(cx: &mut ExtCtxt,
                         Vec::new(),
                         ast::ItemKind::ExternCrate(None));
 
-    let __internal = Ident::from_str("__internal");
-    let registry = Ident::from_str("Registry");
-    let registrar = Ident::from_str("_registrar");
-    let register_custom_derive = Ident::from_str("register_custom_derive");
-    let register_attr_proc_macro = Ident::from_str("register_attr_proc_macro");
-    let register_bang_proc_macro = Ident::from_str("register_bang_proc_macro");
+    let bridge = Ident::from_str("bridge");
+    let client = Ident::from_str("client");
+    let proc_macro_ty = Ident::from_str("ProcMacro");
+    let custom_derive = Ident::from_str("custom_derive");
+    let attr = Ident::from_str("attr");
+    let bang = Ident::from_str("bang");
     let crate_kw = Ident::with_empty_ctxt(keywords::Crate.name());
-    let local_path = |cx: &mut ExtCtxt, sp: Span, name: Ident| {
-        cx.path(sp.with_ctxt(span.ctxt()), vec![crate_kw, name])
+
+    let decls = {
+        let local_path = |sp: Span, name| {
+            cx.expr_path(cx.path(sp.with_ctxt(span.ctxt()), vec![crate_kw, name]))
+        };
+        let proc_macro_ty_method_path = |method| cx.expr_path(cx.path(span, vec![
+            proc_macro, bridge, client, proc_macro_ty, method,
+        ]));
+        custom_derives.iter().map(|cd| {
+            cx.expr_call(span, proc_macro_ty_method_path(custom_derive), vec![
+                cx.expr_str(cd.span, cd.trait_name),
+                cx.expr_vec_slice(
+                    span,
+                    cd.attrs.iter().map(|&s| cx.expr_str(cd.span, s)).collect::<Vec<_>>()
+                ),
+                local_path(cd.span, cd.function_name),
+            ])
+        }).chain(custom_attrs.iter().map(|ca| {
+            cx.expr_call(span, proc_macro_ty_method_path(attr), vec![
+                cx.expr_str(ca.span, ca.function_name.name),
+                local_path(ca.span, ca.function_name),
+            ])
+        })).chain(custom_macros.iter().map(|cm| {
+            cx.expr_call(span, proc_macro_ty_method_path(bang), vec![
+                cx.expr_str(cm.span, cm.function_name.name),
+                local_path(cm.span, cm.function_name),
+            ])
+        })).collect()
     };
 
-    let mut stmts = custom_derives.iter().map(|cd| {
-        let path = local_path(cx, cd.span, cd.function_name);
-        let trait_name = cx.expr_str(cd.span, cd.trait_name);
-        let attrs = cx.expr_vec_slice(
-            span,
-            cd.attrs.iter().map(|&s| cx.expr_str(cd.span, s)).collect::<Vec<_>>()
-        );
-        let registrar = cx.expr_ident(span, registrar);
-        let ufcs_path = cx.path(span, vec![proc_macro, __internal, registry,
-                                           register_custom_derive]);
-
-        cx.stmt_expr(cx.expr_call(span, cx.expr_path(ufcs_path),
-                                  vec![registrar, trait_name, cx.expr_path(path), attrs]))
-
-    }).collect::<Vec<_>>();
-
-    stmts.extend(custom_attrs.iter().map(|ca| {
-        let name = cx.expr_str(ca.span, ca.function_name.name);
-        let path = local_path(cx, ca.span, ca.function_name);
-        let registrar = cx.expr_ident(ca.span, registrar);
-
-        let ufcs_path = cx.path(span,
-                                vec![proc_macro, __internal, registry, register_attr_proc_macro]);
-
-        cx.stmt_expr(cx.expr_call(span, cx.expr_path(ufcs_path),
-                                  vec![registrar, name, cx.expr_path(path)]))
-    }));
-
-    stmts.extend(custom_macros.iter().map(|cm| {
-        let name = cx.expr_str(cm.span, cm.function_name.name);
-        let path = local_path(cx, cm.span, cm.function_name);
-        let registrar = cx.expr_ident(cm.span, registrar);
-
-        let ufcs_path = cx.path(span,
-                                vec![proc_macro, __internal, registry, register_bang_proc_macro]);
-
-        cx.stmt_expr(cx.expr_call(span, cx.expr_path(ufcs_path),
-                                  vec![registrar, name, cx.expr_path(path)]))
-    }));
-
-    let path = cx.path(span, vec![proc_macro, __internal, registry]);
-    let registrar_path = cx.ty_path(path);
-    let arg_ty = cx.ty_rptr(span, registrar_path, None, ast::Mutability::Mutable);
-    let func = cx.item_fn(span,
-                          registrar,
-                          vec![cx.arg(span, registrar, arg_ty)],
-                          cx.ty(span, ast::TyKind::Tup(Vec::new())),
-                          cx.block(span, stmts));
-
-    let derive_registrar = cx.meta_word(span, Symbol::intern("rustc_derive_registrar"));
-    let derive_registrar = cx.attribute(span, derive_registrar);
-    let func = func.map(|mut i| {
-        i.attrs.push(derive_registrar);
+    let decls_static = cx.item_static(
+        span,
+        Ident::from_str("_DECLS"),
+        cx.ty_rptr(span,
+            cx.ty(span, ast::TyKind::Slice(
+                cx.ty_path(cx.path(span,
+                    vec![proc_macro, bridge, client, proc_macro_ty])))),
+            None, ast::Mutability::Immutable),
+        ast::Mutability::Immutable,
+        cx.expr_vec_slice(span, decls),
+    ).map(|mut i| {
+        let attr = cx.meta_word(span, Symbol::intern("rustc_proc_macro_decls"));
+        i.attrs.push(cx.attribute(span, attr));
         i.vis = respan(span, ast::VisibilityKind::Public);
         i
     });
-    let ident = ast::Ident::with_empty_ctxt(Symbol::gensym("registrar"));
-    let module = cx.item_mod(span, span, ident, Vec::new(), vec![krate, func]).map(|mut i| {
+
+    let module = cx.item_mod(
+        span,
+        span,
+        ast::Ident::with_empty_ctxt(Symbol::gensym("decls")),
+        vec![],
+        vec![krate, decls_static],
+    ).map(|mut i| {
         i.vis = respan(span, ast::VisibilityKind::Public);
         i
     });

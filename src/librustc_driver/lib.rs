@@ -127,7 +127,7 @@ mod test;
 pub mod profile;
 pub mod driver;
 pub mod pretty;
-mod derive_registrar;
+mod proc_macro_decls;
 
 pub mod target_features {
     use syntax::ast;

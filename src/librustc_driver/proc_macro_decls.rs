@@ -17,19 +17,19 @@ use syntax::attr;
 pub fn find(hir_map: &Map) -> Option<ast::NodeId> {
     let krate = hir_map.krate();
 
-    let mut finder = Finder { registrar: None };
+    let mut finder = Finder { decls: None };
     krate.visit_all_item_likes(&mut finder);
-    finder.registrar
+    finder.decls
 }
 
 struct Finder {
-    registrar: Option<ast::NodeId>,
+    decls: Option<ast::NodeId>,
 }
 
 impl<'v> ItemLikeVisitor<'v> for Finder {
     fn visit_item(&mut self, item: &hir::Item) {
-        if attr::contains_name(&item.attrs, "rustc_derive_registrar") {
-            self.registrar = Some(item.id);
+        if attr::contains_name(&item.attrs, "rustc_proc_macro_decls") {
+            self.decls = Some(item.id);
         }
     }
 

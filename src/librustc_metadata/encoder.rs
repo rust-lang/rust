@@ -496,8 +496,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 .plugin_registrar_fn
                 .get()
                 .map(|id| tcx.hir.local_def_id(id).index),
-            macro_derive_registrar: if is_proc_macro {
-                let id = tcx.sess.derive_registrar_fn.get().unwrap();
+            proc_macro_decls_static: if is_proc_macro {
+                let id = tcx.sess.proc_macro_decls_static.get().unwrap();
                 Some(tcx.hir.local_def_id(id).index)
             } else {
                 None

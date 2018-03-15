@@ -62,7 +62,7 @@ use syntax::symbol::Symbol;
 use syntax_pos::{FileName, hygiene};
 use syntax_ext;
 
-use derive_registrar;
+use proc_macro_decls;
 use pretty::ReplaceBodyWithLoop;
 
 use profile;
@@ -1066,7 +1066,7 @@ where
             let num_crate_types = crate_types.len();
             let is_proc_macro_crate = crate_types.contains(&config::CrateType::ProcMacro);
             let is_test_crate = sess.opts.test;
-            syntax_ext::proc_macro_registrar::modify(
+            syntax_ext::proc_macro_decls::modify(
                 &sess.parse_sess,
                 &mut resolver,
                 krate,
@@ -1243,8 +1243,8 @@ where
         .set(time(sess, "looking for plugin registrar", || {
             plugin::build::find_plugin_registrar(sess.diagnostic(), &hir_map)
         }));
-    sess.derive_registrar_fn
-        .set(derive_registrar::find(&hir_map));
+    sess.proc_macro_decls_static
+        .set(proc_macro_decls::find(&hir_map));
 
     time(sess, "loop checking", || loops::check_crate(sess, &hir_map));
 

@@ -257,9 +257,9 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
             let disambiguator = tcx.sess.local_crate_disambiguator();
             return tcx.sess.generate_plugin_registrar_symbol(disambiguator);
         }
-        if *tcx.sess.derive_registrar_fn.get() == Some(id) {
+        if *tcx.sess.proc_macro_decls_static.get() == Some(id) {
             let disambiguator = tcx.sess.local_crate_disambiguator();
-            return tcx.sess.generate_derive_registrar_symbol(disambiguator);
+            return tcx.sess.generate_proc_macro_decls_symbol(disambiguator);
         }
     }
 
