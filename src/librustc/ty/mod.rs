@@ -34,6 +34,7 @@ use ty;
 use ty::subst::{Subst, Substs};
 use ty::util::{IntTypeExt, Discr};
 use ty::walk::TypeWalker;
+use util::captures::Captures;
 use util::nodemap::{NodeSet, DefIdMap, FxHashMap};
 
 use serialize::{self, Encodable, Encoder};
@@ -1942,8 +1943,10 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     }
 
     #[inline]
-    pub fn discriminants(&'a self, tcx: TyCtxt<'a, 'gcx, 'tcx>)
-                         -> impl Iterator<Item=Discr<'tcx>> + 'a {
+    pub fn discriminants(
+        &'a self,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    ) -> impl Iterator<Item=Discr<'tcx>> + Captures<'gcx> + 'a {
         let repr_type = self.repr.discr_type();
         let initial = repr_type.initial_discriminant(tcx.global_tcx());
         let mut prev_discr = None::<Discr<'tcx>>;
@@ -2290,7 +2293,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Returns an iterator of the def-ids for all body-owners in this
     /// crate. If you would prefer to iterate over the bodies
     /// themselves, you can do `self.hir.krate().body_ids.iter()`.
-    pub fn body_owners(self) -> impl Iterator<Item = DefId> + 'a {
+    pub fn body_owners(
+        self,
+    ) -> impl Iterator<Item = DefId> + Captures<'tcx> + Captures<'gcx> + 'a {
         self.hir.krate()
                 .body_ids
                 .iter()
@@ -2394,11 +2399,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    #[inline] // FIXME(#35870) Avoid closures being unexported due to impl Trait.
-    pub fn associated_items(self, def_id: DefId)
-                            -> impl Iterator<Item = ty::AssociatedItem> + 'a {
+    pub fn associated_items(
+        self,
+        def_id: DefId,
+    ) -> impl Iterator<Item = ty::AssociatedItem> + 'a {
         let def_ids = self.associated_item_def_ids(def_id);
-        (0..def_ids.len()).map(move |i| self.associated_item(def_ids[i]))
+        Box::new((0..def_ids.len()).map(move |i| self.associated_item(def_ids[i])))
+            as Box<dyn Iterator<Item = ty::AssociatedItem> + 'a>
     }
 
     /// Returns true if the impls are the same polarity and are implementing

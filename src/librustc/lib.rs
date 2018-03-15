@@ -157,6 +157,7 @@ pub mod traits;
 pub mod ty;
 
 pub mod util {
+    pub mod captures;
     pub mod common;
     pub mod ppaux;
     pub mod nodemap;

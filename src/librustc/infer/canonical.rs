@@ -40,6 +40,7 @@ use traits::{Obligation, ObligationCause, PredicateObligation};
 use ty::{self, CanonicalVar, Lift, Region, Slice, Ty, TyCtxt, TypeFlags};
 use ty::subst::{Kind, UnpackedKind};
 use ty::fold::{TypeFoldable, TypeFolder};
+use util::captures::Captures;
 use util::common::CellUsizeExt;
 
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -382,7 +383,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         unsubstituted_region_constraints: &'a QueryRegionConstraints<'tcx>,
         result_subst: &'a CanonicalVarValues<'tcx>,
-    ) -> impl Iterator<Item = PredicateObligation<'tcx>> + 'a {
+    ) -> impl Iterator<Item = PredicateObligation<'tcx>> + Captures<'gcx> + 'a {
         let QueryRegionConstraints {
             region_outlives,
             ty_outlives,
