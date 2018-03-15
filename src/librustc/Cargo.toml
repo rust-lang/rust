@@ -59,4 +59,6 @@ chalk-engine = { version = "0.6.0", default-features=false }
 flate2 = "1.0"
 tempdir = "0.3"
 
-
+[target.'cfg(windows)'.dependencies]
+kernel32-sys = "0.2.2"
+winapi = "0.2.8"

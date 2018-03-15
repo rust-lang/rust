@@ -40,6 +40,7 @@
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 
+#![feature(asm)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(const_fn)]
@@ -86,6 +87,10 @@ extern crate graphviz;
 #[cfg(windows)]
 extern crate libc;
 extern crate polonius_engine;
+#[cfg(windows)]
+extern crate kernel32;
+#[cfg(windows)]
+extern crate winapi;
 extern crate rustc_target;
 #[macro_use] extern crate rustc_data_structures;
 extern crate serialize;
