@@ -203,3 +203,31 @@ These features are enabled by passing a command-line flag to Rustdoc, but the fl
 themselves marked as unstable. To use any of these options, pass `-Z unstable-options` as well as
 the flag in question to Rustdoc on the command-line. To do this from Cargo, you can either use the
 `RUSTDOCFLAGS` environment variable or the `cargo rustdoc` command.
+
+### `--markdown-before-content`: include rendered Markdown before the content
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc src/lib.rs -Z unstable-options --markdown-before-content extra.md
+$ rustdoc README.md -Z unstable-options --markdown-before-content extra.md
+```
+
+Just like `--html-before-content`, this allows you to insert extra content inside the `<body>` tag
+but before the other content `rustdoc` would normally produce in the rendered documentation.
+However, instead of directly inserting the file verbatim, `rustdoc` will pass the files through a
+Markdown renderer before inserting the result into the file.
+
+### `--markdown-after-content`: include rendered Markdown after the content
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc src/lib.rs -Z unstable-options --markdown-after-content extra.md
+$ rustdoc README.md -Z unstable-options --markdown-after-content extra.md
+```
+
+Just like `--html-after-content`, this allows you to insert extra content before the `</body>` tag
+but after the other content `rustdoc` would normally produce in the rendered documentation.
+However, instead of directly inserting the file verbatim, `rustdoc` will pass the files through a
+Markdown renderer before inserting the result into the file.
