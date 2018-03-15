@@ -117,6 +117,7 @@
 #![feature(staged_api)]
 #![feature(str_internals)]
 #![feature(trusted_len)]
+#![feature(try_reserve)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(unsize)]
