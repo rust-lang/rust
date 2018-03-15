@@ -19,10 +19,10 @@ use list::{// Another item
 
 use test::{/* A */ self /* B */, Other /* C */};
 
-use {Bar /* comment */, /* Pre-comment! */ Foo};
 use Foo::{Bar, Baz};
 use syntax;
 pub use syntax::ast::{Expr, ExprAssign, ExprCall, ExprMethodCall, ExprPath, Expr_};
+use {Bar /* comment */, /* Pre-comment! */ Foo};
 
 use self;
 use std::io;
@@ -54,8 +54,8 @@ use foo::{self as bar, baz};
 use foo::{baz, qux as bar};
 
 // With absolute paths
-use foo;
 use Foo;
+use foo;
 use foo::Bar;
 use foo::{Bar, Baz};
 use {Bar, Baz};
