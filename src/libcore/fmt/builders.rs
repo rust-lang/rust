@@ -563,10 +563,10 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
 /// #![feature(debug_str)]
 /// use std::fmt::{Debug, Formatter, DebugStr, Result};
 ///
-/// struct Arrow<'a, L: 'a, R: 'a>(&'a (L, R));
+/// struct Arm<'a, L: 'a, R: 'a>(&'a (L, R));
 /// struct Table<'a, K: 'a, V: 'a>(&'a [(K, V)], V);
 /// 
-/// impl<'a, L: 'a + Debug, R: 'a + Debug> Debug for Arrow<'a, L, R> {
+/// impl<'a, L: 'a + Debug, R: 'a + Debug> Debug for Arm<'a, L, R> {
 ///     fn fmt(&self, fmt: &mut Formatter) -> Result {
 ///         L::fmt(&(self.0).0, fmt)?;
 ///         fmt.write_str(" => ")?;
@@ -577,8 +577,8 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
 /// impl<'a, K: 'a + Debug, V: 'a + Debug> Debug for Table<'a, K, V> {
 ///     fn fmt(&self, fmt: &mut Formatter) -> Result {
 ///         fmt.debug_set()
-///            .entries(self.0.iter().map(Arrow))
-///            .entry(&Arrow(&(DebugStr("_"), &self.1)))
+///            .entries(self.0.iter().map(Arm))
+///            .entry(&Arm(&(DebugStr("_"), &self.1)))
 ///            .finish()
 ///     }
 /// }
