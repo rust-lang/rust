@@ -1833,6 +1833,13 @@ pub mod tls {
         where F: for<'a> FnOnce(TyCtxt<'a, 'gcx, 'gcx>) -> R
     {
         with_thread_locals(|| {
+            GCX_PTR.with(|lock| {
+                *lock.lock() = gcx as *const _ as usize;
+            });
+            let _on_drop = OnDrop(move || {
+                GCX_PTR.with(|lock| *lock.lock() = 0);
+            });
+
             let tcx = TyCtxt {
                 gcx,
                 interners: &gcx.global_interners,
@@ -1850,10 +1857,12 @@ pub mod tls {
         })
     }
 
+    scoped_thread_local!(pub static GCX_PTR: Lock<usize>);
+
     pub unsafe fn with_global_query<F, R>(f: F) -> R
         where F: for<'a, 'gcx, 'tcx> FnOnce(TyCtxt<'a, 'gcx, 'tcx>) -> R
     {
-        let gcx = &*(gcx_ptr as *const GlobalCtxt<'static>);
+        let gcx = &*(GCX_PTR.with(|lock| *lock.lock()) as *const GlobalCtxt<'static>);
         let tcx = TyCtxt {
             gcx,
             interners: &gcx.global_interners,
