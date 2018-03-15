@@ -26,14 +26,14 @@
 #![allow(unused_attributes)]
 #![feature(i128_type)]
 #![feature(i128)]
-#![feature(inclusive_range)]
-#![feature(inclusive_range_syntax)]
+#![cfg_attr(stage0, feature(inclusive_range_syntax))]
 #![feature(libc)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
 #![feature(conservative_impl_trait)]
 #![feature(optin_builtin_traits)]
+#![feature(inclusive_range_fields)]
 
 use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;

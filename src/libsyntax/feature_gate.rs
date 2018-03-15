@@ -26,7 +26,7 @@ use self::AttributeType::*;
 use self::AttributeGate::*;
 
 use abi::Abi;
-use ast::{self, NodeId, PatKind, RangeEnd, RangeSyntax};
+use ast::{self, NodeId, PatKind, RangeEnd};
 use attr;
 use epoch::Epoch;
 use codemap::Spanned;
@@ -268,9 +268,6 @@ declare_features! (
     // rustc internal
     (active, abi_vectorcall, "1.7.0", None, None),
 
-    // a..=b and ..=b
-    (active, inclusive_range_syntax, "1.7.0", Some(28237), None),
-
     // X..Y patterns
     (active, exclusive_range_pattern, "1.11.0", Some(37854), None),
 
@@ -401,9 +398,6 @@ declare_features! (
 
     // allow `'_` placeholder lifetimes
     (active, underscore_lifetimes, "1.22.0", Some(44524), None),
-
-    // allow `..=` in patterns (RFC 1192)
-    (active, dotdoteq_in_patterns, "1.22.0", Some(28237), None),
 
     // Default match binding modes (RFC 2005)
     (active, match_default_bindings, "1.22.0", Some(42640), None),
@@ -554,6 +548,10 @@ declare_features! (
     (accepted, match_beginning_vert, "1.25.0", Some(44101), None),
     // Nested groups in `use` (RFC 2128)
     (accepted, use_nested_groups, "1.25.0", Some(44494), None),
+    // a..=b and ..=b
+    (accepted, inclusive_range_syntax, "1.26.0", Some(28237), None),
+    // allow `..=` in patterns (RFC 1192)
+    (accepted, dotdoteq_in_patterns, "1.26.0", Some(28237), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -1592,11 +1590,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, type_ascription, e.span,
                                   "type ascription is experimental");
             }
-            ast::ExprKind::Range(_, _, ast::RangeLimits::Closed) => {
-                gate_feature_post!(&self, inclusive_range_syntax,
-                                  e.span,
-                                  "inclusive range syntax is experimental");
-            }
             ast::ExprKind::InPlace(..) => {
                 gate_feature_post!(&self, placement_in_syntax, e.span, EXPLAIN_PLACEMENT_IN);
             }
@@ -1657,10 +1650,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             PatKind::Range(_, _, RangeEnd::Excluded) => {
                 gate_feature_post!(&self, exclusive_range_pattern, pattern.span,
                                    "exclusive range pattern syntax is experimental");
-            }
-            PatKind::Range(_, _, RangeEnd::Included(RangeSyntax::DotDotEq)) => {
-                gate_feature_post!(&self, dotdoteq_in_patterns, pattern.span,
-                                   "`..=` syntax in patterns is experimental");
             }
             PatKind::Paren(..) => {
                 gate_feature_post!(&self, pattern_parentheses, pattern.span,

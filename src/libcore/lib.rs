@@ -79,7 +79,7 @@
 #![feature(fn_must_use)]
 #![feature(fundamental)]
 #![feature(i128_type)]
-#![feature(inclusive_range_syntax)]
+#![cfg_attr(stage0, feature(inclusive_range_syntax))]
 #![feature(intrinsics)]
 #![feature(iterator_flatten)]
 #![feature(iterator_repeat_with)]

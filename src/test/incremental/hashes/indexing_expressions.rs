@@ -23,7 +23,6 @@
 #![allow(warnings)]
 #![feature(rustc_attrs)]
 #![crate_type="rlib"]
-#![feature(inclusive_range_syntax)]
 
 // Change simple index ---------------------------------------------------------
 #[cfg(cfail1)]

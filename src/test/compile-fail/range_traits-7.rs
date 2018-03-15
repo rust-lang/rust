@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs, inclusive_range)]
+#![feature(rustc_attrs)]
 
 use std::ops::*;
 
