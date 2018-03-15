@@ -540,28 +540,30 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
 
 /// A struct to help with [`fmt::Debug`](trait.Debug.html) implementations.
 ///
-/// This is useful you need to output an unquoted string as part of your
+/// This is useful you need to use the `Display` `impl` of a type in a `Debug`
+/// context instead of the `Debug` `impl` of the type. One such scenario where
+/// this is useful is when you need an unquoted string as part of your
 /// [`Debug::fmt`](trait.Debug.html#tymethod.fmt) implementation.
 ///
-/// The difference between `&'a str` and `DebugStr<'a>` in a `Debug` context
-/// such as `println!("{:?}", <value>)` is that the former will quote the
-/// string while the latter will not. In other words, the following holds:
+/// The difference between `&'a str` and `DebugDisplay<&'a str>` in a `Debug`
+/// context such as `println!("{:?}", <value>)` is that the former will quote
+/// the string while the latter will not. In other words, the following holds:
 ///
 /// ```rust
-/// #![feature(debug_str)]
-/// use std::fmt::DebugStr;
+/// #![feature(debug_display)]
+/// use std::fmt::DebugDisplay;
 ///
-/// assert_eq!("foo", format!("{:?}", DebugStr("foo")));
+/// assert_eq!("foo", format!("{:?}", DebugDisplay("foo")));
 /// assert_eq!("\"foo\"", format!("{:?}", "foo"));
 /// ```
 ///
 /// # Examples
 ///
-/// In this example we use `DebugStr("_")` for a "catch all" match arm.
+/// In this example we use `DebugDisplay("_")` for a "catch all" match arm.
 ///
 /// ```rust
 /// #![feature(debug_str)]
-/// use std::fmt::{Debug, Formatter, DebugStr, Result};
+/// use std::fmt::{Debug, Formatter, DebugDisplay, Result};
 ///
 /// struct Arm<'a, L: 'a, R: 'a>(&'a (L, R));
 /// struct Table<'a, K: 'a, V: 'a>(&'a [(K, V)], V);
@@ -578,7 +580,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
 ///     fn fmt(&self, fmt: &mut Formatter) -> Result {
 ///         fmt.debug_set()
 ///            .entries(self.0.iter().map(Arm))
-///            .entry(&Arm(&(DebugStr("_"), &self.1)))
+///            .entry(&Arm(&(DebugDisplay("_"), &self.1)))
 ///            .finish()
 ///     }
 /// }
@@ -587,14 +589,14 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
 /// assert_eq!(format!("{:?}", Table(&*table, 0)),
 ///            "{0 => 1, 1 => 2, _ => 0}");
 /// ```
-#[unstable(feature = "debug_str", issue = "0")]
+#[unstable(feature = "debug_display", issue = "0")]
 #[must_use]
 #[derive(Copy, Clone)]
-pub struct DebugStr<'a>(pub &'a str);
+pub struct DebugDisplay<T>(pub T);
 
-#[unstable(feature = "debug_str", issue = "0")]
-impl<'a> fmt::Debug for DebugStr<'a> {
+#[unstable(feature = "debug_display", issue = "0")]
+impl<T: fmt::Display> fmt::Debug for DebugDisplay<T> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.write_str(self.0)
+        <T as fmt::Display>::fmt(&self.0, fmt)
     }
 }
