@@ -277,8 +277,8 @@ for mir::StatementKind<'gcx> {
                 op.hash_stable(hcx, hasher);
                 places.hash_stable(hcx, hasher);
             }
-            mir::StatementKind::UserAssertTy(ref ty, ref local) => {
-                ty.hash_stable(hcx, hasher);
+            mir::StatementKind::UserAssertTy(ref c_ty, ref local) => {
+                c_ty.hash_stable(hcx, hasher);
                 local.hash_stable(hcx, hasher);
             }
             mir::StatementKind::Nop => {}

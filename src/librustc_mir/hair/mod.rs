@@ -97,7 +97,7 @@ pub enum StmtKind<'tcx> {
         pattern: Pattern<'tcx>,
 
         /// let pat: <TY> = init ...
-        ty: Option<Ty<'tcx>>,
+        ty: Option<hir::HirId>,
 
         /// let pat: ty = <INIT> ...
         initializer: Option<ExprRef<'tcx>>,

@@ -21,6 +21,7 @@ use hir::map::DefPathData;
 use hir::svh::Svh;
 use ich::Fingerprint;
 use ich::StableHashingContext;
+use infer::canonical::{Canonical, Canonicalize};
 use middle::const_val::ConstVal;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::privacy::AccessLevels;
@@ -553,6 +554,17 @@ pub type Ty<'tcx> = &'tcx TyS<'tcx>;
 
 impl<'tcx> serialize::UseSpecializedEncodable for Ty<'tcx> {}
 impl<'tcx> serialize::UseSpecializedDecodable for Ty<'tcx> {}
+
+pub type CanonicalTy<'gcx> = Canonical<'gcx, Ty<'gcx>>;
+
+impl <'gcx: 'tcx, 'tcx> Canonicalize<'gcx, 'tcx> for Ty<'tcx> {
+    type Canonicalized = CanonicalTy<'gcx>;
+
+    fn intern(_gcx: TyCtxt<'_, 'gcx, 'gcx>,
+              value: Canonical<'gcx, Self::Lifted>) -> Self::Canonicalized {
+        value
+    }
+}
 
 /// A wrapper for slices with the additional invariant
 /// that the slice is interned and no other slice with

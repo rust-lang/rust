@@ -27,7 +27,7 @@ use hir::def_id::DefId;
 use mir::visit::MirVisitable;
 use mir::interpret::{Value, PrimVal};
 use ty::subst::{Subst, Substs};
-use ty::{self, AdtDef, ClosureSubsts, Region, Ty, TyCtxt, GeneratorInterior};
+use ty::{self, AdtDef, CanonicalTy, ClosureSubsts, Region, Ty, TyCtxt, GeneratorInterior};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use ty::TypeAndMut;
 use util::ppaux;
@@ -1260,7 +1260,7 @@ pub enum StatementKind<'tcx> {
     ///
     /// Here we would insert a `UserAssertTy<(T, U)>(y)` instruction to check that the type of `y`
     /// is the right thing.
-    UserAssertTy(Ty<'tcx>, Local),
+    UserAssertTy(CanonicalTy<'tcx>, Local),
 
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
@@ -1333,7 +1333,8 @@ impl<'tcx> Debug for Statement<'tcx> {
             InlineAsm { ref asm, ref outputs, ref inputs } => {
                 write!(fmt, "asm!({:?} : {:?} : {:?})", asm, outputs, inputs)
             },
-            UserAssertTy(ref ty, ref local) => write!(fmt, "UserAssertTy({:?}, {:?})", ty, local),
+            UserAssertTy(ref c_ty, ref local) => write!(fmt, "UserAssertTy({:?}, {:?})",
+                                                        c_ty, local),
             Nop => write!(fmt, "nop"),
         }
     }

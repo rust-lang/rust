@@ -10,7 +10,7 @@
 
 use hir::def_id::DefId;
 use ty::subst::Substs;
-use ty::{ClosureSubsts, Region, Ty, GeneratorInterior};
+use ty::{CanonicalTy, ClosureSubsts, Region, Ty, GeneratorInterior};
 use mir::*;
 use syntax_pos::Span;
 
@@ -145,10 +145,10 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_user_assert_ty(&mut self,
-                                    ty: & $($mutability)* Ty<'tcx>,
+                                    c_ty: & $($mutability)* CanonicalTy<'tcx>,
                                     local: & $($mutability)* Local,
                                     location: Location) {
-                self.super_user_assert_ty(ty, local, location);
+                self.super_user_assert_ty(c_ty, local, location);
             }
 
             fn visit_place(&mut self,
@@ -383,9 +383,9 @@ macro_rules! make_mir_visitor {
                             self.visit_operand(input, location);
                         }
                     }
-                    StatementKind::UserAssertTy(ref $($mutability)* ty,
+                    StatementKind::UserAssertTy(ref $($mutability)* c_ty,
                                                 ref $($mutability)* local) => {
-                        self.visit_user_assert_ty(ty, local, location);
+                        self.visit_user_assert_ty(c_ty, local, location);
                     }
                     StatementKind::Nop => {}
                 }
@@ -631,10 +631,9 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_user_assert_ty(&mut self,
-                                    ty: & $($mutability)* Ty<'tcx>,
+                                    _c_ty: & $($mutability)* CanonicalTy<'tcx>,
                                     local: & $($mutability)* Local,
                                     location: Location) {
-                self.visit_ty(ty, TyContext::Location(location));
                 self.visit_local(local, PlaceContext::Validate, location);
             }
 

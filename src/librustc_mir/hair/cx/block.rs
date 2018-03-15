@@ -76,7 +76,7 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                             first_statement_index: region::FirstStatementIndex::new(index),
                         });
 
-                        let ty = local.ty.clone().map(|ty| cx.tables().node_id_to_type(ty.hir_id));
+                        let ty = local.ty.clone().map(|ty| ty.hir_id);
                         let pattern = cx.pattern_from_hir(&local.pat);
                         result.push(StmtRef::Mirror(Box::new(Stmt {
                             kind: StmtKind::Let {

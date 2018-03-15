@@ -145,18 +145,24 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         end_block.unit()
     }
 
-    pub fn user_assert_ty(&mut self, block: BasicBlock, ty: Ty<'tcx>, var: NodeId, span: Span) {
+    pub fn user_assert_ty(&mut self, block: BasicBlock, hir_id: hir::HirId,
+                          var: NodeId, span: Span) {
         let local_id = self.var_indices[&var];
         let source_info = self.source_info(span);
-        self.cfg.push(block, Statement {
-            source_info,
-            kind: StatementKind::UserAssertTy(ty, local_id),
-        });
+
+        debug!("user_assert_ty: local_id={:?}", hir_id.local_id);
+        if let Some(c_ty) = self.hir.tables.user_provided_tys().get(hir_id) {
+            debug!("user_assert_ty: c_ty={:?}", c_ty);
+            self.cfg.push(block, Statement {
+                source_info,
+                kind: StatementKind::UserAssertTy(*c_ty, local_id),
+            });
+        }
     }
 
     pub fn expr_into_pattern(&mut self,
                              mut block: BasicBlock,
-                             ty: Option<Ty<'tcx>>,
+                             ty: Option<hir::HirId>,
                              irrefutable_pat: Pattern<'tcx>,
                              initializer: ExprRef<'tcx>)
                              -> BlockAnd<()> {

@@ -761,12 +761,12 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     );
                 };
             }
-            StatementKind::UserAssertTy(ref ty, ref local) => {
+            StatementKind::UserAssertTy(ref c_ty, ref local) => {
                 let local_ty = mir.local_decls()[*local].ty;
+                let (ty, _) = self.infcx.instantiate_canonical_with_fresh_inference_vars(
+                    stmt.source_info.span, c_ty);
                 debug!("check_stmt: user_assert_ty ty={:?} local_ty={:?}", ty, local_ty);
-                if let Err(terr) =
-                    self.eq_types(ty, local_ty, location.at_self())
-                {
+                if let Err(terr) = self.eq_types(ty, local_ty, location.at_self()) {
                     span_mirbug!(
                         self,
                         stmt,
