@@ -4,7 +4,7 @@ error[E0307]: invalid `self` type: &SomeType
 LL |     fn handler(self: &SomeType); //~ ERROR invalid `self` type
    |                      ^^^^^^^^^
    |
-   = note: type must be `Self` or a type that dereferences to it`
+   = note: type must be `Self` or a type that dereferences to it
    = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
 
 error: aborting due to previous error
