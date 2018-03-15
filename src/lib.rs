@@ -659,6 +659,14 @@ pub fn format_code_block(code_snippet: &str, config: &Config) -> Option<String> 
 pub fn format_input<T: Write>(
     input: Input,
     config: &Config,
+    out: Option<&mut T>,
+) -> Result<(Summary, FileMap, FormatReport), (io::Error, Summary)> {
+    syntax::with_globals(|| format_input_inner(input, config, out))
+}
+
+fn format_input_inner<T: Write>(
+    input: Input,
+    config: &Config,
     mut out: Option<&mut T>,
 ) -> Result<(Summary, FileMap, FormatReport), (io::Error, Summary)> {
     let mut summary = Summary::default();

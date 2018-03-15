@@ -962,22 +962,27 @@ fn format_lazy_static(context: &RewriteContext, shape: Shape, ts: &TokenStream) 
 #[cfg(test)]
 mod test {
     use super::*;
+    use syntax;
     use syntax::parse::{parse_stream_from_source_str, ParseSess};
     use syntax::codemap::{FileName, FilePathMapping};
 
     fn format_macro_args_str(s: &str) -> String {
-        let input = parse_stream_from_source_str(
-            FileName::Custom("stdin".to_owned()),
-            s.to_owned(),
-            &ParseSess::new(FilePathMapping::empty()),
-            None,
-        );
-        let shape = Shape {
-            width: 100,
-            indent: Indent::empty(),
-            offset: 0,
-        };
-        format_macro_args(input.into(), shape).unwrap()
+        let mut result = String::new();
+        syntax::with_globals(|| {
+            let input = parse_stream_from_source_str(
+                FileName::Custom("stdin".to_owned()),
+                s.to_owned(),
+                &ParseSess::new(FilePathMapping::empty()),
+                None,
+            );
+            let shape = Shape {
+                width: 100,
+                indent: Indent::empty(),
+                offset: 0,
+            };
+            result = format_macro_args(input.into(), shape).unwrap();
+        });
+        result
     }
 
     #[test]
