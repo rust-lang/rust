@@ -56,7 +56,6 @@ use any::TypeId;
 use borrow::Cow;
 use cell;
 use char;
-use convert;
 use core::array;
 use fmt::{self, Debug, Display};
 use mem::transmute;
@@ -368,14 +367,6 @@ impl Error for char::CharTryFromError {
 impl Error for char::ParseCharError {
     fn description(&self) -> &str {
         self.__description()
-    }
-}
-
-#[unstable(feature = "try_from", issue = "33417")]
-impl Error for convert::Infallible {
-    fn description(&self) -> &str {
-        match *self {
-        }
     }
 }
 
