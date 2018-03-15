@@ -1853,6 +1853,37 @@ impl str {
         result
     }
 
+    /// Removes all matches of a pattern.
+    ///
+    /// `cut` creates a new [`String`], and copies the data from this string slice into it.
+    /// While doing so, it attempts to find matches of a pattern. If it finds any, it
+    /// excludes them from the String.
+    ///
+    /// [`String`]: string/struct.String.html
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(str_cut)]
+    /// let s = "this is new";
+    ///
+    /// assert_eq!("this is ew", s.cut('n'));
+    /// ```
+    ///
+    /// When the pattern doesn't match:
+    ///
+    /// ```
+    /// #![feature(str_cut)]
+    /// let s = "this is old";
+    /// assert_eq!(s, s.cut("new"));
+    /// ```
+    #[unstable(feature = "str_cut", issue = "0")]
+    pub fn cut<'a, P: Pattern<'a>>(&'a self, pattern: P) -> String {
+        self.replace(pattern, "")
+    }
+
     /// Replaces first N matches of a pattern with another string.
     ///
     /// `replacen` creates a new [`String`], and copies the data from this string slice into it.
@@ -1890,6 +1921,38 @@ impl str {
         }
         result.push_str(unsafe { self.slice_unchecked(last_end, self.len()) });
         result
+    }
+
+    /// Removes first N matches of a pattern.
+    ///
+    /// `cutn` creates a new [`String`], and copies the data from this string slice into it.
+    /// While doing so, it attempts to find matches of a pattern. If it finds any, it
+    /// excludes them from the String at most `count` times.
+    ///
+    /// [`String`]: string/struct.String.html
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(str_cutn)]
+    /// let s = "foo foo 123 foo";
+    /// assert_eq!("  123 foo", s.cutn("foo", 2));
+    /// assert_eq!("f fo 123 foo", s.cutn('o', 3));
+    /// assert_eq!("foo foo 3 foo", s.cutn(char::is_numeric, 2));
+    /// ```
+    ///
+    /// When the pattern doesn't match:
+    ///
+    /// ```
+    /// #![feature(str_cutn)]
+    /// let s = "this is old";
+    /// assert_eq!(s, s.cutn("new", 1));
+    /// ```
+    #[unstable(feature = "str_cutn", issue = "0")]
+    pub fn cutn<'a, P: Pattern<'a>>(&'a self, pattern: P, count: usize) -> String {
+        self.replacen(pattern, "", count)
     }
 
     /// Returns the lowercase equivalent of this string slice, as a new [`String`].

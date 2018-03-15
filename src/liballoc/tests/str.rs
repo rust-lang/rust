@@ -292,6 +292,45 @@ fn test_replace_pattern() {
 }
 
 #[test]
+fn test_cutn() {
+    assert_eq!("".cutn('a', 5), "");
+    assert_eq!("acaaa".cutn('a', 3), "ca");
+    assert_eq!("aaaa".cutn('a', 0), "aaaa");
+
+    let test = "test";
+    assert_eq!(" test test ".cutn(test, 3), "   ");
+    assert_eq!(" test test ".cutn(test, 0), " test test ");
+    assert_eq!(" test test ".cutn("", 1), " test test ");
+
+    assert_eq!("qwer123zxc789".cutn(char::is_numeric, 3), "qwerzxc789");
+
+    let jyushimatsu = "松野 十四松";
+    assert_eq!(jyushimatsu.cutn('松', 1), "野 十四松");
+}
+
+#[test]
+fn test_cut() {
+    assert_eq!("".cut('a'), "");
+    assert_eq!("a".cut('a'), "");
+    assert_eq!("ab".cut('a'), "b");
+
+    assert_eq!(" test test ".cut("test"), "   ");
+}
+
+#[test]
+fn test_cut_2() {
+    let programming_lang = "язык программирования";
+    let karamatsu = "松野 カラ松";
+
+    assert_eq!("язык програмвания", programming_lang.cut("миро"));
+    assert_eq!(" ", karamatsu.cut(char::is_alphabetic));
+    assert_eq!("языкпрограммирования", programming_lang.cut(char::is_whitespace));
+    assert_eq!("野 カラ", karamatsu.cut('松'));
+    assert_eq!("язык прогрммировния", programming_lang.cut('а'));
+    assert_eq!("松野 松", karamatsu.cut("カラ"));
+}
+
+#[test]
 fn test_slice() {
     assert_eq!("ab", &"abc"[0..2]);
     assert_eq!("bc", &"abc"[1..3]);
