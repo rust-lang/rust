@@ -41,6 +41,7 @@
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(asm)]
+#![feature(attr_literals)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(const_fn)]
@@ -49,6 +50,7 @@
 #![feature(entry_or_default)]
 #![feature(from_ref)]
 #![feature(fs_read_write)]
+#![feature(iterator_step_by)]
 #![feature(iterator_find_map)]
 #![cfg_attr(windows, feature(libc))]
 #![cfg_attr(stage0, feature(macro_lifetime_matcher))]
@@ -62,6 +64,7 @@
 #![feature(optin_builtin_traits)]
 #![feature(refcell_replace_swap)]
 #![feature(rustc_diagnostic_macros)]
+#![feature(set_stdio)]
 #![feature(slice_patterns)]
 #![feature(slice_sort_by_cached_key)]
 #![feature(specialization)]
@@ -74,6 +77,7 @@
 #![feature(in_band_lifetimes)]
 #![feature(macro_at_most_once_rep)]
 #![feature(inclusive_range_methods)]
+#![feature(vec_remove_item)]
 
 #![recursion_limit="512"]
 
@@ -95,9 +99,12 @@ extern crate rustc_target;
 #[macro_use] extern crate rustc_data_structures;
 extern crate serialize;
 extern crate rustc_errors as errors;
+extern crate rustc_rayon as rayon;
+extern crate rustc_rayon_core as rayon_core;
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
 extern crate syntax_pos;
+#[macro_use] extern crate scoped_tls;
 extern crate jobserver;
 extern crate proc_macro;
 extern crate chalk_engine;
