@@ -87,7 +87,7 @@ The other major thing that happens in `clean/mod.rs` is the collection of doc co
 `#[doc=""]` attributes into a separate field of the Attributes struct, present on anything that gets
 hand-written documentation. This makes it easier to collect this documentation later in the process.
 
-The primary output of this process is a clean::Crate with a tree of Items which describe the
+The primary output of this process is a `clean::Crate` with a tree of Items which describe the
 publicly-documentable items in the target crate.
 
 ### Hot potato
@@ -107,21 +107,26 @@ deprecate that][44136]. If you need finer-grain control over these passes, pleas
 
 Here is current (as of this writing) list of passes:
 
-- `collapse-docs` is necessary because each line of a doc comment is given as a
+- `propagate-doc-cfg` - propagates `#[doc(cfg(...))]` to child items.
+- `collapse-docs` concatenates all document attributes into one document
+  attribute. This is necessary because each line of a doc comment is given as a
   separate doc attribute, and this will combine them into a single string with
   line breaks between each attribute.
-- `unindent-comments` is necessary because the convention for writing
+- `unindent-comments` removes excess indentation on comments in order for
+  markdown to like it. This is necessary because the convention for writing
   documentation is to provide a space between the `///` or `//!` marker and the
   text, and stripping that leading space will make the text easier to parse by
   the Markdown parser. (In my experience it's less necessary now that we have a
   Commonmark-compliant parser, since it doesn't have a problem with headers
   that have a space before the `##` that marks the heading.)
-- `strip-priv-imports` is necessary because rustdoc will handle *public*
+- `strip-priv-imports` strips all private import statements (`use`, `extern
+  crate`) from a crate. This is necessary because rustdoc will handle *public*
   imports by either inlining the item's documentation to the module or creating
   a "Reexports" section with the import in it. The pass ensures that all of
   these imports are actually relevant to documentation.
-- `strip-hidden` and `strip-private` also remove items that are not relevant
-  for public documentation.
+- `strip-hidden` and `strip-private` strip all `doc(hidden)` and private items
+  from the output. `strip-private` implies `strip-priv-imports`. Basically, the
+  goal is to remove items that are not relevant for public documentation.
 
 ## From clean to crate
 

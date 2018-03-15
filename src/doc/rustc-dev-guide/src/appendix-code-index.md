@@ -23,3 +23,4 @@ Item            |  Kind    | Short description           | Chapter            | 
 [The Rustc Driver]: rustc-driver.html
 [Type checking]: type-checking.html
 [The `ty` modules]: ty.html
+[Rustdoc]: rustdoc.html
