@@ -17,6 +17,6 @@ impl !Sync for Foo {}
 
 static FOO: usize = 3;
 static BAR: Foo = Foo;
-//~^ ERROR: `Foo: std::marker::Sync` is not satisfied
+//~^ ERROR: `Foo` cannot be shared between threads safely [E0277]
 
 fn main() {}
