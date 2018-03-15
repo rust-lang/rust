@@ -8,6 +8,7 @@ Item            |  Kind    | Short description           | Chapter            | 
 ----------------|----------|-----------------------------|--------------------|-------------------
 `CodeMap` | struct | The CodeMap maps the AST nodes to their source code | [The parser] | [src/libsyntax/codemap.rs](https://github.com/rust-lang/rust/blob/master/src/libsyntax/codemap.rs)
 `CompileState` | struct | State that is passed to a callback at each compiler pass | [The Rustc Driver] | [src/librustc_driver/driver.rs](https://github.com/rust-lang/rust/blob/master/src/librustc_driver/driver.rs)
+`DocContext` | struct | A state container used by rustdoc when crawling through a crate to gather its documentation | [Rustdoc] | [src/librustdoc/core.rs](https://github.com/rust-lang/rust/blob/master/src/librustdoc/core.rs)
 `ast::Crate` | struct | Syntax-level representation of a parsed crate | [The parser] | [src/librustc/hir/mod.rs](https://github.com/rust-lang/rust/blob/master/src/libsyntax/ast.rs)
 `hir::Crate` | struct | More abstract, compiler-friendly form of a crate's AST | [The Hir] | [src/librustc/hir/mod.rs](https://github.com/rust-lang/rust/blob/master/src/librustc/hir/mod.rs)
 `ParseSess` | struct | This struct contains information about a parsing session | [the Parser] | [src/libsyntax/parse/mod.rs](https://github.com/rust-lang/rust/blob/master/src/libsyntax/parse/mod.rs)

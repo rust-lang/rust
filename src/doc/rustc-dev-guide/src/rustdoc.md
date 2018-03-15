@@ -5,9 +5,17 @@ library. This chapter is about how it works. (A new implementation is also [unde
 
 [under way]: https://github.com/steveklabnik/rustdoc
 
-Rustdoc is implemented entirely within the crate `librustdoc`. After partially compiling a crate to
-get its AST (technically the HIR map) from rustc, librustdoc performs two major steps past that to
-render a set of documentation:
+Rustdoc is implemented entirely within the crate [`librustdoc`][rd]. It runs
+the compiler up to the point where we have an internal representation of a
+crate (HIR) and the ability to run some queries about the types of items. [HIR]
+and [queries] are discussed in the linked chapters.
+
+[HIR]: ./hir.html
+[queries]: ./query.html
+[rd]: https://github.com/rust-lang/rust/tree/master/src/librustdoc
+
+`librustdoc` performs two major steps after that to render a set of
+documentation:
 
 * "Clean" the AST into a form that's more suited to creating documentation (and slightly more
   resistant to churn in the compiler).
@@ -16,9 +24,11 @@ render a set of documentation:
 Naturally, there's more than just this, and those descriptions simplify out lots of details, but
 that's the high-level overview.
 
-(Side note: this is a library crate! The `rustdoc` binary is crated using the project in
-`src/tools/rustdoc`. Note that literally all that does is call the `main()` that's in this crate's
+(Side note: `librustdoc` is a library crate! The `rustdoc` binary is crated using the project in
+[`src/tools/rustdoc`][bin]. Note that literally all that does is call the `main()` that's in this crate's
 `lib.rs`, though.)
+
+[bin]: https://github.com/rust-lang/rust/tree/master/src/tools/rustdoc
 
 ## Cheat sheet
 
@@ -87,12 +97,31 @@ These do things like combine the separate "attributes" into a single string and 
 whitespace to make the document easier on the markdown parser, or drop items that are not public or
 deliberately hidden with `#[doc(hidden)]`. These are all implemented in the `passes/` directory, one
 file per pass. By default, all of these passes are run on a crate, but the ones regarding dropping
-private/hidden items can be bypassed by passing `--document-private-items` to rustdoc.
+private/hidden items can be bypassed by passing `--document-private-items` to rustdoc. Note that
+unlike the previous set of AST transformations, the passes happen on the _cleaned_ crate.
 
 (Strictly speaking, you can fine-tune the passes run and even add your own, but [we're trying to
 deprecate that][44136]. If you need finer-grain control over these passes, please let us know!)
 
 [44136]: https://github.com/rust-lang/rust/issues/44136
+
+Here is current (as of this writing) list of passes:
+
+- `collapse-docs` is necessary because each line of a doc comment is given as a
+  separate doc attribute, and this will combine them into a single string with
+  line breaks between each attribute.
+- `unindent-comments` is necessary because the convention for writing
+  documentation is to provide a space between the `///` or `//!` marker and the
+  text, and stripping that leading space will make the text easier to parse by
+  the Markdown parser. (In my experience it's less necessary now that we have a
+  Commonmark-compliant parser, since it doesn't have a problem with headers
+  that have a space before the `##` that marks the heading.)
+- `strip-priv-imports` is necessary because rustdoc will handle *public*
+  imports by either inlining the item's documentation to the module or creating
+  a "Reexports" section with the import in it. The pass ensures that all of
+  these imports are actually relevant to documentation.
+- `strip-hidden` and `strip-private` also remove items that are not relevant
+  for public documentation.
 
 ## From clean to crate
 
@@ -159,6 +188,9 @@ crate walk to grab *just* the hand-written documentation. Combined with the afor
 handing them off to the libtest test runner. One notable location in `test.rs` is the function
 `make_test`, which is where hand-written doctests get transformed into something that can be
 executed.
+
+Some extra reading about `make_test` can be found
+[here](https://quietmisdreavus.net/code/2018/02/23/how-the-doctests-get-made/).
 
 ## Dotting i's and crossing t's
 
