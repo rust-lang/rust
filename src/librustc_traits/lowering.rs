@@ -117,7 +117,7 @@ fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId
     if let ImplPolarity::Negative = tcx.impl_polarity(def_id) {
         return Lrc::new(vec![]);
     }
-    
+
     // Rule Implemented-From-Impl
     //
     // (see rustc guide)
