@@ -33,6 +33,7 @@ use ty;
 use ty::maps::job::QueryResult;
 use ty::codec::{self as ty_codec, TyDecoder, TyEncoder};
 use ty::context::TyCtxt;
+use util::common::time;
 
 const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
 
@@ -214,7 +215,7 @@ impl<'sess> OnDiskCache<'sess> {
             // Encode query results
             let mut query_result_index = EncodedQueryResultIndex::new();
 
-            {
+            time(tcx.sess, "encode query results", || {
                 use ty::maps::queries::*;
                 let enc = &mut encoder;
                 let qri = &mut query_result_index;
@@ -258,7 +259,9 @@ impl<'sess> OnDiskCache<'sess> {
                         }
                     }
                 }
-            }
+
+                Ok(())
+            })?;
 
             // Encode diagnostics
             let diagnostics_index = {
@@ -1125,6 +1128,11 @@ fn encode_query_results<'enc, 'a, 'tcx, Q, E>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
           E: 'enc + TyEncoder,
           Q::Value: Encodable,
 {
+    let desc = &format!("encode_query_results for {}",
+        unsafe { ::std::intrinsics::type_name::<Q>() });
+
+    time(tcx.sess, desc, || {
+
     for (key, entry) in Q::get_cache_internal(tcx).map.iter() {
         if Q::cache_on_disk(key.clone()) {
             let entry = match *entry {
@@ -1143,4 +1151,5 @@ fn encode_query_results<'enc, 'a, 'tcx, Q, E>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     Ok(())
+    })
 }
