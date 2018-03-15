@@ -205,7 +205,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                     let sugg = |db: &mut DiagnosticBuilder| {
                         if let ty::TypeVariants::TyAdt(ref def, ..) = ty.sty {
                             if let Some(span) = cx.tcx.hir.span_if_local(def.did) {
-                                let param_env = ty::ParamEnv::empty(traits::Reveal::UserFacing);
+                                let param_env = ty::ParamEnv::empty();
                                 if param_env.can_type_implement_copy(cx.tcx, ty, span).is_ok() {
                                     db.span_help(span, "consider marking this type as Copy");
                                 }
