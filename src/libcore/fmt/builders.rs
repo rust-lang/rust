@@ -543,9 +543,6 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
 /// This is useful you need to output an unquoted string as part of your
 /// [`Debug::fmt`](trait.Debug.html#tymethod.fmt) implementation.
 ///
-/// The type can be constructed by the
-/// [`DebugStr::new`](struct.DebugStr.html#method.new) function.
-///
 /// The difference between `&'a str` and `DebugStr<'a>` in a `Debug` context
 /// such as `println!("{:?}", <value>)` is that the former will quote the
 /// string while the latter will not. In other words, the following holds:
@@ -554,15 +551,15 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
 /// #![feature(debug_str)]
 /// use std::fmt::DebugStr;
 ///
-/// assert_eq!("foo", format!("{:?}", DebugStr::new("foo")));
+/// assert_eq!("foo", format!("{:?}", DebugStr("foo")));
 /// assert_eq!("\"foo\"", format!("{:?}", "foo"));
 /// ```
 ///
 /// # Examples
 ///
-/// In this example we use `DebugStr::new("_")` for a "catch all" match arm.
+/// In this example we use `DebugStr("_")` for a "catch all" match arm.
 ///
-/// ```
+/// ```rust
 /// #![feature(debug_str)]
 /// use std::fmt::{Debug, Formatter, DebugStr, Result};
 ///
@@ -581,7 +578,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
 ///     fn fmt(&self, fmt: &mut Formatter) -> Result {
 ///         fmt.debug_set()
 ///            .entries(self.0.iter().map(Arrow))
-///            .entry(&Arrow(&(DebugStr::new("_"), &self.1)))
+///            .entry(&Arrow(&(DebugStr("_"), &self.1)))
 ///            .finish()
 ///     }
 /// }
@@ -593,17 +590,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
 #[unstable(feature = "debug_str", issue = "0")]
 #[must_use]
 #[derive(Copy, Clone)]
-pub struct DebugStr<'a>(&'a str);
-
-#[unstable(feature = "debug_str", issue = "0")]
-impl<'a> DebugStr<'a> {
-    /// Constructs a new `DebugStr` which will output the given string slice
-    /// unquoted when used in a `Debug` context. See the documentation on the
-    /// [type](struct.DebugStr.html) for more information.
-    fn new(string: &'a str) -> Self {
-        DebugStr(string)
-    }
-}
+pub struct DebugStr<'a>(pub &'a str);
 
 #[unstable(feature = "debug_str", issue = "0")]
 impl<'a> fmt::Debug for DebugStr<'a> {
