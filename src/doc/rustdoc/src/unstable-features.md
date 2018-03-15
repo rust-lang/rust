@@ -196,3 +196,10 @@ chapter in the Unstable Book][unstable-include] and [its tracking issue][issue-i
 
 [unstable-include]: ../unstable-book/language-features/external-doc.html
 [issue-include]: https://github.com/rust-lang/rust/issues/44732
+
+## Unstable command-line arguments
+
+These features are enabled by passing a command-line flag to Rustdoc, but the flags in question are
+themselves marked as unstable. To use any of these options, pass `-Z unstable-options` as well as
+the flag in question to Rustdoc on the command-line. To do this from Cargo, you can either use the
+`RUSTDOCFLAGS` environment variable or the `cargo rustdoc` command.
