@@ -12,12 +12,12 @@
 //! crate or pertains to a type defined in this crate.
 
 use rustc::ty::TyCtxt;
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
+use rustc::hir::itemlikevisit::ParItemLikeVisitor;
 use rustc::hir::{self, Unsafety};
 
 pub fn check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let mut unsafety = UnsafetyChecker { tcx: tcx };
-    tcx.hir.krate().visit_all_item_likes(&mut unsafety);
+    let unsafety = UnsafetyChecker { tcx: tcx };
+    tcx.hir.krate().par_visit_all_item_likes(&unsafety);
 }
 
 struct UnsafetyChecker<'cx, 'tcx: 'cx> {
@@ -25,7 +25,7 @@ struct UnsafetyChecker<'cx, 'tcx: 'cx> {
 }
 
 impl<'cx, 'tcx, 'v> UnsafetyChecker<'cx, 'tcx> {
-    fn check_unsafety_coherence(&mut self,
+    fn check_unsafety_coherence(&self,
                                 item: &'v hir::Item,
                                 impl_generics: Option<&hir::Generics>,
                                 unsafety: hir::Unsafety,
@@ -78,8 +78,8 @@ impl<'cx, 'tcx, 'v> UnsafetyChecker<'cx, 'tcx> {
     }
 }
 
-impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for UnsafetyChecker<'cx, 'tcx> {
-    fn visit_item(&mut self, item: &'v hir::Item) {
+impl<'cx, 'tcx, 'v> ParItemLikeVisitor<'v> for UnsafetyChecker<'cx, 'tcx> {
+    fn visit_item(&self, item: &'v hir::Item) {
         match item.node {
             hir::ItemImpl(unsafety, polarity, _, ref generics, ..) => {
                 self.check_unsafety_coherence(item, Some(generics), unsafety, polarity);
@@ -88,9 +88,9 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for UnsafetyChecker<'cx, 'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {
+    fn visit_trait_item(&self, _trait_item: &hir::TraitItem) {
     }
 
-    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
+    fn visit_impl_item(&self, _impl_item: &hir::ImplItem) {
     }
 }

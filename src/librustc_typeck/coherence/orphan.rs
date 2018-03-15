@@ -13,25 +13,25 @@
 
 use rustc::traits;
 use rustc::ty::{self, TyCtxt};
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
+use rustc::hir::itemlikevisit::ParItemLikeVisitor;
 use rustc::hir;
 
 pub fn check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let mut orphan = OrphanChecker { tcx: tcx };
-    tcx.hir.krate().visit_all_item_likes(&mut orphan);
+    let orphan = OrphanChecker { tcx: tcx };
+    tcx.hir.krate().par_visit_all_item_likes(&orphan);
 }
 
 struct OrphanChecker<'cx, 'tcx: 'cx> {
     tcx: TyCtxt<'cx, 'tcx, 'tcx>,
 }
 
-impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
+impl<'cx, 'tcx, 'v> ParItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
     /// Checks exactly one impl for orphan rules and other such
     /// restrictions.  In this fn, it can happen that multiple errors
     /// apply to a specific impl, so just return after reporting one
     /// to prevent inundating the user with a bunch of similar error
     /// reports.
-    fn visit_item(&mut self, item: &hir::Item) {
+    fn visit_item(&self, item: &hir::Item) {
         let def_id = self.tcx.hir.local_def_id(item.id);
         match item.node {
             hir::ItemImpl(.., Some(_), _, _) => {
@@ -161,9 +161,9 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {
+    fn visit_trait_item(&self, _trait_item: &hir::TraitItem) {
     }
 
-    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
+    fn visit_impl_item(&self, _impl_item: &hir::ImplItem) {
     }
 }

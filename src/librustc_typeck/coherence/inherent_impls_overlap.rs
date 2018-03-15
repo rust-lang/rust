@@ -11,7 +11,7 @@
 use namespace::Namespace;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir;
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
+use rustc::hir::itemlikevisit::ParItemLikeVisitor;
 use rustc::traits::{self, IntercrateMode};
 use rustc::ty::TyCtxt;
 
@@ -21,7 +21,7 @@ pub fn crate_inherent_impls_overlap_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                     crate_num: CrateNum) {
     assert_eq!(crate_num, LOCAL_CRATE);
     let krate = tcx.hir.krate();
-    krate.visit_all_item_likes(&mut InherentOverlapChecker { tcx });
+    krate.par_visit_all_item_likes(&InherentOverlapChecker { tcx });
 }
 
 struct InherentOverlapChecker<'a, 'tcx: 'a> {
@@ -119,8 +119,8 @@ impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentOverlapChecker<'a, 'tcx> {
-    fn visit_item(&mut self, item: &'v hir::Item) {
+impl<'a, 'tcx, 'v> ParItemLikeVisitor<'v> for InherentOverlapChecker<'a, 'tcx> {
+    fn visit_item(&self, item: &'v hir::Item) {
         match item.node {
             hir::ItemEnum(..) |
             hir::ItemStruct(..) |
@@ -133,9 +133,9 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentOverlapChecker<'a, 'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {
+    fn visit_trait_item(&self, _trait_item: &hir::TraitItem) {
     }
 
-    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
+    fn visit_impl_item(&self, _impl_item: &hir::ImplItem) {
     }
 }

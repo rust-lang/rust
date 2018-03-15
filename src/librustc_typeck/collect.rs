@@ -50,6 +50,7 @@ use syntax_pos::{Span, DUMMY_SP};
 
 use rustc::hir::{self, map as hir_map, CodegenFnAttrs, CodegenFnAttrFlags, Unsafety};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
+use rustc::hir::itemlikevisit::{IntoVisitor, ParDeepVisitor};
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 
@@ -57,8 +58,8 @@ use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 // Main entry point
 
 pub fn collect_item_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let mut visitor = CollectItemTypesVisitor { tcx: tcx };
-    tcx.hir.krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
+    let visitor = CollectItemTypesVisitor { tcx: tcx };
+    tcx.hir.krate().par_visit_all_item_likes(&ParDeepVisitor(visitor));
 }
 
 pub fn provide(providers: &mut Providers) {
@@ -98,8 +99,17 @@ pub struct ItemCtxt<'a,'tcx:'a> {
 
 ///////////////////////////////////////////////////////////////////////////
 
+#[derive(Clone)]
 struct CollectItemTypesVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>
+}
+
+impl<'a, 'tcx: 'a> IntoVisitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
+    type Visitor = Self;
+
+    fn into_visitor(&self) -> Self {
+        self.clone()
+    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {

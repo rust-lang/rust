@@ -128,7 +128,7 @@ use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{self, BytePos, Span, MultiSpan};
 
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
+use rustc::hir::itemlikevisit::ParItemLikeVisitor;
 use rustc::hir::map::Node;
 use rustc::hir::{self, PatKind, Item_};
 use rustc::middle::lang_items;
@@ -672,12 +672,12 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
 
 struct CheckItemTypesVisitor<'a, 'tcx: 'a> { tcx: TyCtxt<'a, 'tcx, 'tcx> }
 
-impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CheckItemTypesVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, i: &'tcx hir::Item) {
+impl<'a, 'tcx> ParItemLikeVisitor<'tcx> for CheckItemTypesVisitor<'a, 'tcx> {
+    fn visit_item(&self, i: &'tcx hir::Item) {
         check_item_type(self.tcx, i);
     }
-    fn visit_trait_item(&mut self, _: &'tcx hir::TraitItem) { }
-    fn visit_impl_item(&mut self, _: &'tcx hir::ImplItem) { }
+    fn visit_trait_item(&self, _: &'tcx hir::TraitItem) { }
+    fn visit_impl_item(&self, _: &'tcx hir::ImplItem) { }
 }
 
 pub fn check_wf_new<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Result<(), ErrorReported> {
@@ -689,7 +689,7 @@ pub fn check_wf_new<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Result<(), ErrorRe
 
 pub fn check_item_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Result<(), ErrorReported> {
     tcx.sess.track_errors(|| {
-        tcx.hir.krate().visit_all_item_likes(&mut CheckItemTypesVisitor { tcx });
+        tcx.hir.krate().par_visit_all_item_likes(&CheckItemTypesVisitor { tcx });
     })
 }
 
@@ -702,9 +702,9 @@ fn typeck_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum
 {
     debug_assert!(crate_num == LOCAL_CRATE);
     Ok(tcx.sess.track_errors(|| {
-        for body_owner_def_id in tcx.body_owners() {
+        tcx.par_body_owners(|body_owner_def_id| {
             ty::maps::queries::typeck_tables_of::ensure(tcx, body_owner_def_id);
-        }
+        });
     })?)
 }
 

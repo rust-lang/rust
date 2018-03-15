@@ -19,6 +19,7 @@ use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::traits;
 use rustc::ty::{self, TyCtxt, TypeFoldable};
 use rustc::ty::maps::Providers;
+use rustc_data_structures::sync::{ParallelIterator, par_iter};
 
 use syntax::ast;
 
@@ -126,9 +127,9 @@ fn coherent_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
 }
 
 pub fn check_coherence<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    for &trait_def_id in tcx.hir.krate().trait_impls.keys() {
+    par_iter(&tcx.hir.krate().trait_impls).for_each(|(&trait_def_id, _)| {
         ty::maps::queries::coherent_trait::ensure(tcx, trait_def_id);
-    }
+    });
 
     unsafety::check(tcx);
     orphan::check(tcx);

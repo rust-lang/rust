@@ -20,7 +20,7 @@
 
 use constrained_type_params as ctp;
 use rustc::hir;
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
+use rustc::hir::itemlikevisit::ParItemLikeVisitor;
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
@@ -62,15 +62,15 @@ pub fn impl_wf_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     // We will tag this as part of the WF check -- logically, it is,
     // but it's one that we must perform earlier than the rest of
     // WfCheck.
-    tcx.hir.krate().visit_all_item_likes(&mut ImplWfCheck { tcx: tcx });
+    tcx.hir.krate().par_visit_all_item_likes(&ImplWfCheck { tcx: tcx });
 }
 
 struct ImplWfCheck<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
-impl<'a, 'tcx> ItemLikeVisitor<'tcx> for ImplWfCheck<'a, 'tcx> {
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
+impl<'a, 'tcx> ParItemLikeVisitor<'tcx> for ImplWfCheck<'a, 'tcx> {
+    fn visit_item(&self, item: &'tcx hir::Item) {
         match item.node {
             hir::ItemImpl(.., ref impl_item_refs) => {
                 let impl_def_id = self.tcx.hir.local_def_id(item.id);
@@ -83,9 +83,9 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for ImplWfCheck<'a, 'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, _trait_item: &'tcx hir::TraitItem) { }
+    fn visit_trait_item(&self, _trait_item: &'tcx hir::TraitItem) { }
 
-    fn visit_impl_item(&mut self, _impl_item: &'tcx hir::ImplItem) { }
+    fn visit_impl_item(&self, _impl_item: &'tcx hir::ImplItem) { }
 }
 
 fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

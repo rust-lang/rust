@@ -1195,21 +1195,20 @@ where
 
             time(sess, "borrow checking", || borrowck::check_crate(tcx));
 
-            time(sess, "MIR borrow checking", || {
-                for def_id in tcx.body_owners() {
-                    tcx.mir_borrowck(def_id);
-                }
-            });
+            time(sess,
+                 "MIR borrow checking",
+                 || tcx.par_body_owners(|def_id| { tcx.mir_borrowck(def_id); }));
 
             time(sess, "dumping chalk-like clauses", || {
                 rustc_traits::lowering::dump_program_clauses(tcx);
             });
 
-            time(sess, "MIR effect checking", || {
-                for def_id in tcx.body_owners() {
-                    mir::transform::check_unsafety::check_unsafety(tcx, def_id)
-                }
-            });
+            time(sess,
+                 "MIR effect checking",
+                 || tcx.par_body_owners(|def_id| {
+                     mir::transform::check_unsafety::check_unsafety(tcx.global_tcx(), def_id)
+                 }));
+
             // Avoid overwhelming user with errors if type checking failed.
             // I'm not sure how helpful this is, to be honest, but it avoids
             // a
