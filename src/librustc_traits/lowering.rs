@@ -117,6 +117,10 @@ fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId
     if let ImplPolarity::Negative = tcx.impl_polarity(def_id) {
         return Lrc::new(vec![]);
     }
+    
+    // Rule Implemented-From-Impl
+    //
+    // (see rustc guide)
 
     let trait_ref = tcx.impl_trait_ref(def_id).unwrap();
     let trait_ref = ty::TraitPredicate { trait_ref }.lower();
