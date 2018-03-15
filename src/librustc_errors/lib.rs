@@ -42,7 +42,6 @@ use rustc_data_structures::stable_hasher::StableHasher;
 
 use std::borrow::Cow;
 use std::cell::{RefCell, Cell};
-use std::mem;
 use std::{error, fmt};
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::SeqCst;
@@ -269,7 +268,6 @@ pub struct Handler {
     emitter: RefCell<Box<Emitter>>,
     continue_after_error: Cell<bool>,
     delayed_span_bug: RefCell<Option<Diagnostic>>,
-    tracked_diagnostics: RefCell<Option<Vec<Diagnostic>>>,
 
     // This set contains the `DiagnosticId` of all emitted diagnostics to avoid
     // emitting the same diagnostic with extended help (`--teach`) twice, which
@@ -281,6 +279,11 @@ pub struct Handler {
     // twice.
     emitted_diagnostics: RefCell<FxHashSet<u128>>,
 }
+
+fn default_track_diagnostic(_: &Diagnostic) {}
+
+thread_local!(pub static TRACK_DIAGNOSTICS: Cell<fn(&Diagnostic)> =
+                Cell::new(default_track_diagnostic));
 
 #[derive(Default)]
 pub struct HandlerFlags {
@@ -333,7 +336,6 @@ impl Handler {
             emitter: RefCell::new(e),
             continue_after_error: Cell::new(true),
             delayed_span_bug: RefCell::new(None),
-            tracked_diagnostics: RefCell::new(None),
             tracked_diagnostic_codes: RefCell::new(FxHashSet()),
             emitted_diagnostics: RefCell::new(FxHashSet()),
         }
@@ -629,17 +631,6 @@ impl Handler {
         }
     }
 
-    pub fn track_diagnostics<F, R>(&self, f: F) -> (R, Vec<Diagnostic>)
-        where F: FnOnce() -> R
-    {
-        let prev = mem::replace(&mut *self.tracked_diagnostics.borrow_mut(),
-                                Some(Vec::new()));
-        let ret = f();
-        let diagnostics = mem::replace(&mut *self.tracked_diagnostics.borrow_mut(), prev)
-            .unwrap();
-        (ret, diagnostics)
-    }
-
     /// `true` if a diagnostic with this code has already been emitted in this handler.
     ///
     /// Used to suppress emitting the same error multiple times with extended explanation when
@@ -651,9 +642,9 @@ impl Handler {
     fn emit_db(&self, db: &DiagnosticBuilder) {
         let diagnostic = &**db;
 
-        if let Some(ref mut list) = *self.tracked_diagnostics.borrow_mut() {
-            list.push(diagnostic.clone());
-        }
+        TRACK_DIAGNOSTICS.with(|track_diagnostics| {
+            track_diagnostics.get()(diagnostic);
+        });
 
         if let Some(ref code) = diagnostic.code {
             self.tracked_diagnostic_codes.borrow_mut().insert(code.clone());
