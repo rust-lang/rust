@@ -3,7 +3,7 @@
 
 use rustc::lint::*;
 use rustc::hir::*;
-use rustc::{ty, traits};
+use rustc::ty;
 use rustc::ty::subst::Substs;
 use syntax::ast::{IntTy, UintTy};
 use utils::span_lint;
