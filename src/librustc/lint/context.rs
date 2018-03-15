@@ -201,7 +201,7 @@ impl LintStore {
                                         sess: Option<&Session>,
                                         lints: Vec<FutureIncompatibleInfo>) {
 
-        for edition in edition::ALL_EPOCHS {
+        for edition in edition::ALL_EDITIONS {
             let lints = lints.iter().filter(|f| f.edition == Some(*edition)).map(|f| f.id)
                              .collect::<Vec<_>>();
             if !lints.is_empty() {

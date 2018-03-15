@@ -36,7 +36,7 @@ pub enum Edition {
 }
 
 // must be in order from oldest to newest
-pub const ALL_EPOCHS: &[Edition] = &[Edition::Edition2015, Edition::Edition2018];
+pub const ALL_EDITIONS: &[Edition] = &[Edition::Edition2015, Edition::Edition2018];
 
 impl fmt::Display for Edition {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
