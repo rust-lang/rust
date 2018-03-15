@@ -565,7 +565,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
 ///
 /// struct Arm<'a, L: 'a, R: 'a>(&'a (L, R));
 /// struct Table<'a, K: 'a, V: 'a>(&'a [(K, V)], V);
-/// 
+///
 /// impl<'a, L: 'a + Debug, R: 'a + Debug> Debug for Arm<'a, L, R> {
 ///     fn fmt(&self, fmt: &mut Formatter) -> Result {
 ///         L::fmt(&(self.0).0, fmt)?;
