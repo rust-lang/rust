@@ -67,9 +67,9 @@ pub struct LoanDataFlowOperator;
 pub type LoanDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, LoanDataFlowOperator>;
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    for body_owner_def_id in tcx.body_owners() {
+    tcx.par_body_owners(|body_owner_def_id| {
         tcx.borrowck(body_owner_def_id);
-    }
+    });
 }
 
 pub fn provide(providers: &mut Providers) {
