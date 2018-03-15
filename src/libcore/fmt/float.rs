@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use fmt::{Formatter, Result, LowerExp, UpperExp, Display, Debug};
+use fmt::{Formatter, Result, LowerExp, UpperExp, Display, Debug, Binary};
 use mem;
-use num::flt2dec;
+use num::{flt2dec, Float};
 
 // Don't inline this so callers don't use the stack space this function
 // requires unless they have to.
@@ -148,6 +148,13 @@ macro_rules! floating {
         impl UpperExp for $ty {
             fn fmt(&self, fmt: &mut Formatter) -> Result {
                 float_to_exponential_common(fmt, self, true)
+            }
+        }
+
+        #[stable(feature = "floating_point_binary_fmt", since = "1.26.0")]
+        impl Binary for $ty {
+            fn fmt(&self, fmt: &mut Formatter) -> Result {
+                write!(fmt, "{:01$b}", self.to_bits(), 8 * mem::size_of::<$ty>())
             }
         }
     )
