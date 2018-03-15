@@ -691,7 +691,7 @@ impl<'a> Builder<'a> {
         // the options through environment variables that are fetched and understood by both.
         //
         // FIXME: the guard against msvc shouldn't need to be here
-        if !target.contains("msvc") && !cfg!(test) {
+        if !target.contains("msvc") {
             let ccache = self.config.ccache.as_ref();
             let ccacheify = |s: &Path| {
                 let ccache = match ccache {
@@ -874,6 +874,8 @@ mod __test {
 
     fn configure(host: &[&str], target: &[&str]) -> Config {
         let mut config = Config::default_opts();
+        // don't save toolstates
+        config.save_toolstates = None;
         config.run_host_only = true;
         config.build = INTERNER.intern_str("A");
         config.hosts = vec![config.build].clone().into_iter()

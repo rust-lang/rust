@@ -34,7 +34,6 @@ pub fn staticlib(name: &str, target: &str) -> String {
 
 /// Copies a file from `src` to `dst`
 pub fn copy(src: &Path, dst: &Path) {
-    if cfg!(test) { return; }
     let _ = fs::remove_file(&dst);
     // Attempt to "easy copy" by creating a hard link (symlinks don't work on
     // windows), but if that fails just fall back to a slow `copy` operation.
@@ -67,7 +66,6 @@ pub fn replace_in_file(path: &Path, replacements: &[(&str, &str)]) {
 }
 
 pub fn read_stamp_file(stamp: &Path) -> Vec<PathBuf> {
-    if cfg!(test) { return vec![]; }
     let mut paths = Vec::new();
     let mut contents = Vec::new();
     t!(t!(File::open(stamp)).read_to_end(&mut contents));

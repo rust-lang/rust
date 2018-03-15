@@ -722,7 +722,6 @@ impl Step for CodegenBackend {
 fn copy_codegen_backends_to_sysroot(builder: &Builder,
                                     compiler: Compiler,
                                     target_compiler: Compiler) {
-    if cfg!(test) { return; }
     let build = builder.build;
     let target = target_compiler.host;
 
