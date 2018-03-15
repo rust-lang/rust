@@ -3595,6 +3595,13 @@ impl fmt::Display for TryFromIntError {
     }
 }
 
+#[unstable(feature = "try_from", issue = "33417")]
+impl From<!> for TryFromIntError {
+    fn from(never: !) -> TryFromIntError {
+        never
+    }
+}
+
 // no possible bounds violation
 macro_rules! try_from_unbounded {
     ($source:ty, $($target:ty),*) => {$(
