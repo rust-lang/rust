@@ -231,3 +231,26 @@ Just like `--html-after-content`, this allows you to insert extra content before
 but after the other content `rustdoc` would normally produce in the rendered documentation.
 However, instead of directly inserting the file verbatim, `rustdoc` will pass the files through a
 Markdown renderer before inserting the result into the file.
+
+### `--playground-url`: control the location of the playground
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc src/lib.rs -Z unstable-options --playground-url https://play.rust-lang.org/
+```
+
+When rendering a crate's docs, this flag gives the base URL of the Rust Playground, to use for
+generating `Run` buttons. Unlike `--markdown-playground-url`, this argument works for standalone
+Markdown files *and* Rust crates. This works the same way as adding `#![doc(html_playground_url =
+"url")]` to your crate root, as mentioned in [the chapter about the `#[doc]`
+attribute][doc-playground]. Please be aware that the official Rust Playground at
+https://play.rust-lang.org does not have every crate available, so if your examples require your
+crate, make sure the playground you provide has your crate available.
+
+[doc-playground]: the-doc-attribute.html#html_playground_url
+
+If both `--playground-url` and `--markdown-playground-url` are present when rendering a standalone
+Markdown file, the URL given to `--markdown-playground-url` will take precedence. If both
+`--playground-url` and `#![doc(html_playground_url = "url")]` are present when rendering crate docs,
+the attribute will take precedence.
