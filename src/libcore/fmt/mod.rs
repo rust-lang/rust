@@ -2016,7 +2016,7 @@ impl<T: Debug> Debug for WrapDebug<T> {
 impl<T> Debug for WrapDebug<T> {
     default fn fmt(&self, fmt: &mut Formatter) -> Result {
         write!(fmt, "[<unknown> of type {} is !Debug]",
-            unsafe { intrinsics::type_name::<T>() })
+            unsafe { ::core::intrinsics::type_name::<T>() })
     }
 }
 
