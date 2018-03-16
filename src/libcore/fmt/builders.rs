@@ -562,7 +562,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
 /// In this example we use `DebugDisplay("_")` for a "catch all" match arm.
 ///
 /// ```rust
-/// #![feature(debug_str)]
+/// #![feature(debug_display)]
 /// use std::fmt::{Debug, Formatter, DebugDisplay, Result};
 ///
 /// struct Arm<'a, L: 'a, R: 'a>(&'a (L, R));
