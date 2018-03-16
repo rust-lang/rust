@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // min-llvm-version 5.0
+// ignore-emscripten
 
 // Test that the simd_reduce_{op} intrinsics produce the correct results.
 
