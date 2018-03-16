@@ -1303,10 +1303,16 @@ impl<T> [T] {
 
     /// Sorts the slice with a key extraction function.
     ///
-    /// During sorting, the key function is called only once per element.
-    ///
-    /// This sort is stable (i.e. does not reorder equal elements) and `O(m n + n log n)`
+    /// This sort is stable (i.e. does not reorder equal elements) and `O(m n log m n)`
     /// worst-case, where the key function is `O(m)`.
+    ///
+    /// For expensive key functions (e.g. functions that are not simple property accesses or
+    /// basic operations), [`sort_by_cached_key`](#method.sort_by_cached_key) is likely to be
+    /// significantly faster, as it does not recompute element keys.
+    ///
+    /// When applicable, unstable sorting is preferred because it is generally faster than stable
+    /// sorting and it doesn't allocate auxiliary memory.
+    /// See [`sort_unstable_by_key`](#method.sort_unstable_by_key).
     ///
     /// # Current implementation
     ///
@@ -1315,7 +1321,8 @@ impl<T> [T] {
     /// It is designed to be very fast in cases where the slice is nearly sorted, or consists of
     /// two or more sorted sequences concatenated one after another.
     ///
-    /// The algorithm allocates temporary storage in a `Vec<(K, usize)` the length of the slice.
+    /// Also, it allocates temporary storage half the size of `self`, but for short slices a
+    /// non-allocating insertion sort is used instead.
     ///
     /// # Examples
     ///
@@ -1327,7 +1334,43 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "slice_sort_by_key", since = "1.7.0")]
     #[inline]
-    pub fn sort_by_key<K, F>(&mut self, f: F)
+    pub fn sort_by_key<K, F>(&mut self, mut f: F)
+        where F: FnMut(&T) -> K, K: Ord
+    {
+        merge_sort(self, |a, b| f(a).lt(&f(b)));
+    }
+
+    /// Sorts the slice with a key extraction function.
+    ///
+    /// During sorting, the key function is called only once per element.
+    ///
+    /// This sort is stable (i.e. does not reorder equal elements) and `O(m n + n log n)`
+    /// worst-case, where the key function is `O(m)`.
+    ///
+    /// For simple key functions (e.g. functions that are property accesses or
+    /// basic operations), [`sort_by_key`](#method.sort_by_key) is likely to be
+    /// faster.
+    ///
+    /// # Current implementation
+    ///
+    /// The current algorithm is an adaptive, iterative merge sort inspired by
+    /// [timsort](https://en.wikipedia.org/wiki/Timsort).
+    /// It is designed to be very fast in cases where the slice is nearly sorted, or consists of
+    /// two or more sorted sequences concatenated one after another.
+    ///
+    /// The algorithm allocates temporary storage in a `Vec<(K, usize)>` the length of the slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut v = [-5i32, 4, 1, -3, 2];
+    ///
+    /// v.sort_by_cached_key(|k| k.abs());
+    /// assert!(v == [1, 2, -3, 4, -5]);
+    /// ```
+    #[unstable(feature = "slice_sort_by_uncached_key", issue = "34447")]
+    #[inline]
+    pub fn sort_by_cached_key<K, F>(&mut self, f: F)
         where F: FnMut(&T) -> K, K: Ord
     {
         // Helper macro for indexing our vector by the smallest possible type, to reduce allocation.
@@ -1432,9 +1475,6 @@ impl<T> [T] {
     /// Sorts the slice with a key extraction function, but may not preserve the order of equal
     /// elements.
     ///
-    /// Note that, currently, the key function for [`sort_unstable_by_key`] is called multiple times
-    /// per element, unlike [`sort_by_key`].
-    ///
     /// This sort is unstable (i.e. may reorder equal elements), in-place (i.e. does not allocate),
     /// and `O(m n log m n)` worst-case, where the key function is `O(m)`.
     ///
@@ -1446,8 +1486,9 @@ impl<T> [T] {
     /// randomization to avoid degenerate cases, but with a fixed seed to always provide
     /// deterministic behavior.
     ///
-    /// Due to its key calling strategy, [`sort_unstable_by_key`] is likely to be slower than
-    /// [`sort_by_key`] in cases where the key function is expensive.
+    /// Due to its key calling strategy, [`sort_unstable_by_key`](#method.sort_unstable_by_key)
+    /// is likely to be slower than [`sort_by_cached_key`](#method.sort_by_uncached_key) in
+    /// cases where the key function is expensive.
     ///
     /// # Examples
     ///
@@ -1458,8 +1499,6 @@ impl<T> [T] {
     /// assert!(v == [1, 2, -3, 4, -5]);
     /// ```
     ///
-    /// [`sort_by_key`]: #method.sort_by_key
-    /// [`sort_unstable_by_key`]: #method.sort_unstable_by_key
     /// [pdqsort]: https://github.com/orlp/pdqsort
     #[stable(feature = "sort_unstable", since = "1.20.0")]
     #[inline]

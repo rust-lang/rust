@@ -426,9 +426,12 @@ fn test_sort() {
                 assert!(v.windows(2).all(|w| w[0] >= w[1]));
 
                 // Sort in lexicographic order.
-                let mut v = orig.clone();
-                v.sort_by_key(|x| x.to_string());
-                assert!(v.windows(2).all(|w| w[0].to_string() <= w[1].to_string()));
+                let mut v1 = orig.clone();
+                let mut v2 = orig.clone();
+                v1.sort_by_key(|x| x.to_string());
+                v2.sort_by_cached_key(|x| x.to_string());
+                assert!(v1.windows(2).all(|w| w[0].to_string() <= w[1].to_string()));
+                assert!(v1 == v2);
 
                 // Sort with many pre-sorted runs.
                 let mut v = orig.clone();
