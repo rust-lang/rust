@@ -580,7 +580,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// the pop occurs as part of the rollback, so an explicit call is not
     /// needed (but is also permitted).
     ///
-    /// See `README.md` for more details.
+    /// For more information about how skolemization for HRTBs works, see
+    /// the [rustc guide].
+    ///
+    /// [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/trait-hrtb.html
     pub fn skolemize_late_bound_regions<T>(&self,
                                            binder: &ty::Binder<T>,
                                            snapshot: &CombinedSnapshot<'a, 'tcx>)
