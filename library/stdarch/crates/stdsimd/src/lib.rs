@@ -21,7 +21,7 @@ extern crate libc;
 extern crate std as _std;
 
 #[cfg(test)]
-#[macro_use]
+#[macro_use(println, print)]
 extern crate std;
 
 #[path = "../../../stdsimd/mod.rs"]
