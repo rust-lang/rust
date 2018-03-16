@@ -20,7 +20,7 @@ pub struct EvalError<'tcx> {
 
 impl<'tcx> From<EvalErrorKind<'tcx>> for EvalError<'tcx> {
     fn from(kind: EvalErrorKind<'tcx>) -> Self {
-        let backtrace = match env::var("RUST_BACKTRACE") {
+        let backtrace = match env::var("MIRI_BACKTRACE") {
             Ok(ref val) if !val.is_empty() => Some(Backtrace::new_unresolved()),
             _ => None
         };
