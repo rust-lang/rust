@@ -2879,7 +2879,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         // just trying to get hints here.
                         self.save_and_restore_in_snapshot_flag(|_| {
                             let mut fulfill = FulfillmentContext::new();
-                            let ok = ok; // FIXME(#30046)
                             for obligation in ok.obligations {
                                 fulfill.register_predicate_obligation(self, obligation);
                             }
