@@ -1,4 +1,5 @@
 #![allow(cast_possible_truncation)]
+#![allow(float_cmp)]
 
 use rustc::lint::LateContext;
 use rustc::hir::def::Def;
