@@ -1,6 +1,3 @@
-// rustfmt-reorder_imports: true
-// rustfmt-reorder_imported_names: true
-
 /// This comment should stay with `use std::str;`
 use std::str;
 use std::cmp::{d, c, b, a};
