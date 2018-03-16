@@ -1287,7 +1287,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         match self.sty {
             ty::TyNever => true,
             ty::TyAdt(def, _) => def.variants.is_empty(),
-            ty::TyTuple(tys, _) => tys.iter().any(|ty| ty.conservative_is_uninhabited()),
+            ty::TyTuple(tys) => tys.iter().any(|ty| ty.conservative_is_uninhabited()),
             _ => false
         }
     }
