@@ -1368,7 +1368,7 @@ impl<T> [T] {
     /// v.sort_by_cached_key(|k| k.abs());
     /// assert!(v == [1, 2, -3, 4, -5]);
     /// ```
-    #[unstable(feature = "slice_sort_by_uncached_key", issue = "34447")]
+    #[unstable(feature = "slice_sort_by_cached_key", issue = "34447")]
     #[inline]
     pub fn sort_by_cached_key<K, F>(&mut self, f: F)
         where F: FnMut(&T) -> K, K: Ord
@@ -1487,7 +1487,7 @@ impl<T> [T] {
     /// deterministic behavior.
     ///
     /// Due to its key calling strategy, [`sort_unstable_by_key`](#method.sort_unstable_by_key)
-    /// is likely to be slower than [`sort_by_cached_key`](#method.sort_by_uncached_key) in
+    /// is likely to be slower than [`sort_by_cached_key`](#method.sort_by_cached_key) in
     /// cases where the key function is expensive.
     ///
     /// # Examples

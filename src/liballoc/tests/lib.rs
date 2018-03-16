@@ -23,6 +23,7 @@
 #![feature(pattern)]
 #![feature(placement_in_syntax)]
 #![feature(rand)]
+#![feature(slice_sort_by_cached_key)]
 #![feature(splice)]
 #![feature(str_escape)]
 #![feature(string_retain)]
