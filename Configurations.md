@@ -1297,27 +1297,28 @@ Reorder import statements in group
 
 **Note:** This option takes effect only when [`reorder_imports`](#reorder_imports) is set to `true`.
 
-#### `false` (default):
+#### `true` (default):
 
 ```rust
+use std::io;
+use std::mem;
+
 use dolor;
 use ipsum;
 use lorem;
 use sit;
-use std::io;
-use std::mem;
 ```
 
-#### `true`:
+#### `false`:
+
 
 ```rust
-use std::io;
-use std::mem;
-
 use dolor;
 use ipsum;
 use lorem;
 use sit;
+use std::io;
+use std::mem;
 ```
 
 See also [`reorder_imports`](#reorder_imports).
@@ -1359,7 +1360,11 @@ Reorder `extern crate` statements in group
 - **Possible values**: `true`, `false`
 - **Stable**: No
 
-#### `true` (default):
+#### `false` (default):
+
+This value has no influence beyond the effect of the [`reorder_extern_crates`](#reorder_extern_crates) option. Set [`reorder_extern_crates`](#reorder_extern_crates) to `false` if you do not want `extern crate` groups to be collapsed and ordered.
+
+#### `true`:
 
 **Note:** This only takes effect when [`reorder_extern_crates`](#reorder_extern_crates) is set to `true`.
 
@@ -1373,10 +1378,6 @@ extern crate lorem;
 extern crate sit;
 ```
 
-#### `false`:
-
-This value has no influence beyond the effect of the [`reorder_extern_crates`](#reorder_extern_crates) option. Set [`reorder_extern_crates`](#reorder_extern_crates) to `false` if you do not want `extern crate` groups to be collapsed and ordered.
-
 ## `reorder_modules`
 
 Reorder `mod` declarations alphabetically in group.
@@ -1385,7 +1386,7 @@ Reorder `mod` declarations alphabetically in group.
 - **Possible values**: `true`, `false`
 - **Stable**: No
 
-#### `true`
+#### `true` (default)
 
 ```rust
 mod a;
