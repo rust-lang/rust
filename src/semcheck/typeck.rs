@@ -5,9 +5,7 @@
 
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
-use rustc::traits::{auto_trait,
-                    FulfillmentContext, FulfillmentError,
-                    Obligation, ObligationCause};
+use rustc::traits::{FulfillmentContext, FulfillmentError, Obligation, ObligationCause};
 use rustc::ty::{ParamEnv, Predicate, TraitRef, Ty, TyCtxt, UniverseIndex};
 use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;

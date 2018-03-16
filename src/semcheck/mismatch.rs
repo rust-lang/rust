@@ -187,7 +187,7 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for MismatchRelation<'a, 'gcx,
                     _ => None,
                 }
             },
-            (&TyTuple(as_, _), &TyTuple(bs, _)) => {
+            (&TyTuple(as_), &TyTuple(bs)) => {
                 let _ = as_.iter().zip(bs).map(|(a, b)| self.relate(a, b));
                 None
             },
