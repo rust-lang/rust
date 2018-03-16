@@ -6,3 +6,5 @@ description = "A guide to developing rustc "
 [output.html]
 
 [output.linkcheck]
+
+[output.html.search]
