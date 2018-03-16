@@ -13,6 +13,7 @@
     - [Rustdoc](./rustdoc.md)
 - [Queries: demand-driven compilation](./query.md)
     - [Incremental compilation](./incremental-compilation.md)
+    - [Debugging and Testing](./incrcomp-debugging.md)
 - [The parser](./the-parser.md)
 - [Macro expansion](./macro-expansion.md)
 - [Name resolution](./name-resolution.md)
