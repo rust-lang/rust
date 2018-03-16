@@ -67,6 +67,7 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
                         def_info: None,
                         allow_internal_unstable: false,
                         allow_internal_unsafe: false,
+                        unstable_feature: None,
                     });
         )* }
     }
@@ -120,6 +121,7 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
                 def_info: None,
                 allow_internal_unstable: true,
                 allow_internal_unsafe: false,
+                unstable_feature: None
             });
 
     for (name, ext) in user_exts {
