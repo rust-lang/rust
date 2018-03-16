@@ -76,6 +76,7 @@ macro_rules! panic {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(stage0)]
 macro_rules! assert {
     ($cond:expr) => (
         if !$cond {
@@ -783,5 +784,19 @@ mod builtin {
     macro_rules! include {
         ($file:expr) => ({ /* compiler built-in */ });
         ($file:expr,) => ({ /* compiler built-in */ });
+    }
+
+    /// Ensure that a boolean expression is `true` at runtime.
+    ///
+    /// For more information, see the documentation for [`std::assert!`].
+    ///
+    /// [`std::assert!`]: ../std/macro.assert.html
+    #[macro_export]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(dox)]
+    macro_rules! assert {
+        ($cond:expr) => ({ /* compiler built-in */ });
+        ($cond:expr,) => ({ /* compiler built-in */ });
+        ($cond:expr, $($arg:tt)+) => ({ /* compiler built-in */ });
     }
 }
