@@ -1,4 +1,4 @@
-#![feature(inclusive_range_syntax, plugin)]
+#![feature(plugin)]
 
 
 #![warn(indexing_slicing)]

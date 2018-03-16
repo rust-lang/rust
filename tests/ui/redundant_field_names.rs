@@ -1,6 +1,6 @@
 #![warn(redundant_field_names)]
 #![allow(unused_variables)]
-#![feature(inclusive_range, inclusive_range_syntax)]
+#![feature(inclusive_range, inclusive_range_fields)]
 
 #[macro_use]
 extern crate derive_new;

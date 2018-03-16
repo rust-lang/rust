@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.188
+* Rustup to *rustc 1.26.0-nightly (392645394 2018-03-15)*
+* New lint: [`while_immutable_condition`]
+
 ## 0.0.187
 * Rustup to *rustc 1.26.0-nightly (322d7f7b9 2018-02-25)*
 * New lints: [`redundant_field_names`], [`suspicious_arithmetic_impl`], [`suspicious_op_assign_impl`]
@@ -777,6 +781,7 @@ All notable changes to this project will be documented in this file.
 [`useless_transmute`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#useless_transmute
 [`useless_vec`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#useless_vec
 [`verbose_bit_mask`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#verbose_bit_mask
+[`while_immutable_condition`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#while_immutable_condition
 [`while_let_loop`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#while_let_loop
 [`while_let_on_iterator`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#while_let_on_iterator
 [`wrong_pub_self_convention`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#wrong_pub_self_convention

@@ -1,5 +1,3 @@
-#![feature(inclusive_range_syntax)]
-
 fn f() -> usize {
     42
 }

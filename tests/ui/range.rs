@@ -1,7 +1,4 @@
 #![feature(iterator_step_by)]
-#![feature(inclusive_range_syntax)]
-
-
 
 struct NotARange;
 impl NotARange {

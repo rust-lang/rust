@@ -531,7 +531,7 @@ fn is_questionmark_desugar_marked_call(expr: &Expr) -> bool {
 
 fn is_unit(ty: Ty) -> bool {
     match ty.sty {
-        ty::TyTuple(slice, _) if slice.is_empty() => true,
+        ty::TyTuple(slice) if slice.is_empty() => true,
         _ => false,
     }
 }

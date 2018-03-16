@@ -1,5 +1,3 @@
-#![feature(dotdoteq_in_patterns, inclusive_range_syntax)]
-
 #![allow(blacklisted_name, collapsible_if, cyclomatic_complexity, eq_op, needless_continue,
          needless_return, never_loop, no_effect, zero_divided_by_zero)]
 
