@@ -55,7 +55,9 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
     }
 }
 
-pub fn find_entry_point(session: &Session, hir_map: &hir_map::Map) {
+pub fn find_entry_point(session: &Session,
+                        hir_map: &hir_map::Map,
+                        crate_name: &str) {
     let any_exe = session.crate_types.borrow().iter().any(|ty| {
         *ty == config::CrateTypeExecutable
     });
@@ -81,7 +83,7 @@ pub fn find_entry_point(session: &Session, hir_map: &hir_map::Map) {
 
     hir_map.krate().visit_all_item_likes(&mut ctxt);
 
-    configure_main(&mut ctxt);
+    configure_main(&mut ctxt, crate_name);
 }
 
 // Beware, this is duplicated in libsyntax/entry.rs, make sure to keep
@@ -150,7 +152,7 @@ fn find_item(item: &Item, ctxt: &mut EntryContext, at_root: bool) {
     }
 }
 
-fn configure_main(this: &mut EntryContext) {
+fn configure_main(this: &mut EntryContext, crate_name: &str) {
     if this.start_fn.is_some() {
         *this.session.entry_fn.borrow_mut() = this.start_fn;
         this.session.entry_type.set(Some(config::EntryStart));
@@ -162,7 +164,8 @@ fn configure_main(this: &mut EntryContext) {
         this.session.entry_type.set(Some(config::EntryMain));
     } else {
         // No main function
-        let mut err = struct_err!(this.session, E0601, "main function not found");
+        let mut err = struct_err!(this.session, E0601,
+            "`main` function not found in crate `{}`", crate_name);
         if !this.non_main_fns.is_empty() {
             // There were some functions named 'main' though. Try to give the user a hint.
             err.note("the main function must be defined at the crate level \
@@ -175,6 +178,9 @@ fn configure_main(this: &mut EntryContext) {
             err.emit();
             this.session.abort_if_errors();
         } else {
+            if let Some(ref filename) = this.session.local_crate_source_file {
+                err.note(&format!("consider adding a `main` function to `{}`", filename.display()));
+            }
             if this.session.teach(&err.get_code().unwrap()) {
                 err.note("If you don't know the basics of Rust, you can go look to the Rust Book \
                           to get started: https://doc.rust-lang.org/book/");

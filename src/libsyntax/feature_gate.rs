@@ -449,6 +449,9 @@ declare_features! (
 
     // Parentheses in patterns
     (active, pattern_parentheses, "1.26.0", None, None),
+
+    // `use path as _;` and `extern crate c as _;`
+    (active, underscore_imports, "1.26.0", Some(48216), None),
 );
 
 declare_features! (
@@ -1434,9 +1437,24 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
     }
 
+    fn visit_use_tree(&mut self, use_tree: &'a ast::UseTree, id: NodeId, _nested: bool) {
+        if let ast::UseTreeKind::Simple(ident) = use_tree.kind {
+            if ident.name == "_" {
+                gate_feature_post!(&self, underscore_imports, use_tree.span,
+                                   "renaming imports with `_` is unstable");
+            }
+        }
+
+        visit::walk_use_tree(self, use_tree, id);
+    }
+
     fn visit_item(&mut self, i: &'a ast::Item) {
         match i.node {
             ast::ItemKind::ExternCrate(_) => {
+                if i.ident.name == "_" {
+                    gate_feature_post!(&self, underscore_imports, i.span,
+                                       "renaming extern crates with `_` is unstable");
+                }
                 if let Some(attr) = attr::find_by_name(&i.attrs[..], "macro_reexport") {
                     gate_feature_post!(&self, macro_reexport, attr.span,
                                        "macros re-exports are experimental \

@@ -979,7 +979,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(trans: &TransCrate,
 
     time(sess,
          "looking for entry point",
-         || middle::entry::find_entry_point(sess, &hir_map));
+         || middle::entry::find_entry_point(sess, &hir_map, name));
 
     sess.plugin_registrar_fn.set(time(sess, "looking for plugin registrar", || {
         plugin::build::find_plugin_registrar(sess.diagnostic(), &hir_map)

@@ -123,6 +123,7 @@ mod cabi_sparc64;
 mod cabi_x86;
 mod cabi_x86_64;
 mod cabi_x86_win64;
+mod cabi_wasm32;
 mod callee;
 mod common;
 mod consts;

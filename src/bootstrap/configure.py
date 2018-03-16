@@ -71,7 +71,6 @@ o("full-tools", None, "enable all tools")
 # Optimization and debugging options. These may be overridden by the release
 # channel, etc.
 o("optimize", "rust.optimize", "build optimized rust code")
-o("thinlto", "rust.thinlto", "build Rust with ThinLTO enabled")
 o("optimize-llvm", "llvm.optimize", "build optimized LLVM")
 o("llvm-assertions", "llvm.assertions", "build LLVM with assertions")
 o("debug-assertions", "rust.debug-assertions", "build with debugging assertions")

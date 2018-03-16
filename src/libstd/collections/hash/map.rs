@@ -2755,11 +2755,8 @@ mod test_map {
     use cell::RefCell;
     use rand::{thread_rng, Rng};
     use panic;
-    #[cfg(not(target_arch = "asmjs"))]
     use realstd::collections::CollectionAllocErr::*;
-    #[cfg(not(target_arch = "asmjs"))]
     use realstd::mem::size_of;
-    #[cfg(not(target_arch = "asmjs"))]
     use realstd::usize;
 
     #[test]
@@ -3696,7 +3693,6 @@ mod test_map {
         assert_eq!(hm.len(), 0);
     }
 
-    #[cfg(not(target_arch = "asmjs"))]
     #[test]
     fn test_try_reserve() {
 

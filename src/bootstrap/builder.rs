@@ -778,17 +778,6 @@ impl<'a> Builder<'a> {
             if cmd != "bench" {
                 cargo.arg("--release");
             }
-
-            if self.config.rust_codegen_units.is_none() &&
-               self.build.is_rust_llvm(compiler.host) &&
-               self.config.rust_thinlto {
-                cargo.env("RUSTC_THINLTO", "1");
-            } else if self.config.rust_codegen_units.is_none() {
-                // Generally, if ThinLTO has been disabled for some reason, we
-                // want to set the codegen units to 1. However, we shouldn't do
-                // this if the option was specifically set by the user.
-                cargo.env("RUSTC_CODEGEN_UNITS", "1");
-            }
         }
 
         if self.config.locked_deps {

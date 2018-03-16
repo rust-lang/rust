@@ -40,6 +40,7 @@ const ARCH_TABLE: &'static [(&'static str, &'static str)] = &[
     ("i386", "x86"),
     ("i586", "x86"),
     ("i686", "x86"),
+    ("mips64", "mips64"),
     ("mips", "mips"),
     ("msp430", "msp430"),
     ("powerpc", "powerpc"),

@@ -484,13 +484,15 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
         match *ext {
             MultiModifier(ref mac) => {
-                let meta = attr.parse_meta(self.cx.parse_sess).ok()?;
+                let meta = attr.parse_meta(self.cx.parse_sess)
+                               .map_err(|mut e| { e.emit(); }).ok()?;
                 let item = mac.expand(self.cx, attr.span, &meta, item);
                 Some(kind.expect_from_annotatables(item))
             }
             MultiDecorator(ref mac) => {
                 let mut items = Vec::new();
-                let meta = attr.parse_meta(self.cx.parse_sess).ok()?;
+                let meta = attr.parse_meta(self.cx.parse_sess)
+                               .expect("derive meta should already have been parsed");
                 mac.expand(self.cx, attr.span, &meta, &item, &mut |item| items.push(item));
                 items.push(item);
                 Some(kind.expect_from_annotatables(items))
