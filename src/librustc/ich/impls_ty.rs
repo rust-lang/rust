@@ -902,10 +902,56 @@ for ty::TypeVariants<'gcx>
             TyForeign(def_id) => {
                 def_id.hash_stable(hcx, hasher);
             }
-            TyInfer(..) => {
-                bug!("ty::TypeVariants::hash_stable() - Unexpected variant {:?}.", *self)
+            TyInfer(infer_ty) => {
+                infer_ty.hash_stable(hcx, hasher);
             }
         }
+    }
+}
+
+impl_stable_hash_for!(enum ty::InferTy {
+    TyVar(a),
+    IntVar(a),
+    FloatVar(a),
+    FreshTy(a),
+    FreshIntTy(a),
+    FreshFloatTy(a),
+    CanonicalTy(a),
+});
+
+impl<'a, 'gcx> HashStable<StableHashingContext<'a>>
+for ty::TyVid
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          _hcx: &mut StableHashingContext<'a>,
+                                          _hasher: &mut StableHasher<W>) {
+        // TyVid values are confined to an inference context and hence
+        // should not be hashed.
+        bug!("ty::TypeVariants::hash_stable() - can't hash a TyVid {:?}.", *self)
+    }
+}
+
+impl<'a, 'gcx> HashStable<StableHashingContext<'a>>
+for ty::IntVid
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          _hcx: &mut StableHashingContext<'a>,
+                                          _hasher: &mut StableHasher<W>) {
+        // IntVid values are confined to an inference context and hence
+        // should not be hashed.
+        bug!("ty::TypeVariants::hash_stable() - can't hash an IntVid {:?}.", *self)
+    }
+}
+
+impl<'a, 'gcx> HashStable<StableHashingContext<'a>>
+for ty::FloatVid
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          _hcx: &mut StableHashingContext<'a>,
+                                          _hasher: &mut StableHasher<W>) {
+        // FloatVid values are confined to an inference context and hence
+        // should not be hashed.
+        bug!("ty::TypeVariants::hash_stable() - can't hash a FloatVid {:?}.", *self)
     }
 }
 

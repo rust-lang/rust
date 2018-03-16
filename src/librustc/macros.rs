@@ -72,7 +72,7 @@ macro_rules! __impl_stable_hash_field {
 
 #[macro_export]
 macro_rules! impl_stable_hash_for {
-    (enum $enum_name:path { $( $variant:ident $( ( $($arg:ident),* ) )* ),* }) => {
+    (enum $enum_name:path { $( $variant:ident $( ( $($arg:ident),* ) )* ),* $(,)* }) => {
         impl<'a, 'tcx> ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>> for $enum_name {
             #[inline]
             fn hash_stable<W: ::rustc_data_structures::stable_hasher::StableHasherResult>(&self,
