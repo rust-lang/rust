@@ -62,7 +62,7 @@ pub struct Functions {
 impl Functions {
     pub fn new(threshold: u64) -> Self {
         Self {
-            threshold: threshold,
+            threshold,
         }
     }
 }
@@ -156,7 +156,7 @@ impl<'a, 'tcx> Functions {
             if !raw_ptrs.is_empty() {
                 let tables = cx.tcx.body_tables(body.id());
                 let mut v = DerefVisitor {
-                    cx: cx,
+                    cx,
                     ptrs: raw_ptrs,
                     tables,
                 };

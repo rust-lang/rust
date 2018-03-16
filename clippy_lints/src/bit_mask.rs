@@ -96,7 +96,7 @@ pub struct BitMask {
 impl BitMask {
     pub fn new(verbose_bit_mask_threshold: u64) -> Self {
         Self {
-            verbose_bit_mask_threshold: verbose_bit_mask_threshold,
+            verbose_bit_mask_threshold,
         }
     }
 }

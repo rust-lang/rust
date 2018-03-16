@@ -69,7 +69,6 @@ fn test_erode_from_front_no_brace() {
     assert_eq!(expected, got);
 }
 
-
 #[test]
 #[cfg_attr(rustfmt, rustfmt_skip)]
 fn test_erode_block() {

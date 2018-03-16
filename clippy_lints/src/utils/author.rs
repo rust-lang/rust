@@ -274,7 +274,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 if let Ty_::TyPath(ref qp) = ty.node {
                     println!("    if let Ty_::TyPath(ref {}) = {}.node;", qp_label, cast_ty);
                     self.current = qp_label;
-                    self.print_qpath(&qp);
+                    self.print_qpath(qp);
                 }
                 self.current = cast_pat;
                 self.visit_expr(expr);

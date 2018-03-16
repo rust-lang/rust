@@ -55,7 +55,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedLabel {
         }
 
         let mut v = UnusedLabelVisitor {
-            cx: cx,
+            cx,
             labels: HashMap::new(),
         };
         walk_fn(&mut v, kind, decl, body.id(), span, fn_id);

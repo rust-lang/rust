@@ -124,7 +124,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlockInIfCondition {
             } else {
                 let mut visitor = ExVisitor {
                     found_block: None,
-                    cx: cx,
+                    cx,
                 };
                 walk_expr(&mut visitor, check);
                 if let Some(block) = visitor.found_block {

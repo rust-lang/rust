@@ -220,8 +220,8 @@ impl<T> ParenHelper<T> {
     /// Build a `ParenHelper`.
     fn new(paren: bool, wrapped: T) -> Self {
         Self {
-            paren: paren,
-            wrapped: wrapped,
+            paren,
+            wrapped,
         }
     }
 }

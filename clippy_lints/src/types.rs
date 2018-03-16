@@ -985,7 +985,7 @@ pub struct TypeComplexityPass {
 impl TypeComplexityPass {
     pub fn new(threshold: u64) -> Self {
         Self {
-            threshold: threshold,
+            threshold,
         }
     }
 }
@@ -1241,7 +1241,7 @@ fn is_cast_between_fixed_and_target<'a, 'tcx>(
         return is_isize_or_usize(precast_ty) != is_isize_or_usize(cast_ty)
     }
 
-    return false;
+    false
 }
 
 fn detect_absurd_comparison<'a, 'tcx>(
@@ -1315,8 +1315,8 @@ fn detect_extreme_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -
         _ => return None,
     };
     Some(ExtremeExpr {
-        which: which,
-        expr: expr,
+        which,
+        expr,
     })
 }
 

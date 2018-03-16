@@ -24,7 +24,7 @@ pub struct SpanlessEq<'a, 'tcx: 'a> {
 impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
     pub fn new(cx: &'a LateContext<'a, 'tcx>) -> Self {
         Self {
-            cx: cx,
+            cx,
             ignore_fn: false,
         }
     }
@@ -295,7 +295,7 @@ pub struct SpanlessHash<'a, 'tcx: 'a> {
 impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
     pub fn new(cx: &'a LateContext<'a, 'tcx>) -> Self {
         Self {
-            cx: cx,
+            cx,
             s: DefaultHasher::new(),
         }
     }

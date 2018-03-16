@@ -138,11 +138,11 @@ impl<'a> DigitInfo<'a> {
                 let suffix_start = if last_d == '_' { d_idx - 1 } else { d_idx };
                 let (digits, suffix) = sans_prefix.split_at(suffix_start);
                 return Self {
-                    digits: digits,
-                    radix: radix,
-                    prefix: prefix,
+                    digits,
+                    radix,
+                    prefix,
                     suffix: Some(suffix),
-                    float: float,
+                    float,
                 };
             }
             last_d = d
@@ -151,10 +151,10 @@ impl<'a> DigitInfo<'a> {
         // No suffix found
         Self {
             digits: sans_prefix,
-            radix: radix,
-            prefix: prefix,
+            radix,
+            prefix,
             suffix: None,
-            float: float,
+            float,
         }
     }
 
@@ -426,7 +426,7 @@ impl EarlyLintPass for LiteralRepresentation {
 impl LiteralRepresentation {
     pub fn new(threshold: u64) -> Self {
         Self {
-            threshold: threshold,
+            threshold,
         }
     }
     fn check_lit(&self, cx: &EarlyContext, lit: &Lit) {
@@ -444,7 +444,7 @@ impl LiteralRepresentation {
                         .filter(|&c| c != '_')
                         .collect::<String>()
                         .parse::<u128>().unwrap();
-                    if val < self.threshold as u128 {
+                    if val < u128::from(self.threshold) {
                         return
                     }
                     let hex = format!("{:#X}", val);

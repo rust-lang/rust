@@ -390,7 +390,7 @@ impl<'tcx> Visitor<'tcx> for ContainsName {
 /// check if an `Expr` contains a certain name
 pub fn contains_name(name: Name, expr: &Expr) -> bool {
     let mut cn = ContainsName {
-        name: name,
+        name,
         result: false,
     };
     cn.visit_expr(expr);

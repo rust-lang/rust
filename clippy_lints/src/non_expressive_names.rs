@@ -267,7 +267,7 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
         self.0.names.push(ExistingName {
             whitelist: get_whitelist(&interned_name).unwrap_or(&[]),
             interned: interned_name,
-            span: span,
+            span,
             len: count,
         });
     }
@@ -329,8 +329,8 @@ fn do_check(lint: &mut NonExpressiveNames, cx: &EarlyContext, attrs: &[Attribute
     if !attr::contains_name(attrs, "test") {
         let mut visitor = SimilarNamesLocalVisitor {
             names: Vec::new(),
-            cx: cx,
-            lint: lint,
+            cx,
+            lint,
             single_char_names: Vec::new(),
         };
         // initialize with function arguments

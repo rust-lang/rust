@@ -760,7 +760,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             },
             hir::ExprBinary(op, ref lhs, ref rhs) if op.node == hir::BiEq || op.node == hir::BiNe => {
                 let mut info = BinaryExprInfo {
-                    expr: expr,
+                    expr,
                     chain: lhs,
                     other: rhs,
                     eq: op.node == hir::BiEq,

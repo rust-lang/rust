@@ -337,10 +337,10 @@ fn check_and_warn<'a>(ctx: &EarlyContext, expr: &'a ast::Expr) {
             with_if_expr(stmt, |if_expr, cond, then_block, else_expr| {
                 let data = &LintData {
                     stmt_idx: i,
-                    if_expr: if_expr,
+                    if_expr,
                     if_cond: cond,
                     if_block: then_block,
-                    else_expr: else_expr,
+                    else_expr,
                     block_stmts: &loop_block.stmts,
                 };
                 if needless_continue_in_else(else_expr) {

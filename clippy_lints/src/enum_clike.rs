@@ -70,11 +70,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnportableVariant {
                         match ty.sty {
                             ty::TyInt(IntTy::Isize) => {
                                 let val = ((val as i128) << 64) >> 64;
-                                if val <= i32::max_value() as i128 && val >= i32::min_value() as i128 {
+                                if val <= i128::from(i32::max_value()) && val >= i128::from(i32::min_value()) {
                                     continue;
                                 }
                             }
-                            ty::TyUint(UintTy::Usize) if val > u32::max_value() as u128 => {},
+                            ty::TyUint(UintTy::Usize) if val > u128::from(u32::max_value()) => {},
                             _ => continue,
                         }
                         span_lint(

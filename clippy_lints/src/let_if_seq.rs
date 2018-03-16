@@ -170,7 +170,7 @@ fn check_assign<'a, 'tcx>(
         if decl == local_id;
         then {
             let mut v = UsedVisitor {
-                cx: cx,
+                cx,
                 id: decl,
                 used: false,
             };
@@ -192,8 +192,8 @@ fn check_assign<'a, 'tcx>(
 
 fn used_in_expr<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, id: ast::NodeId, expr: &'tcx hir::Expr) -> bool {
     let mut v = UsedVisitor {
-        cx: cx,
-        id: id,
+        cx,
+        id,
         used: false,
     };
     hir::intravisit::walk_expr(&mut v, expr);

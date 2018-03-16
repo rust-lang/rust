@@ -11,9 +11,12 @@ fn dogfood() {
         std::env::set_current_dir(root_dir.join(d)).unwrap();
         let output = std::process::Command::new("cargo")
             .arg("run")
-            .arg("--bin").arg("cargo-clippy")
-            .arg("--manifest-path").arg(root_dir.join("Cargo.toml"))
-            .output().unwrap();
+            .arg("--bin")
+            .arg("cargo-clippy")
+            .arg("--manifest-path")
+            .arg(root_dir.join("Cargo.toml"))
+            .output()
+            .unwrap();
         println!("status: {}", output.status);
         println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
         println!("stderr: {}", String::from_utf8_lossy(&output.stderr));

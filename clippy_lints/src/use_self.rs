@@ -66,8 +66,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
                 };
                 if should_check {
                     let visitor = &mut UseSelfVisitor {
-                        item_path: item_path,
-                        cx: cx,
+                        item_path,
+                        cx,
                     };
                     for impl_item_ref in refs {
                         visitor.visit_impl_item(cx.tcx.hir.impl_item(impl_item_ref.id));
