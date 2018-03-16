@@ -528,8 +528,8 @@ pub use core::fmt::{ArgumentV1, Arguments, write};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
 
-#[unstable(feature = "wrap_debug", issue = "0")]
-pub use core::fmt::WrapDebug;
+#[unstable(feature = "best_effort_debug", issue = "0")]
+pub use core::fmt::BestEffortDebug;
 
 use string;
 

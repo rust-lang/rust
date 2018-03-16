@@ -1961,61 +1961,64 @@ impl<T: ?Sized + Debug> Debug for UnsafeCell<T> {
 }
 
 /// A wrapper around a type `T` where `T: Debug` possibly holds. If it does,
-/// then the `Debug` impl of `T` will be used in `impl Debug for WrapDebug<T>`.
-/// Otherwise (if `T: !Debug`), `impl Debug for WrapDebug<T>` will output with
-/// the type name of `T` and that `T` is `!Debug`.
+/// then the `Debug` impl of `T` will be used in
+/// `impl Debug for BestEffortDebug<T>`.
+/// Otherwise (if `T: !Debug`), `impl Debug for BestEffortDebug<T>`
+/// will output with the type name of `T` and that `T` is `!Debug`.
 ///
-/// `WrapDebug` is useful to avoid `Debug` bounds when trying to debug things
-/// in generic code. Without `WrapDebug`, your generic call stack will get
-/// infected with `T: Debug` bounds until the type is known.
+/// `BestEffortDebug` is useful to avoid `Debug` bounds when trying to debug
+/// things in generic code. Without `BestEffortDebug`, your generic call stack
+/// will get infected with `T: Debug` bounds until the type is known.
 ///
 /// This type is particularly useful for macro authors.
 ///
 /// # Guarantees
 ///
-/// `WrapDebug` makes the guarantee that `impl<T> Debug for WrapDebug<T>`
-/// exists. However, you should not rely on the stability of `WrapDebug`'s
+/// `BestEffortDebug` makes the guarantee that
+/// `impl<T> Debug for BestEffortDebug<T>` exists.
+/// However, you should not rely on the stability of `BestEffortDebug`'s
 /// output format. In particular, no guarantee is made that the `type_name`
 /// is included when `T: !Debug` or that `<T as Debug>::fmt` is used when
 /// `T: Debug`.
 ///
 /// # Examples
 ///
-/// `WrapDebug<T>` where `T: Debug` will use the `Debug` implementation of `T`:
+/// `BestEffortDebug<T>` where `T: Debug` will use the `Debug`
+/// implementation of `T`:
 ///
 /// ```rust
-/// #![feature(wrap_debug)]
-/// use std::fmt::WrapDebug;
+/// #![feature(best_effort_debug)]
+/// use std::fmt::BestEffortDebug;
 ///
-/// assert_eq!(format!("{:?}", WrapDebug(0)), "0");
+/// assert_eq!(format!("{:?}", BestEffortDebug(0)), "0");
 /// ```
 ///
-/// `WrapDebug<T>` where `T: !Debug` is `Debug` and outputs the type name:
+/// `BestEffortDebug<T>` where `T: !Debug` is `Debug` and outputs the type name:
 ///
 /// ```rust
-/// #![feature(wrap_debug)]
-/// use std::fmt::WrapDebug;
+/// #![feature(best_effort_debug)]
+/// use std::fmt::BestEffortDebug;
 ///
 /// struct NotDebug;
-/// assert_eq!(format!("{:?}", WrapDebug(NotDebug)),
+/// assert_eq!(format!("{:?}", BestEffortDebug(NotDebug)),
 ///     "[<unknown> of type main::NotDebug is !Debug]");
 /// ```
-#[unstable(feature = "wrap_debug", issue = "0")]
+#[unstable(feature = "best_effort_debug", issue = "0")]
 #[derive(Copy, Clone)]
-pub struct WrapDebug<T>(pub T);
+pub struct BestEffortDebug<T>(pub T);
 
-#[unstable(feature = "wrap_debug", issue = "0")]
-impl<T> Debug for WrapDebug<T> {
+#[unstable(feature = "best_effort_debug", issue = "0")]
+impl<T> Debug for BestEffortDebug<T> {
     fn fmt(&self, fmt: &mut Formatter) -> Result {
-        <Self as WrapDebugInternal>::fmt(self, fmt)
+        <Self as BEDInternal>::fmt(self, fmt)
     }
 }
 
-trait WrapDebugInternal {
+trait BEDInternal {
     fn fmt(&self, fmt: &mut Formatter) -> Result;
 }
 
-impl<T> WrapDebugInternal for WrapDebug<T> {
+impl<T> BEDInternal for BestEffortDebug<T> {
     default fn fmt(&self, fmt: &mut Formatter) -> Result {
         use intrinsics::type_name;
         write!(fmt, "[<unknown> of type {} is !Debug]",
@@ -2023,7 +2026,7 @@ impl<T> WrapDebugInternal for WrapDebug<T> {
     }
 }
 
-impl<T: Debug> WrapDebugInternal for WrapDebug<T> {
+impl<T: Debug> BEDInternal for BestEffortDebug<T> {
     fn fmt(&self, fmt: &mut Formatter) -> Result {
         self.0.fmt(fmt)
     }
