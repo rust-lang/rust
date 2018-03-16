@@ -1974,9 +1974,10 @@ impl<T: ?Sized + Debug> Debug for UnsafeCell<T> {
 /// # Guarantees
 ///
 /// `WrapDebug` makes the guarantee that `impl<T> Debug for WrapDebug<T>`
-/// exists. At the same time, `WrapDebug` makes **no** guarantee (yet) that
-/// `impl<T: Debug> Debug for WrapDebug<T>` exists. Neither should you rely
-/// on the stability of `WrapDebug`'s output format.
+/// exists. However, you should not rely on the stability of `WrapDebug`'s
+/// output format. In particular, no guarantee is made that the `type_name`
+/// is included when `T: !Debug` or that `<T as Debug>::fmt` is used when
+/// `T: Debug`.
 ///
 /// # Examples
 ///
@@ -2004,21 +2005,26 @@ impl<T: ?Sized + Debug> Debug for UnsafeCell<T> {
 pub struct WrapDebug<T>(pub T);
 
 #[unstable(feature = "wrap_debug", issue = "0")]
-impl<T: Debug> Debug for WrapDebug<T> {
-    // FIXME: remove this impl if specialization doesn't pan out!
-
+impl<T> Debug for WrapDebug<T> {
     fn fmt(&self, fmt: &mut Formatter) -> Result {
-        self.0.fmt(fmt)
+        <Self as WrapDebugInternal>::fmt(self, fmt)
     }
 }
 
-#[unstable(feature = "wrap_debug", issue = "0")]
-impl<T> Debug for WrapDebug<T> {
-    default fn fmt(&self, fmt: &mut Formatter) -> Result {
-        use intrinsics::type_name;
+trait WrapDebugInternal {
+    fn fmt(&self, fmt: &mut Formatter) -> Result;
+}
 
+impl<T> WrapDebugInternal for WrapDebug<T> {
+    default fn fmt(&self, fmt: &mut Formatter) -> Result {
         write!(fmt, "[<unknown> of type {} is !Debug]",
-            unsafe { type_name::<T>() })
+            unsafe { intrinsics::type_name::<T>() })
+    }
+}
+
+impl<T: Debug> WrapDebugInternal for WrapDebug<T> {
+    fn fmt(&self, fmt: &mut Formatter) -> Result {
+        self.0.fmt(fmt)
     }
 }
 
