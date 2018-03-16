@@ -271,7 +271,7 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
             err
         }
         ResolutionError::VariableNotBoundInPattern(binding_error) => {
-            let target_sp = binding_error.target.iter().map(|x| *x).collect::<Vec<_>>();
+            let target_sp = binding_error.target.iter().cloned().collect::<Vec<_>>();
             let msp = MultiSpan::from_spans(target_sp.clone());
             let msg = format!("variable `{}` is not bound in all patterns", binding_error.name);
             let mut err = resolver.session.struct_span_err_with_code(
@@ -282,7 +282,7 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
             for sp in target_sp {
                 err.span_label(sp, format!("pattern doesn't bind `{}`", binding_error.name));
             }
-            let origin_sp = binding_error.origin.iter().map(|x| *x).collect::<Vec<_>>();
+            let origin_sp = binding_error.origin.iter().cloned();
             for sp in origin_sp {
                 err.span_label(sp, "variable not in all patterns");
             }

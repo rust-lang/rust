@@ -528,9 +528,7 @@ impl EmitterWriter {
 
         // If there are no annotations or the only annotations on this line are
         // MultilineLine, then there's only code being shown, stop processing.
-        if line.annotations.is_empty() || line.annotations.iter()
-            .filter(|a| !a.is_line()).collect::<Vec<_>>().len() == 0
-        {
+        if line.annotations.iter().all(|a| a.is_line()) {
             return vec![];
         }
 

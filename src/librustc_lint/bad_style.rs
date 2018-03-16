@@ -83,12 +83,10 @@ impl NonCamelCaseTypes {
                     } else {
                         c.to_lowercase().collect()
                     })
-                    .collect::<Vec<_>>()
-                    .concat()
+                    .collect::<String>()
                 })
                 .filter(|x| !x.is_empty())
-                .collect::<Vec<_>>()
-                .iter().fold((String::new(), None), |(acc, prev): (String, Option<&String>), next| {
+                .fold((String::new(), None), |(acc, prev): (String, Option<String>), next| {
                     // separate two components with an underscore if their boundary cannot
                     // be distinguished using a uppercase/lowercase case distinction
                     let join = if let Some(prev) = prev {
@@ -96,7 +94,7 @@ impl NonCamelCaseTypes {
                                     let f = next.chars().next().unwrap();
                                     !char_has_case(l) && !char_has_case(f)
                                 } else { false };
-                    (acc + if join { "_" } else { "" } + next, Some(next))
+                    (acc + if join { "_" } else { "" } + &next, Some(next))
                 }).0
         }
 
