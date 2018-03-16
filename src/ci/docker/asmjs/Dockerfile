@@ -31,4 +31,9 @@ ENV TARGETS=asmjs-unknown-emscripten
 
 ENV RUST_CONFIGURE_ARGS --enable-emscripten --disable-optimize-tests
 
-ENV SCRIPT python2.7 ../x.py test --target $TARGETS
+ENV SCRIPT python2.7 ../x.py test --target $TARGETS \
+  src/test/run-pass \
+  src/test/run-fail \
+  src/libstd \
+  src/liballoc \
+  src/libcore
