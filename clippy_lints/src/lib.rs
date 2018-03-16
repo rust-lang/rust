@@ -8,9 +8,8 @@
 #![feature(slice_patterns)]
 #![feature(stmt_expr_attributes)]
 #![feature(conservative_impl_trait)]
-#![feature(inclusive_range_syntax, range_contains)]
+#![feature(range_contains)]
 #![feature(macro_vis_matcher)]
-#![feature(dotdoteq_in_patterns)]
 #![allow(unknown_lints, indexing_slicing, shadow_reuse, missing_docs_in_private_items)]
 #![recursion_limit = "256"]
 
