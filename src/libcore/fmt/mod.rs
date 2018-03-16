@@ -1960,5 +1960,65 @@ impl<T: ?Sized + Debug> Debug for UnsafeCell<T> {
     }
 }
 
+/// A wrapper around a type `T` where `T: Debug` possibly holds. If it does,
+/// then the `Debug` impl of `T` will be used in `impl Debug for WrapDebug<T>`.
+/// Otherwise (if `T: !Debug`), `impl Debug for WrapDebug<T>` will output with
+/// the type name of `T` and that `T` is `!Debug`.
+///
+/// `WrapDebug` is useful to avoid `Debug` bounds when trying to debug things
+/// in generic code. Without `WrapDebug`, your generic call stack will get
+/// infected with `T: Debug` bounds until the type is known.
+///
+/// This type is particularly useful for macro authors.
+///
+/// # Guarantees
+///
+/// `WrapDebug` makes the guarantee that `impl<T> Debug for WrapDebug<T>`
+/// exists. At the same time, `WrapDebug` makes **no** guarantee (yet) that
+/// `impl<T: Debug> Debug for WrapDebug<T>` exists. Neither should you rely
+/// on the stability of `WrapDebug`'s output format.
+///
+/// # Examples
+///
+/// `WrapDebug<T>` where `T: Debug` will use the `Debug` implementation of `T`:
+///
+/// ```rust
+/// #![feature(wrap_debug)]
+/// use std::fmt::WrapDebug;
+///
+/// assert_eq!(format!("{:?}", WrapDebug(0)), "0");
+/// ```
+///
+/// `WrapDebug<T>` where `T: !Debug` is `Debug` and outputs the type name:
+///
+/// ```rust
+/// #![feature(wrap_debug)]
+/// use std::fmt::WrapDebug;
+///
+/// struct NotDebug;
+/// assert_eq!(format!("{:?}", WrapDebug(NotDebug)),
+///     "[<unknown> of type main::NotDebug is !Debug]");
+/// ```
+#[unstable(feature = "wrap_debug", issue = "0")]
+#[derive(Copy, Clone)]
+pub struct WrapDebug<T>(pub T);
+
+#[unstable(feature = "wrap_debug", issue = "0")]
+impl<T: Debug> Debug for WrapDebug<T> {
+    // FIXME: remove this impl if specialization doesn't pan out!
+
+    fn fmt(&self, fmt: &mut Formatter) -> Result {
+        self.0.fmt(fmt)
+    }
+}
+
+#[unstable(feature = "wrap_debug", issue = "0")]
+impl<T> Debug for WrapDebug<T> {
+    default fn fmt(&self, fmt: &mut Formatter) -> Result {
+        write!(fmt, "[<unknown> of type {} is !Debug]",
+            unsafe { intrinsics::type_name::<T>() })
+    }
+}
+
 // If you expected tests to be here, look instead at the run-pass/ifmt.rs test,
 // it's a lot easier than creating all of the rt::Piece structures here.
