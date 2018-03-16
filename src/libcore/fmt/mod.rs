@@ -2015,8 +2015,10 @@ impl<T: Debug> Debug for WrapDebug<T> {
 #[unstable(feature = "wrap_debug", issue = "0")]
 impl<T> Debug for WrapDebug<T> {
     default fn fmt(&self, fmt: &mut Formatter) -> Result {
+        use intrinsics::type_name;
+
         write!(fmt, "[<unknown> of type {} is !Debug]",
-            unsafe { ::core::intrinsics::type_name::<T>() })
+            unsafe { type_name::<T>() })
     }
 }
 
