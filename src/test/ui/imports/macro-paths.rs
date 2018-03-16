@@ -36,3 +36,5 @@ fn g() {
         mod baz { pub use two_macros::m; }
     }
 }
+
+fn main() {}

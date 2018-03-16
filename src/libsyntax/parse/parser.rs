@@ -3804,6 +3804,12 @@ impl<'a> Parser<'a> {
 
     /// Parse a pattern.
     pub fn parse_pat(&mut self) -> PResult<'a, P<Pat>> {
+        self.parse_pat_with_range_pat(true)
+    }
+
+    /// Parse a pattern, with a setting whether modern range patterns e.g. `a..=b`, `a..b` are
+    /// allowed.
+    fn parse_pat_with_range_pat(&mut self, allow_range_pat: bool) -> PResult<'a, P<Pat>> {
         maybe_whole!(self, NtPat, |x| x);
 
         let lo = self.span;
@@ -3824,7 +3830,7 @@ impl<'a> Parser<'a> {
                     err.span_label(self.span, "unexpected lifetime");
                     return Err(err);
                 }
-                let subpat = self.parse_pat()?;
+                let subpat = self.parse_pat_with_range_pat(false)?;
                 pat = PatKind::Ref(subpat, mutbl);
             }
             token::OpenDelim(token::Paren) => {
@@ -3863,7 +3869,7 @@ impl<'a> Parser<'a> {
                 pat = self.parse_pat_ident(BindingMode::ByRef(mutbl))?;
             } else if self.eat_keyword(keywords::Box) {
                 // Parse box pat
-                let subpat = self.parse_pat()?;
+                let subpat = self.parse_pat_with_range_pat(false)?;
                 pat = PatKind::Box(subpat);
             } else if self.token.is_ident() && !self.token.is_reserved_ident() &&
                       self.parse_as_ident() {
@@ -3967,6 +3973,25 @@ impl<'a> Parser<'a> {
 
         let pat = Pat { node: pat, span: lo.to(self.prev_span), id: ast::DUMMY_NODE_ID };
         let pat = self.maybe_recover_from_bad_qpath(pat, true)?;
+
+        if !allow_range_pat {
+            match pat.node {
+                PatKind::Range(_, _, RangeEnd::Included(RangeSyntax::DotDotDot)) => {}
+                PatKind::Range(..) => {
+                    let mut err = self.struct_span_err(
+                        pat.span,
+                        "the range pattern here has ambiguous interpretation",
+                    );
+                    err.span_suggestion(
+                        pat.span,
+                        "add parentheses to clarify the precedence",
+                        format!("({})", pprust::pat_to_string(&pat)),
+                    );
+                    return Err(err);
+                }
+                _ => {}
+            }
+        }
 
         Ok(P(pat))
     }
@@ -7040,7 +7065,11 @@ impl<'a> Parser<'a> {
 
     fn parse_rename(&mut self) -> PResult<'a, Option<Ident>> {
         if self.eat_keyword(keywords::As) {
-            self.parse_ident().map(Some)
+            if self.eat(&token::Underscore) {
+                Ok(Some(Ident::with_empty_ctxt(Symbol::gensym("_"))))
+            } else {
+                self.parse_ident().map(Some)
+            }
         } else {
             Ok(None)
         }

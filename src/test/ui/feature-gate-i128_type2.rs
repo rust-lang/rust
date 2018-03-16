@@ -30,3 +30,5 @@ fn test3_2() {
 enum A { //~ ERROR 128-bit type is unstable
     A(u64)
 }
+
+fn main() {}

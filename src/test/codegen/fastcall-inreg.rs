@@ -21,9 +21,7 @@
 // ignore-bpfeb
 // ignore-hexagon
 // ignore-mips
-// ignore-mipsel
 // ignore-mips64
-// ignore-mips64el
 // ignore-msp430
 // ignore-powerpc
 // ignore-r600

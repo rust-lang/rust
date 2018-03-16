@@ -11,6 +11,8 @@
 // ignore-arm
 // ignore-aarch64
 // ignore-emscripten
+// ignore-mips
+// ignore-mips64
 // compile-flags: -O
 
 #![feature(repr_simd)]

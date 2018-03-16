@@ -28,18 +28,6 @@ fn extend_integer_width_mips(arg: &mut ArgType, bits: u64) {
     arg.extend_integer_width_to(bits);
 }
 
-fn bits_to_int_reg(bits: u64) -> Reg {
-    if bits <= 8 {
-        Reg::i8()
-    } else if bits <= 16 {
-        Reg::i16()
-    } else if bits <= 32 {
-        Reg::i32()
-    } else {
-        Reg::i64()
-    }
-}
-
 fn float_reg<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, ret: &ArgType<'tcx>, i: usize) -> Option<Reg> {
     match ret.layout.field(cx, i).abi {
         layout::Abi::Scalar(ref scalar) => match scalar.value {
@@ -82,7 +70,7 @@ fn classify_ret_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, ret: &mut ArgType<'tcx>) 
 
         // Cast to a uniform int structure
         ret.cast_to(Uniform {
-            unit: bits_to_int_reg(bits),
+            unit: Reg::i64(),
             total: size
         });
     } else {

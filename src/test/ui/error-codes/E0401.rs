@@ -11,14 +11,14 @@
 trait Baz<T> {}
 
 fn foo<T>(x: T) {
-    fn bar<U, V: Baz<U>, W: Fn()>(y: T) { //~ ERROR E0401
+    fn bfnr<U, V: Baz<U>, W: Fn()>(y: T) { //~ ERROR E0401
     }
     fn baz<U,
            V: Baz<U>,
            W: Fn()>
            (y: T) { //~ ERROR E0401
     }
-    bar(x);
+    bfnr(x);
 }
 
 

@@ -9,8 +9,6 @@
 // except according to those terms.
 
 // Test old and new syntax for inclusive range patterns.
-#![feature(dotdoteq_in_patterns)]
-
 
 fn main() {
     assert!(match 42 { 0 ... 100 => true, _ => false });
