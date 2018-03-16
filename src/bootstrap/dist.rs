@@ -1120,7 +1120,7 @@ impl Step for Rls {
         // state for RLS isn't testing.
         let rls = builder.ensure(tool::Rls {
             compiler: builder.compiler(stage, build.build),
-            target
+            target, extra_features: Vec::new()
         }).or_else(|| { println!("Unable to build RLS, skipping dist"); None })?;
 
         install(&rls, &image.join("bin"), 0o755);
@@ -1199,11 +1199,11 @@ impl Step for Rustfmt {
         // Prepare the image directory
         let rustfmt = builder.ensure(tool::Rustfmt {
             compiler: builder.compiler(stage, build.build),
-            target
+            target, extra_features: Vec::new()
         }).or_else(|| { println!("Unable to build Rustfmt, skipping dist"); None })?;
         let cargofmt = builder.ensure(tool::Cargofmt {
             compiler: builder.compiler(stage, build.build),
-            target
+            target, extra_features: Vec::new()
         }).or_else(|| { println!("Unable to build Cargofmt, skipping dist"); None })?;
 
         install(&rustfmt, &image.join("bin"), 0o755);
