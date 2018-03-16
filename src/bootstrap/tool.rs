@@ -112,11 +112,11 @@ impl Step for ToolBuild {
             Mode::Tool => panic!("unexpected Mode::Tool for tool build")
         }
 
-        let _folder = build.fold_output(|| format!("stage{}-{}", compiler.stage, tool));
-        println!("Building stage{} tool {} ({})", compiler.stage, tool, target);
-
         let mut cargo = prepare_tool_cargo(builder, compiler, target, "build", path);
         cargo.arg("--features").arg(self.extra_features.join(" "));
+
+        let _folder = build.fold_output(|| format!("stage{}-{}", compiler.stage, tool));
+        println!("Building stage{} tool {} ({})", compiler.stage, tool, target);
         let is_expected = build.try_run(&mut cargo);
         build.save_toolstate(tool, if is_expected {
             ToolState::TestFail
@@ -339,9 +339,6 @@ impl Step for Rustdoc {
 
         builder.ensure(compile::Rustc { compiler: build_compiler, target });
 
-        let _folder = build.fold_output(|| format!("stage{}-rustdoc", target_compiler.stage));
-        println!("Building rustdoc for stage{} ({})", target_compiler.stage, target_compiler.host);
-
         let mut cargo = prepare_tool_cargo(builder,
                                            build_compiler,
                                            target,
@@ -352,7 +349,10 @@ impl Step for Rustdoc {
         cargo.env("RUSTC_DEBUGINFO", builder.config.rust_debuginfo.to_string())
              .env("RUSTC_DEBUGINFO_LINES", builder.config.rust_debuginfo_lines.to_string());
 
+        let _folder = build.fold_output(|| format!("stage{}-rustdoc", target_compiler.stage));
+        println!("Building rustdoc for stage{} ({})", target_compiler.stage, target_compiler.host);
         build.run(&mut cargo);
+
         // Cargo adds a number of paths to the dylib search path on windows, which results in
         // the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"
         // rustdoc a different name.
