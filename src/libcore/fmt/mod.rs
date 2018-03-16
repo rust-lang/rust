@@ -1551,16 +1551,19 @@ impl<'a> Formatter<'a> {
     ///
     /// impl<L: fmt::Debug, R: fmt::Debug> fmt::Debug for Arm<L, R> {
     ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-    ///         fmt.debug(&self.0)?;
-    ///         fmt.write_str(" => ")?;
+    ///         write!(fmt, "{:?} => ", self.0)?;
     ///         fmt.debug(&self.1)
     ///     }
     /// }
     ///
-    /// assert_eq!(format!("{:?}", Arm(0, 1)), "0 => 1");
+    /// // `fmt.debug(..)` respects formatting on the RHS of the arrow:
+    /// assert_eq!(format!("{:?}", Arm(0, vec![2, 3])),
+    ///     "0 => [2, 3]");
+    /// assert_eq!(format!("{:#?}", Arm(0, vec![2, 3])),
+    ///     "0 => [\n    2,\n    3\n]");
     /// ```
     #[unstable(feature = "formatter_debug", issue = "0")]
-    fn debug<D: Debug>(&mut self, d: D) -> Result {
+    pub fn debug<D: Debug>(&mut self, d: D) -> Result {
         <D as Debug>::fmt(&d, self)
     }
 
