@@ -254,3 +254,15 @@ If both `--playground-url` and `--markdown-playground-url` are present when rend
 Markdown file, the URL given to `--markdown-playground-url` will take precedence. If both
 `--playground-url` and `#![doc(html_playground_url = "url")]` are present when rendering crate docs,
 the attribute will take precedence.
+
+### `--crate-version`: control the crate version
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc src/lib.rs -Z unstable-options --crate-version 1.3.37
+```
+
+When `rustdoc` receives this flag, it will print an extra "Version (version)" into the sidebar of
+the crate root's docs. You can use this flag to differentiate between different versions of your
+library's documentation.
