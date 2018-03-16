@@ -81,11 +81,17 @@ pub fn main() { }
 //         ...
 //     }
 //     bb1: {
-//         unreachable;
-//     }
-//     bb2: {
 //         _0 = ();
 //         return;
+//     }
+//     bb2: {
+//         ...
+//     }
+//     bb3: {
+//         unreachable;
+//     }
+//     bb4: {
+//         unreachable;
 //     }
 // }
 // END rustc.never_match.SimplifyCfg-initial.after.mir
@@ -97,12 +103,18 @@ pub fn main() { }
 //         ...
 //     }
 //     bb1: {
-//         unreachable;
-//     }
-//     bb2: {
 //         _0 = ();
 //         StorageDead(_1);
 //         return;
+//     }
+//     bb2: {
+//         ...
+//     }
+//     bb3: {
+//         unreachable;
+//     }
+//     bb4: {
+//         unreachable;
 //     }
 // }
 // END rustc.never_match_disj_patterns.SimplifyCfg-initial.after.mir
