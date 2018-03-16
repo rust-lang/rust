@@ -1537,6 +1537,33 @@ impl<'a> Formatter<'a> {
         self.flags & (1 << FlagV1::SignAwareZeroPad as u32) != 0
     }
 
+    /// Calls the `Debug` implementation of `D` on this `Formatter`.
+    /// This is equivalent to `{ <D as Debug>::fmt(&d, fmt); drop(d); }`
+    /// but reads better when you are calling other methods on the `Formatter`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(formatter_debug)]
+    /// use std::fmt;
+    ///
+    /// struct Arm<L, R>(L, R);
+    ///
+    /// impl<L: fmt::Debug, R: fmt::Debug> fmt::Debug for Arm<L, R> {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    ///         fmt.debug(&self.0)?;
+    ///         fmt.write_str(" => ")?;
+    ///         fmt.debug(&self.1)
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(format!("{:?}", Arm(0, 1)), "0 => 1");
+    /// ```
+    #[unstable(feature = "formatter_debug", issue = "0")]
+    fn debug<D: Debug>(&mut self, d: D) -> Result {
+        <D as Debug>::fmt(&d, self)
+    }
+
     /// Creates a [`DebugStruct`] builder designed to assist with creation of
     /// [`fmt::Debug`] implementations for structs.
     ///
