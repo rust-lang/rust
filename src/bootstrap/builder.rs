@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::any::Any;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
 use std::env;
 use std::fmt::Debug;
@@ -18,6 +18,7 @@ use std::hash::Hash;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::{Instant, Duration};
 
 use compile;
 use install;
@@ -40,6 +41,7 @@ pub struct Builder<'a> {
     pub kind: Kind,
     cache: Cache,
     stack: RefCell<Vec<Box<Any>>>,
+    time_spent_on_dependencies: Cell<Duration>,
 }
 
 impl<'a> Deref for Builder<'a> {
@@ -343,6 +345,7 @@ impl<'a> Builder<'a> {
             kind,
             cache: Cache::new(),
             stack: RefCell::new(Vec::new()),
+            time_spent_on_dependencies: Cell::new(Duration::new(0, 0)),
         };
 
         let builder = &builder;
@@ -383,6 +386,7 @@ impl<'a> Builder<'a> {
             kind,
             cache: Cache::new(),
             stack: RefCell::new(Vec::new()),
+            time_spent_on_dependencies: Cell::new(Duration::new(0, 0)),
         };
 
         if kind == Kind::Dist {
@@ -662,6 +666,10 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_ON_FAIL", on_fail);
         }
 
+        if self.config.print_step_timings {
+            cargo.env("RUSTC_PRINT_STEP_TIMINGS", "1");
+        }
+
         cargo.env("RUSTC_VERBOSE", format!("{}", self.verbosity));
 
         // Throughout the build Cargo can execute a number of build scripts
@@ -818,7 +826,24 @@ impl<'a> Builder<'a> {
             self.build.verbose(&format!("{}> {:?}", "  ".repeat(stack.len()), step));
             stack.push(Box::new(step.clone()));
         }
-        let out = step.clone().run(self);
+
+        let (out, dur) = {
+            let start = Instant::now();
+            let zero = Duration::new(0, 0);
+            let parent = self.time_spent_on_dependencies.replace(zero);
+            let out = step.clone().run(self);
+            let dur = start.elapsed();
+            let deps = self.time_spent_on_dependencies.replace(parent + dur);
+            (out, dur - deps)
+        };
+
+        if self.build.config.print_step_timings && dur > Duration::from_millis(100) {
+            println!("[TIMING] {:?} -- {}.{:03}",
+                     step,
+                     dur.as_secs(),
+                     dur.subsec_nanos() / 1_000_000);
+        }
+
         {
             let mut stack = self.stack.borrow_mut();
             let cur_step = stack.pop().expect("step stack empty");

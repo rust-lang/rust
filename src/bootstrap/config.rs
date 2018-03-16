@@ -121,6 +121,7 @@ pub struct Config {
     pub quiet_tests: bool,
     pub test_miri: bool,
     pub save_toolstates: Option<PathBuf>,
+    pub print_step_timings: bool,
 
     // Fallback musl-root for all targets
     pub musl_root: Option<PathBuf>,
@@ -204,6 +205,7 @@ struct Build {
     openssl_static: Option<bool>,
     configure_args: Option<Vec<String>>,
     local_rebuild: Option<bool>,
+    print_step_timings: Option<bool>,
 }
 
 /// TOML representation of various global install decisions.
@@ -413,6 +415,7 @@ impl Config {
         set(&mut config.openssl_static, build.openssl_static);
         set(&mut config.configure_args, build.configure_args);
         set(&mut config.local_rebuild, build.local_rebuild);
+        set(&mut config.print_step_timings, build.print_step_timings);
         config.verbose = cmp::max(config.verbose, flags.verbose);
 
         if let Some(ref install) = toml.install {
