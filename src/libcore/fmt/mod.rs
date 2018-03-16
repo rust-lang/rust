@@ -2017,8 +2017,9 @@ trait WrapDebugInternal {
 
 impl<T> WrapDebugInternal for WrapDebug<T> {
     default fn fmt(&self, fmt: &mut Formatter) -> Result {
+        use intrinsics::type_name;
         write!(fmt, "[<unknown> of type {} is !Debug]",
-            unsafe { intrinsics::type_name::<T>() })
+            unsafe { type_name::<T>() })
     }
 }
 
