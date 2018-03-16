@@ -279,3 +279,16 @@ $ rustdoc --test README.md -Z unstable-options --linker foo
 When `rustdoc` runs your documentation tests, it needs to compile and link the tests as executables
 before running them. This flag can be used to change the linker used on these executables. It's
 equivalent to passing `-C linker=foo` to `rustc`.
+
+### `--sort-modules-by-appearance`: control how items on module pages are sorted
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc src/lib.rs -Z unstable-options --sort-modules-by-appearance
+```
+
+Ordinarily, when `rustdoc` prints items in module pages, it will sort them alphabetically (taking
+some consideration for their stability, and names that end in a number). Giving this flag to
+`rustdoc` will disable this sorting and instead make it print the items in the order they appear in
+the source.
