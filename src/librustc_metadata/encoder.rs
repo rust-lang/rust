@@ -196,30 +196,26 @@ impl<'a, 'tcx> SpecializedEncoder<Ty<'tcx>> for EncodeContext<'a, 'tcx> {
 
 impl<'a, 'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, alloc_id: &interpret::AllocId) -> Result<(), Self::Error> {
-        trace!("encoding {:?} at {}", alloc_id, self.position());
-        if let Some(shorthand) = self.interpret_alloc_shorthands.get(alloc_id).cloned() {
-            trace!("encoding {:?} as shorthand to {}", alloc_id, shorthand);
-            return shorthand.encode(self);
-        }
-        let start = self.position();
-        // cache the allocation shorthand now, because the allocation itself might recursively
-        // point to itself.
-        self.interpret_alloc_shorthands.insert(*alloc_id, start);
-        if let Some(alloc) = self.tcx.interpret_interner.get_alloc(*alloc_id) {
-            trace!("encoding {:?} with {:#?}", alloc_id, alloc);
-            usize::max_value().encode(self)?;
-            alloc.encode(self)?;
-            self.tcx.interpret_interner
-                .get_corresponding_static_def_id(*alloc_id)
-                .encode(self)?;
-        } else if let Some(fn_instance) = self.tcx.interpret_interner.get_fn(*alloc_id) {
-            trace!("encoding {:?} with {:#?}", alloc_id, fn_instance);
-            (usize::max_value() - 1).encode(self)?;
-            fn_instance.encode(self)?;
-        } else {
-            bug!("alloc id without corresponding allocation: {}", alloc_id);
-        }
-        Ok(())
+        use std::collections::hash_map::Entry;
+        let tcx = self.tcx;
+        let pos = self.position();
+        let shorthand = match self.interpret_alloc_shorthands.entry(*alloc_id) {
+            Entry::Occupied(entry) => Some(entry.get().clone()),
+            Entry::Vacant(entry) => {
+                // ensure that we don't place any AllocIds at the very beginning
+                // of the metadata file, because that would end up making our 0 and 1 indices
+                // not special. This is essentially impossible, but let's make sure
+                assert!(pos != 0 && pos != 1);
+                entry.insert(pos);
+                None
+            },
+        };
+        interpret::specialized_encode_alloc_id(
+            self,
+            tcx,
+            *alloc_id,
+            shorthand,
+        )
     }
 }
 
