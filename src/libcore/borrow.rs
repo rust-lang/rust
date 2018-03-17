@@ -191,7 +191,11 @@ pub trait Borrow<Borrowed: ?Sized> {
 
 /// A trait for mutably borrowing data.
 ///
-/// Similar to `Borrow`, but for mutable borrows.
+/// As a companion to [`Borrow<T>`] this trait allows a type to borrow as
+/// an underlying type by providing a mutable reference. See [`Borrow<T>`]
+/// for more information on borrowing as another type.
+///
+/// [`Borrow<T>`]: trait.Borrow.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait BorrowMut<Borrowed: ?Sized> : Borrow<Borrowed> {
     /// Mutably borrows from an owned value.
