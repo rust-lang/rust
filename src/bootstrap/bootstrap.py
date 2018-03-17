@@ -311,6 +311,8 @@ class RustBuild(object):
         self._download_url = 'https://static.rust-lang.org'
         self.rustc_channel = ''
         self.build = ''
+        self.host = ''
+        self.check = False
         self.build_dir = os.path.join(os.getcwd(), "build")
         self.clean = False
         self.config_toml = ''
@@ -357,6 +359,16 @@ class RustBuild(object):
                     rustc_channel, self.build)
                 self._download_stage0_helper(filename, "rust-mingw")
 
+        # Download the target libaries used for checking the compiler
+        if self.check and self.host != '' and self.build != self.host and \
+           self.rustc().startswith(self.bin_root()):
+            lib_path = os.path.join(self.bin_root(), "lib", "rustlib", self.host, "lib")
+            if not os.path.exists(lib_path):
+                filename = "rust-std-{}-{}.tar.gz".format(
+                    rustc_channel, self.host)
+                pattern = "rust-std-{}".format(self.host)
+                self._download_stage0_helper(filename, pattern)
+
         if self.cargo().startswith(self.bin_root()) and \
                 (not os.path.exists(self.cargo()) or
                  self.program_out_of_date(self.cargo_stamp())):
@@ -365,6 +377,8 @@ class RustBuild(object):
             self.fix_executable("{}/bin/cargo".format(self.bin_root()))
             with open(self.cargo_stamp(), 'w') as cargo_stamp:
                 cargo_stamp.write(self.date)
+
+        shutil.rmtree(os.path.join(self.build_dir, "cache"), ignore_errors=True)
 
     def _download_stage0_helper(self, filename, pattern):
         cache_dst = os.path.join(self.build_dir, "cache")
@@ -451,7 +465,7 @@ class RustBuild(object):
 
         >>> rb = RustBuild()
         >>> rb.build_dir = "build"
-        >>> rb.rustc_stamp() == os.path.join("build", "stage0", ".rustc-stamp")
+        >>> rb.rustc_stamp() == os.path.join("build", "base", ".rustc-stamp")
         True
         """
         return os.path.join(self.bin_root(), '.rustc-stamp')
@@ -461,7 +475,7 @@ class RustBuild(object):
 
         >>> rb = RustBuild()
         >>> rb.build_dir = "build"
-        >>> rb.cargo_stamp() == os.path.join("build", "stage0", ".cargo-stamp")
+        >>> rb.cargo_stamp() == os.path.join("build", "base", ".cargo-stamp")
         True
         """
         return os.path.join(self.bin_root(), '.cargo-stamp')
@@ -478,16 +492,19 @@ class RustBuild(object):
 
         >>> rb = RustBuild()
         >>> rb.build_dir = "build"
-        >>> rb.bin_root() == os.path.join("build", "stage0")
+        >>> rb.bin_root() == os.path.join("build", "base")
         True
 
         When the 'build' property is given should be a nested directory:
 
         >>> rb.build = "devel"
-        >>> rb.bin_root() == os.path.join("build", "devel", "stage0")
+        >>> rb.bin_root() == os.path.join("build", "base", "devel")
         True
         """
-        return os.path.join(self.build_dir, self.build, "stage0")
+        if self.build == "":
+            return os.path.join(self.build_dir, "base")
+        else:
+            return os.path.join(self.build_dir, "base", self.build)
 
     def get_toml(self, key):
         """Returns the value of the given key in config.toml, otherwise returns None
@@ -710,6 +727,7 @@ def bootstrap(help_triggered):
     parser = argparse.ArgumentParser(description='Build rust')
     parser.add_argument('--config')
     parser.add_argument('--build')
+    parser.add_argument('--host')
     parser.add_argument('--src')
     parser.add_argument('--clean', action='store_true')
     parser.add_argument('-v', '--verbose', action='count', default=0)
@@ -773,6 +791,8 @@ def bootstrap(help_triggered):
     build.update_submodules()
 
     # Fetch/build the bootstrap
+    build.host = args.host or ''
+    build.check = 'check' in sys.argv
     build.build = args.build or build.build_triple()
     build.download_stage0()
     sys.stdout.flush()

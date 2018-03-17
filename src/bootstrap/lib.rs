@@ -51,10 +51,6 @@
 //!
 //!   The build output will be something like the following:
 //!
-//!   Building stage0 std artifacts
-//!   Copying stage0 std
-//!   Building stage0 test artifacts
-//!   Copying stage0 test
 //!   Building stage0 compiler artifacts
 //!   Copying stage0 rustc
 //!   Assembling stage1 compiler
@@ -71,12 +67,12 @@
 //!
 //! Let's disect that a little:
 //!
-//! ## Building stage0 {std,test,compiler} artifacts
+//! ## Building stage0 compiler artifacts
 //!
 //! These steps use the provided (downloaded, usually) compiler to compile the
 //! local Rust source into libraries we can use.
 //!
-//! ## Copying stage0 {std,test,rustc}
+//! ## Copying stage0 rustc
 //!
 //! This copies the build output from Cargo into
 //! `build/$HOST/stage0-sysroot/lib/rustlib/$ARCH/lib`. FIXME: This step's

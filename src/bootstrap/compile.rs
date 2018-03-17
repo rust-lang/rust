@@ -438,7 +438,9 @@ impl Step for TestLink {
 
 #[derive(Debug, PartialOrd, Ord, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
+    /// The target which our new compiler will run on
     pub target: Interned<String>,
+    /// The compiler we're using to compile rustc
     pub compiler: Compiler,
 }
 
@@ -467,7 +469,9 @@ impl Step for Rustc {
         let compiler = self.compiler;
         let target = self.target;
 
-        builder.ensure(Test { compiler, target });
+        if compiler.stage != 0 {
+            builder.ensure(Test { compiler, target });
+        }
 
         if builder.force_use_stage1(compiler, target) {
             builder.ensure(Rustc {
@@ -485,13 +489,18 @@ impl Step for Rustc {
         }
 
         // Ensure that build scripts have a std to link against.
-        builder.ensure(Std {
-            compiler: builder.compiler(self.compiler.stage, builder.config.build),
-            target: builder.config.build,
-        });
+        if compiler.stage != 0 {
+            builder.ensure(Std {
+                compiler: builder.compiler(self.compiler.stage, builder.config.build),
+                target: builder.config.build,
+            });
+        }
         let cargo_out = builder.cargo_out(compiler, Mode::Librustc, target);
-        builder.clear_if_dirty(&cargo_out, &libstd_stamp(builder, compiler, target));
-        builder.clear_if_dirty(&cargo_out, &libtest_stamp(builder, compiler, target));
+
+        if compiler.stage != 0 {
+            builder.clear_if_dirty(&cargo_out, &libstd_stamp(builder, compiler, target));
+            builder.clear_if_dirty(&cargo_out, &libtest_stamp(builder, compiler, target));
+        }
 
         let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "build");
         rustc_cargo(builder, &mut cargo);
@@ -843,17 +852,9 @@ impl Step for Sysroot {
 
     /// Returns the sysroot for the `compiler` specified that *this build system
     /// generates*.
-    ///
-    /// That is, the sysroot for the stage0 compiler is not what the compiler
-    /// thinks it is by default, but it's the same as the default for stages
-    /// 1-3.
     fn run(self, builder: &Builder) -> Interned<PathBuf> {
         let compiler = self.compiler;
-        let sysroot = if compiler.stage == 0 {
-            builder.out.join(&compiler.host).join("stage0-sysroot")
-        } else {
-            builder.out.join(&compiler.host).join(format!("stage{}", compiler.stage))
-        };
+        let sysroot = builder.out.join(&compiler.host).join(format!("stage{}", compiler.stage));
         let _ = fs::remove_dir_all(&sysroot);
         t!(fs::create_dir_all(&sysroot));
         INTERNER.intern_path(sysroot)
@@ -883,8 +884,9 @@ impl Step for Assemble {
     /// compiler.
     fn run(self, builder: &Builder) -> Compiler {
         let target_compiler = self.target_compiler;
+        let stage = target_compiler.stage;
 
-        if target_compiler.stage == 0 {
+        if stage == 0 {
             assert_eq!(builder.config.build, target_compiler.host,
                 "Cannot obtain compiler for non-native build triple at stage 0");
             // The stage 0 compiler for the build triple is always pre-built.
@@ -921,8 +923,10 @@ impl Step for Assemble {
             for stage in 0..min(target_compiler.stage, builder.config.keep_stage.unwrap()) {
                 let target_compiler = builder.compiler(stage, target_compiler.host);
                 let target = target_compiler.host;
-                builder.ensure(StdLink { compiler, target_compiler, target });
-                builder.ensure(TestLink { compiler, target_compiler, target });
+                if stage != 1 {
+                    builder.ensure(StdLink { compiler, target_compiler, target });
+                    builder.ensure(TestLink { compiler, target_compiler, target });
+                }
                 builder.ensure(RustcLink { compiler, target_compiler, target });
             }
         } else {
@@ -947,7 +951,6 @@ impl Step for Assemble {
             None
         };
 
-        let stage = target_compiler.stage;
         let host = target_compiler.host;
         builder.info(&format!("Assembling stage{} compiler ({})", stage, host));
 
@@ -961,6 +964,16 @@ impl Step for Assemble {
             if is_dylib(&filename) {
                 builder.copy(&f.path(), &sysroot_libdir.join(&filename));
             }
+        }
+
+        if stage == 1 {
+            // Copy the dynamic libraries from the bootstrap compiler
+            // which are needed to run the stage1 compiler
+            copy_libs_from_bootstrap(
+                builder,
+                build_compiler,
+                &sysroot_libdir,
+                &["std", "test", "term"]);
         }
 
         copy_codegen_backends_to_sysroot(builder,
@@ -980,6 +993,37 @@ impl Step for Assemble {
         builder.copy(&rustc, &compiler);
 
         target_compiler
+    }
+}
+
+fn copy_libs_from_bootstrap(
+    builder: &Builder,
+    compiler: Compiler,
+    out_dir: &Path,
+    libs: &[&str])
+{
+    if builder.config.dry_run {
+        return;
+    }
+
+    let base_libdir = builder.config
+                                .initial_rustc.parent().unwrap()
+                                .parent().unwrap()
+                                .join("lib").join("rustlib").join(compiler.host).join("lib");
+    t!(fs::create_dir_all(&out_dir));
+    let mut files: Vec<PathBuf> = Vec::new();
+    for f in t!(fs::read_dir(&base_libdir)).map(|f| t!(f)) {
+        let filename = f.file_name().into_string().unwrap();
+        let should_copy = is_dylib(&filename) && libs.iter().any(|lib| {
+            filename.starts_with(&format!("{}-", lib)) ||
+            filename.starts_with(&format!("lib{}-", lib))
+        });
+        if !should_copy {
+            continue;
+        }
+        let dest = &out_dir.join(filename);
+        builder.copy(&f.path(), &dest);
+        files.push(dest.into());
     }
 }
 
@@ -1122,6 +1166,11 @@ pub fn run_cargo(builder: &Builder, cargo: &mut Command, stamp: &Path, is_check:
         deps.push(path_to_add.into());
     }
 
+    update_stamp_file(builder, stamp, deps)
+}
+
+pub fn update_stamp_file(builder: &Builder, stamp: &Path, mut deps: Vec<PathBuf>) -> Vec<PathBuf>
+{
     // Now we want to update the contents of the stamp file, if necessary. First
     // we read off the previous contents along with its mtime. If our new
     // contents (the list of files to copy) is different or if any dep's mtime
