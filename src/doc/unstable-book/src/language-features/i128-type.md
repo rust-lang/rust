@@ -1,4 +1,4 @@
-# `i128_type`
+# `i128`
 
 The tracking issue for this feature is: [#35118]
 
@@ -6,20 +6,13 @@ The tracking issue for this feature is: [#35118]
 
 ------------------------
 
-The `i128_type` feature adds support for 128 bit signed and unsigned integer
-types.
+The `i128` feature adds support for `#[repr(u128)]` on `enum`s.
 
 ```rust
-#![feature(i128_type)]
+#![feature(i128)]
 
-fn main() {
-    assert_eq!(1u128 + 1u128, 2u128);
-    assert_eq!(u128::min_value(), 0);
-    assert_eq!(u128::max_value(), 340282366920938463463374607431768211455);
-
-    assert_eq!(1i128 - 2i128, -1i128);
-    assert_eq!(i128::min_value(), -170141183460469231731687303715884105728);
-    assert_eq!(i128::max_value(), 170141183460469231731687303715884105727);
+#[repr(u128)]
+enum Foo {
+    Bar(u64),
 }
 ```
-
