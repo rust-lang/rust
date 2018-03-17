@@ -48,6 +48,7 @@ o("experimental-parallel-queries", "rust.experimental-parallel-queries", "build 
 o("test-miri", "rust.test-miri", "run miri's test suite")
 o("debuginfo-tests", "rust.debuginfo-tests", "build tests with debugger metadata")
 o("quiet-tests", "rust.quiet-tests", "enable quieter output when running tests")
+o("combined-tests", "rust.combine-tests", "merge tests together when possible")
 o("ccache", "llvm.ccache", "invoke gcc/clang via ccache to reuse object files between builds")
 o("sccache", None, "invoke gcc/clang via sccache to reuse object files between builds")
 o("local-rust", None, "use an installed rustc rather than downloading a snapshot")

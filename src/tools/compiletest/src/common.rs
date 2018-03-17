@@ -12,8 +12,12 @@ pub use self::Mode::*;
 use std::fmt;
 use std::str::FromStr;
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::time::Duration;
 
 use test::ColorConfig;
+use header::TestProps;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Mode {
@@ -95,7 +99,7 @@ impl fmt::Display for Mode {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Config {
     /// The library paths required for running the compiler
     pub compile_lib_path: PathBuf,
@@ -136,6 +140,12 @@ pub struct Config {
 
     /// The test mode, compile-fail, run-fail, run-pass
     pub mode: Mode,
+
+    /// Merge tests together to form larger crates
+    pub combine: bool,
+
+    /// Don't capture the output of tests
+    pub no_capture: bool,
 
     /// Run ignored tests
     pub run_ignored: bool,
@@ -220,13 +230,23 @@ pub struct Config {
     pub llvm_components: String,
     pub llvm_cxxflags: String,
     pub nodejs: Option<String>,
+
+    pub stats: Arc<Mutex<Vec<(String, Duration)>>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TestPaths {
     pub file: PathBuf,         // e.g., compile-test/foo/bar/baz.rs
     pub base: PathBuf,         // e.g., compile-test, auxiliary
     pub relative_dir: PathBuf, // e.g., foo/bar
+}
+
+#[derive(Clone, Debug)]
+pub struct CombineTest {
+    pub config: Arc<Config>,
+    pub paths: TestPaths,
+    pub features: Vec<String>,
+    pub props: TestProps,
 }
 
 /// Used by `ui` tests to generate things like `foo.stderr` from `foo.rs`.

@@ -10,6 +10,8 @@
 
 // pretty-expanded FIXME #23616
 
+// no-combine - Uses no_implicit_prelude
+
 #![no_implicit_prelude]
 
 trait Iterator {

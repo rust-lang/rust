@@ -142,6 +142,7 @@ pub mod abi;
 pub mod ast;
 pub mod attr;
 pub mod codemap;
+pub mod combine_tests;
 #[macro_use]
 pub mod config;
 pub mod entry;

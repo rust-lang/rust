@@ -851,6 +851,10 @@ impl Step for Compiletest {
         cmd.arg("--run-lib-path").arg(builder.sysroot_libdir(compiler, target));
         cmd.arg("--rustc-path").arg(builder.rustc(compiler));
 
+        if builder.config.combine_tests && mode == "run-pass" {
+            cmd.arg("--combine");
+        }
+
         // Avoid depending on rustdoc when we don't need it.
         if mode == "rustdoc" || (mode == "run-make" && suite.ends_with("fulldeps")) {
             cmd.arg("--rustdoc-path").arg(builder.rustdoc(compiler.host));

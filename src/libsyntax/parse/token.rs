@@ -555,7 +555,7 @@ impl Token {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug)]
 /// For interpolation during macro expansion.
 pub enum Nonterminal {
     NtItem(P<ast::Item>),
@@ -579,7 +579,7 @@ pub enum Nonterminal {
     NtArg(ast::Arg),
     NtLifetime(ast::Lifetime),
 }
-
+/*
 impl fmt::Debug for Nonterminal {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -604,7 +604,7 @@ impl fmt::Debug for Nonterminal {
         }
     }
 }
-
+*/
 pub fn is_op(tok: &Token) -> bool {
     match *tok {
         OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) |

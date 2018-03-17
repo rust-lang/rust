@@ -28,6 +28,8 @@ use std::env;
 use std::ffi::OsString;
 use std::fs::{self, create_dir_all, File};
 use std::fmt;
+use std::sync::Arc;
+use std::time::Instant;
 use std::io::prelude::*;
 use std::io::{self, BufReader};
 use std::path::{Path, PathBuf};
@@ -35,6 +37,9 @@ use std::process::{Child, Command, ExitStatus, Output, Stdio};
 use std::str;
 
 use extract_gdb_version;
+
+#[path="combine.rs"]
+pub mod combine;
 
 /// The name of the environment variable that holds dynamic library locations.
 pub fn dylib_env_var() -> &'static str {
@@ -131,7 +136,7 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
     results
 }
 
-pub fn run(config: Config, testpaths: &TestPaths) {
+pub fn run(config: Arc<Config>, testpaths: &TestPaths, base_props: TestProps) {
     match &*config.target {
         "arm-linux-androideabi" | "armv7-linux-androideabi" | "aarch64-linux-android" => {
             if !config.adb_device_status {
@@ -152,18 +157,18 @@ pub fn run(config: Config, testpaths: &TestPaths) {
         print!("\n\n");
     }
     debug!("running {:?}", testpaths.file.display());
-    let base_props = TestProps::from_file(&testpaths.file, None, &config);
 
     let base_cx = TestCx {
         config: &config,
         props: &base_props,
         testpaths,
         revision: None,
+        long_compile: false,
     };
     base_cx.init_all();
 
     if base_props.revisions.is_empty() {
-        base_cx.run_revision()
+        base_cx.run_revision();
     } else {
         for revision in &base_props.revisions {
             let revision_props = TestProps::from_file(&testpaths.file, Some(revision), &config);
@@ -172,6 +177,7 @@ pub fn run(config: Config, testpaths: &TestPaths) {
                 props: &revision_props,
                 testpaths,
                 revision: Some(revision),
+                long_compile: false,
             };
             rev_cx.run_revision();
         }
@@ -187,6 +193,7 @@ struct TestCx<'test> {
     props: &'test TestProps,
     testpaths: &'test TestPaths,
     revision: Option<&'test str>,
+    long_compile: bool,
 }
 
 struct DebuggerCommands {
@@ -308,7 +315,7 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn run_rpass_test(&self) {
+    fn compile_rpass_test(&self) {
         let proc_res = self.compile_test();
 
         if !proc_res.status.success() {
@@ -321,7 +328,10 @@ impl<'test> TestCx<'test> {
             expected_errors.is_empty(),
             "run-pass tests with expected warnings should be moved to ui/"
         );
+    }
 
+    fn run_rpass_test(&self) {
+        self.compile_rpass_test();
         let proc_res = self.exec_compiled_test();
         if !proc_res.status.success() {
             self.fatal_proc_rec("test run failed!", &proc_res);
@@ -1292,7 +1302,15 @@ impl<'test> TestCx<'test> {
             _ => {}
         }
 
-        self.compose_and_run_compiler(rustc, None)
+        let start = Instant::now();
+        let result = self.compose_and_run_compiler(rustc, None);
+        let time = start.elapsed();
+        if !self.long_compile {
+            self.config.stats.lock().unwrap().push(
+                (format!("compiling {}", self.testpaths.file.to_str().unwrap()), time)
+            );
+        }
+        result
     }
 
     fn document(&self, out_dir: &Path) -> ProcRes {
@@ -1307,6 +1325,7 @@ impl<'test> TestCx<'test> {
                     props: &aux_props,
                     testpaths: &aux_testpaths,
                     revision: self.revision,
+                    long_compile: self.long_compile,
                 };
                 let auxres = aux_cx.document(out_dir);
                 if !auxres.status.success() {
@@ -1344,6 +1363,7 @@ impl<'test> TestCx<'test> {
     }
 
     fn exec_compiled_test(&self) -> ProcRes {
+        let start = Instant::now();
         let env = &self.props.exec_env;
 
         let proc_res = match &*self.config.target {
@@ -1403,11 +1423,16 @@ impl<'test> TestCx<'test> {
             }
         };
 
-        if proc_res.status.success() {
+        if proc_res.status.success() && !self.long_compile {
             // delete the executable after running it to save space.
             // it is ok if the deletion failed.
             let _ = fs::remove_file(self.make_exe_name());
         }
+
+        let time = start.elapsed();
+        self.config.stats.lock().unwrap().push(
+            (format!("running {}", self.testpaths.file.to_str().unwrap()), time)
+        );
 
         proc_res
     }
@@ -1463,6 +1488,7 @@ impl<'test> TestCx<'test> {
                 props: &aux_props,
                 testpaths: &aux_testpaths,
                 revision: self.revision,
+                long_compile: self.long_compile,
             };
             let mut aux_rustc = aux_cx.make_compile_args(&aux_testpaths.file, aux_output);
 
@@ -2333,6 +2359,7 @@ impl<'test> TestCx<'test> {
             props: &revision_props,
             testpaths: self.testpaths,
             revision: self.revision,
+            long_compile: self.long_compile,
         };
 
         if self.config.verbose {

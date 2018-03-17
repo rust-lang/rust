@@ -70,7 +70,8 @@ use std::process::Termination;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::thread::JoinHandle;
+use std::time::{Instant, Duration};
 use std::borrow::Cow;
 use std::process;
 
@@ -168,11 +169,13 @@ pub enum TestFn {
     StaticBenchFn(fn(&mut Bencher)),
     DynTestFn(Box<FnBox() + Send>),
     DynBenchFn(Box<TDynBenchFn + 'static>),
+    CombineTest(Box<Any + Send>),
 }
 
 impl TestFn {
     fn padding(&self) -> NamePadding {
         match *self {
+            CombineTest(..) |
             StaticTestFn(..) => PadNone,
             StaticBenchFn(..) => PadOnRight,
             DynTestFn(..) => PadNone,
@@ -188,6 +191,7 @@ impl fmt::Debug for TestFn {
             StaticBenchFn(..) => "StaticBenchFn(..)",
             DynTestFn(..) => "DynTestFn(..)",
             DynBenchFn(..) => "DynBenchFn(..)",
+            CombineTest(..) => "CombineTest(..)",
         })
     }
 }
@@ -283,7 +287,7 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Options) {
             process::exit(101);
         }
     } else {
-        match run_tests_console(&opts, tests) {
+        match run_tests_console(&opts, tests, |_, _| None) {
             Ok(true) => {}
             Ok(false) => process::exit(101),
             Err(e) => {
@@ -799,7 +803,7 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
         } = test;
 
         let fntype = match testfn {
-            StaticTestFn(..) | DynTestFn(..) => {
+            CombineTest(_) | StaticTestFn(..) | DynTestFn(..) => {
                 ntest += 1;
                 "test"
             }
@@ -837,7 +841,12 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
 }
 
 // A simple console test runner
-pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<bool> {
+pub fn run_tests_console<F>(opts: &TestOpts,
+                            tests: Vec<TestDescAndFn>,
+                            run_combined: F) -> io::Result<bool>
+where
+    F: FnOnce(Vec<TestDescAndFn>, usize) -> Option<JoinHandle<Vec<TestEvent>>>
+{
     fn callback(
         event: &TestEvent,
         st: &mut ConsoleTestState,
@@ -849,6 +858,13 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
                 out.write_run_start(filtered_tests.len())
             }
             TeFilteredOut(filtered_out) => Ok(st.filtered_out = filtered_out),
+            TeCombinedFail(test, result, stdout, count) => {
+                st.write_log_result(&test, &result)?;
+                out.write_result(&test, &result, &*stdout)?;
+                st.failures.push((test, stdout));
+                st.failed += count;
+                Ok(())
+            },
             TeWait(ref test) => out.write_test_start(test),
             TeTimeout(ref test) => out.write_timeout(test),
             TeResult(test, result, stdout) => {
@@ -921,7 +937,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
         }
     }
 
-    run_tests(opts, tests, |x| callback(&x, &mut st, &mut *out))?;
+    run_tests(opts, tests, |x| callback(&x, &mut st, &mut *out), run_combined)?;
 
     assert!(st.current_test_count() == st.total);
 
@@ -1015,6 +1031,7 @@ pub enum TestEvent {
     TeResult(TestDesc, TestResult, Vec<u8>),
     TeTimeout(TestDesc),
     TeFilteredOut(usize),
+    TeCombinedFail(TestDesc, TestResult, Vec<u8>, usize),
 }
 
 pub type MonitorMsg = (TestDesc, TestResult, Vec<u8>);
@@ -1029,9 +1046,13 @@ impl Write for Sink {
     }
 }
 
-pub fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F) -> io::Result<()>
+pub fn run_tests<F, C>(opts: &TestOpts,
+                       tests: Vec<TestDescAndFn>,
+                       mut callback: F,
+                       run_combined: C) -> io::Result<()>
 where
     F: FnMut(TestEvent) -> io::Result<()>,
+    C: FnOnce(Vec<TestDescAndFn>, usize) -> Option<JoinHandle<Vec<TestEvent>>>
 {
     use std::collections::HashMap;
     use std::sync::mpsc::RecvTimeoutError;
@@ -1061,11 +1082,21 @@ where
 
     let (filtered_tests, filtered_benchs): (Vec<_>, _) =
         filtered_tests.into_iter().partition(|e| match e.testfn {
-            StaticTestFn(_) | DynTestFn(_) => true,
+            StaticTestFn(_) | DynTestFn(_) | CombineTest(_) => true,
             _ => false,
         });
 
     let concurrency = opts.test_threads.unwrap_or_else(get_concurrency);
+
+    let (combined_tests, filtered_tests) = filtered_tests.into_iter().partition(|test| {
+        match test.testfn {
+            CombineTest(..) => true,
+            _ => false,
+        }
+    });
+
+    let combined = run_combined(combined_tests, concurrency);
+    println!("running {} non-combined tests", filtered_tests.len());
 
     let mut remaining = filtered_tests;
     remaining.reverse();
@@ -1156,6 +1187,13 @@ where
             callback(TeResult(test, result, stdout))?;
         }
     }
+
+    if let Some(combined) = combined {
+        for event in combined.join().unwrap() {
+            callback(event)?;
+        }
+    }
+
     Ok(())
 }
 
@@ -1368,6 +1406,39 @@ pub fn convert_benchmarks_to_tests(tests: Vec<TestDescAndFn>) -> Vec<TestDescAnd
         .collect()
 }
 
+pub fn capture_output<F>(
+    desc: &TestDesc,
+    nocapture: bool,
+    test: F
+) -> (TestResult, Vec<u8>)
+where
+    F: FnOnce()
+{
+    // Buffer for capturing standard I/O
+    let data = Arc::new(Mutex::new(Vec::new()));
+    let data2 = data.clone();
+
+    let oldio = if !nocapture {
+        Some((
+            io::set_print(Some(Box::new(Sink(data2.clone())))),
+            io::set_panic(Some(Box::new(Sink(data2)))),
+        ))
+    } else {
+        None
+    };
+
+    let result = catch_unwind(AssertUnwindSafe(test));
+
+    if let Some((printio, panicio)) = oldio {
+        io::set_print(printio);
+        io::set_panic(panicio);
+    };
+
+    let test_result = calc_result(desc, result);
+    let stdout = data.lock().unwrap().to_vec();
+    (test_result, stdout)
+}
+
 pub fn run_test(
     opts: &TestOpts,
     force_ignore: bool,
@@ -1390,32 +1461,11 @@ pub fn run_test(
         nocapture: bool,
         testfn: Box<FnBox() + Send>,
     ) {
-        // Buffer for capturing standard I/O
-        let data = Arc::new(Mutex::new(Vec::new()));
-        let data2 = data.clone();
-
         let name = desc.name.clone();
         let runtest = move || {
-            let oldio = if !nocapture {
-                Some((
-                    io::set_print(Some(Box::new(Sink(data2.clone())))),
-                    io::set_panic(Some(Box::new(Sink(data2)))),
-                ))
-            } else {
-                None
-            };
-
-            let result = catch_unwind(AssertUnwindSafe(testfn));
-
-            if let Some((printio, panicio)) = oldio {
-                io::set_print(printio);
-                io::set_panic(panicio);
-            };
-
-            let test_result = calc_result(&desc, result);
-            let stdout = data.lock().unwrap().to_vec();
+            let (test_result, stdout) = capture_output(&desc, nocapture, testfn);
             monitor_ch
-                .send((desc.clone(), test_result, stdout))
+                .send((desc, test_result, stdout))
                 .unwrap();
         };
 
@@ -1452,6 +1502,7 @@ pub fn run_test(
             opts.nocapture,
             Box::new(move || __rust_begin_short_backtrace(f)),
         ),
+        CombineTest(..) => panic!("Trying to run combine test"),
     }
 }
 

@@ -10,6 +10,8 @@
 
 // pretty-expanded FIXME #23616
 
+// no-combine - Loads renamed crate
+
 #[macro_use] extern crate std as std2;
 
 fn main() {}

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// no-combine - Uses staged_api
+
 #![feature(staged_api)]
 #![stable(feature = "a", since = "b")]
 

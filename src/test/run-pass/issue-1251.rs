@@ -10,6 +10,7 @@
 
 // pretty-expanded FIXME #23616
 // ignore-wasm32-bare no libc to test ffi with
+// no-combine - Uses crate_id
 
 #![feature(libc)]
 

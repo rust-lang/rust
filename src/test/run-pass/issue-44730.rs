@@ -10,6 +10,8 @@
 
 //! dox
 
+// no-combine - missing_docs ignores main
+
 #![deny(missing_docs)]
 
 macro_rules! doc {
