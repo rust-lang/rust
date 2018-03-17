@@ -3,7 +3,7 @@ use rustc::lint::*;
 use rustc::ty;
 use syntax::ast::LitKind;
 use utils::paths;
-use utils::{is_expn_of, match_def_path, match_type, opt_def_id, resolve_node, span_lint, walk_ptrs_ty};
+use utils::{is_expn_of, match_def_path, match_type, opt_def_id, resolve_node, snippet, span_lint_and_then, walk_ptrs_ty};
 
 /// **What it does:** Checks for the use of `format!("string literal with no
 /// argument")` and `format!("{}", foo)` where `foo` is a string.
@@ -53,14 +53,20 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         // and that the argument is a string
                         if check_arg_is_display(cx, &args[1]);
                         then {
-                            span_lint(cx, USELESS_FORMAT, span, "useless use of `format!`");
+                            let sugg = format!("{}.to_string()", snippet(cx, expr.span, "<expr>").into_owned());
+                            span_lint_and_then(cx, USELESS_FORMAT, span, "useless use of `format!`", |db| {
+                                db.span_suggestion(expr.span, "consider using .to_string()", sugg);
+                            });
                         }
                     }
                 },
                 // `format!("foo")` expansion contains `match () { () => [], }`
                 ExprMatch(ref matchee, _, _) => if let ExprTup(ref tup) = matchee.node {
                     if tup.is_empty() {
-                        span_lint(cx, USELESS_FORMAT, span, "useless use of `format!`");
+                        let sugg = format!("{}.to_string()", snippet(cx, expr.span, "<expr>").into_owned());
+                        span_lint_and_then(cx, USELESS_FORMAT, span, "useless use of `format!`", |db| {
+                            db.span_suggestion(span, "consider using .to_string()", sugg);
+                        });
                     }
                 },
                 _ => (),
