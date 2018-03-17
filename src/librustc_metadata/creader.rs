@@ -14,7 +14,7 @@ use cstore::{self, CStore, CrateSource, MetadataBlob};
 use locator::{self, CratePaths};
 use native_libs::relevant_lib;
 use schema::CrateRoot;
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{Lrc, RwLock, Lock};
 
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX};
 use rustc::hir::svh::Svh;
@@ -30,7 +30,6 @@ use rustc::util::common::record_time;
 use rustc::util::nodemap::FxHashSet;
 use rustc::hir::map::Definitions;
 
-use std::cell::{RefCell, Cell};
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::{cmp, fs};
@@ -63,7 +62,7 @@ fn dump_crates(cstore: &CStore) {
         info!("  name: {}", data.name());
         info!("  cnum: {}", data.cnum);
         info!("  hash: {}", data.hash());
-        info!("  reqd: {:?}", data.dep_kind.get());
+        info!("  reqd: {:?}", *data.dep_kind.lock());
         let CrateSource { dylib, rlib, rmeta } = data.source.clone();
         dylib.map(|dl| info!("  dylib: {}", dl.0.display()));
         rlib.map(|rl|  info!("   rlib: {}", rl.0.display()));
@@ -233,7 +232,7 @@ impl<'a> CrateLoader<'a> {
 
         let mut cmeta = cstore::CrateMetadata {
             name,
-            extern_crate: Cell::new(None),
+            extern_crate: Lock::new(None),
             def_path_table: Lrc::new(def_path_table),
             trait_impls,
             proc_macros: crate_root.macro_derive_registrar.map(|_| {
@@ -241,11 +240,11 @@ impl<'a> CrateLoader<'a> {
             }),
             root: crate_root,
             blob: metadata,
-            cnum_map: RefCell::new(cnum_map),
+            cnum_map: Lock::new(cnum_map),
             cnum,
-            codemap_import_info: RefCell::new(vec![]),
-            attribute_cache: RefCell::new([Vec::new(), Vec::new()]),
-            dep_kind: Cell::new(dep_kind),
+            codemap_import_info: RwLock::new(vec![]),
+            attribute_cache: Lock::new([Vec::new(), Vec::new()]),
+            dep_kind: Lock::new(dep_kind),
             source: cstore::CrateSource {
                 dylib,
                 rlib,
@@ -335,7 +334,9 @@ impl<'a> CrateLoader<'a> {
                 if data.root.macro_derive_registrar.is_some() {
                     dep_kind = DepKind::UnexportedMacrosOnly;
                 }
-                data.dep_kind.set(cmp::max(data.dep_kind.get(), dep_kind));
+                data.dep_kind.with_lock(|data_dep_kind| {
+                    *data_dep_kind = cmp::max(*data_dep_kind, dep_kind);
+                });
                 (cnum, data)
             }
             LoadResult::Loaded(library) => {
@@ -379,14 +380,14 @@ impl<'a> CrateLoader<'a> {
         if !visited.insert((cnum, extern_crate.direct)) { return }
 
         let cmeta = self.cstore.get_crate_data(cnum);
-        let old_extern_crate = cmeta.extern_crate.get();
+        let mut old_extern_crate = cmeta.extern_crate.borrow_mut();
 
         // Prefer:
         // - something over nothing (tuple.0);
         // - direct extern crate to indirect (tuple.1);
         // - shorter paths to longer (tuple.2).
         let new_rank = (true, extern_crate.direct, !extern_crate.path_len);
-        let old_rank = match old_extern_crate {
+        let old_rank = match *old_extern_crate {
             None => (false, false, !0),
             Some(ref c) => (true, c.direct, !c.path_len),
         };
@@ -395,7 +396,9 @@ impl<'a> CrateLoader<'a> {
             return; // no change needed
         }
 
-        cmeta.extern_crate.set(Some(extern_crate));
+        *old_extern_crate = Some(extern_crate);
+        drop(old_extern_crate);
+
         // Propagate the extern crate info to dependencies.
         extern_crate.direct = false;
         for &dep_cnum in cmeta.cnum_map.borrow().iter() {
@@ -646,7 +649,7 @@ impl<'a> CrateLoader<'a> {
                 // #![panic_runtime] crate.
                 self.inject_dependency_if(cnum, "a panic runtime",
                                           &|data| data.needs_panic_runtime(sess));
-                runtime_found = runtime_found || data.dep_kind.get() == DepKind::Explicit;
+                runtime_found = runtime_found || *data.dep_kind.lock() == DepKind::Explicit;
             }
         });
 
