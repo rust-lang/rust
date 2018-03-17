@@ -44,6 +44,7 @@ o("debug", "rust.debug", "debug mode; disables optimization unless `--enable-opt
 o("docs", "build.docs", "build standard library documentation")
 o("compiler-docs", "build.compiler-docs", "build compiler documentation")
 o("optimize-tests", "rust.optimize-tests", "build tests with optimizations")
+o("experimental-parallel-queries", "rust.experimental-parallel-queries", "build rustc with experimental parallelization")
 o("test-miri", "rust.test-miri", "run miri's test suite")
 o("debuginfo-tests", "rust.debuginfo-tests", "build tests with debugger metadata")
 o("quiet-tests", "rust.quiet-tests", "enable quieter output when running tests")
