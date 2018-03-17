@@ -10,7 +10,7 @@
 
 // ignore-emscripten u128 not supported
 
-#![feature(test, i128)]
+#![feature(test)]
 #![deny(overflowing_literals)]
 extern crate test;
 
