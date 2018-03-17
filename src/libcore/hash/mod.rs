@@ -101,7 +101,7 @@ pub use self::sip::SipHasher;
 
 #[unstable(feature = "sip_hash_13", issue = "34767")]
 #[allow(deprecated)]
-pub use self::sip::{SipHasher13, SipHasher24};
+pub use self::sip::SipHasher13;
 
 mod sip;
 
