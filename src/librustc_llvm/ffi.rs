@@ -621,6 +621,7 @@ extern "C" {
     pub fn LLVMConstIntGetSExtValue(ConstantVal: ValueRef) -> c_longlong;
     pub fn LLVMRustConstInt128Get(ConstantVal: ValueRef, SExt: bool,
                                   high: *mut u64, low: *mut u64) -> bool;
+    pub fn LLVMConstRealGetDouble (ConstantVal: ValueRef, losesInfo: *mut Bool) -> f64;
 
 
     // Operations on composite constants
@@ -1201,6 +1202,46 @@ extern "C" {
                                 Name: *const c_char)
                                 -> ValueRef;
 
+    pub fn LLVMRustBuildVectorReduceFAdd(B: BuilderRef,
+                                         Acc: ValueRef,
+                                         Src: ValueRef)
+                                         -> ValueRef;
+    pub fn LLVMRustBuildVectorReduceFMul(B: BuilderRef,
+                                         Acc: ValueRef,
+                                         Src: ValueRef)
+                                         -> ValueRef;
+    pub fn LLVMRustBuildVectorReduceAdd(B: BuilderRef,
+                                        Src: ValueRef)
+                                        -> ValueRef;
+    pub fn LLVMRustBuildVectorReduceMul(B: BuilderRef,
+                                        Src: ValueRef)
+                                        -> ValueRef;
+    pub fn LLVMRustBuildVectorReduceAnd(B: BuilderRef,
+                                        Src: ValueRef)
+                                        -> ValueRef;
+    pub fn LLVMRustBuildVectorReduceOr(B: BuilderRef,
+                                       Src: ValueRef)
+                                       -> ValueRef;
+    pub fn LLVMRustBuildVectorReduceXor(B: BuilderRef,
+                                        Src: ValueRef)
+                                        -> ValueRef;
+    pub fn LLVMRustBuildVectorReduceMin(B: BuilderRef,
+                                        Src: ValueRef,
+                                        IsSigned: bool)
+                                        -> ValueRef;
+    pub fn LLVMRustBuildVectorReduceMax(B: BuilderRef,
+                                        Src: ValueRef,
+                                        IsSigned: bool)
+                                        -> ValueRef;
+    pub fn LLVMRustBuildVectorReduceFMin(B: BuilderRef,
+                                         Src: ValueRef,
+                                         IsNaN: bool)
+                                         -> ValueRef;
+    pub fn LLVMRustBuildVectorReduceFMax(B: BuilderRef,
+                                         Src: ValueRef,
+                                         IsNaN: bool)
+                                         -> ValueRef;
+
     pub fn LLVMBuildIsNull(B: BuilderRef, Val: ValueRef, Name: *const c_char) -> ValueRef;
     pub fn LLVMBuildIsNotNull(B: BuilderRef, Val: ValueRef, Name: *const c_char) -> ValueRef;
     pub fn LLVMBuildPtrDiff(B: BuilderRef,
@@ -1567,6 +1608,7 @@ extern "C" {
     pub fn LLVMRustWriteValueToString(value_ref: ValueRef, s: RustStringRef);
 
     pub fn LLVMIsAConstantInt(value_ref: ValueRef) -> ValueRef;
+    pub fn LLVMIsAConstantFP(value_ref: ValueRef) -> ValueRef;
 
     pub fn LLVMRustPassKind(Pass: PassRef) -> PassKind;
     pub fn LLVMRustFindAndCreatePass(Pass: *const c_char) -> PassRef;

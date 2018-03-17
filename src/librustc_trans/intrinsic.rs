@@ -1018,13 +1018,21 @@ fn generic_simd_intrinsic<'a, 'tcx>(
                          name, $($fmt)*));
         }
     }
-    macro_rules! require {
-        ($cond: expr, $($fmt: tt)*) => {
-            if !$cond {
+    macro_rules! return_error {
+        ($($fmt: tt)*) => {
+            {
                 emit_error!($($fmt)*);
                 return Err(());
             }
         }
+    }
+
+    macro_rules! require {
+        ($cond: expr, $($fmt: tt)*) => {
+            if !$cond {
+                return_error!($($fmt)*);
+            }
+        };
     }
     macro_rules! require_simd {
         ($ty: expr, $position: expr) => {
@@ -1144,6 +1152,161 @@ fn generic_simd_intrinsic<'a, 'tcx>(
                  in_elem, in_ty, ret_ty);
         return Ok(bx.extract_element(args[0].immediate(), args[1].immediate()))
     }
+
+    macro_rules! arith_red {
+        ($name:tt : $integer_reduce:ident, $float_reduce:ident, $ordered:expr) => {
+            if name == $name {
+                require!(ret_ty == in_elem,
+                         "expected return type `{}` (element of input `{}`), found `{}`",
+                         in_elem, in_ty, ret_ty);
+                return match in_elem.sty {
+                    ty::TyInt(_) | ty::TyUint(_) => {
+                        let r = bx.$integer_reduce(args[0].immediate());
+                        if $ordered {
+                            // if overflow occurs, the result is the
+                            // mathematical result modulo 2^n:
+                            if name.contains("mul") {
+                                Ok(bx.mul(args[1].immediate(), r))
+                            } else {
+                                Ok(bx.add(args[1].immediate(), r))
+                            }
+                        } else {
+                            Ok(bx.$integer_reduce(args[0].immediate()))
+                        }
+                    },
+                    ty::TyFloat(f) => {
+                        // ordered arithmetic reductions take an accumulator
+                        let acc = if $ordered {
+                            let acc = args[1].immediate();
+                            // FIXME: https://bugs.llvm.org/show_bug.cgi?id=36734
+                            // * if the accumulator of the fadd isn't 0, incorrect
+                            //   code is generated
+                            // * if the accumulator of the fmul isn't 1, incorrect
+                            //   code is generated
+                            match const_get_real(acc) {
+                                None => return_error!("accumulator of {} is not a constant", $name),
+                                Some((v, loses_info)) => {
+                                    if $name.contains("mul") && v != 1.0_f64 {
+                                        return_error!("accumulator of {} is not 1.0", $name);
+                                    } else if $name.contains("add") && v != 0.0_f64 {
+                                        return_error!("accumulator of {} is not 0.0", $name);
+                                    } else if loses_info {
+                                        return_error!("accumulator of {} loses information", $name);
+                                    }
+                                }
+                            }
+                            acc
+                        } else {
+                            // unordered arithmetic reductions do not:
+                            match f.bit_width() {
+                                32 => C_undef(Type::f32(bx.cx)),
+                                64 => C_undef(Type::f64(bx.cx)),
+                                v => {
+                                    return_error!(r#"
+unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
+                                        $name, in_ty, in_elem, v, ret_ty
+                                    )
+                                }
+                            }
+
+                        };
+                        Ok(bx.$float_reduce(acc, args[0].immediate()))
+                    }
+                    _ => {
+                        return_error!(
+                            "unsupported {} from `{}` with element `{}` to `{}`",
+                            $name, in_ty, in_elem, ret_ty
+                        )
+                    },
+                }
+            }
+        }
+    }
+
+    arith_red!("simd_reduce_add_ordered": vector_reduce_add, vector_reduce_fadd_fast, true);
+    arith_red!("simd_reduce_mul_ordered": vector_reduce_mul, vector_reduce_fmul_fast, true);
+    arith_red!("simd_reduce_add_unordered": vector_reduce_add, vector_reduce_fadd_fast, false);
+    arith_red!("simd_reduce_mul_unordered": vector_reduce_mul, vector_reduce_fmul_fast, false);
+
+    macro_rules! minmax_red {
+        ($name:tt: $int_red:ident, $float_red:ident) => {
+            if name == $name {
+                require!(ret_ty == in_elem,
+                         "expected return type `{}` (element of input `{}`), found `{}`",
+                         in_elem, in_ty, ret_ty);
+                return match in_elem.sty {
+                    ty::TyInt(_i) => {
+                        Ok(bx.$int_red(args[0].immediate(), true))
+                    },
+                    ty::TyUint(_u) => {
+                        Ok(bx.$int_red(args[0].immediate(), false))
+                    },
+                    ty::TyFloat(_f) => {
+                        Ok(bx.$float_red(args[0].immediate()))
+                    }
+                    _ => {
+                        return_error!("unsupported {} from `{}` with element `{}` to `{}`",
+                                      $name, in_ty, in_elem, ret_ty)
+                    },
+                }
+            }
+
+        }
+    }
+
+    minmax_red!("simd_reduce_min": vector_reduce_min, vector_reduce_fmin);
+    minmax_red!("simd_reduce_max": vector_reduce_max, vector_reduce_fmax);
+
+    minmax_red!("simd_reduce_min_nanless": vector_reduce_min, vector_reduce_fmin_fast);
+    minmax_red!("simd_reduce_max_nanless": vector_reduce_max, vector_reduce_fmax_fast);
+
+    macro_rules! bitwise_red {
+        ($name:tt : $red:ident, $boolean:expr) => {
+            if name == $name {
+                let input = if !$boolean {
+                    require!(ret_ty == in_elem,
+                             "expected return type `{}` (element of input `{}`), found `{}`",
+                             in_elem, in_ty, ret_ty);
+                    args[0].immediate()
+                } else {
+                    match in_elem.sty {
+                        ty::TyInt(_) | ty::TyUint(_) => {},
+                        _ => {
+                            return_error!("unsupported {} from `{}` with element `{}` to `{}`",
+                                          $name, in_ty, in_elem, ret_ty)
+                        }
+                    }
+
+                    // boolean reductions operate on vectors of i1s:
+                    let i1 = Type::i1(bx.cx);
+                    let i1xn = Type::vector(&i1, in_len as u64);
+                    bx.trunc(args[0].immediate(), i1xn)
+                };
+                return match in_elem.sty {
+                    ty::TyInt(_) | ty::TyUint(_) => {
+                        let r = bx.$red(input);
+                        Ok(
+                            if !$boolean {
+                                r
+                            } else {
+                                bx.zext(r, Type::bool(bx.cx))
+                            }
+                        )
+                    },
+                    _ => {
+                        return_error!("unsupported {} from `{}` with element `{}` to `{}`",
+                                      $name, in_ty, in_elem, ret_ty)
+                    },
+                }
+            }
+        }
+    }
+
+    bitwise_red!("simd_reduce_and": vector_reduce_and, false);
+    bitwise_red!("simd_reduce_or": vector_reduce_or, false);
+    bitwise_red!("simd_reduce_xor": vector_reduce_xor, false);
+    bitwise_red!("simd_reduce_all": vector_reduce_and, true);
+    bitwise_red!("simd_reduce_any": vector_reduce_or, true);
 
     if name == "simd_cast" {
         require_simd!(ret_ty, "return");
