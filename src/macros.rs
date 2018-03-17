@@ -33,7 +33,8 @@ use syntax::tokenstream::{Cursor, ThinTokenStream, TokenStream, TokenTree};
 use syntax::util::ThinVec;
 
 use codemap::SpanUtils;
-use comment::{contains_comment, remove_trailing_white_spaces, FindUncommented};
+use comment::{contains_comment, remove_trailing_white_spaces, CharClasses, FindUncommented,
+              FullCodeCharKind};
 use expr::rewrite_array;
 use lists::{itemize_list, write_list, ListFormatting};
 use overflow;
@@ -409,8 +410,10 @@ fn replace_names(input: &str) -> Option<(String, HashMap<String, String>)> {
     let mut dollar_count = 0;
     let mut cur_name = String::new();
 
-    for c in input.chars() {
-        if c == '$' {
+    for (kind, c) in CharClasses::new(input.chars()) {
+        if kind != FullCodeCharKind::Normal {
+            result.push(c);
+        } else if c == '$' {
             dollar_count += 1;
         } else if dollar_count == 0 {
             result.push(c);
