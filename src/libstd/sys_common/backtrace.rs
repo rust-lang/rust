@@ -102,11 +102,14 @@ fn should_show_frame(frame: &Frame, context: &BacktraceContext) -> bool {
     const FILTERED_SYMBOLS: &[&str] = &[
         "main",
         "rust_begin_unwind",
+        "__rust_maybe_catch_panic"
     ];
     const FILTERED_SYMBOL_PARTS: &[&str] = &[
-        "panic",
-        "sys",
-        "lang_start",
+        "_ZN4core9panicking",
+        "_ZN3std9panicking",
+        "_ZN3std3sys",
+        "_ZN3std10sys_common",
+        "_ZN3std2rt",
     ];
     let mut should_show = true;
     let _ = resolve_symname(*frame, |symname| {
@@ -118,7 +121,7 @@ fn should_show_frame(frame: &Frame, context: &BacktraceContext) -> bool {
                 }
             }
             for filtered_symbol_part in FILTERED_SYMBOL_PARTS {
-                if mangled_symbol_name.contains(filtered_symbol_part) {
+                if mangled_symbol_name.begins_with(filtered_symbol_part) {
                     should_show = false;
                     return Ok(());
                 }
