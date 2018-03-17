@@ -877,10 +877,6 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
         Ok(())
     })?;
 
-    if resolver.found_unresolved_macro {
-        sess.parse_sess.span_diagnostic.abort_if_errors();
-    }
-
     // Needs to go *after* expansion to be able to check the results of macro expansion.
     time(sess, "complete gated feature checking", || {
         sess.track_errors(|| {
@@ -891,6 +887,12 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
                                               sess.opts.unstable_features);
         })
     })?;
+
+    // Unresolved macros might be due to mistyped `#[macro_use]`,
+    // so abort after checking for unknown attributes. (#49074)
+    if resolver.found_unresolved_macro {
+        sess.parse_sess.span_diagnostic.abort_if_errors();
+    }
 
     // Lower ast -> hir.
     // First, we need to collect the dep_graph.

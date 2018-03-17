@@ -606,10 +606,6 @@ impl Build {
         self.verbosity > 0
     }
 
-    pub fn is_very_verbose(&self) -> bool {
-        self.verbosity > 1
-    }
-
     /// Prints a message if this build is configured in verbose mode.
     fn verbose(&self, msg: &str) {
         if self.is_verbose() {
