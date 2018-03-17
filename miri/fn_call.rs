@@ -1,7 +1,8 @@
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{Align, LayoutOf};
+use rustc::ty::layout::{self, Align, LayoutOf};
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::mir;
+use rustc_data_structures::indexed_vec::Idx;
 use syntax::attr;
 use syntax::abi::Abi;
 use syntax::codemap::Span;
@@ -13,6 +14,50 @@ use super::*;
 use tls::MemoryExt;
 
 use super::memory::MemoryKind;
+
+fn write_discriminant_value<'a, 'mir, 'tcx: 'a + 'mir>(
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, super::Evaluator<'tcx>>,
+        dest_ty: Ty<'tcx>,
+        dest: Place,
+        variant_index: usize,
+    ) -> EvalResult<'tcx> {
+        let layout = ecx.layout_of(dest_ty)?;
+
+        match layout.variants {
+            layout::Variants::Single { index } => {
+                if index != variant_index {
+                    // If the layout of an enum is `Single`, all
+                    // other variants are necessarily uninhabited.
+                    assert_eq!(layout.for_variant(&ecx, variant_index).abi,
+                               layout::Abi::Uninhabited);
+                }
+            }
+            layout::Variants::Tagged { .. } => {
+                let discr_val = dest_ty.ty_adt_def().unwrap()
+                    .discriminant_for_variant(*ecx.tcx, variant_index)
+                    .val;
+
+                let (discr_dest, discr) = ecx.place_field(dest, mir::Field::new(0), layout)?;
+                ecx.write_primval(discr_dest, PrimVal::Bytes(discr_val), discr.ty)?;
+            }
+            layout::Variants::NicheFilling {
+                dataful_variant,
+                ref niche_variants,
+                niche_start,
+                ..
+            } => {
+                if variant_index != dataful_variant {
+                    let (niche_dest, niche) =
+                        ecx.place_field(dest, mir::Field::new(0), layout)?;
+                    let niche_value = ((variant_index - niche_variants.start) as u128)
+                        .wrapping_add(niche_start);
+                    ecx.write_primval(niche_dest, PrimVal::Bytes(niche_value), niche.ty)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
 
 pub trait EvalContextExt<'tcx> {
     fn call_c_abi(
@@ -57,6 +102,30 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
         sig: ty::FnSig<'tcx>,
     ) -> EvalResult<'tcx, bool> {
         trace!("eval_fn_call: {:#?}, {:#?}", instance, destination);
+
+        let def_id = instance.def_id();
+        let item_path = self.tcx.absolute_item_path_str(def_id);
+        if item_path.starts_with("std::") {
+            println!("{}", item_path);
+        }
+        match &*item_path {
+            "std::sys::unix::thread::guard::init" | "std::sys::unix::thread::guard::current" => {
+                // Return None, as it doesn't make sense to return Some, because miri detects stack overflow itself.
+                let ret_ty = sig.output();
+                match ret_ty.sty {
+                    ty::TyAdt(ref adt_def, _) => {
+                        assert!(adt_def.is_enum(), "Unexpected return type for {}", item_path);
+                        let none_variant_index = adt_def.variants.iter().enumerate().find(|&(_i, ref def)| {
+                            def.name.as_str() == "None"
+                        }).expect("No None variant").0;
+                        write_discriminant_value(self, ret_ty, destination.unwrap().0, none_variant_index)?;
+                        return Ok(true);
+                    }
+                    _ => panic!("Unexpected return type for {}", item_path)
+                }
+            }
+            _ => {}
+        }
 
         let mir = match self.load_mir(instance.def) {
             Ok(mir) => mir,

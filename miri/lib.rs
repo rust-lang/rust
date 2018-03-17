@@ -3,6 +3,7 @@
     rustc_private,
     conservative_impl_trait,
     catch_expr,
+    inclusive_range_fields
 )]
 
 #[macro_use]
