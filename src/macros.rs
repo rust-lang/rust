@@ -400,6 +400,28 @@ pub fn rewrite_macro_def(
     Some(result)
 }
 
+fn register_metavariable(
+    map: &mut HashMap<String, String>,
+    result: &mut String,
+    name: &str,
+    dollar_count: usize,
+) {
+    let mut new_name = String::new();
+    let mut old_name = String::new();
+
+    old_name.push('$');
+    for _ in 0..(dollar_count - 1) {
+        new_name.push('$');
+        old_name.push('$');
+    }
+    new_name.push('z');
+    new_name.push_str(&name);
+    old_name.push_str(&name);
+
+    result.push_str(&new_name);
+    map.insert(old_name, new_name);
+}
+
 // Replaces `$foo` with `zfoo`. We must check for name overlap to ensure we
 // aren't causing problems.
 // This should also work for escaped `$` variables, where we leave earlier `$`s.
@@ -419,24 +441,11 @@ fn replace_names(input: &str) -> Option<(String, HashMap<String, String>)> {
             result.push(c);
         } else if !c.is_alphanumeric() && !cur_name.is_empty() {
             // Terminates a name following one or more dollars.
-            let mut new_name = String::new();
-            let mut old_name = String::new();
-            old_name.push('$');
-            for _ in 0..(dollar_count - 1) {
-                new_name.push('$');
-                old_name.push('$');
-            }
-            new_name.push('z');
-            new_name.push_str(&cur_name);
-            old_name.push_str(&cur_name);
-
-            result.push_str(&new_name);
-            substs.insert(old_name, new_name);
+            register_metavariable(&mut substs, &mut result, &cur_name, dollar_count);
 
             result.push(c);
-
             dollar_count = 0;
-            cur_name = String::new();
+            cur_name.clear();
         } else if c == '(' && cur_name.is_empty() {
             // FIXME: Support macro def with repeat.
             return None;
@@ -445,21 +454,8 @@ fn replace_names(input: &str) -> Option<(String, HashMap<String, String>)> {
         }
     }
 
-    // FIXME: duplicate code
     if !cur_name.is_empty() {
-        let mut new_name = String::new();
-        let mut old_name = String::new();
-        old_name.push('$');
-        for _ in 0..(dollar_count - 1) {
-            new_name.push('$');
-            old_name.push('$');
-        }
-        new_name.push('z');
-        new_name.push_str(&cur_name);
-        old_name.push_str(&cur_name);
-
-        result.push_str(&new_name);
-        substs.insert(old_name, new_name);
+        register_metavariable(&mut substs, &mut result, &cur_name, dollar_count);
     }
 
     debug!("replace_names `{}` {:?}", result, substs);
