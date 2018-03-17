@@ -107,10 +107,6 @@ struct Binary;
 #[derive(Clone, PartialEq)]
 struct Octal;
 
-/// A decimal (base 10) radix
-#[derive(Clone, PartialEq)]
-struct Decimal;
-
 /// A hexadecimal (base 16) radix, formatted with lower-case characters
 #[derive(Clone, PartialEq)]
 struct LowerHex;
@@ -136,7 +132,6 @@ macro_rules! radix {
 
 radix! { Binary,    2, "0b", x @  0 ...  1 => b'0' + x }
 radix! { Octal,     8, "0o", x @  0 ...  7 => b'0' + x }
-radix! { Decimal,  10, "",   x @  0 ...  9 => b'0' + x }
 radix! { LowerHex, 16, "0x", x @  0 ...  9 => b'0' + x,
                              x @ 10 ... 15 => b'a' + (x - 10) }
 radix! { UpperHex, 16, "0x", x @  0 ...  9 => b'0' + x,
