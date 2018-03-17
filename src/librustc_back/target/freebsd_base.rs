@@ -33,6 +33,7 @@ pub fn opts() -> TargetOptions {
         has_rpath: true,
         pre_link_args: args,
         position_independent_executables: true,
+        eliminate_frame_pointer: false, // FIXME 43575
         relro_level: RelroLevel::Full,
         exe_allocation_crate: super::maybe_jemalloc(),
         .. Default::default()
