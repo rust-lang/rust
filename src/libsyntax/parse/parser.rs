@@ -549,7 +549,7 @@ impl<'a> Parser<'a> {
                -> Self {
         let mut parser = Parser {
             sess,
-            token: token::Underscore,
+            token: token::Whitespace,
             span: syntax_pos::DUMMY_SP,
             prev_span: syntax_pos::DUMMY_SP,
             meta_var_span: None,
@@ -800,11 +800,7 @@ impl<'a> Parser<'a> {
                 Err(if self.prev_token_kind == PrevTokenKind::DocComment {
                         self.span_fatal_err(self.prev_span, Error::UselessDocComment)
                     } else {
-                        let mut err = self.expected_ident_found();
-                        if self.token == token::Underscore {
-                            err.note("`_` is a wildcard pattern, not an identifier");
-                        }
-                        err
+                        self.expected_ident_found()
                     })
             }
         }
@@ -1602,7 +1598,7 @@ impl<'a> Parser<'a> {
             let e = self.parse_expr()?;
             self.expect(&token::CloseDelim(token::Paren))?;
             TyKind::Typeof(e)
-        } else if self.eat(&token::Underscore) {
+        } else if self.eat_keyword(keywords::Underscore) {
             // A type to be inferred `_`
             TyKind::Infer
         } else if self.token_is_bare_fn_keyword() {
@@ -1796,7 +1792,7 @@ impl<'a> Parser<'a> {
             _ => 0,
         };
 
-        self.look_ahead(offset, |t| t.is_ident() || t == &token::Underscore) &&
+        self.look_ahead(offset, |t| t.is_ident()) &&
         self.look_ahead(offset + 1, |t| t == &token::Colon)
     }
 
@@ -2782,7 +2778,7 @@ impl<'a> Parser<'a> {
             },
             token::CloseDelim(_) | token::Eof => unreachable!(),
             _ => {
-                let (token, span) = (mem::replace(&mut self.token, token::Underscore), self.span);
+                let (token, span) = (mem::replace(&mut self.token, token::Whitespace), self.span);
                 self.bump();
                 TokenTree::Token(span, token)
             }
@@ -3815,11 +3811,6 @@ impl<'a> Parser<'a> {
         let lo = self.span;
         let pat;
         match self.token {
-            token::Underscore => {
-                // Parse _
-                self.bump();
-                pat = PatKind::Wild;
-            }
             token::BinOp(token::And) | token::AndAnd => {
                 // Parse &pat / &mut pat
                 self.expect_and()?;
@@ -3849,8 +3840,11 @@ impl<'a> Parser<'a> {
                 self.expect(&token::CloseDelim(token::Bracket))?;
                 pat = PatKind::Slice(before, slice, after);
             }
-            // At this point, token != _, &, &&, (, [
-            _ => if self.eat_keyword(keywords::Mut) {
+            // At this point, token != &, &&, (, [
+            _ => if self.eat_keyword(keywords::Underscore) {
+                // Parse _
+                pat = PatKind::Wild;
+            } else if self.eat_keyword(keywords::Mut) {
                 // Parse mut ident @ pat / mut ref ident @ pat
                 let mutref_span = self.prev_span.to(self.span);
                 let binding_mode = if self.eat_keyword(keywords::Ref) {
@@ -7065,10 +7059,12 @@ impl<'a> Parser<'a> {
 
     fn parse_rename(&mut self) -> PResult<'a, Option<Ident>> {
         if self.eat_keyword(keywords::As) {
-            if self.eat(&token::Underscore) {
-                Ok(Some(Ident::with_empty_ctxt(Symbol::gensym("_"))))
-            } else {
-                self.parse_ident().map(Some)
+            match self.token {
+                token::Ident(ident) if ident.name == keywords::Underscore.name() => {
+                    self.bump(); // `_`
+                    Ok(Some(Ident { name: ident.name.gensymed(), ..ident }))
+                }
+                _ => self.parse_ident().map(Some),
             }
         } else {
             Ok(None)

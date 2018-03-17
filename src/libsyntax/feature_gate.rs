@@ -1790,7 +1790,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_lifetime(&mut self, lt: &'a ast::Lifetime) {
-        if lt.ident.name == "'_" {
+        if lt.ident.name == keywords::UnderscoreLifetime.name() {
             gate_feature_post!(&self, underscore_lifetimes, lt.span,
                                "underscore lifetimes are unstable");
         }

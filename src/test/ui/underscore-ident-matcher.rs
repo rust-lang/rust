@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+macro_rules! identity {
+    ($i: ident) => (
+        $i
+    )
+}
 
 fn main() {
-    let a = 0;
-    let _b = 0;
-    let _ = 0;
-    let mut b = 0;
-    let mut _b = 0;
-    let mut _ = 0; //~ ERROR expected identifier, found reserved identifier `_`
+    let identity!(_) = 10; //~ ERROR no rules expected the token `_`
 }

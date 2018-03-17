@@ -709,7 +709,6 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
         token::Pound        => "Pound",
         token::Dollar       => "Dollar",
         token::Question     => "Question",
-        token::Underscore   => "Underscore",
         token::Eof          => "Eof",
 
         token::Whitespace | token::Comment | token::Shebang(_) => {

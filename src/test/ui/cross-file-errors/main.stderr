@@ -1,4 +1,4 @@
-error: expected expression, found `_`
+error: expected expression, found reserved identifier `_`
   --> $DIR/underscore.rs:18:9
    |
 LL |         _
