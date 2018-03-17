@@ -53,7 +53,7 @@
 #![feature(from_ref)]
 #![feature(fs_read_write)]
 #![feature(i128)]
-#![feature(i128_type)]
+#![cfg_attr(stage0, feature(i128_type))]
 #![cfg_attr(stage0, feature(inclusive_range_syntax))]
 #![cfg_attr(windows, feature(libc))]
 #![feature(match_default_bindings)]

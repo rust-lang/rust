@@ -34,7 +34,7 @@
        test(no_crate_inject, attr(deny(warnings))),
        test(attr(allow(dead_code, deprecated, unused_variables, unused_mut))))]
 
-#![feature(i128_type)]
+#![cfg_attr(stage0, feature(i128_type))]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(lang_items)]

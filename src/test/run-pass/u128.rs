@@ -12,7 +12,7 @@
 
 // compile-flags: -Z borrowck=compare
 
-#![feature(i128_type, test)]
+#![feature(test)]
 
 extern crate test;
 use test::black_box as b;

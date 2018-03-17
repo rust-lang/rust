@@ -20,7 +20,7 @@
 #![deny(warnings)]
 
 #![feature(i128)]
-#![feature(i128_type)]
+#![cfg_attr(stage0, feature(i128_type))]
 
 extern crate rustc_apfloat;
 

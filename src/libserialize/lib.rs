@@ -23,7 +23,7 @@ Core encoding and decoding interfaces.
 
 #![feature(box_syntax)]
 #![feature(core_intrinsics)]
-#![feature(i128_type)]
+#![cfg_attr(stage0, feature(i128_type))]
 #![feature(specialization)]
 #![cfg_attr(test, feature(test))]
 

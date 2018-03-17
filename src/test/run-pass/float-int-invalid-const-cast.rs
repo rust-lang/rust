@@ -10,7 +10,6 @@
 
 // ignore-emscripten no i128 support
 
-#![feature(i128_type)]
 #![deny(const_err)]
 
 use std::{f32, f64};
