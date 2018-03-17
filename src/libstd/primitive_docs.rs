@@ -751,7 +751,7 @@ mod prim_i64 { }
 /// The 128-bit signed integer type.
 ///
 /// *[See also the `std::i128` module](i128/index.html).*
-#[unstable(feature = "i128", issue="35118")]
+#[stable(feature = "i128", since="1.26.0")]
 mod prim_i128 { }
 
 #[doc(primitive = "u8")]
@@ -791,7 +791,7 @@ mod prim_u64 { }
 /// The 128-bit unsigned integer type.
 ///
 /// *[See also the `std::u128` module](u128/index.html).*
-#[unstable(feature = "i128", issue="35118")]
+#[stable(feature = "i128", since="1.26.0")]
 mod prim_u128 { }
 
 #[doc(primitive = "isize")]

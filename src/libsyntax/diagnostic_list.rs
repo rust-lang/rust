@@ -250,7 +250,7 @@ An unstable feature was used.
 Erroneous code example:
 
 ```compile_fail,E658
-#[repr(u128)] // error: use of unstable library feature 'i128'
+#[repr(u128)] // error: use of unstable library feature 'repr128'
 enum Foo {
     Bar(u64),
 }
@@ -264,7 +264,7 @@ If you're using a nightly version of rustc, just add the corresponding feature
 to be able to use it:
 
 ```
-#![feature(repri128)]
+#![feature(repr128)]
 
 #[repr(u128)] // ok!
 enum Foo {
