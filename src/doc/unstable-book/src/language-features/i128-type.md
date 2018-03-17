@@ -9,7 +9,7 @@ The tracking issue for this feature is: [#35118]
 The `i128` feature adds support for `#[repr(u128)]` on `enum`s.
 
 ```rust
-#![feature(i128)]
+#![feature(repri128)]
 
 #[repr(u128)]
 enum Foo {
