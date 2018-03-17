@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn test(&'a str) {
-    //~^ ERROR unexpected lifetime `'a` in pattern
+    //~^ ERROR expected pattern, found `'a`
 }
 
 fn main() {

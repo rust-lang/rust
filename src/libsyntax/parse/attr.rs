@@ -15,7 +15,6 @@ use parse::common::SeqSep;
 use parse::PResult;
 use parse::token::{self, Nonterminal};
 use parse::parser::{Parser, TokenType, PathStyle};
-use symbol::keywords;
 use tokenstream::TokenStream;
 
 #[derive(PartialEq, Eq, Debug)]
@@ -29,10 +28,7 @@ const DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG: &'static str = "an inner attribute 
 
 impl<'a> Parser<'a> {
     /// Parse attributes that appear before an item
-    pub fn parse_outer_attributes(&mut self,
-                                  accept_lifetimes: bool)
-                                  -> PResult<'a, Vec<ast::Attribute>>
-    {
+    pub fn parse_outer_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
         let mut attrs: Vec<ast::Attribute> = Vec::new();
         let mut just_parsed_doc_comment = false;
         loop {
@@ -62,20 +58,6 @@ impl<'a> Parser<'a> {
                     attrs.push(attr);
                     self.bump();
                     just_parsed_doc_comment = true;
-                }
-                token::Lifetime(l)
-                if !accept_lifetimes && self.look_ahead(1, |t| *t != token::Colon) => {
-                    // lifetimes are not accepted, but break labels are
-                    let mut err = self.fatal(&format!("found unexpected lifetime `{}`", l));
-                    err.span_label(self.span, "unexpected lifetime");
-                    err.help("lifetimes are only appropriate in definitions");
-                    err.emit();
-                    self.bump();
-                    if self.token.is_keyword(keywords::Mut) {
-                        // Given `foo(&'a mut bar)`, if we remove `'a` as suggested,
-                        // `foo(&mut bar)` could be legal, don't complain about it.
-                        self.bump();
-                    }
                 }
                 _ => break,
             }

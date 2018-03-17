@@ -245,6 +245,7 @@ pub struct Parser<'a> {
     pub desugar_doc_comments: bool,
     /// Whether we should configure out of line modules as we parse.
     pub cfg_mods: bool,
+    allow_lifetimes: bool,
 }
 
 
@@ -572,6 +573,7 @@ impl<'a> Parser<'a> {
             },
             desugar_doc_comments,
             cfg_mods: true,
+            allow_lifetimes: true,
         };
 
         let tok = parser.next_tok();
@@ -1392,7 +1394,7 @@ impl<'a> Parser<'a> {
     /// Parse the items in a trait declaration
     pub fn parse_trait_item(&mut self, at_end: &mut bool) -> PResult<'a, TraitItem> {
         maybe_whole!(self, NtTraitItem, |x| x);
-        let attrs = self.parse_outer_attributes(true)?;
+        let attrs = self.parse_outer_attributes()?;
         let (mut item, tokens) = self.collect_tokens(|this| {
             this.parse_trait_item_(at_end, attrs)
         })?;
@@ -1530,7 +1532,9 @@ impl<'a> Parser<'a> {
         self.parse_ty_common(false, true)
     }
 
-    fn parse_ty_common(&mut self, allow_plus: bool, allow_qpath_recovery: bool)
+    fn parse_ty_common(&mut self,
+                       allow_plus: bool,
+                       allow_qpath_recovery: bool)
                        -> PResult<'a, P<Ty>> {
         maybe_whole!(self, NtTy, |x| x);
 
@@ -1594,6 +1598,7 @@ impl<'a> Parser<'a> {
         } else if self.check(&token::BinOp(token::And)) || self.check(&token::AndAnd) {
             // Reference
             self.expect_and()?;
+            self.maybe_disallow_lifetime();
             self.parse_borrowed_pointee()?
         } else if self.eat_keyword_noexpect(keywords::Typeof) {
             // `typeof(EXPR)`
@@ -2057,6 +2062,7 @@ impl<'a> Parser<'a> {
                                  .span_label(self.prev_span, "try removing `::`").emit();
             }
 
+            self.allow_lifetimes = true;
             let parameters = if self.eat_lt() {
                 // `<'a, T, A = U>`
                 let (lifetimes, types, bindings) = self.parse_generic_args()?;
@@ -2123,7 +2129,7 @@ impl<'a> Parser<'a> {
 
     /// Parse ident (COLON expr)?
     pub fn parse_field(&mut self) -> PResult<'a, Field> {
-        let attrs = self.parse_outer_attributes(false)?;
+        let attrs = self.parse_outer_attributes()?;
         let lo = self.span;
         let hi;
 
@@ -2538,7 +2544,7 @@ impl<'a> Parser<'a> {
         if let Some(attrs) = already_parsed_attrs {
             Ok(attrs)
         } else {
-            self.parse_outer_attributes(false).map(|a| a.into())
+            self.parse_outer_attributes().map(|a| a.into())
         }
     }
 
@@ -2561,9 +2567,12 @@ impl<'a> Parser<'a> {
                                   -> PResult<'a, P<Expr>> {
         let attrs = self.parse_or_use_outer_attributes(already_parsed_attrs)?;
 
+        self.allow_lifetimes = false;
         let b = self.parse_bottom_expr();
         let (span, b) = self.interpolated_or_expr_span(b)?;
-        self.parse_dot_or_call_expr_with(b, span, attrs)
+        let expr = self.parse_dot_or_call_expr_with(b, span, attrs);
+        self.allow_lifetimes = true;
+        expr
     }
 
     pub fn parse_dot_or_call_expr_with(&mut self,
@@ -2852,7 +2861,11 @@ impl<'a> Parser<'a> {
             }
             token::BinOp(token::And) | token::AndAnd => {
                 self.expect_and()?;
+                self.allow_lifetimes = false;
+                self.maybe_disallow_lifetime();
                 let m = self.parse_mutability();
+                self.maybe_disallow_lifetime();
+                self.allow_lifetimes = true;
                 let e = self.parse_prefix_expr(None);
                 let (span, e) = self.interpolated_or_expr_span(e)?;
                 (lo.to(span), ExprKind::AddrOf(m, e))
@@ -3420,7 +3433,7 @@ impl<'a> Parser<'a> {
     pub fn parse_arm(&mut self) -> PResult<'a, Arm> {
         maybe_whole!(self, NtArm, |x| x);
 
-        let attrs = self.parse_outer_attributes(false)?;
+        let attrs = self.parse_outer_attributes()?;
         // Allow a '|' before the pats (RFC 1925)
         self.eat(&token::BinOp(token::Or));
         let pats = self.parse_pats()?;
@@ -3515,14 +3528,17 @@ impl<'a> Parser<'a> {
 
     /// Parse the RHS of a local variable declaration (e.g. '= 14;')
     fn parse_initializer(&mut self, skip_eq: bool) -> PResult<'a, Option<P<Expr>>> {
-        if self.check(&token::Eq) {
+        self.allow_lifetimes = false;
+        let expr = if self.check(&token::Eq) {
             self.bump();
             Ok(Some(self.parse_expr()?))
         } else if skip_eq {
             Ok(Some(self.parse_expr()?))
         } else {
             Ok(None)
-        }
+        };
+        self.allow_lifetimes = true;
+        expr
     }
 
     /// Parse patterns, separated by '|' s
@@ -3658,7 +3674,8 @@ impl<'a> Parser<'a> {
                 if self.check(&token::CloseDelim(token::Brace)) { break }
             }
 
-            let attrs = self.parse_outer_attributes(false)?;
+            let attrs = self.parse_outer_attributes()?;
+            self.maybe_disallow_lifetime();
             let lo = self.span;
             let hi;
 
@@ -3823,13 +3840,9 @@ impl<'a> Parser<'a> {
             token::BinOp(token::And) | token::AndAnd => {
                 // Parse &pat / &mut pat
                 self.expect_and()?;
+                self.maybe_disallow_lifetime();
                 let mutbl = self.parse_mutability();
-                if let token::Lifetime(ident) = self.token {
-                    let mut err = self.fatal(&format!("unexpected lifetime `{}` in pattern",
-                                                      ident));
-                    err.span_label(self.span, "unexpected lifetime");
-                    return Err(err);
-                }
+                self.maybe_disallow_lifetime();
                 let subpat = self.parse_pat_with_range_pat(false)?;
                 pat = PatKind::Ref(subpat, mutbl);
             }
@@ -4036,6 +4049,7 @@ impl<'a> Parser<'a> {
             // instead of an `=` typo.
             let parser_snapshot_before_type = self.clone();
             let colon_sp = self.prev_span;
+            self.allow_lifetimes = true;
             match self.parse_ty() {
                 Ok(ty) => (None, Some(ty)),
                 Err(mut err) => {
@@ -4310,7 +4324,7 @@ impl<'a> Parser<'a> {
                                    -> PResult<'a, Option<Stmt>> {
         maybe_whole!(self, NtStmt, |x| Some(x));
 
-        let attrs = self.parse_outer_attributes(true)?;
+        let attrs = self.parse_outer_attributes()?;
         let lo = self.span;
 
         Ok(Some(if self.eat_keyword(keywords::Let) {
@@ -4797,7 +4811,7 @@ impl<'a> Parser<'a> {
         let mut params = Vec::new();
         let mut seen_ty_param = false;
         loop {
-            let attrs = self.parse_outer_attributes(true)?;
+            let attrs = self.parse_outer_attributes()?;
             if self.check_lifetime() {
                 let lifetime = self.expect_lifetime();
                 // Parse lifetime parameter.
@@ -4846,6 +4860,7 @@ impl<'a> Parser<'a> {
     pub fn parse_generics(&mut self) -> PResult<'a, ast::Generics> {
         maybe_whole!(self, NtGenerics, |x| x);
 
+        self.allow_lifetimes = true;
         let span_lo = self.span;
         if self.eat_lt() {
             let params = self.parse_generic_params()?;
@@ -5219,6 +5234,7 @@ impl<'a> Parser<'a> {
 
     // parse the |arg, arg| header on a lambda
     fn parse_fn_block_decl(&mut self) -> PResult<'a, P<FnDecl>> {
+        self.allow_lifetimes = true;
         let inputs_captures = {
             if self.eat(&token::OrOr) {
                 Vec::new()
@@ -5312,7 +5328,7 @@ impl<'a> Parser<'a> {
     /// Parse an impl item.
     pub fn parse_impl_item(&mut self, at_end: &mut bool) -> PResult<'a, ImplItem> {
         maybe_whole!(self, NtImplItem, |x| x);
-        let attrs = self.parse_outer_attributes(true)?;
+        let attrs = self.parse_outer_attributes()?;
         let (mut item, tokens) = self.collect_tokens(|this| {
             this.parse_impl_item_(at_end, attrs)
         })?;
@@ -5330,6 +5346,7 @@ impl<'a> Parser<'a> {
         let lo = self.span;
         let vis = self.parse_visibility(false)?;
         let defaultness = self.parse_defaultness();
+        self.allow_lifetimes = true;
         let (name, node, generics) = if self.eat_keyword(keywords::Type) {
             // This parses the grammar:
             //     ImplItemAssocTy = Ident ["<"...">"] ["where" ...] "=" Ty ";"
@@ -5565,6 +5582,7 @@ impl<'a> Parser<'a> {
     ///     `impl` GENERICS `!`? TYPE (`where` PREDICATES)? `{` BODY `}`
     fn parse_item_impl(&mut self, unsafety: Unsafety, defaultness: Defaultness)
                        -> PResult<'a, ItemInfo> {
+        self.allow_lifetimes = true;
         // First, parse generic parameters if necessary.
         let mut generics = if self.choose_generics_over_qpath() {
             self.parse_generics()?
@@ -5779,7 +5797,7 @@ impl<'a> Parser<'a> {
             &token::CloseDelim(token::Paren),
             SeqSep::trailing_allowed(token::Comma),
             |p| {
-                let attrs = p.parse_outer_attributes(true)?;
+                let attrs = p.parse_outer_attributes()?;
                 let lo = p.span;
                 let vis = p.parse_visibility(true)?;
                 let ty = p.parse_ty()?;
@@ -5826,7 +5844,7 @@ impl<'a> Parser<'a> {
 
     /// Parse an element of a struct definition
     fn parse_struct_decl_field(&mut self) -> PResult<'a, StructField> {
-        let attrs = self.parse_outer_attributes(true)?;
+        let attrs = self.parse_outer_attributes()?;
         let lo = self.span;
         let vis = self.parse_visibility(false)?;
         self.parse_single_struct_field(lo, vis, attrs)
@@ -5962,6 +5980,7 @@ impl<'a> Parser<'a> {
     fn parse_item_const(&mut self, m: Option<Mutability>) -> PResult<'a, ItemInfo> {
         let id = self.parse_ident()?;
         self.expect(&token::Colon)?;
+        self.allow_lifetimes = true;
         let ty = self.parse_ty()?;
         self.expect(&token::Eq)?;
         let e = self.parse_expr()?;
@@ -6364,7 +6383,7 @@ impl<'a> Parser<'a> {
         let mut all_nullary = true;
         let mut any_disr = None;
         while self.token != token::CloseDelim(token::Brace) {
-            let variant_attrs = self.parse_outer_attributes(true)?;
+            let variant_attrs = self.parse_outer_attributes()?;
             let vlo = self.span;
 
             let struct_def;
@@ -6805,7 +6824,7 @@ impl<'a> Parser<'a> {
 
     /// Parse a foreign item.
     fn parse_foreign_item(&mut self) -> PResult<'a, Option<ForeignItem>> {
-        let attrs = self.parse_outer_attributes(true)?;
+        let attrs = self.parse_outer_attributes()?;
         let lo = self.span;
         let visibility = self.parse_visibility(false)?;
 
@@ -6936,7 +6955,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_item(&mut self) -> PResult<'a, Option<P<Item>>> {
-        let attrs = self.parse_outer_attributes(false)?;
+        let attrs = self.parse_outer_attributes()?;
 
         let (ret, tokens) = self.collect_tokens(|this| {
             this.parse_item_(attrs, true, false)
@@ -7109,6 +7128,21 @@ impl<'a> Parser<'a> {
                 err.span_label(self.span, msg);
                 Err(err)
             }
+        }
+    }
+
+    fn maybe_disallow_lifetime(&mut self) {
+        // lifetimes are not accepted, but break labels are
+        match (&self.token, self.look_ahead(1, |t| *t != token::Colon), self.allow_lifetimes) {
+            //(&token::Lifetime(l), true, false) if &format!("{}", l) != "'static" => {
+            (&token::Lifetime(l), true, false) => {
+                self.fatal(&format!("found unexpected lifetime `{}`", l))
+                    .span_label(self.span, "unexpected lifetime")
+                    .help("lifetimes are only appropriate in definitions")
+                    .emit();
+                self.bump();
+            }
+            _ => {}
         }
     }
 }

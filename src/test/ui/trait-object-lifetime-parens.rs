@@ -18,5 +18,4 @@ fn main() {
     //~^ ERROR parenthesized lifetime bounds are not supported
     let _: Box<('a) + Copy>;
     //~^ ERROR expected type, found `'a`
-    //~| ERROR found unexpected lifetime `'a`
 }

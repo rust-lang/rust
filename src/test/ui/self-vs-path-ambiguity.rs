@@ -16,7 +16,7 @@ impl S {
     fn f(self::S: S) {}
     fn g(&self::S: &S) {}
     fn h(&mut self::S: &mut S) {}
-    fn i(&'a self::S: &S) {} //~ ERROR unexpected lifetime `'a` in pattern
+    fn i(&'a self::S: &S) {} //~ ERROR expected pattern, found `'a`
 }
 
 fn main() {}
