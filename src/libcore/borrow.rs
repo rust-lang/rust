@@ -12,7 +12,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-/// A trait identifying how borrowed data behaves.
+/// A trait for borrowing data.
 ///
 /// In Rust, it is common to provide different representations of a type for
 /// different use cases. For instance, storage location and management for a
@@ -24,40 +24,37 @@
 /// [`str`]. This requires keeping additional information unnecessary for a
 /// simple, immutable string.
 ///
-/// These types signal that they are a specialized representation of a basic
-/// type `T` by implementing `Borrow<T>`. The method `borrow` provides a way
-/// to convert a reference to the type into a reference to this basic type
-/// `T`.
+/// These types provide access to the underlying data through references
+/// to the type of that data. They are said to be ‘borrowed as’ that type.
+/// For instance, a [`Box<T>`] can be borrowed as `T` while a [`String`]
+/// can be borrowed as `str`.
+///
+/// Types express that they can be borrowed as some type `T` by implementing
+/// `Borrow<T>`, providing a reference to a `T` in the trait’s
+/// [`borrow`] method. A type is free to borrow as several different types.
+/// If it wishes to mutably borrow as the type – allowing the underlying data
+/// to be modified, it can additionally implement [`BorrowMut<T>`].
 ///
 /// Further, when providing implementations for additional traits, it needs
 /// to be considered whether they should behave identical to those of the
 /// underlying type as a consequence of acting as a representation of that
-/// underlying type.
-///
-/// Generic code typically uses `Borrow<T>` when it not only needs access
-/// to a reference of the underlying type but relies on the identical
-/// behavior of these additional trait implementations. These traits are
-/// likely to appear as additional trait bounds.
+/// underlying type. Generic code typically uses `Borrow<T>` when it relies
+/// on the identical behavior of these additional trait implementations.
+/// These traits will likely appear as additional trait bounds.
 ///
 /// If generic code merely needs to work for all types that can
 /// provide a reference to related type `T`, it is often better to use
 /// [`AsRef<T>`] as more types can safely implement it.
 ///
-/// If a type implementing `Borrow<T>` also wishes to allow mutable access
-/// to the underlying type `T`, it can do so by implementing the companion
-/// trait [`BorrowMut`].
-///
-/// Note also that it is perfectly fine for a single type to have multiple
-/// implementations of `Borrow<T>` for different `T`s. In fact, a blanket
-/// implementation lets every type be at least a borrow of itself.
-///
 /// [`AsRef<T>`]: ../../std/convert/trait.AsRef.html
-/// [`BorrowMut`]: trait.BorrowMut.html
+/// [`BorrowMut<T>`]: trait.BorrowMut.html
 /// [`Box<T>`]: ../../std/boxed/struct.Box.html
 /// [`Mutex<T>`]: ../../std/sync/struct.Mutex.html
 /// [`Rc<T>`]: ../../std/rc/struct.Rc.html
 /// [`str`]: ../../std/primitive.str.html
 /// [`String`]: ../../std/string/struct.String.html
+/// [`borrow`]: #tymethod.borrow
+///
 ///
 /// # Examples
 ///
@@ -113,10 +110,10 @@
 /// `str` is available.
 ///
 /// Instead, the `get` method is generic over the type of the underlying key
-/// data, called `Q` in the method signature above. It states that `K` is a
-/// representation of `Q` by requiring that `K: Borrow<Q>`. By additionally
-/// requiring `Q: Hash + Eq`, it demands that `K` and `Q` have
-/// implementations of the `Hash` and `Eq` traits that produce identical
+/// data, called `Q` in the method signature above. It states that `K`
+/// borrows as a `Q` by requiring that `K: Borrow<Q>`. By additionally
+/// requiring `Q: Hash + Eq`, it signals the requirement that `K` and `Q`
+/// have implementations of the `Hash` and `Eq` traits that produce identical
 /// results.
 ///
 /// The implementation of `get` relies in particular on identical
@@ -141,7 +138,7 @@
 /// ```
 ///
 /// Because two equal values need to produce the same hash value, the
-/// implementation of `Hash` needs to reflect that, too:
+/// implementation of `Hash` needs to ignore ASCII case, too:
 ///
 /// ```
 /// # use std::hash::{Hash, Hasher};
