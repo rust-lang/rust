@@ -612,20 +612,55 @@ class RustBuild(object):
             return config
         return default_build_triple()
 
+    def check_submodule(self, module, slow_submodules):
+        if not slow_submodules:
+            checked_out = subprocess.Popen(["git", "rev-parse", "HEAD"],
+                                           cwd=os.path.join(self.rust_root, module),
+                                           stdout=subprocess.PIPE)
+            return checked_out
+        else:
+            return None
+
+    def update_submodule(self, module, checked_out, recorded_submodules):
+        module_path = os.path.join(self.rust_root, module)
+
+        if checked_out != None:
+            default_encoding = sys.getdefaultencoding()
+            checked_out = checked_out.communicate()[0].decode(default_encoding).strip()
+            if recorded_submodules[module] == checked_out:
+                return
+
+        print("Updating submodule", module)
+
+        run(["git", "submodule", "-q", "sync", module],
+            cwd=self.rust_root, verbose=self.verbose)
+        run(["git", "submodule", "update",
+            "--init", "--recursive", module],
+            cwd=self.rust_root, verbose=self.verbose)
+        run(["git", "reset", "-q", "--hard"],
+            cwd=module_path, verbose=self.verbose)
+        run(["git", "clean", "-qdfx"],
+            cwd=module_path, verbose=self.verbose)
+
     def update_submodules(self):
         """Update submodules"""
         if (not os.path.exists(os.path.join(self.rust_root, ".git"))) or \
                 self.get_toml('submodules') == "false":
             return
-        print('Updating submodules')
+        slow_submodules = self.get_toml('fast-submodule') == "false"
+        start_time = time()
+        if slow_submodules:
+            print('Unconditionally updating all submodules')
+        else:
+            print('Updating only changed submodules')
         default_encoding = sys.getdefaultencoding()
-        run(["git", "submodule", "-q", "sync"], cwd=self.rust_root, verbose=self.verbose)
         submodules = [s.split(' ', 1)[1] for s in subprocess.check_output(
             ["git", "config", "--file",
              os.path.join(self.rust_root, ".gitmodules"),
              "--get-regexp", "path"]
         ).decode(default_encoding).splitlines()]
         filtered_submodules = []
+        submodules_names = []
         for module in submodules:
             if module.endswith("llvm"):
                 if self.get_toml('llvm-config'):
@@ -643,16 +678,19 @@ class RustBuild(object):
                 config = self.get_toml('lld')
                 if config is None or config == 'false':
                     continue
-            filtered_submodules.append(module)
-        run(["git", "submodule", "update",
-             "--init", "--recursive"] + filtered_submodules,
-            cwd=self.rust_root, verbose=self.verbose)
-        run(["git", "submodule", "-q", "foreach", "git",
-             "reset", "-q", "--hard"],
-            cwd=self.rust_root, verbose=self.verbose)
-        run(["git", "submodule", "-q", "foreach", "git",
-             "clean", "-qdfx"],
-            cwd=self.rust_root, verbose=self.verbose)
+            check = self.check_submodule(module, slow_submodules)
+            filtered_submodules.append((module, check))
+            submodules_names.append(module)
+        recorded = subprocess.Popen(["git", "ls-tree", "HEAD"] + submodules_names,
+                                    cwd=self.rust_root, stdout=subprocess.PIPE)
+        recorded = recorded.communicate()[0].decode(default_encoding).strip().splitlines()
+        recorded_submodules = {}
+        for data in recorded:
+            data = data.split()
+            recorded_submodules[data[3]] = data[2]
+        for module in filtered_submodules:
+            self.update_submodule(module[0], module[1], recorded_submodules)
+        print("Submodules updated in %.2f seconds" % (time() - start_time))
 
     def set_dev_environment(self):
         """Set download URL for development environment"""
