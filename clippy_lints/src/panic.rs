@@ -48,6 +48,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             if let Some(par) = string.as_str().find('{');
             if string.as_str()[par..].contains('}');
             if params[0].span.source_callee().is_none();
+            if params[0].span.lo() != params[0].span.hi();
             then {
                 span_lint(cx, PANIC_PARAMS, params[0].span,
                           "you probably are missing some parameter in your format string");
