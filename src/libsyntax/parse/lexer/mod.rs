@@ -76,7 +76,7 @@ impl<'a> StringReader<'a> {
     fn mk_ident(&self, string: &str) -> Ident {
         let mut ident = Ident::from_str(string);
         if let Some(span) = self.override_span {
-            ident.ctxt = span.ctxt();
+            ident.span = span;
         }
         ident
     }

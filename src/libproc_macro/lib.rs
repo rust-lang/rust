@@ -720,7 +720,7 @@ impl TokenTree {
                 }).into();
             },
             TokenNode::Term(symbol) => {
-                let ident = ast::Ident { name: symbol.0, ctxt: self.span.0.ctxt() };
+                let ident = ast::Ident::new(symbol.0, self.span.0);
                 let sym_str = symbol.0.as_str();
                 let token =
                     if sym_str.starts_with("'") { Lifetime(ident) }
