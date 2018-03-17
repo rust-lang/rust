@@ -1303,7 +1303,7 @@ impl<T> [T] {
 
     /// Sorts the slice with a key extraction function.
     ///
-    /// This sort is stable (i.e. does not reorder equal elements) and `O(m n log m n)`
+    /// This sort is stable (i.e. does not reorder equal elements) and `O(m n log(m n))`
     /// worst-case, where the key function is `O(m)`.
     ///
     /// For expensive key functions (e.g. functions that are not simple property accesses or
@@ -1365,6 +1365,7 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
+    /// #![feature(slice_sort_by_cached_key)]
     /// let mut v = [-5i32, 4, 32, -3, 2];
     ///
     /// v.sort_by_cached_key(|k| k.to_string());
@@ -1480,7 +1481,7 @@ impl<T> [T] {
     /// elements.
     ///
     /// This sort is unstable (i.e. may reorder equal elements), in-place (i.e. does not allocate),
-    /// and `O(m n log m n)` worst-case, where the key function is `O(m)`.
+    /// and `O(m n log(m n))` worst-case, where the key function is `O(m)`.
     ///
     /// # Current implementation
     ///

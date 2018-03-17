@@ -113,7 +113,6 @@
 #![feature(slice_get_slice)]
 #![feature(slice_patterns)]
 #![feature(slice_rsplit)]
-#![feature(slice_sort_by_cached_key)]
 #![feature(specialization)]
 #![feature(staged_api)]
 #![feature(str_internals)]
