@@ -611,7 +611,7 @@ impl<'a> StringReader<'a> {
                 // I guess this is the only way to figure out if
                 // we're at the beginning of the file...
                 let cmap = CodeMap::new(FilePathMapping::empty());
-                cmap.files.borrow_mut().push(self.filemap.clone());
+                cmap.files.borrow_mut().file_maps.push(self.filemap.clone());
                 let loc = cmap.lookup_char_pos_adj(self.pos);
                 debug!("Skipping a shebang");
                 if loc.line == 1 && loc.col == CharPos(0) {
