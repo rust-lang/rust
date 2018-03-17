@@ -463,6 +463,383 @@ fn replace_names(input: &str) -> Option<(String, HashMap<String, String>)> {
     Some((result, substs))
 }
 
+#[derive(Debug, Clone)]
+enum MacroArgKind {
+    MetaVariable(ast::Ident, String),
+    Repeat(
+        DelimToken,
+        Vec<ParsedMacroArg>,
+        Option<Box<ParsedMacroArg>>,
+        Token,
+    ),
+    Delimited(DelimToken, Vec<ParsedMacroArg>),
+    Separator(String, String),
+    Other(String, String),
+}
+
+fn delim_token_to_str(
+    context: &RewriteContext,
+    delim_token: &DelimToken,
+    shape: Shape,
+    use_multiple_lines: bool,
+) -> (String, String) {
+    let (lhs, rhs) = match *delim_token {
+        DelimToken::Paren => ("(", ")"),
+        DelimToken::Bracket => ("[", "]"),
+        DelimToken::Brace => ("{", "}"),
+        DelimToken::NoDelim => ("", ""),
+    };
+    if use_multiple_lines {
+        let indent_str = shape.indent.to_string_with_newline(context.config);
+        let nested_indent_str = shape
+            .indent
+            .block_indent(context.config)
+            .to_string_with_newline(context.config);
+        (
+            format!("{}{}", lhs, nested_indent_str),
+            format!("{}{}", indent_str, rhs),
+        )
+    } else {
+        (lhs.to_owned(), rhs.to_owned())
+    }
+}
+
+impl MacroArgKind {
+    fn starts_with_dollar(&self) -> bool {
+        match *self {
+            MacroArgKind::Repeat(..) | MacroArgKind::MetaVariable(..) => true,
+            _ => false,
+        }
+    }
+
+    fn ends_with_space(&self) -> bool {
+        match *self {
+            MacroArgKind::Separator(..) => true,
+            _ => false,
+        }
+    }
+
+    fn has_prefix_space(&self) -> bool {
+        match *self {
+            MacroArgKind::Separator(_, ref prefix) | MacroArgKind::Other(_, ref prefix) => {
+                prefix.starts_with(" ")
+            }
+            _ => false,
+        }
+    }
+
+    fn rewrite(
+        &self,
+        context: &RewriteContext,
+        shape: Shape,
+        use_multiple_lines: bool,
+    ) -> Option<String> {
+        let rewrite_delimited_inner = |delim_tok, args| -> Option<(String, String, String)> {
+            let (lhs, rhs) = delim_token_to_str(context, delim_tok, shape, false);
+            let inner = wrap_macro_args(context, args, shape)?;
+            if lhs.len() + inner.len() + rhs.len() <= shape.width {
+                return Some((lhs, inner, rhs));
+            }
+
+            let (lhs, rhs) = delim_token_to_str(context, delim_tok, shape, true);
+            let nested_shape = shape
+                .block_indent(context.config.tab_spaces())
+                .with_max_width(context.config);
+            let inner = wrap_macro_args(context, args, nested_shape)?;
+            Some((lhs, inner, rhs))
+        };
+
+        match *self {
+            MacroArgKind::MetaVariable(ty, ref name) => {
+                Some(format!("${}: {}", name, ty.name.as_str()))
+            }
+            MacroArgKind::Repeat(ref delim_tok, ref args, ref another, ref tok) => {
+                let (lhs, inner, rhs) = rewrite_delimited_inner(delim_tok, args)?;
+                let another = another
+                    .as_ref()
+                    .and_then(|a| a.rewrite(context, shape, use_multiple_lines))
+                    .unwrap_or("".to_owned());
+                let repeat_tok = pprust::token_to_string(tok);
+
+                Some(format!("${}{}{}{}{}", lhs, inner, rhs, another, repeat_tok))
+            }
+            MacroArgKind::Delimited(ref delim_tok, ref args) => {
+                rewrite_delimited_inner(delim_tok, args)
+                    .map(|(lhs, inner, rhs)| format!("{}{}{}", lhs, inner, rhs))
+            }
+            MacroArgKind::Separator(ref sep, ref prefix) => Some(format!("{}{} ", prefix, sep)),
+            MacroArgKind::Other(ref inner, ref prefix) => Some(format!("{}{}", prefix, inner)),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct ParsedMacroArg {
+    kind: MacroArgKind,
+    span: Span,
+}
+
+impl ParsedMacroArg {
+    pub fn rewrite(
+        &self,
+        context: &RewriteContext,
+        shape: Shape,
+        use_multiple_lines: bool,
+    ) -> Option<String> {
+        self.kind.rewrite(context, shape, use_multiple_lines)
+    }
+}
+
+struct MacroArgParser {
+    lo: BytePos,
+    hi: BytePos,
+    buf: String,
+    is_arg: bool,
+    last_tok: Token,
+    start_tok: Token,
+    result: Vec<ParsedMacroArg>,
+}
+
+fn last_tok(tt: &TokenTree) -> Token {
+    match *tt {
+        TokenTree::Token(_, ref t) => t.clone(),
+        TokenTree::Delimited(_, ref d) => d.close_token(),
+    }
+}
+
+impl MacroArgParser {
+    pub fn new() -> MacroArgParser {
+        MacroArgParser {
+            lo: BytePos(0),
+            hi: BytePos(0),
+            buf: String::new(),
+            is_arg: false,
+            last_tok: Token::Eof,
+            start_tok: Token::Eof,
+            result: vec![],
+        }
+    }
+
+    fn set_last_tok(&mut self, tok: &TokenTree) {
+        self.hi = tok.span().hi();
+        self.last_tok = last_tok(tok);
+    }
+
+    fn add_separator(&mut self) {
+        let prefix = if self.need_space_prefix() {
+            " ".to_owned()
+        } else {
+            "".to_owned()
+        };
+        self.result.push(ParsedMacroArg {
+            kind: MacroArgKind::Separator(self.buf.clone(), prefix),
+            span: mk_sp(self.lo, self.hi),
+        });
+        self.buf.clear();
+    }
+
+    fn add_other(&mut self) {
+        let prefix = if self.need_space_prefix() {
+            " ".to_owned()
+        } else {
+            "".to_owned()
+        };
+        self.result.push(ParsedMacroArg {
+            kind: MacroArgKind::Other(self.buf.clone(), prefix),
+            span: mk_sp(self.lo, self.hi),
+        });
+        self.buf.clear();
+    }
+
+    fn add_meta_variable(&mut self, iter: &mut Cursor) {
+        match iter.next() {
+            Some(TokenTree::Token(sp, Token::Ident(ref ident))) => {
+                self.result.push(ParsedMacroArg {
+                    kind: MacroArgKind::MetaVariable(ident.clone(), self.buf.clone()),
+                    span: mk_sp(self.lo, sp.hi()),
+                });
+
+                self.buf.clear();
+                self.is_arg = false;
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    fn update_buffer(&mut self, lo: BytePos, t: &Token) {
+        if self.buf.is_empty() {
+            self.lo = lo;
+            self.start_tok = t.clone();
+        } else if force_space_before(t) {
+            self.buf.push(' ');
+        }
+
+        self.buf.push_str(&pprust::token_to_string(t));
+    }
+
+    fn need_space_prefix(&self) -> bool {
+        if self.result.is_empty() {
+            return false;
+        }
+
+        let last_arg = self.result.last().unwrap();
+        if let MacroArgKind::MetaVariable(..) = last_arg.kind {
+            if ident_like(&self.start_tok) {
+                return true;
+            }
+        }
+
+        if force_space_before(&self.start_tok) {
+            return true;
+        }
+
+        false
+    }
+
+    /// Returns a collection of parsed macro def's arguments.
+    pub fn parse(mut self, tokens: ThinTokenStream) -> Vec<ParsedMacroArg> {
+        let mut iter = (tokens.into(): TokenStream).trees();
+
+        while let Some(ref tok) = iter.next() {
+            match tok {
+                TokenTree::Token(sp, Token::Dollar) => {
+                    // We always want to add a separator before meta variables.
+                    if !self.buf.is_empty() {
+                        self.add_separator();
+                    }
+
+                    // Start keeping the name of this metavariable in the buffer.
+                    self.is_arg = true;
+                    self.lo = sp.lo();
+                    self.start_tok = Token::Dollar;
+                }
+                TokenTree::Token(_, Token::Colon) if self.is_arg => {
+                    self.add_meta_variable(&mut iter);
+                }
+                TokenTree::Token(sp, ref t) => self.update_buffer(sp.lo(), t),
+                TokenTree::Delimited(sp, ref delimited) => {
+                    if !self.buf.is_empty() {
+                        if next_space(&self.last_tok) == SpaceState::Always {
+                            self.add_separator();
+                        } else {
+                            self.add_other();
+                        }
+                    }
+
+                    let mut parser = MacroArgParser::new();
+                    parser.lo = sp.lo();
+                    let mut delimited_arg = parser.parse(delimited.tts.clone());
+
+                    if self.is_arg {
+                        // Parse '*' or '+'.
+                        let mut buffer = String::new();
+                        let mut first = false;
+                        let mut lo = sp.lo();
+
+                        while let Some(ref next_tok) = iter.next() {
+                            self.set_last_tok(next_tok);
+                            if first {
+                                first = false;
+                                lo = next_tok.span().lo();
+                            }
+
+                            match next_tok {
+                                TokenTree::Token(_, Token::BinOp(BinOpToken::Plus))
+                                | TokenTree::Token(_, Token::Question)
+                                | TokenTree::Token(_, Token::BinOp(BinOpToken::Star)) => {
+                                    break;
+                                }
+                                TokenTree::Token(_, ref t) => {
+                                    buffer.push_str(&pprust::token_to_string(t))
+                                }
+                                _ => unreachable!(),
+                            }
+                        }
+
+                        let another = if buffer.trim().is_empty() {
+                            None
+                        } else {
+                            Some(Box::new(ParsedMacroArg {
+                                kind: MacroArgKind::Other(buffer, "".to_owned()),
+                                span: mk_sp(lo, self.hi),
+                            }))
+                        };
+
+                        self.result.push(ParsedMacroArg {
+                            kind: MacroArgKind::Repeat(
+                                delimited.delim,
+                                delimited_arg,
+                                another,
+                                self.last_tok.clone(),
+                            ),
+                            span: mk_sp(self.lo, self.hi),
+                        });
+                    } else {
+                        self.result.push(ParsedMacroArg {
+                            kind: MacroArgKind::Delimited(delimited.delim, delimited_arg),
+                            span: *sp,
+                        });
+                    }
+                }
+            }
+
+            self.set_last_tok(tok);
+        }
+
+        if !self.buf.is_empty() {
+            self.add_other();
+        }
+
+        self.result
+    }
+}
+
+fn wrap_macro_args(
+    context: &RewriteContext,
+    args: &[ParsedMacroArg],
+    shape: Shape,
+) -> Option<String> {
+    wrap_macro_args_inner(context, args, shape, false)
+        .or_else(|| wrap_macro_args_inner(context, args, shape, true))
+}
+
+fn wrap_macro_args_inner(
+    context: &RewriteContext,
+    args: &[ParsedMacroArg],
+    shape: Shape,
+    use_multiple_lines: bool,
+) -> Option<String> {
+    let mut result = String::with_capacity(128);
+    let mut iter = args.iter().peekable();
+    let indent_str = shape.indent.to_string_with_newline(context.config);
+
+    while let Some(ref arg) = iter.next() {
+        let nested_shape = if use_multiple_lines {
+            shape.with_max_width(context.config)
+        } else {
+            shape
+        };
+        result.push_str(&arg.rewrite(context, nested_shape, use_multiple_lines)?);
+
+        if use_multiple_lines && arg.kind.ends_with_space() {
+            result.pop();
+            result.push_str(&indent_str);
+        } else if let Some(ref next_arg) = iter.peek() {
+            let space_before_dollar =
+                !arg.kind.ends_with_space() && next_arg.kind.starts_with_dollar();
+            if space_before_dollar {
+                result.push(' ');
+            }
+        }
+    }
+
+    if !use_multiple_lines && result.len() >= shape.width {
+        None
+    } else {
+        Some(result)
+    }
+}
+
 // This is a bit sketchy. The token rules probably need tweaking, but it works
 // for some common cases. I hope the basic logic is sufficient. Note that the
 // meaning of some tokens is a bit different here from usual Rust, e.g., `*`
@@ -470,66 +847,17 @@ fn replace_names(input: &str) -> Option<(String, HashMap<String, String>)> {
 //
 // We always try and format on one line.
 // FIXME: Use multi-line when every thing does not fit on one line.
-fn format_macro_args(toks: ThinTokenStream, shape: Shape) -> Option<String> {
-    let mut result = String::with_capacity(128);
-    let mut insert_space = SpaceState::Never;
-
-    for tok in (toks.into(): TokenStream).trees() {
-        match tok {
-            TokenTree::Token(_, t) => {
-                if !result.is_empty() && force_space_before(&t) {
-                    insert_space = SpaceState::Always;
-                }
-                if force_no_space_before(&t) {
-                    insert_space = SpaceState::Never;
-                }
-                match (insert_space, ident_like(&t)) {
-                    (SpaceState::Always, _)
-                    | (SpaceState::Punctuation, false)
-                    | (SpaceState::Ident, true) => {
-                        result.push(' ');
-                    }
-                    _ => {}
-                }
-                result.push_str(&pprust::token_to_string(&t));
-                insert_space = next_space(&t);
-            }
-            TokenTree::Delimited(_, d) => {
-                if let SpaceState::Always = insert_space {
-                    result.push(' ');
-                }
-                let formatted = format_macro_args(d.tts, shape)?;
-                match d.delim {
-                    DelimToken::Paren => {
-                        result.push_str(&format!("({})", formatted));
-                        insert_space = SpaceState::Always;
-                    }
-                    DelimToken::Bracket => {
-                        result.push_str(&format!("[{}]", formatted));
-                        insert_space = SpaceState::Always;
-                    }
-                    DelimToken::Brace => {
-                        result.push_str(&format!(" {{ {} }}", formatted));
-                        insert_space = SpaceState::Always;
-                    }
-                    DelimToken::NoDelim => {
-                        result.push_str(&format!("{}", formatted));
-                        insert_space = SpaceState::Always;
-                    }
-                }
-            }
-        }
-    }
-
-    if result.len() <= shape.width {
-        Some(result)
-    } else {
-        None
-    }
+fn format_macro_args(
+    context: &RewriteContext,
+    toks: ThinTokenStream,
+    shape: Shape,
+) -> Option<String> {
+    let parsed_args = MacroArgParser::new().parse(toks);
+    wrap_macro_args(context, &parsed_args, shape)
 }
 
 // We should insert a space if the next token is a:
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 enum SpaceState {
     Never,
     Punctuation,
@@ -538,6 +866,8 @@ enum SpaceState {
 }
 
 fn force_space_before(tok: &Token) -> bool {
+    debug!("tok: force_space_before {:?}", tok);
+
     match *tok {
         Token::Eq
         | Token::Lt
@@ -562,13 +892,6 @@ fn force_space_before(tok: &Token) -> bool {
     }
 }
 
-fn force_no_space_before(tok: &Token) -> bool {
-    match *tok {
-        Token::Semi | Token::Comma | Token::Dot => true,
-        Token::BinOp(bot) => bot == BinOpToken::Star,
-        _ => false,
-    }
-}
 fn ident_like(tok: &Token) -> bool {
     match *tok {
         Token::Ident(_) | Token::Literal(..) | Token::Lifetime(_) => true,
@@ -577,6 +900,8 @@ fn ident_like(tok: &Token) -> bool {
 }
 
 fn next_space(tok: &Token) -> SpaceState {
+    debug!("next_space: {:?}", tok);
+
     match *tok {
         Token::Not
         | Token::Tilde
@@ -804,7 +1129,7 @@ impl MacroBranch {
         }
 
         // 5 = " => {"
-        let mut result = format_macro_args(self.args.clone(), shape.sub_width(5)?)?;
+        let mut result = format_macro_args(context, self.args.clone(), shape.sub_width(5)?)?;
 
         if multi_branch_style {
             result += " =>";
