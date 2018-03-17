@@ -914,13 +914,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                          new_trait_ref.to_predicate());
 
                     if selcx.evaluate_obligation(&new_obligation) {
+                        let sp = self.tcx.sess.codemap()
+                            .span_take_while(span, |c| c.is_whitespace() || *c == '&');
+
                         let remove_refs = refs_remaining + 1;
+                        let format_str = format!("consider removing {} leading `&`-references",
+                                                 remove_refs);
 
-                        err.span_suggestion_short(span,
-                                                  &format!("consider removing {} leading `&`-references",
-                                                           remove_refs),
-                                                  String::from(""));
-
+                        err.span_suggestion_short(sp, &format_str, String::from(""));
                         break;
                     }
                 } else {

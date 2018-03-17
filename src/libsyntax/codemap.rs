@@ -697,6 +697,22 @@ impl CodeMap {
         sp
     }
 
+    /// Given a `Span`, get a shorter one until `predicate` yields false.
+    pub fn span_take_while<P>(&self, sp: Span, predicate: P) -> Span
+        where P: for <'r> FnMut(&'r char) -> bool
+    {
+        if let Ok(snippet) = self.span_to_snippet(sp) {
+            let offset = snippet.chars()
+                .take_while(predicate)
+                .map(|c| c.len_utf8())
+                .sum::<usize>();
+
+            sp.with_hi(BytePos(sp.lo().0 + (offset as u32)))
+        } else {
+            sp
+        }
+    }
+
     pub fn def_span(&self, sp: Span) -> Span {
         self.span_until_char(sp, '{')
     }
