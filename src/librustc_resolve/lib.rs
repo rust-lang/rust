@@ -57,7 +57,7 @@ use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, GenericParam, Generics};
 use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Label, Local, Mutability, Pat, PatKind, Path};
 use syntax::ast::{QSelf, TraitItemKind, TraitRef, Ty, TyKind};
-use syntax::feature_gate::{feature_err, emit_feature_err, GateIssue};
+use syntax::feature_gate::{feature_err, GateIssue};
 use syntax::parse::token;
 use syntax::ptr::P;
 
