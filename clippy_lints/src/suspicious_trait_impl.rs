@@ -61,6 +61,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
         use rustc::hir::BinOp_::*;
         if let hir::ExprBinary(binop, _, _) = expr.node {
+            match binop.node {
+                BiEq | BiLt | BiLe | BiNe | BiGe | BiGt => return,
+                _ => {},
+            }
             // Check if the binary expression is part of another bi/unary expression
             // as a child node
             let mut parent_expr = cx.tcx.hir.get_parent_node(expr.id);
