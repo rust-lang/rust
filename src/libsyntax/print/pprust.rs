@@ -743,7 +743,7 @@ pub trait PrintState<'a> {
                        segment.identifier.name != keywords::DollarCrate.name() {
                         self.writer().word(&segment.identifier.name.as_str())?;
                     } else if segment.identifier.name == keywords::DollarCrate.name() {
-                        self.print_dollar_crate(segment.identifier.ctxt)?;
+                        self.print_dollar_crate(segment.identifier.span.ctxt())?;
                     }
                 }
                 self.writer().space()?;
@@ -2424,7 +2424,7 @@ impl<'a> State<'a> {
                 self.print_path_parameters(parameters, colons_before_params)?;
             }
         } else if segment.identifier.name == keywords::DollarCrate.name() {
-            self.print_dollar_crate(segment.identifier.ctxt)?;
+            self.print_dollar_crate(segment.identifier.span.ctxt())?;
         }
         Ok(())
     }

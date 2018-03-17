@@ -655,7 +655,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ast::Ident {
                                           hasher: &mut StableHasher<W>) {
         let ast::Ident {
             ref name,
-            ctxt: _ // Ignore this
+            span: _ // Ignore this
         } = *self;
 
         name.hash_stable(hcx, hasher);

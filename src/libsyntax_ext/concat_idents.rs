@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use syntax::ast;
+use syntax::codemap::DUMMY_SP;
 use syntax::ext::base::*;
 use syntax::ext::base;
 use syntax::feature_gate;
@@ -16,7 +17,6 @@ use syntax::parse::token;
 use syntax::ptr::P;
 use syntax_pos::Span;
 use syntax_pos::symbol::Symbol;
-use syntax_pos::hygiene::SyntaxContext;
 use syntax::tokenstream::TokenTree;
 
 pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
@@ -53,11 +53,8 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
             }
         }
     }
-    let res = ast::Ident {
-        name: Symbol::intern(&res_str),
-        ctxt: SyntaxContext::empty().apply_mark(cx.current_expansion.mark),
-    };
-
+    let res = ast::Ident::new(Symbol::intern(&res_str),
+                              DUMMY_SP.apply_mark(cx.current_expansion.mark));
     struct Result {
         ident: ast::Ident,
         span: Span,

@@ -1378,7 +1378,7 @@ pub struct Marker(pub Mark);
 
 impl Folder for Marker {
     fn fold_ident(&mut self, mut ident: Ident) -> Ident {
-        ident.ctxt = ident.ctxt.apply_mark(self.0);
+        ident.span = ident.span.apply_mark(self.0);
         ident
     }
 

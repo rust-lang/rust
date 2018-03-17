@@ -3213,10 +3213,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if !tuple_like { continue }
 
                     debug!("tuple struct named {:?}",  base_t);
-                    let ident = ast::Ident {
-                        name: Symbol::intern(&idx.node.to_string()),
-                        ctxt: idx.span.ctxt().modern(),
-                    };
+                    let ident =
+                        ast::Ident::new(Symbol::intern(&idx.node.to_string()), idx.span.modern());
                     let (ident, def_scope) =
                         self.tcx.adjust_ident(ident, base_def.did, self.body_id);
                     let fields = &base_def.non_enum_variant().fields;

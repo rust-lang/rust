@@ -18,10 +18,9 @@ use syntax::ast;
 use syntax::ast::{Expr, GenericParam, Generics, Ident, SelfKind};
 use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
-use syntax::codemap::respan;
+use syntax::codemap::{respan, DUMMY_SP};
 use syntax::ptr::P;
 use syntax_pos::Span;
-use syntax_pos::hygiene::SyntaxContext;
 use syntax_pos::symbol::keywords;
 
 /// The types of pointers
@@ -93,8 +92,8 @@ impl<'a> Path<'a> {
             PathKind::Global => cx.path_all(span, true, idents, lt, tys, Vec::new()),
             PathKind::Local => cx.path_all(span, false, idents, lt, tys, Vec::new()),
             PathKind::Std => {
-                let def_site = SyntaxContext::empty().apply_mark(cx.current_expansion.mark);
-                idents.insert(0, Ident { ctxt: def_site, ..keywords::DollarCrate.ident() });
+                let def_site = DUMMY_SP.apply_mark(cx.current_expansion.mark);
+                idents.insert(0, Ident::new(keywords::DollarCrate.name(), def_site));
                 cx.path_all(span, false, idents, lt, tys, Vec::new())
             }
         }

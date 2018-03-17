@@ -1912,10 +1912,11 @@ impl<'a> Resolver<'a> {
                                       path_span: Span)
                                       -> Option<LexicalScopeBinding<'a>> {
         if ns == TypeNS {
-            ident.ctxt = if ident.name == keywords::SelfType.name() {
-                SyntaxContext::empty() // FIXME(jseyfried) improve `Self` hygiene
+            ident.span = if ident.name == keywords::SelfType.name() {
+                // FIXME(jseyfried) improve `Self` hygiene
+                ident.span.with_ctxt(SyntaxContext::empty())
             } else {
-                ident.ctxt.modern()
+                ident.span.modern()
             }
         }
 
@@ -1931,10 +1932,10 @@ impl<'a> Resolver<'a> {
 
             module = match self.ribs[ns][i].kind {
                 ModuleRibKind(module) => module,
-                MacroDefinition(def) if def == self.macro_def(ident.ctxt) => {
+                MacroDefinition(def) if def == self.macro_def(ident.span.ctxt()) => {
                     // If an invocation of this macro created `ident`, give up on `ident`
                     // and switch to `ident`'s source from the macro definition.
-                    ident.ctxt.remove_mark();
+                    ident.span.remove_mark();
                     continue
                 }
                 _ => continue,
@@ -1954,9 +1955,9 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        ident.ctxt = ident.ctxt.modern();
+        ident.span = ident.span.modern();
         loop {
-            module = unwrap_or!(self.hygienic_lexical_parent(module, &mut ident.ctxt), break);
+            module = unwrap_or!(self.hygienic_lexical_parent(module, &mut ident.span), break);
             let orig_current_module = self.current_module;
             self.current_module = module; // Lexical resolutions can never be a privacy error.
             let result = self.resolve_ident_in_module_unadjusted(
@@ -1980,10 +1981,10 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn hygienic_lexical_parent(&mut self, mut module: Module<'a>, ctxt: &mut SyntaxContext)
+    fn hygienic_lexical_parent(&mut self, mut module: Module<'a>, span: &mut Span)
                                -> Option<Module<'a>> {
-        if !module.expansion.is_descendant_of(ctxt.outer()) {
-            return Some(self.macro_def_scope(ctxt.remove_mark()));
+        if !module.expansion.is_descendant_of(span.ctxt().outer()) {
+            return Some(self.macro_def_scope(span.remove_mark()));
         }
 
         if let ModuleKind::Block(..) = module.kind {
@@ -1995,7 +1996,7 @@ impl<'a> Resolver<'a> {
             let parent_expansion = parent.expansion.modern();
             if module_expansion.is_descendant_of(parent_expansion) &&
                parent_expansion != module_expansion {
-                return if parent_expansion.is_descendant_of(ctxt.outer()) {
+                return if parent_expansion.is_descendant_of(span.ctxt().outer()) {
                     Some(parent)
                 } else {
                     None
@@ -2016,9 +2017,9 @@ impl<'a> Resolver<'a> {
                                record_used: bool,
                                span: Span)
                                -> Result<&'a NameBinding<'a>, Determinacy> {
-        ident.ctxt = ident.ctxt.modern();
+        ident.span = ident.span.modern();
         let orig_current_module = self.current_module;
-        if let Some(def) = ident.ctxt.adjust(module.expansion) {
+        if let Some(def) = ident.span.adjust(module.expansion) {
             self.current_module = self.macro_def_scope(def);
         }
         let result = self.resolve_ident_in_module_unadjusted(
@@ -2108,8 +2109,8 @@ impl<'a> Resolver<'a> {
                 // If an invocation of this macro created `ident`, give up on `ident`
                 // and switch to `ident`'s source from the macro definition.
                 MacroDefinition(def) => {
-                    if def == self.macro_def(ident.ctxt) {
-                        ident.ctxt.remove_mark();
+                    if def == self.macro_def(ident.span.ctxt()) {
+                        ident.span.remove_mark();
                     }
                 }
                 _ => {
@@ -2873,7 +2874,7 @@ impl<'a> Resolver<'a> {
             }
             if path.len() == 1 && this.self_type_is_available(span) {
                 if let Some(candidate) = this.lookup_assoc_candidate(ident.node, ns, is_expected) {
-                    let self_is_available = this.self_value_is_available(path[0].node.ctxt, span);
+                    let self_is_available = this.self_value_is_available(path[0].node.span, span);
                     match candidate {
                         AssocSuggestion::Field => {
                             err.span_suggestion(span, "try",
@@ -3084,9 +3085,9 @@ impl<'a> Resolver<'a> {
         if let Some(LexicalScopeBinding::Def(def)) = binding { def != Def::Err } else { false }
     }
 
-    fn self_value_is_available(&mut self, ctxt: SyntaxContext, span: Span) -> bool {
-        let ident = Ident { name: keywords::SelfValue.name(), ctxt: ctxt };
-        let binding = self.resolve_ident_in_lexical_scope(ident, ValueNS, false, span);
+    fn self_value_is_available(&mut self, self_span: Span, path_span: Span) -> bool {
+        let ident = Ident::new(keywords::SelfValue.name(), self_span);
+        let binding = self.resolve_ident_in_lexical_scope(ident, ValueNS, false, path_span);
         if let Some(LexicalScopeBinding::Def(def)) = binding { def != Def::Err } else { false }
     }
 
@@ -3219,11 +3220,11 @@ impl<'a> Resolver<'a> {
             let name = ident.node.name;
 
             if i == 0 && ns == TypeNS && name == keywords::SelfValue.name() {
-                let mut ctxt = ident.node.ctxt.modern();
+                let mut ctxt = ident.node.span.ctxt().modern();
                 module = Some(self.resolve_self(&mut ctxt, self.current_module));
                 continue
             } else if allow_super && ns == TypeNS && name == keywords::Super.name() {
-                let mut ctxt = ident.node.ctxt.modern();
+                let mut ctxt = ident.node.span.ctxt().modern();
                 let self_module = match i {
                     0 => self.resolve_self(&mut ctxt, self.current_module),
                     _ => module.unwrap(),
@@ -3245,11 +3246,11 @@ impl<'a> Resolver<'a> {
                    (i == 1 && name == keywords::Crate.name() &&
                               path[0].node.name == keywords::CrateRoot.name()) {
                     // `::a::b` or `::crate::a::b`
-                    module = Some(self.resolve_crate_root(ident.node.ctxt, false));
+                    module = Some(self.resolve_crate_root(ident.node.span.ctxt(), false));
                     continue
                 } else if i == 0 && name == keywords::DollarCrate.name() {
                     // `$crate::a::b`
-                    module = Some(self.resolve_crate_root(ident.node.ctxt, true));
+                    module = Some(self.resolve_crate_root(ident.node.span.ctxt(), true));
                     continue
                 } else if i == 1 && !token::is_path_segment_keyword(ident.node) {
                     let prev_name = path[0].node.name;
@@ -3771,12 +3772,12 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        ident.ctxt = ident.ctxt.modern();
+        ident.span = ident.span.modern();
         let mut search_module = self.current_module;
         loop {
             self.get_traits_in_module_containing_item(ident, ns, search_module, &mut found_traits);
             search_module =
-                unwrap_or!(self.hygienic_lexical_parent(search_module, &mut ident.ctxt), break);
+                unwrap_or!(self.hygienic_lexical_parent(search_module, &mut ident.span), break);
         }
 
         if let Some(prelude) = self.prelude {
@@ -3808,7 +3809,7 @@ impl<'a> Resolver<'a> {
         for &(trait_name, binding) in traits.as_ref().unwrap().iter() {
             let module = binding.module().unwrap();
             let mut ident = ident;
-            if ident.ctxt.glob_adjust(module.expansion, binding.span.ctxt().modern()).is_none() {
+            if ident.span.glob_adjust(module.expansion, binding.span.ctxt().modern()).is_none() {
                 continue
             }
             if self.resolve_ident_in_module_unadjusted(module, ident, ns, false, false, module.span)

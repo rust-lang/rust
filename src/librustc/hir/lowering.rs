@@ -909,7 +909,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_ident(&mut self, ident: Ident) -> Name {
         let ident = ident.modern();
-        if ident.ctxt == SyntaxContext::empty() {
+        if ident.span.ctxt() == SyntaxContext::empty() {
             return ident.name;
         }
         *self.name_map
@@ -2089,10 +2089,7 @@ impl<'a> LoweringContext<'a> {
             name: self.lower_ident(match f.ident {
                 Some(ident) => ident,
                 // FIXME(jseyfried) positional field hygiene
-                None => Ident {
-                    name: Symbol::intern(&index.to_string()),
-                    ctxt: f.span.ctxt(),
-                },
+                None => Ident::new(Symbol::intern(&index.to_string()), f.span),
             }),
             vis: self.lower_visibility(&f.vis, None),
             ty: self.lower_ty(&f.ty, ImplTraitContext::Disallowed),

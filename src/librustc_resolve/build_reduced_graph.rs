@@ -157,7 +157,7 @@ impl<'a> Resolver<'a> {
 
                     // Disallow `use $crate;`
                     if source.name == keywords::DollarCrate.name() && path.segments.len() == 1 {
-                        let crate_root = self.resolve_crate_root(source.ctxt, true);
+                        let crate_root = self.resolve_crate_root(source.span.ctxt(), true);
                         let crate_name = match crate_root.kind {
                             ModuleKind::Def(_, name) => name,
                             ModuleKind::Block(..) => unreachable!(),

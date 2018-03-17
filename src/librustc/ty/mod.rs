@@ -2088,8 +2088,8 @@ impl<'a, 'gcx, 'tcx> VariantDef {
             return Some(index);
         }
         let mut ident = name.to_ident();
-        while ident.ctxt != SyntaxContext::empty() {
-            ident.ctxt.remove_mark();
+        while ident.span.ctxt() != SyntaxContext::empty() {
+            ident.span.remove_mark();
             if let Some(field) = self.fields.iter().position(|f| f.name.to_ident() == ident) {
                 return Some(field);
             }
@@ -2558,7 +2558,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             LOCAL_CRATE => self.hir.definitions().expansion(scope.index),
             _ => Mark::root(),
         };
-        let scope = match ident.ctxt.adjust(expansion) {
+        let scope = match ident.span.adjust(expansion) {
             Some(macro_def) => self.hir.definitions().macro_def_scope(macro_def),
             None if block == DUMMY_NODE_ID => DefId::local(CRATE_DEF_INDEX), // Dummy DefId
             None => self.hir.get_module_parent(block),

@@ -150,7 +150,7 @@ impl PathSegment {
     }
     pub fn crate_root(span: Span) -> Self {
         PathSegment {
-            identifier: Ident { ctxt: span.ctxt(), ..keywords::CrateRoot.ident() },
+            identifier: Ident::new(keywords::CrateRoot.name(), span),
             span,
             parameters: None,
         }

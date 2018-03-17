@@ -166,7 +166,7 @@ pub fn transcribe(cx: &ExtCtxt,
                     }
                 } else {
                     let ident =
-                        Ident { ctxt: ident.ctxt.apply_mark(cx.current_expansion.mark), ..ident };
+                        Ident::new(ident.name, ident.span.apply_mark(cx.current_expansion.mark));
                     sp = sp.with_ctxt(sp.ctxt().apply_mark(cx.current_expansion.mark));
                     result.push(TokenTree::Token(sp, token::Dollar).into());
                     result.push(TokenTree::Token(sp, token::Token::from_ast_ident(ident)).into());

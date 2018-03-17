@@ -466,11 +466,11 @@ impl<'a> PrinterSupport for HygieneAnnotation<'a> {
 impl<'a> pprust::PpAnn for HygieneAnnotation<'a> {
     fn post(&self, s: &mut pprust::State, node: pprust::AnnNode) -> io::Result<()> {
         match node {
-            pprust::NodeIdent(&ast::Ident { name, ctxt }) => {
+            pprust::NodeIdent(&ast::Ident { name, span }) => {
                 s.s.space()?;
                 // FIXME #16420: this doesn't display the connections
                 // between syntax contexts
-                s.synth_comment(format!("{}{:?}", name.as_u32(), ctxt))
+                s.synth_comment(format!("{}{:?}", name.as_u32(), span.ctxt()))
             }
             pprust::NodeName(&name) => {
                 s.s.space()?;
