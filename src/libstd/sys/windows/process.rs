@@ -10,7 +10,6 @@
 
 #![unstable(feature = "process_internals", issue = "0")]
 
-use ascii::AsciiExt;
 use collections::BTreeMap;
 use env::split_paths;
 use env;
