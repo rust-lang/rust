@@ -11,8 +11,6 @@
 // compile-flags: -C debug_assertions=no
 // ignore-emscripten dies with an LLVM error
 
-#![feature(i128_type)]
-
 fn main() {
     for i in 129..256 {
         assert_eq!((i as u8).next_power_of_two(), 0);

@@ -10,8 +10,6 @@
 
 // ignore-emscripten
 
-#![feature(i128_type)]
-
 #[repr(C)]
 pub struct Foo(i128);
 

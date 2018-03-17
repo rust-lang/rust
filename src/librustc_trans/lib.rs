@@ -24,7 +24,7 @@
 #![feature(custom_attribute)]
 #![feature(fs_read_write)]
 #![allow(unused_attributes)]
-#![feature(i128_type)]
+#![cfg_attr(stage0, feature(i128_type))]
 #![feature(i128)]
 #![cfg_attr(stage0, feature(inclusive_range_syntax))]
 #![feature(libc)]

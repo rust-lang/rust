@@ -18,7 +18,7 @@
 #![feature(range_contains)]
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(stage0, feature(conservative_impl_trait))]
-#![feature(i128_type)]
+#![cfg_attr(stage0, feature(i128_type))]
 #![feature(optin_builtin_traits)]
 
 extern crate atty;

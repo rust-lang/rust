@@ -10,20 +10,20 @@
 
 // gate-test-i128_type
 
-fn test1() -> i128 { //~ ERROR 128-bit type is unstable
+fn test1() -> i128 {
     0
 }
 
-fn test1_2() -> u128 { //~ ERROR 128-bit type is unstable
+fn test1_2() -> u128 {
     0
 }
 
 fn test3() {
-    let x: i128 = 0; //~ ERROR 128-bit type is unstable
+    let x: i128 = 0;
 }
 
 fn test3_2() {
-    let x: u128 = 0; //~ ERROR 128-bit type is unstable
+    let x: u128 = 0;
 }
 
 #[repr(u128)]

@@ -26,7 +26,7 @@
 #![feature(unboxed_closures)]
 #![feature(fn_traits)]
 #![feature(unsize)]
-#![feature(i128_type)]
+#![cfg_attr(stage0, feature(i128_type))]
 #![feature(i128)]
 #![cfg_attr(stage0, feature(conservative_impl_trait))]
 #![feature(specialization)]
