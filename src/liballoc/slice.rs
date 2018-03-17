@@ -1353,21 +1353,25 @@ impl<T> [T] {
     ///
     /// # Current implementation
     ///
-    /// The current algorithm is an adaptive, iterative merge sort inspired by
-    /// [timsort](https://en.wikipedia.org/wiki/Timsort).
-    /// It is designed to be very fast in cases where the slice is nearly sorted, or consists of
-    /// two or more sorted sequences concatenated one after another.
+    /// The current algorithm is based on [pattern-defeating quicksort][pdqsort] by Orson Peters,
+    /// which combines the fast average case of randomized quicksort with the fast worst case of
+    /// heapsort, while achieving linear time on slices with certain patterns. It uses some
+    /// randomization to avoid degenerate cases, but with a fixed seed to always provide
+    /// deterministic behavior.
     ///
-    /// The algorithm allocates temporary storage in a `Vec<(K, usize)>` the length of the slice.
+    /// In the worst case, the algorithm allocates temporary storage in a `Vec<(K, usize)>` the
+    /// length of the slice.
     ///
     /// # Examples
     ///
     /// ```
-    /// let mut v = [-5i32, 4, 1, -3, 2];
+    /// let mut v = [-5i32, 4, 32, -3, 2];
     ///
-    /// v.sort_by_cached_key(|k| k.abs());
-    /// assert!(v == [1, 2, -3, 4, -5]);
+    /// v.sort_by_cached_key(|k| k.to_string());
+    /// assert!(v == [-3, -5, 2, 32, 4]);
     /// ```
+    ///
+    /// [pdqsort]: https://github.com/orlp/pdqsort
     #[unstable(feature = "slice_sort_by_cached_key", issue = "34447")]
     #[inline]
     pub fn sort_by_cached_key<K, F>(&mut self, f: F)
