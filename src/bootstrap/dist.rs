@@ -203,11 +203,14 @@ fn make_win_dist(
         "libbcrypt.a",
         "libcomctl32.a",
         "libcomdlg32.a",
+        "libcredui.a",
         "libcrypt32.a",
+        "libdbghelp.a",
         "libgdi32.a",
         "libimagehlp.a",
         "libiphlpapi.a",
         "libkernel32.a",
+        "libmsimg32.a",
         "libmsvcrt.a",
         "libodbc32.a",
         "libole32.a",
@@ -215,6 +218,7 @@ fn make_win_dist(
         "libopengl32.a",
         "libpsapi.a",
         "librpcrt4.a",
+        "libsecur32.a",
         "libsetupapi.a",
         "libshell32.a",
         "libuser32.a",
@@ -225,8 +229,6 @@ fn make_win_dist(
         "libwinspool.a",
         "libws2_32.a",
         "libwsock32.a",
-        "libdbghelp.a",
-        "libmsimg32.a",
     ];
 
     //Find mingw artifacts we want to bundle
