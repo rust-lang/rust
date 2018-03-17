@@ -1,6 +1,15 @@
 // rustfmt-error_on_line_overflow: false
 
 macro_rules! m {
+    () => ();
+    ( $ x : ident ) => ();
+    ( $ m1 : ident , $ m2 : ident , $ x : ident ) => ();
+    ( $($beginning:ident),*;$middle:ident;$($end:ident),* ) => ();
+    ( $($beginning: ident),*; $middle: ident; $($end: ident),*; $($beginning: ident),*; $middle: ident; $($end: ident),* ) => {};
+    ( $ name : ident ( $ ( $ dol : tt $ var : ident ) * ) $ ( $ body : tt ) * ) => ();
+}
+
+macro_rules! m {
 	// a
 	($expr :expr,  $( $func : ident    ) *   ) => {
 		{
@@ -88,12 +97,7 @@ macro_rules! m {
 
 // #2439
 macro_rules! m {
-    (
-        $line0_xxxxxxxxxxxxxxxxx: expr,
-        $line1_xxxxxxxxxxxxxxxxx: expr,
-        $line2_xxxxxxxxxxxxxxxxx: expr,
-        $line3_xxxxxxxxxxxxxxxxx: expr,
-    ) => {};
+    ($line0_xxxxxxxxxxxxxxxxx: expr, $line1_xxxxxxxxxxxxxxxxx: expr, $line2_xxxxxxxxxxxxxxxxx: expr, $line3_xxxxxxxxxxxxxxxxx: expr,) => {};
 }
 
 // #2466
