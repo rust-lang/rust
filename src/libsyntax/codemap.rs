@@ -597,21 +597,6 @@ impl CodeMap {
         self.span_to_source(sp, |src, start_index, _| src[..start_index].to_string())
     }
 
-    /// Given a `Span`, try to get a shorter span ending before the first occurrence of `c` `char`
-    pub fn span_until_char(&self, sp: Span, c: char) -> Span {
-        match self.span_to_snippet(sp) {
-            Ok(snippet) => {
-                let snippet = snippet.split(c).nth(0).unwrap_or("").trim_right();
-                if !snippet.is_empty() && !snippet.contains('\n') {
-                    sp.with_hi(BytePos(sp.lo().0 + snippet.len() as u32))
-                } else {
-                    sp
-                }
-            }
-            _ => sp,
-        }
-    }
-
     /// Extend the given `Span` to just after the previous occurrence of `c`. Return the same span
     /// if no character could be found or if an error occurred while retrieving the code snippet.
     pub fn span_extend_to_prev_char(&self, sp: Span, c: char) -> Span {
@@ -646,44 +631,19 @@ impl CodeMap {
         sp
     }
 
-    /// Given a `Span`, get a new `Span` covering the first token and all its trailing whitespace or
-    /// the original `Span`.
-    ///
-    /// If `sp` points to `"let mut x"`, then a span pointing at `"let "` will be returned.
-    pub fn span_until_non_whitespace(&self, sp: Span) -> Span {
-        if let Ok(snippet) = self.span_to_snippet(sp) {
-            let mut offset = 0;
-            // get the bytes width of all the non-whitespace characters
-            for c in snippet.chars().take_while(|c| !c.is_whitespace()) {
-                offset += c.len_utf8();
+    /// Given a `Span`, try to get a shorter span ending before the first occurrence of `c` `char`
+    pub fn span_until_char(&self, sp: Span, c: char) -> Span {
+        match self.span_to_snippet(sp) {
+            Ok(snippet) => {
+                let snippet = snippet.split(c).nth(0).unwrap_or("").trim_right();
+                if !snippet.is_empty() && !snippet.contains('\n') {
+                    sp.with_hi(BytePos(sp.lo().0 + snippet.len() as u32))
+                } else {
+                    sp
+                }
             }
-            // get the bytes width of all the whitespace characters after that
-            for c in snippet[offset..].chars().take_while(|c| c.is_whitespace()) {
-                offset += c.len_utf8();
-            }
-            if offset > 1 {
-                return sp.with_hi(BytePos(sp.lo().0 + offset as u32));
-            }
+            _ => sp,
         }
-        sp
-    }
-
-    /// Given a `Span`, get a new `Span` covering the first token without its trailing whitespace or
-    /// the original `Span` in case of error.
-    ///
-    /// If `sp` points to `"let mut x"`, then a span pointing at `"let"` will be returned.
-    pub fn span_until_whitespace(&self, sp: Span) -> Span {
-        if let Ok(snippet) = self.span_to_snippet(sp) {
-            let mut offset = 0;
-            // Get the bytes width of all the non-whitespace characters
-            for c in snippet.chars().take_while(|c| !c.is_whitespace()) {
-                offset += c.len_utf8();
-            }
-            if offset > 1 {
-                return sp.with_hi(BytePos(sp.lo().0 + offset as u32));
-            }
-        }
-        sp
     }
 
     /// Given a `Span`, try to get a shorter span ending just after the first occurrence of `char`
@@ -695,6 +655,34 @@ impl CodeMap {
             }
         }
         sp
+    }
+
+    /// Given a `Span`, get a new `Span` covering the first token and all its trailing whitespace or
+    /// the original `Span`.
+    ///
+    /// If `sp` points to `"let mut x"`, then a span pointing at `"let "` will be returned.
+    pub fn span_until_non_whitespace(&self, sp: Span) -> Span {
+        let mut whitespace_found = false;
+
+        self.span_take_while(sp, |c| {
+            if !whitespace_found && c.is_whitespace() {
+                whitespace_found = true;
+            }
+
+            if whitespace_found && !c.is_whitespace() {
+                false
+            } else {
+                true
+            }
+        })
+    }
+
+    /// Given a `Span`, get a new `Span` covering the first token without its trailing whitespace or
+    /// the original `Span` in case of error.
+    ///
+    /// If `sp` points to `"let mut x"`, then a span pointing at `"let"` will be returned.
+    pub fn span_until_whitespace(&self, sp: Span) -> Span {
+        self.span_take_while(sp, |c| !c.is_whitespace())
     }
 
     /// Given a `Span`, get a shorter one until `predicate` yields false.
