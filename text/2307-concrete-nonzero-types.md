@@ -1,7 +1,7 @@
-- Feature Name: concrete-nonzero-types
+- Feature Name: `concrete-nonzero-types`
 - Start Date: 2018-01-21
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#2307](https://github.com/rust-lang/rfcs/pull/2307)
+- Rust Issue: [rust-lang/rust#49137](https://github.com/rust-lang/rust/issues/49137)
 
 # Summary
 [summary]: #summary
