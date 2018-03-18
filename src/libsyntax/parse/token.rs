@@ -321,7 +321,7 @@ impl Token {
         match *self {
             Ident(ident, is_raw) => Some((ident, is_raw)),
             Interpolated(ref nt) => match nt.0 {
-                NtIdent(ident, is_raw) => Some((ident.node, is_raw)),
+                NtIdent(ident, is_raw) => Some((ident, is_raw)),
                 _ => None,
             },
             _ => None,
@@ -539,7 +539,7 @@ impl Token {
                 tokens = prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span);
             }
             Nonterminal::NtIdent(ident, is_raw) => {
-                let token = Token::Ident(ident.node, is_raw);
+                let token = Token::Ident(ident, is_raw);
                 tokens = Some(TokenTree::Token(ident.span, token).into());
             }
             Nonterminal::NtLifetime(lifetime) => {
@@ -571,7 +571,7 @@ pub enum Nonterminal {
     NtPat(P<ast::Pat>),
     NtExpr(P<ast::Expr>),
     NtTy(P<ast::Ty>),
-    NtIdent(ast::SpannedIdent, /* is_raw */ bool),
+    NtIdent(ast::Ident, /* is_raw */ bool),
     /// Stuff inside brackets for attributes
     NtMeta(ast::MetaItem),
     NtPath(ast::Path),

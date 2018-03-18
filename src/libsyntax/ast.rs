@@ -541,7 +541,7 @@ impl Pat {
         let node = match &self.node {
             PatKind::Wild => TyKind::Infer,
             PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), ident, None) =>
-                TyKind::Path(None, Path::from_ident(ident.span, ident.node)),
+                TyKind::Path(None, Path::from_ident(ident.span, *ident)),
             PatKind::Path(qself, path) => TyKind::Path(qself.clone(), path.clone()),
             PatKind::Mac(mac) => TyKind::Mac(mac.clone()),
             PatKind::Ref(pat, mutbl) =>
@@ -638,7 +638,7 @@ pub enum PatKind {
     /// or a unit struct/variant pattern, or a const pattern (in the last two cases the third
     /// field must be `None`). Disambiguation cannot be done with parser alone, so it happens
     /// during name resolution.
-    Ident(BindingMode, SpannedIdent, Option<P<Pat>>),
+    Ident(BindingMode, Ident, Option<P<Pat>>),
 
     /// A struct or struct variant pattern, e.g. `Variant {x, y, ..}`.
     /// The `bool` is `true` in the presence of a `..`.
@@ -910,14 +910,12 @@ pub struct Arm {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Field {
-    pub ident: SpannedIdent,
+    pub ident: Ident,
     pub expr: P<Expr>,
     pub span: Span,
     pub is_shorthand: bool,
     pub attrs: ThinVec<Attribute>,
 }
-
-pub type SpannedIdent = Spanned<Ident>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum BlockCheckMode {
@@ -1144,7 +1142,7 @@ pub enum ExprKind {
     /// For example, `a += 1`.
     AssignOp(BinOp, P<Expr>, P<Expr>),
     /// Access of a named struct field (`obj.foo`)
-    Field(P<Expr>, SpannedIdent),
+    Field(P<Expr>, Ident),
     /// Access of an unnamed field of a struct or tuple-struct
     ///
     /// For example, `foo.0`.
@@ -1689,7 +1687,7 @@ pub type ExplicitSelf = Spanned<SelfKind>;
 impl Arg {
     pub fn to_self(&self) -> Option<ExplicitSelf> {
         if let PatKind::Ident(BindingMode::ByValue(mutbl), ident, _) = self.pat.node {
-            if ident.node.name == keywords::SelfValue.name() {
+            if ident.name == keywords::SelfValue.name() {
                 return match self.ty.node {
                     TyKind::ImplicitSelf => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
                     TyKind::Rptr(lt, MutTy{ref ty, mutbl}) if ty.node == TyKind::ImplicitSelf => {
@@ -1705,13 +1703,13 @@ impl Arg {
 
     pub fn is_self(&self) -> bool {
         if let PatKind::Ident(_, ident, _) = self.pat.node {
-            ident.node.name == keywords::SelfValue.name()
+            ident.name == keywords::SelfValue.name()
         } else {
             false
         }
     }
 
-    pub fn from_self(eself: ExplicitSelf, eself_ident: SpannedIdent) -> Arg {
+    pub fn from_self(eself: ExplicitSelf, eself_ident: Ident) -> Arg {
         let span = eself.span.to(eself_ident.span);
         let infer_ty = P(Ty {
             id: DUMMY_NODE_ID,

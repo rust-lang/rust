@@ -251,7 +251,7 @@ impl<F> TTMacroExpander for F
                 if let tokenstream::TokenTree::Token(_, token::Interpolated(ref nt)) = tt {
                     if let token::NtIdent(ident, is_raw) = nt.0 {
                         return tokenstream::TokenTree::Token(ident.span,
-                                                             token::Ident(ident.node, is_raw));
+                                                             token::Ident(ident, is_raw));
                     }
                 }
                 fold::noop_fold_tt(tt, self)

@@ -41,7 +41,12 @@ impl Ident {
         Ident::with_empty_ctxt(Symbol::intern(string))
     }
 
-    pub fn without_first_quote(&self) -> Ident {
+    /// Replace `lo` and `hi` with those from `span`, but keep hygiene context.
+    pub fn with_span_pos(self, span: Span) -> Ident {
+        Ident::new(self.name, span.with_ctxt(self.span.ctxt()))
+    }
+
+    pub fn without_first_quote(self) -> Ident {
         Ident::new(Symbol::from(self.name.as_str().trim_left_matches('\'')), self.span)
     }
 

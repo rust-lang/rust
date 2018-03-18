@@ -439,8 +439,8 @@ pub fn noop_fold_variant<T: Folder>(v: Variant, fld: &mut T) -> Variant {
     }
 }
 
-pub fn noop_fold_ident<T: Folder>(i: Ident, _: &mut T) -> Ident {
-    i
+pub fn noop_fold_ident<T: Folder>(ident: Ident, fld: &mut T) -> Ident {
+    Ident::new(ident.name, fld.new_span(ident.span))
 }
 
 pub fn noop_fold_usize<T: Folder>(i: usize, _: &mut T) -> usize {
@@ -634,8 +634,7 @@ pub fn noop_fold_interpolated<T: Folder>(nt: token::Nonterminal, fld: &mut T)
         token::NtPat(pat) => token::NtPat(fld.fold_pat(pat)),
         token::NtExpr(expr) => token::NtExpr(fld.fold_expr(expr)),
         token::NtTy(ty) => token::NtTy(fld.fold_ty(ty)),
-        token::NtIdent(id, is_raw) =>
-            token::NtIdent(Spanned::<Ident>{node: fld.fold_ident(id.node), ..id}, is_raw),
+        token::NtIdent(id, is_raw) => token::NtIdent(fld.fold_ident(id), is_raw),
         token::NtMeta(meta) => token::NtMeta(fld.fold_meta_item(meta)),
         token::NtPath(path) => token::NtPath(fld.fold_path(path)),
         token::NtTT(tt) => token::NtTT(fld.fold_tt(tt)),
@@ -859,7 +858,7 @@ pub fn noop_fold_struct_field<T: Folder>(f: StructField, fld: &mut T) -> StructF
 
 pub fn noop_fold_field<T: Folder>(f: Field, folder: &mut T) -> Field {
     Field {
-        ident: respan(f.ident.span, folder.fold_ident(f.ident.node)),
+        ident: folder.fold_ident(f.ident),
         expr: folder.fold_expr(f.expr),
         span: folder.new_span(f.span),
         is_shorthand: f.is_shorthand,
@@ -1119,11 +1118,10 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
         id: folder.new_id(id),
         node: match node {
             PatKind::Wild => PatKind::Wild,
-            PatKind::Ident(binding_mode, pth1, sub) => {
+            PatKind::Ident(binding_mode, ident, sub) => {
                 PatKind::Ident(binding_mode,
-                        Spanned{span: folder.new_span(pth1.span),
-                                node: folder.fold_ident(pth1.node)},
-                        sub.map(|x| folder.fold_pat(x)))
+                               folder.fold_ident(ident),
+                               sub.map(|x| folder.fold_pat(x)))
             }
             PatKind::Lit(e) => PatKind::Lit(folder.fold_expr(e)),
             PatKind::TupleStruct(pth, pats, ddpos) => {
@@ -1272,14 +1270,12 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                             folder.fold_expr(er))
             }
             ExprKind::Field(el, ident) => {
-                ExprKind::Field(folder.fold_expr(el),
-                          respan(folder.new_span(ident.span),
-                                 folder.fold_ident(ident.node)))
+                ExprKind::Field(folder.fold_expr(el), folder.fold_ident(ident))
             }
-            ExprKind::TupField(el, ident) => {
+            ExprKind::TupField(el, index) => {
                 ExprKind::TupField(folder.fold_expr(el),
-                             respan(folder.new_span(ident.span),
-                                    folder.fold_usize(ident.node)))
+                             respan(folder.new_span(index.span),
+                                    folder.fold_usize(index.node)))
             }
             ExprKind::Index(el, er) => {
                 ExprKind::Index(folder.fold_expr(el), folder.fold_expr(er))

@@ -1720,7 +1720,7 @@ impl<'a> LoweringContext<'a> {
         decl.inputs
             .iter()
             .map(|arg| match arg.pat.node {
-                PatKind::Ident(_, ident, None) => respan(ident.span, ident.node.name),
+                PatKind::Ident(_, ident, None) => respan(ident.span, ident.name),
                 _ => respan(arg.pat.span, keywords::Invalid.name()),
             })
             .collect()
@@ -2099,7 +2099,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_field(&mut self, f: &Field) -> hir::Field {
         hir::Field {
-            name: respan(f.ident.span, self.lower_ident(f.ident.node)),
+            name: respan(f.ident.span, self.lower_ident(f.ident)),
             expr: P(self.lower_expr(&f.expr)),
             span: f.span,
             is_shorthand: f.is_shorthand,
@@ -2801,7 +2801,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_pat(&mut self, p: &Pat) -> P<hir::Pat> {
         let node = match p.node {
             PatKind::Wild => hir::PatKind::Wild,
-            PatKind::Ident(ref binding_mode, pth1, ref sub) => {
+            PatKind::Ident(ref binding_mode, ident, ref sub) => {
                 match self.resolver.get_resolution(p.id).map(|d| d.base_def()) {
                     // `None` can occur in body-less function signatures
                     def @ None | def @ Some(Def::Local(_)) => {
@@ -2812,16 +2812,16 @@ impl<'a> LoweringContext<'a> {
                         hir::PatKind::Binding(
                             self.lower_binding_mode(binding_mode),
                             canonical_id,
-                            respan(pth1.span, pth1.node.name),
+                            respan(ident.span, ident.name),
                             sub.as_ref().map(|x| self.lower_pat(x)),
                         )
                     }
                     Some(def) => hir::PatKind::Path(hir::QPath::Resolved(
                         None,
                         P(hir::Path {
-                            span: pth1.span,
+                            span: ident.span,
                             def,
-                            segments: hir_vec![hir::PathSegment::from_name(pth1.node.name)],
+                            segments: hir_vec![hir::PathSegment::from_name(ident.name)],
                         }),
                     )),
                 }
@@ -3071,7 +3071,7 @@ impl<'a> LoweringContext<'a> {
             ),
             ExprKind::Field(ref el, ident) => hir::ExprField(
                 P(self.lower_expr(el)),
-                respan(ident.span, self.lower_ident(ident.node)),
+                respan(ident.span, self.lower_ident(ident)),
             ),
             ExprKind::TupField(ref el, ident) => hir::ExprTupField(P(self.lower_expr(el)), ident),
             ExprKind::Index(ref el, ref er) => {

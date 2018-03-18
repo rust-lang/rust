@@ -430,8 +430,8 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) {
         PatKind::Paren(ref subpattern) => {
             visitor.visit_pat(subpattern)
         }
-        PatKind::Ident(_, ref pth1, ref optional_subpattern) => {
-            visitor.visit_ident(pth1.span, pth1.node);
+        PatKind::Ident(_, ident, ref optional_subpattern) => {
+            visitor.visit_ident(ident.span, ident);
             walk_list!(visitor, visit_pat, optional_subpattern);
         }
         PatKind::Lit(ref expression) => visitor.visit_expr(expression),
@@ -666,7 +666,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             visitor.visit_path(path, expression.id);
             for field in fields {
                 walk_list!(visitor, visit_attribute, field.attrs.iter());
-                visitor.visit_ident(field.ident.span, field.ident.node);
+                visitor.visit_ident(field.ident.span, field.ident);
                 visitor.visit_expr(&field.expr)
             }
             walk_list!(visitor, visit_expr, optional_base);
@@ -745,9 +745,9 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             visitor.visit_expr(left_expression);
             visitor.visit_expr(right_expression);
         }
-        ExprKind::Field(ref subexpression, ref ident) => {
+        ExprKind::Field(ref subexpression, ident) => {
             visitor.visit_expr(subexpression);
-            visitor.visit_ident(ident.span, ident.node);
+            visitor.visit_ident(ident.span, ident);
         }
         ExprKind::TupField(ref subexpression, _) => {
             visitor.visit_expr(subexpression);

@@ -262,26 +262,26 @@ pub fn token_to_string(tok: &Token) -> String {
         token::Shebang(s)           => format!("/* shebang: {}*/", s),
 
         token::Interpolated(ref nt) => match nt.0 {
-            token::NtExpr(ref e)         => expr_to_string(e),
-            token::NtMeta(ref e)         => meta_item_to_string(e),
-            token::NtTy(ref e)           => ty_to_string(e),
-            token::NtPath(ref e)         => path_to_string(e),
-            token::NtItem(ref e)         => item_to_string(e),
-            token::NtBlock(ref e)        => block_to_string(e),
-            token::NtStmt(ref e)         => stmt_to_string(e),
-            token::NtPat(ref e)          => pat_to_string(e),
-            token::NtIdent(ref e, false) => ident_to_string(e.node),
-            token::NtIdent(ref e, true)  => format!("r#{}", ident_to_string(e.node)),
-            token::NtTT(ref tree)        => tt_to_string(tree.clone()),
-            token::NtArm(ref e)          => arm_to_string(e),
-            token::NtImplItem(ref e)     => impl_item_to_string(e),
-            token::NtTraitItem(ref e)    => trait_item_to_string(e),
-            token::NtGenerics(ref e)     => generic_params_to_string(&e.params),
-            token::NtWhereClause(ref e)  => where_clause_to_string(e),
-            token::NtArg(ref e)          => arg_to_string(e),
-            token::NtVis(ref e)          => vis_to_string(e),
-            token::NtLifetime(ref e)     => lifetime_to_string(e),
-            token::NtForeignItem(ref ni) => foreign_item_to_string(ni),
+            token::NtExpr(ref e)        => expr_to_string(e),
+            token::NtMeta(ref e)        => meta_item_to_string(e),
+            token::NtTy(ref e)          => ty_to_string(e),
+            token::NtPath(ref e)        => path_to_string(e),
+            token::NtItem(ref e)        => item_to_string(e),
+            token::NtBlock(ref e)       => block_to_string(e),
+            token::NtStmt(ref e)        => stmt_to_string(e),
+            token::NtPat(ref e)         => pat_to_string(e),
+            token::NtIdent(e, false)    => ident_to_string(e),
+            token::NtIdent(e, true)     => format!("r#{}", ident_to_string(e)),
+            token::NtTT(ref tree)       => tt_to_string(tree.clone()),
+            token::NtArm(ref e)         => arm_to_string(e),
+            token::NtImplItem(ref e)    => impl_item_to_string(e),
+            token::NtTraitItem(ref e)   => trait_item_to_string(e),
+            token::NtGenerics(ref e)    => generic_params_to_string(&e.params),
+            token::NtWhereClause(ref e) => where_clause_to_string(e),
+            token::NtArg(ref e)         => arg_to_string(e),
+            token::NtVis(ref e)         => vis_to_string(e),
+            token::NtLifetime(ref e)    => lifetime_to_string(e),
+            token::NtForeignItem(ref e) => foreign_item_to_string(e),
         }
     }
 }
@@ -1924,7 +1924,7 @@ impl<'a> State<'a> {
             |s, field| {
                 s.ibox(INDENT_UNIT)?;
                 if !field.is_shorthand {
-                    s.print_ident(field.ident.node)?;
+                    s.print_ident(field.ident)?;
                     s.word_space(":")?;
                 }
                 s.print_expr(&field.expr)?;
@@ -2198,10 +2198,10 @@ impl<'a> State<'a> {
                 self.word_space("=")?;
                 self.print_expr_maybe_paren(rhs, prec)?;
             }
-            ast::ExprKind::Field(ref expr, id) => {
+            ast::ExprKind::Field(ref expr, ident) => {
                 self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX)?;
                 self.s.word(".")?;
-                self.print_ident(id.node)?;
+                self.print_ident(ident)?;
             }
             ast::ExprKind::TupField(ref expr, id) => {
                 self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX)?;
@@ -2526,7 +2526,7 @@ impl<'a> State<'a> {
          is that it doesn't matter */
         match pat.node {
             PatKind::Wild => self.s.word("_")?,
-            PatKind::Ident(binding_mode, ref path1, ref sub) => {
+            PatKind::Ident(binding_mode, ident, ref sub) => {
                 match binding_mode {
                     ast::BindingMode::ByRef(mutbl) => {
                         self.word_nbsp("ref")?;
@@ -2537,7 +2537,7 @@ impl<'a> State<'a> {
                         self.word_nbsp("mut")?;
                     }
                 }
-                self.print_ident(path1.node)?;
+                self.print_ident(ident)?;
                 if let Some(ref p) = *sub {
                     self.s.word("@")?;
                     self.print_pat(p)?;
@@ -2999,7 +2999,7 @@ impl<'a> State<'a> {
                     self.print_explicit_self(&eself)?;
                 } else {
                     let invalid = if let PatKind::Ident(_, ident, _) = input.pat.node {
-                        ident.node.name == keywords::Invalid.name()
+                        ident.name == keywords::Invalid.name()
                     } else {
                         false
                     };

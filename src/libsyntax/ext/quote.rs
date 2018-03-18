@@ -75,7 +75,7 @@ pub mod rt {
 
     impl ToTokens for ast::Ident {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
-            vec![TokenTree::Token(DUMMY_SP, Token::from_ast_ident(*self))]
+            vec![TokenTree::Token(self.span, Token::from_ast_ident(*self))]
         }
     }
 

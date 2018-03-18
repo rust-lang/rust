@@ -41,9 +41,9 @@ use rustc::ty;
 use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
 
-use syntax::codemap::{dummy_spanned, respan, BytePos, CodeMap};
+use syntax::codemap::{BytePos, CodeMap};
 use syntax::ext::hygiene::{Mark, MarkKind, SyntaxContext};
-use syntax::ast::{self, Name, NodeId, Ident, SpannedIdent, FloatTy, IntTy, UintTy};
+use syntax::ast::{self, Name, NodeId, Ident, FloatTy, IntTy, UintTy};
 use syntax::ext::base::SyntaxExtension;
 use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
 use syntax::ext::base::MacroKind;
@@ -1654,8 +1654,8 @@ impl<'a> Resolver<'a> {
         {
         let namespace = if is_value { ValueNS } else { TypeNS };
         let hir::Path { ref segments, span, ref mut def } = *path;
-        let path: Vec<SpannedIdent> = segments.iter()
-            .map(|seg| respan(span, Ident::with_empty_ctxt(seg.name)))
+        let path: Vec<Ident> = segments.iter()
+            .map(|seg| Ident::new(seg.name, span))
             .collect();
         match self.resolve_path(&path, Some(namespace), true, span) {
             PathResult::Module(module) => *def = module.def().unwrap(),
@@ -2351,7 +2351,7 @@ impl<'a> Resolver<'a> {
         let mut new_id = None;
         if let Some(trait_ref) = opt_trait_ref {
             let path: Vec<_> = trait_ref.path.segments.iter()
-                .map(|seg| respan(seg.span, seg.ident))
+                .map(|seg| seg.ident)
                 .collect();
             let def = self.smart_resolve_path_fragment(
                 trait_ref.ref_id,
@@ -2500,7 +2500,7 @@ impl<'a> Resolver<'a> {
                     _ => false,
                 } {
                     let binding_info = BindingInfo { span: ident.span, binding_mode: binding_mode };
-                    binding_map.insert(ident.node, binding_info);
+                    binding_map.insert(ident, binding_info);
                 }
             }
             true
@@ -2640,7 +2640,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn fresh_binding(&mut self,
-                     ident: &SpannedIdent,
+                     ident: Ident,
                      pat_id: NodeId,
                      outer_pat_id: NodeId,
                      pat_src: PatternSource,
@@ -2652,14 +2652,14 @@ impl<'a> Resolver<'a> {
         // because that breaks the assumptions later
         // passes make about or-patterns.)
         let mut def = Def::Local(pat_id);
-        match bindings.get(&ident.node).cloned() {
+        match bindings.get(&ident).cloned() {
             Some(id) if id == outer_pat_id => {
                 // `Variant(a, a)`, error
                 resolve_error(
                     self,
                     ident.span,
                     ResolutionError::IdentifierBoundMoreThanOnceInSamePattern(
-                        &ident.node.name.as_str())
+                        &ident.name.as_str())
                 );
             }
             Some(..) if pat_src == PatternSource::FnParam => {
@@ -2668,7 +2668,7 @@ impl<'a> Resolver<'a> {
                     self,
                     ident.span,
                     ResolutionError::IdentifierBoundMoreThanOnceInParameterList(
-                        &ident.node.name.as_str())
+                        &ident.name.as_str())
                 );
             }
             Some(..) if pat_src == PatternSource::Match ||
@@ -2676,7 +2676,7 @@ impl<'a> Resolver<'a> {
                         pat_src == PatternSource::WhileLet => {
                 // `Variant1(a) | Variant2(a)`, ok
                 // Reuse definition from the first `a`.
-                def = self.ribs[ValueNS].last_mut().unwrap().bindings[&ident.node];
+                def = self.ribs[ValueNS].last_mut().unwrap().bindings[&ident];
             }
             Some(..) => {
                 span_bug!(ident.span, "two bindings with the same name from \
@@ -2684,9 +2684,9 @@ impl<'a> Resolver<'a> {
             }
             None => {
                 // A completely fresh binding, add to the lists if it's valid.
-                if ident.node.name != keywords::Invalid.name() {
-                    bindings.insert(ident.node, outer_pat_id);
-                    self.ribs[ValueNS].last_mut().unwrap().bindings.insert(ident.node, def);
+                if ident.name != keywords::Invalid.name() {
+                    bindings.insert(ident, outer_pat_id);
+                    self.ribs[ValueNS].last_mut().unwrap().bindings.insert(ident, def);
                 }
             }
         }
@@ -2704,10 +2704,10 @@ impl<'a> Resolver<'a> {
         let outer_pat_id = pat.id;
         pat.walk(&mut |pat| {
             match pat.node {
-                PatKind::Ident(bmode, ref ident, ref opt_pat) => {
+                PatKind::Ident(bmode, ident, ref opt_pat) => {
                     // First try to resolve the identifier as some existing
                     // entity, then fall back to a fresh binding.
-                    let binding = self.resolve_ident_in_lexical_scope(ident.node, ValueNS,
+                    let binding = self.resolve_ident_in_lexical_scope(ident, ValueNS,
                                                                       false, pat.span)
                                       .and_then(LexicalScopeBinding::item);
                     let resolution = binding.map(NameBinding::def).and_then(|def| {
@@ -2719,7 +2719,7 @@ impl<'a> Resolver<'a> {
                             Def::Const(..) if is_syntactic_ambiguity => {
                                 // Disambiguate in favor of a unit struct/variant
                                 // or constant pattern.
-                                self.record_use(ident.node, ValueNS, binding.unwrap(), ident.span);
+                                self.record_use(ident, ValueNS, binding.unwrap(), ident.span);
                                 Some(PathResolution::new(def))
                             }
                             Def::StructCtor(..) | Def::VariantCtor(..) |
@@ -2733,7 +2733,7 @@ impl<'a> Resolver<'a> {
                                     self,
                                     ident.span,
                                     ResolutionError::BindingShadowsSomethingUnacceptable(
-                                        pat_src.descr(), ident.node.name, binding.unwrap())
+                                        pat_src.descr(), ident.name, binding.unwrap())
                                 );
                                 None
                             }
@@ -2786,7 +2786,7 @@ impl<'a> Resolver<'a> {
                           source: PathSource)
                           -> PathResolution {
         let segments = &path.segments.iter()
-            .map(|seg| respan(seg.span, seg.ident))
+            .map(|seg| seg.ident)
             .collect::<Vec<_>>();
         self.smart_resolve_path_fragment(id, qself, segments, path.span, source)
     }
@@ -2794,7 +2794,7 @@ impl<'a> Resolver<'a> {
     fn smart_resolve_path_fragment(&mut self,
                                    id: NodeId,
                                    qself: Option<&QSelf>,
-                                   path: &[SpannedIdent],
+                                   path: &[Ident],
                                    span: Span,
                                    source: PathSource)
                                    -> PathResolution {
@@ -2814,11 +2814,11 @@ impl<'a> Resolver<'a> {
                  format!("not a {}", expected),
                  span)
             } else {
-                let item_str = path[path.len() - 1].node;
+                let item_str = path[path.len() - 1];
                 let item_span = path[path.len() - 1].span;
                 let (mod_prefix, mod_str) = if path.len() == 1 {
                     (format!(""), format!("this scope"))
-                } else if path.len() == 2 && path[0].node.name == keywords::CrateRoot.name() {
+                } else if path.len() == 2 && path[0].name == keywords::CrateRoot.name() {
                     (format!(""), format!("the crate root"))
                 } else {
                     let mod_path = &path[..path.len() - 1];
@@ -2852,10 +2852,10 @@ impl<'a> Resolver<'a> {
 
             // Try to lookup the name in more relaxed fashion for better error reporting.
             let ident = *path.last().unwrap();
-            let candidates = this.lookup_import_candidates(ident.node.name, ns, is_expected);
+            let candidates = this.lookup_import_candidates(ident.name, ns, is_expected);
             if candidates.is_empty() && is_expected(Def::Enum(DefId::local(CRATE_DEF_INDEX))) {
                 let enum_candidates =
-                    this.lookup_import_candidates(ident.node.name, ns, is_enum_variant);
+                    this.lookup_import_candidates(ident.name, ns, is_enum_variant);
                 let mut enum_candidates = enum_candidates.iter()
                     .map(|suggestion| import_candidate_to_paths(&suggestion)).collect::<Vec<_>>();
                 enum_candidates.sort();
@@ -2873,8 +2873,8 @@ impl<'a> Resolver<'a> {
                 }
             }
             if path.len() == 1 && this.self_type_is_available(span) {
-                if let Some(candidate) = this.lookup_assoc_candidate(ident.node, ns, is_expected) {
-                    let self_is_available = this.self_value_is_available(path[0].node.span, span);
+                if let Some(candidate) = this.lookup_assoc_candidate(ident, ns, is_expected) {
+                    let self_is_available = this.self_value_is_available(path[0].span, span);
                     match candidate {
                         AssocSuggestion::Field => {
                             err.span_suggestion(span, "try",
@@ -2919,7 +2919,7 @@ impl<'a> Resolver<'a> {
                     (Def::Mod(..), PathSource::Expr(Some(parent))) => match parent.node {
                         ExprKind::Field(_, ident) => {
                             err.span_label(parent.span, format!("did you mean `{}::{}`?",
-                                                                 path_str, ident.node));
+                                                                 path_str, ident));
                             return (err, candidates);
                         }
                         ExprKind::MethodCall(ref segment, ..) => {
@@ -3028,7 +3028,7 @@ impl<'a> Resolver<'a> {
                 // or `<T>::A::B`. If `B` should be resolved in value namespace then
                 // it needs to be added to the trait map.
                 if ns == ValueNS {
-                    let item_name = path.last().unwrap().node;
+                    let item_name = *path.last().unwrap();
                     let traits = self.get_traits_containing_item(item_name, ns);
                     self.trait_map.insert(id, traits);
                 }
@@ -3095,7 +3095,7 @@ impl<'a> Resolver<'a> {
     fn resolve_qpath_anywhere(&mut self,
                               id: NodeId,
                               qself: Option<&QSelf>,
-                              path: &[SpannedIdent],
+                              path: &[Ident],
                               primary_ns: Namespace,
                               span: Span,
                               defer_to_typeck: bool,
@@ -3115,10 +3115,10 @@ impl<'a> Resolver<'a> {
                 };
             }
         }
-        let is_global = self.global_macros.get(&path[0].node.name).cloned()
+        let is_global = self.global_macros.get(&path[0].name).cloned()
             .map(|binding| binding.get_macro(self).kind() == MacroKind::Bang).unwrap_or(false);
         if primary_ns != MacroNS && (is_global ||
-                                     self.macro_names.contains(&path[0].node.modern())) {
+                                     self.macro_names.contains(&path[0].modern())) {
             // Return some dummy definition, it's enough for error reporting.
             return Some(
                 PathResolution::new(Def::Macro(DefId::local(CRATE_DEF_INDEX), MacroKind::Bang))
@@ -3131,7 +3131,7 @@ impl<'a> Resolver<'a> {
     fn resolve_qpath(&mut self,
                      id: NodeId,
                      qself: Option<&QSelf>,
-                     path: &[SpannedIdent],
+                     path: &[Ident],
                      ns: Namespace,
                      span: Span,
                      global_by_default: bool)
@@ -3172,8 +3172,8 @@ impl<'a> Resolver<'a> {
             PathResult::Module(..) | PathResult::Failed(..)
                     if (ns == TypeNS || path.len() > 1) &&
                        self.primitive_type_table.primitive_types
-                           .contains_key(&path[0].node.name) => {
-                let prim = self.primitive_type_table.primitive_types[&path[0].node.name];
+                           .contains_key(&path[0].name) => {
+                let prim = self.primitive_type_table.primitive_types[&path[0].name];
                 PathResolution::with_unresolved_segments(Def::PrimTy(prim), path.len() - 1)
             }
             PathResult::Module(module) => PathResolution::new(module.def().unwrap()),
@@ -3186,8 +3186,8 @@ impl<'a> Resolver<'a> {
         };
 
         if path.len() > 1 && !global_by_default && result.base_def() != Def::Err &&
-           path[0].node.name != keywords::CrateRoot.name() &&
-           path[0].node.name != keywords::DollarCrate.name() {
+           path[0].name != keywords::CrateRoot.name() &&
+           path[0].name != keywords::DollarCrate.name() {
             let unqualified_result = {
                 match self.resolve_path(&[*path.last().unwrap()], Some(ns), false, span) {
                     PathResult::NonModule(path_res) => path_res.base_def(),
@@ -3205,7 +3205,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_path(&mut self,
-                    path: &[SpannedIdent],
+                    path: &[Ident],
                     opt_ns: Option<Namespace>, // `None` indicates a module path
                     record_used: bool,
                     path_span: Span)
@@ -3217,14 +3217,14 @@ impl<'a> Resolver<'a> {
             debug!("resolve_path ident {} {:?}", i, ident);
             let is_last = i == path.len() - 1;
             let ns = if is_last { opt_ns.unwrap_or(TypeNS) } else { TypeNS };
-            let name = ident.node.name;
+            let name = ident.name;
 
             if i == 0 && ns == TypeNS && name == keywords::SelfValue.name() {
-                let mut ctxt = ident.node.span.ctxt().modern();
+                let mut ctxt = ident.span.ctxt().modern();
                 module = Some(self.resolve_self(&mut ctxt, self.current_module));
                 continue
             } else if allow_super && ns == TypeNS && name == keywords::Super.name() {
-                let mut ctxt = ident.node.span.ctxt().modern();
+                let mut ctxt = ident.span.ctxt().modern();
                 let self_module = match i {
                     0 => self.resolve_self(&mut ctxt, self.current_module),
                     _ => module.unwrap(),
@@ -3244,16 +3244,16 @@ impl<'a> Resolver<'a> {
             if ns == TypeNS {
                 if (i == 0 && name == keywords::CrateRoot.name()) ||
                    (i == 1 && name == keywords::Crate.name() &&
-                              path[0].node.name == keywords::CrateRoot.name()) {
+                              path[0].name == keywords::CrateRoot.name()) {
                     // `::a::b` or `::crate::a::b`
-                    module = Some(self.resolve_crate_root(ident.node.span.ctxt(), false));
+                    module = Some(self.resolve_crate_root(ident.span.ctxt(), false));
                     continue
                 } else if i == 0 && name == keywords::DollarCrate.name() {
                     // `$crate::a::b`
-                    module = Some(self.resolve_crate_root(ident.node.span.ctxt(), true));
+                    module = Some(self.resolve_crate_root(ident.span.ctxt(), true));
                     continue
-                } else if i == 1 && !token::is_path_segment_keyword(ident.node) {
-                    let prev_name = path[0].node.name;
+                } else if i == 1 && !token::is_path_segment_keyword(ident) {
+                    let prev_name = path[0].name;
                     if prev_name == keywords::Extern.name() ||
                        prev_name == keywords::CrateRoot.name() &&
                        self.session.features_untracked().extern_absolute_paths {
@@ -3276,13 +3276,13 @@ impl<'a> Resolver<'a> {
                name == keywords::Super.name() && i != 0 ||
                name == keywords::Extern.name() && i != 0 ||
                name == keywords::Crate.name() && i != 1 &&
-                    path[0].node.name != keywords::CrateRoot.name() {
+                    path[0].name != keywords::CrateRoot.name() {
                 let name_str = if name == keywords::CrateRoot.name() {
                     format!("crate root")
                 } else {
                     format!("`{}`", name)
                 };
-                let msg = if i == 1 && path[0].node.name == keywords::CrateRoot.name() {
+                let msg = if i == 1 && path[0].name == keywords::CrateRoot.name() {
                     format!("global paths cannot start with {}", name_str)
                 } else if i == 0 && name == keywords::Crate.name() {
                     format!("{} can only be used in absolute paths", name_str)
@@ -3293,12 +3293,12 @@ impl<'a> Resolver<'a> {
             }
 
             let binding = if let Some(module) = module {
-                self.resolve_ident_in_module(module, ident.node, ns, false, record_used, path_span)
+                self.resolve_ident_in_module(module, ident, ns, false, record_used, path_span)
             } else if opt_ns == Some(MacroNS) {
-                self.resolve_lexical_macro_path_segment(ident.node, ns, record_used, path_span)
+                self.resolve_lexical_macro_path_segment(ident, ns, record_used, path_span)
                     .map(MacroBinding::binding)
             } else {
-                match self.resolve_ident_in_lexical_scope(ident.node, ns, record_used, path_span) {
+                match self.resolve_ident_in_lexical_scope(ident, ns, record_used, path_span) {
                     Some(LexicalScopeBinding::Item(binding)) => Ok(binding),
                     Some(LexicalScopeBinding::Def(def))
                             if opt_ns == Some(TypeNS) || opt_ns == Some(ValueNS) => {
@@ -3324,7 +3324,7 @@ impl<'a> Resolver<'a> {
                         ));
                     } else {
                         return PathResult::Failed(ident.span,
-                                                  format!("Not a module `{}`", ident.node),
+                                                  format!("Not a module `{}`", ident),
                                                   is_last);
                     }
                 }
@@ -3345,12 +3345,12 @@ impl<'a> Resolver<'a> {
                         if let Some(candidate) = candidates.get(0) {
                             format!("Did you mean `{}`?", candidate.path)
                         } else {
-                            format!("Maybe a missing `extern crate {};`?", ident.node)
+                            format!("Maybe a missing `extern crate {};`?", ident)
                         }
                     } else if i == 0 {
-                        format!("Use of undeclared type or module `{}`", ident.node)
+                        format!("Use of undeclared type or module `{}`", ident)
                     } else {
-                        format!("Could not find `{}` in `{}`", ident.node, path[i - 1].node)
+                        format!("Could not find `{}` in `{}`", ident, path[i - 1])
                     };
                     return PathResult::Failed(ident.span, msg, is_last);
                 }
@@ -3516,7 +3516,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn lookup_typo_candidate<FilterFn>(&mut self,
-                                       path: &[SpannedIdent],
+                                       path: &[Ident],
                                        ns: Namespace,
                                        filter_fn: FilterFn,
                                        span: Span)
@@ -3577,7 +3577,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        let name = path[path.len() - 1].node.name;
+        let name = path[path.len() - 1].name;
         // Make sure error reporting is deterministic.
         names.sort_by_key(|name| name.as_str());
         match find_best_match_for_name(names.iter(), &name.as_str(), None) {
@@ -3739,12 +3739,12 @@ impl<'a> Resolver<'a> {
 
     fn record_candidate_traits_for_expr_if_necessary(&mut self, expr: &Expr) {
         match expr.node {
-            ExprKind::Field(_, name) => {
+            ExprKind::Field(_, ident) => {
                 // FIXME(#6890): Even though you can't treat a method like a
                 // field, we need to add any trait methods we find that match
                 // the field name so that we can do some nice error reporting
                 // later on in typeck.
-                let traits = self.get_traits_containing_item(name.node, ValueNS);
+                let traits = self.get_traits_containing_item(ident, ValueNS);
                 self.trait_map.insert(expr.id, traits);
             }
             ExprKind::MethodCall(ref segment, ..) => {
@@ -4244,30 +4244,30 @@ impl<'a> Resolver<'a> {
     }
 }
 
-fn is_self_type(path: &[SpannedIdent], namespace: Namespace) -> bool {
-    namespace == TypeNS && path.len() == 1 && path[0].node.name == keywords::SelfType.name()
+fn is_self_type(path: &[Ident], namespace: Namespace) -> bool {
+    namespace == TypeNS && path.len() == 1 && path[0].name == keywords::SelfType.name()
 }
 
-fn is_self_value(path: &[SpannedIdent], namespace: Namespace) -> bool {
-    namespace == ValueNS && path.len() == 1 && path[0].node.name == keywords::SelfValue.name()
+fn is_self_value(path: &[Ident], namespace: Namespace) -> bool {
+    namespace == ValueNS && path.len() == 1 && path[0].name == keywords::SelfValue.name()
 }
 
-fn names_to_string(idents: &[SpannedIdent]) -> String {
+fn names_to_string(idents: &[Ident]) -> String {
     let mut result = String::new();
     for (i, ident) in idents.iter()
-                            .filter(|i| i.node.name != keywords::CrateRoot.name())
+                            .filter(|ident| ident.name != keywords::CrateRoot.name())
                             .enumerate() {
         if i > 0 {
             result.push_str("::");
         }
-        result.push_str(&ident.node.name.as_str());
+        result.push_str(&ident.name.as_str());
     }
     result
 }
 
 fn path_names_to_string(path: &Path) -> String {
     names_to_string(&path.segments.iter()
-                        .map(|seg| respan(seg.span, seg.ident))
+                        .map(|seg| seg.ident)
                         .collect::<Vec<_>>())
 }
 
@@ -4356,7 +4356,6 @@ fn module_to_string(module: Module) -> Option<String> {
     }
     Some(names_to_string(&names.into_iter()
                         .rev()
-                        .map(|n| dummy_spanned(n))
                         .collect::<Vec<_>>()))
 }
 

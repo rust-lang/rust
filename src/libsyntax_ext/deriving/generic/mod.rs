@@ -195,6 +195,7 @@ use syntax::abi::Abi;
 use syntax::ast::{
     self, BinOpKind, EnumDef, Expr, GenericParam, Generics, Ident, PatKind, VariantData
 };
+
 use syntax::attr;
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
@@ -952,7 +953,7 @@ impl<'a> MethodDef<'a> {
         let args = {
             let self_args = explicit_self.map(|explicit_self| {
                 ast::Arg::from_self(explicit_self,
-                                    respan(trait_.span, keywords::SelfValue.ident()))
+                                    keywords::SelfValue.ident().with_span_pos(trait_.span))
             });
             let nonself_args = arg_types.into_iter()
                 .map(|(name, ty)| cx.arg(trait_.span, name, ty));
@@ -1581,7 +1582,7 @@ impl<'a> TraitDef<'a> {
 
     fn create_subpatterns(&self,
                           cx: &mut ExtCtxt,
-                          field_paths: Vec<ast::SpannedIdent>,
+                          field_paths: Vec<ast::Ident>,
                           mutbl: ast::Mutability,
                           use_temporaries: bool)
                           -> Vec<P<ast::Pat>> {
@@ -1613,10 +1614,7 @@ impl<'a> TraitDef<'a> {
         for (i, struct_field) in struct_def.fields().iter().enumerate() {
             let sp = struct_field.span.with_ctxt(self.span.ctxt());
             let ident = cx.ident_of(&format!("{}_{}", prefix, i));
-            paths.push(codemap::Spanned {
-                span: sp,
-                node: ident,
-            });
+            paths.push(ident.with_span_pos(sp));
             let val = cx.expr_path(cx.path_ident(sp, ident));
             let val = if use_temporaries {
                 val

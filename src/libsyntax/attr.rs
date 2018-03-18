@@ -1117,7 +1117,7 @@ impl MetaItem {
         let (span, name) = match tokens.next() {
             Some(TokenTree::Token(span, Token::Ident(ident, _))) => (span, ident.name),
             Some(TokenTree::Token(_, Token::Interpolated(ref nt))) => match nt.0 {
-                token::Nonterminal::NtIdent(ident, _) => (ident.span, ident.node.name),
+                token::Nonterminal::NtIdent(ident, _) => (ident.span, ident.name),
                 token::Nonterminal::NtMeta(ref meta) => return Some(meta.clone()),
                 _ => return None,
             },
