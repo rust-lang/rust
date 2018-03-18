@@ -851,7 +851,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
 
         // `visit::walk_variant` without the discriminant expression.
         self.visit_variant_data(&variant.node.data,
-                                variant.node.name,
+                                variant.node.ident,
                                 generics,
                                 item_id,
                                 variant.span);
@@ -3988,7 +3988,7 @@ impl<'a> Resolver<'a> {
             ast::VisibilityKind::Restricted { ref path, id, .. } => {
                 // Visibilities are resolved as global by default, add starting root segment.
                 let segments = path.make_root().iter().chain(path.segments.iter())
-                    .map(|seg| respan(seg.span, seg.identifier))
+                    .map(|seg| seg.ident)
                     .collect::<Vec<_>>();
                 let def = self.smart_resolve_path_fragment(id, None, &segments, path.span,
                                                            PathSource::Visibility).base_def();

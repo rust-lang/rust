@@ -430,7 +430,7 @@ pub fn noop_fold_global_asm<T: Folder>(ga: P<GlobalAsm>,
 pub fn noop_fold_variant<T: Folder>(v: Variant, fld: &mut T) -> Variant {
     Spanned {
         node: Variant_ {
-            name: fld.fold_ident(v.node.name),
+            ident: fld.fold_ident(v.node.ident),
             attrs: fold_attrs(v.node.attrs, fld),
             data: fld.fold_variant_data(v.node.data),
             disr_expr: v.node.disr_expr.map(|e| fld.fold_expr(e)),

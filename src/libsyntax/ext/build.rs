@@ -1022,7 +1022,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             body)
     }
 
-    fn variant(&self, span: Span, name: Ident, tys: Vec<P<ast::Ty>> ) -> ast::Variant {
+    fn variant(&self, span: Span, ident: Ident, tys: Vec<P<ast::Ty>> ) -> ast::Variant {
         let fields: Vec<_> = tys.into_iter().map(|ty| {
             ast::StructField {
                 span: ty.span,
@@ -1042,7 +1042,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
         respan(span,
                ast::Variant_ {
-                   name,
+                   ident,
                    attrs: Vec::new(),
                    data: vdata,
                    disr_expr: None,

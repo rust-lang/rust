@@ -132,7 +132,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                     for v in &enum_definition.variants {
                         let variant_def_index =
                             this.create_def(v.node.data.id(),
-                                            DefPathData::EnumVariant(v.node.name.name.as_str()),
+                                            DefPathData::EnumVariant(v.node.ident.name.as_str()),
                                             REGULAR_SPACE,
                                             v.span);
                         this.with_parent(variant_def_index, |this| {

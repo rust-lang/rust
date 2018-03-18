@@ -1538,10 +1538,9 @@ impl<'a> MethodDef<'a> {
         let summary = enum_def.variants
             .iter()
             .map(|v| {
-                let ident = v.node.name;
                 let sp = v.span.with_ctxt(trait_.span.ctxt());
                 let summary = trait_.summarise_struct(cx, &v.node.data);
-                (ident, sp, summary)
+                (v.node.ident, sp, summary)
             })
             .collect();
         self.call_substructure_method(cx,
@@ -1667,9 +1666,8 @@ impl<'a> TraitDef<'a> {
          prefix: &str,
          mutbl: ast::Mutability)
          -> (P<ast::Pat>, Vec<(Span, Option<Ident>, P<Expr>, &'a [ast::Attribute])>) {
-        let variant_ident = variant.node.name;
         let sp = variant.span.with_ctxt(self.span.ctxt());
-        let variant_path = cx.path(sp, vec![enum_ident, variant_ident]);
+        let variant_path = cx.path(sp, vec![enum_ident, variant.node.ident]);
         let use_temporaries = false; // enums can't be repr(packed)
         self.create_struct_pattern(cx, variant_path, &variant.node.data, prefix, mutbl,
                                    use_temporaries)

@@ -6323,7 +6323,7 @@ impl<'a> Parser<'a> {
             }
 
             let vr = ast::Variant_ {
-                name: ident,
+                ident,
                 attrs: variant_attrs,
                 data: struct_def,
                 disr_expr,

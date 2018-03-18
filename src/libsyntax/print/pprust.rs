@@ -1540,7 +1540,7 @@ impl<'a> State<'a> {
     pub fn print_variant(&mut self, v: &ast::Variant) -> io::Result<()> {
         self.head("")?;
         let generics = ast::Generics::default();
-        self.print_struct(&v.node.data, &generics, v.node.name, v.span, false)?;
+        self.print_struct(&v.node.data, &generics, v.node.ident, v.span, false)?;
         match v.node.disr_expr {
             Some(ref d) => {
                 self.s.space()?;
@@ -3194,7 +3194,7 @@ mod tests {
             let ident = ast::Ident::from_str("principal_skinner");
 
             let var = codemap::respan(syntax_pos::DUMMY_SP, ast::Variant_ {
-                name: ident,
+                ident,
                 attrs: Vec::new(),
                 // making this up as I go.... ?
                 data: ast::VariantData::Unit(ast::DUMMY_NODE_ID),

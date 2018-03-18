@@ -297,7 +297,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 filter!(self.span_utils, sub_span, item.span, None);
                 let variants_str = def.variants
                     .iter()
-                    .map(|v| v.node.name.to_string())
+                    .map(|v| v.node.ident.to_string())
                     .collect::<Vec<_>>()
                     .join(", ");
                 let value = format!("{}::{{{}}}", name, variants_str);

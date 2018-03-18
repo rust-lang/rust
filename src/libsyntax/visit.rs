@@ -293,8 +293,8 @@ pub fn walk_variant<'a, V>(visitor: &mut V,
                            item_id: NodeId)
     where V: Visitor<'a>,
 {
-    visitor.visit_ident(variant.span, variant.node.name);
-    visitor.visit_variant_data(&variant.node.data, variant.node.name,
+    visitor.visit_ident(variant.span, variant.node.ident);
+    visitor.visit_variant_data(&variant.node.data, variant.node.ident,
                              generics, item_id, variant.span);
     walk_list!(visitor, visit_expr, &variant.node.disr_expr);
     walk_list!(visitor, visit_attribute, &variant.node.attrs);
