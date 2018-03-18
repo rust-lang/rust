@@ -42,6 +42,9 @@ pub enum Alignment {
 #[stable(feature = "debug_builders", since = "1.2.0")]
 pub use self::builders::{DebugStruct, DebugTuple, DebugSet, DebugList, DebugMap};
 
+#[unstable(feature = "display_as_debug", issue = "49128")]
+pub use self::builders::DisplayAsDebug;
+
 #[unstable(feature = "fmt_internals", reason = "internal to format_args!",
            issue = "0")]
 #[doc(hidden)]

@@ -537,3 +537,70 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
         self.fmt.alternate()
     }
 }
+
+/// A struct to help with [`fmt::Debug`](trait.Debug.html) implementations.
+///
+/// This is useful you need to use the `Display` `impl` of a type in a `Debug`
+/// context instead of the `Debug` `impl` of the type. One such scenario where
+/// this is useful is when you need an unquoted string as part of your
+/// [`Debug::fmt`](trait.Debug.html#tymethod.fmt) implementation. As seen
+/// below in the example, this can happen when you want to use [`.debug_set()`]
+/// methods and friends.
+///
+/// [`.debug_set()`]: struct.Formatter.html#method.debug_set
+///
+/// The difference between `&'a str` and `DisplayAsDebug<&'a str>` in a `Debug`
+/// context such as `println!("{:?}", <value>)` is that the former will quote
+/// the string while the latter will not. In other words, the following holds:
+///
+/// ```rust
+/// #![feature(display_as_debug)]
+/// use std::fmt::DisplayAsDebug;
+///
+/// assert_eq!("foo", format!("{:?}", DisplayAsDebug("foo")));
+/// assert_eq!("\"foo\"", format!("{:?}", "foo"));
+/// ```
+///
+/// # Examples
+///
+/// In this example we use `DisplayAsDebug("_")` for a "catch all" match arm.
+///
+/// ```rust
+/// #![feature(display_as_debug)]
+/// use std::fmt::{Debug, Formatter, DisplayAsDebug, Result};
+///
+/// struct Arm<'a, L: 'a, R: 'a>(&'a (L, R));
+/// struct Table<'a, K: 'a, V: 'a>(&'a [(K, V)], V);
+///
+/// impl<'a, L: 'a + Debug, R: 'a + Debug> Debug for Arm<'a, L, R> {
+///     fn fmt(&self, fmt: &mut Formatter) -> Result {
+///         L::fmt(&(self.0).0, fmt)?;
+///         fmt.write_str(" => ")?;
+///         R::fmt(&(self.0).1, fmt)
+///     }
+/// }
+///
+/// impl<'a, K: 'a + Debug, V: 'a + Debug> Debug for Table<'a, K, V> {
+///     fn fmt(&self, fmt: &mut Formatter) -> Result {
+///         fmt.debug_set()
+///            .entries(self.0.iter().map(Arm))
+///            .entry(&Arm(&(DisplayAsDebug("_"), &self.1)))
+///            .finish()
+///     }
+/// }
+///
+/// let table = (1..3).enumerate().collect::<Vec<_>>();
+/// assert_eq!(format!("{:?}", Table(&*table, 0)),
+///            "{0 => 1, 1 => 2, _ => 0}");
+/// ```
+#[unstable(feature = "display_as_debug", issue = "49128")]
+#[must_use]
+#[derive(Copy, Clone)]
+pub struct DisplayAsDebug<T>(pub T);
+
+#[unstable(feature = "display_as_debug", issue = "49128")]
+impl<T: fmt::Display> fmt::Debug for DisplayAsDebug<T> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        <T as fmt::Display>::fmt(&self.0, fmt)
+    }
+}

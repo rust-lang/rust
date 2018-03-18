@@ -528,6 +528,9 @@ pub use core::fmt::{ArgumentV1, Arguments, write};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
 
+#[unstable(feature = "display_as_debug", issue = "49128")]
+pub use core::fmt::DisplayAsDebug;
+
 use string;
 
 /// The `format` function takes an [`Arguments`] struct and returns the resulting

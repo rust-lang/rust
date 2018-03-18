@@ -94,6 +94,7 @@
 #![feature(dropck_eyepatch)]
 #![feature(exact_size_is_empty)]
 #![feature(fmt_internals)]
+#![feature(display_as_debug)]
 #![feature(from_ref)]
 #![feature(fundamental)]
 #![feature(generic_param_attrs)]
