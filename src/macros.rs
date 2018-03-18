@@ -519,15 +519,6 @@ impl MacroArgKind {
         }
     }
 
-    fn has_prefix_space(&self) -> bool {
-        match *self {
-            MacroArgKind::Separator(_, ref prefix) | MacroArgKind::Other(_, ref prefix) => {
-                prefix.starts_with(" ")
-            }
-            _ => false,
-        }
-    }
-
     fn rewrite(
         &self,
         context: &RewriteContext,
