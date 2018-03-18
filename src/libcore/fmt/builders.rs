@@ -543,27 +543,31 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
 /// This is useful you need to use the `Display` `impl` of a type in a `Debug`
 /// context instead of the `Debug` `impl` of the type. One such scenario where
 /// this is useful is when you need an unquoted string as part of your
-/// [`Debug::fmt`](trait.Debug.html#tymethod.fmt) implementation.
+/// [`Debug::fmt`](trait.Debug.html#tymethod.fmt) implementation. As seen
+/// below in the example, this can happen when you want to use [`.debug_set()`]
+/// methods and friends.
 ///
-/// The difference between `&'a str` and `DebugDisplay<&'a str>` in a `Debug`
+/// [`.debug_set()`]: struct.Formatter.html#method.debug_set
+///
+/// The difference between `&'a str` and `DisplayAsDebug<&'a str>` in a `Debug`
 /// context such as `println!("{:?}", <value>)` is that the former will quote
 /// the string while the latter will not. In other words, the following holds:
 ///
 /// ```rust
-/// #![feature(debug_display)]
-/// use std::fmt::DebugDisplay;
+/// #![feature(display_as_debug)]
+/// use std::fmt::DisplayAsDebug;
 ///
-/// assert_eq!("foo", format!("{:?}", DebugDisplay("foo")));
+/// assert_eq!("foo", format!("{:?}", DisplayAsDebug("foo")));
 /// assert_eq!("\"foo\"", format!("{:?}", "foo"));
 /// ```
 ///
 /// # Examples
 ///
-/// In this example we use `DebugDisplay("_")` for a "catch all" match arm.
+/// In this example we use `DisplayAsDebug("_")` for a "catch all" match arm.
 ///
 /// ```rust
-/// #![feature(debug_display)]
-/// use std::fmt::{Debug, Formatter, DebugDisplay, Result};
+/// #![feature(display_as_debug)]
+/// use std::fmt::{Debug, Formatter, DisplayAsDebug, Result};
 ///
 /// struct Arm<'a, L: 'a, R: 'a>(&'a (L, R));
 /// struct Table<'a, K: 'a, V: 'a>(&'a [(K, V)], V);
@@ -580,7 +584,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
 ///     fn fmt(&self, fmt: &mut Formatter) -> Result {
 ///         fmt.debug_set()
 ///            .entries(self.0.iter().map(Arm))
-///            .entry(&Arm(&(DebugDisplay("_"), &self.1)))
+///            .entry(&Arm(&(DisplayAsDebug("_"), &self.1)))
 ///            .finish()
 ///     }
 /// }
@@ -589,13 +593,13 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
 /// assert_eq!(format!("{:?}", Table(&*table, 0)),
 ///            "{0 => 1, 1 => 2, _ => 0}");
 /// ```
-#[unstable(feature = "debug_display", issue = "0")]
+#[unstable(feature = "display_as_debug", issue = "0")]
 #[must_use]
 #[derive(Copy, Clone)]
-pub struct DebugDisplay<T>(pub T);
+pub struct DisplayAsDebug<T>(pub T);
 
-#[unstable(feature = "debug_display", issue = "0")]
-impl<T: fmt::Display> fmt::Debug for DebugDisplay<T> {
+#[unstable(feature = "display_as_debug", issue = "0")]
+impl<T: fmt::Display> fmt::Debug for DisplayAsDebug<T> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         <T as fmt::Display>::fmt(&self.0, fmt)
     }

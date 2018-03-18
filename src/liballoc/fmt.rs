@@ -527,8 +527,9 @@ pub use core::fmt::Error;
 pub use core::fmt::{ArgumentV1, Arguments, write};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
-#[unstable(feature = "debug_display", issue = "0")]
-pub use core::fmt::DebugDisplay;
+
+#[unstable(feature = "display_as_debug", issue = "0")]
+pub use core::fmt::DisplayAsDebug;
 
 use string;
 
