@@ -593,12 +593,12 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
 /// assert_eq!(format!("{:?}", Table(&*table, 0)),
 ///            "{0 => 1, 1 => 2, _ => 0}");
 /// ```
-#[unstable(feature = "display_as_debug", issue = "0")]
+#[unstable(feature = "display_as_debug", issue = "49128")]
 #[must_use]
 #[derive(Copy, Clone)]
 pub struct DisplayAsDebug<T>(pub T);
 
-#[unstable(feature = "display_as_debug", issue = "0")]
+#[unstable(feature = "display_as_debug", issue = "49128")]
 impl<T: fmt::Display> fmt::Debug for DisplayAsDebug<T> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         <T as fmt::Display>::fmt(&self.0, fmt)
