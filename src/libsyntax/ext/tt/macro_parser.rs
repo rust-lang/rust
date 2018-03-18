@@ -364,8 +364,8 @@ pub fn parse_failure_msg(tok: Token) -> String {
 
 /// Perform a token equality check, ignoring syntax context (that is, an unhygienic comparison)
 fn token_name_eq(t1: &Token, t2: &Token) -> bool {
-    if let (Some(id1), Some(id2)) = (t1.ident(), t2.ident()) {
-        id1.name == id2.name && t1.is_raw_ident() == t2.is_raw_ident()
+    if let (Some((id1, is_raw1)), Some((id2, is_raw2))) = (t1.ident(), t2.ident()) {
+        id1.name == id2.name && is_raw1 == is_raw2
     } else if let (&token::Lifetime(id1), &token::Lifetime(id2)) = (t1, t2) {
         id1.name == id2.name
     } else {

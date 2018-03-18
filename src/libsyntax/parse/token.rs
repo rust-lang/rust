@@ -310,30 +310,15 @@ impl Token {
         }
     }
 
-    fn ident_common(&self, allow_raw: bool) -> Option<ast::Ident> {
+    pub fn ident(&self) -> Option<(ast::Ident, bool)> {
         match *self {
-            Ident(ident, is_raw) if !is_raw || allow_raw => Some(ident),
+            Ident(ident, is_raw) => Some((ident, is_raw)),
             Interpolated(ref nt) => match nt.0 {
-                NtIdent(ident, is_raw) if !is_raw || allow_raw => Some(ident.node),
+                NtIdent(ident, is_raw) => Some((ident.node, is_raw)),
                 _ => None,
             },
             _ => None,
         }
-    }
-
-    pub fn nonraw_ident(&self) -> Option<ast::Ident> {
-        self.ident_common(false)
-    }
-
-    pub fn is_raw_ident(&self) -> bool {
-        match *self {
-            Ident(_, true) => true,
-            _ => false,
-        }
-    }
-
-    pub fn ident(&self) -> Option<ast::Ident> {
-        self.ident_common(true)
     }
 
     /// Returns `true` if the token is an identifier.
@@ -404,37 +389,37 @@ impl Token {
 
     /// Returns `true` if the token is a given keyword, `kw`.
     pub fn is_keyword(&self, kw: keywords::Keyword) -> bool {
-        self.nonraw_ident().map(|ident| ident.name == kw.name()).unwrap_or(false)
+        self.ident().map(|(ident, is_raw)| ident.name == kw.name() && !is_raw).unwrap_or(false)
     }
 
     pub fn is_path_segment_keyword(&self) -> bool {
-        match self.nonraw_ident() {
-            Some(id) => is_path_segment_keyword(id),
-            None => false,
+        match self.ident() {
+            Some((id, false)) => is_path_segment_keyword(id),
+            _ => false,
         }
     }
 
     // Returns true for reserved identifiers used internally for elided lifetimes,
     // unnamed method parameters, crate root module, error recovery etc.
     pub fn is_special_ident(&self) -> bool {
-        match self.nonraw_ident() {
-            Some(id) => is_special_ident(id),
+        match self.ident() {
+            Some((id, false)) => is_special_ident(id),
             _ => false,
         }
     }
 
     /// Returns `true` if the token is a keyword used in the language.
     pub fn is_used_keyword(&self) -> bool {
-        match self.nonraw_ident() {
-            Some(id) => is_used_keyword(id),
+        match self.ident() {
+            Some((id, false)) => is_used_keyword(id),
             _ => false,
         }
     }
 
     /// Returns `true` if the token is a keyword reserved for possible future use.
     pub fn is_unused_keyword(&self) -> bool {
-        match self.nonraw_ident() {
-            Some(id) => is_unused_keyword(id),
+        match self.ident() {
+            Some((id, false)) => is_unused_keyword(id),
             _ => false,
         }
     }
@@ -507,8 +492,8 @@ impl Token {
 
     /// Returns `true` if the token is either a special identifier or a keyword.
     pub fn is_reserved_ident(&self) -> bool {
-        match self.nonraw_ident() {
-            Some(id) => is_reserved_ident(id),
+        match self.ident() {
+            Some((id, false)) => is_reserved_ident(id),
             _ => false,
         }
     }
