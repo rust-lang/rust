@@ -1866,7 +1866,7 @@ pub struct EnumDef {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Variant_ {
-    pub name: Ident,
+    pub ident: Ident,
     pub attrs: Vec<Attribute>,
     pub data: VariantData,
     /// Explicit discriminant, e.g. `Foo = 1`
@@ -1900,7 +1900,7 @@ impl UseTree {
         match self.kind {
             UseTreeKind::Simple(Some(rename)) => rename,
             UseTreeKind::Simple(None) =>
-                self.prefix.segments.last().expect("empty prefix in a simple import").identifier,
+                self.prefix.segments.last().expect("empty prefix in a simple import").ident,
             _ => panic!("`UseTree::ident` can only be used on a simple import"),
         }
     }

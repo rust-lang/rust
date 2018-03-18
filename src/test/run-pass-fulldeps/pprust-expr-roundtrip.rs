@@ -134,8 +134,7 @@ fn iter_exprs(depth: usize, f: &mut FnMut(P<Expr>)) {
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Assign(make_x(), e)));
             },
             10 => {
-                let ident = Spanned { span: DUMMY_SP, node: Ident::from_str("f") };
-                iter_exprs(depth - 1, &mut |e| g(ExprKind::Field(e, ident)));
+                iter_exprs(depth - 1, &mut |e| g(ExprKind::Field(e, Ident::from_str("f"))));
             },
             11 => {
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Range(
@@ -151,8 +150,7 @@ fn iter_exprs(depth: usize, f: &mut FnMut(P<Expr>)) {
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Ret(Some(e))));
             },
             14 => {
-                let seg = PathSegment::new(Ident::from_str("S"), DUMMY_SP);
-                let path = Path { segments: vec![seg], span: DUMMY_SP };
+                let path = Path::from_ident(DUMMY_SP, Ident::from_str("S"));
                 g(ExprKind::Struct(path, vec![], Some(make_x())));
             },
             15 => {

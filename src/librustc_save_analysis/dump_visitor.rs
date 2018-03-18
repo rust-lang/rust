@@ -663,7 +663,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         let access = access_from!(self.save_ctxt, item);
 
         for variant in &enum_definition.variants {
-            let name = variant.node.name.name.to_string();
+            let name = variant.node.ident.name.to_string();
             let mut qualname = enum_data.qualname.clone();
             qualname.push_str("::");
             qualname.push_str(&name);

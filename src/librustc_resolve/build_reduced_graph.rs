@@ -423,7 +423,7 @@ impl<'a> Resolver<'a> {
                                        parent: Module<'a>,
                                        vis: ty::Visibility,
                                        expansion: Mark) {
-        let ident = variant.node.name;
+        let ident = variant.node.ident;
         let def_id = self.definitions.local_def_id(variant.node.data.id());
 
         // Define a name in the type namespace.
