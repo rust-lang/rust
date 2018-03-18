@@ -55,7 +55,6 @@
 /// [`String`]: ../../std/string/struct.String.html
 /// [`borrow`]: #tymethod.borrow
 ///
-///
 /// # Examples
 ///
 /// As a data collection, [`HashMap<K, V>`] owns both keys and values. If
@@ -163,7 +162,6 @@
 /// [`HashMap<K, V>`]: ../../std/collections/struct.HashMap.html
 /// [`String`]: ../../std/string/struct.String.html
 /// [`str`]: ../../std/primitive.str.html
-///
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Borrow<Borrowed: ?Sized> {
     /// Immutably borrows from an owned value.
