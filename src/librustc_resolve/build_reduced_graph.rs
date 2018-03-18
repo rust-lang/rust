@@ -34,7 +34,6 @@ use syntax::attr;
 
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use syntax::ast::{Mutability, StmtKind, TraitItem, TraitItemKind, Variant};
-use syntax::codemap::respan;
 use syntax::ext::base::SyntaxExtension;
 use syntax::ext::base::Determinacy::Undetermined;
 use syntax::ext::hygiene::Mark;
@@ -115,13 +114,13 @@ impl<'a> Resolver<'a> {
 
         let mut module_path: Vec<_> = prefix.segments.iter()
             .chain(path.segments.iter())
-            .map(|seg| respan(seg.span, seg.ident))
+            .map(|seg| seg.ident)
             .collect();
 
         match use_tree.kind {
             ast::UseTreeKind::Simple(rename) => {
                 let mut ident = use_tree.ident();
-                let mut source = module_path.pop().unwrap().node;
+                let mut source = module_path.pop().unwrap();
                 let mut type_ns_only = false;
 
                 if nested {
@@ -130,7 +129,7 @@ impl<'a> Resolver<'a> {
                         type_ns_only = true;
 
                         let last_segment = *module_path.last().unwrap();
-                        if last_segment.node.name == keywords::CrateRoot.name() {
+                        if last_segment.name == keywords::CrateRoot.name() {
                             resolve_error(
                                 self,
                                 use_tree.span,
@@ -142,9 +141,9 @@ impl<'a> Resolver<'a> {
 
                         // Replace `use foo::self;` with `use foo;`
                         let _ = module_path.pop();
-                        source = last_segment.node;
+                        source = last_segment;
                         if rename.is_none() {
-                            ident = last_segment.node;
+                            ident = last_segment;
                         }
                     }
                 } else {
@@ -195,8 +194,8 @@ impl<'a> Resolver<'a> {
             }
             ast::UseTreeKind::Nested(ref items) => {
                 let prefix = ast::Path {
-                    segments: module_path.iter()
-                        .map(|s| ast::PathSegment::from_ident(s.node, s.span))
+                    segments: module_path.into_iter()
+                        .map(|ident| ast::PathSegment::from_ident(ident, ident.span))
                         .collect(),
                     span: path.span,
                 };

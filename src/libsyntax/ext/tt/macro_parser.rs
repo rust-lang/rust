@@ -86,7 +86,6 @@ use self::TokenTreeOrTokenTreeVec::*;
 
 use ast::Ident;
 use syntax_pos::{self, BytePos, Span};
-use codemap::respan;
 use errors::FatalError;
 use ext::tt::quoted::{self, TokenTree};
 use parse::{Directory, ParseSess};
@@ -824,9 +823,10 @@ fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
         "expr" => token::NtExpr(panictry!(p.parse_expr())),
         "ty" => token::NtTy(panictry!(p.parse_ty())),
         // this could be handled like a token, since it is one
-        "ident" => if let Some((ident, is_raw)) = get_macro_ident(&p.token) {
+        "ident" => if let Some((ident, is_raw))) = get_macro_ident(&p.token) {
+            let span = p.span;
             p.bump();
-            token::NtIdent(respan(p.prev_span, ident), is_raw)
+            token::NtIdent(Ident::new(ident.name, span), is_raw)
         } else {
             let token_str = pprust::token_to_string(&p.token);
             p.fatal(&format!("expected ident, found {}", &token_str)).emit();
