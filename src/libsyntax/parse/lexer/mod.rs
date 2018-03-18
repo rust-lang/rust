@@ -1155,6 +1155,10 @@ impl<'a> StringReader<'a> {
                             &format!("`r#{}` is not currently supported.", ident.name)
                         ).raise();
                     }
+                    if is_raw_ident {
+                        let span = self.mk_sp(raw_start, self.pos);
+                        self.sess.raw_identifier_spans.borrow_mut().push(span);
+                    }
                     token::Ident(ident, is_raw_ident)
                 }));
             }
