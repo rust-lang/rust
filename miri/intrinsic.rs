@@ -217,8 +217,16 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                     // Also see the write_bytes intrinsic.
                     let elem_align = elem_layout.align;
                     let src = self.into_ptr(args[0].value)?;
-                    let src_align = self.layout_of(args[0].ty)?.align;
+                    //let src_align = self.layout_of(args[0].ty)?.align;
+                    let src_align = ty::layout::Align::from_bytes(1, 1).unwrap();
                     let dest = self.into_ptr(args[1].value)?;
+                    /*self.tcx.sess.warn(&format!("src_ty: {:?} src_align: {} elem_align: {} src_aligned: {:?} dst_aligned: {:?}",
+                        args[0].ty,
+                        src_align.abi(),
+                        elem_align.abi(),
+                        self.memory.check_align(src, src_align),
+                        self.memory.check_align(dest, elem_align)
+                    ));*/
                     self.memory.copy(
                         src,
                         src_align,
