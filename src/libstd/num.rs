@@ -21,7 +21,7 @@ pub use core::num::{FpCategory, ParseIntError, ParseFloatError, TryFromIntError}
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::num::Wrapping;
 
-#[unstable(feature = "nonzero", issue = "27730")]
+#[unstable(feature = "nonzero", issue = "49137")]
 pub use core::num::{
     NonZeroU8, NonZeroI8, NonZeroU16, NonZeroI16, NonZeroU32, NonZeroI32,
     NonZeroU64, NonZeroI64, NonZeroUsize, NonZeroIsize,
@@ -29,7 +29,7 @@ pub use core::num::{
 
 // Change this to `#[unstable(feature = "i128", issue = "35118")]`
 // if other NonZero* integer types are stabilizied before 128-bit integers
-#[unstable(feature = "nonzero", issue = "27730")]
+#[unstable(feature = "nonzero", issue = "49137")]
 pub use core::num::{NonZeroU128, NonZeroI128};
 
 #[cfg(test)] use fmt;
