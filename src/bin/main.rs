@@ -385,9 +385,8 @@ fn print_usage_to_stdout(opts: &Options, reason: &str) {
 
 fn print_version() {
     let version_info = format!(
-        "{}{}{}",
+        "{}-{}",
         option_env!("CARGO_PKG_VERSION").unwrap_or("unknown"),
-        "-",
         include_str!(concat!(env!("OUT_DIR"), "/commit-info.txt"))
     );
 

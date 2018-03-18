@@ -26,9 +26,19 @@ fn main() {
 // Try to get hash and date of the last commit on a best effort basis. If anything goes wrong
 // (git not installed or if this is not a git repository) just return an empty string.
 fn commit_info() -> String {
-    match (commit_hash(), commit_date()) {
-        (Some(hash), Some(date)) => format!(" ({} {})", hash.trim_right(), date),
+    match (channel(), commit_hash(), commit_date()) {
+        (channel, Some(hash), Some(date)) => {
+            format!("{} ({} {})", channel, hash.trim_right(), date)
+        }
         _ => String::new(),
+    }
+}
+
+fn channel() -> String {
+    if let Ok(channel) = env::var("CFG_RELEASE_CHANNEL") {
+        channel
+    } else {
+        "nightly".to_owned()
     }
 }
 
