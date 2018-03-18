@@ -221,6 +221,7 @@ fn make_win_dist(
         "libsecur32.a",
         "libsetupapi.a",
         "libshell32.a",
+        "libsynchronization.a",
         "libuser32.a",
         "libuserenv.a",
         "libuuid.a",
