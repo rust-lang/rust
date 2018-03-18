@@ -116,6 +116,7 @@ impl Step for ToolBuild {
         println!("Building stage{} tool {} ({})", compiler.stage, tool, target);
 
         let mut cargo = prepare_tool_cargo(builder, compiler, target, "build", path);
+        cargo.arg("--no-default-features");
         cargo.arg("--features").arg(self.extra_features.join(" "));
         let is_expected = build.try_run(&mut cargo);
         build.save_toolstate(tool, if is_expected {
@@ -489,6 +490,14 @@ tool_extended!((self, builder),
         });
         if clippy.is_some() {
             self.extra_features.push("clippy".to_owned());
+        }
+        let rustfmt = builder.ensure(Rustfmt {
+            compiler: self.compiler,
+            target: self.target,
+            extra_features: Vec::new(),
+        });
+        if rustfmt.is_some() {
+            self.extra_features.push("rustfmt".to_owned());
         }
         builder.ensure(native::Openssl {
             target: self.target,
