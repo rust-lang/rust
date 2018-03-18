@@ -1,7 +1,7 @@
-- Feature Name: const_repeat_expr
+- Feature Name: `const_repeat_expr`
 - Start Date: 2017-10-20
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#2203](https://github.com/rust-lang/rfcs/pull/2203)
+- Rust Issue: [rust-lang/rust#49147](https://github.com/rust-lang/rust/issues/49147)
 
 # Summary
 [summary]: #summary
