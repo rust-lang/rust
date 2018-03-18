@@ -115,7 +115,7 @@ impl<'a> Resolver<'a> {
 
         let mut module_path: Vec<_> = prefix.segments.iter()
             .chain(path.segments.iter())
-            .map(|seg| respan(seg.span, seg.identifier))
+            .map(|seg| respan(seg.span, seg.ident))
             .collect();
 
         match use_tree.kind {
@@ -196,11 +196,7 @@ impl<'a> Resolver<'a> {
             ast::UseTreeKind::Nested(ref items) => {
                 let prefix = ast::Path {
                     segments: module_path.iter()
-                        .map(|s| ast::PathSegment {
-                            identifier: s.node,
-                            span: s.span,
-                            parameters: None,
-                        })
+                        .map(|s| ast::PathSegment::from_ident(s.node, s.span))
                         .collect(),
                     span: path.span,
                 };

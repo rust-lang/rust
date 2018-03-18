@@ -168,10 +168,10 @@ fn macro_bang_format(path: &ast::Path) -> ExpnFormat {
             path_str.push_str("::");
         }
 
-        if segment.identifier.name != keywords::CrateRoot.name() &&
-            segment.identifier.name != keywords::DollarCrate.name()
+        if segment.ident.name != keywords::CrateRoot.name() &&
+            segment.ident.name != keywords::DollarCrate.name()
         {
-            path_str.push_str(&segment.identifier.name.as_str())
+            path_str.push_str(&segment.ident.name.as_str())
         }
     }
 
@@ -688,7 +688,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             opt_expanded
         } else {
             let msg = format!("non-{kind} macro in {kind} position: {name}",
-                              name = path.segments[0].identifier.name, kind = kind.name());
+                              name = path.segments[0].ident.name, kind = kind.name());
             self.cx.span_err(path.span, &msg);
             self.cx.trace_macros_diag();
             kind.dummy(span)

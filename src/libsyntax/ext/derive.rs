@@ -54,7 +54,7 @@ pub fn add_derived_markers<T>(cx: &mut ExtCtxt, span: Span, traits: &[ast::Path]
             pretty_name.push_str(", ");
         }
         pretty_name.push_str(&path.to_string());
-        names.insert(unwrap_or!(path.segments.get(0), continue).identifier.name);
+        names.insert(unwrap_or!(path.segments.get(0), continue).ident.name);
     }
     pretty_name.push(')');
 

@@ -2051,7 +2051,7 @@ impl<'a> Parser<'a> {
                 ParenthesizedParameterData { inputs, output, span }.into()
             };
 
-            PathSegment { identifier: ident, span: ident_span, parameters }
+            PathSegment { ident, span: ident_span, parameters }
         } else {
             // Generic arguments are not found.
             PathSegment::from_ident(ident, ident_span)
@@ -2592,7 +2592,7 @@ impl<'a> Parser<'a> {
                 }
 
                 let span = lo.to(self.prev_span);
-                let ident = respan(segment.span, segment.identifier);
+                let ident = respan(segment.span, segment.ident);
                 self.mk_expr(span, ExprKind::Field(self_arg, ident), ThinVec::new())
             }
         })

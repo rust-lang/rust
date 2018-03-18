@@ -739,11 +739,11 @@ pub trait PrintState<'a> {
                     if i > 0 {
                         self.writer().word("::")?
                     }
-                    if segment.identifier.name != keywords::CrateRoot.name() &&
-                       segment.identifier.name != keywords::DollarCrate.name() {
-                        self.writer().word(&segment.identifier.name.as_str())?;
-                    } else if segment.identifier.name == keywords::DollarCrate.name() {
-                        self.print_dollar_crate(segment.identifier.span.ctxt())?;
+                    if segment.ident.name != keywords::CrateRoot.name() &&
+                       segment.ident.name != keywords::DollarCrate.name() {
+                        self.writer().word(&segment.ident.name.as_str())?;
+                    } else if segment.ident.name == keywords::DollarCrate.name() {
+                        self.print_dollar_crate(segment.ident.span.ctxt())?;
                     }
                 }
                 self.writer().space()?;
@@ -1981,7 +1981,7 @@ impl<'a> State<'a> {
         let base_args = &args[1..];
         self.print_expr_maybe_paren(&args[0], parser::PREC_POSTFIX)?;
         self.s.word(".")?;
-        self.print_ident(segment.identifier)?;
+        self.print_ident(segment.ident)?;
         if let Some(ref parameters) = segment.parameters {
             self.print_path_parameters(parameters, true)?;
         }
@@ -2417,14 +2417,14 @@ impl<'a> State<'a> {
                           colons_before_params: bool)
                           -> io::Result<()>
     {
-        if segment.identifier.name != keywords::CrateRoot.name() &&
-           segment.identifier.name != keywords::DollarCrate.name() {
-            self.print_ident(segment.identifier)?;
+        if segment.ident.name != keywords::CrateRoot.name() &&
+           segment.ident.name != keywords::DollarCrate.name() {
+            self.print_ident(segment.ident)?;
             if let Some(ref parameters) = segment.parameters {
                 self.print_path_parameters(parameters, colons_before_params)?;
             }
-        } else if segment.identifier.name == keywords::DollarCrate.name() {
-            self.print_dollar_crate(segment.identifier.span.ctxt())?;
+        } else if segment.ident.name == keywords::DollarCrate.name() {
+            self.print_dollar_crate(segment.ident.span.ctxt())?;
         }
         Ok(())
     }
@@ -2446,7 +2446,7 @@ impl<'a> State<'a> {
         self.s.word(">")?;
         self.s.word("::")?;
         let item_segment = path.segments.last().unwrap();
-        self.print_ident(item_segment.identifier)?;
+        self.print_ident(item_segment.ident)?;
         match item_segment.parameters {
             Some(ref parameters) => self.print_path_parameters(parameters, colons_before_params),
             None => Ok(()),

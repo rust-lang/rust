@@ -211,7 +211,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ast::Attribute {
         style.hash_stable(hcx, hasher);
         path.segments.len().hash_stable(hcx, hasher);
         for segment in &path.segments {
-            segment.identifier.name.hash_stable(hcx, hasher);
+            segment.ident.name.hash_stable(hcx, hasher);
         }
         for tt in tokens.trees() {
             tt.hash_stable(hcx, hasher);

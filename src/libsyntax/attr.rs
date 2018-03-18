@@ -215,7 +215,7 @@ impl Attribute {
 
     pub fn name(&self) -> Option<Name> {
         match self.path.segments.len() {
-            1 => Some(self.path.segments[0].identifier.name),
+            1 => Some(self.path.segments[0].ident.name),
             _ => None,
         }
     }
@@ -301,7 +301,7 @@ impl Attribute {
         let mut tokens = self.tokens.trees().peekable();
         Some(MetaItem {
             name: match self.path.segments.len() {
-                1 => self.path.segments[0].identifier.name,
+                1 => self.path.segments[0].ident.name,
                 _ => return None,
             },
             node: if let Some(node) = MetaItemKind::from_tokens(&mut tokens) {
@@ -353,7 +353,7 @@ impl Attribute {
         }
 
         Ok(MetaItem {
-            name: self.path.segments.last().unwrap().identifier.name,
+            name: self.path.segments.last().unwrap().ident.name,
             node: self.parse(sess, |parser| parser.parse_meta_item_kind())?,
             span: self.span,
         })

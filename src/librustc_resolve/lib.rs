@@ -2351,7 +2351,7 @@ impl<'a> Resolver<'a> {
         let mut new_id = None;
         if let Some(trait_ref) = opt_trait_ref {
             let path: Vec<_> = trait_ref.path.segments.iter()
-                .map(|seg| respan(seg.span, seg.identifier))
+                .map(|seg| respan(seg.span, seg.ident))
                 .collect();
             let def = self.smart_resolve_path_fragment(
                 trait_ref.ref_id,
@@ -2786,7 +2786,7 @@ impl<'a> Resolver<'a> {
                           source: PathSource)
                           -> PathResolution {
         let segments = &path.segments.iter()
-            .map(|seg| respan(seg.span, seg.identifier))
+            .map(|seg| respan(seg.span, seg.ident))
             .collect::<Vec<_>>();
         self.smart_resolve_path_fragment(id, qself, segments, path.span, source)
     }
@@ -2924,7 +2924,7 @@ impl<'a> Resolver<'a> {
                         }
                         ExprKind::MethodCall(ref segment, ..) => {
                             err.span_label(parent.span, format!("did you mean `{}::{}(...)`?",
-                                                                 path_str, segment.identifier));
+                                                                 path_str, segment.ident));
                             return (err, candidates);
                         }
                         _ => {}
@@ -3750,7 +3750,7 @@ impl<'a> Resolver<'a> {
             ExprKind::MethodCall(ref segment, ..) => {
                 debug!("(recording candidate traits for expr) recording traits for {}",
                        expr.id);
-                let traits = self.get_traits_containing_item(segment.identifier, ValueNS);
+                let traits = self.get_traits_containing_item(segment.ident, ValueNS);
                 self.trait_map.insert(expr.id, traits);
             }
             _ => {
@@ -4222,7 +4222,7 @@ impl<'a> Resolver<'a> {
             if attr.path.segments.len() > 1 {
                 continue
             }
-            let ident = attr.path.segments[0].identifier;
+            let ident = attr.path.segments[0].ident;
             let result = self.resolve_lexical_macro_path_segment(ident,
                                                                  MacroNS,
                                                                  false,
@@ -4267,7 +4267,7 @@ fn names_to_string(idents: &[SpannedIdent]) -> String {
 
 fn path_names_to_string(path: &Path) -> String {
     names_to_string(&path.segments.iter()
-                        .map(|seg| respan(seg.span, seg.identifier))
+                        .map(|seg| respan(seg.span, seg.ident))
                         .collect::<Vec<_>>())
 }
 

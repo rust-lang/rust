@@ -449,8 +449,8 @@ pub fn noop_fold_usize<T: Folder>(i: usize, _: &mut T) -> usize {
 
 pub fn noop_fold_path<T: Folder>(Path { segments, span }: Path, fld: &mut T) -> Path {
     Path {
-        segments: segments.move_map(|PathSegment {identifier, span, parameters}| PathSegment {
-            identifier: fld.fold_ident(identifier),
+        segments: segments.move_map(|PathSegment {ident, span, parameters}| PathSegment {
+            ident: fld.fold_ident(ident),
             span: fld.new_span(span),
             parameters: parameters.map(|ps| ps.map(|ps| fld.fold_path_parameters(ps))),
         }),
@@ -1195,7 +1195,7 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
             ExprKind::MethodCall(seg, args) => {
                 ExprKind::MethodCall(
                     PathSegment {
-                        identifier: folder.fold_ident(seg.identifier),
+                        ident: folder.fold_ident(seg.ident),
                         span: folder.new_span(seg.span),
                         parameters: seg.parameters.map(|ps| {
                             ps.map(|ps| folder.fold_path_parameters(ps))

@@ -1146,16 +1146,8 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option
 fn macro_resolve(cx: &DocContext, path_str: &str) -> Option<Def> {
     use syntax::ext::base::{MacroKind, SyntaxExtension};
     use syntax::ext::hygiene::Mark;
-    let segment = ast::PathSegment {
-        identifier: ast::Ident::from_str(path_str),
-        span: DUMMY_SP,
-        parameters: None,
-    };
-    let path = ast::Path {
-        span: DUMMY_SP,
-        segments: vec![segment],
-    };
-
+    let segment = ast::PathSegment::from_ident(ast::Ident::from_str(path_str), DUMMY_SP);
+    let path = ast::Path { segments: vec![segment], span: DUMMY_SP };
     let mut resolver = cx.resolver.borrow_mut();
     let mark = Mark::root();
     let res = resolver

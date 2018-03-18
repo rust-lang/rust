@@ -372,7 +372,7 @@ pub fn walk_use_tree<'a, V: Visitor<'a>>(
 pub fn walk_path_segment<'a, V: Visitor<'a>>(visitor: &mut V,
                                              path_span: Span,
                                              segment: &'a PathSegment) {
-    visitor.visit_ident(path_span, segment.identifier);
+    visitor.visit_ident(path_span, segment.ident);
     if let Some(ref parameters) = segment.parameters {
         visitor.visit_path_parameters(path_span, parameters);
     }
