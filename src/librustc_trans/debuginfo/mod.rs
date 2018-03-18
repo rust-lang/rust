@@ -208,7 +208,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &'a CodegenCx<'a, 'tcx>,
                                                llfn: ValueRef,
                                                mir: &'a mir::Mir<'tcx>) -> FunctionDebugContext {
     struct UnusedParamVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a>(TyCtxt<'a, 'gcx, 'tcx>, bool);
-    impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> TypeFolder<'gcx, 'tcx> for UnusedParamVisitor<'a, 'gcx, 'tcx> {
+    impl<'a, 'gcx: 'tcx, 'tcx: 'a> TypeFolder<'gcx, 'tcx> for UnusedParamVisitor<'a, 'gcx, 'tcx> {
         fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> {
             self.0
         }
