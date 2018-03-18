@@ -44,7 +44,7 @@ pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,
                                    token_tree: &[TokenTree])
                                    -> Box<MacResult+'cx> {
     let code = match (token_tree.len(), token_tree.get(0)) {
-        (1, Some(&TokenTree::Token(_, token::Ident(code, false)))) => code,
+        (1, Some(&TokenTree::Token(_, token::Ident(code, _)))) => code,
         _ => unreachable!()
     };
 
@@ -82,10 +82,10 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
         token_tree.get(1),
         token_tree.get(2)
     ) {
-        (1, Some(&TokenTree::Token(_, token::Ident(ref code, false))), None, None) => {
+        (1, Some(&TokenTree::Token(_, token::Ident(ref code, _))), None, None) => {
             (code, None)
         },
-        (3, Some(&TokenTree::Token(_, token::Ident(ref code, false))),
+        (3, Some(&TokenTree::Token(_, token::Ident(ref code, _))),
             Some(&TokenTree::Token(_, token::Comma)),
             Some(&TokenTree::Token(_, token::Literal(token::StrRaw(description, _), None)))) => {
             (code, Some(description))
@@ -150,9 +150,9 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
     let (crate_name, name) = match (&token_tree[0], &token_tree[2]) {
         (
             // Crate name.
-            &TokenTree::Token(_, token::Ident(ref crate_name, false)),
+            &TokenTree::Token(_, token::Ident(ref crate_name, _)),
             // DIAGNOSTICS ident.
-            &TokenTree::Token(_, token::Ident(ref name, false))
+            &TokenTree::Token(_, token::Ident(ref name, _))
         ) => (*&crate_name, name),
         _ => unreachable!()
     };
