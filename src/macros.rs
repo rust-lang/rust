@@ -496,7 +496,7 @@ fn delim_token_to_str(
     let (lhs, rhs) = match *delim_token {
         DelimToken::Paren => ("(", ")"),
         DelimToken::Bracket => ("[", "]"),
-        DelimToken::Brace => ("{", "}"),
+        DelimToken::Brace => ("{ ", " }"),
         DelimToken::NoDelim => ("", ""),
     };
     if use_multiple_lines {
@@ -515,6 +515,13 @@ fn delim_token_to_str(
 }
 
 impl MacroArgKind {
+    fn starts_with_brace(&self) -> bool {
+        match *self {
+            MacroArgKind::Repeat(DelimToken::Brace, _, _, _)
+            | MacroArgKind::Delimited(DelimToken::Brace, _) => true,
+            _ => false,
+        }
+    }
     fn starts_with_dollar(&self) -> bool {
         match *self {
             MacroArgKind::Repeat(..) | MacroArgKind::MetaVariable(..) => true,
@@ -855,12 +862,7 @@ fn wrap_macro_args_inner(
     let indent_str = shape.indent.to_string_with_newline(context.config);
 
     while let Some(ref arg) = iter.next() {
-        let nested_shape = if use_multiple_lines {
-            shape.with_max_width(context.config)
-        } else {
-            shape
-        };
-        result.push_str(&arg.rewrite(context, nested_shape, use_multiple_lines)?);
+        result.push_str(&arg.rewrite(context, shape, use_multiple_lines)?);
 
         if use_multiple_lines
             && (arg.kind.ends_with_space() || iter.peek().map_or(false, |a| a.kind.has_meta_var()))
@@ -872,7 +874,8 @@ fn wrap_macro_args_inner(
         } else if let Some(ref next_arg) = iter.peek() {
             let space_before_dollar =
                 !arg.kind.ends_with_space() && next_arg.kind.starts_with_dollar();
-            if space_before_dollar {
+            let space_before_brace = next_arg.kind.starts_with_brace();
+            if space_before_dollar || space_before_brace {
                 result.push(' ');
             }
         }

@@ -27,6 +27,55 @@ macro_rules! m {
     ($x: tt foo bar foo bar foo bar $y: tt => x * y * z $z: tt, $($a: tt),*) => {};
 }
 
+macro_rules! impl_a_method {
+    ($n: ident($a: ident: $ta: ty) -> $ret: ty { $body: expr }) => {
+        fn $n($a: $ta) -> $ret {
+            $body
+        }
+        macro_rules! $n {
+            ($va: expr) => {
+                $n($va)
+            };
+        }
+    };
+    ($n: ident($a: ident: $ta: ty, $b: ident: $tb: ty) -> $ret: ty { $body: expr }) => {
+        fn $n($a: $ta, $b: $tb) -> $ret {
+            $body
+        }
+        macro_rules! $n {
+            ($va: expr,$vb: expr) => {
+                $n($va, $vb)
+            };
+        }
+    };
+    (
+        $n: ident($a: ident: $ta: ty, $b: ident: $tb: ty, $c: ident: $tc: ty) ->
+        $ret: ty { $body: expr }
+    ) => {
+        fn $n($a: $ta, $b: $tb, $c: $tc) -> $ret {
+            $body
+        }
+        macro_rules! $n {
+            ($va: expr,$vb: expr,$vc: expr) => {
+                $n($va, $vb, $vc)
+            };
+        }
+    };
+    (
+        $n: ident($a: ident: $ta: ty, $b: ident: $tb: ty, $c: ident: $tc: ty, $d: ident: $td: ty) ->
+        $ret: ty { $body: expr }
+    ) => {
+        fn $n($a: $ta, $b: $tb, $c: $tc, $d: $td) -> $ret {
+            $body
+        }
+        macro_rules! $n {
+            ($va: expr,$vb: expr,$vc: expr,$vd: expr) => {
+                $n($va, $vb, $vc, $vd)
+            };
+        }
+    };
+}
+
 macro_rules! m {
     // a
     ($expr: expr, $($func: ident)*) => {{
