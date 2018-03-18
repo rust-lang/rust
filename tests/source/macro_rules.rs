@@ -112,3 +112,19 @@ macro foo($type_name: ident, $docs: expr) {
     #[derive(Debug, Clone, Copy)]
     pub struct $type_name;
 }
+
+// #2538
+macro_rules! add_message_to_notes {
+    ($msg:expr) => {{
+        let mut lines = message.lines();
+        notes.push_str(&format!("\n{}: {}", level, lines.next().unwrap()));
+        for line in lines {
+            notes.push_str(&format!(
+                "\n{:indent$}{line}",
+                "",
+                indent = level.len() + 2,
+                line = line,
+            ));
+        }
+    }}
+}
