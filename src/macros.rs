@@ -522,6 +522,7 @@ impl MacroArgKind {
             _ => false,
         }
     }
+
     fn starts_with_dollar(&self) -> bool {
         match *self {
             MacroArgKind::Repeat(..) | MacroArgKind::MetaVariable(..) => true,
@@ -775,6 +776,9 @@ impl MacroArgParser {
         let last_arg = self.result.last().unwrap();
         if let MacroArgKind::MetaVariable(..) = last_arg.kind {
             if ident_like(&self.start_tok) {
+                return true;
+            }
+            if self.start_tok == Token::Colon {
                 return true;
             }
         }

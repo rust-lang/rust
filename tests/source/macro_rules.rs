@@ -147,6 +147,12 @@ macro foo($type_name: ident, $docs: expr) {
     pub struct $type_name;
 }
 
+// #2534
+macro_rules! foo {
+    ($a:ident : $b:ty) => {};
+    ($a:ident $b:ident $c:ident) => {};
+}
+
 // #2538
 macro_rules! add_message_to_notes {
     ($msg:expr) => {{

@@ -15,8 +15,8 @@ macro_rules! m {
     ) => {};
     ($name: ident($($dol: tt $var: ident)*) $($body: tt)*) => {};
     (
-        $($i: ident: $ty: ty, $def: expr, $stb: expr, $($dstring: tt),+);+ $(;)*
-        $($i: ident: $ty: ty, $def: expr, $stb: expr, $($dstring: tt),+);+ $(;)*
+        $($i: ident : $ty: ty, $def: expr, $stb: expr, $($dstring: tt),+);+ $(;)*
+        $($i: ident : $ty: ty, $def: expr, $stb: expr, $($dstring: tt),+);+ $(;)*
     ) => {};
     ($foo: tt foo[$attr: meta] $name: ident) => {};
     ($foo: tt[$attr: meta] $name: ident) => {};
@@ -28,7 +28,7 @@ macro_rules! m {
 }
 
 macro_rules! impl_a_method {
-    ($n: ident($a: ident: $ta: ty) -> $ret: ty { $body: expr }) => {
+    ($n: ident($a: ident : $ta: ty) -> $ret: ty { $body: expr }) => {
         fn $n($a: $ta) -> $ret {
             $body
         }
@@ -38,7 +38,7 @@ macro_rules! impl_a_method {
             };
         }
     };
-    ($n: ident($a: ident: $ta: ty, $b: ident: $tb: ty) -> $ret: ty { $body: expr }) => {
+    ($n: ident($a: ident : $ta: ty, $b: ident : $tb: ty) -> $ret: ty { $body: expr }) => {
         fn $n($a: $ta, $b: $tb) -> $ret {
             $body
         }
@@ -49,7 +49,7 @@ macro_rules! impl_a_method {
         }
     };
     (
-        $n: ident($a: ident: $ta: ty, $b: ident: $tb: ty, $c: ident: $tc: ty) ->
+        $n: ident($a: ident : $ta: ty, $b: ident : $tb: ty, $c: ident : $tc: ty) ->
         $ret: ty { $body: expr }
     ) => {
         fn $n($a: $ta, $b: $tb, $c: $tc) -> $ret {
@@ -62,7 +62,7 @@ macro_rules! impl_a_method {
         }
     };
     (
-        $n: ident($a: ident: $ta: ty, $b: ident: $tb: ty, $c: ident: $tc: ty, $d: ident: $td: ty) ->
+        $n: ident($a: ident : $ta: ty, $b: ident : $tb: ty, $c: ident : $tc: ty, $d: ident : $td: ty) ->
         $ret: ty { $body: expr }
     ) => {
         fn $n($a: $ta, $b: $tb, $c: $tc, $d: $td) -> $ret {
@@ -178,6 +178,12 @@ macro foo($type_name: ident, $docs: expr) {
     #[doc=$docs]
     #[derive(Debug, Clone, Copy)]
     pub struct $type_name;
+}
+
+// #2534
+macro_rules! foo {
+    ($a: ident : $b: ty) => {};
+    ($a: ident $b: ident $c: ident) => {};
 }
 
 // #2538
