@@ -641,7 +641,7 @@ impl<'a, 'b> Context<'a, 'b> {
                   ty: &ArgumentType,
                   arg: ast::Ident)
                   -> P<ast::Expr> {
-        sp = sp.with_ctxt(sp.ctxt().apply_mark(ecx.current_expansion.mark));
+        sp = sp.apply_mark(ecx.current_expansion.mark);
         let arg = ecx.expr_ident(sp, arg);
         let trait_ = match *ty {
             Placeholder(ref tyname) => {
@@ -678,7 +678,7 @@ pub fn expand_format_args<'cx>(ecx: &'cx mut ExtCtxt,
                                mut sp: Span,
                                tts: &[tokenstream::TokenTree])
                                -> Box<base::MacResult + 'cx> {
-    sp = sp.with_ctxt(sp.ctxt().apply_mark(ecx.current_expansion.mark));
+    sp = sp.apply_mark(ecx.current_expansion.mark);
     match parse_args(ecx, sp, tts) {
         Some((efmt, args, names)) => {
             MacEager::expr(expand_preparsed_format_args(ecx, sp, efmt, args, names))
@@ -700,7 +700,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
     let arg_types: Vec<_> = (0..args.len()).map(|_| Vec::new()).collect();
     let arg_unique_types: Vec<_> = (0..args.len()).map(|_| Vec::new()).collect();
     let mut macsp = ecx.call_site();
-    macsp = macsp.with_ctxt(macsp.ctxt().apply_mark(ecx.current_expansion.mark));
+    macsp = macsp.apply_mark(ecx.current_expansion.mark);
     let msg = "format argument must be a string literal.";
     let fmt = match expr_to_spanned_string(ecx, efmt, msg) {
         Some(fmt) => fmt,
