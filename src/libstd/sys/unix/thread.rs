@@ -222,7 +222,7 @@ pub mod guard {
 #[cfg_attr(test, allow(dead_code))]
 pub mod guard {
     use libc;
-    use libc::mmap;
+    use libc::{mmap, munmap};
     use libc::{PROT_NONE, MAP_PRIVATE, MAP_ANON, MAP_FAILED, MAP_FIXED};
     use ops::Range;
     use sys::os;
@@ -333,6 +333,24 @@ pub mod guard {
             };
 
             Some(guardaddr..guardaddr + offset * PAGE_SIZE)
+        }
+    }
+
+    pub unsafe fn deinit() {
+        if !cfg!(target_os = "linux") {
+            if let Some(mut stackaddr) = get_stack_start() {
+                // Ensure address is aligned. Same as above.
+                let remainder = (stackaddr as usize) % PAGE_SIZE;
+                if remainder != 0 {
+                    stackaddr = ((stackaddr as usize) + PAGE_SIZE - remainder)
+                        as *mut libc::c_void;
+                }
+
+                // Undo the guard page mapping.
+                if munmap(stackaddr, PAGE_SIZE) != 0 {
+                    panic!("unable to deallocate the guard page");
+                }
+            }
         }
     }
 
