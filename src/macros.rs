@@ -669,8 +669,16 @@ impl MacroArgParser {
         if self.buf.is_empty() {
             self.lo = lo;
             self.start_tok = t.clone();
-        } else if force_space_before(t) {
-            self.buf.push(' ');
+        } else {
+            let needs_space = match next_space(&self.last_tok) {
+                SpaceState::Ident => ident_like(t),
+                SpaceState::Punctuation => !ident_like(t),
+                SpaceState::Always => true,
+                SpaceState::Never => false,
+            };
+            if force_space_before(t) || needs_space {
+                self.buf.push(' ');
+            }
         }
 
         self.buf.push_str(&pprust::token_to_string(t));
@@ -888,9 +896,9 @@ fn force_space_before(tok: &Token) -> bool {
         | Token::RArrow
         | Token::LArrow
         | Token::FatArrow
+        | Token::BinOp(_)
         | Token::Pound
         | Token::Dollar => true,
-        Token::BinOp(bot) => bot != BinOpToken::Star,
         _ => false,
     }
 }
@@ -907,6 +915,7 @@ fn next_space(tok: &Token) -> SpaceState {
 
     match *tok {
         Token::Not
+        | Token::BinOp(BinOpToken::And)
         | Token::Tilde
         | Token::At
         | Token::Comma
@@ -916,8 +925,7 @@ fn next_space(tok: &Token) -> SpaceState {
         | Token::DotDotEq
         | Token::DotEq
         | Token::Question
-        | Token::Underscore
-        | Token::BinOp(_) => SpaceState::Punctuation,
+        | Token::Underscore => SpaceState::Punctuation,
 
         Token::ModSep
         | Token::Pound

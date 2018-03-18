@@ -10,6 +10,13 @@ macro_rules! m {
     ( $( $ i : ident : $ ty : ty , $def : expr , $stb : expr , $ ( $ dstring : tt ) , + ) ; + $ ( ; ) *
       $( $ i : ident : $ ty : ty , $def : expr , $stb : expr , $ ( $ dstring : tt ) , + ) ; + $ ( ; ) *
     ) => {};
+    ( $foo: tt foo [$ attr : meta] $name: ident ) => {};
+    ( $foo: tt [$ attr: meta] $name: ident ) => {};
+    ( $foo: tt &'a [$attr : meta] $name: ident ) => {};
+    ( $foo: tt foo # [ $attr : meta] $name: ident ) => {};
+    ( $foo: tt # [ $attr : meta] $name: ident) => {};
+    ( $foo: tt &'a # [ $attr : meta] $name: ident ) => {};
+    ( $ x : tt foo bar foo bar foo bar $ y : tt => x*y*z $ z : tt , $ ( $a: tt ) , * ) => {};
 }
 
 macro_rules! m {
