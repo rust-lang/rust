@@ -239,8 +239,15 @@ impl Span {
 
     /// Returns a new span representing an empty span at the beginning of this span
     #[inline]
-    pub fn empty(self) -> Span {
-        self.with_hi(self.lo())
+    pub fn shrink_to_lo(self) -> Span {
+        let span = self.data();
+        span.with_hi(span.lo)
+    }
+    /// Returns a new span representing an empty span at the end of this span
+    #[inline]
+    pub fn shrink_to_hi(self) -> Span {
+        let span = self.data();
+        span.with_lo(span.hi)
     }
 
     /// Returns `self` if `self` is not the dummy span, and `other` otherwise.

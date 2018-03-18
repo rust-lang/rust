@@ -530,7 +530,7 @@ impl<'a> TraitDef<'a> {
                 id: ast::DUMMY_NODE_ID,
                 span: self.span,
                 ident,
-                vis: respan(self.span.empty(), ast::VisibilityKind::Inherited),
+                vis: respan(self.span.shrink_to_lo(), ast::VisibilityKind::Inherited),
                 defaultness: ast::Defaultness::Final,
                 attrs: Vec::new(),
                 generics: Generics::default(),
@@ -977,7 +977,7 @@ impl<'a> MethodDef<'a> {
             attrs: self.attributes.clone(),
             generics: fn_generics,
             span: trait_.span,
-            vis: respan(trait_.span.empty(), ast::VisibilityKind::Inherited),
+            vis: respan(trait_.span.shrink_to_lo(), ast::VisibilityKind::Inherited),
             defaultness: ast::Defaultness::Final,
             ident: method_ident,
             node: ast::ImplItemKind::Method(ast::MethodSig {

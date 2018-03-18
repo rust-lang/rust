@@ -1209,7 +1209,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
 
     fn process_trait_item(&mut self, trait_item: &'l ast::TraitItem, trait_id: DefId) {
         self.process_macro_use(trait_item.span);
-        let vis_span = trait_item.span.empty();
+        let vis_span = trait_item.span.shrink_to_lo();
         match trait_item.node {
             ast::TraitItemKind::Const(ref ty, ref expr) => {
                 self.process_assoc_const(
@@ -1342,7 +1342,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             .map(::id_from_def_id);
 
         match use_tree.kind {
-            ast::UseTreeKind::Simple(ident) => {
+            ast::UseTreeKind::Simple(..) => {
+                let ident = use_tree.ident();
                 let path = ast::Path {
                     segments: prefix.segments
                         .iter()

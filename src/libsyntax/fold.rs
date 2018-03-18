@@ -323,7 +323,8 @@ pub fn noop_fold_use_tree<T: Folder>(use_tree: UseTree, fld: &mut T) -> UseTree 
         span: fld.new_span(use_tree.span),
         prefix: fld.fold_path(use_tree.prefix),
         kind: match use_tree.kind {
-            UseTreeKind::Simple(ident) => UseTreeKind::Simple(fld.fold_ident(ident)),
+            UseTreeKind::Simple(rename) =>
+                UseTreeKind::Simple(rename.map(|ident| fld.fold_ident(ident))),
             UseTreeKind::Glob => UseTreeKind::Glob,
             UseTreeKind::Nested(items) => UseTreeKind::Nested(items.move_map(|(tree, id)| {
                 (fld.fold_use_tree(tree), fld.new_id(id))
@@ -886,7 +887,7 @@ pub fn noop_fold_block<T: Folder>(b: P<Block>, folder: &mut T) -> P<Block> {
 
 pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
     match i {
-        ItemKind::ExternCrate(string) => ItemKind::ExternCrate(string),
+        ItemKind::ExternCrate(orig_name) => ItemKind::ExternCrate(orig_name),
         ItemKind::Use(use_tree) => {
             ItemKind::Use(use_tree.map(|tree| folder.fold_use_tree(tree)))
         }
@@ -1018,7 +1019,7 @@ pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, span}: Crate,
         ident: keywords::Invalid.ident(),
         attrs,
         id: ast::DUMMY_NODE_ID,
-        vis: respan(span.empty(), ast::VisibilityKind::Public),
+        vis: respan(span.shrink_to_lo(), ast::VisibilityKind::Public),
         span,
         node: ast::ItemKind::Mod(module),
         tokens: None,

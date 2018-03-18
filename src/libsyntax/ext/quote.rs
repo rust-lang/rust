@@ -857,7 +857,7 @@ fn expand_wrapper(cx: &ExtCtxt,
         let path = path.iter().map(|s| s.to_string()).collect();
         let use_item = cx.item_use_glob(
             sp,
-            respan(sp.empty(), ast::VisibilityKind::Inherited),
+            respan(sp.shrink_to_lo(), ast::VisibilityKind::Inherited),
             ids_ext(path),
         );
         cx.stmt_item(sp, use_item)

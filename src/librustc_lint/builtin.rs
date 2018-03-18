@@ -1082,7 +1082,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                     if !cx.access_levels.is_reachable(it.id) {
                         let msg = "function is marked #[no_mangle], but not exported";
                         let mut err = cx.struct_span_lint(PRIVATE_NO_MANGLE_FNS, it.span, msg);
-                        let insertion_span = it.span.with_hi(it.span.lo());
+                        let insertion_span = it.span.shrink_to_lo();
                         if it.vis == hir::Visibility::Inherited {
                             err.span_suggestion(insertion_span,
                                                 "try making it public",
@@ -1107,7 +1107,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                    !cx.access_levels.is_reachable(it.id) {
                        let msg = "static is marked #[no_mangle], but not exported";
                        let mut err = cx.struct_span_lint(PRIVATE_NO_MANGLE_STATICS, it.span, msg);
-                       let insertion_span = it.span.with_hi(it.span.lo());
+                       let insertion_span = it.span.shrink_to_lo();
                        if it.vis == hir::Visibility::Inherited {
                            err.span_suggestion(insertion_span,
                                                "try making it public",

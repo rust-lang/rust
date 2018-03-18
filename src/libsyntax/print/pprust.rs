@@ -352,7 +352,7 @@ pub fn fn_block_to_string(p: &ast::FnDecl) -> String {
 }
 
 pub fn path_to_string(p: &ast::Path) -> String {
-    to_string(|s| s.print_path(p, false, 0, false))
+    to_string(|s| s.print_path(p, false, 0))
 }
 
 pub fn path_segment_to_string(p: &ast::PathSegment) -> String {
@@ -1050,7 +1050,7 @@ impl<'a> State<'a> {
                                  &f.generic_params)?;
             }
             ast::TyKind::Path(None, ref path) => {
-                self.print_path(path, false, 0, false)?;
+                self.print_path(path, false, 0)?;
             }
             ast::TyKind::Path(Some(ref qself), ref path) => {
                 self.print_qpath(path, qself, false)?
@@ -1173,15 +1173,10 @@ impl<'a> State<'a> {
         self.print_outer_attributes(&item.attrs)?;
         self.ann.pre(self, NodeItem(item))?;
         match item.node {
-            ast::ItemKind::ExternCrate(ref optional_path) => {
+            ast::ItemKind::ExternCrate(orig_name) => {
                 self.head(&visibility_qualified(&item.vis, "extern crate"))?;
-                if let Some(p) = *optional_path {
-                    let val = p.as_str();
-                    if val.contains('-') {
-                        self.print_string(&val, ast::StrStyle::Cooked)?;
-                    } else {
-                        self.print_name(p)?;
-                    }
+                if let Some(orig_name) = orig_name {
+                    self.print_name(orig_name)?;
                     self.s.space()?;
                     self.s.word("as")?;
                     self.s.space()?;
@@ -1382,7 +1377,7 @@ impl<'a> State<'a> {
                 self.s.word(";")?;
             }
             ast::ItemKind::Mac(codemap::Spanned { ref node, .. }) => {
-                self.print_path(&node.path, false, 0, false)?;
+                self.print_path(&node.path, false, 0)?;
                 self.s.word("! ")?;
                 self.print_ident(item.ident)?;
                 self.cbox(INDENT_UNIT)?;
@@ -1407,7 +1402,7 @@ impl<'a> State<'a> {
     }
 
     fn print_trait_ref(&mut self, t: &ast::TraitRef) -> io::Result<()> {
-        self.print_path(&t.path, false, 0, false)
+        self.print_path(&t.path, false, 0)
     }
 
     fn print_formal_generic_params(
@@ -1464,7 +1459,7 @@ impl<'a> State<'a> {
                 ast::CrateSugar::JustCrate => self.word_nbsp("crate")
             }
             ast::VisibilityKind::Restricted { ref path, .. } => {
-                let path = to_string(|s| s.print_path(path, false, 0, true));
+                let path = to_string(|s| s.print_path(path, false, 0));
                 if path == "self" || path == "super" {
                     self.word_nbsp(&format!("pub({})", path))
                 } else {
@@ -1572,7 +1567,7 @@ impl<'a> State<'a> {
                     ti.ident,
                     ty,
                     default.as_ref().map(|expr| &**expr),
-                    &codemap::respan(ti.span.empty(), ast::VisibilityKind::Inherited),
+                    &codemap::respan(ti.span.shrink_to_lo(), ast::VisibilityKind::Inherited),
                 )?;
             }
             ast::TraitItemKind::Method(ref sig, ref body) => {
@@ -1583,7 +1578,7 @@ impl<'a> State<'a> {
                     ti.ident,
                     &ti.generics,
                     sig,
-                    &codemap::respan(ti.span.empty(), ast::VisibilityKind::Inherited),
+                    &codemap::respan(ti.span.shrink_to_lo(), ast::VisibilityKind::Inherited),
                 )?;
                 if let Some(ref body) = *body {
                     self.nbsp()?;
@@ -1598,7 +1593,7 @@ impl<'a> State<'a> {
             }
             ast::TraitItemKind::Macro(codemap::Spanned { ref node, .. }) => {
                 // code copied from ItemKind::Mac:
-                self.print_path(&node.path, false, 0, false)?;
+                self.print_path(&node.path, false, 0)?;
                 self.s.word("! ")?;
                 self.cbox(INDENT_UNIT)?;
                 self.popen()?;
@@ -1632,7 +1627,7 @@ impl<'a> State<'a> {
             }
             ast::ImplItemKind::Macro(codemap::Spanned { ref node, .. }) => {
                 // code copied from ItemKind::Mac:
-                self.print_path(&node.path, false, 0, false)?;
+                self.print_path(&node.path, false, 0)?;
                 self.s.word("! ")?;
                 self.cbox(INDENT_UNIT)?;
                 self.popen()?;
@@ -1818,7 +1813,7 @@ impl<'a> State<'a> {
 
     pub fn print_mac(&mut self, m: &ast::Mac, delim: token::DelimToken)
                      -> io::Result<()> {
-        self.print_path(&m.node.path, false, 0, false)?;
+        self.print_path(&m.node.path, false, 0)?;
         self.s.word("!")?;
         match delim {
             token::Paren => self.popen()?,
@@ -1919,7 +1914,7 @@ impl<'a> State<'a> {
                          fields: &[ast::Field],
                          wth: &Option<P<ast::Expr>>,
                          attrs: &[Attribute]) -> io::Result<()> {
-        self.print_path(path, true, 0, false)?;
+        self.print_path(path, true, 0)?;
         self.s.word("{")?;
         self.print_inner_attributes_inline(attrs)?;
         self.commasep_cmnt(
@@ -2240,7 +2235,7 @@ impl<'a> State<'a> {
                 }
             }
             ast::ExprKind::Path(None, ref path) => {
-                self.print_path(path, true, 0, false)?
+                self.print_path(path, true, 0)?
             }
             ast::ExprKind::Path(Some(ref qself), ref path) => {
                 self.print_qpath(path, qself, true)?
@@ -2400,17 +2395,12 @@ impl<'a> State<'a> {
     fn print_path(&mut self,
                   path: &ast::Path,
                   colons_before_params: bool,
-                  depth: usize,
-                  defaults_to_global: bool)
+                  depth: usize)
                   -> io::Result<()>
     {
         self.maybe_print_comment(path.span.lo())?;
 
-        let mut segments = path.segments[..path.segments.len()-depth].iter();
-        if defaults_to_global && path.is_global() {
-            segments.next();
-        }
-        for (i, segment) in segments.enumerate() {
+        for (i, segment) in path.segments[..path.segments.len() - depth].iter().enumerate() {
             if i > 0 {
                 self.s.word("::")?
             }
@@ -2449,7 +2439,7 @@ impl<'a> State<'a> {
             self.s.space()?;
             self.word_space("as")?;
             let depth = path.segments.len() - qself.position;
-            self.print_path(path, false, depth, false)?;
+            self.print_path(path, false, depth)?;
         }
         self.s.word(">")?;
         self.s.word("::")?;
@@ -2552,7 +2542,7 @@ impl<'a> State<'a> {
                 }
             }
             PatKind::TupleStruct(ref path, ref elts, ddpos) => {
-                self.print_path(path, true, 0, false)?;
+                self.print_path(path, true, 0)?;
                 self.popen()?;
                 if let Some(ddpos) = ddpos {
                     self.commasep(Inconsistent, &elts[..ddpos], |s, p| s.print_pat(p))?;
@@ -2570,13 +2560,13 @@ impl<'a> State<'a> {
                 self.pclose()?;
             }
             PatKind::Path(None, ref path) => {
-                self.print_path(path, true, 0, false)?;
+                self.print_path(path, true, 0)?;
             }
             PatKind::Path(Some(ref qself), ref path) => {
                 self.print_qpath(path, qself, false)?;
             }
             PatKind::Struct(ref path, ref fields, etc) => {
-                self.print_path(path, true, 0, false)?;
+                self.print_path(path, true, 0)?;
                 self.nbsp()?;
                 self.word_space("{")?;
                 self.commasep_cmnt(
@@ -2953,18 +2943,17 @@ impl<'a> State<'a> {
 
     pub fn print_use_tree(&mut self, tree: &ast::UseTree) -> io::Result<()> {
         match tree.kind {
-            ast::UseTreeKind::Simple(ref ident) => {
-                self.print_path(&tree.prefix, false, 0, true)?;
-
-                if tree.prefix.segments.last().unwrap().identifier.name != ident.name {
+            ast::UseTreeKind::Simple(rename) => {
+                self.print_path(&tree.prefix, false, 0)?;
+                if let Some(rename) = rename {
                     self.s.space()?;
                     self.word_space("as")?;
-                    self.print_ident(*ident)?;
+                    self.print_ident(rename)?;
                 }
             }
             ast::UseTreeKind::Glob => {
                 if !tree.prefix.segments.is_empty() {
-                    self.print_path(&tree.prefix, false, 0, true)?;
+                    self.print_path(&tree.prefix, false, 0)?;
                     self.s.word("::")?;
                 }
                 self.s.word("*")?;
@@ -2973,7 +2962,7 @@ impl<'a> State<'a> {
                 if tree.prefix.segments.is_empty() {
                     self.s.word("{")?;
                 } else {
-                    self.print_path(&tree.prefix, false, 0, true)?;
+                    self.print_path(&tree.prefix, false, 0)?;
                     self.s.word("::{")?;
                 }
                 self.commasep(Inconsistent, &items[..], |this, &(ref tree, _)| {

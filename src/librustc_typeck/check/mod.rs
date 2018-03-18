@@ -2520,7 +2520,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if sugg_unit {
                 let sugg_span = sess.codemap().end_point(expr_sp);
                 // remove closing `)` from the span
-                let sugg_span = sugg_span.with_hi(sugg_span.lo());
+                let sugg_span = sugg_span.shrink_to_lo();
                 err.span_suggestion(
                     sugg_span,
                     "expected the unit value `()`; create it with empty parentheses",

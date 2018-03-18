@@ -667,11 +667,10 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             }
             PathResult::Failed(span, msg, true) => {
                 let (mut self_path, mut self_result) = (module_path.clone(), None);
-                if !self_path.is_empty() &&
-                    !token::Ident(self_path[0].node).is_path_segment_keyword() &&
-                    !(self_path.len() > 1 &&
-                      token::Ident(self_path[1].node).is_path_segment_keyword())
-                {
+                let is_special = |ident| token::Ident(ident).is_path_segment_keyword() &&
+                                         ident.name != keywords::CrateRoot.name();
+                if !self_path.is_empty() && !is_special(self_path[0].node) &&
+                   !(self_path.len() > 1 && is_special(self_path[1].node)) {
                     self_path[0].node.name = keywords::SelfValue.name();
                     self_result = Some(self.resolve_path(&self_path, None, false, span));
                 }
