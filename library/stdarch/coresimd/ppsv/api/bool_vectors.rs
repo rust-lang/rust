@@ -1,11 +1,12 @@
 //! Minimal boolean vector implementation
+#![allow(unused)]
 
 /// Minimal interface: all packed SIMD boolean vector types implement this.
 macro_rules! impl_bool_minimal {
     ($id:ident, $elem_ty:ident, $elem_count:expr, $($elem_name:ident),+) => {
 
         #[cfg_attr(feature = "cargo-clippy", allow(expl_impl_clone_on_copy))]
-        impl Clone for $id {
+        impl ::clone::Clone for $id {
             #[inline] // currently needed for correctness
             fn clone(&self) -> Self {
                 *self
@@ -59,6 +60,7 @@ macro_rules! impl_bool_minimal {
             /// If `index >= Self::lanes()` the behavior is undefined.
             #[inline]
             pub unsafe fn extract_unchecked(self, index: usize) -> bool {
+                use coresimd::simd_llvm::simd_extract;
                 let x: $elem_ty = simd_extract(self, index as u32);
                 x != 0
             }
@@ -87,6 +89,7 @@ macro_rules! impl_bool_minimal {
                 index: usize,
                 new_value: bool,
             ) -> Self {
+                use coresimd::simd_llvm::simd_insert;
                 simd_insert(self, index as u32, Self::bool_to_internal(new_value))
             }
         }

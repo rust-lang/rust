@@ -1,4 +1,5 @@
 //! Implements integer shifts.
+#![allow(unused)]
 
 macro_rules! impl_shifts {
     ($id:ident, $elem_ty:ident, $($by:ident),+) => {
@@ -7,6 +8,7 @@ macro_rules! impl_shifts {
                 type Output = Self;
                 #[inline]
                 fn shl(self, other: $by) -> Self {
+                    use coresimd::simd_llvm::simd_shl;
                     unsafe { simd_shl(self, $id::splat(other as $elem_ty)) }
                 }
             }
@@ -14,6 +16,7 @@ macro_rules! impl_shifts {
                 type Output = Self;
                 #[inline]
                 fn shr(self, other: $by) -> Self {
+                    use coresimd::simd_llvm::simd_shr;
                     unsafe { simd_shr(self, $id::splat(other as $elem_ty)) }
                 }
             }
@@ -46,7 +49,6 @@ macro_rules! impl_all_shifts {
 }
 
 #[cfg(test)]
-#[macro_export]
 macro_rules! test_shift_ops {
     ($id:ident, $elem_ty:ident, $($index_ty:ident),+) => {
         #[test]
@@ -111,7 +113,6 @@ macro_rules! test_shift_ops {
 }
 
 #[cfg(test)]
-#[macro_export]
 macro_rules! test_all_shift_ops {
     ($id:ident, $elem_ty:ident) => {
         test_shift_ops!(

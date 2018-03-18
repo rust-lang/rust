@@ -1,8 +1,9 @@
 //! Implements `std::ops::Neg` for signed vector types.
+#![allow(unused)]
 
 macro_rules! impl_neg_op {
     ($id:ident, $elem_ty:ident) => {
-        impl ops::Neg for $id {
+        impl ::ops::Neg for $id {
             type Output = Self;
             #[inline]
             fn neg(self) -> Self {
@@ -13,7 +14,6 @@ macro_rules! impl_neg_op {
 }
 
 #[cfg(test)]
-#[macro_export]
 macro_rules! test_neg_op {
     ($id:ident, $elem_ty:ident) => {
         #[test]

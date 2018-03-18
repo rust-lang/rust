@@ -1,10 +1,12 @@
 //! Implements formating traits.
+#![allow(unused)]
 
 macro_rules! impl_hex_fmt {
     ($id:ident, $elem_ty:ident) => {
-        impl fmt::LowerHex for $id {
-            fn fmt(&self, f: &mut fmt::Formatter)
-                   -> fmt::Result {
+        impl ::fmt::LowerHex for $id {
+            fn fmt(&self, f: &mut ::fmt::Formatter)
+                   -> ::fmt::Result {
+                use ::mem;
                 write!(f, "{}(", stringify!($id))?;
                 let n = mem::size_of_val(self)
                     / mem::size_of::<$elem_ty>();

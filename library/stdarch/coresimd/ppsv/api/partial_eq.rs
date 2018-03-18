@@ -1,8 +1,9 @@
 //! Implements `PartialEq` for vector types.
+#![allow(unused)]
 
 macro_rules! impl_partial_eq {
     ($id:ident) => {
-        impl PartialEq<$id> for $id {
+        impl ::cmp::PartialEq<$id> for $id {
             #[inline]
             fn eq(&self, other: &Self) -> bool {
                 $id::eq(*self, *other).all()
@@ -16,7 +17,6 @@ macro_rules! impl_partial_eq {
 }
 
 #[cfg(test)]
-#[macro_export]
 macro_rules! test_partial_eq {
     ($id:ident, $true:expr, $false:expr) => {
         #[test]

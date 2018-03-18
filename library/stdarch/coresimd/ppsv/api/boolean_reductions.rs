@@ -1,22 +1,47 @@
 //! Lane-wise boolean vector reductions.
+#![allow(unused)]
 
 macro_rules! impl_bool_reductions {
     ($id:ident) => {
         impl $id {
             /// Are `all` vector lanes `true`?
+            #[cfg(not(target_arch = "aarch64"))]
             #[inline]
             pub fn all(self) -> bool {
+                use ::coresimd::simd_llvm::simd_reduce_all;
+                unsafe {
+                    simd_reduce_all(self)
+                }
+            }
+            /// Are `all` vector lanes `true`?
+            #[cfg(target_arch = "aarch64")]
+            #[inline]
+            pub fn all(self) -> bool {
+                // FIXME: Broken on AArch64
                 self.and()
             }
+
             /// Is `any` vector lanes `true`?
+            #[cfg(not(target_arch = "aarch64"))]
             #[inline]
             pub fn any(self) -> bool {
+                use ::coresimd::simd_llvm::simd_reduce_any;
+                unsafe {
+                    simd_reduce_any(self)
+                }
+            }
+            /// Is `any` vector lanes `true`?
+            #[cfg(target_arch = "aarch64")]
+            #[inline]
+            pub fn any(self) -> bool {
+                // FIXME: Broken on AArch64
                 self.or()
             }
+
             /// Are `all` vector lanes `false`?
             #[inline]
             pub fn none(self) -> bool {
-                !self.or()
+                !self.any()
             }
         }
     }

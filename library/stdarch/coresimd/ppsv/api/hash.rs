@@ -1,10 +1,11 @@
 //! Implements `Hash`.
+#![allow(unused)]
 
 macro_rules! impl_hash {
     ($id:ident, $elem_ty:ident) => {
-        impl hash::Hash for $id {
+        impl ::hash::Hash for $id {
             #[inline]
-            fn hash<H: hash::Hasher>(&self, state: &mut H) {
+            fn hash<H: ::hash::Hasher>(&self, state: &mut H) {
                 union A {
                     data: [$elem_ty; $id::lanes()],
                     vec: $id
@@ -18,7 +19,6 @@ macro_rules! impl_hash {
 }
 
 #[cfg(test)]
-#[macro_export]
 macro_rules! test_hash {
     ($id:ident, $elem_ty:ident) => {
         #[test]
@@ -26,8 +26,7 @@ macro_rules! test_hash {
             use ::coresimd::simd::$id;
             use ::std::collections::hash_map::DefaultHasher;
             use ::std::hash::{Hash, Hasher};
-            use ::std::{mem, clone};
-            use clone::Clone;
+            use ::std::mem;
             type A = [$elem_ty; $id::lanes()];
             let a: A = [42 as $elem_ty; $id::lanes()];
             assert!(mem::size_of::<A>() == mem::size_of::<$id>());

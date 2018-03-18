@@ -1,17 +1,65 @@
 //! Implements portable arithmetic vector reductions.
+#![allow(unused)]
 
 macro_rules! impl_arithmetic_reductions {
     ($id:ident, $elem_ty:ident) => {
         impl $id {
             /// Lane-wise addition of the vector elements.
+            ///
+            /// FIXME: document guarantees with respect to:
+            ///    * integers: overflow behavior
+            ///    * floats: order and NaNs
+            #[cfg(not(target_arch = "aarch64"))]
             #[inline]
             pub fn sum(self) -> $elem_ty {
-                ReduceAdd::reduce_add(self)
+                use ::coresimd::simd_llvm::simd_reduce_add_ordered;
+                unsafe {
+                    simd_reduce_add_ordered(self, 0 as $elem_ty)
+                }
             }
+            /// Lane-wise addition of the vector elements.
+            ///
+            /// FIXME: document guarantees with respect to:
+            ///    * integers: overflow behavior
+            ///    * floats: order and NaNs
+            #[cfg(target_arch = "aarch64")]
+            #[inline]
+            pub fn sum(self) -> $elem_ty {
+                // FIXME: broken on AArch64
+                let mut x = self.extract(0) as $elem_ty;
+                for i in 1..$id::lanes() {
+                    x += self.extract(i) as $elem_ty;
+                }
+                x
+            }
+
             /// Lane-wise multiplication of the vector elements.
+            ///
+            /// FIXME: document guarantees with respect to:
+            ///    * integers: overflow behavior
+            ///    * floats: order and NaNs
+            #[cfg(not(target_arch = "aarch64"))]
             #[inline]
             pub fn product(self) -> $elem_ty {
-                ReduceMul::reduce_mul(self)
+                use ::coresimd::simd_llvm::simd_reduce_mul_ordered;
+                unsafe {
+                    simd_reduce_mul_ordered(self, 1 as $elem_ty)
+                }
+            }
+            /// Lane-wise multiplication of the vector elements.
+            ///
+            /// FIXME: document guarantees with respect to:
+            ///    * integers: overflow behavior
+            ///    * floats: order and NaNs
+            #[cfg(target_arch = "aarch64")]
+            #[inline]
+            pub fn product(self) -> $elem_ty {
+                // FIXME: broken on AArch64
+                let mut x = self.extract(0) as $elem_ty;
+                for i in 1..$id::lanes() {
+                    x *= self.extract(i) as $elem_ty;
+                }
+                x
             }
         }
     }

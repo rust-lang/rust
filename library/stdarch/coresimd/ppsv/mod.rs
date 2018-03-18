@@ -32,7 +32,6 @@
 
 #[macro_use]
 mod api;
-mod codegen;
 
 mod v16;
 mod v32;
@@ -48,16 +47,14 @@ pub use self::v128::*;
 pub use self::v256::*;
 pub use self::v512::*;
 
-use marker;
-
 /// Safe lossless bitwise conversion from `T` to `Self`.
-pub trait FromBits<T>: marker::Sized {
+pub trait FromBits<T>: ::marker::Sized {
     /// Safe lossless bitwise from `T` to `Self`.
     fn from_bits(T) -> Self;
 }
 
 /// Safe lossless bitwise conversion from `Self` to `T`.
-pub trait IntoBits<T>: marker::Sized {
+pub trait IntoBits<T>: ::marker::Sized {
     /// Safe lossless bitwise transmute from `self` to `T`.
     fn into_bits(self) -> T;
 }

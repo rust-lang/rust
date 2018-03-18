@@ -1,4 +1,5 @@
 //! Implements the load/store API.
+#![allow(unused)]
 
 macro_rules! impl_load_store {
     ($id:ident, $elem_ty:ident, $elem_count:expr) => {
@@ -11,10 +12,11 @@ macro_rules! impl_load_store {
             /// aligned to an `align_of::<Self>()` boundary.
             #[inline]
             pub fn store_aligned(self, slice: &mut [$elem_ty]) {
+                use ::slice::SliceExt;
                 unsafe {
                     assert!(slice.len() >= $elem_count);
                     let target_ptr = slice.get_unchecked_mut(0) as *mut $elem_ty;
-                    assert!(target_ptr.align_offset(mem::align_of::<Self>()) == 0);
+                    assert!(target_ptr.align_offset(::mem::align_of::<Self>()) == 0);
                     self.store_aligned_unchecked(slice);
                 }
             }
@@ -26,6 +28,7 @@ macro_rules! impl_load_store {
             /// If `slice.len() < Self::lanes()`.
             #[inline]
             pub fn store_unaligned(self, slice: &mut [$elem_ty]) {
+                use ::slice::SliceExt;
                 unsafe {
                     assert!(slice.len() >= $elem_count);
                     self.store_unaligned_unchecked(slice);
@@ -45,6 +48,7 @@ macro_rules! impl_load_store {
                 slice: &mut [$elem_ty]
 
             ) {
+                use ::slice::SliceExt;
                 *(slice.get_unchecked_mut(0) as *mut $elem_ty as *mut Self) = self;
             }
 
@@ -58,9 +62,10 @@ macro_rules! impl_load_store {
                 self,
                 slice: &mut [$elem_ty]
             ) {
+                use ::slice::SliceExt;
                 let target_ptr = slice.get_unchecked_mut(0) as *mut $elem_ty as *mut u8;
                 let self_ptr = &self as *const Self as *const u8;
-                ptr::copy_nonoverlapping(self_ptr, target_ptr, mem::size_of::<Self>());
+                ::ptr::copy_nonoverlapping(self_ptr, target_ptr, ::mem::size_of::<Self>());
             }
 
             /// Instantiates a new vector with the values of the `slice`.
@@ -72,9 +77,10 @@ macro_rules! impl_load_store {
             #[inline]
             pub fn load_aligned(slice: &[$elem_ty]) -> Self {
                 unsafe {
+                    use ::slice::SliceExt;
                     assert!(slice.len() >= $elem_count);
                     let target_ptr = slice.get_unchecked(0) as *const $elem_ty;
-                    assert!(target_ptr.align_offset(mem::align_of::<Self>()) == 0);
+                    assert!(target_ptr.align_offset(::mem::align_of::<Self>()) == 0);
                     Self::load_aligned_unchecked(slice)
                 }
             }
@@ -86,6 +92,7 @@ macro_rules! impl_load_store {
             /// If `slice.len() < Self::lanes()`.
             #[inline]
             pub fn load_unaligned(slice: &[$elem_ty]) -> Self {
+                use ::slice::SliceExt;
                 unsafe {
                     assert!(slice.len() >= $elem_count);
                     Self::load_unaligned_unchecked(slice)
@@ -100,6 +107,7 @@ macro_rules! impl_load_store {
             /// to an `align_of::<Self>()` boundary, the behavior is undefined.
             #[inline]
             pub unsafe fn load_aligned_unchecked(slice: &[$elem_ty]) -> Self {
+                use ::slice::SliceExt;
                 *(slice.get_unchecked(0) as *const $elem_ty as *const Self)
             }
 
@@ -110,11 +118,12 @@ macro_rules! impl_load_store {
             /// If `slice.len() < Self::lanes()` the behavior is undefined.
             #[inline]
             pub unsafe fn load_unaligned_unchecked(slice: &[$elem_ty]) -> Self {
-                use mem::size_of;
+                use ::slice::SliceExt;
+                use ::mem::size_of;
                 let target_ptr = slice.get_unchecked(0) as *const $elem_ty as *const u8;
                 let mut x = Self::splat(0 as $elem_ty);
                 let self_ptr = &mut x as *mut Self as *mut u8;
-                ptr::copy_nonoverlapping(target_ptr,self_ptr,size_of::<Self>());
+                ::ptr::copy_nonoverlapping(target_ptr,self_ptr,size_of::<Self>());
                 x
             }
         }
@@ -122,7 +131,6 @@ macro_rules! impl_load_store {
 }
 
 #[cfg(test)]
-#[macro_export]
 macro_rules! test_load_store {
     ($id:ident, $elem_ty:ident) => {
         #[test]
@@ -177,7 +185,7 @@ macro_rules! test_load_store {
 
         union A {
             data: [$elem_ty; 2 * ::coresimd::simd::$id::lanes()],
-            vec: ::coresimd::simd::$id,
+            _vec: ::coresimd::simd::$id,
         }
 
         #[test]
