@@ -465,15 +465,25 @@ fn replace_names(input: &str) -> Option<(String, HashMap<String, String>)> {
 
 #[derive(Debug, Clone)]
 enum MacroArgKind {
+    /// e.g. `$x: expr`.
     MetaVariable(ast::Ident, String),
+    /// e.g. `$($foo: expr),*`
     Repeat(
+        /// `()`, `[]` or `{}`.
         DelimToken,
+        /// Inner arguments inside delimiters.
         Vec<ParsedMacroArg>,
+        /// Something after the closing delimiter and the repeat token, if available.
         Option<Box<ParsedMacroArg>>,
+        /// The repeat token. This could be one of `*`, `+` or `?`.
         Token,
     ),
+    /// e.g. `[derive(Debug)]`
     Delimited(DelimToken, Vec<ParsedMacroArg>),
+    /// A possible separator. e.g. `,` or `;`.
     Separator(String, String),
+    /// Other random stuff that does not fit to other kinds.
+    /// e.g. `== foo` in `($x: expr == foo)`.
     Other(String, String),
 }
 
@@ -589,13 +599,21 @@ impl ParsedMacroArg {
     }
 }
 
+/// Parses macro arguments on macro def.
 struct MacroArgParser {
-    lo: BytePos,
-    hi: BytePos,
+    /// Holds either a name of the next metavariable, a separator or a junk.
     buf: String,
-    is_arg: bool,
-    last_tok: Token,
+    /// The start position on the current buffer.
+    lo: BytePos,
+    /// The first token of the current buffer.
     start_tok: Token,
+    /// Set to true if we are parsing a metavariable or a repeat.
+    is_meta_var: bool,
+    /// The position of the last token.
+    hi: BytePos,
+    /// The last token parsed.
+    last_tok: Token,
+    /// Holds the parsed arguments.
     result: Vec<ParsedMacroArg>,
 }
 
@@ -612,7 +630,7 @@ impl MacroArgParser {
             lo: BytePos(0),
             hi: BytePos(0),
             buf: String::new(),
-            is_arg: false,
+            is_meta_var: false,
             last_tok: Token::Eof,
             start_tok: Token::Eof,
             result: vec![],
@@ -659,10 +677,68 @@ impl MacroArgParser {
                 });
 
                 self.buf.clear();
-                self.is_arg = false;
+                self.is_meta_var = false;
             }
             _ => unreachable!(),
         }
+    }
+
+    fn add_delimited(&mut self, inner: Vec<ParsedMacroArg>, delim: DelimToken, span: Span) {
+        self.result.push(ParsedMacroArg {
+            kind: MacroArgKind::Delimited(delim, inner),
+            span,
+        });
+    }
+
+    // $($foo: expr),?
+    fn add_repeat(
+        &mut self,
+        inner: Vec<ParsedMacroArg>,
+        delim: DelimToken,
+        iter: &mut Cursor,
+        span: Span,
+    ) {
+        let mut buffer = String::new();
+        let mut first = false;
+        let mut lo = span.lo();
+        let mut hi = span.hi();
+
+        // Parse '*', '+' or '?.
+        while let Some(ref tok) = iter.next() {
+            self.set_last_tok(tok);
+            if first {
+                first = false;
+                lo = tok.span().lo();
+            }
+
+            match tok {
+                TokenTree::Token(_, Token::BinOp(BinOpToken::Plus))
+                | TokenTree::Token(_, Token::Question)
+                | TokenTree::Token(_, Token::BinOp(BinOpToken::Star)) => {
+                    break;
+                }
+                TokenTree::Token(sp, ref t) => {
+                    buffer.push_str(&pprust::token_to_string(t));
+                    hi = sp.hi();
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        // There could be some random stuff between ')' and '*', '+' or '?'.
+        let another = if buffer.trim().is_empty() {
+            None
+        } else {
+            Some(Box::new(ParsedMacroArg {
+                kind: MacroArgKind::Other(buffer, "".to_owned()),
+                span: mk_sp(lo, hi),
+            }))
+        };
+
+        self.result.push(ParsedMacroArg {
+            kind: MacroArgKind::Repeat(delim, inner, another, self.last_tok.clone()),
+            span: mk_sp(self.lo, self.hi),
+        });
     }
 
     fn update_buffer(&mut self, lo: BytePos, t: &Token) {
@@ -716,15 +792,15 @@ impl MacroArgParser {
                     }
 
                     // Start keeping the name of this metavariable in the buffer.
-                    self.is_arg = true;
+                    self.is_meta_var = true;
                     self.lo = sp.lo();
                     self.start_tok = Token::Dollar;
                 }
-                TokenTree::Token(_, Token::Colon) if self.is_arg => {
+                TokenTree::Token(_, Token::Colon) if self.is_meta_var => {
                     self.add_meta_variable(&mut iter);
                 }
                 TokenTree::Token(sp, ref t) => self.update_buffer(sp.lo(), t),
-                TokenTree::Delimited(sp, ref delimited) => {
+                TokenTree::Delimited(sp, delimited) => {
                     if !self.buf.is_empty() {
                         if next_space(&self.last_tok) == SpaceState::Always {
                             self.add_separator();
@@ -733,59 +809,15 @@ impl MacroArgParser {
                         }
                     }
 
+                    // Parse the stuff inside delimiters.
                     let mut parser = MacroArgParser::new();
                     parser.lo = sp.lo();
-                    let mut delimited_arg = parser.parse(delimited.tts.clone());
+                    let delimited_arg = parser.parse(delimited.tts.clone());
 
-                    if self.is_arg {
-                        // Parse '*' or '+'.
-                        let mut buffer = String::new();
-                        let mut first = false;
-                        let mut lo = sp.lo();
-
-                        while let Some(ref next_tok) = iter.next() {
-                            self.set_last_tok(next_tok);
-                            if first {
-                                first = false;
-                                lo = next_tok.span().lo();
-                            }
-
-                            match next_tok {
-                                TokenTree::Token(_, Token::BinOp(BinOpToken::Plus))
-                                | TokenTree::Token(_, Token::Question)
-                                | TokenTree::Token(_, Token::BinOp(BinOpToken::Star)) => {
-                                    break;
-                                }
-                                TokenTree::Token(_, ref t) => {
-                                    buffer.push_str(&pprust::token_to_string(t))
-                                }
-                                _ => unreachable!(),
-                            }
-                        }
-
-                        let another = if buffer.trim().is_empty() {
-                            None
-                        } else {
-                            Some(Box::new(ParsedMacroArg {
-                                kind: MacroArgKind::Other(buffer, "".to_owned()),
-                                span: mk_sp(lo, self.hi),
-                            }))
-                        };
-
-                        self.result.push(ParsedMacroArg {
-                            kind: MacroArgKind::Repeat(
-                                delimited.delim,
-                                delimited_arg,
-                                another,
-                                self.last_tok.clone(),
-                            ),
-                            span: mk_sp(self.lo, self.hi),
-                        });
+                    if self.is_meta_var {
+                        self.add_repeat(delimited_arg, delimited.delim, &mut iter, *sp);
                     } else {
-                        self.result.push(ParsedMacroArg {
-                            kind: MacroArgKind::Delimited(delimited.delim, delimited_arg),
-                            span: *sp,
-                        });
+                        self.add_delimited(delimited_arg, delimited.delim, *sp);
                     }
                 }
             }
@@ -793,6 +825,8 @@ impl MacroArgParser {
             self.set_last_tok(tok);
         }
 
+        // We are left with some stuff in the buffer. Since there is nothing
+        // left to separate, add this as `Other`.
         if !self.buf.is_empty() {
             self.add_other();
         }
