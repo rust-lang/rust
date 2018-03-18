@@ -13,6 +13,7 @@
 #![feature(i128_type)]
 #![feature(rand)]
 #![feature(repr_simd)]
+#![feature(slice_sort_by_cached_key)]
 #![feature(test)]
 
 extern crate rand;
