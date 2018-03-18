@@ -29,6 +29,7 @@ mod dropck_outlives;
 mod normalize_projection_ty;
 mod normalize_erasing_regions;
 mod util;
+pub mod lowering;
 
 use rustc::ty::maps::Providers;
 
@@ -39,6 +40,7 @@ pub fn provide(p: &mut Providers) {
         normalize_projection_ty: normalize_projection_ty::normalize_projection_ty,
         normalize_ty_after_erasing_regions:
             normalize_erasing_regions::normalize_ty_after_erasing_regions,
+        program_clauses_for: lowering::program_clauses_for,
         ..*p
     };
 }

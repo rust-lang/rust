@@ -832,6 +832,13 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                                           across crates and will never be stable",
                                                           cfg_fn!(rustc_attrs))),
 
+    ("rustc_dump_program_clauses", Whitelisted, Gated(Stability::Unstable,
+                                                     "rustc_attrs",
+                                                     "the `#[rustc_dump_program_clauses]` \
+                                                      attribute is just used for rustc unit \
+                                                      tests and will never be stable",
+                                                     cfg_fn!(rustc_attrs))),
+
     // RFC #2094
     ("nll", Whitelisted, Gated(Stability::Unstable,
                                "nll",
