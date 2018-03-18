@@ -1880,15 +1880,15 @@ impl Path {
     /// assert_eq!(path.strip_prefix(prefix), Ok(Path::new("haha/foo.txt")));
     /// ```
     #[stable(since = "1.7.0", feature = "path_strip_prefix")]
-    pub fn strip_prefix<'a, P>(&'a self, base: P)
-                               -> Result<&'a Path, StripPrefixError>
+    pub fn strip_prefix<P>(&self, base: P)
+                           -> Result<&Path, StripPrefixError>
         where P: AsRef<Path>
     {
         self._strip_prefix(base.as_ref())
     }
 
-    fn _strip_prefix<'a>(&'a self, base: &Path)
-                         -> Result<&'a Path, StripPrefixError> {
+    fn _strip_prefix(&self, base: &Path)
+                     -> Result<&Path, StripPrefixError> {
         iter_after(self.components(), base.components())
             .map(|c| c.as_path())
             .ok_or(StripPrefixError(()))
