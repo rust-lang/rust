@@ -53,10 +53,10 @@ fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, fullmir: b
         let sysroot = std::env::home_dir().unwrap()
             .join(".xargo")
             .join("HOST");
-        config.target_rustcflags = Some(format!("--sysroot {}", sysroot.to_str().unwrap()));
+        flags.push(format!("--sysroot {}", sysroot.to_str().unwrap()));
         config.src_base = PathBuf::from(path.to_string());
     } else {
-        config.target_rustcflags = Some(format!("--sysroot {}", sysroot.to_str().unwrap()));
+        flags.push(format!("--sysroot {}", sysroot.to_str().unwrap()));
         config.src_base = PathBuf::from(path.to_string());
     }
     flags.push("-Zmir-emit-validate=1".to_owned());
@@ -206,8 +206,8 @@ fn compile_fail_miri() {
     let sysroot = get_sysroot();
     let host = get_host();
 
-    for_all_targets(&sysroot, |target| {
-        compile_fail(&sysroot, "tests/compile-fail", &target, &host, false);
-    });
+    // FIXME: run tests for other targets, too
+    compile_fail(&sysroot, "tests/compile-fail", &host, &host, true);
+
     compile_fail(&sysroot, "tests/compile-fail-fullmir", &host, &host, true);
 }

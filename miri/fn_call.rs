@@ -106,7 +106,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
         let def_id = instance.def_id();
         let item_path = self.tcx.absolute_item_path_str(def_id);
         if item_path.starts_with("std::") {
-            println!("{}", item_path);
+            //println!("{}", item_path);
         }
         match &*item_path {
             "std::sys::unix::thread::guard::init" | "std::sys::unix::thread::guard::current" => {
@@ -118,7 +118,9 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                         let none_variant_index = adt_def.variants.iter().enumerate().find(|&(_i, ref def)| {
                             def.name.as_str() == "None"
                         }).expect("No None variant").0;
-                        write_discriminant_value(self, ret_ty, destination.unwrap().0, none_variant_index)?;
+                        let (return_place, return_to_block) = destination.unwrap();
+                        write_discriminant_value(self, ret_ty, return_place, none_variant_index)?;
+                        self.goto_block(return_to_block);
                         return Ok(true);
                     }
                     _ => panic!("Unexpected return type for {}", item_path)
