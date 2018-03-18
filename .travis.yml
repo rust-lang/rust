@@ -30,10 +30,6 @@ install:
   - npm install remark-cli remark-lint
 
 script:
- - cargo install rustup-toolchain-install-master || echo "rustup-toolchain-install-master already installed"
- - RUSTC_HEAD=`git ls-remote https://github.com/rust-lang/rust.git HEAD | tr -d ",." | tr " \t" "\n" | grep -e "HEAD" -v`
- - rustup-toolchain-install-master $RUSTC_HEAD
- - rustup default $RUSTC_HEAD
  - PATH=$PATH:./node_modules/.bin
  - remark -f README.md > /dev/null
  - set -e
