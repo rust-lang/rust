@@ -36,7 +36,7 @@ crate fn normalize_projection_ty<'tcx>(
         ) = infcx.instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &goal);
         let fulfill_cx = &mut FulfillmentContext::new();
         let selcx = &mut SelectionContext::new(infcx);
-        let cause = ObligationCause::misc(DUMMY_SP, DUMMY_NODE_ID, DUMMY_NODE_ID);
+        let cause = ObligationCause::misc(DUMMY_SP, DUMMY_NODE_ID);
         let Normalized {
             value: answer,
             obligations,

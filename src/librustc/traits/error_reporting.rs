@@ -575,44 +575,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             = self.on_unimplemented_note(trait_ref, obligation);
                         let have_alt_message = message.is_some() || label.is_some();
 
-                        // {
-                        //     let ty::Binder(trait_ref) = trait_ref;
-                        //     println!("TraitRef: {:?}", trait_ref);
-                        //     println!("TraitRef: id:{:?}; subst:{:?}", trait_ref.def_id, trait_ref.substs);
-
-                        //     if let ty::Predicate::Trait(trait_predicate_binder) =
-                        //         trait_ref.to_predicate() {
-                        //             let trait_predicate = trait_predicate_binder.skip_binder();
-                        //             println!("TraitPredicateBinder: {:?}", trait_predicate_binder);
-                        //             println!("TraitPredicate: {:?}", trait_predicate);
-
-                        //             let trait_ty = trait_ref.self_ty();
-                        //             println!("TraitPredicateTy: {:?}", trait_ty);
-                        //             println!("TraitPredicateTy: sty:{:?}; flags{:?}", trait_ty.sty, trait_ty.flags);
-                        //         }
-
-                        //     for in_ty in trait_ref.input_types() {
-                        //         println!("\t- {:?}", in_ty);
-                        //         println!("\t\t- sty:{:?}; flags:{:?}", in_ty.sty, in_ty.flags);
-                        //     }
-
-                        //     println!("Message: {:?}", message);
-                        //     println!("Label: {:?}", label);
-                        //     println!("Obligation: {:?}", obligation);
-                        //     println!("Span: {:?}", self.tcx.sess.codemap().span_to_string(span));
-
-                        //     let body_id = obligation.cause.body_id;
-                        //     println!("BodyId: {:?}", body_id);
-                        //     println!("BodyIdSpan: {:?}", self.tcx.hir.span(body_id));
-
-                        //     match self.tcx.hir.find(body_id) {
-                        //         Some(node) => println!("Node: {:?}", node),
-                        //         None => println!("Node not found."),
-                        //     }
-
-                        //     println!("=------------------------------=");
-                        // }
-
                         let mut err = struct_span_err!(
                             self.tcx.sess,
                             span,

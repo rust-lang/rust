@@ -298,7 +298,7 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
     };
     let parent_scope = rcx.tcx.mk_region(ty::ReScope(parent_scope));
     let origin = || infer::SubregionOrigin::SafeDestructor(span);
-    let cause = &ObligationCause::misc(span, body_id, body_id);
+    let cause = &ObligationCause::misc(span, body_id);
     let infer_ok = rcx.infcx.at(cause, rcx.fcx.param_env).dropck_outlives(ty);
     debug!("dropck_outlives = {:#?}", infer_ok);
     let kinds = rcx.fcx.register_infer_ok_obligations(infer_ok);
