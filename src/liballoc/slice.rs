@@ -1384,8 +1384,8 @@ impl<T> [T] {
                 let mut indices: Vec<_> =
                     $slice.iter().map($f).enumerate().map(|(i, k)| (k, i as $t)).collect();
                 // The elements of `indices` are unique, as they are indexed, so any sort will be
-                // stable with respect to the original slice. We use `sort_unstable` here because it
-                // requires less memory allocation.
+                // stable with respect to the original slice. We use `sort_unstable` here because
+                // it requires less memory allocation.
                 indices.sort_unstable();
                 for i in 0..$slice.len() {
                     let mut index = indices[i].1;
@@ -1398,10 +1398,15 @@ impl<T> [T] {
             })
         }
 
+        let sz_u8    = mem::size_of::<(K, u8)>();
+        let sz_u16   = mem::size_of::<(K, u16)>();
+        let sz_u32   = mem::size_of::<(K, u32)>();
+        let sz_usize = mem::size_of::<(K, usize)>();
+
         let len = self.len();
-        if len <= ( u8::MAX as usize) { return sort_by_key!( u8, self, f) }
-        if len <= (u16::MAX as usize) { return sort_by_key!(u16, self, f) }
-        if len <= (u32::MAX as usize) { return sort_by_key!(u32, self, f) }
+        if sz_u8  < sz_u16   && len <= ( u8::MAX as usize) { return sort_by_key!( u8, self, f) }
+        if sz_u16 < sz_u32   && len <= (u16::MAX as usize) { return sort_by_key!(u16, self, f) }
+        if sz_u32 < sz_usize && len <= (u32::MAX as usize) { return sort_by_key!(u32, self, f) }
         sort_by_key!(usize, self, f)
     }
 
