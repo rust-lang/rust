@@ -1607,7 +1607,7 @@ impl<'a> LoweringContext<'a> {
         }
 
         hir::PathSegment::new(
-            self.lower_ident(segment.identifier),
+            self.lower_ident(segment.ident),
             parameters,
             infer_types,
         )
@@ -2356,11 +2356,11 @@ impl<'a> LoweringContext<'a> {
 
                 // Correctly resolve `self` imports
                 if path.segments.len() > 1
-                    && path.segments.last().unwrap().identifier.name == keywords::SelfValue.name()
+                    && path.segments.last().unwrap().ident.name == keywords::SelfValue.name()
                 {
                     let _ = path.segments.pop();
                     if rename.is_none() {
-                        *name = path.segments.last().unwrap().identifier.name;
+                        *name = path.segments.last().unwrap().ident.name;
                     }
                 }
 

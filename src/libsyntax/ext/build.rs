@@ -319,7 +319,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 types: Vec<P<ast::Ty>>,
                 bindings: Vec<ast::TypeBinding> )
                 -> ast::Path {
-        let last_identifier = idents.pop().unwrap();
+        let last_ident = idents.pop().unwrap();
         let mut segments: Vec<ast::PathSegment> = Vec::new();
 
         segments.extend(idents.into_iter().map(|i| ast::PathSegment::from_ident(i, span)));
@@ -328,7 +328,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         } else {
             None
         };
-        segments.push(ast::PathSegment { identifier: last_identifier, span, parameters });
+        segments.push(ast::PathSegment { ident: last_ident, span, parameters });
         let mut path = ast::Path { span, segments };
         if global {
             if let Some(seg) = path.make_root() {
@@ -367,7 +367,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             None
         };
         path.segments.push(ast::PathSegment {
-            identifier: ident.node,
+            ident: ident.node,
             span: ident.span,
             parameters,
         });

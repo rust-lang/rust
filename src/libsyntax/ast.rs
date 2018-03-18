@@ -82,7 +82,7 @@ pub struct Path {
 
 impl<'a> PartialEq<&'a str> for Path {
     fn eq(&self, string: &&'a str) -> bool {
-        self.segments.len() == 1 && self.segments[0].identifier.name == *string
+        self.segments.len() == 1 && self.segments[0].ident.name == *string
     }
 }
 
@@ -101,17 +101,17 @@ impl fmt::Display for Path {
 impl Path {
     // convert a span and an identifier to the corresponding
     // 1-segment path
-    pub fn from_ident(s: Span, identifier: Ident) -> Path {
+    pub fn from_ident(s: Span, ident: Ident) -> Path {
         Path {
             span: s,
-            segments: vec![PathSegment::from_ident(identifier, s)],
+            segments: vec![PathSegment::from_ident(ident, s)],
         }
     }
 
     // Make a "crate root" segment for this path unless it already has it
     // or starts with something like `self`/`super`/`$crate`/etc.
     pub fn make_root(&self) -> Option<PathSegment> {
-        if let Some(ident) = self.segments.get(0).map(|seg| seg.identifier) {
+        if let Some(ident) = self.segments.get(0).map(|seg| seg.ident) {
             if ::parse::token::is_path_segment_keyword(ident) &&
                ident.name != keywords::Crate.name() {
                 return None;
@@ -121,7 +121,7 @@ impl Path {
     }
 
     pub fn is_global(&self) -> bool {
-        !self.segments.is_empty() && self.segments[0].identifier.name == keywords::CrateRoot.name()
+        !self.segments.is_empty() && self.segments[0].ident.name == keywords::CrateRoot.name()
     }
 }
 
@@ -131,7 +131,7 @@ impl Path {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct PathSegment {
     /// The identifier portion of this path segment.
-    pub identifier: Ident,
+    pub ident: Ident,
     /// Span of the segment identifier.
     pub span: Span,
 
@@ -146,14 +146,10 @@ pub struct PathSegment {
 
 impl PathSegment {
     pub fn from_ident(ident: Ident, span: Span) -> Self {
-        PathSegment { identifier: ident, span: span, parameters: None }
+        PathSegment { ident, span, parameters: None }
     }
     pub fn crate_root(span: Span) -> Self {
-        PathSegment {
-            identifier: Ident::new(keywords::CrateRoot.name(), span),
-            span,
-            parameters: None,
-        }
+        PathSegment::from_ident(Ident::new(keywords::CrateRoot.name(), span), span)
     }
 }
 

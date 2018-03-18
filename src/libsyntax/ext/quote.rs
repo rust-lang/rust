@@ -239,7 +239,7 @@ pub mod rt {
                     inner.push(TokenTree::Token(self.span, token::Colon).into());
                 }
                 inner.push(TokenTree::Token(
-                    self.span, token::Token::from_ast_ident(segment.identifier)
+                    self.span, token::Token::from_ast_ident(segment.ident)
                 ).into());
             }
             inner.push(self.tokens.clone());

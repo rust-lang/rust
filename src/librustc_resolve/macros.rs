@@ -137,9 +137,9 @@ impl<'a> base::Resolver for Resolver<'a> {
 
         impl<'a, 'b> Folder for EliminateCrateVar<'a, 'b> {
             fn fold_path(&mut self, mut path: ast::Path) -> ast::Path {
-                let ident = path.segments[0].identifier;
+                let ident = path.segments[0].ident;
                 if ident.name == keywords::DollarCrate.name() {
-                    path.segments[0].identifier.name = keywords::CrateRoot.name();
+                    path.segments[0].ident.name = keywords::CrateRoot.name();
                     let module = self.0.resolve_crate_root(ident.span.ctxt(), true);
                     if !module.is_local() {
                         let span = path.segments[0].span;
@@ -249,7 +249,7 @@ impl<'a> base::Resolver for Resolver<'a> {
                     if traits[j].segments.len() > 1 {
                         continue
                     }
-                    let trait_name = traits[j].segments[0].identifier.name;
+                    let trait_name = traits[j].segments[0].ident.name;
                     let legacy_name = Symbol::intern(&format!("derive_{}", trait_name));
                     if !self.global_macros.contains_key(&legacy_name) {
                         continue
@@ -268,7 +268,7 @@ impl<'a> base::Resolver for Resolver<'a> {
                                 if k > 0 {
                                     tokens.push(TokenTree::Token(path.span, Token::ModSep).into());
                                 }
-                                let tok = Token::from_ast_ident(segment.identifier);
+                                let tok = Token::from_ast_ident(segment.ident);
                                 tokens.push(TokenTree::Token(path.span, tok).into());
                             }
                         }
@@ -365,7 +365,7 @@ impl<'a> Resolver<'a> {
         }
 
         let attr_name = match path.segments.len() {
-            1 => path.segments[0].identifier.name,
+            1 => path.segments[0].ident.name,
             _ => return Err(determinacy),
         };
         for path in traits {
@@ -413,7 +413,7 @@ impl<'a> Resolver<'a> {
                                   kind: MacroKind, force: bool)
                                   -> Result<Def, Determinacy> {
         let ast::Path { ref segments, span } = *path;
-        let path: Vec<_> = segments.iter().map(|seg| respan(seg.span, seg.identifier)).collect();
+        let path: Vec<_> = segments.iter().map(|seg| respan(seg.span, seg.ident)).collect();
         let invocation = self.invocations[&scope];
         let module = invocation.module.get();
         self.current_module = if module.is_trait() { module.parent.unwrap() } else { module };
