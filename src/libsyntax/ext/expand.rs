@@ -1383,7 +1383,7 @@ impl Folder for Marker {
     }
 
     fn new_span(&mut self, span: Span) -> Span {
-        span.with_ctxt(span.ctxt().apply_mark(self.0))
+        span.apply_mark(self.0)
     }
 
     fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {

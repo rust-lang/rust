@@ -35,7 +35,7 @@ pub fn expand_assert<'cx>(
         None
     };
 
-    let sp = sp.with_ctxt(sp.ctxt().apply_mark(cx.current_expansion.mark));
+    let sp = sp.apply_mark(cx.current_expansion.mark);
     let panic_call = Mac_ {
         path: Path::from_ident(sp, Ident::from_str("panic")),
         tts: if let Some(ts) = custom_msg_args {

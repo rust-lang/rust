@@ -897,7 +897,7 @@ pub fn expr_to_spanned_string(cx: &mut ExtCtxt, expr: P<ast::Expr>, err_msg: &st
                               -> Option<Spanned<(Symbol, ast::StrStyle)>> {
     // Update `expr.span`'s ctxt now in case expr is an `include!` macro invocation.
     let expr = expr.map(|mut expr| {
-        expr.span = expr.span.with_ctxt(expr.span.ctxt().apply_mark(cx.current_expansion.mark));
+        expr.span = expr.span.apply_mark(cx.current_expansion.mark);
         expr
     });
 
