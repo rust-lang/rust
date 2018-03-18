@@ -519,6 +519,14 @@ impl MacroArgKind {
         }
     }
 
+    fn has_meta_var(&self) -> bool {
+        match *self {
+            MacroArgKind::MetaVariable(..) => true,
+            MacroArgKind::Repeat(_, ref args, _, _) => args.iter().any(|a| a.kind.has_meta_var()),
+            _ => false,
+        }
+    }
+
     fn rewrite(
         &self,
         context: &RewriteContext,
@@ -812,8 +820,12 @@ fn wrap_macro_args_inner(
         };
         result.push_str(&arg.rewrite(context, nested_shape, use_multiple_lines)?);
 
-        if use_multiple_lines && arg.kind.ends_with_space() {
-            result.pop();
+        if use_multiple_lines
+            && (arg.kind.ends_with_space() || iter.peek().map_or(false, |a| a.kind.has_meta_var()))
+        {
+            if arg.kind.ends_with_space() {
+                result.pop();
+            }
             result.push_str(&indent_str);
         } else if let Some(ref next_arg) = iter.peek() {
             let space_before_dollar =

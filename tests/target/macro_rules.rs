@@ -14,6 +14,10 @@ macro_rules! m {
         $($end: ident),*
     ) => {};
     ($name: ident($($dol: tt $var: ident)*) $($body: tt)*) => {};
+    (
+        $($i: ident: $ty: ty, $def: expr, $stb: expr, $($dstring: tt),+);+ $(;)*
+        $($i: ident: $ty: ty, $def: expr, $stb: expr, $($dstring: tt),+);+ $(;)*
+    ) => {};
 }
 
 macro_rules! m {
