@@ -35,6 +35,8 @@ fn bar2(baz: String) -> impl Generator<Yield = String, Return = ()> {
 }
 
 fn main() {
-    assert_eq!(bar(String::new()).resume(), GeneratorState::Yielded(String::new()));
-    assert_eq!(bar2(String::new()).resume(), GeneratorState::Complete(()));
+    unsafe {
+        assert_eq!(bar(String::new()).resume(), GeneratorState::Yielded(String::new()));
+        assert_eq!(bar2(String::new()).resume(), GeneratorState::Complete(()));
+    }
 }
