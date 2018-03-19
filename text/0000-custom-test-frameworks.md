@@ -141,15 +141,9 @@ fn main() {
 }
 ```
 
-Because this procedural macro is only loaded when it is used as the
-test framework, the `#[mytest]` annotation should probably be kept
-behind `#[cfg(mytest)]` (which is automatically set when we are currently running
-with the `mytest` framework, i.e. `cargo test --framework mytest` is being run)
-so that you don't get unknown attribute warnings
-whilst loading, and to avoid conflicts with other frameworks
-that may use the same attributes. (We could change this by asking
-attributes to be registered in Cargo.toml, but we don't find this
-necessary)
+The compiler will make marked items `pub(crate)` (i.e. by making
+all their parent modules public). `#[test]` and `#[bench]` items will only exist
+with `--cfg test` (or bench), which is automatically set when running tests.
 
 
 A crate may only define a single framework.
