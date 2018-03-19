@@ -938,14 +938,14 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         }
 
         if inexistent_fields.len() > 0 {
-            let field_names = if inexistent_fields.len() == 1 {
-                format!("a field named `{}`", inexistent_fields[0].1)
+            let (field_names, t, plural) = if inexistent_fields.len() == 1 {
+                (format!("a field named `{}`", inexistent_fields[0].1), "this", "")
             } else {
-                format!("fields named {}",
-                        inexistent_fields.iter()
+                (format!("fields named {}",
+                         inexistent_fields.iter()
                             .map(|(_, name)| format!("`{}`", name))
                             .collect::<Vec<String>>()
-                            .join(", "))
+                            .join(", ")), "these", "s")
             };
             let spans = inexistent_fields.iter().map(|(span, _)| *span).collect::<Vec<_>>();
             let mut err = struct_span_err!(tcx.sess,
@@ -955,12 +955,13 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                                            kind_name,
                                            tcx.item_path_str(variant.did),
                                            field_names);
-            for (span, name) in &inexistent_fields {
+            if let Some((span, _)) = inexistent_fields.last() {
                 err.span_label(*span,
-                               format!("{} `{}` does not have field `{}`",
+                               format!("{} `{}` does not have {} field{}",
                                        kind_name,
                                        tcx.item_path_str(variant.did),
-                                       name));
+                                       t,
+                                       plural));
             }
             if tcx.sess.teach(&err.get_code().unwrap()) {
                 err.note(
