@@ -432,6 +432,9 @@ declare_features! (
     // Termination trait in main (RFC 1937)
     (active, termination_trait, "1.24.0", Some(43301), None),
 
+    // Termination trait in tests (RFC 1937)
+    (active, termination_trait_test, "1.24.0", Some(48854), None),
+
     // Allows use of the :lifetime macro fragment specifier
     (active, macro_lifetime_matcher, "1.24.0", Some(46895), None),
 
