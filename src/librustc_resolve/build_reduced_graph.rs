@@ -195,7 +195,7 @@ impl<'a> Resolver<'a> {
             ast::UseTreeKind::Nested(ref items) => {
                 let prefix = ast::Path {
                     segments: module_path.into_iter()
-                        .map(|ident| ast::PathSegment::from_ident(ident, ident.span))
+                        .map(|ident| ast::PathSegment::from_ident(ident))
                         .collect(),
                     span: path.span,
                 };

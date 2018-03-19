@@ -689,7 +689,7 @@ mod tests {
     }
 
     fn str2seg(s: &str, lo: u32, hi: u32) -> ast::PathSegment {
-        ast::PathSegment::from_ident(Ident::from_str(s), sp(lo, hi))
+        ast::PathSegment::from_ident(Ident::new(Symbol::intern(s), sp(lo, hi)))
     }
 
     #[test] fn path_exprs_1() {

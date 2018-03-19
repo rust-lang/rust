@@ -1317,19 +1317,6 @@ impl<'a> Parser<'a> {
             self.check_keyword(keywords::Extern) && self.is_extern_non_path()
     }
 
-    fn eat_label(&mut self) -> Option<Label> {
-        let ident = match self.token {
-            token::Lifetime(ident) => ident,
-            token::Interpolated(ref nt) => match nt.0 {
-                token::NtLifetime(lifetime) => lifetime.ident,
-                _ => return None,
-            },
-            _ => return None,
-        };
-        self.bump();
-        Some(Label { ident, span: self.prev_span })
-    }
-
     /// parse a TyKind::BareFn type:
     pub fn parse_ty_bare_fn(&mut self, generic_params: Vec<GenericParam>)
                             -> PResult<'a, TyKind> {
@@ -1999,7 +1986,7 @@ impl<'a> Parser<'a> {
         };
         if let Some(ident) = meta_ident {
             self.bump();
-            return Ok(ast::Path::from_ident(self.prev_span, ident));
+            return Ok(ast::Path::from_ident(ident.with_span_pos(self.prev_span)));
         }
         self.parse_path(style)
     }
@@ -2067,10 +2054,10 @@ impl<'a> Parser<'a> {
                 ParenthesizedParameterData { inputs, output, span }.into()
             };
 
-            PathSegment { ident, span: ident.span, parameters }
+            PathSegment { ident, parameters }
         } else {
             // Generic arguments are not found.
-            PathSegment::from_ident(ident, ident.span)
+            PathSegment::from_ident(ident)
         })
     }
 
@@ -2081,11 +2068,20 @@ impl<'a> Parser<'a> {
 
     /// Parse single lifetime 'a or panic.
     pub fn expect_lifetime(&mut self) -> Lifetime {
-        if let Some(lifetime) = self.token.lifetime(self.span) {
+        if let Some(lifetime) = self.token.lifetime2(self.span) {
             self.bump();
             lifetime
         } else {
             self.span_bug(self.span, "not a lifetime")
+        }
+    }
+
+    fn eat_label(&mut self) -> Option<Label> {
+        if let Some(lifetime) = self.token.lifetime2(self.span) {
+            self.bump();
+            Some(Label { ident: lifetime.ident })
+        } else {
+            None
         }
     }
 
@@ -2121,7 +2117,7 @@ impl<'a> Parser<'a> {
             let fieldname = self.parse_ident_common(false)?;
 
             // Mimic `x: x` for the `x` field shorthand.
-            let path = ast::Path::from_ident(fieldname.span, fieldname);
+            let path = ast::Path::from_ident(fieldname);
             let expr = self.mk_expr(fieldname.span, ExprKind::Path(None, path), ThinVec::new());
             (fieldname, expr, true)
         };
@@ -2332,7 +2328,7 @@ impl<'a> Parser<'a> {
                     return self.parse_while_expr(None, lo, attrs);
                 }
                 if let Some(label) = self.eat_label() {
-                    let lo = label.span;
+                    let lo = label.ident.span;
                     self.expect(&token::Colon)?;
                     if self.eat_keyword(keywords::While) {
                         return self.parse_while_expr(Some(label), lo, attrs)
@@ -4709,7 +4705,6 @@ impl<'a> Parser<'a> {
 
     /// Matches typaram = IDENT (`?` unbound)? optbounds ( EQ ty )?
     fn parse_ty_param(&mut self, preceding_attrs: Vec<Attribute>) -> PResult<'a, TyParam> {
-        let span = self.span;
         let ident = self.parse_ident()?;
 
         // Parse optional colon and param bounds.
@@ -4731,7 +4726,6 @@ impl<'a> Parser<'a> {
             id: ast::DUMMY_NODE_ID,
             bounds,
             default,
-            span,
         })
     }
 
@@ -4739,7 +4733,6 @@ impl<'a> Parser<'a> {
     ///     TraitItemAssocTy = Ident ["<"...">"] [":" [TyParamBounds]] ["where" ...] ["=" Ty]
     fn parse_trait_item_assoc_ty(&mut self, preceding_attrs: Vec<Attribute>)
         -> PResult<'a, (ast::Generics, TyParam)> {
-        let span = self.span;
         let ident = self.parse_ident()?;
         let mut generics = self.parse_generics()?;
 
@@ -4764,7 +4757,6 @@ impl<'a> Parser<'a> {
             id: ast::DUMMY_NODE_ID,
             bounds,
             default,
-            span,
         }))
     }
 
@@ -5592,7 +5584,7 @@ impl<'a> Parser<'a> {
                     TyKind::Path(None, path) => path,
                     _ => {
                         self.span_err(ty_first.span, "expected a trait, found type");
-                        ast::Path::from_ident(ty_first.span, keywords::Invalid.ident())
+                        ast::Path::from_ident(Ident::new(keywords::Invalid.name(), ty_first.span))
                     }
                 };
                 let trait_ref = TraitRef { path, ref_id: ty_first.id };
@@ -5977,8 +5969,7 @@ impl<'a> Parser<'a> {
                     let attr = Attribute {
                         id: attr::mk_attr_id(),
                         style: ast::AttrStyle::Outer,
-                        path: ast::Path::from_ident(syntax_pos::DUMMY_SP,
-                                                    Ident::from_str("warn_directory_ownership")),
+                        path: ast::Path::from_ident(Ident::from_str("warn_directory_ownership")),
                         tokens: TokenStream::empty(),
                         is_sugared_doc: false,
                         span: syntax_pos::DUMMY_SP,

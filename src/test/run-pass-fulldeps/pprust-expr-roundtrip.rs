@@ -61,7 +61,7 @@ fn expr(kind: ExprKind) -> P<Expr> {
 }
 
 fn make_x() -> P<Expr> {
-    let seg = PathSegment::from_ident(Ident::from_str("x"), DUMMY_SP);
+    let seg = PathSegment::from_ident(Ident::from_str("x"));
     let path = Path { segments: vec![seg], span: DUMMY_SP };
     expr(ExprKind::Path(None, path))
 }
@@ -82,7 +82,7 @@ fn iter_exprs(depth: usize, f: &mut FnMut(P<Expr>)) {
             0 => iter_exprs(depth - 1, &mut |e| g(ExprKind::Box(e))),
             1 => iter_exprs(depth - 1, &mut |e| g(ExprKind::Call(e, vec![]))),
             2 => {
-                let seg = PathSegment::from_ident(Ident::from_str("x"), DUMMY_SP);
+                let seg = PathSegment::from_ident(Ident::from_str("x"));
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::MethodCall(
                             seg.clone(), vec![e, make_x()])));
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::MethodCall(
@@ -150,7 +150,7 @@ fn iter_exprs(depth: usize, f: &mut FnMut(P<Expr>)) {
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Ret(Some(e))));
             },
             14 => {
-                let path = Path::from_ident(DUMMY_SP, Ident::from_str("S"));
+                let path = Path::from_ident(Ident::from_str("S"));
                 g(ExprKind::Struct(path, vec![], Some(make_x())));
             },
             15 => {

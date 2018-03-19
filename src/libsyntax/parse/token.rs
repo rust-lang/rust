@@ -362,10 +362,10 @@ impl Token {
     /// Returns a lifetime with the span and a dummy id if it is a lifetime,
     /// or the original lifetime if it is an interpolated lifetime, ignoring
     /// the span.
-    pub fn lifetime(&self, span: Span) -> Option<ast::Lifetime> {
+    pub fn lifetime2(&self, span: Span) -> Option<ast::Lifetime> {
         match *self {
-            Lifetime(ident) =>
-                Some(ast::Lifetime { ident: ident, span: span, id: ast::DUMMY_NODE_ID }),
+            Lifetime(ident) => Some(ast::Lifetime { id: ast::DUMMY_NODE_ID,
+                                                    ident: ast::Ident::new(ident.name, span) }),
             Interpolated(ref nt) => match nt.0 {
                 NtLifetime(lifetime) => Some(lifetime),
                 _ => None,
@@ -376,7 +376,7 @@ impl Token {
 
     /// Returns `true` if the token is a lifetime.
     pub fn is_lifetime(&self) -> bool {
-        self.lifetime(syntax_pos::DUMMY_SP).is_some()
+        self.lifetime2(syntax_pos::DUMMY_SP).is_some()
     }
 
     /// Returns `true` if the token is either the `mut` or `const` keyword.
@@ -544,7 +544,7 @@ impl Token {
             }
             Nonterminal::NtLifetime(lifetime) => {
                 let token = Token::Lifetime(lifetime.ident);
-                tokens = Some(TokenTree::Token(lifetime.span, token).into());
+                tokens = Some(TokenTree::Token(lifetime.ident.span, token).into());
             }
             Nonterminal::NtTT(ref tt) => {
                 tokens = Some(tt.clone().into());

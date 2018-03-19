@@ -722,13 +722,15 @@ impl TokenTree {
             TokenNode::Term(symbol) => {
                 let ident = ast::Ident::new(symbol.0, self.span.0);
                 let sym_str = symbol.0.as_str();
-                let token =
-                    if sym_str.starts_with("'") { Lifetime(ident) }
-                    else if sym_str.starts_with("r#") {
-                        let name = Symbol::intern(&sym_str[2..]);
-                        let ident = ast::Ident { name, ctxt: self.span.0.ctxt() };
-                        Ident(ident, true)
-                    } else { Ident(ident, false) };
+                let token = if sym_str.starts_with("'") {
+                    Lifetime(ident)
+                } else if sym_str.starts_with("r#") {
+                    let name = Symbol::intern(&sym_str[2..]);
+                    let ident = ast::Ident::new(name, ident.span);
+                    Ident(ident, true)
+                } else {
+                    Ident(ident, false)
+                };
                 return TokenTree::Token(self.span.0, token).into();
             }
             TokenNode::Literal(self::Literal(Literal(Lit::Integer(ref a), b)))
