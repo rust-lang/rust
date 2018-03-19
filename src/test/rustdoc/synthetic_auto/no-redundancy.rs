@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore
+/* This test is flakey. Commented it out until #49123 is fixed
 
 pub struct Inner<T> {
     field: T,
@@ -26,3 +26,5 @@ where
 pub struct Outer<T> {
     inner_field: Inner<T>,
 }
+
+*/
