@@ -551,12 +551,12 @@ declare_features! (
     (accepted, match_beginning_vert, "1.25.0", Some(44101), None),
     // Nested groups in `use` (RFC 2128)
     (accepted, use_nested_groups, "1.25.0", Some(44494), None),
+    // Termination trait in main (RFC 1937)
+    (accepted, termination_trait, "1.25.0", Some(43301), None),
     // a..=b and ..=b
     (accepted, inclusive_range_syntax, "1.26.0", Some(28237), None),
     // allow `..=` in patterns (RFC 1192)
     (accepted, dotdoteq_in_patterns, "1.26.0", Some(28237), None),
-    // Termination trait in main (RFC 1937)
-    (accepted, termination_trait, "1.26.0", Some(43301), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
