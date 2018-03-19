@@ -75,6 +75,13 @@ pub struct OnDiskCache<'sess> {
     // A map from dep-node to the position of any associated diagnostics in
     // `serialized_data`.
     prev_diagnostics_index: FxHashMap<SerializedDepNodeIndex, AbsoluteBytePos>,
+
+    // A cache to ensure we don't read allocations twice
+    interpret_alloc_cache: RefCell<FxHashMap<usize, interpret::AllocId>>,
+
+    // A map from positions to size of the serialized allocation
+    // so we can skip over already processed allocations
+    interpret_alloc_size: RefCell<FxHashMap<usize, usize>>,
 }
 
 // This type is used only for (de-)serialization.
@@ -140,6 +147,8 @@ impl<'sess> OnDiskCache<'sess> {
             query_result_index: footer.query_result_index.into_iter().collect(),
             prev_diagnostics_index: footer.diagnostics_index.into_iter().collect(),
             synthetic_expansion_infos: RefCell::new(FxHashMap()),
+            interpret_alloc_cache: RefCell::new(FxHashMap::default()),
+            interpret_alloc_size: RefCell::new(FxHashMap::default()),
         }
     }
 
@@ -155,6 +164,8 @@ impl<'sess> OnDiskCache<'sess> {
             query_result_index: FxHashMap(),
             prev_diagnostics_index: FxHashMap(),
             synthetic_expansion_infos: RefCell::new(FxHashMap()),
+            interpret_alloc_cache: RefCell::new(FxHashMap::default()),
+            interpret_alloc_size: RefCell::new(FxHashMap::default()),
         }
     }
 
@@ -381,7 +392,8 @@ impl<'sess> OnDiskCache<'sess> {
             file_index_to_file: &self.file_index_to_file,
             file_index_to_stable_id: &self.file_index_to_stable_id,
             synthetic_expansion_infos: &self.synthetic_expansion_infos,
-            interpret_alloc_cache: FxHashMap::default(),
+            interpret_alloc_cache: &self.interpret_alloc_cache,
+            interpret_alloc_size: &self.interpret_alloc_size,
         };
 
         match decode_tagged(&mut decoder, dep_node_index) {
@@ -443,7 +455,8 @@ struct CacheDecoder<'a, 'tcx: 'a, 'x> {
     synthetic_expansion_infos: &'x RefCell<FxHashMap<AbsoluteBytePos, SyntaxContext>>,
     file_index_to_file: &'x RefCell<FxHashMap<FileMapIndex, Lrc<FileMap>>>,
     file_index_to_stable_id: &'x FxHashMap<FileMapIndex, StableFilemapId>,
-    interpret_alloc_cache: FxHashMap<usize, interpret::AllocId>,
+    interpret_alloc_cache: &'x RefCell<FxHashMap<usize, interpret::AllocId>>,
+    interpret_alloc_size: &'x RefCell<FxHashMap<usize, usize>>,
 }
 
 impl<'a, 'tcx, 'x> CacheDecoder<'a, 'tcx, 'x> {
@@ -565,47 +578,37 @@ implement_ty_decoder!( CacheDecoder<'a, 'tcx, 'x> );
 
 impl<'a, 'tcx, 'x> SpecializedDecoder<interpret::AllocId> for CacheDecoder<'a, 'tcx, 'x> {
     fn specialized_decode(&mut self) -> Result<interpret::AllocId, Self::Error> {
-        const MAX1: usize = usize::max_value() - 1;
         let tcx = self.tcx;
         let pos = TyDecoder::position(self);
-        match usize::decode(self)? {
-            ::std::usize::MAX => {
-                let alloc_id = tcx.interpret_interner.reserve();
-                trace!("creating alloc id {:?} at {}", alloc_id, pos);
-                // insert early to allow recursive allocs
-                self.interpret_alloc_cache.insert(pos, alloc_id);
-
-                let allocation = interpret::Allocation::decode(self)?;
-                trace!("decoded alloc {:?} {:#?}", alloc_id, allocation);
-                let allocation = self.tcx.intern_const_alloc(allocation);
-                tcx.interpret_interner.intern_at_reserved(alloc_id, allocation);
-
-                if let Some(glob) = Option::<DefId>::decode(self)? {
-                    trace!("connecting alloc {:?} with {:?}", alloc_id, glob);
-                    tcx.interpret_interner.cache(glob, alloc_id);
-                }
-
-                Ok(alloc_id)
-            },
-            MAX1 => {
-                trace!("creating fn alloc id at {}", pos);
-                let instance = ty::Instance::decode(self)?;
-                trace!("decoded fn alloc instance: {:?}", instance);
-                let id = tcx.interpret_interner.create_fn_alloc(instance);
-                trace!("created fn alloc id: {:?}", id);
-                self.interpret_alloc_cache.insert(pos, id);
-                Ok(id)
-            },
-            shorthand => {
-                trace!("loading shorthand {}", shorthand);
-                if let Some(&alloc_id) = self.interpret_alloc_cache.get(&shorthand) {
-                    return Ok(alloc_id);
-                }
-                trace!("shorthand {} not cached, loading entire allocation", shorthand);
-                // need to load allocation
-                self.with_position(shorthand, |this| interpret::AllocId::decode(this))
-            },
+        trace!("specialized_decode_alloc_id: {:?}", pos);
+        if let Some(cached) = self.interpret_alloc_cache.borrow().get(&pos).cloned() {
+            // if there's no end position we are currently deserializing a recursive
+            // allocation
+            if let Some(end) = self.interpret_alloc_size.borrow().get(&pos).cloned() {
+                trace!("{} already cached as {:?}", pos, cached);
+                // skip ahead
+                self.opaque.set_position(end);
+                return Ok(cached)
+            }
         }
+        let id = interpret::specialized_decode_alloc_id(
+            self,
+            tcx,
+            pos,
+            |this, pos, alloc_id| {
+                assert!(this.interpret_alloc_cache.borrow_mut().insert(pos, alloc_id).is_none());
+            },
+            |this, shorthand| {
+                // need to load allocation
+                this.with_position(shorthand, |this| interpret::AllocId::decode(this))
+            }
+        )?;
+        assert!(self
+            .interpret_alloc_size
+            .borrow_mut()
+            .insert(pos, TyDecoder::position(self))
+            .is_none());
+        Ok(id)
     }
 }
 impl<'a, 'tcx, 'x> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx, 'x> {
@@ -806,30 +809,27 @@ impl<'enc, 'a, 'tcx, E> SpecializedEncoder<interpret::AllocId> for CacheEncoder<
     where E: 'enc + ty_codec::TyEncoder
 {
     fn specialized_encode(&mut self, alloc_id: &interpret::AllocId) -> Result<(), Self::Error> {
-        trace!("encoding {:?} at {}", alloc_id, self.position());
-        if let Some(shorthand) = self.interpret_alloc_shorthands.get(alloc_id).cloned() {
-            trace!("encoding {:?} as shorthand to {}", alloc_id, shorthand);
-            return shorthand.encode(self);
-        }
-        let start = self.position();
-        // cache the allocation shorthand now, because the allocation itself might recursively
-        // point to itself.
-        self.interpret_alloc_shorthands.insert(*alloc_id, start);
-        if let Some(alloc) = self.tcx.interpret_interner.get_alloc(*alloc_id) {
-            trace!("encoding {:?} with {:#?}", alloc_id, alloc);
-            usize::max_value().encode(self)?;
-            alloc.encode(self)?;
-            self.tcx.interpret_interner
-                .get_corresponding_static_def_id(*alloc_id)
-                .encode(self)?;
-        } else if let Some(fn_instance) = self.tcx.interpret_interner.get_fn(*alloc_id) {
-            trace!("encoding {:?} with {:#?}", alloc_id, fn_instance);
-            (usize::max_value() - 1).encode(self)?;
-            fn_instance.encode(self)?;
-        } else {
-            bug!("alloc id without corresponding allocation: {}", alloc_id);
-        }
-        Ok(())
+        use std::collections::hash_map::Entry;
+        let tcx = self.tcx;
+        let pos = self.position();
+        let shorthand = match self.interpret_alloc_shorthands.entry(*alloc_id) {
+            Entry::Occupied(entry) => Some(entry.get().clone()),
+            Entry::Vacant(entry) => {
+                // ensure that we don't place any AllocIds at the very beginning
+                // of the metadata file, because that would end up making our indices
+                // not special. It is essentially impossible for that to happen,
+                // but let's make sure
+                assert!(pos != interpret::ALLOC_DISCRIMINANT && pos != interpret::FN_DISCRIMINANT);
+                entry.insert(pos);
+                None
+            },
+        };
+        interpret::specialized_encode_alloc_id(
+            self,
+            tcx,
+            *alloc_id,
+            shorthand,
+        )
     }
 }
 
