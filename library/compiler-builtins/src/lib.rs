@@ -12,12 +12,12 @@
 #![feature(compiler_builtins)]
 #![feature(core_intrinsics)]
 #![feature(naked_functions)]
-#![feature(i128_type)]
 #![feature(repr_simd)]
 #![feature(abi_unadjusted)]
 #![feature(linkage)]
 #![feature(lang_items)]
 #![allow(unused_features)]
+#![feature(i128_type)]
 #![no_builtins]
 #![cfg_attr(feature = "compiler-builtins", feature(staged_api))]
 #![cfg_attr(feature = "compiler-builtins",
