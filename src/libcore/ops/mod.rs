@@ -192,7 +192,7 @@ pub use self::index::{Index, IndexMut};
 pub use self::range::{Range, RangeFrom, RangeFull, RangeTo};
 
 #[stable(feature = "inclusive_range", since = "1.26.0")]
-pub use self::range::{RangeInclusive, RangeToInclusive};
+pub use self::range::{RangeInclusive, RangeToInclusive, Bound};
 
 #[unstable(feature = "try_trait", issue = "42327")]
 pub use self::try::Try;

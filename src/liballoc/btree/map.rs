@@ -13,11 +13,11 @@ use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
 use core::iter::{FromIterator, Peekable, FusedIterator};
 use core::marker::PhantomData;
+use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::Index;
 use core::{fmt, intrinsics, mem, ptr};
 
 use borrow::Borrow;
-use Bound::{Excluded, Included, Unbounded};
 use range::RangeArgument;
 
 use super::node::{self, Handle, NodeRef, marker};
@@ -804,7 +804,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     ///
     /// ```
     /// use std::collections::BTreeMap;
-    /// use std::collections::Bound::Included;
+    /// use std::ops::Bound::Included;
     ///
     /// let mut map = BTreeMap::new();
     /// map.insert(3, "a");

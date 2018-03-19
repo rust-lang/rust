@@ -420,7 +420,8 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc::Bound;
+#[rustc_deprecated(reason = "moved to `std::ops::Bound`", since = "1.26.0")]
+pub use ops::Bound;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc::{BinaryHeap, BTreeMap, BTreeSet};
 #[stable(feature = "rust1", since = "1.0.0")]

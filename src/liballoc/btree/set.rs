@@ -240,7 +240,7 @@ impl<T: Ord> BTreeSet<T> {
     ///
     /// ```
     /// use std::collections::BTreeSet;
-    /// use std::collections::Bound::Included;
+    /// use std::ops::Bound::Included;
     ///
     /// let mut set = BTreeSet::new();
     /// set.insert(3);

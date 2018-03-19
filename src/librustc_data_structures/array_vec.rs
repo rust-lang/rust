@@ -19,8 +19,8 @@ use std::slice;
 use std::fmt;
 use std::mem;
 use std::collections::range::RangeArgument;
-use std::collections::Bound::{Excluded, Included, Unbounded};
 use std::mem::ManuallyDrop;
+use std::ops::Bound::{Excluded, Included, Unbounded};
 
 pub unsafe trait Array {
     type Element;

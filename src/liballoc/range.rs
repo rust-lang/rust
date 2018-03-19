@@ -15,7 +15,7 @@
 //! Range syntax.
 
 use core::ops::{RangeFull, Range, RangeTo, RangeFrom, RangeInclusive, RangeToInclusive};
-use Bound::{self, Excluded, Included, Unbounded};
+use core::ops::Bound::{self, Excluded, Included, Unbounded};
 
 /// `RangeArgument` is implemented by Rust's built-in range types, produced
 /// by range syntax like `..`, `a..`, `..b` or `c..d`.
