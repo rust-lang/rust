@@ -1085,20 +1085,8 @@ fn link_args(cmd: &mut Linker,
         cmd.build_static_executable();
     }
 
-    // If we're doing PGO generation stuff and on a GNU-like linker, use the
-    // "-u" flag to properly pull in the profiler runtime bits.
-    //
-    // This is because LLVM otherwise won't add the needed initialization for us
-    // on Linux (though the extra flag should be harmless if it does).
-    //
-    // See https://reviews.llvm.org/D14033 and https://reviews.llvm.org/D14030.
-    //
-    // Though it may be worth to try to revert those changes upstream, since the
-    // overhead of the initialization should be minor.
-    if sess.opts.debugging_opts.pgo_gen.is_some() &&
-        sess.target.target.options.linker_is_gnu
-    {
-        cmd.args(&["-u".to_owned(), "__llvm_profile_runtime".to_owned()]);
+    if sess.opts.debugging_opts.pgo_gen.is_some() {
+        cmd.pgo_gen();
     }
 
     // FIXME (#2397): At some point we want to rpath our guesses as to
