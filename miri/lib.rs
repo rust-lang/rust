@@ -261,7 +261,7 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
             Env => err!(Unimplemented("statics can't refer to env vars".to_owned())),
             _ => Ok(false), // TODO: What does the bool mean?
         }*/
-        Ok(true)
+        Ok(false)
     }
 
     fn init_static<'a>(
