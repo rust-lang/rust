@@ -108,6 +108,10 @@ pub enum Flag {
     /// For numbers, this means that the number will be padded with zeroes,
     /// and the sign (`+` or `-`) will precede them.
     FlagSignAwareZeroPad,
+    /// For Debug / `?`, format integers in lower-case hexadecimal.
+    FlagDebugLowerHex,
+    /// For Debug / `?`, format integers in upper-case hexadecimal.
+    FlagDebugUpperHex,
 }
 
 /// A count is used for the precision and width parameters of an integer, and
@@ -377,8 +381,22 @@ impl<'a> Parser<'a> {
                 spec.precision = self.count();
             }
         }
-        // Finally the actual format specifier
-        if self.consume('?') {
+        // Optional radix followed by the actual format specifier
+        if self.consume('x') {
+            if self.consume('?') {
+                spec.flags |= 1 << (FlagDebugLowerHex as u32);
+                spec.ty = "?";
+            } else {
+                spec.ty = "x";
+            }
+        } else if self.consume('X') {
+            if self.consume('?') {
+                spec.flags |= 1 << (FlagDebugUpperHex as u32);
+                spec.ty = "?";
+            } else {
+                spec.ty = "X";
+            }
+        } else if self.consume('?') {
             spec.ty = "?";
         } else {
             spec.ty = self.word();
