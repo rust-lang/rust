@@ -33,7 +33,6 @@ Libraries
 - [`UnsafeCell::into_inner` is now safe.][47204]
 - [Implement libstd for CloudABI.][47268]
 - [`Float::{from_bits, to_bits}` is now available in libcore.][46931]
-
 - [Implement `AsRef<Path>` for Component][46985]
 - [Implemented `Write` for `Cursor<&mut Vec<T>>`][46830]
 - [Moved `Duration` to libcore.][46666]
@@ -59,7 +58,6 @@ Cargo
 
 Misc
 ----
-
 - [Rust by example is now shipped with new releases][46196]
 
 Compatibility Notes
