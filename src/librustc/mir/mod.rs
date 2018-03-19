@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! MIR datatypes and passes. See the module-level [README] for details.
+//! MIR datatypes and passes. See the [rustc guide] for more info.
 //!
-//! [README]: https://github.com/rust-lang/rust/blob/master/src/librustc/mir/README.md
+//! [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/mir.html
 
 use graphviz::IntoCow;
 use middle::const_val::ConstVal;
