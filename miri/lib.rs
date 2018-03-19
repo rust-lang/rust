@@ -268,19 +268,69 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         cid: GlobalId<'tcx>,
     ) -> EvalResult<'tcx, AllocId> {
-ecx.const_eval(cid)?;
-        return Ok(ecx
-            .tcx
-            .interpret_interner
-            .get_cached(cid.instance.def_id())
-            .expect("uncached static"));
-        let def_id = cid.instance.def_id();
-        let ty = ecx.tcx.type_of(def_id);
-        let layout = ecx.tcx.layout_of(ty::ParamEnvAnd {
-            param_env: ty::ParamEnv::reveal_all(),
-            value: ty
-        }).expect("Couldn't compute layout for the type of a static");
-        ecx.memory.allocate(layout.size.bytes(), layout.align, None).map(|mptr|mptr.alloc_id)
+        let tcx = self.tcx.tcx;
+        let mir = None;
+        let param_env = ty::ParamEnv::reveal_all();
+        // we start out with the best span we have
+        // and try improving it down the road when more information is available
+        let res = (|| {
+            let mut mir = match mir {
+                Some(mir) => mir,
+                None => ecx.load_mir(cid.instance.def)?,
+            };
+            if let Some(index) = cid.promoted {
+                mir = &mir.promoted[index];
+            }
+            span = mir.span;
+            let layout = ecx.layout_of(mir.return_ty().subst(tcx, cid.instance.substs))?;
+            let alloc = tcx.interpret_interner.get_cached(cid.instance.def_id());
+            let is_static = tcx.is_static(cid.instance.def_id()).is_some();
+            let alloc = match alloc {
+                Some(alloc) => {
+                    assert!(cid.promoted.is_none());
+                    assert!(param_env.caller_bounds.is_empty());
+                    alloc
+                },
+                None => {
+                    assert!(!layout.is_unsized());
+                    let ptr = ecx.memory.allocate(
+                        layout.size.bytes(),
+                        layout.align,
+                        None,
+                    )?;
+                    if is_static {
+                        tcx.interpret_interner.cache(cid.instance.def_id(), ptr.alloc_id);
+                    }
+                    let internally_mutable = !layout.ty.is_freeze(tcx, param_env, mir.span);
+                    let mutability = tcx.is_static(cid.instance.def_id());
+                    let mutability = if mutability == Some(hir::Mutability::MutMutable) || internally_mutable {
+                        Mutability::Mutable
+                    } else {
+                        Mutability::Immutable
+                    };
+                    let cleanup = StackPopCleanup::MarkStatic(mutability);
+                    let name = ty::tls::with(|tcx| tcx.item_path_str(cid.instance.def_id()));
+                    let prom = cid.promoted.map_or(String::new(), |p| format!("::promoted[{:?}]", p));
+                    trace!("const_eval: pushing stack frame for global: {}{}", name, prom);
+                    assert!(mir.arg_count == 0);
+                    ecx.push_stack_frame(
+                        cid.instance,
+                        mir.span,
+                        mir,
+                        Place::from_ptr(ptr, layout.align),
+                        cleanup,
+                    )?;
+
+                    while ecx.step()? {}
+                    ptr.alloc_id
+                }
+            };
+            let ptr = MemoryPointer::new(alloc, 0).into();
+            // always try to read the value and report errors
+            Ok((ptr, layout.ty))
+        })();
+        let (mem_ptr, _) = res?;
+        Ok(mem_ptr.alloc_id)
     }
 
     fn box_alloc<'a>(
