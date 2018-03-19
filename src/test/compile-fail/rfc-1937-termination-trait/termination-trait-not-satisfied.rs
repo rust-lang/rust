@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(termination_trait)]
-
 struct ReturnType {}
 
 fn main() -> ReturnType { //~ ERROR `ReturnType: std::process::Termination` is not satisfied

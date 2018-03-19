@@ -1106,25 +1106,22 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     }
     fcx.demand_suptype(span, ret_ty, actual_return_ty);
 
-    if fcx.tcx.features().termination_trait {
-        // If the termination trait language item is activated, check that the main return type
-        // implements the termination trait.
-        if let Some(term_id) = fcx.tcx.lang_items().termination() {
-            if let Some((id, _)) = *fcx.tcx.sess.entry_fn.borrow() {
-                if id == fn_id {
-                    match fcx.sess().entry_type.get() {
-                        Some(config::EntryMain) => {
-                            let substs = fcx.tcx.mk_substs(iter::once(Kind::from(ret_ty)));
-                            let trait_ref = ty::TraitRef::new(term_id, substs);
-                            let cause = traits::ObligationCause::new(
-                                span, fn_id, ObligationCauseCode::MainFunctionType);
+    // Check that the main return type implements the termination trait.
+    if let Some(term_id) = fcx.tcx.lang_items().termination() {
+        if let Some((id, _)) = *fcx.tcx.sess.entry_fn.borrow() {
+            if id == fn_id {
+                match fcx.sess().entry_type.get() {
+                    Some(config::EntryMain) => {
+                        let substs = fcx.tcx.mk_substs(iter::once(Kind::from(ret_ty)));
+                        let trait_ref = ty::TraitRef::new(term_id, substs);
+                        let cause = traits::ObligationCause::new(
+                            span, fn_id, ObligationCauseCode::MainFunctionType);
 
-                            inherited.register_predicate(
-                                traits::Obligation::new(
-                                    cause, param_env, trait_ref.to_predicate()));
-                        },
-                        _ => {},
-                    }
+                        inherited.register_predicate(
+                            traits::Obligation::new(
+                                cause, param_env, trait_ref.to_predicate()));
+                    },
+                    _ => {},
                 }
             }
         }
