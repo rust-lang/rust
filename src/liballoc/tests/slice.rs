@@ -485,7 +485,7 @@ fn test_sort_stability() {
             // the second item represents which occurrence of that
             // number this element is, i.e. the second elements
             // will occur in sorted order.
-            let mut v: Vec<_> = (0..len)
+            let mut orig: Vec<_> = (0..len)
                 .map(|_| {
                     let n = thread_rng().gen::<usize>() % 10;
                     counts[n] += 1;
@@ -493,15 +493,20 @@ fn test_sort_stability() {
                 })
                 .collect();
 
-            // only sort on the first element, so an unstable sort
+            let mut v = orig.clone();
+            // Only sort on the first element, so an unstable sort
             // may mix up the counts.
             v.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
 
-            // this comparison includes the count (the second item
+            // This comparison includes the count (the second item
             // of the tuple), so elements with equal first items
             // will need to be ordered with increasing
             // counts... i.e. exactly asserting that this sort is
             // stable.
+            assert!(v.windows(2).all(|w| w[0] <= w[1]));
+
+            let mut v = orig.clone();
+            v.sort_by_cached_key(|&(x, _)| x);
             assert!(v.windows(2).all(|w| w[0] <= w[1]));
         }
     }
