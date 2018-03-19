@@ -1514,7 +1514,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         assert!(!skol_trait_ref.has_escaping_regions());
         match self.infcx.at(&obligation.cause, obligation.param_env)
                         .sup(ty::Binder(skol_trait_ref), trait_bound) {
-            Ok(InferOk { obligations, .. }) => true,
+            Ok(InferOk { .. }) => true,
             Err(_) => false,
         }
     }

@@ -634,6 +634,8 @@ pub fn region_universe(var_infos: &VarInfos, region: Region<'_>) -> ty::Universe
         ty::ReVar(vid) => var_infos[vid].universe,
         ty::ReLateBound(..) =>
             bug!("region_universe(): encountered bound region {:?}", region),
+        ty::ReCanonical(..) =>
+            bug!("region_universe(): encountered canonical region {:?}", region),
     }
 }
 
