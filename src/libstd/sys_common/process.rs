@@ -129,7 +129,7 @@ impl<K: EnvKey> CommandEnv<K> {
         self.saw_path || self.clear
     }
     fn maybe_saw_path(&mut self, key: &OsStr) {
-        if !self.saw_path && key.to_os_string() == OsString::from("PATH") {
+        if !self.saw_path && key == "PATH" {
             self.saw_path = true;
         }
     }
