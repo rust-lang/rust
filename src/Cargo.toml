@@ -72,3 +72,4 @@ cargo = { path = "tools/cargo" }
 # RLS depends on `rustfmt` from crates.io, so we put this in a `[patch]` section
 # for crates.io
 rustfmt-nightly = { path = "tools/rustfmt" }
+clippy_lints = { path = "tools/clippy/clippy_lints" }

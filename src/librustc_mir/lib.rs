@@ -28,8 +28,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(dyn_trait)]
 #![feature(fs_read_write)]
 #![feature(i128_type)]
-#![feature(inclusive_range_syntax)]
-#![feature(inclusive_range)]
+#![cfg_attr(stage0, feature(inclusive_range_syntax))]
 #![feature(macro_vis_matcher)]
 #![feature(match_default_bindings)]
 #![feature(exhaustive_patterns)]
@@ -40,6 +39,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(nonzero)]
 #![feature(underscore_lifetimes)]
 #![cfg_attr(stage0, feature(never_type))]
+#![feature(inclusive_range_fields)]
 
 extern crate arena;
 #[macro_use]

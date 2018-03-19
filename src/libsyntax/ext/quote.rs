@@ -709,7 +709,6 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
         token::Pound        => "Pound",
         token::Dollar       => "Dollar",
         token::Question     => "Question",
-        token::Underscore   => "Underscore",
         token::Eof          => "Eof",
 
         token::Whitespace | token::Comment | token::Shebang(_) => {
@@ -858,7 +857,7 @@ fn expand_wrapper(cx: &ExtCtxt,
         let path = path.iter().map(|s| s.to_string()).collect();
         let use_item = cx.item_use_glob(
             sp,
-            respan(sp.empty(), ast::VisibilityKind::Inherited),
+            respan(sp.shrink_to_lo(), ast::VisibilityKind::Inherited),
             ids_ext(path),
         );
         cx.stmt_item(sp, use_item)

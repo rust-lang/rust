@@ -683,7 +683,7 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
     });
 
     krate = time(sess, "crate injection", || {
-        let alt_std_name = sess.opts.alt_std_name.clone();
+        let alt_std_name = sess.opts.alt_std_name.as_ref().map(|s| &**s);
         syntax::std_inject::maybe_inject_crates_ref(krate, alt_std_name)
     });
 
@@ -877,10 +877,6 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
         Ok(())
     })?;
 
-    if resolver.found_unresolved_macro {
-        sess.parse_sess.span_diagnostic.abort_if_errors();
-    }
-
     // Needs to go *after* expansion to be able to check the results of macro expansion.
     time(sess, "complete gated feature checking", || {
         sess.track_errors(|| {
@@ -891,6 +887,12 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
                                               sess.opts.unstable_features);
         })
     })?;
+
+    // Unresolved macros might be due to mistyped `#[macro_use]`,
+    // so abort after checking for unknown attributes. (#49074)
+    if resolver.found_unresolved_macro {
+        sess.parse_sess.span_diagnostic.abort_if_errors();
+    }
 
     // Lower ast -> hir.
     // First, we need to collect the dep_graph.
@@ -979,7 +981,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(trans: &TransCrate,
 
     time(sess,
          "looking for entry point",
-         || middle::entry::find_entry_point(sess, &hir_map));
+         || middle::entry::find_entry_point(sess, &hir_map, name));
 
     sess.plugin_registrar_fn.set(time(sess, "looking for plugin registrar", || {
         plugin::build::find_plugin_registrar(sess.diagnostic(), &hir_map)
@@ -1088,6 +1090,10 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(trans: &TransCrate,
         });
 
         time(sess, "lint checking", || lint::check_crate(tcx));
+
+        time(sess,
+             "dumping chalk-like clauses",
+             || rustc_traits::lowering::dump_program_clauses(tcx));
 
         return Ok(f(tcx, analysis, rx, tcx.sess.compile_status()));
     })

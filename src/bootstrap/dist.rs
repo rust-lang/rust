@@ -203,11 +203,14 @@ fn make_win_dist(
         "libbcrypt.a",
         "libcomctl32.a",
         "libcomdlg32.a",
+        "libcredui.a",
         "libcrypt32.a",
+        "libdbghelp.a",
         "libgdi32.a",
         "libimagehlp.a",
         "libiphlpapi.a",
         "libkernel32.a",
+        "libmsimg32.a",
         "libmsvcrt.a",
         "libodbc32.a",
         "libole32.a",
@@ -215,6 +218,7 @@ fn make_win_dist(
         "libopengl32.a",
         "libpsapi.a",
         "librpcrt4.a",
+        "libsecur32.a",
         "libsetupapi.a",
         "libshell32.a",
         "libuser32.a",
@@ -225,8 +229,6 @@ fn make_win_dist(
         "libwinspool.a",
         "libws2_32.a",
         "libwsock32.a",
-        "libdbghelp.a",
-        "libmsimg32.a",
     ];
 
     //Find mingw artifacts we want to bundle
@@ -1120,7 +1122,7 @@ impl Step for Rls {
         // state for RLS isn't testing.
         let rls = builder.ensure(tool::Rls {
             compiler: builder.compiler(stage, build.build),
-            target
+            target, extra_features: Vec::new()
         }).or_else(|| { println!("Unable to build RLS, skipping dist"); None })?;
 
         install(&rls, &image.join("bin"), 0o755);
@@ -1199,11 +1201,11 @@ impl Step for Rustfmt {
         // Prepare the image directory
         let rustfmt = builder.ensure(tool::Rustfmt {
             compiler: builder.compiler(stage, build.build),
-            target
+            target, extra_features: Vec::new()
         }).or_else(|| { println!("Unable to build Rustfmt, skipping dist"); None })?;
         let cargofmt = builder.ensure(tool::Cargofmt {
             compiler: builder.compiler(stage, build.build),
-            target
+            target, extra_features: Vec::new()
         }).or_else(|| { println!("Unable to build Cargofmt, skipping dist"); None })?;
 
         install(&rustfmt, &image.join("bin"), 0o755);

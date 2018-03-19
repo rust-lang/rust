@@ -648,8 +648,15 @@ impl DepGraph {
                                 return None
                             }
                             None => {
-                                bug!("try_mark_green() - Forcing the DepNode \
-                                      should have set its color")
+                                if !tcx.sess.has_errors() {
+                                    bug!("try_mark_green() - Forcing the DepNode \
+                                          should have set its color")
+                                } else {
+                                    // If the query we just forced has resulted
+                                    // in some kind of compilation error, we
+                                    // don't expect that the corresponding
+                                    // dep-node color has been updated.
+                                }
                             }
                         }
                     } else {

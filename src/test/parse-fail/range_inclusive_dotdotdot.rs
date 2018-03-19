@@ -12,8 +12,6 @@
 
 // Make sure that inclusive ranges with `...` syntax don't parse.
 
-#![feature(inclusive_range_syntax, inclusive_range)]
-
 use std::ops::RangeToInclusive;
 
 fn return_range_to() -> RangeToInclusive<i32> {

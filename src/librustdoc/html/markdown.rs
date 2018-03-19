@@ -21,7 +21,7 @@
 //! use rustdoc::html::markdown::Markdown;
 //!
 //! let s = "My *markdown* _text_";
-//! let html = format!("{}", Markdown(s));
+//! let html = format!("{}", Markdown(s, &[]));
 //! // ... something using html
 //! ```
 

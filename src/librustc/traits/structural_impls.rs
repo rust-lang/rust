@@ -425,3 +425,138 @@ BraceStructTypeFoldableImpl! {
         obligations
     } where T: TypeFoldable<'tcx>
 }
+
+impl<'tcx> fmt::Display for traits::WhereClauseAtom<'tcx> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use traits::WhereClauseAtom::*;
+
+        match self {
+            Implemented(trait_ref) => write!(fmt, "Implemented({})", trait_ref),
+            ProjectionEq(projection) => write!(fmt, "ProjectionEq({})", projection),
+        }
+    }
+}
+
+impl<'tcx> fmt::Display for traits::DomainGoal<'tcx> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use traits::DomainGoal::*;
+        use traits::WhereClauseAtom::*;
+
+        match self {
+            Holds(wc) => write!(fmt, "{}", wc),
+            WellFormed(Implemented(trait_ref)) => write!(fmt, "WellFormed({})", trait_ref),
+            WellFormed(ProjectionEq(projection)) => write!(fmt, "WellFormed({})", projection),
+            FromEnv(Implemented(trait_ref)) => write!(fmt, "FromEnv({})", trait_ref),
+            FromEnv(ProjectionEq(projection)) => write!(fmt, "FromEnv({})", projection),
+            WellFormedTy(ty) => write!(fmt, "WellFormed({})", ty),
+            FromEnvTy(ty) => write!(fmt, "FromEnv({})", ty),
+            RegionOutlives(predicate) => write!(fmt, "RegionOutlives({})", predicate),
+            TypeOutlives(predicate) => write!(fmt, "TypeOutlives({})", predicate),
+        }
+    }
+}
+
+impl fmt::Display for traits::QuantifierKind {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use traits::QuantifierKind::*;
+
+        match self {
+            Universal => write!(fmt, "forall"),
+            Existential => write!(fmt, "exists"),
+        }
+    }
+}
+
+impl<'tcx> fmt::Display for traits::Goal<'tcx> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use traits::Goal::*;
+
+        match self {
+            Implies(hypotheses, goal) => {
+                write!(fmt, "if (")?;
+                for (index, hyp) in hypotheses.iter().enumerate() {
+                    if index > 0 {
+                        write!(fmt, ", ")?;
+                    }
+                    write!(fmt, "{}", hyp)?;
+                }
+                write!(fmt, ") {{ {} }}", goal)
+            }
+            And(goal1, goal2) => write!(fmt, "({} && {})", goal1, goal2),
+            Not(goal) => write!(fmt, "not {{ {} }}", goal),
+            DomainGoal(goal) => write!(fmt, "{}", goal),
+            Quantified(qkind, goal) => {
+                // FIXME: appropriate binder names
+                write!(fmt, "{}<> {{ {} }}", qkind, goal.skip_binder())
+            }
+        }
+    }
+}
+
+impl<'tcx> fmt::Display for traits::Clause<'tcx> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use traits::Clause::*;
+
+        match self {
+            Implies(hypotheses, goal) => {
+                write!(fmt, "{}", goal)?;
+                if !hypotheses.is_empty() {
+                    write!(fmt, " :- ")?;
+                    for (index, condition) in hypotheses.iter().enumerate() {
+                        if index > 0 {
+                            write!(fmt, ", ")?;
+                        }
+                        write!(fmt, "{}", condition)?;
+                    }
+                }
+                write!(fmt, ".")
+            }
+            DomainGoal(domain_goal) => write!(fmt, "{}.", domain_goal),
+            ForAll(clause) => {
+                // FIXME: appropriate binder names
+                write!(fmt, "forall<> {{ {} }}", clause.skip_binder())
+            }
+        }
+    }
+}
+
+EnumTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for traits::WhereClauseAtom<'tcx> {
+        (traits::WhereClauseAtom::Implemented)(trait_ref),
+        (traits::WhereClauseAtom::ProjectionEq)(projection),
+    }
+}
+
+EnumTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for traits::DomainGoal<'tcx> {
+        (traits::DomainGoal::Holds)(wc),
+        (traits::DomainGoal::WellFormed)(wc),
+        (traits::DomainGoal::FromEnv)(wc),
+        (traits::DomainGoal::WellFormedTy)(ty),
+        (traits::DomainGoal::FromEnvTy)(ty),
+        (traits::DomainGoal::RegionOutlives)(predicate),
+        (traits::DomainGoal::TypeOutlives)(predicate),
+    }
+}
+
+CloneTypeFoldableImpls! {
+    traits::QuantifierKind,
+}
+
+EnumTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for traits::Goal<'tcx> {
+        (traits::Goal::Implies)(hypotheses, goal),
+        (traits::Goal::And)(goal1, goal2),
+        (traits::Goal::Not)(goal),
+        (traits::Goal::DomainGoal)(domain_goal),
+        (traits::Goal::Quantified)(qkind, goal),
+    }
+}
+
+EnumTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for traits::Clause<'tcx> {
+        (traits::Clause::Implies)(hypotheses, goal),
+        (traits::Clause::DomainGoal)(domain_goal),
+        (traits::Clause::ForAll)(clause),
+    }
+}

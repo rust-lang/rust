@@ -17,3 +17,5 @@ pub fn trace_option(option: Option<isize>) {
 
 } //~ ERROR: incorrect close delimiter
 //~^ ERROR: expected expression, found `)`
+
+fn main() {}

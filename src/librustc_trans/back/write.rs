@@ -42,6 +42,7 @@ use syntax_pos::MultiSpan;
 use syntax_pos::symbol::Symbol;
 use type_::Type;
 use context::{is_pie_binary, get_reloc_model};
+use common::{C_bytes_in_context, val_ty};
 use jobserver::{Client, Acquired};
 use rustc_demangle;
 
@@ -262,6 +263,8 @@ pub struct ModuleConfig {
     // emscripten's ecc compiler, when used as the linker.
     obj_is_bitcode: bool,
     no_integrated_as: bool,
+    embed_bitcode: bool,
+    embed_bitcode_marker: bool,
 }
 
 impl ModuleConfig {
@@ -279,6 +282,8 @@ impl ModuleConfig {
             emit_asm: false,
             emit_obj: false,
             obj_is_bitcode: false,
+            embed_bitcode: false,
+            embed_bitcode_marker: false,
             no_integrated_as: false,
 
             no_verify: false,
@@ -299,6 +304,17 @@ impl ModuleConfig {
         self.time_passes = sess.time_passes();
         self.inline_threshold = sess.opts.cg.inline_threshold;
         self.obj_is_bitcode = sess.target.target.options.obj_is_bitcode;
+        let embed_bitcode = sess.target.target.options.embed_bitcode ||
+            sess.opts.debugging_opts.embed_bitcode;
+        if embed_bitcode {
+            match sess.opts.optimize {
+                config::OptLevel::No |
+                config::OptLevel::Less => {
+                    self.embed_bitcode_marker = embed_bitcode;
+                }
+                _ => self.embed_bitcode = embed_bitcode,
+            }
+        }
 
         // Copy what clang does by turning on loop vectorization at O2 and
         // slp vectorization at O3. Otherwise configure other optimization aspects
@@ -662,7 +678,7 @@ unsafe fn codegen(cgcx: &CodegenContext,
     let obj_out = cgcx.output_filenames.temp_path(OutputType::Object, module_name);
 
 
-    if write_bc || config.emit_bc_compressed {
+    if write_bc || config.emit_bc_compressed || config.embed_bitcode {
         let thin;
         let old;
         let data = if llvm::LLVMRustThinLTOAvailable() {
@@ -681,6 +697,11 @@ unsafe fn codegen(cgcx: &CodegenContext,
             timeline.record("write-bc");
         }
 
+        if config.embed_bitcode {
+            embed_bitcode(cgcx, llcx, llmod, Some(data));
+            timeline.record("embed-bc");
+        }
+
         if config.emit_bc_compressed {
             let dst = bc_out.with_extension(RLIB_BYTECODE_EXTENSION);
             let data = bytecode::encode(&mtrans.llmod_id, data);
@@ -689,6 +710,8 @@ unsafe fn codegen(cgcx: &CodegenContext,
             }
             timeline.record("compress-bc");
         }
+    } else if config.embed_bitcode_marker {
+        embed_bitcode(cgcx, llcx, llmod, None);
     }
 
     time_ext(config.time_passes, None, &format!("codegen passes [{}]", module_name.unwrap()),
@@ -794,6 +817,59 @@ unsafe fn codegen(cgcx: &CodegenContext,
                                    config.emit_bc,
                                    config.emit_bc_compressed,
                                    &cgcx.output_filenames))
+}
+
+/// Embed the bitcode of an LLVM module in the LLVM module itself.
+///
+/// This is done primarily for iOS where it appears to be standard to compile C
+/// code at least with `-fembed-bitcode` which creates two sections in the
+/// executable:
+///
+/// * __LLVM,__bitcode
+/// * __LLVM,__cmdline
+///
+/// It appears *both* of these sections are necessary to get the linker to
+/// recognize what's going on. For us though we just always throw in an empty
+/// cmdline section.
+///
+/// Furthermore debug/O1 builds don't actually embed bitcode but rather just
+/// embed an empty section.
+///
+/// Basically all of this is us attempting to follow in the footsteps of clang
+/// on iOS. See #35968 for lots more info.
+unsafe fn embed_bitcode(cgcx: &CodegenContext,
+                        llcx: ContextRef,
+                        llmod: ModuleRef,
+                        bitcode: Option<&[u8]>) {
+    let llconst = C_bytes_in_context(llcx, bitcode.unwrap_or(&[]));
+    let llglobal = llvm::LLVMAddGlobal(
+        llmod,
+        val_ty(llconst).to_ref(),
+        "rustc.embedded.module\0".as_ptr() as *const _,
+    );
+    llvm::LLVMSetInitializer(llglobal, llconst);
+    let section = if cgcx.opts.target_triple.contains("-ios") {
+        "__LLVM,__bitcode\0"
+    } else {
+        ".llvmbc\0"
+    };
+    llvm::LLVMSetSection(llglobal, section.as_ptr() as *const _);
+    llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
+
+    let llconst = C_bytes_in_context(llcx, &[]);
+    let llglobal = llvm::LLVMAddGlobal(
+        llmod,
+        val_ty(llconst).to_ref(),
+        "rustc.embedded.cmdline\0".as_ptr() as *const _,
+    );
+    llvm::LLVMSetInitializer(llglobal, llconst);
+    let section = if cgcx.opts.target_triple.contains("-ios") {
+        "__LLVM,__cmdline\0"
+    } else {
+        ".llvmcmd\0"
+    };
+    llvm::LLVMSetSection(llglobal, section.as_ptr() as *const _);
+    llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
 }
 
 pub(crate) struct CompiledModules {

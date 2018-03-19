@@ -341,6 +341,8 @@ fn collect_roots<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         };
 
         tcx.hir.krate().visit_all_item_likes(&mut visitor);
+
+        visitor.push_extra_entry_roots();
     }
 
     // We can only translate items that are instantiable - items all of
@@ -998,8 +1000,6 @@ impl<'b, 'a, 'v> RootCollector<'b, 'a, 'v> {
 
             let instance = Instance::mono(self.tcx, def_id);
             self.output.push(create_fn_mono_item(instance));
-
-            self.push_extra_entry_roots(def_id);
         }
     }
 
@@ -1008,20 +1008,22 @@ impl<'b, 'a, 'v> RootCollector<'b, 'a, 'v> {
     /// monomorphized copy of the start lang item based on
     /// the return type of `main`. This is not needed when
     /// the user writes their own `start` manually.
-    fn push_extra_entry_roots(&mut self, def_id: DefId) {
-        if self.entry_fn != Some(def_id) {
-            return;
+    fn push_extra_entry_roots(&mut self) {
+        if self.tcx.sess.entry_type.get() != Some(config::EntryMain) {
+            return
         }
 
-        if self.tcx.sess.entry_type.get() != Some(config::EntryMain) {
-            return;
-        }
+        let main_def_id = if let Some(def_id) = self.entry_fn {
+            def_id
+        } else {
+            return
+        };
 
         let start_def_id = match self.tcx.lang_items().require(StartFnLangItem) {
             Ok(s) => s,
             Err(err) => self.tcx.sess.fatal(&err),
         };
-        let main_ret_ty = self.tcx.fn_sig(def_id).output();
+        let main_ret_ty = self.tcx.fn_sig(main_def_id).output();
 
         // Given that `main()` has no arguments,
         // then its return type cannot have
@@ -1066,7 +1068,6 @@ fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                    def_id_to_string(tcx, impl_def_id));
 
             if let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) {
-                let callee_substs = tcx.erase_regions(&trait_ref.substs);
                 let overridden_methods: FxHashSet<_> =
                     impl_item_refs.iter()
                                   .map(|iiref| iiref.name)
@@ -1080,10 +1081,15 @@ fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         continue;
                     }
 
+                    let substs = Substs::for_item(tcx,
+                                                  method.def_id,
+                                                  |_, _| tcx.types.re_erased,
+                                                  |def, _| trait_ref.substs.type_for_def(def));
+
                     let instance = ty::Instance::resolve(tcx,
                                                          ty::ParamEnv::reveal_all(),
                                                          method.def_id,
-                                                         callee_substs).unwrap();
+                                                         substs).unwrap();
 
                     let mono_item = create_fn_mono_item(instance);
                     if mono_item.is_instantiable(tcx)

@@ -372,6 +372,25 @@ impl FromStr for SocketAddr {
 /// [`IpAddr`], [`Ipv4Addr`], [`Ipv6Addr`], [`SocketAddr`], [`SocketAddrV4`], and
 /// [`SocketAddrV6`].
 ///
+/// # Potential causes
+///
+/// `AddrParseError` may be thrown because the provided string does not parse as the given type,
+/// often because it includes information only handled by a different address type.
+///
+/// ```should_panic
+/// use std::net::IpAddr;
+/// let _foo: IpAddr = "127.0.0.1:8080".parse().expect("Cannot handle the socket port");
+/// ```
+///
+/// [`IpAddr`] doesn't handle the port. Use [`SocketAddr`] instead.
+///
+/// ```
+/// use std::net::SocketAddr;
+///
+/// // No problem, the `panic!` message has disappeared.
+/// let _foo: SocketAddr = "127.0.0.1:8080".parse().expect("unreachable panic");
+/// ```
+///
 /// [`FromStr`]: ../../std/str/trait.FromStr.html
 /// [`IpAddr`]: ../../std/net/enum.IpAddr.html
 /// [`Ipv4Addr`]: ../../std/net/struct.Ipv4Addr.html

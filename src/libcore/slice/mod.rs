@@ -1039,7 +1039,7 @@ impl<T> SliceIndex<[T]> for ops::RangeFull {
 }
 
 
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+#[stable(feature = "inclusive_range", since = "1.26.0")]
 impl<T> SliceIndex<[T]> for ops::RangeInclusive<usize> {
     type Output = [T];
 
@@ -1080,7 +1080,7 @@ impl<T> SliceIndex<[T]> for ops::RangeInclusive<usize> {
     }
 }
 
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+#[stable(feature = "inclusive_range", since = "1.26.0")]
 impl<T> SliceIndex<[T]> for ops::RangeToInclusive<usize> {
     type Output = [T];
 

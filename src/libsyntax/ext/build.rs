@@ -294,7 +294,7 @@ pub trait AstBuilder {
                 vis: ast::Visibility, vp: P<ast::UseTree>) -> P<ast::Item>;
     fn item_use_simple(&self, sp: Span, vis: ast::Visibility, path: ast::Path) -> P<ast::Item>;
     fn item_use_simple_(&self, sp: Span, vis: ast::Visibility,
-                        ident: ast::Ident, path: ast::Path) -> P<ast::Item>;
+                        ident: Option<ast::Ident>, path: ast::Path) -> P<ast::Item>;
     fn item_use_list(&self, sp: Span, vis: ast::Visibility,
                      path: Vec<ast::Ident>, imports: &[ast::Ident]) -> P<ast::Item>;
     fn item_use_glob(&self, sp: Span,
@@ -329,9 +329,13 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             None
         };
         segments.push(ast::PathSegment { identifier: last_identifier, span, parameters });
-        let path = ast::Path { span, segments };
-
-        if global { path.default_to_global() } else { path }
+        let mut path = ast::Path { span, segments };
+        if global {
+            if let Some(seg) = path.make_root() {
+                path.segments.insert(0, seg);
+            }
+        }
+        path
     }
 
     /// Constructs a qualified path.
@@ -983,7 +987,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             attrs,
             id: ast::DUMMY_NODE_ID,
             node,
-            vis: respan(span.empty(), ast::VisibilityKind::Inherited),
+            vis: respan(span.shrink_to_lo(), ast::VisibilityKind::Inherited),
             span,
             tokens: None,
         })
@@ -1029,7 +1033,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 span: ty.span,
                 ty,
                 ident: None,
-                vis: respan(span.empty(), ast::VisibilityKind::Inherited),
+                vis: respan(span.shrink_to_lo(), ast::VisibilityKind::Inherited),
                 attrs: Vec::new(),
                 id: ast::DUMMY_NODE_ID,
             }
@@ -1159,16 +1163,15 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn item_use_simple(&self, sp: Span, vis: ast::Visibility, path: ast::Path) -> P<ast::Item> {
-        let last = path.segments.last().unwrap().identifier;
-        self.item_use_simple_(sp, vis, last, path)
+        self.item_use_simple_(sp, vis, None, path)
     }
 
     fn item_use_simple_(&self, sp: Span, vis: ast::Visibility,
-                        ident: ast::Ident, path: ast::Path) -> P<ast::Item> {
+                        rename: Option<ast::Ident>, path: ast::Path) -> P<ast::Item> {
         self.item_use(sp, vis, P(ast::UseTree {
             span: sp,
             prefix: path,
-            kind: ast::UseTreeKind::Simple(ident),
+            kind: ast::UseTreeKind::Simple(rename),
         }))
     }
 
@@ -1178,7 +1181,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             (ast::UseTree {
                 span: sp,
                 prefix: self.path(sp, vec![*id]),
-                kind: ast::UseTreeKind::Simple(*id),
+                kind: ast::UseTreeKind::Simple(None),
             }, ast::DUMMY_NODE_ID)
         }).collect();
 

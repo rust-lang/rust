@@ -32,7 +32,7 @@ error[E0117]: only traits defined in the current crate can be implemented for ar
   --> $DIR/coherence-impls-copy.rs:33:1
    |
 LL | impl Copy for (MyType, MyType) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
    |
    = note: the impl does not reference any types defined in this crate
    = note: define and implement a trait or new type instead
@@ -41,7 +41,7 @@ error[E0117]: only traits defined in the current crate can be implemented for ar
   --> $DIR/coherence-impls-copy.rs:40:1
    |
 LL | impl Copy for [MyType] {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
+   | ^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
    |
    = note: the impl does not reference any types defined in this crate
    = note: define and implement a trait or new type instead
@@ -50,7 +50,7 @@ error[E0117]: only traits defined in the current crate can be implemented for ar
   --> $DIR/coherence-impls-copy.rs:44:1
    |
 LL | impl Copy for &'static [NotSync] {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
    |
    = note: the impl does not reference any types defined in this crate
    = note: define and implement a trait or new type instead

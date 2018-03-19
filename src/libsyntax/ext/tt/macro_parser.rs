@@ -86,7 +86,7 @@ use self::TokenTreeOrTokenTreeVec::*;
 
 use ast::Ident;
 use syntax_pos::{self, BytePos, Span};
-use codemap::Spanned;
+use codemap::respan;
 use errors::FatalError;
 use ext::tt::quoted::{self, TokenTree};
 use parse::{Directory, ParseSess};
@@ -709,6 +709,15 @@ pub fn parse(
     }
 }
 
+/// The token is an identifier, but not `_`.
+/// We prohibit passing `_` to macros expecting `ident` for now.
+fn get_macro_ident(token: &Token) -> Option<Ident> {
+    match *token {
+        token::Ident(ident) if ident.name != keywords::Underscore.name() => Some(ident),
+        _ => None,
+    }
+}
+
 /// Checks whether a non-terminal may begin with a particular token.
 ///
 /// Returning `false` is a *stability guarantee* that such a matcher will *never* begin with that
@@ -725,7 +734,7 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
     match name {
         "expr" => token.can_begin_expr(),
         "ty" => token.can_begin_type(),
-        "ident" => token.is_ident(),
+        "ident" => get_macro_ident(token).is_some(),
         "vis" => match *token {
             // The follow-set of :vis + "priv" keyword + interpolated
             Token::Comma | Token::Ident(_) | Token::Interpolated(_) => true,
@@ -765,8 +774,7 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
             Token::DotDotDot |                  // range pattern (future compat)
             Token::ModSep |                     // path
             Token::Lt |                         // path (UFCS constant)
-            Token::BinOp(token::Shl) |          // path (double UFCS)
-            Token::Underscore => true,          // placeholder
+            Token::BinOp(token::Shl) => true,   // path (double UFCS)
             Token::Interpolated(ref nt) => may_be_ident(&nt.0),
             _ => false,
         },
@@ -815,21 +823,14 @@ fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
         "expr" => token::NtExpr(panictry!(p.parse_expr())),
         "ty" => token::NtTy(panictry!(p.parse_ty())),
         // this could be handled like a token, since it is one
-        "ident" => match p.token {
-            token::Ident(sn) => {
-                p.bump();
-                token::NtIdent(Spanned::<Ident> {
-                    node: sn,
-                    span: p.prev_span,
-                })
-            }
-            _ => {
-                let token_str = pprust::token_to_string(&p.token);
-                p.fatal(&format!("expected ident, found {}", &token_str[..]))
-                    .emit();
-                FatalError.raise()
-            }
-        },
+        "ident" => if let Some(ident) = get_macro_ident(&p.token) {
+            p.bump();
+            token::NtIdent(respan(p.prev_span, ident))
+        } else {
+            let token_str = pprust::token_to_string(&p.token);
+            p.fatal(&format!("expected ident, found {}", &token_str)).emit();
+            FatalError.raise()
+        }
         "path" => token::NtPath(panictry!(p.parse_path_common(PathStyle::Type, false))),
         "meta" => token::NtMeta(panictry!(p.parse_meta_item())),
         "vis" => token::NtVis(panictry!(p.parse_visibility(true))),

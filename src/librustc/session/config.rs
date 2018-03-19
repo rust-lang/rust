@@ -385,7 +385,7 @@ top_level_options!(
         externs: Externs [UNTRACKED],
         crate_name: Option<String> [TRACKED],
         // An optional name to use as the crate for std during std injection,
-        // written `extern crate std = "name"`. Default to "std". Used by
+        // written `extern crate name as std`. Defaults to `std`. Used by
         // out-of-tree drivers.
         alt_std_name: Option<String> [TRACKED],
         // Indicates how the compiler should treat unstable features
@@ -1288,6 +1288,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "run `dsymutil` and delete intermediate object files"),
     ui_testing: bool = (false, parse_bool, [UNTRACKED],
           "format compiler diagnostics in a way that's better suitable for UI testing"),
+    embed_bitcode: bool = (false, parse_bool, [TRACKED],
+          "embed LLVM bitcode in object files"),
 }
 
 pub fn default_lib_output() -> CrateType {

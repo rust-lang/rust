@@ -10,11 +10,8 @@
 
 use std::borrow::Cow;
 use std::mem::size_of;
-use std::{usize, panic};
-#[cfg(not(target_arch = "asmjs"))]
-use std::isize;
+use std::{usize, isize, panic};
 use std::vec::{Drain, IntoIter};
-#[cfg(not(target_arch = "asmjs"))]
 use std::collections::CollectionAllocErr::*;
 
 struct DropCounter<'a> {
@@ -994,7 +991,6 @@ fn test_reserve_exact() {
     assert!(v.capacity() >= 33)
 }
 
-#[cfg(not(target_arch = "asmjs"))]
 #[test]
 fn test_try_reserve() {
 
@@ -1097,7 +1093,6 @@ fn test_try_reserve() {
 
 }
 
-#[cfg(not(target_arch = "asmjs"))]
 #[test]
 fn test_try_reserve_exact() {
 

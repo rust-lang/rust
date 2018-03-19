@@ -142,9 +142,6 @@ error[E0425]: cannot find value `bah` in this scope
 LL |         bah;
    |         ^^^ help: try: `Self::bah`
 
-error[E0601]: main function not found
+error: aborting due to 24 previous errors
 
-error: aborting due to 25 previous errors
-
-Some errors occurred: E0425, E0601.
-For more information about an error, try `rustc --explain E0425`.
+For more information about this error, try `rustc --explain E0425`.

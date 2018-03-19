@@ -283,11 +283,22 @@ pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item) -> Syntax
     if body.legacy {
         let allow_internal_unstable = attr::contains_name(&def.attrs, "allow_internal_unstable");
         let allow_internal_unsafe = attr::contains_name(&def.attrs, "allow_internal_unsafe");
+
+        let unstable_feature = attr::find_stability(&sess.span_diagnostic,
+                                                    &def.attrs, def.span).and_then(|stability| {
+            if let attr::StabilityLevel::Unstable { issue, .. } = stability.level {
+                Some((stability.feature, issue))
+            } else {
+                None
+            }
+        });
+
         NormalTT {
             expander,
             def_info: Some((def.id, def.span)),
             allow_internal_unstable,
-            allow_internal_unsafe
+            allow_internal_unsafe,
+            unstable_feature
         }
     } else {
         SyntaxExtension::DeclMacro(expander, Some((def.id, def.span)))

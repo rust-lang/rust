@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-emscripten FIXME(#45351)
+
 #![feature(platform_intrinsics, repr_simd)]
 
 extern "platform-intrinsic" {

@@ -879,7 +879,7 @@ impl<'a> LoweringContext<'a> {
             TyKind::Slice(ref ty) => hir::TySlice(self.lower_ty(ty, itctx)),
             TyKind::Ptr(ref mt) => hir::TyPtr(self.lower_mt(mt, itctx)),
             TyKind::Rptr(ref region, ref mt) => {
-                let span = t.span.with_hi(t.span.lo());
+                let span = t.span.shrink_to_lo();
                 let lifetime = match *region {
                     Some(ref lt) => self.lower_lifetime(lt),
                     None => self.elided_lifetime(span)
@@ -1355,17 +1355,11 @@ impl<'a> LoweringContext<'a> {
                         id: NodeId,
                         p: &Path,
                         name: Option<Name>,
-                        param_mode: ParamMode,
-                        defaults_to_global: bool)
+                        param_mode: ParamMode)
                         -> hir::Path {
-        let mut segments = p.segments.iter();
-        if defaults_to_global && p.is_global() {
-            segments.next();
-        }
-
         hir::Path {
             def: self.expect_full_def(id),
-            segments: segments.map(|segment| {
+            segments: p.segments.iter().map(|segment| {
                 self.lower_path_segment(p.span, segment, param_mode, 0,
                                         ParenthesizedGenericArgs::Err,
                                         ImplTraitContext::Disallowed)
@@ -1378,10 +1372,9 @@ impl<'a> LoweringContext<'a> {
     fn lower_path(&mut self,
                   id: NodeId,
                   p: &Path,
-                  param_mode: ParamMode,
-                  defaults_to_global: bool)
+                  param_mode: ParamMode)
                   -> hir::Path {
-        self.lower_path_extra(id, p, None, param_mode, defaults_to_global)
+        self.lower_path_extra(id, p, None, param_mode)
     }
 
     fn lower_path_segment(&mut self,
@@ -1904,7 +1897,7 @@ impl<'a> LoweringContext<'a> {
                        i: &ItemKind)
                        -> hir::Item_ {
         match *i {
-            ItemKind::ExternCrate(string) => hir::ItemExternCrate(string),
+            ItemKind::ExternCrate(orig_name) => hir::ItemExternCrate(orig_name),
             ItemKind::Use(ref use_tree) => {
                 // Start with an empty prefix
                 let prefix = Path {
@@ -2047,8 +2040,8 @@ impl<'a> LoweringContext<'a> {
         let path = &tree.prefix;
 
         match tree.kind {
-            UseTreeKind::Simple(ident) => {
-                *name = ident.name;
+            UseTreeKind::Simple(rename) => {
+                *name = tree.ident().name;
 
                 // First apply the prefix to the path
                 let mut path = Path {
@@ -2064,12 +2057,12 @@ impl<'a> LoweringContext<'a> {
                 if path.segments.len() > 1 &&
                    path.segments.last().unwrap().identifier.name == keywords::SelfValue.name() {
                     let _ = path.segments.pop();
-                    if ident.name == keywords::SelfValue.name() {
+                    if rename.is_none() {
                         *name = path.segments.last().unwrap().identifier.name;
                     }
                 }
 
-                let path = P(self.lower_path(id, &path, ParamMode::Explicit, true));
+                let path = P(self.lower_path(id, &path, ParamMode::Explicit));
                 hir::ItemUse(path, hir::UseKind::Single)
             }
             UseTreeKind::Glob => {
@@ -2080,7 +2073,7 @@ impl<'a> LoweringContext<'a> {
                         .cloned()
                         .collect(),
                     span: path.span,
-                }, ParamMode::Explicit, true));
+                }, ParamMode::Explicit));
                 hir::ItemUse(path, hir::UseKind::Glob)
             }
             UseTreeKind::Nested(ref trees) => {
@@ -2136,7 +2129,7 @@ impl<'a> LoweringContext<'a> {
                 // Privatize the degenerate import base, used only to check
                 // the stability of `use a::{};`, to avoid it showing up as
                 // a re-export by accident when `pub`, e.g. in documentation.
-                let path = P(self.lower_path(id, &prefix, ParamMode::Explicit, true));
+                let path = P(self.lower_path(id, &prefix, ParamMode::Explicit));
                 *vis = hir::Inherited;
                 hir::ItemUse(path, hir::UseKind::ListStem)
             }
@@ -3379,7 +3372,7 @@ impl<'a> LoweringContext<'a> {
             VisibilityKind::Crate(..) => hir::Visibility::Crate,
             VisibilityKind::Restricted { ref path, id, .. } => {
                 hir::Visibility::Restricted {
-                    path: P(self.lower_path(id, path, ParamMode::Explicit, true)),
+                    path: P(self.lower_path(id, path, ParamMode::Explicit)),
                     id: if let Some(owner) = explicit_owner {
                         self.lower_node_id_with_owner(id, owner).node_id
                     } else {

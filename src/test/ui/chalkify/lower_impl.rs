@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn main() {
-    match 22 {
-        0 ..= 3 => {} //~ ERROR `..=` syntax in patterns is experimental
-        _ => {}
-    }
+#![feature(rustc_attrs)]
+
+trait Foo { }
+
+#[rustc_dump_program_clauses] //~ ERROR Implemented(T: Foo) :-
+impl<T: 'static> Foo for T where T: Iterator<Item = i32> { }
+
+fn main() {
+    println!("hello");
 }

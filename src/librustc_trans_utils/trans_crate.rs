@@ -58,7 +58,7 @@ pub trait TransCrate {
     fn print_version(&self) {}
     fn diagnostics(&self) -> &[(&'static str, &'static str)] { &[] }
 
-    fn metadata_loader(&self) -> Box<MetadataLoader>;
+    fn metadata_loader(&self) -> Box<MetadataLoader + Sync>;
     fn provide(&self, _providers: &mut Providers);
     fn provide_extern(&self, _providers: &mut Providers);
     fn trans_crate<'a, 'tcx>(
@@ -84,7 +84,7 @@ pub trait TransCrate {
 pub struct DummyTransCrate;
 
 impl TransCrate for DummyTransCrate {
-    fn metadata_loader(&self) -> Box<MetadataLoader> {
+    fn metadata_loader(&self) -> Box<MetadataLoader + Sync> {
         box DummyMetadataLoader(())
     }
 
@@ -195,7 +195,7 @@ impl TransCrate for MetadataOnlyTransCrate {
         }
     }
 
-    fn metadata_loader(&self) -> Box<MetadataLoader> {
+    fn metadata_loader(&self) -> Box<MetadataLoader + Sync> {
         box NoLlvmMetadataLoader
     }
 

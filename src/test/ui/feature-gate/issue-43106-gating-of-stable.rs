@@ -35,3 +35,5 @@ mod stable {
     #[stable = "1300"] impl S { }
     //~^ ERROR stability attributes may not be used outside of the standard library
 }
+
+fn main() {}

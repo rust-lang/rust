@@ -35,3 +35,5 @@ mod inline {
     #[inline = "2100"] impl S { }
     //~^ ERROR attribute should be applied to function
 }
+
+fn main() {}

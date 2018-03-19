@@ -1,0 +1,14 @@
+error: the range pattern here has ambiguous interpretation
+  --> $DIR/range-inclusive-pattern-precedence.rs:23:10
+   |
+LL |         &10..=15 => {}
+   |          ^^^^^^^ help: add parentheses to clarify the precedence: `(10 ..=15)`
+
+error: the range pattern here has ambiguous interpretation
+  --> $DIR/range-inclusive-pattern-precedence.rs:32:13
+   |
+LL |         box 10..=15 => {}
+   |             ^^^^^^^ help: add parentheses to clarify the precedence: `(10 ..=15)`
+
+error: aborting due to 2 previous errors
+

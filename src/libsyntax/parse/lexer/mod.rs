@@ -34,7 +34,7 @@ pub struct TokenAndSpan {
 
 impl Default for TokenAndSpan {
     fn default() -> Self {
-        TokenAndSpan { tok: token::Underscore, sp: syntax_pos::DUMMY_SP }
+        TokenAndSpan { tok: token::Whitespace, sp: syntax_pos::DUMMY_SP }
     }
 }
 
@@ -126,7 +126,7 @@ impl<'a> StringReader<'a> {
     pub fn try_next_token(&mut self) -> Result<TokenAndSpan, ()> {
         assert!(self.fatal_errs.is_empty());
         let ret_val = TokenAndSpan {
-            tok: replace(&mut self.peek_tok, token::Underscore),
+            tok: replace(&mut self.peek_tok, token::Whitespace),
             sp: self.peek_span,
         };
         self.advance_token()?;
@@ -214,7 +214,7 @@ impl<'a> StringReader<'a> {
 
         // Make the range zero-length if the span is invalid.
         if span.lo() > span.hi() || begin.fm.start_pos != end.fm.start_pos {
-            span = span.with_hi(span.lo());
+            span = span.shrink_to_lo();
         }
 
         let mut sr = StringReader::new_raw_internal(sess, begin.fm);
@@ -611,7 +611,7 @@ impl<'a> StringReader<'a> {
                 // I guess this is the only way to figure out if
                 // we're at the beginning of the file...
                 let cmap = CodeMap::new(FilePathMapping::empty());
-                cmap.files.borrow_mut().push(self.filemap.clone());
+                cmap.files.borrow_mut().file_maps.push(self.filemap.clone());
                 let loc = cmap.lookup_char_pos_adj(self.pos);
                 debug!("Skipping a shebang");
                 if loc.line == 1 && loc.col == CharPos(0) {
@@ -1133,14 +1133,8 @@ impl<'a> StringReader<'a> {
                 self.bump();
             }
 
-            return Ok(self.with_str_from(start, |string| {
-                if string == "_" {
-                    token::Underscore
-                } else {
-                    // FIXME: perform NFKC normalization here. (Issue #2253)
-                    token::Ident(self.mk_ident(string))
-                }
-            }));
+            // FIXME: perform NFKC normalization here. (Issue #2253)
+            return Ok(self.with_str_from(start, |string| token::Ident(self.mk_ident(string))));
         }
 
         if is_dec_digit(c) {

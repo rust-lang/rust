@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-emscripten no i128 support
+
 #![feature(i128_type)]
 #![deny(const_err)]
 

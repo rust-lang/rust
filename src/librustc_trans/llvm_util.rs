@@ -92,6 +92,7 @@ const X86_WHITELIST: &'static [&'static str] = &["aes", "avx", "avx2", "avx512bw
                                                  "bmi1", "bmi2", "fma", "fxsr",
                                                  "lzcnt", "mmx", "pclmulqdq",
                                                  "popcnt", "rdrand", "rdseed",
+                                                 "sha",
                                                  "sse", "sse2", "sse3", "sse4.1",
                                                  "sse4.2", "sse4a", "ssse3",
                                                  "tbm", "xsave", "xsavec",

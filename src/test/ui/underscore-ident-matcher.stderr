@@ -1,0 +1,8 @@
+error: no rules expected the token `_`
+  --> $DIR/underscore-ident-matcher.rs:18:19
+   |
+LL |     let identity!(_) = 10; //~ ERROR no rules expected the token `_`
+   |                   ^
+
+error: aborting due to previous error
+
