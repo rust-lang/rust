@@ -256,6 +256,7 @@ impl Command {
         if self.get_cwd().is_some() ||
             self.get_gid().is_some() ||
             self.get_uid().is_some() ||
+            self.env_saw_path() ||
             self.get_closures().len() != 0 {
             return Ok(None)
         }
