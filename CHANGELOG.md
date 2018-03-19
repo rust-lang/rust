@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.189
+* Rustup to *rustc 1.26.0-nightly (5508b2714 2018-03-18)*
+
 ## 0.0.188
 * Rustup to *rustc 1.26.0-nightly (392645394 2018-03-15)*
 * New lint: [`while_immutable_condition`]

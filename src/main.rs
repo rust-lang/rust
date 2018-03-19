@@ -59,10 +59,18 @@ pub fn main() {
         return;
     }
 
-    let manifest_path_arg = std::env::args()
+    let mut manifest_path_arg = std::env::args()
         .skip(2)
-        .find(|val| val.starts_with("--manifest-path="))
-        .map(|val| val["--manifest-path=".len()..].to_owned());
+        .skip_while(|val| !val.starts_with("--manifest-path"));
+    let manifest_path_arg = manifest_path_arg.next().and_then(|val| {
+        if val == "--manifest-path" {
+            manifest_path_arg.next()
+        } else if val.starts_with("--manifest-path=") {
+            Some(val["--manifest-path=".len()..].to_owned())
+        } else {
+            None
+        }
+    });
 
     let mut metadata = if let Ok(metadata) = cargo_metadata::metadata(manifest_path_arg.as_ref().map(AsRef::as_ref)) {
         metadata
@@ -140,7 +148,7 @@ pub fn main() {
 
         for target in package.targets {
             let args = std::env::args()
-                .skip(2)
+                .skip(1)
                 .filter(|a| a != "--all" && !a.starts_with("--manifest-path="));
 
             let args = std::iter::once(format!("--manifest-path={}", manifest_path)).chain(args);
