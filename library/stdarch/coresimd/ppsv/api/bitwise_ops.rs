@@ -2,15 +2,15 @@
 #![allow(unused)]
 
 macro_rules! impl_bitwise_ops {
-    ($ty:ident, $true_val:expr) => {
-        impl ::ops::Not for $ty {
+    ($id:ident, $true_val:expr) => {
+        impl ::ops::Not for $id {
             type Output = Self;
             #[inline]
             fn not(self) -> Self {
                 Self::splat($true_val) ^ self
             }
         }
-        impl ::ops::BitXor for $ty {
+        impl ::ops::BitXor for $id {
             type Output = Self;
             #[inline]
             fn bitxor(self, other: Self) -> Self {
@@ -18,7 +18,7 @@ macro_rules! impl_bitwise_ops {
                 unsafe { simd_xor(self, other) }
             }
         }
-        impl ::ops::BitAnd for $ty {
+        impl ::ops::BitAnd for $id {
             type Output = Self;
             #[inline]
             fn bitand(self, other: Self) -> Self {
@@ -26,7 +26,7 @@ macro_rules! impl_bitwise_ops {
                 unsafe { simd_and(self, other) }
             }
         }
-        impl ::ops::BitOr for $ty {
+        impl ::ops::BitOr for $id {
             type Output = Self;
             #[inline]
             fn bitor(self, other: Self) -> Self {
@@ -34,19 +34,19 @@ macro_rules! impl_bitwise_ops {
                 unsafe { simd_or(self, other) }
             }
         }
-        impl ::ops::BitAndAssign for $ty {
+        impl ::ops::BitAndAssign for $id {
             #[inline]
             fn bitand_assign(&mut self, other: Self) {
                 *self = *self & other;
             }
         }
-        impl ::ops::BitOrAssign for $ty {
+        impl ::ops::BitOrAssign for $id {
             #[inline]
             fn bitor_assign(&mut self, other: Self) {
                 *self = *self | other;
             }
         }
-        impl ::ops::BitXorAssign for $ty {
+        impl ::ops::BitXorAssign for $id {
             #[inline]
             fn bitxor_assign(&mut self, other: Self) {
                 *self = *self ^ other;

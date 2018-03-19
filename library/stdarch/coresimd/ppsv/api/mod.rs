@@ -69,9 +69,13 @@ macro_rules! define_ty {
 #[macro_use]
 mod arithmetic_ops;
 #[macro_use]
+mod arithmetic_scalar_ops;
+#[macro_use]
 mod arithmetic_reductions;
 #[macro_use]
 mod bitwise_ops;
+#[macro_use]
+mod bitwise_scalar_ops;
 #[macro_use]
 mod bitwise_reductions;
 #[macro_use]
@@ -112,6 +116,8 @@ mod partial_eq;
 //#[macro_use]
 //mod gather_scatter;
 #[macro_use]
+mod scalar_shifts;
+#[macro_use]
 mod shifts;
 
 /// Defines a portable packed SIMD floating-point vector type.
@@ -124,6 +130,7 @@ macro_rules! simd_f_ty {
             [impl_load_store, $id, $elem_ty, $elem_count],
             [impl_cmp, $id, $bool_ty],
             [impl_arithmetic_ops, $id],
+            [impl_arithmetic_scalar_ops, $id, $elem_ty],
             [impl_arithmetic_reductions, $id, $elem_ty],
             [impl_minmax_reductions, $id, $elem_ty],
             [impl_neg_op, $id, $elem_ty],
@@ -138,6 +145,7 @@ macro_rules! simd_f_ty {
                 test_load_store!($id, $elem_ty);
                 test_cmp!($id, $elem_ty, $bool_ty, 1. as $elem_ty, 0. as $elem_ty);
                 test_arithmetic_ops!($id, $elem_ty);
+                test_arithmetic_scalar_ops!($id, $elem_ty);
                 test_arithmetic_reductions!($id, $elem_ty);
                 test_minmax_reductions!($id, $elem_ty);
                 test_neg_op!($id, $elem_ty);
@@ -159,12 +167,15 @@ macro_rules! simd_i_ty {
             [impl_cmp, $id, $bool_ty],
             [impl_hash, $id, $elem_ty],
             [impl_arithmetic_ops, $id],
+            [impl_arithmetic_scalar_ops, $id, $elem_ty],
             [impl_arithmetic_reductions, $id, $elem_ty],
             [impl_minmax_reductions, $id, $elem_ty],
             [impl_neg_op, $id, $elem_ty],
             [impl_bitwise_ops, $id, !(0 as $elem_ty)],
+            [impl_bitwise_scalar_ops, $id, $elem_ty],
             [impl_bitwise_reductions, $id, $elem_ty],
-            [impl_all_shifts, $id, $elem_ty],
+            [impl_all_scalar_shifts, $id, $elem_ty],
+            [impl_vector_shifts, $id, $elem_ty],
             [impl_hex_fmt, $id, $elem_ty],
             [impl_eq, $id],
             [impl_partial_eq, $id],
@@ -179,12 +190,15 @@ macro_rules! simd_i_ty {
                 test_cmp!($id, $elem_ty, $bool_ty, 1 as $elem_ty, 0 as $elem_ty);
                 test_hash!($id, $elem_ty);
                 test_arithmetic_ops!($id, $elem_ty);
+                test_arithmetic_scalar_ops!($id, $elem_ty);
                 test_arithmetic_reductions!($id, $elem_ty);
                 test_minmax_reductions!($id, $elem_ty);
                 test_neg_op!($id, $elem_ty);
                 test_int_bitwise_ops!($id, $elem_ty);
+                test_int_bitwise_scalar_ops!($id, $elem_ty);
                 test_bitwise_reductions!($id, !(0 as $elem_ty));
-                test_all_shift_ops!($id, $elem_ty);
+                test_all_scalar_shift_ops!($id, $elem_ty);
+                test_vector_shift_ops!($id, $elem_ty);
                 test_hex_fmt!($id, $elem_ty);
                 test_partial_eq!($id, 1 as $elem_ty, 0 as $elem_ty);
                 test_default!($id, $elem_ty);
@@ -204,11 +218,14 @@ macro_rules! simd_u_ty {
             [impl_cmp, $id, $bool_ty],
             [impl_hash, $id, $elem_ty],
             [impl_arithmetic_ops, $id],
+            [impl_arithmetic_scalar_ops, $id, $elem_ty],
             [impl_arithmetic_reductions, $id, $elem_ty],
             [impl_minmax_reductions, $id, $elem_ty],
+            [impl_bitwise_scalar_ops, $id, $elem_ty],
             [impl_bitwise_ops, $id, !(0 as $elem_ty)],
             [impl_bitwise_reductions, $id, $elem_ty],
-            [impl_all_shifts, $id, $elem_ty],
+            [impl_all_scalar_shifts, $id, $elem_ty],
+            [impl_vector_shifts, $id, $elem_ty],
             [impl_hex_fmt, $id, $elem_ty],
             [impl_eq, $id],
             [impl_partial_eq, $id],
@@ -223,11 +240,14 @@ macro_rules! simd_u_ty {
                 test_cmp!($id, $elem_ty, $bool_ty, 1 as $elem_ty, 0 as $elem_ty);
                 test_hash!($id, $elem_ty);
                 test_arithmetic_ops!($id, $elem_ty);
+                test_arithmetic_scalar_ops!($id, $elem_ty);
                 test_arithmetic_reductions!($id, $elem_ty);
                 test_minmax_reductions!($id, $elem_ty);
                 test_int_bitwise_ops!($id, $elem_ty);
+                test_int_bitwise_scalar_ops!($id, $elem_ty);
                 test_bitwise_reductions!($id, !(0 as $elem_ty));
-                test_all_shift_ops!($id, $elem_ty);
+                test_all_scalar_shift_ops!($id, $elem_ty);
+                test_vector_shift_ops!($id, $elem_ty);
                 test_hex_fmt!($id, $elem_ty);
                 test_partial_eq!($id, 1 as $elem_ty, 0 as $elem_ty);
                 test_default!($id, $elem_ty);
@@ -244,6 +264,7 @@ macro_rules! simd_b_ty {
             [define_ty, $id, $($elem_tys),+ | $(#[$doc])*],
             [impl_bool_minimal, $id, $elem_ty, $elem_count, $($elem_name),*],
             [impl_bitwise_ops, $id, true],
+            [impl_bitwise_scalar_ops, $id, bool],
             [impl_bool_bitwise_reductions, $id, bool, $elem_ty],
             [impl_bool_reductions, $id],
             [impl_bool_cmp, $id, $id],
@@ -257,6 +278,7 @@ macro_rules! simd_b_ty {
             mod $test_mod {
                 test_bool_minimal!($id, $elem_count);
                 test_bool_bitwise_ops!($id);
+                test_bool_bitwise_scalar_ops!($id);
                 test_bool_reductions!($id);
                 test_bitwise_reductions!($id, true);
                 test_cmp!($id, $elem_ty, $id, true, false);
