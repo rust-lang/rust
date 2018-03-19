@@ -436,10 +436,11 @@ pub fn mk_attr_inner(span: Span, id: AttrId, item: MetaItem) -> Attribute {
 
 /// Returns an inner attribute with the given value and span.
 pub fn mk_spanned_attr_inner(sp: Span, id: AttrId, item: MetaItem) -> Attribute {
+    let ident = ast::Ident::with_empty_ctxt(item.name).with_span_pos(item.span);
     Attribute {
         id,
         style: ast::AttrStyle::Inner,
-        path: ast::Path::from_ident(item.span, ast::Ident::with_empty_ctxt(item.name)),
+        path: ast::Path::from_ident(ident),
         tokens: item.node.tokens(item.span),
         is_sugared_doc: false,
         span: sp,
@@ -454,10 +455,11 @@ pub fn mk_attr_outer(span: Span, id: AttrId, item: MetaItem) -> Attribute {
 
 /// Returns an outer attribute with the given value and span.
 pub fn mk_spanned_attr_outer(sp: Span, id: AttrId, item: MetaItem) -> Attribute {
+    let ident = ast::Ident::with_empty_ctxt(item.name).with_span_pos(item.span);
     Attribute {
         id,
         style: ast::AttrStyle::Outer,
-        path: ast::Path::from_ident(item.span, ast::Ident::with_empty_ctxt(item.name)),
+        path: ast::Path::from_ident(ident),
         tokens: item.node.tokens(item.span),
         is_sugared_doc: false,
         span: sp,
@@ -470,7 +472,7 @@ pub fn mk_sugared_doc_attr(id: AttrId, text: Symbol, span: Span) -> Attribute {
     Attribute {
         id,
         style,
-        path: ast::Path::from_ident(span, ast::Ident::from_str("doc")),
+        path: ast::Path::from_ident(ast::Ident::from_str("doc").with_span_pos(span)),
         tokens: MetaItemKind::NameValue(lit).tokens(span),
         is_sugared_doc: true,
         span,

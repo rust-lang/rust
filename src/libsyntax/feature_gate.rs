@@ -1767,10 +1767,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_path(&mut self, path: &'a ast::Path, _id: NodeId) {
         for segment in &path.segments {
             if segment.ident.name == keywords::Crate.name() {
-                gate_feature_post!(&self, crate_in_paths, segment.span,
+                gate_feature_post!(&self, crate_in_paths, segment.ident.span,
                                    "`crate` in paths is experimental");
             } else if segment.ident.name == keywords::Extern.name() {
-                gate_feature_post!(&self, extern_in_paths, segment.span,
+                gate_feature_post!(&self, extern_in_paths, segment.ident.span,
                                    "`extern` in paths is experimental");
             }
         }

@@ -193,7 +193,7 @@ pub mod rt {
 
     impl ToTokens for ast::Lifetime {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
-            vec![TokenTree::Token(DUMMY_SP, token::Lifetime(self.ident))]
+            vec![TokenTree::Token(self.ident.span, token::Lifetime(self.ident))]
         }
     }
 

@@ -141,10 +141,10 @@ impl<'a> base::Resolver for Resolver<'a> {
                     path.segments[0].ident.name = keywords::CrateRoot.name();
                     let module = self.0.resolve_crate_root(ident.span.ctxt(), true);
                     if !module.is_local() {
-                        let span = path.segments[0].span;
+                        let span = path.segments[0].ident.span;
                         path.segments.insert(1, match module.kind {
                             ModuleKind::Def(_, name) => ast::PathSegment::from_ident(
-                                ast::Ident::with_empty_ctxt(name), span
+                                ast::Ident::with_empty_ctxt(name).with_span_pos(span)
                             ),
                             _ => unreachable!(),
                         })
@@ -277,7 +277,7 @@ impl<'a> base::Resolver for Resolver<'a> {
                         }).into();
                     }
                     return Some(ast::Attribute {
-                        path: ast::Path::from_ident(span, Ident::with_empty_ctxt(legacy_name)),
+                        path: ast::Path::from_ident(Ident::new(legacy_name, span)),
                         tokens: TokenStream::empty(),
                         id: attr::mk_attr_id(),
                         style: ast::AttrStyle::Outer,

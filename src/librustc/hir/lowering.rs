@@ -920,7 +920,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_label(&mut self, label: Option<Label>) -> Option<hir::Label> {
         label.map(|label| hir::Label {
             name: label.ident.name,
-            span: label.span,
+            span: label.ident.span,
         })
     }
 
@@ -1810,7 +1810,7 @@ impl<'a> LoweringContext<'a> {
             default: tp.default
                 .as_ref()
                 .map(|x| self.lower_ty(x, ImplTraitContext::Disallowed)),
-            span: tp.span,
+            span: tp.ident.span,
             pure_wrt_drop: attr::contains_name(&tp.attrs, "may_dangle"),
             synthetic: tp.attrs
                 .iter()
@@ -1822,21 +1822,22 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_lifetime(&mut self, l: &Lifetime) -> hir::Lifetime {
+        let span = l.ident.span;
         match self.lower_ident(l.ident) {
-            x if x == "'static" => self.new_named_lifetime(l.id, l.span, hir::LifetimeName::Static),
+            x if x == "'static" => self.new_named_lifetime(l.id, span, hir::LifetimeName::Static),
             x if x == "'_" => match self.anonymous_lifetime_mode {
                 AnonymousLifetimeMode::CreateParameter => {
-                    let fresh_name = self.collect_fresh_in_band_lifetime(l.span);
-                    self.new_named_lifetime(l.id, l.span, fresh_name)
+                    let fresh_name = self.collect_fresh_in_band_lifetime(span);
+                    self.new_named_lifetime(l.id, span, fresh_name)
                 }
 
                 AnonymousLifetimeMode::PassThrough => {
-                    self.new_named_lifetime(l.id, l.span, hir::LifetimeName::Underscore)
+                    self.new_named_lifetime(l.id, span, hir::LifetimeName::Underscore)
                 }
             },
             name => {
-                self.maybe_collect_in_band_lifetime(l.span, name);
-                self.new_named_lifetime(l.id, l.span, hir::LifetimeName::Name(name))
+                self.maybe_collect_in_band_lifetime(span, name);
+                self.new_named_lifetime(l.id, span, hir::LifetimeName::Name(name))
             }
         }
     }
@@ -2936,7 +2937,7 @@ impl<'a> LoweringContext<'a> {
                     ImplTraitContext::Disallowed,
                 );
                 let args = args.iter().map(|x| self.lower_expr(x)).collect();
-                hir::ExprMethodCall(hir_seg, seg.span, args)
+                hir::ExprMethodCall(hir_seg, seg.ident.span, args)
             }
             ExprKind::Binary(binop, ref lhs, ref rhs) => {
                 let binop = self.lower_binop(binop);

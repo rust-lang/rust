@@ -2281,9 +2281,9 @@ impl<'a> Resolver<'a> {
                                 ident.name,
                                 span,
                             );
-                            resolve_error(self, type_parameter.span, err);
+                            resolve_error(self, type_parameter.ident.span, err);
                         }
-                        seen_bindings.entry(ident).or_insert(type_parameter.span);
+                        seen_bindings.entry(ident).or_insert(type_parameter.ident.span);
 
                         // plain insert (no renaming)
                         let def_id = self.definitions.local_def_id(type_parameter.id);
@@ -3634,7 +3634,7 @@ impl<'a> Resolver<'a> {
                         });
                         self.record_def(expr.id, err_path_resolution());
                         resolve_error(self,
-                                      label.span,
+                                      label.ident.span,
                                       ResolutionError::UndeclaredLabel(&label.ident.name.as_str(),
                                                                        close_match));
                     }
@@ -3865,7 +3865,7 @@ impl<'a> Resolver<'a> {
                     if filter_fn(name_binding.def()) {
                         // create the path
                         let mut segms = path_segments.clone();
-                        segms.push(ast::PathSegment::from_ident(ident, name_binding.span));
+                        segms.push(ast::PathSegment::from_ident(ident));
                         let path = Path {
                             span: name_binding.span,
                             segments: segms,
@@ -3887,7 +3887,7 @@ impl<'a> Resolver<'a> {
                 if let Some(module) = name_binding.module() {
                     // form the path
                     let mut path_segments = path_segments.clone();
-                    path_segments.push(ast::PathSegment::from_ident(ident, name_binding.span));
+                    path_segments.push(ast::PathSegment::from_ident(ident));
 
                     if !in_module_is_extern || name_binding.vis == ty::Visibility::Public {
                         // add the module to the lookup
@@ -3926,7 +3926,7 @@ impl<'a> Resolver<'a> {
                 if let Some(module) = name_binding.module() {
                     // form the path
                     let mut path_segments = path_segments.clone();
-                    path_segments.push(ast::PathSegment::from_ident(ident, name_binding.span));
+                    path_segments.push(ast::PathSegment::from_ident(ident));
                     if module.def() == Some(module_def) {
                         let path = Path {
                             span: name_binding.span,
@@ -3958,7 +3958,7 @@ impl<'a> Resolver<'a> {
             enum_module.for_each_child_stable(|ident, _, name_binding| {
                 if let Def::Variant(..) = name_binding.def() {
                     let mut segms = enum_import_suggestion.path.segments.clone();
-                    segms.push(ast::PathSegment::from_ident(ident, name_binding.span));
+                    segms.push(ast::PathSegment::from_ident(ident));
                     variants.push(Path {
                         span: name_binding.span,
                         segments: segms,

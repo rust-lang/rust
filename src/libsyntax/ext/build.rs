@@ -322,13 +322,15 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let last_ident = idents.pop().unwrap();
         let mut segments: Vec<ast::PathSegment> = Vec::new();
 
-        segments.extend(idents.into_iter().map(|i| ast::PathSegment::from_ident(i, span)));
+        segments.extend(idents.into_iter().map(|ident| {
+            ast::PathSegment::from_ident(ident.with_span_pos(span))
+        }));
         let parameters = if !lifetimes.is_empty() || !types.is_empty() || !bindings.is_empty() {
             ast::AngleBracketedParameterData { lifetimes, types, bindings, span }.into()
         } else {
             None
         };
-        segments.push(ast::PathSegment { ident: last_ident, span, parameters });
+        segments.push(ast::PathSegment { ident: last_ident.with_span_pos(span), parameters });
         let mut path = ast::Path { span, segments };
         if global {
             if let Some(seg) = path.make_root() {
@@ -366,7 +368,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         } else {
             None
         };
-        path.segments.push(ast::PathSegment { ident, span: ident.span, parameters });
+        path.segments.push(ast::PathSegment { ident, parameters });
 
         (ast::QSelf {
             ty: self_type,
@@ -435,17 +437,16 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn typaram(&self,
                span: Span,
-               id: ast::Ident,
+               ident: ast::Ident,
                attrs: Vec<ast::Attribute>,
                bounds: ast::TyParamBounds,
                default: Option<P<ast::Ty>>) -> ast::TyParam {
         ast::TyParam {
-            ident: id,
+            ident: ident.with_span_pos(span),
             id: ast::DUMMY_NODE_ID,
             attrs: attrs.into(),
             bounds,
             default,
-            span,
         }
     }
 
@@ -469,7 +470,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn lifetime(&self, span: Span, ident: ast::Ident) -> ast::Lifetime {
-        ast::Lifetime { id: ast::DUMMY_NODE_ID, span: span, ident: ident }
+        ast::Lifetime { id: ast::DUMMY_NODE_ID, ident: ident.with_span_pos(span) }
     }
 
     fn lifetime_def(&self,
@@ -662,7 +663,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                         ident: ast::Ident,
                         mut args: Vec<P<ast::Expr>> ) -> P<ast::Expr> {
         args.insert(0, expr);
-        self.expr(span, ast::ExprKind::MethodCall(ast::PathSegment::from_ident(ident, span), args))
+        let segment = ast::PathSegment::from_ident(ident.with_span_pos(span));
+        self.expr(span, ast::ExprKind::MethodCall(segment, args))
     }
     fn expr_block(&self, b: P<ast::Block>) -> P<ast::Expr> {
         self.expr(b.span, ast::ExprKind::Block(b))

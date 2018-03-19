@@ -36,7 +36,6 @@ use std::u32;
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct Label {
     pub ident: Ident,
-    pub span: Span,
 }
 
 impl fmt::Debug for Label {
@@ -48,7 +47,6 @@ impl fmt::Debug for Label {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct Lifetime {
     pub id: NodeId,
-    pub span: Span,
     pub ident: Ident,
 }
 
@@ -101,11 +99,8 @@ impl fmt::Display for Path {
 impl Path {
     // convert a span and an identifier to the corresponding
     // 1-segment path
-    pub fn from_ident(s: Span, ident: Ident) -> Path {
-        Path {
-            span: s,
-            segments: vec![PathSegment::from_ident(ident, s)],
-        }
+    pub fn from_ident(ident: Ident) -> Path {
+        Path { segments: vec![PathSegment::from_ident(ident)], span: ident.span }
     }
 
     // Make a "crate root" segment for this path unless it already has it
@@ -132,8 +127,6 @@ impl Path {
 pub struct PathSegment {
     /// The identifier portion of this path segment.
     pub ident: Ident,
-    /// Span of the segment identifier.
-    pub span: Span,
 
     /// Type/lifetime parameters attached to this path. They come in
     /// two flavors: `Path<A,B,C>` and `Path(A,B) -> C`.
@@ -145,11 +138,11 @@ pub struct PathSegment {
 }
 
 impl PathSegment {
-    pub fn from_ident(ident: Ident, span: Span) -> Self {
-        PathSegment { ident, span, parameters: None }
+    pub fn from_ident(ident: Ident) -> Self {
+        PathSegment { ident, parameters: None }
     }
     pub fn crate_root(span: Span) -> Self {
-        PathSegment::from_ident(Ident::new(keywords::CrateRoot.name(), span), span)
+        PathSegment::from_ident(Ident::new(keywords::CrateRoot.name(), span))
     }
 }
 
@@ -293,7 +286,7 @@ impl TyParamBound {
     pub fn span(&self) -> Span {
         match self {
             &TraitTyParamBound(ref t, ..) => t.span,
-            &RegionTyParamBound(ref l) => l.span,
+            &RegionTyParamBound(ref l) => l.ident.span,
         }
     }
 }
@@ -315,7 +308,6 @@ pub struct TyParam {
     pub id: NodeId,
     pub bounds: TyParamBounds,
     pub default: Option<P<Ty>>,
-    pub span: Span,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -366,7 +358,7 @@ impl Generics {
         for param in &self.params {
             if let GenericParam::Type(ref t) = *param {
                 if t.ident.name == name {
-                    return Some(t.span);
+                    return Some(t.ident.span);
                 }
             }
         }
@@ -541,7 +533,7 @@ impl Pat {
         let node = match &self.node {
             PatKind::Wild => TyKind::Infer,
             PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), ident, None) =>
-                TyKind::Path(None, Path::from_ident(ident.span, *ident)),
+                TyKind::Path(None, Path::from_ident(*ident)),
             PatKind::Path(qself, path) => TyKind::Path(qself.clone(), path.clone()),
             PatKind::Mac(mac) => TyKind::Mac(mac.clone()),
             PatKind::Ref(pat, mutbl) =>

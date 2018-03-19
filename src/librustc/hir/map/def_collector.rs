@@ -202,7 +202,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                     lifetime_def.lifetime.id,
                     DefPathData::LifetimeDef(lifetime_def.lifetime.ident.name.as_str()),
                     REGULAR_SPACE,
-                    lifetime_def.lifetime.span
+                    lifetime_def.lifetime.ident.span
                 );
             }
             GenericParam::Type(ref ty_param) => {
@@ -210,7 +210,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                     ty_param.id,
                     DefPathData::TypeParam(ty_param.ident.name.as_str()),
                     REGULAR_SPACE,
-                    ty_param.span
+                    ty_param.ident.span
                 );
             }
         }

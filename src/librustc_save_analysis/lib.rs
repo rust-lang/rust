@@ -603,7 +603,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     ty::ImplContainer(_) => (Some(method_id), None),
                     ty::TraitContainer(_) => (None, Some(method_id)),
                 };
-                let sub_span = seg.span;
+                let sub_span = seg.ident.span;
                 filter!(self.span_utils, Some(sub_span), expr.span, None);
                 let span = self.span_from_span(sub_span);
                 Some(Data::RefData(Ref {
@@ -707,7 +707,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
         let def = self.get_path_def(id);
         let last_seg = &path.segments[path.segments.len() - 1];
-        let sub_span = last_seg.span;
+        let sub_span = last_seg.ident.span;
         filter!(self.span_utils, Some(sub_span), path.span, None);
         match def {
             HirDef::Upvar(id, ..) | HirDef::Local(id) => {
@@ -961,7 +961,7 @@ fn make_signature(decl: &ast::FnDecl, generics: &ast::Generics) -> String {
 // variables (idents) from patterns.
 struct PathCollector<'l> {
     collected_paths: Vec<(NodeId, &'l ast::Path)>,
-    collected_idents: Vec<(NodeId, ast::Ident, Span, ast::Mutability)>,
+    collected_idents: Vec<(NodeId, ast::Ident, ast::Mutability)>,
 }
 
 impl<'l> PathCollector<'l> {
@@ -997,7 +997,7 @@ impl<'l, 'a: 'l> Visitor<'a> for PathCollector<'l> {
                     ast::BindingMode::ByValue(mt) => mt,
                 };
                 self.collected_idents
-                    .push((p.id, ident, ident.span, immut));
+                    .push((p.id, ident, immut));
             }
             _ => {}
         }

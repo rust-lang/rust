@@ -183,7 +183,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         for (i, seg) in segments.iter().enumerate() {
             segs.push(seg.clone());
             let sub_path = ast::Path {
-                span: seg.span, // span for the last segment
+                span: seg.ident.span, // span for the last segment
                 segments: segs,
             };
             let qualname = if i == 0 && path.is_global() {
@@ -191,7 +191,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             } else {
                 path_to_string(&sub_path)
             };
-            result.push((seg.span, qualname));
+            result.push((seg.ident.span, qualname));
             segs = sub_path.segments;
         }
 
@@ -351,14 +351,14 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             collector.visit_pat(&arg.pat);
             let span_utils = self.span.clone();
 
-            for (id, i, sp, ..) in collector.collected_idents {
+            for (id, ident, ..) in collector.collected_idents {
                 let hir_id = self.tcx.hir.node_to_hir_id(id);
                 let typ = match self.save_ctxt.tables.node_id_to_type_opt(hir_id) {
                     Some(s) => s.to_string(),
                     None => continue,
                 };
-                let sub_span = span_utils.span_for_last_ident(sp);
-                if !self.span.filter_generated(sub_span, sp) {
+                let sub_span = span_utils.span_for_last_ident(ident.span);
+                if !self.span.filter_generated(sub_span, ident.span) {
                     let id = ::id_from_node_id(id, &self.save_ctxt);
                     let span = self.span_from_span(sub_span.expect("No span found for variable"));
 
@@ -371,8 +371,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                             kind: DefKind::Local,
                             id,
                             span,
-                            name: i.to_string(),
-                            qualname: format!("{}::{}", qualname, i.to_string()),
+                            name: ident.to_string(),
+                            qualname: format!("{}::{}", qualname, ident.to_string()),
                             value: typ,
                             parent: None,
                             children: vec![],
@@ -447,7 +447,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     ) {
         for param in &generics.params {
             if let ast::GenericParam::Type(ref ty_param) = *param {
-                let param_ss = ty_param.span;
+                let param_ss = ty_param.ident.span;
                 let name = escape(self.span.snippet(param_ss));
                 // Append $id to name to make sure each one is unique
                 let qualname = format!("{}::{}${}", prefix, name, id);
@@ -1040,11 +1040,11 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         }
 
         // process collected paths
-        for (id, i, sp, immut) in collector.collected_idents {
+        for (id, ident, immut) in collector.collected_idents {
             match self.save_ctxt.get_path_def(id) {
                 HirDef::Local(id) => {
                     let mut value = if immut == ast::Mutability::Immutable {
-                        self.span.snippet(sp).to_string()
+                        self.span.snippet(ident.span).to_string()
                     } else {
                         "<mutable>".to_string()
                     };
@@ -1057,10 +1057,10 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                     value.push_str(": ");
                     value.push_str(&typ);
 
-                    if !self.span.filter_generated(Some(sp), sp) {
-                        let qualname = format!("{}${}", i.to_string(), id);
+                    if !self.span.filter_generated(Some(ident.span), ident.span) {
+                        let qualname = format!("{}${}", ident.to_string(), id);
                         let id = ::id_from_node_id(id, &self.save_ctxt);
-                        let span = self.span_from_span(sp);
+                        let span = self.span_from_span(ident.span);
 
                         self.dumper.dump_def(
                             &Access {
@@ -1071,7 +1071,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                                 kind: DefKind::Local,
                                 id,
                                 span,
-                                name: i.to_string(),
+                                name: ident.to_string(),
                                 qualname,
                                 value: typ,
                                 parent: None,
@@ -1093,7 +1093,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                 HirDef::TyAlias(..) |
                 HirDef::AssociatedTy(..) |
                 HirDef::SelfTy(..) => {
-                    self.dump_path_ref(id, &ast::Path::from_ident(sp, i));
+                    self.dump_path_ref(id, &ast::Path::from_ident(ident));
                 }
                 def => error!(
                     "unexpected definition kind when processing collected idents: {:?}",
@@ -1114,7 +1114,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         collector.visit_pat(&p);
         self.visit_pat(&p);
 
-        for (id, i, sp, immut) in collector.collected_idents {
+        for (id, ident, immut) in collector.collected_idents {
             let mut value = match immut {
                 ast::Mutability::Immutable => value.to_string(),
                 _ => String::new(),
@@ -1134,10 +1134,10 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
 
             // Get the span only for the name of the variable (I hope the path
             // is only ever a variable name, but who knows?).
-            let sub_span = self.span.span_for_last_ident(sp);
+            let sub_span = self.span.span_for_last_ident(ident.span);
             // Rust uses the id of the pattern for var lookups, so we'll use it too.
-            if !self.span.filter_generated(sub_span, sp) {
-                let qualname = format!("{}${}", i.to_string(), id);
+            if !self.span.filter_generated(sub_span, ident.span) {
+                let qualname = format!("{}${}", ident.to_string(), id);
                 let id = ::id_from_node_id(id, &self.save_ctxt);
                 let span = self.span_from_span(sub_span.expect("No span found for variable"));
 
@@ -1150,7 +1150,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                         kind: DefKind::Local,
                         id,
                         span,
-                        name: i.to_string(),
+                        name: ident.to_string(),
                         qualname,
                         value: typ,
                         parent: None,

@@ -149,7 +149,7 @@ impl<'a> Parser<'a> {
         };
         Ok(if let Some(meta) = meta {
             self.bump();
-            (ast::Path::from_ident(meta.span, ast::Ident::with_empty_ctxt(meta.name)),
+            (ast::Path::from_ident(ast::Ident::with_empty_ctxt(meta.name).with_span_pos(meta.span)),
              meta.node.tokens(meta.span))
         } else {
             (self.parse_path(PathStyle::Mod)?, self.parse_tokens())

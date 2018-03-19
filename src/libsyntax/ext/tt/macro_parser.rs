@@ -823,7 +823,7 @@ fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
         "expr" => token::NtExpr(panictry!(p.parse_expr())),
         "ty" => token::NtTy(panictry!(p.parse_ty())),
         // this could be handled like a token, since it is one
-        "ident" => if let Some((ident, is_raw))) = get_macro_ident(&p.token) {
+        "ident" => if let Some((ident, is_raw)) = get_macro_ident(&p.token) {
             let span = p.span;
             p.bump();
             token::NtIdent(Ident::new(ident.name, span), is_raw)

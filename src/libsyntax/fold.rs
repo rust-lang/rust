@@ -449,9 +449,8 @@ pub fn noop_fold_usize<T: Folder>(i: usize, _: &mut T) -> usize {
 
 pub fn noop_fold_path<T: Folder>(Path { segments, span }: Path, fld: &mut T) -> Path {
     Path {
-        segments: segments.move_map(|PathSegment {ident, span, parameters}| PathSegment {
+        segments: segments.move_map(|PathSegment {ident, parameters}| PathSegment {
             ident: fld.fold_ident(ident),
-            span: fld.new_span(span),
             parameters: parameters.map(|ps| ps.map(|ps| fld.fold_path_parameters(ps))),
         }),
         span: fld.new_span(span)
@@ -679,7 +678,7 @@ pub fn noop_fold_ty_param_bound<T>(tpb: TyParamBound, fld: &mut T)
 }
 
 pub fn noop_fold_ty_param<T: Folder>(tp: TyParam, fld: &mut T) -> TyParam {
-    let TyParam {attrs, id, ident, bounds, default, span} = tp;
+    let TyParam {attrs, id, ident, bounds, default} = tp;
     let attrs: Vec<_> = attrs.into();
     TyParam {
         attrs: attrs.into_iter()
@@ -690,7 +689,6 @@ pub fn noop_fold_ty_param<T: Folder>(tp: TyParam, fld: &mut T) -> TyParam {
         ident: fld.fold_ident(ident),
         bounds: fld.fold_bounds(bounds),
         default: default.map(|x| fld.fold_ty(x)),
-        span: fld.new_span(span),
     }
 }
 
@@ -711,7 +709,6 @@ pub fn noop_fold_generic_params<T: Folder>(
 pub fn noop_fold_label<T: Folder>(label: Label, fld: &mut T) -> Label {
     Label {
         ident: fld.fold_ident(label.ident),
-        span: fld.new_span(label.span),
     }
 }
 
@@ -719,7 +716,6 @@ pub fn noop_fold_lifetime<T: Folder>(l: Lifetime, fld: &mut T) -> Lifetime {
     Lifetime {
         id: fld.new_id(l.id),
         ident: fld.fold_ident(l.ident),
-        span: fld.new_span(l.span)
     }
 }
 
@@ -1194,7 +1190,6 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                 ExprKind::MethodCall(
                     PathSegment {
                         ident: folder.fold_ident(seg.ident),
-                        span: folder.new_span(seg.span),
                         parameters: seg.parameters.map(|ps| {
                             ps.map(|ps| folder.fold_path_parameters(ps))
                         }),
