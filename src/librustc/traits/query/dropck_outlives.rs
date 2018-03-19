@@ -51,6 +51,7 @@ impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
         let gcx = tcx.global_tcx();
         let (c_ty, orig_values) = self.infcx.canonicalize_query(&self.param_env.and(ty));
         let span = self.cause.span;
+        debug!("c_ty = {:?}", c_ty);
         match &gcx.dropck_outlives(c_ty) {
             Ok(result) if result.is_proven() => {
                 match self.infcx.instantiate_query_result(
