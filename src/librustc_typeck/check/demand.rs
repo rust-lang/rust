@@ -18,8 +18,9 @@ use syntax::ast;
 use syntax::util::parser::PREC_POSTFIX;
 use syntax_pos::{self, Span};
 use rustc::hir;
-use rustc::hir::print;
 use rustc::hir::def::Def;
+use rustc::hir::map::NodeItem;
+use rustc::hir::{Item, ItemConst, print};
 use rustc::ty::{self, Ty, AssociatedItem};
 use errors::{DiagnosticBuilder, CodeMapper};
 
@@ -318,6 +319,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                       checked_ty: Ty<'tcx>,
                       expected_ty: Ty<'tcx>)
                       -> bool {
+        let parent_id = self.tcx.hir.get_parent_node(expr.id);
+        match self.tcx.hir.find(parent_id) {
+            Some(parent) => {
+                // Shouldn't suggest `.into()` on `const`s.
+                if let NodeItem(Item { node: ItemConst(_, _), .. }) = parent {
+                    // FIXME(estebank): modify once we decide to suggest `as` casts
+                    return false;
+                }
+            }
+            None => {}
+        };
+
         let will_truncate = "will truncate the source value";
         let depending_on_isize = "will truncate or zero-extend depending on the bit width of \
                                   `isize`";
