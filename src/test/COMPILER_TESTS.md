@@ -54,6 +54,8 @@ be compiled or run.
 * `ignore-test` always ignores the test
 * `ignore-lldb` and `ignore-gdb` will skip a debuginfo test on that debugger.
 
+`only-X` is the opposite. The test will run only when `X` matches.
+
 Some examples of `X` in `ignore-X`:
 
 * Architecture: `aarch64`, `arm`, `asmjs`, `mips`, `wasm32`, `x86_64`, `x86`, ...
