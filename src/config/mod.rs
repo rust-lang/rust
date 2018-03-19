@@ -69,7 +69,7 @@ create_config! {
 
     // Ordering
     reorder_extern_crates: bool, true, false, "Reorder extern crate statements alphabetically";
-    reorder_extern_crates_in_group: bool, false, false, "Reorder extern crate statements in group";
+    reorder_extern_crates_in_group: bool, true, false, "Reorder extern crate statements in group";
     reorder_imports: bool, true, false, "Reorder import statements alphabetically";
     reorder_imports_in_group: bool, true, false, "Reorder import statements in group";
     reorder_imported_names: bool, true, false,
