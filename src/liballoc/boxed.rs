@@ -64,8 +64,8 @@ use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{self, Hash, Hasher};
 use core::iter::FusedIterator;
-use core::marker::{self, Unsize};
-use core::mem;
+use core::marker::{self, Unpin, Unsize};
+use core::mem::{self, Pin};
 use core::ops::{CoerceUnsized, Deref, DerefMut, Generator, GeneratorState};
 use core::ops::{BoxPlace, Boxed, InPlace, Place, Placer};
 use core::ptr::{self, NonNull, Unique};
@@ -896,3 +896,100 @@ impl<T> Generator for Box<T>
         (**self).resume()
     }
 }
+
+/// A pinned, heap allocated reference.
+#[unstable(feature = "pin", issue = "49150")]
+#[fundamental]
+pub struct PinBox<T: ?Sized> {
+    inner: Box<T>,
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T> PinBox<T> {
+    /// Allocate memory on the heap, move the data into it and pin it.
+    #[unstable(feature = "pin", issue = "49150")]
+    pub fn new(data: T) -> PinBox<T> {
+        PinBox { inner: Box::new(data) }
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: ?Sized> PinBox<T> {
+    /// Get a pinned reference to the data in this PinBox.
+    pub fn as_pin<'a>(&'a mut self) -> Pin<'a, T> {
+        unsafe { Pin::new_unchecked(&mut *self.inner) }
+    }
+
+    /// Get a mutable reference to the data inside this PinBox.
+    ///
+    /// This function is unsafe. Users must guarantee that the data is never
+    /// moved out of this reference.
+    pub unsafe fn get_mut<'a>(this: &'a mut PinBox<T>) -> &'a mut T {
+        &mut *this.inner
+    }
+
+    /// Convert this PinBox into an unpinned Box.
+    ///
+    /// This function is unsafe. Users must guarantee that the data is never
+    /// moved out of the box.
+    pub unsafe fn unpin(this: PinBox<T>) -> Box<T> {
+        this.inner
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: ?Sized> From<Box<T>> for PinBox<T> {
+    fn from(boxed: Box<T>) -> PinBox<T> {
+        PinBox { inner: boxed }
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: Unpin + ?Sized> From<PinBox<T>> for Box<T> {
+    fn from(pinned: PinBox<T>) -> Box<T> {
+        pinned.inner
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: ?Sized> Deref for PinBox<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &*self.inner
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: Unpin + ?Sized> DerefMut for PinBox<T> {
+    fn deref_mut(&mut self) -> &mut T {
+        &mut *self.inner
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: fmt::Display + ?Sized> fmt::Display for PinBox<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&*self.inner, f)
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: fmt::Debug + ?Sized> fmt::Debug for PinBox<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&*self.inner, f)
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: ?Sized> fmt::Pointer for PinBox<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // It's not possible to extract the inner Uniq directly from the Box,
+        // instead we cast it to a *const which aliases the Unique
+        let ptr: *const T = &*self.inner;
+        fmt::Pointer::fmt(&ptr, f)
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<PinBox<U>> for PinBox<T> {}

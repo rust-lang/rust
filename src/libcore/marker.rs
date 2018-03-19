@@ -578,3 +578,13 @@ unsafe impl<T: ?Sized> Freeze for *const T {}
 unsafe impl<T: ?Sized> Freeze for *mut T {}
 unsafe impl<'a, T: ?Sized> Freeze for &'a T {}
 unsafe impl<'a, T: ?Sized> Freeze for &'a mut T {}
+
+/// Types which can be moved out of a `Pin`.
+///
+/// The `Unpin` trait is used to control the behavior of the [`Pin`] type. If a
+/// type implements `Unpin`, it is safe to move a value of that type out of the
+/// `Pin` pointer.
+///
+/// This trait is automatically implemented for almost every type.
+#[unstable(feature = "pin", issue = "49150")]
+pub unsafe auto trait Unpin {}

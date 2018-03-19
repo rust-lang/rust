@@ -105,6 +105,7 @@
 #![feature(offset_to)]
 #![feature(optin_builtin_traits)]
 #![feature(pattern)]
+#![feature(pin)]
 #![feature(placement_in_syntax)]
 #![feature(placement_new_protocol)]
 #![feature(ptr_internals)]
