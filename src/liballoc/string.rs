@@ -60,14 +60,13 @@ use core::fmt;
 use core::hash;
 use core::iter::{FromIterator, FusedIterator};
 use core::ops::Bound::{Excluded, Included, Unbounded};
-use core::ops::{self, Add, AddAssign, Index, IndexMut};
+use core::ops::{self, Add, AddAssign, Index, IndexMut, RangeBounds};
 use core::ptr;
 use core::str::pattern::Pattern;
 use std_unicode::lossy;
 use std_unicode::char::{decode_utf16, REPLACEMENT_CHARACTER};
 
 use borrow::{Cow, ToOwned};
-use range::RangeArgument;
 use str::{self, from_boxed_utf8_unchecked, FromStr, Utf8Error, Chars};
 use vec::Vec;
 use boxed::Box;
@@ -1484,7 +1483,7 @@ impl String {
     /// ```
     #[stable(feature = "drain", since = "1.6.0")]
     pub fn drain<R>(&mut self, range: R) -> Drain
-        where R: RangeArgument<usize>
+        where R: RangeBounds<usize>
     {
         // Memory safety
         //
@@ -1548,7 +1547,7 @@ impl String {
     /// ```
     #[unstable(feature = "splice", reason = "recently added", issue = "44643")]
     pub fn splice<R>(&mut self, range: R, replace_with: &str)
-        where R: RangeArgument<usize>
+        where R: RangeBounds<usize>
     {
         // Memory safety
         //

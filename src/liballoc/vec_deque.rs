@@ -22,7 +22,7 @@ use core::fmt;
 use core::iter::{repeat, FromIterator, FusedIterator};
 use core::mem;
 use core::ops::Bound::{Excluded, Included, Unbounded};
-use core::ops::{Index, IndexMut, Place, Placer, InPlace};
+use core::ops::{Index, IndexMut, Place, Placer, InPlace, RangeBounds};
 use core::ptr;
 use core::ptr::NonNull;
 use core::slice;
@@ -33,7 +33,6 @@ use core::cmp;
 use raw_vec::RawVec;
 
 use super::allocator::CollectionAllocErr;
-use super::range::RangeArgument;
 use super::vec::Vec;
 
 const INITIAL_CAPACITY: usize = 7; // 2^3 - 1
@@ -969,7 +968,7 @@ impl<T> VecDeque<T> {
     #[inline]
     #[stable(feature = "drain", since = "1.6.0")]
     pub fn drain<R>(&mut self, range: R) -> Drain<T>
-        where R: RangeArgument<usize>
+        where R: RangeBounds<usize>
     {
         // Memory safety
         //

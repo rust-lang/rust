@@ -15,10 +15,10 @@ use core::iter::{FromIterator, Peekable, FusedIterator};
 use core::marker::PhantomData;
 use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::Index;
+use core::ops::RangeBounds;
 use core::{fmt, intrinsics, mem, ptr};
 
 use borrow::Borrow;
-use range::RangeArgument;
 
 use super::node::{self, Handle, NodeRef, marker};
 use super::search;
@@ -817,7 +817,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "btree_range", since = "1.17.0")]
     pub fn range<T: ?Sized, R>(&self, range: R) -> Range<K, V>
-        where T: Ord, K: Borrow<T>, R: RangeArgument<T>
+        where T: Ord, K: Borrow<T>, R: RangeBounds<T>
     {
         let root1 = self.root.as_ref();
         let root2 = self.root.as_ref();
@@ -857,7 +857,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "btree_range", since = "1.17.0")]
     pub fn range_mut<T: ?Sized, R>(&mut self, range: R) -> RangeMut<K, V>
-        where T: Ord, K: Borrow<T>, R: RangeArgument<T>
+        where T: Ord, K: Borrow<T>, R: RangeBounds<T>
     {
         let root1 = self.root.as_mut();
         let root2 = unsafe { ptr::read(&root1) };
@@ -1812,7 +1812,7 @@ fn last_leaf_edge<BorrowType, K, V>
     }
 }
 
-fn range_search<BorrowType, K, V, Q: ?Sized, R: RangeArgument<Q>>(
+fn range_search<BorrowType, K, V, Q: ?Sized, R: RangeBounds<Q>>(
     root1: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
     root2: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
     range: R

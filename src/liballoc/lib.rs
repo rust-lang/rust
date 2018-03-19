@@ -88,6 +88,7 @@
 #![feature(box_syntax)]
 #![feature(cfg_target_has_atomic)]
 #![feature(coerce_unsized)]
+#![feature(collections_range)]
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
 #![feature(custom_attribute)]
@@ -178,7 +179,6 @@ mod btree;
 pub mod borrow;
 pub mod fmt;
 pub mod linked_list;
-pub mod range;
 pub mod slice;
 pub mod str;
 pub mod string;
