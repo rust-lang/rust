@@ -32,12 +32,8 @@ impl base::AttrProcMacro for AttrProcMacro {
                    annotation: TokenStream,
                    annotated: TokenStream)
                    -> TokenStream {
-        let server = ::proc_macro::rustc::Rustc;
-        let res = ::proc_macro::__internal::set_sess(ecx, || {
-            self.client.run(&EXEC_STRATEGY, server, annotation, annotated)
-        });
-
-        match res {
+        let server = ::proc_macro::rustc::Rustc::new(ecx);
+        match self.client.run(&EXEC_STRATEGY, server, annotation, annotated) {
             Ok(stream) => stream,
             Err(e) => {
                 let msg = "custom attribute panicked";
@@ -65,12 +61,8 @@ impl base::ProcMacro for BangProcMacro {
                    span: Span,
                    input: TokenStream)
                    -> TokenStream {
-        let server = ::proc_macro::rustc::Rustc;
-        let res = ::proc_macro::__internal::set_sess(ecx, || {
-            self.client.run(&EXEC_STRATEGY, server, input)
-        });
-
-        match res {
+        let server = ::proc_macro::rustc::Rustc::new(ecx);
+        match self.client.run(&EXEC_STRATEGY, server, input) {
             Ok(stream) => stream,
             Err(e) => {
                 let msg = "proc macro panicked";

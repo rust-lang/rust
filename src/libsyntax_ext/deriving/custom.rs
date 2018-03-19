@@ -77,12 +77,9 @@ impl MultiItemModifier for ProcMacroDerive {
         let item = ecx.resolver.eliminate_crate_var(item);
         let token = Token::interpolated(token::NtItem(item));
         let input = tokenstream::TokenTree::Token(DUMMY_SP, token).into();
-        let server = ::proc_macro::rustc::Rustc;
-        let res = ::proc_macro::__internal::set_sess(ecx, || {
-            self.client.run(&EXEC_STRATEGY, server, input)
-        });
 
-        let stream = match res {
+        let server = ::proc_macro::rustc::Rustc::new(ecx);
+        let stream = match self.client.run(&EXEC_STRATEGY, server, input) {
             Ok(stream) => stream,
             Err(e) => {
                 let msg = "proc-macro derive panicked";
@@ -103,13 +100,14 @@ impl MultiItemModifier for ProcMacroDerive {
         let mut items = vec![];
 
         loop {
-            match parser.parse_item().map_err(::proc_macro::__internal::parse_to_lex_err) {
+            match parser.parse_item() {
                 Ok(None) => break,
                 Ok(Some(item)) => {
                     items.push(Annotatable::Item(item))
                 }
-                Err(_) => {
+                Err(mut err) => {
                     // FIXME: handle this better
+                    err.cancel();
                     ecx.struct_span_fatal(span, msg).emit();
                     FatalError.raise();
                 }

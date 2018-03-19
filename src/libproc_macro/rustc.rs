@@ -9,16 +9,18 @@
 // except according to those terms.
 
 use bridge::{server, TokenTree};
-use {Delimiter, Level, LineColumn, Spacing, __internal};
+use {Delimiter, Level, LineColumn, Spacing};
 
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{self as errors, Diagnostic, DiagnosticBuilder};
 use std::ascii;
 use std::ops::Bound;
 use syntax::ast;
+use syntax::ext::base::ExtCtxt;
 use syntax::parse::lexer::comments;
-use syntax::parse::{self, token};
+use syntax::parse::{self, token, ParseSess};
 use syntax::tokenstream::{self, DelimSpan, TokenStream};
+use syntax_pos::hygiene::{SyntaxContext, Transparency};
 use syntax_pos::symbol::{keywords, Symbol};
 use syntax_pos::{BytePos, FileName, MultiSpan, Pos, SourceFile, Span};
 
@@ -43,7 +45,7 @@ impl Delimiter {
 }
 
 impl TokenTree<Group, Punct, Ident, Literal> {
-    fn from_internal(stream: TokenStream, stack: &mut Vec<Self>) -> Self {
+    fn from_internal(stream: TokenStream, sess: &ParseSess, stack: &mut Vec<Self>) -> Self {
         use syntax::parse::token::*;
 
         let (tree, joint) = stream.as_tree();
@@ -188,14 +190,14 @@ impl TokenTree<Group, Punct, Ident, Literal> {
                 })
             }
 
-            Interpolated(_) => __internal::with_sess(|sess, _| {
+            Interpolated(_) => {
                 let stream = token.interpolated_to_tokenstream(sess, span);
                 TokenTree::Group(Group {
                     delimiter: Delimiter::None,
                     stream,
                     span: DelimSpan::from_single(span),
                 })
-            }),
+            }
 
             DotEq => op!('.', '='),
             OpenDelim(..) | CloseDelim(..) => unreachable!(),
@@ -337,9 +339,31 @@ pub struct Literal {
     span: Span,
 }
 
-pub struct Rustc;
+pub struct Rustc<'a> {
+    sess: &'a ParseSess,
+    def_site: Span,
+    call_site: Span,
+}
 
-impl server::Types for Rustc {
+impl<'a> Rustc<'a> {
+    pub fn new(cx: &'a ExtCtxt) -> Self {
+        // No way to determine def location for a proc macro right now, so use call location.
+        let location = cx.current_expansion.mark.expn_info().unwrap().call_site;
+        let to_span = |transparency| {
+            location.with_ctxt(
+                SyntaxContext::empty()
+                    .apply_mark_with_transparency(cx.current_expansion.mark, transparency),
+            )
+        };
+        Rustc {
+            sess: cx.parse_sess,
+            def_site: to_span(Transparency::Opaque),
+            call_site: to_span(Transparency::Transparent),
+        }
+    }
+}
+
+impl server::Types for Rustc<'_> {
     type TokenStream = TokenStream;
     type TokenStreamBuilder = tokenstream::TokenStreamBuilder;
     type TokenStreamIter = TokenStreamIter;
@@ -353,7 +377,7 @@ impl server::Types for Rustc {
     type Span = Span;
 }
 
-impl server::TokenStream for Rustc {
+impl server::TokenStream for Rustc<'_> {
     fn new(&mut self) -> Self::TokenStream {
         TokenStream::empty()
     }
@@ -361,14 +385,12 @@ impl server::TokenStream for Rustc {
         stream.is_empty()
     }
     fn from_str(&mut self, src: &str) -> Self::TokenStream {
-        ::__internal::with_sess(|sess, data| {
-            parse::parse_stream_from_source_str(
-                FileName::ProcMacroSourceCode,
-                src.to_string(),
-                sess,
-                Some(data.call_site),
-            )
-        })
+        parse::parse_stream_from_source_str(
+            FileName::ProcMacroSourceCode,
+            src.to_string(),
+            self.sess,
+            Some(self.call_site),
+        )
     }
     fn to_string(&mut self, stream: &Self::TokenStream) -> String {
         stream.to_string()
@@ -387,7 +409,7 @@ impl server::TokenStream for Rustc {
     }
 }
 
-impl server::TokenStreamBuilder for Rustc {
+impl server::TokenStreamBuilder for Rustc<'_> {
     fn new(&mut self) -> Self::TokenStreamBuilder {
         tokenstream::TokenStreamBuilder::new()
     }
@@ -399,7 +421,7 @@ impl server::TokenStreamBuilder for Rustc {
     }
 }
 
-impl server::TokenStreamIter for Rustc {
+impl server::TokenStreamIter for Rustc<'_> {
     fn next(
         &mut self,
         iter: &mut Self::TokenStreamIter,
@@ -407,7 +429,7 @@ impl server::TokenStreamIter for Rustc {
         loop {
             let tree = iter.stack.pop().or_else(|| {
                 let next = iter.cursor.next_as_stream()?;
-                Some(TokenTree::from_internal(next, &mut iter.stack))
+                Some(TokenTree::from_internal(next, self.sess, &mut iter.stack))
             })?;
             // HACK: The condition "dummy span + group with empty delimiter" represents an AST
             // fragment approximately converted into a token stream. This may happen, for
@@ -426,7 +448,7 @@ impl server::TokenStreamIter for Rustc {
     }
 }
 
-impl server::Group for Rustc {
+impl server::Group for Rustc<'_> {
     fn new(&mut self, delimiter: Delimiter, stream: Self::TokenStream) -> Self::Group {
         Group {
             delimiter,
@@ -454,7 +476,7 @@ impl server::Group for Rustc {
     }
 }
 
-impl server::Punct for Rustc {
+impl server::Punct for Rustc<'_> {
     fn new(&mut self, ch: char, spacing: Spacing) -> Self::Punct {
         Punct {
             ch,
@@ -480,7 +502,7 @@ impl server::Punct for Rustc {
     }
 }
 
-impl server::Ident for Rustc {
+impl server::Ident for Rustc<'_> {
     fn new(&mut self, string: &str, span: Self::Span, is_raw: bool) -> Self::Ident {
         let sym = Symbol::intern(string);
         if is_raw
@@ -499,7 +521,7 @@ impl server::Ident for Rustc {
     }
 }
 
-impl server::Literal for Rustc {
+impl server::Literal for Rustc<'_> {
     // FIXME(eddyb) `Literal` should not expose internal `Debug` impls.
     fn debug(&mut self, literal: &Self::Literal) -> String {
         format!("{:?}", literal)
@@ -616,7 +638,7 @@ impl server::Literal for Rustc {
     }
 }
 
-impl server::SourceFile for Rustc {
+impl<'a> server::SourceFile for Rustc<'a> {
     fn eq(&mut self, file1: &Self::SourceFile, file2: &Self::SourceFile) -> bool {
         Lrc::ptr_eq(file1, file2)
     }
@@ -634,7 +656,7 @@ impl server::SourceFile for Rustc {
     }
 }
 
-impl server::MultiSpan for Rustc {
+impl server::MultiSpan for Rustc<'_> {
     fn new(&mut self) -> Self::MultiSpan {
         vec![]
     }
@@ -643,7 +665,7 @@ impl server::MultiSpan for Rustc {
     }
 }
 
-impl server::Diagnostic for Rustc {
+impl server::Diagnostic for Rustc<'_> {
     fn new(&mut self, level: Level, msg: &str, spans: Self::MultiSpan) -> Self::Diagnostic {
         let mut diag = Diagnostic::new(level.to_internal(), msg);
         diag.set_span(MultiSpan::from_spans(spans));
@@ -659,24 +681,22 @@ impl server::Diagnostic for Rustc {
         diag.sub(level.to_internal(), msg, MultiSpan::from_spans(spans), None);
     }
     fn emit(&mut self, diag: Self::Diagnostic) {
-        ::__internal::with_sess(move |sess, _| {
-            DiagnosticBuilder::new_diagnostic(&sess.span_diagnostic, diag).emit()
-        });
+        DiagnosticBuilder::new_diagnostic(&self.sess.span_diagnostic, diag).emit()
     }
 }
 
-impl server::Span for Rustc {
+impl server::Span for Rustc<'_> {
     fn debug(&mut self, span: Self::Span) -> String {
         format!("{:?} bytes({}..{})", span.ctxt(), span.lo().0, span.hi().0)
     }
     fn def_site(&mut self) -> Self::Span {
-        ::__internal::with_sess(|_, data| data.def_site)
+        self.def_site
     }
     fn call_site(&mut self) -> Self::Span {
-        ::__internal::with_sess(|_, data| data.call_site)
+        self.call_site
     }
     fn source_file(&mut self, span: Self::Span) -> Self::SourceFile {
-        ::__internal::lookup_char_pos(span.lo()).file
+        self.sess.source_map().lookup_char_pos(span.lo()).file
     }
     fn parent(&mut self, span: Self::Span) -> Option<Self::Span> {
         span.ctxt().outer().expn_info().map(|i| i.call_site)
@@ -685,22 +705,22 @@ impl server::Span for Rustc {
         span.source_callsite()
     }
     fn start(&mut self, span: Self::Span) -> LineColumn {
-        let loc = ::__internal::lookup_char_pos(span.lo());
+        let loc = self.sess.source_map().lookup_char_pos(span.lo());
         LineColumn {
             line: loc.line,
             column: loc.col.to_usize(),
         }
     }
     fn end(&mut self, span: Self::Span) -> LineColumn {
-        let loc = ::__internal::lookup_char_pos(span.hi());
+        let loc = self.sess.source_map().lookup_char_pos(span.hi());
         LineColumn {
             line: loc.line,
             column: loc.col.to_usize(),
         }
     }
     fn join(&mut self, first: Self::Span, second: Self::Span) -> Option<Self::Span> {
-        let self_loc = ::__internal::lookup_char_pos(first.lo());
-        let other_loc = ::__internal::lookup_char_pos(second.lo());
+        let self_loc = self.sess.source_map().lookup_char_pos(first.lo());
+        let other_loc = self.sess.source_map().lookup_char_pos(second.lo());
 
         if self_loc.file.name != other_loc.file.name {
             return None;
