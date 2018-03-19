@@ -2249,6 +2249,67 @@ impl str {
         let me = unsafe { self.as_bytes_mut() };
         me.make_ascii_lowercase()
     }
+
+    /// Splits the string slice into two at the given index.
+    ///
+    /// Returns a new string slice. `self` contains bytes `[at, len)`, and
+    /// the returned string slice contains bytes `[at, len)`. `at` must be on
+    /// the boundary of a UTF-8 code point.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `at` is not on a `UTF-8` code point boundary, or if it is
+    /// beyond the last code point of the string.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_split_off)]
+    ///
+    /// let mut best_baguette = "baguette de tradition";
+    /// let why_best = best_baguette.split_off(9);
+    /// assert_eq!(best_baguette, "baguette ");
+    /// assert_eq!(why_best, "de tradition");
+    /// ```
+    #[unstable(feature = "slice_split_off", issue = "0")]
+    #[inline]
+    pub fn split_off<'a>(self: &mut &'a Self, at: usize) -> &'a str {
+        core_str::StrExt::split_off(self, at)
+    }
+
+    /// Splits the mutable string slice into two at the given index.
+    ///
+    /// Returns a new mutable string slice. `self` contains bytes `[0, at)`, and
+    /// the returned string slice contains bytes `[at, len)`. `at` must be on
+    /// the boundary of a UTF-8 code point.
+    ///
+    /// To split immutable string slices instead, see the [`split_off`] method.
+    ///
+    /// [`split_off`]: #method.split_off
+    ///
+    /// # Panics
+    ///
+    /// Panics if `at` is not on a UTF-8 code point boundary, or if it is
+    /// beyond the last code point of the string slice.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(slice_split_off)]
+    ///
+    /// let mut magritte_says = &mut *String::from("Ceci n'est pas une pipe.");
+    /// let it_is_not = magritte_says.split_off_mut(19);
+    /// it_is_not.make_ascii_uppercase();
+    /// assert_eq!(magritte_says, "Ceci n'est pas une ");
+    /// assert_eq!(it_is_not, "PIPE.");
+    /// ```
+    #[unstable(feature = "slice_split_off", issue = "0")]
+    #[inline]
+    pub fn split_off_mut<'a>(self: &mut &'a mut Self, at: usize) -> &'a mut str {
+        core_str::StrExt::split_off_mut(self, at)
+    }
 }
 
 /// Converts a boxed slice of bytes to a boxed string slice without checking

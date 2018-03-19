@@ -66,6 +66,7 @@
 #![deny(warnings)]
 
 #![feature(allow_internal_unstable)]
+#![feature(arbitrary_self_types)]
 #![feature(asm)]
 #![feature(associated_type_defaults)]
 #![feature(attr_literals)]
