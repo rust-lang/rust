@@ -993,13 +993,25 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 tcx.sess.span_err(span, "`..` cannot be used in union patterns");
             }
         } else if !etc {
-            for field in variant.fields
+            let unmentioned_fields = variant.fields
                 .iter()
-                .filter(|field| !used_fields.contains_key(&field.name)) {
+                .map(|field| field.name)
+                .filter(|field| !used_fields.contains_key(&field))
+                .collect::<Vec<_>>();
+            if unmentioned_fields.len() > 0 {
+                let field_names = if unmentioned_fields.len() == 1 {
+                    format!("field `{}`", unmentioned_fields[0])
+                } else {
+                    format!("fields {}",
+                            unmentioned_fields.iter()
+                                .map(|name| format!("`{}`", name))
+                                .collect::<Vec<String>>()
+                                .join(", "))
+                };
                 let mut diag = struct_span_err!(tcx.sess, span, E0027,
-                                                "pattern does not mention field `{}`",
-                                                field.name);
-                diag.span_label(span, format!("missing field `{}`", field.name));
+                                                "pattern does not mention {}",
+                                                field_names);
+                diag.span_label(span, format!("missing {}", field_names));
                 if variant.ctor_kind == CtorKind::Fn {
                     diag.note("trying to match a tuple variant with a struct variant pattern");
                 }
